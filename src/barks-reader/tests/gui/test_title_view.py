@@ -21,7 +21,7 @@ ANDES_WITH_CUE = {nodes.LOST_IN_THE_ANDES_TITLE: nodes.LOST_IN_THE_ANDES_CUE}
 
 def test_return_enters_at_the_portal_and_escape_leaves(boot: AppBoot) -> None:
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
-    d.settle()
+    d.wait_title_fade()
     d.key_then_wait(ENTERED_AT_PORTAL, 15, "Return")
     d.key_then_wait("Exited bottom focus region.", 15, "Escape")
 
@@ -35,7 +35,7 @@ def test_overrides_row_toggles(boot: AppBoot) -> None:
     row sits between the portal and it.
     """
     d = boot(nodes.THE_FIREBUG, cues=nodes.NO_CUES, ini={"use_prebuilt_comics": "0"})
-    d.settle()
+    d.wait_title_fade()
     d.key_then_wait(ENTERED_AT_PORTAL, 15, "Return")
     d.key("Up")
     d.hold(ROW_PAUSE)
@@ -46,7 +46,7 @@ def test_overrides_row_toggles(boot: AppBoot) -> None:
 def test_a_cued_story_opens_at_its_cued_page(boot: AppBoot) -> None:
     """With the goto-page row ticked, the reader opens on the cue, not the front."""
     d = boot(nodes.LOST_IN_THE_ANDES, cues=ANDES_WITH_CUE)
-    d.settle()
+    d.wait_title_fade()
     d.key_then_wait(ENTERED_AT_PORTAL, 15, "Return")
     d.key_then_wait("All images loaded", 30, "Return")
     d.wait_for(f"Showed page {nodes.LOST_IN_THE_ANDES_PAGE} in ")
@@ -56,7 +56,7 @@ def test_a_cued_story_opens_at_its_cued_page(boot: AppBoot) -> None:
 def test_unchecking_the_goto_page_row_opens_at_the_front(boot: AppBoot) -> None:
     """Up from the portal is the goto-page row; unchecked, the story opens at the front."""
     d = boot(nodes.LOST_IN_THE_ANDES, cues=ANDES_WITH_CUE)
-    d.settle()
+    d.wait_title_fade()
     d.key_then_wait(ENTERED_AT_PORTAL, 15, "Return")
     d.key("Up")  # the goto-page row sits right above the portal
     d.hold(ROW_PAUSE)

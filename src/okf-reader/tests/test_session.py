@@ -9,7 +9,12 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from okf_reader.core.session import SessionState, load_session_state, save_session_state
+from okf_reader.core.session import (
+    SessionState,
+    load_session_state,
+    resolve_start_page,
+    save_session_state,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -105,3 +110,38 @@ class TestLoadTolerance:
             loaded = load_session_state(state_path, bundle)
             assert loaded is not None
             assert loaded.scroll_y == 1.0
+
+
+class TestResolveStartPage:
+    """A viewer always opens onto a page: the caller's, the session's, or home."""
+
+    @staticmethod
+    def _bundle(tmp_path: Path) -> Path:
+        bundle = tmp_path / "bundle"
+        (bundle / "stories").mkdir(parents=True)
+        (bundle / "index.md").write_text("# Home")
+        (bundle / "stories" / "andes.md").write_text("# Andes")
+        return bundle
+
+    def test_a_caller_page_wins_at_the_top(self, tmp_path: Path) -> None:
+        bundle = self._bundle(tmp_path)
+        state = tmp_path / "session.json"
+        save_session_state(state, bundle, bundle / "stories" / "andes.md", 0.4)
+        assert resolve_start_page(bundle, bundle / "index.md", state) == (bundle / "index.md", 1.0)
+
+    def test_the_session_is_resumed_when_there_is_one(self, tmp_path: Path) -> None:
+        bundle = self._bundle(tmp_path)
+        state = tmp_path / "session.json"
+        save_session_state(state, bundle, bundle / "stories" / "andes.md", 0.4)
+        page, scroll_y = resolve_start_page(bundle, None, state)
+        assert page == (bundle / "stories" / "andes.md").resolve()
+        assert scroll_y == 0.4  # noqa: PLR2004
+
+    def test_home_when_there_is_no_session(self, tmp_path: Path) -> None:
+        """Regression: a fresh profile opened the wiki onto an empty pane."""
+        bundle = self._bundle(tmp_path)
+        assert resolve_start_page(bundle, None, tmp_path / "missing.json") == (
+            bundle / "index.md",
+            1.0,
+        )
+        assert resolve_start_page(bundle, None, None) == (bundle / "index.md", 1.0)

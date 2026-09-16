@@ -51,7 +51,7 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
 
     search.click_word_balloon(boot, d, WORD_RESULT_ROW, WORD_RESULT_NAME)
     search.click_first_bubble(boot, d, WORD_RESULT_NAME)
-    d.settle()
+    d.wait_title_fade()  # the story's title view fades in; a Return mid-fade is lost
     d.key_then_wait("All images loaded", 30, "Return")
     assert d.current_page() > 0, "a bubble opens the story at its own page, not the front"
     d.close_reader()

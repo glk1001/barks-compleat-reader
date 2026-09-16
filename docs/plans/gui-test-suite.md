@@ -32,6 +32,15 @@
 >   pacing: 10m29s (was 12m46s). Key gap 0.15s / settle 500ms adopted; 0.05s/300ms flaked
 >   and gained nothing. Kivy DropDowns eat an Escape until their deferred dismissal
 >   runs, hence `DROPDOWN_DISMISS_PAUSE` after every dropdown pick.
+> - Later that day: a fade superseded by the next title's fade never logs a finish,
+>   so `wait_title_fade` watches only the latest fade; every read-portal press now waits
+>   for the fade and confirms "entered nav focus at portal" before pressing again. The
+>   wiki viewer opens its home page when there is no session (a fresh profile showed an
+>   empty pane). One unexplained flake remains on file: after the word-search bubble
+>   goto, a Return was once swallowed under four-way load and could not be reproduced
+>   by hand; the probe now timestamps every injected key (`input.log`, collected with
+>   failure artifacts) and the main screen logs a key it yields to a focused text
+>   field, so the next occurrence will say where the key went.
 
 ## Context
 

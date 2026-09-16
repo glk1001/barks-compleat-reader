@@ -130,10 +130,12 @@ class TestMainScreen:
         assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is True
         main_screen._nav.handle_key.assert_called_once_with(ord("r"))
 
-    def test_on_key_down_yields_to_focused_text_input(self, main_screen: MainScreen) -> None:
+    def test_on_key_down_yields_to_focused_text_input(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
         # Editing a directory path in a settings popup: the focused TextInput must
         # receive cursor/editing keys, so the handler yields (returns False) and does
-        # not drive tree/settings navigation.
+        # not drive tree/settings navigation - and says so, since nothing else would.
         main_screen.name = "main"
         main_screen.manager = MagicMock(current="main")
         main_screen._settings_nav = MagicMock()
@@ -141,6 +143,7 @@ class TestMainScreen:
             assert main_screen._on_key_down(None, KEY_LEFT, 0, "", []) is False
         main_screen._nav.handle_key.assert_not_called()
         main_screen._settings_nav.handle_key.assert_not_called()
+        assert f"Key {KEY_LEFT} left to the focused text input." in loguru_sink
 
     def test_on_key_down_escape_not_yielded_to_text_input(self, main_screen: MainScreen) -> None:
         # Escape must still close the settings/popup even while a text field is focused.

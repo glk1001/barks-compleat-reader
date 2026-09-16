@@ -52,8 +52,8 @@ def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None
     """Open the wiki from its node, then leave it with Back at the history root.
 
     The node resumes wherever the wiki was last left (a session file in the
-    profile, absent in a fresh scratch one), so the landing page is not asserted:
-    only that a page showed.
+    profile) and opens the home page when there is none, as in a fresh scratch
+    profile; either way a page shows, and that is what is asserted.
     """
     d = wiki_boot(nodes.INDEXES)
     d.select_node(nodes.WIKI_NODE)
@@ -65,7 +65,7 @@ def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None
 def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) -> None:
     """A story's wiki chip opens its page; the sidebar walks to another; Back; goto title."""
     d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES)
-    d.settle()
+    d.wait_title_fade()
     d.key_then_wait("BottomTitleViewScreen: entered nav focus at portal.", 15, "Return")
     for _ in range(UPS_TO_WIKI_CHIP):
         d.key("Up")

@@ -342,24 +342,31 @@ class Driver:
 
     FADE_STARTED = "Title view fade started"
     FADE_FINISHED = "Title view fade finished"
+    ENTERED_AT_PORTAL = "BottomTitleViewScreen: entered nav focus at portal."
 
     def wait_title_fade(self, timeout: float = 10) -> None:
-        """Block until every title-view fade that has started has also finished.
+        """Block until the most recently started title-view fade has finished.
 
         The panel fades in over a random 0-4s and the app logs both ends, so
-        this waits on the log rather than the worst case. Counting both sides
-        means it is safe whether the fade is still running or already over.
+        this waits on the log rather than the worst case. Only the latest fade
+        counts: walking the tree starts a fade per title and each is superseded
+        by the next, and a superseded fade never logs a finish. Safe whether the
+        latest fade is still running, already over, or there has been none.
 
         Raises:
-            DriverError: If a started fade has not finished within `timeout`.
+            DriverError: If the latest fade has not finished within `timeout`.
 
         """
         deadline = time.monotonic() + timeout
-        while self.match_count(self.FADE_FINISHED) < self.match_count(self.FADE_STARTED):
+        while not self._latest_fade_finished():
             if time.monotonic() > deadline:
-                msg = f"beat stalled: a title view fade never finished within {timeout}s"
+                msg = f"beat stalled: the title view fade never finished within {timeout}s"
                 raise DriverError(msg)
             time.sleep(0.25)
+
+    def _latest_fade_finished(self) -> bool:
+        text = self._log.read_text(errors="replace")
+        return text.rfind(self.FADE_FINISHED) > text.rfind(self.FADE_STARTED)
 
     def expect_no_new(self, pattern: str, window: float = 2.0) -> None:
         """Assert that no NEW occurrence of `pattern` is logged for `window` seconds.
@@ -556,9 +563,8 @@ class Driver:
         finished rendering, so settle first - pressing Enter early on a heavy title
         view opens the story at the cover instead, silently.
         """
-        self.settle()
-        self.key("Return")  # focus the title view read portal
-        self.hold(0.6)
+        self.wait_title_fade()
+        self.key_then_wait(self.ENTERED_AT_PORTAL, 15, "Return")  # focus the read portal
         self.key_then_wait("All images loaded", 30, "Return")
         self.read_pages(pick)
         self.close_reader()

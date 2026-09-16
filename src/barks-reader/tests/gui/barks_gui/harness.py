@@ -259,6 +259,13 @@ class AppBoot:
                 tail = out / artifact_name(self.nodeid, "-tail.log")
                 tail.write_text(gd.probe("tail", "80"))
                 saved.append(tail)
+            # Every key and click the probe sent, timestamped: read it against
+            # app.log to tell an ignored key from one that never went out.
+            input_log = self.driver.log_path.with_name("input.log")
+            if input_log.is_file():
+                target = out / artifact_name(self.nodeid, "-input.log")
+                shutil.copy2(input_log, target)
+                saved.append(target)
         for log in (self.scratch / COPIED_KIVY_DIR / "logs").glob("*.log"):
             target = out / artifact_name(self.nodeid, f"-{log.name}")
             shutil.copy2(log, target)

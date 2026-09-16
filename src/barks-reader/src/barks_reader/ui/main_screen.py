@@ -311,6 +311,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # alternate Escape keycode is an ordinary letter on a keyboard, and typing it
         # into the field must reach the field. See is_escape_key_for_text_input.
         if _text_input_has_focus() and not is_escape_key_for_text_input(key, codepoint):
+            # Logged because it is otherwise invisible: a key that vanishes here
+            # looks, from outside, exactly like one that was never delivered.
+            logger.debug(f"Key {key} left to the focused text input.")
             return False
         if self._settings_nav is not None:
             return self._handle_settings_key(key)

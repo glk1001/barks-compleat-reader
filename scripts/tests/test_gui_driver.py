@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import subprocess
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import gui_driver
 import pytest
@@ -326,39 +326,50 @@ class TestExpect:
 
 
 class TestWaitTitleFade:
-    """Waits until the finished count catches up with the started count."""
+    """Waits until the latest fade to start has logged its finish."""
 
-    def test_returns_at_once_when_nothing_is_fading(self) -> None:
+    @staticmethod
+    def _log(*lines: str) -> str:
+        return "\n".join(lines) + "\n"
+
+    def test_returns_at_once_when_the_latest_fade_is_over(self) -> None:
         driver = _stub_driver()
+        text = self._log("Title view fade started: 2s.", "Title view fade finished.")
         with (
-            patch.object(Driver, "match_count", return_value=2),
+            patch.object(Driver, "_latest_fade_finished", wraps=lambda: True),
             patch.object(gui_driver.time, "sleep") as sleep,
         ):
             driver.wait_title_fade()
         sleep.assert_not_called()
+        assert text.rfind(Driver.FADE_FINISHED) > text.rfind(Driver.FADE_STARTED)
 
-    def test_waits_for_the_running_fade(self) -> None:
+    def test_superseded_fades_do_not_count(self) -> None:
+        """Regression: walking several titles starts a fade each; only the last finishes."""
         driver = _stub_driver()
-        counts = {Driver.FADE_STARTED: 3, Driver.FADE_FINISHED: 2}
+        log = MagicMock()
+        log.read_text.return_value = self._log(
+            "Title view fade started: 3s.",
+            "Title view fade started: 1s.",
+            "Title view fade started: 2s.",
+            "Title view fade finished.",
+        )
+        driver._log = log  # noqa: SLF001
+        assert driver._latest_fade_finished() is True  # noqa: SLF001
 
-        def count(pattern: str) -> int:
-            value = counts[pattern]
-            if pattern == Driver.FADE_FINISHED:
-                counts[pattern] += 1  # the next look sees it finished
-            return value
-
+    def test_waits_while_the_latest_fade_runs(self) -> None:
+        driver = _stub_driver()
+        states = iter([False, False, True])
         with (
-            patch.object(Driver, "match_count", side_effect=count),
+            patch.object(Driver, "_latest_fade_finished", side_effect=lambda: next(states)),
             patch.object(gui_driver.time, "sleep") as sleep,
         ):
             driver.wait_title_fade()
-        sleep.assert_called_once()
+        assert sleep.call_count == 2  # noqa: PLR2004
 
-    def test_raises_when_a_fade_never_finishes(self) -> None:
+    def test_raises_when_the_latest_fade_never_finishes(self) -> None:
         driver = _stub_driver()
-        counts = {Driver.FADE_STARTED: 1, Driver.FADE_FINISHED: 0}
         with (
-            patch.object(Driver, "match_count", side_effect=lambda p: counts[p]),
+            patch.object(Driver, "_latest_fade_finished", return_value=False),
             patch.object(gui_driver.time, "sleep"),
             patch.object(gui_driver.time, "monotonic", side_effect=[0.0, 20.0]),
             pytest.raises(DriverError, match="never finished"),
@@ -477,3 +488,24 @@ class TestBootFromConfigDir:
     def test_needs_one_of_config_or_config_dir(self) -> None:
         with pytest.raises(ValueError, match="config="):
             boot_app_at(["root"])
+
+
+class TestOpenStory:
+    """Opening a story waits for the fade and confirms the portal before pressing it."""
+
+    def test_waits_then_confirms_each_step(self) -> None:
+        driver = _stub_driver()
+        order: list[str] = []
+        with (
+            patch.object(Driver, "wait_title_fade", side_effect=lambda: order.append("fade")),
+            patch.object(
+                Driver, "key_then_wait", side_effect=lambda p, _t, *_k: order.append(p[:24])
+            ),
+            patch.object(Driver, "read_pages"),
+            patch.object(Driver, "close_reader"),
+            patch.object(Driver, "hold"),
+            patch.object(Driver, "key"),
+            patch.object(Driver, "settle"),
+        ):
+            driver.open_story(Pick("X", pages=1, dwell=0))
+        assert order == ["fade", "BottomTitleViewScreen: e", "All images loaded"]

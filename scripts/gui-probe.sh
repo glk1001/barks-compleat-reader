@@ -56,6 +56,9 @@ XSERVER="Xephyr"
 # One run directory per display, so several probes (parallel test workers on
 # :2, :3, ...) never share a log, a pid file or a backup.
 RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/barks-gui-probe-${DPY#:}"
+# Every injected key and click, with the time it was sent, so a test failure
+# can tell "the app ignored it" from "it was never sent" against app.log.
+INPUT_LOG="$RUN_DIR/input.log"
 # The pause after every injected key. The app drops keys pressed while it is
 # rendering, so this is a floor the driver's own pacing sits on top of; the GUI
 # test harness lowers it (BARKS_PROBE_KEY_GAP) to what a pacing study found safe.
@@ -256,6 +259,7 @@ cmd_start() {
 
     mkdir -p "$RUN_DIR"
     : >"$APP_LOG"
+    : >"$INPUT_LOG"
 
     # The app rewrites its config on exit; keep the user's copy intact. A
     # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1
@@ -417,6 +421,7 @@ cmd_settle() {
 cmd_click() {
     require_running
     local x="${1:?usage: gui-probe.sh click <x> <y>}" y="${2:?}"
+    echo "$(date +%H:%M:%S.%3N) click $x $y" >>"$INPUT_LOG"
     xte -x "$DPY" "mousemove $x $y" >/dev/null
     sleep 0.3
     xte -x "$DPY" "mouseclick 1" >/dev/null
@@ -427,6 +432,7 @@ cmd_key() {
     [[ $# -gt 0 ]] || die "usage: gui-probe.sh key <keysym>..."
     local k
     for k in "$@"; do
+        echo "$(date +%H:%M:%S.%3N) key $k" >>"$INPUT_LOG"
         xte -x "$DPY" "key $k" >/dev/null
         sleep "$KEY_GAP"
     done
