@@ -356,7 +356,7 @@ class TestFormatPageSpeechBubbles:
         )
 
         assert format_page_speech_bubbles(page, "zzz") == (
-            f"{_label('Caption')}\nLATER...\n\n{_label('Witch Hazel')}\nHEE HEE!"
+            f"{_label('Narrator')}\nLATER...\n\n{_label('Witch Hazel')}\nHEE HEE!"
             f"\n\n{_label('Unknown')}\nWHO?"
         )
 

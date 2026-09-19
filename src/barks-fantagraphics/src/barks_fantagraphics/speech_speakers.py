@@ -96,7 +96,7 @@ IDENTIFIED_BY_KEY = "identified_by"
 # What the sentinels are shown as. `none` maps to nothing: a sound effect gets
 # no speaker line at all.
 _SENTINEL_DISPLAY: dict[str, str | None] = {
-    NARRATOR: "Caption",
+    NARRATOR: "Narrator",
     UNKNOWN_SPEAKER: "Unknown",
     NO_SPEAKER: None,
 }
@@ -163,7 +163,7 @@ def speaker_display_name(speaker: str) -> str | None:
         speaker: A ``speaker`` value as stored.
 
     Returns:
-        ``None`` for ``none`` (nothing to show), ``"Caption"`` for ``narrator``,
+        ``None`` for ``none`` (nothing to show), ``"Narrator"`` for ``narrator``,
         ``"Unknown"`` for ``unknown``, the text after ``other:`` in title case
         (``"The Juke Box"``, ``"Donald and the Nephews"``), and any other value
         title-cased the same way (so ``nephews`` reads ``"Nephews"``).

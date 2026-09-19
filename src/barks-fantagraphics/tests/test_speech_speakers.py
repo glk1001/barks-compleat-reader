@@ -63,7 +63,7 @@ class TestDisplayName:
             ("Donald", "Donald"),
             ("Scrooge", "Scrooge"),
             ("nephews", "Nephews"),
-            ("narrator", "Caption"),
+            ("narrator", "Narrator"),
             ("unknown", "Unknown"),
             ("none", None),
             ("other:Witch Hazel", "Witch Hazel"),

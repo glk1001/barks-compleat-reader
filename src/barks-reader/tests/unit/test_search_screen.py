@@ -395,7 +395,7 @@ class TestSpeakerFilter:
             ("All", ""),
             ("Donald", "Donald"),
             ("Scrooge", "Scrooge"),
-            ("Caption", "narrator"),
+            ("Narrator", "narrator"),
         ]
         assert screen._speaker_chips_built is True
 
