@@ -101,6 +101,29 @@ _SENTINEL_DISPLAY: dict[str, str | None] = {
     NO_SPEAKER: None,
 }
 
+# Words left lower-case inside a title-cased name: "Donald and the Nephews",
+# not "Donald And The Nephews". Always capitalized when first.
+_SMALL_WORDS: frozenset[str] = frozenset(
+    {"a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with"}
+)
+
+
+def _title_case(name: str) -> str:
+    """Capitalize each word of a free-text name, leaving small words and apostrophes alone.
+
+    ``str.title`` would give ``"The Quizmaster'S Assistant"``; this gives
+    ``"The Quizmaster's Assistant"``.  A word already carrying a capital
+    anywhere (``"McSue"``, ``"O'Gilt"``) is kept as written.
+    """
+    words = name.split()
+    out: list[str] = []
+    for i, word in enumerate(words):
+        if any(c.isupper() for c in word) or (i > 0 and word in _SMALL_WORDS):
+            out.append(word)
+        else:
+            out.append(word[0].upper() + word[1:])
+    return " ".join(out)
+
 
 def is_other_speaker(speaker: str) -> bool:
     """Whether a speaker value is free text behind the ``other:`` prefix.
@@ -141,8 +164,9 @@ def speaker_display_name(speaker: str) -> str | None:
 
     Returns:
         ``None`` for ``none`` (nothing to show), ``"Caption"`` for ``narrator``,
-        ``"Unknown"`` for ``unknown``, the text after ``other:`` with its first
-        letter capitalized, and any other value with its first letter capitalized.
+        ``"Unknown"`` for ``unknown``, the text after ``other:`` in title case
+        (``"The Juke Box"``, ``"Donald and the Nephews"``), and any other value
+        title-cased the same way (so ``nephews`` reads ``"Nephews"``).
 
     """
     if speaker in _SENTINEL_DISPLAY:
@@ -150,7 +174,7 @@ def speaker_display_name(speaker: str) -> str | None:
     name = speaker.removeprefix(OTHER_PREFIX).strip()
     if not name:
         return None
-    return name[0].upper() + name[1:]
+    return _title_case(name)
 
 
 @dataclass(frozen=True, slots=True)

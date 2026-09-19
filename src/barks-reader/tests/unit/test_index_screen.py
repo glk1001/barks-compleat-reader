@@ -305,14 +305,14 @@ class TestFormatPageSpeechBubbles:
     def test_speaker_line_above_the_bubble(self) -> None:
         page = PageInfo("5", [_speech("MONEY! MONEY!", speaker="Scrooge")])
 
-        assert format_page_speech_bubbles(page, "zzz") == f"{_label('SCROOGE')}\nMONEY! MONEY!"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Scrooge')}\nMONEY! MONEY!"
 
     def test_speaker_line_takes_the_given_size(self) -> None:
         page = PageInfo("5", [_speech("HI", speaker="Scrooge")])
 
         text = format_page_speech_bubbles(page, "zzz", speaker_font_size=16)
 
-        assert text == f"[size=16]{_label('SCROOGE')}[/size]\nHI"
+        assert text == f"[size=16]{_label('Scrooge')}[/size]\nHI"
 
     def test_speaker_line_is_set_apart_by_more_than_bold(self) -> None:
         """The lettering carries [b] for emphasis, so the label must carry italic and colour too."""
@@ -330,7 +330,7 @@ class TestFormatPageSpeechBubbles:
         )
 
         assert format_page_speech_bubbles(page, "zzz") == (
-            f"{_label('DONALD')}\nONE\n\n{_label('NEPHEWS')}\nTWO"
+            f"{_label('Donald')}\nONE\n\n{_label('Nephews')}\nTWO"
         )
 
     def test_no_speaker_call_renders_as_before(self) -> None:
@@ -356,14 +356,14 @@ class TestFormatPageSpeechBubbles:
         )
 
         assert format_page_speech_bubbles(page, "zzz") == (
-            f"{_label('CAPTION')}\nLATER...\n\n{_label('WITCH HAZEL')}\nHEE HEE!"
-            f"\n\n{_label('UNKNOWN')}\nWHO?"
+            f"{_label('Caption')}\nLATER...\n\n{_label('Witch Hazel')}\nHEE HEE!"
+            f"\n\n{_label('Unknown')}\nWHO?"
         )
 
     def test_label_is_escaped_for_markup(self) -> None:
         page = PageInfo("5", [_speech("HI", speaker="other:Goldstein & Co.")])
 
-        assert format_page_speech_bubbles(page, "zzz") == f"{_label('GOLDSTEIN &amp; CO.')}\nHI"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Goldstein &amp; Co.')}\nHI"
 
     def test_search_term_highlighted_in_the_lettering_not_the_label(self) -> None:
         page = PageInfo("5", [_speech("OH, DONALD!", speaker="Donald")])
@@ -371,12 +371,12 @@ class TestFormatPageSpeechBubbles:
         text = format_page_speech_bubbles(page, "donald")
 
         start = _speech_highlight_start_tag()
-        assert text == f"{_label('DONALD')}\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
+        assert text == f"{_label('Donald')}\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
 
     def test_soft_hyphens_become_hyphens(self) -> None:
         page = PageInfo("5", [_speech("SUPER\u00adDUCK", speaker="Donald")])
 
-        assert format_page_speech_bubbles(page, "zzz") == f"{_label('DONALD')}\nSUPER-DUCK"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Donald')}\nSUPER-DUCK"
 
 
 class TestPopupKeyboardNavWindowBinding:

@@ -207,7 +207,7 @@ def format_page_speech_bubbles(
         )
         label = speaker_display_name(speech.speaker) if speech.speaker else None
         if label:
-            markup = _speaker_label_markup(escape_markup(label.upper()) + ":", speaker_font_size)
+            markup = _speaker_label_markup(escape_markup(label) + ":", speaker_font_size)
             text = f"{markup}\n{text}"
         bubbles.append(text)
     return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
