@@ -150,7 +150,7 @@ class TextBoxWithTitleAndBorder(BoxLayout):
 
 # The speaker line's size relative to the bubble's lettering: an annotation
 # on the line, not part of it.
-SPEAKER_LABEL_SCALE = 0.8
+SPEAKER_LABEL_SCALE = 0.9
 
 
 def _speaker_label_markup(label: str, font_size: int | None) -> str:
