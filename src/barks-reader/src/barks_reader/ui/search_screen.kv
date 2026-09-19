@@ -20,7 +20,15 @@
 
 <_TagChipButton>:
     size_hint: 1, None
-    height: dp(26)
+    # A tag longer than the chip wraps onto more lines rather than spilling
+    # past the pill ("Uncle Scrooge not in US series" at the 35% panel width).
+    # Only a chip that fills the row wraps to it; one sized to its text
+    # (size_hint_x None, like the speaker chips) must not, or width and text
+    # would chase each other down to one letter per line.
+    text_size: (self.width - dp(24), None) if self.size_hint_x else (None, None)
+    halign: 'center'
+    valign: 'middle'
+    height: max(dp(26), self.texture_size[1] + dp(8))
     font_size: fm.search_tag_chip_font_size
     background_normal: ''
     background_down: ''
