@@ -156,7 +156,7 @@ SPEAKER_LABEL_SCALE = 0.9
 # is not small. Instead the label line ends in an invisible space set this much
 # larger than the label: a line is as tall as its tallest glyph, and glyphs hang
 # from the line's top, so the extra height lands under the name.
-SPEAKER_GAP_SCALE = 1.5
+SPEAKER_GAP_SCALE = 1.7
 
 
 def _speaker_label_markup(label: str, font_size: int | None) -> str:

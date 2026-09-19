@@ -312,7 +312,7 @@ class TestFormatPageSpeechBubbles:
 
         text = format_page_speech_bubbles(page, "zzz", speaker_font_size=16)
 
-        assert text == f"[size=16]{_label('Scrooge')}[/size][size=24] [/size]\nHI"
+        assert text == f"[size=16]{_label('Scrooge')}[/size][size=27] [/size]\nHI"
 
     def test_speaker_line_is_set_apart_by_more_than_bold(self) -> None:
         """The lettering carries [b] for emphasis, so the label must carry italic and colour too."""
