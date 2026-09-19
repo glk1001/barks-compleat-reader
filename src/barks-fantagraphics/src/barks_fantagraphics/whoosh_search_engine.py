@@ -442,13 +442,30 @@ class SearchEngineCreator(SearchEngine):
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
         entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
+        *,
+        skip_missing_pages: bool = False,
     ) -> None:
+        """Build the index for ``volumes``, then write every sidecar.
+
+        Args:
+            volumes: The Fantagraphics volumes to index.
+            entity_tagger: Tags a group's text with entities, when no provider.
+            entity_provider: Looks up a group's curated entities by title, page, id.
+            skip_missing_pages: When True, a page with no prelim OCR file is
+                warned about and left out rather than failing the whole build.
+                Off by default: a silent hole is an incomplete search index, so
+                a caller has to ask for it, and should say what it skipped.
+
+        """
         json_volumes_path = self._index.storage.folder / "volumes.json"
         with json_volumes_path.open("w") as f:
             json.dump(volumes, f, indent=4)
 
         self._index_volume_titles(
-            volumes, entity_tagger=entity_tagger, entity_provider=entity_provider
+            volumes,
+            entity_tagger=entity_tagger,
+            entity_provider=entity_provider,
+            skip_missing_pages=skip_missing_pages,
         )
 
         if entity_tagger or entity_provider:
@@ -487,6 +504,8 @@ class SearchEngineCreator(SearchEngine):
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
         entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
+        *,
+        skip_missing_pages: bool = False,
     ) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
         curated_sets = _build_curated_entity_sets()
@@ -498,7 +517,9 @@ class SearchEngineCreator(SearchEngine):
         )
         for title_str, fanta_info in titles:
             title = fanta_info.comic_book_info.title
-            speech_page_groups = all_speech_groups.get_speech_page_groups(title)
+            speech_page_groups = all_speech_groups.get_speech_page_groups(
+                title, skip_missing=skip_missing_pages
+            )
             for speech_page in speech_page_groups:
                 if speech_page.ocr_index != self._ocr_index_to_use:
                     continue

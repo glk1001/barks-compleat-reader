@@ -102,8 +102,14 @@ class IndexBuilderPort(Protocol):
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
         entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
+        *,
+        skip_missing_pages: bool = False,
     ) -> None:
-        """Build or rebuild the search index for the given volumes."""
+        """Build or rebuild the search index for the given volumes.
+
+        ``skip_missing_pages`` leaves out pages with no prelim OCR file instead
+        of failing; off by default so a hole in the index is never silent.
+        """
         ...
 
     def get_search_engine(self) -> FullTextSearchPort:
