@@ -25,6 +25,7 @@ from barks_fantagraphics.speech_groupers import (
     get_speech_page_group,
 )
 from barks_fantagraphics.speech_markup import strip_markup
+from barks_fantagraphics.speech_speakers import SpeakerCall
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,6 +38,7 @@ def _make_speech_text(
     raw_ai_text: str = "Hello world",
     ai_text: str | None = None,
     stype: str = "balloon",
+    speaker: SpeakerCall | None = None,
 ) -> SpeechText:
     resolved = ai_text if ai_text is not None else raw_ai_text
     return SpeechText(
@@ -47,6 +49,7 @@ def _make_speech_text(
         ai_text_markup=resolved,
         type=stype,
         text_box=[(0, 0), (100, 100)],
+        speaker=speaker,
     )
 
 
@@ -77,14 +80,31 @@ def _make_group_entry(
     stype: str = "balloon",
     notes: str = "",
     text_box: list | None = None,
+    speaker: str | None = None,
+    cap_colour: str | None = None,
+    identified_by: list[str] | None = None,
 ) -> dict:
-    return {
+    entry = {
         "ai_text": ai_text,
         "panel_num": panel_num,
         "type": stype,
         "notes": notes,
         "text_box": text_box or [[0, 0], [100, 100]],
     }
+    if speaker is not None:
+        # The shape the vision pass writes, review bookkeeping included, so a
+        # test can check that keys `SpeechText` does not model still round-trip.
+        entry.update(
+            {
+                "speaker": speaker,
+                "speaker_confidence": "high",
+                "cap_colour": cap_colour,
+                "identified_by": identified_by,
+                "speaker_reviewed": True,
+                "speaker_reviewed_date": "2026-09-18",
+            }
+        )
+    return entry
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +257,70 @@ class TestGetSpeechTextList:
         speech_groups, _ = _get_speech_text_list(f)
 
         assert speech_groups == {}
+
+    def test_speaker_call_loaded(self, tmp_path: Path) -> None:
+        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f.write_text(
+            json.dumps(
+                _make_json_content(
+                    {
+                        "1": _make_group_entry(
+                            speaker="Huey",
+                            cap_colour="red",
+                            identified_by=["cap-colour", "balloon-tail"],
+                        )
+                    }
+                )
+            )
+        )
+
+        speech_groups, _ = _get_speech_text_list(f)
+
+        assert speech_groups["1"].speaker == SpeakerCall(
+            speaker="Huey",
+            confidence="high",
+            cap_colour="red",
+            identified_by=("balloon-tail", "cap-colour"),
+        )
+
+    def test_group_without_speaker_has_none(self, tmp_path: Path) -> None:
+        """Later volumes carry no call at all; that is ordinary, not an error."""
+        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f.write_text(json.dumps(_make_json_content({"1": _make_group_entry()})))
+
+        speech_groups, _ = _get_speech_text_list(f)
+
+        assert speech_groups["1"].speaker is None
+
+    def test_speaker_with_null_evidence(self, tmp_path: Path) -> None:
+        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f.write_text(json.dumps(_make_json_content({"1": _make_group_entry(speaker="none")})))
+
+        speech_groups, _ = _get_speech_text_list(f)
+
+        call = speech_groups["1"].speaker
+        assert call is not None
+        assert call.speaker == "none"
+        assert call.cap_colour is None
+        assert call.identified_by == ()
+
+
+class TestWithStoredText:
+    def test_recomputes_views(self) -> None:
+        st = _make_speech_text("1", raw_ai_text="OLD")
+
+        edited = st.with_stored_text("[b]NEW[/b]")
+
+        assert edited.raw_ai_text == "[b]NEW[/b]"
+        assert edited.ai_text == "NEW"
+        assert edited.ai_text_markup == "[b]NEW[/b]"
+
+    def test_preserves_speaker(self) -> None:
+        """An edit to the words is not a change of who said them."""
+        call = SpeakerCall(speaker="Scrooge", confidence="high")
+        st = _make_speech_text("1", raw_ai_text="OLD", speaker=call)
+
+        assert st.with_stored_text("NEW").speaker == call
 
 
 # ---------------------------------------------------------------------------
@@ -499,6 +583,32 @@ class TestRenumberGroups:
 # ---------------------------------------------------------------------------
 
 
+class TestRenumberPreservesSpeaker:
+    def test_speaker_rides_along_with_rekeyed_groups(self) -> None:
+        json_data = _make_json_content(
+            {
+                "0": _make_group_entry(panel_num=2, ai_text="B", speaker="Donald"),
+                "1": _make_group_entry(panel_num=1, ai_text="A", speaker="Scrooge"),
+            }
+        )
+        groups = {
+            "0": _make_speech_text(
+                "0", panel_num=2, raw_ai_text="B", speaker=SpeakerCall("Donald", "high")
+            ),
+            "1": _make_speech_text(
+                "1", panel_num=1, raw_ai_text="A", speaker=SpeakerCall("Scrooge", "high")
+            ),
+        }
+        spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data)
+
+        assert spg.renumber_groups() is True
+
+        assert spg.speech_groups["0"].speaker == SpeakerCall("Scrooge", "high")
+        assert spg.speech_groups["1"].speaker == SpeakerCall("Donald", "high")
+        assert json_data["groups"]["0"]["speaker"] == "Scrooge"
+        assert json_data["groups"]["1"]["speaker"] == "Donald"
+
+
 class TestHasSpeechPageGroupChanged:
     def test_unchanged_returns_false(self) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="Same text")}
@@ -568,6 +678,24 @@ class TestSaveSpeechPageGroup:
 
         assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
         assert json.loads(f.read_text())["groups"]["1"]["ai_text"] == "A [b]SUCCESS[/b]!"
+
+    def test_speaker_keys_survive_a_text_save(self, tmp_path: Path) -> None:
+        """Only `ai_text` is written back; every speaker key stays as loaded."""
+        entry = _make_group_entry(
+            ai_text="Old", speaker="Huey", cap_colour="red", identified_by=["cap-colour"]
+        )
+        entry["speaker_was"] = "nephews"
+        json_data = _make_json_content({"1": entry})
+        before = {k: v for k, v in json_data["groups"]["1"].items() if k != "ai_text"}
+        groups = {"1": _make_speech_text("1", raw_ai_text="New")}
+        f = tmp_path / "out.json"  # type: ignore[operator]
+        spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
+
+        assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
+
+        saved = json.loads(f.read_text())["groups"]["1"]
+        assert saved["ai_text"] == "New"
+        assert {k: v for k, v in saved.items() if k != "ai_text"} == before
 
 
 class TestGroupsWithTextChanges:
