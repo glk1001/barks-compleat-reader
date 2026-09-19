@@ -69,7 +69,7 @@ MASTHEAD = ReaderTheme(
     icon_tint=(0.98, 0.82, 0.50, 1.0),  # coin gold
     scrollbar=(0.82, 0.71, 0.50, 0.9),  # old gold, as search_heading
     scrollbar_inactive=(0.82, 0.71, 0.50, 0.4),
-    speech_speaker=(0.16, 0.30, 0.52, 1.0),  # fountain-pen blue, against the coat red
+    speech_speaker=(0.00, 0.47, 0.45, 1.0),  # cap teal: saturated, so not near-black
 )
 
 DUCKBURG = ReaderTheme(
