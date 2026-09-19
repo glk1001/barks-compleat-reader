@@ -309,13 +309,15 @@
                     spacing: dp(6) if speaker_chips_layout.children else 0
 
                     # Who-said-it filter. Empty (and zero height) on an index
-                    # that has no speakers.
-                    BoxLayout:
+                    # that has no speakers. A stack, not a row: eleven chips do
+                    # not fit one line at the pinned 900px window, and a clipped
+                    # row hides the chips a remote cannot scroll to.
+                    StackLayout:
                         id: speaker_chips_layout
-                        orientation: 'horizontal'
+                        orientation: 'lr-tb'
                         size_hint_y: None
-                        height: dp(26) if self.children else 0
-                        spacing: dp(6)
+                        height: self.minimum_height if self.children else 0
+                        spacing: dp(6), dp(4)
 
                     ReaderScrollView:
                         id: word_results_scroll

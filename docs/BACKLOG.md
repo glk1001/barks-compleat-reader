@@ -67,7 +67,11 @@ in the OCR repo, which is read-only from here:
 - [ ] **Rebuild the shipped Whoosh index** with
       `make-whoosh-index-from-gemini-ai-groups`, so the barkspack index carries
       the `speaker` field and sidecar. Until then the reader degrades quietly:
-      no speaker lines, no filter row.
+      no speaker lines, no filter row. When it lands, the word-search GUI
+      tests' clicked-row coordinates (`WORD_RESULT_TOP_Y` in
+      `tests/gui/barks_gui/search.py`, and the demo recorder's copy) must move
+      down by the speaker chip stack's height -- three rows, about 64px, at
+      the pinned 900px window -- since that suite runs on the shipped index.
 - [ ] **`vision_schema.py` imports the vocabulary** (roster, sentinels,
       `other:` prefix, key names, cap-colour and identified-by options) from
       `barks_fantagraphics.speech_speakers` instead of defining its own copy.
