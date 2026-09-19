@@ -9,6 +9,7 @@ import barks_reader.ui.index_screen
 import pytest
 from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.ui.index_screen import (
     KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
@@ -293,13 +294,27 @@ def _speech(text: str, speaker: str | None = None, group_id: str = "0") -> Speec
     )
 
 
+def _label(name: str) -> str:
+    """Return the speaker line as rendered: italic and coloured, never bold."""
+    return f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{name}:[/color][/i]"
+
+
 class TestFormatPageSpeechBubbles:
-    """Each bubble names its speaker on a bold line above the lettering."""
+    """Each bubble names its speaker on an italic, coloured line above the lettering."""
 
     def test_speaker_line_above_the_bubble(self) -> None:
         page = PageInfo("5", [_speech("MONEY! MONEY!", speaker="Scrooge")])
 
-        assert format_page_speech_bubbles(page, "zzz") == "[b]SCROOGE:[/b]\nMONEY! MONEY!"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('SCROOGE')}\nMONEY! MONEY!"
+
+    def test_speaker_line_is_not_bold(self) -> None:
+        """The lettering carries [b] for emphasis; a bold label would read as more of it."""
+        page = PageInfo("5", [_speech("A [b]BIG[/b] DEAL", speaker="Scrooge")])
+
+        text = format_page_speech_bubbles(page, "zzz")
+
+        assert "[b]SCROOGE" not in text
+        assert text.startswith("[i][color=")
 
     def test_bubbles_are_separated_by_a_blank_line(self) -> None:
         page = PageInfo(
@@ -308,7 +323,7 @@ class TestFormatPageSpeechBubbles:
         )
 
         assert format_page_speech_bubbles(page, "zzz") == (
-            "[b]DONALD:[/b]\nONE\n\n[b]NEPHEWS:[/b]\nTWO"
+            f"{_label('DONALD')}\nONE\n\n{_label('NEPHEWS')}\nTWO"
         )
 
     def test_no_speaker_call_renders_as_before(self) -> None:
@@ -334,13 +349,14 @@ class TestFormatPageSpeechBubbles:
         )
 
         assert format_page_speech_bubbles(page, "zzz") == (
-            "[b]CAPTION:[/b]\nLATER...\n\n[b]WITCH HAZEL:[/b]\nHEE HEE!\n\n[b]UNKNOWN:[/b]\nWHO?"
+            f"{_label('CAPTION')}\nLATER...\n\n{_label('WITCH HAZEL')}\nHEE HEE!"
+            f"\n\n{_label('UNKNOWN')}\nWHO?"
         )
 
     def test_label_is_escaped_for_markup(self) -> None:
         page = PageInfo("5", [_speech("HI", speaker="other:Goldstein & Co.")])
 
-        assert format_page_speech_bubbles(page, "zzz") == "[b]GOLDSTEIN &amp; CO.:[/b]\nHI"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('GOLDSTEIN &amp; CO.')}\nHI"
 
     def test_search_term_highlighted_in_the_lettering_not_the_label(self) -> None:
         page = PageInfo("5", [_speech("OH, DONALD!", speaker="Donald")])
@@ -348,12 +364,12 @@ class TestFormatPageSpeechBubbles:
         text = format_page_speech_bubbles(page, "donald")
 
         start = _speech_highlight_start_tag()
-        assert text == f"[b]DONALD:[/b]\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
+        assert text == f"{_label('DONALD')}\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
 
     def test_soft_hyphens_become_hyphens(self) -> None:
         page = PageInfo("5", [_speech("SUPER\u00adDUCK", speaker="Donald")])
 
-        assert format_page_speech_bubbles(page, "zzz") == "[b]DONALD:[/b]\nSUPER-DUCK"
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('DONALD')}\nSUPER-DUCK"
 
 
 class TestPopupKeyboardNavWindowBinding:

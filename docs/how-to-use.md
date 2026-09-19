@@ -61,8 +61,9 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 - **Indexes** — the *Main Index* (alphabetic) and the *Speech Bubble Index* (with *Words*, *Names*,
   and *Locations* sub-indexes). If a Carl Barks Wiki bundle is configured, a *Wiki* index appears too.
 
-Wherever speech bubbles are shown, each bubble names who says it on a bold line above the text
-(*SCROOGE:*, *CAPTION:* for a narration box). Sound effects and signs have no speaker line.
+Wherever speech bubbles are shown, each bubble names who says it on an italic, coloured line
+above the text (*SCROOGE:*, *CAPTION:* for a narration box). Sound effects and signs have no
+speaker line.
 
 ### Top Image Area
 

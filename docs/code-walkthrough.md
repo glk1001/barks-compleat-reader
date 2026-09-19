@@ -713,7 +713,8 @@ overshoot can't hit it).
   the in-memory bibliography (`Titles`/`Tags`/`TagGroups`); `SpeechIndexScreen`
   and `EntityIndexScreen` query `ComicSearch` for words/entities and show
   speech-bubble popups. `format_page_speech_bubbles` (`ui/index_screen.py`) puts
-  each bubble under a bold speaker line from `SpeechInfo.speaker`, via
+  each bubble under an italic speaker line in the theme's `speech_speaker`
+  colour, from `SpeechInfo.speaker` via
   `barks_fantagraphics.speech_speakers.speaker_display_name`.
 - **Wiki** (`ui/wiki_reader.py` + `core/wiki_integration.py`) — hosts an
   `okf_reader.OKFViewer` built lazily on first open. Barks-specific behavior comes

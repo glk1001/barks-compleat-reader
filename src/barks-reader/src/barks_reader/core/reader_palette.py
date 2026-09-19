@@ -47,6 +47,10 @@ class ReaderTheme:
     icon_tint: Color  # chrome toolbar glyphs (multiply over white glyph art)
     scrollbar: Color  # scroll-bar handle while scrolling
     scrollbar_inactive: Color  # idle scroll-bar handle
+    # The who-says-it line above a speech bubble. Sits on the bubble's white,
+    # not the dark chrome, so it is the one dark token; and it must read apart
+    # from `accent_selection`, which highlights the searched word beside it.
+    speech_speaker: Color
 
 
 MASTHEAD = ReaderTheme(
@@ -65,6 +69,7 @@ MASTHEAD = ReaderTheme(
     icon_tint=(0.98, 0.82, 0.50, 1.0),  # coin gold
     scrollbar=(0.82, 0.71, 0.50, 0.9),  # old gold, as search_heading
     scrollbar_inactive=(0.82, 0.71, 0.50, 0.4),
+    speech_speaker=(0.16, 0.30, 0.52, 1.0),  # fountain-pen blue, against the coat red
 )
 
 DUCKBURG = ReaderTheme(
@@ -83,6 +88,7 @@ DUCKBURG = ReaderTheme(
     icon_tint=(0.55, 0.82, 0.82, 1.0),  # bright weathered teal — legible on the dark bar
     scrollbar=(0.56, 0.65, 0.66, 0.9),  # weathered slate, as search_heading
     scrollbar_inactive=(0.56, 0.65, 0.66, 0.4),
+    speech_speaker=(0.44, 0.27, 0.12, 1.0),  # sepia, against the slate teal
 )
 
 FOUR_COLOR = ReaderTheme(
@@ -101,6 +107,7 @@ FOUR_COLOR = ReaderTheme(
     icon_tint=(0.76, 0.89, 0.97, 1.0),  # pale sky blue
     scrollbar=(0.76, 0.89, 0.97, 0.9),  # pale sky, as search_heading
     scrollbar_inactive=(0.76, 0.89, 0.97, 0.4),
+    speech_speaker=(0.14, 0.42, 0.28, 1.0),  # printer's green, against the print blue
 )
 
 THEMES: dict[str, ReaderTheme] = {t.name: t for t in (MASTHEAD, DUCKBURG, FOUR_COLOR)}

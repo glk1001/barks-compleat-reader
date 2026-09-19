@@ -148,11 +148,21 @@ class TextBoxWithTitleAndBorder(BoxLayout):
         self.content = content
 
 
+def _speaker_label_markup(label: str) -> str:
+    """Return the who-says-it line: italic, in the theme's speaker colour, not bold.
+
+    Not bold, because the lettering itself carries ``[b]`` for emphasis and a
+    bold label would read as more of it.  Italic in a colour the bubble's text
+    never uses is what sets it apart.
+    """
+    return f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i]"
+
+
 def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
     """Return one page's matching bubbles as the markup the popup shows.
 
     Each bubble is the group's marked-up lettering, with the search terms
-    highlighted, under a bold line naming who says it -- ``SCROOGE:`` -- when
+    highlighted, under a line naming who says it -- ``SCROOGE:`` -- when
     the index knows.  A group with no speaker call (an index built before
     speakers existed, or a later volume) is shown exactly as before, and a
     ``none`` speaker (a sound effect, a sign) gets no line either.
@@ -186,7 +196,7 @@ def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
         )
         label = speaker_display_name(speech.speaker) if speech.speaker else None
         if label:
-            text = f"[b]{escape_markup(label.upper())}:[/b]\n{text}"
+            text = f"{_speaker_label_markup(escape_markup(label.upper()) + ':')}\n{text}"
         bubbles.append(text)
     return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
 
