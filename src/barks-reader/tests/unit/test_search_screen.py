@@ -482,7 +482,7 @@ class TestSpeakerFilter:
         info = MagicMock()
         with patch.object(search_screen, "show_speech_bubbles_popup") as show:
             screen._show_word_speech_bubbles("A Title", info)
-        assert show.call_args.kwargs == {"speaker": "Scrooge"}
+        assert show.call_args.kwargs["speaker"] == "Scrooge"
 
     def test_bubbles_popup_gets_no_speaker_when_unfiltered(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
@@ -490,7 +490,7 @@ class TestSpeakerFilter:
         screen._font_manager = MagicMock()
         with patch.object(search_screen, "show_speech_bubbles_popup") as show:
             screen._show_word_speech_bubbles("A Title", MagicMock())
-        assert show.call_args.kwargs == {"speaker": None}
+        assert show.call_args.kwargs["speaker"] is None
 
 
 class TestSpeakerRowKeys:

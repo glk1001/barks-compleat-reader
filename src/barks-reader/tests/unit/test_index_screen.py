@@ -307,6 +307,13 @@ class TestFormatPageSpeechBubbles:
 
         assert format_page_speech_bubbles(page, "zzz") == f"{_label('SCROOGE')}\nMONEY! MONEY!"
 
+    def test_speaker_line_takes_the_given_size(self) -> None:
+        page = PageInfo("5", [_speech("HI", speaker="Scrooge")])
+
+        text = format_page_speech_bubbles(page, "zzz", speaker_font_size=16)
+
+        assert text == f"[size=16]{_label('SCROOGE')}[/size]\nHI"
+
     def test_speaker_line_is_not_bold(self) -> None:
         """The lettering carries [b] for emphasis; a bold label would read as more of it."""
         page = PageInfo("5", [_speech("A [b]BIG[/b] DEAL", speaker="Scrooge")])

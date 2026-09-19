@@ -148,17 +148,26 @@ class TextBoxWithTitleAndBorder(BoxLayout):
         self.content = content
 
 
-def _speaker_label_markup(label: str) -> str:
+# The speaker line's size relative to the bubble's lettering: an annotation
+# on the line, not part of it.
+SPEAKER_LABEL_SCALE = 0.8
+
+
+def _speaker_label_markup(label: str, font_size: int | None) -> str:
     """Return the who-says-it line: italic, in the theme's speaker colour, not bold.
 
     Not bold, because the lettering itself carries ``[b]`` for emphasis and a
     bold label would read as more of it.  Italic in a colour the bubble's text
-    never uses is what sets it apart.
+    never uses, and a step smaller when the caller says how big the lettering
+    is, is what sets it apart.
     """
-    return f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i]"
+    text = f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i]"
+    return f"[size={font_size}]{text}[/size]" if font_size else text
 
 
-def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
+def format_page_speech_bubbles(
+    page_info: PageInfo, search_terms: str, speaker_font_size: int | None = None
+) -> str:
     """Return one page's matching bubbles as the markup the popup shows.
 
     Each bubble is the group's marked-up lettering, with the search terms
@@ -181,6 +190,8 @@ def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
     Args:
         page_info: The page's matching speech groups.
         search_terms: What was searched for, to highlight.
+        speaker_font_size: Pixel size for the speaker line, or None to
+            inherit the bubble's.
 
     Returns:
         The page's bubbles joined by blank lines, ready for a markup label.
@@ -196,7 +207,8 @@ def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
         )
         label = speaker_display_name(speech.speaker) if speech.speaker else None
         if label:
-            text = f"{_speaker_label_markup(escape_markup(label.upper()) + ':')}\n{text}"
+            markup = _speaker_label_markup(escape_markup(label.upper()) + ":", speaker_font_size)
+            text = f"{markup}\n{text}"
         bubbles.append(text)
     return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
 
@@ -209,6 +221,7 @@ def show_speech_bubbles_popup(
     on_page_press: Callable[[str, str], None],
     title_font_size: float,
     speaker: str | None = None,
+    text_font_size: float | None = None,
 ) -> None:
     """Build and show a speech bubbles popup for a title's matching pages.
 
@@ -222,14 +235,17 @@ def show_speech_bubbles_popup(
         speaker: The stored speaker value the results were filtered to, if
             any; named in the popup title so a thinner result set explains
             itself.
+        text_font_size: The bubble lettering's font size; the speaker line is
+            set a step smaller than it. None leaves the line at the same size.
 
     """
     text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
     text_boxes.bind(minimum_height=text_boxes.setter("height"))
 
+    speaker_font_size = round(text_font_size * SPEAKER_LABEL_SCALE) if text_font_size else None
     for page_info in title_speech_info.fanta_pages.values():
         page_text = f"Page {page_info.comic_page}"
-        text = format_page_speech_bubbles(page_info, search_terms)
+        text = format_page_speech_bubbles(page_info, search_terms, speaker_font_size)
         text_box = TextBoxWithTitleAndBorder(title=page_text, content=text)
         text_box.ids.the_text_id.bind(
             on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: on_page_press(bt, bp),

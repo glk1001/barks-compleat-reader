@@ -663,6 +663,7 @@ class SearchScreen(FloatLayout):
             self._handle_bubble_title_press,
             self._font_manager.speech_bubble_popup_title_font_size,
             speaker=self._selected_speaker or None,
+            text_font_size=self._font_manager.speech_bubble_text_font_size,
         )
 
     def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
