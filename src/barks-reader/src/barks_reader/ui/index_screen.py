@@ -151,6 +151,12 @@ class TextBoxWithTitleAndBorder(BoxLayout):
 # The speaker line's size relative to the bubble's lettering: an annotation
 # on the line, not part of it.
 SPEAKER_LABEL_SCALE = 0.9
+# Breathing space under the speaker line. Kivy markup has no line spacing and
+# gives every line at least the widget's own line height, so a small blank line
+# is not small. Instead the label line ends in an invisible space set this much
+# larger than the label: a line is as tall as its tallest glyph, and glyphs hang
+# from the line's top, so the extra height lands under the name.
+SPEAKER_GAP_SCALE = 1.5
 
 
 def _speaker_label_markup(label: str, font_size: int | None) -> str:
@@ -208,7 +214,12 @@ def format_page_speech_bubbles(
         label = speaker_display_name(speech.speaker) if speech.speaker else None
         if label:
             markup = _speaker_label_markup(escape_markup(label) + ":", speaker_font_size)
-            text = f"{markup}\n{text}"
+            gap = (
+                f"[size={round(speaker_font_size * SPEAKER_GAP_SCALE)}] [/size]"
+                if speaker_font_size
+                else ""
+            )
+            text = f"{markup}{gap}\n{text}"
         bubbles.append(text)
     return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
 
