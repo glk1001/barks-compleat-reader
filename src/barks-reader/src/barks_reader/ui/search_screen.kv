@@ -40,6 +40,12 @@
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(12))
             width: dp(1.5)
 
+# A speaker-filter chip on the word search: sized to its name, not to a share
+# of the row, so a short row does not stretch "All" across the panel.
+<_SpeakerChipButton>:
+    size_hint_x: None
+    width: self.texture_size[0] + dp(24)
+
 <SearchInput@TouchAwareTextInput>:
     multiline: False
     # Enter must not blur the input when there is nothing to focus; the
@@ -296,9 +302,20 @@
                 size_hint_x: 0.65
 
                 BoxLayout:
+                    orientation: 'vertical'
                     size_hint: 1, 1
                     pos_hint: {'x': 0, 'y': 0}
                     padding: dp(8)
+                    spacing: dp(6) if speaker_chips_layout.children else 0
+
+                    # Who-said-it filter. Empty (and zero height) on an index
+                    # that has no speakers.
+                    BoxLayout:
+                        id: speaker_chips_layout
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(26) if self.children else 0
+                        spacing: dp(6)
 
                     ReaderScrollView:
                         id: word_results_scroll
