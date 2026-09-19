@@ -7,12 +7,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+from loguru import logger
 from pyuca import Collator
 from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
-from whoosh.query import Query
+from whoosh.query import And, Query, Term
 from whoosh.searching import Hit
 
 from .alpha_split import split_alpha_terms
@@ -121,6 +122,12 @@ class SpeechInfo:
     caller that has not heard of emphasis gets correct text from the obvious
     attribute.  Only the reader's bubble list, which renders Kivy markup, wants
     the other one.
+
+    ``speaker`` mirrors ``SpeechText.speaker``, reduced to the stored value --
+    ``"Scrooge"``, ``"other:Witch Hazel"``, ``"none"`` -- because that is all
+    the index keeps.  ``None`` when the group had no call, and always ``None``
+    from an index built before the field existed.  Turn it into a label with
+    ``speech_speakers.speaker_display_name``.
     """
 
     group_id: str
@@ -128,6 +135,7 @@ class SpeechInfo:
     speech_text: str
     speech_text_markup: str
     entity_types: tuple[str, ...] = ()
+    speaker: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +174,9 @@ def build_index_schema() -> Schema:
         comic_page=ID(stored=True),
         content_id=ID(stored=True),
         panel_num=ID(stored=True),
+        # The raw speaker value, so a filter is an exact term match and how it
+        # reads on screen stays the reader's business. Empty when no call.
+        speaker=ID(stored=True),
         unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
         content_raw=TEXT(stored=True, lang="en"),
         **entity_fields,
@@ -201,6 +212,7 @@ class SearchEngine:
         self._entity_terms_paths = {
             t: self._index.storage.folder / f"entities-{t}-terms.json" for t in ENTITY_TYPES
         }
+        self._speakers_path = self._index.storage.folder / "speakers.json"
 
     @staticmethod
     def _get_entity_types(hit: Hit, search_words: str) -> tuple[str, ...]:
@@ -234,6 +246,9 @@ class SearchEngine:
                 speech_text=strip_markup(stored_text),
                 speech_text_markup=stored_text,
                 entity_types=self._get_entity_types(hit, search_words),
+                # `.get`: an index built before the speaker field existed still
+                # loads, and simply shows unlabelled bubbles.
+                speaker=hit.get("speaker") or None,
             )
 
             if fanta_page not in prelim_results[comic_title].fanta_pages:
@@ -272,11 +287,57 @@ class SearchEngine:
         escaped = text.replace("\\", "\\\\").replace('"', '\\"')
         return QueryParser(field_name, self._index.schema).parse(f'"{escaped}"')
 
-    def find_words(self, search_words: str) -> TitleDict:
+    def find_words(self, search_words: str, speaker: str | None = None) -> TitleDict:
+        """Full-text search over the speech, optionally only what one speaker said.
+
+        Args:
+            search_words: The phrase to find.
+            speaker: A stored speaker value (``"Scrooge"``, ``"other:Witch
+                Hazel"``) to restrict the hits to, or None for everyone.
+
+        Returns:
+            Matching titles with page and speech-bubble detail.
+
+        """
         with self._index.searcher() as searcher:
             query = self._parse_literal("unstemmed", search_words)
+            if speaker:
+                if "speaker" in self._index.schema:
+                    query = And([query, Term("speaker", speaker)])
+                else:
+                    # Built before the field existed. Filtering is optional UI,
+                    # so answer the unfiltered question rather than fail it.
+                    logger.warning(
+                        "Search index has no speaker field; ignoring speaker filter."
+                        " The search index needs rebuilding."
+                    )
             results = searcher.search(query, limit=_SEARCH_RESULT_LIMIT)
             return self._collect_and_sort_results(results, search_words)
+
+    def get_speakers(self) -> dict[str, int]:
+        """Return every stored speaker value with its group count, most frequent first.
+
+        Read from the ``speakers.json`` sidecar. Unlike the term sidecars, a
+        missing file is not an error: an index built before speakers existed is
+        still a working index, just one without a speaker filter.
+
+        Returns:
+            ``{speaker_value: group_count}`` in descending count order, or an
+            empty dict when the sidecar is absent.
+
+        """
+        if not self._speakers_path.exists():
+            return {}
+        return json.loads(self._speakers_path.read_text())
+
+    def _get_speaker_counts(self) -> dict[str, int]:
+        """Count groups per stored speaker value, most frequent first."""
+        counts: Counter[str] = Counter()
+        for fields in self.iter_all_stored_fields():
+            speaker = fields.get("speaker")
+            if speaker:
+                counts[speaker] += 1
+        return dict(counts.most_common())
 
     def iter_all_stored_fields(self) -> Iterator[dict[str, str]]:
         """Yield stored fields for every document in the index."""
@@ -418,6 +479,9 @@ class SearchEngineCreator(SearchEngine):
         with self._least_common_unstemmed_terms_path.open("w") as f:
             json.dump(least_frequent_words, f, indent=4)
 
+        with self._speakers_path.open("w") as f:
+            json.dump(self._get_speaker_counts(), f, indent=4)
+
     def _index_volume_titles(
         self,
         volumes: list[int],
@@ -464,6 +528,7 @@ class SearchEngineCreator(SearchEngine):
                         comic_page=speech_page.comic_page,
                         content_id=group_id,
                         panel_num=str(speech_text.panel_num),
+                        speaker=speech_text.speaker.speaker if speech_text.speaker else "",
                         unstemmed=speech_text.ai_text,
                         # Indexed stripped, stored marked up. Whoosh's
                         # `_stored_<field>` convention lets one field do both, so

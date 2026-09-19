@@ -228,7 +228,7 @@ class ComicSearch:
         """Return the flat entity term list for the given type."""
         return self._get_full_text().get_entity_terms(entity_type)
 
-    def find_words(self, search_words: str) -> TitleDict:
+    def find_words(self, search_words: str, speaker: str | None = None) -> TitleDict:
         """Direct full-text search returning raw ``TitleDict``.
 
         Exposed for callers (e.g. ``SpeechIndexScreen``) that need the raw
@@ -236,12 +236,17 @@ class ComicSearch:
 
         Args:
             search_words: The search query.
+            speaker: A stored speaker value to restrict the hits to, or None.
 
         Returns:
             Matching titles with page and speech-bubble detail.
 
         """
-        return self._get_full_text().find_words(search_words)
+        return self._get_full_text().find_words(search_words, speaker=speaker)
+
+    def get_speakers(self) -> dict[str, int]:
+        """Return each indexed speaker value with its group count, most frequent first."""
+        return self._get_full_text().get_speakers()
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         """Direct entity search returning raw ``TitleDict``.

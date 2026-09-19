@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import whoosh_search_engine as whoosh_search_engine_module
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.search_ports import CorpusTextTotals
 from barks_fantagraphics.speech_markup import strip_markup
@@ -384,6 +386,22 @@ class TestCollectAndSortResults:
         group_ids = [s.group_id for s in results["A Title"].fanta_pages["002"].speech_info_list]
         assert group_ids == ["1", "2", "not-a-number"]
 
+    def test_speaker_read_from_hit(self) -> None:
+        results = self._engine()._collect_and_sort_results(
+            cast("list[Hit]", [_hit(speaker="other:Witch Hazel")]), "x"
+        )
+        assert results["A Title"].fanta_pages["001"].speech_info_list[0].speaker == (
+            "other:Witch Hazel"
+        )
+
+    @pytest.mark.parametrize("overrides", [{}, {"speaker": ""}])
+    def test_missing_or_empty_speaker_is_none(self, overrides: dict[str, str]) -> None:
+        """Both an old index (no field) and a group with no call read as None."""
+        results = self._engine()._collect_and_sort_results(
+            cast("list[Hit]", [_hit(**overrides)]), "x"
+        )
+        assert results["A Title"].fanta_pages["001"].speech_info_list[0].speaker is None
+
     def test_result_is_a_plain_dict_not_a_defaultdict(self) -> None:
         """A missing title must raise KeyError, not silently insert a phantom entry."""
         engine = self._engine()
@@ -420,6 +438,7 @@ def _build_words_index(tmp_path: Path) -> Path:
         fanta_vol="10",
         fanta_page="001",
         content_id="5",
+        speaker="Scrooge",
         unstemmed="the magic voodoo spell",
         **common,
     )
@@ -428,7 +447,17 @@ def _build_words_index(tmp_path: Path) -> Path:
         fanta_vol="20",
         fanta_page="003",
         content_id="8",
+        speaker="Donald",
         unstemmed="voodoo strikes again",
+        **common,
+    )
+    writer.add_document(
+        title="Beta",
+        fanta_vol="20",
+        fanta_page="004",
+        content_id="2",
+        speaker="",  # no speaker call on this group
+        unstemmed="voodoo once more",
         **common,
     )
     writer.commit()
@@ -463,9 +492,73 @@ class TestFindWords:
         """Every document's stored fields are yielded (unstemmed is not stored)."""
         engine = SearchEngine(index_dir)
         docs = list(engine.iter_all_stored_fields())
-        assert len(docs) == 2
+        assert len(docs) == 3
         assert {d["title"] for d in docs} == {"Alpha", "Beta"}
         assert all("unstemmed" not in d for d in docs)
+
+    def test_speaker_carried_into_speech_info(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_words("voodoo")
+
+        assert results["Alpha"].fanta_pages["001"].speech_info_list[0].speaker == "Scrooge"
+        assert results["Beta"].fanta_pages["004"].speech_info_list[0].speaker is None
+
+    def test_speaker_filter_narrows_to_that_speaker(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_words("voodoo", speaker="Scrooge")
+
+        assert list(results.keys()) == ["Alpha"]
+        assert list(results["Alpha"].fanta_pages.keys()) == ["001"]
+
+    def test_speaker_filter_with_no_such_speaker_is_empty(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        assert engine.find_words("voodoo", speaker="Gyro") == {}
+
+    def test_empty_speaker_filter_means_everyone(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        assert engine.find_words("voodoo", speaker="") == engine.find_words("voodoo")
+
+    def test_speaker_filter_ignored_on_index_without_the_field(self, tmp_path: Path) -> None:
+        """An index built before speakers existed still answers, unfiltered, with a warning."""
+        from whoosh.index import create_in
+
+        schema = build_index_schema()
+        schema.remove("speaker")
+        index = create_in(str(tmp_path), schema)
+        writer = index.writer()
+        writer.add_document(
+            title="Old",
+            fanta_vol="1",
+            fanta_page="001",
+            comic_page="1",
+            content_id="0",
+            panel_num="1",
+            unstemmed="voodoo",
+            content_raw="VOODOO",
+        )
+        writer.commit()
+        engine = SearchEngine(tmp_path)
+
+        with patch.object(whoosh_search_engine_module, "logger") as mock_logger:
+            results = engine.find_words("voodoo", speaker="Scrooge")
+
+        assert list(results.keys()) == ["Old"]
+        assert results["Old"].fanta_pages["001"].speech_info_list[0].speaker is None
+        mock_logger.warning.assert_called_once()
+
+    def test_get_speakers_without_sidecar_is_empty(self, index_dir: Path) -> None:
+        """Unlike the term sidecars, a missing speakers file is not an error."""
+        engine = SearchEngine(index_dir)
+        assert engine.get_speakers() == {}
+
+    def test_get_speakers_reads_sidecar(self, index_dir: Path) -> None:
+        (index_dir / "speakers.json").write_text(json.dumps({"Donald": 5, "Scrooge": 2}))
+        engine = SearchEngine(index_dir)
+        assert engine.get_speakers() == {"Donald": 5, "Scrooge": 2}
+
+    def test_speaker_counts_skip_groups_without_a_call(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        assert engine._get_speaker_counts() == {"Scrooge": 1, "Donald": 1}
 
 
 # ---------------------------------------------------------------------------

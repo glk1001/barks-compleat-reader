@@ -53,8 +53,15 @@ class CorpusTextTotals:
 class FullTextSearchPort(Protocol):
     """Read-only query port for full-text search over indexed speech and entities."""
 
-    def find_words(self, search_words: str) -> TitleDict:
-        """Full-text search across all indexed speech bubble text."""
+    def find_words(self, search_words: str, speaker: str | None = None) -> TitleDict:
+        """Full-text search across all indexed speech bubble text.
+
+        ``speaker`` restricts the hits to groups with that stored speaker value.
+        """
+        ...
+
+    def get_speakers(self) -> dict[str, int]:
+        """Return each stored speaker value with its group count; empty if unknown."""
         ...
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:

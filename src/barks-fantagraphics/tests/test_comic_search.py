@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
@@ -159,6 +160,19 @@ class TestPassThroughs:
         search = _search_with(InMemoryFullTextSearch(find_words_results={"money": expected}))
 
         assert search.find_words("money") == expected
+
+    def test_find_words_passes_speaker_through(self) -> None:
+        fake = MagicMock(spec=InMemoryFullTextSearch)
+        fake.find_words.return_value = {}
+
+        _search_with(fake).find_words("money", speaker="Scrooge")
+
+        fake.find_words.assert_called_once_with("money", speaker="Scrooge")
+
+    def test_get_speakers(self) -> None:
+        fake = InMemoryFullTextSearch(speakers={"Scrooge": 7})
+
+        assert _search_with(fake).get_speakers() == {"Scrooge": 7}
 
     def test_find_entities(self) -> None:
         expected = {"A Title": TitleInfo(fanta_vol=1)}
