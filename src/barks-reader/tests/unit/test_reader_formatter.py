@@ -737,3 +737,20 @@ class TestReaderFormatterClass:
 
         res = reader_formatter.ReaderFormatter.get_title_extra_info(fanta_info)
         assert res == ""
+
+
+def test_mark_phrase_matches_a_compound_broken_at_its_real_hyphen() -> None:
+    r"""A compound lettered as "NEVER-\nNEVER" is still the phrase, and is highlighted."""
+    text = "DEEP\nIN\nTHE\nNEVER-\nNEVER!"
+
+    marked = reader_formatter.mark_phrase_in_text("never-never", text, "<", ">")
+
+    assert marked == "DEEP\nIN\nTHE\n<NEVER-\nNEVER>!"
+
+
+def test_mark_phrase_still_matches_an_unbroken_compound() -> None:
+    marked = reader_formatter.mark_phrase_in_text(
+        "never-never", "BUSH OF\nNEVER-NEVER\nLAND!", "<", ">"
+    )
+
+    assert marked == "BUSH OF\n<NEVER-NEVER>\nLAND!"
