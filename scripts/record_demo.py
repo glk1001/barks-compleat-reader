@@ -176,7 +176,7 @@ SEARCH_WORD_RESULT = 1
 # The word-results geometry, in screenshot pixels: every row ends in a speech
 # balloon that opens just that story's matching bubbles.
 SEARCH_WORD_BALLOON_X = 728
-SEARCH_WORD_RESULT_TOP_Y = 697  # centre of the first row
+SEARCH_WORD_RESULT_TOP_Y = 792  # centre of the first row, under the speaker chips
 SEARCH_WORD_ROW_H = 29
 # The bubble to press in the popup - the first one, page 1's "WE'LL FLY! THE AIRLINE
 # TICKET OFFICE IS ON THE NEXT STREET!". Pressing it goes to that page of the story.

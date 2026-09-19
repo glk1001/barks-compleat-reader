@@ -64,18 +64,22 @@ The reader now carries the vision pass's speaker call (`SpeechText.speaker`,
 index) and shows it on bubbles and as a word-search filter. What is left lives
 in the OCR repo, which is read-only from here:
 
-- [ ] **Rebuild the shipped Whoosh index** with
-      `make-whoosh-index-from-gemini-ai-groups`, so the barkspack index carries
-      the `speaker` field and sidecar. Until then the reader degrades quietly:
-      no speaker lines, no filter row. When it lands, the word-search GUI
-      tests' clicked-row coordinates (`WORD_RESULT_TOP_Y` in
-      `tests/gui/barks_gui/search.py`, and the demo recorder's copy) must move
-      down by the speaker chip stack's height -- three rows, about 64px, at
-      the pinned 900px window -- since that suite runs on the shipped index.
-- [ ] **`vision_schema.py` imports the vocabulary** (roster, sentinels,
+- [x] **Rebuild the shipped Whoosh index** (2026-09-19, `barks-ocr-whoosh-index
+      main --volume 1-27 --ocr-index 1 --skip-missing-pages`): the index now
+      carries the `speaker` field and `speakers.json`; the word-search GUI
+      tests' row coordinate moved down 95px for the speaker chip stack.
+      Skipped for having no prelim OCR at all: *Camp Counselor* (vol 9,
+      pages 110-117), *Donald's Grandma Duck* (vol 9, 096-109), *Letter to
+      Santa* page 078, *The Mines of King Solomon* page 035.
+- [ ] **OCR the four gaps above** so they can join the index.
+- [ ] **`FRAGMENTS_TO_SUPPRESS` drift** -- `castoria`, `treatem` and
+      `swelldorf` no longer occur in the corpus (already true of the April
+      index), so barks-ocr's `--do-checks` fails before reaching the newer
+      checks. Prune them from `whoosh_barks_terms.py`.
+- [x] **`vision_schema.py` imports the vocabulary** (barks-ocr `c79f181`) (roster, sentinels,
       `other:` prefix, key names, cap-colour and identified-by options) from
       `barks_fantagraphics.speech_speakers` instead of defining its own copy.
-- [ ] **`tools/speech_script.py` reads `speech.speaker`** and drops its
+- [x] **`tools/speech_script.py` reads `speech.speaker`** (barks-ocr `396b383`) and drops its
       raw-JSON workaround for the speaker.
 - [ ] **Filter on `other:` speakers** — the long tail (1,000+ values) is not
       offered as chips; the top N by count could be.

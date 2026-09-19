@@ -29,8 +29,10 @@ TITLE_RESULT_TOP_Y = 695  # centre of the first row
 TITLE_RESULT_ROW_H = 30
 
 # Word results: every row ends in a speech balloon opening that story's bubbles.
+# The rows sit under the speaker-filter chips, three rows of them at this window
+# width on an index that carries speakers (the shipped one does, since 2026-09-19).
 WORD_BALLOON_X = 728
-WORD_RESULT_TOP_Y = 697  # centre of the first row
+WORD_RESULT_TOP_Y = 792  # centre of the first row
 WORD_RESULT_ROW_H = 29
 # The first bubble in the popup for the word "airline" in Adventure Down Under.
 WORD_BUBBLE_X = 232
