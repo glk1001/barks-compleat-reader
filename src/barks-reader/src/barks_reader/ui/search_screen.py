@@ -451,6 +451,7 @@ class SearchScreen(FloatLayout):
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
         self._word_search_results = []
+        self._selected_word = ""
 
         if not text:
             return
@@ -685,6 +686,7 @@ class SearchScreen(FloatLayout):
         self.ids.word_search_input.text = ""
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
+        self._selected_word = ""
         self._selected_speaker = _ALL_SPEAKERS
         self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
         self.ids.word_search_input.focus = True

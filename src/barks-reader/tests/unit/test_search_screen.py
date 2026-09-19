@@ -474,6 +474,27 @@ class TestSpeakerFilter:
             screen.on_word_clear()
         assert screen._selected_speaker == ""
 
+    def test_clear_forgets_the_word_so_a_chip_cannot_revive_it(self, screen: SearchScreen) -> None:
+        screen._selected_word = "money"
+        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
+            screen.on_word_clear()
+            screen._on_speaker_chip_selected("Scrooge")
+
+        assert screen._selected_word == ""
+        screen._search.find_words.assert_not_called()
+
+    def test_editing_the_box_forgets_the_word_so_a_chip_cannot_revive_it(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._word_terms = {}
+        screen._selected_word = "money"
+        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
+            screen.on_word_search_text("")
+            screen._on_speaker_chip_selected("Scrooge")
+
+        assert screen._selected_word == ""
+        screen._search.find_words.assert_not_called()
+
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
         screen._selected_speaker = "Scrooge"
