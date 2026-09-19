@@ -295,12 +295,12 @@ def _speech(text: str, speaker: str | None = None, group_id: str = "0") -> Speec
 
 
 def _label(name: str) -> str:
-    """Return the speaker line as rendered: italic and coloured, never bold."""
-    return f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{name}:[/color][/i]"
+    """Return the speaker line as rendered: bold italic in the speaker colour."""
+    return f"[b][i][color={color_to_markup_hex(theme().speech_speaker)}]{name}:[/color][/i][/b]"
 
 
 class TestFormatPageSpeechBubbles:
-    """Each bubble names its speaker on an italic, coloured line above the lettering."""
+    """Each bubble names its speaker on a bold italic, coloured line above the lettering."""
 
     def test_speaker_line_above_the_bubble(self) -> None:
         page = PageInfo("5", [_speech("MONEY! MONEY!", speaker="Scrooge")])
@@ -314,14 +314,14 @@ class TestFormatPageSpeechBubbles:
 
         assert text == f"[size=16]{_label('SCROOGE')}[/size]\nHI"
 
-    def test_speaker_line_is_not_bold(self) -> None:
-        """The lettering carries [b] for emphasis; a bold label would read as more of it."""
+    def test_speaker_line_is_set_apart_by_more_than_bold(self) -> None:
+        """The lettering carries [b] for emphasis, so the label must carry italic and colour too."""
         page = PageInfo("5", [_speech("A [b]BIG[/b] DEAL", speaker="Scrooge")])
 
         text = format_page_speech_bubbles(page, "zzz")
 
-        assert "[b]SCROOGE" not in text
-        assert text.startswith("[i][color=")
+        assert text.startswith("[b][i][color=")
+        assert text.endswith("[/color][/i][/b]\nA [b]BIG[/b] DEAL")
 
     def test_bubbles_are_separated_by_a_blank_line(self) -> None:
         page = PageInfo(

@@ -154,14 +154,14 @@ SPEAKER_LABEL_SCALE = 0.8
 
 
 def _speaker_label_markup(label: str, font_size: int | None) -> str:
-    """Return the who-says-it line: italic, in the theme's speaker colour, not bold.
+    """Return the who-says-it line: bold italic, in the theme's speaker colour, smaller.
 
-    Not bold, because the lettering itself carries ``[b]`` for emphasis and a
-    bold label would read as more of it.  Italic in a colour the bubble's text
-    never uses, and a step smaller when the caller says how big the lettering
-    is, is what sets it apart.
+    The lettering itself carries ``[b]`` for emphasis, so bold alone would
+    read as more of it; what sets the line apart is the italic, a colour the
+    bubble's text never uses, and being a step smaller when the caller says
+    how big the lettering is.  The bold is weight for the small size.
     """
-    text = f"[i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i]"
+    text = f"[b][i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i][/b]"
     return f"[size={font_size}]{text}[/size]" if font_size else text
 
 
