@@ -9,6 +9,7 @@ import barks_reader.ui.index_screen
 import barks_reader.ui.main_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_reader.ui.index_screen import IndexItem
 from barks_reader.ui.main_index_screen import MainIndexScreen
 from kivy.clock import Clock
@@ -64,6 +65,16 @@ class TestMainIndexScreen:
         assert main_index_screen._font_manager is not None
         assert main_index_screen._random_title_images is not None
         assert main_index_screen._texture_loader is not None
+
+    def test_build_index_excludes_individual_covers(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        indexed_ids = {
+            item.id for items in main_index_screen._item_index.values() for item in items
+        }
+        assert not (indexed_ids & COVERS_SET)
+        assert Titles.ALL_COVERS in indexed_ids
+        assert Titles.DONALD_DUCK_FINDS_PIRATE_GOLD in indexed_ids
 
     def test_get_items_for_letter(self, main_index_screen: MainIndexScreen) -> None:
         # Clear the index built during init so we can test with controlled data

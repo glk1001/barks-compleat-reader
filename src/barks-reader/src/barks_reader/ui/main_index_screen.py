@@ -15,6 +15,7 @@ from barks_fantagraphics.barks_tags import (
     get_tag_titles,
 )
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
@@ -142,8 +143,12 @@ class MainIndexScreen(IndexScreen):
         timing = Timing()
         logger.info("Building index...")
 
-        # Add all comic titles
+        # Add all comic titles. Individual covers ("Four Color #189 Cover", ...) are
+        # noise in an A-Z index - they are all reachable through the "All Covers"
+        # collection, which is not in COVERS_SET and so is still indexed.
         for title in Titles:
+            if title in COVERS_SET:
+                continue
             title_str = self._get_indexable_title(title)
             first_letter = title_str[0].upper()
             assert "A" <= first_letter <= "Z"
