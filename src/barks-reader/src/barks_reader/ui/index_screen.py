@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.speech_markup import escape_markup
+from barks_fantagraphics.speech_speakers import speaker_display_name
 from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
@@ -60,7 +62,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.entity_types import EntityType
-    from barks_fantagraphics.whoosh_search_engine import TitleInfo
+    from barks_fantagraphics.whoosh_search_engine import PageInfo, TitleInfo
     from kivy.core.image import Texture
     from kivy.uix.widget import Widget
 
@@ -146,6 +148,49 @@ class TextBoxWithTitleAndBorder(BoxLayout):
         self.content = content
 
 
+def format_page_speech_bubbles(page_info: PageInfo, search_terms: str) -> str:
+    """Return one page's matching bubbles as the markup the popup shows.
+
+    Each bubble is the group's marked-up lettering, with the search terms
+    highlighted, under a bold line naming who says it -- ``SCROOGE:`` -- when
+    the index knows.  A group with no speaker call (an index built before
+    speakers existed, or a later volume) is shown exactly as before, and a
+    ``none`` speaker (a sound effect, a sign) gets no line either.
+
+    The highlight is applied to each bubble's text *before* the speaker line
+    is put above it, so searching for "donald" lights up the word in the
+    lettering and not the name on the label.  The label is escaped, since an
+    ``other:`` speaker may carry an ampersand.
+
+    The widget renders Kivy markup for the highlight anyway, so the
+    lettering's own [b]/[i] comes for free.  Caveat: a search phrase
+    straddling an emphasis boundary -- "really sharp", where only SHARP is
+    bold -- will not highlight, because the matcher sees the tags sitting
+    between the words.
+
+    Args:
+        page_info: The page's matching speech groups.
+        search_terms: What was searched for, to highlight.
+
+    Returns:
+        The page's bubbles joined by blank lines, ready for a markup label.
+
+    """
+    bubbles: list[str] = []
+    for speech in page_info.speech_info_list:
+        text = mark_phrase_in_text(
+            search_terms,
+            speech.speech_text_markup,
+            _speech_highlight_start_tag(),
+            SPEECH_HIGHLIGHT_END_TAG,
+        )
+        label = speaker_display_name(speech.speaker) if speech.speaker else None
+        if label:
+            text = f"[b]{escape_markup(label.upper())}:[/b]\n{text}"
+        bubbles.append(text)
+    return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
+
+
 def show_speech_bubbles_popup(
     popup: SpeechBubblesPopup,
     title_str: str,
@@ -153,24 +198,29 @@ def show_speech_bubbles_popup(
     title_speech_info: TitleInfo,
     on_page_press: Callable[[str, str], None],
     title_font_size: float,
+    speaker: str | None = None,
 ) -> None:
-    """Build and show a speech bubbles popup for a title's matching pages."""
+    """Build and show a speech bubbles popup for a title's matching pages.
+
+    Args:
+        popup: The popup to fill and open.
+        title_str: The comic title the bubbles are from.
+        search_terms: What was searched for; highlighted in the bubbles.
+        title_speech_info: The title's matching pages and groups.
+        on_page_press: Called with ``(title_str, comic_page)`` when a bubble is pressed.
+        title_font_size: The popup title's font size.
+        speaker: The stored speaker value the results were filtered to, if
+            any; named in the popup title so a thinner result set explains
+            itself.
+
+    """
     text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
     text_boxes.bind(minimum_height=text_boxes.setter("height"))
 
     for page_info in title_speech_info.fanta_pages.values():
         page_text = f"Page {page_info.comic_page}"
-        # The marked-up view. This widget already renders Kivy markup for the
-        # search highlight below, so the lettering's own [b]/[i] comes for free.
-        # Caveat: a search phrase straddling an emphasis boundary -- "really
-        # sharp", where only SHARP is bold -- will not highlight, because the
-        # matcher sees the tags sitting between the words.
-        text = "\n\n".join([s.speech_text_markup for s in page_info.speech_info_list])
-        text = mark_phrase_in_text(
-            search_terms, text, _speech_highlight_start_tag(), SPEECH_HIGHLIGHT_END_TAG
-        )
-        text = text.replace("\u00ad", "-")
-        text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
+        text = format_page_speech_bubbles(page_info, search_terms)
+        text_box = TextBoxWithTitleAndBorder(title=page_text, content=text)
         text_box.ids.the_text_id.bind(
             on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: on_page_press(bt, bp),
         )
@@ -180,6 +230,9 @@ def show_speech_bubbles_popup(
     scroll_view.add_widget(text_boxes)
 
     popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
+    speaker_label = speaker_display_name(speaker) if speaker else None
+    if speaker_label:
+        popup.title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
     popup.title_size = title_font_size
     popup.content = scroll_view
     popup.open()

@@ -7,15 +7,19 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
 import pytest
+from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.index_screen import (
     KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
+    SPEECH_HIGHLIGHT_END_TAG,
     IndexItem,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
     PopupKeyboardNav,
+    _speech_highlight_start_tag,
+    format_page_speech_bubbles,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 
@@ -277,6 +281,79 @@ class TestIndexScreen:
         index_screen._current_image_info = info
         index_screen.on_goto_background_title()
         mock_func.assert_called_with(info)
+
+
+def _speech(text: str, speaker: str | None = None, group_id: str = "0") -> SpeechInfo:
+    return SpeechInfo(
+        group_id=group_id,
+        panel_num=1,
+        speech_text=text,
+        speech_text_markup=text,
+        speaker=speaker,
+    )
+
+
+class TestFormatPageSpeechBubbles:
+    """Each bubble names its speaker on a bold line above the lettering."""
+
+    def test_speaker_line_above_the_bubble(self) -> None:
+        page = PageInfo("5", [_speech("MONEY! MONEY!", speaker="Scrooge")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "[b]SCROOGE:[/b]\nMONEY! MONEY!"
+
+    def test_bubbles_are_separated_by_a_blank_line(self) -> None:
+        page = PageInfo(
+            "5",
+            [_speech("ONE", speaker="Donald", group_id="0"), _speech("TWO", speaker="nephews")],
+        )
+
+        assert format_page_speech_bubbles(page, "zzz") == (
+            "[b]DONALD:[/b]\nONE\n\n[b]NEPHEWS:[/b]\nTWO"
+        )
+
+    def test_no_speaker_call_renders_as_before(self) -> None:
+        """An index built before speakers existed shows plain bubbles."""
+        page = PageInfo("5", [_speech("ONE"), _speech("TWO", group_id="1")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "ONE\n\nTWO"
+
+    def test_none_speaker_gets_no_line(self) -> None:
+        """A sound effect or a sign is nobody's line."""
+        page = PageInfo("5", [_speech("CRASH!", speaker="none")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "CRASH!"
+
+    def test_sentinels_and_other_names(self) -> None:
+        page = PageInfo(
+            "5",
+            [
+                _speech("LATER...", speaker="narrator", group_id="0"),
+                _speech("HEE HEE!", speaker="other:Witch Hazel", group_id="1"),
+                _speech("WHO?", speaker="unknown", group_id="2"),
+            ],
+        )
+
+        assert format_page_speech_bubbles(page, "zzz") == (
+            "[b]CAPTION:[/b]\nLATER...\n\n[b]WITCH HAZEL:[/b]\nHEE HEE!\n\n[b]UNKNOWN:[/b]\nWHO?"
+        )
+
+    def test_label_is_escaped_for_markup(self) -> None:
+        page = PageInfo("5", [_speech("HI", speaker="other:Goldstein & Co.")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "[b]GOLDSTEIN &amp; CO.:[/b]\nHI"
+
+    def test_search_term_highlighted_in_the_lettering_not_the_label(self) -> None:
+        page = PageInfo("5", [_speech("OH, DONALD!", speaker="Donald")])
+
+        text = format_page_speech_bubbles(page, "donald")
+
+        start = _speech_highlight_start_tag()
+        assert text == f"[b]DONALD:[/b]\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
+
+    def test_soft_hyphens_become_hyphens(self) -> None:
+        page = PageInfo("5", [_speech("SUPER\u00adDUCK", speaker="Donald")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "[b]DONALD:[/b]\nSUPER-DUCK"
 
 
 class TestPopupKeyboardNavWindowBinding:
