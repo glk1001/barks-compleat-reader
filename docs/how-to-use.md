@@ -51,13 +51,18 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
     Uncle Scrooge Adventures, etc.).
   - *Categories* — thematic groupings.
-- **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text).
+- **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). A word
+  search can be narrowed to who says it — *Donald*, *Scrooge*, the *Nephews*, a *Caption* — with the
+  speaker row above the results, where the Reader's index knows the speakers.
 - **Reading History** — a journal of the comics you've read, grouped by day. The Reader records
   this automatically (it can be turned off with the *Record Reading History* setting), and the
   history can be cleared from within the view.
 - **Appendix** — supplementary articles, a censorship-fixes summary, and reading *Statistics*.
 - **Indexes** — the *Main Index* (alphabetic) and the *Speech Bubble Index* (with *Words*, *Names*,
   and *Locations* sub-indexes). If a Carl Barks Wiki bundle is configured, a *Wiki* index appears too.
+
+Wherever speech bubbles are shown, each bubble names who says it on a bold line above the text
+(*SCROOGE:*, *CAPTION:* for a narration box). Sound effects and signs have no speaker line.
 
 ### Top Image Area
 

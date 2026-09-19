@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-25.
+Last updated: 2026-09-19.
 
 ---
 
@@ -56,6 +56,25 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       Barrier's bibliography when `barks_bibliography.py` was generated.
 - [ ] **Tag data validation** — resolve the `TODO: NEED TO CHECK THESE` markers
       in `barks_tags_data.py` (incomplete data validation).
+
+## Speakers (cross-repo follow-ups in `../barks-ocr`)
+
+The reader now carries the vision pass's speaker call (`SpeechText.speaker`,
+`speech_speakers.py`, a `speaker` field + `speakers.json` sidecar in the Whoosh
+index) and shows it on bubbles and as a word-search filter. What is left lives
+in the OCR repo, which is read-only from here:
+
+- [ ] **Rebuild the shipped Whoosh index** with
+      `make-whoosh-index-from-gemini-ai-groups`, so the barkspack index carries
+      the `speaker` field and sidecar. Until then the reader degrades quietly:
+      no speaker lines, no filter row.
+- [ ] **`vision_schema.py` imports the vocabulary** (roster, sentinels,
+      `other:` prefix, key names, cap-colour and identified-by options) from
+      `barks_fantagraphics.speech_speakers` instead of defining its own copy.
+- [ ] **`tools/speech_script.py` reads `speech.speaker`** and drops its
+      raw-JSON workaround for the speaker.
+- [ ] **Filter on `other:` speakers** — the long tail (1,000+ values) is not
+      offered as chips; the top N by count could be.
 
 ## Naming consistency (cross-repo — deferred)
 

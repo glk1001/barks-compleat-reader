@@ -705,12 +705,16 @@ overshoot can't hit it).
   swapped by opacity; all queries go through `barks_fantagraphics.comic_search.ComicSearch`
   over the reader's index dir. Selecting a result invokes injected
   `on_goto_title` / `on_goto_title_with_page` callbacks that route back into
-  navigation.
+  navigation. Word mode carries a speaker-filter chip row (`_build_speaker_chips`),
+  offered from the index's `speakers.json` sidecar and passed to
+  `find_words(word, speaker=...)`; an index without the sidecar shows no row.
 - **Index screens** (`ui/index_screen.py` base) — A–Z alphabet menu + item grid +
   drill-down + heavy keyboard nav. `MainIndexScreen` builds its index purely from
   the in-memory bibliography (`Titles`/`Tags`/`TagGroups`); `SpeechIndexScreen`
   and `EntityIndexScreen` query `ComicSearch` for words/entities and show
-  speech-bubble popups.
+  speech-bubble popups. `format_page_speech_bubbles` (`ui/index_screen.py`) puts
+  each bubble under a bold speaker line from `SpeechInfo.speaker`, via
+  `barks_fantagraphics.speech_speakers.speaker_display_name`.
 - **Wiki** (`ui/wiki_reader.py` + `core/wiki_integration.py`) — hosts an
   `okf_reader.OKFViewer` built lazily on first open. Barks-specific behavior comes
   from Kivy-free providers in `core/wiki_integration.py`: `BarksPanelsImageProvider`
