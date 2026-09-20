@@ -8,8 +8,18 @@ Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
 Vol 23, 021, panel 8 '!' glitch
+Vol 22, 049, panel 5 Colorist error: no cap color
+Vol 22, 034+, panel 4 Colorist error: swap red with green
+Vol 22, 022, panel 4 Colorist error: swap red and green - probably OK but see above
+Vol 20, 122, panel 8 Colorist error: cap should be blue
+Vol 20, 122, panel 2+ Colorist error: cap should be green
+Vol 20, 115, panel 5 Colorist error: caps not colored
+Vol 20, 080, panel 5 Colorist error: should be blue cap
 Vol 20, 026, panel 6 Colorist error: should be green cap
 Vol 20, 020, panel 2 Colorist error: should be blue cap
+Vol 19, 165, panel 3 Colorist error: red cap should be green for Louie
+Vol 19, 154, panel 7 Colorist error: blue and green caps should be swapped
+Vol 19, 127, panel 6 Colorist error: should be blue cap
 Vol 19, 098, panel 4 two red caps
 Vol 19, 082, panel 4 'S' glitch
 Vol 19, 029, panel 1 Colorist error: should be green cap not blue
