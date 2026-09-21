@@ -56,6 +56,7 @@ from .reader_keyboard_nav import (
     clear_focus_in_list,
     draw_focus_highlight,
     is_escape_key,
+    log_nav_focus,
 )
 
 if TYPE_CHECKING:
@@ -323,11 +324,13 @@ class PopupKeyboardNav:
     def _on_opened(self, *_args: object) -> None:
         self._focused_idx = 0
         Window.bind(on_key_down=self._on_key_down)
+        logger.debug(log_markers.BUBBLES_POPUP_OPENED)
         Clock.schedule_once(lambda _dt: self._draw_focus(), 0)
 
     def _on_dismissed(self, *_args: object) -> None:
         Window.unbind(on_key_down=self._on_key_down)
         self._clear_focus()
+        logger.debug(log_markers.BUBBLES_POPUP_DISMISSED)
 
     def _on_key_down(
         self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
@@ -371,6 +374,7 @@ class PopupKeyboardNav:
         sv = self._popup.content
         if isinstance(sv, ScrollView):
             sv.scroll_to(entry)
+        log_nav_focus(entry)
 
     def _clear_focus(self) -> None:
         for entry in self._get_entries():
@@ -538,30 +542,39 @@ class IndexScreen(FloatLayout):
     # --- Keyboard navigation public API ---
 
     def enter_nav_focus(self, on_exit_request: Callable) -> None:
-        """Enter keyboard navigation mode. on_exit_request is called when the user exits."""
+        """Enter keyboard navigation mode. on_exit_request is called when the user exits.
+
+        Logs once the focus is drawn, which is when the screen takes its first key.
+        """
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
-        # Restore items position if the grid hasn't changed since we last left it.
-        if (
+        if not self._restore_item_focus():
+            self._nav_panel = _IndexNavPanel.ALPHABET
+            # Start focus on the currently selected letter.
+            if self._selected_letter_button:
+                letter = self._selected_letter_button.text
+                if letter in self._letter_order:
+                    self._nav_focused_letter_idx = self._letter_order.index(letter)
+            self._draw_letter_focus()
+        logger.debug(log_markers.INDEX_ENTERED_NAV)
+
+    def _restore_item_focus(self) -> bool:
+        """Put focus back on the item it left, if the grid is unchanged since; else False."""
+        if not (
             self._nav_panel == _IndexNavPanel.ITEMS
             and self._nav_saved_grid_version == self._grid_version
             and self._nav_focused_btn is not None
         ):
-            # Search all columns for the saved button to guard against a stale _nav_focused_col.
-            for col_idx in range(self.num_columns):
-                col_buttons = self._get_col_buttons(col_idx)
-                if self._nav_focused_btn in col_buttons:
-                    self._nav_focused_col = col_idx
-                    self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
-                    self._draw_item_focus()
-                    return
-        self._nav_panel = _IndexNavPanel.ALPHABET
-        # Start focus on the currently selected letter.
-        if self._selected_letter_button:
-            letter = self._selected_letter_button.text
-            if letter in self._letter_order:
-                self._nav_focused_letter_idx = self._letter_order.index(letter)
-        self._draw_letter_focus()
+            return False
+        # Search all columns for the saved button to guard against a stale _nav_focused_col.
+        for col_idx in range(self.num_columns):
+            col_buttons = self._get_col_buttons(col_idx)
+            if self._nav_focused_btn in col_buttons:
+                self._nav_focused_col = col_idx
+                self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
+                self._draw_item_focus()
+                return True
+        return False
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear all highlights."""

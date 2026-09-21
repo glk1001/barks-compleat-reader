@@ -119,4 +119,5 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
         add_close_button=True,
         background_image_file=about_background_path,
         wrapper_scrim=ABOUT_WRAPPER_SCRIM,
+        on_dismiss=lambda: logger.debug(log_markers.ABOUT_BOX_DISMISSED),
     )

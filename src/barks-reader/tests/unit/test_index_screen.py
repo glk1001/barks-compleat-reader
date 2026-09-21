@@ -390,7 +390,7 @@ class TestPopupKeyboardNavWindowBinding:
     def _make_nav() -> PopupKeyboardNav:
         return PopupKeyboardNav(MagicMock())
 
-    def test_on_opened_binds_window_key_handler(self) -> None:
+    def test_on_opened_binds_window_key_handler(self, loguru_sink: list[str]) -> None:
         nav = self._make_nav()
         with (
             patch.object(barks_reader.ui.index_screen, "Window") as window,
@@ -399,8 +399,9 @@ class TestPopupKeyboardNavWindowBinding:
             nav._on_opened()
 
         window.bind.assert_called_once_with(on_key_down=nav._on_key_down)
+        assert "Speech bubbles popup opened." in loguru_sink
 
-    def test_on_dismissed_unbinds_window_key_handler(self) -> None:
+    def test_on_dismissed_unbinds_window_key_handler(self, loguru_sink: list[str]) -> None:
         nav = self._make_nav()
         with (
             patch.object(barks_reader.ui.index_screen, "Window") as window,
@@ -409,6 +410,20 @@ class TestPopupKeyboardNavWindowBinding:
             nav._on_dismissed()
 
         window.unbind.assert_called_once_with(on_key_down=nav._on_key_down)
+        assert "Speech bubbles popup dismissed." in loguru_sink
+
+    def test_drawing_the_focus_logs_the_entry_it_landed_on(self, loguru_sink: list[str]) -> None:
+        """The ring inside the popup logs like every other, so a test can step it."""
+        nav = self._make_nav()
+        entry = MagicMock()
+        entry.text = "a bubble"
+        with (
+            patch.object(PopupKeyboardNav, "_get_entries", return_value=[entry]),
+            patch.object(barks_reader.ui.index_screen, "Color"),
+            patch.object(barks_reader.ui.index_screen, "Line"),
+        ):
+            nav._draw_focus()
+        assert any(line.startswith("Nav focus on") for line in loguru_sink)
 
     def test_on_key_down_delegates_to_handle_key_and_consumes(self) -> None:
         nav = self._make_nav()
@@ -593,3 +608,25 @@ class TestIndexScreenMarkers:
         """The populated line fires for a letter with items; an empty letter says so instead."""
         index_screen._populate_index_grid("B")
         assert "Populated index page for letter 'B': no items." in loguru_sink
+
+
+class TestEnterNavFocusMarker:
+    def test_entering_nav_focus_logs_once_the_focus_is_drawn(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        index_screen._selected_letter_button = None
+        with patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw:
+            index_screen.enter_nav_focus(lambda: None)
+        draw.assert_called_once()
+        assert loguru_sink[-1] == "IndexScreen: entered nav focus."
+
+    def test_a_restored_item_focus_logs_too(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(ConcreteIndexScreen, "_restore_item_focus", return_value=True),
+            patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw,
+        ):
+            index_screen.enter_nav_focus(lambda: None)
+        draw.assert_not_called()
+        assert "IndexScreen: entered nav focus." in loguru_sink

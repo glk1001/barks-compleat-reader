@@ -333,6 +333,9 @@ class SearchScreen(FloatLayout):
 
         found_tags = self._search.search(text, SearchMode.TAG).matched_tags
         self._tag_chip_strings = sorted([str(t.value) for t in found_tags]) if found_tags else []
+        logger.debug(
+            log_markers.SEARCH_TAG_RESULTS.format(count=len(self._tag_chip_strings), text=text)
+        )
 
         self._rebuild_tag_chips()
 
@@ -464,7 +467,7 @@ class SearchScreen(FloatLayout):
         # A query that matches nothing otherwise looks exactly like a query that
         # never ran: the only word-search log line fires on picking a chip, so a
         # search returning zero leaves no trace at all.
-        logger.debug(f'Word search: "{text}" matched {len(words)} words.')
+        logger.debug(log_markers.WORD_SEARCH_MATCHED.format(text=text, count=len(words)))
 
         for i, word in enumerate(words):
             btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)

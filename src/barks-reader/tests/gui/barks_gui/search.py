@@ -42,11 +42,31 @@ WORD_BUBBLE_X = 232
 WORD_BUBBLE_Y = 843
 
 
+def _results_line(typed: str) -> str | None:
+    """Return the line the app logs for `typed` in any search mode; None for one character.
+
+    Title and tag search do nothing on a single character, and the word search
+    logs on every one, so the first keystroke is the only one typed on the clock.
+    """
+    if len(typed) <= 1:
+        return None
+    return "|".join(
+        pattern(marker, text=typed)
+        for marker in (
+            markers.SEARCH_TITLE_RESULTS,
+            markers.SEARCH_TAG_RESULTS,
+            markers.WORD_SEARCH_MATCHED,
+        )
+    )
+
+
 def type_query(d: Driver, query: str) -> None:
-    """Focus the search box from the tree node and type a query into it."""
+    """Focus the search box from the tree node and type a query, a keystroke at a time.
+
+    Each keystroke after the first waits on the results line it produces.
+    """
     d.key_then_wait(SEARCH_BOX_FOCUSED, "Return")
-    d.type_slowly(query)
-    d.settle()
+    d.type_slowly(query, marker=_results_line)
 
 
 def click_title_result(boot: AppBoot, d: Driver, row: int, title_enum: str) -> None:

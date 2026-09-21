@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
+
 if TYPE_CHECKING:
     from gui_driver import Driver
 
@@ -15,8 +18,7 @@ def collapse_all(d: Driver) -> None:
     so one Left on the top-level node collapses it again and leaves the
     selection there.
     """
-    d.key("Left")
-    d.settle()
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED), "Left")
 
 
 def open_path(d: Driver, *names: str) -> None:

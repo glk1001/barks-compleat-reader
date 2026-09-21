@@ -51,6 +51,7 @@ DISPLAY_SETTINGS: Final = "Display settings object."
 SETTINGS_CLOSED: Final = "Settings closed."
 CONFIG_CHANGE: Final = "Config change: section = '{section}', key = '{key}', value = '{value}'."
 ABOUT_BOX_OPENED: Final = "About box opened."
+ABOUT_BOX_DISMISSED: Final = "About box dismissed."
 WIKI_PAGE_BUTTON_PRESSED: Final = "Wiki page button pressed."
 ENTERED_FULLSCREEN: Final = "Entered fullscreen mode on {screen}."
 ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
@@ -118,6 +119,7 @@ HISTORY_DELETED_TITLE: Final = 'History: deleted title "{title}".'
 HISTORY_CLEARED: Final = "History: cleared."
 
 # --------------------------------------------------------------- indexes --
+INDEX_ENTERED_NAV: Final = "IndexScreen: entered nav focus."
 INDEX_BUILD_COMPLETE: Final = "Index build complete (in {elapsed})."
 INDEX_LETTER_POPULATED: Final = "Populated index page for letter '{letter}' in {elapsed}."
 INDEX_LETTER_EMPTY: Final = "Populated index page for letter '{letter}': no items."
@@ -128,6 +130,8 @@ SHOW_BUBBLES_FOR_INDEX_TERMS: Final = (
     'Show speech bubbles for: "{title}" and index terms "{terms}".'
 )
 TITLE_FROM_BUBBLE_BROWSER: Final = 'Handling title from speech bubble browser: "{title}" - {page}.'
+BUBBLES_POPUP_OPENED: Final = "Speech bubbles popup opened."
+BUBBLES_POPUP_DISMISSED: Final = "Speech bubbles popup dismissed."
 
 # ---------------------------------------------------------------- search --
 SEARCH_MODE_SET: Final = "SearchScreen mode set to '{mode}'."
@@ -136,7 +140,9 @@ SEARCH_EXITED_NAV: Final = "SearchScreen: exited nav focus."
 SEARCH_BOX_FOCUS: Final = "SearchScreen: {mode} search box {state}."
 SEARCH_SELECTED_TITLE: Final = 'Search: selected "{title}".'
 SEARCH_TITLE_RESULTS: Final = "Search results: {count} titles for '{text}'."
+SEARCH_TAG_RESULTS: Final = "Search results: {count} tags for '{text}'."
 SEARCH_WORD_RESULTS: Final = "Search results: {count} word rows."
+WORD_SEARCH_MATCHED: Final = 'Word search: "{text}" matched {count} words.'
 SEARCH_CLEARED: Final = "Search cleared: {mode}."
 TAG_SELECTED_TAG: Final = 'Tag search: selected tag "{tag}".'
 TAG_SELECTED_MEMBER: Final = 'Tag search: selected member "{member}".'

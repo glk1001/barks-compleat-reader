@@ -2,6 +2,7 @@
 
 """Standalone popup utilities for displaying messages when Kivy may or may not be running."""
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     add_close_button: bool = True,
     background_image_file: Path | None = None,
     wrapper_scrim: tuple[float, float, float, float] | None = None,
+    on_dismiss: Callable[[], None] | None = None,
 ) -> None:
     """Show a popup even if no Kivy app or event loop is running.
 
@@ -57,6 +59,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         wrapper_scrim: RGBA scrim drawn over the background art behind the
             content. Defaults to a light wash (``_LIGHT_WRAPPER_SCRIM``); pass a
             dark scrim for popups that render light, on-brand text.
+        on_dismiss: Called once the popup has closed, however it was closed.
 
     """
     scrim = wrapper_scrim if wrapper_scrim is not None else _LIGHT_WRAPPER_SCRIM
@@ -210,6 +213,8 @@ def show_standalone_popup(  # noqa: C901, PLR0915
 
         if not app_already_running:
             popup.bind(on_dismiss=lambda *_: stopTouchApp())
+        if on_dismiss is not None:
+            popup.bind(on_dismiss=lambda *_: on_dismiss())
 
         def popup_is_open() -> None:
             if background_image_file and bgnd_rect and bgnd_texture_size:

@@ -290,6 +290,35 @@ class TestSearchMarkers:
         screen._populate_word_results_layout(MagicMock())
         assert "Search results: 0 word rows." in loguru_sink
 
+    def test_tag_results_are_counted_per_keystroke(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._search = MagicMock()
+        screen._search.search.return_value = SimpleNamespace(
+            matched_tags=[SimpleNamespace(value="Scrooge"), SimpleNamespace(value="Scrooge's")]
+        )
+        with (
+            patch.object(screen, "_clear_tag_title_results"),
+            patch.object(screen, "_rebuild_tag_chips"),
+        ):
+            screen.on_tag_search_text("sc")
+        assert "Search results: 2 tags for 'sc'." in loguru_sink
+
+    def test_a_single_character_tag_query_logs_nothing(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(screen, "_clear_tag_title_results"):
+            screen.on_tag_search_text("s")
+        assert not [line for line in loguru_sink if line.startswith("Search results")]
+
+    def test_word_matches_are_counted_per_keystroke(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._speaker_chips_built = True
+        with patch.object(screen, "_get_words_matching_prefix", return_value=[]):
+            screen.on_word_search_text("air")
+        assert 'Word search: "air" matched 0 words.' in loguru_sink
+
     def test_each_clear_button_logs(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
         screen._tag_chip_strings = ["x"]
         screen._selected_member = "y"

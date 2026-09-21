@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -20,7 +20,7 @@ from gui_driver import Driver, DriverError, Pick, boot_app_at, probe
 from okf_reader.core import log_markers as okf_log_markers
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     KeysPressed = Callable[[MagicMock], list[str]]
@@ -599,6 +599,36 @@ class TestPacing:
             (Driver.FOCUS_MOVED, "Right"),
         ]
         hold.assert_not_called()
+
+
+class TestTypeSlowly:
+    """Each character waits on its own results line where there is one, else on the clock."""
+
+    def test_waits_on_the_marker_for_the_text_so_far(self, stub_driver: Driver) -> None:
+        waited: list[str] = []
+
+        @contextmanager
+        def fake_expect(pattern: str, _timeout: float = 15) -> Iterator[None]:
+            waited.append(pattern)
+            yield
+
+        with (
+            patch.object(Driver, "_run"),
+            patch.object(Driver, "expect", side_effect=fake_expect),
+            patch.object(gui_driver.time, "sleep") as sleep,
+        ):
+            stub_driver.type_slowly("abc", marker=lambda typed: typed if typed[1:] else None)
+        assert waited == ["ab", "abc"]
+        sleep.assert_called_once_with(gui_driver.TYPE_PAUSE)
+
+    def test_no_marker_rests_after_every_character(self, stub_driver: Driver) -> None:
+        with (
+            patch.object(Driver, "_run") as run,
+            patch.object(gui_driver.time, "sleep") as sleep,
+        ):
+            stub_driver.type_slowly("abc")
+        assert run.call_count == THREE_TURNS
+        assert sleep.call_count == THREE_TURNS
 
 
 class TestDriverMarkersMatchTheApp:

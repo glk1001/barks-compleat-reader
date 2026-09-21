@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping, Sequence
+    from collections.abc import Callable, Iterator, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROBE = REPO_ROOT / "scripts" / "gui-probe.sh"
@@ -252,17 +252,32 @@ class Driver:
         if self._paced:
             self.hold(seconds)
 
-    def type_slowly(self, text: str) -> None:
+    def type_slowly(self, text: str, marker: Callable[[str], str | None] | None = None) -> None:
         """Type into a focused text box one character at a time.
 
         ``gui-probe type`` sends the whole string through ``xte str`` and the
         app's search-as-you-type handler drops most of it - a ten-character query
-        arrived in the box as four characters. Per-character with a gap is
-        reliable, and reads as a natural typing pace on video.
+        arrived in the box as four characters. Per-character is reliable: each
+        character either waits on the line the app logs for the text typed so far
+        (`marker`, given what has been typed, returns the pattern or None for no
+        line) or, with no marker, rests for the camera-paced typing gap.
+
+        Args:
+            text: What to type.
+            marker: Maps the text typed so far to the log pattern that its
+                keystroke produces, or None where it produces no line.
+
         """
+        typed = ""
         for char in text:
-            self._run(["type", char])
-            time.sleep(TYPE_PAUSE)
+            typed += char
+            pattern = marker(typed) if marker is not None else None
+            if pattern is None:
+                self._run(["type", char])
+                time.sleep(TYPE_PAUSE)
+            else:
+                with self.expect(pattern):
+                    self._run(["type", char])
 
     def current_node(self) -> str:
         """Return the node the app last logged as selected.

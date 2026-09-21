@@ -39,8 +39,7 @@ def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
     d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ)
     d.close_reader()
-    d.key("Escape")  # hand focus back from the bottom region to the tree
-    d.settle()
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # focus back to the tree
     d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Title"))
 
 
@@ -48,8 +47,7 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     """Type a word, pick its chip, open one story's bubbles, jump in from a bubble."""
     d = boot(nodes.WORD_SEARCH, cues=CUES)
     search.type_query(d, WORD_QUERY)
-    d.key("Down")  # the first matching word chip
-    d.settle()
+    # Return in the box picks the first matching chip (the box yields no other key).
     d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
 
     search.click_word_balloon(boot, d, WORD_RESULT_ROW, WORD_RESULT_NAME)
@@ -58,8 +56,7 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     assert d.current_page() > 0, "a bubble opens the story at its own page, not the front"
     d.close_reader()
-    d.key("Escape")
-    d.settle()
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
     d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Word"))
 
 
