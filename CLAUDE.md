@@ -130,7 +130,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   minutes for the suite). They boot the real app from a scratch profile and wait
   only on lines the app logs, so a screen's log markers are part of its contract: when a
   user-visible transition gets no log line, add one (with a `loguru_sink` unit test) rather
-  than a sleep. Plan and status: `docs/plans/gui-test-suite.md`.
+  than a sleep. The marker text is written once, in `barks_reader.core.log_markers`
+  (`okf_reader.core.log_markers` for the wiki viewer): the app logs it with `.format`, a
+  GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
 
 ## Code Style
 

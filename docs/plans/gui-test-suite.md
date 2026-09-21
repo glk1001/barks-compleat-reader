@@ -38,6 +38,9 @@
 >   wiki viewer opens its home page when there is no session (a fresh profile showed an
 >   empty pane). One unexplained flake remains on file: after the word-search bubble
 >   goto, a Return was once swallowed under four-way load and could not be reproduced
+>   by hand; the probe now timestamps every injected key (`input.log`, collected with
+>   failure artifacts) and the main screen logs a key it yields to a focused text
+>   field, so the next occurrence will say where the key went.
 > - Later still (2026-09-16): every fixed `hold()` pause in the suite went. The app now
 >   logs each keyboard focus move (`Nav focus on <widget>`, from `draw_focus_highlight`,
 >   with the wiki's `OKFViewer: Focus ring on` / `Sidebar focus on` counterparts), every
@@ -47,9 +50,24 @@
 >   builds `Driver(paced=False)`, and the camera gaps apply only to the recorder's paced
 >   driver. `DROPDOWN_DISMISS_PAUSE` is gone. Headless four-way: 56 tests in ~2m50s over
 >   three consecutive green runs (was ~3m10s); wall time is bound by boot and teardown.
->   by hand; the probe now timestamps every injected key (`input.log`, collected with
->   failure artifacts) and the main screen logs a key it yields to a focused text
->   field, so the next occurrence will say where the key went.
+> - Review pass (2026-09-21), seven commits from 85033ad6: every marker the suite waits
+>   on is now written once, in `barks_reader.core.log_markers` (and
+>   `okf_reader.core.log_markers` for the wiki's trace lines); the app logs it through
+>   `.format`, the tests wait on it through `pattern()`, and a contract test in
+>   `scripts/tests/test_gui_driver.py` checks the stdlib-only driver's copies against
+>   it. The last pixel clicks went (search results, word balloons and popup bubbles are
+>   keyboard moves now), and with them `EXPECTED_WINDOW`, `require_geometry` and
+>   `AppBoot.geometry`; the runner still pins `BARKS_PROBE_SCREEN` for the fullscreen
+>   round trips. `select_node` waits on the selection line per Down instead of sleeping
+>   (the sleep-and-compare walk flaked once under four workers when a selection landed
+>   1.4s late). New markers: index screen nav entry, speech-bubble popup opened /
+>   dismissed / focus, About box dismissed, and per-keystroke tag and word results, so
+>   the `key(); settle()` pairs at those points wait on a line and search queries are
+>   typed on the results line each keystroke produces. New assertions: the last-read
+>   cue written on close, the node saved by a confirmed quit, and a Settings switch
+>   round-tripping through the ini. `key_then_wait(pattern, *keys, timeout=15)`;
+>   `Driver.last_line`; failed tests also save the scratch ini and json; the harness
+>   helpers have unit tests. Headless four-way: 58 tests in ~3m20s.
 
 ## Context
 
