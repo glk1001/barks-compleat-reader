@@ -21,10 +21,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
-# The app sizes its window from the nested screen, and every pixel coordinate
-# in the suite was measured at this size; the harness refuses to click at any
-# other. Pinned here rather than left to the probe's default so the two cannot
-# drift apart.
+# The app sizes its window from the nested screen. Nothing in the suite clicks
+# by pixel any more (every move is a key, waited on through the log), but the
+# fullscreen round trips compare the window size before and after, so the size
+# is pinned here rather than left to the probe's default.
 export BARKS_PROBE_SCREEN=900x1300
 
 workers="${BARKS_GUI_WORKERS:-}"

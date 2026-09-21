@@ -73,11 +73,6 @@ COPIED_KIVY_DIR = "kivy"  # Kivy home: config.ini, icon/, mods/; logs/ is skippe
 # scratch profile is disposable, and a test reads what the app wrote on exit.
 PROBE_NO_RESTORE_ENV_VAR = "BARKS_PROBE_NO_RESTORE"
 
-# The app window at the pinned nested screen (BARKS_PROBE_SCREEN=900x1300), as
-# measured. Every pixel coordinate in the suite assumes it. (The demo recorder
-# reports 1224: it rounds the height down to even for the video encoder.)
-EXPECTED_WINDOW = (782, 1225)
-
 
 def build_template(live_dir: Path, template: Path) -> Path:
     """Copy the live config directory into `template` with INI_OVERRIDES applied.
@@ -177,14 +172,12 @@ class AppBoot:
         scratch: This test's config directory.
         nodeid: The pytest node id, for artifact names.
         driver: The Driver once booted.
-        geometry: The window's (width, height, x, y) once booted.
 
     """
 
     scratch: Path
     nodeid: str
     driver: gd.Driver | None = None
-    geometry: tuple[int, int, int, int] | None = None
     _shots: list[Path] = field(default_factory=list)
     # Set before the probe is asked to start, not after the Driver exists: a
     # boot that fails part-way (the app never logs its ready line, say) has
@@ -233,7 +226,6 @@ class AppBoot:
         gd.boot_app_at(node, config_dir=self.scratch, seed=SEED, cues=cues)
         # Not paced: every move waits on the app's log, none on the camera clock.
         self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS, paced=False)
-        self.geometry = self.driver.window_geometry()
         return self.driver
 
     def checkpoint(self, name: str) -> Path | None:
@@ -298,21 +290,3 @@ class AppBoot:
         os.environ.pop(gd.CONFIG_DIR_ENV_VAR, None)
         os.environ.pop(PROBE_NO_RESTORE_ENV_VAR, None)
         os.environ.pop(PROBE_KEY_GAP_ENV_VAR, None)
-
-
-def require_geometry(boot: AppBoot) -> None:
-    """Refuse to click by pixel unless the window is the size the coordinates assume.
-
-    Fails rather than skips: a wrong size means the runner or the probe's screen
-    setting has drifted, which is a harness bug to fix, not a reason to test less.
-
-    Raises:
-        AssertionError: If the window is not EXPECTED_WINDOW.
-
-    """
-    assert boot.geometry is not None, "boot the app before clicking"
-    width, height = boot.geometry[:2]
-    assert (width, height) == EXPECTED_WINDOW, (
-        f"app window is {width}x{height}, but every pixel coordinate was measured at "
-        f"{EXPECTED_WINDOW[0]}x{EXPECTED_WINDOW[1]} - is BARKS_PROBE_SCREEN pinned?"
-    )

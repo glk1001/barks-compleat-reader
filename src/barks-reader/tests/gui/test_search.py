@@ -27,14 +27,12 @@ ALL_IMAGES_LOADED = pattern(markers.ALL_IMAGES_LOADED)
 
 
 def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
-    """Type a title, click a result, read it, close, and Go Back to the search."""
+    """Type a title, pick a result, read it, close, and Go Back to the search."""
     d = boot(nodes.TITLE_SEARCH, cues=CUES)
     search.type_query(d, TITLE_QUERY)
     with d.expect(pattern(markers.SEARCH_SELECTED_TITLE, title=TITLE_RESULT_NAME)):
-        search.click_title_result(boot, d, TITLE_RESULT_ROW, TITLE_RESULT)
-    # A result picked with the mouse hands focus to the portal only once the panel
-    # has faded in, so the Enter that opens the comic waits for the fade's end.
-    d.wait_title_fade()
+        search.pick_title_result(d, TITLE_RESULT_ROW, TITLE_RESULT)
+    d.wait_title_fade()  # the Enter that opens the comic is lost mid-fade
 
     d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ)
@@ -47,11 +45,12 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     """Type a word, pick its chip, open one story's bubbles, jump in from a bubble."""
     d = boot(nodes.WORD_SEARCH, cues=CUES)
     search.type_query(d, WORD_QUERY)
-    # Return in the box picks the first matching chip (the box yields no other key).
+    # Return in the box picks the first matching chip (the box yields no other key)
+    # and lands focus on it; the next Return from there enters the result rows.
     d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
 
-    search.click_word_balloon(boot, d, WORD_RESULT_ROW, WORD_RESULT_NAME)
-    search.click_first_bubble(boot, d, WORD_RESULT_NAME)
+    search.open_word_balloon(d, WORD_RESULT_ROW, WORD_RESULT_NAME)
+    search.press_first_bubble(d, WORD_RESULT_NAME)
     d.wait_title_fade()  # the story's title view fades in; a Return mid-fade is lost
     d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     assert d.current_page() > 0, "a bubble opens the story at its own page, not the front"

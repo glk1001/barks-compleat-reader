@@ -1,7 +1,8 @@
 """Fullscreen round trips, in the reader and on the main screen.
 
-Its own module: with no window manager on the nested display, fullscreen resizes
-the app window, and no pixel-click test may run in the same boot afterwards.
+With no window manager on the nested display, fullscreen resizes the app window;
+the runner pins the nested screen size so the round trip has a known size to come
+back to.
 """
 
 from __future__ import annotations
