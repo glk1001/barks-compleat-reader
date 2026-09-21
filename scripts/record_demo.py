@@ -154,34 +154,38 @@ RANDOM_SEED: int | None = 20260915
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
 SEARCH_TITLE_QUERY = "vacation"
-# Which result row to take, counting from 1, and where the rows sit on the
-# nested display.
-#
-# The rows are clicked rather than keyed. There is no keyboard path that
-# survives: the search box keeps the keyboard, so Down moves the text cursor
-# instead of the selection, and whether a press reaches the list at all varies
-# run to run. Clicking is exact here - the nested display has no compositor and
-# no HiDPI scaling, so a screenshot pixel is the pixel to click - and the beat
-# still checks by name which story it landed on, so a layout change fails the
-# run instead of quietly demonstrating a different comic.
+# Which result row to take, counting from 1. Return in the search box hands the
+# keyboard to the first row and Down walks them, each move waited on through the
+# log; the beat still checks by name which story it landed on, so a reordered
+# list fails the run instead of quietly demonstrating a different comic. (The
+# rows were once clicked by pixel; scripts/repro_search_enter.py still does, as
+# the bug it reproduces is in the mouse path.)
 SEARCH_TITLE_RESULT = 2
-SEARCH_RESULT_X = 450
-SEARCH_RESULT_TOP_Y = 695  # centre of the first row
-SEARCH_RESULT_ROW_H = 30
 SEARCH_WORD_QUERY = "airline"
 # The story the word beat opens the speech bubbles for, spelled as the app logs it.
 # Word results are sorted by title, so the pick is a row index into that list.
+# Right on the row is its speech balloon, and the popup opens with its first bubble
+# focused - page 1's "WE'LL FLY! THE AIRLINE TICKET OFFICE IS ON THE NEXT STREET!".
+# Pressing it goes to that page of the story.
 SEARCH_WORD_PICK = "Adventure Down Under"
 SEARCH_WORD_RESULT = 1
-# The word-results geometry, in screenshot pixels: every row ends in a speech
-# balloon that opens just that story's matching bubbles.
-SEARCH_WORD_BALLOON_X = 728
-SEARCH_WORD_RESULT_TOP_Y = 792  # centre of the first row, under the speaker chips
-SEARCH_WORD_ROW_H = 29
-# The bubble to press in the popup - the first one, page 1's "WE'LL FLY! THE AIRLINE
-# TICKET OFFICE IS ON THE NEXT STREET!". Pressing it goes to that page of the story.
-SEARCH_WORD_BUBBLE_X = 232
-SEARCH_WORD_BUBBLE_Y = 843
+# How long each step down the result rows rests, for the camera.
+RESULT_STEP_PAUSE = 0.5
+
+# Log lines the beats wait on. The recorder is stdlib-only, so these are copies
+# of the app's markers (barks_reader.core.log_markers), with re.escape'd fields;
+# scripts/tests/test_record_demo.py checks each against the line the app writes.
+ALL_IMAGES_LOADED = "All images loaded"
+GOTO_TITLE = 'Goto title: "{name}"'
+WORD_CHIP_SELECTED = "Word search: selected chip"
+SHOW_BUBBLES_FOR = 'Show speech bubbles for: "{title}"'
+BUBBLE_PRESS = 'Word search bubble press: "{title}"'
+BUBBLES_POPUP_OPENED = "Speech bubbles popup opened."
+BUBBLES_POPUP_DISMISSED = "Speech bubbles popup dismissed."
+SEARCH_MODE_SET = "SearchScreen mode set to '{mode}'"
+WIKI_ACTIVE = "Wiki reader screen is active"
+NODE_SELECTED = 'New selected node: "{name}"'
+LETTER_POPULATED = "Populated index page for letter"
 
 
 # Stories the censored_stories beat opens. They must be in TREE order, which is
@@ -538,7 +542,7 @@ def open_comic(d: Driver) -> None:
     """Open the story browse_tree stopped on and turn a few of its pages."""
     d.key("Return")  # focus the title view's read portal
     d.key("Return")  # open the comic
-    d.wait_for("All images loaded", 30)
+    d.wait_for(ALL_IMAGES_LOADED, 30)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
     d.read_pages(OPEN_COMIC_PICK)
     d.hold(2.5)
@@ -590,21 +594,22 @@ def search_story(d: Driver) -> None:
     d.settle()
     d.hold(1.2)
 
-    row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
-    d.click_then_wait(f'Goto title: "{re.escape(SEARCH_TITLE_PICK.title)}"', SEARCH_RESULT_X, row_y)
-    # Let the title view finish fading before the Enter below. Only a *key*-driven
-    # goto-title is handed to enter_nav_focus_at_portal; picking the result with the
-    # mouse schedules no hand-off, so that Enter lazily enters nav focus instead
-    # (main_screen_nav:241) and takes its default from _is_panel_content_visible() -
-    # which reads the very opacity the fade is still animating. Pressed early, focus
-    # lands on the eye toggle, the Enter toggles that, and no comic ever opens. At
-    # hold(2.5) this beat was winning the race on luck and lost it as soon as a
-    # different fade duration came up; now the app logs the fade's end.
+    # Return leaves the box for the first result row; Down walks the rows.
+    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    for _ in range(SEARCH_TITLE_RESULT - 1):
+        d.move_focus("Down")
+        d.hold(RESULT_STEP_PAUSE)
+    d.hold(0.6)
+    # A result picked from the keyboard hands focus to the title view's read portal,
+    # so one Enter there opens the comic - but not while the panel is still fading
+    # in, when the Enter is lost. The app logs the fade's end, so wait on that.
+    with (
+        d.expect(GOTO_TITLE.format(name=re.escape(SEARCH_TITLE_PICK.title))),
+        d.expect(d.ENTERED_AT_PORTAL),
+    ):
+        d.key("Return")
     d.wait_title_fade()
-
-    # Focus defaults to the read portal now the panel is up, so one Enter opens the
-    # comic - unlike the other beats, which have to focus the portal first.
-    d.key_then_wait("All images loaded", "Return", timeout=30)
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(SEARCH_TITLE_PICK)
     d.close_reader()
     d.hold(1.0)
@@ -612,7 +617,7 @@ def search_story(d: Driver) -> None:
     d.settle()
     # The counting form: the search logged this same mode line when the beat booted
     # onto it, so a plain wait_for would return before the Go Back had landed.
-    d.go_back_then_wait("SearchScreen mode set to 'Title'")
+    d.go_back_then_wait(SEARCH_MODE_SET.format(mode="Title"))
     d.settle()
     d.hold(2.5)
 
@@ -633,36 +638,44 @@ def search_words(d: Driver) -> None:
     d.hold(0.5)
     d.type_slowly(SEARCH_WORD_QUERY)
     d.settle()
-    d.hold(0.1)
-    d.key("Down")  # focus the first matching word chip
-    d.settle()
-    d.hold(0.1)
-    d.key_then_wait("Word search: selected chip", "Return")
+    d.hold(0.3)
+    # Return in the box picks the first matching word chip and lands focus on it
+    # (the box keeps every other key, so there is no Down to it).
+    d.key_then_wait(WORD_CHIP_SELECTED, "Return")
     d.hold(2.0)  # the list of every story the word is spoken in
 
-    row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
-    d.click_then_wait(
-        f'Show speech bubbles for: "{re.escape(SEARCH_WORD_PICK)}"',
-        SEARCH_WORD_BALLOON_X,
-        row_y,
-    )
+    # Return on the chip enters the result rows; Right on a row is its speech
+    # balloon, which opens just that story's matching bubbles.
+    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    for _ in range(SEARCH_WORD_RESULT - 1):
+        d.move_focus("Down")
+        d.hold(RESULT_STEP_PAUSE)
+    d.move_focus("Right")
+    d.hold(0.6)
+    with (
+        d.expect(SHOW_BUBBLES_FOR.format(title=re.escape(SEARCH_WORD_PICK))),
+        d.expect(BUBBLES_POPUP_OPENED),
+        d.expect(d.FOCUS_MOVED),  # the popup opens with its first bubble focused
+    ):
+        d.key("Return")
     d.hold(3.5)  # every line the word is spoken in, with the word picked out
 
     # A bubble goes to its story at the page that line is on.
-    d.click_then_wait(
-        f'Word search bubble press: "{re.escape(SEARCH_WORD_PICK)}"',
-        SEARCH_WORD_BUBBLE_X,
-        SEARCH_WORD_BUBBLE_Y,
-    )
+    with (
+        d.expect(BUBBLE_PRESS.format(title=re.escape(SEARCH_WORD_PICK))),
+        d.expect(BUBBLES_POPUP_DISMISSED),
+    ):
+        d.key("Return")
     d.settle()
     d.hold(3.0)  # the title view for the story the bubble came from
+    d.wait_title_fade()  # the Enter below is lost while the panel is still fading in
 
     # Straight on into the story. Only the index screens hand focus to the read portal
     # after a popup goto (main_screen._bind_screen_callbacks wires
     # on_after_popup_goto_title for those alone), so this Enter is what enters the title
     # panel's nav focus - and it lands on the portal, which is what ced49f7's sibling
     # 63b4a42 made true while the panel is still fading in.
-    d.key_then_wait("All images loaded", "Return", timeout=30)
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(SEARCH_WORD_READ)
     d.close_reader()
     d.hold(1.0)
@@ -671,7 +684,7 @@ def search_words(d: Driver) -> None:
     # action bar's Go Back can be reached - the same two-step search_story needs.
     d.key("Escape")
     d.settle()
-    d.go_back_then_wait("SearchScreen mode set to 'Word'")
+    d.go_back_then_wait(SEARCH_MODE_SET.format(mode="Word"))
     d.settle()
     d.hold(2.5)  # back on the search, query and results still there
 
@@ -695,7 +708,7 @@ def read_story(d: Driver) -> None:
     d.settle()
     d.key("Return")  # focus the title view read portal
     d.hold(0.6)
-    d.key_then_wait("All images loaded", "Return", timeout=30)
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ_STORY_PICK)
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
@@ -738,7 +751,7 @@ def wiki_jump(d: Driver) -> None:
         d.hold(0.3)
     d.settle()
     d.hold(0.8)
-    d.key_then_wait("Wiki reader screen is active", "Return", timeout=30)
+    d.key_then_wait(WIKI_ACTIVE, "Return", timeout=30)
     d.hold(2.5)
     for _ in range(3):
         d.key("Down")  # scroll the page
@@ -769,7 +782,7 @@ def wiki_jump(d: Driver) -> None:
         d.key("Right")
         d.hold(0.5)
     d.hold(0.6)
-    d.key_then_wait(f'New selected node: "{re.escape(WIKI_SIDEBAR_PICK)}"', "Return", timeout=20)
+    d.key_then_wait(NODE_SELECTED.format(name=re.escape(WIKI_SIDEBAR_PICK)), "Return", timeout=20)
     d.settle()
     d.hold(2.5)  # the reader, now on the story the wiki sent it to
 
@@ -787,7 +800,7 @@ def speech_index(d: Driver) -> None:
     d.hold(2.5)
     # Walk the A-Z letters; each one repopulates the word grid.
     for _ in range(3):
-        d.key_then_wait("Populated index page for letter", "Down")
+        d.key_then_wait(LETTER_POPULATED, "Down")
         d.hold(1.6)
     d.hold(1.0)
 

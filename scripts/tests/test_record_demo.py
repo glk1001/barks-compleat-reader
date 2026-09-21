@@ -7,6 +7,7 @@ logic is covered in test_gui_driver.py.
 
 from __future__ import annotations
 
+import re
 from contextlib import nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import record_demo
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_reader.core import log_markers
 from record_demo import (
     OUTPUTS,
     POSTER_BEAT,
@@ -284,3 +286,57 @@ class TestValidate:
     def test_only_must_be_in_the_requested_output(self) -> None:
         with pytest.raises(BeatError, match="does not contain reading"):
             self._validate("--only", "reading", "--output", "demo.mp4")
+
+
+class TestBeatMarkersMatchTheApp:
+    """The recorder is stdlib-only, so it carries copies of the app's marker text.
+
+    Each copy must match the line the app actually logs, which is written once in
+    ``barks_reader.core.log_markers``.
+    """
+
+    @pytest.mark.parametrize(
+        ("recorder_regex", "app_line"),
+        [
+            (
+                record_demo.ALL_IMAGES_LOADED,
+                log_markers.ALL_IMAGES_LOADED.format(elapsed="1s", index=0),
+            ),
+            (
+                record_demo.GOTO_TITLE.format(name="VACATION_TIME"),
+                log_markers.GOTO_TITLE.format(name="VACATION_TIME", filename="x.png"),
+            ),
+            (record_demo.WORD_CHIP_SELECTED, log_markers.WORD_SELECTED_CHIP.format(word="airline")),
+            (
+                record_demo.SHOW_BUBBLES_FOR.format(title="Adventure Down Under"),
+                log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title="Adventure Down Under", text="a"),
+            ),
+            (
+                record_demo.BUBBLE_PRESS.format(title="Adventure Down Under"),
+                log_markers.WORD_BUBBLE_PRESS.format(title="Adventure Down Under", page=3),
+            ),
+            (record_demo.BUBBLES_POPUP_OPENED, log_markers.BUBBLES_POPUP_OPENED),
+            (record_demo.BUBBLES_POPUP_DISMISSED, log_markers.BUBBLES_POPUP_DISMISSED),
+            (
+                record_demo.SEARCH_MODE_SET.format(mode="Word"),
+                log_markers.SEARCH_MODE_SET.format(mode="Word"),
+            ),
+            (record_demo.WIKI_ACTIVE, log_markers.WIKI_READER_ACTIVE),
+            (
+                record_demo.NODE_SELECTED.format(name="VOODOO_HOODOO"),
+                log_markers.NEW_SELECTED_NODE.format(name="VOODOO_HOODOO", previous="X"),
+            ),
+            (
+                record_demo.LETTER_POPULATED,
+                log_markers.INDEX_LETTER_POPULATED.format(letter="B", elapsed="1ms"),
+            ),
+        ],
+    )
+    def test_the_recorder_regex_matches_the_app_line(
+        self, recorder_regex: str, app_line: str
+    ) -> None:
+        assert re.search(recorder_regex, app_line), f"/{recorder_regex}/ vs {app_line!r}"
+
+    def test_a_filled_field_does_not_match_another_title(self) -> None:
+        other = log_markers.GOTO_TITLE.format(name="VACATION_MISERY", filename="x.png")
+        assert not re.search(record_demo.GOTO_TITLE.format(name="VACATION_TIME"), other)
