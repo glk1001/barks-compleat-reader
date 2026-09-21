@@ -45,28 +45,28 @@ def _change_pics_until_a_story_image(d: Driver) -> None:
 def test_left_and_right_step_through_shown_images(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _change_pics(d)  # a second image in the view's history
-    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, 15, "Right")
-    d.key_then_wait(ANY_TITLE, 15, "Left")  # back to the first image
-    d.key_then_wait(ANY_TITLE, 15, "Right")  # forward again
-    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, 15, "Escape")
+    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
+    d.key_then_wait(ANY_TITLE, "Left")  # back to the first image
+    d.key_then_wait(ANY_TITLE, "Right")  # forward again
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
 
 
 def test_options_menu_opens_and_escape_closes_it(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
-    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, 15, "Right")
+    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
     # Opening the menu moves the focus ring into it; only then can it take a key.
     with (
         d.expect(pattern(markers.FUN_OPTIONS_PRESSED, state=True)),
         d.expect(d.FOCUS_MOVED),
     ):
         d.key("Return")
-    d.key_then_wait(pattern(markers.FUN_OPTIONS_PRESSED, state=False), 15, "Escape")
+    d.key_then_wait(pattern(markers.FUN_OPTIONS_PRESSED, state=False), "Escape")
 
 
 def test_goto_arrow_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _change_pics_until_a_story_image(d)
-    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, 15, "Right")
+    d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
     d.move_focus("Down")  # the goto arrow, active for a story image
     with (
         d.expect(pattern(markers.GOTO_TITLE)),

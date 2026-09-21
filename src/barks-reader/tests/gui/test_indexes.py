@@ -32,15 +32,15 @@ def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     d.settle()
     d.move_focus("Right")  # alphabet panel -> items
     d.move_focus(*["Down"] * ITEMS_DOWN)
-    d.key_then_wait(ITEM_PRESSED, 15, "Return")
+    d.key_then_wait(ITEM_PRESSED, "Return")
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:
     d = boot(nodes.MAIN_INDEX)
     d.key("Return")
     d.settle()
-    d.key_then_wait(_letter("B"), 15, "Down")
-    d.key_then_wait(_letter("C"), 15, "Down")
+    d.key_then_wait(_letter("B"), "Down")
+    d.key_then_wait(_letter("C"), "Down")
 
 
 def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
@@ -49,7 +49,7 @@ def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
     d.key("Return")
     d.settle()
     for _ in range(INDEX_LETTERS):
-        d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
+        d.key_then_wait(POPULATED_OR_EMPTY, "Down")
 
 
 def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
@@ -58,7 +58,7 @@ def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
     d.key("Return")
     d.settle()
     for _ in range(LETTERS):
-        d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
+        d.key_then_wait(POPULATED_OR_EMPTY, "Down")
         if d.match_count(EMPTY_LETTER):
             return
     msg = "every letter of the main index has items"
@@ -79,7 +79,7 @@ def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
         d.key("Return")
     d.move_focus("Down")  # first title under the term
     d.move_focus("Right")  # its speech button
-    d.key_then_wait(pattern(markers.SHOW_BUBBLES_FOR_INDEX_TERMS), 15, "Return")
+    d.key_then_wait(pattern(markers.SHOW_BUBBLES_FOR_INDEX_TERMS), "Return")
     d.key("Escape")  # close the popup
     d.settle()
 
@@ -89,14 +89,14 @@ def test_names_and_locations_indexes_open_items(boot: AppBoot) -> None:
     d = boot(nodes.NAMES_INDEX)
     d.key("Return")
     d.settle()
-    d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
+    d.key_then_wait(POPULATED_OR_EMPTY, "Down")
     d.move_focus("Right")
-    d.key_then_wait(ITEM_PRESSED, 15, "Return")
+    d.key_then_wait(ITEM_PRESSED, "Return")
     # Over to Locations through the tree. In the items panel Escape only goes back
     # to the letters; the second Escape leaves the index, and Down is the sibling.
     d.move_focus("Escape")
-    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, 15, "Escape")
-    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Locations"), 15, "Down")
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Locations"), "Down")
     d.key("Return")
     d.settle()
-    d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
+    d.key_then_wait(POPULATED_OR_EMPTY, "Down")

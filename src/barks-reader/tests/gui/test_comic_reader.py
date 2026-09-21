@@ -44,14 +44,12 @@ def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
 def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
     """Series > Donald Duck Adventures > a story: jump to a page, go two-up, close."""
     d = boot(nodes.SERIES, cues=nodes.NO_CUES)
-    d.select_node("Comics and Stories")
-    d.select_node("Donald Duck Adventures")
     d.open_branch("Donald Duck Adventures")
     d.select_node(nodes.LOST_IN_THE_ANDES[0])
     d.open_selected_story()
     d.read_pages(READ)
 
-    with d.expect(markers.GOTO_PAGE_DROPDOWN_OPENED), d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
+    with d.expect(pattern(markers.GOTO_PAGE_SELECTED)):  # goto_page waits on the rest itself
         d.goto_page(GOTO_PAGE)
     assert d.current_page() == GOTO_PAGE
 
@@ -64,7 +62,7 @@ def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
     """A second goto reopens the (cached) dropdown and can step Up to an earlier page."""
     d = _open_ghost_of_the_grotto(boot)
     d.goto_page(GOTO_PAGE)
-    with d.expect(markers.GOTO_PAGE_DROPDOWN_OPENED), d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
+    with d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
         d.goto_page(GOTO_PAGE_BACK)
     assert d.current_page() == GOTO_PAGE_BACK
     d.close_reader()
@@ -73,9 +71,9 @@ def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
 def test_one_pagers_ignore_double_page(boot: AppBoot) -> None:
     """A one-pager collection is always single-page: the toggle says so and does nothing."""
     d = boot(nodes.ONE_PAGERS)
-    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), 15, "Down")
-    d.key_then_wait(pattern(markers.NODE_EXPANDED), 15, "Return")
-    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE), 15, "Down")  # the range's first one-pager
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), "Down")
+    d.key_then_wait(pattern(markers.NODE_EXPANDED), "Return")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE), "Down")  # the range's first one-pager
     d.open_selected_story()
     with d.expect(markers.DOUBLE_PAGE_IGNORED):
         d.press_menu_button("double_page")
@@ -114,11 +112,11 @@ def test_goto_start_returns_to_the_opening_page(boot: AppBoot) -> None:
 def test_escape_opens_the_menu_and_never_closes_the_reader(boot: AppBoot) -> None:
     """Up or Escape enters menu mode; Escape there leaves it; nothing here closes."""
     d = _open_ghost_of_the_grotto(boot)
-    d.key_then_wait(markers.MENU_ENTERED, 15, "Up")
-    d.key_then_wait(markers.MENU_EXITED, 15, "Escape")
-    d.key_then_wait(markers.MENU_ENTERED, 15, "Escape")
+    d.key_then_wait(markers.MENU_ENTERED, "Up")
+    d.key_then_wait(markers.MENU_EXITED, "Escape")
+    d.key_then_wait(markers.MENU_ENTERED, "Escape")
     d.expect_no_new(pattern(markers.MAIN_SCREEN_ACTIVE), 2.0)
-    d.key_then_wait(markers.MENU_EXITED, 15, "Escape")
+    d.key_then_wait(markers.MENU_EXITED, "Escape")
     d.close_reader()
 
 

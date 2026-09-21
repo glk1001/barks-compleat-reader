@@ -23,39 +23,39 @@ ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
 def test_collapse_and_expand_a_top_level_node(boot: AppBoot) -> None:
     """Left shuts an open node; Return opens it again."""
     d = boot(nodes.THE_STORIES)
-    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="The Stories"), 15, "Left")
-    d.key_then_wait(pattern(markers.NODE_EXPANDED, name="The Stories"), 15, "Return")
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="The Stories"), "Left")
+    d.key_then_wait(pattern(markers.NODE_EXPANDED, name="The Stories"), "Return")
 
 
 def test_left_on_a_title_selects_its_parent(boot: AppBoot) -> None:
     """Down walks into a range's titles; Left on a title climbs back to the range."""
     d = boot(nodes.CHRONO_RANGE)
     for _ in range(DOWNS_INTO_THE_RANGE):
-        d.key_then_wait(ANY_NODE_SELECTED, 15, "Down")
+        d.key_then_wait(ANY_NODE_SELECTED, "Down")
     assert d.current_node() != nodes.CHRONO_RANGE[0]
-    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.CHRONO_RANGE[0]), 15, "Left")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.CHRONO_RANGE[0]), "Left")
 
 
 def test_series_covers_expands_into_year_ranges(boot: AppBoot) -> None:
     """The Covers series lists year ranges, not titles."""
     d = boot(nodes.SERIES)
     d.select_node("Covers")
-    d.key_then_wait(pattern(markers.NODE_EXPANDED, name="Covers"), 15, "Return")
-    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), 15, "Down")
+    d.key_then_wait(pattern(markers.NODE_EXPANDED, name="Covers"), "Return")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), "Down")
 
 
 def test_menu_mode_wraps_both_ways(boot: AppBoot) -> None:
     """The action-bar menu opens on Go Back and wraps at both ends."""
     d = boot(nodes.GHOST_OF_THE_GROTTO)
-    d.key_then_wait(d.MENU_ENTERED, 15, "Escape")
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
     d.move_focus(*["Left"] * WRAP_STEPS, *["Right"] * WRAP_STEPS)
-    d.key_then_wait(markers.GO_BACK_SELECTED, 15, "Return")
+    d.key_then_wait(markers.GO_BACK_SELECTED, "Return")
 
 
 def test_go_back_returns_to_the_previous_node(boot: AppBoot) -> None:
     """Escape then Return is Go Back, which selects the node before this one again."""
     d = boot(nodes.GHOST_OF_THE_GROTTO)
-    d.key_then_wait(ANY_NODE_SELECTED, 15, "Down")
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")
     assert d.current_node() != nodes.GHOST_OF_THE_GROTTO[0]
     with d.expect(pattern(markers.GOING_BACK_TO_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])):
         d.go_back()
@@ -88,7 +88,7 @@ def test_up_on_the_first_node_reaches_the_top_goto_arrow(boot: AppBoot) -> None:
     d = boot(nodes.INTRODUCTION)
     for _ in range(CHANGE_PICS_TRIES):
         before = d.match_count(ARROW_FOCUSED)
-        d.key_then_wait(UP_OUTCOME, 15, "Up")
+        d.key_then_wait(UP_OUTCOME, "Up")
         if d.match_count(ARROW_FOCUSED) > before:
             break
         d.main_menu_button("change_pics")

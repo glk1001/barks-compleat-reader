@@ -44,7 +44,7 @@ WORD_BUBBLE_Y = 843
 
 def type_query(d: Driver, query: str) -> None:
     """Focus the search box from the tree node and type a query into it."""
-    d.key_then_wait(SEARCH_BOX_FOCUSED, 15, "Return")
+    d.key_then_wait(SEARCH_BOX_FOCUSED, "Return")
     d.type_slowly(query)
     d.settle()
 
@@ -59,14 +59,14 @@ def click_title_result(boot: AppBoot, d: Driver, row: int, title_enum: str) -> N
     require_geometry(boot)
     y = TITLE_RESULT_TOP_Y + (row - 1) * TITLE_RESULT_ROW_H
     with d.expect(Driver.FADE_STARTED, 15):
-        d.click_then_wait(pattern(markers.GOTO_TITLE, name=title_enum), 15, TITLE_RESULT_X, y)
+        d.click_then_wait(pattern(markers.GOTO_TITLE, name=title_enum), TITLE_RESULT_X, y)
 
 
 def click_word_balloon(boot: AppBoot, d: Driver, row: int, title: str) -> None:
     """Click the balloon on word-result `row` and wait for that story's bubbles popup."""
     require_geometry(boot)
     y = WORD_RESULT_TOP_Y + (row - 1) * WORD_RESULT_ROW_H
-    d.click_then_wait(pattern(markers.SHOW_BUBBLES_FOR_SEARCH, title=title), 15, WORD_BALLOON_X, y)
+    d.click_then_wait(pattern(markers.SHOW_BUBBLES_FOR_SEARCH, title=title), WORD_BALLOON_X, y)
 
 
 def click_first_bubble(boot: AppBoot, d: Driver, title: str) -> None:
@@ -78,5 +78,5 @@ def click_first_bubble(boot: AppBoot, d: Driver, title: str) -> None:
     require_geometry(boot)
     with d.expect(Driver.FADE_STARTED, 15):
         d.click_then_wait(
-            pattern(markers.WORD_BUBBLE_PRESS, title=title), 15, WORD_BUBBLE_X, WORD_BUBBLE_Y
+            pattern(markers.WORD_BUBBLE_PRESS, title=title), WORD_BUBBLE_X, WORD_BUBBLE_Y
         )

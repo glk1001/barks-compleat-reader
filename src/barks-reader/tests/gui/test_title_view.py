@@ -23,7 +23,7 @@ ANDES_WITH_CUE = {nodes.LOST_IN_THE_ANDES_TITLE: nodes.LOST_IN_THE_ANDES_CUE}
 def test_return_enters_at_the_portal_and_escape_leaves(boot: AppBoot) -> None:
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
     d.focus_portal()
-    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, 15, "Escape")
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
 
 
 def test_overrides_row_toggles(boot: AppBoot) -> None:
@@ -37,8 +37,8 @@ def test_overrides_row_toggles(boot: AppBoot) -> None:
     d = boot(nodes.THE_FIREBUG, cues=nodes.NO_CUES, ini={"use_prebuilt_comics": "0"})
     d.focus_portal()
     d.move_focus("Up")
-    d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=False), 15, "Return")
-    d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=True), 15, "Return")
+    d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=False), "Return")
+    d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=True), "Return")
 
 
 def test_a_cued_story_opens_at_its_cued_page(boot: AppBoot) -> None:
@@ -54,9 +54,9 @@ def test_unchecking_the_goto_page_row_opens_at_the_front(boot: AppBoot) -> None:
     d = boot(nodes.LOST_IN_THE_ANDES, cues=ANDES_WITH_CUE)
     d.focus_portal()
     d.move_focus("Up")  # the goto-page row sits right above the portal
-    d.key_then_wait(pattern(markers.GOTO_PAGE_CHECKBOX_TOGGLED, value=False), 15, "Return")
+    d.key_then_wait(pattern(markers.GOTO_PAGE_CHECKBOX_TOGGLED, value=False), "Return")
     d.move_focus("Down")  # back to the portal
-    d.key_then_wait(pattern(markers.ALL_IMAGES_LOADED), 30, "Return")
+    d.key_then_wait(pattern(markers.ALL_IMAGES_LOADED), "Return", timeout=30)
     d.wait_for(pattern(markers.SHOWED_PAGE))
     assert d.current_page() < nodes.LOST_IN_THE_ANDES_PAGE
     d.close_reader()

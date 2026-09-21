@@ -44,7 +44,6 @@ PREBUILT_COMICS = {"use_prebuilt_comics": "1"}
 # What the app writes for an unset wiki directory (reader_settings
 # UNSET_WIKI_BUNDLE_DIR_MARKER); the key is never empty in an app-written ini.
 UNSET_WIKI_DIR = "<Carl Barks Wiki Not Set>"
-TWO_PAGES = 2
 
 
 @pytest.fixture
@@ -64,7 +63,7 @@ def wiki_boot(boot: AppBoot) -> AppBoot:
 
 def _leave_by_back_at_root(d: Driver) -> None:
     """Escape lifts focus to the top bar on Back; Back at the root exits the wiki."""
-    d.key_then_wait(TOP_BAR, 15, "Escape")
+    d.key_then_wait(TOP_BAR, "Escape")
     with d.expect(wiki.BACK_EXIT), d.expect(MAIN_FROM_WIKI):
         d.key("Return")
 
@@ -96,15 +95,15 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     ):
         d.key("Return")
 
-    d.key_then_wait(SIDEBAR, 15, "Left")
+    d.key_then_wait(SIDEBAR, "Left")
     d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
-    d.key_then_wait(SHOWED_PAGE, 30, "Return")  # the story picked out of the sidebar
-    assert d.match_count(SHOWED_PAGE) >= TWO_PAGES
+    d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)  # the story picked out of the sidebar
+    assert not ANDES_PAGE.search(d.last_line(SHOWED_PAGE)), "the sidebar pick must be another page"
 
-    d.key_then_wait(TOP_BAR, 15, "Escape")
-    d.key_then_wait(pattern(wiki.BACK_TO, page=ANDES_PAGE), 30, "Return")
+    d.key_then_wait(TOP_BAR, "Escape")
+    d.key_then_wait(pattern(wiki.BACK_TO, page=ANDES_PAGE), "Return", timeout=30)
 
-    d.key_then_wait(TOP_BAR, 15, "Escape")
+    d.key_then_wait(TOP_BAR, "Escape")
     d.move_focus(*["Right"] * BAR_RIGHTS_TO_GOTO, pattern=d.WIKI_FOCUS_MOVED)
     with (
         d.expect(pattern(markers.WIKI_GOTO_TITLE, name=re.compile(r"[A-Z_]+"))),

@@ -591,9 +591,7 @@ def search_story(d: Driver) -> None:
     d.hold(1.2)
 
     row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
-    d.click_then_wait(
-        f'Goto title: "{re.escape(SEARCH_TITLE_PICK.title)}"', 15, SEARCH_RESULT_X, row_y
-    )
+    d.click_then_wait(f'Goto title: "{re.escape(SEARCH_TITLE_PICK.title)}"', SEARCH_RESULT_X, row_y)
     # Let the title view finish fading before the Enter below. Only a *key*-driven
     # goto-title is handed to enter_nav_focus_at_portal; picking the result with the
     # mouse schedules no hand-off, so that Enter lazily enters nav focus instead
@@ -606,7 +604,7 @@ def search_story(d: Driver) -> None:
 
     # Focus defaults to the read portal now the panel is up, so one Enter opens the
     # comic - unlike the other beats, which have to focus the portal first.
-    d.key_then_wait("All images loaded", 30, "Return")
+    d.key_then_wait("All images loaded", "Return", timeout=30)
     d.read_pages(SEARCH_TITLE_PICK)
     d.close_reader()
     d.hold(1.0)
@@ -614,7 +612,7 @@ def search_story(d: Driver) -> None:
     d.settle()
     # The counting form: the search logged this same mode line when the beat booted
     # onto it, so a plain wait_for would return before the Go Back had landed.
-    d.go_back_then_wait("SearchScreen mode set to 'Title'", 15)
+    d.go_back_then_wait("SearchScreen mode set to 'Title'")
     d.settle()
     d.hold(2.5)
 
@@ -639,13 +637,12 @@ def search_words(d: Driver) -> None:
     d.key("Down")  # focus the first matching word chip
     d.settle()
     d.hold(0.1)
-    d.key_then_wait("Word search: selected chip", 15, "Return")
+    d.key_then_wait("Word search: selected chip", "Return")
     d.hold(2.0)  # the list of every story the word is spoken in
 
     row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
     d.click_then_wait(
         f'Show speech bubbles for: "{re.escape(SEARCH_WORD_PICK)}"',
-        15,
         SEARCH_WORD_BALLOON_X,
         row_y,
     )
@@ -654,7 +651,6 @@ def search_words(d: Driver) -> None:
     # A bubble goes to its story at the page that line is on.
     d.click_then_wait(
         f'Word search bubble press: "{re.escape(SEARCH_WORD_PICK)}"',
-        15,
         SEARCH_WORD_BUBBLE_X,
         SEARCH_WORD_BUBBLE_Y,
     )
@@ -666,7 +662,7 @@ def search_words(d: Driver) -> None:
     # on_after_popup_goto_title for those alone), so this Enter is what enters the title
     # panel's nav focus - and it lands on the portal, which is what ced49f7's sibling
     # 63b4a42 made true while the panel is still fading in.
-    d.key_then_wait("All images loaded", 30, "Return")
+    d.key_then_wait("All images loaded", "Return", timeout=30)
     d.read_pages(SEARCH_WORD_READ)
     d.close_reader()
     d.hold(1.0)
@@ -675,7 +671,7 @@ def search_words(d: Driver) -> None:
     # action bar's Go Back can be reached - the same two-step search_story needs.
     d.key("Escape")
     d.settle()
-    d.go_back_then_wait("SearchScreen mode set to 'Word'", 15)
+    d.go_back_then_wait("SearchScreen mode set to 'Word'")
     d.settle()
     d.hold(2.5)  # back on the search, query and results still there
 
@@ -699,7 +695,7 @@ def read_story(d: Driver) -> None:
     d.settle()
     d.key("Return")  # focus the title view read portal
     d.hold(0.6)
-    d.key_then_wait("All images loaded", 30, "Return")
+    d.key_then_wait("All images loaded", "Return", timeout=30)
     d.read_pages(READ_STORY_PICK)
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
@@ -742,7 +738,7 @@ def wiki_jump(d: Driver) -> None:
         d.hold(0.3)
     d.settle()
     d.hold(0.8)
-    d.key_then_wait("Wiki reader screen is active", 30, "Return")
+    d.key_then_wait("Wiki reader screen is active", "Return", timeout=30)
     d.hold(2.5)
     for _ in range(3):
         d.key("Down")  # scroll the page
@@ -773,7 +769,7 @@ def wiki_jump(d: Driver) -> None:
         d.key("Right")
         d.hold(0.5)
     d.hold(0.6)
-    d.key_then_wait(f'New selected node: "{re.escape(WIKI_SIDEBAR_PICK)}"', 20, "Return")
+    d.key_then_wait(f'New selected node: "{re.escape(WIKI_SIDEBAR_PICK)}"', "Return", timeout=20)
     d.settle()
     d.hold(2.5)  # the reader, now on the story the wiki sent it to
 
@@ -791,7 +787,7 @@ def speech_index(d: Driver) -> None:
     d.hold(2.5)
     # Walk the A-Z letters; each one repopulates the word grid.
     for _ in range(3):
-        d.key_then_wait("Populated index page for letter", 15, "Down")
+        d.key_then_wait("Populated index page for letter", "Down")
         d.hold(1.6)
     d.hold(1.0)
 

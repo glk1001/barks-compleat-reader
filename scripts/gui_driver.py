@@ -287,6 +287,15 @@ class Driver:
         """Return how many log lines have matched `pattern` so far."""
         return len(re.findall(pattern, self._log.read_text(errors="replace")))
 
+    def last_line(self, pattern: str) -> str:
+        """Return the most recent log line matching `pattern`, or "" if none has."""
+        lines = [
+            ln
+            for ln in self._log.read_text(errors="replace").splitlines()
+            if re.search(pattern, ln)
+        ]
+        return lines[-1] if lines else ""
+
     def select_node(self, want: str, max_steps: int = 60) -> None:
         """Walk the tree downward until `want` is the selected node.
 
@@ -348,8 +357,13 @@ class Driver:
         yield
         self._await_new(pattern, timeout, before)
 
-    def key_then_wait(self, pattern: str, timeout: float, *keys: str) -> None:
+    def key_then_wait(self, pattern: str, *keys: str, timeout: float = 15) -> None:
         """Press keys, then block until a NEW occurrence of `pattern` is logged.
+
+        Args:
+            pattern: Regex to look for in the app log.
+            *keys: X11 key names, pressed in order.
+            timeout: Seconds to wait after the last key for a new match.
 
         Raises:
             DriverError: If no new match arrives within `timeout` seconds.
@@ -358,8 +372,14 @@ class Driver:
         with self.expect(pattern, timeout):
             self.key(*keys)
 
-    def click_then_wait(self, pattern: str, timeout: float, x: int, y: int) -> None:
+    def click_then_wait(self, pattern: str, x: int, y: int, timeout: float = 15) -> None:
         """Click, then block until a NEW occurrence of `pattern` is logged.
+
+        Args:
+            pattern: Regex to look for in the app log.
+            x: Screenshot pixel column to click.
+            y: Screenshot pixel row to click.
+            timeout: Seconds to wait after the click for a new match.
 
         Raises:
             DriverError: If no new match arrives within `timeout` seconds.
@@ -456,7 +476,7 @@ class Driver:
         """
         pattern = self.FOCUS_MOVED if pattern is None else pattern
         for key in keys:
-            self.key_then_wait(pattern, timeout, key)
+            self.key_then_wait(pattern, key, timeout=timeout)
 
     # -- composite moves ----------------------------------------------------
 
@@ -468,7 +488,7 @@ class Driver:
         log to go quiet (under four parallel workers the pass can take a while).
         """
         self.select_node(name)
-        self.key_then_wait(self.NODE_EXPANDED.format(name=name), 15, "Return")
+        self.key_then_wait(self.NODE_EXPANDED.format(name=name), "Return")
         self.settle()
         self._pace(BRANCH_OPEN_PAUSE)
 
@@ -481,7 +501,7 @@ class Driver:
         """
         self.hold(pick.dwell)
         for _ in range(pick.pages - 1):
-            self.key_then_wait(self.SHOWED_PAGE, 15, "Right")
+            self.key_then_wait(self.SHOWED_PAGE, "Right")
             self.hold(pick.dwell)
 
     def _walk_menu_to(self, name: str) -> None:
@@ -527,7 +547,7 @@ class Driver:
         forward = (there - here) % count
         backward = (here - there) % count
 
-        self.key_then_wait(self.MENU_ENTERED, 15, "Escape")
+        self.key_then_wait(self.MENU_ENTERED, "Escape")
         self._pace(MENU_OPEN_PAUSE)
         step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
         for _ in range(presses):
@@ -599,7 +619,7 @@ class Driver:
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""
         self._walk_menu_to("close")
-        self.key_then_wait(self.MAIN_SCREEN_ACTIVE, 15, "Return")
+        self.key_then_wait(self.MAIN_SCREEN_ACTIVE, "Return")
 
     def goto_page(self, target: int) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
@@ -640,7 +660,7 @@ class Driver:
         the fade and then for the app to confirm where focus landed.
         """
         self.wait_title_fade()
-        self.key_then_wait(self.ENTERED_AT_PORTAL, 15, "Return")
+        self.key_then_wait(self.ENTERED_AT_PORTAL, "Return")
 
     def open_selected_story(self) -> None:
         """Open the title selected in the tree and wait for its images to load.
@@ -652,7 +672,7 @@ class Driver:
         on a heavy title view opens the story at the cover instead, silently.
         """
         self.focus_portal()
-        self.key_then_wait(self.ALL_IMAGES_LOADED, 30, "Return")
+        self.key_then_wait(self.ALL_IMAGES_LOADED, "Return", timeout=30)
 
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree."""
@@ -662,7 +682,7 @@ class Driver:
         self._pace(READER_CLOSED_PAUSE)
         # Closing the reader leaves focus in the bottom region, where Down does
         # nothing to the tree. Escape hands it back (main_screen_nav:243).
-        self.key_then_wait(self.EXITED_BOTTOM_FOCUS, 15, "Escape")
+        self.key_then_wait(self.EXITED_BOTTOM_FOCUS, "Escape")
 
 
 def boot_app_at(

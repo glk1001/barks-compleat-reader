@@ -251,7 +251,7 @@ class AppBoot:
         return path
 
     def save_failure_artifacts(self) -> list[Path]:
-        """Save a screenshot, the log tail and the app's log file for a failed test.
+        """Save a screenshot, the logs and the scratch profile for a failed test.
 
         Returns:
             The files written, for the report.
@@ -277,6 +277,14 @@ class AppBoot:
             target = out / artifact_name(self.nodeid, f"-{log.name}")
             shutil.copy2(log, target)
             saved.append(target)
+        # The profile the app booted from, as it stands now: what a hand reboot
+        # into the failing state needs (BARKS_READER_CONFIG_DIR at a copy of it).
+        for name in ("barks-reader.ini", "barks-reader.json"):
+            source = self.scratch / name
+            if source.is_file():
+                target = out / artifact_name(self.nodeid, f"-{name}")
+                shutil.copy2(source, target)
+                saved.append(target)
         return saved
 
     def stop(self) -> None:

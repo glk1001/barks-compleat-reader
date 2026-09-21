@@ -36,12 +36,12 @@ def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
     # has faded in, so the Enter that opens the comic waits for the fade's end.
     d.wait_title_fade()
 
-    d.key_then_wait(ALL_IMAGES_LOADED, 30, "Return")
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ)
     d.close_reader()
     d.key("Escape")  # hand focus back from the bottom region to the tree
     d.settle()
-    d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Title"), 15)
+    d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Title"))
 
 
 def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
@@ -50,17 +50,17 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     search.type_query(d, WORD_QUERY)
     d.key("Down")  # the first matching word chip
     d.settle()
-    d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), 15, "Return")
+    d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
 
     search.click_word_balloon(boot, d, WORD_RESULT_ROW, WORD_RESULT_NAME)
     search.click_first_bubble(boot, d, WORD_RESULT_NAME)
     d.wait_title_fade()  # the story's title view fades in; a Return mid-fade is lost
-    d.key_then_wait(ALL_IMAGES_LOADED, 30, "Return")
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     assert d.current_page() > 0, "a bubble opens the story at its own page, not the front"
     d.close_reader()
     d.key("Escape")
     d.settle()
-    d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Word"), 15)
+    d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Word"))
 
 
 NO_MATCH_QUERY = "zzzz"
@@ -81,9 +81,9 @@ def test_the_clear_button_empties_the_search(boot: AppBoot) -> None:
     """
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
-    d.key_then_wait(d.FOCUS_MOVED, 15, "Return")  # the first result row
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first result row
     d.move_focus("Left")  # the clear (x) button
-    d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode="title"), 15, "Return")
+    d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode="title"), "Return")
 
 
 TAG_QUERY = "scrooge"
@@ -96,5 +96,5 @@ def test_tag_search_by_keyboard_picks_a_tag_then_a_member(boot: AppBoot) -> None
     """Return in the box lands on the first chip; Return there selects it and shows its members."""
     d = boot(nodes.TAG_SEARCH)
     search.type_query(d, TAG_QUERY)
-    d.key_then_wait(d.FOCUS_MOVED, 15, "Return")  # the chips
-    d.key_then_wait(TAG_OR_MEMBER_SELECTED, 15, "Return")
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the chips
+    d.key_then_wait(TAG_OR_MEMBER_SELECTED, "Return")

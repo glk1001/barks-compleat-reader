@@ -22,13 +22,13 @@ def test_statistics_tabs_and_the_word_dropdown(boot: AppBoot) -> None:
     opens a dropdown of word clouds instead of loading an image directly.
     """
     d = boot(nodes.STATISTICS)
-    d.key_then_wait(markers.STATISTICS_ENTERED_NAV, 15, "Right")
+    d.key_then_wait(markers.STATISTICS_ENTERED_NAV, "Right")
     d.move_focus("Right")  # second tab
-    d.key_then_wait(LOADING_IMAGE, 15, "Return")
+    d.key_then_wait(LOADING_IMAGE, "Return")
     d.move_focus("Left")  # back to the first
-    d.key_then_wait(LOADING_IMAGE, 15, "Return")
+    d.key_then_wait(LOADING_IMAGE, "Return")
     d.move_focus("Left")  # wraps to the last tab, Word Statistics
-    d.key_then_wait(markers.STATISTICS_ENTERED_DROPDOWN, 15, "Return")
+    d.key_then_wait(markers.STATISTICS_ENTERED_DROPDOWN, "Return")
     d.move_focus("Down")
     # The dropdown still eats keys until it has dismissed itself, so wait for that too.
     with (
@@ -37,7 +37,7 @@ def test_statistics_tabs_and_the_word_dropdown(boot: AppBoot) -> None:
         d.expect(d.DROPDOWN_DISMISSED),
     ):
         d.key("Return")
-    d.key_then_wait(markers.STATISTICS_EXITED_NAV, 15, "Escape")
+    d.key_then_wait(markers.STATISTICS_EXITED_NAV, "Escape")
 
 
 def test_an_article_opens_in_the_comic_reader(boot: AppBoot) -> None:
@@ -72,7 +72,7 @@ def _open_document(d: Driver, name: str) -> None:
 
 def _close_document(d: Driver) -> None:
     """Escape opens the document reader's menu on Close; Return presses it."""
-    d.key_then_wait(d.MENU_ENTERED, 15, "Escape")
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
     with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
         d.key("Return")
 
@@ -86,8 +86,8 @@ def test_the_intro_document_opens_and_closes(boot: AppBoot) -> None:
 def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
     d = boot(nodes.APPENDIX)
     _open_document(d, nodes.CENSORSHIP_DOCUMENT)
-    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), 15, "Right")
-    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=1), 15, "Left")
+    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
+    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=1), "Left")
     _close_document(d)
 
 
@@ -113,6 +113,6 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
 
     with d.expect(markers.CORPUS_STATS_OPENED), d.expect(NUMBERS_ENTERED):
         d.key("Return")  # the node is still selected
-    d.key_then_wait(d.MENU_ENTERED, 15, "Up")
+    d.key_then_wait(d.MENU_ENTERED, "Up")
     with d.expect(markers.CORPUS_STATS_CLOSING), d.expect(MAIN_FROM_NUMBERS):
         d.key("Return")

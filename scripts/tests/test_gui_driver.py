@@ -103,7 +103,7 @@ class TestPressMenuButton:
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
             patch.object(Driver, "hold"),
         ):
             driver.press_menu_button(name)
@@ -158,7 +158,7 @@ class TestMainMenuButton:
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
             patch.object(Driver, "hold"),
         ):
             driver.main_menu_button(name)
@@ -214,12 +214,14 @@ class TestCloseReader:
         stub_driver._menu_focus = "goto_page"  # noqa: SLF001
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)) as wait,
+            patch.object(
+                Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)
+            ) as wait,
             patch.object(Driver, "hold"),
         ):
             stub_driver.close_reader()
         assert keys_pressed(key) == ["Escape", "Right", "Return"]
-        assert wait.call_args.args == ("Main screen is active", 15, "Return")
+        assert wait.call_args.args == ("Main screen is active", "Return")
         assert stub_driver._menu_focus == "close"  # noqa: SLF001
 
 
@@ -230,7 +232,7 @@ class TestGotoPage:
     def _steps(driver: Driver, target: int, current: int, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
             patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=current),
@@ -277,7 +279,7 @@ class TestGotoPage:
         """The reader opens on whatever page the user cued, so it has to look."""
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
             patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=29) as where,
@@ -302,7 +304,7 @@ class TestExpect:
             patch.object(Driver, "key") as key,
             patch.object(gui_driver.time, "sleep"),
         ):
-            stub_driver.key_then_wait("All images loaded", 30, "Return")
+            stub_driver.key_then_wait("All images loaded", "Return", timeout=30)
         key.assert_called_once_with("Return")
 
     def test_raises_when_the_marker_never_arrives(self, stub_driver: Driver) -> None:
@@ -312,7 +314,7 @@ class TestExpect:
             patch.object(gui_driver.time, "sleep"),
             pytest.raises(DriverError, match="beat stalled"),
         ):
-            stub_driver.key_then_wait("Showed page", 0, "Right")
+            stub_driver.key_then_wait("Showed page", "Right", timeout=0)
 
     def test_wraps_any_block(self, stub_driver: Driver) -> None:
         """A composite move inside the block counts, not just a single key."""
@@ -522,7 +524,9 @@ class TestOpenStory:
         order: list[str] = []
         with (
             patch.object(Driver, "wait_title_fade", side_effect=lambda: order.append("fade")),
-            patch.object(Driver, "key_then_wait", side_effect=lambda p, _t, *_k: order.append(p)),
+            patch.object(
+                Driver, "key_then_wait", side_effect=lambda p, *_k, **_kw: order.append(p)
+            ),
             patch.object(Driver, "read_pages"),
             patch.object(Driver, "close_reader"),
             patch.object(Driver, "hold"),
@@ -545,15 +549,16 @@ class TestMoveFocus:
         with patch.object(Driver, "key_then_wait") as wait:
             stub_driver.move_focus("Right", "Right", "Down")
         assert [c.args for c in wait.call_args_list] == [
-            (Driver.FOCUS_MOVED, 15, "Right"),
-            (Driver.FOCUS_MOVED, 15, "Right"),
-            (Driver.FOCUS_MOVED, 15, "Down"),
+            (Driver.FOCUS_MOVED, "Right"),
+            (Driver.FOCUS_MOVED, "Right"),
+            (Driver.FOCUS_MOVED, "Down"),
         ]
 
     def test_the_wiki_has_its_own_focus_line(self, stub_driver: Driver) -> None:
         with patch.object(Driver, "key_then_wait") as wait:
             stub_driver.move_focus("Down", pattern=Driver.WIKI_FOCUS_MOVED, timeout=5)
-        assert wait.call_args.args == (Driver.WIKI_FOCUS_MOVED, 5, "Down")
+        assert wait.call_args.args == (Driver.WIKI_FOCUS_MOVED, "Down")
+        assert wait.call_args.kwargs == {"timeout": 5}
 
 
 class TestPacing:
@@ -578,9 +583,9 @@ class TestPacing:
         ):
             stub_driver._walk_menu_to("double_page")  # noqa: SLF001
         assert [c.args for c in wait.call_args_list] == [
-            (Driver.MENU_ENTERED, 15, "Escape"),
-            (Driver.FOCUS_MOVED, 15, "Right"),
-            (Driver.FOCUS_MOVED, 15, "Right"),
+            (Driver.MENU_ENTERED, "Escape"),
+            (Driver.FOCUS_MOVED, "Right"),
+            (Driver.FOCUS_MOVED, "Right"),
         ]
         hold.assert_not_called()
 

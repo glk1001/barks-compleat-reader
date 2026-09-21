@@ -40,7 +40,7 @@ def test_dots_menu_opens_settings(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
-    d.key_then_wait(markers.SETTINGS_CLOSED, 15, "Escape")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
 
 
 def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
@@ -49,8 +49,8 @@ def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
     with d.expect(DOCUMENT_ENTERED):  # the transition has finished before any key is sent
         _pick(d, pattern(markers.SWITCHING_TO_DOCUMENT_READER))
     # Escape opens the document reader's menu on its only button, Close.
-    d.key_then_wait(d.MENU_ENTERED, 15, "Escape")
-    d.key_then_wait(pattern(markers.MAIN_SCREEN_ACTIVE), 15, "Return")
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
+    d.key_then_wait(pattern(markers.MAIN_SCREEN_ACTIVE), "Return")
 
 
 def test_dots_menu_about_opens_and_escape_dismisses(boot: AppBoot) -> None:
@@ -59,7 +59,7 @@ def test_dots_menu_about_opens_and_escape_dismisses(boot: AppBoot) -> None:
     _pick(d, markers.ABOUT_BOX_OPENED)
     d.key("Escape")  # the box auto-dismisses; nothing is logged for that
     d.settle()
-    d.key_then_wait(ANY_NODE_SELECTED, 15, "Down")  # and the tree answers again
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # and the tree answers again
 
 
 def test_quit_asks_first_and_escape_stays(boot: AppBoot) -> None:
@@ -70,9 +70,9 @@ def test_quit_asks_first_and_escape_stays(boot: AppBoot) -> None:
         d.expect(pattern(markers.CONFIRM_POPUP_OPENED, title=QUIT_TITLE)),
     ):
         d.main_menu_button("quit")
-    d.key_then_wait(pattern(markers.CONFIRM_POPUP_CANCELLED, title=QUIT_TITLE), 15, "Escape")
+    d.key_then_wait(pattern(markers.CONFIRM_POPUP_CANCELLED, title=QUIT_TITLE), "Escape")
     d.expect_no_new(pattern(markers.CLOSING_APP), 2.0)
-    d.key_then_wait(ANY_NODE_SELECTED, 15, "Down")  # still alive and answering
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # still alive and answering
 
 
 def test_quit_confirmed_closes_the_app(boot: AppBoot) -> None:
