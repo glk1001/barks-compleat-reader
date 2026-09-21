@@ -25,6 +25,7 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
@@ -253,7 +254,7 @@ class SearchScreen(FloatLayout):
             widget.opacity = 1 if active else 0
             widget.size_hint = (0.86, 1) if active else (0, 0)
 
-        logger.debug(f"SearchScreen mode set to '{mode}'.")
+        logger.debug(log_markers.SEARCH_MODE_SET.format(mode=mode))
 
     # --- Shared Helpers ---
 
@@ -291,7 +292,7 @@ class SearchScreen(FloatLayout):
         on_select(title_str)
 
     def _on_result_goto_title(self, title_str: str) -> None:
-        logger.info(f'Search: selected "{title_str}".')
+        logger.info(log_markers.SEARCH_SELECTED_TITLE.format(title=title_str))
         if self.on_goto_title:
             self.on_goto_title(title_str)
 
@@ -307,14 +308,14 @@ class SearchScreen(FloatLayout):
         title_enums, title_strings = self._get_titles_matching(text)
         self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
         self._update_background_from_results(title_enums)
-        logger.debug(f"Search results: {len(title_strings)} titles for '{text}'.")
+        logger.debug(log_markers.SEARCH_TITLE_RESULTS.format(count=len(title_strings), text=text))
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
         result = self._search.search(value, SearchMode.TITLE)
         return result.titles, result.title_strings
 
     def on_title_clear(self) -> None:
-        logger.debug("Search cleared: title.")
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="title"))
         self._cancel_image_change_event()
         self.ids.title_search_input.text = ""
         self.ids.title_search_input.focus = True
@@ -411,7 +412,7 @@ class SearchScreen(FloatLayout):
         self._update_background_from_results(titles or [])
 
     def _on_tag_result_selected(self, tag_str: str) -> None:
-        logger.info(f'Tag search: selected tag "{tag_str}".')
+        logger.info(log_markers.TAG_SELECTED_TAG.format(tag=tag_str))
         self._selected_tag = tag_str
         self._selected_member = ""
         self._current_tag, _ = self._search.resolve_tag(tag_str.lower())
@@ -421,7 +422,7 @@ class SearchScreen(FloatLayout):
     def _on_member_tag_selected(self, member_label: str) -> None:
         # Strip subgroup indicator suffix
         member_str = member_label.rstrip(" \u25b8")
-        logger.info(f'Tag search: selected member "{member_str}".')
+        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=member_str))
         self._selected_member = member_label
         self._show_tag_titles(member_str)
 
@@ -436,7 +437,7 @@ class SearchScreen(FloatLayout):
         self._tag_titles = []
 
     def on_tag_clear(self) -> None:
-        logger.debug("Search cleared: tag.")
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
         self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
@@ -490,7 +491,7 @@ class SearchScreen(FloatLayout):
         return matching
 
     def _on_word_chip_selected(self, word: str) -> None:
-        logger.info(f'Word search: selected chip "{word}".')
+        logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
         self._selected_word = word
 
         for btn in reversed(self.ids.word_chips_layout.children):
@@ -607,7 +608,7 @@ class SearchScreen(FloatLayout):
         return results
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
-        logger.debug(f"Search results: {len(self._word_search_results)} word rows.")
+        logger.debug(log_markers.SEARCH_WORD_RESULTS.format(count=len(self._word_search_results)))
         self._selected_result_button = None
         for i, (
             comic_title,
@@ -655,7 +656,7 @@ class SearchScreen(FloatLayout):
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
         search_text = self._selected_word
-        logger.info(f'Show speech bubbles for: "{title_str}" and search "{search_text}".')
+        logger.info(log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title=title_str, text=search_text))
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
             title_str,
@@ -668,7 +669,7 @@ class SearchScreen(FloatLayout):
         )
 
     def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
-        logger.info(f'Word search bubble press: "{title_str}" page {page_to_goto}.')
+        logger.info(log_markers.WORD_BUBBLE_PRESS.format(title=title_str, page=page_to_goto))
         self._speech_bubble_popup.dismiss()
         Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
 
@@ -681,7 +682,7 @@ class SearchScreen(FloatLayout):
             self.on_goto_title_with_page(image_info, page_to_goto)
 
     def on_word_clear(self) -> None:
-        logger.debug("Search cleared: word.")
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="word"))
         self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
         self.ids.word_chips_layout.clear_widgets()
@@ -735,7 +736,7 @@ class SearchScreen(FloatLayout):
         self._nav_active = True
         self._nav_focus_area = "input"
         self._focus_active_input()
-        logger.debug("SearchScreen: entered nav focus.")
+        logger.debug(log_markers.SEARCH_ENTERED_NAV)
 
     def enter_nav_focus_at_last_result(self, on_exit_request: Callable) -> None:
         """Enter nav focus, restoring focus to the last activated result if available."""
@@ -775,7 +776,7 @@ class SearchScreen(FloatLayout):
         path tests type into it only once this line says it has.
         """
         state = "focused" if focused else "unfocused"
-        logger.debug(f"SearchScreen: {self._active_mode} search box {state}.")
+        logger.debug(log_markers.SEARCH_BOX_FOCUS.format(mode=self._active_mode, state=state))
 
     def on_search_input_enter(self) -> None:
         """Handle Enter in a search input (kv callback).
@@ -834,7 +835,7 @@ class SearchScreen(FloatLayout):
         self._clear_clear_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
-        logger.debug("SearchScreen: exited nav focus.")
+        logger.debug(log_markers.SEARCH_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
         # While the speech-bubble popup is open it owns the keyboard directly via

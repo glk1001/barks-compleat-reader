@@ -32,6 +32,7 @@ from kivy.uix.image import Image
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.display_unit import DisplayUnit
@@ -168,9 +169,9 @@ class _ComicPageManager(EventDispatcher):
             else self._first_page_index
         )
         if self._current_page_index == first_idx:
-            logger.debug(f"Already on the first page: current index = {self._current_page_index}.")
+            logger.debug(log_markers.ALREADY_ON_FIRST_PAGE.format(index=self._current_page_index))
         else:
-            logger.debug(f"Goto start page: requested index = {first_idx}.")
+            logger.debug(log_markers.GOTO_START_PAGE.format(index=first_idx))
             self._current_page_index = first_idx
 
     def goto_last_page(self) -> None:
@@ -180,9 +181,9 @@ class _ComicPageManager(EventDispatcher):
             else self._last_page_index
         )
         if self._current_page_index == last_idx:
-            logger.debug(f"Already on the last page: current index = {self._current_page_index}.")
+            logger.debug(log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index))
         else:
-            logger.debug(f"Last page: requested index = {last_idx}.")
+            logger.debug(log_markers.GOTO_LAST_PAGE.format(index=last_idx))
             self._current_page_index = last_idx
 
     def next_page(self) -> None:
@@ -197,7 +198,7 @@ class _ComicPageManager(EventDispatcher):
                 logger.debug(f"Next unit: left_page_index = {next_unit.left_page_index}.")
                 self._current_page_index = next_unit.left_page_index
         elif self._current_page_index >= self._last_page_index:
-            logger.debug(f"Already on the last page: current index = {self._current_page_index}.")
+            logger.debug(log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index))
         else:
             logger.debug(f"Next page: requested index = {self._current_page_index + 1}")
             self._current_page_index += 1
@@ -212,7 +213,7 @@ class _ComicPageManager(EventDispatcher):
                 logger.debug(f"Prev unit: left_page_index = {prev_unit.left_page_index}.")
                 self._current_page_index = prev_unit.left_page_index
         elif self._current_page_index <= self._first_page_index:
-            logger.debug("Already on the first page: current index = 0.")
+            logger.debug(log_markers.ALREADY_ON_FIRST_PAGE.format(index=0))
         else:
             logger.debug(f"Prev page: requested index = {self._current_page_index - 1}")
             self._current_page_index -= 1
@@ -529,8 +530,10 @@ class ComicBookReader(FloatLayout):
     def _all_images_loaded(self) -> None:
         self._all_loaded = True
         logger.info(
-            f"All images loaded in {self._time_to_load_comic.get_elapsed_time_with_unit()}"
-            f": current page index = {self._current_page_index}."
+            log_markers.ALL_IMAGES_LOADED.format(
+                elapsed=self._time_to_load_comic.get_elapsed_time_with_unit(),
+                index=self._current_page_index,
+            )
         )
 
     def _load_error(self, load_warning_only: bool) -> None:
@@ -746,7 +749,9 @@ class ComicBookReader(FloatLayout):
             # Optionally display a placeholder image or error message
 
         logger.info(
-            f"Showed page {self._current_page_index} in {timing.get_elapsed_time_with_unit()}."
+            log_markers.SHOWED_PAGE.format(
+                index=self._current_page_index, elapsed=timing.get_elapsed_time_with_unit()
+            )
         )
 
         # Page one of a newly opened comic is what the reader screen was held back for.
@@ -789,10 +794,12 @@ class ComicBookReader(FloatLayout):
         """Toggle double-page mode on/off for the current comic only (does not change config)."""
         if self.is_single_page_only_collection:
             # The collections are always single-page - ignore the toggle.
-            logger.debug("Double page toggle ignored: single-page collection.")
+            logger.debug(log_markers.DOUBLE_PAGE_IGNORED)
             return
         self._page_manager.double_page_mode = not self._page_manager.double_page_mode
-        logger.info(f"Double page mode toggled: {self._page_manager.double_page_mode}.")
+        logger.info(
+            log_markers.DOUBLE_PAGE_TOGGLED.format(mode=self._page_manager.double_page_mode)
+        )
         self._show_page(None, None)
 
     def goto_page(self) -> None:
@@ -818,10 +825,10 @@ class ComicBookReader(FloatLayout):
         self._goto_page_dropdown.open(self._goto_page_widget)
         if selected_button:
             self._goto_page_dropdown.scroll_to(selected_button)
-        logger.debug("Goto page dropdown opened.")
+        logger.debug(log_markers.GOTO_PAGE_DROPDOWN_OPENED)
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
-        logger.info(f'Goto page selected: "{page}".')
+        logger.info(log_markers.GOTO_PAGE_SELECTED.format(page=page))
         self._page_manager.set_current_page_index_from_str(page)
         self._hide_action_bar_if_fullscreen()
 
@@ -1134,7 +1141,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.is_fullscreen = False
         self._update_widget_states()
         self._update_fullscreen_button()
-        logger.info("Entered windowed mode on ComicBookReaderScreen.")
+        logger.info(log_markers.ENTERED_WINDOWED.format(screen="ComicBookReaderScreen"))
 
     def _exit_fullscreen(self) -> None:
         # Both branches delegate unconditionally: when the window is already in
@@ -1162,7 +1169,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_widget_states()
         self._update_fullscreen_button()
 
-        logger.info("Entered fullscreen mode on ComicBookReaderScreen.")
+        logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="ComicBookReaderScreen"))
 
         if self._is_closing:
             logger.debug("Entering fullscreen mode finished, now closing reader.")

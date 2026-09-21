@@ -16,6 +16,7 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
@@ -193,7 +194,7 @@ class FunImageViewScreen(BoxLayout):
 
     def fun_options_button_pressed(self) -> None:
         self.fun_options_enabled = not self.fun_options_enabled
-        logger.debug(f"Fun view options button pressed. New state is '{self.fun_options_enabled}'.")
+        logger.debug(log_markers.FUN_OPTIONS_PRESSED.format(state=self.fun_options_enabled))
 
     def view_options_clear_all_button_pressed(self) -> None:
         logger.debug("Fun view options clear all pressed. Setting all checkboxes to inactive.")
@@ -208,15 +209,16 @@ class FunImageViewScreen(BoxLayout):
         self._current_history_index = len(self._image_history) - 1
         assert image_info.filename
         logger.debug(
-            f'Set last loaded fun image file "{image_info.filename.name}'
-            f' and title: "{self.current_title_str}".'
+            log_markers.FUN_IMAGE_LOADED.format(
+                filename=image_info.filename.name, title=self.current_title_str
+            )
         )
 
     def _set_title(self, title: Titles | None) -> None:
         self.current_title_str = "" if title is None else ENUM_TO_STR_TITLE[title]
         self.fun_view_from_title = self.current_title_str != ""
         self.goto_title_button_active = self.fun_view_from_title
-        logger.debug(f'Set fun view title to "{self.current_title_str}".')
+        logger.debug(log_markers.FUN_VIEW_TITLE_SET.format(title=self.current_title_str))
 
     def on_goto_title(self, *, from_keyboard: bool = False) -> None:
         """Fire the goto-title arrow.

@@ -4,9 +4,8 @@ Skipped when the profile points at no live wiki bundle. With the live bundle
 off the app reads the copy under its Reader Files folder, which the harness
 cannot see from the ini, so the tests run and fail if it is missing (the wiki
 node is then absent) - a data gap to fix, not a reason to test less. The
-wiki viewer logs
-through Kivy's logger, so its lines carry a ``kivy:`` prefix in the app log;
-the patterns below are substrings of them.
+wiki viewer logs through Kivy's logger, so its lines carry a ``kivy:`` prefix in
+the app log; the patterns below are substrings of them.
 """
 
 from __future__ import annotations
@@ -17,17 +16,21 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import harness, nodes
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
+from okf_reader.core import log_markers as wiki
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
 
-WIKI_ACTIVE = "Wiki reader screen is active."
-WIKI_ENTERED = "Screen 'wiki_reader' entered."  # the transition has finished
-# Parentheses in a log line must be escaped: wait patterns are regexes.
-MAIN_FROM_WIKI = re.escape("Main screen is active (from wiki reader).")
-SHOWED_PAGE = "OKFViewer: Showed page"
-TOP_BAR = "OKFViewer: Focus region TOP_BAR."
+WIKI_ACTIVE = markers.WIKI_READER_ACTIVE
+WIKI_ENTERED = pattern(markers.SCREEN_ENTERED, name="wiki_reader")  # the transition has finished
+MAIN_FROM_WIKI = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_WIKI_READER)
+SHOWED_PAGE = pattern(wiki.PAGE_SHOWN)
+TOP_BAR = pattern(wiki.FOCUS_REGION, name="TOP_BAR")
+SIDEBAR = pattern(wiki.FOCUS_REGION, name="SIDEBAR")
+ANDES_PAGE = re.compile(r".*lost-in-the-andes\.md")
 SIDEBAR_STEPS = 2
 # On the top bar Escape lands on Back; the goto-title button is this far right
 # (the bar runs Back, contrast, goto-title, quit).
@@ -62,7 +65,7 @@ def wiki_boot(boot: AppBoot) -> AppBoot:
 def _leave_by_back_at_root(d: Driver) -> None:
     """Escape lifts focus to the top bar on Back; Back at the root exits the wiki."""
     d.key_then_wait(TOP_BAR, 15, "Escape")
-    with d.expect("OKFViewer: Back at history root; exiting."), d.expect(MAIN_FROM_WIKI):
+    with d.expect(wiki.BACK_EXIT), d.expect(MAIN_FROM_WIKI):
         d.key("Return")
 
 
@@ -86,26 +89,26 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     d.focus_portal()
     d.move_focus(*["Up"] * UPS_TO_WIKI_CHIP)
     with (
-        d.expect("Wiki page button pressed."),
+        d.expect(markers.WIKI_PAGE_BUTTON_PRESSED),
         d.expect(WIKI_ACTIVE, 30),
-        d.expect(f"{SHOWED_PAGE} '.*lost-in-the-andes.md'", 30),
+        d.expect(pattern(wiki.PAGE_SHOWN, page=ANDES_PAGE), 30),
         d.expect(WIKI_ENTERED, 30),
     ):
         d.key("Return")
 
-    d.key_then_wait("OKFViewer: Focus region SIDEBAR.", 15, "Left")
+    d.key_then_wait(SIDEBAR, 15, "Left")
     d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
     d.key_then_wait(SHOWED_PAGE, 30, "Return")  # the story picked out of the sidebar
     assert d.match_count(SHOWED_PAGE) >= TWO_PAGES
 
     d.key_then_wait(TOP_BAR, 15, "Escape")
-    d.key_then_wait("OKFViewer: Back to '.*lost-in-the-andes.md'", 30, "Return")
+    d.key_then_wait(pattern(wiki.BACK_TO, page=ANDES_PAGE), 30, "Return")
 
     d.key_then_wait(TOP_BAR, 15, "Escape")
     d.move_focus(*["Right"] * BAR_RIGHTS_TO_GOTO, pattern=d.WIKI_FOCUS_MOVED)
     with (
-        d.expect(r'Wiki goto title: "[A-Z_]+"'),
+        d.expect(pattern(markers.WIKI_GOTO_TITLE, name=re.compile(r"[A-Z_]+"))),
         d.expect(MAIN_FROM_WIKI),
-        d.expect(f'New selected node: "{nodes.LOST_IN_THE_ANDES[0]}"'),
+        d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.LOST_IN_THE_ANDES[0])),
     ):
         d.key("Return")

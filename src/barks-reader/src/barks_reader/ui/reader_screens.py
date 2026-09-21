@@ -20,6 +20,8 @@ from kivy.uix.screenmanager import (
 )
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .platform_window_utils import set_titlebar_drag_region
 
 if TYPE_CHECKING:
@@ -47,10 +49,10 @@ class ReaderScreen(Screen):
     # moment a screen is really on show - the "... is active" lines above the
     # switches are logged when the (random, animated) transition starts.
     def on_enter(self, *_args: object) -> None:
-        logger.debug(f"Screen '{self.name}' entered.")
+        logger.debug(log_markers.SCREEN_ENTERED.format(name=self.name))
 
     def on_leave(self, *_args: object) -> None:
-        logger.debug(f"Screen '{self.name}' left.")
+        logger.debug(log_markers.SCREEN_LEFT.format(name=self.name))
 
     def is_active(self, active: bool) -> None:
         pass
@@ -194,17 +196,17 @@ class ReaderScreenManager:
 
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
-        logger.info("Main screen is active (from comic reader).")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_COMIC_READER))
 
     def _switch_to_document_reader(self, doc_dir: Path, title: str) -> None:
-        logger.debug(f'Switching to document reader for "{title}"...')
+        logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
         self._reader_screens.document_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title)
         self._screen_manager.current = DOCUMENT_READER_SCREEN
-        logger.info(f'Document reader screen is active: "{title}".')
+        logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))
 
     def _close_document_reader(self) -> None:
         logger.debug("Closing document reader and switching back to main screen...")
@@ -217,17 +219,17 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active (from document reader).")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_DOCUMENT_READER))
 
     def _switch_to_corpus_stats(self) -> None:
-        logger.debug("Switching to the By the Numbers page...")
+        logger.debug(log_markers.SWITCHING_TO_BY_THE_NUMBERS)
         assert self._reader_screens
         self._reader_screens.corpus_stats_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.corpus_stats_screen.open()
         self._screen_manager.current = CORPUS_STATS_SCREEN
-        logger.info("By the Numbers screen is active.")
+        logger.info(log_markers.BY_THE_NUMBERS_ACTIVE)
 
     def _close_corpus_stats(self) -> None:
         logger.debug("Closing the By the Numbers page and switching back to main screen...")
@@ -237,7 +239,7 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
 
-        logger.info("Main screen is active (from By the Numbers).")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_BY_THE_NUMBERS))
 
     def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:
         logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
@@ -257,7 +259,7 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Wiki reader screen is active.")
+        logger.info(log_markers.WIKI_READER_ACTIVE)
 
     def _close_wiki_reader(self) -> None:
         logger.debug("Closing wiki reader and switching back to main screen...")
@@ -272,4 +274,4 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active (from wiki reader).")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_WIKI_READER))

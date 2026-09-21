@@ -28,6 +28,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
@@ -172,7 +173,9 @@ class MainIndexScreen(IndexScreen):
         for letter in self._item_index:
             self._item_index[letter].sort(key=lambda item: item.display_text.lower())
 
-        logger.debug(f"Index build complete (in {timing.get_elapsed_time_with_unit()}).")
+        logger.debug(
+            log_markers.INDEX_BUILD_COMPLETE.format(elapsed=timing.get_elapsed_time_with_unit())
+        )
 
     def add_tag_name(self, tag: Tags, tag_name: str) -> None:
         first_letter = tag_name[0].upper()

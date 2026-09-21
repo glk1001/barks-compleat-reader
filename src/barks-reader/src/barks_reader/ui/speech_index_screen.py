@@ -25,6 +25,7 @@ from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.widget import Widget
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
@@ -563,7 +564,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
     @override
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
-        logger.info(f'Handling index term: "{item.id}".')
+        logger.info(log_markers.INDEX_TERM_HANDLED.format(term=item.id))
 
         self._open_tag_button = button
         self._open_tag_item = item
@@ -572,7 +573,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
     def _show_title_speech_bubbles(
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo
     ) -> None:
-        logger.info(f'Show speech bubbles for: "{title_str}" and index terms "{index_terms}".')
+        logger.info(
+            log_markers.SHOW_BUBBLES_FOR_INDEX_TERMS.format(title=title_str, terms=index_terms)
+        )
         show_speech_bubbles_popup(
             self._speech_bubble_browser_popup,
             title_str,
@@ -584,7 +587,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         )
 
     def _handle_title_from_bubble_press(self, title_str: str, page_to_goto: str) -> None:
-        logger.info(f'Handling title from speech bubble browser: "{title_str}" - {page_to_goto}.')
+        logger.info(
+            log_markers.TITLE_FROM_BUBBLE_BROWSER.format(title=title_str, page=page_to_goto)
+        )
         self._speech_bubble_browser_popup.dismiss()
 
         image_info = ImageInfo(from_title=STR_TITLE_TO_ENUM[title_str], filename=None)
@@ -687,7 +692,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
     def on_letter_prefix_press(self, button: IndexPrefixButton) -> None:
         prefix = button.prefix
-        logger.debug(f"Pressed prefix button: '{prefix}.")
+        logger.debug(log_markers.INDEX_PREFIX_PRESSED.format(prefix=prefix))
         assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
 

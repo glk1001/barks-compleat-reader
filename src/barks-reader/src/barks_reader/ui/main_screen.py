@@ -16,6 +16,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import APP_TITLE
@@ -338,10 +339,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Quit the app, asking first if the confirm-quit setting is on (kv callback)."""
         app = App.get_running_app()
         if not self._reader_settings.confirm_quit:
-            logger.info("Quit requested: no confirmation needed.")
+            logger.info(log_markers.QUIT_NO_CONFIRMATION)
             app.close_app()
             return
-        logger.info("Quit requested: asking for confirmation.")
+        logger.info(log_markers.QUIT_ASKING)
         open_confirm_popup(
             title="Quit",
             text="Quit the Barks Reader?",
@@ -352,7 +353,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def app_closing(self) -> None:
-        logger.debug("Closing app...")
+        logger.debug(log_markers.CLOSING_APP)
 
         self._window_helper.exit_fullscreen()
 
@@ -389,7 +390,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         pass
 
     def display_settings(self, app_window: Widget, settings: Widget) -> bool:
-        logger.debug("Display settings object.")
+        logger.debug(log_markers.DISPLAY_SETTINGS)
 
         if settings in app_window.children:
             return False
@@ -460,14 +461,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if self._settings_nav is not None:
             self._settings_nav.reset()
             self._settings_nav = None
-        logger.debug("Settings closed.")
+        logger.debug(log_markers.SETTINGS_CLOSED)
 
     def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
         self._nav.on_bottom_screen_visibility_changed()
 
     def on_action_bar_go_back(self) -> None:
-        logger.info("'Go back' menu item selected.")
+        logger.info(log_markers.GO_BACK_SELECTED)
         # Restore keyboard focus on the revealed bottom screen only when Go Back was
         # itself keyboard-driven. This handler runs asynchronously (the menu button's
         # trigger_action fires on_release after a 0.1s press), by which point menu mode
@@ -605,7 +606,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             logger.error("Wiki page button pressed. But no title selected.")
             return
 
-        logger.debug("Wiki page button pressed.")
+        logger.debug(log_markers.WIKI_PAGE_BUTTON_PRESSED)
         self._nav.save_focus_before_reader()
         self._nav_coord.open_wiki_page_for_title(fanta_info.comic_book_info.title)
 

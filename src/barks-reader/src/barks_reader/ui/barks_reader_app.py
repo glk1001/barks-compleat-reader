@@ -17,6 +17,7 @@ from kivy.uix.settings import Settings, SettingsWithNoMenu  # can take ~1s in VM
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.core import log_markers
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
@@ -233,7 +234,7 @@ class BarksReaderApp(App):
         key: str,
         value: Any,
     ) -> None:  # ty:ignore[invalid-method-override]
-        logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
+        logger.info(log_markers.CONFIG_CHANGE.format(section=section, key=key, value=value))
         if self.reader_settings.on_changed_setting(section, key, value) and (
             section == BARKS_READER_SECTION
         ):

@@ -38,6 +38,7 @@ from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reading_history import (
     ReadEvent,
@@ -308,7 +309,7 @@ class HistoryScreen(FloatLayout):
         self._select_view(_TITLES_VIEW)
 
     def _select_view(self, view: str) -> None:
-        logger.debug(f"History: selected '{view}' view.")
+        logger.debug(log_markers.HISTORY_SELECTED_VIEW.format(view=view))
         self._current_view = view
         self.ids.journal_button.state = "down" if view == _JOURNAL_VIEW else "normal"
         self.ids.titles_button.state = "down" if view == _TITLES_VIEW else "normal"
@@ -340,7 +341,9 @@ class HistoryScreen(FloatLayout):
             rows.add_widget(widget)
         self._restore_nav_focus()
         logger.debug(
-            f"History: mounted cached '{built.view}' view with {len(built.nav_rows)} rows."
+            log_markers.HISTORY_MOUNTED_CACHED_VIEW.format(
+                view=built.view, rows=len(built.nav_rows)
+            )
         )
 
     def _start_build(self, revision: object) -> None:
@@ -395,7 +398,9 @@ class HistoryScreen(FloatLayout):
         self._building = None
         self._restore_nav_focus()
         if built is not None:
-            logger.debug(f"History: built '{built.view}' view with {len(built.nav_rows)} rows.")
+            logger.debug(
+                log_markers.HISTORY_BUILT_VIEW.format(view=built.view, rows=len(built.nav_rows))
+            )
 
     def _cancel_pending_build(self) -> None:
         """Abandon a part-finished build so it is never cached as complete."""
@@ -550,13 +555,13 @@ class HistoryScreen(FloatLayout):
 
     def _on_delete_event(self, event_id: str) -> None:
         assert self._history_store is not None
-        logger.info(f'History: deleted event "{event_id}".')
+        logger.info(log_markers.HISTORY_DELETED_EVENT.format(event_id=event_id))
         self._history_store.delete_event(event_id)
         self._drop_rows({event_id})
 
     def _on_delete_title(self, title_str: str) -> None:
         assert self._history_store is not None
-        logger.info(f'History: deleted title "{title_str}".')
+        logger.info(log_markers.HISTORY_DELETED_TITLE.format(title=title_str))
         self._history_store.delete_events_for_title(title_str)
         self._drop_rows({title_str})
 
@@ -625,7 +630,7 @@ class HistoryScreen(FloatLayout):
         self._nav_zone = _ZONE_LIST
         self._nav_focused_idx = 0
         self._update_nav_focus()
-        logger.debug("HistoryScreen: entered nav focus.")
+        logger.debug(log_markers.HISTORY_ENTERED_NAV)
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear every highlight."""
@@ -784,7 +789,7 @@ class HistoryScreen(FloatLayout):
 
         def do_clear() -> None:
             assert self._history_store is not None
-            logger.info("History: cleared.")
+            logger.info(log_markers.HISTORY_CLEARED)
             self._history_store.clear()
             self._refresh()
 

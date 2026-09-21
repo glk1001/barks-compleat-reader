@@ -6,6 +6,8 @@ import json
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes, tree
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
 
 if TYPE_CHECKING:
@@ -18,12 +20,13 @@ BROWSE_RANGE = "1947-1950"
 GOTO_PAGE = 12
 GOTO_PAGE_BACK = 3
 READ = Pick(pages=2, dwell=0.0)
+SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 
 
 def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
     d.open_selected_story()
-    d.wait_for("Showed page")
+    d.wait_for(SHOWED_PAGE)
     return d
 
 
@@ -48,11 +51,11 @@ def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
     d.open_selected_story()
     d.read_pages(READ)
 
-    with d.expect("Goto page dropdown opened."), d.expect("Goto page selected:"):
+    with d.expect(markers.GOTO_PAGE_DROPDOWN_OPENED), d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
         d.goto_page(GOTO_PAGE)
     assert d.current_page() == GOTO_PAGE
 
-    with d.expect("Double page mode toggled: True."), d.expect("Showed page"):
+    with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
         d.press_menu_button("double_page")
     d.close_reader()
 
@@ -61,7 +64,7 @@ def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
     """A second goto reopens the (cached) dropdown and can step Up to an earlier page."""
     d = _open_ghost_of_the_grotto(boot)
     d.goto_page(GOTO_PAGE)
-    with d.expect("Goto page dropdown opened."), d.expect("Goto page selected:"):
+    with d.expect(markers.GOTO_PAGE_DROPDOWN_OPENED), d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
         d.goto_page(GOTO_PAGE_BACK)
     assert d.current_page() == GOTO_PAGE_BACK
     d.close_reader()
@@ -70,29 +73,29 @@ def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
 def test_one_pagers_ignore_double_page(boot: AppBoot) -> None:
     """A one-pager collection is always single-page: the toggle says so and does nothing."""
     d = boot(nodes.ONE_PAGERS)
-    d.key_then_wait(r'New selected node: "19\d\d-19\d\d"', 15, "Down")
-    d.key_then_wait("Node expanded:", 15, "Return")
-    d.key_then_wait("New selected node", 15, "Down")  # the range's first one-pager
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), 15, "Down")
+    d.key_then_wait(pattern(markers.NODE_EXPANDED), 15, "Return")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE), 15, "Down")  # the range's first one-pager
     d.open_selected_story()
-    with d.expect("Double page toggle ignored: single-page collection."):
+    with d.expect(markers.DOUBLE_PAGE_IGNORED):
         d.press_menu_button("double_page")
-    d.expect_no_new("Showed page", 1.0)
+    d.expect_no_new(SHOWED_PAGE, 1.0)
     d.close_reader()
 
 
 def test_left_on_the_first_page_stays_put(boot: AppBoot) -> None:
     d = _open_ghost_of_the_grotto(boot)
-    with d.expect("Already on the first page"):
+    with d.expect(pattern(markers.ALREADY_ON_FIRST_PAGE)):
         d.key("Left")
-    d.expect_no_new("Showed page", 1.0)
+    d.expect_no_new(SHOWED_PAGE, 1.0)
     d.close_reader()
 
 
 def test_goto_end_then_right_is_the_last_page(boot: AppBoot) -> None:
     d = _open_ghost_of_the_grotto(boot)
-    with d.expect("Last page: requested index"), d.expect("Showed page"):
+    with d.expect(pattern(markers.GOTO_LAST_PAGE)), d.expect(SHOWED_PAGE):
         d.press_menu_button("goto_end")
-    with d.expect("Already on the last page"):
+    with d.expect(pattern(markers.ALREADY_ON_LAST_PAGE)):
         d.key("Right")
     d.close_reader()
 
@@ -102,7 +105,7 @@ def test_goto_start_returns_to_the_opening_page(boot: AppBoot) -> None:
     first = d.current_page()
     d.read_pages(Pick(pages=TURNS_BEFORE_GOTO_START + 1, dwell=0.0))
     assert d.current_page() != first
-    with d.expect("Goto start page: requested index"), d.expect("Showed page"):
+    with d.expect(pattern(markers.GOTO_START_PAGE)), d.expect(SHOWED_PAGE):
         d.press_menu_button("goto_start")
     assert d.current_page() == first
     d.close_reader()
@@ -111,11 +114,11 @@ def test_goto_start_returns_to_the_opening_page(boot: AppBoot) -> None:
 def test_escape_opens_the_menu_and_never_closes_the_reader(boot: AppBoot) -> None:
     """Up or Escape enters menu mode; Escape there leaves it; nothing here closes."""
     d = _open_ghost_of_the_grotto(boot)
-    d.key_then_wait("Entered menu mode.", 15, "Up")
-    d.key_then_wait("Exited menu mode.", 15, "Escape")
-    d.key_then_wait("Entered menu mode.", 15, "Escape")
-    d.expect_no_new("Main screen is active", 2.0)
-    d.key_then_wait("Exited menu mode.", 15, "Escape")
+    d.key_then_wait(markers.MENU_ENTERED, 15, "Up")
+    d.key_then_wait(markers.MENU_EXITED, 15, "Escape")
+    d.key_then_wait(markers.MENU_ENTERED, 15, "Escape")
+    d.expect_no_new(pattern(markers.MAIN_SCREEN_ACTIVE), 2.0)
+    d.key_then_wait(markers.MENU_EXITED, 15, "Escape")
     d.close_reader()
 
 

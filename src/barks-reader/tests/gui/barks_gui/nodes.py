@@ -8,7 +8,11 @@ and read back what the app saved in a test's scratch ``barks-reader.json``.
 
 from __future__ import annotations
 
+import re
+
 Cue = dict[str, int | str] | None
+# Any chronological year-range node, as the tree names them.
+YEAR_RANGE_NODE = re.compile(r"19\d\d-19\d\d")
 
 # --- group nodes ---------------------------------------------------------------
 THE_STORIES = ["The Stories", "root"]

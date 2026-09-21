@@ -17,6 +17,7 @@ from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView, TreeViewNode
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.navigation import TitleDestination
 from barks_reader.core.reader_formatter import (
     ReaderFormatter,
@@ -73,7 +74,7 @@ class ReaderTreeView(TreeView):
             self.previous_selected_node.get_name() if self.previous_selected_node else "None"
         )
         curr_name = new_node.get_name() if new_node else "None"
-        logger.info(f'New selected node: "{curr_name}". Previous node: "{prev_name}".')
+        logger.info(log_markers.NEW_SELECTED_NODE.format(name=curr_name, previous=prev_name))
 
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):

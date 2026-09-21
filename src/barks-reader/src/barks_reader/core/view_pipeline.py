@@ -45,6 +45,8 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .filtered_title_lists import FilteredTitleLists
 from .image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
 from .navigation.view_states import ViewStates
@@ -281,7 +283,9 @@ class ViewPipeline:
         self._set_bottom_view_title_image_file(request.title_image_file)
         self._set_fun_image_themes(request.fun_image_themes)
 
-        logger.info(f"Updating background view state to {request.view_state.name}.")
+        logger.info(
+            log_markers.UPDATING_BACKGROUND_VIEW_STATE.format(state=request.view_state.name)
+        )
         self._view_state = request.view_state
         self._update_views(preserve_top_view=request.preserve_top_view)
 

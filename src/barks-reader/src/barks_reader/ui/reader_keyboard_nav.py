@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from kivy.graphics import Color, Line
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import theme
 
 if TYPE_CHECKING:
@@ -76,8 +77,8 @@ MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 # dismissal ends in. The GUI path tests wait on these instead of on the clock,
 # so they are part of the nav contract: every way of moving the focus ring must
 # reach `log_nav_focus`, and every dropdown must reach `_on_dropdown_dismissed`.
-NAV_FOCUS_LOG_PREFIX = "Nav focus on"
-DROPDOWN_DISMISSED_LOG = "Dropdown dismissed."
+NAV_FOCUS_LOG_PREFIX = log_markers.NAV_FOCUS_PREFIX
+DROPDOWN_DISMISSED_LOG = log_markers.DROPDOWN_DISMISSED
 _MAX_LOGGED_TEXT = 40
 
 
@@ -115,7 +116,7 @@ def log_nav_focus(widget: Widget) -> None:
     Called by `draw_focus_highlight`, so every ring drawn logs itself; a focus
     shown some other way (a colour change, say) calls this directly.
     """
-    logger.debug(f"{NAV_FOCUS_LOG_PREFIX} {describe_widget(widget)}.")
+    logger.debug(log_markers.NAV_FOCUS.format(widget=describe_widget(widget)))
 
 
 def _draw_highlight(
@@ -237,7 +238,7 @@ class ActionBarNavMixin:
             self._showed_action_bar_for_menu = True
         self._focused_btn_idx = self._last_used_btn_idx
         self._update_menu_focus()
-        logger.debug("Entered menu mode.")
+        logger.debug(log_markers.MENU_ENTERED)
 
     def _exit_menu_mode(self) -> None:
         self._clear_menu_focus()
@@ -245,7 +246,7 @@ class ActionBarNavMixin:
         if self._showed_action_bar_for_menu:
             self._on_action_bar_hidden_after_menu()
             self._showed_action_bar_for_menu = False
-        logger.debug("Exited menu mode.")
+        logger.debug(log_markers.MENU_EXITED)
 
     # --- Page-turn hooks ---
 

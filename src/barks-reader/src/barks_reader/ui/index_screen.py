@@ -33,6 +33,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
@@ -986,7 +987,7 @@ class IndexScreen(FloatLayout):
         items_for_letter = self._get_items_for_letter(letter)
         if not items_for_letter:
             left_index_column.add_widget(self._get_no_items_button(letter))
-            logger.debug(f"Populated index page for letter '{letter}': no items.")
+            logger.debug(log_markers.INDEX_LETTER_EMPTY.format(letter=letter))
             return
 
         for column, column_items in zip(
@@ -998,7 +999,9 @@ class IndexScreen(FloatLayout):
         self.ids.index_scroll_view.scroll_y = 1
 
         logger.debug(
-            f"Populated index page for letter '{letter}' in {timing.get_elapsed_time_with_unit()}."
+            log_markers.INDEX_LETTER_POPULATED.format(
+                letter=letter, elapsed=timing.get_elapsed_time_with_unit()
+            )
         )
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
@@ -1069,7 +1072,7 @@ class IndexScreen(FloatLayout):
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
-        logger.info(f"Index item pressed: {item}")
+        logger.info(log_markers.INDEX_ITEM_PRESSED.format(item=item))
 
         if self._handle_terminal_item(button, item):
             return

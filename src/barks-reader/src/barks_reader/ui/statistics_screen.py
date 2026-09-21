@@ -19,6 +19,8 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .reader_keyboard_nav import (
     DROPDOWN_DISMISSED_LOG,
     KEY_ENTER,
@@ -160,7 +162,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         """
         stat_image = self.ids.stat_image
         if png_path.is_file():
-            logger.debug(f'Statistics: loading image "{png_path}".')
+            logger.debug(log_markers.STATISTICS_LOADING_IMAGE.format(path=png_path))
             stat_image.source = str(png_path)
             stat_image.reload()
         else:
@@ -180,14 +182,14 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def _enter_dropdown_nav(self, initial_idx: int = 0) -> None:
         super()._enter_dropdown_nav(initial_idx)
-        logger.debug("StatisticsScreen: entered dropdown nav.")
+        logger.debug(log_markers.STATISTICS_ENTERED_DROPDOWN)
 
     def _on_dropdown_dismissed(self, _dropdown: Widget | None) -> None:
         """Override to match Kivy's on_dismiss callback signature (no ActionBarNavMixin)."""
         logger.debug(DROPDOWN_DISMISSED_LOG)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
-            logger.debug("StatisticsScreen: exited dropdown nav.")
+            logger.debug(log_markers.STATISTICS_EXITED_DROPDOWN)
 
     # --- Keyboard navigation ---
 
@@ -197,7 +199,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._nav_active = True
         self._nav_focused_idx = 0
         update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
-        logger.debug("StatisticsScreen: entered nav focus.")
+        logger.debug(log_markers.STATISTICS_ENTERED_NAV)
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clean up all highlights."""
@@ -207,7 +209,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         if self._word_stat_dropdown:
             self._word_stat_dropdown.dismiss()
         self._nav_active = False
-        logger.debug("StatisticsScreen: exited nav focus.")
+        logger.debug(log_markers.STATISTICS_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
         """Handle a keyboard key. Return True if consumed."""

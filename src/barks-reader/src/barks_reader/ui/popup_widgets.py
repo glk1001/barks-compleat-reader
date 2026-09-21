@@ -12,6 +12,8 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.popup import Popup
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .reader_keyboard_nav import (
     KEY_ENTER,
     KEY_LEFT,
@@ -113,7 +115,7 @@ def open_confirm_popup(
     popup.cancel = nav.cancel
     popup.open()
     nav.show_focus()
-    logger.debug(f'Confirm popup opened: "{title}".')
+    logger.debug(log_markers.CONFIRM_POPUP_OPENED.format(title=title))
     return popup
 
 
@@ -134,12 +136,12 @@ class _ConfirmPopupNav:
         popup.bind(on_dismiss=self._unbind_window)
 
     def confirm(self) -> None:
-        logger.info(f'Confirm popup "{self._title}": confirmed.')
+        logger.info(log_markers.CONFIRM_POPUP_CONFIRMED.format(title=self._title))
         self._popup.dismiss()
         self._on_ok()
 
     def cancel(self) -> None:
-        logger.info(f'Confirm popup "{self._title}": cancelled.')
+        logger.info(log_markers.CONFIRM_POPUP_CANCELLED.format(title=self._title))
         self._popup.dismiss()
 
     def show_focus(self) -> None:
@@ -172,5 +174,5 @@ class _ConfirmPopupNav:
     def _unbind_window(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
         # The popup owns the keys until it has gone; a driver waits on this line.
-        logger.debug(f'Confirm popup "{self._title}": closed.')
+        logger.debug(log_markers.CONFIRM_POPUP_CLOSED.format(title=self._title))
         return False

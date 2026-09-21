@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from kivy.core.window import Window
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_utils import get_win_dimensions
 
 from .action_bar_helpers import (
@@ -86,7 +87,7 @@ class MainScreenWindowHelper:
         )
         self._update_fonts(Window.height)
         self.show_action_bar()
-        logger.info("Entered windowed mode on MainScreen.")
+        logger.info(log_markers.ENTERED_WINDOWED.format(screen="MainScreen"))
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
@@ -113,7 +114,7 @@ class MainScreenWindowHelper:
             fullscreen_icon=self._fullscreen_icon,
             fullscreen_exit_icon=self._fullscreen_exit_icon,
         )
-        logger.info("Entered fullscreen mode on MainScreen.")
+        logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="MainScreen"))
 
     def on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
         logger.info(

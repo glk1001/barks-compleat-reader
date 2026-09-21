@@ -13,10 +13,12 @@ from typing import TYPE_CHECKING
 
 from kivy.logger import Logger
 
+from okf_reader.core import log_markers
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-PREFIX = "OKFViewer"
+PREFIX = log_markers.PREFIX
 
 
 def _rel(bundle: Path, path: Path) -> str:
@@ -28,12 +30,12 @@ def _rel(bundle: Path, path: Path) -> str:
 
 def page_shown(bundle: Path, path: Path, history_depth: int) -> None:
     """Log that a page has been rendered and is on show."""
-    Logger.info(f"{PREFIX}: Showed page '{_rel(bundle, path)}' (history depth {history_depth}).")
+    Logger.info(log_markers.PAGE_SHOWN.format(page=_rel(bundle, path), depth=history_depth))
 
 
 def focus_region(name: str) -> None:
     """Log that the navigation keys now belong to `name` (PAGE, SIDEBAR or TOP_BAR)."""
-    Logger.debug(f"{PREFIX}: Focus region {name}.")
+    Logger.debug(log_markers.FOCUS_REGION.format(name=name))
 
 
 def focus_ring(widget_name: str) -> None:
@@ -42,7 +44,7 @@ def focus_ring(widget_name: str) -> None:
     Fires once per focus move within a region (a top-bar button, a sidebar
     result row), so a test can step the focus and wait on each step.
     """
-    Logger.debug(f"{PREFIX}: Focus ring on {widget_name}.")
+    Logger.debug(log_markers.FOCUS_RING.format(widget=widget_name))
 
 
 def tree_focus(node_text: str) -> None:
@@ -51,24 +53,24 @@ def tree_focus(node_text: str) -> None:
     The tree shows keyboard focus as its selection band, not a drawn ring, so
     this is the sidebar's counterpart to `focus_ring` while the tree is showing.
     """
-    Logger.debug(f"{PREFIX}: Sidebar focus on tree node '{node_text}'.")
+    Logger.debug(log_markers.TREE_FOCUS.format(node=node_text))
 
 
 def back_to(bundle: Path, path: Path) -> None:
     """Log that Back popped the history and is showing `path` again."""
-    Logger.info(f"{PREFIX}: Back to '{_rel(bundle, path)}'.")
+    Logger.info(log_markers.BACK_TO.format(page=_rel(bundle, path)))
 
 
 def back_exit() -> None:
     """Log that Back reached the history's root and is handing control to the host."""
-    Logger.info(f"{PREFIX}: Back at history root; exiting.")
+    Logger.info(log_markers.BACK_EXIT)
 
 
 def tree_settled(node_text: str, frames: int) -> None:
     """Log that the sidebar tree settled and the selected node was scrolled into view."""
-    Logger.debug(f"{PREFIX}: Tree settled on '{node_text}' after {frames} frames.")
+    Logger.debug(log_markers.TREE_SETTLED.format(node=node_text, frames=frames))
 
 
 def page_action(label: str) -> None:
     """Log that the page's contextual action was run."""
-    Logger.info(f"{PREFIX}: Page action '{label}'.")
+    Logger.info(log_markers.PAGE_ACTION.format(label=label))

@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -12,28 +14,33 @@ if TYPE_CHECKING:
 ITEMS_DOWN = 2
 INDEX_LETTERS = 3
 LETTERS = 26
-POPULATED_OR_EMPTY = r"Populated index page for letter '.'(: no items| in )"
-EMPTY_LETTER = r"Populated index page for letter '.': no items\."
+EMPTY_LETTER = pattern(markers.INDEX_LETTER_EMPTY)
+POPULATED_OR_EMPTY = f"{pattern(markers.INDEX_LETTER_POPULATED)}|{EMPTY_LETTER}"
+ITEM_PRESSED = pattern(markers.INDEX_ITEM_PRESSED)
+
+
+def _letter(letter: str) -> str:
+    return pattern(markers.INDEX_LETTER_POPULATED, letter=letter)
 
 
 def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     """Booting onto Main Index builds it and shows 'A'; Right enters items, Enter presses one."""
     d = boot(nodes.MAIN_INDEX)
-    d.wait_for("Index build complete")
-    d.wait_for("Populated index page for letter 'A'")
+    d.wait_for(pattern(markers.INDEX_BUILD_COMPLETE))
+    d.wait_for(_letter("A"))
     d.key("Return")  # index nodes hand focus straight into their screen
     d.settle()
     d.move_focus("Right")  # alphabet panel -> items
     d.move_focus(*["Down"] * ITEMS_DOWN)
-    d.key_then_wait("Index item pressed:", 15, "Return")
+    d.key_then_wait(ITEM_PRESSED, 15, "Return")
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:
     d = boot(nodes.MAIN_INDEX)
     d.key("Return")
     d.settle()
-    d.key_then_wait("Populated index page for letter 'B'", 15, "Down")
-    d.key_then_wait("Populated index page for letter 'C'", 15, "Down")
+    d.key_then_wait(_letter("B"), 15, "Down")
+    d.key_then_wait(_letter("C"), 15, "Down")
 
 
 def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
@@ -42,7 +49,7 @@ def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
     d.key("Return")
     d.settle()
     for _ in range(INDEX_LETTERS):
-        d.key_then_wait("Populated index page for letter", 15, "Down")
+        d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
 
 
 def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
@@ -65,14 +72,14 @@ def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
     d.settle()
     d.move_focus("Right")  # alphabet -> prefix bar
     # Return selects the prefix and, a frame later, lands focus in its items.
-    with d.expect("Pressed prefix button:"), d.expect(d.FOCUS_MOVED):
+    with d.expect(pattern(markers.INDEX_PREFIX_PRESSED)), d.expect(d.FOCUS_MOVED):
         d.key("Return")
     # Return expands the term's titles and re-lands focus once they are in.
-    with d.expect("Handling index term:"), d.expect(d.FOCUS_MOVED):
+    with d.expect(pattern(markers.INDEX_TERM_HANDLED)), d.expect(d.FOCUS_MOVED):
         d.key("Return")
     d.move_focus("Down")  # first title under the term
     d.move_focus("Right")  # its speech button
-    d.key_then_wait('Show speech bubbles for: ".*" and index terms', 15, "Return")
+    d.key_then_wait(pattern(markers.SHOW_BUBBLES_FOR_INDEX_TERMS), 15, "Return")
     d.key("Escape")  # close the popup
     d.settle()
 
@@ -82,14 +89,14 @@ def test_names_and_locations_indexes_open_items(boot: AppBoot) -> None:
     d = boot(nodes.NAMES_INDEX)
     d.key("Return")
     d.settle()
-    d.key_then_wait("Populated index page for letter", 15, "Down")
+    d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
     d.move_focus("Right")
-    d.key_then_wait("Index item pressed:", 15, "Return")
+    d.key_then_wait(ITEM_PRESSED, 15, "Return")
     # Over to Locations through the tree. In the items panel Escape only goes back
     # to the letters; the second Escape leaves the index, and Down is the sibling.
     d.move_focus("Escape")
-    d.key_then_wait("Exited bottom focus region.", 15, "Escape")
-    d.key_then_wait('New selected node: "Locations"', 15, "Down")
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, 15, "Escape")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Locations"), 15, "Down")
     d.key("Return")
     d.settle()
-    d.key_then_wait("Populated index page for letter", 15, "Down")
+    d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")

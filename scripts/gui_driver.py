@@ -159,6 +159,13 @@ class Driver:
     # Log lines the app writes for keyboard focus moves and dropdowns, which every
     # menu walk and dropdown step here waits on (reader_keyboard_nav, okf trace).
     FOCUS_MOVED = "Nav focus on"
+    NODE_SELECTED = "New selected node"
+    NODE_EXPANDED = "Node expanded: '{name}'"
+    SHOWED_PAGE = "Showed page"
+    ALL_IMAGES_LOADED = "All images loaded"
+    MAIN_SCREEN_ACTIVE = "Main screen is active"
+    EXITED_BOTTOM_FOCUS = "Exited bottom focus region."
+    GOTO_PAGE_DROPDOWN_OPENED = "Goto page dropdown opened."
     # A ring on a bar button or result row, or the tree's selection band moving.
     WIKI_FOCUS_MOVED = r"OKFViewer: (Focus ring on|Sidebar focus on)"
     DROPDOWN_DISMISSED = "Dropdown dismissed."
@@ -461,7 +468,7 @@ class Driver:
         log to go quiet (under four parallel workers the pass can take a while).
         """
         self.select_node(name)
-        self.key_then_wait(f"Node expanded: '{name}'", 15, "Return")
+        self.key_then_wait(self.NODE_EXPANDED.format(name=name), 15, "Return")
         self.settle()
         self._pace(BRANCH_OPEN_PAUSE)
 
@@ -474,7 +481,7 @@ class Driver:
         """
         self.hold(pick.dwell)
         for _ in range(pick.pages - 1):
-            self.key_then_wait("Showed page", 15, "Right")
+            self.key_then_wait(self.SHOWED_PAGE, 15, "Right")
             self.hold(pick.dwell)
 
     def _walk_menu_to(self, name: str) -> None:
@@ -592,7 +599,7 @@ class Driver:
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""
         self._walk_menu_to("close")
-        self.key_then_wait("Main screen is active", 15, "Return")
+        self.key_then_wait(self.MAIN_SCREEN_ACTIVE, 15, "Return")
 
     def goto_page(self, target: int) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
@@ -609,7 +616,7 @@ class Driver:
         current = self.current_page()
         self._walk_menu_to("goto_page")
         # Opening the list puts the focus ring on the current page's entry.
-        with self.expect("Goto page dropdown opened."), self.expect(self.FOCUS_MOVED):
+        with self.expect(self.GOTO_PAGE_DROPDOWN_OPENED), self.expect(self.FOCUS_MOVED):
             self.key("Return")
         self._pace(GOTO_LIST_DWELL)
         step = "Down" if target > current else "Up"
@@ -622,7 +629,7 @@ class Driver:
         # would have passed for page 3. The dropdown dismisses itself a frame or
         # more after the pick and owns the window's keys until it has, so the
         # next key is held back until it says so.
-        with self.expect(f"Showed page {target} in "), self.expect(self.DROPDOWN_DISMISSED):
+        with self.expect(f"{self.SHOWED_PAGE} {target} in "), self.expect(self.DROPDOWN_DISMISSED):
             self.key("Return")
 
     def focus_portal(self) -> None:
@@ -645,7 +652,7 @@ class Driver:
         on a heavy title view opens the story at the cover instead, silently.
         """
         self.focus_portal()
-        self.key_then_wait("All images loaded", 30, "Return")
+        self.key_then_wait(self.ALL_IMAGES_LOADED, 30, "Return")
 
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree."""
@@ -655,7 +662,7 @@ class Driver:
         self._pace(READER_CLOSED_PAUSE)
         # Closing the reader leaves focus in the bottom region, where Down does
         # nothing to the tree. Escape hands it back (main_screen_nav:243).
-        self.key_then_wait("Exited bottom focus region.", 15, "Escape")
+        self.key_then_wait(self.EXITED_BOTTOM_FOCUS, 15, "Escape")
 
 
 def boot_app_at(

@@ -21,6 +21,7 @@ from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
@@ -267,7 +268,7 @@ class WikiReaderScreen(ReaderScreen):
         # Land the user on the main screen with the title selected in the tree
         # and shown in the bottom title view — the reading controls live there.
         self.close()
-        logger.info(f'Wiki goto title: "{title.name}".')
+        logger.info(log_markers.WIKI_GOTO_TITLE.format(name=title.name))
         self._on_goto_title(title)
 
     def _build_viewer(self, bundle: Path, start_page: Path | None = None) -> None:

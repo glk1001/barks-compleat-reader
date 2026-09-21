@@ -22,6 +22,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
@@ -212,7 +213,7 @@ class BottomTitleViewScreen(FloatLayout):
         )
 
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
-        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+        logger.debug(log_markers.USE_OVERRIDES_CHANGED.format(value=use_overrides))
 
         if not self._fanta_info:
             return
@@ -232,7 +233,7 @@ class BottomTitleViewScreen(FloatLayout):
         anim = Animation(opacity=1, duration=duration)
         anim.bind(on_complete=self._on_panel_fade_finished)
         anim.start(self.ids.bottom_view_box)
-        logger.debug(f"Title view fade started: {duration}s.")
+        logger.debug(log_markers.TITLE_FADE_STARTED.format(duration=duration))
         # Recorded after start(), so this is the animation that actually ended up
         # running. Kivy's start() only stops its own instance and cancel() does not
         # fire on_complete, so the guard in _on_panel_fade_finished does the rest.
@@ -245,7 +246,7 @@ class BottomTitleViewScreen(FloatLayout):
             self._panel_fade_anim = None
             # The one signal that the panel is fully drawn: nothing else is logged
             # while it animates, and the duration is random.
-            logger.debug("Title view fade finished.")
+            logger.debug(log_markers.TITLE_FADE_FINISHED)
 
     @staticmethod
     def _get_title_portal_opening_animation_duration_secs() -> int:
@@ -297,7 +298,7 @@ class BottomTitleViewScreen(FloatLayout):
             remembered = None
         self._nav_focused_widget = remembered or default
         self._update_nav_focus()
-        logger.debug("BottomTitleViewScreen: entered nav focus.")
+        logger.debug(log_markers.TITLE_VIEW_ENTERED_NAV)
 
     def enter_nav_focus_at_portal(self, on_exit_request: Callable[[], None]) -> None:
         """Enter keyboard navigation focus landing directly on the title portal image.
@@ -319,7 +320,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._last_nav_focused_widget = None
         self._nav_focused_widget = self.ids.title_portal_image_button
         self._update_nav_focus()
-        logger.debug("BottomTitleViewScreen: entered nav focus at portal.")
+        logger.debug(log_markers.TITLE_VIEW_ENTERED_AT_PORTAL)
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear every highlight."""
@@ -330,7 +331,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._nav_on_exit_request = None
         self._nav_focused_widget = None
         self._clear_nav_focus()
-        logger.debug("BottomTitleViewScreen: exited nav focus.")
+        logger.debug(log_markers.TITLE_VIEW_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
         """Handle a keyboard key. Return True if consumed."""
@@ -411,7 +412,9 @@ class BottomTitleViewScreen(FloatLayout):
             self.on_title_portal_image_pressed()
         elif widget is ids.goto_page_layout:
             ids.goto_page_checkbox.active = not ids.goto_page_checkbox.active
-            logger.debug(f"Goto page checkbox toggled: active = {ids.goto_page_checkbox.active}.")
+            logger.debug(
+                log_markers.GOTO_PAGE_CHECKBOX_TOGGLED.format(value=ids.goto_page_checkbox.active)
+            )
         elif widget is ids.use_overrides_layout:
             ids.use_overrides_checkbox.active = not ids.use_overrides_checkbox.active
         elif widget is ids.wiki_page_button:

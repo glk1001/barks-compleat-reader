@@ -7,6 +7,7 @@ boot to check is exercised against a stub driver instead.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
@@ -14,7 +15,9 @@ from unittest.mock import MagicMock, patch
 
 import gui_driver
 import pytest
+from barks_reader.core import log_markers
 from gui_driver import Driver, DriverError, Pick, boot_app_at, probe
+from okf_reader.core import log_markers as okf_log_markers
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -580,3 +583,59 @@ class TestPacing:
             (Driver.FOCUS_MOVED, 15, "Right"),
         ]
         hold.assert_not_called()
+
+
+class TestDriverMarkersMatchTheApp:
+    """The driver is stdlib-only, so it carries its own copies of the app's marker text.
+
+    Each copy must match the line the app actually logs, which is written once in
+    ``barks_reader.core.log_markers``; this is the drift check between the two.
+    """
+
+    @pytest.mark.parametrize(
+        ("driver_regex", "app_line"),
+        [
+            (Driver.FOCUS_MOVED, log_markers.NAV_FOCUS.format(widget='Button "Titles"')),
+            (Driver.DROPDOWN_DISMISSED, log_markers.DROPDOWN_DISMISSED),
+            (Driver.MENU_ENTERED, log_markers.MENU_ENTERED),
+            (Driver.FADE_STARTED, log_markers.TITLE_FADE_STARTED.format(duration=2)),
+            (Driver.FADE_FINISHED, log_markers.TITLE_FADE_FINISHED),
+            (Driver.ENTERED_AT_PORTAL, log_markers.TITLE_VIEW_ENTERED_AT_PORTAL),
+            (Driver.NODE_SELECTED, log_markers.NEW_SELECTED_NODE.format(name="A", previous="B")),
+            (
+                Driver.NODE_EXPANDED.format(name="Covers"),
+                log_markers.NODE_EXPANDED.format(name="Covers"),
+            ),
+            (Driver.SHOWED_PAGE, log_markers.SHOWED_PAGE.format(index=3, elapsed="1ms")),
+            (
+                Driver.ALL_IMAGES_LOADED,
+                log_markers.ALL_IMAGES_LOADED.format(elapsed="1s", index=0),
+            ),
+            (
+                Driver.MAIN_SCREEN_ACTIVE,
+                log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_COMIC_READER),
+            ),
+            (Driver.EXITED_BOTTOM_FOCUS, log_markers.EXITED_BOTTOM_FOCUS),
+            (Driver.GOTO_PAGE_DROPDOWN_OPENED, log_markers.GOTO_PAGE_DROPDOWN_OPENED),
+            (
+                Driver.WIKI_FOCUS_MOVED,
+                okf_log_markers.FOCUS_RING.format(widget="Back"),
+            ),
+            (
+                Driver.WIKI_FOCUS_MOVED,
+                okf_log_markers.TREE_FOCUS.format(node="Lost in the Andes!"),
+            ),
+        ],
+    )
+    def test_the_driver_regex_matches_the_app_line(self, driver_regex: str, app_line: str) -> None:
+        assert re.search(driver_regex, app_line), f"/{driver_regex}/ does not match {app_line!r}"
+
+    def test_the_node_and_page_parsers_read_the_app_lines(self) -> None:
+        node_line = log_markers.NEW_SELECTED_NODE.format(name="FROZEN_GOLD", previous="root")
+        page_line = log_markers.SHOWED_PAGE.format(index=34, elapsed="1ms")
+        node = Driver._NODE_RE.search(node_line)  # noqa: SLF001
+        page = Driver._PAGE_RE.search(page_line)  # noqa: SLF001
+        assert node is not None
+        assert node.group(1) == "FROZEN_GOLD"
+        assert page is not None
+        assert page.group(1) == "34"
