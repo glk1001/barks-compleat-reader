@@ -39,12 +39,12 @@ CONFIG_DIR_ENV_VAR = "BARKS_READER_CONFIG_DIR"
 
 # ------------------------------------------------------------------ pacing --
 
-# Gaps between injected events. The tree walk and the typing gaps are not only
-# camera pacing: at full speed the app drops keys pressed while it is rendering,
-# so a driver that sends faster than this lands somewhere else. The menu and
-# page-list gaps are camera pacing alone: each of those moves is waited on
-# through the app's log (every focus move logs itself) and the gap is added
-# afterwards, only when the driver was built `paced` (the demo recorder).
+# Gaps between injected events. The typing gap is not only camera pacing: at
+# full speed the app's search-as-you-type handler drops characters, so a driver
+# that types faster than this lands a different query. Every other gap is camera
+# pacing alone: each of those moves is waited on through the app's log (every
+# selection and focus move logs itself) and the gap is added afterwards, only
+# when the driver was built `paced` (the demo recorder).
 WALK_PAUSE = 0.45  # a single Down while walking the tree
 TYPE_PAUSE = 0.4  # a single character into a search box
 GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
@@ -296,38 +296,39 @@ class Driver:
         ]
         return lines[-1] if lines else ""
 
-    def select_node(self, want: str, max_steps: int = 60) -> None:
+    def select_node(self, want: str, max_steps: int = 60, step_timeout: float = 8) -> None:
         """Walk the tree downward until `want` is the selected node.
 
         Name-driven rather than a counted run of Downs, so a title added upstream
         shifts the walk instead of silently landing the demo on the wrong story.
-        It only ever goes down, so picks have to be in tree order.
+        It only ever goes down, so picks have to be in tree order. Each Down waits
+        on the selection line the app logs for it, so the walk runs as fast as the
+        app takes keys and never mistakes a slow render for the bottom of the tree.
+
+        Args:
+            want: The node name as the app logs it in "New selected node".
+            max_steps: Downs to allow before giving up.
+            step_timeout: Seconds to allow each Down to move the selection. A Down
+                on the last node logs nothing, so this is how the bottom is found.
 
         Raises:
             DriverError: If the selection stops moving, or `want` is never reached.
 
         """
         current = self.current_node()
-        stalled = 0
         for _ in range(max_steps):
             if current == want:
                 return
-            previous = current
-            self.key("Down")
-            time.sleep(WALK_PAUSE)
-            current = self.current_node()
-            if current != previous:
-                stalled = 0
-                continue
-            # One swallowed keypress during a render is normal; two in a row
-            # means the selection cannot move any further down.
-            stalled += 1
-            if stalled >= 2:  # noqa: PLR2004
+            try:
+                self.key_then_wait(self.NODE_SELECTED, "Down", timeout=step_timeout)
+            except DriverError as exc:
                 msg = (
                     f'tree stopped at "{current}" before reaching "{want}" - is it above '
                     f"the current position, or in another branch?"
                 )
-                raise DriverError(msg)
+                raise DriverError(msg) from exc
+            self._pace(WALK_PAUSE)
+            current = self.current_node()
         msg = f'never reached node "{want}" in {max_steps} steps'
         raise DriverError(msg)
 

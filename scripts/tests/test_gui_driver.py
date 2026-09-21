@@ -43,27 +43,38 @@ class TestSelectNode:
     def test_stops_as_soon_as_the_node_is_current(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "current_node", return_value="Themes"),
-            patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait") as down,
         ):
             stub_driver.select_node("Themes")
-        key.assert_not_called()
+        down.assert_not_called()
 
-    def test_walks_down_until_it_arrives(self, stub_driver: Driver) -> None:
+    def test_each_down_waits_for_the_selection_line(self, stub_driver: Driver) -> None:
         reads = iter(["Categories", "Search", "Themes"])
         with (
             patch.object(Driver, "current_node", side_effect=lambda: next(reads)),
-            patch.object(Driver, "key") as key,
-            patch.object(gui_driver.time, "sleep"),
+            patch.object(Driver, "key_then_wait") as down,
+            patch.object(Driver, "hold") as hold,
+        ):
+            stub_driver._paced = False  # noqa: SLF001
+            stub_driver.select_node("Themes")
+        assert [c.args for c in down.call_args_list] == [(Driver.NODE_SELECTED, "Down")] * 2
+        hold.assert_not_called()
+
+    def test_a_paced_walk_rests_after_each_down(self, stub_driver: Driver) -> None:
+        reads = iter(["Categories", "Themes"])
+        with (
+            patch.object(Driver, "current_node", side_effect=lambda: next(reads)),
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "hold") as hold,
         ):
             stub_driver.select_node("Themes")
-        assert key.call_count == EXPECTED_DOWNS
+        hold.assert_called_once_with(gui_driver.WALK_PAUSE)
 
-    def test_raises_when_the_tree_stops_moving(self, stub_driver: Driver) -> None:
-        """Two identical reads in a row means the selection cannot go further down."""
+    def test_raises_when_a_down_moves_nothing(self, stub_driver: Driver) -> None:
+        """A Down that logs no selection within its timeout is the bottom of the tree."""
         with (
             patch.object(Driver, "current_node", return_value="Bottom"),
-            patch.object(Driver, "key"),
-            patch.object(gui_driver.time, "sleep"),
+            patch.object(Driver, "key_then_wait", side_effect=DriverError("no new line")),
             pytest.raises(DriverError, match='tree stopped at "Bottom"'),
         ):
             stub_driver.select_node("Nowhere")
