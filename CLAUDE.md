@@ -98,7 +98,7 @@ plain canonical title; parentheses are presentation). Before doing either, read
 
 ### Source Packages
 
-All code lives under `src/`, split into four packages managed as a **uv workspace**. Each has its own `pyproject.toml` and is installed as an editable package into the shared `.venv` — no `PYTHONPATH` configuration needed for development or tooling.
+All code under `src/` is a **uv workspace**; each package installs editable into the shared `.venv` — no `PYTHONPATH` setup needed for development or tooling.
 
 Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. The standalone build needs no special workspace handling: Nuitka compiles `main.py` from the synced workspace `.venv`, with each app package and its data pulled in explicitly via the `--include-package`/`--include-package-data`/`--include-data-dir` flags in `scripts/build.sh` (a new package or data dir must be added there).
 
@@ -133,10 +133,6 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   than a sleep. The marker text is written once, in `barks_reader.core.log_markers`
   (`okf_reader.core.log_markers` for the wiki viewer): the app logs it with `.format`, a
   GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
-
-## Code Style
-
-- `experiments/` and `scraps/` directories are excluded from linting and type checking.
 
 ## graphify
 
