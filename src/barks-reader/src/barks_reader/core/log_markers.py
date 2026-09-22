@@ -55,6 +55,10 @@ ABOUT_BOX_DISMISSED: Final = "About box dismissed."
 WIKI_PAGE_BUTTON_PRESSED: Final = "Wiki page button pressed."
 ENTERED_FULLSCREEN: Final = "Entered fullscreen mode on {screen}."
 ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
+# Every window resize event the app receives: the GUI harness compares the last
+# one a test leaves against the first, since a shrink after a reader close or a
+# fullscreen round trip is a defect whatever the test asserted.
+WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
 
 # ---------------------------------------------------------------- popups --
 CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'

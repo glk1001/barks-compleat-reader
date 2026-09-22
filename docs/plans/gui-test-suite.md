@@ -76,6 +76,16 @@
 >   so `dp()` is pixels whatever the screen says. `record_demo.py` reads the same
 >   variable and refuses to stitch clips of mixed sizes, so the option lives in the
 >   test runner, not in the probe's default.
+> - Later (2026-09-22): the main window was once seen much smaller after a reader close
+>   during a visible run, and nothing reproduced it (about 100 open/close cycles, headless
+>   and visible, 900x1300 and 2560x1440, fullscreen-on-read off and on) or had logged it.
+>   So the teardown now asserts every passing test hands the window back at its boot size,
+>   both the X geometry the probe measures and the app's own last resize event (the new
+>   `WINDOW_RESIZED` marker; on Xephyr without a window manager fullscreen changes only the
+>   latter), saving the failure artifacts first. The three silent resize paths now log:
+>   the aspect-ratio correction names the event and the size it applies, the main screen
+>   warns when its host size is still fixed after a windowed exit it did not drive, and a
+>   screen switch warns when the transition it replaces is still running.
 
 ## Context
 

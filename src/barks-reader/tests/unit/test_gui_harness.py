@@ -19,7 +19,9 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
+import gui_driver as gd  # noqa: E402
 from barks_gui import harness  # noqa: E402
+from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -138,3 +140,107 @@ class TestArtifactsDir:
         out = harness.artifacts_dir()
         assert out.parent == tmp_path / "gui-tests"
         assert out.is_dir()
+
+
+class TestAssertWindowSizeKept:
+    """The teardown check: same size passes, a changed size fails with artifacts saved."""
+
+    class _Driver:
+        def __init__(
+            self,
+            geometry: tuple[int, int, int, int],
+            log_path: Path,
+            *,
+            gone: bool = False,
+        ) -> None:
+            self.geometry = geometry
+            self.log_path = log_path
+            self.gone = gone
+
+        def settle(self) -> None:
+            pass
+
+        def window_geometry(self) -> tuple[int, int, int, int]:
+            if self.gone:
+                msg = "app window not found"
+                raise gd.DriverError(msg)
+            return self.geometry
+
+    @pytest.fixture
+    def log(self, tmp_path: Path) -> Path:
+        """Write an app log whose resize events go out to fullscreen and back."""
+        lines = [
+            markers.WINDOW_RESIZED.format(width=782, height=1225) + " Window.fullscreen = False,",
+            "Entered fullscreen mode on MainScreen.",
+            markers.WINDOW_RESIZED.format(width=900, height=1300) + " Window.fullscreen = auto,",
+            markers.WINDOW_RESIZED.format(width=782, height=1225) + " Window.fullscreen = False,",
+        ]
+        path = tmp_path / "app.log"
+        path.write_text("\n".join(lines) + "\n")
+        return path
+
+    @pytest.fixture
+    def app_boot(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> harness.AppBoot:
+        app_boot = harness.AppBoot(scratch=tmp_path, nodeid="test_x.py::test_y")
+        app_boot.boot_geometry = (782, 1225, 59, 10)
+        monkeypatch.setattr(app_boot, "save_failure_artifacts", lambda: [tmp_path / "test_y.png"])
+        return app_boot
+
+    def test_same_size_passes(self, app_boot: harness.AppBoot, log: Path) -> None:
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
+    def test_a_moved_window_still_passes(self, app_boot: harness.AppBoot, log: Path) -> None:
+        app_boot.driver = self._Driver((782, 1225, 0, 0), log)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
+    def test_a_smaller_x_window_fails_naming_both_sizes_and_the_artifacts(
+        self, app_boot: harness.AppBoot, log: Path, tmp_path: Path
+    ) -> None:
+        app_boot.driver = self._Driver((566, 900, 59, 10), log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(AssertionError, match=r"\(566, 900\).*\(782, 1225\)") as excinfo:
+            app_boot.assert_window_size_kept()
+        assert str(tmp_path / "test_y.png") in str(excinfo.value)
+
+    def test_a_smaller_last_resize_event_fails_even_when_the_x_window_is_unchanged(
+        self, app_boot: harness.AppBoot, log: Path
+    ) -> None:
+        with log.open("a") as out:
+            out.write(markers.WINDOW_RESIZED.format(width=566, height=900) + "\n")
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(AssertionError, match=r"last resize event was \(566, 900\)"):
+            app_boot.assert_window_size_kept()
+
+    def test_a_log_with_no_resize_events_checks_only_the_x_window(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        empty = tmp_path / "empty.log"
+        empty.write_text("Main screen is active (from start).\n")
+        app_boot.driver = self._Driver((782, 1225, 59, 10), empty)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
+    def test_a_window_the_probe_cannot_find_is_not_a_failure(
+        self, app_boot: harness.AppBoot, log: Path
+    ) -> None:
+        app_boot.driver = self._Driver((0, 0, 0, 0), log, gone=True)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
+    def test_without_a_boot_there_is_nothing_to_check(self, app_boot: harness.AppBoot) -> None:
+        app_boot.driver = None
+        app_boot.assert_window_size_kept()
+
+
+class TestResizeEvents:
+    def test_reads_every_size_in_order(self) -> None:
+        text = "\n".join(
+            [
+                markers.WINDOW_RESIZED.format(width=782, height=1225)
+                + " Window.fullscreen = False,",
+                "Some other line.",
+                markers.WINDOW_RESIZED.format(width=900, height=1300) + " guard = None,",
+            ]
+        )
+        assert harness.resize_events(text) == [(782, 1225), (900, 1300)]
+
+    def test_nothing_logged_is_an_empty_list(self) -> None:
+        assert harness.resize_events("Main screen is active (from start).") == []

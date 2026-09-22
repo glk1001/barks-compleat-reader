@@ -132,6 +132,30 @@ class TestOnMainLayoutSizeChanged:
 
         hf.helper._fun_image_view_screen.on_resized.assert_called_with((1920, 1080))
 
+    def test_windowed_with_the_host_size_still_fixed_is_a_warning(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        """Only this screen's windowed transition restores the hints; log when that was missed."""
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+        hf.helper._host.size_hint_x = None
+        hf.helper._host.size_hint_y = None
+        hf.helper._host.size = (831, 1300)
+
+        hf.helper.on_main_layout_size_changed(MagicMock(), (782, 1225))
+
+        assert any("host size is still fixed at (831, 1300)" in line for line in loguru_sink)
+
+    def test_windowed_with_the_hints_restored_is_quiet(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+        hf.helper._host.size_hint_x = 1
+        hf.helper._host.size_hint_y = 1
+
+        hf.helper.on_main_layout_size_changed(MagicMock(), (782, 1225))
+
+        assert not any("still fixed" in line for line in loguru_sink)
+
     def test_fullscreen_calls_change_size(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = True
 

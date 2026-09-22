@@ -132,6 +132,39 @@ class TestReaderScreenManager:
         is_active_mock = cast("MagicMock", mock_reader_screens.comic_reader_screen.is_active)
         is_active_mock.assert_called_with(active=False)
 
+    @pytest.mark.parametrize("switch", ["_switch_to_comic_book_reader", "_close_comic_book_reader"])
+    def test_a_transition_still_running_at_a_switch_is_a_warning(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+        switch: str,
+    ) -> None:
+        """The switch replaces the transition before Kivy stops it, so it keeps running."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        running = reader_screen_manager._screen_manager.transition
+        running.is_active = True
+        running.__class__.__name__ = "SwapTransition"
+
+        getattr(reader_screen_manager, switch)()
+
+        assert any(
+            "Screen transition 'SwapTransition' is still running" in line for line in loguru_sink
+        )
+
+    def test_a_finished_transition_at_a_switch_is_quiet(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+        reader_screen_manager._screen_manager.transition.is_active = False
+
+        reader_screen_manager._close_comic_book_reader()
+
+        assert not any("still running" in line for line in loguru_sink)
+
     def test_switch_to_document_reader(
         self,
         reader_screen_manager: ReaderScreenManager,

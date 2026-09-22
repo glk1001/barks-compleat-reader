@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import gui_driver as gd
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -152,6 +154,17 @@ def artifact_name(nodeid: str, suffix: str) -> str:
     return f"{stem}{suffix}"
 
 
+# The sizes the app itself saw, from every resize event it logs.
+_RESIZE_RE = re.compile(
+    pattern(markers.WINDOW_RESIZED, width=re.compile(r"(\d+)"), height=re.compile(r"(\d+)"))
+)
+
+
+def resize_events(log_text: str) -> list[tuple[int, int]]:
+    """Return every window size the app logged a resize event for, in order."""
+    return [(int(w), int(h)) for w, h in _RESIZE_RE.findall(log_text)]
+
+
 @dataclass
 class _Run:
     dir: Path | None = None
@@ -178,6 +191,7 @@ class AppBoot:
     scratch: Path
     nodeid: str
     driver: gd.Driver | None = None
+    boot_geometry: tuple[int, int, int, int] | None = None
     _shots: list[Path] = field(default_factory=list)
     # Set before the probe is asked to start, not after the Driver exists: a
     # boot that fails part-way (the app never logs its ready line, say) has
@@ -226,7 +240,48 @@ class AppBoot:
         gd.boot_app_at(node, config_dir=self.scratch, seed=SEED, cues=cues)
         # Not paced: every move waits on the app's log, none on the camera clock.
         self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS, paced=False)
+        # The size every test must hand back: a window that shrank after a reader
+        # close or a fullscreen round trip is a defect even when every assertion
+        # the test made passed (assert_window_size_kept, from the fixture teardown).
+        self.boot_geometry = self.driver.window_geometry()
         return self.driver
+
+    def assert_window_size_kept(self) -> None:
+        """Fail the test if the app window is not the size it booted at.
+
+        Called from the fixture teardown once the test body has passed. Two
+        views are compared, since they can disagree: the X window's geometry as
+        the probe measures it, and the size the app itself last logged a resize
+        event for (on the nested display without a window manager, fullscreen
+        changes only the latter). The failure artifacts are saved first, so the
+        app log says what resized the window. A window the probe cannot find is
+        not a failure here: a quit test has closed it, and a crash has already
+        failed the test.
+
+        Raises:
+            AssertionError: If either size differs from what the app booted at.
+
+        """
+        if self.driver is None or self.boot_geometry is None:
+            return
+        try:
+            self.driver.settle()
+            now = self.driver.window_geometry()
+        except gd.DriverError:
+            return
+        problems: list[str] = []
+        if now[:2] != self.boot_geometry[:2]:
+            problems.append(
+                f"the X window is {now[:2]}, not the {self.boot_geometry[:2]} it booted at"
+            )
+        sizes = resize_events(self.driver.log_path.read_text(errors="replace"))
+        if sizes and sizes[-1] != sizes[0]:
+            problems.append(f"the app's last resize event was {sizes[-1]}, its first {sizes[0]}")
+        if not problems:
+            return
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        msg = f"the app window did not keep its size: {'; '.join(problems)}; artifacts:\n{listing}"
+        raise AssertionError(msg)
 
     def checkpoint(self, name: str) -> Path | None:
         """Save a screenshot named `name` when BARKS_GUI_SHOTS=1; otherwise do nothing.

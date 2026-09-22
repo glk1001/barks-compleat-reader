@@ -15,6 +15,11 @@ Each test boots the app onto the node it asks for and gets a Driver. Booting is
 the fixed cost - a few seconds on a desktop - so a test that can reach its second
 screen from its first should do so rather than ask for another boot; one boot per
 test is asserted.
+
+A test that passes must also hand the window back at the size it booted at: the
+teardown compares the two and errors, with the failure artifacts saved, when they
+differ. That turns an intermittent shrink seen while watching a run into a report
+with the app log that names what resized the window.
 """
 
 from __future__ import annotations
@@ -47,6 +52,9 @@ if TYPE_CHECKING:
 WATCHED_LIVE_FILES = ("barks-reader.json", "barks-reader-history.json", "barks-reader.ini")
 DISPLAY_ENV_VAR = "BARKS_PROBE_DISPLAY"
 HEADLESS_ENV_VAR = "BARKS_PROBE_HEADLESS"
+# Set by the report hook: whether the test body failed, so the teardown's window
+# size check does not pile a second report onto a test that already failed.
+CALL_FAILED = pytest.StashKey[bool]()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -117,7 +125,11 @@ def boot(
     try:
         yield app_boot
     finally:
-        app_boot.stop()
+        try:
+            if not request.node.stash.get(CALL_FAILED, False):
+                app_boot.assert_window_size_kept()
+        finally:
+            app_boot.stop()
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -130,7 +142,10 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
     """
     outcome = yield
     report = outcome.get_result()  # ty: ignore[unresolved-attribute]
-    if call.when != "call" or not report.failed:
+    if call.when != "call":
+        return
+    item.stash[CALL_FAILED] = bool(report.failed)
+    if not report.failed:
         return
     try:
         tail = gd.probe("tail", "40")

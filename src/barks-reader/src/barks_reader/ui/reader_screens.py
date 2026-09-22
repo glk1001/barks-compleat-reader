@@ -156,9 +156,22 @@ class ReaderScreenManager:
     def _get_next_reader_screen_transition(self) -> TransitionBase:
         return random.choice(self._READER_SCREEN_TRANSITIONS)
 
+    def _warn_if_transition_active(self, switching_to: str) -> None:
+        # ScreenManager.on_current stops the transition it holds *then*, and the
+        # switches below replace it first, so one still running keeps running:
+        # its completion will still remove its own outgoing screen, and the swap
+        # transition leaves that screen scaled down until then.
+        transition = self._screen_manager.transition
+        if transition.is_active:
+            logger.warning(
+                f"Screen transition '{transition.__class__.__name__}' is still running while"
+                f" switching to the {switching_to}: it is replaced, not stopped."
+            )
+
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
 
+        self._warn_if_transition_active("comic book reader")
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
@@ -187,6 +200,7 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.main_screen.on_comic_closed()
 
+        self._warn_if_transition_active("main screen")
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
 

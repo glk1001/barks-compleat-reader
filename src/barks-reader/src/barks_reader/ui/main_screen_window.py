@@ -76,6 +76,9 @@ class MainScreenWindowHelper:
         self._mode.goto_windowed()
 
     def _set_hints_for_windowed_mode(self) -> None:
+        logger.debug(
+            f"MainScreen: restoring size hints for windowed mode (host size = {self._host.size})."
+        )
         self._host.size_hint = (1, 1)
 
     def _on_finished_goto_windowed_mode(self) -> None:
@@ -123,6 +126,14 @@ class MainScreenWindowHelper:
         )
         self._fun_image_view_screen.on_resized(size)
         if not WindowManager.is_fullscreen_now():
+            if self._host.size_hint_x is None and self._host.size_hint_y is None:
+                # Only this screen's own windowed transition restores the hints
+                # (_set_hints_for_windowed_mode); a fullscreen exit driven by
+                # another screen leaves the fixed fullscreen size behind.
+                logger.warning(
+                    f"Main layout resized while windowed but the host size is still fixed"
+                    f" at {self._host.size}: a fullscreen exit did not restore its size hints."
+                )
             return
         self._change_fullscreen_win_size(size[1])
 
