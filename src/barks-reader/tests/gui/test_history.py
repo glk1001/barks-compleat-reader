@@ -68,7 +68,10 @@ def test_delete_removes_the_focused_event(boot: AppBoot) -> None:
     """Delete on a journal row removes that event, with no confirmation, and persists."""
     d = _enter(boot)
     before = [e["id"] for e in _events(boot)]
-    d.key_then_wait(pattern(markers.HISTORY_DELETED_EVENT, event_id=NEWEST_EVENT_ID), "Delete")
+    d.key_then_wait(
+        pattern(markers.HISTORY_DELETED_EVENT, event_id=NEWEST_EVENT_ID),
+        "Delete",  # desktop key: a row's delete is its button or Delete; the remote has neither
+    )
     d.settle()
     remaining = _events(boot)
     assert len(remaining) == CANNED_EVENTS - 1

@@ -68,6 +68,13 @@ repos:
             files: \.(kv|py)$
             pass_filenames: false
             stages: [pre-commit]
+          - id: check-gui-keys
+            name: check GUI tests press only the remote's keys
+            entry: uv run scripts/check_gui_keys.py
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: lint-imports
             name: lint-imports (import-linter contracts)
             entry: uv run lint-imports

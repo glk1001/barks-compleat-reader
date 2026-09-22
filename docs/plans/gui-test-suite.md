@@ -164,6 +164,15 @@
 >   last-read resolution in both modes, the inside-body rule, saved-page JSON round trips,
 >   year-range folding, hyphenation markup preserving the text, and marker format/match/
 >   capture round trips.
+> - Same day: the remote's keys as a gate. `scripts/check_gui_keys.py` (pre-commit, CI's
+>   lint job, `full-lint.sh`) reads the GUI tests, the driver and the demo recorder and
+>   fails on any key handed to `key`, `key_then_wait` or `move_focus` that is not Escape,
+>   Return, Up, Down, Left or Right. A key that is not a literal is traced through the
+>   function's assignments and the module's constants (`*["Down"] * n`, the walk's
+>   `rng.choice(REMOTE_KEYS)`, the driver's `("Right", n) if ... else ("Left", m)`). The
+>   one press outside the set, the history journal's Delete, carries `# desktop key:
+>   <why>` on its call: a row's delete is its button or the Delete key, and the remote has
+>   neither, which the waiver now records as a ten-foot gap.
 
 ## Context
 

@@ -143,6 +143,9 @@ just reader
   A failure leaves a screenshot, the app log, the keys sent and the scratch profile under
   `build/gui-tests/<run>/`. In a visible run the test window takes the keyboard when it
   appears; click back to your own window and do not type into it.
+  The tests may press only the remote's six keys (Escape, Enter and the arrows); a check
+  in the lint gates, `scripts/check_gui_keys.py`, reads them and fails on any other key
+  unless the call carries `# desktop key: <why>`.
 - **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` launches
   a build in an empty directory as far as its first-run installer's "data pack missing"
   message, which proves the packaged program runs at all; CI's Linux build does the same.

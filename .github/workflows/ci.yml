@@ -35,6 +35,9 @@ jobs:
       - name: Relative import check
         run: bash scripts/check-relative-imports.sh
 
+      - name: GUI tests press only the remote's keys
+        run: uv run scripts/check_gui_keys.py
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
