@@ -59,7 +59,8 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         wrapper_scrim: RGBA scrim drawn over the background art behind the
             content. Defaults to a light wash (``_LIGHT_WRAPPER_SCRIM``); pass a
             dark scrim for popups that render light, on-brand text.
-        on_dismiss: Called once the popup has closed, however it was closed.
+        on_dismiss: Called once the popup has closed and left the window, however
+            it was closed.
 
     """
     scrim = wrapper_scrim if wrapper_scrim is not None else _LIGHT_WRAPPER_SCRIM
@@ -214,7 +215,11 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         if not app_already_running:
             popup.bind(on_dismiss=lambda *_: stopTouchApp())
         if on_dismiss is not None:
-            popup.bind(on_dismiss=lambda *_: on_dismiss())
+            # Fired when the popup has left the window, not when its dismissal
+            # began: Kivy fades a dismissed popup out first, and the main screen
+            # ignores every key while a modal is still on the window, so a
+            # caller that logs "dismissed" here can be waited on for the next key.
+            popup.bind(parent=lambda _popup, parent: on_dismiss() if parent is None else None)
 
         def popup_is_open() -> None:
             if background_image_file and bgnd_rect and bgnd_texture_size:
