@@ -110,6 +110,51 @@ just reader
 
 ---
 
+## Testing
+
+- **Unit tests** (about 3,500, mocked Kivy, run in CI on Linux, macOS and Windows):
+    ```
+    uv run pytest
+    ```
+- **GUI path tests** (62, Linux only): boot the real app from a scratch profile on a nested
+  X display and drive it with the keyboard, waiting only on lines the app logs. They need the
+  reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
+  is missing. Each passing test is also held to a set of teardown checks: the window is the
+  size it booted at, the log holds no error or stray key, what a read persisted matches what
+  it logged, and the final frame is drawn.
+    ```
+    bash scripts/run_gui_tests.sh                # visible, on a Xephyr window on the second monitor
+    bash scripts/run_gui_tests.sh --headless     # on Xvfb, four workers, about three minutes
+    ```
+  Options (each may be combined; anything else goes to `pytest`, e.g. `-k search` or `-x`):
+
+  | Option | What it does |
+  |---|---|
+  | `--headless` | Run on Xvfb with no window; no desktop session needed |
+  | `--workers N` | Parallel workers, one nested display each (headless default 4) |
+  | `--screen WxH` | Nested screen size, e.g. `--screen 1920x1080` (default `900x1300`) |
+  | `--prebuilt 0\|1` | Read comics from the Fantagraphics volumes or the prebuilt archives |
+  | `--png-images 0\|1` | View images from the PNG panels or the JPG panels zip |
+  | `--ini key=value` | Any other Barks Reader setting for the run (repeatable) |
+  | `--app PATH` | Run the suite against a built executable instead of the workspace |
+  | `--soak` | Run only the random walk (200 keys from four screens; `BARKS_GUI_WALK_STEPS`, `BARKS_GUI_WALK_SEED`) |
+  | `--quiet` | Print only failures and the summary |
+
+  A failure leaves a screenshot, the app log, the keys sent and the scratch profile under
+  `build/gui-tests/<run>/`. In a visible run the test window takes the keyboard when it
+  appears; click back to your own window and do not type into it.
+- **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` launches
+  a build in an empty directory as far as its first-run installer's "data pack missing"
+  message, which proves the packaged program runs at all; CI's Linux build does the same.
+- **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
+  or with `--with-gui-test` to include the GUI suite.
+
+The GUI suite's design, its log-marker contract and its history are in
+`docs/plans/gui-test-suite.md`; the runner's options are also described at the top of
+`scripts/run_gui_tests.sh`.
+
+---
+
 ## Building a Standalone Executable Using Nuitka
 1. Install the dependencies (Nuitka is a dev dependency):
     ```
