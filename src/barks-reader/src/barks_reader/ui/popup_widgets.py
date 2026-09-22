@@ -133,7 +133,7 @@ class _ConfirmPopupNav:
         self._buttons: list[Button] = [popup.ids.ok_button, popup.ids.cancel_button]
         self._focused_idx = 0  # The confirming button starts focused.
         Window.bind(on_key_down=self._on_key_down)
-        popup.bind(on_dismiss=self._unbind_window)
+        popup.bind(on_dismiss=self._unbind_window, parent=self._on_parent)
 
     def confirm(self) -> None:
         logger.info(log_markers.CONFIRM_POPUP_CONFIRMED.format(title=self._title))
@@ -173,6 +173,15 @@ class _ConfirmPopupNav:
 
     def _unbind_window(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
-        # The popup owns the keys until it has gone; a driver waits on this line.
-        logger.debug(log_markers.CONFIRM_POPUP_CLOSED.format(title=self._title))
         return False
+
+    def _on_parent(self, _popup: object, parent: object) -> None:
+        """Log the popup closed once it has left the window, not when its dismissal began.
+
+        Kivy fades a dismissed popup out before removing it, and the main screen
+        ignores every key while a modal is still on the window; a driver that
+        pressed the next key on the dismissal line lost it whenever the fade
+        outlasted the key gap. The line it waits on is written here instead.
+        """
+        if parent is None:
+            logger.debug(log_markers.CONFIRM_POPUP_CLOSED.format(title=self._title))

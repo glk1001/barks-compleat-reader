@@ -33,9 +33,29 @@ class TestConfirmPopupNav:
         popup.dismiss.assert_called_once()
         on_ok.assert_not_called()
 
-    def test_dismissal_is_logged(self, loguru_sink: list[str]) -> None:
-        """The popup owns the keys until it has gone, so a driver waits on this line."""
-        nav, _popup = _nav(MagicMock(), "Clear Reading History")
+    def test_closing_is_logged_when_the_popup_leaves_the_window(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """A driver waits on this line before its next key.
+
+        The main screen ignores keys while a modal is still on the window, and
+        Kivy keeps a dismissed popup there through its fade-out, so the
+        dismissal itself is too early to log it.
+        """
+        nav, popup = _nav(MagicMock(), "Clear Reading History")
+        closed = 'Confirm popup "Clear Reading History": closed.'
         with patch.object(popup_widgets, "Window"):
             nav._unbind_window()  # noqa: SLF001
-        assert 'Confirm popup "Clear Reading History": closed.' in loguru_sink
+        assert closed not in loguru_sink
+        nav._on_parent(popup, object())  # noqa: SLF001  (added to the window)
+        assert closed not in loguru_sink
+        nav._on_parent(popup, None)  # noqa: SLF001  (removed after the fade)
+        assert closed in loguru_sink
+
+    def test_the_window_binding_goes_with_the_dismissal(self) -> None:
+        nav, popup = _nav(MagicMock())
+        popup.bind.assert_called_once()
+        assert set(popup.bind.call_args.kwargs) == {"on_dismiss", "parent"}
+        with patch.object(popup_widgets, "Window") as window:
+            nav._unbind_window()  # noqa: SLF001
+        window.unbind.assert_called_once_with(on_key_down=nav._on_key_down)  # noqa: SLF001
