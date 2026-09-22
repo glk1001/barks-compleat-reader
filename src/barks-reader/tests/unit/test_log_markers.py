@@ -40,6 +40,31 @@ class TestPattern:
             pattern(log_markers.SHOWED_PAGE, no_such_field=1)
 
 
+class TestCapture:
+    def test_captures_the_named_field(self) -> None:
+        line = log_markers.SHOWED_PAGE.format(index=34, elapsed="1.5s")
+        found = re.search(log_markers.capture(log_markers.SHOWED_PAGE, "index"), line)
+        assert found is not None
+        assert found["index"] == "34"
+        found = re.search(log_markers.capture(log_markers.SHOWED_PAGE, "elapsed"), line)
+        assert found is not None
+        assert found["elapsed"] == "1.5s"
+
+    def test_other_fields_can_still_be_pinned(self) -> None:
+        line = log_markers.HISTORY_BUILT_VIEW.format(view="journal", rows=6)
+        regex = log_markers.capture(log_markers.HISTORY_BUILT_VIEW, "rows", view="journal")
+        found = re.search(regex, line)
+        assert found is not None
+        assert found["rows"] == "6"
+        assert not re.search(
+            log_markers.capture(log_markers.HISTORY_BUILT_VIEW, "rows", view="titles"), line
+        )
+
+    def test_a_field_not_in_the_template_is_refused(self) -> None:
+        with pytest.raises(KeyError, match="no_such_field"):
+            log_markers.capture(log_markers.SHOWED_PAGE, "no_such_field")
+
+
 def test_every_marker_formats_with_its_named_fields_only() -> None:
     """A template must use only ``{name}`` fields, so ``pattern`` and ``format`` agree."""
     templates = {

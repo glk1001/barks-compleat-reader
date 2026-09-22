@@ -20,7 +20,7 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import harness  # noqa: E402
+from barks_gui import harness, logs  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
@@ -311,3 +311,134 @@ class TestStrayKeyPresses:
 
     def test_fewer_presses_than_sent_is_not_negative(self) -> None:
         assert harness.stray_key_presses("", "10:00:00.000 key Down\n") == 0
+
+
+class TestLogProblems:
+    STAMP = "2026-09-22 16:47:07.257"
+
+    def _line(self, level: str, message: str) -> str:
+        return f"{self.STAMP} | {level:<8} | app : some.module:func:12 - {message}"
+
+    def test_a_clean_log_has_none(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("WARNING", "kivy: Factory: Ignored class re-declaration."),
+                self._line("INFO", "Showed page 3 in 12ms."),
+            ]
+        )
+        assert harness.log_problems(text) == []
+
+    @pytest.mark.parametrize("level", ["ERROR", "CRITICAL"])
+    def test_an_error_level_line_is_a_problem(self, level: str) -> None:
+        text = self._line(level, "Could not find monitor for pos (0,0).")
+        assert harness.log_problems(text) == [text]
+
+    def test_a_traceback_and_an_image_failure_are_problems_at_any_level(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Traceback (most recent call last):"),
+                self._line("WARNING", "kivy: Image: Unable to load image </x/y.png>"),
+            ]
+        )
+        problems = harness.log_problems(text)
+        assert [p.split(" - ", 1)[1] for p in problems] == [
+            "Traceback (most recent call last):",
+            "kivy: Image: Unable to load image </x/y.png>",
+        ]
+
+    def test_the_screen_still_showing_is_allowed(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'wiki_reader' entered."),
+                self._line("DEBUG", "Screen 'main_screen' left."),
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'wiki_reader' left."),
+            ]
+        )
+        assert harness.log_problems(text) == []
+
+    def test_after_a_quit_no_screen_need_be_showing(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'main_screen' left."),
+            ]
+        )
+        assert harness.log_problems(text) == []
+
+    def test_two_screens_never_left_is_a_problem(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'wiki_reader' entered."),
+            ]
+        )
+        problems = harness.log_problems(text)
+        assert problems == ["2 screens entered and never left - only one can be showing"]
+
+    def test_a_screen_left_more_than_entered_is_a_problem(self) -> None:
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'main_screen' left."),
+                self._line("DEBUG", "Screen 'main_screen' left."),
+            ]
+        )
+        assert harness.log_problems(text) == ["screen 'main_screen' entered 1 times, left 2"]
+
+
+class TestAssertLogClean:
+    class _Driver:
+        def __init__(self, log_path: Path) -> None:
+            self.log_path = log_path
+
+    @pytest.fixture
+    def app_boot(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> harness.AppBoot:
+        app_boot = harness.AppBoot(scratch=tmp_path, nodeid="test_x.py::test_y")
+        monkeypatch.setattr(app_boot, "save_failure_artifacts", lambda: [tmp_path / "y.png"])
+        return app_boot
+
+    def test_a_clean_log_passes(self, app_boot: harness.AppBoot, tmp_path: Path) -> None:
+        log = tmp_path / "app.log"
+        log.write_text("2026-09-22 16:47:07.257 | DEBUG    | app : m:f:1 - Screen 'a' entered.\n")
+        (tmp_path / "input.log").write_text("")
+        app_boot.driver = self._Driver(log)  # ty: ignore[invalid-assignment]
+        app_boot.assert_log_clean()
+
+    def test_an_error_line_fails_naming_it_and_the_artifacts(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        log = tmp_path / "app.log"
+        log.write_text("2026-09-22 16:47:07.257 | ERROR    | app : m:f:1 - Boom.\n")
+        (tmp_path / "input.log").write_text("")
+        app_boot.driver = self._Driver(log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(AssertionError, match="Boom") as excinfo:
+            app_boot.assert_log_clean()
+        assert str(tmp_path / "y.png") in str(excinfo.value)
+
+    def test_a_stray_key_fails_too(self, app_boot: harness.AppBoot, tmp_path: Path) -> None:
+        log = tmp_path / "app.log"
+        log.write_text(markers.KEY_PRESSED.format(key=27, name="escape") + "\n")
+        (tmp_path / "input.log").write_text("")
+        app_boot.driver = self._Driver(log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(AssertionError, match="STRAY INPUT"):
+            app_boot.assert_log_clean()
+
+
+class TestLogMessages:
+    def test_the_location_suffix_is_stripped_from_every_line(self) -> None:
+        text = (
+            "2026-09-22 16:47:07.257 | INFO     | app : m:f:1 - Last page: requested index = 28."
+            "  [barks_reader.ui.comic_book_reader:goto_last_page:186]\n"
+            "2026-09-22 16:47:07.258 | DEBUG    | kivy: ImageSDL2: Load <x.png>  [kivy:load:454]\n"
+        )
+        stripped = logs.messages(text)
+        first, second = stripped.splitlines()
+        assert first.endswith("requested index = 28.")
+        assert second.endswith("ImageSDL2: Load <x.png>")
+
+    def test_a_message_ending_in_brackets_of_its_own_is_kept(self) -> None:
+        line = "... - Index item pressed: IndexItem(id='a-1')  [barks_reader.ui.index_screen:_on:1]"
+        assert logs.messages(line) == "... - Index item pressed: IndexItem(id='a-1')"

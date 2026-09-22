@@ -6,6 +6,7 @@ import json
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes, tree
+from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -39,6 +40,13 @@ def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
     assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0]
     d.open_story(Pick(nodes.GHOST_OF_THE_GROTTO[0], pages=READ.pages, dwell=READ.dwell))
     assert d.current_page() >= 1, "a page must have turned before the reader closed"
+    # The walk down the range passed through its titles one node at a time, and
+    # the read turned one page at a time from the front.
+    path = fields_of(d, markers.NEW_SELECTED_NODE, "name")
+    assert path[-1] == nodes.GHOST_OF_THE_GROTTO[0]
+    assert path.index(BROWSE_RANGE) < path.index(nodes.GHOST_OF_THE_GROTTO[0])
+    shown = [int(i) for i in fields_of(d, markers.SHOWED_PAGE, "index")]
+    assert shown == list(range(len(shown))), shown
 
 
 def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
@@ -95,6 +103,11 @@ def test_goto_end_then_right_is_the_last_page(boot: AppBoot) -> None:
         d.press_menu_button("goto_end")
     with d.expect(pattern(markers.ALREADY_ON_LAST_PAGE)):
         d.key("Right")
+    # The page requested, the page shown and the page Right refused to leave all agree.
+    last = int(last_field(d, markers.GOTO_LAST_PAGE, "index"))
+    assert d.current_page() == last
+    assert int(last_field(d, markers.ALREADY_ON_LAST_PAGE, "index")) == last
+    assert last > 0
     d.close_reader()
 
 

@@ -218,3 +218,28 @@ def pattern(template: str, **fields: object) -> str:
             value = fields[part]
             out.append(value.pattern if isinstance(value, re.Pattern) else re.escape(str(value)))
     return "".join(out)
+
+
+def capture(template: str, field: str, **fields: object) -> str:
+    """Turn a marker template into a regex that captures one of its fields.
+
+    Like `pattern`, with `field` becoming the named group ``(?P<field>.*)``, so a
+    test can read a value the app logged: ``re.search(capture(SHOWED_PAGE,
+    "index"), line)["index"]``. The other fields match as `pattern` matches them.
+
+    Args:
+        template: A marker from this module.
+        field: The field to capture.
+        **fields: Values for some of the other fields.
+
+    Returns:
+        A regex for ``re.search`` over one log line.
+
+    Raises:
+        KeyError: If `field` (or a field named here) is not in the template.
+
+    """
+    if field not in set(_FIELD_RE.findall(template)):
+        msg = f"{field!r} not in template {template!r}"
+        raise KeyError(msg)
+    return pattern(template, **fields, **{field: re.compile(f"(?P<{field}>.*)")})

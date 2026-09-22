@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import re
+import string
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
+from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
+    from gui_driver import Driver
 
 ITEMS_DOWN = 2
 INDEX_LETTERS = 3
@@ -23,6 +27,21 @@ def _letter(letter: str) -> str:
     return pattern(markers.INDEX_LETTER_POPULATED, letter=letter)
 
 
+def _letters_shown(d: Driver) -> list[str]:
+    """Every letter the index showed, populated or empty, in the order it did."""
+    return re.findall(
+        r"Populated index page for letter '([A-Z])'", d.log_path.read_text(errors="replace")
+    )
+
+
+def _item_display_text(d: Driver) -> str:
+    """Return the display text of the item last pressed (the app logs the whole IndexItem)."""
+    item = last_field(d, markers.INDEX_ITEM_PRESSED, "item")
+    found = re.search(r"display_text='([^']*)'", item)
+    assert found, item
+    return found[1]
+
+
 def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     """Booting onto Main Index builds it and shows 'A'; Right enters items, Enter presses one."""
     d = boot(nodes.MAIN_INDEX)
@@ -31,7 +50,11 @@ def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")  # index nodes take focus straight in
     d.move_focus("Right")  # alphabet panel -> items
     d.move_focus(*["Down"] * ITEMS_DOWN)
-    d.key_then_wait(ITEM_PRESSED, "Return")
+    with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
+        d.key_then_wait(ITEM_PRESSED, "Return")
+    # An item under 'A' is a title starting with A, and pressing it selects that title.
+    assert _item_display_text(d).upper().startswith("A")
+    assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:
@@ -39,6 +62,7 @@ def test_main_index_letters_repopulate(boot: AppBoot) -> None:
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     d.key_then_wait(_letter("B"), "Down")
     d.key_then_wait(_letter("C"), "Down")
+    assert _letters_shown(d) == ["A", "B", "C"]
 
 
 def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
@@ -47,6 +71,7 @@ def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     for _ in range(INDEX_LETTERS):
         d.key_then_wait(POPULATED_OR_EMPTY, "Down")
+    assert _letters_shown(d) == list(string.ascii_uppercase[: INDEX_LETTERS + 1])
 
 
 def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
@@ -56,6 +81,9 @@ def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
     for _ in range(LETTERS):
         d.key_then_wait(POPULATED_OR_EMPTY, "Down")
         if d.match_count(EMPTY_LETTER):
+            shown = _letters_shown(d)
+            assert shown == list(string.ascii_uppercase[: len(shown)]), "Down walks the alphabet"
+            assert last_field(d, markers.INDEX_LETTER_EMPTY, "letter") == shown[-1]
             return
     msg = "every letter of the main index has items"
     raise AssertionError(msg)
@@ -72,6 +100,11 @@ def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
     # Return expands the term's titles and re-lands focus once they are in.
     with d.expect(pattern(markers.INDEX_TERM_HANDLED)), d.expect(d.FOCUS_MOVED):
         d.key("Return")
+    # The term pressed is the item pressed, and it falls under the prefix picked.
+    prefix = last_field(d, markers.INDEX_PREFIX_PRESSED, "prefix")
+    term = last_field(d, markers.INDEX_TERM_HANDLED, "term")
+    assert term == _item_display_text(d)
+    assert term.lower().startswith(prefix[0].lower()), (prefix, term)
     d.move_focus("Down")  # first title under the term
     d.move_focus("Right")  # its speech button
     d.key_then_wait(pattern(markers.SHOW_BUBBLES_FOR_INDEX_TERMS), "Return")
@@ -85,6 +118,7 @@ def test_names_and_locations_indexes_open_items(boot: AppBoot) -> None:
     d.key_then_wait(POPULATED_OR_EMPTY, "Down")
     d.move_focus("Right")
     d.key_then_wait(ITEM_PRESSED, "Return")
+    assert _item_display_text(d), "an entity item names its entity"
     # Over to Locations through the tree. In the items panel Escape only goes back
     # to the letters; the second Escape leaves the index, and Down is the sibling.
     d.move_focus("Escape")

@@ -255,6 +255,56 @@ def stray_key_presses(app_log: str, input_log: str) -> int:
     return max(0, received - injected)
 
 
+_LEVEL_RE = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ \| (ERROR|CRITICAL)\b")
+# Text no line of a clean run carries, whatever its level.
+_PROBLEM_TEXTS = (
+    "Traceback (most recent call last)",
+    "Unable to load image",
+    "Error loading texture",
+    "Error reading file",
+)
+_SCREEN_ENTERED_RE = re.compile(pattern(markers.SCREEN_ENTERED, name=re.compile(r"([^']+)")))
+_SCREEN_LEFT_RE = re.compile(pattern(markers.SCREEN_LEFT, name=re.compile(r"([^']+)")))
+
+
+# How many of a log's problems a failure message lists before "... and N more".
+PROBLEMS_SHOWN = 12
+
+
+def log_problems(app_log: str) -> list[str]:
+    """Return what a passing test must not leave in the app log.
+
+    Error-level lines and tracebacks; Kivy's image-load failures, which it logs
+    below error level; and screens whose entered and left lines do not pair up
+    (each screen may be the one still showing, so a surplus of one is allowed,
+    once).
+
+    Args:
+        app_log: The app log's text.
+
+    Returns:
+        One short line per problem, in log order.
+
+    """
+    problems: list[str] = [
+        line.strip()[:200]
+        for line in app_log.splitlines()
+        if _LEVEL_RE.match(line) or any(text in line for text in _PROBLEM_TEXTS)
+    ]
+    entered = [found[1] for found in _SCREEN_ENTERED_RE.finditer(app_log)]
+    left = [found[1] for found in _SCREEN_LEFT_RE.finditer(app_log)]
+    showing = 0
+    for screen in sorted(set(entered)):
+        surplus = entered.count(screen) - left.count(screen)
+        if surplus < 0 or surplus > 1:
+            times, lefts = entered.count(screen), left.count(screen)
+            problems.append(f"screen '{screen}' entered {times} times, left {lefts}")
+        showing += max(surplus, 0)
+    if showing > 1:
+        problems.append(f"{showing} screens entered and never left - only one can be showing")
+    return problems
+
+
 def resize_events(log_text: str) -> list[tuple[int, int]]:
     """Return every window size the app logged a resize event for, in order."""
     return [(int(w), int(h)) for w, h in _RESIZE_RE.findall(log_text)]
@@ -428,6 +478,35 @@ class AppBoot:
                 shutil.copy2(source, target)
                 saved.append(target)
         return saved
+
+    def assert_log_clean(self) -> None:
+        """Fail the test if the app log holds an error, a broken screen pairing or a stray key.
+
+        Called from the fixture teardown once the test body has passed, on every
+        path the suite walks. The failure artifacts are saved first.
+
+        Raises:
+            AssertionError: Naming the offending lines.
+
+        """
+        if self.driver is None:
+            return
+        try:
+            app_log = self.driver.log_path.read_text(errors="replace")
+        except OSError:
+            return
+        problems = log_problems(app_log)
+        stray = self.stray_key_note()
+        if stray:
+            problems.append(stray)
+        if not problems:
+            return
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        shown = "\n".join(problems[:PROBLEMS_SHOWN])
+        hidden = len(problems) - PROBLEMS_SHOWN
+        more = f"\n... and {hidden} more" if hidden > 0 else ""
+        msg = f"the app log is not clean:\n{shown}{more}\nartifacts:\n{listing}"
+        raise AssertionError(msg)
 
     def stray_key_note(self) -> str | None:
         """Return a line for the failure report when keys the probe never sent reached the app."""

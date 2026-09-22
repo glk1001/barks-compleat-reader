@@ -18,10 +18,11 @@ the fixed cost - a few seconds on a desktop - so a test that can reach its secon
 screen from its first should do so rather than ask for another boot; one boot per
 test is asserted.
 
-A test that passes must also hand the window back at the size it booted at: the
-teardown compares the two and errors, with the failure artifacts saved, when they
-differ. That turns an intermittent shrink seen while watching a run into a report
-with the app log that names what resized the window.
+A test that passes must also leave things clean, and the teardown checks that with
+the failure artifacts saved when not: the window is the size it booted at (an
+intermittent shrink seen while watching a run then becomes a report naming what
+resized it), and the app log holds no error, traceback, image-load failure,
+unpaired screen entry or key the probe never sent.
 """
 
 from __future__ import annotations
@@ -143,6 +144,7 @@ def boot(
         try:
             if not request.node.stash.get(CALL_FAILED, False):
                 app_boot.assert_window_size_kept()
+                app_boot.assert_log_clean()
         finally:
             app_boot.stop()
 

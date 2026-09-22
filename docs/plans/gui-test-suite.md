@@ -108,6 +108,17 @@
 >   visible run opens one Xephyr window per worker and takes the keyboard once, when it
 >   appears, instead of once per test. Report sections now go on the call report itself
 >   (`item.add_report_section` landed on the teardown report, which pytest never printed).
+> - Same day: checking the values, not just the lines. The teardown now lints the app log
+>   of every passing test (`AppBoot.assert_log_clean`): no ERROR/CRITICAL line, traceback
+>   or image-load failure, every screen's entered/left lines paired (one may still be
+>   showing), no stray key. And the tests read the fields of the lines they wait on
+>   (`barks_gui.logs.fields_of` / `last_field`, over `log_markers.capture`, with the file
+>   formatter's `[module:function:line]` suffix stripped first): document page counts and
+>   the page sequence, the statistics images as files on disk, index letters walked in
+>   order and the item pressed being the title selected, the fun view's goto file being
+>   the image on show, history rows and ids, search result counts against the row picked,
+>   the tag matched, the reader's page indexes stepping by one and last-page agreement.
+>   Three files that had asserted nothing (documents and stats, fun view, indexes) now do.
 
 ## Context
 
