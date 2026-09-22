@@ -354,6 +354,9 @@ class AppBoot:
     nodeid: str
     driver: gd.Driver | None = None
     boot_geometry: tuple[int, int, int, int] | None = None
+    # A test that may legitimately end at another size (the random walk can end
+    # fullscreen) sets this False; every other teardown check still applies.
+    expect_boot_size: bool = True
     _shots: list[Path] = field(default_factory=list)
     # Set before the probe is asked to start, not after the Driver exists: a
     # boot that fails part-way (the app never logs its ready line, say) has
@@ -424,7 +427,7 @@ class AppBoot:
             AssertionError: If either size differs from what the app booted at.
 
         """
-        if self.driver is None or self.boot_geometry is None:
+        if self.driver is None or self.boot_geometry is None or not self.expect_boot_size:
             return
         try:
             self.driver.settle()

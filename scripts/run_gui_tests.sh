@@ -14,6 +14,10 @@
 # "STRAY INPUT" line in the report (the app logs every key press, and the report
 # counts them against the probe's input log).
 #
+# --soak runs only the random walk (test_random_walk.py, marker "soak"), which the
+# default run skips; BARKS_GUI_WALK_STEPS and BARKS_GUI_WALK_SEED set its length
+# and seed.
+#
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
 #
@@ -49,6 +53,7 @@ export BARKS_PROBE_SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 
 workers="${BARKS_GUI_WORKERS:-}"
 quiet=""
+soak=""
 # Run-wide settings, handed to the harness as "key=value;key=value".
 add_ini() {
     export BARKS_GUI_INI="${BARKS_GUI_INI:+$BARKS_GUI_INI;}$1"
@@ -74,6 +79,10 @@ while [[ "${1:-}" == --* ]]; do
     --ini)
         add_ini "${2:?--ini needs key=value}"
         shift 2
+        ;;
+    --soak)
+        soak=1
+        shift
         ;;
     --prebuilt)
         add_ini "use_prebuilt_comics=${2:?--prebuilt needs 0 or 1}"
@@ -113,7 +122,10 @@ bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
 # warns from every worker that it disables itself under xdist. Nothing here
 # benchmarks, so drop that one warning by its message.
 export PYTHONWARNINGS="${PYTHONWARNINGS:+$PYTHONWARNINGS,}ignore:Benchmarks are automatically disabled"
-cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "$@")
+# The soak walk is long and aimless; it runs only when asked for, and then alone.
+select=(-m "not soak")
+[[ -n "$soak" ]] && select=(-m soak)
+cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "${select[@]}" "$@")
 # shellcheck source=scripts/_show_cmd.sh
 source "${SCRIPT_DIR}/_show_cmd.sh"
 if [[ -z "$quiet" ]]; then

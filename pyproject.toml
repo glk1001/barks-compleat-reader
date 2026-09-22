@@ -119,6 +119,9 @@ testpaths = [
     "src/okf-reader/tests",
     "src/comic-utils/tests",
 ]
+markers = [
+    "soak: a long random walk over the GUI; run_gui_tests.sh --soak selects it, the default run skips it",
+]
 addopts = """
     --import-mode=importlib
     --benchmark-time-unit=s
