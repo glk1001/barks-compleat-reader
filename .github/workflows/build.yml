@@ -74,7 +74,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libmtdev1t64 patchelf ccache
+          sudo apt-get install -y libgl1 libmtdev1t64 patchelf ccache xvfb
 
       - name: Install ccache (macOS)
         if: runner.os == 'macOS'
@@ -130,6 +130,15 @@ jobs:
       - name: Build executable
         shell: bash
         run: bash scripts/build.sh
+
+      # Launch what was built: with no data pack beside it the build takes its
+      # first-run path as far as the installer's "data pack missing" popup, which
+      # proves the packaged runtime, modules, installer and a Kivy window all work.
+      # Linux only for now: the macOS bundle and the Windows exe launch differently.
+      - name: Smoke-test the executable (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
 
       - name: Upload executable
         if: ${{ !env.ACT }}

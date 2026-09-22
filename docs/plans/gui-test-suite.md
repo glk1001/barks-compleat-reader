@@ -146,6 +146,24 @@
 >   colours. Calibrated on all 62 tests' final frames: 3% to 26% and 4,600 to 25,000. A
 >   named checkpoint (`AppBoot.checkpoint`, with `BARKS_GUI_SHOTS=1`) is judged the same
 >   way when it is taken. No comparison to a reference, no pixel coordinates.
+> - 2026-09-23: three more kinds of test. (1) A random walk, `test_random_walk.py`: a
+>   seeded stream of the remote's six keys from four boot nodes, each key waited on through
+>   the `KEY_PRESSED` line (a main loop that stops answering fails at that key), never
+>   confirming a confirm popup, with every teardown invariant applied but the boot size
+>   (the walk may end fullscreen). Marker `soak`, skipped by default;
+>   `run_gui_tests.sh --soak` runs it alone, `BARKS_GUI_WALK_STEPS` / `BARKS_GUI_WALK_SEED`
+>   set length and seed. (2) The built executable: the app now honours
+>   `BARKS_READER_CONFIG_DIR` / `BARKS_READER_DATA_DIR` in a build too, the probe runs
+>   `BARKS_PROBE_APP` instead of `uv run main.py` (passing the data dir it would have read
+>   from `.env.runtime`), `run_gui_tests.sh --app PATH` runs the whole suite against a
+>   Nuitka build, and `scripts/smoke-test-build.sh` launches a build in an empty directory
+>   as far as the installer's missing-data-pack popup (CI's Linux build leg runs it). The
+>   first attempt taught the lesson: a build that ignores the env vars installs itself
+>   beside the executable, which in a checkout is the repo root. (3) Property-based tests,
+>   `tests/unit/test_properties.py`: page-map slicing, display-unit tiling, page lookups,
+>   last-read resolution in both modes, the inside-body rule, saved-page JSON round trips,
+>   year-range folding, hyphenation markup preserving the text, and marker format/match/
+>   capture round trips.
 
 ## Context
 

@@ -133,6 +133,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   than a sleep. The marker text is written once, in `barks_reader.core.log_markers`
   (`okf_reader.core.log_markers` for the wiki viewer): the app logs it with `.format`, a
   GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
+  `--soak` runs the random walk instead (off by default); `--app PATH` runs the suite
+  against a Nuitka build; `--prebuilt`, `--png-images` and `--ini` move a run to other
+  settings; `--screen WxH` picks another nested screen size.
 
 ## graphify
 

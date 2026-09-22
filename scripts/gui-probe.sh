@@ -41,7 +41,9 @@
 # BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run),
 # BARKS_PROBE_KEEP_XSERVER=1 (`stop` leaves the X server up and `start` reuses it,
 # so a run of many boots opens one Xephyr window - which takes the host keyboard
-# focus once, not once per boot; `stop-xserver` ends it).
+# focus once, not once per boot; `stop-xserver` ends it),
+# BARKS_PROBE_APP (a built executable to run instead of `uv run main.py`; it gets
+# the same config and data dir env vars, which the app honours when set).
 
 set -euo pipefail
 
@@ -154,6 +156,16 @@ config_file() {
     fi
     dir="${dir/\$\{HOME\}/$HOME}"
     echo "${dir:-$HOME/opt/barks-reader/config}/barks-reader.json"
+}
+
+# The app data directory: an exported BARKS_READER_DATA_DIR, else .env.runtime's.
+data_dir() {
+    local dir="${BARKS_READER_DATA_DIR:-}"
+    if [[ -z "$dir" ]]; then
+        dir="$(grep -oP '(?<=^BARKS_READER_DATA_DIR=").*(?="$)' "$REPO_ROOT/.env.runtime" 2>/dev/null || true)"
+    fi
+    dir="${dir/\$\{HOME\}/$HOME}"
+    echo "${dir:-$HOME/opt/barks-reader}"
 }
 
 # The app window's geometry on the nested display as WxH+X+Y, or nothing.
@@ -308,8 +320,16 @@ cmd_start() {
         start_xserver "$offset" "$origin"
     fi
 
-    setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
-        </dev/null >>"$APP_LOG" 2>&1 &
+    # A built executable reads no .env.runtime, so it gets the data dir the
+    # workspace run would read from there (the config dir env var, when set, is
+    # already in the environment for both).
+    if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
+        setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" "$BARKS_PROBE_APP" \
+            </dev/null >>"$APP_LOG" 2>&1 &
+    else
+        setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
+            </dev/null >>"$APP_LOG" 2>&1 &
+    fi
     echo $! >"$APP_PID_FILE"
     disown
 

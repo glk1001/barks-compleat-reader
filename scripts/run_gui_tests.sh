@@ -16,7 +16,10 @@
 #
 # --soak runs only the random walk (test_random_walk.py, marker "soak"), which the
 # default run skips; BARKS_GUI_WALK_STEPS and BARKS_GUI_WALK_SEED set its length
-# and seed.
+# and seed. --app PATH runs the suite against a built executable instead of
+# `uv run main.py` (BARKS_PROBE_APP), for the packaging the workspace run never
+# exercises: the binary must honour the config and data dir env vars, as the
+# app does when they are set.
 #
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
@@ -84,6 +87,11 @@ while [[ "${1:-}" == --* ]]; do
         soak=1
         shift
         ;;
+    --app)
+        export BARKS_PROBE_APP="${2:?--app needs the path of the executable}"
+        [[ -x "$BARKS_PROBE_APP" ]] || { echo "run_gui_tests: not an executable: $BARKS_PROBE_APP" >&2; exit 2; }
+        shift 2
+        ;;
     --prebuilt)
         add_ini "use_prebuilt_comics=${2:?--prebuilt needs 0 or 1}"
         shift 2
@@ -125,6 +133,7 @@ export PYTHONWARNINGS="${PYTHONWARNINGS:+$PYTHONWARNINGS,}ignore:Benchmarks are 
 # The soak walk is long and aimless; it runs only when asked for, and then alone.
 select=(-m "not soak")
 [[ -n "$soak" ]] && select=(-m soak)
+[[ -n "${BARKS_PROBE_APP:-}" ]] && echo "run_gui_tests: running the built executable ${BARKS_PROBE_APP}"
 cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "${select[@]}" "$@")
 # shellcheck source=scripts/_show_cmd.sh
 source "${SCRIPT_DIR}/_show_cmd.sh"
