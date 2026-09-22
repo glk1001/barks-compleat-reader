@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from barks_gui import expected, nodes, tree
+from barks_gui import expected, harness, nodes, tree
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -31,6 +31,16 @@ def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
     return d
 
 
+def _two_up(boot: AppBoot) -> bool:
+    """Whether the run booted the reader in double-page mode (the matrix does)."""
+    return harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
+
+
+def _shows(boot: AppBoot, title: str, page_index: int) -> int:
+    """Return the page the reader renders for `page_index`: itself, or two-up its unit's left."""
+    return expected.unit_start(title, page_index) if _two_up(boot) else page_index
+
+
 def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
     """The Stories > Chronological > a range > a title, opened, read, and closed."""
     d = boot(nodes.THE_STORIES, cues=nodes.NO_CUES)
@@ -50,7 +60,10 @@ def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
         "the titles walked are the range's titles, in the data's order"
     )
     shown = [int(i) for i in fields_of(d, markers.SHOWED_PAGE, "index")]
-    assert shown == list(range(len(shown))), shown
+    if _two_up(boot):
+        assert shown == expected.unit_starts(nodes.GHOST_OF_THE_GROTTO_TITLE)[: len(shown)], shown
+    else:
+        assert shown == list(range(len(shown))), shown
 
 
 def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
@@ -61,11 +74,16 @@ def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
     d.open_selected_story()
     d.read_pages(READ)
 
+    shows = _shows(boot, nodes.LOST_IN_THE_ANDES_TITLE, GOTO_PAGE)
     with d.expect(pattern(markers.GOTO_PAGE_SELECTED)):  # goto_page waits on the rest itself
-        d.goto_page(GOTO_PAGE)
-    assert d.current_page() == GOTO_PAGE
+        d.goto_page(GOTO_PAGE, shows=shows)
+    assert d.current_page() == shows
 
-    with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
+    # The toggle goes the other way from wherever the run booted (the matrix boots two-up).
+    with (
+        d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=not _two_up(boot))),
+        d.expect(SHOWED_PAGE),
+    ):
         d.press_menu_button("double_page")
     d.close_reader()
 
@@ -73,10 +91,11 @@ def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
 def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
     """A second goto reopens the (cached) dropdown and can step Up to an earlier page."""
     d = _open_ghost_of_the_grotto(boot)
-    d.goto_page(GOTO_PAGE)
+    title = nodes.GHOST_OF_THE_GROTTO_TITLE
+    d.goto_page(GOTO_PAGE, shows=_shows(boot, title, GOTO_PAGE))
     with d.expect(pattern(markers.GOTO_PAGE_SELECTED)):
-        d.goto_page(GOTO_PAGE_BACK)
-    assert d.current_page() == GOTO_PAGE_BACK
+        d.goto_page(GOTO_PAGE_BACK, shows=_shows(boot, title, GOTO_PAGE_BACK))
+    assert d.current_page() == _shows(boot, title, GOTO_PAGE_BACK)
     d.close_reader()
 
 
@@ -111,9 +130,9 @@ def test_goto_end_then_right_is_the_last_page(boot: AppBoot) -> None:
     last = int(last_field(d, markers.GOTO_LAST_PAGE, "index"))
     assert d.current_page() == last
     assert int(last_field(d, markers.ALREADY_ON_LAST_PAGE, "index")) == last
-    assert last == expected.last_page_index(nodes.GHOST_OF_THE_GROTTO_TITLE), (
-        "the last page is the last of the layout the data builds for the story"
-    )
+    assert last == expected.last_page_index(
+        nodes.GHOST_OF_THE_GROTTO_TITLE, two_up=_two_up(boot)
+    ), "the last page is the last of the layout the data builds for the story"
     d.close_reader()
 
 

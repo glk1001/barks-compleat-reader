@@ -258,6 +258,22 @@ class TestGotoPage:
         steps = self._steps(stub_driver, 18, 4, keys_pressed)
         assert steps == ["Return", *["Down"] * 14, "Return"]  # open, step, pick
 
+    def test_waits_on_the_page_the_reader_shows_when_that_is_not_the_target(
+        self, stub_driver: Driver
+    ) -> None:
+        """Two-up the reader renders the unit's left page, so that is the line to wait on."""
+        with (
+            patch.object(Driver, "key"),
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "expect", return_value=nullcontext()) as expect,
+            patch.object(Driver, "hold"),
+            patch.object(Driver, "current_page", return_value=0),
+        ):
+            stub_driver.goto_page(12, shows=11)
+            waited_on = [c.args[0] for c in expect.call_args_list]
+        assert "Showed page 11 in " in waited_on
+        assert not any("Showed page 12" in w for w in waited_on)
+
     def test_steps_up_to_an_earlier_page(
         self, stub_driver: Driver, keys_pressed: KeysPressed
     ) -> None:

@@ -84,9 +84,31 @@ def comic_layout(title: str) -> ComicLayout:
     return ComicLayoutBuilder(sorted_pages_port=adapter).build(database.get_comic_book(title))
 
 
-def last_page_index(title: str) -> int:
-    """Return the index the reader's goto-end lands on for `title`."""
-    return len(comic_layout(title).page_map) - 1
+def last_page_index(title: str, *, two_up: bool = False) -> int:
+    """Return the index the reader's goto-end lands on for `title`.
+
+    Two-up, the reader shows units (a solo page or a pair) and stands on a
+    unit's left page, so the end is the last unit's left page.
+    """
+    layout = comic_layout(title)
+    if two_up:
+        return layout.display_units[-1].left_page_index
+    return len(layout.page_map) - 1
+
+
+def unit_starts(title: str) -> list[int]:
+    """Return the left page index of each unit the reader shows two-up, in order."""
+    return [unit.left_page_index for unit in comic_layout(title).display_units]
+
+
+def unit_start(title: str, page_index: int) -> int:
+    """Return the page the reader shows two-up when asked for `page_index`: its unit's left."""
+    layout = comic_layout(title)
+    unit_idx = layout.unit_idx_for(page_index)
+    if unit_idx is None:
+        msg = f"no page index {page_index} in {title!r}"
+        raise ValueError(msg)
+    return layout.display_units[unit_idx].left_page_index
 
 
 def document_page_count(doc_dir: Path) -> int:

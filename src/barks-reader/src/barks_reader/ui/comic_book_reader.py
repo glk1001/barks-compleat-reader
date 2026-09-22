@@ -191,7 +191,7 @@ class _ComicPageManager(EventDispatcher):
             unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
             if unit_idx < 0 or unit_idx >= len(self._display_units) - 1:
                 logger.debug(
-                    f"Already on the last unit: current index = {self._current_page_index}."
+                    log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index)
                 )
             else:
                 next_unit = self._display_units[unit_idx + 1]
@@ -207,7 +207,9 @@ class _ComicPageManager(EventDispatcher):
         if self.double_page_mode and self._display_units:
             unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
             if unit_idx <= 0:
-                logger.debug("Already on the first unit: current index = 0.")
+                logger.debug(
+                    log_markers.ALREADY_ON_FIRST_PAGE.format(index=self._current_page_index)
+                )
             else:
                 prev_unit = self._display_units[unit_idx - 1]
                 logger.debug(f"Prev unit: left_page_index = {prev_unit.left_page_index}.")

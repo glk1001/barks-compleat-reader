@@ -99,6 +99,34 @@ class TestComicPageManager:
         pm.goto_start_page()
         assert pm._current_page_index == 0
 
+    def test_the_page_edges_log_the_same_markers_in_double_page_mode(
+        self, page_manager: tuple[_ComicPageManager, MagicMock], loguru_sink: list[str]
+    ) -> None:
+        """A GUI test waits on the edge lines whichever mode the reader booted in."""
+        pm, _ = page_manager
+        page_map = OrderedDict()
+        for i in range(5):  # units (0, 1), (2, 3), (4)
+            page_map[str(i)] = PageInfo(
+                page_index=i,
+                page_type=PageType.BODY,
+                display_page_num=str(i),
+                srce_page=MagicMock(),
+                dest_page=MagicMock(),
+            )
+        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.double_page_mode = True
+        pm.set_to_first_page_to_read()
+
+        pm.prev_page()
+        assert pm._current_page_index == 0
+        assert "Already on the first page: current index = 0." in loguru_sink
+
+        pm.goto_last_page()
+        assert pm._current_page_index == 4
+        pm.next_page()
+        assert pm._current_page_index == 4
+        assert "Already on the last page: current index = 4." in loguru_sink
+
     def test_get_image_load_order(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
         pm, _ = page_manager
         page_map = OrderedDict()

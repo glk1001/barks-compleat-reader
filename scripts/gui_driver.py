@@ -637,7 +637,7 @@ class Driver:
         self._walk_menu_to("close")
         self.key_then_wait(self.MAIN_SCREEN_ACTIVE, "Return")
 
-    def goto_page(self, target: int) -> None:
+    def goto_page(self, target: int, shows: int | None = None) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
 
         The dropdown opens focused on the *current* page and lists the pages in
@@ -647,8 +647,12 @@ class Driver:
 
         Args:
             target: The body page to land on.
+            shows: The page the reader then renders, when that is not `target`:
+                two-up it renders the unit holding the target, named by its left
+                page.
 
         """
+        shows = target if shows is None else shows
         current = self.current_page()
         self._walk_menu_to("goto_page")
         # Opening the list puts the focus ring on the current page's entry.
@@ -665,7 +669,7 @@ class Driver:
         # would have passed for page 3. The dropdown dismisses itself a frame or
         # more after the pick and owns the window's keys until it has, so the
         # next key is held back until it says so.
-        with self.expect(f"{self.SHOWED_PAGE} {target} in "), self.expect(self.DROPDOWN_DISMISSED):
+        with self.expect(f"{self.SHOWED_PAGE} {shows} in "), self.expect(self.DROPDOWN_DISMISSED):
             self.key("Return")
 
     def focus_portal(self) -> None:
