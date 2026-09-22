@@ -525,6 +525,36 @@ class AppBoot:
         msg = f"the app log is not clean:\n{shown}{more}\nartifacts:\n{listing}"
         raise AssertionError(msg)
 
+    def assert_reads_persisted(self) -> None:
+        """Fail the test if the profile disagrees with the reads the app logged.
+
+        Called from the fixture teardown once the test body has passed: every
+        read's last-read cue and history event, against the lines the app wrote
+        them with (``barks_gui.persisted``). The failure artifacts are saved first.
+
+        Raises:
+            AssertionError: Naming each disagreement.
+
+        """
+        if self.driver is None:
+            return
+        # Imported here: persisted imports this module for the fixtures directory.
+        from barks_gui.persisted import reads_persisted_problems  # noqa: PLC0415
+
+        try:
+            app_log = self.driver.log_path.read_text(errors="replace")
+        except OSError:
+            return
+        problems = reads_persisted_problems(self.scratch, app_log)
+        if not problems:
+            return
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        shown = "\n".join(problems)
+        msg = (
+            f"the profile does not match the reads the app logged:\n{shown}\nartifacts:\n{listing}"
+        )
+        raise AssertionError(msg)
+
     def stray_key_note(self) -> str | None:
         """Return a line for the failure report when keys the probe never sent reached the app."""
         if self.driver is None:

@@ -109,6 +109,13 @@ USING_PREBUILT_ARCHIVES: Final = "Using prebuilt archives. No extra data to init
 USING_VOLUME_ARCHIVES: Final = "Using Fantagraphics volume archives. Now loading volume info..."
 VOLUMES_LOADED: Final = "Finished loading all volumes in {elapsed}."
 
+# ------------------------------------------------------- what a read persists --
+# One per read that saves progress (articles do not): the harness checks the
+# profile's last-read cue and reading history against these at every teardown.
+LAST_READ_PAGE_SAVED: Final = '"{title}": Saved last read page "{page}".'
+HISTORY_OPEN_RECORDED: Final = 'History: Recorded open of "{title}".'
+HISTORY_CLOSE_RECORDED: Final = 'History: Recorded close of "{title}".'
+
 # --------------------------------------------------------- the comic reader --
 ALL_IMAGES_LOADED: Final = "All images loaded in {elapsed}: current page index = {index}."
 SHOWED_PAGE: Final = "Showed page {index} in {elapsed}."

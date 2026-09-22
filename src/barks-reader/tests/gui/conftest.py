@@ -21,8 +21,9 @@ test is asserted.
 A test that passes must also leave things clean, and the teardown checks that with
 the failure artifacts saved when not: the window is the size it booted at (an
 intermittent shrink seen while watching a run then becomes a report naming what
-resized it), and the app log holds no error, traceback, image-load failure,
-unpaired screen entry or key the probe never sent.
+resized it), the app log holds no error, traceback, image-load failure,
+unpaired screen entry or key the probe never sent, and every read the app logged
+left its last-read cue and history event in the profile as logged.
 """
 
 from __future__ import annotations
@@ -145,6 +146,7 @@ def boot(
             if not request.node.stash.get(CALL_FAILED, False):
                 app_boot.assert_window_size_kept()
                 app_boot.assert_log_clean()
+                app_boot.assert_reads_persisted()
         finally:
             app_boot.stop()
 

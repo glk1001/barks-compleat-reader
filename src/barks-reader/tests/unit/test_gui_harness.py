@@ -7,6 +7,7 @@ conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 
 from __future__ import annotations
 
+import json
 import sys
 import zipfile
 from pathlib import Path
@@ -21,7 +22,7 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import expected, harness, logs  # noqa: E402
+from barks_gui import expected, harness, logs, persisted  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
@@ -498,3 +499,107 @@ class TestAppDataDir:
         monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
         monkeypatch.setattr(harness, "REPO_ROOT", tmp_path)
         assert harness.app_data_dir() is None
+
+
+class TestReadsPersisted:
+    """The profile against the reads the app logged."""
+
+    TITLE = "The Ghost of the Grotto"
+
+    @staticmethod
+    def _scratch(
+        tmp_path: Path, cue: dict[str, object] | None, events: list[dict[str, object]]
+    ) -> Path:
+        settings: dict[str, object] = {"AAA_Settings": {"last_selected_node": ["root"]}}
+        if cue is not None:
+            settings[TestReadsPersisted.TITLE] = {"last_read_page": cue}
+        (tmp_path / "barks-reader.json").write_text(json.dumps(settings))
+        canned = json.loads((harness.FIXTURES_DIR / "barks-reader-history.json").read_text())
+        canned["events"] = [*canned["events"], *events]
+        (tmp_path / "barks-reader-history.json").write_text(json.dumps(canned))
+        return tmp_path
+
+    def _log(self, *, page: str = "4", index: int = 3, closed: bool = True) -> str:
+        lines = [
+            markers.HISTORY_OPEN_RECORDED.format(title=self.TITLE),
+            markers.SHOWED_PAGE.format(index=0, elapsed="1s"),
+            markers.SHOWED_PAGE.format(index=index, elapsed="1s"),
+        ]
+        if closed:
+            lines += [
+                markers.LAST_READ_PAGE_SAVED.format(title=self.TITLE, page=page),
+                markers.HISTORY_CLOSE_RECORDED.format(title=self.TITLE),
+            ]
+        return "\n".join(lines) + "\n"
+
+    def _event(self, *, page: str = "4", closed: bool = True) -> dict[str, object]:
+        return {
+            "id": "ffffffffffffffffffffffffffffffff",
+            "title": self.TITLE,
+            "opened_at": "2026-09-22T10:00:00",
+            "closed_at": "2026-09-22T10:05:00" if closed else None,
+            "last_display_page": page if closed else "",
+            "last_body_page": "26",
+        }
+
+    def _cue(self, *, page: str = "4", index: int = 3) -> dict[str, object]:
+        return {
+            "page_index": index,
+            "display_page_num": page,
+            "page_type": "BODY",
+            "last_body_page": "26",
+        }
+
+    def test_a_read_saved_as_logged_is_clean(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, self._cue(), [self._event()])
+        assert persisted.reads_persisted_problems(scratch, self._log()) == []
+
+    def test_no_reads_and_only_the_canned_history_is_clean(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, None, [])
+        assert persisted.reads_persisted_problems(scratch, "Main screen is active.\n") == []
+
+    def test_a_missing_cue_is_a_problem(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, None, [self._event()])
+        assert persisted.reads_persisted_problems(scratch, self._log()) == [
+            f'no last-read cue for "{self.TITLE}", which the app said it saved'
+        ]
+
+    def test_a_cue_on_another_page_than_logged_is_a_problem(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, self._cue(page="9", index=8), [self._event()])
+        problems = persisted.reads_persisted_problems(scratch, self._log())
+        assert len(problems) == 2, problems  # noqa: PLR2004
+        assert "cue page '9', app saved '4'" in problems[0]
+        assert "cue page index 8, last shown 3" in problems[1]
+
+    def test_the_index_is_not_held_to_the_page_shown_in_double_page_mode(
+        self, tmp_path: Path
+    ) -> None:
+        scratch = self._scratch(tmp_path, self._cue(index=8), [self._event()])
+        log = markers.DOUBLE_PAGE_TOGGLED.format(mode=True) + "\n" + self._log()
+        assert persisted.reads_persisted_problems(scratch, log) == []
+
+    def test_an_open_without_its_event_is_a_problem(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, self._cue(), [])
+        problems = persisted.reads_persisted_problems(scratch, self._log())
+        assert any("do not match the opens" in p for p in problems)
+
+    def test_a_close_that_left_no_close_time_is_a_problem(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, self._cue(), [self._event(closed=False)])
+        problems = persisted.reads_persisted_problems(scratch, self._log())
+        assert any("has no close time" in p for p in problems)
+
+    def test_a_read_still_open_needs_no_close_time(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, None, [self._event(closed=False)])
+        assert persisted.reads_persisted_problems(scratch, self._log(closed=False)) == []
+
+    def test_a_read_that_ended_on_the_last_body_page_is_recorded_at_the_beginning(
+        self, tmp_path: Path
+    ) -> None:
+        """The cue keeps the page; the history gets the normalised one (the next open restarts)."""
+        scratch = self._scratch(tmp_path, self._cue(page="26", index=28), [self._event(page="0")])
+        assert persisted.reads_persisted_problems(scratch, self._log(page="26", index=28)) == []
+
+    def test_an_event_page_other_than_the_one_saved_is_a_problem(self, tmp_path: Path) -> None:
+        scratch = self._scratch(tmp_path, self._cue(), [self._event(page="7")])
+        problems = persisted.reads_persisted_problems(scratch, self._log())
+        assert any("are not the pages saved" in p for p in problems)

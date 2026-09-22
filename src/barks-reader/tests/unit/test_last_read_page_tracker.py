@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.comics_consts import PageType
+from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.display_unit import DisplayUnit
 from barks_reader.core.last_read_page_tracker import LastReadPageTracker
@@ -51,7 +52,10 @@ class TestEndWithoutBegin:
 
 class TestEnd:
     def test_saves_mid_body_position(
-        self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock
+        self,
+        tracker: LastReadPageTracker,
+        mock_settings_manager: MagicMock,
+        loguru_sink: list[str],
     ) -> None:
         reader = MagicMock()
         reader.get_last_read_page.return_value = "5"
@@ -68,6 +72,8 @@ class TestEnd:
         assert result is not None
         assert result.display_page_num == "5"
         mock_settings_manager.save_last_read_page.assert_called_with("My Title", result)
+        # The GUI harness checks the saved cue against this line at every teardown.
+        assert log_markers.LAST_READ_PAGE_SAVED.format(title="My Title", page="5") in loguru_sink
 
     def test_double_page_mid_body_saves_the_right_page(
         self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock

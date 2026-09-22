@@ -130,6 +130,15 @@
 >   page against it, both documents' page counts, the title search count, the wiki chip's
 >   page, and every goto name as a real title. `harness.app_data_dir()` (env var, else
 >   `.env.runtime`) roots the Reader Files lookups, as the app does.
+> - Same day: what a read persists, checked for every read in every test. The app logs
+>   each save and each history open and close as it writes them (`LAST_READ_PAGE_SAVED`,
+>   `HISTORY_OPEN_RECORDED`, `HISTORY_CLOSE_RECORDED`), and the teardown
+>   (`AppBoot.assert_reads_persisted`, over `barks_gui.persisted`) holds the scratch profile
+>   to them: the title's cue carries the page the app said it saved and, in single-page
+>   mode, the index of the page last shown; the history gained one event per open, in
+>   order, each recorded close set its close time, and each event's page is the page that
+>   read saved. Articles save nothing and record nothing, and the check expects nothing
+>   for them.
 
 ## Context
 

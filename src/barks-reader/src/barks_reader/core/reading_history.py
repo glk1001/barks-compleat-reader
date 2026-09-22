@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Self
 
 from loguru import logger
 
+from . import log_markers
 from .reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
@@ -177,7 +178,7 @@ class ReadingHistoryTracker:
 
         self._open_event = ReadEvent(ReadEvent.new_event_id(), title_str, self._now())
         self._store.add_event(self._open_event)
-        logger.debug(f'History: Recorded open of "{title_str}".')
+        logger.debug(log_markers.HISTORY_OPEN_RECORDED.format(title=title_str))
 
     def end(self, last_read_page: SavedPageInfo | None) -> None:
         """Record the close of the current session (no-op without an open one)."""
@@ -190,7 +191,7 @@ class ReadingHistoryTracker:
             self._open_event.last_body_page = last_read_page.last_body_page
         self._store.update_event(self._open_event)
 
-        logger.debug(f'History: Recorded close of "{self._open_event.title_str}".')
+        logger.debug(log_markers.HISTORY_CLOSE_RECORDED.format(title=self._open_event.title_str))
         self._open_event = None
 
 

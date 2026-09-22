@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from . import log_markers
 from .reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
@@ -64,7 +65,9 @@ class LastReadPageTracker:
 
         self._json_settings_manager.save_last_read_page(self._current_title, last_read_page)
         logger.debug(
-            f'"{self._current_title}": Saved last read page "{last_read_page.display_page_num}".'
+            log_markers.LAST_READ_PAGE_SAVED.format(
+                title=self._current_title, page=last_read_page.display_page_num
+            )
         )
 
         if not last_read_page.is_inside_body():
