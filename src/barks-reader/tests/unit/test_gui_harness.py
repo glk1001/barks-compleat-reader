@@ -8,6 +8,7 @@ conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 from __future__ import annotations
 
 import sys
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -442,3 +443,21 @@ class TestLogMessages:
     def test_a_message_ending_in_brackets_of_its_own_is_kept(self) -> None:
         line = "... - Index item pressed: IndexItem(id='a-1')  [barks_reader.ui.index_screen:_on:1]"
         assert logs.messages(line) == "... - Index item pressed: IndexItem(id='a-1')"
+
+
+class TestImageExists:
+    def test_a_file_on_disk(self, tmp_path: Path) -> None:
+        image = tmp_path / "072-5.png"
+        image.write_bytes(b"png")
+        assert logs.image_exists(image)
+        assert not logs.image_exists(tmp_path / "missing.png")
+
+    def test_a_member_logged_as_if_the_zip_were_a_directory(self, tmp_path: Path) -> None:
+        archive = tmp_path / "Barks Panels.zip"
+        with zipfile.ZipFile(archive, "w") as out:
+            out.writestr("Favourites/Knights of the Flying Sleds/072-5.jpg", b"jpg")
+        assert logs.image_exists(archive / "Favourites/Knights of the Flying Sleds/072-5.jpg")
+        assert not logs.image_exists(archive / "Favourites/Other/072-5.jpg")
+
+    def test_no_zip_on_the_way_is_missing(self, tmp_path: Path) -> None:
+        assert not logs.image_exists(tmp_path / "no.zip" / "a.jpg")

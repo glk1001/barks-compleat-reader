@@ -8,11 +8,14 @@ opened with, the title a goto arrow went to, the letters an index walked).
 from __future__ import annotations
 
 import re
+import zipfile
 from typing import TYPE_CHECKING
 
 from barks_reader.core.log_markers import capture, pattern
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import gui_driver as gd
 
 
@@ -52,3 +55,25 @@ def last_field(d: gd.Driver, template: str, field: str, **fields: object) -> str
     values = fields_of(d, template, field, **fields)
     assert values, f"the app has not logged /{pattern(template, **fields)}/"
     return values[-1]
+
+
+def image_exists(path: Path) -> bool:
+    """Return whether an image path the app logged names a real image.
+
+    With PNG images on, the path is a file. With them off, the panels come
+    from a zip, and the app logs the member as if the zip were a directory:
+    ``.../Barks Panels.zip/Favourites/<title>/072-5.jpg``. Then the zip must
+    exist and hold that member.
+
+    Args:
+        path: The path as the app logged it.
+
+    """
+    if path.is_file():
+        return True
+    for ancestor in path.parents:
+        if ancestor.suffix.lower() == ".zip" and ancestor.is_file():
+            member = path.relative_to(ancestor).as_posix()
+            with zipfile.ZipFile(ancestor) as archive:
+                return member in archive.namelist()
+    return False
