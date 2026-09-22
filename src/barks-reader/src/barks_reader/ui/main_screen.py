@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Any, override
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from barks_fantagraphics.fanta_comics_info import get_fanta_info
@@ -43,6 +43,8 @@ from .settings_keyboard_nav import SettingsKeyboardNav
 from .view_renderer import ImageThemesChange, ImageThemesToUse
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.comics_database import ComicsDatabase
     from kivy.uix.button import Button
@@ -63,15 +65,48 @@ MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 def _text_input_has_focus() -> bool:
-    """Report whether a TextInput currently holds the system keyboard (e.g. settings popup).
+    """Report whether a TextInput currently holds a keyboard (a search box, a settings path).
 
-    Kivy attaches the requesting widget to ``Window._system_keyboard.target`` and clears
-    the widget's ``focus`` when it releases the keyboard, so this reflects the live focus
-    state regardless of how the popup was opened (mouse or keyboard).
+    Kivy attaches the requesting widget to the ``target`` of the keyboard it hands
+    out and clears the widget's ``focus`` when it releases it, so this reflects the
+    live focus state regardless of how the box was focused (mouse or keyboard).
+    Which keyboard depends on the mode: the system keyboard alone by default, and
+    with the virtual keyboard on, the docked on-screen one in ``Window._keyboards``
+    - the system keyboard's target stays None then, and reading only it let the
+    tree act on every key typed into a search box.
     """
-    keyboard = getattr(Window, "_system_keyboard", None)
-    target = getattr(keyboard, "target", None)
-    return isinstance(target, TextInput) and bool(getattr(target, "focus", False))
+    registry = getattr(Window, "_keyboards", None)
+    keyboards = list(registry.values()) if isinstance(registry, dict) else []
+    if not keyboards:
+        keyboards = [getattr(Window, "_system_keyboard", None)]
+    for keyboard in keyboards:
+        target = getattr(keyboard, "target", None)
+        if isinstance(target, TextInput) and bool(getattr(target, "focus", False)):
+            return True
+    return False
+
+
+_KEYBOARD_REQUEST_AFTER = "_barks_after_keyboard_request"
+
+
+def _install_keyboard_request_hook(window: Any, after: Callable[[], None]) -> None:  # noqa: ANN401
+    """Run `after` each time Kivy hands a widget a keyboard through `window.request_keyboard`.
+
+    Wraps the window's method in place, like the key-press log wraps its dispatch,
+    once per window: a second call only replaces `after`.
+    """
+    if getattr(window, _KEYBOARD_REQUEST_AFTER, None) is not None:
+        setattr(window, _KEYBOARD_REQUEST_AFTER, after)
+        return
+    setattr(window, _KEYBOARD_REQUEST_AFTER, after)
+    original = window.request_keyboard
+
+    def request_keyboard(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        keyboard = original(*args, **kwargs)
+        getattr(window, _KEYBOARD_REQUEST_AFTER)()
+        return keyboard
+
+    window.request_keyboard = request_keyboard
 
 
 def _modal_popup_is_open() -> bool:
@@ -150,6 +185,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             default_focus_idx=2,
         )
         Window.bind(on_key_down=self._on_key_down)
+        _install_keyboard_request_hook(Window, self._put_key_handler_first)
 
         self._settings_nav: SettingsKeyboardNav | None = None
         self._settings_close_button: Widget | None = None
@@ -252,6 +288,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
         )
+
+    def _put_key_handler_first(self) -> None:
+        """Bind the window key handler again, so it runs before a keyboard Kivy just handed out.
+
+        Window observers run newest first. With the on-screen keyboard docked, Kivy
+        binds that keyboard's own window handler afresh on every request, which put
+        it ahead of this one: the search box took Return and unfocused itself, and
+        this handler then saw no focused box and pressed the result row as well.
+        Bound last again, this handler sees the focused box and yields to it, as
+        it always has with the system keyboard (bound once, at the window's start).
+        """
+        if not self._active:
+            return
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.bind(on_key_down=self._on_key_down)
 
     def _is_active(self, active: bool) -> None:
         if self._active == active:
