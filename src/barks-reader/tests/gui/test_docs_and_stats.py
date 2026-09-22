@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes
+from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -111,7 +111,8 @@ def _pages_opened(d: Driver, title: str) -> int:
 def test_the_intro_document_opens_and_closes(boot: AppBoot) -> None:
     d = boot(nodes.INTRODUCTION)
     _open_document(d, nodes.INTRO_DOCUMENT)
-    _pages_opened(d, nodes.INTRO_DOCUMENT)
+    pages = _pages_opened(d, nodes.INTRO_DOCUMENT)
+    assert pages == expected.document_page_count(expected.intro_document_dir())
     assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1"]
     _close_document(d)
 
@@ -121,7 +122,9 @@ def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
     _open_document(d, nodes.CENSORSHIP_DOCUMENT)
     d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
     d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=1), "Left")
-    assert _pages_opened(d, nodes.CENSORSHIP_DOCUMENT) >= PAGES_FOR_A_TURN
+    pages = _pages_opened(d, nodes.CENSORSHIP_DOCUMENT)
+    assert pages == expected.document_page_count(expected.censorship_document_dir())
+    assert pages >= PAGES_FOR_A_TURN
     assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", "2", "1"]
     _close_document(d)
 

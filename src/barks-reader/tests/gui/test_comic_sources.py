@@ -40,19 +40,6 @@ def _ini_dir(app_boot: AppBoot, key: str) -> Path:
     )
 
 
-def _app_data_dir() -> Path | None:
-    """Return the app data directory a dev run uses: the env var, else ``.env.runtime``."""
-    value = os.environ.get("BARKS_READER_DATA_DIR")
-    if not value:
-        env_file = harness.REPO_ROOT / ".env.runtime"
-        if env_file.is_file():
-            found = re.search(
-                r'^BARKS_READER_DATA_DIR="?([^"\n]+)"?', env_file.read_text(), re.MULTILINE
-            )
-            value = found[1] if found else None
-    return Path(os.path.expandvars(value)) if value else None
-
-
 def _require_dir(path: Path, what: str) -> None:
     if not path.is_dir():
         pytest.skip(f"{what} not on this machine: {path}")
@@ -99,7 +86,7 @@ def test_a_story_reads_from_the_prebuilt_archives(boot: AppBoot) -> None:
 
 def test_view_images_come_from_the_jpg_panels(boot: AppBoot) -> None:
     """With PNG images off, the fun view's images are the JPGs from the panels zip."""
-    data_dir = _app_data_dir()
+    data_dir = harness.app_data_dir()
     if data_dir is None or not (data_dir / JPG_PANELS_ZIP).is_file():
         pytest.skip(f"the JPG panels zip not on this machine: {data_dir}/{JPG_PANELS_ZIP}")
     d = boot(nodes.THE_STORIES, ini={"use_png_images": "0"})

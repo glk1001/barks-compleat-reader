@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, tree
+from barks_gui import expected, nodes, tree
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -44,7 +44,11 @@ def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
     # the read turned one page at a time from the front.
     path = fields_of(d, markers.NEW_SELECTED_NODE, "name")
     assert path[-1] == nodes.GHOST_OF_THE_GROTTO[0]
-    assert path.index(BROWSE_RANGE) < path.index(nodes.GHOST_OF_THE_GROTTO[0])
+    walked = path[path.index(BROWSE_RANGE) + 1 :]
+    start, end = (int(y) for y in BROWSE_RANGE.split("-"))
+    assert walked == expected.chrono_range_titles(start, end)[: len(walked)], (
+        "the titles walked are the range's titles, in the data's order"
+    )
     shown = [int(i) for i in fields_of(d, markers.SHOWED_PAGE, "index")]
     assert shown == list(range(len(shown))), shown
 
@@ -107,7 +111,9 @@ def test_goto_end_then_right_is_the_last_page(boot: AppBoot) -> None:
     last = int(last_field(d, markers.GOTO_LAST_PAGE, "index"))
     assert d.current_page() == last
     assert int(last_field(d, markers.ALREADY_ON_LAST_PAGE, "index")) == last
-    assert last > 0
+    assert last == expected.last_page_index(nodes.GHOST_OF_THE_GROTTO_TITLE), (
+        "the last page is the last of the layout the data builds for the story"
+    )
     d.close_reader()
 
 
@@ -158,3 +164,5 @@ def test_opening_a_story_records_a_history_event(boot: AppBoot) -> None:
     assert len(events) == CANNED_EVENTS + 1
     assert events[-1]["title"] == nodes.GHOST_OF_THE_GROTTO_TITLE
     assert events[-1]["closed_at"], "the close should have been recorded too"
+    layout = expected.comic_layout(nodes.GHOST_OF_THE_GROTTO_TITLE)
+    assert events[-1]["last_body_page"] == layout.last_body_page

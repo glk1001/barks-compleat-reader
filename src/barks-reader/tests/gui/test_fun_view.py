@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes
+from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, image_exists, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -91,3 +91,4 @@ def test_goto_arrow_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     assert goto_file.name == last_field(d, markers.FUN_IMAGE_LOADED, "filename")
     assert image_exists(goto_file), goto_file
     assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
+    assert expected.is_title(d.current_node())

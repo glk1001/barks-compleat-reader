@@ -119,6 +119,17 @@
 >   the image on show, history rows and ids, search result counts against the row picked,
 >   the tag matched, the reader's page indexes stepping by one and last-page agreement.
 >   Three files that had asserted nothing (documents and stats, fun view, indexes) now do.
+> - Same day: expectations from the data, not from a run. `barks_gui.expected` asks the
+>   core code the app uses: the chronological range's titles in tree order
+>   (`FilteredTitleLists`), the reader's page layout for a story (`ComicLayoutBuilder` with
+>   the same panel-segments adapter, giving the last page index and last body page), the
+>   document page counts from the Reader Files directories (`SystemFilePaths`), the title
+>   search count (`ComicSearch`), the wiki page a chip opens (`wiki_page_for_title`), and
+>   whether a logged name is a `Titles` member. The browse test checks the titles it walked
+>   against the range, goto-end against the layout, the recorded history event's last body
+>   page against it, both documents' page counts, the title search count, the wiki chip's
+>   page, and every goto name as a real title. `harness.app_data_dir()` (env var, else
+>   `.env.runtime`) roots the Reader Files lookups, as the app does.
 
 ## Context
 

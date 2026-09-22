@@ -6,7 +6,7 @@ import re
 import string
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes
+from barks_gui import expected, nodes
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -55,6 +55,7 @@ def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     # An item under 'A' is a title starting with A, and pressing it selects that title.
     assert _item_display_text(d).upper().startswith("A")
     assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
+    assert expected.is_title(d.current_node())
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:

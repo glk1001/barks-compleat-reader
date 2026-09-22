@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import harness, nodes
+from barks_fantagraphics.barks_titles import Titles
+from barks_gui import expected, harness, nodes
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from okf_reader.core import log_markers as wiki
@@ -30,7 +31,8 @@ MAIN_FROM_WIKI = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_WIKI_RE
 SHOWED_PAGE = pattern(wiki.PAGE_SHOWN)
 TOP_BAR = pattern(wiki.FOCUS_REGION, name="TOP_BAR")
 SIDEBAR = pattern(wiki.FOCUS_REGION, name="SIDEBAR")
-ANDES_PAGE = re.compile(r".*lost-in-the-andes\.md")
+# The wiki bundle the app reads when the live one is off: its copy under Reader Files.
+BUNDLED_WIKI_SUBDIR = Path("Reader Files") / "Carl Barks Wiki"
 SIDEBAR_STEPS = 2
 # On the top bar Escape lands on Back; the goto-title button is this far right
 # (the bar runs Back, contrast, goto-title, quit).
@@ -61,6 +63,23 @@ def wiki_boot(boot: AppBoot) -> AppBoot:
     return boot
 
 
+def _wiki_bundle(app_boot: AppBoot) -> Path:
+    """Return the bundle the app reads for this boot: the live one, or the copy in Reader Files."""
+    ini = app_boot.scratch / "barks-reader.ini"
+    if harness.read_ini_value(ini, "use_live_wiki_bundle").strip() != "0":
+        return Path(harness.read_ini_value(ini, "wiki_bundle_dir").strip()).expanduser()
+    data_dir = harness.app_data_dir()
+    assert data_dir is not None, "no app data directory to find the bundled wiki in"
+    return data_dir / BUNDLED_WIKI_SUBDIR
+
+
+def _story_page(app_boot: AppBoot, title: Titles) -> re.Pattern[str]:
+    """Return a regex for the page `title`'s chip opens, from the wiki join the app uses."""
+    page = expected.wiki_page(_wiki_bundle(app_boot), title)
+    assert page is not None, f"the wiki bundle has no page for {title.name}"
+    return re.compile(rf".*{re.escape(page.name)}")
+
+
 def _leave_by_back_at_root(d: Driver) -> None:
     """Escape lifts focus to the top bar on Back; Back at the root exits the wiki."""
     d.key_then_wait(TOP_BAR, "Escape")
@@ -84,13 +103,14 @@ def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None
 
 def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) -> None:
     """A story's wiki chip opens its page; the sidebar walks to another; Back; goto title."""
+    andes_page = _story_page(wiki_boot, Titles.LOST_IN_THE_ANDES)
     d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES, ini=PREBUILT_COMICS)
     d.focus_portal()
     d.move_focus(*["Up"] * UPS_TO_WIKI_CHIP)
     with (
         d.expect(markers.WIKI_PAGE_BUTTON_PRESSED),
         d.expect(WIKI_ACTIVE, 30),
-        d.expect(pattern(wiki.PAGE_SHOWN, page=ANDES_PAGE), 30),
+        d.expect(pattern(wiki.PAGE_SHOWN, page=andes_page), 30),
         d.expect(WIKI_ENTERED, 30),
     ):
         d.key("Return")
@@ -98,10 +118,10 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     d.key_then_wait(SIDEBAR, "Left")
     d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
     d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)  # the story picked out of the sidebar
-    assert not ANDES_PAGE.search(d.last_line(SHOWED_PAGE)), "the sidebar pick must be another page"
+    assert not andes_page.search(d.last_line(SHOWED_PAGE)), "the sidebar pick must be another page"
 
     d.key_then_wait(TOP_BAR, "Escape")
-    d.key_then_wait(pattern(wiki.BACK_TO, page=ANDES_PAGE), "Return", timeout=30)
+    d.key_then_wait(pattern(wiki.BACK_TO, page=andes_page), "Return", timeout=30)
 
     d.key_then_wait(TOP_BAR, "Escape")
     d.move_focus(*["Right"] * BAR_RIGHTS_TO_GOTO, pattern=d.WIKI_FOCUS_MOVED)

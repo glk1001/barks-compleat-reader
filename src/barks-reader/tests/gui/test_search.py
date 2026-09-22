@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, search
+from barks_gui import expected, nodes, search
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -33,7 +33,9 @@ def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
     search.type_query(d, TITLE_QUERY)
     # The full query's result count, as logged, must reach the row about to be picked.
     count = int(last_field(d, markers.SEARCH_TITLE_RESULTS, "count", text=TITLE_QUERY))
+    assert count == expected.title_search_count(TITLE_QUERY), "the count the search facade gives"
     assert count >= TITLE_RESULT_ROW, f"only {count} results for {TITLE_QUERY!r}"
+    assert expected.is_title(TITLE_RESULT)
     with d.expect(pattern(markers.SEARCH_SELECTED_TITLE, title=TITLE_RESULT_NAME)):
         search.pick_title_result(d, TITLE_RESULT_ROW, TITLE_RESULT)
     assert d.current_node() == TITLE_RESULT

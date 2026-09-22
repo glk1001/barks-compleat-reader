@@ -168,6 +168,23 @@ def read_ini_value(ini: Path, key: str) -> str:
     return parser.get(INI_SECTION, key)
 
 
+def app_data_dir() -> Path | None:
+    """Return the app data directory a dev run uses: the env var, else ``.env.runtime``.
+
+    Where Reader Files (documents, indexes, the panels zip) live; what the app's
+    own config resolves from the same two places.
+    """
+    value = os.environ.get("BARKS_READER_DATA_DIR")
+    if not value:
+        env_file = REPO_ROOT / ".env.runtime"
+        if env_file.is_file():
+            found = re.search(
+                r'^BARKS_READER_DATA_DIR="?([^"\n]+)"?', env_file.read_text(), re.MULTILINE
+            )
+            value = found[1] if found else None
+    return Path(os.path.expandvars(value)) if value else None
+
+
 def artifacts_dir() -> Path:
     """Return this run's artifacts directory, created on first use."""
     if _RUN.dir is None:

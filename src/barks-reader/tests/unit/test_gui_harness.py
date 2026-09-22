@@ -21,7 +21,7 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import harness, logs  # noqa: E402
+from barks_gui import expected, harness, logs  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
@@ -461,3 +461,40 @@ class TestImageExists:
 
     def test_no_zip_on_the_way_is_missing(self, tmp_path: Path) -> None:
         assert not logs.image_exists(tmp_path / "no.zip" / "a.jpg")
+
+
+class TestExpected:
+    """The data-free parts; the rest needs the real corpus, which only a GUI run has."""
+
+    def test_a_titles_member_name_is_a_title_and_a_node_text_is_not(self) -> None:
+        assert expected.is_title("GHOST_OF_THE_GROTTO_THE")
+        assert not expected.is_title("Main Index")
+        assert not expected.is_title("")
+
+    def test_document_pages_are_its_image_files_whatever_their_case(self, tmp_path: Path) -> None:
+        pages = ("page-1.jpg", "page-2.PNG", "page-3.jpeg")
+        for name in (*pages, "notes.txt", "cover.gif"):
+            (tmp_path / name).write_bytes(b"")
+        assert expected.document_page_count(tmp_path) == len(pages)
+
+
+class TestAppDataDir:
+    def test_the_env_var_wins(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("BARKS_READER_DATA_DIR", str(tmp_path))
+        assert harness.app_data_dir() == tmp_path
+
+    def test_else_env_runtime_with_home_expanded(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        (tmp_path / ".env.runtime").write_text('BARKS_READER_DATA_DIR="${HOME}/opt/barks-reader"\n')
+        monkeypatch.setattr(harness, "REPO_ROOT", tmp_path)
+        assert harness.app_data_dir() == tmp_path / "opt" / "barks-reader"
+
+    def test_nothing_configured_is_none(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
+        monkeypatch.setattr(harness, "REPO_ROOT", tmp_path)
+        assert harness.app_data_dir() is None
