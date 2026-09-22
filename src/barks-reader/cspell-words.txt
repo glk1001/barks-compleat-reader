@@ -46,6 +46,7 @@ setdefaults
 settingitem
 swaptransition
 syskeyboard
+systemanddock
 tfidf
 titlebar
 togglebutton

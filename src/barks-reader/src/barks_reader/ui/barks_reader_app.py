@@ -335,10 +335,7 @@ class BarksReaderApp(App):
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
-            Window.allow_vkeyboard = True
-            Window.docked_vkeyboard = True
-            Window.single_vkeyboard = True
-            Window.use_syskeyboard = False
+            _configure_virtual_keyboard(Window)
             if PLATFORM == Platform.LINUX:
                 self._enable_linux_touchscreen_input()
 
@@ -532,6 +529,22 @@ class BarksReaderApp(App):
 
 
 _KEY_NAMES: dict[int, str] = {code: name for name, code in Keyboard.keycodes.items()}
+
+
+def _configure_virtual_keyboard(window: Any) -> None:  # noqa: ANN401
+    """Put the window in Kivy's "systemanddock" keyboard mode.
+
+    One docked on-screen keyboard appears whenever a text box takes focus, and
+    a physical keyboard still types into that box: Kivy routes hardware keys
+    to the focused box only while ``use_syskeyboard`` is on. With it off (the
+    "dock" mode this setting used to select) the on-screen keyboard appeared
+    but every key pressed on a real keyboard was dropped - the settings matrix
+    found the search boxes dead under this setting.
+    """
+    window.allow_vkeyboard = True
+    window.docked_vkeyboard = True
+    window.single_vkeyboard = True
+    window.use_syskeyboard = True
 
 
 def _install_key_press_log(window: Any) -> None:  # noqa: ANN401
