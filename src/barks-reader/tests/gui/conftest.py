@@ -54,24 +54,37 @@ if TYPE_CHECKING:
 WATCHED_LIVE_FILES = ("barks-reader.json", "barks-reader-history.json", "barks-reader.ini")
 DISPLAY_ENV_VAR = "BARKS_PROBE_DISPLAY"
 HEADLESS_ENV_VAR = "BARKS_PROBE_HEADLESS"
+KEEP_XSERVER_ENV_VAR = "BARKS_PROBE_KEEP_XSERVER"
 # Set by the report hook: whether the test body failed, so the teardown's window
 # size check does not pile a second report onto a test that already failed.
 CALL_FAILED = pytest.StashKey[bool]()
 
 
 @pytest.fixture(scope="session", autouse=True)
-def probe_display(request: pytest.FixtureRequest) -> str:
+def probe_display(request: pytest.FixtureRequest) -> Iterator[str]:
     """Give this pytest process its own nested display, so parallel workers never collide.
 
     Under pytest-xdist each worker gets the base display plus its worker number
     (gw0 -> :2, gw1 -> :3, ...); a plain run keeps the base. The probe reads the
     variable on every call, and keeps a run directory per display.
+
+    The X server on it lives for the whole session: each test boots and stops
+    only the app. So a visible run opens one Xephyr window, which takes the host
+    keyboard focus once, when it appears, rather than once per test.
     """
     worker_input = getattr(request.config, "workerinput", None) or {}
     worker_id = worker_input.get("workerid", "master")
     display = harness.display_for_worker(worker_id, os.environ.get(DISPLAY_ENV_VAR, ":2"))
     os.environ[DISPLAY_ENV_VAR] = display
-    return display
+    os.environ[KEEP_XSERVER_ENV_VAR] = "1"
+    try:
+        yield display
+    finally:
+        os.environ.pop(KEEP_XSERVER_ENV_VAR, None)
+        try:
+            gd.probe("stop-xserver")
+        except gd.DriverError as exc:
+            print(f"gui-tests: WARNING {exc}")  # noqa: T201
 
 
 @dataclass(frozen=True)
@@ -153,9 +166,16 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
         tail = gd.probe("tail", "40")
     except gd.DriverError as exc:
         tail = str(exc)
-    item.add_report_section("call", "app log tail", tail)
+    # Appended to this report's own sections: item.add_report_section would land
+    # on the *next* report made (the teardown's), which pytest does not print.
+    report.sections.append(("app log tail", tail))
     funcargs: dict[str, object] = getattr(item, "funcargs", {})
     app_boot = funcargs.get("boot")
     if isinstance(app_boot, harness.AppBoot):
         saved = app_boot.save_failure_artifacts()
-        item.add_report_section("call", "gui artifacts", "\n".join(str(p) for p in saved))
+        lines = [str(p) for p in saved]
+        # A key the probe never sent explains a stall better than any log tail.
+        stray = app_boot.stray_key_note()
+        if stray:
+            lines.insert(0, stray)
+        report.sections.append(("gui artifacts", "\n".join(lines)))

@@ -281,3 +281,33 @@ class TestBuildTemplateRunOverrides:
         ini = template / "barks-reader.ini"
         assert harness.read_ini_value(ini, "use_prebuilt_comics") == "0"
         assert harness.read_ini_value(ini, "confirm_quit") == harness.INI_OVERRIDES["confirm_quit"]
+
+
+class TestStrayKeyPresses:
+    @staticmethod
+    def _pressed(*names: str) -> str:
+        codes = {"escape": 27, "down": 274, "enter": 13, "shift": 304, "g": 103}
+        return "\n".join(markers.KEY_PRESSED.format(key=codes[n], name=n) for n in names)
+
+    def test_every_press_the_probe_sent_is_accounted_for(self) -> None:
+        app = self._pressed("escape", "down", "enter")
+        probe = "10:00:00.000 key Escape\n10:00:00.150 key Down\n10:00:00.300 key Return\n"
+        assert harness.stray_key_presses(app, probe) == 0
+
+    def test_a_press_the_probe_never_sent_is_stray(self) -> None:
+        app = self._pressed("escape", "escape")
+        probe = "10:00:00.000 key Escape\n"
+        assert harness.stray_key_presses(app, probe) == 1
+
+    def test_typed_text_counts_one_press_per_character_and_shift_is_ignored(self) -> None:
+        app = self._pressed("shift", "g", "g")
+        probe = "10:00:00.000 type Gg\n"
+        assert harness.stray_key_presses(app, probe) == 0
+
+    def test_clicks_and_other_lines_are_not_keys(self) -> None:
+        app = self._pressed("down")
+        probe = "10:00:00.000 click 10 20\n10:00:00.100 key Down\nnoise\n"
+        assert harness.stray_key_presses(app, probe) == 0
+
+    def test_fewer_presses_than_sent_is_not_negative(self) -> None:
+        assert harness.stray_key_presses("", "10:00:00.000 key Down\n") == 0

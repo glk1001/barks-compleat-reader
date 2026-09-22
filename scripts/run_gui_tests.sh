@@ -8,6 +8,12 @@
 # serial on one Xephyr window unless --workers says otherwise: several windows
 # would pile up on the second monitor, and the point of watching is one at a time.
 #
+# A visible run opens one Xephyr window per worker, which takes the host keyboard
+# focus when it appears: click back to your own window once it is up, and do not
+# type into it. A key that reaches the app from the host fails the test with a
+# "STRAY INPUT" line in the report (the app logs every key press, and the report
+# counts them against the probe's input log).
+#
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
 #

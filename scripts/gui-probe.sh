@@ -30,6 +30,7 @@
 #   scripts/gui-probe.sh config           # print the app config (json) path
 #   scripts/gui-probe.sh tail 20          # last N app log lines
 #   scripts/gui-probe.sh stop             # kill both, restore the user config
+#   scripts/gui-probe.sh stop-xserver     # kill an X server `stop` kept (see below)
 #
 # Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300),
 # BARKS_PROBE_ORIGIN (X,Y where the Xephyr window opens; `start X,Y` beats it),
@@ -37,7 +38,10 @@
 # graphical session needed; the app draws through Mesa's software renderer),
 # BARKS_PROBE_KEY_GAP (seconds after each injected key, default 0.4),
 # BARKS_READER_CONFIG_DIR (the profile to boot from, as for the app itself),
-# BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run).
+# BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run),
+# BARKS_PROBE_KEEP_XSERVER=1 (`stop` leaves the X server up and `start` reuses it,
+# so a run of many boots opens one Xephyr window - which takes the host keyboard
+# focus once, not once per boot; `stop-xserver` ends it).
 
 set -euo pipefail
 
@@ -51,6 +55,7 @@ ORIGIN="${BARKS_PROBE_ORIGIN:-}"
 # Headless: Xvfb is the same kind of X server as Xephyr minus the host window,
 # so every other command here (xte, xwininfo, import) works on it unchanged.
 HEADLESS="${BARKS_PROBE_HEADLESS:-}"
+KEEP_XSERVER="${BARKS_PROBE_KEEP_XSERVER:-}"
 XSERVER="Xephyr"
 [[ -n "$HEADLESS" ]] && XSERVER="Xvfb"
 # One run directory per display, so several probes (parallel test workers on
@@ -100,8 +105,17 @@ die() {
 # "already running", and a test harness booting once per test would then fail
 # every remaining test the same way.
 abort_start() {
-    cmd_stop >&2 || true
+    # Everything goes, the X server included: a kept one may be the thing that failed.
+    KEEP_XSERVER="" cmd_stop >&2 || true
     die "$@"
+}
+
+xserver_alive() {
+    [[ -f "$XEPHYR_PID_FILE" ]] && kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null
+}
+
+app_alive() {
+    [[ -f "$APP_PID_FILE" ]] && kill -0 "$(cat "$APP_PID_FILE")" 2>/dev/null
 }
 
 # The host-pixel origin of the second monitor, "X,Y". xrandr lists monitors as
@@ -263,8 +277,14 @@ cmd_start() {
         command -v "$tool" >/dev/null ||
             die "missing required tool: $tool (run 'gui-probe.sh doctor')"
     done
-    [[ -f "$XEPHYR_PID_FILE" ]] && kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null &&
-        die "already running (stop it first)"
+    # A live X server is reused only in keep mode and only without a live app.
+    local xserver_up=""
+    if xserver_alive; then
+        if app_alive || [[ -z "$KEEP_XSERVER" ]]; then
+            die "already running (stop it first)"
+        fi
+        xserver_up=1
+    fi
 
     mkdir -p "$RUN_DIR"
     : >"$APP_LOG"
@@ -282,6 +302,31 @@ cmd_start() {
         [[ -f "$hist" ]] && cp "$hist" "$HISTORY_BACKUP"
     fi
 
+    if [[ -n "$xserver_up" ]]; then
+        echo "gui-probe: reusing $XSERVER on $DPY"
+    else
+        start_xserver "$offset" "$origin"
+    fi
+
+    setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
+        </dev/null >>"$APP_LOG" 2>&1 &
+    echo $! >"$APP_PID_FILE"
+    disown
+
+    echo "gui-probe: waiting for the app to become interactive..."
+    cmd_wait "$READY_MARKER" 120 || abort_start "app never became ready; see $APP_LOG"
+    # The marker fires when the tree is built, ~1s before the first paint finishes.
+    cmd_settle 1000 30
+
+    # No window manager runs on the nested display, so X input focus follows the
+    # pointer (PointerRoot). Park it inside the window or keystrokes go nowhere.
+    park_pointer
+    echo "gui-probe: ready. Log: $APP_LOG"
+}
+
+# Launch the X server for this display and wait until it answers.
+start_xserver() {
+    local offset="$1" origin="$2"
     # Detach fully (stdin included). A background child that still holds the
     # caller's stdin/stdout keeps the calling shell's pipeline open, so `start`
     # would appear to hang until the app exits.
@@ -307,21 +352,6 @@ cmd_start() {
     else
         echo "gui-probe: Xephyr up on $DPY ($SCREEN at $origin)"
     fi
-
-    setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
-        </dev/null >>"$APP_LOG" 2>&1 &
-    echo $! >"$APP_PID_FILE"
-    disown
-
-    echo "gui-probe: waiting for the app to become interactive..."
-    cmd_wait "$READY_MARKER" 120 || abort_start "app never became ready; see $APP_LOG"
-    # The marker fires when the tree is built, ~1s before the first paint finishes.
-    cmd_settle 1000 30
-
-    # No window manager runs on the nested display, so X input focus follows the
-    # pointer (PointerRoot). Park it inside the window or keystrokes go nowhere.
-    park_pointer
-    echo "gui-probe: ready. Log: $APP_LOG"
 }
 
 park_pointer() {
@@ -362,7 +392,7 @@ cmd_stop() {
     if [[ -f "$APP_PID_FILE" ]]; then
         stop_group "$(cat "$APP_PID_FILE")"
     fi
-    if [[ -f "$XEPHYR_PID_FILE" ]]; then
+    if [[ -f "$XEPHYR_PID_FILE" ]] && [[ -z "$KEEP_XSERVER" ]]; then
         stop_group "$(cat "$XEPHYR_PID_FILE")"
     fi
 
@@ -382,8 +412,27 @@ cmd_stop() {
     # here would be re-applied by every later `stop`, on top of whatever the
     # caller (record_demo restores its own pristine copy) had since put back.
     rm -f "$CONFIG_BACKUP" "$HISTORY_BACKUP"
-    rm -f "$XEPHYR_PID_FILE" "$APP_PID_FILE"
-    echo "gui-probe: stopped"
+    rm -f "$APP_PID_FILE"
+    if [[ -n "$KEEP_XSERVER" ]] && xserver_alive; then
+        echo "gui-probe: stopped (the $XSERVER on $DPY is kept)"
+    else
+        rm -f "$XEPHYR_PID_FILE"
+        echo "gui-probe: stopped"
+    fi
+}
+
+# End an X server that `stop` kept. Safe when nothing is up.
+cmd_stop_xserver() {
+    if app_alive; then
+        die "the app is still running on $DPY - stop it first"
+    fi
+    if [[ -f "$XEPHYR_PID_FILE" ]]; then
+        stop_group "$(cat "$XEPHYR_PID_FILE")"
+        rm -f "$XEPHYR_PID_FILE"
+        echo "gui-probe: $XSERVER on $DPY stopped"
+    else
+        echo "gui-probe: no $XSERVER on $DPY"
+    fi
 }
 
 # Print the app window's geometry (WxH+X+Y). Pixel-driven callers check this
@@ -449,7 +498,10 @@ cmd_key() {
 
 cmd_type() {
     require_running
-    xte -x "$DPY" "str ${1:?usage: gui-probe.sh type <text>}" >/dev/null
+    local text="${1:?usage: gui-probe.sh type <text>}"
+    # Logged like keys are: the harness counts one key press per character.
+    echo "$(date +%H:%M:%S.%3N) type $text" >>"$INPUT_LOG"
+    xte -x "$DPY" "str $text" >/dev/null
 }
 
 # Poll the app log for a regex. Returns non-zero on timeout so callers can fail
@@ -472,6 +524,7 @@ case "${1:-}" in
 doctor) shift && cmd_doctor "$@" ;;
 start) shift && cmd_start "$@" ;;
 stop) shift && cmd_stop "$@" ;;
+stop-xserver) shift && cmd_stop_xserver "$@" ;;
 shot) shift && cmd_shot "$@" ;;
 geometry) shift && cmd_geometry "$@" ;;
 click) shift && cmd_click "$@" ;;

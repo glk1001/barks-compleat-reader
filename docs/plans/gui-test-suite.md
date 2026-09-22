@@ -94,6 +94,20 @@
 >   whole run can be moved to the other source too: `run_gui_tests.sh --prebuilt 0|1`,
 >   `--png-images 0|1`, or `--ini key=value` for any other setting, through `BARKS_GUI_INI`
 >   on top of the live ini; a setting the harness pins is refused. 62 tests.
+> - Same day: a visible run at 2560x1440 with both sources switched failed one test on a
+>   stray Escape: the app entered menu mode a quarter second after its window appeared,
+>   before the probe had sent a key. Every test's Xephyr window takes the host keyboard
+>   focus, so a key pressed on the host goes into the app. Now the app logs every key
+>   press it receives (`KEY_PRESSED`, bound before any other handler), the probe logs
+>   typed strings as well as keys, and a failure report counts the two against each
+>   other and says "STRAY INPUT" when the app got keys the probe never sent (the app's
+>   logger wraps ``Window.dispatch``: Kivy calls bound observers newest-first and stops
+>   at the first that consumes, so a bound logger never saw a key a screen handled). And
+>   the cause is mostly gone: the probe's `BARKS_PROBE_KEEP_XSERVER=1` keeps the X server
+>   across `stop`/`start` (`stop-xserver` ends it), and the session fixture sets it, so a
+>   visible run opens one Xephyr window per worker and takes the keyboard once, when it
+>   appears, instead of once per test. Report sections now go on the call report itself
+>   (`item.add_report_section` landed on the teardown report, which pytest never printed).
 
 ## Context
 

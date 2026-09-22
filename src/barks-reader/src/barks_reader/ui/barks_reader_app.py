@@ -11,7 +11,7 @@ from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
 from kivy.config import Config
-from kivy.core.window import Window  # can take ~1s in VM Windows
+from kivy.core.window import Keyboard, Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithNoMenu  # can take ~1s in VM Windows
 from loguru import logger
@@ -331,6 +331,7 @@ class BarksReaderApp(App):
         set_alt_escape_key(self.reader_settings.get_alt_escape_key())
         set_active_theme(self.reader_settings.color_theme)
         install_settings_theme_kv()
+        _install_key_press_log(Window)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
@@ -530,6 +531,32 @@ class BarksReaderApp(App):
             _log_screen_settings()
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
+
+
+_KEY_NAMES: dict[int, str] = {code: name for name, code in Keyboard.keycodes.items()}
+
+
+def _install_key_press_log(window: Any) -> None:  # noqa: ANN401
+    """Log every key press `window` dispatches, before any handler can consume it.
+
+    A bound observer cannot do this: Kivy calls observers newest-first and stops
+    at the first that returns True, so a screen's handler bound later always
+    shadows a logger bound at startup. Wrapping the window's ``dispatch`` sees
+    the key ahead of them all, and changes nothing else (see ``KEY_PRESSED``).
+
+    Args:
+        window: The Kivy window (anything with a ``dispatch`` method).
+
+    """
+    original = window.dispatch
+
+    def dispatch(event_name: str, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        if event_name == "on_key_down" and args:
+            key = args[0]
+            logger.debug(log_markers.KEY_PRESSED.format(key=key, name=_KEY_NAMES.get(key, "?")))
+        return original(event_name, *args, **kwargs)
+
+    window.dispatch = dispatch
 
 
 def _dismiss_top_popup_on_alt_escape(

@@ -9,6 +9,7 @@ config-dir env var pointing at it. Whatever the app writes on exit lands there
 and is thrown away with the test's tmp dir.
 """
 
+# cspell:ignore lctrl rctrl capslock numlock
 from __future__ import annotations
 
 import configparser
@@ -200,6 +201,60 @@ _RESIZE_RE = re.compile(
 )
 
 
+_KEY_PRESSED_RE = re.compile(
+    pattern(markers.KEY_PRESSED, key=re.compile(r"\d+"), name=re.compile(r"([^)]*)"))
+)
+# Keys xte's `str` presses on the way to a character (Shift for a capital), which
+# the app logs and the probe's input log does not list one by one.
+MODIFIER_KEY_NAMES = frozenset(
+    {
+        "shift",
+        "rshift",
+        "alt",
+        "alt-gr",
+        "lctrl",
+        "rctrl",
+        "super",
+        "compose",
+        "capslock",
+        "numlock",
+        "pipe",
+    }
+)
+_INPUT_LINE_RE = re.compile(r"^\S+ (key|type|click) ?(.*)$")
+
+
+def stray_key_presses(app_log: str, input_log: str) -> int:
+    """Return how many key presses the app logged beyond what the probe injected.
+
+    The app logs every key press it receives; the probe logs every key and every
+    typed string it sends. A surplus is input from somewhere else - the host
+    keyboard, while a visible test window has focus - which no test can survive
+    and no test can be blamed for.
+
+    Args:
+        app_log: The app log's text.
+        input_log: The probe's input log text.
+
+    Returns:
+        The surplus, never negative.
+
+    """
+    received = sum(
+        1 for found in _KEY_PRESSED_RE.finditer(app_log) if found[1] not in MODIFIER_KEY_NAMES
+    )
+    injected = 0
+    for line in input_log.splitlines():
+        found = _INPUT_LINE_RE.match(line)
+        if not found:
+            continue
+        if found[1] == "key":
+            injected += 1
+        elif found[1] == "type":
+            injected += len(found[2])
+    return max(0, received - injected)
+
+
 def resize_events(log_text: str) -> list[tuple[int, int]]:
     """Return every window size the app logged a resize event for, in order."""
     return [(int(w), int(h)) for w, h in _RESIZE_RE.findall(log_text)]
@@ -373,6 +428,24 @@ class AppBoot:
                 shutil.copy2(source, target)
                 saved.append(target)
         return saved
+
+    def stray_key_note(self) -> str | None:
+        """Return a line for the failure report when keys the probe never sent reached the app."""
+        if self.driver is None:
+            return None
+        input_log = self.driver.log_path.with_name("input.log")
+        try:
+            app_text = self.driver.log_path.read_text(errors="replace")
+            input_text = input_log.read_text(errors="replace") if input_log.is_file() else ""
+        except OSError:
+            return None
+        stray = stray_key_presses(app_text, input_text)
+        if stray == 0:
+            return None
+        return (
+            f"STRAY INPUT: {stray} key press(es) reached the app that the probe did not send."
+            " In a visible run the test window takes the host keyboard: was something typed?"
+        )
 
     def stop(self) -> None:
         """Stop the app if a boot was attempted, never raising."""

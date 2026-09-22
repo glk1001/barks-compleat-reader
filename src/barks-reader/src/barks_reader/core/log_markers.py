@@ -30,6 +30,13 @@ REPOPULATED_NODE: Final = "Repopulated '{name}' with {count} children."
 ARTICLE_NODE_PRESSED: Final = "Article node pressed: Reading '{name}'."
 UPDATING_BACKGROUND_VIEW_STATE: Final = "Updating background view state to {state}."
 
+# ------------------------------------------------------------------ keys --
+# Every key press the window receives, before any handler can consume it. The
+# GUI harness counts these against the keys its probe injected: a key from
+# elsewhere (the host keyboard, while a visible test window has focus) then
+# shows up in the failure report as what it is.
+KEY_PRESSED: Final = "Key pressed: {key} ({name})."
+
 # --------------------------------------------- the main screen and its bar --
 GO_BACK_SELECTED: Final = "'Go back' menu item selected."
 MENU_ENTERED: Final = "Entered menu mode."
