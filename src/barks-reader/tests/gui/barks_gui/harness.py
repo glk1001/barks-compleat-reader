@@ -62,12 +62,17 @@ INI_OVERRIDES: dict[str, str] = {
     "alt_escape_key": "0",  # 0 = unset; the default 114 is "r", which tests may type
     "goto_saved_node_on_start": "1",  # boot_app_at works by saving the node
     "is_first_use_of_reader": "0",
-    "double_page_mode": "0",
     "record_reading_history": "1",  # hermetic, so a test can assert the append
     "main_window_height": "0",  # 0 = size from the (nested) screen
     "main_window_left": "-1",
     "main_window_top": "-1",
     "log_level": "DEBUG",  # the log is the oracle
+}
+# What the scratch profile starts from unless the run says otherwise: a setting
+# the suite reads rather than depends on (a test that toggles double-page mode
+# asks the ini which way it is toggling). The matrix runner flips these.
+INI_DEFAULTS: dict[str, str] = {
+    "double_page_mode": "0",
 }
 # Settings for the whole run, on top of the live ini: "key=value;key=value", set
 # by run_gui_tests.sh --ini/--prebuilt/--png-images. A key the harness pins
@@ -112,10 +117,11 @@ def ini_overrides_from_env(value: str) -> dict[str, str]:
 
 
 def build_template(live_dir: Path, template: Path) -> Path:
-    """Copy the live config directory into `template` with INI_OVERRIDES applied.
+    """Copy the live config directory into `template` with the harness settings applied.
 
-    Settings in the BARKS_GUI_INI environment variable go on top, for a whole
-    run on another comic or panel source than the live profile's.
+    INI_DEFAULTS first, INI_OVERRIDES over them, and then the settings in the
+    BARKS_GUI_INI environment variable, for a whole run on another comic or
+    panel source than the live profile's, or on another of the defaults.
 
     Args:
         live_dir: The user's config directory.
@@ -140,7 +146,7 @@ def build_template(live_dir: Path, template: Path) -> Path:
     if not ini.is_file():
         msg = f"no barks-reader.ini in {live_dir}"
         raise FileNotFoundError(msg)
-    apply_ini_overrides(ini, INI_OVERRIDES)
+    apply_ini_overrides(ini, {**INI_DEFAULTS, **INI_OVERRIDES})
     run_overrides = ini_overrides_from_env(os.environ.get(INI_ENV_VAR, ""))
     if run_overrides:
         apply_ini_overrides(ini, run_overrides)

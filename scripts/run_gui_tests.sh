@@ -33,9 +33,11 @@
 # --prebuilt 0|1 and --png-images 0|1 run the whole suite on the other comic or
 # panel source than the live profile uses (use_prebuilt_comics, use_png_images);
 # --ini key=value (repeatable) sets any other Barks Reader setting for the run.
-# Settings the harness pins (fullscreen, quit confirm, ...) are refused. The
-# tests in test_comic_sources.py pin their own source, so every source with its
-# data on this machine is read once whatever the run's default.
+# Settings the harness pins (fullscreen, quit confirm, ...) are refused; the
+# ones it only starts from (double_page_mode) are not. The tests in
+# test_comic_sources.py pin their own source, so every source with its data on
+# this machine is read once whatever the run's default. run_gui_matrix.sh runs
+# this once per settings variant.
 #
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the

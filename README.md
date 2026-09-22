@@ -146,6 +146,15 @@ just reader
   The tests may press only the remote's six keys (Escape, Enter and the arrows); a check
   in the lint gates, `scripts/check_gui_keys.py`, reads them and fails on any other key
   unless the call carries `# desktop key: <why>`.
+- **The settings matrix** runs the GUI suite once per setting the default run never sees
+  (the other two colour themes, double-page mode, the virtual keyboard, the title-info
+  switches off, the censorship fixes on), headless, every variant even after one fails,
+  with a pass/fail table at the end. About twenty minutes; for a nightly or a release.
+    ```
+    bash scripts/run_gui_matrix.sh                     # every variant
+    bash scripts/run_gui_matrix.sh --list              # the variants and their settings
+    bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
+    ```
 - **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` launches
   a build in an empty directory as far as its first-run installer's "data pack missing"
   message, which proves the packaged program runs at all; CI's Linux build does the same.

@@ -110,6 +110,8 @@ class TestBuildTemplate:
         assert harness.read_ini_value(template / "barks-reader.ini", "Fanta_Dir") == "/library"
         for key, value in harness.INI_OVERRIDES.items():
             assert harness.read_ini_value(template / "barks-reader.ini", key) == value
+        for key, value in harness.INI_DEFAULTS.items():
+            assert harness.read_ini_value(template / "barks-reader.ini", key) == value
 
     def test_refuses_a_profile_with_no_ini(self, tmp_path: Path) -> None:
         live = tmp_path / "live"
@@ -266,6 +268,11 @@ class TestIniOverridesFromEnv:
         with pytest.raises(ValueError, match="pinned by the GUI harness"):
             harness.ini_overrides_from_env("confirm_quit=0")
 
+    def test_a_default_the_harness_only_starts_from_is_accepted(self) -> None:
+        assert harness.ini_overrides_from_env("double_page_mode=1") == {"double_page_mode": "1"}
+        assert "double_page_mode" in harness.INI_DEFAULTS
+        assert "double_page_mode" not in harness.INI_OVERRIDES
+
 
 class TestBuildTemplateRunOverrides:
     def test_run_overrides_go_on_top_of_the_pins(
@@ -284,6 +291,19 @@ class TestBuildTemplateRunOverrides:
         ini = template / "barks-reader.ini"
         assert harness.read_ini_value(ini, "use_prebuilt_comics") == "0"
         assert harness.read_ini_value(ini, "confirm_quit") == harness.INI_OVERRIDES["confirm_quit"]
+
+    def test_a_run_override_replaces_a_harness_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        live = tmp_path / "live"
+        live.mkdir()
+        (live / "barks-reader.ini").write_text("[Barks Reader]\ndouble_page_mode = 0\n")
+        monkeypatch.setenv(harness.INI_ENV_VAR, "double_page_mode=1")
+        (tmp_path / "template").mkdir()
+
+        template = harness.build_template(live, tmp_path / "template")
+
+        assert harness.read_ini_value(template / "barks-reader.ini", "double_page_mode") == "1"
 
 
 class TestStrayKeyPresses:
@@ -578,6 +598,12 @@ class TestReadsPersisted:
         scratch = self._scratch(tmp_path, self._cue(index=8), [self._event()])
         log = markers.DOUBLE_PAGE_TOGGLED.format(mode=True) + "\n" + self._log()
         assert persisted.reads_persisted_problems(scratch, log) == []
+
+    def test_a_profile_booted_two_up_does_not_hold_the_index_either(self, tmp_path: Path) -> None:
+        """The matrix boots with double_page_mode=1; no toggle line is logged then."""
+        scratch = self._scratch(tmp_path, self._cue(index=9), [self._event()])
+        (scratch / "barks-reader.ini").write_text("[Barks Reader]\ndouble_page_mode = 1\n")
+        assert persisted.reads_persisted_problems(scratch, self._log()) == []
 
     def test_an_open_without_its_event_is_a_problem(self, tmp_path: Path) -> None:
         scratch = self._scratch(tmp_path, self._cue(), [])

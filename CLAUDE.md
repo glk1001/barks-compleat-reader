@@ -135,7 +135,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
   `--soak` runs the random walk instead (off by default); `--app PATH` runs the suite
   against a Nuitka build; `--prebuilt`, `--png-images` and `--ini` move a run to other
-  settings; `--screen WxH` picks another nested screen size. A GUI test presses only the
+  settings; `--screen WxH` picks another nested screen size;
+  `bash scripts/run_gui_matrix.sh` runs the suite once per settings variant (themes,
+  double-page, virtual keyboard, ...; `--list`, `--only NAME`). A GUI test presses only the
   remote's six keys (Escape, Return, Up, Down, Left, Right): `scripts/check_gui_keys.py`
   (pre-commit, CI, full-lint) fails on any other, unless the call carries
   `# desktop key: <why>`.

@@ -173,6 +173,41 @@
 >   one press outside the set, the history journal's Delete, carries `# desktop key:
 >   <why>` on its call: a row's delete is its button or the Delete key, and the remote has
 >   neither, which the waiver now records as a ten-foot gap.
+> - Same day: the settings matrix. `scripts/run_gui_matrix.sh` runs the whole suite
+>   headless once per settings variant the default run never sees (the Duckburg and Four
+>   Color themes, double-page mode, the virtual keyboard, both title-info switches off,
+>   the four censorship fixes on), every variant even after one fails, with a pass/fail
+>   and duration table at the end; `--list`, `--only NAME`, `--visible`, `--screen`. To
+>   let double-page mode be a variant the harness now has `INI_DEFAULTS` (applied, but a
+>   run override may replace them) beside `INI_OVERRIDES` (pinned, refused); the comic
+>   reader's toggle test reads the booted mode and expects the other, and the
+>   persisted-reads check treats a profile booted two-up as it does a toggle to two-up.
+>   Fullscreen on start stays pinned: the size check and the fullscreen tests depend on
+>   it, and on the WM-less nested server it never moves the X window anyway.
+>   The first pass found three things. Two-up, the reader's page edges logged ad-hoc
+>   "unit" lines rather than `ALREADY_ON_FIRST_PAGE` / `ALREADY_ON_LAST_PAGE`, and goto
+>   lands on the unit's left page: the markers are now logged in both modes, the driver's
+>   `goto_page(target, shows=)` names the page rendered, and `expected.unit_start` /
+>   `unit_starts` / `last_page_index(two_up=)` derive it from the layout's display units.
+>   With the virtual keyboard on, every search box was dead to a physical keyboard: the
+>   app selected Kivy's "dock" mode (`use_syskeyboard = False`), under which hardware
+>   keys never reach the focused box; it is now "systemanddock". Under that mode Kivy
+>   hands the box the docked keyboard rather than the system one, and the main screen's
+>   guard that yields keys to a focused box read only the system keyboard's target, so
+>   Return in a search box also drove the tree: the guard now looks at every keyboard
+>   Kivy has handed out. And the confirm popup
+>   logged `CONFIRM_POPUP_CLOSED` when its dismissal began, while Kivy keeps a dismissed
+>   popup on the window through its fade-out and the main screen ignores keys until it
+>   has gone; the line is now logged when the popup leaves the window (`parent` becomes
+>   None), and the About box's dismissal line, through the standalone popup's callback,
+>   moved the same way. A fourth came from the load itself: the probe declared the app ready on the
+>   build-finished line, two seconds before the window is shown, and a key sent to the
+>   window not yet shown is lost; the app now logs `MAIN_WINDOW_SHOWN` after showing it and the
+>   probe boots on that. The popup one only shows when the fade outlasts the key gap - the first pass
+>   ran with a six-process image job on the machine, at a load of 70 on 16 cores, which
+>   also stretched boot image loads from a fraction of a second to eight and timed out a
+>   handful of tests per variant. The matrix says which variant a failure came from; the
+>   load is what to check first when several variants fail in the same shapes.
 
 ## Context
 
