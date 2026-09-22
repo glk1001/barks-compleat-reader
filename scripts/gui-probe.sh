@@ -82,7 +82,9 @@ HISTORY_BACKUP="$RUN_DIR/barks-reader-history.json.bak"
 
 # The tree build finishing and the loading popup being dismissed is the last
 # thing that happens before the app is interactive.
-READY_MARKER="Received the 'on_finished_building_event'"
+# The window is shown two seconds after the build finishes, and a key sent
+# before then goes nowhere; under load that gap stretched and lost the first key.
+READY_MARKER="Main window shown."
 
 WINDOW_NAME="Compleat Barks Disney Reader"
 

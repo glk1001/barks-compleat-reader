@@ -526,9 +526,7 @@ class BarksReaderApp(App):
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
         def show_the_window(*_args: Any) -> None:  # noqa: ANN401
-            self._window_geometry.set_window_ready()
-            Window.show()
-            _log_screen_settings()
+            _show_main_window(Window, self._window_geometry)
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
 
@@ -578,6 +576,19 @@ def _dismiss_top_popup_on_alt_escape(
             child.dismiss()
             return True
     return False
+
+
+def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> None:  # noqa: ANN401
+    """Show the main window once its sizing is done, and say so in the log.
+
+    Until the window is shown a key sent to it goes nowhere: the GUI probe's
+    boot waits on this line, not on the build finishing, which under load came
+    seconds earlier and lost the test's first key.
+    """
+    window_geometry.set_window_ready()
+    window.show()
+    logger.info(log_markers.MAIN_WINDOW_SHOWN)
+    _log_screen_settings()
 
 
 def _log_screen_settings() -> None:

@@ -66,6 +66,7 @@ ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
 # one a test leaves against the first, since a shrink after a reader close or a
 # fullscreen round trip is a defect whatever the test asserted.
 WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
+MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
 
 # ---------------------------------------------------------------- popups --
 CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'
