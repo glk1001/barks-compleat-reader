@@ -156,23 +156,37 @@ class ReaderScreenManager:
     def _get_next_reader_screen_transition(self) -> TransitionBase:
         return random.choice(self._READER_SCREEN_TRANSITIONS)
 
-    def _warn_if_transition_active(self, switching_to: str) -> None:
-        # ScreenManager.on_current stops the transition it holds *then*, and the
-        # switches below replace it first, so one still running keeps running:
-        # its completion will still remove its own outgoing screen, and the swap
-        # transition leaves that screen scaled down until then.
-        transition = self._screen_manager.transition
-        if transition.is_active:
+    def _set_transition(self, transition: TransitionBase, switching_to: str) -> None:
+        """Make `transition` the next switch's, first finishing one still running.
+
+        ScreenManager.on_current stops the transition it holds *then*, so a
+        transition swapped out while still animating keeps running: its
+        completion removes its own outgoing screen, which by then may be the
+        screen the new switch just made current (a comic closed and the next
+        opened within the closing transition's 0.4s did exactly that, and the
+        reader's next goto-page press crashed on a widget with no window).
+        Stopping it here completes it in place, so the tree is settled before
+        the switch.
+        """
+        running = self._screen_manager.transition
+        if running.is_active:
             logger.warning(
-                f"Screen transition '{transition.__class__.__name__}' is still running while"
-                f" switching to the {switching_to}: it is replaced, not stopped."
+                f"Screen transition '{running.__class__.__name__}' still running while"
+                f" switching to the {switching_to}: finishing it first."
             )
+            screen_in, screen_out = running.screen_in, running.screen_out
+            running.stop()
+            # stop() completes the transition but, unlike an animation that ran
+            # its course, fires neither screen's enter/leave; the screens (and
+            # the harness pairing their log lines) expect both.
+            screen_in.dispatch("on_enter")
+            screen_out.dispatch("on_leave")
+        self._screen_manager.transition = transition
 
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
 
-        self._warn_if_transition_active("comic book reader")
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._set_transition(self._get_next_reader_screen_transition(), "comic book reader")
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
         logger.debug(
@@ -200,8 +214,7 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.main_screen.on_comic_closed()
 
-        self._warn_if_transition_active("main screen")
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
@@ -227,7 +240,7 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.main_screen.on_document_reader_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
@@ -250,7 +263,7 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.main_screen.on_corpus_stats_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_BY_THE_NUMBERS))
@@ -267,7 +280,7 @@ class ReaderScreenManager:
         if wiki_drag_region is not None:
             set_titlebar_drag_region(wiki_drag_region)
 
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._set_transition(self._get_next_reader_screen_transition(), "wiki reader")
         self._screen_manager.current = WIKI_READER_SCREEN
 
         logger.debug(
@@ -282,7 +295,7 @@ class ReaderScreenManager:
         set_titlebar_drag_region(self._reader_screens.main_screen.ids.action_bar.drag_region)
         self._reader_screens.main_screen.on_wiki_reader_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(

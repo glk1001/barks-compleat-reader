@@ -133,14 +133,14 @@ class TestReaderScreenManager:
         is_active_mock.assert_called_with(active=False)
 
     @pytest.mark.parametrize("switch", ["_switch_to_comic_book_reader", "_close_comic_book_reader"])
-    def test_a_transition_still_running_at_a_switch_is_a_warning(
+    def test_a_transition_still_running_at_a_switch_is_finished_first(
         self,
         reader_screen_manager: ReaderScreenManager,
         mock_reader_screens: ReaderScreens,
         loguru_sink: list[str],
         switch: str,
     ) -> None:
-        """The switch replaces the transition before Kivy stops it, so it keeps running."""
+        """Kivy would let it run on and remove the new current screen when it ends; stop it."""
         reader_screen_manager.add_screens(mock_reader_screens)
         running = reader_screen_manager._screen_manager.transition
         running.is_active = True
@@ -148,8 +148,13 @@ class TestReaderScreenManager:
 
         getattr(reader_screen_manager, switch)()
 
+        running.stop.assert_called_once_with()
+        # What a finished animation would have fired, and stop() does not.
+        running.screen_in.dispatch.assert_called_once_with("on_enter")
+        running.screen_out.dispatch.assert_called_once_with("on_leave")
+        assert reader_screen_manager._screen_manager.transition is not running
         assert any(
-            "Screen transition 'SwapTransition' is still running" in line for line in loguru_sink
+            "Screen transition 'SwapTransition' still running" in line for line in loguru_sink
         )
 
     def test_a_finished_transition_at_a_switch_is_quiet(
@@ -159,10 +164,12 @@ class TestReaderScreenManager:
         loguru_sink: list[str],
     ) -> None:
         reader_screen_manager.add_screens(mock_reader_screens)
-        reader_screen_manager._screen_manager.transition.is_active = False
+        idle = reader_screen_manager._screen_manager.transition
+        idle.is_active = False
 
         reader_screen_manager._close_comic_book_reader()
 
+        idle.stop.assert_not_called()
         assert not any("still running" in line for line in loguru_sink)
 
     def test_switch_to_document_reader(
