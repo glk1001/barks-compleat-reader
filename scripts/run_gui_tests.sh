@@ -11,6 +11,12 @@
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
 #
+# --screen WxH runs the suite on a nested screen of that size instead of the
+# 900x1300 default, e.g. --screen 1920x1080 to see the app as a 1080p monitor
+# shows it (there the window is height-limited, about 636x1005, as on a real
+# 1080p desktop). Only the size is simulated: Kivy's density is fixed at 1.0 on
+# Linux, so dp() is plain pixels whatever DPI the screen reports.
+#
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the
 # reader's data directories, and drives it in real time (the first three tests
@@ -24,8 +30,9 @@ cd "$REPO_ROOT"
 # The app sizes its window from the nested screen. Nothing in the suite clicks
 # by pixel any more (every move is a key, waited on through the log), but the
 # fullscreen round trips compare the window size before and after, so the size
-# is pinned here rather than left to the probe's default.
-export BARKS_PROBE_SCREEN=900x1300
+# is fixed here rather than left to the probe's default. --screen, or an
+# exported BARKS_PROBE_SCREEN, picks another size for the whole run.
+export BARKS_PROBE_SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 
 workers="${BARKS_GUI_WORKERS:-}"
 quiet=""
@@ -43,9 +50,19 @@ while [[ "${1:-}" == --* ]]; do
         workers="${2:?--workers needs a count}"
         shift 2
         ;;
+    --screen)
+        export BARKS_PROBE_SCREEN="${2:?--screen needs WxH, e.g. 1920x1080}"
+        shift 2
+        ;;
     *) break ;;
     esac
 done
+# Xvfb and Xephyr take the size as WxH; anything else only fails later as "the X
+# server did not come up", so say what was wrong here.
+if ! [[ "$BARKS_PROBE_SCREEN" =~ ^[0-9]+x[0-9]+$ ]]; then
+    echo "run_gui_tests: screen size must be WxH (e.g. 1920x1080), not '$BARKS_PROBE_SCREEN'" >&2
+    exit 2
+fi
 if [[ -z "$workers" ]]; then
     workers=1
     [[ -n "${BARKS_PROBE_HEADLESS:-}" ]] && workers=4

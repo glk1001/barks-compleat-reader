@@ -57,7 +57,7 @@
 >   `scripts/tests/test_gui_driver.py` checks the stdlib-only driver's copies against
 >   it. The last pixel clicks went (search results, word balloons and popup bubbles are
 >   keyboard moves now), and with them `EXPECTED_WINDOW`, `require_geometry` and
->   `AppBoot.geometry`; the runner still pins `BARKS_PROBE_SCREEN` for the fullscreen
+>   `AppBoot.geometry`; the runner still fixes `BARKS_PROBE_SCREEN` for the fullscreen
 >   round trips. `select_node` waits on the selection line per Down instead of sleeping
 >   (the sleep-and-compare walk flaked once under four workers when a selection landed
 >   1.4s late). New markers: index screen nav entry, speech-bubble popup opened /
@@ -68,6 +68,14 @@
 >   round-tripping through the ini. `key_then_wait(pattern, *keys, timeout=15)`;
 >   `Driver.last_line`; failed tests also save the scratch ini and json; the harness
 >   helpers have unit tests. Headless four-way: 58 tests in ~3m20s.
+> - 2026-09-22: `run_gui_tests.sh --screen WxH` (or an exported `BARKS_PROBE_SCREEN`)
+>   runs the suite on another nested screen size; 900x1300 is now the default rather
+>   than forced. `--screen 1920x1080` simulates a 1080p monitor: the app is
+>   height-limited there (about 636x1005), as on a real 1080p desktop. Size only: Xvfb
+>   reports 100 dpi and no physical size, and Kivy's density is fixed at 1.0 on Linux,
+>   so `dp()` is pixels whatever the screen says. `record_demo.py` reads the same
+>   variable and refuses to stitch clips of mixed sizes, so the option lives in the
+>   test runner, not in the probe's default.
 
 ## Context
 
@@ -180,7 +188,8 @@ deleted. The directory stays outside pytest `testpaths`, so `uv run pytest` is u
     measured window (782x1224 today, next to the search row constants).
   - session teardown asserts the live `barks-reader.json` and history are byte-identical
     to their pre-run copies.
-- `scripts/run_gui_tests.sh`: export `BARKS_PROBE_SCREEN=900x1300`; pass extra args through.
+- `scripts/run_gui_tests.sh`: default `BARKS_PROBE_SCREEN` to 900x1300 (`--screen WxH`
+  overrides); pass extra args through.
 
 ## Coverage matrix
 
