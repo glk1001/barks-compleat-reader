@@ -68,6 +68,10 @@ INI_OVERRIDES: dict[str, str] = {
     "main_window_top": "-1",
     "log_level": "DEBUG",  # the log is the oracle
 }
+# Settings for the whole run, on top of the live ini: "key=value;key=value", set
+# by run_gui_tests.sh --ini/--prebuilt/--png-images. A key the harness pins
+# above is refused, since the suite depends on those values.
+INI_ENV_VAR = "BARKS_GUI_INI"
 COPIED_FILES = ("barks-reader.ini", "log-config.yaml", "never-crop.txt")
 COPIED_KIVY_DIR = "kivy"  # Kivy home: config.ini, icon/, mods/; logs/ is skipped
 
@@ -76,8 +80,41 @@ COPIED_KIVY_DIR = "kivy"  # Kivy home: config.ini, icon/, mods/; logs/ is skippe
 PROBE_NO_RESTORE_ENV_VAR = "BARKS_PROBE_NO_RESTORE"
 
 
+def ini_overrides_from_env(value: str) -> dict[str, str]:
+    """Parse the run-wide settings in `value` ("key=value;key=value", blanks ignored).
+
+    Args:
+        value: The BARKS_GUI_INI environment variable's text.
+
+    Returns:
+        The settings, in order.
+
+    Raises:
+        ValueError: If an entry is not key=value, or names a setting the harness pins.
+
+    """
+    overrides: dict[str, str] = {}
+    for entry in value.split(";"):
+        entry = entry.strip()  # noqa: PLW2901
+        if not entry:
+            continue
+        key, sep, val = entry.partition("=")
+        key, val = key.strip(), val.strip()
+        if not sep or not key:
+            msg = f"{INI_ENV_VAR}: expected key=value, got {entry!r}"
+            raise ValueError(msg)
+        if key in INI_OVERRIDES:
+            msg = f"{INI_ENV_VAR}: {key!r} is pinned by the GUI harness and cannot be overridden"
+            raise ValueError(msg)
+        overrides[key] = val
+    return overrides
+
+
 def build_template(live_dir: Path, template: Path) -> Path:
     """Copy the live config directory into `template` with INI_OVERRIDES applied.
+
+    Settings in the BARKS_GUI_INI environment variable go on top, for a whole
+    run on another comic or panel source than the live profile's.
 
     Args:
         live_dir: The user's config directory.
@@ -103,6 +140,9 @@ def build_template(live_dir: Path, template: Path) -> Path:
         msg = f"no barks-reader.ini in {live_dir}"
         raise FileNotFoundError(msg)
     apply_ini_overrides(ini, INI_OVERRIDES)
+    run_overrides = ini_overrides_from_env(os.environ.get(INI_ENV_VAR, ""))
+    if run_overrides:
+        apply_ini_overrides(ini, run_overrides)
     return template
 
 

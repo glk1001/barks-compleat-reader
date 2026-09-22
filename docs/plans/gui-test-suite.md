@@ -86,6 +86,14 @@
 >   the aspect-ratio correction names the event and the size it applies, the main screen
 >   warns when its host size is still fixed after a windowed exit it did not drive, and a
 >   screen switch warns when the transition it replaces is still running.
+> - Same day: the two data settings. `test_comic_sources.py` reads a story from the
+>   Fantagraphics volumes (with and without its override) and from the prebuilt archives,
+>   and the fun view's images from the JPG panels zip, each test pinning its own setting
+>   and skipping when its data is not on the machine; three markers say which source a
+>   boot took (`USING_PREBUILT_ARCHIVES`, `USING_VOLUME_ARCHIVES`, `VOLUMES_LOADED`). The
+>   whole run can be moved to the other source too: `run_gui_tests.sh --prebuilt 0|1`,
+>   `--png-images 0|1`, or `--ini key=value` for any other setting, through `BARKS_GUI_INI`
+>   on top of the live ini; a setting the harness pins is refused. 62 tests.
 
 ## Context
 

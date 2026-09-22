@@ -244,3 +244,40 @@ class TestResizeEvents:
 
     def test_nothing_logged_is_an_empty_list(self) -> None:
         assert harness.resize_events("Main screen is active (from start).") == []
+
+
+class TestIniOverridesFromEnv:
+    def test_parses_pairs_in_order_ignoring_blanks(self) -> None:
+        parsed = harness.ini_overrides_from_env(" use_prebuilt_comics=0 ; ;use_png_images = 1;")
+        assert parsed == {"use_prebuilt_comics": "0", "use_png_images": "1"}
+
+    def test_empty_is_nothing(self) -> None:
+        assert harness.ini_overrides_from_env("") == {}
+
+    @pytest.mark.parametrize("bad", ["use_prebuilt_comics", "=0", "a=b;junk"])
+    def test_an_entry_that_is_not_key_value_is_refused(self, bad: str) -> None:
+        with pytest.raises(ValueError, match="expected key=value"):
+            harness.ini_overrides_from_env(bad)
+
+    def test_a_setting_the_harness_pins_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="pinned by the GUI harness"):
+            harness.ini_overrides_from_env("confirm_quit=0")
+
+
+class TestBuildTemplateRunOverrides:
+    def test_run_overrides_go_on_top_of_the_pins(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        live = tmp_path / "live"
+        live.mkdir()
+        (live / "barks-reader.ini").write_text(
+            "[Barks Reader]\nuse_prebuilt_comics = 1\nconfirm_quit = 0\n"
+        )
+        monkeypatch.setenv(harness.INI_ENV_VAR, "use_prebuilt_comics=0")
+        (tmp_path / "template").mkdir()
+
+        template = harness.build_template(live, tmp_path / "template")
+
+        ini = template / "barks-reader.ini"
+        assert harness.read_ini_value(ini, "use_prebuilt_comics") == "0"
+        assert harness.read_ini_value(ini, "confirm_quit") == harness.INI_OVERRIDES["confirm_quit"]

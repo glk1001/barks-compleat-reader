@@ -96,6 +96,12 @@ TITLE_FADE_FINISHED: Final = "Title view fade finished."
 USE_OVERRIDES_CHANGED: Final = "Use overrides checkbox changed: use_overrides = {value}."
 GOTO_PAGE_CHECKBOX_TOGGLED: Final = "Goto page checkbox toggled: active = {value}."
 
+# -------------------------------------------------------- the comic sources --
+# Which source the pages come from, logged once at boot (use_prebuilt_comics).
+USING_PREBUILT_ARCHIVES: Final = "Using prebuilt archives. No extra data to initialize."
+USING_VOLUME_ARCHIVES: Final = "Using Fantagraphics volume archives. Now loading volume info..."
+VOLUMES_LOADED: Final = "Finished loading all volumes in {elapsed}."
+
 # --------------------------------------------------------- the comic reader --
 ALL_IMAGES_LOADED: Final = "All images loaded in {elapsed}: current page index = {index}."
 SHOWED_PAGE: Final = "Showed page {index} in {elapsed}."

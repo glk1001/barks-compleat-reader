@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 import threading
 import time
 import zipfile
@@ -13,12 +14,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import comic_book_loader as loader_module
+from barks_reader.core import log_markers
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_book_loader_platform_settings import (
     autotune_worker_count,
     get_prefetch_tuning,
 )
 from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
@@ -173,14 +176,21 @@ def test_init(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
     assert loader._empty_page_image == b"fake_empty_page_data"
 
 
-def test_init_data_prebuilt(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
+def test_init_data_prebuilt(
+    loader: ComicBookLoader, mock_reader_settings: MagicMock, loguru_sink: list[str]
+) -> None:
     """Test init_data when using prebuilt archives."""
     mock_reader_settings.use_prebuilt_archives = True
     loader.init_data()
     assert loader._fanta_volume_archives is None
+    # The GUI source tests read which source a boot took from these lines.
+    assert log_markers.USING_PREBUILT_ARCHIVES in loguru_sink
+    assert log_markers.USING_VOLUME_ARCHIVES not in loguru_sink
 
 
-def test_init_data_fanta_volumes(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
+def test_init_data_fanta_volumes(
+    loader: ComicBookLoader, mock_reader_settings: MagicMock, loguru_sink: list[str]
+) -> None:
     """Test init_data when using Fantagraphics volumes."""
     mock_reader_settings.use_prebuilt_archives = False
 
@@ -188,6 +198,8 @@ def test_init_data_fanta_volumes(loader: ComicBookLoader, mock_reader_settings: 
         loader.init_data()
         mock_archives.assert_called_once()
         mock_archives.return_value.load.assert_called_once()
+    assert log_markers.USING_VOLUME_ARCHIVES in loguru_sink
+    assert any(re.search(pattern(log_markers.VOLUMES_LOADED), line) for line in loguru_sink)
 
 
 def test_init_data_retains_archives_when_volumes_missing(

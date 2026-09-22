@@ -28,6 +28,7 @@ from comic_utils.timing import Timing
 from loguru import logger
 from PIL import Image
 
+from . import log_markers
 from .comic_book_loader_platform_settings import (
     autotune_worker_count,
     get_prefetch_tuning,
@@ -158,12 +159,12 @@ class ComicBookLoader:
     def init_data(self) -> None:
         """Preload Fantagraphics volume metadata (if not using prebuilt archives)."""
         if self._reader_settings.use_prebuilt_archives:
-            logger.info("Using prebuilt archives. No extra data to initialize.")
+            logger.info(log_markers.USING_PREBUILT_ARCHIVES)
             self._fanta_volume_archives = None
         else:
             timing = Timing()
 
-            logger.info("Using Fantagraphics volume archives. Now loading volume info...")
+            logger.info(log_markers.USING_VOLUME_ARCHIVES)
             fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
@@ -180,7 +181,9 @@ class ComicBookLoader:
                 raise
             self._fanta_volume_archives = fanta_volume_archives
 
-            logger.info(f"Finished loading all volumes in {timing.get_elapsed_time_with_unit()}.")
+            logger.info(
+                log_markers.VOLUMES_LOADED.format(elapsed=timing.get_elapsed_time_with_unit())
+            )
 
     # ------------------------------------------------------------------
     # Source creation helpers (used by callers before set_comic)

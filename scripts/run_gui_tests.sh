@@ -17,6 +17,13 @@
 # 1080p desktop). Only the size is simulated: Kivy's density is fixed at 1.0 on
 # Linux, so dp() is plain pixels whatever DPI the screen reports.
 #
+# --prebuilt 0|1 and --png-images 0|1 run the whole suite on the other comic or
+# panel source than the live profile uses (use_prebuilt_comics, use_png_images);
+# --ini key=value (repeatable) sets any other Barks Reader setting for the run.
+# Settings the harness pins (fullscreen, quit confirm, ...) are refused. The
+# tests in test_comic_sources.py pin their own source, so every source with its
+# data on this machine is read once whatever the run's default.
+#
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the
 # reader's data directories, and drives it in real time (the first three tests
@@ -36,6 +43,10 @@ export BARKS_PROBE_SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 
 workers="${BARKS_GUI_WORKERS:-}"
 quiet=""
+# Run-wide settings, handed to the harness as "key=value;key=value".
+add_ini() {
+    export BARKS_GUI_INI="${BARKS_GUI_INI:+$BARKS_GUI_INI;}$1"
+}
 while [[ "${1:-}" == --* ]]; do
     case "$1" in
     --headless)
@@ -52,6 +63,18 @@ while [[ "${1:-}" == --* ]]; do
         ;;
     --screen)
         export BARKS_PROBE_SCREEN="${2:?--screen needs WxH, e.g. 1920x1080}"
+        shift 2
+        ;;
+    --ini)
+        add_ini "${2:?--ini needs key=value}"
+        shift 2
+        ;;
+    --prebuilt)
+        add_ini "use_prebuilt_comics=${2:?--prebuilt needs 0 or 1}"
+        shift 2
+        ;;
+    --png-images)
+        add_ini "use_png_images=${2:?--png-images needs 0 or 1}"
         shift 2
         ;;
     *) break ;;
@@ -74,6 +97,7 @@ parallel=()
 export BARKS_GUI_RUN_STAMP
 BARKS_GUI_RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
 
+[[ -n "${BARKS_GUI_INI:-}" ]] && echo "run_gui_tests: settings for this run: ${BARKS_GUI_INI}"
 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
     echo "run_gui_tests: this machine is not ready - see: bash scripts/gui-probe.sh doctor" >&2
     exit 1

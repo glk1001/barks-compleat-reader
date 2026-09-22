@@ -6,10 +6,12 @@ and drive it with ``scripts/gui_driver.py``, so they are not part of the default
 Run them with ``bash scripts/run_gui_tests.sh``.
 
 The user's real profile is never booted from. Once per session it is copied to a
-template with a few settings pinned (``barks_gui.harness.INI_OVERRIDES``); every
-test gets its own copy of that template plus canned ``barks-reader.json`` and
-reading-history files, and the app is pointed at it through the config-dir env
-var. The session's teardown proves the live profile came through untouched.
+template with a few settings pinned (``barks_gui.harness.INI_OVERRIDES``) and any
+run-wide settings from ``BARKS_GUI_INI`` applied (``run_gui_tests.sh --prebuilt``,
+``--png-images``, ``--ini``); every test gets its own copy of that template plus
+canned ``barks-reader.json`` and reading-history files, and the app is pointed at
+it through the config-dir env var. The session's teardown proves the live profile
+came through untouched.
 
 Each test boots the app onto the node it asks for and gets a Driver. Booting is
 the fixed cost - a few seconds on a desktop - so a test that can reach its second
