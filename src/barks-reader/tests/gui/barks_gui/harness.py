@@ -457,7 +457,50 @@ class AppBoot:
         path = artifacts_dir() / artifact_name(self.nodeid, f"-{name}.png")
         self.driver.shot(path)
         self._shots.append(path)
+        self._assert_drawn(path, f"checkpoint {name!r}")
         return path
+
+    def assert_render_not_blank(self) -> None:
+        """Fail the test if the app's final frame is a blank window.
+
+        Called from the fixture teardown once the test body has passed. A render
+        that fails leaves the log going on as usual, so this is the one check
+        that looks at the pixels - only to ask whether anything was drawn
+        (``barks_gui.shots``). A window the probe cannot find is not a failure
+        here: a quit test has closed it.
+
+        Raises:
+            AssertionError: With the frame's statistics and the saved artifacts.
+
+        """
+        if self.driver is None:
+            return
+        try:
+            self.driver.window_geometry()
+            capture = self.driver.shot(self.scratch / "final-frame.png")
+        except gd.DriverError:
+            return
+        self._assert_drawn(capture, "the final frame")
+
+    def _assert_drawn(self, capture: Path, what: str) -> None:
+        # Imported here: shots pulls in Pillow, which nothing else in the harness needs.
+        from barks_gui.shots import looks_blank, render_stats  # noqa: PLC0415
+
+        assert self.driver is not None
+        try:
+            window = self.driver.window_geometry()
+        except gd.DriverError:
+            return
+        stats = render_stats(capture, window)
+        if not looks_blank(stats):
+            return
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        msg = (
+            f"{what} looks blank: its most common colour covers"
+            f" {stats.dominant_fraction:.0%} of the window and it has only"
+            f" {stats.distinct_colours} distinct colours; artifacts:\n{listing}"
+        )
+        raise AssertionError(msg)
 
     def save_failure_artifacts(self) -> list[Path]:
         """Save a screenshot, the logs and the scratch profile for a failed test.

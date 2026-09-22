@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from PIL import Image
 
 _TESTS_DIR = Path(__file__).resolve().parents[1]
 _REPO_ROOT = _TESTS_DIR.parents[2]
@@ -22,11 +23,11 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import expected, harness, logs, persisted  # noqa: E402
+from barks_gui import expected, harness, logs, persisted, shots  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 LIVE_INI = """[Barks Reader]
 confirm_quit = 0
@@ -603,3 +604,49 @@ class TestReadsPersisted:
         scratch = self._scratch(tmp_path, self._cue(), [self._event(page="7")])
         problems = persisted.reads_persisted_problems(scratch, self._log())
         assert any("are not the pages saved" in p for p in problems)
+
+
+class TestRenderStats:
+    """A capture of the nested screen, judged by the app window's part of it alone."""
+
+    WINDOW = (80, 60, 10, 5)  # width, height, left, top on a 100x70 screen
+
+    @staticmethod
+    def _capture(tmp_path: Path, paint: Callable[[int, int], tuple[int, int, int]]) -> Path:
+        image = Image.new("RGB", (100, 70))
+        for y in range(70):
+            for x in range(100):
+                image.putpixel((x, y), paint(x, y))
+        path = tmp_path / "shot.png"
+        image.save(path)
+        return path
+
+    def test_a_flat_window_is_blank(self, tmp_path: Path) -> None:
+        capture = self._capture(tmp_path, lambda _x, _y: (0, 0, 0))
+        stats = shots.render_stats(capture, self.WINDOW)
+        assert stats.dominant_fraction == 1.0
+        assert stats.distinct_colours == 1
+        assert shots.looks_blank(stats)
+
+    def test_a_drawn_window_is_not(self, tmp_path: Path) -> None:
+        capture = self._capture(tmp_path, lambda x, y: (x * 2 % 256, y * 3 % 256, (x + y) % 256))
+        stats = shots.render_stats(capture, self.WINDOW)
+        assert stats.dominant_fraction < shots.BLANK_DOMINANT_FRACTION
+        assert stats.distinct_colours >= shots.BLANK_MIN_COLOURS
+        assert not shots.looks_blank(stats)
+
+    def test_only_the_window_counts(self, tmp_path: Path) -> None:
+        """A busy screen around a flat window must not rescue it."""
+        width, height, left, top = self.WINDOW
+
+        def paint(x: int, y: int) -> tuple[int, int, int]:
+            inside = left <= x < left + width and top <= y < top + height
+            return (255, 255, 255) if inside else (x % 256, y % 256, 7)
+
+        stats = shots.render_stats(self._capture(tmp_path, paint), self.WINDOW)
+        assert shots.looks_blank(stats)
+
+    def test_samples_cover_the_window_at_the_sample_step(self, tmp_path: Path) -> None:
+        capture = self._capture(tmp_path, lambda _x, _y: (1, 2, 3))
+        stats = shots.render_stats(capture, self.WINDOW)
+        assert stats.samples == (80 // shots.SAMPLE_STEP) * (60 // shots.SAMPLE_STEP)

@@ -139,6 +139,13 @@
 >   order, each recorded close set its close time, and each event's page is the page that
 >   read saved. Articles save nothing and record nothing, and the check expects nothing
 >   for them.
+> - Same day: the one look at the pixels. The teardown captures the final frame and asks
+>   only whether anything was drawn (`AppBoot.assert_render_not_blank`, over
+>   `barks_gui.shots`): the app window's part of the capture, sampled every fourth pixel,
+>   is blank when its most common colour covers over 90% or it has under 64 distinct
+>   colours. Calibrated on all 62 tests' final frames: 3% to 26% and 4,600 to 25,000. A
+>   named checkpoint (`AppBoot.checkpoint`, with `BARKS_GUI_SHOTS=1`) is judged the same
+>   way when it is taken. No comparison to a reference, no pixel coordinates.
 
 ## Context
 
