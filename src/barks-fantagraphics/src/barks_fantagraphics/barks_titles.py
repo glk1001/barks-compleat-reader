@@ -1336,7 +1336,7 @@ _TITLE_OVERRIDES: dict[str, str] = {
     "LOST_CROWN_OF_GENGHIS_KHAN_THE": "The Lost Crown of Genghis Khan!",
     "LOST_IN_THE_ANDES": "Lost in the Andes!",
     "MACHINE_MIX_UP": "Machine Mix-Up",
-    "MANY_FACES_OF_MAGICA_DE_SPELL_THE": "The Many Faces of Magica de Spell",
+    "MANY_FACES_OF_MAGICA_DE_SPELL_THE": "The Many Faces of Magica De Spell",
     "MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS": "Maple Sugar Time (How Sweet It Is!)",
     "MCDUCK_OF_ARABIA": "McDuck of Arabia",
     "MCDUCK_TAKES_A_DIVE": "McDuck Takes a Dive",

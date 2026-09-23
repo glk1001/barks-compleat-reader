@@ -137,7 +137,7 @@ class Tags(Enum):
     LONGHORN_TALLGRASS = "Longhorn Tallgrass"
     MAD_SCIENTIST = "The Mad Scientist"
     MAGIC = "magic"
-    MAGICA_DE_SPELL = "Magica de Spell"
+    MAGICA_DE_SPELL = "Magica De Spell"
     MALI = "Mali"
     MANGANESE = "manganese"
     MERCURY = "mercury"

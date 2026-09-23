@@ -283,7 +283,7 @@ BARKS_EXTRA_INFO = {
     " even the secondary figures are well done, for example the cheese-taster who blows"
     ' his alpenhorn."[/i]',
     Titles.CAT_BOX_THE: "The first appearance of [b][i]Little Helper.[/i][/b]",
-    Titles.MIDAS_TOUCH_THE: "The first appearance of [b][i]Magica de Spell.[/i][/b]",
+    Titles.MIDAS_TOUCH_THE: "The first appearance of [b][i]Magica De Spell.[/i][/b]",
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
     " that I had touched on something that was a little different than just about any other"
     " space-type story that's come around. Creatures from outer space are villainous"
