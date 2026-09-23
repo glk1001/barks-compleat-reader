@@ -174,6 +174,10 @@ just reader
   pytest's whole output goes to `build/gui-tests/<run>/pytest.log` as it runs. For a
   VirtualBox VM, turn 3D acceleration off and discard off on its disk; why is in
   `docs/plans/cross-platform-gui-tests.md`.
+  To run the reader itself on such a VM (a workspace run or the Windows exe, which
+  bundles Kivy's ANGLE DLLs for this), set the user environment variable
+  `KIVY_GL_BACKEND=angle_sdl2`: with 3D acceleration off there is no OpenGL 2.0, and
+  ANGLE draws through Direct3D instead. Real Windows machines need nothing set.
 - **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` (or the
   Windows `.exe`, or the macOS `.zip`) launches a build in an empty directory as far as
   its first-run installer's "data pack missing" message, which proves the packaged program
