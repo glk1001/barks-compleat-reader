@@ -12,6 +12,7 @@ from barks_reader.core.screen_metrics import (
     get_approximate_taskbar_height,
     get_best_window_height_fit,
 )
+from loguru import logger
 from screeninfo import get_monitors
 
 
@@ -373,6 +374,20 @@ class TestMonitorForPosBounds:
     )
     def test_positions_outside_every_monitor_return_none(self, x: int, y: int) -> None:
         assert self._two_monitors().get_monitor_for_pos(x, y) is None
+
+    def test_a_miss_is_a_warning_not_an_error(self) -> None:
+        """Windows reports a position above the screen while a window leaves fullscreen.
+
+        Every caller copes with no monitor, so the miss must not read as an error in
+        the log - which the GUI suite fails a test on.
+        """
+        records: list[str] = []
+        handle = logger.add(lambda m: records.append(m.record["level"].name), level="DEBUG")
+        try:
+            self._two_monitors().get_monitor_for_pos(436, -21)
+        finally:
+            logger.remove(handle)
+        assert records == ["WARNING"]
 
 
 class TestFittedWindowHeightBranches:
