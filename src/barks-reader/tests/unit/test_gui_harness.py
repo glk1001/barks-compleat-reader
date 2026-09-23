@@ -234,6 +234,47 @@ class TestAssertWindowSizeKept:
         with pytest.raises(AssertionError, match=r"last settled at \(566, 900\), at boot"):
             app_boot.assert_window_size_kept()
 
+    def test_a_round_trip_with_no_resize_event_at_boot_passes(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        """Windows: the window is created at its size, so the first resize is the test's own."""
+        log = tmp_path / "windows.log"
+        log.write_text(
+            "\n".join(
+                [
+                    markers.WINDOW_GEOMETRY.format(
+                        reason="boot", width=782, height=1225, left=59, top=10
+                    ),
+                    markers.WINDOW_RESIZED.format(width=2105, height=1299),
+                    markers.WINDOW_RESIZED.format(width=782, height=1225),
+                    markers.WINDOW_GEOMETRY.format(
+                        reason="MainScreen windowed", width=782, height=1225, left=59, top=10
+                    ),
+                ]
+            )
+            + "\n"
+        )
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
+    def test_a_last_resize_off_the_boot_geometry_fails_with_no_boot_resize(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        log = tmp_path / "windows.log"
+        log.write_text(
+            markers.WINDOW_GEOMETRY.format(reason="boot", width=782, height=1225, left=59, top=10)
+            + "\n"
+            + markers.WINDOW_RESIZED.format(width=2105, height=1299)
+            + "\n"
+            + markers.WINDOW_RESIZED.format(width=566, height=900)
+            + "\n"
+        )
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(
+            AssertionError, match=r"last resize event was \(566, 900\), but it booted"
+        ):
+            app_boot.assert_window_size_kept()
+
     def test_a_settled_window_that_only_moved_passes(
         self, app_boot: harness.AppBoot, log: Path
     ) -> None:

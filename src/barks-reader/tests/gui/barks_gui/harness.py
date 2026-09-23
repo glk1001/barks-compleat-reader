@@ -464,9 +464,16 @@ class AppBoot:
             )
         log_text = self.driver.log_path.read_text(errors="replace")
         sizes = resize_events(log_text)
-        if sizes and sizes[-1] != sizes[0]:
-            problems.append(f"the app's last resize event was {sizes[-1]}, its first {sizes[0]}")
         settled = settled_sizes(log_text)
+        # The size the window booted at, as the app saw it: its boot geometry line.
+        # Not the first resize event: on the nested X display the app gets one at
+        # boot, but on Windows the window is created at its size and the first
+        # resize event is whatever the test did first (going fullscreen, say).
+        boot_size = settled[0] if settled else (sizes[0] if sizes else None)
+        if sizes and sizes[-1] != boot_size:
+            problems.append(
+                f"the app's last resize event was {sizes[-1]}, but it booted at {boot_size}"
+            )
         if settled and settled[-1] != settled[0]:
             problems.append(f"the app's window last settled at {settled[-1]}, at boot {settled[0]}")
         if not problems:
