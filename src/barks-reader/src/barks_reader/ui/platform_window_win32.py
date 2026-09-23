@@ -42,12 +42,20 @@ class _RECT(ctypes.Structure):
 class Win32WindowBackend:
     """Save/restore the window via direct Win32 calls."""
 
-    def __init__(self) -> None:
+    def __init__(self, hwnd: int | None = None) -> None:
+        """Bind to the app's window, found by lookup, or to ``hwnd`` when given.
+
+        Args:
+            hwnd: A window handle to drive instead of looking up the app's SDL
+                window. Only a test passes one, so it drives a window it made
+                even when Kivy's own window is open in the same process.
+
+        """
         self._hwnd: int | None = None
         self._move_window: Any = None
         self._get_window_rect: Any = None
         self._get_client_rect: Any = None
-        self._init()
+        self._init(hwnd)
 
     def is_available(self) -> bool:
         """Return True if Win32 initialization succeeded and the backend can be used."""
@@ -118,14 +126,10 @@ class Win32WindowBackend:
 
     # --- Private helpers ---
 
-    def _init(self) -> None:
+    def _init(self, hwnd: int | None) -> None:
         """Initialize Win32 handles for direct window manipulation."""
         try:
-            found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
-            if found_hwnd:
-                logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
-            else:
-                found_hwnd = self._find_hwnd_by_enum_windows()
+            found_hwnd = hwnd or self._find_app_hwnd()
 
             if not found_hwnd:
                 logger.warning("Could not get Win32 handle for Kivy window.")
@@ -160,6 +164,15 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._hwnd = None
+
+    @staticmethod
+    def _find_app_hwnd() -> Any:  # noqa: ANN401
+        """Return the app's window: the active one, else the first SDL window of this process."""
+        found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
+        if found_hwnd:
+            logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
+            return found_hwnd
+        return Win32WindowBackend._find_hwnd_by_enum_windows()
 
     @staticmethod
     def _find_hwnd_by_enum_windows() -> Any:  # noqa: ANN401

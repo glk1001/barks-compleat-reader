@@ -137,5 +137,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     skip_marker = pytest.mark.skip(reason="Kivy UI tests skipped on headless CI (no OpenGL)")
     for item in items:
+        # A test that imports UI code but never opens a Kivy window (the live Win32
+        # backend test drives a window it makes itself) says so, and still runs.
+        if item.get_closest_marker("needs_no_opengl") is not None:
+            continue
         if _test_imports_ui(item):
             item.add_marker(skip_marker)
