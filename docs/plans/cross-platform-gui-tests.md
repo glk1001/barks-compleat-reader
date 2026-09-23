@@ -1,7 +1,14 @@
 # Plan: GUI and window coverage on Windows and macOS
 
-> Status: **approved in discussion 2026-09-23**, not started. Four steps, each useful on its
+> Status: **approved in discussion 2026-09-23**, in progress. Four steps, each useful on its
 > own and each committed green; stop after any of them and the earlier ones still pay.
+>
+> - Step 1: DONE 2026-09-23 (e592d825, ae79cb16). `WINDOW_GEOMETRY` is logged at the five
+>   places a window change ends (boot, and each screen's fullscreen and windowed finish);
+>   the Win32 restore needed no site of its own, since it finishes through the windowed
+>   callback. `assert_window_size_kept` holds the last settled size to the boot one. On the
+>   nested display a reader fullscreen round trip logs 782x1225+59+10, 900x1300+0+0, then
+>   782x1225+59+10 again. Full GUI suite green (62 tests).
 
 ## Context
 
