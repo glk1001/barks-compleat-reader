@@ -30,10 +30,10 @@
 >   frame: the restore momentarily gives the client area the saved outer size, and the
 >   app's aspect correction puts it right. Worth a look in `platform_window_win32.py`
 >   (`save_state` keeps `GetWindowRect`, the outer rectangle).
-> - Step 3, milestone B: the whole suite on the Windows VM, 2026-09-23. Last run: 61 passed,
->   1 skipped (no prebuilt comics there), 1 error, in 13m31s; the error, the wiki chip test
->   needing a prebuilt comics directory, is fixed by 7100c3fd (not yet run there). What the
->   first whole runs found, in the order found:
+> - Step 3, milestone B: DONE 2026-09-23. The whole suite on the Windows VM is green: 61
+>   passed and 1 skipped (the prebuilt-archives test; no prebuilt comics there) of the 62
+>   tests, in 13m56s, with 7100c3fd (the wiki chip test no longer needs a prebuilt comics
+>   directory). What the first whole runs found, in the order found:
 >   - **App bug (4c173998):** reaching History or Reading crashed the reader on Windows with
 >     the JPG panels zip: the node's picture was named `Path(title) / "129-3.jpg"`, a
 >     backslash inside a zip member name. Seven tests.
