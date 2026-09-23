@@ -224,6 +224,21 @@ if grep -q "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"}
     grep -A12 "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"} | head -40 >&2
     fail=1
 fi
+# Say what the launch reached, from Kivy's log and the app's lines: a runner with
+# no usable OpenGL stops at Kivy's error box, or opens no window at all, and the
+# checks above still pass on the installer's log and flag.
+# (A recursive grep, not an array of files: macOS runs this under bash 3.2, where
+# an empty array is unbound under set -u.)
+kivy_logged() {
+    grep -rqs --include='*.txt' "$1" "$WORK"
+}
+if popup_logged "$POPUP_OPENED"; then
+    echo "smoke-test-build: reached the app's popup"
+elif kivy_logged "Unable to get a Window"; then
+    echo "smoke-test-build: note - no window could open here (no usable OpenGL); only the installer's checks ran"
+elif kivy_logged "Minimum required OpenGL version"; then
+    echo "smoke-test-build: note - this machine's OpenGL is below 2.0; the launch stopped at Kivy's OpenGL error box, not the app's popup"
+fi
 if [[ $fail -ne 0 ]]; then
     echo "---- stdout/stderr ----" >&2
     tail -40 "$WORK/stdout.log" >&2

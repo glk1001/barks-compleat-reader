@@ -144,13 +144,19 @@ jobs:
         run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
 
       # Again, pressing Escape in the popup through the OS's real input path
-      # (xdotool on Linux, SendInput on Windows, CGEventPostToPid on macOS): the
-      # popup must close and the program exit by itself, so every build leg proves
-      # the built program takes a key the way a keyboard or remote sends it. It is
-      # the only regular test of the macOS build's input.
+      # (xdotool on Linux, SendInput on Windows): the popup must close and the
+      # program exit by itself, so the build takes a key the way a keyboard or
+      # remote sends it. Windows draws through ANGLE here: the runner's OpenGL is
+      # GDI Generic 1.1, below Kivy's 2.0, so only ANGLE reaches the app's popup.
+      # Not on macOS: its runners cannot create an OpenGL context at all ("Failed
+      # creating OpenGL pixel format"), so no Kivy window opens there to press a
+      # key in, though key injection itself works on them.
       - name: Smoke-test the executable, pressing Escape
+        if: runner.os != 'macOS'
         shell: bash
-        run: bash scripts/smoke-test-build.sh --press-escape ./${{ matrix.exe }}
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then export KIVY_GL_BACKEND=angle_sdl2; fi
+          bash scripts/smoke-test-build.sh --press-escape ./${{ matrix.exe }}
 
       # Again on Windows, drawing through ANGLE (Direct3D) rather than OpenGL: the
       # build bundles Kivy's ANGLE DLLs for machines without working OpenGL (a VM
