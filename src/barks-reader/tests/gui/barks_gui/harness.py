@@ -17,6 +17,7 @@ import contextlib
 import os
 import re
 import shutil
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -490,6 +491,50 @@ class AppBoot:
         except gd.DriverError:
             return
         self._assert_drawn(capture, "the final frame")
+
+    def assert_timings_within_budget(self) -> None:
+        """Fail the test if a duration the app logged is over its budget.
+
+        Called from the fixture teardown once the test body has passed
+        (``barks_gui.timings``): the tree build, image loads, a comic's pages,
+        the volumes and the index each have a loose budget. Skipped, with a
+        warning, when the machine is busy - the durations then say nothing
+        about the app - and turned off by ``BARKS_GUI_NO_BUDGETS``. With
+        ``BARKS_GUI_TIMINGS`` set, the test's slowest durations are appended to
+        that file first, budgets or not.
+
+        Raises:
+            AssertionError: Naming each duration over budget, and the artifacts.
+
+        """
+        if self.driver is None:
+            return
+        # Imported here: timings imports the markers, as this module does, but keeps
+        # the budgets and their calibration note out of the harness proper.
+        from barks_gui import timings  # noqa: PLC0415
+
+        try:
+            app_log = self.driver.log_path.read_text(errors="replace")
+        except OSError:
+            return
+        timings_file = os.environ.get(timings.TIMINGS_FILE_ENV_VAR)
+        if timings_file:
+            timings.record_slowest(
+                Path(timings_file), self.nodeid, timings.slowest(timings.durations(app_log))
+            )
+        if os.environ.get(timings.NO_BUDGETS_ENV_VAR):
+            return
+        busy = timings.machine_is_busy()
+        if busy:
+            warnings.warn(f"timing budgets not checked: {busy}", stacklevel=2)
+            return
+        problems = timings.budget_problems(app_log)
+        if not problems:
+            return
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        shown = "\n".join(problems)
+        msg = f"the app took longer than its budget:\n{shown}\nartifacts:\n{listing}"
+        raise AssertionError(msg)
 
     def _assert_drawn(self, capture: Path, what: str) -> None:
         # Imported here: shots pulls in Pillow, which nothing else in the harness needs.

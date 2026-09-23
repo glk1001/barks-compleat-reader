@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from barks_reader.core import log_markers
 from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.core.user_error_types import ErrorTypes
@@ -62,7 +65,10 @@ class TestAppInitializer:
             mock_post_setup.assert_called_once()
 
     def test_post_build_setup_prebuilt(
-        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+        self,
+        app_initializer: AppInitializer,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
     ) -> None:
         mock_dependencies["reader_settings"].use_prebuilt_archives = True
         mock_dependencies["reader_settings"].goto_saved_node_on_start = False
@@ -72,6 +78,9 @@ class TestAppInitializer:
             app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
         ) as mock_init_data:
             app_initializer._post_build_setup()
+
+            # The GUI suite holds this duration to a budget (POST_TREE_SETUP).
+            assert any(re.search(pattern(log_markers.POST_TREE_SETUP), m) for m in loguru_sink)
 
             # Check state
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_NEEDED

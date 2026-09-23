@@ -208,6 +208,19 @@
 >   also stretched boot image loads from a fraction of a second to eight and timed out a
 >   handful of tests per variant. The matrix says which variant a failure came from; the
 >   load is what to check first when several variants fail in the same shapes.
+> - Same day: timing budgets. The app's own durations are markers with an `{elapsed}`
+>   field (`TREE_NODES_LOADED`, `POST_TREE_SETUP`, `IMAGE_LOADED`, `TITLE_INSET_IMAGE_SET`
+>   joined `VOLUMES_LOADED`, `ALL_IMAGES_LOADED`, `SHOWED_PAGE`, `INDEX_BUILD_COMPLETE`,
+>   `INDEX_LETTER_POPULATED`), and the teardown (`AppBoot.assert_timings_within_budget`,
+>   over `barks_gui.timings`) holds every one the test's app logged to a budget: about
+>   three times the slowest seen across all 62 tests in a calibration pass (headless, four
+>   workers, quiet machine: view images up to 2.7s, a comic's pages 2.1s, the inset 2.0s, a
+>   page shown 0.9s, the tree 0.5s), never under a second. A busy machine is not a
+>   regression: with the one-minute load above the core count the check is skipped with a
+>   warning; `BARKS_GUI_NO_BUDGETS=1` turns it off; `BARKS_GUI_TIMINGS=<file>` appends each
+>   test's slowest durations as JSON lines, which is how to recalibrate. The durations are
+>   read from the messages with the log location stripped: an elapsed field that ends its
+>   message ran on into the module path otherwise, and the first pass saw two kinds of nine.
 
 ## Context
 

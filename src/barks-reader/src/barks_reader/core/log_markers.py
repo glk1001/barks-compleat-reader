@@ -110,6 +110,14 @@ USING_PREBUILT_ARCHIVES: Final = "Using prebuilt archives. No extra data to init
 USING_VOLUME_ARCHIVES: Final = "Using Fantagraphics volume archives. Now loading volume info..."
 VOLUMES_LOADED: Final = "Finished loading all volumes in {elapsed}."
 
+# ------------------------------------------------------- timed startup work --
+# Each carries an {elapsed} the app formats itself ("2.4s" or "12ms"); the GUI
+# suite holds them to a budget at every teardown (barks_gui.timings).
+TREE_NODES_LOADED: Final = "Finished loading all nodes in {elapsed}."
+POST_TREE_SETUP: Final = "Time of post tree setup: {elapsed}."
+IMAGE_LOADED: Final = 'Time taken to load image "{filename}" was {elapsed}.'
+TITLE_INSET_IMAGE_SET: Final = "Time taken to set title inset image: {elapsed}."
+
 # ------------------------------------------------------- what a read persists --
 # One per read that saves progress (articles do not): the harness checks the
 # profile's last-read cue and reading history against these at every teardown.

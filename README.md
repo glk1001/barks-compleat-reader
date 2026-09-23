@@ -121,7 +121,10 @@ just reader
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the
   size it booted at, the log holds no error or stray key, what a read persisted matches what
-  it logged, and the final frame is drawn.
+  it logged, the final frame is drawn, and every duration the app logged (tree build, image
+  loads, a comic's pages, the volumes, the index) is within a loose budget. The budgets are
+  skipped with a warning when the machine's load exceeds its core count, and turned off by
+  `BARKS_GUI_NO_BUDGETS=1`.
     ```
     bash scripts/run_gui_tests.sh                # visible, on a Xephyr window on the second monitor
     bash scripts/run_gui_tests.sh --headless     # on Xvfb, four workers, about three minutes

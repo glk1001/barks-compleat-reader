@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core import log_markers
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
@@ -138,6 +141,14 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         # Should load the new image
         args, _ = self.mock_loader.load_texture.call_args
         assert args[0] == "override.png"
+
+    def test_setting_the_inset_image_logs_how_long_it_took(self, loguru_sink: list[str]) -> None:
+        """The GUI suite holds this duration to a budget (TITLE_INSET_IMAGE_SET)."""
+        self.mock_loader.load_texture.side_effect = lambda _src, on_ready: on_ready(
+            MagicMock(), None
+        )
+        self.screen._set_title_inset_image(Path("inset.png"))
+        assert any(re.search(pattern(log_markers.TITLE_INSET_IMAGE_SET), m) for m in loguru_sink)
 
     def test_fade_in_bottom_view_title(self) -> None:
         self.screen.fade_in_bottom_view_title()

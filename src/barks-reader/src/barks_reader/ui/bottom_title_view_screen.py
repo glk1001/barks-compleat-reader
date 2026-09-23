@@ -453,7 +453,9 @@ class BottomTitleViewScreen(FloatLayout):
 
             self.title_inset_image_texture = tex
             logger.debug(
-                f"Time taken to set title inset image: {timing.get_elapsed_time_with_unit()}."
+                log_markers.TITLE_INSET_IMAGE_SET.format(
+                    elapsed=timing.get_elapsed_time_with_unit()
+                )
             )
 
         self._texture_loader.load_texture(inset_image_source, on_ready)

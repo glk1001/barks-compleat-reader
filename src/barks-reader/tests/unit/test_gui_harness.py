@@ -5,6 +5,8 @@ unit tree and not installed, so the paths go in by hand the way the GUI
 conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 """
 
+# cspell:ignore getloadavg
+
 from __future__ import annotations
 
 import json
@@ -23,7 +25,7 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import expected, harness, logs, persisted, shots  # noqa: E402
+from barks_gui import expected, harness, logs, persisted, shots, timings  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 
 if TYPE_CHECKING:
@@ -676,3 +678,88 @@ class TestRenderStats:
         capture = self._capture(tmp_path, lambda _x, _y: (1, 2, 3))
         stats = shots.render_stats(capture, self.WINDOW)
         assert stats.samples == (80 // shots.SAMPLE_STEP) * (60 // shots.SAMPLE_STEP)
+
+
+class TestTimings:
+    """The durations the app logs, read back and held to their budgets."""
+
+    def test_elapsed_fields_parse_in_both_forms_the_app_writes(self) -> None:
+        assert timings.parse_elapsed("2.4s") == 2.4  # noqa: PLR2004
+        assert timings.parse_elapsed("12ms") == 0.012  # noqa: PLR2004
+        assert timings.parse_elapsed(" 0.3s ") == 0.3  # noqa: PLR2004
+        for bad in ("2.4", "fast", "1m", ""):
+            with pytest.raises(ValueError, match="not an elapsed time"):
+                timings.parse_elapsed(bad)
+
+    @staticmethod
+    def _log() -> str:
+        return "\n".join(
+            [
+                "prefix | " + markers.TREE_NODES_LOADED.format(elapsed="1.2s"),
+                "prefix | " + markers.IMAGE_LOADED.format(filename="a.png", elapsed="87ms"),
+                "prefix | " + markers.IMAGE_LOADED.format(filename="b.png", elapsed="0.4s"),
+                "prefix | " + markers.SHOWED_PAGE.format(index=3, elapsed="0.2s"),
+                "prefix | Main screen is active (from comic reader).",
+            ]
+        )
+
+    def test_a_line_with_the_log_location_after_it_is_still_read(self) -> None:
+        """The first calibration pass saw only the two markers whose elapsed is not last."""
+        line = (
+            "2026-09-23 01:15:19.003 | INFO     | app : "
+            + markers.TREE_NODES_LOADED.format(elapsed="2.4s")
+            + "  [barks_reader.ui.reader_tree_builder:build_main_screen_tree:127]"
+        )
+        (found,) = timings.durations(line)
+        assert (found.name, found.seconds) == ("tree nodes loaded", 2.4)
+
+    def test_every_timed_line_is_read_with_its_seconds(self) -> None:
+        found = timings.durations(self._log())
+        assert [(d.name, d.seconds) for d in found] == [
+            ("tree nodes loaded", 1.2),
+            ("view image loaded", 0.087),
+            ("view image loaded", 0.4),
+            ("page shown", 0.2),
+        ]
+        assert found[0].line.endswith("Finished loading all nodes in 1.2s.")
+
+    def test_the_slowest_of_each_kind_is_kept(self) -> None:
+        assert timings.slowest(timings.durations(self._log())) == {
+            "tree nodes loaded": 1.2,
+            "view image loaded": 0.4,
+            "page shown": 0.2,
+        }
+
+    def test_within_budget_is_no_problem(self) -> None:
+        assert timings.budget_problems(self._log()) == []
+
+    def test_over_budget_names_the_duration_its_budget_and_the_line(self) -> None:
+        slow = self._log() + "\n" + markers.SHOWED_PAGE.format(index=4, elapsed="9.5s")
+        (problem,) = timings.budget_problems(slow)
+        budget = timings.BUDGETS["page shown"]
+        assert problem.startswith(
+            f"page shown took 9.5s, over its {budget:g}s budget: Showed page 4"
+        )
+
+    def test_every_timed_marker_has_a_budget_of_at_least_a_second(self) -> None:
+        assert set(timings.TIMED) == set(timings.BUDGETS)
+        assert all(budget >= 1.0 for budget in timings.BUDGETS.values())
+
+    def test_a_busy_machine_is_named_and_a_quiet_one_is_not(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(timings.os, "cpu_count", lambda: 4)
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (9.5, 0.0, 0.0))
+        assert timings.machine_is_busy() == "the load average is 10 on 4 cores"
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (3.9, 0.0, 0.0))
+        assert timings.machine_is_busy() is None
+
+    def test_slowest_durations_are_appended_as_json_lines(self, tmp_path: Path) -> None:
+        out = tmp_path / "timings.jsonl"
+        timings.record_slowest(out, "test_a", {"page shown": 0.2})
+        timings.record_slowest(out, "test_b", {})
+        lines = [json.loads(ln) for ln in out.read_text().splitlines()]
+        assert lines == [
+            {"test": "test_a", "slowest": {"page shown": 0.2}},
+            {"test": "test_b", "slowest": {}},
+        ]

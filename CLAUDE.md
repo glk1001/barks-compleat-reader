@@ -141,6 +141,11 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   remote's six keys (Escape, Return, Up, Down, Left, Right): `scripts/check_gui_keys.py`
   (pre-commit, CI, full-lint) fails on any other, unless the call carries
   `# desktop key: <why>`.
+  Every duration the app logs is held to a loose budget at teardown
+  (`tests/gui/barks_gui/timings.py`; skipped when the load exceeds the core count,
+  `BARKS_GUI_NO_BUDGETS=1` turns it off, `BARKS_GUI_TIMINGS=<file>` records the numbers to
+  recalibrate). A new timed line is a marker with an `{elapsed}` field, added to `TIMED`
+  and `BUDGETS` there.
 
 ## graphify
 

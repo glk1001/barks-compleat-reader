@@ -21,6 +21,10 @@
 # exercises: the binary must honour the config and data dir env vars, as the
 # app does when they are set.
 #
+# Every duration the app logs is held to a budget at teardown (barks_gui.timings);
+# BARKS_GUI_NO_BUDGETS=1 turns that off, and BARKS_GUI_TIMINGS=<file> records each
+# test's slowest durations as JSON lines, which is how the budgets are calibrated.
+#
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
 #

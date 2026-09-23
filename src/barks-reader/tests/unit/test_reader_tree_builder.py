@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_tree_builder
 import pytest
 from barks_fantagraphics.barks_tags import Tags
+from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
@@ -137,6 +140,15 @@ class TestWalking:
 
         node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
         mock_dependencies["tree_view_manager"].on_search_node_created.assert_called_once_with(node)
+
+
+class TestTiming:
+    def test_the_build_logs_how_long_it_took(
+        self, tree_builder: ReaderTreeBuilder, loguru_sink: list[str]
+    ) -> None:
+        """The GUI suite holds this duration to a budget (TREE_NODES_LOADED)."""
+        _build_with_spec(tree_builder)
+        assert any(re.search(pattern(log_markers.TREE_NODES_LOADED), m) for m in loguru_sink)
 
 
 class TestLookupNodeCollection:
