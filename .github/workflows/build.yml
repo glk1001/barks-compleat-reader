@@ -26,6 +26,8 @@ jobs:
       ${{ !startsWith(github.ref, 'refs/tags/')
       || startsWith(github.ref, 'refs/tags/v') }}
     strategy:
+      # Every leg reports: a failure on one OS says nothing about the others.
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

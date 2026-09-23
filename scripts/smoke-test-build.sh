@@ -228,6 +228,12 @@ if [[ $fail -ne 0 ]]; then
     echo "---- stdout/stderr ----" >&2
     tail -40 "$WORK/stdout.log" >&2
     [[ -n "$log" ]] && { echo "---- installer log ----" >&2; tail -20 "$log" >&2; }
+    # Kivy's own log (under its home, in the config folder beside the executable):
+    # why a window would not open is said only there.
+    while IFS= read -r kivy_log; do
+        echo "---- ${kivy_log#"$WORK"/} ----" >&2
+        tail -30 "$kivy_log" >&2
+    done < <(find "$WORK" -path '*kivy*' -name '*.txt' -type f 2>/dev/null)
     exit 1
 fi
 if [[ -n "$PRESS" ]]; then
