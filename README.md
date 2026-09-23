@@ -162,6 +162,18 @@ just reader
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
     bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
     ```
+- **The GUI suite on Windows**: the same tests through `scripts/gui_probe.py`, which sends
+  real keys with `SendInput` to the reader on the real desktop. One visible worker, about
+  15 minutes; leave the machine alone while it runs. Needs `.env.runtime` pointing at a
+  reader profile and data pack (`uv run python scripts/gui_probe.py doctor` checks).
+    ```
+    uv run python scripts/run_gui_tests.py              # the suite (-k, -x: pytest args)
+    uv run python scripts/run_gui_tests.py --angle      # on a VirtualBox VM: draw through Direct3D
+    uv run python scripts/run_gui_tests.py --calibrate  # record this machine's timing budgets
+    ```
+  pytest's whole output goes to `build/gui-tests/<run>/pytest.log` as it runs. For a
+  VirtualBox VM, turn 3D acceleration off and discard off on its disk; why is in
+  `docs/plans/cross-platform-gui-tests.md`.
 - **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` (or the
   Windows `.exe`, or the macOS `.zip`) launches a build in an empty directory as far as
   its first-run installer's "data pack missing" message, which proves the packaged program

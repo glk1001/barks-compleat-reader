@@ -30,7 +30,30 @@
 >   frame: the restore momentarily gives the client area the saved outer size, and the
 >   app's aspect correction puts it right. Worth a look in `platform_window_win32.py`
 >   (`save_state` keeps `GetWindowRect`, the outer rectangle).
->   Next, milestone B: the whole suite on the VM.
+> - Step 3, milestone B: the whole suite on the Windows VM, 2026-09-23. Last run: 61 passed,
+>   1 skipped (no prebuilt comics there), 1 error, in 13m31s; the error, the wiki chip test
+>   needing a prebuilt comics directory, is fixed by 7100c3fd (not yet run there). What the
+>   first whole runs found, in the order found:
+>   - **App bug (4c173998):** reaching History or Reading crashed the reader on Windows with
+>     the JPG panels zip: the node's picture was named `Path(title) / "129-3.jpg"`, a
+>     backslash inside a zip member name. Seven tests.
+>   - **App log (2d2ae4fb):** leaving fullscreen, a Windows window passes for ~0.3s through
+>     its size plus a frame at a position above the screen; the monitor lookup logged that
+>     as an ERROR though every caller copes. Now a warning.
+>   - **Harness and probe, Windows-only assumptions:** no resize event at boot (7bc2f439);
+>     loguru colours a file when TERM is set, as Git Bash sets it (ccc3d4f3); the console's
+>     cp1252 cannot print the log's box drawing (6c4fade8); pytest's output buffered in the
+>     runner's pipe (5bd73fe2); taking the foreground by tapping Alt sent a key to another
+>     window (8a3f606c).
+>   - **The VirtualBox VM itself, not the reader:** its OpenGL pass-through stops creating the
+>     drawing buffers the reader needs after a boot or two, so the suite runs with `--angle` (Direct3D,
+>     3d0177e8, guarded by deebe061); with 3D acceleration on, Direct3D still went through
+>     VirtualBox's 3D layer and the display went black, so 3D acceleration is off (WARP, the
+>     software renderer); and with discard on, the dynamic .vdi stalled on TRIM until the
+>     guest froze, so discard is off on its disk. With all three, the whole suite runs clean.
+>   On Windows: `uv run python scripts/run_gui_tests.py --angle` on the VM (a real machine
+>   needs no `--angle`), `--calibrate` once per machine. Next: the whole suite once on the
+>   Windows laptop (real GPU, OpenGL), then step 4.
 
 ## Context
 
