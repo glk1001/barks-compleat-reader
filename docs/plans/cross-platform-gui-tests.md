@@ -205,6 +205,24 @@ to "it takes keys", on every build leg, which makes it the only regular macOS co
    require the closed line and the program to exit by itself, instead of the 90s wait and
    kill. The existing launches stay as they are; this is one more.
 
+**Built 2026-09-24** (1651af39, ae1a3778, 33e160e4, and the commit adding this):
+`STANDALONE_POPUP_OPENED` / `_CLOSED` and Return-closes in `show_standalone_popup`,
+`scripts/send_os_key.py`, and `smoke-test-build.sh --press-escape` as a Build step. What the
+first runs showed about CI's runners, which changes the step's reach:
+- **Linux:** passes. xdotool presses Escape on the smoke test's own Xvfb, the popup closes
+  and the build exits by itself.
+- **Windows:** the runner's OpenGL is `GDI Generic 1.1`, below Kivy's 2.0, so a default
+  launch only ever reaches Kivy's "OpenGL 2.0 not found" message box - the older default
+  smoke launch has been passing at that box, not at the app's popup. The Escape step
+  runs through ANGLE there, which does reach the popup.
+- **macOS:** the runners cannot create an OpenGL context at all (`Failed creating OpenGL
+  pixel format`), so no Kivy window opens and the build exits in about two seconds; both
+  macOS smoke launches pass on the installer's log and flag alone. Key injection works
+  there (the Tk experiment), but there is no window to take the key, so the Escape step
+  skips macOS. macOS window and input coverage has to come from a real Mac.
+Every smoke launch now also says what it reached: the app's popup, Kivy's OpenGL error
+box, or no window.
+
 ## Later, not in this plan: touch
 
 Three of the machines are touchscreens, and every GUI test presses keys, so the touch
