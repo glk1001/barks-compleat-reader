@@ -166,6 +166,26 @@ just reader
   Windows `.exe`, or the macOS `.zip`) launches a build in an empty directory as far as
   its first-run installer's "data pack missing" message, which proves the packaged program
   runs at all; every CI build leg does the same to what it built.
+- **The data pack**: `uv run scripts/validate-barks-reader-files.py` checks what the reader
+  consumes, title by title: the config, the Reader Files, the Fantagraphics volumes, the
+  prebuilt comics in the configured directory, every title's panel files, the layout the
+  reader builds for each comic (with the panel-segments JSONs it reads, present and no
+  older than their pages), and the wiki: every story page joins its title and back again.
+  Needs the data directories and `.env.runtime`. Run it nightly beside the settings matrix.
+    ```
+    uv run scripts/validate-barks-reader-files.py                        # everything (about a minute and a half)
+    uv run scripts/validate-barks-reader-files.py --titles-only          # only the per-title phases
+    uv run scripts/validate-barks-reader-files.py --title "Lost in the Andes!"   # or --volume 1-5
+    uv run scripts/validate-barks-reader-files.py --full-load-check      # also decode every source page
+    uv run scripts/validate-barks-reader-files.py --strict-wiki          # fail on stories with no page yet
+    uv run scripts/validate-barks-reader-files.py --wiki-bundle PATH     # check another wiki bundle
+    ```
+  A story with no wiki page yet is counted and warned about, not failed, unless
+  `--strict-wiki`. The wiki checked is the one the reader's settings select (the live
+  bundle when `use_live_wiki_bundle` is on, else the copy in Reader Files). The build tree
+  under `~/Books/Carl Barks` is not checked here: that is the build gate's job, in
+  `barks-comic-building`. Title search needs no data, so it is a unit test that CI runs
+  (`src/barks-fantagraphics/tests/test_title_search.py`).
 - **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
   or with `--with-gui-test` to include the GUI suite.
 

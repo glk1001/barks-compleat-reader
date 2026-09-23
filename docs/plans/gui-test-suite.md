@@ -232,6 +232,13 @@
 >   The load rule discounts the run's own workers: busy means the one-minute load above the
 >   core count plus three per worker (a four-worker run took a quiet 16-core desktop to
 >   about 12), so four workers on an eight-core laptop no longer silence the check.
+> - Same day: corpus consistency lives outside this suite. Checking every title (its
+>   layout builds, its prebuilt comic and panel files are there, its wiki page joins both
+>   ways, search finds it) needs no GUI, so it is the data-pack validator's job:
+>   `scripts/validate-barks-reader-files.py` gained Phase 10 (each title's layout built by
+>   the reader's own builder, with the panel-segments JSON checks moved there from Phase 9)
+>   and Phase 11 (the wiki joins), and title search became a unit test. The GUI tests go on
+>   asserting one sample title each, through `expected.py`.
 
 ## Context
 

@@ -123,6 +123,10 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
 
 - Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`.
   Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
+- Corpus consistency (every title's panel files, prebuilt comic, layout, panel-segments
+  JSONs and wiki joins) is `scripts/validate-barks-reader-files.py`, run against the real
+  data pack, nightly rather than in a gate; its tests are in `scripts/tests/`. The GUI tests
+  assert one sample title each and leave the whole corpus to it.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
 - GUI path tests are in `src/barks-reader/tests/gui/` (outside `testpaths`; run with
   `bash scripts/run_gui_tests.sh`, or `--headless` on Xvfb with no window or desktop
