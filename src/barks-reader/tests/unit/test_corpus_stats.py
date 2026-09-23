@@ -10,21 +10,29 @@ No Kivy, no ``barks_reader.ui`` - this module is core and must stay that way.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Literal
+from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS
+from barks_fantagraphics.entity_types import EntityType
+from barks_fantagraphics.search_ports import CorpusTextTotals
+from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
+from barks_reader.core import corpus_stats as corpus_stats_module
 from barks_reader.core.corpus_stats import (
     CorpusStats,
     StatSection,
     _adjusted_payment_total,
+    _length_section,
     _paid_records,
     compute_static_stats,
     compute_text_stats,
     get_stories,
 )
-from comic_utils.cpi_calculator import get_adjusted_usd
+from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +40,19 @@ if TYPE_CHECKING:
 _NUM_STORIES = 683
 
 
-@pytest.fixture(scope="module")
+def _stats_scope(fixture_name: str, config: pytest.Config) -> Literal["module", "function"]:  # noqa: ARG001
+    """Once per module normally; once per test under mutmut.
+
+    mutmut credits everything a fixture computes to the first test that asked
+    for it, then runs only that test against each mutant in the computation
+    (docs/mutation-testing.md, trap 4). A module-scoped `stats` hid every row
+    assertion below from it: 190 false survivors. The suite is not slowed: the
+    whole computation takes a few milliseconds.
+    """
+    return "function" if os.environ.get("MUTANT_UNDER_TEST") else "module"
+
+
+@pytest.fixture(scope=_stats_scope)
 def stats(cpi_db: Path) -> CorpusStats:
     # Inflated with the conftest stand-in, not the shipped cpi.db: that is a
     # git-lfs object, and a bare checkout (CI's) only has the pointer file.
@@ -121,6 +141,12 @@ class TestAttributionSection:
         total = sum(int(row.value.replace(",", "")) for row in _section(stats, "Barks's hand").rows)
         assert total == _NUM_STORIES
 
+    def test_the_footnote_credits_the_bibliography(self, stats: CorpusStats) -> None:
+        assert (
+            _section(stats, "Barks's hand").footnote
+            == "Attribution as stated in Michael Barrier's bibliography."
+        )
+
     def test_is_barks_title_would_have_given_a_different_answer(self) -> None:
         # Guards the trap the module docstring warns about: is_barks_title means
         # "Barks titled it", not "Barks made it", and is nowhere near 561.
@@ -146,6 +172,22 @@ class TestLengthSection:
         bands = ("One page", "Short (2–12 pages)", "Long (13+ pages)")  # noqa: RUF001
         total = sum(int(_value(stats, "Length", label).replace(",", "")) for label in bands)
         assert total == _NUM_STORIES
+
+    def test_no_footnote_while_the_ledger_covers_every_story(self, stats: CorpusStats) -> None:
+        assert _section(stats, "Length").footnote is None
+
+    def test_a_shortfall_in_the_ledger_is_footnoted(self) -> None:
+        """Built directly: the real ledger has no shortfall, so the branch needs one made."""
+        pages = {Titles.LOST_IN_THE_ANDES: 32, Titles.VACATION_TIME: 33}
+        section = _length_section(
+            pages, total_pages=65, num_stories=3, script_and_art=frozenset({Titles.VACATION_TIME})
+        )
+        assert section.footnote == (
+            "Page figures cover 2 of 3 stories; the rest are absent from the payment ledger."
+        )
+        assert _length_section(pages, 65, 2, frozenset({Titles.VACATION_TIME})).footnote is None
+        longest = next(r.value for r in section.rows if r.label == "Longest (script and art)")
+        assert longest == "Vacation Time, 33 pages"
 
 
 class TestLongestScriptAndArtStory:
@@ -238,6 +280,15 @@ class TestPaymentSection:
         reported = float(_payment_value_starting(stats, "Per year").lstrip("$").replace(",", ""))
         assert reported < naive
 
+    def test_the_rate_rows_are_labelled_with_the_tables_latest_year(
+        self, stats: CorpusStats, cpi_db: Path
+    ) -> None:
+        latest = get_latest_year(cpi_db)
+        labels = [r.label for r in _section(stats, "Payment").rows]
+        assert f"In {latest} dollars" in labels
+        assert f"Per page ({latest} dollars)" in labels
+        assert f"Per year ({latest} dollars)" in labels
+
     def test_footnote_states_the_averaged_years(self, stats: CorpusStats) -> None:
         footnote = _section(stats, "Payment").footnote
         assert footnote is not None
@@ -285,6 +336,36 @@ class TestCastSection:
 
 class TestTextStats:
     """The dialogue section needs the optional index and degrades to None."""
+
+    def test_the_rows_and_the_footnote_come_from_the_index(self, tmp_path: Path) -> None:
+        """A table of literals deserves a table of assertions: every label and figure."""
+        fake = InMemoryFullTextSearch(
+            corpus_text_totals=CorpusTextTotals(
+                num_text_entities=1234,
+                num_words=56789,
+                num_titles=600,
+                num_pages=4321,
+                num_panels=9876,
+            ),
+            cleaned_terms=["a", "b", "c"],
+            entity_terms={EntityType.PERSON: ["Donald", "Scrooge"]},
+        )
+        with patch.object(corpus_stats_module, "ComicSearch", return_value=fake):
+            section = compute_text_stats(tmp_path)
+        assert section is not None
+        assert section.heading == "The words"
+        assert [(r.label, r.value) for r in section.rows] == [
+            ("Balloons and captions", "1,234"),
+            ("Words spoken", "56,789"),
+            ("Distinct words", "3"),
+            ("Panels with text", "9,876"),
+            ("Pages with text", "4,321"),
+            ("Person names", "2"),
+        ]
+        assert section.footnote == (
+            "Balloons include captions and sound effects."
+            f" Text figures cover 600 of {len(get_stories()):,} stories currently indexed."
+        )
 
     def test_missing_directory(self, tmp_path: Path) -> None:
         assert compute_text_stats(tmp_path / "not-there") is None

@@ -56,10 +56,11 @@ The 436 🫥 *no covering test* mutants are a **separate problem** and won't mov
 matter how many survivors get killed — they are code the Kivy-free suite never
 reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
 
-## Three traps that produce fake numbers
+## Four traps that produce fake numbers
 
 The first two follow from mutmut calling `pytest.main()` **many times in one process**;
-the third from how it decides which mutant is live.
+the third from how it decides which mutant is live; the fourth from how it decides which
+tests to run against it.
 
 1. **`@given` property tests must be module-level, never test-class methods.** A
    class-scoped `@given` sees a fresh test-class instance on each in-process run and
@@ -88,8 +89,25 @@ the third from how it decides which mutant is live.
    Isolate by copying the real environment minus the keys under test (see
    `platform_env` in `test_platform_info.py`), never by clearing it.
 
+4. **A module- or session-scoped fixture credits its whole computation to one test.**
+   mutmut records which functions each test executes, then runs only those tests
+   against a mutant in them. A fixture computed once per module runs during the *first*
+   test that asks for it, so every mutant in that computation is attributed to that one
+   test alone - and the forty parametrized row assertions after it are never run
+   against them. `corpus_stats` showed 190 survivors this way (2026-09-23), of which
+   135 vanished the moment its `stats` fixture became function-scoped under mutmut.
+   Keep such fixtures module-scoped for the suite's speed, but give them a dynamic
+   scope that returns `"function"` when `MUTANT_UNDER_TEST` is set (see
+   `_stats_scope` in `test_corpus_stats.py`).
+
 When triaging, prefer `uv run mutmut results` over the wrapper's summary if you need
 raw mutant names; the summary collapses them to module counts.
+
+Two unit-test files are left out of the baseline by the wrapper because mutmut copies the
+tests under `mutants/` and runs them from there: `test_first_run_installer.py` (its module
+resolves the executable's directory at import time, which asserts in the sandbox) and
+`test_gui_harness.py` (it puts `scripts/` and `tests/gui` on `sys.path` relative to its own
+file). Either takes the whole baseline down before a single mutant runs.
 
 **mutmut only mutates function bodies.** Module-level constants, class attributes and
 enum members are copied through untouched — `PLATFORM = _get_platform()`,
@@ -653,6 +671,44 @@ Two more in the same family: `executor.shutdown(cancel_futures=True/False)` runs
 | `_get_prebuilt_comic_path`'s `ValueError` branch | 1 | Dead code: the path is built as `stem + CBZ_FILE_EXT`, so `comic_path.suffix` is *always* `.cbz` and the `not in [CBZ, ZIP]` guard can never be true. |
 | `_load_comic_in_thread`'s `load_error = False` → `None` | 1 | Only ever read as `if load_error:`. Both are falsy, and every path that matters assigns `True`. |
 | `zipfile.ZipFile(p, "r")` → `ZipFile(p)` | 1 | `"r"` **is** the default. Already recorded twice in earlier rounds. |
+
+## Changed-modules pass (2026-09-23)
+
+`bash scripts/mutmut.sh --changed 564cc71a` - the 23 `core/` modules touched since the
+July burn-down, in one run of about five minutes (the wrapper first needed two fixes: its
+module-list loop exited the script under `set -e` when the last test file matched no core
+module, and the two baseline-breaking test files above had to be left out).
+
+| Module | Before | After | What moved |
+|---|---:|---:|---|
+| `corpus_stats` (never swept) | 190 | 18 | 135 were trap 4; then rows, labels and footnotes of the words, attribution, length and payment sections asserted. The 18 left are equivalents (below). |
+| `corpus_stats_layout` (never swept) | 12 | 0 | The height functions are sums; the fit tests only asked whether the real page fits, which every sign error still satisfied. `TestHeightsAddUp` checks the sums. |
+| `view_pipeline` | 34 | 25 | The playlist id (added since July) went untested through `render`, `current_request` and the fun view's playlist branch: `TestPlaylistContext`. The rest are July's recorded log-wording equivalents. |
+| `wiki_integration` | 16 | 16 | +6 since July, all equivalents (below). |
+| `collection_page_groups` | 4 | 4 | The `hint` argument of `_group_ranges` only reaches an assertion message. |
+| `config_info` | 4 | 4 | `seed_random_from_env` / `_assert_kivy_not_yet_imported` wording. |
+| `system_file_paths`, `image_selector` | +1 each | | A log line; an equivalent `split("#", 1)` vs `split("#")` with `[0]` taken. |
+| everything else on the list | | | At or under its July floor. |
+
+Two real gaps came out: the playlist context in `view_pipeline`, and the layout sums.
+Everything else this pass found was a trap or an equivalent.
+
+### Known-equivalent survivors from the changed-modules pass (2026-09-23)
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| `corpus_stats._attribution_section`'s `counts.get(qualifier, 0)` defaults (`None`, `1`, dropped) | 12 | Every one of the five buckets is non-empty in the bibliography, so no default is ever read. |
+| `corpus_stats._length_section`'s tie-break key `ENUM_TO_STR_TITLE[item[1]]` | 1 | `ENUM_TO_STR_TITLE` is a list, so a page count indexes it too; the key only differs on a tie for longest, and there is none. |
+| `corpus_stats._paid_records`'s `payment > 1` | 1 | No record pays exactly one dollar. |
+| `corpus_stats._adjusted_payment_total` / `_payment_section`: `latest_year = None`, the target year or the db path dropped from `get_adjusted_usd` | 3 | The calculator's defaults are the latest year and the shipped table, which on a machine with the LFS table give the same figures. |
+| `corpus_stats.compute_text_stats`'s `ComicSearch(None)` | 1 | `ComicSearch` is patched in every test that reaches the rows. |
+| `wiki_integration.wiki_top_bar_spec`'s dropped style kwargs | 4 | `TopBarSpec`'s defaults are the same four values; the anti-drift test compares against the constants and cannot tell. |
+| `wiki_integration.migrate_wiki_session`'s `mkdir(parents=…, exist_ok=…)` variants | 6 | The tests' profile directory already exists, so neither flag is exercised. |
+| `wiki_integration.canonical_title`'s first lookup replaced | 2 | The first `.get` is a fast path; the quote-stripping fallback finds the same title. |
+| `wiki_integration.story_slug` / `wiki_theme_spec` strip charsets (`"XX-XX"`, `"XX#XX"`) | 3 | A lowercase slug never starts or ends in `X`; a hex colour never starts with one. |
+| `view_pipeline.__init__`'s `_fun_image_themes` / `_cached_fun_titles` `None` → `""` | 2 | Recorded in July: overwritten two lines below, still inside `__init__`. |
+| `encoding="utf-8"` → `"UTF-8"` / `None` on ASCII files (`image_selector`, `reading_history`, `wiki_integration`) | 6 | Same bytes either way. |
+| Log and message wording, `logger.x(None)` | the rest | Same as every previous round. |
 
 ## Survivors by module (backlog, most-survivors first)
 
