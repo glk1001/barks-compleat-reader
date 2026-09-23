@@ -27,7 +27,7 @@ Only the standard library is used, plus Pillow for ``shot``, as the driver
 runs this with the interpreter it runs under.
 """
 
-# cspell:ignore PYTHONIOENCODING creationflags
+# cspell:ignore PYTHONIOENCODING creationflags glew
 
 from __future__ import annotations
 
@@ -52,6 +52,9 @@ READY_MARKER = "Main window shown."
 DEFAULT_KEY_GAP = 0.4
 # How long `start` waits for the app's window to appear once the ready line is logged.
 WINDOW_WAIT_SECS = 10
+# Kivy's line naming the graphics backend it drew through, by the names
+# KIVY_GL_BACKEND takes (glew, sdl2, angle_sdl2).
+_GL_BACKEND_RE = re.compile(r"GL: Backend used <([^>]+)>")
 # A directory setting the app reads only while its switch is on (reader_settings.py's
 # keys): doctor does not warn about one whose switch is off.
 DIR_SWITCHES = {
@@ -241,6 +244,23 @@ def settle(quiet_ms: int = 1000, max_secs: float = 30) -> None:
         time.sleep(0.25)
 
 
+def gl_backend_problem(requested: str | None, log_text: str) -> str | None:
+    """Return why a boot drew through the wrong graphics backend, or None if it did not.
+
+    Args:
+        requested: The backend asked for (KIVY_GL_BACKEND), or None for Kivy's choice.
+        log_text: The app log so far.
+
+    """
+    found = _GL_BACKEND_RE.search(log_text)
+    if not requested or found is None or found[1] == requested:
+        return None
+    return (
+        f"the app drew through the {found[1]!r} graphics backend, not the {requested!r}"
+        " asked for (KIVY_GL_BACKEND): this run would not test what it says"
+    )
+
+
 def note_input(kind: str, detail: str) -> None:
     """Log an injected input with its time, as gui-probe.sh does (the harness reads it)."""
     stamp = dt.datetime.now().strftime("%H:%M:%S.%f")[:-3]  # noqa: DTZ005 (local, as the app logs)
@@ -315,6 +335,12 @@ class Probe:
         if not wait_for(READY_MARKER, 120):
             self._abort_start(f"app never became ready; see {app_log()}")
         settle(1000, 30)
+        log_text = _read_log()
+        problem = gl_backend_problem(os.environ.get("KIVY_GL_BACKEND"), log_text)
+        if problem is not None:
+            self._abort_start(problem)
+        found = _GL_BACKEND_RE.search(log_text)
+        backend = found[1] if found else "not logged"
         window = self._await_window()
         if not self._backend.bring_to_front(window):
             self._abort_start("the app window would not come to the front (is the screen locked?)")
@@ -322,7 +348,7 @@ class Probe:
         # bar and the goto arrows, so no hover state is triggered.
         _, height, x, y = self._backend.client_geometry(window)
         self._backend.move_pointer(x + 5, y + height // 2)
-        print(f"gui-probe: ready. Log: {app_log()}")  # noqa: T201
+        print(f"gui-probe: ready (graphics backend: {backend}). Log: {app_log()}")  # noqa: T201
 
     def _launch(self) -> None:
         """Start the app (the workspace's, or a build) with its output going to the app log."""

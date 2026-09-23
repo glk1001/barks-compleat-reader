@@ -8,6 +8,8 @@ harness parses. The Windows backend's structures are checked on Windows.
 
 # ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
+# cspell:ignore glew
+
 from __future__ import annotations
 
 import ctypes
@@ -92,6 +94,24 @@ class TestAppEnv:
         env = gui_probe.app_env({"TERM": "xterm", "PATH": "p"})
         assert env["LOGURU_COLORIZE"] == "0"
         assert env["PATH"] == "p"
+
+
+class TestGlBackend:
+    LOG = "2026-09-23 | INFO | kivy: kivy:print_gl_version:51 - GL: Backend used <glew>\n"
+
+    def test_a_run_that_asked_for_angle_but_got_opengl_is_refused(self) -> None:
+        problem = gui_probe.gl_backend_problem("angle_sdl2", self.LOG)
+        assert problem is not None
+        assert "'glew'" in problem
+        assert "'angle_sdl2'" in problem
+
+    def test_the_backend_asked_for_passes(self) -> None:
+        log = self.LOG.replace("glew", "angle_sdl2")
+        assert gui_probe.gl_backend_problem("angle_sdl2", log) is None
+
+    def test_nothing_asked_for_or_nothing_logged_passes(self) -> None:
+        assert gui_probe.gl_backend_problem(None, self.LOG) is None
+        assert gui_probe.gl_backend_problem("angle_sdl2", "no backend line yet") is None
 
 
 class TestLogWaits:
