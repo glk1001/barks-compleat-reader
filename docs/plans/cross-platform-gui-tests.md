@@ -17,6 +17,20 @@
 >   since on a dev machine Kivy's own SDL window can be in the same process; and a
 >   `needs_no_opengl` marker, since headless CI skips every module that imports UI code.
 >   This was the backend's first test of any kind.
+> - Step 3, milestone A: DONE 2026-09-23 (b980354e, 7bc2f439, e38e8e30). `gui_probe.py`
+>   (commands and output as `gui-probe.sh`) over a Win32 backend (`SendInput`, window by
+>   title, foreground before every key, DPI-aware), `run_gui_tests.py`, the driver picking
+>   the probe per platform. On the Windows VM (Windows 10, console session, the exe's
+>   profile via `.env.runtime`) `test_main_screen_fullscreen_round_trip` passes with every
+>   teardown check. The first run found one X11 assumption in the harness: the window's
+>   first resize event is not its boot size on Windows (no resize at boot there), so the
+>   size check now measures against the app's boot geometry line.
+>   **Windows finding, open:** leaving fullscreen, the window's drawable area briefly
+>   measures 794x1258 before settling at 778x1219. The difference, 16x39, is the window
+>   frame: the restore momentarily gives the client area the saved outer size, and the
+>   app's aspect correction puts it right. Worth a look in `platform_window_win32.py`
+>   (`save_state` keeps `GetWindowRect`, the outer rectangle).
+>   Next, milestone B: the whole suite on the VM.
 
 ## Context
 
