@@ -12,7 +12,7 @@ import os
 import time
 import zipfile
 from configparser import ConfigParser
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -187,7 +187,8 @@ class TestCheckSegmentsJson:
             "001",
             tmp_path,
             volume_zip,
-            Path(self.MEMBER),
+            # A Windows path, so that every platform checks the member is named with '/'.
+            PureWindowsPath(self.MEMBER),
         )
         return present, phase
 

@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from configparser import ConfigParser
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
@@ -1681,7 +1681,9 @@ def _check_one_source_page(
     # rejects), this phase reproduces the failure instead of masking it.
     try:
         reader_load_pil(
-            zipfile.Path(target_zip, at=str(member)),
+            # Zip member names always use '/', even on Windows (as the reader's own
+            # ``ArchivePageImageSource._get_image_path`` makes them).
+            zipfile.Path(target_zip, at=member.as_posix()),
             encrypted_zip=encrypted,
             use_ext_hint=True,
         )
@@ -1933,7 +1935,7 @@ def _check_segments_json(
     page_str: str,
     panel_segments_dir: Path,
     target_zip: zipfile.ZipFile | None,
-    member: Path | None,
+    member: PurePath | None,
 ) -> bool:
     """Verify the panel-segments JSON exists and is no older than its source page.
 
@@ -1954,7 +1956,8 @@ def _check_segments_json(
     if target_zip is None or member is None:
         return True
     try:
-        srce_zinfo = target_zip.getinfo(str(member))
+        # Zip member names always use '/', even on Windows.
+        srce_zinfo = target_zip.getinfo(member.as_posix())
     except KeyError:
         return True
     # ZipInfo.date_time is naive local time; mktime interprets it the same way,
