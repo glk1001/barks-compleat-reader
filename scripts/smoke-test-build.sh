@@ -23,6 +23,11 @@
 # the window. The wait-and-kill is done here rather than with `timeout`, which
 # macOS does not ship and which cannot reach a Windows process tree.
 #
+# With KIVY_GL_BACKEND set (CI's Windows leg runs a second time with angle_sdl2),
+# the launch hands it to the build, and the test also requires Kivy's line naming
+# the graphics backend it drew through to name that one: a build missing the
+# backend's DLLs would otherwise fall back, or crash, and still look alive.
+#
 # Usage: scripts/smoke-test-build.sh <executable or .zip> [seconds, default 90]
 set -euo pipefail
 
@@ -116,6 +121,15 @@ fi
 if [[ ! -f "$flag" ]]; then
     echo "smoke-test-build: FAIL - no installer-failed flag: the missing data pack was not reported" >&2
     fail=1
+fi
+if [[ -n "${KIVY_GL_BACKEND:-}" ]]; then
+    if grep -qF "GL: Backend used <${KIVY_GL_BACKEND}>" "$WORK/stdout.log" ${log:+"$log"}; then
+        echo "smoke-test-build: drew through the ${KIVY_GL_BACKEND} graphics backend, as asked"
+    else
+        used="$(grep -ohE "GL: Backend used <[^>]*>" "$WORK/stdout.log" ${log:+"$log"} | head -1 || true)"
+        echo "smoke-test-build: FAIL - asked for the ${KIVY_GL_BACKEND} graphics backend; the log says: ${used:-no backend line}" >&2
+        fail=1
+    fi
 fi
 if grep -q "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"}; then
     echo "smoke-test-build: FAIL - a traceback:" >&2

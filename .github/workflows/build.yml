@@ -141,6 +141,16 @@ jobs:
         shell: bash
         run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
 
+      # Again on Windows, drawing through ANGLE (Direct3D) rather than OpenGL: the
+      # build bundles Kivy's ANGLE DLLs for machines without working OpenGL (a VM
+      # with 3D acceleration off), and this proves the build really draws with them.
+      - name: Smoke-test the executable through ANGLE
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          KIVY_GL_BACKEND: angle_sdl2
+        run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
+
       - name: Upload executable
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
