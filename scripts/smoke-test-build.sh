@@ -123,11 +123,18 @@ if [[ ! -f "$flag" ]]; then
     fail=1
 fi
 if [[ -n "${KIVY_GL_BACKEND:-}" ]]; then
-    if grep -qF "GL: Backend used <${KIVY_GL_BACKEND}>" "$WORK/stdout.log" ${log:+"$log"}; then
+    # Kivy's own lines are not in stdout or the installer log (the installer logs
+    # through loguru); Kivy writes them to its log file under its home, which the
+    # app keeps in the config folder beside the executable. So every log the run
+    # left in the work folder is searched. Only "Backend used <...>" is matched:
+    # Kivy's file log writes the message's "GL:" as a category column.
+    if grep -rqF --include='*.log' --include='*.txt' "Backend used <${KIVY_GL_BACKEND}>" "$WORK"; then
         echo "smoke-test-build: drew through the ${KIVY_GL_BACKEND} graphics backend, as asked"
     else
-        used="$(grep -ohE "GL: Backend used <[^>]*>" "$WORK/stdout.log" ${log:+"$log"} | head -1 || true)"
-        echo "smoke-test-build: FAIL - asked for the ${KIVY_GL_BACKEND} graphics backend; the log says: ${used:-no backend line}" >&2
+        used="$(grep -rohE --include='*.log' --include='*.txt' "Backend used <[^>]*>" "$WORK" | head -1 || true)"
+        echo "smoke-test-build: FAIL - asked for the ${KIVY_GL_BACKEND} graphics backend; the logs say: ${used:-no backend line}" >&2
+        echo "smoke-test-build: the logs searched:" >&2
+        find "$WORK" \( -name '*.log' -o -name '*.txt' \) -type f >&2
         fail=1
     fi
 fi
