@@ -15,8 +15,12 @@ def test_the_window_is_shown_after_its_geometry_is_ready_and_then_logged(
     """The GUI probe boots on this line: a key sent before the window shows is lost."""
     parent = MagicMock()
     window, geometry = parent.window, parent.geometry
-    with patch.object(barks_reader_app, "_log_screen_settings") as log_settings:
+    with (
+        patch.object(barks_reader_app, "_log_screen_settings") as log_settings,
+        patch.object(barks_reader_app, "log_window_geometry") as log_geometry,
+    ):
         _show_main_window(window, geometry)
     assert parent.mock_calls[:2] == [call.geometry.set_window_ready(), call.window.show()]
     assert log_markers.MAIN_WINDOW_SHOWN in loguru_sink
+    log_geometry.assert_called_once_with("boot")
     log_settings.assert_called_once()

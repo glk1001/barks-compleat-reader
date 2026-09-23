@@ -48,7 +48,12 @@ from .action_bar_helpers import (
     set_fullscreen_button,
 )
 from .adapters import KivyClockScheduler, KivyCursor
-from .platform_window_utils import WindowManager, WindowModeCallbacks, WindowModeController
+from .platform_window_utils import (
+    WindowManager,
+    WindowModeCallbacks,
+    WindowModeController,
+    log_window_geometry,
+)
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
@@ -1144,6 +1149,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_widget_states()
         self._update_fullscreen_button()
         logger.info(log_markers.ENTERED_WINDOWED.format(screen="ComicBookReaderScreen"))
+        log_window_geometry("ComicBookReaderScreen windowed")
 
     def _exit_fullscreen(self) -> None:
         # Both branches delegate unconditionally: when the window is already in
@@ -1172,6 +1178,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_fullscreen_button()
 
         logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="ComicBookReaderScreen"))
+        log_window_geometry("ComicBookReaderScreen fullscreen")
 
         if self._is_closing:
             logger.debug("Entering fullscreen mode finished, now closing reader.")

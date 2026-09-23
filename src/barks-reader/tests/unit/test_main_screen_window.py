@@ -87,10 +87,13 @@ class TestOnFinishedGotoWindowedMode:
         with (
             patch.object(window_module, "Window") as mock_window,
             patch.object(window_module, "set_action_bar_visibility") as mock_set_vis,
+            patch.object(window_module, "log_window_geometry") as mock_log_geometry,
         ):
             mock_window.height = 800
 
             hf.helper._on_finished_goto_windowed_mode()
+
+            mock_log_geometry.assert_called_once_with("MainScreen windowed")
 
             assert hf.helper._fullscreen_button.text == "Fullscreen"
             assert hf.helper._fullscreen_button.icon == "fullscreen.png"
@@ -102,12 +105,17 @@ class TestOnFinishedGotoWindowedMode:
 
 class TestOnFinishedGotoFullscreenMode:
     def test_updates_button_and_fonts(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "Window") as mock_window:
+        with (
+            patch.object(window_module, "Window") as mock_window,
+            patch.object(window_module, "log_window_geometry") as mock_log_geometry,
+        ):
             mock_window.height = 1080
             hf.helper._host.height = 1080
             hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
             hf.helper._on_finished_goto_fullscreen_mode()
+
+            mock_log_geometry.assert_called_once_with("MainScreen fullscreen")
 
             assert hf.helper._fullscreen_button.text == "Windowed"
             assert hf.helper._fullscreen_button.icon == "exit_fullscreen.png"

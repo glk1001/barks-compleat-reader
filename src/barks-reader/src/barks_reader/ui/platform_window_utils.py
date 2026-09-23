@@ -8,6 +8,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 
@@ -18,6 +19,22 @@ if TYPE_CHECKING:
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
+
+
+def log_window_geometry(reason: str) -> None:
+    """Log the main window's settled size and position (``WINDOW_GEOMETRY``).
+
+    Args:
+        reason: What the window just settled after, e.g. ``"boot"`` or
+            ``"MainScreen fullscreen"``.
+
+    """
+    width, height = Window.size
+    logger.info(
+        log_markers.WINDOW_GEOMETRY.format(
+            reason=reason, width=width, height=height, left=Window.left, top=Window.top
+        )
+    )
 
 
 class FullscreenEnum(Enum):

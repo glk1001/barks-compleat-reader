@@ -67,6 +67,11 @@ ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
 # fullscreen round trip is a defect whatever the test asserted.
 WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
 MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
+# The main window's size and position once a change has settled: at boot and on
+# every entry into fullscreen or windowed mode, on either screen. Any run's log
+# then shows a window that shrank or moved, on any platform - not only a run
+# under the GUI harness.
+WINDOW_GEOMETRY: Final = "Main window geometry ({reason}): {width}x{height}+{left}+{top}."
 
 # ---------------------------------------------------------------- popups --
 CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'

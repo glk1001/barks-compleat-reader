@@ -479,6 +479,26 @@ class TestComicBookReaderScreen:
         screen.is_active(active=False)
         assert not screen._active
 
+    @pytest.mark.parametrize(
+        ("finish", "reason"),
+        [
+            ("_on_finished_goto_windowed_mode", "ComicBookReaderScreen windowed"),
+            ("_on_finished_goto_fullscreen_mode", "ComicBookReaderScreen fullscreen"),
+        ],
+    )
+    def test_a_settled_mode_change_logs_the_window_geometry(
+        self, screen: ComicBookReaderScreen, finish: str, reason: str
+    ) -> None:
+        with (
+            patch.object(screen, "_update_widget_states"),
+            patch.object(screen, "_update_fullscreen_button"),
+            patch.object(barks_reader.ui.comic_book_reader, "WindowManager"),
+            patch.object(barks_reader.ui.comic_book_reader, "log_window_geometry") as log_geometry,
+        ):
+            getattr(screen, finish)()
+
+        log_geometry.assert_called_once_with(reason)
+
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
         # The toggle scaffolding lives in WindowModeController now; the screen just
         # delegates to it. (The controller's own toggle logic is unit-tested in

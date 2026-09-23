@@ -56,7 +56,7 @@ from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from .platform_window_utils import WindowManager, log_screen_metrics
+from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
 from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
@@ -601,6 +601,7 @@ def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> 
     window_geometry.set_window_ready()
     window.show()
     logger.info(log_markers.MAIN_WINDOW_SHOWN)
+    log_window_geometry("boot")
     _log_screen_settings()
 
 

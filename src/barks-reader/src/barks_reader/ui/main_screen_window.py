@@ -14,7 +14,12 @@ from .action_bar_helpers import (
     set_action_bar_visibility,
     set_fullscreen_button,
 )
-from .platform_window_utils import WindowManager, WindowModeCallbacks, WindowModeController
+from .platform_window_utils import (
+    WindowManager,
+    WindowModeCallbacks,
+    WindowModeController,
+    log_window_geometry,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -91,6 +96,7 @@ class MainScreenWindowHelper:
         self._update_fonts(Window.height)
         self.show_action_bar()
         logger.info(log_markers.ENTERED_WINDOWED.format(screen="MainScreen"))
+        log_window_geometry("MainScreen windowed")
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
@@ -118,6 +124,7 @@ class MainScreenWindowHelper:
             fullscreen_exit_icon=self._fullscreen_exit_icon,
         )
         logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="MainScreen"))
+        log_window_geometry("MainScreen fullscreen")
 
     def on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
         logger.info(
