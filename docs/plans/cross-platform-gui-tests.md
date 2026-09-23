@@ -9,6 +9,14 @@
 >   callback. `assert_window_size_kept` holds the last settled size to the boot one. On the
 >   nested display a reader fullscreen round trip logs 782x1225+59+10, 900x1300+0+0, then
 >   782x1225+59+10 again. Full GUI suite green (62 tests).
+> - Step 2: DONE 2026-09-23 (219b7f4b), green on the first Windows CI run (six tests).
+>   `test_platform_window_win32_live.py` drives the backend against a window it makes:
+>   lookup, move and resize, save, a scheduled restore, and the recovery path, forced by a
+>   size below Windows' minimum track size (an off-screen move, as first planned, simply
+>   succeeds). Two changes the plan did not foresee: the backend takes an optional `hwnd`,
+>   since on a dev machine Kivy's own SDL window can be in the same process; and a
+>   `needs_no_opengl` marker, since headless CI skips every module that imports UI code.
+>   This was the backend's first test of any kind.
 
 ## Context
 
