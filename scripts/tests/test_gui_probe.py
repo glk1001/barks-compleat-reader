@@ -112,7 +112,8 @@ class TestTailOutput:
             check=False,
         )
         assert result.returncode == 0, result.stderr.decode(errors="replace")
-        assert result.stdout.decode("utf-8") == "\u2514\u2500 a tree line\n"
+        # Lines, not raw bytes: the console ends them with \r\n on Windows.
+        assert result.stdout.decode("utf-8").splitlines() == ["\u2514\u2500 a tree line"]
 
 
 class TestAppEnv:
