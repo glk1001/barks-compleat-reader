@@ -6,7 +6,8 @@ remote takes, and the one where the suite's input bugs were found. Nothing is
 fed into the app from inside it.
 
 ``SendInput`` goes to the foreground window, which is why the probe brings the
-app to the front before every burst. A locked screen or a minimized remote
+app to the front before every burst - without sending any input to do it, so
+nothing ever reaches a window other than the app's. A locked screen or a minimized remote
 session accepts nothing; ``doctor`` checks for both.
 
 Its calls work only on Windows; the module imports anywhere, so its key table
@@ -45,7 +46,6 @@ _MOUSEEVENTF_LEFTDOWN = 0x0002
 _MOUSEEVENTF_LEFTUP = 0x0004
 _MAPVK_VK_TO_VSC = 0
 _VK_SHIFT = 0x10
-_VK_MENU = 0x12
 _SW_RESTORE = 9
 _DESKTOP_SWITCHDESKTOP = 0x0100
 _SYNCHRONIZE = 0x00100000
@@ -150,6 +150,12 @@ def _declare() -> None:
     u.GetForegroundWindow.restype = wintypes.HWND
     u.SetForegroundWindow.argtypes = [wintypes.HWND]
     u.IsIconic.argtypes = [wintypes.HWND]
+    u.BringWindowToTop.argtypes = [wintypes.HWND]
+    u.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    u.GetWindowThreadProcessId.restype = wintypes.DWORD
+    u.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+    u.AttachThreadInput.restype = wintypes.BOOL
+    k.GetCurrentThreadId.restype = wintypes.DWORD
     u.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
     u.SetCursorPos.argtypes = [ctypes.c_int, ctypes.c_int]
     u.OpenInputDesktop.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
@@ -257,13 +263,26 @@ class Win32Backend:
             return True
         if _user32.IsIconic(window):
             _user32.ShowWindow(window, _SW_RESTORE)
-        # Windows lets a process take the foreground only just after it has sent
-        # input itself; a bare Alt tap is that input, and it types nothing.
-        _send(
-            _key_input(_VK_MENU, extended=False, up=False),
-            _key_input(_VK_MENU, extended=False, up=True),
+        # Windows lets only the thread that owns the foreground hand it on. Joining
+        # that thread's input for the moment of the switch makes this probe one of
+        # its own, without sending a key anywhere: a key sent to take the foreground
+        # would land in whatever window had it.
+        foreground = _user32.GetForegroundWindow()
+        owner = _user32.GetWindowThreadProcessId(foreground, None) if foreground else 0
+        this = _kernel32.GetCurrentThreadId()
+        attached = (
+            bool(owner)
+            and owner != this
+            and bool(
+                _user32.AttachThreadInput(this, owner, True)  # noqa: FBT003
+            )
         )
-        _user32.SetForegroundWindow(window)
+        try:
+            _user32.BringWindowToTop(window)
+            _user32.SetForegroundWindow(window)
+        finally:
+            if attached:
+                _user32.AttachThreadInput(this, owner, False)  # noqa: FBT003
         deadline = time.monotonic() + 2
         while time.monotonic() < deadline:
             if _user32.GetForegroundWindow() == window:

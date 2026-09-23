@@ -171,6 +171,29 @@ class TestWin32Keys:
             assert gui_probe_win32.VIRTUAL_KEYS[name][1]
         assert not gui_probe_win32.VIRTUAL_KEYS["Return"][1]
 
+    def test_bringing_the_app_forward_sends_no_input(self) -> None:
+        """No key to take the foreground: it would land in whatever window had it."""
+        user32 = MagicMock()
+        user32.GetForegroundWindow.side_effect = [111, 111, 222]  # someone else's, then ours
+        user32.GetWindowThreadProcessId.return_value = 7
+        user32.IsIconic.return_value = False
+        kernel32 = MagicMock()
+        kernel32.GetCurrentThreadId.return_value = 3
+        with (
+            patch.object(gui_probe_win32, "_user32", user32),
+            patch.object(gui_probe_win32, "_kernel32", kernel32),
+            patch.object(gui_probe_win32, "_send") as send,
+            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
+        ):
+            assert gui_probe_win32.Win32Backend().bring_to_front(222)
+        send.assert_not_called()
+        user32.SetForegroundWindow.assert_called_once_with(222)
+        # Joined the foreground thread's input for the switch, and left it after.
+        assert [c.args for c in user32.AttachThreadInput.call_args_list] == [
+            (3, 7, True),
+            (3, 7, False),
+        ]
+
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows' own structure sizes")
     def test_input_is_the_size_send_input_expects(self) -> None:
         # SendInput refuses every event when cbSize is not sizeof(INPUT): 40 on 64-bit, 28 on 32.
