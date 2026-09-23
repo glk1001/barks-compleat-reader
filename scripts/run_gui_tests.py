@@ -14,6 +14,12 @@ Usage (from the repo root, in PowerShell or cmd):
   uv run python scripts/run_gui_tests.py --app PATH.exe   # against a built executable
   uv run python scripts/run_gui_tests.py --ini key=value  # a Barks Reader setting (repeatable)
   uv run python scripts/run_gui_tests.py --calibrate      # record this machine's timing budgets
+  uv run python scripts/run_gui_tests.py --angle          # draw through Direct3D (for a VM)
+
+--angle is for a VirtualBox VM: its OpenGL pass-through stops creating the
+offscreen buffers the reader needs after a boot or two ("FBO Initialization
+failed"), while Kivy's ANGLE backend draws through Direct3D and holds up. It
+does not test the OpenGL drawing the reader uses on real Windows machines.
 
 Pytest's whole output goes to build/gui-tests/<run>/pytest.log as it runs, beside
 the failed tests' artifacts, so a run that hangs or is killed still leaves a record.
@@ -49,6 +55,9 @@ def _parse(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--calibrate", action="store_true", help="record the timing budgets")
     parser.add_argument("--app", type=Path, help="a built executable to run instead")
     parser.add_argument(
+        "--angle", action="store_true", help="draw through Direct3D (ANGLE), as a VM needs"
+    )
+    parser.add_argument(
         "--ini", action="append", default=[], metavar="KEY=VALUE", help="a setting for the run"
     )
     return parser.parse_known_args(argv)
@@ -71,6 +80,10 @@ def _run_env(options: argparse.Namespace, stamp: str, timings: Path) -> dict[str
     if options.ini:
         env["BARKS_GUI_INI"] = ";".join(options.ini)
         print(f"run_gui_tests: settings for this run: {env['BARKS_GUI_INI']}")  # noqa: T201
+    if options.angle:
+        # The probe hands its environment to the app, and Kivy reads this at startup.
+        env["KIVY_GL_BACKEND"] = "angle_sdl2"
+        print("run_gui_tests: drawing through ANGLE (Direct3D), not OpenGL")  # noqa: T201
     if options.app is not None:
         env["BARKS_PROBE_APP"] = str(options.app.resolve())
         print(f"run_gui_tests: running the built executable {options.app}")  # noqa: T201
