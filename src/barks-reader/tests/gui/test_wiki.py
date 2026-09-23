@@ -37,12 +37,12 @@ SIDEBAR_STEPS = 2
 # On the top bar Escape lands on Back; the goto-title button is this far right
 # (the bar runs Back, contrast, goto-title, quit).
 BAR_RIGHTS_TO_GOTO = 2
-# Up from the read portal, with no cue and prebuilt comics (no goto-page row,
-# no overrides row), is the wiki chip. The chip test pins use_prebuilt_comics
-# for that: Lost in the Andes has an optional override, and with the volumes
-# in use the overrides row would sit between the portal and the chip.
+# Up from the read portal is the wiki chip when the title view shows no goto-page
+# row (no cue) and no overrides row. The chip test's story has no optional
+# override (special_overrides_handler lists the four that do), so that holds
+# whatever the profile's use_prebuilt_comics: pinning prebuilt comics instead
+# made the test need a prebuilt comics directory it never reads from.
 UPS_TO_WIKI_CHIP = 1
-PREBUILT_COMICS = {"use_prebuilt_comics": "1"}
 # What the app writes for an unset wiki directory (reader_settings
 # UNSET_WIKI_BUNDLE_DIR_MARKER); the key is never empty in an app-written ini.
 UNSET_WIKI_DIR = "<Carl Barks Wiki Not Set>"
@@ -103,14 +103,14 @@ def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None
 
 def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) -> None:
     """A story's wiki chip opens its page; the sidebar walks to another; Back; goto title."""
-    andes_page = _story_page(wiki_boot, Titles.LOST_IN_THE_ANDES)
-    d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES, ini=PREBUILT_COMICS)
+    story_page = _story_page(wiki_boot, Titles.GHOST_OF_THE_GROTTO_THE)
+    d = wiki_boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
     d.focus_portal()
     d.move_focus(*["Up"] * UPS_TO_WIKI_CHIP)
     with (
         d.expect(markers.WIKI_PAGE_BUTTON_PRESSED),
         d.expect(WIKI_ACTIVE, 30),
-        d.expect(pattern(wiki.PAGE_SHOWN, page=andes_page), 30),
+        d.expect(pattern(wiki.PAGE_SHOWN, page=story_page), 30),
         d.expect(WIKI_ENTERED, 30),
     ):
         d.key("Return")
@@ -118,16 +118,16 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     d.key_then_wait(SIDEBAR, "Left")
     d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
     d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)  # the story picked out of the sidebar
-    assert not andes_page.search(d.last_line(SHOWED_PAGE)), "the sidebar pick must be another page"
+    assert not story_page.search(d.last_line(SHOWED_PAGE)), "the sidebar pick must be another page"
 
     d.key_then_wait(TOP_BAR, "Escape")
-    d.key_then_wait(pattern(wiki.BACK_TO, page=andes_page), "Return", timeout=30)
+    d.key_then_wait(pattern(wiki.BACK_TO, page=story_page), "Return", timeout=30)
 
     d.key_then_wait(TOP_BAR, "Escape")
     d.move_focus(*["Right"] * BAR_RIGHTS_TO_GOTO, pattern=d.WIKI_FOCUS_MOVED)
     with (
         d.expect(pattern(markers.WIKI_GOTO_TITLE, name=re.compile(r"[A-Z_]+"))),
         d.expect(MAIN_FROM_WIKI),
-        d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.LOST_IN_THE_ANDES[0])),
+        d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
     ):
         d.key("Return")
