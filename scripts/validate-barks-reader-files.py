@@ -2,8 +2,9 @@
 
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
-prebuilt comics, and per-title panel files into a single report. Exits non-zero
-on any failure.
+prebuilt comics, per-title panel files, per-title layouts (with their
+panel-segments JSONs) and the wiki story-page joins into a single report.
+Exits non-zero on any failure.
 
 Run via ``uv run scripts/validate-barks-reader-files.py``. The script never
 imports Kivy or any UI module: it reads the same on-disk layout as the
@@ -40,11 +41,14 @@ from validate_barks_reader_core import (
     phase8a_per_title_panel_files,
     phase8b_audit_panel_files,
     phase9_per_title_load,
+    phase10_layout,
+    phase11_wiki,
+    resolve_wiki_bundle_dir,
 )
 
 
 def resolve_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
-    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 8/9 title filter.
+    """Resolve ``--volume`` / ``--title`` CLI args to a per-title phase filter.
 
     Args:
         volumes_str: ``intspan`` expression (e.g. ``"1-10"``); empty for no
@@ -140,11 +144,31 @@ FullLoadCheckArg = Annotated[
         "--full-load-check",
         help=(
             "Run Phase 9: dry-run the comic loader for every title (as if"
-            " use_prebuilt_comics=0). Reads each source page from its"
+            " use_prebuilt_comics=0). Decodes each source page from its"
             " volume / override CBZ via the same image_pipeline.load_pil"
-            " call the reader uses, and verifies every required"
-            " panel-segments JSON exists and is no older than its volume CBZ."
-            " Adds ~30-90s of wall time."
+            " call the reader uses. (The panel-segments JSON checks are in"
+            " the always-on Phase 10.) Adds ~30-90s of wall time."
+        ),
+    ),
+]
+
+WikiBundleArg = Annotated[
+    Path | None,
+    typer.Option(
+        "--wiki-bundle",
+        help=(
+            "Check this wiki bundle in Phase 11 instead of the one the reader's"
+            " settings select (the live bundle, or the copy in Reader Files)."
+        ),
+    ),
+]
+StrictWikiArg = Annotated[
+    bool,
+    typer.Option(
+        "--strict-wiki",
+        help=(
+            "Fail Phase 11 on every title with no wiki page yet, instead of"
+            " counting it and logging a warning."
         ),
     ),
 ]
@@ -156,6 +180,8 @@ def main(
     reader_files_dir: ReaderFilesDirArg = None,
     titles_only: TitlesOnlyArg = False,
     full_load_check: FullLoadCheckArg = False,
+    wiki_bundle: WikiBundleArg = None,
+    strict_wiki: StrictWikiArg = False,
     volume: VolumesArg = "",
     title: TitleArg = "",
     log_level: LogLevelArg = "INFO",
@@ -166,7 +192,7 @@ def main(
 
     # Resolve the optional title filter early so a bad --volume / --title
     # combination fails before any phase work is done. The same filter is
-    # applied to Phase 8 and Phase 9.
+    # applied to every per-title phase (8 to 11).
     titles_filter = resolve_title_filter(volume, title)
 
     collector = ErrorCollector()
@@ -202,9 +228,16 @@ def main(
         ctx_by_variant,
         title_filter_active=titles_filter is not None,
     )
-
     if full_load_check:
-        phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
+        phase9_per_title_load(collector, fanta_state, titles_filter)
+
+    phase10_layout(collector, sys_paths, fanta_state, titles_filter)
+    phase11_wiki(
+        collector,
+        resolve_wiki_bundle_dir(cfg_info, reader_files_dir, wiki_bundle),
+        titles_filter,
+        strict=strict_wiki,
+    )
 
     _print_final_report(collector, time.time() - started, titles_filter)
     if collector.any_failed:
