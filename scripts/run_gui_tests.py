@@ -22,6 +22,8 @@ The checks, markers and artifacts are the Linux suite's: see run_gui_tests.sh
 and docs/plans/gui-test-suite.md.
 """
 
+# cspell:ignore PYTHONUNBUFFERED
+
 from __future__ import annotations
 
 import argparse
@@ -60,7 +62,9 @@ def _is_summary(line: str) -> bool:
 
 def _run_env(options: argparse.Namespace, stamp: str, timings: Path) -> dict[str, str]:
     """Return the environment the suite runs in, as run_gui_tests.sh sets it up."""
-    env = dict(os.environ)
+    # Unbuffered: pytest's output goes into a pipe, where Python would otherwise
+    # hold it in blocks and pytest.log would stay empty until pytest exited.
+    env = dict(os.environ, PYTHONUNBUFFERED="1")
     # One worker; the load rule in the timing budgets discounts the run's own.
     env["BARKS_GUI_WORKER_COUNT"] = "1"
     env["BARKS_GUI_RUN_STAMP"] = stamp
