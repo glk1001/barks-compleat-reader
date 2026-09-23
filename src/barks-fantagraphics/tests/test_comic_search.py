@@ -63,6 +63,16 @@ class TestSearch:
         assert Titles.GOLDEN_HELMET_THE in result.titles
         assert len(result.title_strings) == len(result.titles)
 
+    def test_title_mode_shows_the_display_form_of_the_canonical_title(self) -> None:
+        # Searched by its canonical title; listed with the parentheses the
+        # display form adds.
+        result = _search_with(InMemoryFullTextSearch()).search(
+            "The Victory Garden", SearchMode.TITLE
+        )
+
+        assert Titles.VICTORY_GARDEN_THE in result.titles
+        assert "(The Victory Garden)" in result.title_strings
+
     def test_tag_mode_populates_matched_tags(self) -> None:
         result = _search_with(InMemoryFullTextSearch()).search("christmas", SearchMode.TAG)
 
