@@ -248,6 +248,14 @@ in the OCR repo, which is read-only from here:
 > survivors — the two reinforce each other: properties assert *behaviour*, so
 > they kill far more mutants than example tests.
 
+- [ ] **GUI and window coverage on Windows and macOS** — the GUI suite is X11-only and
+      the Win32 window code is tested only with mocks, so the window-shrink class is
+      invisible where most of that code runs. Four steps, each useful alone: geometry
+      markers, real Win32 calls in Windows CI, the GUI suite on the Windows VM with
+      real `SendInput` injection, and a data-pack-free key-and-window check on every
+      CI build leg (macOS's only regular coverage). Plan:
+      `docs/plans/cross-platform-gui-tests.md`.
+
 - [ ] **Shared Hypothesis strategies** (`tests/strategies.py`) — reusable
       `@st.composite` builders for the domain types so property tests can reach
       past plain strings: `titles()` (`st.sampled_from(list(Titles))`),
