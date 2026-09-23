@@ -8,9 +8,10 @@ from typing import Any
 
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import theme
 
-from .reader_keyboard_nav import is_escape_key
+from .reader_keyboard_nav import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 
 _SAME_SIZE_CUTOFF_PX = 10
 
@@ -21,6 +22,26 @@ _LIGHT_WRAPPER_SCRIM: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 0.4)
 
 
 # --- Light divider line widget ---
+def closes_popup(key: int) -> bool:
+    """Return whether a key closes a standalone popup: Escape, or Return as "OK".
+
+    A standalone popup is a message with only a close button, and that button
+    takes no keyboard focus, so with the remote's keys Return would otherwise do
+    nothing.
+    """
+    return is_escape_key(key) or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
+
+
+def log_popup_opened(title: str) -> None:
+    """Log that a standalone popup is showing."""
+    logger.info(log_markers.STANDALONE_POPUP_OPENED.format(title=title))
+
+
+def log_popup_closed(title: str) -> None:
+    """Log that a standalone popup has left the window."""
+    logger.info(log_markers.STANDALONE_POPUP_CLOSED.format(title=title))
+
+
 def divider_line() -> Any:  # Widget  # noqa: ANN401
     from kivy.graphics import Color, Rectangle
     from kivy.uix.widget import Widget
@@ -212,23 +233,32 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         if timeout > 0:
             Clock.schedule_once(lambda _dt: popup.dismiss(), timeout)
 
-        if not app_already_running:
-            popup.bind(on_dismiss=lambda *_: stopTouchApp())
-        if on_dismiss is not None:
-            # Fired when the popup has left the window, not when its dismissal
-            # began: Kivy fades a dismissed popup out first, and the main screen
-            # ignores every key while a modal is still on the window, so a
-            # caller that logs "dismissed" here can be waited on for the next key.
-            popup.bind(parent=lambda _popup, parent: on_dismiss() if parent is None else None)
+        # All of it once the popup has left the window, not when its dismissal
+        # began: Kivy fades a dismissed popup out first, and the main screen
+        # ignores every key while a modal is still on the window, so a caller that
+        # logs "dismissed" in `on_dismiss` can be waited on for the next key. The
+        # temporary loop stops last: stopped at the dismissal, as it once was, it
+        # never ran the removal, and the closed line was never logged.
+        def on_left_window(_popup: object, parent: object) -> None:
+            if parent is not None:
+                return
+            log_popup_closed(title)
+            if on_dismiss is not None:
+                on_dismiss()
+            if not app_already_running:
+                stopTouchApp()
+
+        popup.bind(parent=on_left_window)
 
         def popup_is_open() -> None:
+            log_popup_opened(title)
             if background_image_file and bgnd_rect and bgnd_texture_size:
                 update_wrapper_bgnd(content, 1)
 
         popup.bind(on_open=lambda *_: popup_is_open())
 
         def _on_key_down(_win: object, key: int, *_args: object) -> bool:
-            if is_escape_key(key):
+            if closes_popup(key):
                 popup.dismiss()
                 return True
             return False

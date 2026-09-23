@@ -59,6 +59,12 @@ SETTINGS_CLOSED: Final = "Settings closed."
 CONFIG_CHANGE: Final = "Config change: section = '{section}', key = '{key}', value = '{value}'."
 ABOUT_BOX_OPENED: Final = "About box opened."
 ABOUT_BOX_DISMISSED: Final = "About box dismissed."
+# Any popup shown through show_standalone_popup: the About box, the error popups,
+# and the first-run installer's (which has no main reader, so these are its only
+# lines - the build smoke test waits on them). Closed is logged when the popup
+# has left the window, however it was closed.
+STANDALONE_POPUP_OPENED: Final = 'Standalone popup opened: "{title}".'
+STANDALONE_POPUP_CLOSED: Final = 'Standalone popup closed: "{title}".'
 WIKI_PAGE_BUTTON_PRESSED: Final = "Wiki page button pressed."
 ENTERED_FULLSCREEN: Final = "Entered fullscreen mode on {screen}."
 ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
