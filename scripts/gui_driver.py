@@ -6,9 +6,10 @@ app writes to its own log rather than on the clock or the pixels: a wait either
 sees the line it asked for or raises, so a caller never carries on against the
 wrong screen and a test either passes on evidence or fails with a reason.
 
-Assumes ``scripts/gui-probe.sh`` (Xephyr, xte) and nothing else already on the
-nested display. Only the standard library is used, so this runs without the
-workspace venv, the same as the probe script it drives.
+On Linux it drives ``scripts/gui-probe.sh`` (Xephyr, xte) and assumes nothing
+else is on the nested display; on Windows, ``scripts/gui_probe.py`` (SendInput on
+the real desktop), which has the same commands and output. Only the standard
+library is used, so this runs without the workspace venv.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -27,7 +29,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROBE = REPO_ROOT / "scripts" / "gui-probe.sh"
+# The Linux probe runs the app on a nested X server; elsewhere the Python probe
+# drives it on the real desktop. Both take the same commands and print the same.
+PROBE = REPO_ROOT / "scripts" / ("gui_probe.py" if sys.platform == "win32" else "gui-probe.sh")
 DISPLAY = os.environ.get("BARKS_PROBE_DISPLAY", ":2")
 # The app reads this on startup and seeds its random module from it; gui-probe
 # launches the app as a child, so setting it here is enough to reach it.
@@ -99,8 +103,11 @@ def probe(*args: str, script: Path = PROBE) -> str:
         DriverError: If the probe exits non-zero, with what it wrote to stderr.
 
     """
+    # A Python probe runs under this interpreter: Windows has no shebangs, and
+    # its screenshots need the workspace's Pillow.
+    launcher = [sys.executable] if script.suffix == ".py" else []
     result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
-        [str(script), *args],
+        [*launcher, str(script), *args],
         capture_output=True,
         text=True,
         check=False,
@@ -215,7 +222,8 @@ class Driver:
         self._run(["shot", str(path)])
         return path
 
-    _GEOMETRY_RE = re.compile(r"(\d+)x(\d+)\+(\d+)\+(\d+)")
+    # A position can be negative: a window on a monitor left of or above the primary.
+    _GEOMETRY_RE = re.compile(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)")
 
     def window_geometry(self) -> tuple[int, int, int, int]:
         """Return the app window's ``(width, height, x, y)`` on the nested display.

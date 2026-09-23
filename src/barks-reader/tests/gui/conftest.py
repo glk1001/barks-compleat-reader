@@ -102,9 +102,11 @@ class LiveProfile:
 def live_profile() -> Iterator[LiveProfile]:
     """Locate the live profile, snapshot it, and prove afterwards that it is untouched."""
     # Xephyr opens a window on the host display; Xvfb needs none (the same
-    # rule gui-probe.sh's doctor applies).
+    # rule gui-probe.sh's doctor applies). On Windows the app runs on the real
+    # desktop, and gui_probe.py's doctor checks that one is there to use.
     headless = bool(os.environ.get(HEADLESS_ENV_VAR))
-    if not headless and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+    has_session = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    if sys.platform != "win32" and not headless and not has_session:
         pytest.skip("no graphical session for the nested display to open in")
     live = Path(gd.probe("config").strip()).parent
     if not (live / "barks-reader.ini").is_file():
