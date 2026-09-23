@@ -15,12 +15,19 @@
 # package - the same shape as Nuitka's own entry for MKL. They go beside the
 # executable, where SDL's LoadLibrary of libEGL/libGLESv2 finds them.
 #
-# Used by scripts/build.sh on Windows only, with --include-module=kivy_deps.angle
-# (nothing imports that module by name, and a configuration applies only to
-# modules in the build). scripts/smoke-test-build.sh, run by CI with
-# KIVY_GL_BACKEND=angle_sdl2, checks a build really draws through ANGLE.
+# The entry hangs off this app's own barks_reader package: a configuration
+# applies only to modules in the build, and Nuitka refuses a second entry for a
+# module its own configuration already covers (so not 'kivy'). It must not hang
+# off kivy_deps.angle, which has to stay out of the build: importing kivy scans
+# the kivy_deps package when it can import it, and asks each module found for
+# its import spec, which a Nuitka build answers with None - so `import kivy`
+# itself failed (AttributeError at kivy/__init__.py:319) when it was included.
+# The code below runs at build time, where kivy_deps.angle is installed.
+#
+# Used by scripts/build.sh on Windows only. scripts/smoke-test-build.sh, run by
+# CI with KIVY_GL_BACKEND=angle_sdl2, checks a build really draws through ANGLE.
 
-- module-name: 'kivy_deps.angle'
+- module-name: 'barks_reader'
   dlls:
     - by_code:
         setup_code: |

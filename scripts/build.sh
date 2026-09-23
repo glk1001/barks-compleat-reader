@@ -148,10 +148,8 @@ else
         # Kivy's ANGLE DLLs, which Nuitka's Kivy plugin leaves out, so the build can
         # also draw through Direct3D (KIVY_GL_BACKEND=angle_sdl2) on a machine with
         # no working OpenGL 2.0. Unused otherwise; see the yml.
-        PLATFORM_ARGS+=(
-            --include-module=kivy_deps.angle
-            --user-package-configuration-file="scripts/nuitka-kivy-angle.yml"
-        )
+        # (kivy_deps.angle itself stays out: see the yml for why.)
+        PLATFORM_ARGS+=(--user-package-configuration-file="scripts/nuitka-kivy-angle.yml")
     fi
 fi
 
