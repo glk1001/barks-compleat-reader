@@ -246,7 +246,7 @@ def machine_is_busy(workers: int | None = None) -> str | None:
     """
     try:
         load = os.getloadavg()[0]
-    except OSError:
+    except (AttributeError, OSError):  # no getloadavg on Windows; OSError if unobtainable
         return None
     if workers is None:
         workers = int(os.environ.get(WORKERS_ENV_VAR, "1") or 1)

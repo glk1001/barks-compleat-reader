@@ -747,9 +747,9 @@ class TestTimings:
     ) -> None:
         """Four workers on eight cores must not silence the check on their own."""
         monkeypatch.setattr(timings.os, "cpu_count", lambda: 8)
-        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0))
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0), raising=False)
         assert timings.machine_is_busy(workers=4) is None  # 8 + 3 * 4 = 20 allowed
-        monkeypatch.setattr(timings.os, "getloadavg", lambda: (21.5, 0.0, 0.0))
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (21.5, 0.0, 0.0), raising=False)
         assert timings.machine_is_busy(workers=4) == (
             "the load average is 22, over the 20 that 8 cores and 4 worker(s) account for"
         )
@@ -758,11 +758,18 @@ class TestTimings:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(timings.os, "cpu_count", lambda: 8)
-        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0))
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0), raising=False)
         monkeypatch.delenv(timings.WORKERS_ENV_VAR, raising=False)
         assert timings.machine_is_busy() is not None  # one worker: 11 allowed
         monkeypatch.setenv(timings.WORKERS_ENV_VAR, "4")
         assert timings.machine_is_busy() is None
+
+    def test_a_platform_without_a_load_average_is_never_busy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Windows has no ``os.getloadavg``: the check runs rather than crash."""
+        monkeypatch.delattr(timings.os, "getloadavg", raising=False)
+        assert timings.machine_is_busy(workers=4) is None
 
     def test_a_recording_run_folds_to_the_slowest_of_each_kind(self, tmp_path: Path) -> None:
         jsonl = tmp_path / "timings.jsonl"
