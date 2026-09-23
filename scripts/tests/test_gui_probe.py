@@ -70,6 +70,22 @@ class TestConfigDir:
         assert gui_probe.run_dir().name == "barks-gui-probe-5"
 
 
+class TestDoctor:
+    def test_a_directory_is_warned_about_only_while_its_switch_is_on(self, tmp_path: Path) -> None:
+        ini = tmp_path / "barks-reader.ini"
+        ini.write_text(
+            "[Barks Reader]\n"
+            f"fanta_dir = {tmp_path}\n"
+            "prebuilt_dir = /nowhere/prebuilt\n"
+            "use_prebuilt_comics = 0\n"
+            "png_barks_panels_dir = /nowhere/pngs\n"
+            "use_png_images = 1\n"
+        )
+        found = gui_probe.dir_setting_checks(ini)
+        checks = {text.split()[0]: status for status, text in found}
+        assert checks == {"fanta_dir": "OK", "prebuilt_dir": "--", "png_barks_panels_dir": "WARN"}
+
+
 class TestLogWaits:
     def test_a_pattern_is_matched_per_line_as_grep_does(self) -> None:
         text = "first line\nMain window shown.\nlast"

@@ -52,6 +52,13 @@ READY_MARKER = "Main window shown."
 DEFAULT_KEY_GAP = 0.4
 # How long `start` waits for the app's window to appear once the ready line is logged.
 WINDOW_WAIT_SECS = 10
+# A directory setting the app reads only while its switch is on (reader_settings.py's
+# keys): doctor does not warn about one whose switch is off.
+DIR_SWITCHES = {
+    "png_barks_panels_dir": "use_png_images",
+    "prebuilt_dir": "use_prebuilt_comics",
+    "wiki_bundle_dir": "use_live_wiki_bundle",
+}
 
 
 class ProbeError(RuntimeError):
@@ -427,11 +434,31 @@ def repo_checks() -> list[tuple[str, str]]:
     checks.append(("OK", ".venv") if venv.is_dir() else ("FAIL", ".venv - run 'uv sync'"))
     ini = config_dir() / "barks-reader.ini"
     if not ini.is_file():
-        checks.append(("WARN", f"{ini} not found - the app will write a default on first run"))
+        # The GUI suite copies each test's profile from here: without one it skips every test.
+        why = "the GUI suite skips every test (point BARKS_READER_CONFIG_DIR at a profile)"
+        checks.append(("WARN", f"{ini} not found - {why}"))
         return checks
     checks.append(("OK", str(ini)))
-    # Every *_dir setting: absolute paths written on whichever machine made the file.
-    for key, value in re.findall(r"^([a-z_]+_dir)\s*=\s*(.*?)\s*$", ini.read_text(), re.MULTILINE):
+    return checks + dir_setting_checks(ini)
+
+
+_TRUE_VALUES = ("1", "true", "yes", "on")
+
+
+def dir_setting_checks(ini: Path) -> list[tuple[str, str]]:
+    """Check every *_dir setting in the app's ini: absolute paths, written on some machine.
+
+    A directory whose switch is off is never read, so it is reported, not warned about.
+    """
+    settings = dict(re.findall(r"^([a-z_]+)\s*=\s*(.*?)\s*$", ini.read_text(), re.MULTILINE))
+    checks: list[tuple[str, str]] = []
+    for key, value in settings.items():
+        if not key.endswith("_dir"):
+            continue
+        switch = DIR_SWITCHES.get(key)
+        if switch is not None and settings.get(switch, "0").lower() not in _TRUE_VALUES:
+            checks.append(("--", f"{key} not used ({switch} is off)"))
+            continue
         path = Path(expand_home(value))
         missing = f"{key} -> {path} (missing; edit {ini})"
         checks.append(("OK", key) if path.is_dir() else ("WARN", missing))
