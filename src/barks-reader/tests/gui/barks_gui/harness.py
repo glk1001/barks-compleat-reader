@@ -223,6 +223,10 @@ def artifact_name(nodeid: str, suffix: str) -> str:
 _RESIZE_RE = re.compile(
     pattern(markers.WINDOW_RESIZED, width=re.compile(r"(\d+)"), height=re.compile(r"(\d+)"))
 )
+# The size the window settled at after each change (boot, fullscreen, windowed).
+_GEOMETRY_RE = re.compile(
+    pattern(markers.WINDOW_GEOMETRY, width=re.compile(r"(\d+)"), height=re.compile(r"(\d+)"))
+)
 
 
 _KEY_PRESSED_RE = re.compile(
@@ -334,6 +338,16 @@ def resize_events(log_text: str) -> list[tuple[int, int]]:
     return [(int(w), int(h)) for w, h in _RESIZE_RE.findall(log_text)]
 
 
+def settled_sizes(log_text: str) -> list[tuple[int, int]]:
+    """Return the size the window settled at after each change the app logged, in order.
+
+    Only the size: the position is logged too, but a restore may place the window
+    a pixel or two off on some platforms, and without a window manager the nested
+    display does not place it at all.
+    """
+    return [(int(w), int(h)) for w, h in _GEOMETRY_RE.findall(log_text)]
+
+
 @dataclass
 class _Run:
     dir: Path | None = None
@@ -421,11 +435,13 @@ class AppBoot:
     def assert_window_size_kept(self) -> None:
         """Fail the test if the app window is not the size it booted at.
 
-        Called from the fixture teardown once the test body has passed. Two
+        Called from the fixture teardown once the test body has passed. Three
         views are compared, since they can disagree: the X window's geometry as
-        the probe measures it, and the size the app itself last logged a resize
+        the probe measures it, the size the app itself last logged a resize
         event for (on the nested display without a window manager, fullscreen
-        changes only the latter). The failure artifacts are saved first, so the
+        changes only the latter), and the size the app last logged its window
+        settled at (``WINDOW_GEOMETRY``, at boot and after every mode change).
+        The failure artifacts are saved first, so the
         app log says what resized the window. A window the probe cannot find is
         not a failure here: a quit test has closed it, and a crash has already
         failed the test.
@@ -446,9 +462,13 @@ class AppBoot:
             problems.append(
                 f"the X window is {now[:2]}, not the {self.boot_geometry[:2]} it booted at"
             )
-        sizes = resize_events(self.driver.log_path.read_text(errors="replace"))
+        log_text = self.driver.log_path.read_text(errors="replace")
+        sizes = resize_events(log_text)
         if sizes and sizes[-1] != sizes[0]:
             problems.append(f"the app's last resize event was {sizes[-1]}, its first {sizes[0]}")
+        settled = settled_sizes(log_text)
+        if settled and settled[-1] != settled[0]:
+            problems.append(f"the app's window last settled at {settled[-1]}, at boot {settled[0]}")
         if not problems:
             return
         listing = "\n".join(str(p) for p in self.save_failure_artifacts())

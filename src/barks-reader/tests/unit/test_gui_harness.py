@@ -218,6 +218,36 @@ class TestAssertWindowSizeKept:
         with pytest.raises(AssertionError, match=r"last resize event was \(566, 900\)"):
             app_boot.assert_window_size_kept()
 
+    def test_a_smaller_settled_geometry_fails_even_when_the_rest_is_unchanged(
+        self, app_boot: harness.AppBoot, log: Path
+    ) -> None:
+        # The app said where its window settled: at boot, then after a reader close.
+        with log.open("a") as out:
+            for reason, width, height in (("boot", 782, 1225), ("reader windowed", 566, 900)):
+                out.write(
+                    markers.WINDOW_GEOMETRY.format(
+                        reason=reason, width=width, height=height, left=59, top=10
+                    )
+                    + "\n"
+                )
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        with pytest.raises(AssertionError, match=r"last settled at \(566, 900\), at boot"):
+            app_boot.assert_window_size_kept()
+
+    def test_a_settled_window_that_only_moved_passes(
+        self, app_boot: harness.AppBoot, log: Path
+    ) -> None:
+        with log.open("a") as out:
+            for left in (59, 61):
+                out.write(
+                    markers.WINDOW_GEOMETRY.format(
+                        reason="x", width=782, height=1225, left=left, top=10
+                    )
+                    + "\n"
+                )
+        app_boot.driver = self._Driver((782, 1225, 59, 10), log)  # ty: ignore[invalid-assignment]
+        app_boot.assert_window_size_kept()
+
     def test_a_log_with_no_resize_events_checks_only_the_x_window(
         self, app_boot: harness.AppBoot, tmp_path: Path
     ) -> None:
