@@ -21,9 +21,13 @@
 # exercises: the binary must honour the config and data dir env vars, as the
 # app does when they are set.
 #
-# Every duration the app logs is held to a budget at teardown (barks_gui.timings);
-# BARKS_GUI_NO_BUDGETS=1 turns that off, and BARKS_GUI_TIMINGS=<file> records each
-# test's slowest durations as JSON lines, which is how the budgets are calibrated.
+# Every duration the app logs is held to a budget at teardown (barks_gui.timings):
+# this machine's budgets once --calibrate has run, the committed ones before.
+# --calibrate runs the suite with the budgets off, recording each test's slowest
+# durations, and folds them into .benchmarks/gui-timings.json (gitignored, like
+# the benchmark baseline); run it once on a new machine, and again after a
+# change that is meant to be faster. BARKS_GUI_NO_BUDGETS=1 turns the check off
+# for a run; BARKS_GUI_TIMINGS=<file> records the durations without calibrating.
 #
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
@@ -63,6 +67,7 @@ export BARKS_PROBE_SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 workers="${BARKS_GUI_WORKERS:-}"
 quiet=""
 soak=""
+calibrate=""
 # Run-wide settings, handed to the harness as "key=value;key=value".
 add_ini() {
     export BARKS_GUI_INI="${BARKS_GUI_INI:+$BARKS_GUI_INI;}$1"
@@ -93,6 +98,10 @@ while [[ "${1:-}" == --* ]]; do
         soak=1
         shift
         ;;
+    --calibrate)
+        calibrate=1
+        shift
+        ;;
     --app)
         export BARKS_PROBE_APP="${2:?--app needs the path of the executable}"
         [[ -x "$BARKS_PROBE_APP" ]] || { echo "run_gui_tests: not an executable: $BARKS_PROBE_APP" >&2; exit 2; }
@@ -121,10 +130,19 @@ if [[ -z "$workers" ]]; then
 fi
 parallel=()
 [[ "$workers" -gt 1 ]] && parallel=(-n "$workers" --dist load)
+# The load rule in the timing budgets discounts this run's own workers.
+export BARKS_GUI_WORKER_COUNT="$workers"
 
 # One artifacts directory for the whole run, whichever worker writes into it.
 export BARKS_GUI_RUN_STAMP
 BARKS_GUI_RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
+
+if [[ -n "$calibrate" ]]; then
+    export BARKS_GUI_NO_BUDGETS=1
+    export BARKS_GUI_TIMINGS="${REPO_ROOT}/build/gui-tests/${BARKS_GUI_RUN_STAMP}/timings.jsonl"
+    mkdir -p "$(dirname "$BARKS_GUI_TIMINGS")"
+    echo "run_gui_tests: calibrating the timing budgets (recording to ${BARKS_GUI_TIMINGS})"
+fi
 
 [[ -n "${BARKS_GUI_INI:-}" ]] && echo "run_gui_tests: settings for this run: ${BARKS_GUI_INI}"
 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
@@ -143,19 +161,26 @@ select=(-m "not soak")
 cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "${select[@]}" "$@")
 # shellcheck source=scripts/_show_cmd.sh
 source "${SCRIPT_DIR}/_show_cmd.sh"
+status=0
 if [[ -z "$quiet" ]]; then
     # Per-test lines and every duration: the durations say whether a boot-per-test
     # stays tolerable, so they are the point of a hands-on run.
-    "${cmd[@]}" -v --durations=0
-    exit
+    "${cmd[@]}" -v --durations=0 || status=$?
+else
+    show_cmd "${cmd[@]}" -q --tb=short
+    # Keep failures (their name, the short traceback's E lines) and the summary
+    # line, which in -q mode has no bars; pipefail hands pytest's status through.
+    # "skipped" is kept so a run that skipped everything says so rather than
+    # printing nothing.
+    if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)"; then
+        echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
+        status=1
+    fi
 fi
-
-show_cmd "${cmd[@]}" -q --tb=short
-# Keep failures (their name, the short traceback's E lines) and the summary
-# line, which in -q mode has no bars; pipefail hands pytest's status through.
-# "skipped" is kept so a run that skipped everything says so rather than
-# printing nothing.
-if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)"; then
-    echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
-    exit 1
+# A calibration counts only when every test passed: a failed test's app may
+# have been stuck, and its durations would set the baseline wrong.
+if [[ -n "$calibrate" && "$status" -eq 0 ]]; then
+    PYTHONPATH="src/barks-reader/tests/gui:scripts" uv run python -m barks_gui.timings \
+        calibrate "$BARKS_GUI_TIMINGS" "$workers" || status=$?
 fi
+exit "$status"

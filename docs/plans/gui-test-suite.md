@@ -221,6 +221,15 @@
 >   test's slowest durations as JSON lines, which is how to recalibrate. The durations are
 >   read from the messages with the log location stripped: an elapsed field that ends its
 >   message ran on into the module path otherwise, and the first pass saw two kinds of nine.
+> - Same day: budgets per machine. `run_gui_tests.sh --calibrate` runs the suite with the
+>   budgets off, recording every test's slowest durations, and (only when every test
+>   passed) folds them into `.benchmarks/gui-timings.json`, gitignored like the benchmark
+>   baseline; `timings.budgets()` then uses three times this machine's slowest, never under
+>   a second (ten for the volumes, read from a warm cache in a run and from disk after a
+>   reboot), with the committed budget for a kind never seen, and a failure names which.
+>   The load rule discounts the run's own workers: busy means the one-minute load above the
+>   core count plus three per worker (a four-worker run took a quiet 16-core desktop to
+>   about 12), so four workers on an eight-core laptop no longer silence the check.
 
 ## Context
 

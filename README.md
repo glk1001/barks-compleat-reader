@@ -122,9 +122,12 @@ just reader
   is missing. Each passing test is also held to a set of teardown checks: the window is the
   size it booted at, the log holds no error or stray key, what a read persisted matches what
   it logged, the final frame is drawn, and every duration the app logged (tree build, image
-  loads, a comic's pages, the volumes, the index) is within a loose budget. The budgets are
-  skipped with a warning when the machine's load exceeds its core count, and turned off by
-  `BARKS_GUI_NO_BUDGETS=1`.
+  loads, a comic's pages, the volumes, the index) is within a loose budget. Run
+  `bash scripts/run_gui_tests.sh --calibrate` once on a new machine: it records the suite's
+  durations and writes this machine's budgets to `.benchmarks/gui-timings.json` (not
+  committed); until then the committed budgets, from the desktop, apply. The check is
+  skipped with a warning when the load exceeds what the cores and the run's own workers
+  account for, and turned off by `BARKS_GUI_NO_BUDGETS=1`.
     ```
     bash scripts/run_gui_tests.sh                # visible, on a Xephyr window on the second monitor
     bash scripts/run_gui_tests.sh --headless     # on Xvfb, four workers, about three minutes
@@ -141,6 +144,7 @@ just reader
   | `--ini key=value` | Any other Barks Reader setting for the run (repeatable) |
   | `--app PATH` | Run the suite against a built executable instead of the workspace |
   | `--soak` | Run only the random walk (200 keys from four screens; `BARKS_GUI_WALK_STEPS`, `BARKS_GUI_WALK_SEED`) |
+  | `--calibrate` | Record the durations and write this machine's timing budgets |
   | `--quiet` | Print only failures and the summary |
 
   A failure leaves a screenshot, the app log, the keys sent and the scratch profile under

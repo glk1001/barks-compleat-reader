@@ -497,9 +497,11 @@ class AppBoot:
 
         Called from the fixture teardown once the test body has passed
         (``barks_gui.timings``): the tree build, image loads, a comic's pages,
-        the volumes and the index each have a loose budget. Skipped, with a
-        warning, when the machine is busy - the durations then say nothing
-        about the app - and turned off by ``BARKS_GUI_NO_BUDGETS``. With
+        the volumes and the index each have a loose budget: this machine's,
+        once ``run_gui_tests.sh --calibrate`` has written one, else the
+        committed one. Skipped, with a warning, when the machine is busy - the
+        durations then say nothing about the app - and turned off by
+        ``BARKS_GUI_NO_BUDGETS``. With
         ``BARKS_GUI_TIMINGS`` set, the test's slowest durations are appended to
         that file first, budgets or not.
 
@@ -528,12 +530,13 @@ class AppBoot:
         if busy:
             warnings.warn(f"timing budgets not checked: {busy}", stacklevel=2)
             return
-        problems = timings.budget_problems(app_log)
+        in_force, source = timings.budgets()
+        problems = timings.budget_problems(app_log, in_force)
         if not problems:
             return
         listing = "\n".join(str(p) for p in self.save_failure_artifacts())
         shown = "\n".join(problems)
-        msg = f"the app took longer than its budget:\n{shown}\nartifacts:\n{listing}"
+        msg = f"the app took longer than its budget ({source}):\n{shown}\nartifacts:\n{listing}"
         raise AssertionError(msg)
 
     def _assert_drawn(self, capture: Path, what: str) -> None:

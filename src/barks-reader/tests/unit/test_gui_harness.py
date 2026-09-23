@@ -731,28 +731,92 @@ class TestTimings:
         }
 
     def test_within_budget_is_no_problem(self) -> None:
-        assert timings.budget_problems(self._log()) == []
+        assert timings.budget_problems(self._log(), timings.BUDGETS) == []
 
     def test_over_budget_names_the_duration_its_budget_and_the_line(self) -> None:
         slow = self._log() + "\n" + markers.SHOWED_PAGE.format(index=4, elapsed="9.5s")
-        (problem,) = timings.budget_problems(slow)
-        budget = timings.BUDGETS["page shown"]
-        assert problem.startswith(
-            f"page shown took 9.5s, over its {budget:g}s budget: Showed page 4"
-        )
+        (problem,) = timings.budget_problems(slow, {**timings.BUDGETS, "page shown": 2.5})
+        assert problem.startswith("page shown took 9.5s, over its 2.5s budget: Showed page 4")
 
     def test_every_timed_marker_has_a_budget_of_at_least_a_second(self) -> None:
         assert set(timings.TIMED) == set(timings.BUDGETS)
         assert all(budget >= 1.0 for budget in timings.BUDGETS.values())
 
-    def test_a_busy_machine_is_named_and_a_quiet_one_is_not(
+    def test_the_load_rule_discounts_the_runs_own_workers(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(timings.os, "cpu_count", lambda: 4)
-        monkeypatch.setattr(timings.os, "getloadavg", lambda: (9.5, 0.0, 0.0))
-        assert timings.machine_is_busy() == "the load average is 10 on 4 cores"
-        monkeypatch.setattr(timings.os, "getloadavg", lambda: (3.9, 0.0, 0.0))
+        """Four workers on eight cores must not silence the check on their own."""
+        monkeypatch.setattr(timings.os, "cpu_count", lambda: 8)
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0))
+        assert timings.machine_is_busy(workers=4) is None  # 8 + 3 * 4 = 20 allowed
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (21.5, 0.0, 0.0))
+        assert timings.machine_is_busy(workers=4) == (
+            "the load average is 22, over the 20 that 8 cores and 4 worker(s) account for"
+        )
+
+    def test_the_worker_count_comes_from_the_runner_when_not_given(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(timings.os, "cpu_count", lambda: 8)
+        monkeypatch.setattr(timings.os, "getloadavg", lambda: (12.0, 0.0, 0.0))
+        monkeypatch.delenv(timings.WORKERS_ENV_VAR, raising=False)
+        assert timings.machine_is_busy() is not None  # one worker: 11 allowed
+        monkeypatch.setenv(timings.WORKERS_ENV_VAR, "4")
         assert timings.machine_is_busy() is None
+
+    def test_a_recording_run_folds_to_the_slowest_of_each_kind(self, tmp_path: Path) -> None:
+        jsonl = tmp_path / "timings.jsonl"
+        timings.record_slowest(jsonl, "a", {"page shown": 0.2, "tree nodes loaded": 0.5})
+        timings.record_slowest(jsonl, "b", {"page shown": 0.9})
+        timings.record_slowest(jsonl, "c", {})
+        assert timings.fold(jsonl) == {"page shown": 0.9, "tree nodes loaded": 0.5}
+
+    def test_a_baseline_round_trips_with_its_date_host_and_workers(self, tmp_path: Path) -> None:
+        path = tmp_path / ".benchmarks" / "gui-timings.json"
+        written = timings.write_baseline(path, {"page shown": 0.9}, workers=4)
+        assert timings.read_baseline(path) == written
+        assert written.workers == 4  # noqa: PLR2004
+        assert written.slowest == {"page shown": 0.9}
+        assert len(written.calibrated) == len("2026-09-23")
+
+    def test_no_baseline_or_a_broken_one_reads_as_none(self, tmp_path: Path) -> None:
+        assert timings.read_baseline(tmp_path / "missing.json") is None
+        (tmp_path / "broken.json").write_text("{not json")
+        assert timings.read_baseline(tmp_path / "broken.json") is None
+        (tmp_path / "partial.json").write_text('{"calibrated": "x"}')
+        assert timings.read_baseline(tmp_path / "partial.json") is None
+
+    def test_budgets_come_from_the_baseline_when_there_is_one(self, tmp_path: Path) -> None:
+        """Three times the slowest seen, never under a second; unseen kinds stay committed."""
+        path = tmp_path / "gui-timings.json"
+        seen = {"page shown": 0.9, "index built": 0.01, "volumes loaded": 0.2}
+        timings.write_baseline(path, seen, workers=1)
+        in_force, source = timings.budgets(path)
+        assert in_force["page shown"] == pytest.approx(2.7)
+        assert in_force["index built"] == 1.0
+        assert in_force["volumes loaded"] == timings.MIN_BUDGETS["volumes loaded"]  # cold cache
+        assert in_force["view image loaded"] == timings.BUDGETS["view image loaded"]
+        assert source.startswith("budgets calibrated on ")
+        assert str(path) in source
+
+    def test_budgets_are_the_committed_ones_without_a_baseline(self, tmp_path: Path) -> None:
+        in_force, source = timings.budgets(tmp_path / "none.json")
+        assert in_force == timings.BUDGETS
+        assert source == "the committed budgets"
+
+    def test_calibrate_writes_the_baseline_and_prints_every_kind(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        jsonl = tmp_path / "timings.jsonl"
+        timings.record_slowest(jsonl, "a", {"page shown": 0.9})
+        monkeypatch.setattr(timings, "BASELINE_FILE", tmp_path / "gui-timings.json")
+        assert timings.main(["calibrate", str(jsonl), "4"]) == 0
+        out = capsys.readouterr().out
+        assert "page shown" in out
+        assert "0.9s seen" in out
+        assert "not seen, committed budget" in out
+        assert timings.read_baseline(tmp_path / "gui-timings.json") is not None
+        assert timings.main(["nonsense"]) == 2  # noqa: PLR2004
 
     def test_slowest_durations_are_appended_as_json_lines(self, tmp_path: Path) -> None:
         out = tmp_path / "timings.jsonl"
