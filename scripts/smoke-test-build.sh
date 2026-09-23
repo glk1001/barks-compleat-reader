@@ -28,15 +28,34 @@
 # the graphics backend it drew through to name that one: a build missing the
 # backend's DLLs would otherwise fall back, or crash, and still look alive.
 #
-# Usage: scripts/smoke-test-build.sh <executable or .zip> [seconds, default 90]
+# With --press-escape the run goes one step further: once the popup logs that it
+# is open, Escape is pressed through the OS's real input path (send_os_key.py:
+# xdotool on Linux, on an Xvfb this script starts, SendInput on Windows,
+# CGEventPostToPid on macOS), and the popup must log that it closed and the program
+# exit by itself - so the build takes a key the way a keyboard or remote sends it.
+#
+# Usage: scripts/smoke-test-build.sh [--press-escape] <executable or .zip> [seconds, default 90]
 set -euo pipefail
 
-BUILD="${1:?usage: smoke-test-build.sh <executable or .zip> [seconds]}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+PRESS=""
+if [[ "${1:-}" == "--press-escape" ]]; then
+    PRESS=1
+    shift
+fi
+# How long the program has to exit once Escape has been pressed.
+EXIT_AFTER_KEY_SECS=20
+POPUP_OPENED="Standalone popup opened"
+POPUP_CLOSED="Standalone popup closed"
+
+BUILD="${1:?usage: smoke-test-build.sh [--press-escape] <executable or .zip> [seconds]}"
 SECS="${2:-90}"
 [[ -e "$BUILD" ]] || { echo "smoke-test-build: no such build: $BUILD" >&2; exit 2; }
 
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+xvfb_pid=""
+trap 'rm -rf "$WORK"; [[ -n "$xvfb_pid" ]] && kill "$xvfb_pid" 2>/dev/null; true' EXIT
 cp "$BUILD" "$WORK/"
 cd "$WORK"
 
@@ -54,7 +73,19 @@ fi
 unset BARKS_READER_CONFIG_DIR BARKS_READER_DATA_DIR
 
 runner=()
-if [[ "$OSTYPE" == linux* && -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v xvfb-run >/dev/null; then
+if [[ -n "$PRESS" && "$OSTYPE" == linux* ]]; then
+    # The key sender must know the display, so this run owns its Xvfb rather than
+    # letting xvfb-run pick one. -displayfd writes the display number it chose.
+    Xvfb -displayfd 5 -screen 0 1280x1024x24 -nolisten tcp 5>"$WORK/display" >/dev/null 2>&1 &
+    xvfb_pid=$!
+    for ((i = 0; i < 20; i++)); do
+        [[ -s "$WORK/display" ]] && break
+        sleep 0.5
+    done
+    [[ -s "$WORK/display" ]] || { echo "smoke-test-build: Xvfb did not start" >&2; exit 2; }
+    export DISPLAY=":$(head -1 "$WORK/display")"
+    unset WAYLAND_DISPLAY
+elif [[ "$OSTYPE" == linux* && -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v xvfb-run >/dev/null; then
     runner=(xvfb-run --auto-servernum)
 fi
 
@@ -84,13 +115,43 @@ stop_tree() {
     [[ -n "$pids" ]] && kill -KILL $pids 2>/dev/null
     return 0
 }
+# Press Escape in the program through the OS's input path. Windows is found by its
+# executable's name (Git Bash's pids are not Windows pids); Linux and macOS by the
+# processes under the launch.
+press_escape() {
+    local args=(Escape)
+    if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+        args+=(--image "$(basename "$exe")")
+    else
+        # shellcheck disable=SC2046  # one pid per word
+        args+=(--pids $(descendants "$pid"))
+    fi
+    uv run --project "$REPO_ROOT" python "$SCRIPT_DIR/send_os_key.py" "${args[@]}"
+}
+popup_logged() {
+    grep -qs "$1" "$WORK/stdout.log" "$WORK"/barks-reader-installer-*.log
+}
+
 echo "smoke-test-build: launching $exe for up to ${SECS}s..."
 # The ${arr[@]+...} form: macOS's /bin/bash is 3.2, where "${runner[@]}" on an
 # empty array is an unbound variable under set -u (bash 4.4 and later allow it).
 bash -c '"$@"' _ ${runner[@]+"${runner[@]}"} "$exe" >"$WORK/stdout.log" 2>&1 &
 pid=$!
+pressed=""
+press_failed=""
 for ((waited = 0; waited < SECS; waited++)); do
     kill -0 "$pid" 2>/dev/null || break
+    if [[ -n "$PRESS" && -z "$pressed$press_failed" ]] && popup_logged "$POPUP_OPENED"; then
+        sleep 1 # let the popup finish appearing before the key
+        if press_escape; then
+            pressed=$waited
+        else
+            press_failed=1
+        fi
+    fi
+    if [[ -n "$pressed" ]] && ((waited - pressed >= EXIT_AFTER_KEY_SECS)); then
+        break
+    fi
     sleep 1
 done
 killed=""
@@ -102,8 +163,10 @@ set +e
 wait "$pid"
 rc=$?
 set -e
-if [[ -n "$killed" ]]; then
+if [[ -n "$killed" && -z "$PRESS" ]]; then
     echo "smoke-test-build: stopped at the popup after ${waited}s, as expected"
+elif [[ -n "$killed" ]]; then
+    echo "smoke-test-build: stopped after ${waited}s"
 else
     echo "smoke-test-build: exited on its own with code $rc after ${waited}s"
 fi
@@ -121,6 +184,24 @@ fi
 if [[ ! -f "$flag" ]]; then
     echo "smoke-test-build: FAIL - no installer-failed flag: the missing data pack was not reported" >&2
     fail=1
+fi
+if [[ -n "$PRESS" ]]; then
+    if [[ -n "$press_failed" ]]; then
+        echo "smoke-test-build: FAIL - the popup opened but Escape could not be sent (see above)" >&2
+        fail=1
+    elif [[ -z "$pressed" ]]; then
+        echo "smoke-test-build: FAIL - the popup never logged \"$POPUP_OPENED\", so no key was pressed" >&2
+        fail=1
+    else
+        if ! popup_logged "$POPUP_CLOSED"; then
+            echo "smoke-test-build: FAIL - Escape was pressed but the popup never logged \"$POPUP_CLOSED\"" >&2
+            fail=1
+        fi
+        if [[ -n "$killed" ]]; then
+            echo "smoke-test-build: FAIL - the program did not exit within ${EXIT_AFTER_KEY_SECS}s of Escape" >&2
+            fail=1
+        fi
+    fi
 fi
 if [[ -n "${KIVY_GL_BACKEND:-}" ]]; then
     # Kivy's own lines are not in stdout or the installer log (the installer logs
@@ -149,4 +230,8 @@ if [[ $fail -ne 0 ]]; then
     [[ -n "$log" ]] && { echo "---- installer log ----" >&2; tail -20 "$log" >&2; }
     exit 1
 fi
-echo "smoke-test-build: OK - the build runs, resolves its directories, and reports the missing data pack"
+if [[ -n "$PRESS" ]]; then
+    echo "smoke-test-build: OK - the build reports the missing data pack, closes on Escape and exits"
+else
+    echo "smoke-test-build: OK - the build runs, resolves its directories, and reports the missing data pack"
+fi

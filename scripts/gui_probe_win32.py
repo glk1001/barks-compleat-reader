@@ -17,7 +17,7 @@ and structures can be tested on every platform.
 # cspell:ignore DEVMODE DPIAWARENESSCONTEXT EXTENDEDKEY KEYBDINPUT KEYEVENTF LEFTDOWN
 # cspell:ignore LEFTUP MAPVK MOUSEEVENTF MOUSEINPUT SWITCHDESKTOP HARDWAREINPUT
 # cspell:ignore VSC shcore wparam lparam INPUTUNION KEYUP creationflags getwindowsversion
-# cspell:ignore taskkill
+# cspell:ignore taskkill pids
 
 from __future__ import annotations
 
@@ -217,6 +217,28 @@ def _send(*items: _INPUT) -> None:
             " integrity in front refuses injected input"
         )
         raise RuntimeError(msg)
+
+
+def find_window_of_processes(pids: set[int]) -> int | None:
+    """Return the first visible, titled top-level window owned by one of `pids`.
+
+    For a window that has no title of its own to find it by (the first-run
+    installer's). Call after a ``Win32Backend`` exists, which declares the calls.
+    """
+    found: list[int] = []
+
+    def visit(hwnd: int, _lparam: int) -> bool:
+        if not _user32.IsWindowVisible(hwnd) or _user32.GetWindowTextLengthW(hwnd) == 0:
+            return True
+        owner = wintypes.DWORD()
+        _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value in pids:
+            found.append(hwnd)
+            return False
+        return True
+
+    _user32.EnumWindows(_ENUM_WINDOWS_PROC(visit), 0)
+    return found[0] if found else None
 
 
 class Win32Backend:
