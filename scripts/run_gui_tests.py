@@ -15,6 +15,9 @@ Usage (from the repo root, in PowerShell or cmd):
   uv run python scripts/run_gui_tests.py --ini key=value  # a Barks Reader setting (repeatable)
   uv run python scripts/run_gui_tests.py --calibrate      # record this machine's timing budgets
 
+Pytest's whole output goes to build/gui-tests/<run>/pytest.log as it runs, beside
+the failed tests' artifacts, so a run that hangs or is killed still leaves a record.
+
 The checks, markers and artifacts are the Linux suite's: see run_gui_tests.sh
 and docs/plans/gui-test-suite.md.
 """
@@ -75,19 +78,34 @@ def _run_env(options: argparse.Namespace, stamp: str, timings: Path) -> dict[str
     return env
 
 
-def _run_pytest(cmd: list[str], env: dict[str, str], *, quiet: bool, stamp: str) -> int:
-    """Run the suite: every test and duration, or with `quiet` failures and the totals only."""
-    if not quiet:
-        return subprocess.run([*cmd, "-v", "--durations=0"], env=env, check=False).returncode  # noqa: S603
-    print("+", " ".join([*cmd, "-q", "--tb=short"]))  # noqa: T201
-    run = subprocess.run(  # noqa: S603
-        [*cmd, "-q", "--tb=short"], env=env, capture_output=True, text=True, check=False
-    )
-    for line in run.stdout.splitlines():
-        if _is_summary(line):
-            print(line)  # noqa: T201
-    if run.returncode != 0:
-        print(f"run_gui_tests: artifacts in build/gui-tests/{stamp}", file=sys.stderr)  # noqa: T201
+def _run_pytest(cmd: list[str], env: dict[str, str], *, quiet: bool, log: Path) -> int:
+    """Run the suite, writing all of pytest's output to `log` as it comes.
+
+    The log is written line by line, not at the end, so a run that hangs or is
+    killed part-way still says which tests passed and how the last one failed.
+    With `quiet` only failures and the totals are printed, also as they come.
+    """
+    args = [*cmd, "-q", "--tb=short"] if quiet else [*cmd, "-v", "--durations=0"]
+    print("+", " ".join(args))  # noqa: T201
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with (
+        log.open("w", encoding="utf-8") as out,
+        subprocess.Popen(  # noqa: S603
+            args,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        ) as run,
+    ):
+        assert run.stdout is not None
+        for line in run.stdout:
+            out.write(line)
+            out.flush()
+            if not quiet or _is_summary(line):
+                print(line, end="", flush=True)  # noqa: T201
     return run.returncode
 
 
@@ -111,7 +129,10 @@ def main(argv: list[str]) -> int:
 
     select = ["-m", "soak" if options.soak else "not soak"]
     cmd = [sys.executable, "-m", "pytest", GUI_TESTS, *select, *pytest_args]
-    status = _run_pytest(cmd, env, quiet=options.quiet, stamp=stamp)
+    pytest_log = REPO_ROOT / "build" / "gui-tests" / stamp / "pytest.log"
+    status = _run_pytest(cmd, env, quiet=options.quiet, log=pytest_log)
+    if status != 0:
+        print(f"run_gui_tests: pytest's output and the artifacts are in {pytest_log.parent}")  # noqa: T201
 
     # A calibration counts only when every test passed: a stuck app's durations
     # would set the baseline wrong.
