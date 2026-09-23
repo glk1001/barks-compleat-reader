@@ -174,21 +174,36 @@ findings were.
 ## Step 4: a small cross-platform suite in CI, with no data pack
 
 What CI can check on all three OSes without the data pack: boot the build to the
-installer's missing-data-pack popup, check `MAIN_WINDOW_SHOWN` and the step 1 geometry
-marker, press Return and Escape through the platform's real injection, and check that
-the popup reacts and the app exits cleanly. This extends `smoke-test-build.sh` from
-"it starts" to "it takes keys and keeps its window". It also runs on every build leg,
-which makes it the only regular macOS coverage.
+first-run installer's missing-data-pack popup (as `smoke-test-build.sh` already does on
+every build leg), press a key through the platform's real injection, and check that the
+popup closes and the program exits cleanly. This extends the smoke test from "it starts"
+to "it takes keys", on every build leg, which makes it the only regular macOS coverage.
 
-**macOS injection:** real keys need `CGEventPost` (Quartz, through `ctypes` or
-`pyobjc`), which needs the Accessibility permission for the process posting them. Try it
-on the `macos-latest` runner first. If the runner refuses the permission, and only then,
-fall back for this one CI check to an in-app channel: an env-var-gated file the app reads
-on its clock and dispatches as Kivy key events. Label that leg's result "input path not
-covered". The channel stays out of the build unless the env var is set, and it is never
-used where OS injection works.
+**Checked 2026-09-24, before building it:**
+- **The popup and keys:** the installer's popup is `show_standalone_popup` in its own
+  temporary Kivy loop, not the main reader, so `MAIN_WINDOW_SHOWN` and the geometry
+  marker never fire there (the plan first said to check them). Escape closes it (the
+  reader's alternative Escape key too), and closing it stops the loop, so the installer
+  then exits by itself. Return does nothing: only a click on its close button, which has
+  no keyboard focus. It logs nothing on opening or closing (the About box gets its lines
+  through `on_dismiss`; the installer passes none), so step 4 first needs markers for
+  the popup opening and closing, and optionally Return as "OK".
+- **macOS injection works on GitHub's runners**, both `macos-latest` and
+  `macos-15-intel`: the job's process is trusted for Accessibility (`AXIsProcessTrusted`
+  is true; the runner's TCC database pre-grants its tools), and keys posted through
+  `CGEventPost` (the system event stream) and `CGEventPostToPid` both reached a Tk
+  window. So macOS gets the real input path like the others, and the in-app key channel
+  the plan held in reserve is not needed. (A throwaway branch ran the experiment; it is
+  deleted.)
 
-**Linux:** the same check through the existing probe, headless.
+**The pieces:**
+1. Log markers for the standalone popup opening and closing (with a `loguru_sink` unit
+   test), in `barks_reader.core.log_markers`; Return closes it as Escape does.
+2. A key sender per OS, small and stdlib-only: `xte` on Linux (under the smoke test's
+   xvfb), `SendInput` on Windows (from `gui_probe_win32.py`), `CGEventPost` on macOS.
+3. `smoke-test-build.sh --press-escape`: wait for the popup's opened line, send Escape,
+   require the closed line and the program to exit by itself, instead of the 90s wait and
+   kill. The existing launches stay as they are; this is one more.
 
 ## Later, not in this plan: touch
 
