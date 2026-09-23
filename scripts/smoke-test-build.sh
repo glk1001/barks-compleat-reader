@@ -80,7 +80,9 @@ stop_tree() {
     return 0
 }
 echo "smoke-test-build: launching $exe for up to ${SECS}s..."
-bash -c '"$@"' _ "${runner[@]}" "$exe" >"$WORK/stdout.log" 2>&1 &
+# The ${arr[@]+...} form: macOS's /bin/bash is 3.2, where "${runner[@]}" on an
+# empty array is an unbound variable under set -u (bash 4.4 and later allow it).
+bash -c '"$@"' _ ${runner[@]+"${runner[@]}"} "$exe" >"$WORK/stdout.log" 2>&1 &
 pid=$!
 for ((waited = 0; waited < SECS; waited++)); do
     kill -0 "$pid" 2>/dev/null || break
