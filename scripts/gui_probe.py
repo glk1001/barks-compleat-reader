@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WINDOW_NAME = "Compleat Barks Disney Reader"
@@ -178,6 +178,17 @@ def data_dir() -> Path:
 
 def config_file() -> Path:
     return config_dir() / "barks-reader.json"
+
+
+def app_env(base: Mapping[str, str]) -> dict[str, str]:
+    """Return the environment the app is launched with: `base`, with a plain-text log.
+
+    The app log is the suite's oracle, read as plain text. On Windows loguru colours
+    its output whenever TERM is set - as Git Bash sets it - even when that output
+    is a file, and the colour codes land in the middle of the lines a test parses.
+    LOGURU_COLORIZE is loguru's own switch for every handler that does not choose.
+    """
+    return dict(base, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", LOGURU_COLORIZE="0")
 
 
 def _profile_backups() -> list[tuple[Path, Path]]:
@@ -315,7 +326,7 @@ class Probe:
 
     def _launch(self) -> None:
         """Start the app (the workspace's, or a build) with its output going to the app log."""
-        env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+        env = app_env(os.environ)
         app = os.environ.get("BARKS_PROBE_APP")
         if app:
             # A build reads no .env.runtime: hand it the data dir a workspace run would read.

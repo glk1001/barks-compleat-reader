@@ -86,6 +86,14 @@ class TestDoctor:
         assert checks == {"fanta_dir": "OK", "prebuilt_dir": "--", "png_barks_panels_dir": "WARN"}
 
 
+class TestAppEnv:
+    def test_the_app_log_is_plain_text_even_under_a_terminal(self) -> None:
+        """Git Bash sets TERM, and loguru on Windows then colours even a file."""
+        env = gui_probe.app_env({"TERM": "xterm", "PATH": "p"})
+        assert env["LOGURU_COLORIZE"] == "0"
+        assert env["PATH"] == "p"
+
+
 class TestLogWaits:
     def test_a_pattern_is_matched_per_line_as_grep_does(self) -> None:
         text = "first line\nMain window shown.\nlast"
