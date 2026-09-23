@@ -32,6 +32,7 @@ runs this with the interpreter it runs under.
 from __future__ import annotations
 
 import datetime as dt
+import io
 import os
 import re
 import shutil
@@ -567,6 +568,12 @@ def main(argv: Sequence[str]) -> int:
         print(__doc__)  # noqa: T201
         return 1
     command, args = argv[0], list(argv[1:])
+    # UTF-8 out, whatever the console's code page: the app log has characters
+    # (box drawing, curly quotes) that Windows' cp1252 cannot encode, and the
+    # driver reads this output as UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     try:
         status = run_log_command(command, args)
         if status is None:

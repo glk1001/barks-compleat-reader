@@ -8,11 +8,13 @@ harness parses. The Windows backend's structures are checked on Windows.
 
 # ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
-# cspell:ignore glew
+# cspell:ignore glew PYTHONIOENCODING
 
 from __future__ import annotations
 
 import ctypes
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -86,6 +88,31 @@ class TestDoctor:
         found = gui_probe.dir_setting_checks(ini)
         checks = {text.split()[0]: status for status, text in found}
         assert checks == {"fanta_dir": "OK", "prebuilt_dir": "--", "png_barks_panels_dir": "WARN"}
+
+
+class TestTailOutput:
+    def test_tail_prints_characters_a_windows_code_page_cannot_encode(self, tmp_path: Path) -> None:
+        """The app log's box drawing crashed `tail` under Windows' cp1252 console."""
+        run = tmp_path / "barks-gui-probe-97"
+        run.mkdir()
+        (run / "app.log").write_text("\u2514\u2500 a tree line\n", encoding="utf-8")
+        # The probe's run folder is under the temp dir, which these variables set.
+        env = dict(
+            os.environ,
+            BARKS_PROBE_DISPLAY=":97",
+            PYTHONIOENCODING="cp1252",
+            TMPDIR=str(tmp_path),
+            TEMP=str(tmp_path),
+            TMP=str(tmp_path),
+        )
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, gui_probe.__file__, "tail", "5"],
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+        assert result.stdout.decode("utf-8") == "\u2514\u2500 a tree line\n"
 
 
 class TestAppEnv:

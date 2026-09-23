@@ -109,7 +109,10 @@ def probe(*args: str, script: Path = PROBE) -> str:
     result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
         [*launcher, str(script), *args],
         capture_output=True,
-        text=True,
+        # Both probes print UTF-8 (the app log is UTF-8); Windows' default would
+        # be its code page, which mangles or rejects the log's box drawing.
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if result.returncode != 0:
