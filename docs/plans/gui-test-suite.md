@@ -157,7 +157,9 @@
 >   `BARKS_PROBE_APP` instead of `uv run main.py` (passing the data dir it would have read
 >   from `.env.runtime`), `run_gui_tests.sh --app PATH` runs the whole suite against a
 >   Nuitka build, and `scripts/smoke-test-build.sh` launches a build in an empty directory
->   as far as the installer's missing-data-pack popup (CI's Linux build leg runs it). The
+>   as far as the installer's missing-data-pack popup (every CI build leg runs it on what it
+>   built, since 2026-09-23: the macOS zip is unpacked and its bundle's binary launched, the
+>   Windows exe stopped by image name, the wait done in bash as macOS has no `timeout`). The
 >   first attempt taught the lesson: a build that ignores the env vars installs itself
 >   beside the executable, which in a checkout is the repo root. (3) Property-based tests,
 >   `tests/unit/test_properties.py`: page-map slicing, display-unit tiling, page lookups,

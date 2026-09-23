@@ -162,9 +162,10 @@ just reader
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
     bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
     ```
-- **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` launches
-  a build in an empty directory as far as its first-run installer's "data pack missing"
-  message, which proves the packaged program runs at all; CI's Linux build does the same.
+- **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` (or the
+  Windows `.exe`, or the macOS `.zip`) launches a build in an empty directory as far as
+  its first-run installer's "data pack missing" message, which proves the packaged program
+  runs at all; every CI build leg does the same to what it built.
 - **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
   or with `--with-gui-test` to include the GUI suite.
 

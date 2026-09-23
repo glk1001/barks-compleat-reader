@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cspell:ignore servernum
+# cspell:ignore servernum taskkill
 # Smoke-test a built Barks Reader executable: does the packaged program run at all?
 #
 # The GUI test suite exercises the app from the workspace (`uv run main.py`), so
@@ -10,39 +10,96 @@
 # them, writes the failed flag beside the executable and shows a Kivy popup
 # saying so. Reaching that popup proves the onefile unpacks and the Python
 # runtime, the compiled packages, loguru, the installer and a Kivy window all
-# work from the build. The popup waits for a click, so the run is killed by
-# `timeout`; the verdict comes from what the installer left on disk.
+# work from the build. The popup waits for a click, so the run is killed after
+# a while; the verdict comes from what the installer left on disk.
 #
-# The executable is copied into an empty directory first, so a data pack lying
+# The build is copied into an empty directory first, so a data pack lying
 # beside the real one (as in a developer checkout) does not turn this into a
-# full install. On Linux it runs under xvfb-run when there is no display.
+# full install. All three platforms' builds are taken: the Linux and Windows
+# onefile executables as they are, and the zipped macOS .app bundle, which is
+# unpacked and launched by the binary inside it (the app anchors its config
+# and the installer's files beside the bundle). On Linux it runs under xvfb-run
+# when there is no display; on the other two the runner's own session shows
+# the window. The wait-and-kill is done here rather than with `timeout`, which
+# macOS does not ship and which cannot reach a Windows process tree.
 #
-# Usage: scripts/smoke-test-build.sh ./barks-reader-linux [seconds, default 90]
+# Usage: scripts/smoke-test-build.sh <executable or .zip> [seconds, default 90]
 set -euo pipefail
 
-EXE="${1:?usage: smoke-test-build.sh <executable> [seconds]}"
+BUILD="${1:?usage: smoke-test-build.sh <executable or .zip> [seconds]}"
 SECS="${2:-90}"
-[[ -x "$EXE" ]] || { echo "smoke-test-build: not an executable: $EXE" >&2; exit 2; }
+[[ -e "$BUILD" ]] || { echo "smoke-test-build: no such build: $BUILD" >&2; exit 2; }
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-cp "$EXE" "$WORK/"
+cp "$BUILD" "$WORK/"
 cd "$WORK"
-exe="./$(basename "$EXE")"
+
+# Where the executable is, and what the app anchors its files beside.
+if [[ "$BUILD" == *.zip ]]; then
+    unzip -q "$(basename "$BUILD")"
+    exe="$(find . -path '*.app/Contents/MacOS/*' -type f -perm -u+x | head -1 || true)"
+    [[ -n "$exe" ]] || { echo "smoke-test-build: no executable inside a .app in $BUILD" >&2; exit 2; }
+else
+    exe="./$(basename "$BUILD")"
+    [[ -x "$exe" ]] || chmod +x "$exe"
+fi
 
 # The app must not find a developer's directories through the environment.
 unset BARKS_READER_CONFIG_DIR BARKS_READER_DATA_DIR
 
 runner=()
-if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v xvfb-run >/dev/null; then
+if [[ "$OSTYPE" == linux* && -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v xvfb-run >/dev/null; then
     runner=(xvfb-run --auto-servernum)
 fi
+
+# Run it, and stop it once the popup has had time to appear. The launch goes
+# through an inner bash so that the kill lands on the app's process tree (the
+# onefile bootstrap and the program it unpacked, plus xvfb-run and its Xvfb)
+# and never on this script's own child: a job killed by a signal would have
+# bash print "Killed" into the CI log; the inner shell absorbs that and exits.
+# Windows has no pgrep, and its tree is stopped by image name instead.
+descendants() {
+    local child
+    for child in $(pgrep -P "$1" 2>/dev/null); do
+        descendants "$child"
+        echo "$child"
+    done
+}
+stop_tree() {
+    local pids
+    if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+        taskkill //F //T //IM "$(basename "$exe")" >/dev/null 2>&1 || true
+        return
+    fi
+    pids="$(descendants "$1")"
+    [[ -n "$pids" ]] && kill -TERM $pids 2>/dev/null
+    sleep 5
+    pids="$(descendants "$1")"
+    [[ -n "$pids" ]] && kill -KILL $pids 2>/dev/null
+    return 0
+}
 echo "smoke-test-build: launching $exe for up to ${SECS}s..."
+bash -c '"$@"' _ "${runner[@]}" "$exe" >"$WORK/stdout.log" 2>&1 &
+pid=$!
+for ((waited = 0; waited < SECS; waited++)); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+done
+killed=""
+if kill -0 "$pid" 2>/dev/null; then
+    killed=1
+    stop_tree "$pid"
+fi
 set +e
-"${runner[@]}" timeout --signal=TERM --kill-after=10 "$SECS" "$exe" >"$WORK/stdout.log" 2>&1
+wait "$pid"
 rc=$?
 set -e
-echo "smoke-test-build: exit code $rc (124 = killed at the popup, as expected)"
+if [[ -n "$killed" ]]; then
+    echo "smoke-test-build: stopped at the popup after ${waited}s, as expected"
+else
+    echo "smoke-test-build: exited on its own with code $rc after ${waited}s"
+fi
 
 fail=0
 flag="$WORK/barks-reader-installer-failed.flag"
