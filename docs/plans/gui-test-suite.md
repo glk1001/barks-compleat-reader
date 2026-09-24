@@ -297,6 +297,13 @@
 >   test's logs. Now `--keep-logs` on either runner (`BARKS_GUI_KEEP_LOGS=1`) saves every
 >   passing test's artifacts as a failure's, once its teardown checks pass
 >   (`AppBoot.keep_artifacts_if_asked`); about 1 MB a test, most of it the final frame.
+> - 2026-09-24: the suite back on the Linux laptop after the Windows work, headless with
+>   `--keep-logs`: 60 passed and 2 skipped in 3m55s once the data pack was current (a first
+>   run, before the "By the Numbers" background was synced in, lost 16 tests to the app's
+>   missing-file error popup). The two skips were both wiki tests, and a test bug: the
+>   profile's `wiki_bundle_dir` is `${HOME}/...`, which the app expands (`expand_vars`) but
+>   the tests only passed through `expanduser`, so they saw no bundle and skipped. Both now
+>   expand it as the app does: the whole suite, 62 passed and 0 skipped in 4m03s.
 
 ## Context
 

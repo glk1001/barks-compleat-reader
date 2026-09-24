@@ -10,6 +10,7 @@ the app log; the patterns below are substrings of them.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -48,6 +49,11 @@ UPS_TO_WIKI_CHIP = 1
 UNSET_WIKI_DIR = "<Carl Barks Wiki Not Set>"
 
 
+def _expand_path(value: str) -> Path:
+    """Return an ini path as the app reads it: environment variables (``${HOME}``) and ``~``."""
+    return Path(os.path.expandvars(value)).expanduser()
+
+
 @pytest.fixture
 def wiki_boot(boot: AppBoot) -> AppBoot:
     """Return the boot, or skip when the profile's live wiki setting points at no bundle."""
@@ -58,7 +64,7 @@ def wiki_boot(boot: AppBoot) -> AppBoot:
         wiki_dir = harness.read_ini_value(ini, "wiki_bundle_dir").strip()
         if wiki_dir in {"", UNSET_WIKI_DIR}:
             pytest.skip("no live wiki bundle configured in the profile")
-        if not (Path(wiki_dir).expanduser() / "index.md").is_file():
+        if not (_expand_path(wiki_dir) / "index.md").is_file():
             pytest.skip(f"the profile's wiki directory is not a bundle: {wiki_dir}")
     return boot
 
@@ -67,7 +73,7 @@ def _wiki_bundle(app_boot: AppBoot) -> Path:
     """Return the bundle the app reads for this boot: the live one, or the copy in Reader Files."""
     ini = app_boot.scratch / "barks-reader.ini"
     if harness.read_ini_value(ini, "use_live_wiki_bundle").strip() != "0":
-        return Path(harness.read_ini_value(ini, "wiki_bundle_dir").strip()).expanduser()
+        return _expand_path(harness.read_ini_value(ini, "wiki_bundle_dir").strip())
     data_dir = harness.app_data_dir()
     assert data_dir is not None, "no app data directory to find the bundled wiki in"
     return data_dir / BUNDLED_WIKI_SUBDIR
