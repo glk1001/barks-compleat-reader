@@ -7,10 +7,18 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 24, 042, panel 2 Colorist error: should be green cap
+Vol 24, 032, panel 4 Wisenik
 Vol 23, 021, panel 8 '!' glitch
+Vol 22, 137: panel 5 Colorist error - no cap color
+Vol 22, 128: panel 2 Here's the colorist error - need to swap colors
+Vol 22, 115+, panel 4 Colorist error: should be Huey speaking
 Vol 22, 049, panel 5 Colorist error: no cap color
 Vol 22, 034+, panel 4 Colorist error: swap red with green
 Vol 22, 022, panel 4 Colorist error: swap red and green - probably OK but see above
+Vol 21, 138, panel 7 Colorist error: red and green swapped
+Vol 21, 058, panel 7 Colorist error: beak uncolored
+Vol 21, 051, panel 3 Colorist error: swap blue and green
 Vol 20, 122, panel 8 Colorist error: cap should be blue
 Vol 20, 122, panel 2+ Colorist error: cap should be green
 Vol 20, 115, panel 5 Colorist error: caps not colored
