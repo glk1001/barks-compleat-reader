@@ -245,6 +245,53 @@ def test_save_state_reads_the_real_rectangle(live_window: int) -> None:
 
 
 @pytest.mark.usefixtures("kivy_window")
+def test_move_now_puts_the_window_at_the_saved_rectangle(live_window: int) -> None:
+    backend = Win32WindowBackend(hwnd=live_window)
+    state = WindowState()
+    backend.save_state(state)  # at _RECT_A, where the fixture made it
+    _move(live_window, _RECT_B)
+
+    backend.move_now(state)
+
+    assert _window_rect(live_window) == _RECT_A
+
+
+@pytest.mark.usefixtures("kivy_window")
+def test_move_now_tries_again_when_its_first_move_is_lost(live_window: int) -> None:
+    # Straight after a fullscreen exit, the first MoveWindow returns success and
+    # leaves the window where it was; the next frame's holds.
+    backend = Win32WindowBackend(hwnd=live_window)
+    state = WindowState()
+    backend.save_state(state)
+    _move(live_window, _RECT_B)
+    real_move = backend._move_window
+    calls: list[tuple[Any, ...]] = []
+
+    def lose_the_first(*args: Any) -> bool:  # noqa: ANN401
+        calls.append(args)
+        return True if len(calls) == 1 else real_move(*args)
+
+    backend._move_window = lose_the_first
+
+    backend.move_now(state)
+
+    assert len(calls) == 2  # noqa: PLR2004
+    assert _window_rect(live_window) == _RECT_A
+
+
+def test_move_now_stops_once_fullscreen_is_back(live_window: int, kivy_window: MagicMock) -> None:
+    backend = Win32WindowBackend(hwnd=live_window)
+    state = WindowState()
+    backend.save_state(state)
+    _move(live_window, _RECT_B)
+    kivy_window.fullscreen = True
+
+    backend.move_now(state)
+
+    assert _window_rect(live_window) == _RECT_B  # left to the fullscreen transition
+
+
+@pytest.mark.usefixtures("kivy_window")
 def test_a_scheduled_restore_puts_the_window_back_and_finishes(live_window: int) -> None:
     backend = Win32WindowBackend(hwnd=live_window)
     state = WindowState()

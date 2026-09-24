@@ -92,6 +92,15 @@ class WindowBackend(Protocol):
         """Populate ``state`` with the current window geometry."""
         ...
 
+    def move_now(self, state: WindowState) -> None:
+        """Put the window at ``state``'s saved geometry at once, as fullscreen ends.
+
+        Best effort, with no recovery: the scheduled restore that follows is what
+        settles the geometry. It is here to replace, before the next frame, a
+        rectangle the platform's own fullscreen exit got wrong.
+        """
+        ...
+
     def schedule_restore(
         self,
         state: WindowState,
@@ -119,6 +128,10 @@ class KivyWindowBackend:
     @staticmethod
     def save_state(state: WindowState) -> None:
         state.save_state_now()
+
+    @staticmethod
+    def move_now(state: WindowState) -> None:
+        """Do nothing: the fullscreen exit leaves no wrong rectangle to replace here."""
 
     @staticmethod
     def schedule_restore(
@@ -306,6 +319,12 @@ class WindowManager:
         def do_windowed() -> None:
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
+            # On Windows, SDL has just sized the window for a frame the custom
+            # titlebar hides, so the drawable area came back 16x39 too big and
+            # above the screen. Put it right before a frame draws; the scheduled
+            # restore below still settles it.
+            if not self._saved_window_state.is_unsaved():
+                self._backend.move_now(self._saved_window_state)
             self._end_transition(seq)
             Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(callbacks), 0)
 

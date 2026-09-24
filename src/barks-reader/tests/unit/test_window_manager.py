@@ -48,12 +48,21 @@ class _FakeBackend:
         self.saved_states: list[WindowState] = []
         self.restore_calls: list[WindowState] = []
         self.cancel_calls = 0
+        self.move_calls: list[WindowState] = []
+        # The window, when a test wants to see its fullscreen flag at move_now.
+        self.window: MagicMock | None = None
+        self.fullscreen_at_move: list[object] = []
 
     def save_state(self, state: WindowState) -> None:
         state.size = (1200, 1800)
         state.pos = (100, 50)
         state.screen = FullscreenEnum.WINDOWED
         self.saved_states.append(state)
+
+    def move_now(self, state: WindowState) -> None:
+        self.move_calls.append(state)
+        if self.window is not None:
+            self.fullscreen_at_move.append(self.window.fullscreen)
 
     def schedule_restore(
         self,
@@ -220,6 +229,24 @@ class TestGotoWindowedMode:
         on_first_resize.assert_called_once()
         on_finished_windowed.assert_called_once()
 
+    def test_moves_the_window_as_soon_as_fullscreen_ends(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        # Regression: on Windows, SDL's fullscreen exit sizes the window for a frame
+        # the custom titlebar hides; the saved rectangle goes back before a frame draws.
+        wm, callbacks, _, _, _ = manager
+        fake_window.fullscreen = True
+        wm.save_state_now()
+        backend.window = fake_window
+
+        wm.goto_windowed_mode(callbacks)
+
+        assert backend.move_calls == [backend.saved_states[0]]
+        assert backend.fullscreen_at_move == [False]  # after the exit, not before
+
     def test_exits_fullscreen_without_saved_state_skips_restore(
         self,
         manager: ManagerFixture,
@@ -241,6 +268,7 @@ class TestGotoWindowedMode:
         assert fake_window.fullscreen is False
         # Geometry restore is skipped, but the windowed transition still completes.
         assert len(backend.restore_calls) == 0
+        assert backend.move_calls == []  # no saved rectangle to move to
         on_first_resize.assert_called_once()
         on_finished_windowed.assert_called_once()
         fake_logger.warning.assert_called_once()
