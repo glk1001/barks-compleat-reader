@@ -104,8 +104,12 @@ class Win32WindowBackend:
         up by the caption. The first ``MoveWindow`` straight after the exit is
         lost (it blocks while the window finishes the exit, then leaves it where
         it was); the next frame's holds. Measured on a Windows 11 laptop, the
-        wrong rectangle shows for ~60ms instead of until the scheduled restore
-        (~260ms). No recovery here: the scheduled restore that follows settles it.
+        wrong rectangle shows for ~70ms instead of until the scheduled restore
+        (~255ms). No recovery here: the scheduled restore that follows settles it.
+
+        Revisit on Kivy 3.0 (SDL3): if the first resize after "Exiting fullscreen
+        mode" is already the saved size, SDL no longer pads the window and this
+        can go (see docs/plans/cross-platform-gui-tests.md, "What is left").
         """
         if not self._hwnd:
             return
