@@ -1,6 +1,6 @@
 # Plan: GUI and window coverage on Windows and macOS
 
-> Status: **approved in discussion 2026-09-23**, in progress. Four steps, each useful on its
+> Status: **approved in discussion 2026-09-23**; steps 1-4 done, a laptop run left. Four steps, each useful on its
 > own and each committed green; stop after any of them and the earlier ones still pay.
 >
 > - Step 1: DONE 2026-09-23 (e592d825, ae79cb16). `WINDOW_GEOMETRY` is logged at the five
@@ -52,8 +52,20 @@
 >     software renderer); and with discard on, the dynamic .vdi stalled on TRIM until the
 >     guest froze, so discard is off on its disk. With all three, the whole suite runs clean.
 >   On Windows: `uv run python scripts/run_gui_tests.py --angle` on the VM (a real machine
->   needs no `--angle`), `--calibrate` once per machine. Next: the whole suite once on the
->   Windows laptop (real GPU, OpenGL), then step 4.
+>   needs no `--angle`), `--calibrate` once per machine.
+> - Step 4: DONE 2026-09-24 (c8aa0234, all four build legs green). Every build: Linux and
+>   Windows (through ANGLE) reach the installer's popup, take a real Escape through the OS
+>   and exit by themselves; macOS's runners cannot open a Kivy window (no OpenGL), so it
+>   reports that instead. Details, and the Windows cache fix, under Step 4 below.
+>
+> **What is left:**
+> 1. The whole GUI suite once on the Windows laptop, without `--angle`: the reader's normal
+>    OpenGL drawing on real hardware, which neither the VM (ANGLE, software) nor CI (no
+>    OpenGL 2.0 on Windows runners) covers. `uv run python scripts/run_gui_tests.py`, then
+>    `--calibrate` once for the laptop's timing budgets.
+> 2. macOS window and input coverage needs a real Mac; CI's runners cannot draw.
+> 3. The open Windows finding above: leaving fullscreen, the client area briefly takes the
+>    outer size (a 16x39 frame step) before settling.
 
 ## Context
 
