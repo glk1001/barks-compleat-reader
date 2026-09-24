@@ -145,6 +145,7 @@ def _declare() -> None:
     u.IsWindowVisible.argtypes = [wintypes.HWND]
     u.GetWindowTextLengthW.argtypes = [wintypes.HWND]
     u.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    u.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     u.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(_RECT)]
     u.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
     u.GetForegroundWindow.restype = wintypes.HWND
@@ -220,25 +221,30 @@ def _send(*items: _INPUT) -> None:
 
 
 def find_window_of_processes(pids: set[int]) -> int | None:
-    """Return the first visible, titled top-level window owned by one of `pids`.
+    """Return a visible top-level window owned by one of `pids`, SDL's own first.
 
     For a window that has no title of its own to find it by (the first-run
-    installer's). Call after a ``Win32Backend`` exists, which declares the calls.
+    installer's: Kivy leaves it untitled, so a titled-only search finds nothing).
+    An SDL window (Kivy's; class "SDL_app") is preferred over any other window the
+    processes own. Call after a ``Win32Backend`` exists, which declares the calls.
     """
-    found: list[int] = []
+    sdl: list[int] = []
+    other: list[int] = []
 
     def visit(hwnd: int, _lparam: int) -> bool:
-        if not _user32.IsWindowVisible(hwnd) or _user32.GetWindowTextLengthW(hwnd) == 0:
+        if not _user32.IsWindowVisible(hwnd):
             return True
         owner = wintypes.DWORD()
         _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-        if owner.value in pids:
-            found.append(hwnd)
-            return False
+        if owner.value not in pids:
+            return True
+        class_name = ctypes.create_unicode_buffer(256)
+        _user32.GetClassNameW(hwnd, class_name, 256)
+        (sdl if class_name.value.startswith("SDL") else other).append(hwnd)
         return True
 
     _user32.EnumWindows(_ENUM_WINDOWS_PROC(visit), 0)
-    return found[0] if found else None
+    return (sdl or other or [None])[0]
 
 
 class Win32Backend:
