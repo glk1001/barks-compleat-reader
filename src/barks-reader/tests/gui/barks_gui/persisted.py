@@ -32,7 +32,7 @@ _DOUBLE_PAGE_ON = pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)
 
 def cues(scratch: Path) -> dict[str, dict[str, Any]]:
     """Return the last-read cue of every title in the profile's json, keyed by title."""
-    settings = json.loads((scratch / "barks-reader.json").read_text())
+    settings = json.loads((scratch / "barks-reader.json").read_text(encoding="utf-8"))
     return {
         title: entry["last_read_page"]
         for title, entry in settings.items()
@@ -42,12 +42,12 @@ def cues(scratch: Path) -> dict[str, dict[str, Any]]:
 
 def history_events(scratch: Path) -> list[dict[str, Any]]:
     """Return the profile's reading-history events, in file order."""
-    return json.loads((scratch / "barks-reader-history.json").read_text())["events"]
+    return json.loads((scratch / "barks-reader-history.json").read_text(encoding="utf-8"))["events"]
 
 
 def canned_history_ids() -> set[str]:
     """Return the ids of the events every test's history starts with."""
-    canned = json.loads((FIXTURES_DIR / "barks-reader-history.json").read_text())
+    canned = json.loads((FIXTURES_DIR / "barks-reader-history.json").read_text(encoding="utf-8"))
     return {e["id"] for e in canned["events"]}
 
 

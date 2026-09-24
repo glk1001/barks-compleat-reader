@@ -113,7 +113,7 @@ SAVE_TIMEOUT = 10.0
 
 
 def _saved_node(boot: AppBoot) -> list[str]:
-    settings = json.loads((boot.scratch / "barks-reader.json").read_text())
+    settings = json.loads((boot.scratch / "barks-reader.json").read_text(encoding="utf-8"))
     return settings["AAA_Settings"]["last_selected_node"]
 
 

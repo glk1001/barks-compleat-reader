@@ -30,7 +30,8 @@ def _letter(letter: str) -> str:
 def _letters_shown(d: Driver) -> list[str]:
     """Every letter the index showed, populated or empty, in the order it did."""
     return re.findall(
-        r"Populated index page for letter '([A-Z])'", d.log_path.read_text(errors="replace")
+        r"Populated index page for letter '([A-Z])'",
+        d.log_path.read_text(encoding="utf-8", errors="replace"),
     )
 
 

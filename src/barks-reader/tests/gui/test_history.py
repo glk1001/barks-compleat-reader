@@ -21,7 +21,9 @@ CLEAR_TITLE = "Clear Reading History"
 
 
 def _events(boot: AppBoot) -> list[dict[str, str]]:
-    return json.loads((boot.scratch / "barks-reader-history.json").read_text())["events"]
+    return json.loads((boot.scratch / "barks-reader-history.json").read_text(encoding="utf-8"))[
+        "events"
+    ]
 
 
 def _enter(boot: AppBoot) -> Driver:

@@ -163,7 +163,7 @@ def apply_ini_overrides(ini: Path, overrides: Mapping[str, str]) -> None:
         parser.add_section(INI_SECTION)
     for key, value in overrides.items():
         parser.set(INI_SECTION, key, value)
-    with ini.open("w") as out:
+    with ini.open("w", encoding="utf-8") as out:
         parser.write(out)
 
 
@@ -186,7 +186,9 @@ def app_data_dir() -> Path | None:
         env_file = REPO_ROOT / ".env.runtime"
         if env_file.is_file():
             found = re.search(
-                r'^BARKS_READER_DATA_DIR="?([^"\n]+)"?', env_file.read_text(), re.MULTILINE
+                r'^BARKS_READER_DATA_DIR="?([^"\n]+)"?',
+                env_file.read_text(encoding="utf-8"),
+                re.MULTILINE,
             )
             value = found[1] if found else None
     return Path(os.path.expandvars(value)) if value else None
@@ -418,7 +420,7 @@ class AppBoot:
             apply_ini_overrides(self.scratch / "barks-reader.ini", ini)
         if not history:
             (self.scratch / "barks-reader-history.json").write_text(
-                '{"version": 1, "events": []}\n'
+                '{"version": 1, "events": []}\n', encoding="utf-8"
             )
         os.environ[PROBE_NO_RESTORE_ENV_VAR] = "1"
         os.environ[PROBE_KEY_GAP_ENV_VAR] = str(KEY_GAP_SECS)
@@ -462,7 +464,7 @@ class AppBoot:
             problems.append(
                 f"the X window is {now[:2]}, not the {self.boot_geometry[:2]} it booted at"
             )
-        log_text = self.driver.log_path.read_text(errors="replace")
+        log_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         sizes = resize_events(log_text)
         settled = settled_sizes(log_text)
         # The size the window booted at, as the app saw it: its boot geometry line.
@@ -543,7 +545,7 @@ class AppBoot:
         from barks_gui import timings  # noqa: PLC0415
 
         try:
-            app_log = self.driver.log_path.read_text(errors="replace")
+            app_log = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
         timings_file = os.environ.get(timings.TIMINGS_FILE_ENV_VAR)
@@ -600,7 +602,7 @@ class AppBoot:
                 saved.append(self.driver.shot(out / artifact_name(self.nodeid, ".png")))
             with contextlib.suppress(gd.DriverError):
                 tail = out / artifact_name(self.nodeid, "-tail.log")
-                tail.write_text(gd.probe("tail", "80"))
+                tail.write_text(gd.probe("tail", "80"), encoding="utf-8")
                 saved.append(tail)
             # Every key and click the probe sent, timestamped: read it against
             # app.log to tell an ignored key from one that never went out.
@@ -636,7 +638,7 @@ class AppBoot:
         if self.driver is None:
             return
         try:
-            app_log = self.driver.log_path.read_text(errors="replace")
+            app_log = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
         problems = log_problems(app_log)
@@ -669,7 +671,7 @@ class AppBoot:
         from barks_gui.persisted import reads_persisted_problems  # noqa: PLC0415
 
         try:
-            app_log = self.driver.log_path.read_text(errors="replace")
+            app_log = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
         problems = reads_persisted_problems(self.scratch, app_log)
@@ -688,8 +690,12 @@ class AppBoot:
             return None
         input_log = self.driver.log_path.with_name("input.log")
         try:
-            app_text = self.driver.log_path.read_text(errors="replace")
-            input_text = input_log.read_text(errors="replace") if input_log.is_file() else ""
+            app_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
+            input_text = (
+                input_log.read_text(encoding="utf-8", errors="replace")
+                if input_log.is_file()
+                else ""
+            )
         except OSError:
             return None
         stray = stray_key_presses(app_text, input_text)

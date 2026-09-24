@@ -41,7 +41,7 @@ def fields_of(d: gd.Driver, template: str, field: str, **fields: object) -> list
 
     """
     regex = re.compile(capture(template, field, **fields))
-    text = messages(d.log_path.read_text(errors="replace"))
+    text = messages(d.log_path.read_text(encoding="utf-8", errors="replace"))
     return [found[field] for found in regex.finditer(text)]
 
 

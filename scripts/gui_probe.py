@@ -283,7 +283,7 @@ class Probe:
     @staticmethod
     def _pid() -> int | None:
         try:
-            return int(_pid_file().read_text().strip())
+            return int(_pid_file().read_text(encoding="utf-8").strip())
         except (OSError, ValueError):
             return None
 
@@ -322,8 +322,8 @@ class Probe:
             msg = f"a {WINDOW_NAME} window is already open - close it first, or keys would go to it"
             raise ProbeError(msg)
         run_dir().mkdir(parents=True, exist_ok=True)
-        app_log().write_text("")
-        input_log().write_text("")
+        app_log().write_text("", encoding="utf-8")
+        input_log().write_text("", encoding="utf-8")
         # The app rewrites its config as it runs; keep the user's copy intact. A
         # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1.
         if not os.environ.get("BARKS_PROBE_NO_RESTORE"):
@@ -370,7 +370,7 @@ class Probe:
                 env=env,
                 creationflags=self._backend.creation_flags,
             )
-        _pid_file().write_text(str(process.pid))
+        _pid_file().write_text(str(process.pid), encoding="utf-8")
 
     def _await_window(self) -> int:
         """Return the app's window once it shows, or abort the start."""
@@ -488,7 +488,9 @@ def dir_setting_checks(ini: Path) -> list[tuple[str, str]]:
 
     A directory whose switch is off is never read, so it is reported, not warned about.
     """
-    settings = dict(re.findall(r"^([a-z_]+)\s*=\s*(.*?)\s*$", ini.read_text(), re.MULTILINE))
+    settings = dict(
+        re.findall(r"^([a-z_]+)\s*=\s*(.*?)\s*$", ini.read_text(encoding="utf-8"), re.MULTILINE)
+    )
     checks: list[tuple[str, str]] = []
     for key, value in settings.items():
         if not key.endswith("_dir"):

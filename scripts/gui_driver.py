@@ -296,7 +296,7 @@ class Driver:
         Title nodes log their enum name (``FROZEN_GOLD``), category nodes their
         text (``Themes``). Empty if the app has not logged a selection yet.
         """
-        matches = self._NODE_RE.findall(self._log.read_text(errors="replace"))
+        matches = self._NODE_RE.findall(self._log.read_text(encoding="utf-8", errors="replace"))
         return matches[-1] if matches else ""
 
     def current_page(self) -> int:
@@ -306,18 +306,18 @@ class Driver:
         cued in their config, so the caller cannot know where the reader is
         without assuming that cue.
         """
-        matches = self._PAGE_RE.findall(self._log.read_text(errors="replace"))
+        matches = self._PAGE_RE.findall(self._log.read_text(encoding="utf-8", errors="replace"))
         return int(matches[-1]) if matches else 0
 
     def match_count(self, pattern: str) -> int:
         """Return how many log lines have matched `pattern` so far."""
-        return len(re.findall(pattern, self._log.read_text(errors="replace")))
+        return len(re.findall(pattern, self._log.read_text(encoding="utf-8", errors="replace")))
 
     def last_line(self, pattern: str) -> str:
         """Return the most recent log line matching `pattern`, or "" if none has."""
         lines = [
             ln
-            for ln in self._log.read_text(errors="replace").splitlines()
+            for ln in self._log.read_text(encoding="utf-8", errors="replace").splitlines()
             if re.search(pattern, ln)
         ]
         return lines[-1] if lines else ""
@@ -450,7 +450,7 @@ class Driver:
             time.sleep(0.25)
 
     def _latest_fade_finished(self) -> bool:
-        text = self._log.read_text(errors="replace")
+        text = self._log.read_text(encoding="utf-8", errors="replace")
         return text.rfind(self.FADE_FINISHED) > text.rfind(self.FADE_STARTED)
 
     def expect_no_new(self, pattern: str, window: float = 2.0) -> None:
@@ -753,14 +753,14 @@ def boot_app_at(
     if config is None:
         msg = "boot_app_at needs config= or config_dir="
         raise ValueError(msg)
-    settings = json.loads((template or config).read_text())
+    settings = json.loads((template or config).read_text(encoding="utf-8"))
     settings.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
     for title, cue in (cues or {}).items():
         if cue is None:
             settings.pop(title, None)
         else:
             settings[title] = {"last_read_page": dict(cue)}
-    config.write_text(json.dumps(settings, indent=2))
+    config.write_text(json.dumps(settings, indent=2), encoding="utf-8")
     if seed is None:
         os.environ.pop(RANDOM_SEED_ENV_VAR, None)
     else:

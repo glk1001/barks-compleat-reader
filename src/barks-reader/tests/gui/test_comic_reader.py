@@ -169,7 +169,7 @@ def test_closing_a_story_saves_the_page_it_was_on(boot: AppBoot) -> None:
     page = d.current_page()
     d.close_reader()
     d.settle()
-    settings = json.loads((boot.scratch / "barks-reader.json").read_text())
+    settings = json.loads((boot.scratch / "barks-reader.json").read_text(encoding="utf-8"))
     cue = settings[nodes.GHOST_OF_THE_GROTTO_TITLE]["last_read_page"]
     assert cue["page_index"] == page
 
@@ -178,7 +178,7 @@ def test_opening_a_story_records_a_history_event(boot: AppBoot) -> None:
     """The reading history gets one event per open, written as soon as it opens."""
     d = _open_ghost_of_the_grotto(boot)
     d.close_reader()
-    history = json.loads((boot.scratch / "barks-reader-history.json").read_text())
+    history = json.loads((boot.scratch / "barks-reader-history.json").read_text(encoding="utf-8"))
     events = history["events"]
     assert len(events) == CANNED_EVENTS + 1
     assert events[-1]["title"] == nodes.GHOST_OF_THE_GROTTO_TITLE
