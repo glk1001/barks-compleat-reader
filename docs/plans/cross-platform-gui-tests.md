@@ -25,11 +25,20 @@
 >   teardown check. The first run found one X11 assumption in the harness: the window's
 >   first resize event is not its boot size on Windows (no resize at boot there), so the
 >   size check now measures against the app's boot geometry line.
->   **Windows finding, open:** leaving fullscreen, the window's drawable area briefly
->   measures 794x1258 before settling at 778x1219. The difference, 16x39, is the window
->   frame: the restore momentarily gives the client area the saved outer size, and the
->   app's aspect correction puts it right. Worth a look in `platform_window_win32.py`
->   (`save_state` keeps `GetWindowRect`, the outer rectangle).
+>   **Windows finding, fixed 2026-09-24 (1ec76c4c):** leaving fullscreen, the window's
+>   drawable area briefly measured 794x1258 before settling at 778x1219. The difference,
+>   16x39, is the window frame, but not from `save_state`: with the custom titlebar,
+>   Kivy keeps the window's framed style and answers `WM_NCCALCSIZE` with 0, so the
+>   client area is the whole window (outer and client both 977x1520 on the laptop).
+>   SDL's own fullscreen exit sizes the window as its client size plus the frame the
+>   style declares, and that padding lands in the client area: 993x1559 at (784,-21),
+>   above the screen, until the scheduled restore 0.25s later (the "Could not find
+>   monitor for pos" lines are this). The recovery path never ran. The fix moves the
+>   window back as the exit happens (`move_now`); the first `MoveWindow` straight after
+>   the exit returns success and is lost, the next frame's holds, so it retries each
+>   frame. The padded window now shows ~70ms instead of ~255ms; the scheduled restore
+>   stays as the final word. Removing those frames entirely would mean changing SDL's
+>   exit or Kivy's titlebar.
 > - Step 3, milestone B: DONE 2026-09-23. The whole suite on the Windows VM is green: 61
 >   passed and 1 skipped (the prebuilt-archives test; no prebuilt comics there) of the 62
 >   tests, in 13m56s, with 7100c3fd (the wiki chip test no longer needs a prebuilt comics
@@ -80,9 +89,7 @@
 >
 > **What is left:**
 > 1. macOS window and input coverage needs a real Mac; CI's runners cannot draw.
-> 2. The open Windows finding above: leaving fullscreen, the client area briefly takes the
->    outer size (a 16x39 frame step) before settling.
-> 3. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
+> 2. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
 >    -k test_one_pagers_ignore_double_page`.
 
 ## Context
