@@ -239,6 +239,33 @@
 >   the reader's own builder, with the panel-segments JSON checks moved there from Phase 9)
 >   and Phase 11 (the wiki joins), and title search became a unit test. The GUI tests go on
 >   asserting one sample title each, through `expected.py`.
+> - 2026-09-23: the suite on Windows, first on the VirtualBox VM (details and setup in
+>   `docs/plans/cross-platform-gui-tests.md`, step 3). `scripts/gui_probe.py` is the
+>   Windows probe, with `gui-probe.sh`'s commands and output over a Win32 backend
+>   (`SendInput`, the window found by title, brought to the front before every key,
+>   DPI-aware); `scripts/run_gui_tests.py` is the runner; the driver picks the probe per
+>   platform and no test changed. One worker, in a visible window. With 7100c3fd (the wiki
+>   chip test no longer needs a prebuilt comics directory): 61 passed and 1 skipped
+>   (prebuilt archives) of 62, in 13m56s. What the first runs found, in order:
+>   - **App bug:** reaching History or Reading crashed the reader on Windows with the JPG
+>     panels zip. The node's picture was named `Path(title) / "129-3.jpg"`, a backslash
+>     inside a zip member name. Seven tests (4c173998).
+>   - **App log:** leaving fullscreen, the window passes for a moment through a padded size
+>     at a position above the screen, and the monitor lookup logged that as an ERROR,
+>     though every caller copes. Now a warning (2d2ae4fb); the laptop later found where the
+>     padding comes from.
+>   - **Harness and probe, X11 and Linux assumptions:** no resize event at boot on Windows,
+>     so the size check measures against the app's boot geometry line (7bc2f439); loguru
+>     colours a log file when TERM is set, as Git Bash sets it (ccc3d4f3); the console's
+>     cp1252 cannot print the log's box drawing (6c4fade8); pytest's output sat buffered in
+>     the runner's pipe (5bd73fe2); taking the foreground by tapping Alt sent a key to
+>     another window (8a3f606c).
+>   - **The VM, not the reader:** VirtualBox's OpenGL pass-through stops creating the
+>     reader's drawing buffers after a boot or two, so the VM runs with `--angle` (Direct3D,
+>     3d0177e8, guarded by deebe061). With 3D acceleration on, Direct3D still went through
+>     VirtualBox's 3D layer and the display went black, so it is off (WARP, the software
+>     renderer). With discard on, the dynamic .vdi stalled on TRIM until the guest froze,
+>     so discard is off on its disk.
 > - 2026-09-24: the suite on the Windows laptop, through the reader's normal OpenGL
 >   drawing (the VM runs it through ANGLE; setup, the VM's findings and the details are in
 >   `docs/plans/cross-platform-gui-tests.md`). `uv run python scripts/run_gui_tests.py`:
