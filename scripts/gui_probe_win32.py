@@ -220,6 +220,13 @@ def _send(*items: _INPUT) -> None:
         raise RuntimeError(msg)
 
 
+def _is_sdl_window(hwnd: int) -> bool:
+    """Return whether `hwnd` is an SDL window (Kivy's; class "SDL_app")."""
+    class_name = ctypes.create_unicode_buffer(256)
+    _user32.GetClassNameW(hwnd, class_name, 256)
+    return class_name.value.startswith("SDL")
+
+
 def find_window_of_processes(pids: set[int]) -> int | None:
     """Return a visible top-level window owned by one of `pids`, SDL's own first.
 
@@ -238,9 +245,7 @@ def find_window_of_processes(pids: set[int]) -> int | None:
         _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
         if owner.value not in pids:
             return True
-        class_name = ctypes.create_unicode_buffer(256)
-        _user32.GetClassNameW(hwnd, class_name, 256)
-        (sdl if class_name.value.startswith("SDL") else other).append(hwnd)
+        (sdl if _is_sdl_window(hwnd) else other).append(hwnd)
         return True
 
     _user32.EnumWindows(_ENUM_WINDOWS_PROC(visit), 0)
@@ -262,7 +267,9 @@ class Win32Backend:
         found: list[int] = []
 
         def visit(hwnd: int, _lparam: int) -> bool:
-            if not _user32.IsWindowVisible(hwnd):
+            # SDL's windows only: a browser tab or an editor showing the app's name
+            # has it in its title too, and would take the keys meant for the app.
+            if not _user32.IsWindowVisible(hwnd) or not _is_sdl_window(hwnd):
                 return True
             length = _user32.GetWindowTextLengthW(hwnd)
             if length == 0:

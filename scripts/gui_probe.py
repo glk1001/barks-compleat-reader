@@ -75,7 +75,7 @@ class Backend(Protocol):
     creation_flags: int
 
     def find_window(self, title: str) -> int | None:
-        """Return the handle of a visible top-level window whose title contains `title`."""
+        """Return the handle of the app's visible top-level window whose title contains `title`."""
         ...
 
     def client_geometry(self, window: int) -> tuple[int, int, int, int]:

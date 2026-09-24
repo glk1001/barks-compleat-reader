@@ -250,6 +250,28 @@ class TestWin32Keys:
             (3, 7, False),
         ]
 
+    def test_a_browser_tab_named_for_the_app_is_not_its_window(self) -> None:
+        """Only SDL's window counts: a titled browser tab would take the app's keys."""
+        windows = {  # hwnd: (class, title)
+            1: ("MozillaWindowClass", "The Compleat Barks Disney Reader — Mozilla Firefox"),
+            2: ("SDL_app", "The Compleat Barks Disney Reader"),
+        }
+        user32 = MagicMock()
+        user32.IsWindowVisible.return_value = True
+        user32.EnumWindows.side_effect = lambda visit, _lparam: all(visit(h, 0) for h in windows)
+        user32.GetClassNameW.side_effect = lambda h, buf, _n: setattr(buf, "value", windows[h][0])
+        user32.GetWindowTextLengthW.side_effect = lambda h: len(windows[h][1])
+        user32.GetWindowTextW.side_effect = lambda h, buf, _n: setattr(buf, "value", windows[h][1])
+        with (
+            patch.object(gui_probe_win32, "_user32", user32),
+            patch.object(gui_probe_win32, "_ENUM_WINDOWS_PROC", lambda f: f),
+            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
+        ):
+            backend = gui_probe_win32.Win32Backend()
+            assert backend.find_window("Compleat Barks Disney Reader") == 2
+            del windows[2]
+            assert backend.find_window("Compleat Barks Disney Reader") is None
+
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows' own structure sizes")
     def test_input_is_the_size_send_input_expects(self) -> None:
         # SendInput refuses every event when cbSize is not sizeof(INPUT): 40 on 64-bit, 28 on 32.
