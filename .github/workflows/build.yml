@@ -110,8 +110,14 @@ jobs:
               return data
           STUB
 
-      - name: Cache Nuitka build cache
-        uses: actions/cache@v4
+      # Restored here, saved straight after the build (below): a save left to the
+      # end of the job, as actions/cache does, is skipped whenever a later smoke
+      # test fails - and after a runner image update (a new compiler, so no cached
+      # object matches) every failing run then recompiled everything again, ~33 min
+      # on Windows, since none saved the fresh cache.
+      - name: Restore Nuitka build cache
+        id: nuitka-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cache/Nuitka
@@ -132,6 +138,17 @@ jobs:
       - name: Build executable
         shell: bash
         run: bash scripts/build.sh
+
+      # As soon as the build has succeeded, whatever the smoke tests below make of
+      # it: the compiled objects are good either way.
+      - name: Save Nuitka build cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/Library/Caches/Nuitka
+            ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: ${{ steps.nuitka-cache.outputs.cache-primary-key }}
 
       # Launch what was built: with no data pack beside it the build takes its
       # first-run path as far as the installer's "data pack missing" popup, which
