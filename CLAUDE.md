@@ -24,7 +24,10 @@ hook types. Without it, `pre-commit install` writes only `.git/hooks/pre-commit`
 (full-suite pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green
 commit and a red CI. `git lfs install` also claims the `pre-push` slot, so re-run this after it;
 pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To verify,
-`.git/hooks/pre-push` should name `--hook-type=pre-push`, not `git lfs pre-push`.
+`.git/hooks/pre-push` should name `--hook-type=pre-push`, not `git lfs pre-push`. On Windows, change
+`pre-push.legacy`'s first line from `#!/bin/sh` to `#!/usr/bin/env sh`: pre-commit looks for an
+absolute shebang as a Windows path, fails every push with "Executable `/bin/sh` not found", and
+pushes nothing.
 
 **Run benchmarks** (excluded from the default test run; `--quiet` for just the tables):
 ```bash
