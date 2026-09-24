@@ -1,5 +1,9 @@
 [environment]
 python = "./.venv"
+# CI's platform, so a Windows run agrees with the gate: on win32, ctypes.WinDLL
+# and friends resolve and the Linux-needed `ty: ignore`s read as unused, while
+# signal.SIGHUP and os.getloadavg go missing.
+python-platform = "linux"
 # scripts/ holds standalone modules (gui_driver, record_demo) imported by their
 # tests via sys.path, so it is a first-party root too; likewise the GUI test
 # directory, whose conftest puts its barks_gui helper package on sys.path.

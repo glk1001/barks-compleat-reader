@@ -1,4 +1,5 @@
-# ruff: noqa: PLC0415, EXE002, E402
+#!/usr/bin/env python3
+# ruff: noqa: PLC0415, E402
 # -------------------------------------------------------------------- #
 # --- We need to change the KIVY_HOME directory to be under this   --- #
 # --- app's settings directory. The 'barks_reader.core.config_info'--- #
