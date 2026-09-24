@@ -15,6 +15,10 @@ bundle on macOS.
 ```bash
 uv run pre-commit install
 ```
+`pre-commit` comes from the `dev` dependency group (`uv sync`); the cspell hooks also need
+[bun](https://bun.sh) on the PATH (on Windows, `winget install Oven-sh.Bun`, whose package lacks
+`bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. A `bunx.exe` link does
+not do: pre-commit runs it as `bunx.EXE`, and bun matches its own name case-sensitively).
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
 hook types. Without it, `pre-commit install` writes only `.git/hooks/pre-commit` and the pre-push
 (full-suite pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green

@@ -107,6 +107,7 @@ dev = [
     "diff-cover>=10.4.1",
     "hypothesis>=6.161.2",
     "pytest-xdist>=3.6",
+    "pre-commit>=4.6.2",
 ]
 
 [tool.pytest.ini_options]

@@ -245,6 +245,7 @@ vmem
 Wacapew
 wikilinks
 windowmanager
+winget
 wmclass
 wmctrl
 wordclouds
