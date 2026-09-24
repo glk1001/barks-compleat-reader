@@ -52,6 +52,8 @@ SETTLE_QUIET_MS = int(os.environ.get("BARKS_GUI_SETTLE_MS", "500"))
 PROBE_KEY_GAP_ENV_VAR = "BARKS_PROBE_KEY_GAP"
 # Set by the runner so every parallel worker writes into one artifacts directory.
 RUN_STAMP_ENV_VAR = "BARKS_GUI_RUN_STAMP"
+# "1" (the runners' --keep-logs) saves a passing test's artifacts too, as a failure's.
+KEEP_LOGS_ENV_VAR = "BARKS_GUI_KEEP_LOGS"
 
 INI_SECTION = "Barks Reader"
 # What the scratch profile pins, whatever the live ini says. Everything else -
@@ -588,8 +590,25 @@ class AppBoot:
         )
         raise AssertionError(msg)
 
+    def keep_artifacts_if_asked(self) -> list[Path]:
+        """Save a passing test's artifacts, as a failure's, when BARKS_GUI_KEEP_LOGS=1.
+
+        For reading what a run did when nothing failed (a transition's log lines, a
+        machine's timings): the scratch profile and the app log go with the test's
+        teardown otherwise.
+
+        Returns:
+            The files written, or nothing when the setting is off.
+
+        """
+        if os.environ.get(KEEP_LOGS_ENV_VAR) != "1":
+            return []
+        return self.save_failure_artifacts()
+
     def save_failure_artifacts(self) -> list[Path]:
         """Save a screenshot, the logs and the scratch profile for a failed test.
+
+        Also for a passing one under BARKS_GUI_KEEP_LOGS=1 (``keep_artifacts_if_asked``).
 
         Returns:
             The files written, for the report.

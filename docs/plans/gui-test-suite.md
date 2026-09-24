@@ -292,9 +292,11 @@
 >     the real keyboard, and a message typed into a terminal during a run reached it. The
 >     teardown's STRAY INPUT check caught the two keys (`'` and `s`) and named them, as it
 >     should: do not type while a run is going.
->   There is still no switch to keep a passing test's logs. To read a fullscreen exit's
->   log lines, the investigation made the two fullscreen tests fail at their end in the
->   working tree only.
+>   To read a fullscreen exit's log lines, the investigation had to make the two
+>   fullscreen tests fail at their end in the working tree, as nothing kept a passing
+>   test's logs. Now `--keep-logs` on either runner (`BARKS_GUI_KEEP_LOGS=1`) saves every
+>   passing test's artifacts as a failure's, once its teardown checks pass
+>   (`AppBoot.keep_artifacts_if_asked`); about 1 MB a test, most of it the final frame.
 
 ## Context
 

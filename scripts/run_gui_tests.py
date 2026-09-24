@@ -14,6 +14,7 @@ Usage (from the repo root, in PowerShell or cmd):
   uv run python scripts/run_gui_tests.py --app PATH.exe   # against a built executable
   uv run python scripts/run_gui_tests.py --ini key=value  # a Barks Reader setting (repeatable)
   uv run python scripts/run_gui_tests.py --calibrate      # record this machine's timing budgets
+  uv run python scripts/run_gui_tests.py --keep-logs      # save passing tests' artifacts too
   uv run python scripts/run_gui_tests.py --angle          # draw through Direct3D (for a VM)
 
 --angle is for a VirtualBox VM: its OpenGL pass-through stops creating the
@@ -53,6 +54,9 @@ def _parse(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--quiet", action="store_true", help="print failures and the summary")
     parser.add_argument("--soak", action="store_true", help="run only the random walk")
     parser.add_argument("--calibrate", action="store_true", help="record the timing budgets")
+    parser.add_argument(
+        "--keep-logs", action="store_true", help="save passing tests' artifacts too, as failures'"
+    )
     parser.add_argument("--app", type=Path, help="a built executable to run instead")
     parser.add_argument(
         "--angle", action="store_true", help="draw through Direct3D (ANGLE), as a VM needs"
@@ -87,6 +91,9 @@ def _run_env(options: argparse.Namespace, stamp: str, timings: Path) -> dict[str
     if options.app is not None:
         env["BARKS_PROBE_APP"] = str(options.app.resolve())
         print(f"run_gui_tests: running the built executable {options.app}")  # noqa: T201
+    if options.keep_logs:
+        env["BARKS_GUI_KEEP_LOGS"] = "1"
+        print("run_gui_tests: keeping every test's artifacts, passing ones too")  # noqa: T201
     if options.calibrate:
         env["BARKS_GUI_NO_BUDGETS"] = "1"
         env["BARKS_GUI_TIMINGS"] = str(timings)

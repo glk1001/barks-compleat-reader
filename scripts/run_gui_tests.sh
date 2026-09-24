@@ -47,6 +47,11 @@
 # this machine is read once whatever the run's default. run_gui_matrix.sh runs
 # this once per settings variant.
 #
+# --keep-logs (BARKS_GUI_KEEP_LOGS=1) saves every passing test's artifacts too -
+# its app and input logs, scratch ini and json, and final frame - beside a
+# failure's in build/gui-tests/<run>/, for reading what a run did when nothing
+# failed (a transition's log lines, this machine's timings). Off by default.
+#
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the
 # reader's data directories, and drives it in real time (the first three tests
@@ -80,6 +85,10 @@ while [[ "${1:-}" == --* ]]; do
         ;;
     --quiet)
         quiet=1
+        shift
+        ;;
+    --keep-logs)
+        export BARKS_GUI_KEEP_LOGS=1
         shift
         ;;
     --workers)

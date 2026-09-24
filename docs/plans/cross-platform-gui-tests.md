@@ -92,7 +92,7 @@
 > 2. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
 >    -k test_one_pagers_ignore_double_page`.
 > 3. On the move to Kivy 3.0 (SDL3, expected January 2027), recheck the fullscreen frame
->    step on Windows rather than chase its last ~70ms now: run `-k fullscreen` and look at
+>    step on Windows rather than chase its last ~70ms now: run `--keep-logs -k fullscreen` and look at
 >    the first "Main window resize event" after "Exiting fullscreen mode". At the saved
 >    size (977x1520 on the laptop), SDL no longer pads the window: delete `move_now`
 >    (the Win32 backend's, the Kivy backend's no-op and its call in

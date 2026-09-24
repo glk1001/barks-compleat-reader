@@ -905,3 +905,29 @@ class TestTimings:
             {"test": "test_a", "slowest": {"page shown": 0.2}},
             {"test": "test_b", "slowest": {}},
         ]
+
+
+class TestKeepArtifactsIfAsked:
+    """--keep-logs saves a passing test's artifacts as a failure's; off, nothing is saved."""
+
+    @pytest.fixture
+    def app_boot(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> harness.AppBoot:
+        app_boot = harness.AppBoot(scratch=tmp_path, nodeid="test_x.py::test_y")
+        monkeypatch.setattr(app_boot, "save_failure_artifacts", lambda: [tmp_path / "test_y.log"])
+        return app_boot
+
+    def test_on_it_saves_them(
+        self, app_boot: harness.AppBoot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(harness.KEEP_LOGS_ENV_VAR, "1")
+        assert app_boot.keep_artifacts_if_asked() == [tmp_path / "test_y.log"]
+
+    @pytest.mark.parametrize("value", [None, "", "0"])
+    def test_off_it_saves_nothing(
+        self, app_boot: harness.AppBoot, monkeypatch: pytest.MonkeyPatch, value: str | None
+    ) -> None:
+        if value is None:
+            monkeypatch.delenv(harness.KEEP_LOGS_ENV_VAR, raising=False)
+        else:
+            monkeypatch.setenv(harness.KEEP_LOGS_ENV_VAR, value)
+        assert app_boot.keep_artifacts_if_asked() == []
