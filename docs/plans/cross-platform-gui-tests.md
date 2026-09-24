@@ -223,6 +223,14 @@ first runs showed about CI's runners, which changes the step's reach:
 Every smoke launch now also says what it reached: the app's popup, Kivy's OpenGL error
 box, or no window.
 
+**Step 4: DONE 2026-09-24** (c8aa0234 all green). On every build: Linux and Windows (through
+ANGLE) reach the app's popup, take a real Escape and exit by themselves; macOS reports that no
+window can open on its runners. Two fixes on the way: the Windows key sender now finds the
+installer's window by process and SDL class, since Kivy leaves it untitled (63b8b412); and
+the Nuitka cache is saved straight after the build rather than at the end of the job
+(c8aa0234), so a failing smoke test no longer discards it - after GitHub's Windows image
+update every cached object missed, and each failing run had been recompiling for 33-43 min.
+
 ## Later, not in this plan: touch
 
 Three of the machines are touchscreens, and every GUI test presses keys, so the touch
