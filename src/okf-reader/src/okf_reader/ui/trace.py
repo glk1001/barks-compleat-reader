@@ -23,7 +23,7 @@ PREFIX = log_markers.PREFIX
 
 def _rel(bundle: Path, path: Path) -> str:
     try:
-        return str(path.relative_to(bundle))
+        return path.relative_to(bundle).as_posix()  # the same line on Windows
     except ValueError:
         return path.name
 

@@ -862,7 +862,10 @@ class TestGetSrcePageToDestPageMap:
         target = tmp_path / "other-volume-page.png"  # type: ignore[operator]
         target.write_text("art")
         symlinked = tmp_path / "500.png"  # type: ignore[operator]
-        symlinked.symlink_to(target)
+        try:
+            symlinked.symlink_to(target)
+        except OSError as e:  # Windows, without Developer Mode or admin rights
+            pytest.skip(f"cannot create a symlink here: {e}")
         real = tmp_path / "001.png"  # type: ignore[operator]
         real.write_text("art")
 
