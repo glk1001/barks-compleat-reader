@@ -239,6 +239,35 @@
 >   the reader's own builder, with the panel-segments JSON checks moved there from Phase 9)
 >   and Phase 11 (the wiki joins), and title search became a unit test. The GUI tests go on
 >   asserting one sample title each, through `expected.py`.
+> - 2026-09-24: the suite on the Windows laptop, through the reader's normal OpenGL
+>   drawing (the VM runs it through ANGLE; setup, the VM's findings and the details are in
+>   `docs/plans/cross-platform-gui-tests.md`). `uv run python scripts/run_gui_tests.py`:
+>   60 passed and 1 skipped (prebuilt archives) in 12m55s, calibrated. One test was
+>   deselected: `test_one_pagers_ignore_double_page` needs a panel-segments file the
+>   laptop's data pack predates, and the reader stops at its error popup without it. No
+>   app bug came from real OpenGL. What the runs found:
+>   - **Harness:** a failed test crashed pytest itself while saving its artifacts,
+>     writing the log tail in Windows' cp1252, which cannot hold the log's box drawing,
+>     and so hid the test's own failure. The app-log reads had the same default and turned
+>     non-ASCII text to garbage silently. Every text read and write in the harness, probe and
+>     driver now names UTF-8 (6c05532c).
+>   - **Probe:** it found the app's window by title alone, so a Firefox tab titled "The
+>     Compleat Barks Disney Reader" counted as the app: `doctor` refused to run for a
+>     window that was not open, and a run could have sent keys to the browser. Only SDL
+>     windows count now (0365752a).
+>   - **App, a Windows-only marker:** the wiki viewer's page-shown line named the page with
+>     backslashes; a marker is the same line on every OS now (abe1aa4d).
+>   - **App, the fullscreen frame step** the VM first showed (16x39, drawn above the
+>     screen for ~255ms after leaving fullscreen) came from SDL's fullscreen exit adding
+>     the window frame that Kivy's custom titlebar hides; now ~70ms (1ec76c4c), to be
+>     rechecked on Kivy 3.0.
+>   - **Stray input:** with no nested display, a visible Windows run has the app take
+>     the real keyboard, and a message typed into a terminal during a run reached it. The
+>     teardown's STRAY INPUT check caught the two keys (`'` and `s`) and named them, as it
+>     should: do not type while a run is going.
+>   There is still no switch to keep a passing test's logs. To read a fullscreen exit's
+>   log lines, the investigation made the two fullscreen tests fail at their end in the
+>   working tree only.
 
 ## Context
 
