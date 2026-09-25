@@ -337,6 +337,22 @@
 >     now picks a title's entry by the index's own text (`core.index_text`).
 >   After the fixes: the whole suite passes on both screens (73; 72 and that skip at
 >   1080p), and the soak's 12 walks from seeds 1 to 3 all pass.
+> - 2026-09-25 to 26: three more overnight runs, each finding one race, the last all green.
+>   - **Second run:** eight of nine stages; the soak's history walk (seed 2) quit the
+>     app. It had pressed Return on the bar's Quit, but a bar button fires its action a
+>     moment after the key is logged, so the walk saw no confirm popup yet, chose its
+>     next key at random, and Return confirmed the quit. The walk now waits up to 3s for
+>     a confirm popup after a Return on the two buttons that open one (Quit, Clear
+>     History) before choosing on (c7cb7dc9).
+>   - **Third run:** eight of nine; one tap test in the matrix's no-title-info variant.
+>     Its tap-targets request came as the app switched from the main screen to the
+>     reader, when neither shows anything tappable, and an empty list held still for
+>     two polls. The listing now holds an answer while any screen manager's transition
+>     is active, as it does for the tree's scroll pinner (c7d1a50d).
+>   - **Fourth run, 2026-09-26:** all nine stages green in 1h06m (suite 4m23s, the two
+>     panel sources 4m38s and 4m44s, the two comic sources 5m01s and 4m46s, the
+>     settings matrix 28m52s, the 1080p screen 4m35s, touch 2m21s, and the soak's
+>     three seeds of 500 keys 6m43s), and nothing left running after it.
 
 ## Context
 
