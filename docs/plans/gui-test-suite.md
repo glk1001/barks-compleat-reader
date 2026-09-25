@@ -304,12 +304,21 @@
 >   profile's `wiki_bundle_dir` is `${HOME}/...`, which the app expands (`expand_vars`) but
 >   the tests only passed through `expanduser`, so they saw no bundle and skipped. Both now
 >   expand it as the app does: the whole suite, 62 passed and 0 skipped in 4m03s.
-
 > - 2026-09-25: taps. `test_taps.py` drives the reader by pointer presses, as a
 >   touchscreen laptop's user does, through the app's own list of what is tappable
 >   where (`barks_gui.taps`, `barks_reader.core.tap_targets`), never by pixel. 11
 >   tests, green by click; the whole suite is 73. `--touch` adds a real touch on a
 >   virtual touchscreen on Linux. Plan, design and status: `docs/plans/touch-gui-tests.md`.
+> - 2026-09-25, known limit, not fixed: the persisted-reads check can judge a save by the
+>   wrong read. `barks_gui.persisted` decides whether each saved page was inside the
+>   story's body, which sets the page the history records, from the title's last-read cue
+>   in the profile. That cue holds only the title's last read, so every save of the title
+>   is judged by it. A test that reads the same title twice, ending once inside the body
+>   and once outside it, can then fail when the app is right, or pass when it is wrong.
+>   The random walk (`--soak`) is the likeliest to, as it can reopen a story it closed.
+>   A fix needs each save's page type, which `LAST_READ_PAGE_SAVED` does not carry: add
+>   it to the marker (an app change), then judge each save by its own. Found by the cloud
+>   code review of the suite.
 
 ## Context
 
