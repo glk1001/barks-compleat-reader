@@ -112,12 +112,12 @@ just reader
 
 ## Testing
 
-- **Unit tests** (about 3,500, mocked Kivy, run in CI on Linux, macOS and Windows):
+- **Unit tests** (about 3,700, mocked Kivy, run in CI on Linux, macOS and Windows):
     ```
     uv run pytest
     ```
-- **GUI path tests** (62, Linux only): boot the real app from a scratch profile on a nested
-  X display and drive it with the keyboard, waiting only on lines the app logs. They need the
+- **GUI path tests** (73, Linux only): boot the real app from a scratch profile on a nested
+  X display and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the
   size it booted at, the log holds no error or stray key, what a read persisted matches what
@@ -145,6 +145,8 @@ just reader
   | `--app PATH` | Run the suite against a built executable instead of the workspace |
   | `--soak` | Run only the random walk (200 keys from four screens; `BARKS_GUI_WALK_STEPS`, `BARKS_GUI_WALK_SEED`) |
   | `--calibrate` | Record the durations and write this machine's timing budgets |
+  | `--touch` | Tap by real touch as well as by click, on a virtual touchscreen (one worker; needs the udev rule below) |
+  | `--keep-logs` | Keep every passing test's artifacts too, as a failure's |
   | `--quiet` | Print only failures and the summary |
 
   A failure leaves a screenshot, the app log, the keys sent and the scratch profile under
@@ -153,6 +155,33 @@ just reader
   The tests may press only the remote's six keys (Escape, Enter and the arrows); a check
   in the lint gates, `scripts/check_gui_keys.py`, reads them and fails on any other key
   unless the call carries `# desktop key: <why>`.
+- **Tap tests** (11, in `test_taps.py`, part of the GUI suite): drive the reader as a
+  touchscreen laptop's user does. They tap the page margins, the fullscreen top margin,
+  tree nodes, menu buttons and popups, the main and speech-bubble index items, and the
+  search box. A test never taps a pixel it worked out itself. It asks the app where its
+  tappable widgets are and taps the one it names, so a layout or theme change moves the
+  tap with the widget. By default a tap is a click, which is what a touch reaches the app
+  as on Linux, so the tap tests run headless and in parallel with the rest.
+
+  `--touch` makes each tap a real touch too, on a virtual touchscreen created before each
+  boot (`scripts/gui_touch.py`). With it, the tap tests turn the virtual keyboard setting
+  on, so the app reads the touchscreen itself: the search box must then show the virtual
+  keyboard, and a margin tap must still turn exactly one page. Touch mode needs a udev
+  rule, installed once with sudo. It lets the `input` group create the device, and it
+  hides the device from the desktop so no tap lands on your real screen:
+    ```
+    sudo cp scripts/udev/70-barks-gui-touch.rules /etc/udev/rules.d/
+    sudo udevadm control --reload
+    sudo udevadm trigger --action=change --sysname-match=uinput
+    ```
+  You must be in the `input` group (`sudo usermod -aG input $USER`, then log in again).
+  `BARKS_PROBE_TOUCH=1 bash scripts/gui-probe.sh doctor` checks all three. Then:
+    ```
+    bash scripts/run_gui_tests.sh --headless --touch -k test_taps   # about three minutes
+    ```
+  Select the tap tests with `-k`: a test file given as a path is added to the suite, so
+  it runs the whole suite on one worker. Touch mode is Linux only for now; on Windows a
+  tap is a click. The design is in `docs/plans/touch-gui-tests.md`.
 - **The settings matrix** runs the GUI suite once per setting the default run never sees
   (the other two colour themes, double-page mode, the virtual keyboard, the title-info
   switches off, the censorship fixes on), headless, every variant even after one fails,

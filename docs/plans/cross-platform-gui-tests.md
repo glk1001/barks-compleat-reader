@@ -277,10 +277,10 @@ update every cached object missed, and each failing run had been recompiling for
 ## Later, not in this plan: touch
 
 Three of the machines are touchscreens, and every GUI test presses keys, so the touch
-path has no coverage at all. `SendInput` has a touch-injection sibling
-(`InitializeTouchInjection` / `InjectTouchInput`) on Windows, and Kivy can record and
-replay motion events. Once step 3 exists, a `tap` subcommand with the same seam is the
-natural next step. It's out of scope here so the key port lands first.
+path had no coverage at all. Now its own plan, `docs/plans/touch-gui-tests.md`
+(2026-09-25): a `tap` subcommand on both probes, taps by click everywhere, and real
+touch on Linux. Windows touch (`InitializeTouchInjection` / `InjectTouchInput`) is
+what that plan has left.
 
 ## Verification
 

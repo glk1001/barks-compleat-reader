@@ -305,6 +305,12 @@
 >   the tests only passed through `expanduser`, so they saw no bundle and skipped. Both now
 >   expand it as the app does: the whole suite, 62 passed and 0 skipped in 4m03s.
 
+> - 2026-09-25: taps. `test_taps.py` drives the reader by pointer presses, as a
+>   touchscreen laptop's user does, through the app's own list of what is tappable
+>   where (`barks_gui.taps`, `barks_reader.core.tap_targets`), never by pixel. 11
+>   tests, green by click; the whole suite is 73. `--touch` adds a real touch on a
+>   virtual touchscreen on Linux. Plan, design and status: `docs/plans/touch-gui-tests.md`.
+
 ## Context
 
 The demo recorder's driver was lifted into `scripts/gui_driver.py` and a three-test GUI

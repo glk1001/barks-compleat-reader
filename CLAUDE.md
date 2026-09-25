@@ -153,6 +153,11 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   remote's six keys (Escape, Return, Up, Down, Left, Right): `scripts/check_gui_keys.py`
   (pre-commit, CI, full-lint) fails on any other, unless the call carries
   `# desktop key: <why>`.
+  `test_taps.py` taps instead, by what a widget shows, never by pixel: the app lists
+  its tappable widgets on request (`barks_gui.taps`, `barks_reader.core.tap_targets`).
+  A tap is a click; `--touch` makes it a real touch too, on a virtual touchscreen, and
+  needs the udev rule in `scripts/udev/` once (select with `-k test_taps`: one worker).
+  Plan: `docs/plans/touch-gui-tests.md`.
   Every duration the app logs is held to a loose budget at teardown
   (`tests/gui/barks_gui/timings.py`): this machine's, once `--calibrate` has written
   `.benchmarks/gui-timings.json`, else the committed ones; skipped when the load exceeds
