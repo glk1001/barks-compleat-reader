@@ -5,19 +5,22 @@
 from __future__ import annotations
 
 import struct
+import sys
 
 import gui_touch
 import pytest
 
 # struct uinput_user_dev: name[80], input_id (4 x u16), ff_effects_max, 4 x abs[64].
 USER_DEV_SIZE = 80 + 8 + 4 + 4 * 64 * 4
-INPUT_EVENT_SIZE = 24  # 64-bit: struct timeval (2 x long), u16 type, u16 code, s32 value
+INPUT_EVENT_SIZE = 24  # 64-bit Linux: struct timeval (2 x long), u16 type, u16 code, s32 value
 
 
 def _events(data: bytes) -> list[tuple[int, int, int]]:
+    # The module's own event layout: native longs, so this reads what it wrote on
+    # any platform, though only Linux's kernel ever sees it.
     events = []
-    for offset in range(0, len(data), INPUT_EVENT_SIZE):
-        _, _, kind, code, value = struct.unpack_from("llHHi", data, offset)
+    for offset in range(0, len(data), gui_touch._EVENT.size):  # noqa: SLF001
+        _, _, kind, code, value = gui_touch._EVENT.unpack_from(data, offset)  # noqa: SLF001
         events.append((kind, code, value))
     return events
 
@@ -39,6 +42,7 @@ def test_the_name_is_not_one_the_app_skips() -> None:
     assert not any(word in gui_touch.DEVICE_NAME.lower() for word in ("touchpad", "mouse", "pen"))
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="the kernel's event layout is Linux's")
 def test_an_event_is_the_kernels_size() -> None:
     assert len(gui_touch.event(gui_touch.EV_SYN, gui_touch.SYN_REPORT, 0)) == INPUT_EVENT_SIZE
 

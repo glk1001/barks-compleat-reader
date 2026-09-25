@@ -25,7 +25,6 @@ Usage:
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import os
 import socket
 import struct
@@ -132,6 +131,8 @@ def finger_up() -> bytes:
 
 def create_device(name: str = DEVICE_NAME) -> int:
     """Create the touchscreen and return the open ``/dev/uinput`` descriptor behind it."""
+    import fcntl  # noqa: PLC0415  (Unix only: the rest of this module is imported on Windows too)
+
     fd = os.open(UINPUT, os.O_WRONLY | os.O_NONBLOCK)
     fcntl.ioctl(fd, UI_SET_EVBIT, EV_KEY)
     fcntl.ioctl(fd, UI_SET_EVBIT, EV_ABS)
@@ -183,6 +184,8 @@ def serve(sock_path: Path) -> int:
                     os.write(fd, finger_up())
                 conn.sendall(b"ok\n")
     finally:
+        import fcntl  # noqa: PLC0415  (Unix only, as in create_device)
+
         with contextlib.suppress(OSError):
             fcntl.ioctl(fd, UI_DEV_DESTROY)
         os.close(fd)
