@@ -33,9 +33,12 @@
 #
 # A laptop left overnight goes to sleep, and a run on battery is throttled, which
 # the timing budgets can fail. So the run holds off sleep while it lasts (through
-# systemd-inhibit, when there is one) and warns when on battery. Each stage's
-# whole output goes to build/gui-tests/overnight-<stamp>/<stage>.log; a failing
-# test's artifacts land where run_gui_tests.sh always puts them.
+# systemd-inhibit, when there is one) and warns when on battery. Each stage says
+# its number and start time, then a line per test as it finishes; summary.txt
+# holds the results so far, rewritten after every stage. Each stage's output goes
+# to build/gui-tests/overnight-<stamp>/<stage>.log, pytest's whole verbose output
+# to that run's build/gui-tests/<run>/pytest.log, and a failing test's artifacts
+# land where run_gui_tests.sh always puts them.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,7 +52,6 @@ STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch s
 only=""
 skip=""
 app=""
-args=("$@")
 while [[ "${1:-}" == --* ]]; do
     case "$1" in
     --list)
@@ -83,11 +85,15 @@ for name in ${only//,/ } ${skip//,/ }; do
     fi
 done
 
-# Hold off sleep for the whole run: re-run this script under systemd-inhibit once.
-if [[ -z "${BARKS_OVERNIGHT_INHIBITED:-}" ]] && command -v systemd-inhibit >/dev/null; then
-    export BARKS_OVERNIGHT_INHIBITED=1
-    exec systemd-inhibit --what=sleep:idle --who="Barks Reader GUI tests" \
-        --why="The overnight GUI test run" bash "${BASH_SOURCE[0]}" "${args[@]}"
+# Hold off sleep for the whole run: a background systemd-inhibit holds the lock
+# until this script exits. (Not re-running the script under it: this script
+# stays the process you started, so a `kill` of it is what stops the run.)
+inhibitor=""
+if command -v systemd-inhibit >/dev/null; then
+    systemd-inhibit --what=sleep:idle --who="Barks Reader GUI tests" \
+        --why="The overnight GUI test run" sleep infinity >/dev/null 2>&1 &
+    inhibitor=$!
+    trap '[[ -n "$inhibitor" ]] && kill "$inhibitor" 2>/dev/null; true' EXIT
 fi
 
 wanted() {
@@ -113,7 +119,8 @@ fi
 stamp="$(date +%Y%m%d-%H%M%S)"
 log_dir="build/gui-tests/overnight-${stamp}"
 mkdir -p "$log_dir"
-gui=(bash "${SCRIPT_DIR}/run_gui_tests.sh" --headless --quiet)
+# --progress: a line per test as it finishes, so a long stage is not silent.
+gui=(bash "${SCRIPT_DIR}/run_gui_tests.sh" --headless --progress)
 
 # Run one stage's command, its output to the screen and its log. A stage that
 # returns 3 was skipped (it says why); anything else non-zero failed.
@@ -124,7 +131,7 @@ run_stage() {
     jpg-panels) "${gui[@]}" --png-images 0 ;;
     volumes) "${gui[@]}" --prebuilt 0 ;;
     prebuilt) "${gui[@]}" --prebuilt 1 ;;
-    matrix) bash "${SCRIPT_DIR}/run_gui_matrix.sh" ;;
+    matrix) bash "${SCRIPT_DIR}/run_gui_matrix.sh" --progress ;;
     screen-1080p) "${gui[@]}" --screen 1920x1080 ;;
     touch)
         if ! BARKS_PROBE_TOUCH=1 BARKS_PROBE_HEADLESS=1 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null 2>&1; then
@@ -147,38 +154,85 @@ run_stage() {
     esac
 }
 
+elapsed() {
+    printf '%dh%02dm' $(($1 / 3600)) $(($1 % 3600 / 60))
+}
+
+# The results so far, to the screen and to summary.txt - rewritten after every
+# stage, so a run stopped part way still leaves what it found.
+write_summary() {
+    {
+        echo "==== overnight GUI run, ${stamp}: $1 ===="
+        for i in "${!names[@]}"; do
+            printf '%-13s %-8s %3dm%02ds\n' "${names[$i]}" "${results[$i]}" \
+                "$((durations[i] / 60))" "$((durations[i] % 60))"
+        done
+        echo "logs: ${log_dir}/"
+    } >"${log_dir}/summary.txt"
+}
+
+selected=()
+for name in "${STAGES[@]}"; do
+    wanted "$name" && selected+=("$name")
+done
+echo "run_gui_overnight: ${#selected[@]} stages: ${selected[*]}"
+echo "run_gui_overnight: to stop it and everything it started: Ctrl-C, or kill $$"
+echo "run_gui_overnight: results so far in ${log_dir}/summary.txt"
+
+# A stage, its output to the screen and its log; the status is run_stage's
+# (pipefail: tee's own never masks it).
+log_stage() {
+    run_stage "$1" 2>&1 | tee "${log_dir}/$1.log"
+}
+
+# Stopping the run stops the stage running, whose runner cleans up what it
+# started (see _gui_run.sh); the stages after it are not started.
+GUI_RUNNER=run_gui_overnight
+# shellcheck source=scripts/_gui_run.sh
+source "${SCRIPT_DIR}/_gui_run.sh"
+gui_trap_signals
+
 names=()
 results=()
 durations=()
 failed=0
-for name in "${STAGES[@]}"; do
-    wanted "$name" || continue
+run_started=$SECONDS
+for n in "${!selected[@]}"; do
+    name="${selected[$n]}"
     echo
-    echo "==== ${name} ($(date +%H:%M)) ===="
+    echo "==== [$((n + 1))/${#selected[@]}] ${name}, started $(date +%H:%M)" \
+        "($(elapsed $((SECONDS - run_started))) into the run) ===="
     started=$SECONDS
-    set +e
-    run_stage "$name" 2>&1 | tee "${log_dir}/${name}.log"
-    status=${PIPESTATUS[0]}
-    set -e
-    case "$status" in
-    0) results+=("passed") ;;
-    3) results+=("skipped") ;;
-    *)
-        results+=("FAILED")
-        failed=1
-        ;;
-    esac
+    status=0
+    gui_run log_stage "$name" || status=$?
+    if [[ -n "$GUI_INTERRUPTED" ]]; then
+        results+=("stopped")
+    else
+        case "$status" in
+        0) results+=("passed") ;;
+        3) results+=("skipped") ;;
+        *)
+            results+=("FAILED")
+            failed=1
+            ;;
+        esac
+    fi
     names+=("$name")
     durations+=("$((SECONDS - started))")
+    echo "==== ${name}: ${results[-1]} in $((durations[-1] / 60))m$((durations[-1] % 60))s ===="
+    if [[ -n "$GUI_INTERRUPTED" ]]; then
+        write_summary "stopped during ${name}, $(elapsed $((SECONDS - run_started))) in"
+        # The stage's runner cleans up what it started on its way out; this
+        # catches anything a runner that died outright left behind.
+        bash "${SCRIPT_DIR}/gui-probe.sh" cleanup --quiet
+        echo
+        cat "${log_dir}/summary.txt"
+        exit "$GUI_INTERRUPTED"
+    fi
+    write_summary "$((n + 1)) of ${#selected[@]} stages done"
 done
 
-{
-    echo
-    echo "==== overnight GUI run, ${stamp} ===="
-    for i in "${!names[@]}"; do
-        printf '%-13s %-8s %3dm%02ds\n' "${names[$i]}" "${results[$i]}" \
-            "$((durations[i] / 60))" "$((durations[i] % 60))"
-    done
-    echo "logs: ${log_dir}/"
-} | tee "${log_dir}/summary.txt"
+write_summary "finished in $(elapsed $((SECONDS - run_started)))"
+echo
+cat "${log_dir}/summary.txt"
 exit "$failed"

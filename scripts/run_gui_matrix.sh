@@ -15,11 +15,12 @@
 # harness default rather than a pin, so it can. Add a variant by adding a line.
 #
 # Usage: scripts/run_gui_matrix.sh [--list] [--only NAME[,NAME...]] [--visible]
-#                                  [--screen WxH] [pytest args]
+#                                  [--screen WxH] [--progress] [pytest args]
 #   --list      print the variants and exit
 #   --only      run only the named variants
 #   --visible   on the Xephyr window, serially, instead of headless on Xvfb
 #   --screen    nested screen size for every run (run_gui_tests.sh --screen)
+#   --progress  a line per test as it finishes (run_gui_tests.sh --progress)
 #   anything else goes to pytest through run_gui_tests.sh, e.g. -k reader or -x
 #
 # Each variant's full output goes to build/gui-tests/matrix-<stamp>/<name>.log;
@@ -41,6 +42,7 @@ VARIANTS=(
 )
 
 only=""
+output=--quiet
 mode=(--headless)
 screen=()
 while [[ "${1:-}" == --* ]]; do
@@ -62,6 +64,10 @@ while [[ "${1:-}" == --* ]]; do
     --screen)
         screen=(--screen "${2:?--screen needs WxH}")
         shift 2
+        ;;
+    --progress)
+        output=--progress
+        shift
         ;;
     *) break ;;
     esac
@@ -88,23 +94,40 @@ names=()
 results=()
 durations=()
 failed=0
+# One variant's run. BARKS_GUI_INI is what --ini appends to; setting it here is
+# the same as one --ini per key.
+run_variant() {
+    local name="$1" settings="$2"
+    shift 2
+    BARKS_GUI_INI="$settings" bash "${SCRIPT_DIR}/run_gui_tests.sh" "${mode[@]}" "$output" \
+        "${screen[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"
+}
+
+# Stopping the matrix stops the variant running, whose own exit cleans up what
+# it started (see _gui_run.sh); the rest are not started.
+GUI_RUNNER=run_gui_matrix
+# shellcheck source=scripts/_gui_run.sh
+source "${SCRIPT_DIR}/_gui_run.sh"
+gui_trap_signals
+
 for variant in "${selected[@]}"; do
     name="${variant%%|*}"
     settings="${variant#*|}"
     echo
     echo "==== ${name}: ${settings} ===="
     started=$SECONDS
-    # BARKS_GUI_INI is what --ini appends to; setting it here is the same as
-    # one --ini per key. A failure is recorded and the loop goes on.
-    if BARKS_GUI_INI="$settings" bash "${SCRIPT_DIR}/run_gui_tests.sh" "${mode[@]}" --quiet \
-        "${screen[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"; then
+    # A failure is recorded and the loop goes on; an interrupt ends it.
+    if gui_run run_variant "$name" "$settings" "$@"; then
         results+=("passed")
+    elif [[ -n "$GUI_INTERRUPTED" ]]; then
+        results+=("stopped")
     else
         results+=("FAILED")
         failed=1
     fi
     names+=("$name")
     durations+=("$((SECONDS - started))")
+    [[ -n "$GUI_INTERRUPTED" ]] && break
 done
 
 echo
@@ -114,4 +137,5 @@ for i in "${!names[@]}"; do
         "$((durations[i] / 60))" "$((durations[i] % 60))"
 done
 echo "logs: ${log_dir}/"
+[[ -n "$GUI_INTERRUPTED" ]] && exit "$GUI_INTERRUPTED"
 exit "$failed"

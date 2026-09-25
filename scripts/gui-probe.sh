@@ -34,6 +34,10 @@
 #   scripts/gui-probe.sh tail 20          # last N app log lines
 #   scripts/gui-probe.sh stop             # kill both, restore the user config
 #   scripts/gui-probe.sh stop-xserver     # kill an X server `stop` kept (see below)
+#   scripts/gui-probe.sh cleanup          # stop what a killed run left on ANY display
+#                                         # (its app, X server, touchscreen), restoring
+#                                         # any profile backup; --all for every display,
+#                                         # --owner PID for one run's (see cmd_cleanup)
 #
 # Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300),
 # BARKS_PROBE_ORIGIN (X,Y where the Xephyr window opens; `start X,Y` beats it),
@@ -47,6 +51,8 @@
 # focus once, not once per boot; `stop-xserver` ends it),
 # BARKS_PROBE_APP (a built executable to run instead of `uv run main.py`; it gets
 # the same config and data dir env vars, which the app honours when set),
+# BARKS_PROBE_OWNER_PID (the runner a start belongs to, so `cleanup` can tell a
+# killed run's leftovers from a live run's displays; run_gui_tests.sh sets it),
 # BARKS_PROBE_TOUCH=1 (tap by touch as well as by click: a virtual touchscreen,
 # scripts/gui_touch.py, made before the app boots; needs the udev rule in
 # scripts/udev/ - see `doctor` - and one app per machine, as every app reads it).
@@ -80,6 +86,8 @@ APP_LOG="$RUN_DIR/app.log"
 # The file the app answers tap-targets requests from (barks_reader.core.tap_targets):
 # a request id written here comes back as one "Tap targets #<id>:" line in the log.
 TAP_REQUEST="$RUN_DIR/tap-request"
+# The pid of the runner that started this display (BARKS_PROBE_OWNER_PID), if any.
+OWNER_FILE="$RUN_DIR/owner.pid"
 # Touch mode: the virtual touchscreen's server, its socket and its log.
 TOUCH="${BARKS_PROBE_TOUCH:-}"
 TOUCH_SCRIPT="$REPO_ROOT/scripts/gui_touch.py"
@@ -339,12 +347,17 @@ cmd_start() {
     local xserver_up=""
     if xserver_alive; then
         if app_alive || [[ -z "$KEEP_XSERVER" ]]; then
-            die "already running (stop it first)"
+            die "already running (stop it first; after a killed run: gui-probe.sh cleanup)"
         fi
         xserver_up=1
     fi
 
     mkdir -p "$RUN_DIR"
+    if [[ -n "${BARKS_PROBE_OWNER_PID:-}" ]]; then
+        echo "$BARKS_PROBE_OWNER_PID" >"$OWNER_FILE"
+    else
+        rm -f "$OWNER_FILE"
+    fi
     : >"$APP_LOG"
     : >"$INPUT_LOG"
     rm -f "$TAP_REQUEST"
@@ -510,9 +523,73 @@ cmd_stop() {
     if [[ -n "$KEEP_XSERVER" ]] && xserver_alive; then
         echo "gui-probe: stopped (the $XSERVER on $DPY is kept)"
     else
-        rm -f "$XEPHYR_PID_FILE"
+        rm -f "$XEPHYR_PID_FILE" "$OWNER_FILE"
         echo "gui-probe: stopped"
     fi
+}
+
+# Stop what runs left behind, on every display that has a run directory: the app,
+# the X server, the touchscreen, and a profile backup not yet put back. A runner
+# killed outright never gets to its teardown, and everything the probe starts is
+# in a session of its own (setsid), so no signal to the runner reaches it.
+#   (default)    only displays whose runner (owner.pid) is dead: a live run's, and
+#                one started by hand (no owner), are named and left alone
+#   --all        every display, whoever started it
+#   --owner PID  only the displays that runner started (a runner's own exit)
+#   --quiet      say only what was stopped
+cmd_cleanup() {
+    # Its output may lead nowhere by now (a killed runner's tee); a failed write
+    # must not end the cleanup half done under set -e.
+    say() { echo "$@" 2>/dev/null || true; }
+    local all="" owner_only="" quiet=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --all) all=1 ;;
+        --owner) owner_only="${2:?--owner needs a pid}" && shift ;;
+        --quiet) quiet=1 ;;
+        *) die "usage: gui-probe.sh cleanup [--all] [--owner PID] [--quiet]" ;;
+        esac
+        shift
+    done
+    local dir num owner file live stopped="" found=""
+    for dir in "${XDG_RUNTIME_DIR:-/tmp}"/barks-gui-probe-*; do
+        [[ -d "$dir" ]] || continue
+        num="${dir##*barks-gui-probe-}"
+        live=""
+        for file in app xephyr touch; do
+            if [[ -f "$dir/$file.pid" ]] && kill -0 "$(cat "$dir/$file.pid")" 2>/dev/null; then
+                live+="${file/xephyr/X server}, "
+            fi
+        done
+        if [[ -f "$dir/barks-reader.json.bak" || -f "$dir/barks-reader-history.json.bak" ]]; then
+            live+="profile backup, "
+        fi
+        [[ -n "$live" ]] || continue
+        live="${live%, }"
+        found=1
+        owner="$(cat "$dir/owner.pid" 2>/dev/null || true)"
+        if [[ -n "$owner_only" ]]; then
+            [[ "$owner" == "$owner_only" ]] || continue
+        elif [[ -z "$all" ]]; then
+            if [[ -z "$owner" ]]; then
+                [[ -z "$quiet" ]] && say "gui-probe: cleanup: left :$num alone ($live) - started by hand; --all stops it"
+                continue
+            fi
+            if kill -0 "$owner" 2>/dev/null; then
+                [[ -z "$quiet" ]] && say "gui-probe: cleanup: left :$num alone ($live) - its run, pid $owner, is still going"
+                continue
+            fi
+        fi
+        # This script's own `stop` for that display: app, touchscreen, then X server
+        # (not kept), and any profile backup put back.
+        BARKS_PROBE_DISPLAY=":$num" BARKS_PROBE_KEEP_XSERVER="" bash "${BASH_SOURCE[0]}" stop >/dev/null 2>&1 || true
+        say "gui-probe: cleanup: stopped what was left on :$num ($live)"
+        stopped=1
+    done
+    if [[ -z "$found" && -z "$quiet" ]]; then
+        say "gui-probe: cleanup: nothing left behind"
+    fi
+    return 0
 }
 
 # End an X server that `stop` kept. Safe when nothing is up.
@@ -663,6 +740,7 @@ doctor) shift && cmd_doctor "$@" ;;
 start) shift && cmd_start "$@" ;;
 stop) shift && cmd_stop "$@" ;;
 stop-xserver) shift && cmd_stop_xserver "$@" ;;
+cleanup) shift && cmd_cleanup "$@" ;;
 shot) shift && cmd_shot "$@" ;;
 geometry) shift && cmd_geometry "$@" ;;
 click) shift && cmd_click "$@" ;;

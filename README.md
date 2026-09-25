@@ -148,6 +148,7 @@ just reader
   | `--touch` | Tap by real touch as well as by click, on a virtual touchscreen (one worker; needs the udev rule below) |
   | `--keep-logs` | Keep every passing test's artifacts too, as a failure's |
   | `--quiet` | Print only failures and the summary |
+  | `--progress` | As `--quiet`, plus a line per test as it finishes; the full output goes to `pytest.log` |
 
   A failure leaves a screenshot, the app log, the keys sent and the scratch profile under
   `build/gui-tests/<run>/`. In a visible run the test window takes the keyboard when it
@@ -197,7 +198,9 @@ just reader
   missing), and the random-walk soak from three seeds. With `--app PATH` it also runs the
   suite against a built executable. It keeps going after a failure, prints a pass/fail
   table with timings, and exits non-zero if anything failed. It holds off sleep while it
-  runs and warns when on battery. Well over an hour.
+  runs and warns when on battery. Each stage shows its number and start time, then a line
+  per test as it finishes, and `summary.txt` is rewritten after every stage. Well over an
+  hour.
     ```
     bash scripts/run_gui_overnight.sh                        # every stage
     bash scripts/run_gui_overnight.sh --list                 # the stages
@@ -205,6 +208,16 @@ just reader
     bash scripts/run_gui_overnight.sh --app ./barks-reader   # add a built executable
     ```
   Each stage's output, and the summary, go to `build/gui-tests/overnight-<stamp>/`.
+- **Stopping a run.** Ctrl-C, closing the terminal, or `kill` of the runner (the
+  overnight run prints its pid) stops `run_gui_tests.sh`, the matrix or the overnight
+  run, and everything they started: pytest, and each display's app, X server and
+  touchscreen, which the probe runs in sessions of their own that no signal reaches.
+  Only `kill -9` leaves anything behind, and the next run clears that before it starts.
+  To clear it by hand:
+    ```
+    bash scripts/gui-probe.sh cleanup          # what dead runs left; a live run is left alone
+    bash scripts/gui-probe.sh cleanup --all    # every display, including one started by hand
+    ```
 - **The GUI suite on Windows**: the same tests through `scripts/gui_probe.py`, which sends
   real keys with `SendInput` to the reader on the real desktop. One visible worker, about
   15 minutes; leave the machine alone while it runs. Needs `.env.runtime` pointing at a

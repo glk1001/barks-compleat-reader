@@ -39,6 +39,9 @@ matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PA
 ```bash
 bash scripts/run_gui_overnight.sh
 ```
+Ctrl-C or `kill` of any GUI runner stops everything it started. After a `kill -9`
+the next run clears the leftovers, or `bash scripts/gui-probe.sh cleanup` does (`--all`
+also stops a display started by hand).
 
 **Run the GUI path tests** (excluded from the default test run; boots the real app on
 the nested Xephyr display via `scripts/gui-probe.sh`, driven by `scripts/gui_driver.py`):

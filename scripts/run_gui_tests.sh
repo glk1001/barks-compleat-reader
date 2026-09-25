@@ -31,6 +31,9 @@
 #
 # --quiet prints the pytest command it is about to run and then only failures
 # and the summary line (for full-lint.sh, where the per-test verbosity is noise).
+# --progress is --quiet plus one short line per test as it finishes ("[ 12%]
+# PASSED test_x.py::test_y"), for a long unattended run; pytest's whole verbose
+# output goes to build/gui-tests/<run>/pytest.log beside it.
 #
 # --screen WxH runs the suite on a nested screen of that size instead of the
 # 900x1300 default, e.g. --screen 1920x1080 to see the app as a 1080p monitor
@@ -92,6 +95,10 @@ while [[ "${1:-}" == --* ]]; do
         ;;
     --quiet)
         quiet=1
+        shift
+        ;;
+    --progress)
+        quiet=progress
         shift
         ;;
     --keep-logs)
@@ -173,6 +180,20 @@ if [[ -n "$calibrate" ]]; then
 fi
 
 [[ -n "${BARKS_GUI_INI:-}" ]] && echo "run_gui_tests: settings for this run: ${BARKS_GUI_INI}"
+
+# Stopping this run stops everything it started. The probe marks each display
+# with this runner's pid; the traps stop pytest's process tree on INT, TERM or
+# HUP; and on the way out, however it ends, the displays still marked as ours are
+# stopped (gui-probe.sh cleanup). A run killed with -9 gets no say: the next run
+# clears what it left, below, and `gui-probe.sh cleanup` does it by hand.
+export BARKS_PROBE_OWNER_PID=$$
+GUI_RUNNER=run_gui_tests
+# shellcheck source=scripts/_gui_run.sh
+source "${SCRIPT_DIR}/_gui_run.sh"
+gui_trap_signals
+trap 'bash "${SCRIPT_DIR}/gui-probe.sh" cleanup --owner "$BARKS_PROBE_OWNER_PID" --quiet' EXIT
+bash "${SCRIPT_DIR}/gui-probe.sh" cleanup --quiet  # what an earlier, killed run left
+
 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
     echo "run_gui_tests: this machine is not ready - see: bash scripts/gui-probe.sh doctor" >&2
     exit 1
@@ -189,21 +210,46 @@ select=(-m "not soak")
 cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "${select[@]}" "$@")
 # shellcheck source=scripts/_show_cmd.sh
 source "${SCRIPT_DIR}/_show_cmd.sh"
-status=0
-if [[ -z "$quiet" ]]; then
-    # Per-test lines and every duration: the durations say whether a boot-per-test
-    # stays tolerable, so they are the point of a hands-on run.
-    "${cmd[@]}" -v --durations=0 || status=$?
-else
-    show_cmd "${cmd[@]}" -q --tb=short
-    # Keep failures (their name, the short traceback's E lines) and the summary
-    # line, which in -q mode has no bars; pipefail hands pytest's status through.
-    # "skipped" is kept so a run that skipped everything says so rather than
-    # printing nothing.
-    if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)"; then
-        echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
-        status=1
+# pytest, in the output mode asked for; its status is the run's.
+run_pytest() {
+    local status=0
+    if [[ -z "$quiet" ]]; then
+        # Per-test lines and every duration: the durations say whether a boot-per-test
+        # stays tolerable, so they are the point of a hands-on run.
+        "${cmd[@]}" -v --durations=0 || status=$?
+    elif [[ "$quiet" == progress ]]; then
+        full_log="build/gui-tests/${BARKS_GUI_RUN_STAMP}/pytest.log"
+        mkdir -p "$(dirname "$full_log")"
+        show_cmd "${cmd[@]}" -v --tb=short
+        echo "run_gui_tests: pytest's whole output: ${full_log}"
+        # One line per test as it finishes, plus what --quiet keeps. Unbuffered and
+        # line-buffered all the way, or the lines arrive in bursts, long after the tests.
+        # With workers, pytest -v writes "[gw0] [ 12%] PASSED path::test"; alone,
+        # "path::test PASSED [ 12%]". Both come out as "[ 12%] PASSED file::test".
+        if ! PYTHONUNBUFFERED=1 "${cmd[@]}" -v --tb=short | tee "$full_log" |
+            grep --line-buffered -E " (PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)( |$)|^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)" |
+            sed -u -E 's#^\[gw[0-9]+\] ##; s#src/barks-reader/tests/gui/##; s#^(\S+) (PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) +(\[ *[0-9]+%\])#\3 \2 \1#'; then
+            echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
+            status=1
+        fi
+    else
+        show_cmd "${cmd[@]}" -q --tb=short
+        # Keep failures (their name, the short traceback's E lines) and the summary
+        # line, which in -q mode has no bars; pipefail hands pytest's status through.
+        # "skipped" is kept so a run that skipped everything says so rather than
+        # printing nothing.
+        if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)"; then
+            echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
+            status=1
+        fi
     fi
+    return "$status"
+}
+status=0
+gui_run run_pytest || status=$?
+if [[ -n "$GUI_INTERRUPTED" ]]; then
+    echo "run_gui_tests: stopped; what it started is being cleaned up" >&2
+    exit "$GUI_INTERRUPTED"
 fi
 # A calibration counts only when every test passed: a failed test's app may
 # have been stuck, and its durations would set the baseline wrong.
