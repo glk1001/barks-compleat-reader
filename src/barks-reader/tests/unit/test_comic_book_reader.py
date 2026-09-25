@@ -422,6 +422,27 @@ class TestComicBookReader:
         assert log_markers.LEFT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
         assert log_markers.RIGHT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
 
+    def test_no_page_turns_once_the_comic_is_closed(self, reader: ComicBookReader) -> None:
+        """Leaving fullscreen after Close takes a moment: a turn then must not reach the loader."""
+        reader._page_manager = MagicMock()
+        reader._closed = False
+        with (
+            patch.object(reader, "_cancel_reveal"),
+            patch.object(reader, "_stop_pending_poll"),
+        ):
+            reader.close_comic_book_reader()
+        reader.next_page()
+        reader.prev_page()
+        reader._page_manager.next_page.assert_not_called()
+        reader._page_manager.prev_page.assert_not_called()
+
+    def test_no_margin_turns_once_the_comic_is_closed(self, reader: ComicBookReader) -> None:
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_left_margin.return_value = True
+        reader._closed = True
+        assert not reader.on_touch_down(MagicMock(x=10, y=10))
+        reader._page_manager.prev_page.assert_not_called()
+
     def test_tap_target_regions_are_the_margins_in_window_pixels(
         self, reader: ComicBookReader
     ) -> None:
@@ -528,6 +549,29 @@ class TestComicBookReaderScreen:
             getattr(screen, finish)()
 
         log_geometry.assert_called_once_with(reason)
+
+    def test_keys_are_swallowed_while_the_reader_closes(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """Close in fullscreen closes the comic, then leaves fullscreen: no key acts meanwhile."""
+        screen._is_closing = True
+        with patch.object(screen, "_handle_reader_key") as handle:
+            assert screen._on_key_down(MagicMock(), 276, 0, "", [])  # Left
+        handle.assert_not_called()
+
+    def test_a_key_is_handled_when_not_closing(self, screen: ComicBookReaderScreen) -> None:
+        screen._is_closing = False
+        with patch.object(screen, "_handle_reader_key", return_value=True) as handle:
+            assert screen._on_key_down(MagicMock(), 276, 0, "", [])
+        handle.assert_called_once_with(276)
+
+    def test_taps_are_swallowed_while_the_reader_closes(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen._is_closing = True
+        with patch.object(screen, "_clear_menu_on_touch") as clear_menu:
+            assert screen.on_touch_down(MagicMock())
+        clear_menu.assert_not_called()
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
         # The toggle scaffolding lives in WindowModeController now; the screen just

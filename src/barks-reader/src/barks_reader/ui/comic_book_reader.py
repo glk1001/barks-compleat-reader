@@ -427,6 +427,8 @@ class ComicBookReader(FloatLayout):
 
         if super().on_touch_down(touch):
             return True
+        if self._closed:
+            return False  # closing: no page to turn to
 
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
@@ -532,6 +534,10 @@ class ComicBookReader(FloatLayout):
         self._stop_pending_poll()
         self._comic_book_loader.stop_now()
         self._comic_book_loader.close_comic()
+        # Closed from here on, not only once reset: leaving fullscreen on the way
+        # out takes a moment, and a page turn in it would ask the closed loader
+        # for a page (an assertion, and the app down).
+        self._closed = True
 
     def reset_comic_book_reader(self) -> None:
         self._page_manager.reset_current_page_index()
@@ -801,9 +807,15 @@ class ComicBookReader(FloatLayout):
         return self._is_one_pager_collection or self._is_covers_collection
 
     def next_page(self) -> None:
+        if self._closed:
+            logger.debug("Next page ignored: the comic is closed.")
+            return
         self._page_manager.next_page()
 
     def prev_page(self) -> None:
+        if self._closed:
+            logger.debug("Prev page ignored: the comic is closed.")
+            return
         self._page_manager.prev_page()
 
     def toggle_double_page_mode(self) -> None:
@@ -1047,6 +1059,8 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     # (which sit naturally above the image area thanks to the BoxLayout reflow).
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        if self._is_closing:
+            return True  # as for keys (_on_key_down): nothing left to act on
         self._clear_menu_on_touch()
 
         if super().on_touch_down(touch):
@@ -1068,6 +1082,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_key_down(
         self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
     ) -> bool:
+        if self._is_closing:
+            # Leaving fullscreen on the way out takes a moment, with the comic
+            # already closed: a page turn or bar action now has nothing to act on.
+            return True
         return self._handle_reader_key(key)
 
     def _reading_next_page(self) -> None:
