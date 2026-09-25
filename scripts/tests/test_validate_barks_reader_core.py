@@ -278,6 +278,17 @@ class TestPhase11Wiki:
         assert phase.errors == []
         assert "1 outside-corpus" in phase.summary_extra
 
+    def test_a_page_that_is_not_utf8_is_its_own_error(self, tmp_path: Path) -> None:
+        """A page the reader cannot decode is reported, and the other pages still join."""
+        bundle = _write_bundle(tmp_path, {"donald-duck-adventures/lost-in-the-andes.md": ANDES})
+        bad = bundle / "concept" / "stories" / "misc" / "latin-1.md"
+        bad.parent.mkdir(parents=True, exist_ok=True)
+        bad.write_bytes(b"---\ntitle: Caf\xe9\n---\n")
+        phase = _run_wiki(bundle, [ANDES])
+        assert _kinds(phase) == ["kind=story_page_unreadable"]
+        assert "Page:concept/stories/misc/latin-1.md" in phase.errors[0]
+        assert "1 joined" in phase.summary_extra
+
     def test_a_page_with_no_title(self, tmp_path: Path) -> None:
         bundle = _write_bundle(tmp_path, {"misc/untitled.md": None})
         phase = _run_wiki(bundle)

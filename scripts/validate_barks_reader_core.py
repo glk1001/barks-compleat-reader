@@ -2117,6 +2117,45 @@ def phase11_wiki(
     collector.finalize_phase(phase)
 
 
+def _read_frontmatter(phase: PhaseResult, page: Path, rel: str) -> dict | None:
+    """Return a story page's frontmatter, or None once an unreadable page is reported.
+
+    One page that cannot be read (not UTF-8, say) is that page's error: the rest of
+    the bundle, and the final report, still get checked.
+    """
+    try:
+        text = page.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        phase.add(f"Page:{rel} kind=story_page_unreadable error={exc!s}")
+        return None
+    frontmatter, _body = parse_frontmatter(text)
+    return frontmatter
+
+
+def _judge_unjoined_page(
+    phase: PhaseResult,
+    counts: _Phase11Counts,
+    rel: str,
+    raw_title: str,
+    expected: Titles | None,
+    filter_set: set[Titles] | None,
+) -> None:
+    """Count or report a story page whose title joins no title the reader shows.
+
+    `expected` is the title the page's slug names, if any.
+    """
+    if canonical_title(raw_title) is not None:
+        counts.not_in_reader += 1  # a canonical title the reader does not carry
+        return
+    if expected is None:
+        counts.outside_corpus += 1  # a non-Disney or other non-corpus story
+    elif filter_set is None or expected in filter_set:
+        phase.add(
+            f"Page:{rel} kind=story_page_title_mismatch title={raw_title!r}"
+            f" expected={ENUM_TO_STR_TITLE[expected]!r}"
+        )
+
+
 def _check_story_pages(
     phase: PhaseResult,
     counts: _Phase11Counts,
@@ -2135,7 +2174,9 @@ def _check_story_pages(
             continue
         phase.items_checked += 1
         rel = page.relative_to(bundle).as_posix()
-        frontmatter, _body = parse_frontmatter(page.read_text(encoding="utf-8"))
+        frontmatter = _read_frontmatter(phase, page, rel)
+        if frontmatter is None:
+            continue
         raw_title = frontmatter.get("title")
 
         if not isinstance(raw_title, str):
@@ -2145,17 +2186,9 @@ def _check_story_pages(
 
         title_enum = story_page_title(frontmatter, page)
         if title_enum is None:
-            if canonical_title(raw_title) is not None:
-                counts.not_in_reader += 1  # a canonical title the reader does not carry
-                continue
-            expected = slug_to_title.get(page.stem)
-            if expected is None:
-                counts.outside_corpus += 1  # a non-Disney or other non-corpus story
-            elif filter_set is None or expected in filter_set:
-                phase.add(
-                    f"Page:{rel} kind=story_page_title_mismatch title={raw_title!r}"
-                    f" expected={ENUM_TO_STR_TITLE[expected]!r}"
-                )
+            _judge_unjoined_page(
+                phase, counts, rel, raw_title, slug_to_title.get(page.stem), filter_set
+            )
             continue
 
         if filter_set is None or title_enum in filter_set:
