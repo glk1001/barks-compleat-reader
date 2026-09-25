@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
     CorpusStatsDestination,
@@ -176,7 +177,7 @@ class TreeViewManager:
             self.deselect_and_close_open_nodes(from_collapse_all=True)
             return
 
-        logger.info(f'Going back to previous node "{prev_node.get_name()}".')
+        logger.info(log_markers.GOING_BACK_TO_NODE.format(name=prev_node.get_name()))
 
         # These nodes' static views exist only so a saved-node restore at startup
         # doesn't auto-launch a full-window screen. When Back returns to one
@@ -221,10 +222,10 @@ class TreeViewManager:
 
         # Check allow state change flag or is leaf/title row.
         if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
-            logger.info(f"Node collapsed but not allowing state change: '{node.get_name()}'.")
+            logger.info(log_markers.NODE_COLLAPSED_NO_STATE_CHANGE.format(name=node.get_name()))
             return
 
-        logger.info(f"Node collapsed: '{node.get_name()}'.")
+        logger.info(log_markers.NODE_COLLAPSED.format(name=node.get_name()))
 
         self.set_view_state_for_node(node)
 
@@ -244,7 +245,7 @@ class TreeViewManager:
         self._renderer.render(node.destination)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
-        logger.info(f"Node expanded: '{node.get_name()}'.")
+        logger.info(log_markers.NODE_EXPANDED.format(name=node.get_name()))
 
         # Always track the expanded node for the collapse overlay, even when
         # view-state changes are suppressed (e.g. during goto-title navigation).
@@ -307,6 +308,9 @@ class TreeViewManager:
             tree.remove_node(child)
         assert node.populate_callback is not None
         node.populate_callback()
+        logger.info(
+            log_markers.REPOPULATED_NODE.format(name=node.get_name(), count=len(node.nodes))
+        )
 
     @staticmethod
     def _has_single_title_child(node: ButtonTreeViewNode) -> bool:
@@ -384,7 +388,7 @@ class TreeViewManager:
         view_state = node.destination.view_state
         article_title = node.destination.article_title
 
-        logger.info(f"Article node pressed: Reading '{article_title.name}'.")
+        logger.info(log_markers.ARTICLE_NODE_PRESSED.format(name=article_title.name))
 
         self._nav.read_article(article_title, view_state)
 

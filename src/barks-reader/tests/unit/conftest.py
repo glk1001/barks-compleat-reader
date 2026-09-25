@@ -12,16 +12,56 @@ import sqlite3
 import sys
 from itertools import pairwise
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from loguru import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
+
+
+@pytest.fixture(autouse=True)
+def _no_layout_settling() -> Generator[None]:
+    """Start and end every test with nothing moving the layout on purpose.
+
+    ``barks_reader.core.tap_targets`` keeps a process-wide set of the work that
+    is (the tree's scroll pinner); a test that starts a pin and never runs its
+    settle loop to the end would leave it set for every test after.
+    """
+    from barks_reader.core import tap_targets  # noqa: PLC0415
+
+    tap_targets._SETTLING.clear()  # noqa: SLF001
+    yield
+    tap_targets._SETTLING.clear()  # noqa: SLF001
 
 
 @pytest.fixture
 def mock_font_manager() -> MagicMock:
     return MagicMock()
+
+
+@pytest.fixture
+def loguru_sink() -> Generator[list[str]]:
+    """Collect every loguru message emitted during the test, DEBUG and up.
+
+    The app's log is the oracle the GUI path tests wait on, so the lines that
+    mark a transition are part of a screen's contract; a test asserts that one
+    was emitted with ``assert "..." in loguru_sink``.
+    """
+    records: list[str] = []
+    handle = logger.add(
+        lambda message: records.append(str(message).rstrip("\n")),
+        level="DEBUG",
+        format="{message}",
+    )
+    try:
+        yield records
+    finally:
+        logger.remove(handle)
 
 
 @pytest.fixture
@@ -112,5 +152,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     skip_marker = pytest.mark.skip(reason="Kivy UI tests skipped on headless CI (no OpenGL)")
     for item in items:
+        # A test that imports UI code but never opens a Kivy window (the live Win32
+        # backend test drives a window it makes itself) says so, and still runs.
+        if item.get_closest_marker("needs_no_opengl") is not None:
+            continue
         if _test_imports_ui(item):
             item.add_marker(skip_marker)

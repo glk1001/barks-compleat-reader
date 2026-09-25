@@ -31,6 +31,8 @@ from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 if TYPE_CHECKING:
     from kivy.input import MotionEvent
 
@@ -160,9 +162,11 @@ class TouchAwareTextInput(TextInput):
         recent_touch = (time.monotonic() - last_hw_touch) < self._TOUCH_WINDOW_SECS
 
         if not recent_touch:
+            logger.debug(log_markers.TEXT_INPUT_CLICKED.format(widget=type(self).__name__))
             self._use_system_keyboard_for_click(touch)
             return True
 
+        logger.debug(log_markers.TEXT_INPUT_TOUCHED.format(widget=type(self).__name__))
         return bool(super().on_touch_down(touch))
 
     def _use_system_keyboard_for_click(self, touch: MotionEvent) -> bool:

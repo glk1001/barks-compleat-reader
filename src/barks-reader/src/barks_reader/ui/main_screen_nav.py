@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Final, Protocol
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
@@ -161,8 +163,13 @@ class MainScreenNavigation:
             # Up from the first tree node lands on the top-view goto arrow (when it has
             # a title); otherwise the normal move (which selects the last node when
             # nothing is selected) is preserved.
-            if self._at_first_tree_node() and self._tree_view_screen.is_top_goto_active:
-                self._enter_top_goto_focus()
+            if self._at_first_tree_node():
+                if self._tree_view_screen.is_top_goto_active:
+                    self._enter_top_goto_focus()
+                else:
+                    # Logged so a driver waiting on Up's outcome has a line either way.
+                    logger.debug(log_markers.TOP_GOTO_ARROW_INACTIVE)
+                    self._tree_nav_move(-1)
             else:
                 self._tree_nav_move(-1)
         elif key == KEY_DOWN:
@@ -208,7 +215,7 @@ class MainScreenNavigation:
     def _enter_top_goto_focus(self) -> None:
         self._top_goto_focused = True
         self._tree_view_screen.enter_top_goto_focus()
-        logger.debug("Entered top-view goto arrow focus.")
+        logger.debug(log_markers.ENTERED_TOP_GOTO_ARROW)
 
     def _exit_top_goto_focus(self) -> None:
         self._top_goto_focused = False
@@ -240,14 +247,18 @@ class MainScreenNavigation:
                 # enter_bottom_focus (e.g. the fun view's goto-title): activate lazily.
                 self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
             return self._bottom_title_view_screen.handle_key(key)
+        # The fun view owns its own keyboard nav (arrow, filter button, and the
+        # image-type options menu), Escape included: with its options menu open,
+        # Escape closes the menu, and only at the top level does it ask to leave
+        # (through the exit request it was entered with). It has to see the key
+        # BEFORE the bare-Escape fallback below, or the menu could never be closed
+        # from the keyboard. A goto from it lands portal focus via
+        # _on_goto_fun_view_title, so no hand-off is scheduled here.
+        if self._fun_image_view_screen.is_visible and self._fun_image_view_screen.handle_key(key):
+            return True
         if is_escape_key(key):
             self.exit_bottom_focus()
             return True
-        if self._fun_image_view_screen.is_visible:
-            # The fun view owns its own keyboard nav (arrow, filter button, and the
-            # image-type options menu). A goto from it lands portal focus via
-            # _on_goto_fun_view_title, so no hand-off is scheduled here.
-            return self._fun_image_view_screen.handle_key(key)
         return False
 
     def _get_active_nav_screen(
@@ -291,7 +302,7 @@ class MainScreenNavigation:
             self._fun_image_view_screen.enter_nav_focus(self.exit_bottom_focus)
         elif self._bottom_title_view_screen.is_visible:
             self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
-        logger.debug("Entered bottom focus region.")
+        logger.debug(log_markers.ENTERED_BOTTOM_FOCUS)
 
     def _claim_bottom_focus_for_search(self) -> None:
         """Move the focus region to the search screen at its own request.
@@ -306,7 +317,7 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._search_screen.adopt_nav_focus(self.exit_bottom_focus)
-        logger.debug("Entered bottom focus region at search screen's request.")
+        logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_FOR_SEARCH)
 
     def exit_bottom_focus(self) -> None:
         nav_screen = self._get_active_nav_screen()
@@ -317,7 +328,7 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.TREE
         self._auto_exited_bottom_focus = False
         self._clear_bottom_focus_highlight()
-        logger.debug("Exited bottom focus region.")
+        logger.debug(log_markers.EXITED_BOTTOM_FOCUS)
 
     def _update_bottom_focus_highlight(self) -> None:
         draw_focus_highlight(self._bottom_base_view_screen, _BOTTOM_FOCUS_HIGHLIGHT_GROUP)
@@ -432,7 +443,7 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
-        logger.debug("Entered bottom focus region at the title portal.")
+        logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL)
 
     def focus_title_view_portal_after_wiki_goto(self) -> None:
         """Land keyboard focus on the title portal after the wiki's "Goto Title" button.

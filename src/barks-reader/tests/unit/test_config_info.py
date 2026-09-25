@@ -139,6 +139,55 @@ class TestGetUserAppConfigDir:
         assert result == tmp_path / "config"
 
 
+class TestDirectoryEnvOverrides:
+    """The config and data dir env vars win whenever set, in a build as in a checkout.
+
+    A development run has nothing else to go on; a test harness points a built
+    executable at a scratch profile the same way. A user's build has them unset
+    and falls back to the directory beside the executable.
+    """
+
+    @pytest.fixture
+    def compiled(self, tmp_path: Path) -> ConfigInfo:
+        cfg = _bare_config_info(tmp_path)
+        cfg.is_running_compiled = True
+        return cfg
+
+    def test_a_compiled_build_takes_the_config_dir_from_the_env_var(
+        self, compiled: ConfigInfo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BARKS_READER_CONFIG_DIR", str(tmp_path / "scratch"))
+        with patch.object(config_info, "PLATFORM", Platform.LINUX):
+            assert compiled._get_app_config_dir() == tmp_path / "scratch"  # noqa: SLF001
+
+    def test_a_compiled_build_takes_the_data_dir_from_the_env_var(
+        self, compiled: ConfigInfo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BARKS_READER_DATA_DIR", str(tmp_path / "data"))
+        assert compiled._get_app_data_dir() == tmp_path / "data"  # noqa: SLF001
+
+    def test_a_compiled_build_without_the_env_vars_uses_its_own_directory(
+        self, compiled: ConfigInfo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("BARKS_READER_CONFIG_DIR", raising=False)
+        monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
+        with patch.object(config_info, "PLATFORM", Platform.LINUX):
+            assert compiled._get_app_config_dir() == tmp_path / "config"  # noqa: SLF001
+        assert compiled._get_app_data_dir() == tmp_path  # noqa: SLF001
+
+    def test_a_checkout_without_the_env_vars_refuses(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = _bare_config_info(tmp_path)
+        cfg.is_running_compiled = False
+        monkeypatch.delenv("BARKS_READER_CONFIG_DIR", raising=False)
+        monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
+        with pytest.raises(RuntimeError, match="BARKS_READER_CONFIG_DIR"):
+            cfg._get_app_config_dir()  # noqa: SLF001
+        with pytest.raises(RuntimeError, match="BARKS_READER_DATA_DIR"):
+            cfg._get_app_data_dir()  # noqa: SLF001
+
+
 # ---------------------------------------------------------------------------
 # Installer-failed flag lifecycle
 # ---------------------------------------------------------------------------

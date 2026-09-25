@@ -21,6 +21,7 @@ from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
@@ -106,7 +107,7 @@ class WikiReaderScreen(ReaderScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         image_selector: ImageSelector,
-        app_data_dir: Path,
+        profile_dir: Path,
         on_goto_title: Callable[[Titles], None],
         on_close_screen: Callable[[], None],
         **kwargs: str,
@@ -116,7 +117,7 @@ class WikiReaderScreen(ReaderScreen):
         self._reader_settings = reader_settings
         self._font_manager = font_manager
         self._image_selector = image_selector
-        self._app_data_dir = app_data_dir
+        self._profile_dir = profile_dir
         self._on_goto_title = on_goto_title
         self._on_close_screen = on_close_screen
 
@@ -162,6 +163,7 @@ class WikiReaderScreen(ReaderScreen):
         # transient geometry, so a deferred re-apply re-pins it once things settle.
         self._apply_viewer_sizing()
         Clock.schedule_once(self._apply_viewer_sizing)
+        logger.info(f'Wiki reader opened (page = "{page}").')
 
     def close(self) -> None:
         """Save the reading position and hand control back to the main screen.
@@ -170,6 +172,7 @@ class WikiReaderScreen(ReaderScreen):
         the history root all route here, so unbinding the keyboard here covers
         every way out.
         """
+        logger.debug("Wiki reader closing.")
         Window.unbind(on_key_down=self._on_key_down, on_resize=self._apply_viewer_sizing)
         self.save_session()
         self._on_close_screen()
@@ -265,6 +268,7 @@ class WikiReaderScreen(ReaderScreen):
         # Land the user on the main screen with the title selected in the tree
         # and shown in the bottom title view — the reading controls live there.
         self.close()
+        logger.info(log_markers.WIKI_GOTO_TITLE.format(name=title.name))
         self._on_goto_title(title)
 
     def _build_viewer(self, bundle: Path, start_page: Path | None = None) -> None:
@@ -288,7 +292,7 @@ class WikiReaderScreen(ReaderScreen):
                 self._font_manager, self._reader_settings.sys_file_paths, on_close=self.close
             ),
             theme=wiki_theme_spec(),
-            state_path=wiki_session_path(self._app_data_dir, bundle),
+            state_path=wiki_session_path(self._profile_dir, bundle),
             on_exit=self.close,
         )
         self._bundle = bundle
@@ -300,7 +304,7 @@ def get_wiki_reader_screen(
     reader_settings: ReaderSettings,
     font_manager: FontManager,
     image_selector: ImageSelector,
-    app_data_dir: Path,
+    profile_dir: Path,
     on_goto_title: Callable[[Titles], None],
     on_close_screen: Callable[[], None],
 ) -> WikiReaderScreen:
@@ -309,7 +313,7 @@ def get_wiki_reader_screen(
         reader_settings,
         font_manager,
         image_selector,
-        app_data_dir,
+        profile_dir,
         on_goto_title,
         on_close_screen,
         name=screen_name,

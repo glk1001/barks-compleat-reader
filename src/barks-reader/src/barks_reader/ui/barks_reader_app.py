@@ -11,12 +11,13 @@ from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
 from kivy.config import Config
-from kivy.core.window import Window  # can take ~1s in VM Windows
+from kivy.core.window import Keyboard, Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithNoMenu  # can take ~1s in VM Windows
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.core import log_markers
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
@@ -33,6 +34,7 @@ from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.wiki_integration import migrate_wiki_session
 
 from .action_bar import ACTION_BAR_KV_FILE
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
@@ -54,7 +56,7 @@ from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from .platform_window_utils import WindowManager, log_screen_metrics
+from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
 from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
@@ -77,6 +79,7 @@ from .settings_fix import (
 )
 from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
+from .tap_targets import install_tap_targets_service
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from .ui_helpers import KIVY_HELPERS_KV_FILE
@@ -232,7 +235,7 @@ class BarksReaderApp(App):
         key: str,
         value: Any,
     ) -> None:  # ty:ignore[invalid-method-override]
-        logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
+        logger.info(log_markers.CONFIG_CHANGE.format(section=section, key=key, value=value))
         if self.reader_settings.on_changed_setting(section, key, value) and (
             section == BARKS_READER_SECTION
         ):
@@ -329,13 +332,12 @@ class BarksReaderApp(App):
         set_alt_escape_key(self.reader_settings.get_alt_escape_key())
         set_active_theme(self.reader_settings.color_theme)
         install_settings_theme_kv()
+        _install_key_press_log(Window)
+        install_tap_targets_service(Window)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
-            Window.allow_vkeyboard = True
-            Window.docked_vkeyboard = True
-            Window.single_vkeyboard = True
-            Window.use_syskeyboard = False
+            _configure_virtual_keyboard(Window)
             if PLATFORM == Platform.LINUX:
                 self._enable_linux_touchscreen_input()
 
@@ -431,12 +433,21 @@ class BarksReaderApp(App):
         )
 
         logger.debug("Instantiating wiki reader screen...")
+        profile_dir = Path(self._config_info.app_config_dir)
+        bundle = self.reader_settings.wiki_bundle_dir
+        if bundle is not None:
+            # The wiki's resume point used to live beside the app data.
+            migrated = migrate_wiki_session(
+                Path(self._config_info.app_data_dir), profile_dir, bundle
+            )
+            if migrated is not None:
+                logger.info(f'Copied the wiki session into the profile: "{migrated}".')
         wiki_reader_screen = get_wiki_reader_screen(
             WIKI_READER_SCREEN,
             self.reader_settings,
             self.font_manager,
             self._main_screen.image_selector,
-            Path(self._config_info.app_data_dir),
+            profile_dir,
             self._main_screen.goto_title_from_wiki,
             self._screen_switchers.close_wiki_reader,
         )
@@ -514,11 +525,51 @@ class BarksReaderApp(App):
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
         def show_the_window(*_args: Any) -> None:  # noqa: ANN401
-            self._window_geometry.set_window_ready()
-            Window.show()
-            _log_screen_settings()
+            _show_main_window(Window, self._window_geometry)
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
+
+
+_KEY_NAMES: dict[int, str] = {code: name for name, code in Keyboard.keycodes.items()}
+
+
+def _configure_virtual_keyboard(window: Any) -> None:  # noqa: ANN401
+    """Put the window in Kivy's "systemanddock" keyboard mode.
+
+    One docked on-screen keyboard appears whenever a text box takes focus, and
+    a physical keyboard still types into that box: Kivy routes hardware keys
+    to the focused box only while ``use_syskeyboard`` is on. With it off (the
+    "dock" mode this setting used to select) the on-screen keyboard appeared
+    but every key pressed on a real keyboard was dropped - the settings matrix
+    found the search boxes dead under this setting.
+    """
+    window.allow_vkeyboard = True
+    window.docked_vkeyboard = True
+    window.single_vkeyboard = True
+    window.use_syskeyboard = True
+
+
+def _install_key_press_log(window: Any) -> None:  # noqa: ANN401
+    """Log every key press `window` dispatches, before any handler can consume it.
+
+    A bound observer cannot do this: Kivy calls observers newest-first and stops
+    at the first that returns True, so a screen's handler bound later always
+    shadows a logger bound at startup. Wrapping the window's ``dispatch`` sees
+    the key ahead of them all, and changes nothing else (see ``KEY_PRESSED``).
+
+    Args:
+        window: The Kivy window (anything with a ``dispatch`` method).
+
+    """
+    original = window.dispatch
+
+    def dispatch(event_name: str, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        if event_name == "on_key_down" and args:
+            key = args[0]
+            logger.debug(log_markers.KEY_PRESSED.format(key=key, name=_KEY_NAMES.get(key, "?")))
+        return original(event_name, *args, **kwargs)
+
+    window.dispatch = dispatch
 
 
 def _dismiss_top_popup_on_alt_escape(
@@ -540,6 +591,20 @@ def _dismiss_top_popup_on_alt_escape(
             child.dismiss()
             return True
     return False
+
+
+def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> None:  # noqa: ANN401
+    """Show the main window once its sizing is done, and say so in the log.
+
+    Until the window is shown a key sent to it goes nowhere: the GUI probe's
+    boot waits on this line, not on the build finishing, which under load came
+    seconds earlier and lost the test's first key.
+    """
+    window_geometry.set_window_ready()
+    window.show()
+    logger.info(log_markers.MAIN_WINDOW_SHOWN)
+    log_window_geometry("boot")
+    _log_screen_settings()
 
 
 def _log_screen_settings() -> None:

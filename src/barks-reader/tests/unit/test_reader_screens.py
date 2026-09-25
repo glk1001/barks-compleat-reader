@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast, no_type_check
 from unittest.mock import MagicMock, patch
 
@@ -131,6 +132,46 @@ class TestReaderScreenManager:
         is_active_mock = cast("MagicMock", mock_reader_screens.comic_reader_screen.is_active)
         is_active_mock.assert_called_with(active=False)
 
+    @pytest.mark.parametrize("switch", ["_switch_to_comic_book_reader", "_close_comic_book_reader"])
+    def test_a_transition_still_running_at_a_switch_is_finished_first(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+        switch: str,
+    ) -> None:
+        """Kivy would let it run on and remove the new current screen when it ends; stop it."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        running = reader_screen_manager._screen_manager.transition
+        running.is_active = True
+        running.__class__.__name__ = "SwapTransition"
+
+        getattr(reader_screen_manager, switch)()
+
+        running.stop.assert_called_once_with()
+        # What a finished animation would have fired, and stop() does not.
+        running.screen_in.dispatch.assert_called_once_with("on_enter")
+        running.screen_out.dispatch.assert_called_once_with("on_leave")
+        assert reader_screen_manager._screen_manager.transition is not running
+        assert any(
+            "Screen transition 'SwapTransition' still running" in line for line in loguru_sink
+        )
+
+    def test_a_finished_transition_at_a_switch_is_quiet(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+        idle = reader_screen_manager._screen_manager.transition
+        idle.is_active = False
+
+        reader_screen_manager._close_comic_book_reader()
+
+        idle.stop.assert_not_called()
+        assert not any("still running" in line for line in loguru_sink)
+
     def test_switch_to_document_reader(
         self,
         reader_screen_manager: ReaderScreenManager,
@@ -200,6 +241,34 @@ class TestReaderScreenManager:
         open_wiki_mock = cast("MagicMock", mock_reader_screens.wiki_reader_screen.open_wiki)
         open_wiki_mock.assert_called_with(bundle, page)
 
+    def test_each_close_names_where_the_main_screen_came_back_from(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+    ) -> None:
+        """Four sites log the same event; a test counting one must tell them apart."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        reader_screen_manager._close_comic_book_reader()
+        reader_screen_manager._close_document_reader()
+        reader_screen_manager._close_corpus_stats()
+        reader_screen_manager._close_wiki_reader()
+        joined = "\n".join(loguru_sink)
+        for origin in ("comic reader", "document reader", "By the Numbers", "wiki reader"):
+            assert f"Main screen is active (from {origin})." in joined
+
+    def test_switching_to_document_and_corpus_stats_announces_them(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+        reader_screen_manager._switch_to_document_reader(Path("/doc"), "How To")
+        reader_screen_manager._switch_to_corpus_stats()
+        assert 'Document reader screen is active: "How To".' in loguru_sink
+        assert "By the Numbers screen is active." in loguru_sink
+
     def test_close_wiki_reader(
         self,
         reader_screen_manager: ReaderScreenManager,
@@ -235,3 +304,11 @@ class TestReaderScreen:
             screen.on_comic_closed()
             screen.on_document_reader_closed()
             screen.on_wiki_reader_closed()
+
+    def test_entering_and_leaving_log_the_screen_name(self, loguru_sink: list[str]) -> None:
+        """Kivy fires these when a transition completes: the one marker for that."""
+        screen = cast("ReaderScreen", SimpleNamespace(name="wiki_reader"))
+        ReaderScreen.on_enter(screen)
+        ReaderScreen.on_leave(screen)
+        assert "Screen 'wiki_reader' entered." in loguru_sink
+        assert "Screen 'wiki_reader' left." in loguru_sink

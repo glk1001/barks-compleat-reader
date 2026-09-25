@@ -7,6 +7,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window, WindowBase
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
@@ -112,16 +113,16 @@ class AppWindowGeometryHelper:
             new_height = content_h + chrome
             self._schedule_guarded_resize(new_width, new_height)
 
-    # ruff: noqa: ERA001
     def on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         """Handle window resize events — enforce aspect ratio and guard against OS overrides."""
-        # logger.debug(
-        #     f"Main window resize event:"
-        #     f" width, height = {width},{height},"
-        #     f" Window.fullscreen = {Window.fullscreen},"
-        #     f" self._resize_event = {self._resize_event},"
-        #     f" self._resize_requested_size = {self._resize_requested_size},"
-        # )
+        # Every event, since a transient size here is what a later correction
+        # acts on; they are rare (not per frame), so this is cheap.
+        logger.debug(
+            f"{log_markers.WINDOW_RESIZED.format(width=width, height=height)}"
+            f" Window.fullscreen = {Window.fullscreen},"
+            f" guard = {self._resize_requested_size if self._resize_event else None},"
+            f" correction suppressed = {self._suppress_correction}."
+        )
 
         if Window.fullscreen:
             return
@@ -237,6 +238,12 @@ class AppWindowGeometryHelper:
 
             def apply_correction(_dt: float) -> None:
                 self._correction_event = None
+                logger.info(
+                    f"Aspect-ratio correction: resize event {width},{height}"
+                    f" -> Window.size = ({correct_width}, {correct_height});"
+                    f" Window.left/top = ({Window.left}, {Window.top}),"
+                    f" monitor width = {monitor_w}."
+                )
                 Window.size = (correct_width, correct_height)
 
             self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)

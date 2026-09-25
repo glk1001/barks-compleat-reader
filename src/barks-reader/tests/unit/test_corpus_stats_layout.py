@@ -8,7 +8,8 @@ reader.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Literal
 from unittest.mock import patch
 
 import pytest
@@ -43,7 +44,12 @@ def text_section(tmp_path: Path) -> StatSection:
     return section
 
 
-@pytest.fixture(scope="module")
+def _columns_scope(fixture_name: str, config: pytest.Config) -> Literal["module", "function"]:  # noqa: ARG001
+    """Once per module normally; once per test under mutmut (see test_corpus_stats)."""
+    return "function" if os.environ.get("MUTANT_UNDER_TEST") else "module"
+
+
+@pytest.fixture(scope=_columns_scope)
 def columns(cpi_db: Path) -> tuple[list[StatSection], list[StatSection]]:
     left, right = layout.split_columns(compute_static_stats(cpi_db).sections)
     return list(left), list(right)
@@ -81,6 +87,53 @@ class TestItFitsOnOnePage:
             heading="Too much", rows=tuple(StatRow(f"Row {i}", "1") for i in range(60))
         )
         assert layout.content_height([huge], []) > _PAGE_HEIGHT
+
+
+class TestHeightsAddUp:
+    """The heights are the sums the page is laid out from, so they are checked as sums.
+
+    The fit tests above only ask whether the real page fits, which every sign
+    error in these sums still satisfies (mutmut, 2026-09-23).
+    """
+
+    @staticmethod
+    def _sections() -> tuple[StatSection, StatSection]:
+        one_row = StatSection(heading="A", rows=(StatRow("x", "1"),))
+        two_rows_and_a_footnote = StatSection(
+            heading="B", rows=(StatRow("y", "2"), StatRow("z", "3")), footnote="f"
+        )
+        return one_row, two_rows_and_a_footnote
+
+    def test_the_opening_is_its_four_design_parts(self) -> None:
+        d = layout.DESIGN
+        assert layout.opening_height() == (
+            d.headline_height + d.headline_gap + d.standfirst_height + d.opening_gap
+        )
+
+    def test_a_column_is_its_sections_each_with_a_gap_then_the_reserved_slot_with_its_gap(
+        self,
+    ) -> None:
+        a, b = self._sections()
+        gap = layout.DESIGN.section_gap
+        assert layout.column_height([]) == 0.0
+        assert layout.column_height([a, b]) == (
+            layout.section_height(a) + layout.section_height(b) + 2 * gap
+        )
+        assert layout.column_height([a], reserved=50.0) == (
+            layout.section_height(a) + gap + 50.0 + gap
+        )
+
+    def test_the_page_is_the_opening_the_taller_column_and_the_padding(self) -> None:
+        a, b = self._sections()
+        padding = 2.0 * layout.PAGE_VERTICAL_PADDING_FRACTION * layout.REFERENCE_PAGE_WIDTH
+        taller = max(layout.column_height([a]), layout.column_height([b], 40.0))
+        assert layout.content_height([a], [b], 40.0) == layout.opening_height() + taller + padding
+        assert layout.content_height([], []) == layout.opening_height() + padding
+
+    def test_nothing_is_reserved_unless_asked(self) -> None:
+        a, b = self._sections()
+        assert layout.content_height([a], [b]) == layout.content_height([a], [b], 0.0)
+        assert layout.column_height([a]) == layout.column_height([a], 0.0)
 
 
 class TestSectionHeights:

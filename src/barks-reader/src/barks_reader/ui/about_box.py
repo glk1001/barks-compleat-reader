@@ -3,8 +3,10 @@ from pathlib import Path
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from loguru import logger
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
+from barks_reader.core import log_markers
 from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_palette import theme
 
@@ -107,6 +109,7 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
     )
 
     # --- Give the content to the popup ---
+    logger.debug(log_markers.ABOUT_BOX_OPENED)
     show_standalone_popup(
         title=ABOUT_POPUP_TITLE,
         content=content,
@@ -116,4 +119,5 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
         add_close_button=True,
         background_image_file=about_background_path,
         wrapper_scrim=ABOUT_WRAPPER_SCRIM,
+        on_dismiss=lambda: logger.debug(log_markers.ABOUT_BOX_DISMISSED),
     )

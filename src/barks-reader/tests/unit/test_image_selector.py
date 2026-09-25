@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import random
+import zipfile
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from random import randrange
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core import image_selector as is_module
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, FIT_MODE_COVER, ImageSelector
 from barks_reader.core.reader_file_paths import EMERGENCY_INSET_FILE, FileTypes
@@ -137,6 +138,29 @@ class TestImageSelector:
 
             assert info.from_title == Titles.VACATION_TIME
             assert info.filename == Path("/faves") / "censored.png"
+
+    def test_the_reading_history_image_is_found_in_the_panels_zip_on_windows(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver, tmp_path: Path
+    ) -> None:
+        """A Windows Path names the zip member with a backslash, which the zip does not have.
+
+        The History and Reading nodes show this image; with the JPG panels zip on
+        Windows the miss crashed the reader.
+        """
+        title_dir = ENUM_TO_STR_TITLE[Titles.CRAZY_QUIZ_SHOW_THE]
+        member = f"Favourites/{title_dir}/129-3{fake_resolver.get_file_ext()}"
+        panels_zip = tmp_path / "panels.zip"
+        with zipfile.ZipFile(panels_zip, "w") as zf:
+            zf.writestr(member, b"image")
+        favourites = zipfile.Path(panels_zip, "Favourites/")
+        with (
+            patch.object(fake_resolver, "get_comic_favourite_files_dir", return_value=favourites),
+            patch.object(is_module, "Path", PureWindowsPath),
+        ):
+            info = image_selector.get_random_reading_history_image()
+
+        assert info.filename is not None
+        assert info.filename.exists(), f"{info.filename} is not in the zip"
 
     def test_get_random_image_success(
         self, image_selector: ImageSelector, fake_resolver: FakeResolver

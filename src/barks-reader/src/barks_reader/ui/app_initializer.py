@@ -8,6 +8,7 @@ from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     MissingArchiveFilesError,
@@ -144,7 +145,9 @@ class AppInitializer:
                 if saved_node_path:
                     self._goto_saved_node(saved_node_path, saved_node_state)
         finally:
-            logger.info(f"Time of post tree setup: {timing.get_elapsed_time_with_unit()}.")
+            logger.info(
+                log_markers.POST_TREE_SETUP.format(elapsed=timing.get_elapsed_time_with_unit())
+            )
 
     def _goto_saved_node(
         self, saved_node_path: list[str], saved_node_state: dict[str, Any]

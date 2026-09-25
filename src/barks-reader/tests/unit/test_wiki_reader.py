@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_reader.ui import wiki_reader
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_ESCAPE,
@@ -29,7 +30,7 @@ def wiki_screen() -> WikiReaderScreen:
             reader_settings=MagicMock(),
             font_manager=MagicMock(),
             image_selector=MagicMock(),
-            app_data_dir=Path("/app-data"),
+            profile_dir=Path("/profile"),
             on_goto_title=MagicMock(),
             on_close_screen=MagicMock(),
         )
@@ -478,3 +479,22 @@ class TestApplyViewerSizing:
         assert wiki_screen.pos_hint == {}
         assert wiki_screen._viewer.size_hint == (1, 1)
         assert wiki_screen._viewer.pos_hint == {}
+
+
+class TestWikiReaderMarkers:
+    BUNDLE = Path("/bundle")
+    PAGE = Path("/bundle/concept/stories/the-firebug.md")
+
+    def test_open_logs_the_landing_page(
+        self, wiki_screen: WikiReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(WikiReaderScreen, "_build_viewer", autospec=True):
+            wiki_screen.open_wiki(self.BUNDLE, self.PAGE)
+        assert f'Wiki reader opened (page = "{self.PAGE}").' in loguru_sink
+
+    def test_close_and_goto_title_log(
+        self, wiki_screen: WikiReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        wiki_screen._goto_title(Titles.LOST_IN_THE_ANDES)
+        assert "Wiki reader closing." in loguru_sink
+        assert 'Wiki goto title: "LOST_IN_THE_ANDES".' in loguru_sink

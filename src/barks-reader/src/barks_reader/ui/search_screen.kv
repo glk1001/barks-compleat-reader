@@ -20,7 +20,15 @@
 
 <_TagChipButton>:
     size_hint: 1, None
-    height: dp(26)
+    # A tag longer than the chip wraps onto more lines rather than spilling
+    # past the pill ("Uncle Scrooge not in US series" at the 35% panel width).
+    # Only a chip that fills the row wraps to it; one sized to its text
+    # (size_hint_x None, like the speaker chips) must not, or width and text
+    # would chase each other down to one letter per line.
+    text_size: (self.width - dp(24), None) if self.size_hint_x else (None, None)
+    halign: 'center'
+    valign: 'middle'
+    height: max(dp(26), self.texture_size[1] + dp(8))
     font_size: fm.search_tag_chip_font_size
     background_normal: ''
     background_down: ''
@@ -39,6 +47,12 @@
         SmoothLine:
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(12))
             width: dp(1.5)
+
+# A speaker-filter chip on the word search: sized to its name, not to a share
+# of the row, so a short row does not stretch "All" across the panel.
+<_SpeakerChipButton>:
+    size_hint_x: None
+    width: self.texture_size[0] + dp(24)
 
 <SearchInput@TouchAwareTextInput>:
     multiline: False
@@ -135,6 +149,7 @@
                         hint_text: "Search titles…"
                         on_text: root.on_title_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: title_clear_button
@@ -190,6 +205,7 @@
                         hint_text: "Search tags…"
                         on_text: root.on_tag_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: tag_clear_button
@@ -263,6 +279,7 @@
                         hint_text: "Search words…"
                         on_text: root.on_word_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: word_clear_button
@@ -293,9 +310,22 @@
                 size_hint_x: 0.65
 
                 BoxLayout:
+                    orientation: 'vertical'
                     size_hint: 1, 1
                     pos_hint: {'x': 0, 'y': 0}
                     padding: dp(8)
+                    spacing: dp(6) if speaker_chips_layout.children else 0
+
+                    # Who-said-it filter. Empty (and zero height) on an index
+                    # that has no speakers. A stack, not a row: eleven chips do
+                    # not fit one line at the pinned 900px window, and a clipped
+                    # row hides the chips a remote cannot scroll to.
+                    StackLayout:
+                        id: speaker_chips_layout
+                        orientation: 'lr-tb'
+                        size_hint_y: None
+                        height: self.minimum_height if self.children else 0
+                        spacing: dp(6), dp(4)
 
                     ReaderScrollView:
                         id: word_results_scroll

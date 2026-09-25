@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from comic_utils.timing import Timing
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, get_title_str
 
 from .panel_texture_loader import PanelTextureLoader
@@ -216,8 +217,9 @@ class SnapshotApplicator:
 
             assert image_filename is not None
             logger.debug(
-                f'Time taken to load image "{image_filename.name}" was'
-                f" {timing.get_elapsed_time_with_unit()}."
+                log_markers.IMAGE_LOADED.format(
+                    filename=image_filename.name, elapsed=timing.get_elapsed_time_with_unit()
+                )
             )
 
         assert image_info.filename is not None

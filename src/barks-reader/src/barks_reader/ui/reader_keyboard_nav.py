@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from kivy.graphics import Color, Line
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import theme
 
 if TYPE_CHECKING:
@@ -72,8 +73,50 @@ def is_escape_key_for_text_input(key: int, codepoint: str | None) -> bool:
 
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
+# The log line every keyboard focus move ends in, and the one a Kivy DropDown's
+# dismissal ends in. The GUI path tests wait on these instead of on the clock,
+# so they are part of the nav contract: every way of moving the focus ring must
+# reach `log_nav_focus`, and every dropdown must reach `_on_dropdown_dismissed`.
+NAV_FOCUS_LOG_PREFIX = log_markers.NAV_FOCUS_PREFIX
+DROPDOWN_DISMISSED_LOG = log_markers.DROPDOWN_DISMISSED
+_MAX_LOGGED_TEXT = 40
+
 
 _FOCUS_BINDING_ATTR = "_focus_highlight_cb"
+
+
+def describe_widget(widget: Widget) -> str:
+    """Name a widget for the log: its class, plus its text when it has some.
+
+    Args:
+        widget: The widget keyboard focus has landed on.
+
+    Returns:
+        ``Button "Titles"`` for a labelled widget, ``BoxLayout`` for one with no
+        text; long text is cut so a log line stays one line.
+
+    """
+    # Widgets reached through `ids` arrive as Kivy WeakProxy objects; name what
+    # they stand for.
+    ref = getattr(widget, "__ref__", None)
+    target = ref() if callable(ref) else None
+    name = type(widget if target is None else target).__name__
+    text = getattr(widget, "text", None)
+    if not isinstance(text, str) or not text.strip():
+        return name
+    text = " ".join(text.split())
+    if len(text) > _MAX_LOGGED_TEXT:
+        text = text[: _MAX_LOGGED_TEXT - 1] + "\u2026"
+    return f'{name} "{text}"'
+
+
+def log_nav_focus(widget: Widget) -> None:
+    """Log that keyboard focus now sits on `widget`.
+
+    Called by `draw_focus_highlight`, so every ring drawn logs itself; a focus
+    shown some other way (a colour change, say) calls this directly.
+    """
+    logger.debug(log_markers.NAV_FOCUS.format(widget=describe_widget(widget)))
 
 
 def _draw_highlight(
@@ -111,6 +154,7 @@ def draw_focus_highlight(
     _unbind_highlight(widget)
 
     _draw_highlight(widget, group, color, line_width)
+    log_nav_focus(widget)
 
     def _on_geometry_change(*_args: object) -> None:
         _draw_highlight(widget, group, color, line_width)
@@ -194,7 +238,7 @@ class ActionBarNavMixin:
             self._showed_action_bar_for_menu = True
         self._focused_btn_idx = self._last_used_btn_idx
         self._update_menu_focus()
-        logger.debug("Entered menu mode.")
+        logger.debug(log_markers.MENU_ENTERED)
 
     def _exit_menu_mode(self) -> None:
         self._clear_menu_focus()
@@ -202,7 +246,7 @@ class ActionBarNavMixin:
         if self._showed_action_bar_for_menu:
             self._on_action_bar_hidden_after_menu()
             self._showed_action_bar_for_menu = False
-        logger.debug("Exited menu mode.")
+        logger.debug(log_markers.MENU_EXITED)
 
     # --- Page-turn hooks ---
 
@@ -325,6 +369,7 @@ class DropdownNavMixin:
         self._dropdown_nav_mode = False
 
     def _on_dropdown_dismissed(self, _dropdown: Widget) -> None:
+        logger.debug(DROPDOWN_DISMISSED_LOG)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
             if self._menu_mode:  # ty: ignore[unresolved-attribute]

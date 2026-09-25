@@ -28,6 +28,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.collection_page_groups import (
     get_collection_group_page_range,
     year_range_group,
@@ -193,7 +194,11 @@ class NavigationCoordinator:
         """
         assert image_info.from_title is not None
 
-        logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
+        logger.debug(
+            log_markers.GOTO_TITLE.format(
+                name=image_info.from_title.name, filename=image_info.filename
+            )
+        )
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
         parent_node = self._get_title_parent_node(image_info.from_title, title_fanta_info)

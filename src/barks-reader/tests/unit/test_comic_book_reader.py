@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import barks_reader.ui.comic_book_reader
 import pytest
 from barks_fantagraphics.comics_consts import PageType
+from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui.comic_book_reader import (
@@ -98,6 +99,34 @@ class TestComicPageManager:
 
         pm.goto_start_page()
         assert pm._current_page_index == 0
+
+    def test_the_page_edges_log_the_same_markers_in_double_page_mode(
+        self, page_manager: tuple[_ComicPageManager, MagicMock], loguru_sink: list[str]
+    ) -> None:
+        """A GUI test waits on the edge lines whichever mode the reader booted in."""
+        pm, _ = page_manager
+        page_map = OrderedDict()
+        for i in range(5):  # units (0, 1), (2, 3), (4)
+            page_map[str(i)] = PageInfo(
+                page_index=i,
+                page_type=PageType.BODY,
+                display_page_num=str(i),
+                srce_page=MagicMock(),
+                dest_page=MagicMock(),
+            )
+        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.double_page_mode = True
+        pm.set_to_first_page_to_read()
+
+        pm.prev_page()
+        assert pm._current_page_index == 0
+        assert "Already on the first page: current index = 0." in loguru_sink
+
+        pm.goto_last_page()
+        assert pm._current_page_index == 4
+        pm.next_page()
+        assert pm._current_page_index == 4
+        assert "Already on the last page: current index = 4." in loguru_sink
 
     def test_get_image_load_order(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
         pm, _ = page_manager
@@ -374,6 +403,70 @@ class TestComicBookReader:
         reader.on_touch_down(touch)
         reader._page_manager.prev_page.assert_called()
 
+    def test_margin_presses_log_their_markers(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        mock_nav = reader._navigation
+        mock_nav.is_in_top_margin.return_value = False
+        touch = MagicMock(x=100, y=60)
+        reader.x, reader.y = 0, 0
+        reader._page_manager = MagicMock()
+
+        mock_nav.is_in_left_margin.return_value = True
+        mock_nav.is_in_right_margin.return_value = False
+        reader.on_touch_down(touch)
+        mock_nav.is_in_left_margin.return_value = False
+        mock_nav.is_in_right_margin.return_value = True
+        reader.on_touch_down(touch)
+
+        assert log_markers.LEFT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
+        assert log_markers.RIGHT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
+
+    def test_tap_target_regions_are_the_margins_in_window_pixels(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._navigation.tap_regions.return_value = {"left margin": (0, 10, 50, 20)}
+        reader.x, reader.y = 5, 7
+        reader.width, reader.height = 200, 100
+        # With no parent, a widget's own position space is the window's.
+        assert reader.tap_target_regions() == {"left margin": (5, 17, 50, 20)}
+        reader._navigation.tap_regions.assert_called_once_with(200, 100)
+
+    # --- log markers: double page and goto page, for the GUI path tests to wait on ---
+
+    @staticmethod
+    def _bare_reader(reader: ComicBookReader) -> ComicBookReader:
+        reader._page_manager = MagicMock(double_page_mode=False)
+        reader._is_one_pager_collection = False
+        reader._is_covers_collection = False
+        return reader
+
+    def test_double_page_toggle_logs_the_new_mode(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        with patch.object(reader, "_show_page"):
+            reader.toggle_double_page_mode()
+        assert "Double page mode toggled: True." in loguru_sink
+
+    def test_double_page_toggle_is_ignored_for_single_page_collections(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        reader._is_one_pager_collection = True
+        with patch.object(reader, "_show_page") as show:
+            reader.toggle_double_page_mode()
+        show.assert_not_called()
+        assert "Double page toggle ignored: single-page collection." in loguru_sink
+
+    def test_selecting_a_page_logs_it(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        with patch.object(reader, "_hide_action_bar_if_fullscreen"):
+            reader.on_page_selected(MagicMock(), "12")
+        assert 'Goto page selected: "12".' in loguru_sink
+
 
 class TestComicBookReaderScreen:
     @pytest.fixture
@@ -415,6 +508,26 @@ class TestComicBookReaderScreen:
 
         screen.is_active(active=False)
         assert not screen._active
+
+    @pytest.mark.parametrize(
+        ("finish", "reason"),
+        [
+            ("_on_finished_goto_windowed_mode", "ComicBookReaderScreen windowed"),
+            ("_on_finished_goto_fullscreen_mode", "ComicBookReaderScreen fullscreen"),
+        ],
+    )
+    def test_a_settled_mode_change_logs_the_window_geometry(
+        self, screen: ComicBookReaderScreen, finish: str, reason: str
+    ) -> None:
+        with (
+            patch.object(screen, "_update_widget_states"),
+            patch.object(screen, "_update_fullscreen_button"),
+            patch.object(barks_reader.ui.comic_book_reader, "WindowManager"),
+            patch.object(barks_reader.ui.comic_book_reader, "log_window_geometry") as log_geometry,
+        ):
+            getattr(screen, finish)()
+
+        log_geometry.assert_called_once_with(reason)
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
         # The toggle scaffolding lives in WindowModeController now; the screen just

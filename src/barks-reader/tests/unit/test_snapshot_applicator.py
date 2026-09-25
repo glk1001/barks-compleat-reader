@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.snapshot_applicator
 import pytest
+from barks_reader.core import log_markers
+from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -101,6 +104,23 @@ def _make_snapshot(
             image_info=ImageInfo(filename=Path("search.png")) if search_visible else None,
         ),
     )
+
+
+class TestImageLoadTiming:
+    def test_a_loaded_image_logs_its_name_and_how_long_it_took(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """The GUI suite holds this duration to a budget (IMAGE_LOADED)."""
+        loader = MagicMock()
+        loader.load_texture.side_effect = lambda _filename, callback: callback(MagicMock(), None)
+        image_info = MagicMock(filename=Path("Barks Panels Pngs/Insets/Too Fit to Fit.png"))
+        applied: list[object] = []
+
+        SnapshotApplicator._load_texture(loader, image_info, applied.append)  # noqa: SLF001
+
+        assert len(applied) == 1
+        wanted = pattern(log_markers.IMAGE_LOADED, filename="Too Fit to Fit.png")
+        assert any(re.search(wanted, m) for m in loguru_sink)
 
 
 class TestSnapshotApplicator:

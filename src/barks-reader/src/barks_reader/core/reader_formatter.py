@@ -254,11 +254,13 @@ class ReaderFormatter:
 def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
     r"""Find and tag a phrase in a target string.
 
-    The target text is hyphenated for display, so the phrase may be broken in two ways:
-    spaces between words may become newlines (\n) or soft hyphen + newline (\u00AD\n), and
-    a single word may be hyphenated *internally* at a soft hyphen, optionally followed by a
-    newline (e.g. "Moneytubs" stored as "Money\u00ADtubs" / "Money\u00AD\ntubs"). This
-    function tolerates both and wraps the found phrase in start...end tags.
+    The target text is hyphenated for display, so the phrase may be broken in three ways:
+    spaces between words may become newlines (\n) or soft hyphen + newline (\u00AD\n); a
+    single word may be hyphenated *internally* at a soft hyphen, optionally followed by a
+    newline (e.g. "Moneytubs" stored as "Money\u00ADtubs" / "Money\u00AD\ntubs"); and a
+    compound with a real hyphen may be broken at that hyphen ("never-never" lettered as
+    "NEVER-\nNEVER"). This function tolerates all three and wraps the found phrase in
+    start...end tags.
     """
     # 1. Split the original phrase into a list of words
     #    (split() handles multiple spaces automatically)
@@ -270,7 +272,11 @@ def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: 
     #    a match can't span a real word boundary. Each character is escaped so regex
     #    metacharacters ('?', '.', '(', ...) are matched literally.
     intra_word_break = r"(?:\xad\n?)?"
-    word_patterns = [intra_word_break.join(re.escape(ch) for ch in word) for word in words]
+    # A real hyphen in the phrase may be where the letterer broke the line.
+    word_patterns = [
+        intra_word_break.join(re.escape(ch) + (r"\n?" if ch == "-" else "") for ch in word)
+        for word in words
+    ]
 
     # 3. Create a regex pattern for the between-word separator.
     #    It matches: A literal space OR a newline OR a soft hyphen followed by newline.

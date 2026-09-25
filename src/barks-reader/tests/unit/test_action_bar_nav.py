@@ -8,7 +8,9 @@ from barks_reader.ui import reader_keyboard_nav as nav_module
 from barks_reader.ui.reader_keyboard_nav import (
     _FOCUS_BINDING_ATTR,
     ActionBarNavMixin,
+    DropdownNavMixin,
     clear_focus_highlight,
+    describe_widget,
     draw_focus_highlight,
 )
 
@@ -169,3 +171,72 @@ class TestFocusHighlightBinding:
         # First draw binds, second draw unbinds the first then binds again.
         assert widget.unbind.call_count == 1
         assert widget.bind.call_count == 2  # noqa: PLR2004
+
+
+class TestNavFocusLog:
+    """Every focus ring drawn logs where it landed; the GUI path tests wait on that line."""
+
+    def test_draw_logs_the_widget_and_its_text(self, loguru_sink: list[str]) -> None:
+        widget = _make_widget()
+        widget.text = "Titles"
+        with patch.object(nav_module, "_draw_highlight"):
+            draw_focus_highlight(widget, "test_group")
+        assert 'Nav focus on MagicMock "Titles".' in loguru_sink
+
+    def test_a_widget_without_text_logs_its_class_alone(self, loguru_sink: list[str]) -> None:
+        widget = _make_widget()  # its .text is a MagicMock, not a str
+        with patch.object(nav_module, "_draw_highlight"):
+            draw_focus_highlight(widget, "test_group")
+        assert "Nav focus on MagicMock." in loguru_sink
+
+    def test_long_text_is_cut_and_whitespace_collapsed(self) -> None:
+        widget = _make_widget()
+        widget.text = "a  very\nlong " * 10
+        described = describe_widget(widget)
+        assert described.startswith('MagicMock "a very long a very long')
+        assert described.endswith('…"')
+        assert "\n" not in described
+
+    def test_blank_text_counts_as_none(self) -> None:
+        widget = _make_widget()
+        widget.text = "   "
+        assert describe_widget(widget) == "MagicMock"
+
+
+class _StubDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
+    def __init__(self) -> None:
+        self._setup_action_bar_nav([MagicMock()])
+        self._setup_dropdown_nav()
+        self._items = [MagicMock(), MagicMock()]
+
+    def _get_dropdown_buttons(self) -> list:
+        return self._items
+
+
+class TestDropdownDismissedLog:
+    """A dismissed dropdown logs it, whether or not keyboard nav was inside it."""
+
+    def test_logged_outside_dropdown_nav(self, loguru_sink: list[str]) -> None:
+        _StubDropdownScreen()._on_dropdown_dismissed(MagicMock())
+        assert "Dropdown dismissed." in loguru_sink
+
+    def test_logged_from_inside_dropdown_nav(self, loguru_sink: list[str]) -> None:
+        screen = _StubDropdownScreen()
+        with patch.object(nav_module, "draw_focus_highlight"):
+            screen._enter_dropdown_nav()
+        with patch.object(nav_module, "clear_focus_highlight"):
+            screen._on_dropdown_dismissed(MagicMock())
+        assert "Dropdown dismissed." in loguru_sink
+        assert screen._dropdown_nav_mode is False
+
+    def test_a_kivy_weak_proxy_is_named_for_what_it_wraps(self) -> None:
+        """Widgets reached through `ids` are WeakProxy objects; the log names the real class."""
+
+        class _RealButton:
+            text = "Goto wiki page"
+
+        real = _RealButton()
+        proxy = MagicMock()
+        proxy.__ref__ = lambda: real
+        proxy.text = real.text
+        assert describe_widget(proxy) == '_RealButton "Goto wiki page"'

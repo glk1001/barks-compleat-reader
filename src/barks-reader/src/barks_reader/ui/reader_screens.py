@@ -20,6 +20,8 @@ from kivy.uix.screenmanager import (
 )
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .platform_window_utils import set_titlebar_drag_region
 
 if TYPE_CHECKING:
@@ -42,6 +44,15 @@ class ReaderScreen(Screen):
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
+
+    # Kivy fires these when a screen transition completes, so they mark the
+    # moment a screen is really on show - the "... is active" lines above the
+    # switches are logged when the (random, animated) transition starts.
+    def on_enter(self, *_args: object) -> None:
+        logger.debug(log_markers.SCREEN_ENTERED.format(name=self.name))
+
+    def on_leave(self, *_args: object) -> None:
+        logger.debug(log_markers.SCREEN_LEFT.format(name=self.name))
 
     def is_active(self, active: bool) -> None:
         pass
@@ -145,10 +156,37 @@ class ReaderScreenManager:
     def _get_next_reader_screen_transition(self) -> TransitionBase:
         return random.choice(self._READER_SCREEN_TRANSITIONS)
 
+    def _set_transition(self, transition: TransitionBase, switching_to: str) -> None:
+        """Make `transition` the next switch's, first finishing one still running.
+
+        ScreenManager.on_current stops the transition it holds *then*, so a
+        transition swapped out while still animating keeps running: its
+        completion removes its own outgoing screen, which by then may be the
+        screen the new switch just made current (a comic closed and the next
+        opened within the closing transition's 0.4s did exactly that, and the
+        reader's next goto-page press crashed on a widget with no window).
+        Stopping it here completes it in place, so the tree is settled before
+        the switch.
+        """
+        running = self._screen_manager.transition
+        if running.is_active:
+            logger.warning(
+                f"Screen transition '{running.__class__.__name__}' still running while"
+                f" switching to the {switching_to}: finishing it first."
+            )
+            screen_in, screen_out = running.screen_in, running.screen_out
+            running.stop()
+            # stop() completes the transition but, unlike an animation that ran
+            # its course, fires neither screen's enter/leave; the screens (and
+            # the harness pairing their log lines) expect both.
+            screen_in.dispatch("on_enter")
+            screen_out.dispatch("on_leave")
+        self._screen_manager.transition = transition
+
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
 
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._set_transition(self._get_next_reader_screen_transition(), "comic book reader")
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
         logger.debug(
@@ -176,7 +214,7 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.main_screen.on_comic_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
@@ -185,48 +223,50 @@ class ReaderScreenManager:
 
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
-        logger.info("Main screen is active.")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_COMIC_READER))
 
     def _switch_to_document_reader(self, doc_dir: Path, title: str) -> None:
-        logger.debug(f'Switching to document reader for "{title}"...')
+        logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
         self._reader_screens.document_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title)
         self._screen_manager.current = DOCUMENT_READER_SCREEN
+        logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))
 
     def _close_document_reader(self) -> None:
         logger.debug("Closing document reader and switching back to main screen...")
         assert self._reader_screens
         self._reader_screens.main_screen.on_document_reader_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active.")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_DOCUMENT_READER))
 
     def _switch_to_corpus_stats(self) -> None:
-        logger.debug("Switching to the By the Numbers page...")
+        logger.debug(log_markers.SWITCHING_TO_BY_THE_NUMBERS)
         assert self._reader_screens
         self._reader_screens.corpus_stats_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.corpus_stats_screen.open()
         self._screen_manager.current = CORPUS_STATS_SCREEN
+        logger.info(log_markers.BY_THE_NUMBERS_ACTIVE)
 
     def _close_corpus_stats(self) -> None:
         logger.debug("Closing the By the Numbers page and switching back to main screen...")
         assert self._reader_screens
         self._reader_screens.main_screen.on_corpus_stats_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
-        logger.info("Main screen is active.")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_BY_THE_NUMBERS))
 
     def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:
         logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
@@ -240,13 +280,13 @@ class ReaderScreenManager:
         if wiki_drag_region is not None:
             set_titlebar_drag_region(wiki_drag_region)
 
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._set_transition(self._get_next_reader_screen_transition(), "wiki reader")
         self._screen_manager.current = WIKI_READER_SCREEN
 
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Wiki reader screen is active.")
+        logger.info(log_markers.WIKI_READER_ACTIVE)
 
     def _close_wiki_reader(self) -> None:
         logger.debug("Closing wiki reader and switching back to main screen...")
@@ -255,10 +295,10 @@ class ReaderScreenManager:
         set_titlebar_drag_region(self._reader_screens.main_screen.ids.action_bar.drag_region)
         self._reader_screens.main_screen.on_wiki_reader_closed()
 
-        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active.")
+        logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_WIKI_READER))

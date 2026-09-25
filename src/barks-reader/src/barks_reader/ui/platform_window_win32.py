@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 # minimum before our scheduled restore runs.
 _RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
 
+# Frames move_now retries its MoveWindow for: the first is lost, the second holds.
+_MOVE_NOW_ATTEMPTS = 5
+
 
 class _RECT(ctypes.Structure):
     _fields_: ClassVar[list[tuple[str, type[c_long]]]] = [
@@ -42,12 +45,20 @@ class _RECT(ctypes.Structure):
 class Win32WindowBackend:
     """Save/restore the window via direct Win32 calls."""
 
-    def __init__(self) -> None:
+    def __init__(self, hwnd: int | None = None) -> None:
+        """Bind to the app's window, found by lookup, or to ``hwnd`` when given.
+
+        Args:
+            hwnd: A window handle to drive instead of looking up the app's SDL
+                window. Only a test passes one, so it drives a window it made
+                even when Kivy's own window is open in the same process.
+
+        """
         self._hwnd: int | None = None
         self._move_window: Any = None
         self._get_window_rect: Any = None
         self._get_client_rect: Any = None
-        self._init()
+        self._init(hwnd)
 
     def is_available(self) -> bool:
         """Return True if Win32 initialization succeeded and the backend can be used."""
@@ -82,6 +93,42 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
             state.save_state_now()
+
+    def move_now(self, state: WindowState) -> None:
+        """Put the window at ``state``'s rectangle as fullscreen ends, retrying each frame.
+
+        SDL's fullscreen exit sizes the window as its client rectangle plus the
+        frame the window style declares, but with the custom titlebar the client
+        area fills the whole window (Kivy answers ``WM_NCCALCSIZE`` with 0), so
+        the window comes back a frame too big (16x39 at 100% scaling) and shifted
+        up by the caption. The first ``MoveWindow`` straight after the exit is
+        lost (it blocks while the window finishes the exit, then leaves it where
+        it was); the next frame's holds. Measured on a Windows 11 laptop, the
+        wrong rectangle shows for ~70ms instead of until the scheduled restore
+        (~255ms). No recovery here: the scheduled restore that follows settles it.
+
+        Revisit on Kivy 3.0 (SDL3): if the first resize after "Exiting fullscreen
+        mode" is already the saved size, SDL no longer pads the window and this
+        can go (see docs/plans/cross-platform-gui-tests.md, "What is left").
+        """
+        if not self._hwnd:
+            return
+        x, y = state.pos
+        width, height = state.size
+        wanted = (x, y, x + width, y + height)
+
+        def attempt(attempts_left: int) -> None:
+            if Window.fullscreen or not self._hwnd:
+                return  # a fullscreen transition has taken over
+            self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
+            rect = _RECT()
+            self._get_window_rect(self._hwnd, rect)
+            if (rect.left, rect.top, rect.right, rect.bottom) == wanted:
+                logger.debug(f"Win32: Window at {state.size}, {state.pos} after fullscreen exit.")
+            elif attempts_left > 1:
+                Clock.schedule_once(lambda _dt: attempt(attempts_left - 1), 0)
+
+        attempt(_MOVE_NOW_ATTEMPTS)
 
     def schedule_restore(
         self,
@@ -118,14 +165,10 @@ class Win32WindowBackend:
 
     # --- Private helpers ---
 
-    def _init(self) -> None:
+    def _init(self, hwnd: int | None) -> None:
         """Initialize Win32 handles for direct window manipulation."""
         try:
-            found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
-            if found_hwnd:
-                logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
-            else:
-                found_hwnd = self._find_hwnd_by_enum_windows()
+            found_hwnd = hwnd or self._find_app_hwnd()
 
             if not found_hwnd:
                 logger.warning("Could not get Win32 handle for Kivy window.")
@@ -160,6 +203,15 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._hwnd = None
+
+    @staticmethod
+    def _find_app_hwnd() -> Any:  # noqa: ANN401
+        """Return the app's window: the active one, else the first SDL window of this process."""
+        found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
+        if found_hwnd:
+            logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
+            return found_hwnd
+        return Win32WindowBackend._find_hwnd_by_enum_windows()
 
     @staticmethod
     def _find_hwnd_by_enum_windows() -> Any:  # noqa: ANN401

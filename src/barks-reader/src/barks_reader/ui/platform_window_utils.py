@@ -8,6 +8,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 
@@ -18,6 +19,22 @@ if TYPE_CHECKING:
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
+
+
+def log_window_geometry(reason: str) -> None:
+    """Log the main window's settled size and position (``WINDOW_GEOMETRY``).
+
+    Args:
+        reason: What the window just settled after, e.g. ``"boot"`` or
+            ``"MainScreen fullscreen"``.
+
+    """
+    width, height = Window.size
+    logger.info(
+        log_markers.WINDOW_GEOMETRY.format(
+            reason=reason, width=width, height=height, left=Window.left, top=Window.top
+        )
+    )
 
 
 class FullscreenEnum(Enum):
@@ -75,6 +92,15 @@ class WindowBackend(Protocol):
         """Populate ``state`` with the current window geometry."""
         ...
 
+    def move_now(self, state: WindowState) -> None:
+        """Put the window at ``state``'s saved geometry at once, as fullscreen ends.
+
+        Best effort, with no recovery: the scheduled restore that follows is what
+        settles the geometry. It is here to replace, before the next frame, a
+        rectangle the platform's own fullscreen exit got wrong.
+        """
+        ...
+
     def schedule_restore(
         self,
         state: WindowState,
@@ -102,6 +128,10 @@ class KivyWindowBackend:
     @staticmethod
     def save_state(state: WindowState) -> None:
         state.save_state_now()
+
+    @staticmethod
+    def move_now(state: WindowState) -> None:
+        """Do nothing: the fullscreen exit leaves no wrong rectangle to replace here."""
 
     @staticmethod
     def schedule_restore(
@@ -289,6 +319,12 @@ class WindowManager:
         def do_windowed() -> None:
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
+            # On Windows, SDL has just sized the window for a frame the custom
+            # titlebar hides, so the drawable area came back 16x39 too big and
+            # above the screen. Put it right before a frame draws; the scheduled
+            # restore below still settles it.
+            if not self._saved_window_state.is_unsaved():
+                self._backend.move_now(self._saved_window_state)
             self._end_transition(seq)
             Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(callbacks), 0)
 

@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.speech_markup import escape_markup
+from barks_fantagraphics.speech_speakers import speaker_display_name
 from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
@@ -31,6 +33,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
@@ -53,6 +56,7 @@ from .reader_keyboard_nav import (
     clear_focus_in_list,
     draw_focus_highlight,
     is_escape_key,
+    log_nav_focus,
 )
 
 if TYPE_CHECKING:
@@ -60,7 +64,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.entity_types import EntityType
-    from barks_fantagraphics.whoosh_search_engine import TitleInfo
+    from barks_fantagraphics.whoosh_search_engine import PageInfo, TitleInfo
     from kivy.core.image import Texture
     from kivy.uix.widget import Widget
 
@@ -146,6 +150,82 @@ class TextBoxWithTitleAndBorder(BoxLayout):
         self.content = content
 
 
+# The speaker line's size relative to the bubble's lettering: an annotation
+# on the line, not part of it.
+SPEAKER_LABEL_SCALE = 0.9
+# Breathing space under the speaker line. Kivy markup has no line spacing and
+# gives every line at least the widget's own line height, so a small blank line
+# is not small. Instead the label line ends in an invisible space set this much
+# larger than the label: a line is as tall as its tallest glyph, and glyphs hang
+# from the line's top, so the extra height lands under the name.
+SPEAKER_GAP_SCALE = 1.7
+
+
+def _speaker_label_markup(label: str, font_size: int | None) -> str:
+    """Return the who-says-it line: bold italic, in the theme's speaker colour, smaller.
+
+    The lettering itself carries ``[b]`` for emphasis, so bold alone would
+    read as more of it; what sets the line apart is the italic, a colour the
+    bubble's text never uses, and being a step smaller when the caller says
+    how big the lettering is.  The bold is weight for the small size.
+    """
+    text = f"[b][i][color={color_to_markup_hex(theme().speech_speaker)}]{label}[/color][/i][/b]"
+    return f"[size={font_size}]{text}[/size]" if font_size else text
+
+
+def format_page_speech_bubbles(
+    page_info: PageInfo, search_terms: str, speaker_font_size: int | None = None
+) -> str:
+    """Return one page's matching bubbles as the markup the popup shows.
+
+    Each bubble is the group's marked-up lettering, with the search terms
+    highlighted, under a line naming who says it -- ``SCROOGE:`` -- when
+    the index knows.  A group with no speaker call (an index built before
+    speakers existed, or a later volume) is shown exactly as before, and a
+    ``none`` speaker (a sound effect, a sign) gets no line either.
+
+    The highlight is applied to each bubble's text *before* the speaker line
+    is put above it, so searching for "donald" lights up the word in the
+    lettering and not the name on the label.  The label is escaped, since an
+    ``other:`` speaker may carry an ampersand.
+
+    The widget renders Kivy markup for the highlight anyway, so the
+    lettering's own [b]/[i] comes for free.  Caveat: a search phrase
+    straddling an emphasis boundary -- "really sharp", where only SHARP is
+    bold -- will not highlight, because the matcher sees the tags sitting
+    between the words.
+
+    Args:
+        page_info: The page's matching speech groups.
+        search_terms: What was searched for, to highlight.
+        speaker_font_size: Pixel size for the speaker line, or None to
+            inherit the bubble's.
+
+    Returns:
+        The page's bubbles joined by blank lines, ready for a markup label.
+
+    """
+    bubbles: list[str] = []
+    for speech in page_info.speech_info_list:
+        text = mark_phrase_in_text(
+            search_terms,
+            speech.speech_text_markup,
+            _speech_highlight_start_tag(),
+            SPEECH_HIGHLIGHT_END_TAG,
+        )
+        label = speaker_display_name(speech.speaker) if speech.speaker else None
+        if label:
+            markup = _speaker_label_markup(escape_markup(label) + ":", speaker_font_size)
+            gap = (
+                f"[size={round(speaker_font_size * SPEAKER_GAP_SCALE)}] [/size]"
+                if speaker_font_size
+                else ""
+            )
+            text = f"{markup}{gap}\n{text}"
+        bubbles.append(text)
+    return "\n\n".join(bubbles).replace("\u00ad", "-").strip()
+
+
 def show_speech_bubbles_popup(
     popup: SpeechBubblesPopup,
     title_str: str,
@@ -153,24 +233,33 @@ def show_speech_bubbles_popup(
     title_speech_info: TitleInfo,
     on_page_press: Callable[[str, str], None],
     title_font_size: float,
+    speaker: str | None = None,
+    text_font_size: float | None = None,
 ) -> None:
-    """Build and show a speech bubbles popup for a title's matching pages."""
+    """Build and show a speech bubbles popup for a title's matching pages.
+
+    Args:
+        popup: The popup to fill and open.
+        title_str: The comic title the bubbles are from.
+        search_terms: What was searched for; highlighted in the bubbles.
+        title_speech_info: The title's matching pages and groups.
+        on_page_press: Called with ``(title_str, comic_page)`` when a bubble is pressed.
+        title_font_size: The popup title's font size.
+        speaker: The stored speaker value the results were filtered to, if
+            any; named in the popup title so a thinner result set explains
+            itself.
+        text_font_size: The bubble lettering's font size; the speaker line is
+            set a step smaller than it. None leaves the line at the same size.
+
+    """
     text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
     text_boxes.bind(minimum_height=text_boxes.setter("height"))
 
+    speaker_font_size = round(text_font_size * SPEAKER_LABEL_SCALE) if text_font_size else None
     for page_info in title_speech_info.fanta_pages.values():
         page_text = f"Page {page_info.comic_page}"
-        # The marked-up view. This widget already renders Kivy markup for the
-        # search highlight below, so the lettering's own [b]/[i] comes for free.
-        # Caveat: a search phrase straddling an emphasis boundary -- "really
-        # sharp", where only SHARP is bold -- will not highlight, because the
-        # matcher sees the tags sitting between the words.
-        text = "\n\n".join([s.speech_text_markup for s in page_info.speech_info_list])
-        text = mark_phrase_in_text(
-            search_terms, text, _speech_highlight_start_tag(), SPEECH_HIGHLIGHT_END_TAG
-        )
-        text = text.replace("\u00ad", "-")
-        text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
+        text = format_page_speech_bubbles(page_info, search_terms, speaker_font_size)
+        text_box = TextBoxWithTitleAndBorder(title=page_text, content=text)
         text_box.ids.the_text_id.bind(
             on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: on_page_press(bt, bp),
         )
@@ -180,6 +269,9 @@ def show_speech_bubbles_popup(
     scroll_view.add_widget(text_boxes)
 
     popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
+    speaker_label = speaker_display_name(speaker) if speaker else None
+    if speaker_label:
+        popup.title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
     popup.title_size = title_font_size
     popup.content = scroll_view
     popup.open()
@@ -232,11 +324,13 @@ class PopupKeyboardNav:
     def _on_opened(self, *_args: object) -> None:
         self._focused_idx = 0
         Window.bind(on_key_down=self._on_key_down)
+        logger.debug(log_markers.BUBBLES_POPUP_OPENED)
         Clock.schedule_once(lambda _dt: self._draw_focus(), 0)
 
     def _on_dismissed(self, *_args: object) -> None:
         Window.unbind(on_key_down=self._on_key_down)
         self._clear_focus()
+        logger.debug(log_markers.BUBBLES_POPUP_DISMISSED)
 
     def _on_key_down(
         self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
@@ -280,6 +374,7 @@ class PopupKeyboardNav:
         sv = self._popup.content
         if isinstance(sv, ScrollView):
             sv.scroll_to(entry)
+        log_nav_focus(entry)
 
     def _clear_focus(self) -> None:
         for entry in self._get_entries():
@@ -447,30 +542,39 @@ class IndexScreen(FloatLayout):
     # --- Keyboard navigation public API ---
 
     def enter_nav_focus(self, on_exit_request: Callable) -> None:
-        """Enter keyboard navigation mode. on_exit_request is called when the user exits."""
+        """Enter keyboard navigation mode. on_exit_request is called when the user exits.
+
+        Logs once the focus is drawn, which is when the screen takes its first key.
+        """
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
-        # Restore items position if the grid hasn't changed since we last left it.
-        if (
+        if not self._restore_item_focus():
+            self._nav_panel = _IndexNavPanel.ALPHABET
+            # Start focus on the currently selected letter.
+            if self._selected_letter_button:
+                letter = self._selected_letter_button.text
+                if letter in self._letter_order:
+                    self._nav_focused_letter_idx = self._letter_order.index(letter)
+            self._draw_letter_focus()
+        logger.debug(log_markers.INDEX_ENTERED_NAV)
+
+    def _restore_item_focus(self) -> bool:
+        """Put focus back on the item it left, if the grid is unchanged since; else False."""
+        if not (
             self._nav_panel == _IndexNavPanel.ITEMS
             and self._nav_saved_grid_version == self._grid_version
             and self._nav_focused_btn is not None
         ):
-            # Search all columns for the saved button to guard against a stale _nav_focused_col.
-            for col_idx in range(self.num_columns):
-                col_buttons = self._get_col_buttons(col_idx)
-                if self._nav_focused_btn in col_buttons:
-                    self._nav_focused_col = col_idx
-                    self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
-                    self._draw_item_focus()
-                    return
-        self._nav_panel = _IndexNavPanel.ALPHABET
-        # Start focus on the currently selected letter.
-        if self._selected_letter_button:
-            letter = self._selected_letter_button.text
-            if letter in self._letter_order:
-                self._nav_focused_letter_idx = self._letter_order.index(letter)
-        self._draw_letter_focus()
+            return False
+        # Search all columns for the saved button to guard against a stale _nav_focused_col.
+        for col_idx in range(self.num_columns):
+            col_buttons = self._get_col_buttons(col_idx)
+            if self._nav_focused_btn in col_buttons:
+                self._nav_focused_col = col_idx
+                self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
+                self._draw_item_focus()
+                return True
+        return False
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear all highlights."""
@@ -896,6 +1000,7 @@ class IndexScreen(FloatLayout):
         items_for_letter = self._get_items_for_letter(letter)
         if not items_for_letter:
             left_index_column.add_widget(self._get_no_items_button(letter))
+            logger.debug(log_markers.INDEX_LETTER_EMPTY.format(letter=letter))
             return
 
         for column, column_items in zip(
@@ -907,7 +1012,9 @@ class IndexScreen(FloatLayout):
         self.ids.index_scroll_view.scroll_y = 1
 
         logger.debug(
-            f"Populated index page for letter '{letter}' in {timing.get_elapsed_time_with_unit()}."
+            log_markers.INDEX_LETTER_POPULATED.format(
+                letter=letter, elapsed=timing.get_elapsed_time_with_unit()
+            )
         )
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
@@ -978,7 +1085,7 @@ class IndexScreen(FloatLayout):
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
-        logger.info(f"Index item pressed: {item}")
+        logger.info(log_markers.INDEX_ITEM_PRESSED.format(item=item))
 
         if self._handle_terminal_item(button, item):
             return

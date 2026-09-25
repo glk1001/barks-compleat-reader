@@ -10,6 +10,9 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     StringProperty,
 )
 from kivy.uix.popup import Popup
+from loguru import logger
+
+from barks_reader.core import log_markers
 
 from .reader_keyboard_nav import (
     KEY_ENTER,
@@ -107,11 +110,12 @@ def open_confirm_popup(
         bg_image_source=bg_image,
         msg_font_scale=1.35,
     )
-    nav = _ConfirmPopupNav(popup, on_ok)
+    nav = _ConfirmPopupNav(popup, on_ok, title)
     popup.ok = nav.confirm
     popup.cancel = nav.cancel
     popup.open()
     nav.show_focus()
+    logger.debug(log_markers.CONFIRM_POPUP_OPENED.format(title=title))
     return popup
 
 
@@ -122,19 +126,22 @@ class _ConfirmPopupNav:
     when the popup is dismissed.
     """
 
-    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None]) -> None:
+    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None], title: str = "") -> None:
         self._popup = popup
         self._on_ok = on_ok
+        self._title = title
         self._buttons: list[Button] = [popup.ids.ok_button, popup.ids.cancel_button]
         self._focused_idx = 0  # The confirming button starts focused.
         Window.bind(on_key_down=self._on_key_down)
-        popup.bind(on_dismiss=self._unbind_window)
+        popup.bind(on_dismiss=self._unbind_window, parent=self._on_parent)
 
     def confirm(self) -> None:
+        logger.info(log_markers.CONFIRM_POPUP_CONFIRMED.format(title=self._title))
         self._popup.dismiss()
         self._on_ok()
 
     def cancel(self) -> None:
+        logger.info(log_markers.CONFIRM_POPUP_CANCELLED.format(title=self._title))
         self._popup.dismiss()
 
     def show_focus(self) -> None:
@@ -167,3 +174,14 @@ class _ConfirmPopupNav:
     def _unbind_window(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
         return False
+
+    def _on_parent(self, _popup: object, parent: object) -> None:
+        """Log the popup closed once it has left the window, not when its dismissal began.
+
+        Kivy fades a dismissed popup out before removing it, and the main screen
+        ignores every key while a modal is still on the window; a driver that
+        pressed the next key on the dismissal line lost it whenever the fade
+        outlasted the key gap. The line it waits on is written here instead.
+        """
+        if parent is None:
+            logger.debug(log_markers.CONFIRM_POPUP_CLOSED.format(title=self._title))

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.comics_consts import PageType
+from barks_reader.core import log_markers
 from barks_reader.core.reading_history import (
     ReadEvent,
     ReadingHistoryStore,
@@ -163,7 +164,7 @@ class TestReadingHistoryTracker:
         tracker = ReadingHistoryTracker(store, is_enabled=lambda: enabled, now=clock)
         return tracker, store
 
-    def test_begin_and_end_record_one_event(self, tmp_path: Path) -> None:
+    def test_begin_and_end_record_one_event(self, tmp_path: Path, loguru_sink: list[str]) -> None:
         opened = datetime(2026, 7, 17, 14, 0)
         closed = datetime(2026, 7, 17, 14, 25)
         tracker, store = self._make_tracker(tmp_path, _FixedClock(opened, closed))
@@ -180,6 +181,9 @@ class TestReadingHistoryTracker:
         assert event.closed_at == closed
         assert event.last_display_page == "12"
         assert event.last_body_page == "32"
+        # The GUI harness pairs the profile's events with these lines at every teardown.
+        assert log_markers.HISTORY_OPEN_RECORDED.format(title=event.title_str) in loguru_sink
+        assert log_markers.HISTORY_CLOSE_RECORDED.format(title=event.title_str) in loguru_sink
 
     def test_end_with_no_page_still_records_close_time(self, tmp_path: Path) -> None:
         opened = datetime(2026, 7, 17, 14, 0)

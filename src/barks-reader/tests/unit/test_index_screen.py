@@ -7,15 +7,20 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
 import pytest
+from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.ui.index_screen import (
     KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
+    SPEECH_HIGHLIGHT_END_TAG,
     IndexItem,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
     PopupKeyboardNav,
+    _speech_highlight_start_tag,
+    format_page_speech_bubbles,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 
@@ -279,6 +284,101 @@ class TestIndexScreen:
         mock_func.assert_called_with(info)
 
 
+def _speech(text: str, speaker: str | None = None, group_id: str = "0") -> SpeechInfo:
+    return SpeechInfo(
+        group_id=group_id,
+        panel_num=1,
+        speech_text=text,
+        speech_text_markup=text,
+        speaker=speaker,
+    )
+
+
+def _label(name: str) -> str:
+    """Return the speaker line as rendered: bold italic in the speaker colour."""
+    return f"[b][i][color={color_to_markup_hex(theme().speech_speaker)}]{name}:[/color][/i][/b]"
+
+
+class TestFormatPageSpeechBubbles:
+    """Each bubble names its speaker on a bold italic, coloured line above the lettering."""
+
+    def test_speaker_line_above_the_bubble(self) -> None:
+        page = PageInfo("5", [_speech("MONEY! MONEY!", speaker="Scrooge")])
+
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Scrooge')}\nMONEY! MONEY!"
+
+    def test_speaker_line_takes_the_given_size(self) -> None:
+        page = PageInfo("5", [_speech("HI", speaker="Scrooge")])
+
+        text = format_page_speech_bubbles(page, "zzz", speaker_font_size=16)
+
+        assert text == f"[size=16]{_label('Scrooge')}[/size][size=27] [/size]\nHI"
+
+    def test_speaker_line_is_set_apart_by_more_than_bold(self) -> None:
+        """The lettering carries [b] for emphasis, so the label must carry italic and colour too."""
+        page = PageInfo("5", [_speech("A [b]BIG[/b] DEAL", speaker="Scrooge")])
+
+        text = format_page_speech_bubbles(page, "zzz")
+
+        assert text.startswith("[b][i][color=")
+        assert text.endswith("[/color][/i][/b]\nA [b]BIG[/b] DEAL")
+
+    def test_bubbles_are_separated_by_a_blank_line(self) -> None:
+        page = PageInfo(
+            "5",
+            [_speech("ONE", speaker="Donald", group_id="0"), _speech("TWO", speaker="nephews")],
+        )
+
+        assert format_page_speech_bubbles(page, "zzz") == (
+            f"{_label('Donald')}\nONE\n\n{_label('Nephews')}\nTWO"
+        )
+
+    def test_no_speaker_call_renders_as_before(self) -> None:
+        """An index built before speakers existed shows plain bubbles."""
+        page = PageInfo("5", [_speech("ONE"), _speech("TWO", group_id="1")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "ONE\n\nTWO"
+
+    def test_none_speaker_gets_no_line(self) -> None:
+        """A sound effect or a sign is nobody's line."""
+        page = PageInfo("5", [_speech("CRASH!", speaker="none")])
+
+        assert format_page_speech_bubbles(page, "zzz") == "CRASH!"
+
+    def test_sentinels_and_other_names(self) -> None:
+        page = PageInfo(
+            "5",
+            [
+                _speech("LATER...", speaker="narrator", group_id="0"),
+                _speech("HEE HEE!", speaker="other:Witch Hazel", group_id="1"),
+                _speech("WHO?", speaker="unknown", group_id="2"),
+            ],
+        )
+
+        assert format_page_speech_bubbles(page, "zzz") == (
+            f"{_label('Narrator')}\nLATER...\n\n{_label('Witch Hazel')}\nHEE HEE!"
+            f"\n\n{_label('Unknown')}\nWHO?"
+        )
+
+    def test_label_is_escaped_for_markup(self) -> None:
+        page = PageInfo("5", [_speech("HI", speaker="other:Goldstein & Co.")])
+
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Goldstein &amp; Co.')}\nHI"
+
+    def test_search_term_highlighted_in_the_lettering_not_the_label(self) -> None:
+        page = PageInfo("5", [_speech("OH, DONALD!", speaker="Donald")])
+
+        text = format_page_speech_bubbles(page, "donald")
+
+        start = _speech_highlight_start_tag()
+        assert text == f"{_label('Donald')}\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
+
+    def test_soft_hyphens_become_hyphens(self) -> None:
+        page = PageInfo("5", [_speech("SUPER\u00adDUCK", speaker="Donald")])
+
+        assert format_page_speech_bubbles(page, "zzz") == f"{_label('Donald')}\nSUPER-DUCK"
+
+
 class TestPopupKeyboardNavWindowBinding:
     """The speech-bubble popup owns the keyboard via its own Window binding.
 
@@ -290,7 +390,7 @@ class TestPopupKeyboardNavWindowBinding:
     def _make_nav() -> PopupKeyboardNav:
         return PopupKeyboardNav(MagicMock())
 
-    def test_on_opened_binds_window_key_handler(self) -> None:
+    def test_on_opened_binds_window_key_handler(self, loguru_sink: list[str]) -> None:
         nav = self._make_nav()
         with (
             patch.object(barks_reader.ui.index_screen, "Window") as window,
@@ -299,8 +399,9 @@ class TestPopupKeyboardNavWindowBinding:
             nav._on_opened()
 
         window.bind.assert_called_once_with(on_key_down=nav._on_key_down)
+        assert "Speech bubbles popup opened." in loguru_sink
 
-    def test_on_dismissed_unbinds_window_key_handler(self) -> None:
+    def test_on_dismissed_unbinds_window_key_handler(self, loguru_sink: list[str]) -> None:
         nav = self._make_nav()
         with (
             patch.object(barks_reader.ui.index_screen, "Window") as window,
@@ -309,6 +410,20 @@ class TestPopupKeyboardNavWindowBinding:
             nav._on_dismissed()
 
         window.unbind.assert_called_once_with(on_key_down=nav._on_key_down)
+        assert "Speech bubbles popup dismissed." in loguru_sink
+
+    def test_drawing_the_focus_logs_the_entry_it_landed_on(self, loguru_sink: list[str]) -> None:
+        """The ring inside the popup logs like every other, so a test can step it."""
+        nav = self._make_nav()
+        entry = MagicMock()
+        entry.text = "a bubble"
+        with (
+            patch.object(PopupKeyboardNav, "_get_entries", return_value=[entry]),
+            patch.object(barks_reader.ui.index_screen, "Color"),
+            patch.object(barks_reader.ui.index_screen, "Line"),
+        ):
+            nav._draw_focus()
+        assert any(line.startswith("Nav focus on") for line in loguru_sink)
 
     def test_on_key_down_delegates_to_handle_key_and_consumes(self) -> None:
         nav = self._make_nav()
@@ -484,3 +599,34 @@ class TestOnIndexItemPress:
 
         expand.assert_called_once_with(button)
         expansion.assert_called_once_with(button, item)
+
+
+class TestIndexScreenMarkers:
+    def test_an_empty_letter_logs_no_items(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """The populated line fires for a letter with items; an empty letter says so instead."""
+        index_screen._populate_index_grid("B")
+        assert "Populated index page for letter 'B': no items." in loguru_sink
+
+
+class TestEnterNavFocusMarker:
+    def test_entering_nav_focus_logs_once_the_focus_is_drawn(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        index_screen._selected_letter_button = None
+        with patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw:
+            index_screen.enter_nav_focus(lambda: None)
+        draw.assert_called_once()
+        assert loguru_sink[-1] == "IndexScreen: entered nav focus."
+
+    def test_a_restored_item_focus_logs_too(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(ConcreteIndexScreen, "_restore_item_focus", return_value=True),
+            patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw,
+        ):
+            index_screen.enter_nav_focus(lambda: None)
+        draw.assert_not_called()
+        assert "IndexScreen: entered nav focus." in loguru_sink

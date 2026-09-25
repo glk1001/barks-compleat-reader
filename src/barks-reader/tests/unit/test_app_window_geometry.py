@@ -11,10 +11,13 @@ an OpenGL context without a display).
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.core import log_markers
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.ui.app_window_geometry import (
@@ -134,6 +137,38 @@ def test_enforce_aspect_ratio_bails_on_degenerate_sizes(
 ) -> None:
     helper._enforce_aspect_ratio(width, height)  # noqa: SLF001
     assert fake_clock.calls == []
+
+
+# --- What on_window_resize logs ---
+
+
+def test_every_resize_event_is_logged_as_the_marker(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, loguru_sink: list[str]
+) -> None:
+    """The GUI harness compares a test's last resize event against its first."""
+    helper.on_window_resize(fake_window, 1500, 2000)
+
+    wanted = pattern(log_markers.WINDOW_RESIZED, width=1500, height=2000)
+    assert any(re.search(wanted, line) for line in loguru_sink)
+
+
+def test_an_aspect_ratio_correction_names_the_event_and_the_size_it_applies(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    """The correction used to resize the window silently; now the log says why."""
+    helper.on_window_resize(fake_window, 1500, 2000)
+    fake_clock.fire_last()
+
+    width, content_h = get_win_dimensions(2000 - CHROME, 2560)
+    assert fake_window.size == (width, content_h + CHROME)
+    corrected = f"-> Window.size = ({width}, {content_h + CHROME})"
+    assert any(
+        "Aspect-ratio correction: resize event 1500,2000 " in line and corrected in line
+        for line in loguru_sink
+    )
 
 
 # --- Gating conditions in on_window_resize ---

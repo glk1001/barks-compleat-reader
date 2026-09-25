@@ -164,12 +164,14 @@ class ConfigInfo:
         return executable_name
 
     def _get_app_config_dir(self) -> Path:
-        if not self.is_running_compiled:
-            app_env_var = f"{self._app_name.upper().replace('-', '_')}_CONFIG_DIR"
-            if app_env_var not in os.environ:
-                msg = f'Not a compiled standalone build. Expected config env var "{app_env_var}".'
-                raise RuntimeError(msg)
+        # The env var is how a development run finds its config, and how a test
+        # harness points a build at a scratch profile; a user's build has it unset.
+        app_env_var = f"{self._app_name.upper().replace('-', '_')}_CONFIG_DIR"
+        if app_env_var in os.environ:
             return Path(os.environ[app_env_var])
+        if not self.is_running_compiled:
+            msg = f'Not a compiled standalone build. Expected config env var "{app_env_var}".'
+            raise RuntimeError(msg)
 
         return self._get_user_app_config_dir()
 
@@ -194,12 +196,13 @@ class ConfigInfo:
         return config_dir
 
     def _get_app_data_dir(self) -> Path:
-        if not self.is_running_compiled:
-            app_env_var = f"{self._app_name.upper().replace('-', '_')}_DATA_DIR"
-            if app_env_var not in os.environ:
-                msg = f'Not a compiled standalone build. Expected data env var "{app_env_var}".'
-                raise RuntimeError(msg)
+        # As for the config dir: set, the env var wins in a build too.
+        app_env_var = f"{self._app_name.upper().replace('-', '_')}_DATA_DIR"
+        if app_env_var in os.environ:
             return Path(os.environ[app_env_var])
+        if not self.is_running_compiled:
+            msg = f'Not a compiled standalone build. Expected data env var "{app_env_var}".'
+            raise RuntimeError(msg)
 
         return self.app_dir
 

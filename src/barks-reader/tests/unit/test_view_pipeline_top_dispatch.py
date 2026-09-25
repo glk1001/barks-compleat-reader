@@ -43,6 +43,7 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ViewPipeline
+from barks_reader.core.view_request import ViewRequest
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -277,4 +278,75 @@ class TestTopViewDispatchTable:
         assert len(scheduler.active_intervals) == 1
         assert scheduler.active_intervals[0].period_secs == (
             ViewPipeline.TOP_VIEW_EVENT_TIMEOUT_SECS
+        )
+
+
+class TestPlaylistContext:
+    """The playlist id rides the request into the pipeline and out again, and themes the fun view.
+
+    Added from a mutmut pass (2026-09-23): the dispatch table above sets the id
+    directly, so nothing checked that `render` keeps it, that `current_request`
+    returns it, or that the fun view draws from the playlist only on its node.
+    """
+
+    def test_a_fresh_pipeline_has_no_playlist(self) -> None:
+        """Built here, not from the fixture, which sets a playlist of its own."""
+        pipeline = ViewPipeline(
+            reader_settings=MagicMock(),
+            title_lists={ALL_LISTS: []},
+            image_selector=MagicMock(),
+            scheduler=FakeScheduler(),
+            colors=ScriptedColorSource(),
+        )
+        assert pipeline.current_request().playlist_id == ""
+
+    def test_the_request_the_pipeline_reports_carries_the_playlist_it_was_given(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._current_playlist_id = _PLAYLIST.playlist_id
+        assert dispatch_pipeline.current_request().playlist_id == _PLAYLIST.playlist_id
+
+    def test_render_takes_the_playlist_from_the_request(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._current_playlist_id = ""
+        request = ViewRequest(
+            view_state=ViewStates.ON_PLAYLIST_NODE, playlist_id=_PLAYLIST.playlist_id
+        )
+        with (
+            patch.object(dispatch_pipeline, "_set_next_top_view_image"),
+            patch.object(dispatch_pipeline, "_set_next_bottom_view_fun_image"),
+            patch.object(dispatch_pipeline, "_set_next_bottom_view_title_image"),
+        ):
+            dispatch_pipeline.render(request)
+        assert dispatch_pipeline.current_request().playlist_id == _PLAYLIST.playlist_id
+
+    def test_on_the_playlist_node_the_fun_view_is_themed_from_its_titles(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._view_state = ViewStates.ON_PLAYLIST_NODE
+        dispatch_pipeline._current_playlist_id = _PLAYLIST.playlist_id
+        with patch.object(dispatch_pipeline, "_get_themed_image") as themed:
+            dispatch_pipeline._get_next_fun_view_image_info()
+        themed.assert_called_once_with([f"fanta:{t.name}" for t in _PLAYLIST.titles])
+
+    @pytest.mark.parametrize(
+        ("state", "playlist_id"),
+        [
+            (ViewStates.ON_PLAYLIST_NODE, ""),  # the node, but no playlist chosen yet
+            (ViewStates.ON_THE_STORIES_NODE, _PLAYLIST.playlist_id),  # a playlist, elsewhere
+        ],
+        ids=["no-playlist", "other-node"],
+    )
+    def test_otherwise_the_fun_view_comes_from_the_general_pool(
+        self, dispatch_pipeline: ViewPipeline, state: ViewStates, playlist_id: str
+    ) -> None:
+        dispatch_pipeline._view_state = state
+        dispatch_pipeline._current_playlist_id = playlist_id
+        dispatch_pipeline._cached_fun_titles = (["pool"], set())  # ty: ignore[invalid-assignment]
+        with patch.object(dispatch_pipeline, "_get_themed_image") as themed:
+            dispatch_pipeline._get_next_fun_view_image_info()
+        themed.assert_not_called()
+        _selector(dispatch_pipeline).get_random_image.assert_called_once_with(
+            ["pool"], file_types=set(), use_adaptive_fit_mode=True
         )

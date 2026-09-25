@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, ClassVar, Self
 from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
+from barks_fantagraphics.speech_speakers import (
+    CHARACTER_SPEAKER_OPTIONS,
+    NARRATOR,
+    speaker_display_name,
+)
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -20,6 +25,7 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
@@ -41,6 +47,7 @@ from .reader_keyboard_nav import (
     KEY_UP,
     clear_focus_in_list,
     is_escape_key,
+    log_nav_focus,
     update_focus_in_list,
 )
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
@@ -50,6 +57,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.scrollview import ScrollView
+    from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_colors import Color
     from barks_reader.core.reader_settings import ReaderSettings
@@ -118,6 +126,20 @@ class _TagChipButton(Button):
             self.chip_bg_color = _chip_bg_normal()
 
 
+class _SpeakerChipButton(_TagChipButton):
+    """A word-search speaker filter chip.
+
+    ``speaker`` is the stored value the chip filters to (``"Scrooge"``,
+    ``"narrator"``), or empty for the *All* chip that lifts the filter.
+    """
+
+    speaker = StringProperty("")
+
+
+# The *All* chip's speaker value: no filter.
+_ALL_SPEAKERS = ""
+
+
 class SearchScreen(FloatLayout):
     """Bottom view screen for search. Mode is set externally via set_mode()."""
 
@@ -181,9 +203,11 @@ class SearchScreen(FloatLayout):
         # Set by MainScreenNavigation; lets Enter in a search input pull the app's
         # keyboard focus to this screen when nav isn't active (mouse-click flow).
         self.on_request_nav_focus: Callable[[], None] | None = None
-        self._nav_focus_area: str = "input"  # "input", "clear", "tags", "results"
+        # "input", "clear", "tags", "speakers" (Word mode only), "results"
+        self._nav_focus_area: str = "input"
         self._nav_focused_result_idx: int = 0
         self._nav_focused_chip_idx: int = 0
+        self._nav_focused_speaker_idx: int = 0
         self._nav_word_sub_focus: str = "title"  # "title" or "speech"
 
         # Tag search state
@@ -197,6 +221,9 @@ class SearchScreen(FloatLayout):
         self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
         self._word_terms = self._search.get_alpha_split_terms()
         self._selected_word: str = ""
+        # The speaker the word results are narrowed to; `_ALL_SPEAKERS` for everyone.
+        self._selected_speaker: str = _ALL_SPEAKERS
+        self._speaker_chips_built: bool = False
 
         # Last activated result (for restoring focus after go-back)
         self._last_activated_result_idx: int | None = None
@@ -227,7 +254,7 @@ class SearchScreen(FloatLayout):
             widget.opacity = 1 if active else 0
             widget.size_hint = (0.86, 1) if active else (0, 0)
 
-        logger.debug(f"SearchScreen mode set to '{mode}'.")
+        logger.debug(log_markers.SEARCH_MODE_SET.format(mode=mode))
 
     # --- Shared Helpers ---
 
@@ -265,7 +292,7 @@ class SearchScreen(FloatLayout):
         on_select(title_str)
 
     def _on_result_goto_title(self, title_str: str) -> None:
-        logger.info(f'Search: selected "{title_str}".')
+        logger.info(log_markers.SEARCH_SELECTED_TITLE.format(title=title_str))
         if self.on_goto_title:
             self.on_goto_title(title_str)
 
@@ -281,12 +308,14 @@ class SearchScreen(FloatLayout):
         title_enums, title_strings = self._get_titles_matching(text)
         self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
         self._update_background_from_results(title_enums)
+        logger.debug(log_markers.SEARCH_TITLE_RESULTS.format(count=len(title_strings), text=text))
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
         result = self._search.search(value, SearchMode.TITLE)
         return result.titles, result.title_strings
 
     def on_title_clear(self) -> None:
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="title"))
         self._cancel_image_change_event()
         self.ids.title_search_input.text = ""
         self.ids.title_search_input.focus = True
@@ -304,6 +333,9 @@ class SearchScreen(FloatLayout):
 
         found_tags = self._search.search(text, SearchMode.TAG).matched_tags
         self._tag_chip_strings = sorted([str(t.value) for t in found_tags]) if found_tags else []
+        logger.debug(
+            log_markers.SEARCH_TAG_RESULTS.format(count=len(self._tag_chip_strings), text=text)
+        )
 
         self._rebuild_tag_chips()
 
@@ -383,7 +415,7 @@ class SearchScreen(FloatLayout):
         self._update_background_from_results(titles or [])
 
     def _on_tag_result_selected(self, tag_str: str) -> None:
-        logger.info(f'Tag search: selected tag "{tag_str}".')
+        logger.info(log_markers.TAG_SELECTED_TAG.format(tag=tag_str))
         self._selected_tag = tag_str
         self._selected_member = ""
         self._current_tag, _ = self._search.resolve_tag(tag_str.lower())
@@ -393,7 +425,7 @@ class SearchScreen(FloatLayout):
     def _on_member_tag_selected(self, member_label: str) -> None:
         # Strip subgroup indicator suffix
         member_str = member_label.rstrip(" \u25b8")
-        logger.info(f'Tag search: selected member "{member_str}".')
+        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=member_str))
         self._selected_member = member_label
         self._show_tag_titles(member_str)
 
@@ -408,6 +440,7 @@ class SearchScreen(FloatLayout):
         self._tag_titles = []
 
     def on_tag_clear(self) -> None:
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
         self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
@@ -422,15 +455,19 @@ class SearchScreen(FloatLayout):
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
         self._word_search_results = []
+        self._selected_word = ""
 
         if not text:
             return
+
+        if not self._speaker_chips_built:
+            self._build_speaker_chips()
 
         words = self._get_words_matching_prefix(text)
         # A query that matches nothing otherwise looks exactly like a query that
         # never ran: the only word-search log line fires on picking a chip, so a
         # search returning zero leaves no trace at all.
-        logger.debug(f'Word search: "{text}" matched {len(words)} words.')
+        logger.debug(log_markers.WORD_SEARCH_MATCHED.format(text=text, count=len(words)))
 
         for i, word in enumerate(words):
             btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
@@ -457,7 +494,7 @@ class SearchScreen(FloatLayout):
         return matching
 
     def _on_word_chip_selected(self, word: str) -> None:
-        logger.info(f'Word search: selected chip "{word}".')
+        logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
         self._selected_word = word
 
         for btn in reversed(self.ids.word_chips_layout.children):
@@ -466,7 +503,11 @@ class SearchScreen(FloatLayout):
             else:
                 btn.background_color = _row_stripe(btn.row_index)
 
-        found = self._search.find_words(word)
+        self._show_word_results(word)
+
+    def _show_word_results(self, word: str) -> None:
+        """Run the word search under the current speaker filter and list its titles."""
+        found = self._search.find_words(word, speaker=self._selected_speaker or None)
 
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
@@ -483,6 +524,80 @@ class SearchScreen(FloatLayout):
         word_result_titles = [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
         self._update_background_from_results(word_result_titles)
 
+    # --- Word Search: speaker filter ---
+
+    def _build_speaker_chips(self) -> None:
+        """Offer one chip per roster speaker the index knows, plus *All*.
+
+        Built once, from the index's speaker sidecar.  An index without one
+        (built before speakers existed) offers nothing, and the row stays
+        empty and takes no space.  The roster's named characters and the
+        narrator are offered; ``other:`` speakers are a long tail and are not.
+        """
+        self._speaker_chips_built = True
+        layout = self.ids.speaker_chips_layout
+        layout.clear_widgets()
+
+        indexed = self._search.get_speakers()
+        offered = [s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed]
+        if not offered:
+            logger.debug("Word search: index has no speakers; no speaker filter.")
+            return
+
+        for value in (_ALL_SPEAKERS, *offered):
+            label = "All" if value == _ALL_SPEAKERS else speaker_display_name(value) or value
+            chip = _SpeakerChipButton(text=label, speaker=value)
+            chip.bind(on_release=lambda _b, v=value: self._on_speaker_chip_selected(v))
+            layout.add_widget(chip)
+        self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
+
+    def _on_speaker_chip_selected(self, speaker: str) -> None:
+        logger.info(f'Word search: speaker filter "{speaker or "All"}".')
+        self._selected_speaker = speaker
+        self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
+        if self._selected_word:
+            self._show_word_results(self._selected_word)
+
+    def _get_speaker_chip_buttons(self) -> list[_SpeakerChipButton]:
+        if not hasattr(self.ids, "speaker_chips_layout"):
+            return []
+        return list(reversed(self.ids.speaker_chips_layout.children))
+
+    def _update_speaker_chip_colors(
+        self, chips: list[_SpeakerChipButton], focused_idx: int | None = None
+    ) -> None:
+        """Fill the selected chip; border the focused one, and log that focus."""
+        for i, chip in enumerate(chips):
+            is_selected = chip.speaker == self._selected_speaker
+            chip.chip_bg_color = _chip_bg_active() if is_selected else _chip_bg_normal()
+            chip.chip_border_color = (
+                _chip_border_focused() if i == focused_idx else _CHIP_BORDER_NONE
+            )
+        if focused_idx is not None and 0 <= focused_idx < len(chips):
+            log_nav_focus(chips[focused_idx])
+
+    def _draw_speaker_chip_focus(self) -> None:
+        chips = self._get_speaker_chip_buttons()
+        if not chips:
+            return
+        self._nav_focused_speaker_idx = min(self._nav_focused_speaker_idx, len(chips) - 1)
+        self._update_speaker_chip_colors(chips, self._nav_focused_speaker_idx)
+
+    def _clear_speaker_chip_focus(self) -> None:
+        self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
+
+    def _nav_enter_speakers(self) -> None:
+        """Focus the speaker row, on the selected chip."""
+        chips = self._get_speaker_chip_buttons()
+        self._nav_focus_area = "speakers"
+        self._nav_focused_speaker_idx = next(
+            (i for i, c in enumerate(chips) if c.speaker == self._selected_speaker), 0
+        )
+        self._draw_speaker_chip_focus()
+
+    def _has_speaker_row(self) -> bool:
+        return self._active_mode == "Word" and bool(self._get_speaker_chip_buttons())
+
     @staticmethod
     def _build_word_results(found: dict[str, TitleInfo]) -> list[tuple[str, str, str, TitleInfo]]:
         results: list[tuple[str, str, str, TitleInfo]] = []
@@ -496,6 +611,7 @@ class SearchScreen(FloatLayout):
         return results
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
+        logger.debug(log_markers.SEARCH_WORD_RESULTS.format(count=len(self._word_search_results)))
         self._selected_result_button = None
         for i, (
             comic_title,
@@ -543,7 +659,7 @@ class SearchScreen(FloatLayout):
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
         search_text = self._selected_word
-        logger.info(f'Show speech bubbles for: "{title_str}" and search "{search_text}".')
+        logger.info(log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title=title_str, text=search_text))
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
             title_str,
@@ -551,10 +667,12 @@ class SearchScreen(FloatLayout):
             title_speech_info,
             self._handle_bubble_title_press,
             self._font_manager.speech_bubble_popup_title_font_size,
+            speaker=self._selected_speaker or None,
+            text_font_size=self._font_manager.speech_bubble_text_font_size,
         )
 
     def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
-        logger.info(f'Word search bubble press: "{title_str}" page {page_to_goto}.')
+        logger.info(log_markers.WORD_BUBBLE_PRESS.format(title=title_str, page=page_to_goto))
         self._speech_bubble_popup.dismiss()
         Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
 
@@ -567,10 +685,14 @@ class SearchScreen(FloatLayout):
             self.on_goto_title_with_page(image_info, page_to_goto)
 
     def on_word_clear(self) -> None:
+        logger.debug(log_markers.SEARCH_CLEARED.format(mode="word"))
         self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
+        self._selected_word = ""
+        self._selected_speaker = _ALL_SPEAKERS
+        self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
         self.ids.word_search_input.focus = True
 
     # --- Background Image Update from Results ---
@@ -617,7 +739,7 @@ class SearchScreen(FloatLayout):
         self._nav_active = True
         self._nav_focus_area = "input"
         self._focus_active_input()
-        logger.debug("SearchScreen: entered nav focus.")
+        logger.debug(log_markers.SEARCH_ENTERED_NAV)
 
     def enter_nav_focus_at_last_result(self, on_exit_request: Callable) -> None:
         """Enter nav focus, restoring focus to the last activated result if available."""
@@ -649,6 +771,15 @@ class SearchScreen(FloatLayout):
     def _ensure_nav_active(self) -> None:
         if not self._nav_active and self.on_request_nav_focus:
             self.on_request_nav_focus()
+
+    def on_search_input_focus(self, _text_input: Widget, focused: bool) -> None:
+        """Log a search box taking or losing the keyboard (kv callback).
+
+        A box takes the keyboard a moment after focus is asked for, and the GUI
+        path tests type into it only once this line says it has.
+        """
+        state = "focused" if focused else "unfocused"
+        logger.debug(log_markers.SEARCH_BOX_FOCUS.format(mode=self._active_mode, state=state))
 
     def on_search_input_enter(self) -> None:
         """Handle Enter in a search input (kv callback).
@@ -703,10 +834,11 @@ class SearchScreen(FloatLayout):
         self._blur_all_inputs()
         self._clear_result_focus()
         self._clear_chip_focus()
+        self._clear_speaker_chip_focus()
         self._clear_clear_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
-        logger.debug("SearchScreen: exited nav focus.")
+        logger.debug(log_markers.SEARCH_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
         # While the speech-bubble popup is open it owns the keyboard directly via
@@ -719,6 +851,7 @@ class SearchScreen(FloatLayout):
             "input": self._handle_input_key,
             "clear": self._handle_clear_key,
             "tags": self._handle_tags_key,
+            "speakers": self._handle_speakers_key,
             "results": self._handle_results_key,
         }
         handler = handlers.get(self._nav_focus_area)
@@ -760,11 +893,7 @@ class SearchScreen(FloatLayout):
     def _handle_results_key(self, key: int) -> bool:
         rows = self._get_active_result_rows()
         if key == KEY_UP:
-            if self._nav_focused_result_idx <= 0:
-                return True
-            self._nav_focused_result_idx -= 1
-            self._nav_word_sub_focus = "title"
-            self._draw_result_focus()
+            self._handle_results_up()
         elif key == KEY_DOWN:
             if rows and self._nav_focused_result_idx < len(rows) - 1:
                 self._nav_focused_result_idx += 1
@@ -788,6 +917,16 @@ class SearchScreen(FloatLayout):
             return False
         return True
 
+    def _handle_results_up(self) -> None:
+        if self._nav_focused_result_idx > 0:
+            self._nav_focused_result_idx -= 1
+            self._nav_word_sub_focus = "title"
+            self._draw_result_focus()
+        elif self._has_speaker_row():
+            # The speaker row sits directly above the word results.
+            self._clear_result_focus()
+            self._nav_enter_speakers()
+
     def _handle_results_left_right(self, key: int) -> bool:
         if key == KEY_RIGHT:
             if self._active_mode == "Word" and self._nav_word_sub_focus == "title":
@@ -801,13 +940,7 @@ class SearchScreen(FloatLayout):
             self._draw_result_focus()
         elif self._active_mode == "Word" and self._get_word_chip_buttons():
             self._clear_result_focus()
-            self._nav_focus_area = "tags"
-            word_buttons = self._get_word_chip_buttons()
-            selected_idx = next(
-                (i for i, b in enumerate(word_buttons) if b.text == self._selected_word), 0
-            )
-            self._nav_focused_chip_idx = selected_idx
-            self._draw_chip_focus()
+            self._nav_back_to_word_chips()
         elif self._active_mode == "Tag" and self._get_tag_chip_buttons():
             self._clear_result_focus()
             self._nav_focus_area = "tags"
@@ -822,6 +955,62 @@ class SearchScreen(FloatLayout):
             self._nav_focus_area = "clear"
             self._draw_clear_focus()
         return True
+
+    def _nav_back_to_word_chips(self) -> None:
+        """Focus the word chip list, on the selected word."""
+        self._nav_focus_area = "tags"
+        word_buttons = self._get_word_chip_buttons()
+        self._nav_focused_chip_idx = next(
+            (i for i, b in enumerate(word_buttons) if b.text == self._selected_word), 0
+        )
+        self._draw_chip_focus()
+
+    def _handle_speakers_key(self, key: int) -> bool:
+        """Keys on the word search's speaker row.
+
+        Left and Right walk the chips; Left off the first goes back to the
+        word list, Down (or Tab) drops into the results, Up returns to the
+        search box, and Enter applies the chip's filter and stays put, so the
+        row can be tried out without losing one's place.
+        """
+        if key in (KEY_LEFT, KEY_RIGHT):
+            self._move_speaker_focus(-1 if key == KEY_LEFT else 1)
+        elif key in (KEY_DOWN, KEY_TAB):
+            self._speakers_down_to_results()
+        elif key == KEY_UP:
+            self._clear_speaker_chip_focus()
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._apply_focused_speaker_chip()
+        elif is_escape_key(key):
+            self._nav_escape()
+        else:
+            return False
+        return True
+
+    def _move_speaker_focus(self, step: int) -> None:
+        chips = self._get_speaker_chip_buttons()
+        target = self._nav_focused_speaker_idx + step
+        if 0 <= target < len(chips):
+            self._nav_focused_speaker_idx = target
+            self._draw_speaker_chip_focus()
+        elif target < 0 and self._get_word_chip_buttons():
+            self._clear_speaker_chip_focus()
+            self._nav_back_to_word_chips()
+
+    def _speakers_down_to_results(self) -> None:
+        if not self._get_active_result_rows():
+            return
+        self._clear_speaker_chip_focus()
+        self._nav_enter_results()
+        self._draw_result_focus()
+
+    def _apply_focused_speaker_chip(self) -> None:
+        chips = self._get_speaker_chip_buttons()
+        if chips and self._nav_focused_speaker_idx < len(chips):
+            chips[self._nav_focused_speaker_idx].trigger_action(duration=0)
+            self._draw_speaker_chip_focus()
 
     def _nav_enter_results(self) -> None:
         self._nav_focus_area = "results"
@@ -841,6 +1030,7 @@ class SearchScreen(FloatLayout):
     def _nav_escape(self) -> None:
         self._clear_result_focus()
         self._clear_chip_focus()
+        self._clear_speaker_chip_focus()
         self._clear_clear_focus()
         self._nav_focus_area = "input"
         self._blur_all_inputs()
@@ -874,8 +1064,12 @@ class SearchScreen(FloatLayout):
                 self._draw_chip_focus()
         elif key == KEY_RIGHT:
             self._clear_chip_focus()
-            self._nav_enter_results()
-            self._draw_result_focus()
+            if self._has_speaker_row():
+                # The speaker row is the first thing to the right of the words.
+                self._nav_enter_speakers()
+            else:
+                self._nav_enter_results()
+                self._draw_result_focus()
         elif key in (KEY_LEFT, KEY_UP):
             if self._nav_focused_chip_idx > 0:
                 self._nav_focused_chip_idx -= 1
@@ -989,6 +1183,9 @@ class SearchScreen(FloatLayout):
             chip.chip_border_color = (
                 _chip_border_focused() if i == focused_idx else _CHIP_BORDER_NONE
             )
+        # Tag chips show focus by border colour, not a drawn ring, so log it here.
+        if focused_idx is not None and 0 <= focused_idx < len(chips):
+            log_nav_focus(chips[focused_idx])
 
     def _draw_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
@@ -1020,7 +1217,9 @@ class SearchScreen(FloatLayout):
 
     def _draw_clear_focus(self) -> None:
         r, g, b, _a = theme().accent_selection
-        self._get_active_clear_button().background_color = (r, g, b, 1.0)
+        clear_button = self._get_active_clear_button()
+        clear_button.background_color = (r, g, b, 1.0)
+        log_nav_focus(clear_button)  # shown by fill colour, not a drawn ring
 
     def _clear_clear_focus(self) -> None:
         self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL

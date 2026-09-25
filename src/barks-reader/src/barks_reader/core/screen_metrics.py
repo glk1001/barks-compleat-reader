@@ -104,7 +104,10 @@ class ScreenMetrics:
             ):
                 return info
 
-        logger.error(
+        # A warning, not an error: every caller copes with no monitor, and on Windows a
+        # window leaving fullscreen passes through a position above the screen (for
+        # ~0.3s, with a frame) before its restore puts it back.
+        logger.warning(
             f"Could not find monitor for pos ({x},{y})."
             f" (There are {len(self.SCREEN_INFO)} monitors.)"
         )

@@ -42,6 +42,7 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import corpus_stats_layout as layout
+from barks_reader.core import log_markers
 from barks_reader.core.corpus_stats import (
     TEXT_SECTION_SHAPE,
     compute_static_stats,
@@ -149,9 +150,11 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         # Unbind first: re-opening without a close in between would double-bind.
         Window.unbind(on_key_down=self._on_key_down)
         Window.bind(on_key_down=self._on_key_down)
+        logger.info(log_markers.CORPUS_STATS_OPENED)
 
     def close(self) -> None:
         """Hand the window back to the main screen."""
+        logger.info(log_markers.CORPUS_STATS_CLOSING)
         if self._menu_mode:
             self._exit_menu_mode()
         Window.unbind(on_key_down=self._on_key_down)
@@ -466,6 +469,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         def _apply(_dt: float) -> None:
             self._text_section = section
             self._rebuild()
+            logger.info("CorpusStats: dialogue statistics applied.")
 
         Clock.schedule_once(_apply, 0)
 

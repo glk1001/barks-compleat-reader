@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.main_screen
 import pytest
@@ -130,10 +130,12 @@ class TestMainScreen:
         assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is True
         main_screen._nav.handle_key.assert_called_once_with(ord("r"))
 
-    def test_on_key_down_yields_to_focused_text_input(self, main_screen: MainScreen) -> None:
+    def test_on_key_down_yields_to_focused_text_input(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
         # Editing a directory path in a settings popup: the focused TextInput must
         # receive cursor/editing keys, so the handler yields (returns False) and does
-        # not drive tree/settings navigation.
+        # not drive tree/settings navigation - and says so, since nothing else would.
         main_screen.name = "main"
         main_screen.manager = MagicMock(current="main")
         main_screen._settings_nav = MagicMock()
@@ -141,6 +143,7 @@ class TestMainScreen:
             assert main_screen._on_key_down(None, KEY_LEFT, 0, "", []) is False
         main_screen._nav.handle_key.assert_not_called()
         main_screen._settings_nav.handle_key.assert_not_called()
+        assert f"Key {KEY_LEFT} left to the focused text input." in loguru_sink
 
     def test_on_key_down_escape_not_yielded_to_text_input(self, main_screen: MainScreen) -> None:
         # Escape must still close the settings/popup even while a text field is focused.
@@ -215,6 +218,60 @@ class TestMainScreen:
 
             mock_window._system_keyboard.target = None
             assert _text_input_has_focus() is False
+
+    def test_text_input_has_focus_sees_the_virtual_keyboard_too(self) -> None:
+        """The guard that yields keys to a focused box must look past the system keyboard.
+
+        With the on-screen keyboard docked, Kivy hands the box that keyboard and the
+        system keyboard's target stays None.
+        """
+        from types import SimpleNamespace  # noqa: PLC0415
+
+        from barks_reader.ui.main_screen import _text_input_has_focus  # noqa: PLC0415
+        from kivy.uix.textinput import TextInput  # noqa: PLC0415
+
+        box = TextInput()
+        box.focus = True
+        system = SimpleNamespace(target=None)
+        docked = SimpleNamespace(target=box)
+        with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
+            mock_window._keyboards = {"system": system, "single": docked}
+            mock_window._system_keyboard = system
+            assert _text_input_has_focus() is True
+
+            box.focus = False
+            assert _text_input_has_focus() is False
+
+    def test_a_keyboard_request_puts_the_key_handler_back_in_front(self) -> None:
+        """Kivy binds a docked keyboard's handler afresh per request; ours must follow it."""
+        from barks_reader.ui.main_screen import _install_keyboard_request_hook  # noqa: PLC0415
+
+        class _Window:
+            request_keyboard = MagicMock(return_value="keyboard")
+
+        window = _Window()
+        first, second = MagicMock(), MagicMock()
+        _install_keyboard_request_hook(window, first)
+        _install_keyboard_request_hook(window, second)  # once per window: only the target changes
+
+        assert window.request_keyboard("callback", "target") == "keyboard"
+        _Window.request_keyboard.assert_called_once_with("callback", "target")
+        first.assert_not_called()
+        second.assert_called_once()
+
+    def test_putting_the_key_handler_first_rebinds_it_while_active(
+        self, main_screen: MainScreen
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "Window") as window:
+            main_screen._put_key_handler_first()
+            assert window.mock_calls == [
+                call.unbind(on_key_down=main_screen._on_key_down),
+                call.bind(on_key_down=main_screen._on_key_down),
+            ]
+            window.reset_mock()
+            main_screen._active = False
+            main_screen._put_key_handler_first()
+            assert window.mock_calls == []
 
     def test_on_action_bar_go_back(self, main_screen: MainScreen) -> None:
         with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
@@ -294,3 +351,39 @@ class TestMainScreen:
 
         assert main_screen._active is True
         main_screen._nav_coord.on_document_closed.assert_called_once()
+
+
+class TestMainScreenMarkers:
+    """Quit and settings-close log lines, the oracles the GUI path tests wait on."""
+
+    def test_quit_without_confirmation_closes_and_logs(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._reader_settings.confirm_quit = False
+        with patch.object(barks_reader.ui.main_screen, "App") as app_cls:
+            main_screen.request_quit()
+        app_cls.get_running_app.return_value.close_app.assert_called_once()
+        assert "Quit requested: no confirmation needed." in loguru_sink
+
+    def test_quit_with_confirmation_asks_and_logs(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._reader_settings.confirm_quit = True
+        with (
+            patch.object(barks_reader.ui.main_screen, "App") as app_cls,
+            patch.object(barks_reader.ui.main_screen, "open_confirm_popup") as ask,
+        ):
+            main_screen.request_quit()
+        ask.assert_called_once()
+        app_cls.get_running_app.return_value.close_app.assert_not_called()
+        assert "Quit requested: asking for confirmation." in loguru_sink
+
+    def test_both_ways_out_of_settings_log_the_close(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._settings_nav = None
+        main_screen._settings_close_button = None
+        main_screen._on_settings_closed()
+        with patch.object(barks_reader.ui.main_screen, "App"):
+            main_screen._close_settings()
+        assert loguru_sink.count("Settings closed.") == len(("close button", "Escape"))

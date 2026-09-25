@@ -14,6 +14,7 @@ from comic_utils.timing import Timing
 from kivy.metrics import dp
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
@@ -124,7 +125,7 @@ class ReaderTreeBuilder:
         self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
 
         elapsed_time = self._tree_build_timing.get_elapsed_time_with_unit()
-        logger.info(f"Finished loading all nodes in {elapsed_time}.")
+        logger.info(log_markers.TREE_NODES_LOADED.format(elapsed=elapsed_time))
 
         self._reader_tree_events.finished_building()
 

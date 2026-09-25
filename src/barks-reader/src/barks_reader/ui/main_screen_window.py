@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from kivy.core.window import Window
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_utils import get_win_dimensions
 
 from .action_bar_helpers import (
@@ -13,7 +14,12 @@ from .action_bar_helpers import (
     set_action_bar_visibility,
     set_fullscreen_button,
 )
-from .platform_window_utils import WindowManager, WindowModeCallbacks, WindowModeController
+from .platform_window_utils import (
+    WindowManager,
+    WindowModeCallbacks,
+    WindowModeController,
+    log_window_geometry,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -75,6 +81,9 @@ class MainScreenWindowHelper:
         self._mode.goto_windowed()
 
     def _set_hints_for_windowed_mode(self) -> None:
+        logger.debug(
+            f"MainScreen: restoring size hints for windowed mode (host size = {self._host.size})."
+        )
         self._host.size_hint = (1, 1)
 
     def _on_finished_goto_windowed_mode(self) -> None:
@@ -86,7 +95,8 @@ class MainScreenWindowHelper:
         )
         self._update_fonts(Window.height)
         self.show_action_bar()
-        logger.info("Entered windowed mode on MainScreen.")
+        logger.info(log_markers.ENTERED_WINDOWED.format(screen="MainScreen"))
+        log_window_geometry("MainScreen windowed")
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
@@ -113,7 +123,8 @@ class MainScreenWindowHelper:
             fullscreen_icon=self._fullscreen_icon,
             fullscreen_exit_icon=self._fullscreen_exit_icon,
         )
-        logger.info("Entered fullscreen mode on MainScreen.")
+        logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="MainScreen"))
+        log_window_geometry("MainScreen fullscreen")
 
     def on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
         logger.info(
@@ -122,6 +133,14 @@ class MainScreenWindowHelper:
         )
         self._fun_image_view_screen.on_resized(size)
         if not WindowManager.is_fullscreen_now():
+            if self._host.size_hint_x is None and self._host.size_hint_y is None:
+                # Only this screen's own windowed transition restores the hints
+                # (_set_hints_for_windowed_mode); a fullscreen exit driven by
+                # another screen leaves the fixed fullscreen size behind.
+                logger.warning(
+                    f"Main layout resized while windowed but the host size is still fixed"
+                    f" at {self._host.size}: a fullscreen exit did not restore its size hints."
+                )
             return
         self._change_fullscreen_win_size(size[1])
 

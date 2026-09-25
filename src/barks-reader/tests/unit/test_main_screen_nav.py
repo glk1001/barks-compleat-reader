@@ -1218,6 +1218,19 @@ class TestTopGotoFocus:
         # The normal (clamped) move keeps the selection on the first node.
         nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
 
+    def test_up_on_first_node_without_title_is_logged(
+        self, nav: MainScreenNavigation, loguru_sink: list[str]
+    ) -> None:
+        """A driver waiting on Up's outcome needs a line whether or not the arrow is live."""
+        first = MagicMock()
+        nav._tree_view_screen.get_visible_nodes.return_value = [first]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
+
+        nav._handle_tree_key(KEY_UP)
+
+        assert "Top-view goto arrow inactive: Up stays on the first node." in loguru_sink
+
     def test_up_on_non_first_node_moves_tree(self, nav: MainScreenNavigation) -> None:
         first, second = MagicMock(), MagicMock()
         nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
@@ -1327,3 +1340,30 @@ class TestFunViewBottomFocus:
         nav.exit_bottom_focus()
 
         nav._fun_image_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_escape_reaches_the_fun_view_first(self, nav: MainScreenNavigation) -> None:
+        """Regression: Escape used to exit the region before the fun view saw it.
+
+        With the options menu open, the fun view's Escape closes the menu; the nav
+        layer must not swallow the key on its way there.
+        """
+        nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
+        self._hide_nav_screens(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = False
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+
+        assert nav._handle_bottom_key(KEY_ESCAPE) is True
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[unresolved-attribute]
+        assert nav.is_in_bottom_focus
+
+    def test_escape_the_fun_view_declines_exits_the_region(self, nav: MainScreenNavigation) -> None:
+        """A fun view that is visible but not in keyboard nav leaves Escape to the fallback."""
+        nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
+        self._hide_nav_screens(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = False
+        nav._fun_image_view_screen.handle_key.return_value = False  # ty: ignore[unresolved-attribute]
+
+        assert nav._handle_bottom_key(KEY_ESCAPE) is True
+        assert not nav.is_in_bottom_focus

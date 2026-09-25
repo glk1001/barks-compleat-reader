@@ -69,7 +69,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
         heading="The Brittle Mastery Stories",
         intro=(
             "[i]Stories where Donald is an unbelievably brilliant master craftsman. But"
-            "\u2014arrogance\u2014or jealously bring him crashing down. The first three titles are"
+            "\u2014arrogance\u2014or jealously bring him crashing down. The first four titles are"
             " not the true 'Brittle Mastery' stories but rather stories where Donald is very, very"
             " good at something. The final five titles are truly brittle mastery.[/i]"
         ),
@@ -77,6 +77,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.MASTER_ICE_FISHER,
             Titles.NO_SUCH_VARMINT,
             Titles.SMOKE_WRITER_IN_THE_SKY,
+            Titles.PERSISTENT_POSTMAN_THE,
             Titles.MASTER_RAINMAKER_THE,
             Titles.MASTER_GLASSER_THE,
             Titles.MASTER_MOVER_THE,
@@ -104,6 +105,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
         titles=(
             Titles.BEE_BUMBLES,
             Titles.TAMING_THE_RAPIDS,
+            Titles.WATCHFUL_PARENTS_THE,
             Titles.THREE_UN_DUCKS,
             Titles.MASTERS_OF_MELODY_THE,
             Titles.SPOIL_THE_ROD,

@@ -80,3 +80,37 @@ class ReaderNavigation:
 
     def is_in_right_margin(self, x: int, y: int) -> bool:
         return (x >= self._x_mid) and (self._y_bottom_margin <= y <= self._y_top_margin)
+
+    def tap_regions(self, width: int, height: int) -> dict[str, tuple[int, int, int, int]]:
+        """Return the margins a press acts on, as rectangles a GUI test can tap.
+
+        Each is ``(x, y, w, h)`` in the coordinates the ``is_in_*`` checks take:
+        relative to the widget, origin bottom-left, within a `width` x `height`
+        widget. A region too thin to press is left out.
+
+        Args:
+            width: The widget's width.
+            height: The widget's height.
+
+        Returns:
+            "left margin", "right margin" and "top margin", by name.
+
+        """
+        regions: dict[str, tuple[int, int, int, int]] = {}
+        bottom = max(0, self._y_bottom_margin)
+        top = min(height - 1, self._y_top_margin)
+        mid = min(max(0, self._x_mid), width)
+        if top > bottom:
+            if mid > 0:
+                regions["left margin"] = (0, bottom, mid, top - bottom)
+            if width > mid:
+                regions["right margin"] = (mid, bottom, width - mid, top - bottom)
+        top_start = max(0, self._y_top_margin)
+        if height > top_start:
+            left, right = 0, width
+            if WindowManager.is_fullscreen_now():
+                left = min(width, max(0, self._fullscreen_left_margin + 1))
+                right = min(width, self._fullscreen_right_margin + 1)
+            if right > left:
+                regions["top margin"] = (left, top_start, right - left, height - top_start)
+        return regions
