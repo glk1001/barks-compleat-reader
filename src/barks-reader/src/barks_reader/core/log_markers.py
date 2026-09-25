@@ -37,6 +37,18 @@ UPDATING_BACKGROUND_VIEW_STATE: Final = "Updating background view state to {stat
 # shows up in the failure report as what it is.
 KEY_PRESSED: Final = "Key pressed: {key} ({name})."
 
+# ------------------------------------------------------------------ taps --
+# The answer to a GUI test's tap-targets request (``barks_reader.core.tap_targets``):
+# the window's size in pixels and every tappable widget it shows, as JSON.
+TAP_TARGETS: Final = "Tap targets #{request}: {width}x{height} {targets}"
+# A press on a margin that turns a page (the comic reader) or an image (the fun view).
+LEFT_MARGIN_PRESSED: Final = "Left margin pressed: x_rel,y_rel = {x},{y}."
+RIGHT_MARGIN_PRESSED: Final = "Right margin pressed: x_rel,y_rel = {x},{y}."
+# The search box's choice of keyboard with the virtual keyboard setting on: a
+# press that follows a hardware touch is a tap and may show the virtual one.
+TEXT_INPUT_TOUCHED: Final = "Text input tapped by touch: {widget}."
+TEXT_INPUT_CLICKED: Final = "Text input clicked by mouse: {widget}, using the system keyboard."
+
 # --------------------------------------------- the main screen and its bar --
 GO_BACK_SELECTED: Final = "'Go back' menu item selected."
 MENU_ENTERED: Final = "Entered menu mode."
@@ -147,6 +159,7 @@ DOUBLE_PAGE_TOGGLED: Final = "Double page mode toggled: {mode}."
 DOUBLE_PAGE_IGNORED: Final = "Double page toggle ignored: single-page collection."
 GOTO_PAGE_DROPDOWN_OPENED: Final = "Goto page dropdown opened."
 GOTO_PAGE_SELECTED: Final = 'Goto page selected: "{page}".'
+ACTION_BAR_SHOWN_ON_TOP_MARGIN: Final = "Showing action bar on top margin press."
 
 # ------------------------------------------------------------ the fun view --
 FUN_OPTIONS_PRESSED: Final = "Fun view options button pressed. New state is '{state}'."

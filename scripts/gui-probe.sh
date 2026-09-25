@@ -22,6 +22,9 @@
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
+#   scripts/gui-probe.sh tap 120 300      # tap at app WINDOW pixel X,Y: a click, or
+#                                         # with BARKS_PROBE_TOUCH=1 a real touch too
+#   scripts/gui-probe.sh tap-targets 7    # ask the app for its tap targets (request 7)
 #   scripts/gui-probe.sh key Down Down Return
 #   scripts/gui-probe.sh type "pirate gold"
 #   scripts/gui-probe.sh wait 'Goto title' 10
@@ -43,7 +46,10 @@
 # so a run of many boots opens one Xephyr window - which takes the host keyboard
 # focus once, not once per boot; `stop-xserver` ends it),
 # BARKS_PROBE_APP (a built executable to run instead of `uv run main.py`; it gets
-# the same config and data dir env vars, which the app honours when set).
+# the same config and data dir env vars, which the app honours when set),
+# BARKS_PROBE_TOUCH=1 (tap by touch as well as by click: a virtual touchscreen,
+# scripts/gui_touch.py, made before the app boots; needs the udev rule in
+# scripts/udev/ - see `doctor` - and one app per machine, as every app reads it).
 
 set -euo pipefail
 
@@ -71,6 +77,19 @@ INPUT_LOG="$RUN_DIR/input.log"
 # test harness lowers it (BARKS_PROBE_KEY_GAP) to what a pacing study found safe.
 KEY_GAP="${BARKS_PROBE_KEY_GAP:-0.4}"
 APP_LOG="$RUN_DIR/app.log"
+# The file the app answers tap-targets requests from (barks_reader.core.tap_targets):
+# a request id written here comes back as one "Tap targets #<id>:" line in the log.
+TAP_REQUEST="$RUN_DIR/tap-request"
+# Touch mode: the virtual touchscreen's server, its socket and its log.
+TOUCH="${BARKS_PROBE_TOUCH:-}"
+TOUCH_SCRIPT="$REPO_ROOT/scripts/gui_touch.py"
+TOUCH_SOCK="$RUN_DIR/touch.sock"
+TOUCH_PID_FILE="$RUN_DIR/touch.pid"
+TOUCH_LOG="$RUN_DIR/touch.log"
+TOUCH_RULE="/etc/udev/rules.d/70-barks-gui-touch.rules"
+# A touch-emulated press follows its hardware touch by this much, as SDL's does:
+# the app counts a press within 0.15s of a hardware touch as a tap.
+TOUCH_LEAD="${BARKS_PROBE_TOUCH_LEAD:-0.05}"
 XEPHYR_LOG="$RUN_DIR/xephyr.log"
 XEPHYR_PID_FILE="$RUN_DIR/xephyr.pid"
 APP_PID_FILE="$RUN_DIR/app.pid"
@@ -215,6 +234,31 @@ cmd_doctor() {
         echo "  --   xdotool absent (optional: 'sudo apt install xdotool')"
     fi
 
+    if [[ -n "$TOUCH" ]]; then
+        echo "== touch mode =="
+        if python3 "$TOUCH_SCRIPT" check; then
+            echo "  OK   /dev/uinput (the input group may create the test touchscreen)"
+        else
+            echo "  FAIL /dev/uinput not writable - install the udev rule (below)"
+            fail=1
+        fi
+        if [[ -f "$TOUCH_RULE" ]] && cmp -s "$TOUCH_RULE" "$REPO_ROOT/scripts/udev/70-barks-gui-touch.rules"; then
+            echo "  OK   $TOUCH_RULE (the desktop ignores the test touchscreen)"
+        else
+            echo "  FAIL $TOUCH_RULE missing or out of date - without it a tap reaches the real screen"
+            fail=1
+        fi
+        if [[ $fail -ne 0 ]]; then
+            echo "       sudo cp scripts/udev/70-barks-gui-touch.rules /etc/udev/rules.d/"
+            echo "       sudo udevadm control --reload"
+            echo "       sudo udevadm trigger --action=change --sysname-match=uinput"
+        fi
+        if ! groups | grep -qw input; then
+            echo "  FAIL $USER is not in the input group (sudo usermod -aG input $USER, then log in again)"
+            fail=1
+        fi
+    fi
+
     echo "== repo =="
     if [[ -f "$REPO_ROOT/.env.runtime" ]]; then
         echo "  OK   .env.runtime"
@@ -303,6 +347,7 @@ cmd_start() {
     mkdir -p "$RUN_DIR"
     : >"$APP_LOG"
     : >"$INPUT_LOG"
+    rm -f "$TAP_REQUEST"
 
     # The app rewrites its config on exit; keep the user's copy intact. A
     # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1
@@ -322,14 +367,19 @@ cmd_start() {
         start_xserver "$offset" "$origin"
     fi
 
+    # The touchscreen must exist before the app boots: the app looks for them once.
+    [[ -n "$TOUCH" ]] && start_touch
+
     # A built executable reads no .env.runtime, so it gets the data dir the
     # workspace run would read from there (the config dir env var, when set, is
     # already in the environment for both).
     if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
-        setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" "$BARKS_PROBE_APP" \
+        setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" \
+            BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" "$BARKS_PROBE_APP" \
             </dev/null >>"$APP_LOG" 2>&1 &
     else
-        setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
+        setsid env DISPLAY="$DPY" BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
+            uv run --directory "$REPO_ROOT" main.py \
             </dev/null >>"$APP_LOG" 2>&1 &
     fi
     echo $! >"$APP_PID_FILE"
@@ -344,6 +394,23 @@ cmd_start() {
     # pointer (PointerRoot). Park it inside the window or keystrokes go nowhere.
     park_pointer
     echo "gui-probe: ready. Log: $APP_LOG"
+}
+
+# Touch mode: create the virtual touchscreen and wait until it takes taps.
+start_touch() {
+    python3 "$TOUCH_SCRIPT" check ||
+        abort_start "touch mode needs /dev/uinput - see 'BARKS_PROBE_TOUCH=1 gui-probe.sh doctor'"
+    : >"$TOUCH_LOG"
+    setsid python3 "$TOUCH_SCRIPT" serve "$TOUCH_SOCK" </dev/null >>"$TOUCH_LOG" 2>&1 &
+    echo $! >"$TOUCH_PID_FILE"
+    disown
+    local ticks=0
+    until grep -q '^gui-touch: ready' "$TOUCH_LOG" 2>/dev/null; do
+        sleep 0.1
+        ticks=$((ticks + 1))
+        [[ $ticks -ge 50 ]] && abort_start "the test touchscreen never came up; see $TOUCH_LOG"
+    done
+    echo "gui-probe: touch mode, $(sed -n 's/^gui-touch: ready, //p' "$TOUCH_LOG")"
 }
 
 # Launch the X server for this display and wait until it answers.
@@ -414,6 +481,11 @@ cmd_stop() {
     if [[ -f "$APP_PID_FILE" ]]; then
         stop_group "$(cat "$APP_PID_FILE")"
     fi
+    if [[ -f "$TOUCH_PID_FILE" ]]; then
+        stop_group "$(cat "$TOUCH_PID_FILE")" 5
+        rm -f "$TOUCH_PID_FILE" "$TOUCH_SOCK"
+    fi
+    rm -f "$TAP_REQUEST"
     if [[ -f "$XEPHYR_PID_FILE" ]] && [[ -z "$KEEP_XSERVER" ]]; then
         stop_group "$(cat "$XEPHYR_PID_FILE")"
     fi
@@ -507,6 +579,50 @@ cmd_click() {
     xte -x "$DPY" "mouseclick 1" >/dev/null
 }
 
+# Tap at a pixel of the app WINDOW (not the screen: a tap target's position is
+# the window's, on either platform's probe). A click, as a mouse makes one; in
+# touch mode a finger press on the test touchscreen first, the click following
+# as SDL's touch-to-mouse press does, then the lift.
+cmd_tap() {
+    require_running
+    local x="${1:?usage: gui-probe.sh tap <x> <y>}" y="${2:?}"
+    local geom w h ox oy
+    geom="$(app_geometry)"
+    [[ -n "$geom" ]] || die "app window ($WINDOW_NAME) not found on $DPY"
+    w="${geom%%x*}"
+    h="${geom#*x}"
+    h="${h%%+*}"
+    ox="${geom#*+}"
+    oy="${ox#*+}"
+    ox="${ox%%+*}"
+    echo "$(date +%H:%M:%S.%3N) tap $x $y${TOUCH:+ touch}" >>"$INPUT_LOG"
+    xte -x "$DPY" "mousemove $((ox + x)) $((oy + y))" >/dev/null
+    sleep 0.3
+    if [[ -z "$TOUCH" ]]; then
+        xte -x "$DPY" "mouseclick 1" >/dev/null
+        return
+    fi
+    [[ -S "$TOUCH_SOCK" ]] || die "touch mode, but no test touchscreen (was the app started with BARKS_PROBE_TOUCH=1?)"
+    local fx fy
+    fx="$(awk -v a="$x" -v b="$w" 'BEGIN { printf "%.5f", (a + 0.5) / b }')"
+    fy="$(awk -v a="$y" -v b="$h" 'BEGIN { printf "%.5f", (a + 0.5) / b }')"
+    python3 "$TOUCH_SCRIPT" send "$TOUCH_SOCK" down "$fx" "$fy"
+    sleep "$TOUCH_LEAD"
+    xte -x "$DPY" "mousedown 1" >/dev/null
+    python3 "$TOUCH_SCRIPT" send "$TOUCH_SOCK" up
+    xte -x "$DPY" "mouseup 1" >/dev/null
+}
+
+# Ask the app for its tap targets: it answers with a "Tap targets #<id>:" log
+# line once its layout is still (see TAP_REQUEST). Written whole, then renamed,
+# so the app never reads half a request.
+cmd_tap_targets() {
+    require_running
+    local id="${1:?usage: gui-probe.sh tap-targets <request id>}"
+    echo "$id" >"$TAP_REQUEST.tmp"
+    mv -f "$TAP_REQUEST.tmp" "$TAP_REQUEST"
+}
+
 cmd_key() {
     require_running
     [[ $# -gt 0 ]] || die "usage: gui-probe.sh key <keysym>..."
@@ -550,6 +666,8 @@ stop-xserver) shift && cmd_stop_xserver "$@" ;;
 shot) shift && cmd_shot "$@" ;;
 geometry) shift && cmd_geometry "$@" ;;
 click) shift && cmd_click "$@" ;;
+tap) shift && cmd_tap "$@" ;;
+tap-targets) shift && cmd_tap_targets "$@" ;;
 key) shift && cmd_key "$@" ;;
 type) shift && cmd_type "$@" ;;
 wait) shift && cmd_wait "$@" ;;

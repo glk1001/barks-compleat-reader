@@ -79,6 +79,7 @@ from .settings_fix import (
 )
 from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
+from .tap_targets import install_tap_targets_service
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from .ui_helpers import KIVY_HELPERS_KV_FILE
@@ -332,6 +333,7 @@ class BarksReaderApp(App):
         set_active_theme(self.reader_settings.color_theme)
         install_settings_theme_kv()
         _install_key_press_log(Window)
+        install_tap_targets_service(Window)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

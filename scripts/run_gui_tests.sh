@@ -47,6 +47,13 @@
 # this machine is read once whatever the run's default. run_gui_matrix.sh runs
 # this once per settings variant.
 #
+# --touch (BARKS_PROBE_TOUCH=1) taps by touch as well as by click: a virtual
+# touchscreen made before each boot (scripts/gui_touch.py), which every app on
+# the machine reads, so it runs one worker. Needs the udev rule in scripts/udev/
+# once (`BARKS_PROBE_TOUCH=1 bash scripts/gui-probe.sh doctor` says how). Only
+# the tap tests change (test_taps.py); they turn the virtual keyboard setting
+# on, since that is what makes the app read a touchscreen on Linux.
+#
 # --keep-logs (BARKS_GUI_KEEP_LOGS=1) saves every passing test's artifacts too -
 # its app and input logs, scratch ini and json, and final frame - beside a
 # failure's in build/gui-tests/<run>/, for reading what a run did when nothing
@@ -91,6 +98,10 @@ while [[ "${1:-}" == --* ]]; do
         export BARKS_GUI_KEEP_LOGS=1
         shift
         ;;
+    --touch)
+        export BARKS_PROBE_TOUCH=1
+        shift
+        ;;
     --workers)
         workers="${2:?--workers needs a count}"
         shift 2
@@ -132,6 +143,14 @@ done
 if ! [[ "$BARKS_PROBE_SCREEN" =~ ^[0-9]+x[0-9]+$ ]]; then
     echo "run_gui_tests: screen size must be WxH (e.g. 1920x1080), not '$BARKS_PROBE_SCREEN'" >&2
     exit 2
+fi
+if [[ -n "${BARKS_PROBE_TOUCH:-}" ]]; then
+    # Every app reads every touchscreen: two workers would tap each other's app.
+    if [[ -n "$workers" && "$workers" != 1 ]]; then
+        echo "run_gui_tests: --touch runs one worker (every app reads the test touchscreen)" >&2
+        exit 2
+    fi
+    workers=1
 fi
 if [[ -z "$workers" ]]; then
     workers=1

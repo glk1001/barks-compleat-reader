@@ -60,6 +60,7 @@ from .reader_keyboard_nav import (
 )
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
+from .tap_targets import Rect, window_rect
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -406,6 +407,14 @@ class ComicBookReader(FloatLayout):
         y_rel = round(touch.y - self.y)
         return self._navigation.is_in_top_margin(x_rel, y_rel)
 
+    def tap_target_regions(self) -> dict[str, Rect]:
+        """Return the page-turn margins and the top margin, for a GUI test to tap."""
+        regions = self._navigation.tap_regions(round(self.width), round(self.height))
+        return {
+            name: window_rect(self, self.x + x, self.y + y, w, h)
+            for name, (x, y, w, h) in regions.items()
+        }
+
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         logger.debug(
@@ -423,12 +432,12 @@ class ComicBookReader(FloatLayout):
         y_rel = round(touch.y - self.y)
 
         if self._navigation.is_in_left_margin(x_rel, y_rel):
-            logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
+            logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._page_manager.prev_page()
             return True
 
         if self._navigation.is_in_right_margin(x_rel, y_rel):
-            logger.debug(f"Right margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
+            logger.debug(log_markers.RIGHT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._page_manager.next_page()
             return True
 
@@ -1045,7 +1054,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return True
 
         if self._is_action_bar_hidden() and self.comic_book_reader.is_click_in_top_margin(touch):
-            logger.debug("Showing action bar on top margin press.")
+            logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
             self._show_action_bar()
             return True
 

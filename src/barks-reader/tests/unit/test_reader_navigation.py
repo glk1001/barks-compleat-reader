@@ -107,3 +107,75 @@ class TestReaderNavigation:
 
         # y_bottom_margin = (1000 - 100) - (0.9 * 1000) = 0
         assert self.nav.y_bottom_margin == 0
+
+
+def _inside_points(rect: tuple[int, int, int, int]) -> list[tuple[int, int]]:
+    """Return the centre and the four corners of `rect`, all inside it."""
+    x, y, w, h = rect
+    return [
+        (x + w // 2, y + h // 2),
+        (x, y),
+        (x + w - 1, y),
+        (x, y + h - 1),
+        (x + w - 1, y + h - 1),
+    ]
+
+
+class TestTapRegions:
+    """Every point of a reported region is one its own check accepts."""
+
+    WIDTH = 1000
+    HEIGHT = 1000
+
+    @pytest.fixture
+    def nav(self) -> ReaderNavigation:
+        nav = ReaderNavigation(2000, 0.1, 0.9)
+        nav.update_regions(self.WIDTH, self.HEIGHT, 0, 0)
+        return nav
+
+    @pytest.mark.parametrize("fullscreen", [False, True])
+    @patch.object(nav_module, "WindowManager")
+    def test_each_region_is_inside_its_check(
+        self, mock_window_manager: MagicMock, nav: ReaderNavigation, *, fullscreen: bool
+    ) -> None:
+        mock_window_manager.is_fullscreen_now.return_value = fullscreen
+        regions = nav.tap_regions(self.WIDTH, self.HEIGHT)
+        checks = {
+            "left margin": nav.is_in_left_margin,
+            "right margin": nav.is_in_right_margin,
+            "top margin": nav.is_in_top_margin,
+        }
+        assert set(regions) == set(checks)
+        for name, rect in regions.items():
+            for point in _inside_points(rect):
+                assert checks[name](*point), (name, rect, point)
+
+    @patch.object(nav_module, "WindowManager")
+    def test_the_left_and_right_margins_meet_at_the_middle(
+        self, mock_window_manager: MagicMock, nav: ReaderNavigation
+    ) -> None:
+        mock_window_manager.is_fullscreen_now.return_value = False
+        regions = nav.tap_regions(self.WIDTH, self.HEIGHT)
+        left_x, _, left_w, _ = regions["left margin"]
+        right_x, _, right_w, _ = regions["right margin"]
+        assert left_x + left_w == right_x == nav.x_mid
+        assert right_x + right_w == self.WIDTH
+
+    @patch.object(nav_module, "WindowManager")
+    def test_fullscreen_narrows_the_top_margin_to_the_middle(
+        self, mock_window_manager: MagicMock, nav: ReaderNavigation
+    ) -> None:
+        mock_window_manager.is_fullscreen_now.return_value = True
+        x, _, w, _ = nav.tap_regions(self.WIDTH, self.HEIGHT)["top margin"]
+        # The fullscreen band is (500, 1500]: in a 1000-wide widget, 501 to the edge.
+        assert (x, x + w) == (501, self.WIDTH)
+        assert not nav.is_in_top_margin(x - 1, 950)
+
+    def test_no_regions_before_the_sizes_are_known(self) -> None:
+        # Before update_regions every margin is -1: nothing to press yet.
+        nav = ReaderNavigation(2000, 0.1, 0.9)
+        with patch.object(nav_module, "WindowManager") as mock_window_manager:
+            mock_window_manager.is_fullscreen_now.return_value = False
+            regions = nav.tap_regions(self.WIDTH, self.HEIGHT)
+        assert "left margin" not in regions
+        assert "right margin" not in regions

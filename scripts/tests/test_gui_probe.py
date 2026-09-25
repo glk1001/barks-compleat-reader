@@ -176,6 +176,7 @@ class TestInputLog:
             sys.path.remove(str(GUI_TESTS_DIR))
         gui_probe.note_input("key", "Down")
         gui_probe.note_input("type", "ab")
+        gui_probe.note_input("tap", "10 20")  # a tap is a press, not a key
         app_log = "\n".join(
             f"2026-09-23 12:00:00.000 | INFO | Key pressed: {code} ({name})."
             for code, name in ((274, "down"), (97, "a"), (98, "b"))
@@ -213,6 +214,35 @@ class TestCommands:
         assert [c.args[0] for c in backend.send_key.call_args_list] == ["Down", "Return"]
         logged = gui_probe.input_log().read_text().splitlines()
         assert [line.split(" ", 1)[1] for line in logged] == ["key Down", "key Return"]
+
+
+class TestTaps:
+    def test_a_tap_clicks_at_the_window_pixel_and_is_logged_as_a_tap(self, run_dir: Path) -> None:
+        backend = MagicMock()
+        backend.bring_to_front.return_value = True
+        backend.client_geometry.return_value = (800, 600, 100, 50)
+        (run_dir / "app.pid").write_text("1234")
+        with patch.object(gui_probe.time, "sleep"):
+            gui_probe.Probe(backend).tap(10, 20)
+        backend.click.assert_called_once_with(110, 70)
+        [line] = gui_probe.input_log().read_text().splitlines()
+        assert line.split(" ", 1)[1] == "tap 10 20"
+
+    def test_a_tap_targets_request_is_written_whole(self, run_dir: Path) -> None:
+        gui_probe.Probe.tap_targets("5")
+        assert (run_dir / "tap-request").read_text(encoding="utf-8") == "5\n"
+        assert not list(run_dir.glob("*.tmp"))
+
+    def test_the_app_is_told_where_requests_go(self, run_dir: Path) -> None:
+        env = gui_probe.app_env({})
+        assert env["BARKS_READER_TAP_TARGETS_FILE"] == str(run_dir / "tap-request")
+
+    def test_touch_mode_is_refused_here(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("BARKS_PROBE_TOUCH", "1")
+        backend = MagicMock()
+        with pytest.raises(gui_probe.ProbeError, match="Linux only"):
+            gui_probe.Probe(backend).start()
+        backend.find_window.assert_not_called()
 
 
 class TestWin32Keys:

@@ -39,6 +39,7 @@ from .reader_keyboard_nav import (
     update_focus_in_list,
 )
 from .reader_navigation import ReaderNavigation
+from .tap_targets import Rect, window_rect
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -130,6 +131,17 @@ class FunImageViewScreen(BoxLayout):
     def on_resized(self, size: tuple[int, int]) -> None:
         self._navigation.update_regions(size[0], size[1], self.x, self.y)
 
+    def tap_target_regions(self) -> dict[str, Rect]:
+        """Return the margins that step through the images, for a GUI test to tap."""
+        if not self.is_visible or self.fun_options_enabled:
+            return {}
+        regions = self._navigation.tap_regions(round(self.width), round(self.height))
+        return {
+            name: window_rect(self, self.x + x, self.y + y, w, h)
+            for name, (x, y, w, h) in regions.items()
+            if name in {"left margin", "right margin"}
+        }
+
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if not self.is_visible or self.fun_options_enabled:
@@ -155,12 +167,12 @@ class FunImageViewScreen(BoxLayout):
             return bool(super().on_touch_down(touch))
 
         if self._navigation.is_in_left_margin(x_rel, y_rel):
-            logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
+            logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._goto_previous_image()
             return True
 
         if self._navigation.is_in_right_margin(x_rel, y_rel):
-            logger.debug(f"Right margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
+            logger.debug(log_markers.RIGHT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._goto_next_image()
             return True
 

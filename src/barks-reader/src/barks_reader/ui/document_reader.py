@@ -17,6 +17,7 @@ from .reader_keyboard_nav import (
     ActionBarNavMixin,
 )
 from .reader_screens import ReaderScreen
+from .tap_targets import Rect, window_rect
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,6 +88,15 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
         if self._current_page_index > 0:
             self._current_page_index -= 1
             self._update_page_source()
+
+    def tap_target_regions(self) -> dict[str, Rect]:
+        """Return the page's two halves, back and forward, for a GUI test to tap."""
+        page = self.ids.doc_page
+        half = page.width / 2
+        return {
+            "left half": window_rect(page, page.x, page.y, half, page.height),
+            "right half": window_rect(page, page.x + half, page.y, page.width - half, page.height),
+        }
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
         self._clear_menu_on_touch()

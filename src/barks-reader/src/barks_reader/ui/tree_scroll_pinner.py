@@ -22,6 +22,7 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
+from barks_reader.core.tap_targets import settling_began, settling_ended
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -77,6 +78,9 @@ class TreeScrollPinner:
                 populate()
 
             checks: dict[str, float] = {"count": 0, "last_h": -1, "stable": 0}
+            # Until the correction lands the tree is not where it will be: a GUI
+            # test's tap-targets request waits (barks_reader.core.tap_targets).
+            settling_began(checks)
 
             self._schedule_once(
                 lambda dt: self._stabilize_after_layout(
@@ -100,7 +104,7 @@ class TreeScrollPinner:
     ) -> None:
         # If user collapsed or navigated away, stop.
         if not parent_node.is_open:
-            self._on_settled()
+            self._settled(checks)
             return
 
         def _resched() -> None:
@@ -113,7 +117,7 @@ class TreeScrollPinner:
                     0,
                 )
             else:
-                self._on_settled()
+                self._settled(checks)
 
         if not scroll_view.children:
             _resched()
@@ -147,7 +151,7 @@ class TreeScrollPinner:
         # How far did the parent drift? Positive means it moved DOWN on screen.
         delta_px = current_offset_px - target_offset_px
         if abs(delta_px) < 0.5:  # noqa: PLR2004
-            self._on_settled()
+            self._settled(checks)
             return  # nothing to adjust
 
         # Convert pixel delta to normalized scroll_y delta:
@@ -155,7 +159,7 @@ class TreeScrollPinner:
         #  - Moving content up by +delta_px means increase scroll_y.
         denominator = cont_h - viewport_h
         if denominator <= 0:
-            self._on_settled()
+            self._settled(checks)
             return
 
         delta_norm = delta_px / denominator
@@ -163,6 +167,10 @@ class TreeScrollPinner:
 
         # Apply in one shot (no animation to avoid visible bounce)
         scroll_view.scroll_y = new_scroll_y
+        self._settled(checks)
+
+    def _settled(self, checks: dict[str, float]) -> None:
+        settling_ended(checks)
         self._on_settled()
 
     @staticmethod

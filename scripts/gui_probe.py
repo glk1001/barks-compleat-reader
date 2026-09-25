@@ -15,13 +15,15 @@ to some other window. Do not use the machine while a run is going.
 Usage (the same as gui-probe.sh; see there):
   python scripts/gui_probe.py doctor | start | stop | stop-xserver | geometry
   python scripts/gui_probe.py shot OUT.png | click X Y | key NAME... | type TEXT
+  python scripts/gui_probe.py tap X Y | tap-targets ID
   python scripts/gui_probe.py wait REGEX [SECS] | settle [QUIET_MS [MAX_SECS]]
   python scripts/gui_probe.py log | config | tail [N]
 
 Env: BARKS_PROBE_DISPLAY (":2"; only names the run directory here),
 BARKS_PROBE_KEY_GAP (seconds after each injected key, default 0.4),
 BARKS_READER_CONFIG_DIR, BARKS_PROBE_NO_RESTORE=1 and BARKS_PROBE_APP, all as
-for gui-probe.sh.
+for gui-probe.sh. BARKS_PROBE_TOUCH=1 (touch mode) is Linux only so far: here a
+tap is a click, and touch mode refuses to start.
 
 Only the standard library is used, plus Pillow for ``shot``, as the driver
 runs this with the interpreter it runs under.
@@ -140,6 +142,11 @@ def input_log() -> Path:
     return run_dir() / "input.log"
 
 
+def tap_request() -> Path:
+    """Return the file the app answers tap-targets requests from (as gui-probe.sh's)."""
+    return run_dir() / "tap-request"
+
+
 def _pid_file() -> Path:
     return run_dir() / "app.pid"
 
@@ -192,7 +199,13 @@ def app_env(base: Mapping[str, str]) -> dict[str, str]:
     is a file, and the colour codes land in the middle of the lines a test parses.
     LOGURU_COLORIZE is loguru's own switch for every handler that does not choose.
     """
-    return dict(base, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", LOGURU_COLORIZE="0")
+    return dict(
+        base,
+        PYTHONUTF8="1",
+        PYTHONIOENCODING="utf-8",
+        LOGURU_COLORIZE="0",
+        BARKS_READER_TAP_TARGETS_FILE=str(tap_request()),
+    )
 
 
 def _profile_backups() -> list[tuple[Path, Path]]:
@@ -315,6 +328,9 @@ class Probe:
     # --- commands ---
 
     def start(self) -> None:
+        if os.environ.get("BARKS_PROBE_TOUCH"):
+            msg = "touch mode (BARKS_PROBE_TOUCH) is Linux only so far - unset it to tap by click"
+            raise ProbeError(msg)
         if self.app_alive():
             msg = "already running (stop it first)"
             raise ProbeError(msg)
@@ -324,6 +340,7 @@ class Probe:
         run_dir().mkdir(parents=True, exist_ok=True)
         app_log().write_text("", encoding="utf-8")
         input_log().write_text("", encoding="utf-8")
+        tap_request().unlink(missing_ok=True)
         # The app rewrites its config as it runs; keep the user's copy intact. A
         # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1.
         if not os.environ.get("BARKS_PROBE_NO_RESTORE"):
@@ -427,6 +444,22 @@ class Probe:
         self._backend.move_pointer(left + x, top + y)
         time.sleep(0.3)
         self._backend.click(left + x, top + y)
+
+    def tap(self, x: int, y: int) -> None:
+        """Tap at a pixel of the window's drawable area: a click, until touch mode lands here."""
+        window = self._front_window()
+        _, _, left, top = self._backend.client_geometry(window)
+        note_input("tap", f"{x} {y}")
+        self._backend.move_pointer(left + x, top + y)
+        time.sleep(0.3)
+        self._backend.click(left + x, top + y)
+
+    @staticmethod
+    def tap_targets(request: str) -> None:
+        """Ask the app for its tap targets: written whole, then renamed into place."""
+        partial = tap_request().with_suffix(".tmp")
+        partial.write_text(f"{request}\n", encoding="utf-8")
+        partial.replace(tap_request())
 
     def key(self, names: Sequence[str]) -> None:
         gap = float(os.environ.get("BARKS_PROBE_KEY_GAP", DEFAULT_KEY_GAP))
@@ -552,8 +585,20 @@ def run_backend_command(probe: Probe, command: str, args: list[str]) -> int:
         case "shot":
             probe.shot(Path(args[0]))
             print(args[0])  # noqa: T201
+        case _:
+            return run_input_command(probe, command, args)
+    return 0
+
+
+def run_input_command(probe: Probe, command: str, args: list[str]) -> int:
+    """Run a command that sends the app input; 1 (with the usage) for an unknown one."""
+    match command:
         case "click":
             probe.click(int(args[0]), int(args[1]))
+        case "tap":
+            probe.tap(int(args[0]), int(args[1]))
+        case "tap-targets":
+            probe.tap_targets(args[0])
         case "key":
             probe.key(args)
         case "type":

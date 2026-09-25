@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.core.tap_targets import layout_settling
 from barks_reader.ui.tree_scroll_pinner import TreeScrollPinner
 
 
@@ -136,3 +137,32 @@ def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
     assert scroll_view.scroll_y == pytest.approx(0.4)
     on_settled.assert_called_once()
     assert clock.pending == []
+
+
+def test_tap_target_answers_wait_until_the_pin_settles() -> None:
+    """Between an expand and its scroll correction the tree is not where it will be."""
+    clock = _FakeClock()
+    pinner = TreeScrollPinner(
+        get_scroll_view=_make_scroll_view,
+        on_settled=MagicMock(),
+        schedule_once=clock.schedule_once,
+    )
+    parent = _make_parent_node()
+    assert not layout_settling()
+
+    pinner.pin_while_populating(parent, populate=None)
+    assert layout_settling()
+
+    parent.is_open = False
+    clock.run_next()
+    assert not layout_settling()
+
+
+def test_a_pin_that_never_starts_holds_nothing() -> None:
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: _make_scroll_view(has_children=False),
+        on_settled=MagicMock(),
+        schedule_once=_FakeClock().schedule_once,
+    )
+    pinner.pin_while_populating(_make_parent_node(), populate=None)
+    assert not layout_settling()

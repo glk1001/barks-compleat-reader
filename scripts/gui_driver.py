@@ -220,6 +220,28 @@ class Driver:
         """Click at a screenshot pixel on the nested display."""
         self._run(["click", str(x), str(y)])
 
+    def tap(self, x: int, y: int) -> None:
+        """Tap at an app WINDOW pixel: a click, or in touch mode a touch and its click.
+
+        Window pixels, not screenshot pixels: what a tap target's position is
+        given in, on either platform's probe.
+        """
+        self._run(["tap", str(x), str(y)])
+
+    def tap_then_wait(self, pattern: str, x: int, y: int, timeout: float = 15) -> None:
+        """Tap at an app window pixel, then block until a NEW `pattern` line is logged."""
+        with self.expect(pattern, timeout):
+            self.tap(x, y)
+
+    def request_tap_targets(self, request: str) -> None:
+        """Ask the app to log its tap targets, answering request id `request`.
+
+        The answer is one "Tap targets #<request>:" line, once the app's layout
+        is still (``barks_reader.core.tap_targets``); ``barks_gui.taps`` waits
+        for it and reads it.
+        """
+        self._run(["tap-targets", request])
+
     def shot(self, path: Path) -> Path:
         """Capture the nested display to a PNG at `path` and return it."""
         self._run(["shot", str(path)])

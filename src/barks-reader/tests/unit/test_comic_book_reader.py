@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import barks_reader.ui.comic_book_reader
 import pytest
 from barks_fantagraphics.comics_consts import PageType
+from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui.comic_book_reader import (
@@ -401,6 +402,35 @@ class TestComicBookReader:
         mock_nav.is_in_left_margin.return_value = True
         reader.on_touch_down(touch)
         reader._page_manager.prev_page.assert_called()
+
+    def test_margin_presses_log_their_markers(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        mock_nav = reader._navigation
+        mock_nav.is_in_top_margin.return_value = False
+        touch = MagicMock(x=100, y=60)
+        reader.x, reader.y = 0, 0
+        reader._page_manager = MagicMock()
+
+        mock_nav.is_in_left_margin.return_value = True
+        mock_nav.is_in_right_margin.return_value = False
+        reader.on_touch_down(touch)
+        mock_nav.is_in_left_margin.return_value = False
+        mock_nav.is_in_right_margin.return_value = True
+        reader.on_touch_down(touch)
+
+        assert log_markers.LEFT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
+        assert log_markers.RIGHT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
+
+    def test_tap_target_regions_are_the_margins_in_window_pixels(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._navigation.tap_regions.return_value = {"left margin": (0, 10, 50, 20)}
+        reader.x, reader.y = 5, 7
+        reader.width, reader.height = 200, 100
+        # With no parent, a widget's own position space is the window's.
+        assert reader.tap_target_regions() == {"left margin": (5, 17, 50, 20)}
+        reader._navigation.tap_regions.assert_called_once_with(200, 100)
 
     # --- log markers: double page and goto page, for the GUI path tests to wait on ---
 

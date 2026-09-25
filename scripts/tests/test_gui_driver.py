@@ -647,6 +647,34 @@ class TestTypeSlowly:
         assert sleep.call_count == THREE_TURNS
 
 
+class TestTaps:
+    def test_a_tap_goes_to_the_probe_in_window_pixels(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "_run") as run:
+            stub_driver.tap(12, 34)
+        run.assert_called_once_with(["tap", "12", "34"])
+
+    def test_a_tap_targets_request_names_its_id(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "_run") as run:
+            stub_driver.request_tap_targets("7")
+        run.assert_called_once_with(["tap-targets", "7"])
+
+    def test_tap_then_wait_taps_inside_the_wait(self, stub_driver: Driver) -> None:
+        order: list[str] = []
+
+        @contextmanager
+        def fake_expect(pattern: str, _timeout: float = 15) -> Iterator[None]:
+            order.append(f"expect {pattern}")
+            yield
+            order.append("waited")
+
+        with (
+            patch.object(Driver, "expect", side_effect=fake_expect),
+            patch.object(Driver, "tap", side_effect=lambda *_: order.append("tap")),
+        ):
+            stub_driver.tap_then_wait("Showed page", 1, 2)
+        assert order == ["expect Showed page", "tap", "waited"]
+
+
 class TestDriverMarkersMatchTheApp:
     """The driver is stdlib-only, so it carries its own copies of the app's marker text.
 

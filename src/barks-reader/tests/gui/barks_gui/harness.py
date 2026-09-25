@@ -253,7 +253,7 @@ MODIFIER_KEY_NAMES = frozenset(
         "pipe",
     }
 )
-_INPUT_LINE_RE = re.compile(r"^\S+ (key|type|click) ?(.*)$")
+_INPUT_LINE_RE = re.compile(r"^\S+ (key|type|click|tap) ?(.*)$")
 
 
 def stray_key_presses(app_log: str, input_log: str) -> int:

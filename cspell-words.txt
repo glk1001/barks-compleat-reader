@@ -294,3 +294,9 @@ barkspack
 screenful
 restripe
 restripes
+libinput
+stencilview
+udevadm
+sysname
+tappable
+usermod

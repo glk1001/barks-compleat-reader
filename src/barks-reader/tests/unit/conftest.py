@@ -24,6 +24,21 @@ if TYPE_CHECKING:
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
 
 
+@pytest.fixture(autouse=True)
+def _no_layout_settling() -> Generator[None]:
+    """Start and end every test with nothing moving the layout on purpose.
+
+    ``barks_reader.core.tap_targets`` keeps a process-wide set of the work that
+    is (the tree's scroll pinner); a test that starts a pin and never runs its
+    settle loop to the end would leave it set for every test after.
+    """
+    from barks_reader.core import tap_targets  # noqa: PLC0415
+
+    tap_targets._SETTLING.clear()  # noqa: SLF001
+    yield
+    tap_targets._SETTLING.clear()  # noqa: SLF001
+
+
 @pytest.fixture
 def mock_font_manager() -> MagicMock:
     return MagicMock()
