@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import string
-import textwrap
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -35,6 +34,11 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.index_text import (
+    indexable_title,
+    indexable_title_from_str,
+    sortable_string,
+)
 from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import (
@@ -72,7 +76,6 @@ if TYPE_CHECKING:
     from .tree_view_nodes import MainTreeViewNode
     from .user_error_handler import UserErrorHandler
 
-MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 
 INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -1039,20 +1042,14 @@ class IndexScreen(FloatLayout):
             self.on_letter_press(self._alphabet_buttons[first_letter])
 
     def _get_indexable_title(self, title: Titles) -> str:
-        return self._get_indexable_title_from_str(ENUM_TO_STR_TITLE[title])
+        return indexable_title(title)
 
     def _get_indexable_title_from_str(self, title_str: str) -> str:
-        title_str = textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
-        return self._get_sortable_string(title_str)
+        return indexable_title_from_str(title_str)
 
     @staticmethod
     def _get_sortable_string(text: str) -> str:
-        text_upper = text.upper()
-        if text_upper.startswith("THE "):
-            return text[4:] + ", The"
-        if text_upper.startswith("A "):
-            return text[2:] + ", A"
-        return text
+        return sortable_string(text)
 
     def _handle_collapse(self, level_of_click: int) -> None:
         # When collapsing a parent, close it and all its children.

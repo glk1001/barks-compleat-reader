@@ -27,12 +27,12 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
+from barks_reader.core.index_text import MAX_TITLE_AND_PAGES_LEN
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 
 from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
-    MAX_TITLE_AND_PAGES_LEN,
     IndexItem,
     IndexItemButton,
     IndexPrefixButton,
