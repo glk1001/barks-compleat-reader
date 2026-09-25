@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "events": [
+    {
+      "id": "a0000000000000000000000000000001",
+      "title": "Lost in the Andes!",
+      "opened_at": "2026-09-01T10:00:00",
+      "closed_at": "2026-09-01T10:05:00",
+      "last_display_page": "4",
+      "last_body_page": "32"
+    },
+    {
+      "id": "a0000000000000000000000000000002",
+      "title": "Vacation Time",
+      "opened_at": "2026-09-01T10:10:00",
+      "closed_at": "2026-09-01T10:12:00",
+      "last_display_page": "2",
+      "last_body_page": "33"
+    },
+    {
+      "id": "a0000000000000000000000000000003",
+      "title": "The Ghost of the Grotto",
+      "opened_at": "2026-09-01T10:20:00",
+      "closed_at": "2026-09-01T10:21:00",
+      "last_display_page": "0",
+      "last_body_page": "26"
+    },
+    {
+      "id": "a0000000000000000000000000000004",
+      "title": "Lost in the Andes!",
+      "opened_at": "2026-09-02T09:00:00",
+      "closed_at": "2026-09-02T09:30:00",
+      "last_display_page": "29",
+      "last_body_page": "32"
+    },
+    {
+      "id": "a0000000000000000000000000000005",
+      "title": "Vacation Time",
+      "opened_at": "2026-09-02T09:40:00",
+      "closed_at": "2026-09-02T09:45:00",
+      "last_display_page": "10",
+      "last_body_page": "33"
+    },
+    {
+      "id": "a0000000000000000000000000000006",
+      "title": "The Ghost of the Grotto",
+      "opened_at": "2026-09-02T09:50:00",
+      "closed_at": "2026-09-02T09:52:00",
+      "last_display_page": "3",
+      "last_body_page": "26"
+    }
+  ]
+}
