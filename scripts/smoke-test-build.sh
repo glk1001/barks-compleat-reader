@@ -11,7 +11,11 @@
 # saying so. Reaching that popup proves the onefile unpacks and the Python
 # runtime, the compiled packages, loguru, the installer and a Kivy window all
 # work from the build. The popup waits for a click, so the run is killed after
-# a while; the verdict comes from what the installer left on disk.
+# a while; the verdict comes from what the installer left on disk, and from how
+# the program ended: one that exits on its own before its popup, or with any
+# code but 0 or 1 (the installer exits 1 once its popup has reported the missing
+# data pack), has crashed - unless Kivy logged why no window could open, as it
+# does on a CI runner with no usable OpenGL.
 #
 # The build is copied into an empty directory first, so a data pack lying
 # beside the real one (as in a developer checkout) does not turn this into a
@@ -131,6 +135,16 @@ press_escape() {
 popup_logged() {
     grep -qs "$1" "$WORK/stdout.log" "$WORK"/barks-reader-installer-*.log
 }
+# Kivy's own log (in the config folder beside the executable) is a .txt file.
+# (A recursive grep, not an array of files: macOS runs this under bash 3.2, where
+# an empty array is unbound under set -u.)
+kivy_logged() {
+    grep -rqs --include='*.txt' "$1" "$WORK"
+}
+# Kivy said why it could open no window: the machine has no usable OpenGL.
+no_window_explained() {
+    kivy_logged "Unable to get a Window" || kivy_logged "Minimum required OpenGL version"
+}
 
 echo "smoke-test-build: launching $exe for up to ${SECS}s..."
 # The ${arr[@]+...} form: macOS's /bin/bash is 3.2, where "${runner[@]}" on an
@@ -139,7 +153,9 @@ bash -c '"$@"' _ ${runner[@]+"${runner[@]}"} "$exe" >"$WORK/stdout.log" 2>&1 &
 pid=$!
 pressed=""
 press_failed=""
-for ((waited = 0; waited < SECS; waited++)); do
+# Once Escape is pressed the program gets its full EXIT_AFTER_KEY_SECS, even past
+# SECS: a popup that opened late must not be blamed for a slow exit.
+for ((waited = 0; ; waited++)); do
     kill -0 "$pid" 2>/dev/null || break
     if [[ -n "$PRESS" && -z "$pressed$press_failed" ]] && popup_logged "$POPUP_OPENED"; then
         sleep 1 # let the popup finish appearing before the key
@@ -149,7 +165,9 @@ for ((waited = 0; waited < SECS; waited++)); do
             press_failed=1
         fi
     fi
-    if [[ -n "$pressed" ]] && ((waited - pressed >= EXIT_AFTER_KEY_SECS)); then
+    if [[ -n "$pressed" ]]; then
+        ((waited - pressed >= EXIT_AFTER_KEY_SECS)) && break
+    elif ((waited >= SECS)); then
         break
     fi
     sleep 1
@@ -203,6 +221,19 @@ if [[ -n "$PRESS" ]]; then
         fi
     fi
 fi
+# A program that ended by itself: before its popup, or with a crash's exit code,
+# it did not get as far as a working build does - unless Kivy said it had no
+# window to open. The installer exits 1 once its popup has reported the missing
+# data pack (handle_app_fail), so 0 and 1 are the codes of a program that ran.
+if [[ -z "$killed" ]] && ! no_window_explained; then
+    if [[ -z "$PRESS" ]] && ! popup_logged "$POPUP_OPENED"; then
+        echo "smoke-test-build: FAIL - the program exited on its own (code $rc) after ${waited}s, before its popup, and Kivy logged no reason" >&2
+        fail=1
+    elif [[ "$rc" != 0 && "$rc" != 1 ]]; then
+        echo "smoke-test-build: FAIL - the program exited with code $rc: it crashed (a working build exits 0 or 1)" >&2
+        fail=1
+    fi
+fi
 if [[ -n "${KIVY_GL_BACKEND:-}" ]]; then
     # Kivy's own lines are not in stdout or the installer log (the installer logs
     # through loguru); Kivy writes them to its log file under its home, which the
@@ -227,11 +258,6 @@ fi
 # Say what the launch reached, from Kivy's log and the app's lines: a runner with
 # no usable OpenGL stops at Kivy's error box, or opens no window at all, and the
 # checks above still pass on the installer's log and flag.
-# (A recursive grep, not an array of files: macOS runs this under bash 3.2, where
-# an empty array is unbound under set -u.)
-kivy_logged() {
-    grep -rqs --include='*.txt' "$1" "$WORK"
-}
 if popup_logged "$POPUP_OPENED"; then
     echo "smoke-test-build: reached the app's popup"
 elif kivy_logged "Unable to get a Window"; then
