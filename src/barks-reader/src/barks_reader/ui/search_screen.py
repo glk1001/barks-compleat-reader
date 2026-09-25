@@ -552,7 +552,7 @@ class SearchScreen(FloatLayout):
         self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
 
     def _on_speaker_chip_selected(self, speaker: str) -> None:
-        logger.info(f'Word search: speaker filter "{speaker or "All"}".')
+        logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
         self._selected_speaker = speaker
         self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
         if self._selected_word:

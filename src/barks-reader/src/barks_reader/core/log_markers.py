@@ -204,6 +204,8 @@ SEARCH_CLEARED: Final = "Search cleared: {mode}."
 TAG_SELECTED_TAG: Final = 'Tag search: selected tag "{tag}".'
 TAG_SELECTED_MEMBER: Final = 'Tag search: selected member "{member}".'
 WORD_SELECTED_CHIP: Final = 'Word search: selected chip "{word}".'
+# The speaker a word search is filtered to; "All" once the filter is lifted.
+SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'
 WORD_BUBBLE_PRESS: Final = 'Word search bubble press: "{title}" page {page}.'
 

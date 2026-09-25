@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.alpha_split import split_alpha_terms
+from barks_reader.core import log_markers
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
 
@@ -460,7 +461,8 @@ class TestSpeakerFilter:
 
         screen._search.find_words.assert_called_once_with("money", speaker="Scrooge")
         assert screen._selected_speaker == "Scrooge"
-        assert 'Word search: speaker filter "Scrooge".' in loguru_sink
+        assert log_markers.SPEAKER_FILTER_SET.format(speaker="Scrooge") in loguru_sink
+        assert 'Word search: speaker filter "Scrooge".' in loguru_sink  # the line is unchanged
 
     def test_all_lifts_the_filter(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
         screen._selected_word = "money"
@@ -474,7 +476,7 @@ class TestSpeakerFilter:
             screen._on_speaker_chip_selected("")
 
         screen._search.find_words.assert_called_once_with("money", speaker=None)
-        assert 'Word search: speaker filter "All".' in loguru_sink
+        assert log_markers.SPEAKER_FILTER_SET.format(speaker="All") in loguru_sink
 
     def test_no_word_picked_yet_only_records_the_choice(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
