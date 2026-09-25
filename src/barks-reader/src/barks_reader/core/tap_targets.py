@@ -134,11 +134,17 @@ class TapTargetRequests:
         self._request_file = request_file
         self._last: list[TapTarget] | None = None
 
-    def poll(self, snapshot: Callable[[], list[TapTarget]]) -> tuple[str, list[TapTarget]] | None:
+    def poll(
+        self,
+        snapshot: Callable[[], list[TapTarget]],
+        busy: Callable[[], bool] = lambda: False,
+    ) -> tuple[str, list[TapTarget]] | None:
         """Take a list if a request is waiting; return it once it is the same twice.
 
         Args:
             snapshot: Returns the targets on screen now.
+            busy: Returns whether the layout is mid-change right now (a screen
+                transition): no list is taken then, and the count starts again.
 
         Returns:
             ``(request id, targets)`` when the request is answered - the file is
@@ -152,7 +158,7 @@ class TapTargetRequests:
             return None
         if not request:
             return None  # written but not yet filled in: look again next poll
-        if layout_settling():
+        if layout_settling() or busy():
             self._last = None  # what was on screen before it began no longer counts
             return None
         targets = snapshot()

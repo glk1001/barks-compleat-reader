@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, cast
 from kivy.clock import Clock
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.modalview import ModalView
+from kivy.uix.screenmanager import ScreenManager
 from kivy.uix.stencilview import StencilView
 from kivy.uix.textinput import TextInput
 from kivy.uix.treeview import TreeViewNode
@@ -166,6 +167,23 @@ def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarg
         _collect(child, inner, window_height, out)
 
 
+def _screen_changing(widget: Any) -> bool:  # noqa: ANN401
+    """Whether a screen manager at or under `widget` is mid-transition.
+
+    Between two screens the one going and the one coming may both show nothing
+    tappable (the reader holds itself back until its first page), and a list taken
+    then is empty however still it holds.
+    """
+    if isinstance(widget, ScreenManager) and widget.transition.is_active:
+        return True
+    return any(_screen_changing(child) for child in widget.children)
+
+
+def screen_changing(window: Any) -> bool:  # noqa: ANN401
+    """Whether any screen manager in `window` is mid-transition."""
+    return any(_screen_changing(child) for child in window.children)
+
+
 def snapshot(window: Any) -> list[TapTarget]:  # noqa: ANN401
     """Return every tappable target `window` shows, in the order a press reaches them.
 
@@ -202,7 +220,7 @@ def install_tap_targets_service(window: Any) -> bool:  # noqa: ANN401
     requests = TapTargetRequests(Path(request_file))
 
     def poll(_dt: float) -> None:
-        answer = requests.poll(lambda: snapshot(window))
+        answer = requests.poll(lambda: snapshot(window), lambda: screen_changing(window))
         if answer is None:
             return
         request, targets = answer

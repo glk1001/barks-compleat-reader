@@ -20,13 +20,14 @@ from barks_reader.core.tap_targets import (
     settling_ended,
 )
 from barks_reader.ui import tap_targets as ui_tap_targets
-from barks_reader.ui.tap_targets import install_tap_targets_service, snapshot
+from barks_reader.ui.tap_targets import install_tap_targets_service, screen_changing, snapshot
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.popup import Popup
+from kivy.uix.screenmanager import ScreenManager
 from kivy.uix.stencilview import StencilView
 from kivy.uix.treeview import TreeViewLabel
 from kivy.uix.widget import Widget
@@ -117,6 +118,17 @@ class TestTapTargetRequests:
         settling_ended(owner)
         assert requests.poll(shots) is None, "two polls once it has ended, not one"
         assert requests.poll(shots) == ("5", [_target()])
+
+    def test_no_answer_while_busy_and_two_polls_after(self, request_file: Path) -> None:
+        request_file.write_text("6", encoding="utf-8")
+        requests = TapTargetRequests(request_file)
+        shots = MagicMock(return_value=[_target()])
+        busy = MagicMock(side_effect=[True, True, False, False])
+        assert requests.poll(shots, busy) is None
+        assert requests.poll(shots, busy) is None
+        shots.assert_not_called()
+        assert requests.poll(shots, busy) is None, "two polls once the change is over"
+        assert requests.poll(shots, busy) == ("6", [_target()])
 
     def test_a_new_request_starts_afresh(self, request_file: Path) -> None:
         requests = TapTargetRequests(request_file)
@@ -297,3 +309,11 @@ def test_the_service_outlives_its_install_under_the_real_clock(
         assert event.get_callback() is not None
     finally:
         event.cancel()
+
+
+def test_a_screen_transition_counts_as_changing() -> None:
+    manager = ScreenManager()
+    window = _Window(_root(manager))
+    assert not screen_changing(window)
+    manager.transition.is_active = True
+    assert screen_changing(window)
