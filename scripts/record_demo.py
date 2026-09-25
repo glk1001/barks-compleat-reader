@@ -176,6 +176,8 @@ RESULT_STEP_PAUSE = 0.5
 # of the app's markers (barks_reader.core.log_markers), with re.escape'd fields;
 # scripts/tests/test_record_demo.py checks each against the line the app writes.
 ALL_IMAGES_LOADED = "All images loaded"
+# barks_reader.core.log_markers.HISTORY_SELECTED_VIEW, with its view pinned.
+HISTORY_VIEW_SELECTED = "History: selected '{view}' view."
 GOTO_TITLE = 'Goto title: "{name}"'
 WORD_CHIP_SELECTED = "Word search: selected chip"
 SHOW_BUBBLES_FOR = 'Show speech bubbles for: "{title}"'
@@ -479,8 +481,10 @@ def _open_tree_to_title(d: Driver, pace: float = 1.0) -> None:
     d.key("Return")  # open the range, showing its stories
     d.settle()
     d.hold(1.0 * pace)
+    # Each Down waits for the selection it makes: at the replay's pace the app
+    # drops keys, and one lost Down would put open_comic on the story above.
     for _ in range(BROWSE_TITLE_STEPS):
-        d.key("Down")
+        d.key_then_wait(d.NODE_SELECTED, "Down")
         d.hold(0.7 * pace)
     d.settle()
 
@@ -705,8 +709,9 @@ def _setup_read_story(d: Driver) -> None:
 def read_story(d: Driver) -> None:
     """Read a story, skip to a page through the page list, and go two-up."""
     d.hold(1.0)
-    d.settle()
-    d.key("Return")  # focus the title view read portal
+    # The setup's select_node starts the title view's fade, and a Return during
+    # it is lost: focus_portal waits the fade out, then for focus on the portal.
+    d.focus_portal()
     d.hold(0.6)
     d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ_STORY_PICK)
@@ -838,9 +843,10 @@ def reading(d: Driver) -> None:
     Booting expands the path to the node, so Reading's three children are already
     on screen and this opens straight into them.
 
-    Nothing under here writes to the log beyond the tree's own "New selected node",
-    so the waits are select_node (which is name-driven, and fails rather than
-    landing somewhere else) plus settle and the clock.
+    The tree walk waits on select_node (name-driven: it fails rather than landing
+    somewhere else); the history's tab bar on its focus lines and on the view
+    each Return selects, so a lost key fails the beat instead of filming the
+    wrong tab.
     """
     d.hold(1.5)
 
@@ -863,18 +869,14 @@ def reading(d: Driver) -> None:
     d.open_branch("History")
     d.hold(3.0)
     # Up off the first row enters the top bar, landing on the tab for the view that
-    # is showing (history_screen._enter_bar_zone); Right steps along it, Enter
-    # activates. So this picks Journal deliberately before moving on to Titles.
-    d.key("Up")
-    d.settle()
-    d.hold(0.8)
-    d.key("Return")
-    d.settle()
-    d.hold(2.0)
-    d.key("Right")
-    d.settle()
+    # is showing (history_screen._enter_bar_zone): Journal, which Enter would leave
+    # as it is (_activate_bar_focus only switches views). Right steps to Titles,
+    # and Enter shows it.
+    d.key_then_wait(d.FOCUS_MOVED, "Up")
+    d.hold(2.8)
+    d.key_then_wait(d.FOCUS_MOVED, "Right")
     d.hold(0.7)
-    d.key("Return")
+    d.key_then_wait(re.escape(HISTORY_VIEW_SELECTED.format(view="titles")), "Return")
     d.settle()
     d.hold(4.0)
 

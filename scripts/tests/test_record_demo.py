@@ -149,7 +149,7 @@ def keys_of(
         moves = iter(["Chronological", record_demo.BROWSE_RANGE])
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
             patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "settle"),
             patch.object(Driver, "hold"),
@@ -316,6 +316,10 @@ class TestBeatMarkersMatchTheApp:
                 log_markers.WORD_BUBBLE_PRESS.format(title="Adventure Down Under", page=3),
             ),
             (record_demo.BUBBLES_POPUP_OPENED, log_markers.BUBBLES_POPUP_OPENED),
+            (
+                re.escape(record_demo.HISTORY_VIEW_SELECTED.format(view="titles")),
+                log_markers.HISTORY_SELECTED_VIEW.format(view="titles"),
+            ),
             (record_demo.BUBBLES_POPUP_DISMISSED, log_markers.BUBBLES_POPUP_DISMISSED),
             (
                 record_demo.SEARCH_MODE_SET.format(mode="Word"),
