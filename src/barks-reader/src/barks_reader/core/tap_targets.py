@@ -60,6 +60,9 @@ class TapTarget:
         top: Top edge, in window pixels, counted down from the window's top.
         width: Width in window pixels.
         height: Height in window pixels.
+        whole: False when a scroll view or the window edge hides part of it:
+            the rectangle is then only the part on show, and a tap near its
+            edge can land on what hides the rest.
 
     """
 
@@ -70,6 +73,7 @@ class TapTarget:
     top: int
     width: int
     height: int
+    whole: bool = True
 
     @property
     def center(self) -> tuple[int, int]:

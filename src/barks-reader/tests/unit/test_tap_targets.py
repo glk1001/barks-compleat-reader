@@ -171,6 +171,7 @@ def test_a_button_is_a_target_with_the_origin_top_left() -> None:
     button = _placed(Button(text="  Go\n on "), 10, 20, 100, 50)
     [target] = snapshot(_Window(_root(button)))
     assert target == TapTarget("Button", "Go on", "", 10, WINDOW_H - 70, 100, 50)
+    assert target.whole
 
 
 def test_plain_widgets_are_not_targets() -> None:
@@ -196,11 +197,13 @@ def test_a_scroll_view_clips_what_it_holds() -> None:
         50,
         50,
     )
+    assert not target.whole, "a target the scroll view cuts off says so"
 
 
 def test_the_window_clips_too() -> None:
     [target] = snapshot(_Window(_root(_placed(Button(text="edge"), 350, 0, 100, 10))))
     assert target.width == WINDOW_W - 350
+    assert not target.whole
 
 
 def test_an_open_popup_hides_everything_under_it() -> None:

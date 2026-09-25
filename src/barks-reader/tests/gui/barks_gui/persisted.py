@@ -11,8 +11,10 @@ from __future__ import annotations
 import configparser
 import json
 import re
+from functools import cache
 from typing import TYPE_CHECKING, Any
 
+from barks_gui import expected
 from barks_gui.harness import FIXTURES_DIR, read_ini_value
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -20,6 +22,8 @@ from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BO
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from barks_reader.core.comic_book_page_info import ComicLayout
 
 SETTINGS_KEY = "AAA_Settings"
 _QUOTED = re.compile(r'([^"]*)')
@@ -83,21 +87,46 @@ def _cue_problems(
     return problems
 
 
+@cache
+def _layout(title: str) -> ComicLayout:
+    return expected.comic_layout(title)
+
+
+def _page_is_inside_body(title: str, page: str) -> bool | None:
+    """Return whether display `page` of `title` is inside its body, as the app judges it.
+
+    From the title's own page layout (`ComicLayout.is_inside_body`, what the app's
+    LastReadPageTracker asks), so each save is judged by its own page. None when
+    the layout cannot say: no data pack here (CI), or a page the layout does not
+    hold (a sliced collection).
+    """
+    try:
+        layout = _layout(title)
+        return layout.is_inside_body(layout.page_by_display(page))
+    except Exception:  # noqa: BLE001 - any failure means "cannot say", and the cue decides
+        return None
+
+
 def _page_history_records(scratch: Path, title: str, page: str) -> str:
     """Return the page the history records for a read that saved `page` of `title`.
 
     The cue keeps the page as saved; the history gets it normalised: a read that
     ended outside the body (front matter, the first or the last body page) is
     recorded at the beginning, so the next open starts the comic over
-    (LastReadPageTracker.end).
+    (LastReadPageTracker.end). Whether this save's page was inside the body comes
+    from the title's layout; only when that cannot say does the cue decide, and
+    the cue is the title's last read, so a title read twice (ending once in the
+    body, once outside it) can then be judged by the wrong read.
     """
-    cue = cues(scratch).get(title)
-    if cue is None:
-        return page  # no cue to judge by; its absence is reported on its own
-    inside_body = cue.get("page_type") == "BODY" and page not in (
-        FIRST_BODY_PAGE,
-        cue.get("last_body_page"),
-    )
+    inside_body = _page_is_inside_body(title, page)
+    if inside_body is None:
+        cue = cues(scratch).get(title)
+        if cue is None:
+            return page  # no cue to judge by; its absence is reported on its own
+        inside_body = cue.get("page_type") == "BODY" and page not in (
+            FIRST_BODY_PAGE,
+            cue.get("last_body_page"),
+        )
     return page if inside_body else COMIC_BEGIN_PAGE
 
 

@@ -309,16 +309,34 @@
 >   where (`barks_gui.taps`, `barks_reader.core.tap_targets`), never by pixel. 11
 >   tests, green by click; the whole suite is 73. `--touch` adds a real touch on a
 >   virtual touchscreen on Linux. Plan, design and status: `docs/plans/touch-gui-tests.md`.
-> - 2026-09-25, known limit, not fixed: the persisted-reads check can judge a save by the
->   wrong read. `barks_gui.persisted` decides whether each saved page was inside the
->   story's body, which sets the page the history records, from the title's last-read cue
->   in the profile. That cue holds only the title's last read, so every save of the title
->   is judged by it. A test that reads the same title twice, ending once inside the body
->   and once outside it, can then fail when the app is right, or pass when it is wrong.
->   The random walk (`--soak`) is the likeliest to, as it can reopen a story it closed.
->   A fix needs each save's page type, which `LAST_READ_PAGE_SAVED` does not carry: add
->   it to the marker (an app change), then judge each save by its own. Found by the cloud
->   code review of the suite.
+> - 2026-09-25, known limit, fixed the same day: the persisted-reads check could judge a
+>   save by the wrong read. It took whether a saved page was inside the story's body
+>   from the title's last-read cue, which holds only the title's last read, so a title
+>   read twice (ending once inside the body, once outside it) was judged by the second.
+>   The first overnight run hit it twice in the soak. `barks_gui.persisted` now asks the
+>   title's own page layout (`ComicLayout.is_inside_body`, the app's rule) for each
+>   save's page, and falls back to the cue only where there is no layout (CI, with no
+>   data pack). Found by the cloud code review of the suite.
+> - 2026-09-25: the first overnight run (`run_gui_overnight.sh`, 1h06m): seven of nine
+>   stages green, and what failed was one app bug and three test assumptions.
+>   - **App bug, fixed:** Close in fullscreen closes the comic, then leaves fullscreen
+>     over about a quarter of a second, with the reader still taking keys; a Left or
+>     Right in that gap turned a page of the closed comic, the loader's assertion
+>     failed, and the app went down. The soak found it three times. The reader screen
+>     now swallows keys and taps while closing, and the reader turns no page once
+>     closed.
+>   - **Tests, on the 1920x1080 screen only:** the tree test tapped a fixed title that a
+>     shorter window leaves off the list, and now taps the first title wholly on
+>     screen; the speech-index test tapped a button the list's edge cut in half, and a
+>     target now says whether it is `whole`, which `taps.find` prefers; and the
+>     fullscreen top-tap test tapped outside the real window. With no window manager,
+>     fullscreen on the nested display draws a screen-sized frame into the
+>     windowed-size window, so most of it cannot be tapped; `taps.tap` now refuses a
+>     point outside the window (`TapOutsideWindowError`), and that test skips there.
+>     The main-index tap test also leaned on list order to tap a title, not a tag; it
+>     now picks a title's entry by the index's own text (`core.index_text`).
+>   After the fixes: the whole suite passes on both screens (73; 72 and that skip at
+>   1080p), and the soak's 12 walks from seeds 1 to 3 all pass.
 
 ## Context
 

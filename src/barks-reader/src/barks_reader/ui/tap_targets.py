@@ -117,7 +117,9 @@ def _text(widget: Widget) -> str:
     return " ".join(text.split())
 
 
-def _target(kind: str, text: str, kv_id: str, rect: Rect, window_height: float) -> TapTarget:
+def _target(
+    kind: str, text: str, kv_id: str, rect: Rect, window_height: float, *, whole: bool
+) -> TapTarget:
     x, y, w, h = rect
     return TapTarget(
         kind=kind,
@@ -127,16 +129,27 @@ def _target(kind: str, text: str, kv_id: str, rect: Rect, window_height: float) 
         top=round(window_height - (y + h)),
         width=round(w),
         height=round(h),
+        whole=whole,
     )
+
+
+def _is_whole(clipped: Rect, full: Rect) -> bool:
+    """Whether clipping left the rectangle as it was, to within half a pixel."""
+    return all(abs(a - b) < 0.5 for a, b in zip(clipped, full, strict=True))  # noqa: PLR2004
 
 
 def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarget]) -> None:
     if widget.opacity == 0 or widget.disabled:
         return  # hidden, or taking no presses (a hidden action bar is both)
     kind = type(widget).__name__
-    own = _intersect(window_rect(widget, widget.x, widget.y, widget.width, widget.height), clip)
+    full = window_rect(widget, widget.x, widget.y, widget.width, widget.height)
+    own = _intersect(full, clip)
     if isinstance(widget, _TAPPABLE) and own[2] >= 1 and own[3] >= 1:
-        out.append(_target(kind, _text(widget), _kv_id(widget), own, window_height))
+        out.append(
+            _target(
+                kind, _text(widget), _kv_id(widget), own, window_height, whole=_is_whole(own, full)
+            )
+        )
     get_regions = getattr(widget, "tap_target_regions", None)
     if callable(get_regions):
         kv_id = _kv_id(widget)
@@ -144,7 +157,9 @@ def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarg
         for name, region in regions.items():
             rect = _intersect(region, clip)
             if rect[2] >= 1 and rect[3] >= 1:
-                out.append(_target(kind, name, kv_id, rect, window_height))
+                out.append(
+                    _target(kind, name, kv_id, rect, window_height, whole=_is_whole(rect, region))
+                )
     # A scroll view (every StencilView) shows its children only inside itself.
     inner = own if isinstance(widget, StencilView) else clip
     for child in widget.children:  # children[0] is on top: the order a press tries them

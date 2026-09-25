@@ -14,6 +14,7 @@ import sys
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
@@ -610,6 +611,12 @@ class TestReadsPersisted:
 
     TITLE = "The Ghost of the Grotto"
 
+    @pytest.fixture(autouse=True)
+    def _no_layout(self) -> Iterator[None]:
+        """Judge by the cue unless a test says otherwise: CI has no data pack for layouts."""
+        with patch.object(persisted, "_page_is_inside_body", return_value=None):
+            yield
+
     @staticmethod
     def _scratch(
         tmp_path: Path, cue: dict[str, object] | None, events: list[dict[str, object]]
@@ -708,6 +715,24 @@ class TestReadsPersisted:
         """The cue keeps the page; the history gets the normalised one (the next open restarts)."""
         scratch = self._scratch(tmp_path, self._cue(page="26", index=28), [self._event(page="0")])
         assert persisted.reads_persisted_problems(scratch, self._log(page="26", index=28)) == []
+
+    def _two_reads(self) -> str:
+        """Return the log of the title read twice: ending on front matter ("i"), then the body."""
+        return self._log(page="i", index=1) + self._log(page="4", index=3)
+
+    def test_each_save_is_judged_by_its_own_page(self, tmp_path: Path) -> None:
+        """The layout says "i" is outside the body, whatever the title's last cue says."""
+        events = [self._event(page="0"), {**self._event(page="4"), "id": "e" * 32}]
+        scratch = self._scratch(tmp_path, self._cue(), events)
+        with patch.object(persisted, "_page_is_inside_body", side_effect=lambda _t, p: p != "i"):
+            assert persisted.reads_persisted_problems(scratch, self._two_reads()) == []
+
+    def test_without_a_layout_the_last_cue_judges_every_save(self, tmp_path: Path) -> None:
+        """The limit the layout lifts: the body cue of the second read misjudges the first."""
+        events = [self._event(page="0"), {**self._event(page="4"), "id": "e" * 32}]
+        scratch = self._scratch(tmp_path, self._cue(), events)
+        problems = persisted.reads_persisted_problems(scratch, self._two_reads())
+        assert any("are not the pages saved" in p for p in problems)
 
     def test_an_event_page_other_than_the_one_saved_is_a_problem(self, tmp_path: Path) -> None:
         scratch = self._scratch(tmp_path, self._cue(), [self._event(page="7")])

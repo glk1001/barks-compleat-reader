@@ -23,6 +23,16 @@ from barks_reader.core.tap_targets import TapTarget, decode_targets
 if TYPE_CHECKING:
     from gui_driver import Driver
 
+
+class TapOutsideWindowError(AssertionError):
+    """A target the app places outside the window the display actually shows.
+
+    With no window manager on the nested display, "fullscreen" does not resize
+    the window: the app draws a screen-sized frame into the windowed-size window,
+    and what falls outside it cannot be tapped.
+    """
+
+
 TOUCH_ENV_VAR = "BARKS_PROBE_TOUCH"
 ANSWER_TIMEOUT = 10
 
@@ -73,7 +83,10 @@ def find(
     kind: str | None = None,
     kv_id: str | None = None,
 ) -> TapTarget:
-    """Return the first target that matches every criterion given.
+    """Return the first target that matches every criterion given, a whole one if any.
+
+    A target a scroll view or the window edge cuts off is passed over while a
+    whole one matches: a tap near a cut edge can land on what hides the rest.
 
     Args:
         shown: The targets, as `targets` returned them.
@@ -85,16 +98,17 @@ def find(
         AssertionError: If none matches, naming what was on screen.
 
     """
-    for target in shown:
-        if kind is not None and target.kind != kind:
-            continue
-        if kv_id is not None and target.id != kv_id:
-            continue
-        if isinstance(text, re.Pattern) and not text.fullmatch(target.text):
-            continue
-        if isinstance(text, str) and target.text != text:
-            continue
-        return target
+    matches = [
+        target
+        for target in shown
+        if (kind is None or target.kind == kind)
+        and (kv_id is None or target.id == kv_id)
+        and (not isinstance(text, re.Pattern) or text.fullmatch(target.text))
+        and (not isinstance(text, str) or target.text == text)
+    ]
+    whole = [target for target in matches if target.whole]
+    if whole or matches:
+        return (whole or matches)[0]
     wanted = ", ".join(
         f"{name}={value!r}"
         for name, value in (("text", text), ("kind", kind), ("kv_id", kv_id))
@@ -123,9 +137,17 @@ def tap(
     """
     _, shown = targets(d)
     target = find(shown, text=text, kind=kind, kv_id=kv_id)
-    # The app's window pixels are the probe's: not scaled by the window system's
-    # idea of the size, which in fullscreen with no window manager lags the app's.
-    d.tap(*target.center)
+    # The app's window pixels are the probe's, unscaled; but the window may be
+    # smaller than the app believes (see TapOutsideWindowError).
+    x, y = target.center
+    win_w, win_h, _, _ = d.window_geometry()
+    if not (0 <= x < win_w and 0 <= y < win_h):
+        msg = (
+            f"{target.describe()} is at ({x}, {y}), outside the {win_w}x{win_h} window the"
+            " display shows"
+        )
+        raise TapOutsideWindowError(msg)
+    d.tap(x, y)
     return target
 
 
