@@ -1,0 +1,14 @@
+# The GUI tests' touch mode (scripts/gui_touch.py, BARKS_PROBE_TOUCH=1): a virtual
+# touchscreen the app reads while the probe taps. Install once:
+#
+#   sudo cp scripts/udev/70-barks-gui-touch.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload
+#   sudo udevadm trigger --action=change --sysname-match=uinput
+#
+# 1. Let the input group create input devices. That group can already read
+#    every keyboard; this lets it make one too, so only put trusted users in it.
+KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
+# 2. Hide the test touchscreen from the desktop: libinput (so GNOME, KDE, and
+#    the X and Wayland servers) ignores it, and its taps reach only the app
+#    under test, never the real screen.
+SUBSYSTEM=="input", ATTRS{name}=="Barks GUI Test Touchscreen", ENV{LIBINPUT_IGNORE_DEVICE}="1"

@@ -6,7 +6,8 @@
 #         (0 new vs pyrefly-baseline.json), import-linter, deptry (unused/missing/
 #         misplaced dependencies), vulture (dead code, min-confidence 80 +
 #         vulture_whitelist.py), relative-import check, kv-import check (.kv
-#         "#: import" directives resolve), cspell, benchmarks (compared against the
+#         "#: import" directives resolve), gui-keys check (the GUI tests press only
+#         the remote's six keys), cspell, benchmarks (compared against the
 #         machine-local baseline in .benchmarks/).
 # Non-gating: uv audit (dependency CVEs) and the wiki story-order check both warn
 #             but never fail the build.
@@ -22,6 +23,11 @@ if [[ ! -f src/barks-reader/src/barks_reader/_version.py ]]; then
     exit 1
 fi
 
+if [[ "${1:-}" != "--with-gui-test" ]]; then
+  declare -r WITH_GUI_TEST=""
+else
+  declare -r WITH_GUI_TEST="yes"
+fi
 declare -a failed=()
 declare -a warned=()
 
@@ -64,9 +70,13 @@ run_check "vulture"               uv run vulture
 run_warn  "uv audit"              uv audit --preview-features audit-command
 run_check "relative-import-check" bash scripts/check-relative-imports.sh
 run_check "kv-imports"            uv run scripts/check_kv_imports.py
+run_check "gui-keys"              uv run scripts/check_gui_keys.py
 run_check "cspell"                bunx cspell --no-progress
 run_warn  "wiki story order"      uv run scripts/check_wiki_story_order.py --quiet
-run_check "benchmarks"            bash scripts/run_benchmark.sh
+run_check "benchmarks"            bash scripts/run_benchmark.sh --quiet
+if [[ "${WITH_GUI_TEST}" == "yes" ]]; then
+  run_check "gui test"            bash scripts/run_gui_tests.sh --headless --quiet
+fi
 
 echo
 echo "===================="
