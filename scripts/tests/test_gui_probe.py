@@ -216,6 +216,33 @@ class TestCommands:
         assert [line.split(" ", 1)[1] for line in logged] == ["key Down", "key Return"]
 
 
+class TestFailedLaunch:
+    def test_a_launch_that_cannot_start_restores_the_profile_and_says_why(
+        self, run_dir: Path
+    ) -> None:
+        """Popen raising (no `uv`, a moved build) must not leave the backup unapplied."""
+        live = run_dir / "barks-reader.json"
+        live.write_text("mine", encoding="utf-8")
+        backup = run_dir / "barks-reader.json.bak"
+        backend = MagicMock()
+        backend.find_window.return_value = None
+
+        def app_rewrites_the_profile(*_args: object, **_kwargs: object) -> None:
+            live.write_text("half-written", encoding="utf-8")
+            msg = "no such file: uv"
+            raise FileNotFoundError(msg)
+
+        with (
+            patch.object(gui_probe, "_profile_backups", return_value=[(live, backup)]),
+            patch.object(gui_probe.subprocess, "Popen", side_effect=app_rewrites_the_profile),
+            pytest.raises(gui_probe.ProbeError, match="the app would not start: no such file"),
+        ):
+            gui_probe.Probe(backend).start()
+        assert live.read_text(encoding="utf-8") == "mine"
+        assert not backup.exists()
+        assert not (run_dir / "app.pid").exists()
+
+
 class TestTaps:
     def test_a_tap_clicks_at_the_window_pixel_and_is_logged_as_a_tap(self, run_dir: Path) -> None:
         backend = MagicMock()
@@ -227,6 +254,18 @@ class TestTaps:
         backend.click.assert_called_once_with(110, 70)
         [line] = gui_probe.input_log().read_text().splitlines()
         assert line.split(" ", 1)[1] == "tap 10 20"
+
+    def test_a_click_presses_the_same_way_but_is_logged_as_a_click(self, run_dir: Path) -> None:
+        backend = MagicMock()
+        backend.bring_to_front.return_value = True
+        backend.client_geometry.return_value = (800, 600, 100, 50)
+        (run_dir / "app.pid").write_text("1234")
+        with patch.object(gui_probe.time, "sleep"):
+            gui_probe.Probe(backend).click(10, 20)
+        backend.move_pointer.assert_called_once_with(110, 70)
+        backend.click.assert_called_once_with(110, 70)
+        [line] = gui_probe.input_log().read_text().splitlines()
+        assert line.split(" ", 1)[1] == "click 10 20"
 
     def test_a_tap_targets_request_is_written_whole(self, run_dir: Path) -> None:
         gui_probe.Probe.tap_targets("5")

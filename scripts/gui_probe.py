@@ -327,7 +327,8 @@ class Probe:
 
     # --- commands ---
 
-    def start(self) -> None:
+    def _refuse_to_start(self) -> None:
+        """Raise before anything is touched if this start cannot go ahead."""
         if os.environ.get("BARKS_PROBE_TOUCH"):
             msg = "touch mode (BARKS_PROBE_TOUCH) is Linux only so far - unset it to tap by click"
             raise ProbeError(msg)
@@ -337,6 +338,9 @@ class Probe:
         if self._backend.find_window(WINDOW_NAME) is not None:
             msg = f"a {WINDOW_NAME} window is already open - close it first, or keys would go to it"
             raise ProbeError(msg)
+
+    def start(self) -> None:
+        self._refuse_to_start()
         run_dir().mkdir(parents=True, exist_ok=True)
         app_log().write_text("", encoding="utf-8")
         input_log().write_text("", encoding="utf-8")
@@ -347,7 +351,12 @@ class Probe:
             for source, backup in _profile_backups():
                 if source.is_file():
                     shutil.copy2(source, backup)
-        self._launch()
+        try:
+            self._launch()
+        except OSError as exc:
+            # A missing `uv`, or a BARKS_PROBE_APP moved since doctor ran: restore
+            # the profile just backed up, as every other failed start does.
+            self._abort_start(f"the app would not start: {exc}")
 
         print("gui-probe: waiting for the app to become interactive...")  # noqa: T201
         if not wait_for(READY_MARKER, 120):
@@ -438,18 +447,17 @@ class Probe:
 
     def click(self, x: int, y: int) -> None:
         """Click at a pixel of the window's drawable area, as `shot` captures it."""
-        window = self._front_window()
-        _, _, left, top = self._backend.client_geometry(window)
-        note_input("click", f"{x} {y}")
-        self._backend.move_pointer(left + x, top + y)
-        time.sleep(0.3)
-        self._backend.click(left + x, top + y)
+        self._press_at("click", x, y)
 
     def tap(self, x: int, y: int) -> None:
         """Tap at a pixel of the window's drawable area: a click, until touch mode lands here."""
+        self._press_at("tap", x, y)
+
+    def _press_at(self, kind: str, x: int, y: int) -> None:
+        """Log a press as `kind`, then move to window pixel `x`, `y` and click there."""
         window = self._front_window()
         _, _, left, top = self._backend.client_geometry(window)
-        note_input("tap", f"{x} {y}")
+        note_input(kind, f"{x} {y}")
         self._backend.move_pointer(left + x, top + y)
         time.sleep(0.3)
         self._backend.click(left + x, top + y)
