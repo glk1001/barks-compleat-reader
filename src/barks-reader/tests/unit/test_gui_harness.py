@@ -484,6 +484,16 @@ class TestLogProblems:
         )
         assert harness.log_problems(text) == ["screen 'main_screen' entered 1 times, left 2"]
 
+    def test_a_screen_left_but_never_entered_is_a_problem(self) -> None:
+        """A screen seen only leaving is counted too, not skipped for never entering."""
+        text = "\n".join(
+            [
+                self._line("DEBUG", "Screen 'main_screen' entered."),
+                self._line("DEBUG", "Screen 'wiki_reader' left."),
+            ]
+        )
+        assert harness.log_problems(text) == ["screen 'wiki_reader' entered 0 times, left 1"]
+
 
 class TestAssertLogClean:
     class _Driver:

@@ -326,7 +326,8 @@ def log_problems(app_log: str) -> list[str]:
     entered = [found[1] for found in _SCREEN_ENTERED_RE.finditer(app_log)]
     left = [found[1] for found in _SCREEN_LEFT_RE.finditer(app_log)]
     showing = 0
-    for screen in sorted(set(entered)):
+    # Every screen seen either way: one that left without entering is a problem too.
+    for screen in sorted(set(entered) | set(left)):
         surplus = entered.count(screen) - left.count(screen)
         if surplus < 0 or surplus > 1:
             times, lefts = entered.count(screen), left.count(screen)

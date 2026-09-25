@@ -57,9 +57,14 @@ def test_go_back_returns_to_the_previous_node(boot: AppBoot) -> None:
     d = boot(nodes.GHOST_OF_THE_GROTTO)
     d.key_then_wait(ANY_NODE_SELECTED, "Down")
     assert d.current_node() != nodes.GHOST_OF_THE_GROTTO[0]
-    with d.expect(pattern(markers.GOING_BACK_TO_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])):
+    # Both waits are NEW lines: the node's selection line is already in the log
+    # from boot, so a plain wait_for would pass even if Go Back never re-selected it.
+    with (
+        d.expect(pattern(markers.GOING_BACK_TO_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
+        d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
+    ):
         d.go_back()
-    d.wait_for(pattern(markers.NEW_SELECTED_NODE, name=nodes.GHOST_OF_THE_GROTTO[0]))
+    assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0]
 
 
 def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
