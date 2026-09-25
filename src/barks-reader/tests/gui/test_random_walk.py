@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import os
 import random
+import re
+import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -36,6 +38,17 @@ KEY_TIMEOUT = 15
 KEY_PRESSED = pattern(markers.KEY_PRESSED)
 CONFIRM_OPENED = pattern(markers.CONFIRM_POPUP_OPENED)
 CONFIRM_CLOSED = pattern(markers.CONFIRM_POPUP_CLOSED)
+NAV_FOCUS = pattern(markers.NAV_FOCUS)
+# The buttons a Return on opens a confirm popup: the bar's Quit, History's Clear.
+# The popup opens a moment after the key is logged (a bar button fires its action
+# asynchronously), so a walk that looked at once would see no popup, pick a key
+# at random, and could confirm it - quitting the app under its own feet.
+OPENS_A_CONFIRM = re.compile(
+    pattern(
+        markers.NAV_FOCUS, widget=re.compile(r'(ChromeBarButton "Quit"|Button "Clear History")')
+    )
+)
+CONFIRM_WAIT_SECS = 3.0
 START_NODES = {
     "stories": nodes.THE_STORIES,
     "main-index": nodes.MAIN_INDEX,
@@ -48,6 +61,22 @@ def _confirm_popup_open(d: Driver) -> bool:
     return d.match_count(CONFIRM_OPENED) > d.match_count(CONFIRM_CLOSED)
 
 
+def _focus_opens_a_confirm(d: Driver) -> bool:
+    """Whether keyboard focus was last logged on a button that opens a confirm popup."""
+    return bool(d.match_count(NAV_FOCUS)) and bool(OPENS_A_CONFIRM.search(d.last_line(NAV_FOCUS)))
+
+
+def _await_confirm_opened(d: Driver, before: int) -> None:
+    """Give a confirm popup a Return may have asked for the time to open (or not).
+
+    Not a failure when none comes: the focus line may be stale, and then the
+    Return did something else.
+    """
+    deadline = time.monotonic() + CONFIRM_WAIT_SECS
+    while d.match_count(CONFIRM_OPENED) == before and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+
 @pytest.mark.soak
 @pytest.mark.parametrize("start", list(START_NODES), ids=[f"{n}-seed{SEED}" for n in START_NODES])
 def test_a_random_walk_leaves_the_app_answering_and_clean(boot: AppBoot, start: str) -> None:
@@ -57,10 +86,14 @@ def test_a_random_walk_leaves_the_app_answering_and_clean(boot: AppBoot, start: 
     rng = random.Random(f"{SEED}:{start}")
     for step in range(STEPS):
         key = "Escape" if _confirm_popup_open(d) else rng.choice(REMOTE_KEYS)
+        may_confirm = key == "Return" and _focus_opens_a_confirm(d)
+        confirms_before = d.match_count(CONFIRM_OPENED)
         try:
             d.key_then_wait(KEY_PRESSED, key, timeout=KEY_TIMEOUT)
         except Exception as exc:
             msg = f"step {step + 1}/{STEPS} ({key}) got no answer from the app: {exc}"
             raise AssertionError(msg) from exc
+        if may_confirm:
+            _await_confirm_opened(d, confirms_before)
     d.settle()
     assert d.match_count(KEY_PRESSED) >= STEPS
