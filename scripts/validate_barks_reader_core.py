@@ -2,8 +2,9 @@
 
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
-prebuilt comics, and per-title panel files into a single report. Exits non-zero
-on any failure.
+prebuilt comics, per-title panel files, per-title layouts (with their
+panel-segments JSONs) and the wiki story-page joins into a single report.
+Exits non-zero on any failure.
 """
 
 import os
@@ -11,8 +12,9 @@ import time
 import zipfile
 from collections.abc import Iterator
 from configparser import ConfigParser
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
@@ -39,6 +41,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
+from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     EmptyArchiveError,
@@ -51,8 +54,17 @@ from barks_reader.core.fantagraphics_volumes import (
     TooManyOverrideDirsError,
 )
 from barks_reader.core.image_pipeline import load_pil as reader_load_pil
+from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_utils import is_blank_page, is_title_page
 from barks_reader.core.system_file_paths import SystemFilePaths
+from barks_reader.core.wiki_integration import (
+    SERIES_TO_STORY_DIRS,
+    canonical_title,
+    story_page_title,
+    story_slug,
+    title_can_have_wiki_page,
+    wiki_page_for_title,
+)
 from comic_utils.comic_consts import (
     CBZ_FILE_EXT,
     JPG_FILE_EXT,
@@ -63,6 +75,7 @@ from comic_utils.comic_consts import (
 from comic_utils.decryption import DecryptionError
 from dotenv import load_dotenv
 from loguru import logger
+from okf_reader.core.render import parse_frontmatter
 
 # Load env vars (BARKS_READER_CONFIG_DIR, BARKS_READER_DATA_DIR, ...) before
 # importing barks_reader.core.config_info, which constructs nothing at module
@@ -83,6 +96,10 @@ from barks_reader.core.reader_settings import (  # noqa: E402
     JPG_BARKS_PANELS_ZIP,
     PNG_BARKS_PANELS_DIR,
     PREBUILT_COMICS_DIR,
+    UNSET_WIKI_BUNDLE_DIR_MARKER,
+    USE_LIVE_WIKI_BUNDLE,
+    WIKI_BUNDLE_DIR,
+    WIKI_BUNDLE_SUBDIR,
     read_setting_from_config,
 )
 
@@ -1448,16 +1465,10 @@ def _enumerate_panel_files(
 #   2. Decode the page bytes through ``image_pipeline.load_pil`` — the exact
 #      function the reader uses, so PIL errors here are PIL errors the
 #      reader would hit at runtime.
-#   3. For pages with panels, verify the per-page panel-segments JSON
-#      exists, and is no older than its containing volume CBZ.
 #
-# Timestamp interpretation: the build pipeline compares JSON mtime to the
-# original on-disk source image, but on the reader machine the source
-# images live INSIDE the volume CBZ — there is no separate filesystem
-# mtime per page. So Phase 9 compares the JSON to the volume CBZ. The
-# reader itself sets ``check_srce_page_timestamps=False``, so a stale
-# JSON does NOT block runtime loading; this validator is stricter on
-# purpose, to catch stale builds.
+# It only decodes. The panel-segments JSON checks, which cost a stat and a zip
+# directory lookup per page, live in the always-on Phase 10, so running both
+# phases never reports one error twice.
 
 
 @dataclass(slots=True)
@@ -1465,38 +1476,32 @@ class _Phase9Counts:
     """Per-phase counters used to populate ``phase.summary_extra``."""
 
     load_failed: int = 0
-    missing_dir: int = 0
     page_load_failed: int = 0
     decryption_failed: int = 0
-    missing_json: int = 0
-    stale_json: int = 0
 
 
 def phase9_per_title_load(
     collector: ErrorCollector,
-    sys_paths: SystemFilePaths,
     fanta_state: FantaState,
     titles_filter: list[str] | None = None,
 ) -> None:
     """Phase 9: dry-run the loader for every title, as if use_prebuilt_comics=0.
 
-    Catches missing/unreadable source pages, missing/stale panel-segments
-    JSONs, and ComicBook construction failures (per-title INI errors).
+    Catches missing/unreadable source pages and ComicBook construction
+    failures (per-title INI errors).
 
     Args:
         collector: Aggregator for phase results.
-        sys_paths: Resolved :class:`SystemFilePaths` from Phase 2.
         fanta_state: Cached Phase 6 outcome.
-        titles_filter: Optional subset of titles to check (from
-            :func:`resolve_phase9_title_filter`). ``None`` runs all titles.
+        titles_filter: Optional subset of titles to check (from the CLI's
+            ``--volume`` / ``--title``). ``None`` runs all titles.
 
     """
     phase = collector.start_phase("Per-title Image Loads", "9")
     logger.info(
         "Phase: per-title full-load dry-run."
-        " Decodes every source page through image_pipeline.load_pil"
-        " and checks each panel-segments JSON exists + is no older than"
-        " its volume CBZ. This may take a minute or two."
+        " Decodes every source page through image_pipeline.load_pil."
+        " This may take a minute or two."
     )
 
     if not fanta_state.archives:
@@ -1515,19 +1520,11 @@ def phase9_per_title_load(
         return
 
     counts = _Phase9Counts()
-    filter_set = set(titles_filter) if titles_filter is not None else None
 
     # Individual one-pagers and covers have no standalone comic to load: they are read
     # as a page within the "All One-Pagers" / "All Covers" collection, which is itself
-    # loaded here as a normal title — so their source pages and panel-segments JSONs
-    # are validated through it.
-    candidates = [
-        (ENUM_TO_STR_TITLE[title], fanta_info)
-        for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
-        if (filter_set is None or ENUM_TO_STR_TITLE[title] in filter_set)
-        and title not in ONE_PAGERS
-        and title not in COVERS_SET
-    ]
+    # loaded here as a normal title — so their source pages are validated through it.
+    candidates = _loadable_titles(titles_filter)
     total = len(candidates)
     progress_step = 5
 
@@ -1561,15 +1558,12 @@ def phase9_per_title_load(
             )
             continue
 
-        check_one_title_load(phase, counts, sys_paths, title_str, comic, archive)
+        check_one_title_load(phase, counts, title_str, comic, archive)
 
     phase.summary_extra = (
         f"({counts.load_failed} load-failed,"
-        f" {counts.missing_dir} missing-dirs,"
         f" {counts.page_load_failed} page-load-failed,"
-        f" {counts.decryption_failed} decryption-failed,"
-        f" {counts.missing_json} missing-json,"
-        f" {counts.stale_json} stale-json)"
+        f" {counts.decryption_failed} decryption-failed)"
     )
     collector.finalize_phase(phase)
 
@@ -1594,30 +1588,71 @@ def _resolve_page_source(
     return None
 
 
+@dataclass(slots=True)
+class _VolumeZips:
+    """A volume's open CBZ and override CBZ, or why either could not be opened."""
+
+    main: zipfile.ZipFile | None
+    main_error: Exception | None
+    override: zipfile.ZipFile | None
+    override_error: Exception | None
+
+
+@contextmanager
+def _open_volume_zips(archive: FantagraphicsArchive) -> Iterator[_VolumeZips]:
+    """Open a volume's CBZ and, if it has one, its override CBZ; close both on exit.
+
+    Nothing is raised for an archive that cannot be opened: its slot is ``None``
+    and the error is handed back beside it, for the caller to report or ignore.
+    """
+    zips = _VolumeZips(main=None, main_error=None, override=None, override_error=None)
+    try:
+        try:
+            zips.main = zipfile.ZipFile(archive.archive_filename, "r")
+        except (zipfile.BadZipFile, OSError) as exc:
+            zips.main_error = exc
+        if archive.has_overrides() and archive.override_archive_filename is not None:
+            try:
+                zips.override = zipfile.ZipFile(archive.override_archive_filename, "r")
+            except (zipfile.BadZipFile, OSError) as exc:
+                zips.override_error = exc
+        yield zips
+    finally:
+        if zips.override is not None:
+            zips.override.close()
+        if zips.main is not None:
+            zips.main.close()
+
+
+def _page_member(
+    archive: FantagraphicsArchive, zips: _VolumeZips, page_str: str
+) -> tuple[zipfile.ZipFile | None, Path | None]:
+    """Return the open zip holding a source page and its member path within it."""
+    resolved = _resolve_page_source(archive, page_str)
+    if resolved is None:
+        return None, None
+    member, _source_label, encrypted = resolved
+    return (zips.override if encrypted else zips.main), member
+
+
 def _check_one_source_page(
     phase: PhaseResult,
     counts: _Phase9Counts,
     title_str: str,
     archive: FantagraphicsArchive,
-    main_zip: zipfile.ZipFile,
-    override_zip: zipfile.ZipFile | None,
-    panel_segments_dir: Path,
+    zips: _VolumeZips,
     srce_page: CleanPage,
 ) -> None:
-    """Decode one source page (load_pil) + check its panel-segments JSON."""
+    """Decode one source page through the reader's own ``load_pil``."""
     page_filename = srce_page.page_filename
-    page_type = srce_page.page_type
 
     # Skip the empty/title placeholders (the reader resolves these to the
     # in-memory empty_page_image, never opens a zip member).
-    if is_title_page(srce_page) or is_blank_page(page_filename, page_type):
+    if is_title_page(srce_page) or is_blank_page(page_filename, srce_page.page_type):
         return
 
     page_str = Path(page_filename).stem
     phase.items_checked += 1
-
-    member: Path | None = None
-    target_zip: zipfile.ZipFile | None = None
 
     resolved = _resolve_page_source(archive, page_str)
     if resolved is None:
@@ -1625,116 +1660,64 @@ def _check_one_source_page(
         phase.add(
             f"Title:{title_str} kind=page_load_failed page={page_str} reason=page_not_in_volume"
         )
-    else:
-        member, source_label, encrypted = resolved
-        target_zip = override_zip if encrypted else main_zip
-        if target_zip is None:
-            counts.page_load_failed += 1
-            phase.add(
-                f"Title:{title_str} kind=page_load_failed page={page_str}"
-                f" source={source_label} reason=override_archive_not_open"
-            )
-        else:
-            # Decode + decrypt through the reader's OWN primitive
-            # (``barks_reader.core.image_pipeline.load_pil``), i.e. the exact
-            # call ``ArchivePageImageSource`` makes at read time. Using the
-            # reader's path - rather than a different decryptor entry point -
-            # is what keeps Phase 9 faithful: if the reader's decryption ever
-            # regresses (e.g. a caller the compiled panel-key allow-list
-            # rejects), this phase reproduces the failure instead of masking it.
-            try:
-                reader_load_pil(
-                    zipfile.Path(target_zip, at=str(member)),
-                    encrypted_zip=encrypted,
-                    use_ext_hint=True,
-                )
-            except DecryptionError as exc:
-                counts.decryption_failed += 1
-                phase.add(
-                    f"Title:{title_str} kind=decryption_failed page={page_str}"
-                    f" source={source_label} reason={exc}"
-                )
-            except (
-                KeyError,
-                zipfile.BadZipFile,
-                OSError,
-                RuntimeError,
-                ValueError,
-            ) as exc:
-                counts.page_load_failed += 1
-                phase.add(
-                    f"Title:{title_str} kind=page_load_failed page={page_str}"
-                    f" source={source_label} reason={type(exc).__name__}: {exc}"
-                )
+        return
 
-    # Panel-segments JSON only required for pages with panels.
-    title_enum = STR_TITLE_TO_ENUM[title_str]
-    if (title_enum not in NON_COMIC_TITLES) and (page_type not in PAGES_WITHOUT_PANELS):
-        _check_segments_json(
-            phase, counts, title_str, page_str, panel_segments_dir, target_zip, member
+    member, source_label, encrypted = resolved
+    target_zip = zips.override if encrypted else zips.main
+    if target_zip is None:
+        counts.page_load_failed += 1
+        phase.add(
+            f"Title:{title_str} kind=page_load_failed page={page_str}"
+            f" source={source_label} reason=override_archive_not_open"
         )
-
-
-def _check_segments_json(
-    phase: PhaseResult,
-    counts: _Phase9Counts,
-    title_str: str,
-    page_str: str,
-    panel_segments_dir: Path,
-    target_zip: zipfile.ZipFile | None,
-    member: Path | None,
-) -> None:
-    """Verify the panel-segments JSON exists and is no older than its source page."""
-    json_path = panel_segments_dir / (page_str + JSON_FILE_EXT)
-    if not json_path.is_file():
-        counts.missing_json += 1
-        phase.add(f"Title:{title_str} kind=missing_segments_json page={page_str} path={json_path}")
         return
 
-    # Compare against the source image's stored mtime inside the zip, not the
-    # zip file's own filesystem mtime — the archive is rewritten as a whole
-    # whenever any page changes, so its mtime would flag every page in the
-    # volume as stale after a single re-pack.
-    if target_zip is None or member is None:
-        return
+    # Decode + decrypt through the reader's OWN primitive
+    # (``barks_reader.core.image_pipeline.load_pil``), i.e. the exact
+    # call ``ArchivePageImageSource`` makes at read time. Using the
+    # reader's path - rather than a different decryptor entry point -
+    # is what keeps Phase 9 faithful: if the reader's decryption ever
+    # regresses (e.g. a caller the compiled panel-key allow-list
+    # rejects), this phase reproduces the failure instead of masking it.
     try:
-        srce_zinfo = target_zip.getinfo(str(member))
-    except KeyError:
-        return
-    # ZipInfo.date_time is naive local time; mktime interprets it the same way,
-    # giving a Unix timestamp comparable to ``st_mtime``.
-    srce_mtime = time.mktime((*srce_zinfo.date_time, 0, 0, -1))
-    if json_path.stat().st_mtime < srce_mtime:
-        counts.stale_json += 1
-        logger.debug(
-            f"Srce date: {get_timestamp_as_str(srce_mtime)},"
-            f" json date: {get_timestamp_as_str(json_path.stat().st_mtime)}"
+        reader_load_pil(
+            # Zip member names always use '/', even on Windows (as the reader's own
+            # ``ArchivePageImageSource._get_image_path`` makes them).
+            zipfile.Path(target_zip, at=member.as_posix()),
+            encrypted_zip=encrypted,
+            use_ext_hint=True,
         )
-        phase.add(f"Title:{title_str} kind=stale_segments_json page={page_str} path={json_path}")
+    except DecryptionError as exc:
+        counts.decryption_failed += 1
+        phase.add(
+            f"Title:{title_str} kind=decryption_failed page={page_str}"
+            f" source={source_label} reason={exc}"
+        )
+    except (
+        KeyError,
+        zipfile.BadZipFile,
+        OSError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
+        counts.page_load_failed += 1
+        phase.add(
+            f"Title:{title_str} kind=page_load_failed page={page_str}"
+            f" source={source_label} reason={type(exc).__name__}: {exc}"
+        )
 
 
 def check_one_title_load(
     phase: PhaseResult,
     counts: _Phase9Counts,
-    sys_paths: SystemFilePaths,
     title_str: str,
     comic: ComicBook,
     archive: FantagraphicsArchive,
 ) -> None:
-    """Open archives, enumerate source pages, and check each one."""
-    volume = archive.fanta_volume
-    panel_segments_root = sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
-    vol_dir_name = ComicsDatabase.get_fantagraphics_volume_title(volume)
-    panel_segments_dir = panel_segments_root / vol_dir_name
-
-    if not panel_segments_dir.is_dir():
-        counts.missing_dir += 1
-        phase.add(f"Title:{title_str} kind=missing_segments_dir path={panel_segments_dir}")
-        return
-
+    """Open archives, enumerate source pages, and decode each one."""
     # Enumerate source pages. Use the private helper that produces the page
     # list without doing the JSON I/O the public ``get_sorted_srce_and_dest_pages_*``
-    # variants would. Phase 9 does that I/O itself, error-collected.
+    # variants would.
     try:
         srce_and_dest_pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
     except Exception as exc:  # noqa: BLE001
@@ -1745,43 +1728,488 @@ def check_one_title_load(
         )
         return
 
-    main_zip: zipfile.ZipFile | None = None
-    override_zip: zipfile.ZipFile | None = None
-    try:
-        try:
-            main_zip = zipfile.ZipFile(archive.archive_filename, "r")
-        except (zipfile.BadZipFile, OSError) as exc:
+    with _open_volume_zips(archive) as zips:
+        if zips.main is None:
             counts.page_load_failed += len(srce_and_dest_pages.srce_pages)
             phase.add(
                 f"Title:{title_str} kind=page_load_failed page=*"
-                f" reason=cannot_open_volume_cbz: {exc}"
+                f" reason=cannot_open_volume_cbz: {zips.main_error}"
             )
             return
-
-        if archive.has_overrides() and archive.override_archive_filename is not None:
-            try:
-                override_zip = zipfile.ZipFile(archive.override_archive_filename, "r")
-            except (zipfile.BadZipFile, OSError) as exc:
-                phase.add(
-                    f"Title:{title_str} kind=page_load_failed page=*"
-                    f" reason=cannot_open_override_cbz: {exc}"
-                )
-                # continue without overrides — per-page checks will then fail
-                # on any page that needed an override
+        if zips.override_error is not None:
+            # Continue without overrides — per-page checks will then fail
+            # on any page that needed an override.
+            phase.add(
+                f"Title:{title_str} kind=page_load_failed page=*"
+                f" reason=cannot_open_override_cbz: {zips.override_error}"
+            )
 
         for srce_page in srce_and_dest_pages.srce_pages:
-            _check_one_source_page(
-                phase,
-                counts,
-                title_str,
-                archive,
-                main_zip,
-                override_zip,
-                panel_segments_dir,
-                srce_page,
+            _check_one_source_page(phase, counts, title_str, archive, zips, srce_page)
+
+
+# ---------------------------------------------------------------------------
+# Phase 10 - Per-title layouts
+# ---------------------------------------------------------------------------
+#
+# Always on. For every title Phase 9 would load, build the page layout the
+# reader builds when it opens the comic — the same ComicLayoutBuilder and
+# panel-segments adapter, so a raise here is a title the reader cannot open.
+# Before the build, check the panel-segments JSONs it reads: each page with
+# panels needs one, no older than its source page. These checks cost a stat
+# and a zip directory lookup per page, no decoding.
+#
+# Timestamp interpretation: the build pipeline compares JSON mtime to the
+# original on-disk source image, but on the reader machine the source
+# images live INSIDE the volume CBZ — there is no separate filesystem
+# mtime per page. So Phase 10 compares the JSON to the page's stored mtime in
+# the volume CBZ. The reader itself sets ``check_srce_page_timestamps=False``,
+# so a stale JSON does NOT block runtime loading; this validator is stricter
+# on purpose, to catch stale builds.
+
+
+@dataclass(slots=True)
+class _Phase10Counts:
+    """Per-phase counters used to populate ``phase.summary_extra``."""
+
+    load_failed: int = 0
+    layout_failed: int = 0
+    missing_dir: int = 0
+    missing_json: int = 0
+    stale_json: int = 0
+
+
+def phase10_layout(
+    collector: ErrorCollector,
+    sys_paths: SystemFilePaths,
+    fanta_state: FantaState,
+    titles_filter: list[str] | None = None,
+) -> None:
+    """Phase 10: check panel-segments JSONs and build each title's reader layout.
+
+    Args:
+        collector: Aggregator for phase results.
+        sys_paths: Resolved :class:`SystemFilePaths`, for the panel-segments root.
+        fanta_state: Cached Phase 6 outcome; a volume archive, when present, is
+            what each JSON's staleness is measured against.
+        titles_filter: Optional subset of titles to check. ``None`` runs all titles.
+
+    """
+    phase = collector.start_phase("Per-title Layouts", "10")
+
+    try:
+        db = ComicsDatabase(for_building_comics=False)
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not construct ComicsDatabase: {exc}")
+        collector.finalize_phase(phase)
+        return
+
+    panel_segments_root = sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
+    builder = ComicLayoutBuilder(
+        sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
+    )
+    counts = _Phase10Counts()
+
+    for title_str, fanta_info in _loadable_titles(titles_filter):
+        phase.items_checked += 1
+        try:
+            comic = db.get_comic_book(title_str)
+        except (
+            TitleNotFoundError,
+            FileNotFoundError,
+            RuntimeError,
+            KeyError,
+            AssertionError,
+        ) as exc:
+            counts.load_failed += 1
+            phase.add(
+                f"Title:{title_str} kind=comic_book_load_failed reason={type(exc).__name__}: {exc}"
             )
-    finally:
-        if override_zip is not None:
-            override_zip.close()
-        if main_zip is not None:
-            main_zip.close()
+            continue
+
+        panel_segments_dir = panel_segments_root / db.get_fantagraphics_volume_title(
+            comic.get_fanta_volume()
+        )
+        archive = _volume_archive(fanta_state, fanta_info)
+        if not _check_title_segments(phase, counts, title_str, comic, archive, panel_segments_dir):
+            # The layout build reads those same JSONs: it could only fail again on
+            # the file already reported.
+            continue
+        _check_title_layout(phase, counts, title_str, comic, builder)
+
+    phase.summary_extra = (
+        f"({counts.load_failed} load-failed,"
+        f" {counts.layout_failed} layout-failed,"
+        f" {counts.missing_dir} missing-dirs,"
+        f" {counts.missing_json} missing-json,"
+        f" {counts.stale_json} stale-json)"
+    )
+    collector.finalize_phase(phase)
+
+
+def _loadable_titles(titles_filter: list[str] | None) -> list[tuple[str, FantaComicBookInfo]]:
+    """Return the titles the reader opens as comics of their own, filtered.
+
+    Individual one-pagers and covers are left out: they are read as a page of the
+    "All One-Pagers" / "All Covers" collection, which is itself a title here.
+    """
+    filter_set = set(titles_filter) if titles_filter is not None else None
+    return [
+        (ENUM_TO_STR_TITLE[title], fanta_info)
+        for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
+        if (filter_set is None or ENUM_TO_STR_TITLE[title] in filter_set)
+        and title not in ONE_PAGERS
+        and title not in COVERS_SET
+    ]
+
+
+def _volume_archive(
+    fanta_state: FantaState, fanta_info: FantaComicBookInfo
+) -> FantagraphicsArchive | None:
+    """Return a title's loaded volume archive, or None if Phase 6 has none for it."""
+    try:
+        volume = get_fanta_volume_from_str(fanta_info.fantagraphics_volume)
+    except (AssertionError, ValueError):
+        return None  # Phase 8 already records this.
+    archive = fanta_state.archives.get(volume)
+    if archive is None or archive.is_missing:
+        return None  # Phase 8 already records this as missing_volume.
+    return archive
+
+
+def _check_title_segments(
+    phase: PhaseResult,
+    counts: _Phase10Counts,
+    title_str: str,
+    comic: ComicBook,
+    archive: FantagraphicsArchive | None,
+    panel_segments_dir: Path,
+) -> bool:
+    """Check every panel-segments JSON a title needs; return False if any is missing."""
+    if STR_TITLE_TO_ENUM[title_str] in NON_COMIC_TITLES:
+        return True
+
+    if not panel_segments_dir.is_dir():
+        counts.missing_dir += 1
+        phase.add(f"Title:{title_str} kind=missing_segments_dir path={panel_segments_dir}")
+        return False
+
+    try:
+        srce_and_dest_pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+    except Exception as exc:  # noqa: BLE001
+        counts.load_failed += 1
+        phase.add(
+            f"Title:{title_str} kind=comic_book_load_failed"
+            f" reason=page_enum_failed: {type(exc).__name__}: {exc}"
+        )
+        return False
+
+    all_present = True
+    with ExitStack() as stack:
+        # Staleness is measured against the page's mtime in the volume archive.
+        # Without the archive, only presence can be checked.
+        zips = stack.enter_context(_open_volume_zips(archive)) if archive is not None else None
+        for srce_page in srce_and_dest_pages.srce_pages:
+            if (
+                is_title_page(srce_page)
+                or is_blank_page(srce_page.page_filename, srce_page.page_type)
+                or srce_page.page_type in PAGES_WITHOUT_PANELS
+            ):
+                continue
+            page_str = Path(srce_page.page_filename).stem
+            target_zip, member = (
+                _page_member(archive, zips, page_str)
+                if archive is not None and zips is not None
+                else (None, None)
+            )
+            all_present &= _check_segments_json(
+                phase, counts, title_str, page_str, panel_segments_dir, target_zip, member
+            )
+    return all_present
+
+
+def _check_segments_json(
+    phase: PhaseResult,
+    counts: _Phase10Counts,
+    title_str: str,
+    page_str: str,
+    panel_segments_dir: Path,
+    target_zip: zipfile.ZipFile | None,
+    member: PurePath | None,
+) -> bool:
+    """Verify the panel-segments JSON exists and is no older than its source page.
+
+    Returns:
+        False if the JSON is missing; True otherwise, stale or not.
+
+    """
+    json_path = panel_segments_dir / (page_str + JSON_FILE_EXT)
+    if not json_path.is_file():
+        counts.missing_json += 1
+        phase.add(f"Title:{title_str} kind=missing_segments_json page={page_str} path={json_path}")
+        return False
+
+    # Compare against the source image's stored mtime inside the zip, not the
+    # zip file's own filesystem mtime — the archive is rewritten as a whole
+    # whenever any page changes, so its mtime would flag every page in the
+    # volume as stale after a single re-pack.
+    if target_zip is None or member is None:
+        return True
+    try:
+        # Zip member names always use '/', even on Windows.
+        srce_zinfo = target_zip.getinfo(member.as_posix())
+    except KeyError:
+        return True
+    # ZipInfo.date_time is naive local time; mktime interprets it the same way,
+    # giving a Unix timestamp comparable to ``st_mtime``.
+    srce_mtime = time.mktime((*srce_zinfo.date_time, 0, 0, -1))
+    if json_path.stat().st_mtime < srce_mtime:
+        counts.stale_json += 1
+        logger.debug(
+            f"Srce date: {get_timestamp_as_str(srce_mtime)},"
+            f" json date: {get_timestamp_as_str(json_path.stat().st_mtime)}"
+        )
+        phase.add(f"Title:{title_str} kind=stale_segments_json page={page_str} path={json_path}")
+    return True
+
+
+def _check_title_layout(
+    phase: PhaseResult,
+    counts: _Phase10Counts,
+    title_str: str,
+    comic: ComicBook,
+    builder: ComicLayoutBuilder,
+) -> None:
+    """Build a title's layout as the reader does, and sanity-check the result."""
+    try:
+        layout = builder.build(comic)
+    except Exception as exc:  # noqa: BLE001 - any raise is a title the reader cannot open
+        counts.layout_failed += 1
+        phase.add(f"Title:{title_str} kind=layout_build_failed reason={type(exc).__name__}: {exc}")
+        return
+
+    page_map = layout.page_map
+    if not page_map:
+        counts.layout_failed += 1
+        phase.add(f"Title:{title_str} kind=layout_empty")
+        return
+    if not layout.last_body_page and STR_TITLE_TO_ENUM[title_str] not in NON_COMIC_TITLES:
+        counts.layout_failed += 1
+        phase.add(f"Title:{title_str} kind=layout_no_body_page")
+    indexes = [page.page_index for page in page_map.values()]
+    if indexes != list(range(len(indexes))):
+        counts.layout_failed += 1
+        phase.add(f"Title:{title_str} kind=layout_index_gap indexes={indexes}")
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 - Wiki joins
+# ---------------------------------------------------------------------------
+#
+# Joins every title to its wiki story page and every story page back to its
+# title, both ways through the app's own functions (wiki_integration). A title
+# whose page is not written yet is counted, not failed, unless --strict-wiki:
+# the bundle is written a page at a time. A story page the reader cannot reach
+# is always a failure — the reader hides the page's "Read Comic" chip for it.
+
+
+@dataclass(slots=True)
+class _Phase11Counts:
+    """Per-phase counters used to populate ``phase.summary_extra``."""
+
+    joined: int = 0
+    unwritten: int = 0
+    no_location: int = 0
+    outside_corpus: int = 0
+    not_in_reader: int = 0
+
+
+def resolve_wiki_bundle_dir(
+    cfg_info: ConfigInfo, reader_files_dir: Path, override: Path | None
+) -> Path | None:
+    """Return the wiki bundle the reader would use, or None if there is none.
+
+    Mirrors ``ReaderSettings.wiki_bundle_dir`` without building a
+    ``ReaderSettings``: ``override`` (the CLI's ``--wiki-bundle``) wins; else the
+    INI's ``wiki_bundle_dir`` when ``use_live_wiki_bundle`` is on; else the copy
+    in Reader Files. A directory only counts when its root ``index.md`` exists.
+
+    Args:
+        cfg_info: Resolved config, for the INI path.
+        reader_files_dir: The Reader Files directory holding the bundled copy.
+        override: An explicit bundle directory, or None.
+
+    Returns:
+        The bundle root, or None if unset or not a bundle.
+
+    """
+    if override is not None:
+        candidate = override
+    else:
+        barks_config = ConfigParser()
+        barks_config.read(cfg_info.app_config_path)
+        try:
+            use_live = bool(read_setting_from_config(barks_config, USE_LIVE_WIKI_BUNDLE))
+        except Exception:  # noqa: BLE001
+            use_live = False  # the setting's default
+        if use_live:
+            try:
+                value = read_setting_from_config(barks_config, WIKI_BUNDLE_DIR)
+            except Exception:  # noqa: BLE001
+                return None  # the setting's default is the unset marker
+            if str(value) == UNSET_WIKI_BUNDLE_DIR_MARKER:
+                return None
+            candidate = Path(value)
+        else:
+            candidate = reader_files_dir / WIKI_BUNDLE_SUBDIR
+    if not (candidate / "index.md").is_file():
+        return None
+    return candidate
+
+
+def phase11_wiki(
+    collector: ErrorCollector,
+    bundle: Path | None,
+    titles_filter: list[str] | None = None,
+    strict: bool = False,
+) -> None:
+    """Phase 11: join titles to wiki story pages, and story pages to titles.
+
+    Args:
+        collector: Aggregator for phase results.
+        bundle: The wiki bundle root (from :func:`resolve_wiki_bundle_dir`), or None.
+        titles_filter: Optional subset of titles to check. ``None`` runs all
+            titles, and then also reports story pages tied to no title.
+        strict: Report a title with no page yet as an error, not a count.
+
+    """
+    phase = collector.start_phase("Wiki Joins", "11")
+    if bundle is None:
+        phase.add("Wiki: missing_bundle")
+        collector.finalize_phase(phase)
+        return
+    logger.info(f"Checking the wiki bundle at {bundle}")
+
+    filter_set = (
+        {STR_TITLE_TO_ENUM[title_str] for title_str in titles_filter}
+        if titles_filter is not None
+        else None
+    )
+    counts = _Phase11Counts()
+
+    pages_by_title = _check_story_pages(phase, counts, bundle, filter_set)
+    for title_enum, pages in pages_by_title.items():
+        _check_page_reachable(phase, bundle, title_enum, pages)
+
+    for title_enum in ALL_FANTA_COMIC_BOOK_INFO:
+        if filter_set is not None and title_enum not in filter_set:
+            continue
+        phase.items_checked += 1
+        _check_title_page(phase, counts, bundle, title_enum, strict)
+
+    phase.summary_extra = (
+        f"({counts.joined} joined,"
+        f" {counts.unwritten} unwritten,"
+        f" {counts.no_location} no-location,"
+        f" {counts.outside_corpus} outside-corpus,"
+        f" {counts.not_in_reader} not-in-reader)"
+    )
+    collector.finalize_phase(phase)
+
+
+def _check_story_pages(
+    phase: PhaseResult,
+    counts: _Phase11Counts,
+    bundle: Path,
+    filter_set: set[Titles] | None,
+) -> dict[Titles, list[Path]]:
+    """Resolve every story page to its title; return the pages found for each title."""
+    slug_to_title = {
+        story_slug(ENUM_TO_STR_TITLE[title_enum]): title_enum
+        for title_enum in ALL_FANTA_COMIC_BOOK_INFO
+    }
+    pages_by_title: dict[Titles, list[Path]] = {}
+
+    for page in sorted((bundle / "concept" / "stories").glob("*/*.md")):
+        if page.name == "index.md":
+            continue
+        phase.items_checked += 1
+        rel = page.relative_to(bundle).as_posix()
+        frontmatter, _body = parse_frontmatter(page.read_text(encoding="utf-8"))
+        raw_title = frontmatter.get("title")
+
+        if not isinstance(raw_title, str):
+            if filter_set is None:
+                phase.add(f"Page:{rel} kind=story_page_no_title")
+            continue
+
+        title_enum = story_page_title(frontmatter, page)
+        if title_enum is None:
+            if canonical_title(raw_title) is not None:
+                counts.not_in_reader += 1  # a canonical title the reader does not carry
+                continue
+            expected = slug_to_title.get(page.stem)
+            if expected is None:
+                counts.outside_corpus += 1  # a non-Disney or other non-corpus story
+            elif filter_set is None or expected in filter_set:
+                phase.add(
+                    f"Page:{rel} kind=story_page_title_mismatch title={raw_title!r}"
+                    f" expected={ENUM_TO_STR_TITLE[expected]!r}"
+                )
+            continue
+
+        if filter_set is None or title_enum in filter_set:
+            pages_by_title.setdefault(title_enum, []).append(page)
+
+    return pages_by_title
+
+
+def _check_page_reachable(
+    phase: PhaseResult, bundle: Path, title_enum: Titles, pages: list[Path]
+) -> None:
+    """Check the reader's title-to-page join lands on this title's one story page."""
+    title_str = ENUM_TO_STR_TITLE[title_enum]
+    if len(pages) > 1:
+        rel_paths = [page.relative_to(bundle).as_posix() for page in pages]
+        phase.add(f"Title:{title_str} kind=duplicate_wiki_page pages={rel_paths}")
+        return
+    page = pages[0]
+    if wiki_page_for_title(bundle, title_enum) != page:
+        # The reader's chip for this story is hidden: it looks elsewhere.
+        phase.add(
+            f"Page:{page.relative_to(bundle).as_posix()} kind=wiki_page_unreachable"
+            f" title={title_str!r} looked_in={_story_dirs(title_enum)}"
+        )
+
+
+def _check_title_page(
+    phase: PhaseResult,
+    counts: _Phase11Counts,
+    bundle: Path,
+    title_enum: Titles,
+    strict: bool,
+) -> None:
+    """Join one title to its story page, counting the title if it has none."""
+    if not title_can_have_wiki_page(title_enum):
+        counts.no_location += 1
+        return
+    if wiki_page_for_title(bundle, title_enum) is not None:
+        counts.joined += 1
+        return
+
+    counts.unwritten += 1
+    title_str = ENUM_TO_STR_TITLE[title_enum]
+    msg = (
+        f"Title:{title_str} kind=missing_wiki_page slug={story_slug(title_str)}"
+        f" dirs={_story_dirs(title_enum)}"
+    )
+    if strict:
+        phase.add(msg)
+    else:
+        logger.warning(f"[{phase.name}] {msg}")
+
+
+def _story_dirs(title_enum: Titles) -> str:
+    """Return the story directories the reader looks in for a title, comma-joined."""
+    series_name = ALL_FANTA_COMIC_BOOK_INFO[title_enum].series_name
+    return ",".join(SERIES_TO_STORY_DIRS.get(series_name, ()))

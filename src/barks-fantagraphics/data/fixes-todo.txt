@@ -1,3 +1,5 @@
+Worry room 16, 126 panel 4
+
 Check JW first pages for indicia
 Vol 27, 121 remove indicia
 Vol 27, 134 remove indicia
@@ -5,10 +7,49 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 24, 042, panel 2 Colorist error: should be green cap
+Vol 24, 032, panel 4 Wisenik
+Vol 23, 021, panel 8 '!' glitch
+Vol 22, 137: panel 5 Colorist error - no cap color
+Vol 22, 128: panel 2 Here's the colorist error - need to swap colors
+Vol 22, 115+, panel 4 Colorist error: should be Huey speaking
+Vol 22, 049, panel 5 Colorist error: no cap color
+Vol 22, 034+, panel 4 Colorist error: swap red with green
+Vol 22, 022, panel 4 Colorist error: swap red and green - probably OK but see above
+Vol 21, 138, panel 7 Colorist error: red and green swapped
+Vol 21, 058, panel 7 Colorist error: beak uncolored
+Vol 21, 051, panel 3 Colorist error: swap blue and green
+Vol 20, 122, panel 8 Colorist error: cap should be blue
+Vol 20, 122, panel 2+ Colorist error: cap should be green
+Vol 20, 115, panel 5 Colorist error: caps not colored
+Vol 20, 080, panel 5 Colorist error: should be blue cap
+Vol 20, 026, panel 6 Colorist error: should be green cap
+Vol 20, 020, panel 2 Colorist error: should be blue cap
+Vol 19, 165, panel 3 Colorist error: red cap should be green for Louie
+Vol 19, 154, panel 7 Colorist error: blue and green caps should be swapped
+Vol 19, 127, panel 6 Colorist error: should be blue cap
+Vol 19, 098, panel 4 two red caps
+Vol 19, 082, panel 4 'S' glitch
+Vol 19, 029, panel 1 Colorist error: should be green cap not blue
+Vol 19, 025, panel 4 Colorist error: should be blue cap
+Vol 19, 022, panel 3 FUNG wrong panel
+Vol 19, 018+, panel 4 Colorist error: red/blue caps swapped - check speakers too
+Vol 19, 014, panel 2 two green caps
+Vol 18, 160, panel 6 Colorist error: two blue caps
+Vol 18, 143, panel 5 Colorist error: the cap is mostly green but in error there is a touch of red
+Vol 18, 099, panel 4 Colorist error: should be green cap
+Vol 18, 036, panel 7 Colorist error: should be blue cap
+Vol 18, 035, panel 7 Colorist error: should be blue cap
+Vol 17, 148, panel 3 Colorist error: swap red and green
+Vol 17, 122, panel 1 blue cap should be red
 Vol 17, 103, is Bernie tagged?
 Vol 17, 083, blue uniform in front of Johnny
 Vol 17, 083, panel 2 blue head
 Vol 17, 069, panel 3 two red caps
+Vol 16, 167, panel 5, 'them'
+Vol 16, 145, panel 4 Colorist error: swap colors here
+Vol 16, 070+, maybe add pound symbols?
+Vol 16, 017, panel 8 Colorist error: should be red cap
 Vol 15, 192, panel 1 num error
 Vol 15, 186, panel 1: Colorist error: should be red cap
 Vol 15, 142, panel 2 '!'
@@ -81,3 +122,39 @@ Add non-Barks script to extra info
 Setup barksian vocab
 Error popup in fullscreen goes wide (jet)
 
+
+Color issues
+------------
+
+Yes — and better than I expected, because there's a test that actually confirms rather than just flags. Built as scripts/vision/cap_mismatch.py (e0533ed).
+
+What the query returns
+
+cap_colour agrees with the roster key on 6,621 nephew groups, disagrees on 121
+
+All 121 are speaker_reviewed: True — every one has been through a human, so these aren't the pass's unreviewed guesses.
+
+But a mismatch is a candidate, not an error
+
+The 121 split into three shapes that mean different things:
+
+┌───────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           shape                           │                                                                 reading                                                                 │
+├───────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ bijective + repeated — A wears B's colour, B wears A's    │ the colourist swapped two inks and kept going                                                                                           │
+├───────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ one-directional — Dewey prints green ×6, nobody prints    │ suspect the name, not the colourist: a real swap has to put the other ink somewhere                                                     │
+│ blue                                                      │                                                                                                                                         │
+├───────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ singleton — one group in a title                          │ usually a misread — and cap_colour also carries garment colour, so a boy named off his tail in a red shirt lands here and is nobody's   │
+│                                                           │ error                                                                                                                                   │
+└───────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+The clincher is same-panel co-occurrence
+
+If one frame holds boy A in B's colour and boy B in A's, those caps were exchanged — two independent misreads don't come out symmetric and repeated. That promotes four titles:
+
+Donald Duck Tells About Kites   23  SWAP CONFIRMED in 6 panel(s)   Huey->blue x12, Dewey->red x11
+High-wire Daredevils             9  SWAP CONFIRMED in 1 panel(s)   Louie->red x5, Huey
+The Cantankerous Cat             3  SWAP CONFIRMED in 1 panel(s)
+The Smugsnorkle Squattie         2  SWAP CONFIRMED in 1 panel(s)

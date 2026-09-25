@@ -29,9 +29,10 @@ How to read it
 
 Assumes
     - `scripts/gui-probe.sh doctor` passes, and nothing else is on the display.
-    - `scripts/record_demo.py` sits alongside this file: its Driver and its
-      search constants (query, result row geometry) are reused verbatim, so the
-      two stay in step.
+    - `scripts/record_demo.py` sits alongside this file: its search query, result
+      row and pinned cues are reused verbatim, so the two stay in step. The row's
+      pixel position is this script's own: the recorder and the GUI suite pick
+      results from the keyboard now, and only the mouse path needs it.
     - Nothing else is driving the app. gui-probe restores the config it backed up
       at start, so a hand-run app overlapping a trial would lose its changes.
 
@@ -61,7 +62,16 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # The recorder is a sibling script, not an installed module, so the path above has
 # to be in place before it can be imported.
+import gui_driver as gd  # noqa: E402
 import record_demo as rd  # noqa: E402
+
+# Where the title-search result rows sit, in screenshot pixels on the nested
+# display at the pinned 900x1300 screen (the app window is then 782x1225): the
+# centre of the first row, and the row pitch. Measured, so a rearranged screen
+# fails the click's wait on the goto-title line rather than picking another story.
+SEARCH_RESULT_X = 450
+SEARCH_RESULT_TOP_Y = 695
+SEARCH_RESULT_ROW_H = 30
 
 # The search screen, leaf-to-root, as the app stores it in `last_selected_node`.
 SEARCH_NODE = ["Titles", "Search", "root"]
@@ -108,10 +118,10 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
         What the trial observed.
 
     """
-    rd.boot_app_at(SEARCH_NODE, config=config, seed=seed, template=backup)
+    gd.boot_app_at(SEARCH_NODE, config=config, seed=seed, template=backup, cues=rd.PINNED_CUES)
     try:
-        driver = rd.Driver()
-        log = Path(rd.probe("log").strip())
+        driver = gd.Driver()
+        log = Path(gd.probe("log").strip())
 
         driver.hold(0.5)
         driver.key("Return")  # focus the search box
@@ -120,9 +130,9 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
         driver.settle()
         driver.hold(0.8)
 
-        row_y = rd.SEARCH_RESULT_TOP_Y + (rd.SEARCH_TITLE_RESULT - 1) * rd.SEARCH_RESULT_ROW_H
+        row_y = SEARCH_RESULT_TOP_Y + (rd.SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
         driver.click_then_wait(
-            f'Goto title: "{rd.SEARCH_TITLE_PICK.title}"', 15, rd.SEARCH_RESULT_X, row_y
+            f'Goto title: "{rd.SEARCH_TITLE_PICK.title}"', SEARCH_RESULT_X, row_y
         )
 
         time.sleep(delay)
@@ -137,7 +147,7 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
             opened=COMIC_OPENED_MARKER in text,
         )
     finally:
-        rd.probe("stop")
+        gd.probe("stop")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -158,7 +168,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Run the trials and report. Returns a process exit code."""
     args = parse_args(argv)
-    config = Path(rd.probe("config").strip())
+    config = Path(gd.probe("config").strip())
 
     with tempfile.TemporaryDirectory(prefix="repro-search-enter-") as tmp:
         backup = Path(tmp) / "barks-reader.json.bak"

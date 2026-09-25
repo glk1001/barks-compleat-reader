@@ -12,7 +12,7 @@ Construct it with canned data for the methods your test exercises::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.search_ports import CorpusTextTotals
@@ -36,10 +36,19 @@ class InMemoryFullTextSearch:
     corpus_text_totals: CorpusTextTotals = field(
         default_factory=lambda: CorpusTextTotals(0, 0, 0, 0, 0)
     )
+    speakers: dict[str, int] = field(default_factory=dict)
 
-    def find_words(self, search_words: str) -> TitleDict:
-        """Return canned results for the given query, or empty dict."""
-        return self.find_words_results.get(search_words, {})
+    def find_words(self, search_words: str, speaker: str | None = None) -> TitleDict:
+        """Return canned results for the given query, or empty dict.
+
+        With ``speaker``, the canned result is narrowed to the speech infos
+        carrying that speaker, and pages and titles left empty by that are
+        dropped -- the same shape the real engine's filtered query returns.
+        """
+        found = self.find_words_results.get(search_words, {})
+        if not speaker:
+            return found
+        return _filter_by_speaker(found, speaker)
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         """Return canned results for the given entity lookup, or empty dict."""
@@ -68,3 +77,22 @@ class InMemoryFullTextSearch:
     def get_corpus_text_totals(self) -> CorpusTextTotals:
         """Return the configured corpus totals."""
         return self.corpus_text_totals
+
+    def get_speakers(self) -> dict[str, int]:
+        """Return the configured speaker counts."""
+        return self.speakers
+
+
+def _filter_by_speaker(found: TitleDict, speaker: str) -> TitleDict:
+    # `replace` rather than the constructors, so this stays free of the Whoosh
+    # module the real classes live in.
+    narrowed: TitleDict = {}
+    for title, title_info in found.items():
+        pages = {}
+        for fanta_page, page_info in title_info.fanta_pages.items():
+            kept = [s for s in page_info.speech_info_list if s.speaker == speaker]
+            if kept:
+                pages[fanta_page] = replace(page_info, speech_info_list=kept)
+        if pages:
+            narrowed[title] = replace(title_info, fanta_pages=pages)
+    return narrowed

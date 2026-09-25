@@ -49,9 +49,10 @@ from okf_reader.core.render import (
     resolve_link,
 )
 from okf_reader.core.search import BundleSearcher
-from okf_reader.core.session import load_session_state, save_session_state
+from okf_reader.core.session import resolve_start_page, save_session_state
 from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
+from okf_reader.ui import trace
 
 from .focus_ring import (
     SIDEBAR_RING_GROUP,
@@ -469,18 +470,12 @@ class OKFViewer(RelativeLayout):
         self._set_focus_region(FocusRegion.PAGE if start_page is not None else FocusRegion.SIDEBAR)
 
     def _show_start_page(self, start_page: Path | None) -> None:
-        """Show the opening page, if any: the caller's choice, else the saved session's.
+        """Show the opening page: the caller's choice, else the session's, else home.
 
-        A caller-chosen page wins; otherwise resume where the last session
-        left off (page and scroll offset), when a state file says where.
+        See ``resolve_start_page``. The tree syncs itself to whatever is shown.
         """
-        start_scroll = 1.0
-        if start_page is None and self._state_path is not None:
-            saved = load_session_state(self._state_path, self.bundle)
-            if saved is not None:
-                start_page, start_scroll = saved.page, saved.scroll_y
-        if start_page is not None:  # the tree syncs itself
-            self._show(start_page, push=True, scroll_y=start_scroll)
+        page, scroll_y = resolve_start_page(self.bundle, start_page, self._state_path)
+        self._show(page, push=True, scroll_y=scroll_y)
 
     def _build_left_column(self) -> BoxLayout:
         """Build the left column: a search field over the tree/results body slot.
@@ -1018,6 +1013,7 @@ class OKFViewer(RelativeLayout):
 
     def _run_page_action(self) -> None:
         if self._page_action is not None:
+            trace.page_action(self._page_action.label)
             self._page_action.run()
 
     def go_back(self) -> None:
@@ -1032,8 +1028,10 @@ class OKFViewer(RelativeLayout):
         if len(self.history) > 1:
             self.history.pop()
             entry = self.history[-1]
+            trace.back_to(self.bundle, entry.path)
             self._show(entry.path, push=False, scroll_y=entry.scroll_y)
         elif self._on_exit is not None:
+            trace.back_exit()
             self._on_exit()
 
     def reset_to(self, path: Path | None = None) -> None:
@@ -1478,6 +1476,7 @@ class OKFViewer(RelativeLayout):
         finally:
             self._syncing_tree = False
         self._scroll_tree_node_into_view(node)
+        trace.tree_focus(getattr(node, "text", ""))
 
     def _handle_results_key(self, key: int) -> bool:
         """Walk the search-result rows with a drawn focus ring."""
@@ -1543,6 +1542,7 @@ class OKFViewer(RelativeLayout):
         by Up/Down snaps back to reality.
         """
         self._focus_region = region
+        trace.focus_region(region.name)
         self._clear_bar_focus()  # a no-op unless the bar was the outgoing region
         if region is FocusRegion.TOP_BAR:
             self._clear_link_focus()
@@ -1654,6 +1654,7 @@ class OKFViewer(RelativeLayout):
             frames = state["frames"]
             assert isinstance(frames, int)
             if geometry == state["last"] or frames >= _TREE_REVEAL_MAX_FRAMES:
+                trace.tree_settled(node.text, frames)
                 self._scroll_tree_node_into_view(node)
                 return
             state["last"] = geometry
@@ -1771,6 +1772,7 @@ class OKFViewer(RelativeLayout):
         # A click-navigation swaps the page under a stationary mouse; re-evaluate
         # the cursor once the new labels' textures have settled.
         Clock.schedule_once(lambda _dt: self._refresh_cursor(), 0)
+        trace.page_shown(self.bundle, path, len(self.history))
 
     def _new_section(self) -> BoxLayout:
         """Append and return a fresh banded section box for the next run of blocks."""

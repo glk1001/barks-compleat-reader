@@ -53,8 +53,15 @@ class CorpusTextTotals:
 class FullTextSearchPort(Protocol):
     """Read-only query port for full-text search over indexed speech and entities."""
 
-    def find_words(self, search_words: str) -> TitleDict:
-        """Full-text search across all indexed speech bubble text."""
+    def find_words(self, search_words: str, speaker: str | None = None) -> TitleDict:
+        """Full-text search across all indexed speech bubble text.
+
+        ``speaker`` restricts the hits to groups with that stored speaker value.
+        """
+        ...
+
+    def get_speakers(self) -> dict[str, int]:
+        """Return each stored speaker value with its group count; empty if unknown."""
         ...
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
@@ -95,8 +102,14 @@ class IndexBuilderPort(Protocol):
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
         entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
+        *,
+        skip_missing_pages: bool = False,
     ) -> None:
-        """Build or rebuild the search index for the given volumes."""
+        """Build or rebuild the search index for the given volumes.
+
+        ``skip_missing_pages`` leaves out pages with no prelim OCR file instead
+        of failing; off by default so a hole in the index is never silent.
+        """
         ...
 
     def get_search_engine(self) -> FullTextSearchPort:

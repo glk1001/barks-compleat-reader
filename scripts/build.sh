@@ -145,6 +145,11 @@ else
     # on the unused option, so keep it to the Windows leg.
     if [[ "${OS}" == "windows" ]]; then
         PLATFORM_ARGS+=(--windows-icon-from-ico="assets/app-icon.ico")
+        # Kivy's ANGLE DLLs, which Nuitka's Kivy plugin leaves out, so the build can
+        # also draw through Direct3D (KIVY_GL_BACKEND=angle_sdl2) on a machine with
+        # no working OpenGL 2.0. Unused otherwise; see the yml.
+        # (kivy_deps.angle itself stays out: see the yml for why.)
+        PLATFORM_ARGS+=(--user-package-configuration-file="scripts/nuitka-kivy-angle.yml")
     fi
 fi
 

@@ -1,0 +1,42 @@
+# yamllint disable rule:line-length
+# cspell:ignore glew listdir
+# Nuitka package configuration for the Windows build: bundle Kivy's ANGLE DLLs.
+#
+# Kivy draws through OpenGL on Windows by default (the "glew" backend), and the
+# build ships that without help: Nuitka's Kivy plugin bundles the kivy_deps.sdl2
+# and kivy_deps.glew DLLs. It does not bundle kivy_deps.angle's, so a build could
+# not draw through ANGLE (Direct3D; KIVY_GL_BACKEND=angle_sdl2), the backend a
+# Windows machine without working OpenGL 2.0 needs, such as a VirtualBox VM with
+# 3D acceleration off. These DLLs are loaded only when that backend is asked for,
+# so the default OpenGL path is unchanged.
+#
+# kivy_deps.angle keeps its DLLs outside its package, in `dep_bins` (under
+# sys.prefix), so they are found by code rather than by a path relative to the
+# package - the same shape as Nuitka's own entry for MKL. They go beside the
+# executable, where SDL's LoadLibrary of libEGL/libGLESv2 finds them.
+#
+# The entry hangs off this app's own barks_reader package: a configuration
+# applies only to modules in the build, and Nuitka refuses a second entry for a
+# module its own configuration already covers (so not 'kivy'). It must not hang
+# off kivy_deps.angle, which has to stay out of the build: importing kivy scans
+# the kivy_deps package when it can import it, and asks each module found for
+# its import spec, which a Nuitka build answers with None - so `import kivy`
+# itself failed (AttributeError at kivy/__init__.py:319) when it was included.
+# The code below runs at build time, where kivy_deps.angle is installed.
+#
+# Used by scripts/build.sh on Windows only. scripts/smoke-test-build.sh, run by
+# CI with KIVY_GL_BACKEND=angle_sdl2, checks a build really draws through ANGLE.
+
+- module-name: 'barks_reader'
+  dlls:
+    - by_code:
+        setup_code: |
+          import os
+          from kivy_deps.angle import dep_bins
+        filename_code: |
+          [os.path.join(folder, filename)
+           for folder in dep_bins if os.path.isdir(folder)
+           for filename in os.listdir(folder)
+           if filename.lower().endswith('.dll')]
+      dest_path: '.'
+      when: 'win32'

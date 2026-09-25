@@ -30,8 +30,8 @@
 # Inspect afterwards (from src/barks-reader):
 #   uv run mutmut results | grep survived
 #   uv run mutmut show <mutant-name>
-# Two traps that make survivor counts lie (property tests in classes, functools.cache):
-# see docs/mutation-testing.md before believing a number.
+# Four traps that make survivor counts lie (property tests in classes, functools.cache,
+# cleared environments, module-scoped fixtures): see docs/mutation-testing.md first.
 
 set -euo pipefail
 
@@ -64,7 +64,12 @@ changed_core_globs() {
             "${tests_rel}"/test_*.py)
                 local module="${path##*/test_}"
                 # Only a top-level core module; nested ones have no naming convention.
-                [[ -f "${repo_root}/${core_rel}/${module}" ]] && printf '*/core/%s\n' "${module}"
+                # An if, not "&&": under set -e a false test as the loop's last command
+                # made the whole pipeline fail, and the script exited before mutating
+                # anything - silently, since the failure was inside "globs=$(...)".
+                if [[ -f "${repo_root}/${core_rel}/${module}" ]]; then
+                    printf '*/core/%s\n' "${module}"
+                fi
                 ;;
         esac
     done | sort -u
@@ -96,8 +101,14 @@ fi
 cd "${repo_root}/src/barks-reader"
 
 # Kivy-free unit tests only — UI tests fail in mutmut's sandbox and abort the run.
+# Two more are left out, since mutmut copies the tests under mutants/ and runs
+# them from there: the first-run installer's test (that module, not in core/ and
+# never mutated, resolves the executable's directory at import time, which
+# asserts in the sandbox), and the GUI harness's tests (they put scripts/ and
+# tests/gui on sys.path relative to their own file, which is elsewhere in the
+# sandbox). Either takes the whole baseline down before a single mutant runs.
 selection=$(cd tests/unit && for f in test_*.py; do
-    grep -qE '^(import kivy|from kivy|import barks_reader\.ui|from barks_reader\.ui)' "$f" \
+    grep -qE '^(import kivy|from kivy|import barks_reader\.ui|from barks_reader\.ui|from barks_reader import first_run_installer|from barks_reader\.first_run_installer|import gui_driver|from barks_gui)' "$f" \
         || printf '    tests/unit/%s\n' "$f"
 done)
 

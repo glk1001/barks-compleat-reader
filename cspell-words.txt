@@ -79,6 +79,7 @@ fontstyle
 fontweight
 frontmatter
 frozensets
+funcargs
 Funnybooks
 generalise
 generalises
@@ -91,6 +92,7 @@ hardbreak
 headlessly
 hidinput
 hitbox
+hookwrapper
 Hyperlegible
 hyphenatable
 idempotently
@@ -123,6 +125,7 @@ llm
 llvmpipe
 loadedmetadata
 logr
+makereport
 markersize
 materialise
 materialises
@@ -141,7 +144,9 @@ movflags
 mtdev
 navigations
 nbytes
+NCCALCSIZE
 neighbour
+nodeid
 nonexistentword
 normalised
 normalises
@@ -241,9 +246,12 @@ vmem
 Wacapew
 wikilinks
 windowmanager
+winget
 wmclass
 wmctrl
 wordclouds
+workerid
+workerinput
 xautomation
 xdotool
 xdpyinfo
@@ -286,3 +294,9 @@ barkspack
 screenful
 restripe
 restripes
+libinput
+stencilview
+udevadm
+sysname
+tappable
+usermod

@@ -55,6 +55,26 @@ def load_session_state(state_path: Path, bundle: Path) -> SessionState | None:
     return SessionState(page, float(scroll_y))
 
 
+def resolve_start_page(
+    bundle: Path, start_page: Path | None, state_path: Path | None
+) -> tuple[Path, float]:
+    """Choose the page a viewer opens on, and the scroll offset to open it at.
+
+    A caller-chosen page wins, at the top. Otherwise the saved session's page
+    and offset, when a state file says where and it still resolves. Otherwise
+    the bundle's home page: a viewer must always open onto something, and a
+    fresh profile (no session yet) or a regenerated wiki (stale session) would
+    otherwise show an empty pane.
+    """
+    if start_page is not None:
+        return start_page, 1.0
+    if state_path is not None:
+        saved = load_session_state(state_path, bundle)
+        if saved is not None:
+            return saved.page, saved.scroll_y
+    return bundle / "index.md", 1.0
+
+
 def save_session_state(state_path: Path, bundle: Path, page: Path, scroll_y: float) -> None:
     """Write the session file — best effort, failures are not the reader's problem."""
     try:

@@ -1,6 +1,8 @@
 import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.title_search import BarksTitleSearch
 
 
@@ -13,6 +15,21 @@ class TestBarksTitleSearch:
     def test_get_titles_matching_prefix_empty(self) -> None:
         """Test that an empty prefix returns an empty list."""
         assert self.search.get_titles_matching_prefix("") == []
+
+    def test_every_title_is_found_by_its_canonical_title(self) -> None:
+        """Typing a whole title finds it, for every title the search indexes.
+
+        Extras are not indexed. The query is the plain canonical title, not the
+        parenthesised display form. Membership, not position: a title that is a
+        prefix of another still matches both.
+        """
+        not_found = [
+            info.get_title_str()
+            for info in BARKS_TITLE_INFO
+            if info.issue_name != Issues.EXTRAS
+            and info.title not in self.search.get_titles_matching_prefix(info.get_title_str())
+        ]
+        assert not_found == []
 
     def test_get_titles_matching_prefix_one_char(self) -> None:
         """Test searching with a single character prefix."""

@@ -36,8 +36,10 @@ Assumes
       already on ``BARKS_PROBE_DISPLAY``.
     - ffmpeg built with libx264 and libfreetype.
 
-Only the standard library is used, so this runs without the workspace venv, the
-same as the gui-probe script it drives.
+The keystroke driver and the app boot live in ``gui_driver.py``, shared with the
+GUI test suite; this file is the beats, the camera, and the stitch. Only the
+standard library is used, so this runs without the workspace venv, the same as
+the gui-probe script it drives.
 
 The app rewrites its config on exit, so this backs up ``barks-reader.json``
 before touching ``last_selected_node`` and restores it on any exit, including a
@@ -79,15 +81,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from gui_driver import DISPLAY, PROBE, Driver, DriverError, Pick, boot_app_at, probe
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROBE = REPO_ROOT / "scripts" / "gui-probe.sh"
-DISPLAY = os.environ.get("BARKS_PROBE_DISPLAY", ":2")
-# The app reads this on startup and seeds its random module from it; gui-probe
-# launches the app as a child, so setting it here is enough to reach it.
-RANDOM_SEED_ENV_VAR = "BARKS_READER_RANDOM_SEED"
 
 DEFAULT_OUT_DIR = REPO_ROOT / "website"
 WORK_DIR = REPO_ROOT / "build" / "demo-beats"
@@ -116,8 +115,6 @@ CAPTION_SHADOW = 2
 # so this sits lower again while keeping a 36px margin over the value that failed.
 CAPTION_BOTTOM = 72
 
-WALK_PAUSE = 0.45  # pace of a single Down while walking the tree on camera
-TYPE_PAUSE = 0.4  # pace of a single character into a search box
 
 # Where each output's poster frame comes from. A beat name takes that beat's
 # resting frame; "first" takes the video's own opening frame.
@@ -148,19 +145,6 @@ BROWSE_TITLE_STEPS = 7
 # up - but they are not zero, because the app drops keys pressed at full speed.
 SETUP_PACE = 0.25
 
-# How long a setup that ends on a title view waits before the camera rolls.
-# The bottom title view fades in over a random 0-4s (the app's
-# TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS), and nothing is written to the
-# log while it animates - so settle(), which waits on the log, returns with the fade
-# still running and the beat opens on a part-transparent panel with the tree showing
-# through. Measured on a clip recorded without this wait, the panel was still
-# settling 1.4s in. That makes the cut from the beat before jump in opacity even
-# when both are on the same story and, since the seed was fixed, the same artwork.
-# RANDOM_SEED pins the fade's duration too (it draws from the same seeded random
-# module as the artwork), but this still covers the worst case with a little margin
-# so it stays right with the seed set to None. There is nothing to wait on but time.
-TITLE_FADE_SECS = 4.5
-
 # Pins the app's random image choices, so a re-recorded beat comes back with the
 # same backgrounds and insets as the one it replaces and two runs can be compared
 # frame for frame. Any fixed number does; it only has to be the same every time.
@@ -170,52 +154,38 @@ RANDOM_SEED: int | None = 20260915
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
 SEARCH_TITLE_QUERY = "vacation"
-# Which result row to take, counting from 1, and where the rows sit on the
-# nested display.
-#
-# The rows are clicked rather than keyed. There is no keyboard path that
-# survives: the search box keeps the keyboard, so Down moves the text cursor
-# instead of the selection, and whether a press reaches the list at all varies
-# run to run. Clicking is exact here - the nested display has no compositor and
-# no HiDPI scaling, so a screenshot pixel is the pixel to click - and the beat
-# still checks by name which story it landed on, so a layout change fails the
-# run instead of quietly demonstrating a different comic.
+# Which result row to take, counting from 1. Return in the search box hands the
+# keyboard to the first row and Down walks them, each move waited on through the
+# log; the beat still checks by name which story it landed on, so a reordered
+# list fails the run instead of quietly demonstrating a different comic. (The
+# rows were once clicked by pixel; scripts/repro_search_enter.py still does, as
+# the bug it reproduces is in the mouse path.)
 SEARCH_TITLE_RESULT = 2
-SEARCH_RESULT_X = 450
-SEARCH_RESULT_TOP_Y = 695  # centre of the first row
-SEARCH_RESULT_ROW_H = 30
 SEARCH_WORD_QUERY = "airline"
 # The story the word beat opens the speech bubbles for, spelled as the app logs it.
 # Word results are sorted by title, so the pick is a row index into that list.
+# Right on the row is its speech balloon, and the popup opens with its first bubble
+# focused - page 1's "WE'LL FLY! THE AIRLINE TICKET OFFICE IS ON THE NEXT STREET!".
+# Pressing it goes to that page of the story.
 SEARCH_WORD_PICK = "Adventure Down Under"
 SEARCH_WORD_RESULT = 1
-# The word-results geometry, in screenshot pixels: every row ends in a speech
-# balloon that opens just that story's matching bubbles.
-SEARCH_WORD_BALLOON_X = 728
-SEARCH_WORD_RESULT_TOP_Y = 697  # centre of the first row
-SEARCH_WORD_ROW_H = 29
-# The bubble to press in the popup - the first one, page 1's "WE'LL FLY! THE AIRLINE
-# TICKET OFFICE IS ON THE NEXT STREET!". Pressing it goes to that page of the story.
-SEARCH_WORD_BUBBLE_X = 232
-SEARCH_WORD_BUBBLE_Y = 843
+# How long each step down the result rows rests, for the camera.
+RESULT_STEP_PAUSE = 0.5
 
-
-@dataclass(frozen=True)
-class Pick:
-    """A story a beat opens, with its own pacing.
-
-    Args:
-        title: The app's title enum, as logged in "New selected node". Empty for
-            a beat that reaches its comic positionally rather than by name.
-        pages: Pages to show, counting the one it opens on. 1 opens and closes
-            without turning.
-        dwell: Seconds to rest on each of those pages.
-
-    """
-
-    title: str = ""
-    pages: int = 2
-    dwell: float = 2.5
+# Log lines the beats wait on. The recorder is stdlib-only, so these are copies
+# of the app's markers (barks_reader.core.log_markers), with re.escape'd fields;
+# scripts/tests/test_record_demo.py checks each against the line the app writes.
+ALL_IMAGES_LOADED = "All images loaded"
+GOTO_TITLE = 'Goto title: "{name}"'
+WORD_CHIP_SELECTED = "Word search: selected chip"
+SHOW_BUBBLES_FOR = 'Show speech bubbles for: "{title}"'
+BUBBLE_PRESS = 'Word search bubble press: "{title}"'
+BUBBLES_POPUP_OPENED = "Speech bubbles popup opened."
+BUBBLES_POPUP_DISMISSED = "Speech bubbles popup dismissed."
+SEARCH_MODE_SET = "SearchScreen mode set to '{mode}'"
+WIKI_ACTIVE = "Wiki reader screen is active"
+NODE_SELECTED = 'New selected node: "{name}"'
+LETTER_POPULATED = "Populated index page for letter"
 
 
 # Stories the censored_stories beat opens. They must be in TREE order, which is
@@ -377,8 +347,6 @@ PINNED_CUES: dict[str, dict[str, int | str] | None] = {
     # wiki_jump (WIKI_SIDEBAR_PICK): never read, so no cue.
     "Voodoo Hoodoo": None,
 }
-GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
-GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is the one that plays
@@ -404,40 +372,9 @@ def say(message: str = "") -> None:
     print(message)  # noqa: T201
 
 
-class BeatError(RuntimeError):
-    """A beat could not reach a state it needed, so the run must not continue."""
-
-
-def probe(*args: str, script: Path = PROBE) -> str:
-    """Run one ``gui-probe.sh`` command and return its stdout.
-
-    The one place the probe is called from, so a failure is never dropped: a
-    ``start`` that died (a stale Xephyr still up, the app never becoming ready)
-    used to return normally, and the beat was then driven against a half-booted
-    or leftover app and a wrong clip cached with no error.
-
-    Args:
-        *args: The probe subcommand and its arguments.
-        script: The probe script to run.
-
-    Returns:
-        The command's stdout.
-
-    Raises:
-        BeatError: If the probe exits non-zero, with what it wrote to stderr.
-
-    """
-    result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
-        [str(script), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        detail = result.stderr.strip() or result.stdout.strip() or "no output"
-        msg = f"gui-probe {' '.join(args)} failed (exit {result.returncode}): {detail}"
-        raise BeatError(msg)
-    return result.stdout
+# The recorder's name for the driver's error: a beat could not reach a state it
+# needed, so the run must not continue.
+BeatError = DriverError
 
 
 # ------------------------------------------------------------ beat registry --
@@ -497,341 +434,6 @@ def find_beat(name: str) -> Beat:
             return b
     msg = f"no such beat: {name}"
     raise BeatError(msg)
-
-
-# -------------------------------------------------------------- the driver --
-
-
-class Driver:
-    """Keystroke-level control of the app on the nested display.
-
-    Every method that waits does so on the app's own log, which is a more
-    precise oracle than the pixels and is never stale.
-    """
-
-    _NODE_RE = re.compile(r'New selected node: "([^"]+)"')
-    _PAGE_RE = re.compile(r"Showed page (\d+)")
-
-    # The reader's action-bar menu, in the order it is navigated - which is the
-    # order comic_book_reader.py passes to _setup_action_bar_nav, NOT the order
-    # the buttons appear in the .kv file. Focus starts on the first of these.
-    _MENU_BUTTONS = (
-        "close",
-        "fullscreen",
-        "double_page",
-        "goto_start",
-        "goto_end",
-        "goto_page",
-    )
-
-    def __init__(self, probe_script: Path = PROBE) -> None:
-        self._probe = probe_script
-        self._log = Path(self._run(["log"]).strip())
-        # Menu focus is sticky, so the driver has to remember where it left it.
-        self._menu_focus = self._MENU_BUTTONS[0]
-
-    def _run(self, args: Sequence[str]) -> str:
-        return probe(*args, script=self._probe)
-
-    @property
-    def log_path(self) -> Path:
-        """Path of the running app's log file."""
-        return self._log
-
-    def key(self, *keys: str) -> None:
-        """Inject one or more X11 key names, e.g. ``Down``, ``Return``, ``Escape``."""
-        self._run(["key", *keys])
-
-    def click(self, x: int, y: int) -> None:
-        """Click at a screenshot pixel on the nested display."""
-        self._run(["click", str(x), str(y)])
-
-    def settle(self) -> None:
-        """Block until the app has stopped writing to its log, i.e. stopped drawing."""
-        self._run(["settle"])
-
-    @staticmethod
-    def hold(seconds: float) -> None:
-        """Dwell on the current frame.
-
-        Pacing only - never use this to wait for the app to reach a state. Use
-        `wait_for` or `key_then_wait`, which fail loudly instead of silently
-        recording the wrong screen.
-        """
-        time.sleep(seconds)
-
-    def type_slowly(self, text: str) -> None:
-        """Type into a focused text box one character at a time.
-
-        ``gui-probe type`` sends the whole string through ``xte str`` and the
-        app's search-as-you-type handler drops most of it - a ten-character query
-        arrived in the box as four characters. Per-character with a gap is
-        reliable, and reads as a natural typing pace on video.
-        """
-        for char in text:
-            self._run(["type", char])
-            time.sleep(TYPE_PAUSE)
-
-    def current_node(self) -> str:
-        """Return the node the app last logged as selected.
-
-        Title nodes log their enum name (``FROZEN_GOLD``), category nodes their
-        text (``Themes``). Empty if the app has not logged a selection yet.
-        """
-        matches = self._NODE_RE.findall(self._log.read_text(errors="replace"))
-        return matches[-1] if matches else ""
-
-    def current_page(self) -> int:
-        """Return the body page the reader last rendered, per the app log.
-
-        Read rather than calculated: a story opens on whatever page the user
-        cued in their config, so the caller cannot know where the reader is
-        without assuming that cue.
-        """
-        matches = self._PAGE_RE.findall(self._log.read_text(errors="replace"))
-        return int(matches[-1]) if matches else 0
-
-    def match_count(self, pattern: str) -> int:
-        """Return how many log lines have matched `pattern` so far."""
-        return len(re.findall(pattern, self._log.read_text(errors="replace")))
-
-    def select_node(self, want: str, max_steps: int = 60) -> None:
-        """Walk the tree downward until `want` is the selected node.
-
-        Name-driven rather than a counted run of Downs, so a title added upstream
-        shifts the walk instead of silently landing the demo on the wrong story.
-        It only ever goes down, so picks have to be in tree order.
-
-        Raises:
-            BeatError: If the selection stops moving, or `want` is never reached.
-
-        """
-        current = self.current_node()
-        stalled = 0
-        for _ in range(max_steps):
-            if current == want:
-                return
-            previous = current
-            self.key("Down")
-            time.sleep(WALK_PAUSE)
-            current = self.current_node()
-            if current != previous:
-                stalled = 0
-                continue
-            # One swallowed keypress during a render is normal; two in a row
-            # means the selection cannot move any further down.
-            stalled += 1
-            if stalled >= 2:  # noqa: PLR2004
-                msg = (
-                    f'tree stopped at "{current}" before reaching "{want}" - is it above '
-                    f"the current position, or in another branch?"
-                )
-                raise BeatError(msg)
-        msg = f'never reached node "{want}" in {max_steps} steps'
-        raise BeatError(msg)
-
-    def key_then_wait(self, pattern: str, timeout: float, *keys: str) -> None:
-        """Press keys, then block until a NEW occurrence of `pattern` is logged.
-
-        ``gui-probe wait`` greps the whole log, so a marker that fires once per
-        comic matches the previous comic and returns instantly - which would cut
-        away from a story before it had drawn. Counting occurrences and blocking
-        for a new one is the only reliable form when a beat opens more than one.
-
-        Raises:
-            BeatError: If no new match arrives within `timeout` seconds.
-
-        """
-        before = self.match_count(pattern)
-        self.key(*keys)
-        self._await_new(pattern, timeout, before)
-
-    def click_then_wait(self, pattern: str, timeout: float, x: int, y: int) -> None:
-        """Click, then block until a NEW occurrence of `pattern` is logged.
-
-        Raises:
-            BeatError: If no new match arrives within `timeout` seconds.
-
-        """
-        before = self.match_count(pattern)
-        self.click(x, y)
-        self._await_new(pattern, timeout, before)
-
-    def _await_new(self, pattern: str, timeout: float, before: int) -> None:
-        deadline = time.monotonic() + timeout
-        while self.match_count(pattern) <= before:
-            if time.monotonic() > deadline:
-                msg = f"beat stalled: no new /{pattern}/ in the app log after {timeout}s"
-                raise BeatError(msg)
-            time.sleep(0.25)
-
-    def wait_for(self, pattern: str, timeout: float = 15) -> None:
-        """Block until `pattern` appears anywhere in the app log.
-
-        Raises:
-            BeatError: If it never appears within `timeout` seconds.
-
-        """
-        deadline = time.monotonic() + timeout
-        while self.match_count(pattern) == 0:
-            if time.monotonic() > deadline:
-                msg = f"beat stalled: never saw /{pattern}/ in the app log"
-                raise BeatError(msg)
-            time.sleep(0.25)
-
-    # -- composite moves ----------------------------------------------------
-
-    def open_branch(self, name: str) -> None:
-        """Walk down to a collapsed node and expand it."""
-        self.select_node(name)
-        self.hold(0.3)
-        self.key("Return")
-        self.settle()
-        self.hold(0.4)
-
-    def read_pages(self, pick: Pick) -> None:
-        """Rest on the page the comic opened at, then turn through the rest.
-
-        Waits on the bare "Showed page" marker rather than a page number: a story
-        opens on whatever page the user cued, so the number is not known here,
-        and `key_then_wait` only needs a new render rather than a specific one.
-        """
-        self.hold(pick.dwell)
-        for _ in range(pick.pages - 1):
-            self.key_then_wait("Showed page", 15, "Right")
-            self.hold(pick.dwell)
-
-    def _walk_menu_to(self, name: str) -> None:
-        """Open the reader's action-bar menu and move its focus to one button.
-
-        Menu mode does not reopen on a fixed button: ``_enter_menu_mode`` restores
-        ``_last_used_btn_idx``, so it comes back focused on whatever was activated
-        last. A fixed run of arrow presses is therefore only right the first time
-        - after a goto-page, the same two Rights that used to reach double-page
-        reach fullscreen instead, which on a nested display with no window
-        manager resizes the window out from under the recorder.
-
-        Tracking the last activation here is what makes the second press land
-        where it says. Nothing else drives the app, so this stays in step. The
-        caller presses Return, so it can wait on whatever that button logs.
-
-        Args:
-            name: One of `_MENU_BUTTONS`.
-
-        Raises:
-            BeatError: If `name` is not a menu button.
-
-        """
-        if name not in self._MENU_BUTTONS:
-            msg = f"no such menu button: {name} (have: {', '.join(self._MENU_BUTTONS)})"
-            raise BeatError(msg)
-
-        count = len(self._MENU_BUTTONS)
-        here = self._MENU_BUTTONS.index(self._menu_focus)
-        there = self._MENU_BUTTONS.index(name)
-        forward = (there - here) % count
-        backward = (here - there) % count
-
-        self.key("Escape")  # reader menu mode
-        self.hold(0.5)
-        step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
-        for _ in range(presses):
-            self.key(step)
-            self.hold(0.4)
-        self._menu_focus = name
-
-    def press_menu_button(self, name: str) -> None:
-        """Open the reader's action-bar menu and activate one button by name.
-
-        Args:
-            name: One of `_MENU_BUTTONS`.
-
-        Raises:
-            BeatError: If `name` is not a menu button.
-
-        """
-        self._walk_menu_to(name)
-        self.key("Return")
-
-    def go_back(self) -> None:
-        """Press Go Back on the main screen's action bar, from the tree.
-
-        The main screen has its own action-bar menu, whose focus starts on
-        go-back (main_screen.py sets default_focus_idx=2, deliberately, so that
-        Escape then Enter can never hit the quit button). No beat moves that
-        focus, so unlike the reader's menu this needs no tracking - but the same
-        stickiness would apply if one ever did.
-        """
-        self.key("Escape")  # main screen menu mode, focused on go-back
-        self.hold(0.6)
-        self.key("Return")
-
-    def go_back_then_wait(self, pattern: str, timeout: float = 15) -> None:
-        """Press Go Back, then block until a NEW occurrence of `pattern` is logged.
-
-        The counting form, for the same reason as `key_then_wait`: the screen a beat
-        goes back to logged its mode on the way in, so a plain `wait_for` matches that
-        older line and returns before anything has moved.
-
-        Raises:
-            BeatError: If no new match arrives within `timeout` seconds.
-
-        """
-        before = self.match_count(pattern)
-        self.go_back()
-        self._await_new(pattern, timeout, before)
-
-    def close_reader(self) -> None:
-        """Shut the comic reader through its menu, and wait for the main screen."""
-        self._walk_menu_to("close")
-        self.key_then_wait("Main screen is active", 15, "Return")
-
-    def goto_page(self, target: int) -> None:
-        """Jump to a body page through the reader's goto-page dropdown.
-
-        The dropdown opens focused on the *current* page and lists the pages in
-        index order, so the number of steps is just the difference between the
-        two page numbers - the non-body entries in front of page 1 do not come
-        into it.
-
-        Args:
-            target: The body page to land on.
-
-        """
-        current = self.current_page()
-        self.press_menu_button("goto_page")  # opens the page list
-        self.settle()
-        self.hold(GOTO_LIST_DWELL)
-        step = "Down" if target > current else "Up"
-        for _ in range(abs(target - current)):
-            self.key(step)
-            self.hold(GOTO_STEP_PAUSE)
-        self.hold(0.6)
-        # Anchored on the log line's next word: a bare "Showed page 3" is a prefix
-        # of "Showed page 34", so a dropped key landing anywhere in the thirties
-        # would have passed for page 3.
-        self.key_then_wait(f"Showed page {target} in ", 15, "Return")
-
-    def open_story(self, pick: Pick) -> None:
-        """Open the selected title, read `pick.pages` pages, and return to the tree.
-
-        The comic opens on the page cued in the user's config: a saved last-read
-        page inside the body puts a ticked "Goto page N" on the title view and the
-        read portal honours it. That checkbox appears only once the title view has
-        finished rendering, so settle first - pressing Enter early on a heavy title
-        view opens the story at the cover instead, silently.
-        """
-        self.settle()
-        self.key("Return")  # focus the title view read portal
-        self.hold(0.6)
-        self.key_then_wait("All images loaded", 30, "Return")
-        self.read_pages(pick)
-        self.close_reader()
-        self.hold(0.5)
-        # Closing the reader leaves focus in the bottom region, where Down does
-        # nothing to the tree. Escape hands it back (main_screen_nav:243).
-        self.key("Escape")
-        self.settle()
 
 
 # ---------------------------------------------------------------- the beats --
@@ -925,8 +527,9 @@ def _setup_open_comic(d: Driver) -> None:
     _collapse_tree(d)
     _open_tree_to_title(d, pace=SETUP_PACE)
     # Let the title view finish fading in, so this beat opens on the same fully
-    # drawn panel browse_tree ended on rather than mid-fade.
-    d.hold(TITLE_FADE_SECS)
+    # drawn panel browse_tree ended on rather than mid-fade. The fade runs a random
+    # 0-4s; the app logs both its ends, so this waits on the log, not the clock.
+    d.wait_title_fade()
 
 
 @beat(
@@ -939,7 +542,7 @@ def open_comic(d: Driver) -> None:
     """Open the story browse_tree stopped on and turn a few of its pages."""
     d.key("Return")  # focus the title view's read portal
     d.key("Return")  # open the comic
-    d.wait_for("All images loaded", 30)
+    d.wait_for(ALL_IMAGES_LOADED, 30)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
     d.read_pages(OPEN_COMIC_PICK)
     d.hold(2.5)
@@ -991,23 +594,22 @@ def search_story(d: Driver) -> None:
     d.settle()
     d.hold(1.2)
 
-    row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
-    d.click_then_wait(
-        f'Goto title: "{re.escape(SEARCH_TITLE_PICK.title)}"', 15, SEARCH_RESULT_X, row_y
-    )
-    # Let the title view finish fading before the Enter below. Only a *key*-driven
-    # goto-title is handed to enter_nav_focus_at_portal; picking the result with the
-    # mouse schedules no hand-off, so that Enter lazily enters nav focus instead
-    # (main_screen_nav:241) and takes its default from _is_panel_content_visible() -
-    # which reads the very opacity the fade is still animating. Pressed early, focus
-    # lands on the eye toggle, the Enter toggles that, and no comic ever opens. At
-    # hold(2.5) this beat was winning the race on luck and lost it as soon as a
-    # different fade duration came up.
-    d.hold(TITLE_FADE_SECS)
-
-    # Focus defaults to the read portal now the panel is up, so one Enter opens the
-    # comic - unlike the other beats, which have to focus the portal first.
-    d.key_then_wait("All images loaded", 30, "Return")
+    # Return leaves the box for the first result row; Down walks the rows.
+    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    for _ in range(SEARCH_TITLE_RESULT - 1):
+        d.move_focus("Down")
+        d.hold(RESULT_STEP_PAUSE)
+    d.hold(0.6)
+    # A result picked from the keyboard hands focus to the title view's read portal,
+    # so one Enter there opens the comic - but not while the panel is still fading
+    # in, when the Enter is lost. The app logs the fade's end, so wait on that.
+    with (
+        d.expect(GOTO_TITLE.format(name=re.escape(SEARCH_TITLE_PICK.title))),
+        d.expect(d.ENTERED_AT_PORTAL),
+    ):
+        d.key("Return")
+    d.wait_title_fade()
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(SEARCH_TITLE_PICK)
     d.close_reader()
     d.hold(1.0)
@@ -1015,7 +617,7 @@ def search_story(d: Driver) -> None:
     d.settle()
     # The counting form: the search logged this same mode line when the beat booted
     # onto it, so a plain wait_for would return before the Go Back had landed.
-    d.go_back_then_wait("SearchScreen mode set to 'Title'", 15)
+    d.go_back_then_wait(SEARCH_MODE_SET.format(mode="Title"))
     d.settle()
     d.hold(2.5)
 
@@ -1036,38 +638,44 @@ def search_words(d: Driver) -> None:
     d.hold(0.5)
     d.type_slowly(SEARCH_WORD_QUERY)
     d.settle()
-    d.hold(0.1)
-    d.key("Down")  # focus the first matching word chip
-    d.settle()
-    d.hold(0.1)
-    d.key_then_wait("Word search: selected chip", 15, "Return")
+    d.hold(0.3)
+    # Return in the box picks the first matching word chip and lands focus on it
+    # (the box keeps every other key, so there is no Down to it).
+    d.key_then_wait(WORD_CHIP_SELECTED, "Return")
     d.hold(2.0)  # the list of every story the word is spoken in
 
-    row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
-    d.click_then_wait(
-        f'Show speech bubbles for: "{re.escape(SEARCH_WORD_PICK)}"',
-        15,
-        SEARCH_WORD_BALLOON_X,
-        row_y,
-    )
+    # Return on the chip enters the result rows; Right on a row is its speech
+    # balloon, which opens just that story's matching bubbles.
+    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    for _ in range(SEARCH_WORD_RESULT - 1):
+        d.move_focus("Down")
+        d.hold(RESULT_STEP_PAUSE)
+    d.move_focus("Right")
+    d.hold(0.6)
+    with (
+        d.expect(SHOW_BUBBLES_FOR.format(title=re.escape(SEARCH_WORD_PICK))),
+        d.expect(BUBBLES_POPUP_OPENED),
+        d.expect(d.FOCUS_MOVED),  # the popup opens with its first bubble focused
+    ):
+        d.key("Return")
     d.hold(3.5)  # every line the word is spoken in, with the word picked out
 
     # A bubble goes to its story at the page that line is on.
-    d.click_then_wait(
-        f'Word search bubble press: "{re.escape(SEARCH_WORD_PICK)}"',
-        15,
-        SEARCH_WORD_BUBBLE_X,
-        SEARCH_WORD_BUBBLE_Y,
-    )
+    with (
+        d.expect(BUBBLE_PRESS.format(title=re.escape(SEARCH_WORD_PICK))),
+        d.expect(BUBBLES_POPUP_DISMISSED),
+    ):
+        d.key("Return")
     d.settle()
     d.hold(3.0)  # the title view for the story the bubble came from
+    d.wait_title_fade()  # the Enter below is lost while the panel is still fading in
 
     # Straight on into the story. Only the index screens hand focus to the read portal
     # after a popup goto (main_screen._bind_screen_callbacks wires
     # on_after_popup_goto_title for those alone), so this Enter is what enters the title
     # panel's nav focus - and it lands on the portal, which is what ced49f7's sibling
     # 63b4a42 made true while the panel is still fading in.
-    d.key_then_wait("All images loaded", 30, "Return")
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(SEARCH_WORD_READ)
     d.close_reader()
     d.hold(1.0)
@@ -1076,7 +684,7 @@ def search_words(d: Driver) -> None:
     # action bar's Go Back can be reached - the same two-step search_story needs.
     d.key("Escape")
     d.settle()
-    d.go_back_then_wait("SearchScreen mode set to 'Word'", 15)
+    d.go_back_then_wait(SEARCH_MODE_SET.format(mode="Word"))
     d.settle()
     d.hold(2.5)  # back on the search, query and results still there
 
@@ -1100,7 +708,7 @@ def read_story(d: Driver) -> None:
     d.settle()
     d.key("Return")  # focus the title view read portal
     d.hold(0.6)
-    d.key_then_wait("All images loaded", 30, "Return")
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
     d.read_pages(READ_STORY_PICK)
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
@@ -1143,7 +751,7 @@ def wiki_jump(d: Driver) -> None:
         d.hold(0.3)
     d.settle()
     d.hold(0.8)
-    d.key_then_wait("Wiki reader screen is active", 30, "Return")
+    d.key_then_wait(WIKI_ACTIVE, "Return", timeout=30)
     d.hold(2.5)
     for _ in range(3):
         d.key("Down")  # scroll the page
@@ -1174,7 +782,7 @@ def wiki_jump(d: Driver) -> None:
         d.key("Right")
         d.hold(0.5)
     d.hold(0.6)
-    d.key_then_wait(f'New selected node: "{re.escape(WIKI_SIDEBAR_PICK)}"', 20, "Return")
+    d.key_then_wait(NODE_SELECTED.format(name=re.escape(WIKI_SIDEBAR_PICK)), "Return", timeout=20)
     d.settle()
     d.hold(2.5)  # the reader, now on the story the wiki sent it to
 
@@ -1192,7 +800,7 @@ def speech_index(d: Driver) -> None:
     d.hold(2.5)
     # Walk the A-Z letters; each one repopulates the word grid.
     for _ in range(3):
-        d.key_then_wait("Populated index page for letter", 15, "Down")
+        d.key_then_wait(LETTER_POPULATED, "Down")
         d.hold(1.6)
     d.hold(1.0)
 
@@ -1338,44 +946,6 @@ def missing_clips(beats: Iterable[str], work_dir: Path) -> list[str]:
     return [b for b in beats if not (work_dir / f"{b}.mp4").is_file()]
 
 
-def boot_app_at(
-    node: Sequence[str],
-    *,
-    config: Path,
-    seed: int | None = RANDOM_SEED,
-    template: Path | None = None,
-    cues: Mapping[str, dict[str, int | str] | None] = PINNED_CUES,
-) -> None:
-    """Point the app's config at `node`, pin the cues and the seed, and start it.
-
-    Args:
-        node: The tree node to boot onto, leaf-to-root.
-        config: The app's ``barks-reader.json``, which is rewritten.
-        seed: Value for the app's random seed, or None to leave it unpinned.
-        template: Read the settings from here instead of from `config`, for a
-            caller that keeps a pristine copy and rebuilds `config` each boot.
-        cues: Last-read-page cues to merge in, keyed by display title; a None
-            value removes that story's cue.
-
-    Raises:
-        BeatError: If the probe could not start the app.
-
-    """
-    settings = json.loads((template or config).read_text())
-    settings.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
-    for title, cue in cues.items():
-        if cue is None:
-            settings.pop(title, None)
-        else:
-            settings[title] = {"last_read_page": dict(cue)}
-    config.write_text(json.dumps(settings, indent=2))
-    if seed is None:
-        os.environ.pop(RANDOM_SEED_ENV_VAR, None)
-    else:
-        os.environ[RANDOM_SEED_ENV_VAR] = str(seed)
-    probe("start")
-
-
 # ------------------------------------------------------------- the recorder --
 
 
@@ -1471,7 +1041,7 @@ class Recorder:
         Each beat opens on a known screen instead of inheriting wherever the
         previous beat left the selection.
         """
-        boot_app_at(node, config=self._config)
+        boot_app_at(node, config=self._config, seed=RANDOM_SEED, cues=PINNED_CUES)
 
     def app_region(self) -> tuple[int, int, int, int]:
         """Return the app window's x11grab region on the nested display.

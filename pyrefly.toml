@@ -33,7 +33,11 @@ project-excludes = [
     "**/vulture_whitelist.py",
 ]
 
-python-interpreter = ".venv/bin/python"
+# No interpreter path: `uv run` activates the workspace .venv, which pyrefly
+# finds by itself, as .venv/bin/python on Linux and .venv\Scripts\python.exe on
+# Windows. The platform is pinned to CI's, so a Windows run agrees with the gate:
+# otherwise win32-only APIs resolve there and Linux-needed suppressions look unused.
+python-platform = "linux"
 
 # Residual findings that are neither real bugs nor structurally suppressible are
 # grandfathered here, so day-to-day runs report only NEW issues (0 today). This

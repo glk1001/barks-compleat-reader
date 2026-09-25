@@ -17,6 +17,7 @@ from .comics_database import ComicsDatabase
 from .ocr_file_paths import get_ocr_prelim_groups_json_filename
 from .pages import get_page_num_str, get_srce_and_dest_pages_in_order
 from .speech_markup import same_text_ignoring_markup, strip_markup
+from .speech_speakers import SpeakerCall, speaker_call_from_group
 
 
 class OcrTypes(StrEnum):
@@ -45,6 +46,12 @@ class SpeechText:
     ``ai_text`` is the stripped one deliberately.  A consumer that has never
     heard of emphasis gets correct text by doing the obvious thing, and only a
     caller that actively wants tags can get them.
+
+    ``speaker`` is the vision pass's speaker call for the group, or ``None``
+    where none has been made (whole later volumes, and a few pages in the
+    finished ones).  It is read-only through this class: the tools that set
+    it write the page JSON directly, and ``save_group`` writes back only
+    ``ai_text``.
     """
 
     group_id: str
@@ -54,6 +61,7 @@ class SpeechText:
     ai_text_markup: str
     type: str
     text_box: list[tuple[int | float, int | float]]
+    speaker: SpeakerCall | None = None
 
     @classmethod
     def from_stored(
@@ -63,6 +71,7 @@ class SpeechText:
         stored_text: str,
         type_: str,
         text_box: list[tuple[int | float, int | float]],
+        speaker: SpeakerCall | None = None,
     ) -> "SpeechText":
         """Build from the text as stored on disk, deriving the other two views.
 
@@ -76,6 +85,7 @@ class SpeechText:
             stored_text: The group's ``ai_text`` value as read from disk.
             type_: The group's ``type`` field.
             text_box: The group's four corner points.
+            speaker: The group's speaker call, if it has one.
 
         Returns:
             A ``SpeechText`` with all three text views consistent.
@@ -94,6 +104,7 @@ class SpeechText:
             ai_text_markup=joined,
             type=type_,
             text_box=text_box,
+            speaker=speaker,
         )
 
     def with_stored_text(self, stored_text: str) -> "SpeechText":
@@ -102,7 +113,8 @@ class SpeechText:
         The editor rewrites text as the user types.  Using ``dataclasses.replace``
         to set ``raw_ai_text`` alone would leave ``ai_text`` holding the text from
         before the edit, which is the sort of quiet inconsistency the three views
-        are meant to prevent.
+        are meant to prevent.  The speaker call rides along unchanged: an edit
+        to the words is not a change of who said them.
 
         Args:
             stored_text: The new text, in its on-disk form.
@@ -117,6 +129,7 @@ class SpeechText:
             stored_text=stored_text,
             type_=self.type,
             text_box=self.text_box,
+            speaker=self.speaker,
         )
 
 
@@ -432,6 +445,7 @@ def _get_speech_text_list(
             stored_text=group["ai_text"],
             type_=group["type"],
             text_box=group["text_box"],
+            speaker=speaker_call_from_group(group),
         )
 
     return speech_groups, ocr_prelim_group
@@ -471,6 +485,9 @@ def _save_speech_page_group(
 ) -> bool:
     speech_page_json = speech_page_group.speech_page_json
 
+    # Only `ai_text` is written back, and into the group dict as loaded, so
+    # every other key on disk -- the speaker call and its review bookkeeping
+    # among them -- survives untouched. `SpeechText.speaker` is read-only here.
     need_to_save = False
     for group_id, speech_text in speech_page_group.speech_groups.items():
         if speech_text.raw_ai_text != speech_page_json["groups"][group_id]["ai_text"]:

@@ -26,6 +26,8 @@ jobs:
       ${{ !startsWith(github.ref, 'refs/tags/')
       || startsWith(github.ref, 'refs/tags/v') }}
     strategy:
+      # Every leg reports: a failure on one OS says nothing about the others.
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -74,7 +76,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libmtdev1t64 patchelf ccache
+          sudo apt-get install -y libgl1 libmtdev1t64 patchelf ccache xvfb xdotool
 
       - name: Install ccache (macOS)
         if: runner.os == 'macOS'
@@ -108,8 +110,14 @@ jobs:
               return data
           STUB
 
-      - name: Cache Nuitka build cache
-        uses: actions/cache@v4
+      # Restored here, saved straight after the build (below): a save left to the
+      # end of the job, as actions/cache does, is skipped whenever a later smoke
+      # test fails - and after a runner image update (a new compiler, so no cached
+      # object matches) every failing run then recompiled everything again, ~33 min
+      # on Windows, since none saved the fresh cache.
+      - name: Restore Nuitka build cache
+        id: nuitka-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cache/Nuitka
@@ -130,6 +138,52 @@ jobs:
       - name: Build executable
         shell: bash
         run: bash scripts/build.sh
+
+      # As soon as the build has succeeded, whatever the smoke tests below make of
+      # it: the compiled objects are good either way.
+      - name: Save Nuitka build cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/Library/Caches/Nuitka
+            ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: ${{ steps.nuitka-cache.outputs.cache-primary-key }}
+
+      # Launch what was built: with no data pack beside it the build takes its
+      # first-run path as far as the installer's "data pack missing" popup, which
+      # proves the packaged runtime, modules, installer and a Kivy window all work.
+      # On every leg: the Linux and Windows onefile executables as they are, the
+      # macOS bundle unpacked from its zip. Linux runs under xvfb; the macOS and
+      # Windows runners show the window in their own session.
+      - name: Smoke-test the executable
+        shell: bash
+        run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
+
+      # Again, pressing Escape in the popup through the OS's real input path
+      # (xdotool on Linux, SendInput on Windows): the popup must close and the
+      # program exit by itself, so the build takes a key the way a keyboard or
+      # remote sends it. Windows draws through ANGLE here: the runner's OpenGL is
+      # GDI Generic 1.1, below Kivy's 2.0, so only ANGLE reaches the app's popup.
+      # Not on macOS: its runners cannot create an OpenGL context at all ("Failed
+      # creating OpenGL pixel format"), so no Kivy window opens there to press a
+      # key in, though key injection itself works on them.
+      - name: Smoke-test the executable, pressing Escape
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then export KIVY_GL_BACKEND=angle_sdl2; fi
+          bash scripts/smoke-test-build.sh --press-escape ./${{ matrix.exe }}
+
+      # Again on Windows, drawing through ANGLE (Direct3D) rather than OpenGL: the
+      # build bundles Kivy's ANGLE DLLs for machines without working OpenGL (a VM
+      # with 3D acceleration off), and this proves the build really draws with them.
+      - name: Smoke-test the executable through ANGLE
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          KIVY_GL_BACKEND: angle_sdl2
+        run: bash scripts/smoke-test-build.sh ./${{ matrix.exe }}
 
       - name: Upload executable
         if: ${{ !env.ACT }}

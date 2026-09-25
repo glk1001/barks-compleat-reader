@@ -2,7 +2,17 @@
 
 from barks_fantagraphics.search_ports import CorpusTextTotals, FullTextSearchPort
 from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
-from barks_fantagraphics.whoosh_search_engine import TitleInfo
+from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo, TitleInfo
+
+
+def _speech(group_id: str, speaker: str | None) -> SpeechInfo:
+    return SpeechInfo(
+        group_id=group_id,
+        panel_num=1,
+        speech_text="MONEY!",
+        speech_text_markup="MONEY!",
+        speaker=speaker,
+    )
 
 
 class TestInMemoryFullTextSearch:
@@ -15,6 +25,35 @@ class TestInMemoryFullTextSearch:
         fake = InMemoryFullTextSearch(find_words_results={"duck": expected})
         assert fake.find_words("duck") == expected
         assert fake.find_words("missing") == {}
+
+    def test_find_words_speaker_filter_narrows_canned_result(self) -> None:
+        canned = {
+            "Title A": TitleInfo(
+                fanta_vol=1,
+                fanta_pages={
+                    "001": PageInfo("1", [_speech("0", "Scrooge"), _speech("1", "Donald")]),
+                    "002": PageInfo("2", [_speech("0", "Donald")]),
+                },
+            ),
+            "Title B": TitleInfo(
+                fanta_vol=2, fanta_pages={"005": PageInfo("5", [_speech("0", None)])}
+            ),
+        }
+        fake = InMemoryFullTextSearch(find_words_results={"money": canned})
+
+        narrowed = fake.find_words("money", speaker="Scrooge")
+
+        assert list(narrowed.keys()) == ["Title A"]
+        assert list(narrowed["Title A"].fanta_pages.keys()) == ["001"]
+        assert [s.group_id for s in narrowed["Title A"].fanta_pages["001"].speech_info_list] == [
+            "0"
+        ]
+        # The canned data is untouched.
+        assert len(canned["Title A"].fanta_pages["001"].speech_info_list) == 2  # noqa: PLR2004
+
+    def test_get_speakers(self) -> None:
+        fake = InMemoryFullTextSearch(speakers={"Donald": 3})
+        assert fake.get_speakers() == {"Donald": 3}
 
     def test_find_entities_returns_canned_result(self) -> None:
         expected = {"Title B": TitleInfo(fanta_vol=2)}
@@ -63,3 +102,4 @@ class TestInMemoryFullTextSearch:
         assert fake.get_entity_terms("person") == []
         assert fake.get_alpha_split_entity_terms("person") == {}
         assert fake.get_corpus_text_totals() == CorpusTextTotals(0, 0, 0, 0, 0)
+        assert fake.get_speakers() == {}

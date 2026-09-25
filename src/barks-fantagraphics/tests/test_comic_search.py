@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
@@ -61,6 +62,16 @@ class TestSearch:
         assert result.mode is SearchMode.TITLE
         assert Titles.GOLDEN_HELMET_THE in result.titles
         assert len(result.title_strings) == len(result.titles)
+
+    def test_title_mode_shows_the_display_form_of_the_canonical_title(self) -> None:
+        # Searched by its canonical title; listed with the parentheses the
+        # display form adds.
+        result = _search_with(InMemoryFullTextSearch()).search(
+            "The Victory Garden", SearchMode.TITLE
+        )
+
+        assert Titles.VICTORY_GARDEN_THE in result.titles
+        assert "(The Victory Garden)" in result.title_strings
 
     def test_tag_mode_populates_matched_tags(self) -> None:
         result = _search_with(InMemoryFullTextSearch()).search("christmas", SearchMode.TAG)
@@ -159,6 +170,19 @@ class TestPassThroughs:
         search = _search_with(InMemoryFullTextSearch(find_words_results={"money": expected}))
 
         assert search.find_words("money") == expected
+
+    def test_find_words_passes_speaker_through(self) -> None:
+        fake = MagicMock(spec=InMemoryFullTextSearch)
+        fake.find_words.return_value = {}
+
+        _search_with(fake).find_words("money", speaker="Scrooge")
+
+        fake.find_words.assert_called_once_with("money", speaker="Scrooge")
+
+    def test_get_speakers(self) -> None:
+        fake = InMemoryFullTextSearch(speakers={"Scrooge": 7})
+
+        assert _search_with(fake).get_speakers() == {"Scrooge": 7}
 
     def test_find_entities(self) -> None:
         expected = {"A Title": TitleInfo(fanta_vol=1)}
