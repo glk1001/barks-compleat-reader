@@ -191,6 +191,20 @@ just reader
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
     bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
     ```
+- **The overnight run** runs every GUI test there is, every way it can run: the suite as
+  configured, then on each panels source and each comic source, the settings matrix, a
+  landscape 1920x1080 screen, the tap tests by real touch (skipped when the udev rule is
+  missing), and the random-walk soak from three seeds. With `--app PATH` it also runs the
+  suite against a built executable. It keeps going after a failure, prints a pass/fail
+  table with timings, and exits non-zero if anything failed. It holds off sleep while it
+  runs and warns when on battery. Well over an hour.
+    ```
+    bash scripts/run_gui_overnight.sh                        # every stage
+    bash scripts/run_gui_overnight.sh --list                 # the stages
+    bash scripts/run_gui_overnight.sh --only touch,soak      # some of them (or --skip)
+    bash scripts/run_gui_overnight.sh --app ./barks-reader   # add a built executable
+    ```
+  Each stage's output, and the summary, go to `build/gui-tests/overnight-<stamp>/`.
 - **The GUI suite on Windows**: the same tests through `scripts/gui_probe.py`, which sends
   real keys with `SendInput` to the reader on the real desktop. One visible worker, about
   15 minutes; leave the machine alone while it runs. Needs `.env.runtime` pointing at a

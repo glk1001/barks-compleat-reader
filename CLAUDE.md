@@ -34,6 +34,12 @@ pushes nothing.
 bash scripts/run_benchmark.sh
 ```
 
+**Run every GUI test overnight** (the suite on each comic and panel source, the settings
+matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
+```bash
+bash scripts/run_gui_overnight.sh
+```
+
 **Run the GUI path tests** (excluded from the default test run; boots the real app on
 the nested Xephyr display via `scripts/gui-probe.sh`, driven by `scripts/gui_driver.py`):
 ```bash
