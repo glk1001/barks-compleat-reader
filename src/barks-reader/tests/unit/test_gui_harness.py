@@ -931,6 +931,39 @@ class TestTimings:
         assert timings.read_baseline(tmp_path / "gui-timings.json") is not None
         assert timings.main(["nonsense"]) == 2  # noqa: PLR2004
 
+    def test_drift_is_a_factor_past_the_calibration_and_not_a_mere_tenth(self) -> None:
+        calibrated = {"page shown": 0.9, "index built": 0.01, "tree nodes loaded": 0.5}
+        seen = {
+            "page shown": 1.4,
+            "index built": 0.05,
+            "tree nodes loaded": 0.7,
+            "post tree setup": 9,
+        }
+        (problem,) = timings.drifted(seen, calibrated)  # only page shown: 1.56x and 0.5s more
+        assert problem == "page shown: 1.4s, calibrated 0.9s (1.6x)"
+        assert timings.drifted(calibrated, calibrated) == []
+
+    def test_drift_compares_a_recording_with_the_calibration(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        baseline = tmp_path / "gui-timings.json"
+        monkeypatch.setattr(timings, "BASELINE_FILE", baseline)
+        jsonl = tmp_path / "timings.jsonl"
+        timings.record_slowest(jsonl, "a", {"page shown": 0.9})
+
+        assert timings.main(["drift", str(jsonl)]) == 0  # no calibration: nothing to compare
+        assert "no calibration" in capsys.readouterr().out
+
+        timings.write_baseline(baseline, {"page shown": 0.9}, workers=4)
+        assert timings.main(["drift", str(jsonl)]) == 0
+        assert "no drift" in capsys.readouterr().out
+
+        timings.record_slowest(jsonl, "b", {"page shown": 2.0})
+        assert timings.main(["drift", str(jsonl)]) == 1
+        assert "page shown: 2s, calibrated 0.9s (2.2x)" in capsys.readouterr().out
+
+        assert timings.main(["drift", str(tmp_path / "missing.jsonl")]) == 2  # noqa: PLR2004
+
     def test_slowest_durations_are_appended_as_json_lines(self, tmp_path: Path) -> None:
         out = tmp_path / "timings.jsonl"
         timings.record_slowest(out, "test_a", {"page shown": 0.2})

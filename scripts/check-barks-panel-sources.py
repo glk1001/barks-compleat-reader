@@ -13,7 +13,7 @@ from barks_reader.core.reader_utils import get_paths_from_directory
 from loguru import logger
 
 
-def check_file_paths_are_titles(path_set: set[str]) -> None:
+def check_file_paths_are_titles(path_set: set[str]) -> int:
     print("\n" + "=" * 50)
     print("PANEL TITLE CHECK REPORT")
     print("=" * 50)
@@ -46,9 +46,17 @@ def check_file_paths_are_titles(path_set: set[str]) -> None:
 
     print("\n" + "=" * 50)
 
+    return num_errors
 
-def main() -> None:
-    """Run the check."""
+
+def main() -> int:
+    """Run the check.
+
+    Returns:
+        The exit status: 1 when the PNG source is missing or holds a file that is
+        not a title's, 0 otherwise.
+
+    """
     logger.remove()
     logger.add(sys.stdout, level="INFO")
 
@@ -57,7 +65,7 @@ def main() -> None:
     png_source_path = file_paths.get_default_png_barks_panels_source()
     if not png_source_path.is_dir():
         logger.error(f"PNG source directory not found: {png_source_path}.")
-        return
+        return 1
 
     logger.info(f"Scanning PNG directory source: {png_source_path}...")
     png_paths = get_paths_from_directory(png_source_path)
@@ -65,8 +73,8 @@ def main() -> None:
     logger.success(f"Found {len(png_paths)} file paths in PNG directory.")
 
     logger.info("Checking PNG file set...")
-    check_file_paths_are_titles(png_paths)
+    return 1 if check_file_paths_are_titles(png_paths) else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

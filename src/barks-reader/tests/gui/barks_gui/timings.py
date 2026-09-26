@@ -59,6 +59,11 @@ MIN_BUDGETS: dict[str, float] = {"volumes loaded": 10.0}
 # The load one headless worker adds (its Xvfb, the app and its image threads):
 # a four-worker run took a quiet 16-core machine to about 12.
 PER_WORKER_LOAD = 3.0
+# `drift`: the overnight run's early warning, well inside a budget's
+# BUDGET_FACTOR. A kind has drifted when its slowest is this many times the
+# calibrated slowest and at least DRIFT_MIN_SECS more.
+DRIFT_FACTOR = 1.5
+DRIFT_MIN_SECS = 0.25
 
 # What is timed, by the marker that carries its {elapsed}.
 TIMED: dict[str, str] = {
@@ -266,15 +271,24 @@ def record_slowest(path: Path, nodeid: str, worst: dict[str, float]) -> None:
         f.write(json.dumps({"test": nodeid, "slowest": worst}) + "\n")
 
 
-def main(argv: list[str]) -> int:
-    """Fold a recording run into this machine's baseline.
+def drifted(seen: Mapping[str, float], calibrated: Mapping[str, float]) -> list[str]:
+    """Return a line for each kind now DRIFT_FACTOR times slower than its calibrated slowest.
 
-    Usage: ``calibrate <timings.jsonl> <workers>``.
+    Only kinds both runs saw, and only when the difference is at least
+    DRIFT_MIN_SECS: a tenth of a second doubled is noise, not a regression.
     """
-    if len(argv) != 3 or argv[0] != "calibrate":  # noqa: PLR2004
-        print("usage: python -m barks_gui.timings calibrate <timings.jsonl> <workers>")  # noqa: T201
-        return 2
-    jsonl, workers = Path(argv[1]), int(argv[2])
+    problems = []
+    for name in TIMED:
+        now, then = seen.get(name), calibrated.get(name)
+        if now is None or then is None:
+            continue
+        if now >= DRIFT_FACTOR * then and now - then >= DRIFT_MIN_SECS:
+            ratio = f" ({now / then:.1f}x)" if then > 0 else ""
+            problems.append(f"{name}: {now:g}s, calibrated {then:g}s{ratio}")
+    return problems
+
+
+def _calibrate(jsonl: Path, workers: int) -> int:
     baseline = write_baseline(BASELINE_FILE, fold(jsonl), workers)
     in_force, _ = budgets()
     print(f"timing budgets calibrated on {baseline.host}, written to {BASELINE_FILE}:")  # noqa: T201
@@ -283,6 +297,52 @@ def main(argv: list[str]) -> int:
         shown = f"{seen:g}s seen" if seen is not None else "not seen, committed budget"
         print(f"  {name:24s} {in_force[name]:5g}s  ({shown})")  # noqa: T201
     return 0
+
+
+def _drift(jsonl: Path) -> int:
+    baseline = read_baseline(BASELINE_FILE)
+    if baseline is None:
+        print(f"no calibration at {BASELINE_FILE}: nothing to compare with")  # noqa: T201
+        print("  (run: bash scripts/run_gui_tests.sh --headless --calibrate)")  # noqa: T201
+        return 0
+    if not jsonl.is_file():
+        print(f"no recorded timings at {jsonl}")  # noqa: T201
+        return 2
+    seen = fold(jsonl)
+    print(  # noqa: T201
+        f"slowest of each kind against the calibration on {baseline.host} of {baseline.calibrated}:"
+    )
+    for name in TIMED:
+        now, then = seen.get(name), baseline.slowest.get(name)
+        now_shown = f"{now:g}s" if now is not None else "not seen"
+        then_shown = f"{then:g}s" if then is not None else "not calibrated"
+        print(f"  {name:24s} {now_shown:>9s}  (calibrated {then_shown})")  # noqa: T201
+    problems = drifted(seen, baseline.slowest)
+    if not problems:
+        print(f"no drift: nothing {DRIFT_FACTOR:g}x its calibrated slowest")  # noqa: T201
+        return 0
+    print(f"drifted, {DRIFT_FACTOR:g}x or more past the calibration (still inside the budgets?):")  # noqa: T201
+    for problem in problems:
+        print(f"  {problem}")  # noqa: T201
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    """Fold a recording run into this machine's baseline, or compare one with it.
+
+    Usage: ``calibrate <timings.jsonl> <workers>`` or ``drift <timings.jsonl>``.
+    ``drift`` exits 1 when a kind has drifted (see `drifted`), 0 otherwise,
+    including when this machine has no calibration to compare with.
+    """
+    if len(argv) == 3 and argv[0] == "calibrate":  # noqa: PLR2004
+        return _calibrate(Path(argv[1]), int(argv[2]))
+    if len(argv) == 2 and argv[0] == "drift":  # noqa: PLR2004
+        return _drift(Path(argv[1]))
+    print(  # noqa: T201
+        "usage: python -m barks_gui.timings calibrate <timings.jsonl> <workers>\n"
+        "       python -m barks_gui.timings drift <timings.jsonl>"
+    )
+    return 2
 
 
 if __name__ == "__main__":
