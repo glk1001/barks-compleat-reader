@@ -166,6 +166,42 @@ class TestPhase10Layout:
         assert _kinds(phase) == ["kind=missing_segments_dir"]
 
 
+class TestValidateTitleFiles:
+    """A title's panel files, against a panel source with none at all."""
+
+    _DIR_GETTERS = (
+        "get_comic_inset_files_dir",
+        "get_comic_cover_files_dir",
+        "get_comic_bw_files_dir",
+        "get_comic_ai_files_dir",
+        "get_comic_censorship_files_dir",
+        "get_comic_closeup_files_dir",
+        "get_comic_favourite_files_dir",
+        "get_comic_original_art_files_dir",
+        "get_comic_search_files_dir",
+        "get_comic_silhouette_files_dir",
+        "get_comic_splash_files_dir",
+    )
+
+    @staticmethod
+    def _run(tmp_path: Path, title: Titles) -> core.PhaseResult:
+        file_paths = MagicMock(barks_panels_are_encrypted=False)
+        file_paths.get_inset_file_ext.return_value = ".png"
+        for getter in TestValidateTitleFiles._DIR_GETTERS:
+            getattr(file_paths, getter).return_value = tmp_path
+        phase = core.PhaseResult(name="Per-title Panel Files")
+        ctx = core._AuditCtx(panel_source=tmp_path, is_zip=False)  # noqa: SLF001
+        core._validate_title_files(phase, file_paths, ctx, ENUM_TO_STR_TITLE[title])  # noqa: SLF001
+        return phase
+
+    def test_a_story_needs_an_inset_and_a_panel_file(self, tmp_path: Path) -> None:
+        phase = self._run(tmp_path, Titles.LOST_IN_THE_ANDES)
+        assert _kinds(phase) == ["kind=missing_inset", "kind=no_panel_files"]
+
+    def test_the_all_covers_collection_needs_neither(self, tmp_path: Path) -> None:
+        assert self._run(tmp_path, Titles.ALL_COVERS).errors == []
+
+
 class TestCheckSegmentsJson:
     MEMBER = "images/001.jpg"
     SRCE_TIME = (2024, 6, 1, 12, 0, 0)

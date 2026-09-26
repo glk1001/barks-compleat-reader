@@ -23,6 +23,7 @@ from barks_fantagraphics.comic_book_info import (
     NON_COMIC_TITLES,
     ONE_PAGERS,
     get_filename_from_title,
+    is_covers_collection,
     is_one_pager_collection,
     is_one_pager_located,
 )
@@ -824,8 +825,10 @@ def _validate_title_files(
     #
     # Covers are read the same way - as a page within the "All Covers" collection -
     # but unlike one-pagers they ship no inset either: the tree falls back to the
-    # emergency inset for them, so they are exempt outright.
-    if is_one_pager_collection(title) or is_cover:
+    # emergency inset for them, so they are exempt outright. So is the "All Covers"
+    # collection itself.
+    is_covers_coll = is_covers_collection(title)
+    if is_one_pager_collection(title) or is_covers_coll or is_cover:
         inset_required = False
     elif is_one_pager:
         inset_required = is_one_pager_located(title)
@@ -909,8 +912,15 @@ def _validate_title_files(
 
     # One-pagers and covers carry no Closeups/Favourites/Silhouettes/Splash files of
     # their own (their large images are drawn from the "All One-Pagers" / "All Covers"
-    # collection), so the required-panel-file rule does not apply to them.
-    if not is_article and not is_one_pager and not is_cover and not counts.has_required_panel_file:
+    # collection), so the required-panel-file rule does not apply to them. Nor does it
+    # to the "All Covers" collection, whose pages are the covers themselves.
+    if (
+        not is_article
+        and not is_one_pager
+        and not is_cover
+        and not is_covers_coll
+        and not counts.has_required_panel_file
+    ):
         phase.add(
             f"Title:{title_str} kind=no_panel_files"
             f" reason=no_files_in_(Closeups|Favourites|Silhouettes|Splash)"
