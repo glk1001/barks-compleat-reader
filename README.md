@@ -192,7 +192,7 @@ just reader
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
     bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
     ```
-- **The overnight run** runs every GUI test there is, every way it can run: the suite as
+- **The GUI overnight run** runs every GUI test there is, every way it can run: the suite as
   configured, then on each panels source and each comic source, the settings matrix, a
   landscape 1920x1080 screen, the tap tests by real touch (skipped when the udev rule is
   missing), and the random-walk soak from three seeds. With `--app PATH` it also runs the
@@ -200,7 +200,7 @@ just reader
   table with timings, and exits non-zero if anything failed. It holds off sleep while it
   runs and warns when on battery. Each stage shows its number and start time, then a line
   per test as it finishes, and `summary.txt` is rewritten after every stage. Well over an
-  hour.
+  hour. The whole-repo overnight run below runs it as one of its stages.
     ```
     bash scripts/run_gui_overnight.sh                        # every stage
     bash scripts/run_gui_overnight.sh --list                 # the stages
@@ -209,7 +209,7 @@ just reader
     ```
   Each stage's output, and the summary, go to `build/gui-tests/overnight-<stamp>/`.
 - **Stopping a run.** Ctrl-C, closing the terminal, or `kill` of the runner (the
-  overnight run prints its pid) stops `run_gui_tests.sh`, the matrix or the overnight
+  overnight runs print their pid) stops `run_gui_tests.sh`, the matrix, either overnight
   run, and everything they started: pytest, and each display's app, X server and
   touchscreen, which the probe runs in sessions of their own that no signal reaches.
   Only `kill -9` leaves anything behind, and the next run clears that before it starts.
@@ -260,6 +260,46 @@ just reader
   (`src/barks-fantagraphics/tests/test_title_search.py`).
 - **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
   or with `--with-gui-test` to include the GUI suite.
+- **The whole-repo overnight run** runs everything worth a night that the gates
+  (pre-commit, pre-push, CI) leave out, because it is slow or needs local data: the
+  checks on the real data pack and the sibling repos, the full lint and test suite from a
+  synced venv, the tests in random order and against upgraded dependencies, a Nuitka
+  build and its smoke test, the GUI overnight run against that build, GUI timing drift,
+  and a slice of mutation testing. The data checks come first: when the data is broken,
+  what fails later is only a symptom. Like the GUI overnight run, it runs every stage
+  even after one fails, holds off sleep, warns when on battery, and exits non-zero if
+  any stage failed (a warning does not count). Linux only.
+    ```
+    bash scripts/run_overnight.sh                              # every stage
+    bash scripts/run_overnight.sh --list                       # the stages
+    bash scripts/run_overnight.sh --only validate,pytest       # some of them (or --skip)
+    bash scripts/run_overnight.sh --app ./barks-reader-linux   # use this build, skip building
+    ```
+
+  | Stage | What it runs |
+  |---|---|
+  | `validate` | `validate-barks-reader-files.py` on the real data pack (above) |
+  | `panel-sources` | `check-barks-panel-sources.py`: every PNG panel belongs to a title |
+  | `censorship` | The censorship-fixes CSV against the fixes trees (the `../barks-comic-building` checker) |
+  | `wiki-order` | `check_wiki_story_order.py` on the sibling barks-wiki bundle; warns only |
+  | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
+  | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
+  | `pytest` | `uv sync --locked`, then the whole suite with coverage |
+  | `random-order` | The suite shuffled by `pytest-randomly`; its seed is in the log, to replay a failure |
+  | `dep-drift` | The suite against every dependency upgraded as far as `pyproject.toml` allows, in a venv of its own; `uv.lock` is put back |
+  | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
+  | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |
+  | `smoke` | `smoke-test-build.sh` on that build (or on `--app PATH`) |
+  | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night |
+  | `gui-timings` | The GUI suite once more, then each timing against `.benchmarks/gui-timings.json`; warns on drift well before a budget would fail |
+  | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |
+  | `mutation` | `mutmut.sh` on one seventh of `core/`, a different slice each weekday |
+
+  `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default
+  three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_DAY` (1-7)
+  picks the mutation slice. Each stage's output goes to
+  `build/overnight/<stamp>/<stage>.log`, and `summary.txt` there, rewritten after every
+  stage, holds each one's result (passed, FAILED, WARNED, skipped or stopped) and time.
 
 The GUI suite's design, its log-marker contract and its history are in
 `docs/plans/gui-test-suite.md`; the runner's options are also described at the top of
