@@ -278,9 +278,9 @@ just reader
 
   | Stage | What it runs |
   |---|---|
-  | `validate` | `validate-barks-reader-files.py` on the real data pack (above) |
+  | `validate` | `validate-barks-reader-files.py` on the real data pack (above), with `--full-load-check --strict-wiki` |
   | `panel-sources` | `check-barks-panel-sources.py`: every PNG panel belongs to a title |
-  | `censorship` | The censorship-fixes CSV against the fixes trees (the `../barks-comic-building` checker) |
+  | `build-check` | The `../barks-comic-building` integrity checker on the whole build tree: every check, with `--check-panel-segment-image-size` |
   | `wiki-order` | `check_wiki_story_order.py` on the sibling barks-wiki bundle; warns only |
   | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
   | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
@@ -289,7 +289,7 @@ just reader
   | `dep-drift` | The suite against every dependency upgraded as far as `pyproject.toml` allows, in a venv of its own; `uv.lock` is put back |
   | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
   | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |
-  | `smoke` | `smoke-test-build.sh` on that build (or on `--app PATH`) |
+  | `smoke` | `smoke-test-build.sh --press-escape` on that build (or on `--app PATH`), as CI does |
   | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night |
   | `gui-timings` | The GUI suite once more, then each timing against `.benchmarks/gui-timings.json`; warns on drift well before a budget would fail |
   | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |

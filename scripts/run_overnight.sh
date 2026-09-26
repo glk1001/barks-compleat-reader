@@ -13,10 +13,13 @@
 #
 # Stages (name: what it runs):
 #   validate       validate-barks-reader-files.py: every title's panels, prebuilt
-#                  comic, layout, panel segments and wiki joins, on the real data
+#                  comic, layout, panel segments and wiki joins, on the real data;
+#                  --full-load-check decodes every source page, --strict-wiki fails
+#                  a story with no wiki page
 #   panel-sources  check-barks-panel-sources.py: every PNG panel belongs to a title
-#   censorship     the censorship-fixes CSV against the fixes trees (the
-#                  ../barks-comic-building checker, as on pre-push)
+#   build-check    the ../barks-comic-building integrity checker on the whole build
+#                  tree: every check (pre-push runs only the censorship one), with
+#                  each panel segments file's page size against its restored image
 #   wiki-order     check_wiki_story_order.py on the sibling barks-wiki bundle;
 #                  warns only, as in full-lint (that repo gates its own order)
 #   lint           full-lint.sh: every static check, and the benchmarks against
@@ -30,7 +33,8 @@
 #   siblings       the tests of the sibling repos that use barks-fantagraphics and
 #                  comic-utils (those with tests: ../barks-comic-building)
 #   build          scripts/build.sh, the Nuitka executable; skipped with --app
-#   smoke          smoke-test-build.sh on that build (or on --app PATH)
+#   smoke          smoke-test-build.sh on that build (or on --app PATH), pressing
+#                  Escape to close its popup, as CI does
 #   gui            run_gui_overnight.sh: every GUI stage, the built app's too,
 #                  and a longer soak on new seeds each night
 #   gui-timings    the GUI suite once more, recording its timings, then each
@@ -59,7 +63,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
-STAGES=(validate panel-sources censorship wiki-order lint audit pytest random-order
+STAGES=(validate panel-sources build-check wiki-order lint audit pytest random-order
     dep-drift siblings build smoke gui gui-timings graphify mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
@@ -223,11 +227,11 @@ mutation() {
 run_stage() {
     local status=0
     case "$1" in
-    validate) uv run scripts/validate-barks-reader-files.py ;;
+    validate) uv run scripts/validate-barks-reader-files.py --full-load-check --strict-wiki ;;
     panel-sources) uv run scripts/check-barks-panel-sources.py ;;
-    censorship)
+    build-check)
         env -u VIRTUAL_ENV uv run --offline --project ../barks-comic-building \
-            barks-check-build --log-level SUCCESS --censorship-only
+            barks-check-build --log-level SUCCESS --check-panel-segment-image-size
         ;;
     wiki-order) uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED" ;;
     lint) bash "${SCRIPT_DIR}/full-lint.sh" ;;
@@ -252,7 +256,7 @@ run_stage() {
             echo "smoke: skipped - no executable (the build stage did not make one; or give --app)"
             return "$SKIPPED"
         fi
-        bash "${SCRIPT_DIR}/smoke-test-build.sh" "$exe"
+        bash "${SCRIPT_DIR}/smoke-test-build.sh" --press-escape "$exe"
         ;;
     gui)
         local args=()
