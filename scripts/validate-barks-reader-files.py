@@ -31,6 +31,7 @@ from loguru import logger
 from validate_barks_reader_core import (
     ErrorCollector,
     build_reader_file_paths,
+    load_known_missing_insets,
     phase1_config,
     phase2_system_file_paths,
     phase3_reader_file_paths,
@@ -220,7 +221,7 @@ def main(
     fanta_state = phase6_fantagraphics(collector, cfg_info, sys_paths)
     phase7_prebuilt_cbzs(collector, cfg_info)
     ctx_by_variant = phase8a_per_title_panel_files(
-        collector, file_paths_variants, fanta_state, titles_filter
+        collector, file_paths_variants, fanta_state, titles_filter, load_known_missing_insets()
     )
     phase8b_audit_panel_files(
         collector,

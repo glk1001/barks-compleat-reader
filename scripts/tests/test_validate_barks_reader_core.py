@@ -18,8 +18,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import validate_barks_reader_core as core
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.comic_book_info import ONE_PAGERS
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.comic_book_info import (
+    ONE_PAGERS,
+    get_filename_from_title,
+    get_located_one_pagers,
+)
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.page_classes import CleanPage, SrceAndDestPages
@@ -30,6 +34,7 @@ from barks_reader.core.reader_settings import (
     WIKI_BUNDLE_DIR,
     WIKI_BUNDLE_SUBDIR,
 )
+from PIL import Image
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -166,40 +171,93 @@ class TestPhase10Layout:
         assert _kinds(phase) == ["kind=missing_segments_dir"]
 
 
+_DIR_GETTERS = (
+    "get_comic_inset_files_dir",
+    "get_comic_cover_files_dir",
+    "get_comic_bw_files_dir",
+    "get_comic_ai_files_dir",
+    "get_comic_censorship_files_dir",
+    "get_comic_closeup_files_dir",
+    "get_comic_favourite_files_dir",
+    "get_comic_original_art_files_dir",
+    "get_comic_search_files_dir",
+    "get_comic_silhouette_files_dir",
+    "get_comic_splash_files_dir",
+)
+
+
+def _check_title_files(
+    tmp_path: Path, title: Titles, known_missing: frozenset[str] = frozenset()
+) -> tuple[core.PhaseResult, core._TitleCounts | None]:
+    """Run one title's panel-file check against a panel source rooted at ``tmp_path``."""
+    file_paths = MagicMock(barks_panels_are_encrypted=False)
+    file_paths.get_inset_file_ext.return_value = ".png"
+    for getter in _DIR_GETTERS:
+        getattr(file_paths, getter).return_value = tmp_path
+    phase = core.PhaseResult(name="Per-title Panel Files")
+    ctx = core._AuditCtx(panel_source=tmp_path, is_zip=False)  # noqa: SLF001
+    counts = core._validate_title_files(  # noqa: SLF001
+        phase, file_paths, ctx, ENUM_TO_STR_TITLE[title], known_missing
+    )
+    return phase, counts
+
+
 class TestValidateTitleFiles:
     """A title's panel files, against a panel source with none at all."""
 
-    _DIR_GETTERS = (
-        "get_comic_inset_files_dir",
-        "get_comic_cover_files_dir",
-        "get_comic_bw_files_dir",
-        "get_comic_ai_files_dir",
-        "get_comic_censorship_files_dir",
-        "get_comic_closeup_files_dir",
-        "get_comic_favourite_files_dir",
-        "get_comic_original_art_files_dir",
-        "get_comic_search_files_dir",
-        "get_comic_silhouette_files_dir",
-        "get_comic_splash_files_dir",
-    )
-
-    @staticmethod
-    def _run(tmp_path: Path, title: Titles) -> core.PhaseResult:
-        file_paths = MagicMock(barks_panels_are_encrypted=False)
-        file_paths.get_inset_file_ext.return_value = ".png"
-        for getter in TestValidateTitleFiles._DIR_GETTERS:
-            getattr(file_paths, getter).return_value = tmp_path
-        phase = core.PhaseResult(name="Per-title Panel Files")
-        ctx = core._AuditCtx(panel_source=tmp_path, is_zip=False)  # noqa: SLF001
-        core._validate_title_files(phase, file_paths, ctx, ENUM_TO_STR_TITLE[title])  # noqa: SLF001
-        return phase
-
     def test_a_story_needs_an_inset_and_a_panel_file(self, tmp_path: Path) -> None:
-        phase = self._run(tmp_path, Titles.LOST_IN_THE_ANDES)
+        phase, _ = _check_title_files(tmp_path, Titles.LOST_IN_THE_ANDES)
         assert _kinds(phase) == ["kind=missing_inset", "kind=no_panel_files"]
 
     def test_the_all_covers_collection_needs_neither(self, tmp_path: Path) -> None:
-        assert self._run(tmp_path, Titles.ALL_COVERS).errors == []
+        assert _check_title_files(tmp_path, Titles.ALL_COVERS)[0].errors == []
+
+
+class TestKnownMissingInsets:
+    ONE_PAGER = get_located_one_pagers()[0]
+
+    def _listed(self) -> frozenset[str]:
+        return frozenset({ENUM_TO_STR_TITLE[self.ONE_PAGER]})
+
+    def test_a_located_one_pager_needs_its_inset(self, tmp_path: Path) -> None:
+        phase, _ = _check_title_files(tmp_path, self.ONE_PAGER)
+        assert _kinds(phase) == ["kind=missing_inset"]
+
+    def test_listed_it_is_counted_not_failed(self, tmp_path: Path) -> None:
+        phase, counts = _check_title_files(tmp_path, self.ONE_PAGER, self._listed())
+        assert phase.errors == []
+        assert counts is not None
+        assert counts.inset_known_missing is True
+
+    def test_listed_with_its_inset_is_stale(self, tmp_path: Path) -> None:
+        Image.new("RGB", (4, 4)).save(tmp_path / get_filename_from_title(self.ONE_PAGER, ".png"))
+        phase, _ = _check_title_files(tmp_path, self.ONE_PAGER, self._listed())
+        assert _kinds(phase) == ["kind=known_missing_inset_present"]
+
+    def test_listed_but_needing_no_inset_is_stale(self, tmp_path: Path) -> None:
+        listed = frozenset({ENUM_TO_STR_TITLE[Titles.ALL_COVERS]})
+        phase, _ = _check_title_files(tmp_path, Titles.ALL_COVERS, listed)
+        assert _kinds(phase) == ["kind=known_missing_inset_not_required"]
+
+    def test_a_line_that_names_no_title_fails(self) -> None:
+        collector = core.ErrorCollector()
+        core.phase8a_per_title_panel_files(
+            collector, [], MagicMock(), titles_filter=[], known_missing_insets=frozenset({"Nope"})
+        )
+        assert _kinds(_only_phase(collector)) == ["kind=unknown_title"]
+
+    def test_the_file_skips_comments_and_blank_lines(self, tmp_path: Path) -> None:
+        path = tmp_path / "known.txt"
+        path.write_text("# a comment\n\n  Lost in the Andes!  \nCoffee for Two\n")
+        assert core.load_known_missing_insets(path) == {"Lost in the Andes!", "Coffee for Two"}
+
+    def test_no_file_is_an_empty_list(self, tmp_path: Path) -> None:
+        assert core.load_known_missing_insets(tmp_path / "absent.txt") == frozenset()
+
+    def test_the_committed_list_names_only_titles(self) -> None:
+        listed = core.load_known_missing_insets()
+        assert listed
+        assert listed <= STR_TITLE_TO_ENUM.keys()
 
 
 class TestCheckSegmentsJson:

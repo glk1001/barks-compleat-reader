@@ -253,7 +253,9 @@ just reader
     uv run scripts/validate-barks-reader-files.py --wiki-bundle PATH     # check another wiki bundle
     ```
   A story with no wiki page yet is counted and warned about, not failed, unless
-  `--strict-wiki`. The wiki checked is the one the reader's settings select (the live
+  `--strict-wiki`. So is a title listed in `scripts/known-missing-insets.txt`, whose
+  inset is not made yet; a listed title that has its inset fails, so the list is pruned
+  as they land. The wiki checked is the one the reader's settings select (the live
   bundle when `use_live_wiki_bundle` is on, else the copy in Reader Files). The build tree
   under `~/Books/Carl Barks` is not checked here: that is the build gate's job, in
   `barks-comic-building`. Title search needs no data, so it is a unit test that CI runs

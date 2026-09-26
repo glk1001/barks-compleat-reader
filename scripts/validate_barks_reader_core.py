@@ -107,6 +107,9 @@ from barks_reader.core.reader_settings import (  # noqa: E402
 _PAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
 _CROSSCHECK_MIN_VARIANTS = 2
 
+# Titles whose inset is known to be missing (not made yet): counted, not failed.
+KNOWN_MISSING_INSETS_FILE = Path(__file__).with_name("known-missing-insets.txt")
+
 _INTRO_ARTICLE = Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION
 _APPENDIX_ARTICLES: tuple[Titles, ...] = (
     Titles.RICH_TOMMASO___ON_COLORING_BARKS,
@@ -536,6 +539,8 @@ class _TitleCounts:
     search: int = 0
     silhouettes: int = 0
     splash: int = 0
+    # Not a file count: the inset is missing, as the known-missing list says.
+    inset_known_missing: bool = False
 
     @property
     def total(self) -> int:
@@ -781,6 +786,7 @@ def _validate_title_files(
     file_paths: ReaderFilePaths | None,
     ctx: _AuditCtx,
     title_str: str,
+    known_missing_insets: frozenset[str] = frozenset(),
 ) -> _TitleCounts | None:
     """Validate inset, cover, and per-category subdir files for one title.
 
@@ -792,6 +798,8 @@ def _validate_title_files(
         ctx: Per-variant audit context. Each file the sweep visits is
             recorded so the audit pass can later report any unvisited file.
         title_str: The title identifier as keyed in ``STR_TITLE_TO_ENUM``.
+        known_missing_insets: Titles whose missing inset is counted, not failed;
+            a listed title that has its inset, or needs none, fails instead.
 
     Returns:
         ``_TitleCounts`` summarising every file seen for this title across
@@ -835,6 +843,7 @@ def _validate_title_files(
     else:
         inset_required = not is_article
     inset_filename = get_filename_from_title(title, inset_ext)
+    known_missing = title_str in known_missing_insets
     counts.insets = _check_flat_pair(
         phase,
         ctx,
@@ -844,9 +853,19 @@ def _validate_title_files(
         label="inset",
         main_filename=inset_filename,
         edited_filename=inset_filename,
-        require_main=inset_required,
+        require_main=inset_required and not known_missing,
         also_check_no_overrides=True,
     )
+    # A known-missing entry that no longer holds fails, so the list is pruned as
+    # the insets land and cannot hide a title that later loses its inset again.
+    if known_missing:
+        inset_path = file_paths.get_comic_inset_files_dir() / inset_filename
+        if inset_path.is_file():
+            phase.add(f"Title:{title_str} kind=known_missing_inset_present path={inset_path}")
+        elif not inset_required:
+            phase.add(f"Title:{title_str} kind=known_missing_inset_not_required")
+        else:
+            counts.inset_known_missing = True
 
     # Covers — flat: Covers/<title>.jpg (always JPG) + Covers/edited/<title>.<inset_ext>.
     counts.covers = _check_flat_pair(
@@ -1224,11 +1243,29 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
 # ---------------------------------------------------------------------------
 
 
+def load_known_missing_insets(path: Path = KNOWN_MISSING_INSETS_FILE) -> frozenset[str]:
+    """Read the titles whose inset is known to be missing.
+
+    Args:
+        path: The list: one title per line; blank lines and ``#`` comments are
+            skipped. A missing file is an empty list.
+
+    Returns:
+        The listed titles, as written (Phase 8a reports any that is no title).
+
+    """
+    if not path.is_file():
+        return frozenset()
+    lines = (line.strip() for line in path.read_text(encoding="utf-8").splitlines())
+    return frozenset(line for line in lines if line and not line.startswith("#"))
+
+
 def phase8a_per_title_panel_files(
     collector: ErrorCollector,
     file_paths_variants: list[ReaderFilePaths],
     fanta_state: FantaState,
     titles_filter: list[str] | None = None,
+    known_missing_insets: frozenset[str] = frozenset(),
 ) -> list[_AuditCtx]:
     """Per-title file + volume-binding sweep across ALL_FANTA_COMIC_BOOK_INFO.
 
@@ -1245,6 +1282,8 @@ def phase8a_per_title_panel_files(
         fanta_state: Cached Phase 6 outcome.
         titles_filter: Optional subset of titles to check (matches Phase 9's
             argument). ``None`` runs every title.
+        known_missing_insets: Titles whose missing inset is counted, not failed
+            (:func:`load_known_missing_insets`).
 
     Returns:
         Per-variant :class:`_AuditCtx` instances populated with every panel
@@ -1254,8 +1293,12 @@ def phase8a_per_title_panel_files(
     """
     phase = collector.start_phase("Per-title Panel Files", "8a")
 
+    for title_str in sorted(known_missing_insets - STR_TITLE_TO_ENUM.keys()):
+        phase.add(f"KnownMissingInsets: kind=unknown_title title={title_str!r}")
+
     title_count_errors = 0
     invalid_volume_count = 0
+    known_missing_titles: set[str] = set()
     counts_by_variant: list[dict[str, _TitleCounts]] = [{} for _ in file_paths_variants]
     ctx_by_variant: list[_AuditCtx] = [_build_audit_ctx(fp) for fp in file_paths_variants]
 
@@ -1278,9 +1321,11 @@ def phase8a_per_title_panel_files(
         for variant_idx, (file_paths, ctx) in enumerate(
             zip(file_paths_variants, ctx_by_variant, strict=True)
         ):
-            counts = _validate_title_files(phase, file_paths, ctx, title_str)
+            counts = _validate_title_files(phase, file_paths, ctx, title_str, known_missing_insets)
             if counts is not None:
                 counts_by_variant[variant_idx][title_str] = counts
+                if counts.inset_known_missing:
+                    known_missing_titles.add(title_str)
         after_files = len(phase.errors)
         if after_files > before_files:
             title_count_errors += 1
@@ -1300,7 +1345,8 @@ def phase8a_per_title_panel_files(
         f"({title_count_errors} titles with file errors,"
         f" {invalid_volume_count} broken volume bindings,"
         f" {mismatch_count} JPG/PNG count mismatches,"
-        f" {files_inspected} files test-loaded)"
+        f" {files_inspected} files test-loaded,"
+        f" {len(known_missing_titles)} insets known missing)"
     )
     collector.finalize_phase(phase)
     return ctx_by_variant

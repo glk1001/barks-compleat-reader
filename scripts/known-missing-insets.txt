@@ -1,0 +1,117 @@
+# Known-missing insets for scripts/validate-barks-reader-files.py (Phase 8a).
+#
+# One title per line, spelled as in barks_fantagraphics.barks_titles; blank
+# lines and lines starting with '#' are skipped.
+#
+# A listed title whose inset is missing is counted in the phase's summary
+# ("N insets known missing") instead of failing it. A listed title that has
+# its inset, or no longer needs one, fails the phase - remove it from here -
+# and so does a line that names no title.
+#
+# In chronological order. As of 2026-09-26: located one-pagers whose insets
+# are being made.
+
+Osogood Silver Polish
+Coffee for Two
+Soupline Eight
+Full-Service Windows
+Rigged-Up Roller
+Awash in Success
+Stable Prices
+Armored Rescue
+Crafty Corner
+A Prank Above
+Frightful Face
+Fare Delay
+The Money Ladder
+The Checker Game
+Barber College
+Follow the Rainbow
+Itching to Share
+Ballet Evasions
+The Cheapest Weigh
+Bum Steer
+Hospitality Week
+McDuck Takes a Dive
+Slippery Sipper
+Oil the News
+Dig it!
+Mental Fee
+Temper Tampering
+Wrong Number
+Diner Dilemma
+Cash on the Brain
+Classy Taxi!
+Blanket Investment
+Easy Mowing
+Ski Lift Letdown
+Cast of Thousands
+Courtside Heating
+Power Plowing
+Remember This
+Deep Decision
+Smash Success
+Luncheon Lament
+Come as You are
+Roundabout Handout
+Watt an Occasion
+Doughnut Dare
+A Sweat Deal
+The Art of Security
+Fashion Forecast
+Mush!
+Gold Rush
+Fireflies are Free
+Early to Build
+China Shop Shakeup
+Buffo or Bust
+Pound for Sound
+Fertile Assets
+Backyard Bonanza
+All Season Hat
+The Eyes Have It
+Relative Reaction
+The Secret Book
+Tree Trick
+Net Worth
+History Tossed
+Dogged Determination
+Forgotten Precaution
+The Big Bobber
+Windfall of the Mind
+Rescue Enhancement
+Going to Pieces
+High Rider
+That Sinking Feeling
+The Balmy Swami
+The Windy Story
+All Choked Up
+Moola on the Move
+Thumbs Up
+Bill Wind
+The Sleepies
+Lights Out
+Immovable Miser
+Kitty-Go-Round
+Poor Loser
+Crawls for Cash
+The Bird Camera
+The Odd Order
+The Money Hat
+The Call of the Wild
+Tale of the Tape
+His Shining Hour
+A Thrift Gift
+Collection Day
+Seeing is Believing
+Playmates
+Rags to Riches
+Art Appreciation
+Flowers Are Flowers
+Getting the Bird
+Nest Egg Collector
+Dueling Tycoons
+Wishful Excess
+Sidewalk of the Mind
+No Bargain
+Up and at It
