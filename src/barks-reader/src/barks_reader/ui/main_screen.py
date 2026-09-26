@@ -36,6 +36,7 @@ from .reader_keyboard_nav import (
     DropdownNavMixin,
     is_escape_key,
     is_escape_key_for_text_input,
+    open_dropdown,
 )
 from .reader_screens import ReaderScreen
 from .reader_tree_builder import ReaderTreeBuilder
@@ -211,8 +212,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._bottom_base_view_screen.add_widget(screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
-    def open_menu_dots(self, button: Button) -> None:
-        self.menu_dots_dropdown.open(button)
+    def open_menu_dots(self, button: Button) -> bool:
+        return open_dropdown(self.menu_dots_dropdown, button)
 
     @override
     def _activate_focused_button(self) -> None:
@@ -230,7 +231,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _open_menu_dots_for_keyboard(self) -> None:
         self._clear_menu_focus()
-        self.open_menu_dots(self.ids.menu_button)
+        if not self.open_menu_dots(self.ids.menu_button):
+            self._update_menu_focus()
+            return
         self._enter_dropdown_nav(initial_idx=0)
 
     def _on_menu_dropdown_dismissed(self, instance: Widget) -> None:

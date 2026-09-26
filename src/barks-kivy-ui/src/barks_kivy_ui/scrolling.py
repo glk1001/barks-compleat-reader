@@ -24,6 +24,8 @@ This package depends only on kivy; the themed colours live with the app's kv.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from kivy.effects.scroll import ScrollEffect
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -34,6 +36,9 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.dropdown import DropDown
 from kivy.uix.scrollview import ScrollView
+
+if TYPE_CHECKING:
+    from kivy.uix.widget import Widget
 
 # Kivy's own option list for ScrollView.scroll_type.
 _SCROLL_TYPE_OPTIONS = (["content"], ["bars"], ["bars", "content"], ["content", "bars"])
@@ -63,3 +68,22 @@ class ReaderScrollView(_ReaderScrollDefaults, ScrollView):
 
 class ReaderDropDown(_ReaderScrollDefaults, DropDown):
     """A DropDown (itself a ScrollView) wearing the shared scroll-pane look."""
+
+    def open_if_shown(self, widget: Widget) -> bool:
+        """Open on ``widget`` if it is in a window, else leave the dropdown closed.
+
+        Kivy's ``open`` raises on a widget with no window, and every widget of a
+        screen has none while a fade between screens draws them offscreen. A key
+        pressed in that moment must do nothing, not end the app.
+
+        Args:
+            widget: The widget to open the dropdown on.
+
+        Returns:
+            Whether the dropdown opened.
+
+        """
+        if widget.get_parent_window() is None:
+            return False
+        self.open(widget)
+        return True

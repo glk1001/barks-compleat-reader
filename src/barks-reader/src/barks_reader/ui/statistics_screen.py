@@ -31,6 +31,7 @@ from .reader_keyboard_nav import (
     DropdownNavMixin,
     clear_focus_in_list,
     is_escape_key,
+    open_dropdown,
     update_focus_in_list,
 )
 
@@ -95,6 +96,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._stat_buttons: list[StatMenuButton] = []
         self._word_stat_button: StatMenuButton | None = None
         self._word_stat_dropdown = None
+        self._word_stat_opened = False
         self._nav_active: bool = False
         self._nav_on_exit_request: Callable | None = None
         self._nav_focused_idx: int = 0
@@ -134,7 +136,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._word_stat_dropdown.bind(on_dismiss=self._on_dropdown_dismissed)
 
     def _on_word_stat_button_pressed(self, button: StatMenuButton) -> None:
-        self._word_stat_dropdown.open(button)
+        self._word_stat_opened = open_dropdown(self._word_stat_dropdown, button)
 
     def _on_word_stat_selected(self, _dropdown: object, filename: str) -> None:
         if self._word_stat_button:
@@ -239,6 +241,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def _activate_focused_tab(self) -> None:
         btn = self._stat_buttons[self._nav_focused_idx]
+        self._word_stat_opened = False
         btn.trigger_action()
-        if btn is self._word_stat_button:
+        if btn is self._word_stat_button and self._word_stat_opened:
             Clock.schedule_once(lambda _dt: self._enter_dropdown_nav(), 0)

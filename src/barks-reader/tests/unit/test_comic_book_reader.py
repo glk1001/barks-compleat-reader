@@ -488,6 +488,21 @@ class TestComicBookReader:
             reader.on_page_selected(MagicMock(), "12")
         assert 'Goto page selected: "12".' in loguru_sink
 
+    def test_goto_page_off_screen_opens_nothing(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        """Mid-fade the Goto Page button has no window: no dropdown, no 'opened' line."""
+        dropdown = MagicMock()
+        dropdown.open_if_shown.return_value = False
+        reader._goto_page_dropdown = dropdown
+        reader._goto_page_buttons = []
+        reader._goto_page_widget = MagicMock()
+        on_dismiss = MagicMock()
+
+        assert reader.open_goto_page_for_keyboard(on_dismiss) is None
+        dropdown.bind.assert_not_called()
+        assert log_markers.GOTO_PAGE_DROPDOWN_OPENED not in loguru_sink
+
 
 class TestComicBookReaderScreen:
     @pytest.fixture
@@ -549,6 +564,17 @@ class TestComicBookReaderScreen:
             getattr(screen, finish)()
 
         log_geometry.assert_called_once_with(reason)
+
+    def test_goto_page_off_screen_stays_in_menu_mode(self, screen: ComicBookReaderScreen) -> None:
+        """Enter on Goto Page mid-fade opens nothing; the menu keeps its focus."""
+        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        with (
+            patch.object(screen, "_enter_dropdown_nav") as enter_dropdown_nav,
+            patch.object(screen, "_update_menu_focus") as update_menu_focus,
+        ):
+            screen._open_goto_page_for_keyboard()
+        enter_dropdown_nav.assert_not_called()
+        update_menu_focus.assert_called_once()
 
     def test_keys_are_swallowed_while_the_reader_closes(
         self, screen: ComicBookReaderScreen

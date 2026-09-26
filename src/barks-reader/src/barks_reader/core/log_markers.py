@@ -56,6 +56,8 @@ MENU_EXITED: Final = "Exited menu mode."
 NAV_FOCUS_PREFIX: Final = "Nav focus on"
 NAV_FOCUS: Final = f"{NAV_FOCUS_PREFIX} {{widget}}."
 DROPDOWN_DISMISSED: Final = "Dropdown dismissed."
+# A dropdown asked for while its button is off screen (mid-fade): nothing opens.
+DROPDOWN_NOT_SHOWN: Final = "Dropdown not opened: {widget} is not on screen."
 ENTERED_BOTTOM_FOCUS: Final = "Entered bottom focus region."
 ENTERED_BOTTOM_FOCUS_FOR_SEARCH: Final = "Entered bottom focus region at search screen's request."
 ENTERED_BOTTOM_FOCUS_AT_PORTAL: Final = "Entered bottom focus region at the title portal."

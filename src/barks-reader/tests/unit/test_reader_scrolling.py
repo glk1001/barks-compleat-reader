@@ -7,12 +7,14 @@ on: constructor kwargs beat a kv class rule, which beats the class default.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 from barks_kivy_ui.scrolling import ReaderDropDown, ReaderScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.uix.dropdown import DropDown
+from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
@@ -54,3 +56,18 @@ class TestKvRulePrecedence:
             assert ReaderScrollView(bar_color=(0, 1, 0, 1)).bar_color == [0, 1, 0, 1]
         finally:
             Builder.unload_file(self.RULE)
+
+
+class TestOpenIfShown:
+    """Kivy raises on a dropdown opened on a widget with no window (mid-fade)."""
+
+    def test_a_widget_with_no_window_leaves_it_closed(self) -> None:
+        drop_down = ReaderDropDown()
+        assert drop_down.open_if_shown(Widget()) is False
+        assert drop_down.attach_to is None
+
+    def test_a_widget_in_a_window_opens_it(self) -> None:
+        widget = MagicMock()
+        with patch.object(ReaderDropDown, "open") as open_:
+            assert ReaderDropDown().open_if_shown(widget) is True
+        open_.assert_called_once_with(widget)

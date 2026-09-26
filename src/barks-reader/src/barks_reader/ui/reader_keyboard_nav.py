@@ -11,6 +11,7 @@ from barks_reader.core.reader_palette import theme
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from barks_kivy_ui.scrolling import ReaderDropDown
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
@@ -117,6 +118,26 @@ def log_nav_focus(widget: Widget) -> None:
     shown some other way (a colour change, say) calls this directly.
     """
     logger.debug(log_markers.NAV_FOCUS.format(widget=describe_widget(widget)))
+
+
+def open_dropdown(dropdown: ReaderDropDown, widget: Widget) -> bool:
+    """Open `dropdown` on `widget`, or log why not when `widget` is off screen.
+
+    Mid-fade between screens, no widget of either is in the window, and Kivy
+    raises rather than open a dropdown there (an overnight soak's crash).
+
+    Args:
+        dropdown: The dropdown to open.
+        widget: The button it opens on.
+
+    Returns:
+        Whether it opened; when not, a keyboard caller stays in menu mode.
+
+    """
+    if dropdown.open_if_shown(widget):
+        return True
+    logger.debug(log_markers.DROPDOWN_NOT_SHOWN.format(widget=describe_widget(widget)))
+    return False
 
 
 def _draw_highlight(

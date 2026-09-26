@@ -12,6 +12,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_highlight,
     describe_widget,
     draw_focus_highlight,
+    open_dropdown,
 )
 
 
@@ -240,3 +241,21 @@ class TestDropdownDismissedLog:
         proxy.__ref__ = lambda: real
         proxy.text = real.text
         assert describe_widget(proxy) == '_RealButton "Goto wiki page"'
+
+
+class TestOpenDropdown:
+    """A dropdown asked for off screen says so; the soak's crash was its raising instead."""
+
+    def test_off_screen_it_logs_and_does_not_open(self, loguru_sink: list[str]) -> None:
+        dropdown = MagicMock()
+        dropdown.open_if_shown.return_value = False
+        widget = _make_widget()
+        widget.text = "Goto Page"
+        assert open_dropdown(dropdown, widget) is False
+        assert 'Dropdown not opened: MagicMock "Goto Page" is not on screen.' in loguru_sink
+
+    def test_on_screen_it_opens_quietly(self, loguru_sink: list[str]) -> None:
+        dropdown = MagicMock()
+        dropdown.open_if_shown.return_value = True
+        assert open_dropdown(dropdown, _make_widget()) is True
+        assert not any("Dropdown not opened" in line for line in loguru_sink)

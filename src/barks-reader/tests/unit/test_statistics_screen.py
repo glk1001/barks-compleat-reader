@@ -152,7 +152,22 @@ class TestStatisticsScreen:
         dropdown = screen._word_stat_dropdown
 
         screen._on_word_stat_button_pressed(word_button)
-        dropdown.open.assert_called_with(word_button)
+        dropdown.open_if_shown.assert_called_with(word_button)
+
+    def test_no_dropdown_nav_when_the_dropdown_does_not_open(
+        self, screen: StatisticsScreen
+    ) -> None:
+        """Off screen (mid-fade) the dropdown stays shut, so keys stay on the tabs."""
+        word_button = screen._word_stat_button
+        assert word_button is not None
+        screen._word_stat_dropdown.open_if_shown.return_value = False
+        word_button.trigger_action.side_effect = lambda: screen._on_word_stat_button_pressed(
+            word_button
+        )
+        screen._nav_focused_idx = screen._stat_buttons.index(word_button)
+        with patch.object(statistics_screen_module, "Clock") as clock:
+            screen._activate_focused_tab()
+        clock.schedule_once.assert_not_called()
 
     def test_word_stat_selected(self, screen: StatisticsScreen, statistics_dir: Path) -> None:
         """Test selecting an item from the word statistics dropdown."""
@@ -222,6 +237,10 @@ class TestStatisticsScreen:
         word_button = screen._word_stat_button
 
         assert word_button is not None
+        # As a real button's does, trigger_action presses it (opening the dropdown).
+        word_button.trigger_action.side_effect = lambda: screen._on_word_stat_button_pressed(
+            word_button
+        )
         with (
             patch.object(statistics_screen_module.Clock, "schedule_once") as mock_schedule,
             patch.object(screen, "_enter_dropdown_nav") as mock_enter_dropdown,

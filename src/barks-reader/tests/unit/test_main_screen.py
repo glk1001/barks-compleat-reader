@@ -353,6 +353,20 @@ class TestMainScreen:
         main_screen._nav_coord.on_document_closed.assert_called_once()
 
 
+class TestMenuDotsOffScreen:
+    def test_enter_off_screen_stays_in_menu_mode(self, main_screen: MainScreen) -> None:
+        """Enter on the menu button mid-fade opens nothing; the menu keeps its focus."""
+        with (
+            patch.object(main_screen, "open_menu_dots", return_value=False),
+            patch.object(main_screen, "_clear_menu_focus"),
+            patch.object(main_screen, "_enter_dropdown_nav") as enter_dropdown_nav,
+            patch.object(main_screen, "_update_menu_focus") as update_menu_focus,
+        ):
+            main_screen._open_menu_dots_for_keyboard()
+        enter_dropdown_nav.assert_not_called()
+        update_menu_focus.assert_called_once()
+
+
 class TestMainScreenMarkers:
     """Quit and settings-close log lines, the oracles the GUI path tests wait on."""
 

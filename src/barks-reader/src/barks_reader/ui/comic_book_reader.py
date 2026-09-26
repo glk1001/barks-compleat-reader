@@ -57,6 +57,7 @@ from .platform_window_utils import (
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
+    open_dropdown,
 )
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
@@ -830,8 +831,8 @@ class ComicBookReader(FloatLayout):
         )
         self._show_page(None, None)
 
-    def goto_page(self) -> None:
-        """Go to user requested page."""
+    def goto_page(self) -> bool:
+        """Open the goto-page dropdown; return whether it opened."""
         if not self._goto_page_dropdown:
             self._create_goto_page_dropdown()
             assert self._goto_page_dropdown
@@ -850,19 +851,28 @@ class ComicBookReader(FloatLayout):
                     else GOTO_PAGE_BUTTON_NONBODY_COLOR
                 )
 
-        self._goto_page_dropdown.open(self._goto_page_widget)
+        assert self._goto_page_widget is not None
+        if not open_dropdown(self._goto_page_dropdown, self._goto_page_widget):
+            return False
         if selected_button:
             self._goto_page_dropdown.scroll_to(selected_button)
         logger.debug(log_markers.GOTO_PAGE_DROPDOWN_OPENED)
+        return True
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
         logger.info(log_markers.GOTO_PAGE_SELECTED.format(page=page))
         self._page_manager.set_current_page_index_from_str(page)
         self._hide_action_bar_if_fullscreen()
 
-    def open_goto_page_for_keyboard(self, on_dismiss: Callable) -> int:
-        """Open the goto-page dropdown for keyboard nav. Returns focused button index."""
-        self.goto_page()
+    def open_goto_page_for_keyboard(self, on_dismiss: Callable) -> int | None:
+        """Open the goto-page dropdown for keyboard nav.
+
+        Returns:
+            The index of the button to focus, or None if the dropdown did not open.
+
+        """
+        if not self.goto_page():
+            return None
         if self._goto_page_dropdown:
             self._goto_page_dropdown.bind(on_dismiss=on_dismiss)
         for i, btn in enumerate(self._goto_page_buttons):
@@ -1020,6 +1030,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         focused_idx = self.comic_book_reader.open_goto_page_for_keyboard(
             self._on_goto_page_dropdown_dismissed
         )
+        if focused_idx is None:
+            self._update_menu_focus()
+            return
         self._enter_dropdown_nav(initial_idx=focused_idx)
 
     def _on_goto_page_dropdown_dismissed(self, instance: Widget) -> None:
