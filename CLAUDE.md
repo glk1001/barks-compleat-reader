@@ -34,6 +34,15 @@ pushes nothing.
 bash scripts/run_benchmark.sh
 ```
 
+**Run the whole repo overnight** (the data-pack validators, full-lint, the suite with coverage,
+in random order and against upgraded dependencies, the sibling repos' tests, a Nuitka build and
+its smoke test, every GUI stage below against that build, GUI timing drift, a weekday slice of
+mutation testing; `--list`, `--only`, `--skip`, `--app PATH`; results in
+`build/overnight/<stamp>/summary.txt`, where a warn-only stage shows WARNED):
+```bash
+bash scripts/run_overnight.sh
+```
+
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
 ```bash
