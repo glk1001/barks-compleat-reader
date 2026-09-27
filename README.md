@@ -284,6 +284,7 @@ just reader
   | `panel-sources` | `check-barks-panel-sources.py`: every PNG panel belongs to a title |
   | `build-check` | The `../barks-comic-building` integrity checker on the whole build tree: every check, with `--check-panel-segment-image-size` |
   | `wiki-order` | `check_wiki_story_order.py` on the sibling barks-wiki bundle; warns only |
+  | `wiki-copy` | The wiki copy shipped in Reader Files, which `validate` does not see while the settings use the live bundle: a broken join fails; a copy that differs from a fresh export of the live bundle (barks-wiki's `export_reader_wiki.py`, into a temp dir) warns |
   | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
   | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
   | `pytest` | `uv sync --locked`, then the whole suite with coverage |

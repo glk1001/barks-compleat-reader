@@ -22,6 +22,10 @@
 #                  each panel segments file's page size against its restored image
 #   wiki-order     check_wiki_story_order.py on the sibling barks-wiki bundle;
 #                  warns only, as in full-lint (that repo gates its own order)
+#   wiki-copy      check_wiki_copy.py: the wiki copy shipped in Reader Files, which
+#                  the live-bundle setting hides from validate - a broken join
+#                  there fails; a copy older than a fresh export of the live
+#                  bundle (barks-wiki's own export, into a temp dir) warns
 #   lint           full-lint.sh: every static check, and the benchmarks against
 #                  their baseline (a quiet machine is when those numbers mean most)
 #   audit          uv audit, the locked dependencies' known CVEs; warns only
@@ -67,7 +71,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
-STAGES=(validate panel-sources build-check wiki-order lint audit pytest random-order
+STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
     dep-drift siblings build smoke gui gui-timings graphify mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
@@ -247,6 +251,12 @@ run_stage() {
             barks-check-build --log-level SUCCESS --check-panel-segment-image-size
         ;;
     wiki-order) uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED" ;;
+    wiki-copy)
+        uv run scripts/check_wiki_copy.py || status=$?
+        # Its 3 is a stale copy with sound joins: a warning, not a failure.
+        ((status == 3)) && return "$WARNED"
+        return "$status"
+        ;;
     lint) bash "${SCRIPT_DIR}/full-lint.sh" ;;
     audit) uv audit || return "$WARNED" ;;
     pytest)
