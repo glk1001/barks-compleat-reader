@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import sys
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -1016,3 +1017,42 @@ class TestKeepArtifactsIfAsked:
         else:
             monkeypatch.setenv(harness.KEEP_LOGS_ENV_VAR, value)
         assert app_boot.keep_artifacts_if_asked() == []
+
+
+class TestLiveProfileGuardMessage:
+    """A live profile changed by a hand-started reader says so, not blames the tests."""
+
+    SINCE = datetime(2026, 9, 27, 16, 36, 58)  # noqa: DTZ001 - the app logs local time
+
+    @staticmethod
+    def _live_dir(tmp_path: Path, *starts: str) -> Path:
+        log = tmp_path / harness.APP_LOG_IN_CONFIG
+        log.parent.mkdir(parents=True)
+        log.write_text(
+            "".join(
+                f"{start}.220 | INFO     | app : __main__:start_logging:109"
+                f" - {markers.APP_STARTING}\n{start}.221 | INFO     | app : x - app dir = x.\n"
+                for start in starts
+            )
+        )
+        return tmp_path
+
+    def test_runs_started_during_the_session_are_named(self, tmp_path: Path) -> None:
+        live = self._live_dir(tmp_path, "2026-09-26 19:58:10", "2026-09-27 16:55:11")
+        assert harness.live_runs_since(live / harness.APP_LOG_IN_CONFIG, self.SINCE) == [
+            "2026-09-27 16:55:11"
+        ]
+        message = harness.live_profile_changed_message(["barks-reader.json"], live, self.SINCE)
+        assert message.startswith("the GUI tests changed the live profile: ['barks-reader.json']")
+        assert (
+            "reader was started with the live profile, outside the tests, at 2026-09-27 16:55:11"
+            in message
+        )
+
+    def test_with_no_such_run_the_message_blames_the_tests_alone(self, tmp_path: Path) -> None:
+        live = self._live_dir(tmp_path, "2026-09-26 19:58:10")
+        message = harness.live_profile_changed_message(["barks-reader.json"], live, self.SINCE)
+        assert "outside the tests" not in message
+
+    def test_no_log_is_no_runs(self, tmp_path: Path) -> None:
+        assert harness.live_runs_since(tmp_path / "missing.log", self.SINCE) == []

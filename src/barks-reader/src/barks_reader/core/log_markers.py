@@ -20,6 +20,11 @@ from __future__ import annotations
 import re
 from typing import Final
 
+# ------------------------------------------------------------ the app itself --
+# The first line of every run. The GUI suite's live-profile guard looks for it in
+# the live profile's log, to say when the reader was run by hand during a session.
+APP_STARTING: Final = "*** Starting barks reader ***"
+
 # ---------------------------------------------------------------- the tree --
 NEW_SELECTED_NODE: Final = 'New selected node: "{name}". Previous node: "{previous}".'
 NODE_EXPANDED: Final = "Node expanded: '{name}'."

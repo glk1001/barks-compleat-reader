@@ -31,6 +31,7 @@ from barks_reader.core.config_info import (
     seed_random_from_env,
     setup_loguru,
 )
+from barks_reader.core.log_markers import APP_STARTING
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
@@ -106,7 +107,7 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
     Config.remove_option("input", "%(name)s")  # ty: ignore[unresolved-attribute]
     redirect_kivy_logs()
 
-    logger.info("*** Starting barks reader ***")
+    logger.info(APP_STARTING)
     logger.info(f"running_compiled_standalone = {cfg_info.is_running_compiled}")
     logger.info(f'app dir = "{cfg_info.app_dir}".')
     logger.info(f'app config path = "{cfg_info.app_config_path}".')

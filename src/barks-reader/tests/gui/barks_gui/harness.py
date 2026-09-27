@@ -196,6 +196,52 @@ def app_data_dir() -> Path | None:
     return Path(os.path.expandvars(value)) if value else None
 
 
+# The app's own log, under its config dir (config_info.setup_loguru).
+APP_LOG_IN_CONFIG = Path("kivy") / "logs" / "barks-reader.log"
+_LOG_LINE_TIME = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\.\d+ ")
+
+
+def live_runs_since(app_log: Path, since: datetime) -> list[str]:
+    """Return the start time of each run the app logged in `app_log` at or after `since`.
+
+    The GUI tests never boot from the live profile, so a run in its log during a
+    session was the reader started by hand: the likely reason the live-profile
+    guard found the profile changed.
+
+    Args:
+        app_log: The live profile's app log; a missing one holds no runs.
+        since: When the session started (local time, as the log writes it).
+
+    Returns:
+        Each run's start, ``2026-09-27 16:55:11``, oldest first.
+
+    """
+    try:
+        text = app_log.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    starts = []
+    for line in text.splitlines():
+        if markers.APP_STARTING not in line:
+            continue
+        found = _LOG_LINE_TIME.match(line)
+        if found and datetime.fromisoformat(found[1]) >= since.replace(microsecond=0):
+            starts.append(found[1])
+    return starts
+
+
+def live_profile_changed_message(changed: list[str], live_dir: Path, since: datetime) -> str:
+    """Say which live-profile files changed, and name any run of the reader that did it."""
+    message = f"the GUI tests changed the live profile: {changed} in {live_dir}"
+    runs = live_runs_since(live_dir / APP_LOG_IN_CONFIG, since)
+    if runs:
+        message += (
+            f"\n  - but the reader was started with the live profile, outside the tests,"
+            f" at {', '.join(runs)}: most likely the reader, not the tests, wrote it"
+        )
+    return message
+
+
 def artifacts_dir() -> Path:
     """Return this run's artifacts directory, created on first use."""
     if _RUN.dir is None:

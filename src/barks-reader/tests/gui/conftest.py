@@ -33,6 +33,7 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -112,9 +113,10 @@ def live_profile() -> Iterator[LiveProfile]:
     if not (live / "barks-reader.ini").is_file():
         pytest.skip(f"app config not found in {live}")
     snapshot = {n: (live / n).read_bytes() for n in WATCHED_LIVE_FILES if (live / n).is_file()}
+    started = datetime.now()  # noqa: DTZ005 - local time, as the app's log writes it
     yield LiveProfile(dir=live, snapshot=snapshot)
     changed = [n for n, data in snapshot.items() if (live / n).read_bytes() != data]
-    assert not changed, f"the GUI tests changed the live profile: {changed} in {live}"
+    assert not changed, harness.live_profile_changed_message(changed, live, started)
 
 
 @pytest.fixture(scope="session")
