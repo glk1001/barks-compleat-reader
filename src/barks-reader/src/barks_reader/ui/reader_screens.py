@@ -157,7 +157,18 @@ class ReaderScreenManager:
         return random.choice(self._READER_SCREEN_TRANSITIONS)
 
     def _set_transition(self, transition: TransitionBase, switching_to: str) -> None:
-        """Make `transition` the next switch's, first finishing one still running.
+        """Make `transition` the next switch's, first finishing one still running."""
+        self._finish_running_transition(switching_to)
+        self._screen_manager.transition = transition
+
+    def _finish_running_transition(self, switching_to: str) -> None:
+        """Finish a transition still running, before a switch replaces or cuts it short.
+
+        Every switch goes through here, including those that keep the transition
+        they find (the document reader, By the Numbers): Kivy's own stop() at the
+        switch fires neither screen's enter/leave, and an overnight soak's walk,
+        reopening the document reader within its closing slide, left the log with
+        one 'main_screen' left more than entered.
 
         ScreenManager.on_current stops the transition it holds *then*, so a
         transition swapped out while still animating keeps running: its
@@ -181,7 +192,6 @@ class ReaderScreenManager:
             # the harness pairing their log lines) expect both.
             screen_in.dispatch("on_enter")
             screen_out.dispatch("on_leave")
-        self._screen_manager.transition = transition
 
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
@@ -232,6 +242,7 @@ class ReaderScreenManager:
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title)
+        self._finish_running_transition("document reader")
         self._screen_manager.current = DOCUMENT_READER_SCREEN
         logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))
 
@@ -255,6 +266,7 @@ class ReaderScreenManager:
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.corpus_stats_screen.open()
+        self._finish_running_transition("By the Numbers page")
         self._screen_manager.current = CORPUS_STATS_SCREEN
         logger.info(log_markers.BY_THE_NUMBERS_ACTIVE)
 

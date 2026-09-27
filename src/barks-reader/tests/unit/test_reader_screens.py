@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast, no_type_check
+from typing import TYPE_CHECKING, cast, no_type_check
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_screens
@@ -19,6 +19,9 @@ from barks_reader.ui.reader_screens import (
     ReaderScreens,
 )
 from kivy.uix.screenmanager import Screen, TransitionBase
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture
@@ -156,6 +159,34 @@ class TestReaderScreenManager:
         assert any(
             "Screen transition 'SwapTransition' still running" in line for line in loguru_sink
         )
+
+    @pytest.mark.parametrize(
+        "switch",
+        [
+            lambda manager: manager._switch_to_document_reader(Path("/doc"), "How To"),
+            lambda manager: manager._switch_to_corpus_stats(),
+        ],
+        ids=["document-reader", "corpus-stats"],
+    )
+    def test_a_switch_keeping_its_transition_still_finishes_a_running_one(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        loguru_sink: list[str],
+        switch: Callable[[ReaderScreenManager], None],
+    ) -> None:
+        """Reopening the document reader mid-slide left the log one 'left' over."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        running = reader_screen_manager._screen_manager.transition
+        running.is_active = True
+
+        switch(reader_screen_manager)
+
+        running.stop.assert_called_once_with()
+        running.screen_in.dispatch.assert_called_once_with("on_enter")
+        running.screen_out.dispatch.assert_called_once_with("on_leave")
+        assert reader_screen_manager._screen_manager.transition is running
+        assert any("still running" in line for line in loguru_sink)
 
     def test_a_finished_transition_at_a_switch_is_quiet(
         self,
