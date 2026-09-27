@@ -884,6 +884,15 @@ class TestTimings:
         timings.record_slowest(jsonl, "c", {})
         assert timings.fold(jsonl) == {"page shown": 0.9, "tree nodes loaded": 0.5}
 
+    def test_a_ranked_fold_takes_that_slowest_test_or_the_fastest_of_fewer(
+        self, tmp_path: Path
+    ) -> None:
+        jsonl = tmp_path / "timings.jsonl"
+        for name, seconds in [("a", 0.7), ("b", 2.7), ("c", 0.9), ("d", 1.5)]:
+            timings.record_slowest(jsonl, name, {"title inset image set": seconds})
+        timings.record_slowest(jsonl, "e", {"page shown": 0.4})
+        assert timings.fold(jsonl, 3) == {"title inset image set": 0.9, "page shown": 0.4}
+
     def test_a_baseline_round_trips_with_its_date_host_and_workers(self, tmp_path: Path) -> None:
         path = tmp_path / ".benchmarks" / "gui-timings.json"
         written = timings.write_baseline(path, {"page shown": 0.9}, workers=4)
@@ -958,7 +967,15 @@ class TestTimings:
         assert timings.main(["drift", str(jsonl)]) == 0
         assert "no drift" in capsys.readouterr().out
 
-        timings.record_slowest(jsonl, "b", {"page shown": 2.0})
+        # One stalled worker's sample is the slowest, not a drift.
+        timings.record_slowest(jsonl, "b", {"page shown": 2.7})
+        timings.record_slowest(jsonl, "c", {"page shown": 0.8})
+        assert timings.main(["drift", str(jsonl)]) == 0
+        assert "no drift" in capsys.readouterr().out
+
+        # Every test slower is.
+        for name in ("a", "b", "c"):
+            timings.record_slowest(jsonl, name, {"page shown": 2.0})
         assert timings.main(["drift", str(jsonl)]) == 1
         assert "page shown: 2s, calibrated 0.9s (2.2x)" in capsys.readouterr().out
 

@@ -39,7 +39,8 @@
 #   gui            run_gui_overnight.sh: every GUI stage, the built app's too,
 #                  and a longer soak on new seeds each night
 #   gui-timings    the GUI suite once more, recording its timings, then each
-#                  kind's slowest against .benchmarks/gui-timings.json; warns
+#                  kind's third-slowest test against .benchmarks/gui-timings.json
+#                  (not the slowest: one starved worker is not a drift); warns
 #                  when one has drifted, well before its budget would fail
 #   graphify       graphify update ., the knowledge graph (gitignored)
 #   mutation       mutmut.sh on one seventh of core/, a different one each weekday

@@ -60,10 +60,14 @@ MIN_BUDGETS: dict[str, float] = {"volumes loaded": 10.0}
 # a four-worker run took a quiet 16-core machine to about 12.
 PER_WORKER_LOAD = 3.0
 # `drift`: the overnight run's early warning, well inside a budget's
-# BUDGET_FACTOR. A kind has drifted when its slowest is this many times the
-# calibrated slowest and at least DRIFT_MIN_SECS more.
+# BUDGET_FACTOR. A kind has drifted when its DRIFT_RANK-th slowest test is this
+# many times the calibrated slowest and at least DRIFT_MIN_SECS more. Not the
+# slowest: one worker starved of the CPU for a moment doubles one sample (a
+# title inset set in 2.7s, its median test 0.9s, warned three nights running),
+# where a real slowdown moves every test, the third-slowest with them.
 DRIFT_FACTOR = 1.5
 DRIFT_MIN_SECS = 0.25
+DRIFT_RANK = 3
 
 # What is timed, by the marker that carries its {elapsed}.
 TIMED: dict[str, str] = {
@@ -175,15 +179,28 @@ class Baseline:
     slowest: dict[str, float]
 
 
-def fold(jsonl: Path) -> dict[str, float]:
-    """Return the slowest of each kind across every test recorded in the JSON lines file."""
-    worst: dict[str, float] = {}
+def fold(jsonl: Path, rank: int = 1) -> dict[str, float]:
+    """Return the slowest of each kind across every test recorded in the JSON lines file.
+
+    Args:
+        jsonl: The recording, one test's slowest durations per line.
+        rank: Which slowest test's figure: 1 the slowest, 3 the third-slowest; a
+            kind seen in fewer tests than that gives its fastest.
+
+    Returns:
+        Seconds, by kind.
+
+    """
+    seen: dict[str, list[float]] = {}
     for line in jsonl.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         for name, seconds in json.loads(line)["slowest"].items():
-            worst[name] = max(worst.get(name, 0.0), float(seconds))
-    return worst
+            seen.setdefault(name, []).append(float(seconds))
+    return {
+        name: sorted(values, reverse=True)[min(rank, len(values)) - 1]
+        for name, values in seen.items()
+    }
 
 
 def write_baseline(path: Path, slowest: Mapping[str, float], workers: int) -> Baseline:
@@ -274,7 +291,8 @@ def record_slowest(path: Path, nodeid: str, worst: dict[str, float]) -> None:
 def drifted(seen: Mapping[str, float], calibrated: Mapping[str, float]) -> list[str]:
     """Return a line for each kind now DRIFT_FACTOR times slower than its calibrated slowest.
 
-    Only kinds both runs saw, and only when the difference is at least
+    `seen` is a recording's DRIFT_RANK-th slowest of each kind (`fold`). Only
+    kinds both runs saw, and only when the difference is at least
     DRIFT_MIN_SECS: a tenth of a second doubled is noise, not a regression.
     """
     problems = []
@@ -308,20 +326,27 @@ def _drift(jsonl: Path) -> int:
     if not jsonl.is_file():
         print(f"no recorded timings at {jsonl}")  # noqa: T201
         return 2
-    seen = fold(jsonl)
+    slowest, seen = fold(jsonl), fold(jsonl, DRIFT_RANK)
     print(  # noqa: T201
-        f"slowest of each kind against the calibration on {baseline.host} of {baseline.calibrated}:"
+        f"each kind's slowest test, and its test #{DRIFT_RANK} (what drift compares), against"
+        f" the calibration on {baseline.host} of {baseline.calibrated}:"
     )
     for name in TIMED:
-        now, then = seen.get(name), baseline.slowest.get(name)
-        now_shown = f"{now:g}s" if now is not None else "not seen"
+        now, worst, then = seen.get(name), slowest.get(name), baseline.slowest.get(name)
+        worst_shown = f"{worst:g}s" if worst is not None else "not seen"
+        now_shown = f"{now:g}s" if now is not None else "-"
         then_shown = f"{then:g}s" if then is not None else "not calibrated"
-        print(f"  {name:24s} {now_shown:>9s}  (calibrated {then_shown})")  # noqa: T201
+        print(  # noqa: T201
+            f"  {name:24s} {worst_shown:>9s} {now_shown:>9s}  (calibrated {then_shown})"
+        )
     problems = drifted(seen, baseline.slowest)
     if not problems:
-        print(f"no drift: nothing {DRIFT_FACTOR:g}x its calibrated slowest")  # noqa: T201
+        print(f"no drift: no test #{DRIFT_RANK} {DRIFT_FACTOR:g}x its calibrated slowest")  # noqa: T201
         return 0
-    print(f"drifted, {DRIFT_FACTOR:g}x or more past the calibration (still inside the budgets?):")  # noqa: T201
+    print(  # noqa: T201
+        f"drifted, test #{DRIFT_RANK} {DRIFT_FACTOR:g}x or more past the calibration"
+        " (still inside the budgets?):"
+    )
     for problem in problems:
         print(f"  {problem}")  # noqa: T201
     return 1
