@@ -287,14 +287,15 @@ just reader
   | `wiki-copy` | The wiki copy shipped in Reader Files, which `validate` does not see while the settings use the live bundle: a broken join fails; a copy that differs from a fresh export of the live bundle (barks-wiki's `export_reader_wiki.py`, into a temp dir) warns |
   | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
   | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
-  | `pytest` | `uv sync --locked`, then the whole suite with coverage |
+  | `pytest` | `uv sync --locked`, then the whole suite with coverage, kept for the `coverage` stage |
   | `random-order` | The suite shuffled by `pytest-randomly`; the log's first line gives the seed and the command that replays it |
   | `dep-drift` | The suite against every dependency upgraded as far as `pyproject.toml` allows, in a venv of its own; `uv.lock` is put back |
   | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
   | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |
   | `smoke` | `smoke-test-build.sh --press-escape` on that build (or on `--app PATH`), as CI does |
-  | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night |
+  | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night; the workspace app's coverage is measured (`BARKS_PROBE_COVERAGE`, about 10% slower) |
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
+  | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
   | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |
   | `mutation` | `mutmut.sh` on one seventh of `core/`, a different slice each weekday; warns when a module has more survivors than the last time it was mutated |
 

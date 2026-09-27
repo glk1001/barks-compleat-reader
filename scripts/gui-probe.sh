@@ -51,6 +51,9 @@
 # focus once, not once per boot; `stop-xserver` ends it),
 # BARKS_PROBE_APP (a built executable to run instead of `uv run main.py`; it gets
 # the same config and data dir env vars, which the app honours when set),
+# BARKS_PROBE_COVERAGE (a directory: run the workspace app under `coverage run
+# --parallel-mode`, each boot writing its own data file there, for the overnight
+# run to combine with the unit suite's; ignored with BARKS_PROBE_APP),
 # BARKS_PROBE_OWNER_PID (the runner a start belongs to, so `cleanup` can tell a
 # killed run's leftovers from a live run's displays; run_gui_tests.sh sets it),
 # BARKS_PROBE_TOUCH=1 (tap by touch as well as by click: a virtual touchscreen,
@@ -391,8 +394,14 @@ cmd_start() {
             BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" "$BARKS_PROBE_APP" \
             </dev/null >>"$APP_LOG" 2>&1 &
     else
+        local run=(main.py)
+        if [[ -n "${BARKS_PROBE_COVERAGE:-}" ]]; then
+            mkdir -p "$BARKS_PROBE_COVERAGE"
+            run=(python -m coverage run --parallel-mode
+                --data-file="${BARKS_PROBE_COVERAGE}/.coverage.gui" main.py)
+        fi
         setsid env DISPLAY="$DPY" BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
-            uv run --directory "$REPO_ROOT" main.py \
+            uv run --directory "$REPO_ROOT" "${run[@]}" \
             </dev/null >>"$APP_LOG" 2>&1 &
     fi
     echo $! >"$APP_PID_FILE"

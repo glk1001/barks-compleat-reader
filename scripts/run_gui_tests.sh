@@ -62,6 +62,11 @@
 # failure's in build/gui-tests/<run>/, for reading what a run did when nothing
 # failed (a transition's log lines, this machine's timings). Off by default.
 #
+# BARKS_PROBE_COVERAGE=<dir> measures the app's coverage (gui-probe.sh runs it
+# under `coverage run --parallel-mode`); each boot writes about 2 MB, so the run
+# merges its boots into <dir>/.coverage.gui as it ends, appending to what earlier
+# runs left there. The overnight run combines that with the unit suite's.
+#
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the
 # reader's data directories, and drives it in real time (the first three tests
@@ -247,6 +252,12 @@ run_pytest() {
 }
 status=0
 gui_run run_pytest || status=$?
+if [[ -n "${BARKS_PROBE_COVERAGE:-}" && -d "$BARKS_PROBE_COVERAGE" ]]; then
+    # Whatever the tests did, keep what the boots measured - small.
+    uv run coverage combine --append --quiet \
+        --data-file="${BARKS_PROBE_COVERAGE}/.coverage.gui" "$BARKS_PROBE_COVERAGE" ||
+        echo "run_gui_tests: could not merge the coverage in $BARKS_PROBE_COVERAGE" >&2
+fi
 if [[ -n "$GUI_INTERRUPTED" ]]; then
     echo "run_gui_tests: stopped; what it started is being cleaned up" >&2
     exit "$GUI_INTERRUPTED"
