@@ -191,12 +191,15 @@ just reader
     bash scripts/run_gui_matrix.sh                     # every variant
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
     bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
+    bash scripts/run_gui_matrix.sh --app ./barks-reader-linux  # every variant against a build
     ```
 - **The GUI overnight run** runs every GUI test there is, every way it can run: the suite as
   configured, then on each panels source and each comic source, the settings matrix, a
   landscape 1920x1080 screen, the tap tests by real touch (skipped when the udev rule is
   missing), and the random-walk soak from three seeds. With `--app PATH` it also runs the
-  suite against a built executable. It keeps going after a failure, prints a pass/fail
+  suite, the settings matrix and one soak seed against a built executable: a setting that
+  loads files only it needs (the virtual keyboard's layouts) and a walk's deep paths (lazy
+  imports) test the packaging, which the workspace run cannot. It keeps going after a failure, prints a pass/fail
   table with timings, and exits non-zero if anything failed. It holds off sleep while it
   runs and warns when on battery. Each stage shows its number and start time, then a line
   per test as it finishes, and `summary.txt` is rewritten after every stage. Well over an
@@ -293,7 +296,7 @@ just reader
   | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
   | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |
   | `smoke` | `smoke-test-build.sh --press-escape` on that build (or on `--app PATH`), as CI does |
-  | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night; the workspace app's coverage is measured (`BARKS_PROBE_COVERAGE`, about 10% slower) |
+  | `gui` | `run_gui_overnight.sh`, the built app's stages too (the suite, the matrix, one soak seed), with a longer soak on new seeds each night; the workspace app's coverage is measured (`BARKS_PROBE_COVERAGE`, about 10% slower) |
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
   | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
   | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |

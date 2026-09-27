@@ -22,12 +22,19 @@
 #                  when the machine lacks the udev rule (scripts/udev/)
 #   soak           the random walk, SOAK_STEPS keys from each of SOAK_SEEDS
 #   built-app      the suite against a Nuitka build; only with --app PATH
+#   built-app-matrix  the settings matrix against that build: a setting that loads
+#                  files only it needs (the virtual keyboard's layouts) tests the
+#                  packaging; only with --app
+#   built-app-soak the random walk against that build, from the first of
+#                  SOAK_SEEDS: deep paths reach lazy imports the suite never does;
+#                  only with --app
 #
 # Usage: scripts/run_gui_overnight.sh [--list] [--only A,B] [--skip A,B] [--app PATH]
 #   --list   print the stages and exit
 #   --only   run only these stages (comma-separated)
 #   --skip   run every stage but these
-#   --app    also run the suite against this built executable (the built-app stage)
+#   --app    also run the suite, the matrix and one soak seed against this built
+#            executable (the built-app stages)
 # Env: BARKS_OVERNIGHT_SOAK_STEPS (default 500), BARKS_OVERNIGHT_SOAK_SEEDS
 # (default "1 2 3").
 #
@@ -47,7 +54,8 @@ cd "$REPO_ROOT"
 
 SOAK_STEPS="${BARKS_OVERNIGHT_SOAK_STEPS:-500}"
 SOAK_SEEDS="${BARKS_OVERNIGHT_SOAK_SEEDS:-1 2 3}"
-STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch soak built-app)
+STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch soak built-app
+    built-app-matrix built-app-soak)
 
 only=""
 skip=""
@@ -100,7 +108,7 @@ wanted() {
     local name="$1"
     [[ -n "$only" && ",$only," != *",$name,"* ]] && return 1
     [[ -n "$skip" && ",$skip," == *",$name,"* ]] && return 1
-    [[ "$name" == built-app && -z "$app" ]] && return 1
+    [[ "$name" == built-app* && -z "$app" ]] && return 1
     return 0
 }
 
@@ -151,6 +159,13 @@ run_stage() {
         return "$status"
         ;;
     built-app) "${gui[@]}" --app "$app" ;;
+    built-app-matrix) bash "${SCRIPT_DIR}/run_gui_matrix.sh" --progress --app "$app" ;;
+    built-app-soak)
+        local first="${SOAK_SEEDS%% *}"
+        echo "built-app-soak: seed ${first}, ${SOAK_STEPS} keys"
+        BARKS_GUI_WALK_SEED="$first" BARKS_GUI_WALK_STEPS="$SOAK_STEPS" \
+            "${gui[@]}" --soak --app "$app"
+        ;;
     esac
 }
 
@@ -164,7 +179,7 @@ write_summary() {
     {
         echo "==== overnight GUI run, ${stamp}: $1 ===="
         for i in "${!names[@]}"; do
-            printf '%-13s %-8s %3dm%02ds\n' "${names[$i]}" "${results[$i]}" \
+            printf '%-16s %-8s %3dm%02ds\n' "${names[$i]}" "${results[$i]}" \
                 "$((durations[i] / 60))" "$((durations[i] % 60))"
         done
         echo "logs: ${log_dir}/"

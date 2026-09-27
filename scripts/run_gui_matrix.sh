@@ -15,12 +15,15 @@
 # harness default rather than a pin, so it can. Add a variant by adding a line.
 #
 # Usage: scripts/run_gui_matrix.sh [--list] [--only NAME[,NAME...]] [--visible]
-#                                  [--screen WxH] [--progress] [pytest args]
+#                                  [--screen WxH] [--progress] [--app PATH] [pytest args]
 #   --list      print the variants and exit
 #   --only      run only the named variants
 #   --visible   on the Xephyr window, serially, instead of headless on Xvfb
 #   --screen    nested screen size for every run (run_gui_tests.sh --screen)
 #   --progress  a line per test as it finishes (run_gui_tests.sh --progress)
+#   --app       every variant against this built executable (run_gui_tests.sh --app):
+#               a setting that loads files only it needs (the virtual keyboard's
+#               layouts, say) is also a packaging test
 #   anything else goes to pytest through run_gui_tests.sh, e.g. -k reader or -x
 #
 # Each variant's full output goes to build/gui-tests/matrix-<stamp>/<name>.log;
@@ -45,6 +48,7 @@ only=""
 output=--quiet
 mode=(--headless)
 screen=()
+app=()
 while [[ "${1:-}" == --* ]]; do
     case "$1" in
     --list)
@@ -68,6 +72,10 @@ while [[ "${1:-}" == --* ]]; do
     --progress)
         output=--progress
         shift
+        ;;
+    --app)
+        app=(--app "${2:?--app needs the path of the executable}")
+        shift 2
         ;;
     *) break ;;
     esac
@@ -100,7 +108,7 @@ run_variant() {
     local name="$1" settings="$2"
     shift 2
     BARKS_GUI_INI="$settings" bash "${SCRIPT_DIR}/run_gui_tests.sh" "${mode[@]}" "$output" \
-        "${screen[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"
+        "${screen[@]}" "${app[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"
 }
 
 # Stopping the matrix stops the variant running, whose own exit cleans up what

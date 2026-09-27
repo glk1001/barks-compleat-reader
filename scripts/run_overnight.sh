@@ -41,7 +41,7 @@
 #   build          scripts/build.sh, the Nuitka executable; skipped with --app
 #   smoke          smoke-test-build.sh on that build (or on --app PATH), pressing
 #                  Escape to close its popup, as CI does
-#   gui            run_gui_overnight.sh: every GUI stage, the built app's too,
+#   gui            run_gui_overnight.sh: every GUI stage, the built app's three too,
 #                  and a longer soak on new seeds each night; the workspace app's
 #                  coverage is measured (BARKS_PROBE_COVERAGE, ~10% slower)
 #   gui-timings    the GUI suite once more, recording its timings, then each
