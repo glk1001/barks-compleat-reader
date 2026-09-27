@@ -287,7 +287,7 @@ just reader
   | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
   | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
   | `pytest` | `uv sync --locked`, then the whole suite with coverage |
-  | `random-order` | The suite shuffled by `pytest-randomly`; its seed is in the log, to replay a failure |
+  | `random-order` | The suite shuffled by `pytest-randomly`; the log's first line gives the seed and the command that replays it |
   | `dep-drift` | The suite against every dependency upgraded as far as `pyproject.toml` allows, in a venv of its own; `uv.lock` is put back |
   | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
   | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |

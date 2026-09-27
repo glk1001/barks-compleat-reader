@@ -27,7 +27,8 @@
 #   audit          uv audit, the locked dependencies' known CVEs; warns only
 #   pytest         uv sync --locked, then the whole suite with coverage
 #   random-order   the whole suite shuffled (pytest-randomly, not a dependency:
-#                  uv run --with); its seed is in the log, to replay a failure
+#                  uv run --with); its seed, and the command to replay it, are the
+#                  log's first line
 #   dep-drift      the suite against every dependency upgraded as far as
 #                  pyproject.toml allows, in a venv of its own; uv.lock is put back
 #   siblings       the tests of the sibling repos that use barks-fantagraphics and
@@ -240,8 +241,14 @@ run_stage() {
         uv sync --locked
         with_display uv run pytest -q --cov --cov-report=term:skip-covered
         ;;
-    # Installed, pytest-randomly shuffles every run; it prints its seed at the top.
-    random-order) with_display uv run --with pytest-randomly pytest -q ;;
+    # The seed is chosen here and printed: -q hides pytest-randomly's own header
+    # line, so a shuffled failure could not be replayed.
+    random-order)
+        local seed=$((RANDOM * 32768 + RANDOM))
+        echo "random-order: seed ${seed}; replay with:"
+        echo "  uv run --with pytest-randomly pytest -q --randomly-seed=${seed}"
+        with_display uv run --with pytest-randomly pytest -q --randomly-seed="$seed"
+        ;;
     dep-drift) dep_drift ;;
     siblings) siblings ;;
     build)
