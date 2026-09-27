@@ -295,7 +295,7 @@ just reader
   | `gui` | `run_gui_overnight.sh`, the built app's stage too, with a longer soak on new seeds each night |
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
   | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |
-  | `mutation` | `mutmut.sh` on one seventh of `core/`, a different slice each weekday |
+  | `mutation` | `mutmut.sh` on one seventh of `core/`, a different slice each weekday; warns when a module has more survivors than the last time it was mutated |
 
   `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default
   three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_DAY` (1-7)

@@ -710,6 +710,24 @@ Everything else this pass found was a trap or an equivalent.
 | `encoding="utf-8"` → `"UTF-8"` / `None` on ASCII files (`image_selector`, `reading_history`, `wiki_integration`) | 6 | Same bytes either way. |
 | Log and message wording, `logger.x(None)` | the rest | Same as every previous round. |
 
+## Overnight slice (2026-09-27)
+
+`run_overnight.sh`'s mutation stage mutates one seventh of `core/` a night, and since this
+date it warns when a module has more survivors than the last time it was mutated
+(`scripts/mutation_survivors.py`; the per-module counts live in
+`.benchmarks/mutation-survivors.json`, machine-local). Counts rather than names, since
+mutmut renumbers a function's mutants on any edit. A rise is reported once, with the
+module's survivor names, on the night it appears: triage those against the tables below.
+
+The first slice to be read this way (Sunday's: `comic_reader_manager`,
+`hyphen_break_engine`, `page_info_adapters`, `reader_formatter` and four modules at 0)
+held 26. 22 were already recorded here as equivalents. The other 4 were real, all in
+`comic_reader_manager`, whose "done" floor of 9 had counted them as equivalents:
+`read_barks_comic_book` passing `None` for the comic, the Fantagraphics info or the image
+builder, and a `MissingVolumeError` not logged. `TestBarksReadingPassesThrough` and
+`test_a_missing_volume_is_logged` kill them; its 5 left are four `__init__` `None` → `""`
+fields and one debug line.
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module
@@ -737,7 +755,7 @@ triaged floor** — nothing on this table has a known killable gap left.
 | `reader_file_paths` | 37 → 21 |
 | `screen_metrics` | 27 → 8 |
 | `filtered_title_lists` | 22 → 1 |
-| `comic_reader_manager` | 22 → 9 |
+| `comic_reader_manager` | 22 → 9 → 5 |
 | `hyphen_break_engine` | 19 → 6 |
 | `reading_history` | 17 → 10 |
 | `user_error_messages` | 12 → 0 |

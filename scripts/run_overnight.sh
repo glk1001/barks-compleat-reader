@@ -43,7 +43,9 @@
 #                  (not the slowest: one starved worker is not a drift); warns
 #                  when one has drifted, well before its budget would fail
 #   graphify       graphify update ., the knowledge graph (gitignored)
-#   mutation       mutmut.sh on one seventh of core/, a different one each weekday
+#   mutation       mutmut.sh on one seventh of core/, a different one each weekday;
+#                  warns when a module has more survivors than the last time it
+#                  was mutated (mutation_survivors.py, .benchmarks/)
 #
 # Usage: scripts/run_overnight.sh [--list] [--only A,B] [--skip A,B] [--app PATH]
 #   --list   print the stages and exit
@@ -223,6 +225,15 @@ mutation() {
     # mutmut.sh writes its argument as setup.cfg's only_mutate, where configparser
     # reads further lines of a value only when they are indented.
     bash "${SCRIPT_DIR}/mutmut.sh" "$(printf '%s\n' "${globs[@]}" | sed -e '2,$s/^/    /')"
+    # mutmut passes whatever survives; a module with more survivors than last
+    # time is the one worth a look, so that is a warning.
+    local modules=()
+    for path in "${globs[@]}"; do
+        path="${path#\*/core/}"
+        modules+=("$(tr / . <<<"${path%.py}")")
+    done
+    (cd src/barks-reader && uv run mutmut results 2>/dev/null) \
+        | uv run python "${SCRIPT_DIR}/mutation_survivors.py" "${modules[@]}" || return "$WARNED"
 }
 
 # Run one stage. It returns SKIPPED (saying why) or WARNED as well as pass/fail.
