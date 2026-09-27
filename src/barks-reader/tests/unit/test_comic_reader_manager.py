@@ -259,6 +259,27 @@ class TestComicReaderManager:
         assert scheduler.scheduled_once_count == 1
         mock_screen.close_comic_book_reader.assert_called_once_with()
 
+    def test_a_missing_volume_is_logged(
+        self,
+        manager: ComicReaderManager,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """The user sees a popup; the log must still say which volume was missing."""
+        _, mock_reader = _attach_reader_screen(manager)
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        error = MissingVolumeError(7, Titles.LOST_IN_THE_ANDES)
+        mock_reader.read_comic.side_effect = error
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        assert str(error)
+        assert str(error) in loguru_sink
+
     def test_successful_read_schedules_no_close(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
@@ -417,6 +438,30 @@ class TestBarksReadingPassesThrough:
             )
 
         assert mock_reader.read_comic.call_args.args[1] is use_overrides
+
+    def test_the_comic_given_is_the_one_prepared_and_read(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """The comic, its Fantagraphics info and its image builder all reach the reader."""
+        _, mock_reader = _attach_reader_screen(manager)
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        comic, image_builder = MagicMock(), MagicMock()
+
+        with patch.object(
+            comic_reader_manager_module,
+            "prepare_comic_for_reading",
+            return_value=(_single_body_page_layout(), image_builder),
+        ) as mock_prepare:
+            manager.read_barks_comic_book(fanta_info, comic, "1", use_overrides_active=True)
+
+        mock_prepare.assert_called_once_with(
+            comic, mock_dependencies["reader_settings"], mock_dependencies["layout_builder"]
+        )
+        args = mock_reader.read_comic.call_args.args
+        assert args[0] is fanta_info
+        assert args[2] is image_builder
 
 
 class TestErrorCloseDelay:
