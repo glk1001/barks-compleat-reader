@@ -204,20 +204,26 @@ class TestMainScreen:
         from barks_reader.ui.main_screen import _text_input_has_focus  # noqa: PLC0415
         from kivy.uix.textinput import TextInput  # noqa: PLC0415
 
+        # Focusing a real TextInput takes the real Window's keyboard; left focused, it
+        # makes MainScreen yield every key for the rest of the session (a shuffled
+        # overnight run failed test_on_key_down_handled_when_current_screen on it).
         focused = TextInput()
         focused.focus = True
         unfocused = TextInput()
         unfocused.focus = False
 
-        with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
-            mock_window._system_keyboard.target = focused
-            assert _text_input_has_focus() is True
+        try:
+            with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
+                mock_window._system_keyboard.target = focused
+                assert _text_input_has_focus() is True
 
-            mock_window._system_keyboard.target = unfocused
-            assert _text_input_has_focus() is False
+                mock_window._system_keyboard.target = unfocused
+                assert _text_input_has_focus() is False
 
-            mock_window._system_keyboard.target = None
-            assert _text_input_has_focus() is False
+                mock_window._system_keyboard.target = None
+                assert _text_input_has_focus() is False
+        finally:
+            focused.focus = False
 
     def test_text_input_has_focus_sees_the_virtual_keyboard_too(self) -> None:
         """The guard that yields keys to a focused box must look past the system keyboard.
@@ -234,13 +240,16 @@ class TestMainScreen:
         box.focus = True
         system = SimpleNamespace(target=None)
         docked = SimpleNamespace(target=box)
-        with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
-            mock_window._keyboards = {"system": system, "single": docked}
-            mock_window._system_keyboard = system
-            assert _text_input_has_focus() is True
+        try:
+            with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
+                mock_window._keyboards = {"system": system, "single": docked}
+                mock_window._system_keyboard = system
+                assert _text_input_has_focus() is True
 
-            box.focus = False
-            assert _text_input_has_focus() is False
+                box.focus = False
+                assert _text_input_has_focus() is False
+        finally:
+            box.focus = False  # the real Window's keyboard, as above
 
     def test_a_keyboard_request_puts_the_key_handler_back_in_front(self) -> None:
         """Kivy binds a docked keyboard's handler afresh per request; ours must follow it."""
