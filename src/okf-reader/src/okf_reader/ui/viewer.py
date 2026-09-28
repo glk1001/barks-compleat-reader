@@ -793,7 +793,12 @@ class OKFViewer(RelativeLayout):
         the user has typed) keeps the field responsive and usually has results
         ready by the first keystroke. A provider without a ``warm`` method is
         assumed to manage its own readiness, so it is marked ready at once.
+
+        Every focus is logged here, however it came - a key (`focus_search`) or a
+        tap - so a test can wait for the field to take the keyboard before typing.
         """
+        if focused:
+            trace.search_focused()
         if not focused or self._search_warming:
             return
         self._search_warming = True
@@ -981,8 +986,7 @@ class OKFViewer(RelativeLayout):
     def focus_search(self) -> None:
         """Focus the search field: Ctrl+F from the host, or Up off the sidebar's top."""
         self._clear_result_focus()
-        self.search_field.focus = True
-        trace.search_focused()
+        self.search_field.focus = True  # logged by _on_search_focus
 
     def leave_search(self) -> None:
         """Leave the search field for the sidebar: its results if any, else the tree."""

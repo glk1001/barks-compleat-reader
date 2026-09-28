@@ -147,6 +147,7 @@ SEARCH_QUERY = "grotto"
 NO_MATCH_QUERY = "qqqqx"  # cspell:disable-line
 SEARCH_CLEARED = pattern(wiki.SEARCH_CLEARED)
 PAGE_REGION = pattern(wiki.FOCUS_REGION, name="PAGE")
+SEARCH_FOCUSED = pattern(wiki.SEARCH_FOCUSED)
 
 
 def _open_wiki_and_search(d: Driver, query: str) -> int:
@@ -154,7 +155,10 @@ def _open_wiki_and_search(d: Driver, query: str) -> int:
     d.select_node(nodes.WIKI_NODE)
     with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
         d.key("Return")
-    taps.tap(d, kind="TextInput")
+    # The box takes the keyboard a moment after the tap: a letter typed before
+    # then is lost (an overnight 1080p run lost the first letter of its query).
+    with d.expect(SEARCH_FOCUSED):
+        taps.tap(d, kind="TextInput")
     results = pattern(wiki.SEARCH_RESULTS, text=query)
     # Each keystroke searches; wait only on the full query's results (the index may
     # still be warming for the first ones, which then show a wait note instead).
@@ -188,7 +192,6 @@ def test_wiki_search_with_no_match_says_so(wiki_boot: AppBoot) -> None:
     assert _open_wiki_and_search(d, NO_MATCH_QUERY) == 0
 
 
-SEARCH_FOCUSED = pattern(wiki.SEARCH_FOCUSED)
 SEARCH_LEFT = pattern(wiki.SEARCH_LEFT)
 MAX_TREE_UPS = 40
 

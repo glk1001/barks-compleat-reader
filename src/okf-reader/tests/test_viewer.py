@@ -214,6 +214,20 @@ class _NoWarmSearcher:
         return []
 
 
+class TestSearchFocus:
+    def test_any_focus_is_logged_a_tap_too(self, viewer: OKFViewer) -> None:
+        """A test waits on this line after tapping the box, before it types."""
+        with patch.object(viewer_module.trace, "search_focused") as focused:
+            viewer._on_search_focus(None, focused=True)  # as a tap focuses it
+            viewer._on_search_focus(None, focused=False)
+        focused.assert_called_once()
+
+    def test_focus_search_is_logged_once(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer_module.trace, "search_focused") as focused:
+            viewer.focus_search()
+        focused.assert_called_once()
+
+
 class TestSearchIndexFailure:
     def test_a_failed_build_shows_the_error_note(self, viewer: OKFViewer) -> None:
         viewer.search_field.text = "grotto"
