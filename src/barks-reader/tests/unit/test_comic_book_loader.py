@@ -232,6 +232,7 @@ def test_set_comic_and_load_success(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
     mock_callbacks: dict[str, MagicMock],
+    loguru_sink: list[str],
 ) -> None:
     """Test loading via FakePageImageSource — no I/O patches needed."""
     page_map, load_order = page_map_and_order
@@ -250,6 +251,7 @@ def test_set_comic_and_load_success(
     assert len(loader._images) == 2  # noqa: PLR2004
     assert loader._images[0] is not None
     assert loader._images[1] is not None
+    assert log_markers.COMIC_IMAGES_LOADED.format(count=2, comic="test_comic.cbz") in loguru_sink
 
 
 def test_cursor_restored_at_first_page_ready(

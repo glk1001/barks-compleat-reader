@@ -15,7 +15,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
@@ -735,7 +735,9 @@ class TestReadsPersisted:
         """The layout says "i" is outside the body, whatever the title's last cue says."""
         events = [self._event(page="0"), {**self._event(page="4"), "id": "e" * 32}]
         scratch = self._scratch(tmp_path, self._cue(), events)
-        with patch.object(persisted, "_page_is_inside_body", side_effect=lambda _t, p: p != "i"):
+        with patch.object(
+            persisted, "_page_is_inside_body", side_effect=lambda _t, p, _n: p != "i"
+        ):
             assert persisted.reads_persisted_problems(scratch, self._two_reads()) == []
 
     def test_without_a_layout_the_last_cue_judges_every_save(self, tmp_path: Path) -> None:
@@ -1091,3 +1093,56 @@ class TestMemoryGrowth:
         assert problems[0] == (
             f"widgets: 900 after the warm-up, {901 + memory.WIDGET_SLACK} after the last round"
         )
+
+
+class TestLayoutOfAnotherLength:
+    """A prebuilt collection can hold fewer pages than its data lists; its layout cannot judge."""
+
+    @pytest.fixture
+    def layout(self) -> Iterator[MagicMock]:
+        """Stand in a 133-page layout (the collection's data) that calls every page body."""
+        stand_in = MagicMock()
+        stand_in.page_map = {str(n): n for n in range(133)}
+        stand_in.is_inside_body.return_value = True
+        with patch.object(persisted, "_layout", return_value=stand_in):
+            yield stand_in
+
+    def test_a_layout_of_the_loaded_length_judges(self, layout: MagicMock) -> None:
+        assert persisted._page_is_inside_body("All One-Pagers", "43", 133) is True  # noqa: SLF001
+        layout.is_inside_body.assert_called_once()
+
+    def test_a_layout_of_another_length_cannot_say(self, layout: MagicMock) -> None:
+        """The 43-page prebuilt comic's page 43 is its last: the 133-page layout must not judge."""
+        assert persisted._page_is_inside_body("All One-Pagers", "43", 43) is None  # noqa: SLF001
+        layout.is_inside_body.assert_not_called()
+
+    @pytest.mark.usefixtures("layout")
+    def test_with_no_load_logged_the_layout_judges(self) -> None:
+        assert persisted._page_is_inside_body("All One-Pagers", "43", None) is True  # noqa: SLF001
+
+    @pytest.mark.usefixtures("layout")
+    def test_the_soaks_read_passes(self, tmp_path: Path) -> None:
+        """The overnight soak's read: the last page of the 43-page comic, recorded at the start."""
+        title = "All One-Pagers"
+        cue = {
+            "display_page_num": "43",
+            "page_index": 42,
+            "page_type": "BODY",
+            "last_body_page": "43",
+        }
+        settings = {"AAA_Settings": {}, title: {"last_read_page": cue}}
+        (tmp_path / "barks-reader.json").write_text(json.dumps(settings))
+        canned = json.loads((harness.FIXTURES_DIR / "barks-reader-history.json").read_text())
+        event = {"id": "f" * 32, "title": title, "last_display_page": "0", "closed_at": "x"}
+        canned["events"] = [*canned["events"], event]
+        (tmp_path / "barks-reader-history.json").write_text(json.dumps(canned))
+        log = "\n".join(
+            [
+                markers.HISTORY_OPEN_RECORDED.format(title=title),
+                markers.COMIC_IMAGES_LOADED.format(count=43, comic="459 All One-Pagers.cbz"),
+                markers.SHOWED_PAGE.format(index=42, elapsed=17),
+                markers.LAST_READ_PAGE_SAVED.format(title=title, page="43"),
+                markers.HISTORY_CLOSE_RECORDED.format(title=title),
+            ]
+        )
+        assert persisted.reads_persisted_problems(tmp_path, log) == []

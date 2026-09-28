@@ -31,7 +31,11 @@ _SAVED_RE = re.compile(pattern(markers.LAST_READ_PAGE_SAVED, title=_QUOTED, page
 _OPEN_RE = re.compile(pattern(markers.HISTORY_OPEN_RECORDED, title=_QUOTED))
 _CLOSE_RE = re.compile(pattern(markers.HISTORY_CLOSE_RECORDED, title=_QUOTED))
 _SHOWED_RE = re.compile(pattern(markers.SHOWED_PAGE, index=re.compile(r"(\d+)")))
+_LOADED_RE = re.compile(pattern(markers.COMIC_IMAGES_LOADED, count=re.compile(r"(\d+)")))
 _DOUBLE_PAGE_ON = pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)
+
+# A save: (title, page saved, index of the page last shown, pages the comic loaded).
+type Save = tuple[str, str, int | None, int | None]
 
 
 def cues(scratch: Path) -> dict[str, dict[str, Any]]:
@@ -55,25 +59,26 @@ def canned_history_ids() -> set[str]:
     return {e["id"] for e in canned["events"]}
 
 
-def _saves_logged(app_log: str) -> list[tuple[str, str, int | None]]:
-    """Return every save the app logged as (title, page, index of the page last shown)."""
-    saves: list[tuple[str, str, int | None]] = []
+def _saves_logged(app_log: str) -> list[Save]:
+    """Return every save the app logged, with the page last shown and the pages loaded."""
+    saves: list[Save] = []
     last_shown: int | None = None
+    loaded: int | None = None
     for line in app_log.splitlines():
         if found := _SHOWED_RE.search(line):
             last_shown = int(found[1])
+        elif found := _LOADED_RE.search(line):
+            loaded = int(found[1])
         elif found := _SAVED_RE.search(line):
-            saves.append((found[1], found[2], last_shown))
+            saves.append((found[1], found[2], last_shown, loaded))
     return saves
 
 
-def _cue_problems(
-    scratch: Path, saves: list[tuple[str, str, int | None]], *, hold_index: bool
-) -> list[str]:
+def _cue_problems(scratch: Path, saves: list[Save], *, hold_index: bool) -> list[str]:
     """Check each title's cue against the last save the app logged for it."""
     problems: list[str] = []
     saved_cues = cues(scratch)
-    last_save_for = {title: (page, index) for title, page, index in saves}
+    last_save_for = {title: (page, index) for title, page, index, _loaded in saves}
     for title, (page, index) in last_save_for.items():
         cue = saved_cues.get(title)
         if cue is None:
@@ -92,22 +97,26 @@ def _layout(title: str) -> ComicLayout:
     return expected.comic_layout(title)
 
 
-def _page_is_inside_body(title: str, page: str) -> bool | None:
+def _page_is_inside_body(title: str, page: str, loaded: int | None) -> bool | None:
     """Return whether display `page` of `title` is inside its body, as the app judges it.
 
     From the title's own page layout (`ComicLayout.is_inside_body`, what the app's
     LastReadPageTracker asks), so each save is judged by its own page. None when
-    the layout cannot say: no data pack here (CI), or a page the layout does not
-    hold (a sliced collection).
+    the layout cannot say: no data pack here (CI), a page the layout does not
+    hold (a sliced collection), or a layout of another length than the comic the
+    app loaded (`loaded` pages) - a prebuilt collection can hold fewer pages
+    than its data lists, and its last body page is then the app's, not this one.
     """
     try:
         layout = _layout(title)
+        if loaded is not None and loaded != len(layout.page_map):
+            return None
         return layout.is_inside_body(layout.page_by_display(page))
     except Exception:  # noqa: BLE001 - any failure means "cannot say", and the cue decides
         return None
 
 
-def _page_history_records(scratch: Path, title: str, page: str) -> str:
+def _page_history_records(scratch: Path, title: str, page: str, loaded: int | None) -> str:
     """Return the page the history records for a read that saved `page` of `title`.
 
     The cue keeps the page as saved; the history gets it normalised: a read that
@@ -118,7 +127,7 @@ def _page_history_records(scratch: Path, title: str, page: str) -> str:
     the cue is the title's last read, so a title read twice (ending once in the
     body, once outside it) can then be judged by the wrong read.
     """
-    inside_body = _page_is_inside_body(title, page)
+    inside_body = _page_is_inside_body(title, page, loaded)
     if inside_body is None:
         cue = cues(scratch).get(title)
         if cue is None:
@@ -130,9 +139,7 @@ def _page_history_records(scratch: Path, title: str, page: str) -> str:
     return page if inside_body else COMIC_BEGIN_PAGE
 
 
-def _history_problems(
-    scratch: Path, app_log: str, saves: list[tuple[str, str, int | None]]
-) -> list[str]:
+def _history_problems(scratch: Path, app_log: str, saves: list[Save]) -> list[str]:
     """Check the new history events against the opens, closes and saves the app logged."""
     problems: list[str] = []
     opens = [found[1] for found in _OPEN_RE.finditer(app_log)]
@@ -145,7 +152,9 @@ def _history_problems(
     for i, event in enumerate(new_events):
         if i < len(closes) and not event.get("closed_at"):
             problems.append(f'history event for "{event["title"]}" closed but has no close time')
-    pages_saved = [_page_history_records(scratch, title, page) for title, page, _index in saves]
+    pages_saved = [
+        _page_history_records(scratch, title, page, loaded) for title, page, _index, loaded in saves
+    ]
     pages_recorded = [e["last_display_page"] for e in new_events if e.get("last_display_page")]
     if pages_recorded != pages_saved[: len(pages_recorded)]:
         problems.append(f"history pages {pages_recorded} are not the pages saved {pages_saved}")

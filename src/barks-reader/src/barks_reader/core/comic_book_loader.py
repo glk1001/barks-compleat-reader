@@ -501,7 +501,11 @@ class ComicBookLoader:
 
                 assert num_loaded == len(self._page_map)
                 assert all(ev.is_set() for ev in self._image_loaded_events)
-                logger.info(f'Loaded {num_loaded} images from "{self._current_comic_desc}".')
+                logger.info(
+                    log_markers.COMIC_IMAGES_LOADED.format(
+                        count=num_loaded, comic=self._current_comic_desc
+                    )
+                )
                 self._log_retained_image_memory(rss_before_mib)
 
                 self._scheduler.schedule_once(self._on_all_images_loaded)

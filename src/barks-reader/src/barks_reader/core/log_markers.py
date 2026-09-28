@@ -181,6 +181,9 @@ TITLE_INSET_IMAGE_SET: Final = "Time taken to set title inset image: {elapsed}."
 # One per read that saves progress (articles do not): the harness checks the
 # profile's last-read cue and reading history against these at every teardown.
 LAST_READ_PAGE_SAVED: Final = '"{title}": Saved last read page "{page}".'
+# A comic's pages all loaded: how many, which the saves after it are judged by (a
+# prebuilt collection can hold fewer pages than the collection's data lists).
+COMIC_IMAGES_LOADED: Final = 'Loaded {count} images from "{comic}".'
 HISTORY_OPEN_RECORDED: Final = 'History: Recorded open of "{title}".'
 HISTORY_CLOSE_RECORDED: Final = 'History: Recorded close of "{title}".'
 
