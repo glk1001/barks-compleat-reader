@@ -729,11 +729,13 @@ class OKFViewer(RelativeLayout):
     def _on_dir_open(self, dir_node, is_open) -> None:  # noqa: ANN001
         # Fires on both open and close; populate a directory's children once, lazily.
         if not is_open:
+            trace.tree_branch_closed(dir_node.text)
             return
         if not dir_node.loaded:
             dir_node.loaded = True
             self._add_tree_nodes(list_children(dir_node.bundle_path), dir_node)
         self._close_other_branches(dir_node)
+        trace.tree_branch_opened(dir_node.text)
 
     def _close_other_branches(self, opened) -> None:  # noqa: ANN001
         """Close every open node outside ``opened``'s ancestor chain.

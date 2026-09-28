@@ -94,3 +94,12 @@ def test_the_link_and_footnote_markers(kivy_log: list[str]) -> None:
         "OKFViewer: Footnote 'fn:bib' opened.",
         "OKFViewer: Footnote closed.",
     ]
+
+
+def test_the_tree_branch_markers(kivy_log: list[str]) -> None:
+    trace.tree_branch_opened("Reference")
+    trace.tree_branch_closed("Reference")
+    assert kivy_log == [
+        "OKFViewer: Tree branch 'Reference' opened.",
+        "OKFViewer: Tree branch 'Reference' closed.",
+    ]

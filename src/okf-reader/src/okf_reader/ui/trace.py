@@ -113,3 +113,17 @@ def footnote_opened(ref: str) -> None:
 def footnote_closed() -> None:
     """Log that the footnote popup was dismissed and the keys are the page's again."""
     Logger.debug(log_markers.FOOTNOTE_CLOSED)
+
+
+def tree_branch_opened(node_text: str) -> None:
+    """Log that the sidebar tree's directory `node_text` opened, its children listed."""
+    Logger.debug(log_markers.TREE_BRANCH_OPENED.format(node=node_text))
+
+
+def tree_branch_closed(node_text: str) -> None:
+    """Log that the sidebar tree's directory `node_text` closed.
+
+    Opening one branch closes every other (one open path at a time), so an
+    open can be followed by closes of branches the key never touched.
+    """
+    Logger.debug(log_markers.TREE_BRANCH_CLOSED.format(node=node_text))

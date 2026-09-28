@@ -22,6 +22,7 @@ from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from okf_reader.core import log_markers as wiki
+from okf_reader.core.render import BundleDir, ConceptNode, list_children
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -294,3 +295,42 @@ def test_a_footnote_opens_in_its_popup_and_escape_closes_it(wiki_boot: AppBoot) 
     d.key_then_wait(pattern(wiki.FOOTNOTE_OPENED, ref=FIRST_FOOTNOTE), "Return")
     d.key_then_wait(pattern(wiki.FOOTNOTE_CLOSED), "Escape")
     _down_to_link(d, re.compile(r"fn:.*"))  # the next marker: the page walks on
+
+
+def _tree_focused(node: str) -> str:
+    return pattern(wiki.TREE_FOCUS, node=node)
+
+
+def test_the_tree_opens_steps_in_and_out_and_closes_by_remote(wiki_boot: AppBoot) -> None:
+    """Right opens a section, steps into it, and on a page opens it; Left steps out and closes.
+
+    The expectations come from the bundle, through the viewer's own listing
+    (the order its index pages give), not from names written here.
+    """
+    d = wiki_boot(nodes.INDEXES)
+    d.select_node(nodes.WIKI_NODE)
+    with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
+        d.key("Return")
+    d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
+    section_name = last_field(d, wiki.TREE_FOCUS, "node")
+    sections = [c for c in list_children(_wiki_bundle(wiki_boot)) if isinstance(c, BundleDir)]
+    section = next((c for c in sections if (c.title or c.name) == section_name), None)
+    assert section is not None, f"{section_name!r} is not a section of the bundle"
+    children = list_children(section.path)
+    first_page = next(i for i, c in enumerate(children) if isinstance(c, ConceptNode))
+
+    def child_name(child: BundleDir | ConceptNode) -> str:
+        return child.title or child.name if isinstance(child, BundleDir) else child.title
+
+    d.key_then_wait(pattern(wiki.TREE_BRANCH_OPENED, node=section_name), "Right")
+    d.key_then_wait(_tree_focused(child_name(children[0])), "Right")  # into its first child
+    d.key_then_wait(_tree_focused(section_name), "Left")  # back out to the section
+    d.key_then_wait(pattern(wiki.TREE_BRANCH_CLOSED, node=section_name), "Left")
+
+    d.key_then_wait(pattern(wiki.TREE_BRANCH_OPENED, node=section_name), "Right")
+    d.key_then_wait(_tree_focused(child_name(children[0])), "Right")
+    for child in children[1 : first_page + 1]:
+        d.key_then_wait(_tree_focused(child_name(child)), "Down")
+    page = children[first_page].path.relative_to(_wiki_bundle(wiki_boot)).as_posix()
+    with d.expect(pattern(wiki.FOCUS_REGION, name="PAGE")):
+        d.key_then_wait(pattern(wiki.PAGE_SHOWN, page=page), "Right", timeout=30)
