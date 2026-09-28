@@ -12,6 +12,7 @@ import pytest
 from barks_gui import harness, nodes
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -188,18 +189,25 @@ KEY_LEFT_CODE = 276
 
 
 def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None:
-    """Return opens the theme's options on the current one; Down, Return picks the next."""
+    """Return opens the theme's options on the current one; a step and Return picks its neighbour.
+
+    Down, unless the current theme is the last (the matrix's four-color-theme):
+    below the last option is the list's Cancel button.
+    """
     ini = boot.scratch / "barks-reader.ini"
     d = boot(nodes.THE_STORIES)
-    before = harness.read_ini_value(ini, "color_theme").strip()
+    before = harness.read_ini_value(ini, "color_theme").strip() or DEFAULT_THEME_NAME
+    index = THEME_NAMES.index(before)
+    step, picked = ("Up", index - 1) if index == len(THEME_NAMES) - 1 else ("Down", index + 1)
     _open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_COLOR_THEME)
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
-    d.move_focus("Down")
-    d.key_then_wait(pattern(markers.SETTING_OPTION_SET, key="color_theme"), "Return")
+    d.move_focus(step)
+    set_to = pattern(markers.SETTING_OPTION_SET, key="color_theme", value=THEME_NAMES[picked])
+    d.key_then_wait(set_to, "Return")
     d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
-    assert harness.read_ini_value(ini, "color_theme").strip() != before
+    assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
 
 
 def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> None:
