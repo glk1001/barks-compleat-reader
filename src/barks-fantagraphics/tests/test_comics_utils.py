@@ -263,6 +263,10 @@ def _file(path: Path, mtime: float) -> Path:
 
 
 class TestFileTimes:
+    @pytest.mark.skipif(
+        os.utime not in os.supports_follow_symlinks,
+        reason="this platform cannot set a symlink's own time (Windows)",
+    )
     def test_a_symlink_has_its_own_time_not_its_targets(self, tmp_path: Path) -> None:
         target = _file(tmp_path / "target", 2_000)
         link = tmp_path / "link"
