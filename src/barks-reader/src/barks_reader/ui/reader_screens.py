@@ -13,6 +13,7 @@ from kivy.uix.screenmanager import (
     RiseInTransition,
     Screen,
     ScreenManager,
+    ShaderTransition,
     SlideTransition,
     SwapTransition,
     TransitionBase,
@@ -37,6 +38,39 @@ COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 DOCUMENT_READER_SCREEN = "document_reader"
 WIKI_READER_SCREEN = "wiki_reader"
 CORPUS_STATS_SCREEN = "corpus_stats"
+
+
+class _ReleasesFrameBuffers(ShaderTransition):
+    """Drop a shader transition's frame buffers once it has finished.
+
+    Kivy's shader transitions draw both screens into frame buffers the window's
+    size and keep them, with their render context, until the same transition
+    runs again. The transitions here are a fixed pool, used at random, so each
+    would hold two window-sized textures (about 66 MB at 4K) for good.
+    """
+
+    def on_complete(self) -> None:
+        super().on_complete()
+        # Kivy's own on_complete has used them; it runs once (it clears _anim).
+        self.fbo_in = None
+        self.fbo_out = None
+        self.render_ctx = None
+
+
+class _FadeTransition(_ReleasesFrameBuffers, FadeTransition):
+    pass
+
+
+class _WipeTransition(_ReleasesFrameBuffers, WipeTransition):
+    pass
+
+
+class _FallOutTransition(_ReleasesFrameBuffers, FallOutTransition):
+    pass
+
+
+class _RiseInTransition(_ReleasesFrameBuffers, RiseInTransition):
+    pass
 
 
 class ReaderScreen(Screen):
@@ -99,21 +133,21 @@ class ScreenSwitchers:
 class ReaderScreenManager:
     _MAIN_SCREEN_TRANSITIONS: ClassVar[list[TransitionBase]] = [
         NoTransition(duration=0),
-        FadeTransition(),
-        FallOutTransition(),
-        RiseInTransition(),
+        _FadeTransition(),
+        _FallOutTransition(),
+        _RiseInTransition(),
         SwapTransition(),
-        WipeTransition(),
+        _WipeTransition(),
         SlideTransition(direction="left"),
         CardTransition(direction="left", mode="push"),
     ]
     _READER_SCREEN_TRANSITIONS: ClassVar[list[TransitionBase]] = [
         NoTransition(duration=0),
-        FadeTransition(),
-        FallOutTransition(),
-        RiseInTransition(),
+        _FadeTransition(),
+        _FallOutTransition(),
+        _RiseInTransition(),
         SwapTransition(),
-        WipeTransition(),
+        _WipeTransition(),
         SlideTransition(direction="right"),
         CardTransition(direction="right", mode="pop"),
     ]

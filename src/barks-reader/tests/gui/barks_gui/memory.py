@@ -30,13 +30,13 @@ ANSWER_TIMEOUT = 15
 # How many times a leak test goes round, and how many of those only build.
 ROUNDS = 6
 WARMUP_ROUNDS = 2
-# What the rounds after the warm-up may add. Widgets vary by a few (a popup still
-# fading out). Textures by more: each of the screen manager's shader transitions
-# (reader_screens: a fixed pool, used in turn) keeps its last run's frame buffers,
-# three textures, until it runs again. A leak adds per round what the round builds:
-# a page's hundreds of labels, a comic's pages.
+# What the rounds after the warm-up may add: a few, for what varies from one round
+# to the next (a popup still fading out). A leak adds per round what the round
+# builds: a page's hundreds of labels, a comic's pages. (The screen transitions'
+# frame buffers once added up to six textures here, until reader_screens dropped
+# them at each transition's end.)
 WIDGET_SLACK = 10
-TEXTURE_SLACK = 16
+TEXTURE_SLACK = 8
 
 # Unique within a run: each test boots its own app, so a count is enough.
 _REQUESTS = itertools.count(1)

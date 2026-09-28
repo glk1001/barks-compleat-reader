@@ -18,7 +18,7 @@ from barks_reader.ui.reader_screens import (
     ReaderScreenManager,
     ReaderScreens,
 )
-from kivy.uix.screenmanager import Screen, TransitionBase
+from kivy.uix.screenmanager import Screen, ShaderTransition, TransitionBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -343,3 +343,32 @@ class TestReaderScreen:
         ReaderScreen.on_leave(screen)
         assert "Screen 'wiki_reader' entered." in loguru_sink
         assert "Screen 'wiki_reader' left." in loguru_sink
+
+
+class TestShaderTransitionsReleaseTheirFrameBuffers:
+    """A shader transition drops its window-sized frame buffers once it has finished."""
+
+    def test_kivy_completes_with_them_then_they_are_dropped(self) -> None:
+        transition = barks_reader.ui.reader_screens._FadeTransition()
+        buffers = (object(), object(), object())
+        transition.fbo_in, transition.fbo_out, transition.render_ctx = buffers
+        seen: list[tuple[object, object, object]] = []
+
+        def kivy_on_complete(self: ShaderTransition) -> None:
+            seen.append((self.fbo_in, self.fbo_out, self.render_ctx))
+
+        with patch.object(ShaderTransition, "on_complete", kivy_on_complete):
+            transition.on_complete()
+        assert seen == [buffers], "Kivy's own on_complete runs first, with the buffers"
+        assert (transition.fbo_in, transition.fbo_out, transition.render_ctx) == (None, None, None)
+
+    def test_every_shader_transition_in_the_pools_releases(self) -> None:
+        pools = (
+            ReaderScreenManager._MAIN_SCREEN_TRANSITIONS,
+            ReaderScreenManager._READER_SCREEN_TRANSITIONS,
+        )
+        shaders = [t for pool in pools for t in pool if isinstance(t, ShaderTransition)]
+        assert shaders, "the pools hold shader transitions"
+        assert all(
+            isinstance(t, barks_reader.ui.reader_screens._ReleasesFrameBuffers) for t in shaders
+        )
