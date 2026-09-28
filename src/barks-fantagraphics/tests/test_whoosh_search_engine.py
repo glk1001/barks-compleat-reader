@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics import whoosh_search_engine as whoosh_search_engine_module
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.search_ports import CorpusTextTotals
+from barks_fantagraphics.speech_groupers import OcrTypes
 from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.whoosh_search_engine import (
     SearchEngine,
@@ -629,3 +632,132 @@ class TestGetCorpusTextTotals:
         totals = SearchEngine(tmp_path).get_corpus_text_totals()
 
         assert totals == CorpusTextTotals(0, 0, 0, 0, 0)
+
+
+# ---------------------------------------------------------------------------
+# SearchEngineCreator.index_volumes: the build the reader's search index comes from
+# ---------------------------------------------------------------------------
+
+
+def _speech(text: str, panel: int = 1, speaker: str | None = None) -> SimpleNamespace:
+    return SimpleNamespace(
+        ai_text=strip_markup(text).lower(),
+        raw_ai_text=text,
+        panel_num=panel,
+        speaker=SimpleNamespace(speaker=speaker) if speaker else None,
+    )
+
+
+def _page(ocr: OcrTypes, fanta_page: str, groups: dict[str, SimpleNamespace]) -> SimpleNamespace:
+    return SimpleNamespace(
+        ocr_index=ocr, fanta_vol=5, fanta_page=fanta_page, comic_page="1", speech_groups=groups
+    )
+
+
+PAGES = {
+    Titles.LOST_IN_THE_ANDES: [
+        _page(
+            OcrTypes.EASYOCR,
+            "041",
+            {
+                "0": _speech("[b]SQUARE[/b] eggs in the Andes!", speaker="Donald Duck"),
+                "1": _speech("Square chickens, square eggs, square eggs!", panel=2),
+            },
+        ),
+        # The other OCR engine's reading of the same page: never indexed.
+        _page(OcrTypes.PADDLEOCR, "041", {"0": _speech("paddleocr only words")}),
+    ],
+    Titles.GOOD_DEEDS: [
+        _page(OcrTypes.EASYOCR, "007", {"0": _speech("A good deed in Acapulco.", speaker="Huey")}),
+    ],
+}
+
+
+class TestSearchEngineCreator:
+    @staticmethod
+    def _build(tmp_path: Path, **kwargs: object) -> tuple[SearchEngineCreator, MagicMock]:
+        db = MagicMock()
+        db.get_configured_titles_in_fantagraphics_volumes.return_value = [
+            (ENUM_TO_STR_TITLE[t], SimpleNamespace(comic_book_info=SimpleNamespace(title=t)))
+            for t in PAGES
+        ]
+        speech_groups = MagicMock()
+        speech_groups.return_value.get_speech_page_groups.side_effect = (
+            lambda title, skip_missing: PAGES[title]  # noqa: ARG005
+        )
+        with patch.object(whoosh_search_engine_module, "SpeechGroups", speech_groups):
+            creator = SearchEngineCreator(db, tmp_path / "index", OcrTypes.EASYOCR)
+            creator.index_volumes([5, 6], **kwargs)  # ty: ignore[invalid-argument-type]
+        return creator, speech_groups
+
+    def test_the_built_index_answers_searches(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        engine = engine.get_search_engine()
+        assert set(engine.find_words("eggs")) == {ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]}
+        assert engine.get_all_titles() == {
+            ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES],
+            ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS],
+        }
+
+    def test_only_the_chosen_ocr_engines_reading_is_indexed(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        assert engine.find_words("paddleocr") == {}
+
+    def test_markup_is_stored_for_the_reader_but_not_indexed(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        stored = [f["content_raw"] for f in engine.iter_all_stored_fields()]
+        assert "[b]SQUARE[/b] eggs in the Andes!" in stored
+        assert "b" not in engine.get_cleaned_terms()
+
+    def test_the_sidecars_the_reader_reads_are_written(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        folder = tmp_path / "index"
+        assert json.loads((folder / "volumes.json").read_text()) == [5, 6]
+        assert "eggs" in engine.get_cleaned_terms()
+        # Split by first letter, then into ranges ("ea-el") sized by the letter's terms.
+        assert any(
+            "eggs" in terms for terms in engine.get_cleaned_alpha_split_terms()["e"].values()
+        )
+        assert engine.get_speakers() == {"Donald Duck": 1, "Huey": 1}
+
+    def test_word_frequencies_count_every_use(self, tmp_path: Path) -> None:
+        self._build(tmp_path)
+        folder = tmp_path / "index"
+        most = dict(json.loads(next(folder.glob("*most*common*")).read_text()))
+        assert most["square"] == 4
+        assert most["eggs"] == 3
+        # The least-common list leaves out words used once.
+        least = dict(json.loads(next(folder.glob("*least*common*")).read_text()))
+        assert "acapulco" not in least
+        assert least["square"] == 4
+
+    def test_without_entities_there_are_no_entity_terms(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        assert engine.get_entity_terms("location") == []
+
+    def test_provided_entities_are_kept_only_when_curated(self, tmp_path: Path) -> None:
+        """A curated name is kept, in its curated casing; anything else is dropped."""
+
+        def provider(title: str, page: str, group: str) -> dict[str, set[str]]:
+            if (title, page, group) == (ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS], "007", "0"):
+                return {"person": {"duk duk", "Nobody Special"}, "location": {"Acapulco"}}
+            return {}
+
+        engine, _ = self._build(tmp_path, entity_provider=provider)
+        assert engine.get_entity_terms("person") == ["Duk Duk"]
+        assert engine.get_entity_terms("location") == ["Acapulco"]
+        assert set(engine.find_entities("person", "Duk Duk")) == {
+            ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]
+        }
+
+    def test_a_tagger_is_used_when_there_is_no_provider(self, tmp_path: Path) -> None:
+        tagger = MagicMock(return_value={"location": {"Acapulco"}})
+        engine, _ = self._build(tmp_path, entity_tagger=tagger)
+        tagger.assert_any_call("a good deed in acapulco.")
+        assert engine.get_entity_terms("location") == ["Acapulco"]
+
+    def test_skipping_missing_pages_is_passed_to_the_speech_groups(self, tmp_path: Path) -> None:
+        _, speech_groups = self._build(tmp_path, skip_missing_pages=True)
+        calls = speech_groups.return_value.get_speech_page_groups.call_args_list
+        assert calls
+        assert all(call.kwargs == {"skip_missing": True} for call in calls)
