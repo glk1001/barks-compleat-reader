@@ -334,3 +334,30 @@ def test_the_tree_opens_steps_in_and_out_and_closes_by_remote(wiki_boot: AppBoot
     page = children[first_page].path.relative_to(_wiki_bundle(wiki_boot)).as_posix()
     with d.expect(pattern(wiki.FOCUS_REGION, name="PAGE")):
         d.key_then_wait(pattern(wiki.PAGE_SHOWN, page=page), "Right", timeout=30)
+
+
+# The bar's buttons as the focus ring names them: Contrast is an icon toggle (a
+# text one standalone), the home icon a plain Button.
+CONTRAST_RINGED = pattern(wiki.FOCUS_RING, widget=re.compile(r"\w*ToggleButton.*"))
+HOME_RINGED = pattern(wiki.FOCUS_RING, widget="Button")
+
+
+def _open_wiki_from_its_node(d: Driver) -> None:
+    d.select_node(nodes.WIKI_NODE)
+    with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
+        d.key("Return")
+
+
+def test_the_top_bar_is_walked_and_contrast_toggled_by_remote(wiki_boot: AppBoot) -> None:
+    """Escape lifts to the bar on Back; Right reaches Contrast; Return toggles; Down drops out."""
+    d = wiki_boot(nodes.INDEXES)
+    _open_wiki_from_its_node(d)
+    for state in ("on", "off"):
+        d.key_then_wait(TOP_BAR, "Escape")  # the ring starts on Back
+        d.key_then_wait(CONTRAST_RINGED, "Right")
+        with d.expect(SIDEBAR):  # the focus goes back where it came from, then the toggle
+            d.key_then_wait(pattern(wiki.CONTRAST, state=state), "Return")
+    d.key_then_wait(TOP_BAR, "Escape")
+    d.key_then_wait(HOME_RINGED, "Left")
+    d.key_then_wait(d.WIKI_FOCUS_MOVED, "Left")  # wraps to the last button, Quit
+    d.key_then_wait(SIDEBAR, "Down")  # out of the bar, nothing pressed

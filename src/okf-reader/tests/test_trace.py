@@ -103,3 +103,9 @@ def test_the_tree_branch_markers(kivy_log: list[str]) -> None:
         "OKFViewer: Tree branch 'Reference' opened.",
         "OKFViewer: Tree branch 'Reference' closed.",
     ]
+
+
+def test_the_contrast_marker(kivy_log: list[str]) -> None:
+    trace.contrast(on=True)
+    trace.contrast(on=False)
+    assert kivy_log == ["OKFViewer: Contrast on.", "OKFViewer: Contrast off."]

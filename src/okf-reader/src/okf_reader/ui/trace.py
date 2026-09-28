@@ -127,3 +127,8 @@ def tree_branch_closed(node_text: str) -> None:
     open can be followed by closes of branches the key never touched.
     """
     Logger.debug(log_markers.TREE_BRANCH_CLOSED.format(node=node_text))
+
+
+def contrast(on: bool) -> None:
+    """Log that the Contrast toggle turned the page's text bands up (on) or back down (off)."""
+    Logger.debug(log_markers.CONTRAST.format(state="on" if on else "off"))

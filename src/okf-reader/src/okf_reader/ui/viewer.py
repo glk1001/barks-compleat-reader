@@ -618,7 +618,7 @@ class OKFViewer(RelativeLayout):
                 str(spec.contrast_on_icon_path), str(spec.contrast_off_icon_path)
             )
             _tint_bar_icon(self.contrast_btn, self._theme.icon_tint)
-        self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
+        self.contrast_btn.bind(state=self._on_contrast_state)
         bar.add_widget(self.contrast_btn)
 
         # The page's contextual action (see PageActionProvider): an empty
@@ -1904,6 +1904,10 @@ class OKFViewer(RelativeLayout):
             pos=lambda _inst, pos: setattr(rect, "pos", pos),
             size=lambda _inst, size: setattr(rect, "size", size),
         )
+
+    def _on_contrast_state(self, _button: Widget, state: str) -> None:
+        self._apply_band_alpha()
+        trace.contrast(on=state == "down")
 
     def _apply_band_alpha(self) -> None:
         """Retune the current page's section bands and the reading-pane scrim to the toggle."""
