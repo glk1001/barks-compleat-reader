@@ -116,7 +116,7 @@ just reader
     ```
     uv run pytest
     ```
-- **GUI path tests** (82, Linux only): boot the real app from a scratch profile on a nested
+- **GUI path tests** (83, Linux only): boot the real app from a scratch profile on a nested
   X display and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the

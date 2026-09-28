@@ -274,6 +274,11 @@ class MainIndexScreen(IndexScreen):
 
         sub_items_layout = self._get_sub_item_layout(item_id)
         self._insert_tag_sub_items_layout(sub_items_layout)
+        logger.debug(
+            log_markers.INDEX_SUB_ITEMS_ADDED.format(
+                name=item_id.name, count=len(sub_items_layout.children)
+            )
+        )
 
     def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
         # The new padding is the parent button's padding plus an indent step.
@@ -364,7 +369,7 @@ class MainIndexScreen(IndexScreen):
     def _handle_tag(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is Tags
         tag: Tags = item.id
-        logger.info(f'Handling tag: "{tag.name}".')
+        logger.info(log_markers.INDEX_HANDLING_TAG.format(name=tag.name))
 
         if tag not in BARKS_TAGGED_TITLES:
             logger.warning(f"No titles found for tag: {tag.name}")
@@ -378,7 +383,7 @@ class MainIndexScreen(IndexScreen):
     def _handle_tag_group(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is TagGroups
         tag_group: TagGroups = item.id
-        logger.info(f'Handling tag group: "{tag_group.name}".')
+        logger.info(log_markers.INDEX_HANDLING_TAG_GROUP.format(name=tag_group.name))
 
         if tag_group not in BARKS_TAG_GROUPS:
             logger.warning(f"No tags found for tag group: {tag_group.name}")

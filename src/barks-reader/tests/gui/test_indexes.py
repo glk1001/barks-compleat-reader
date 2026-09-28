@@ -128,3 +128,43 @@ def test_names_and_locations_indexes_open_items(boot: AppBoot) -> None:
     d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Locations"), "Down")
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     d.key_then_wait(POPULATED_OR_EMPTY, "Down")
+
+
+TAG_GROUP = "Africa"
+MAX_ITEM_STEPS = 80
+
+
+def _down_to_item(d: Driver, text: str) -> None:
+    """Step Down the index items until the focus is on the row showing `text`."""
+    for _ in range(MAX_ITEM_STEPS):
+        if f'"{text}"' in d.last_line(d.FOCUS_MOVED):
+            return
+        d.move_focus("Down")
+    msg = f"no index row {text!r} within {MAX_ITEM_STEPS} steps"
+    raise AssertionError(msg)
+
+
+def test_a_tag_group_opens_its_tags_a_tag_its_titles_and_a_title_goes_there(
+    boot: AppBoot,
+) -> None:
+    """Return on a group lists its tags beneath it; on a tag, its titles; on a title, goes."""
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    d.move_focus("Right")  # alphabet panel -> items
+    _down_to_item(d, TAG_GROUP)
+    group_opened = pattern(markers.INDEX_SUB_ITEMS_ADDED, name=TAG_GROUP.upper())
+    with d.expect(pattern(markers.INDEX_HANDLING_TAG_GROUP, name=TAG_GROUP.upper())):
+        d.key_then_wait(group_opened, "Return")
+    tags = int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count"))
+    assert tags >= 1, f"{TAG_GROUP} listed no tags"
+
+    d.move_focus("Down")  # the group's first tag
+    with d.expect(pattern(markers.INDEX_HANDLING_TAG)):
+        d.key_then_wait(pattern(markers.INDEX_SUB_ITEMS_ADDED), "Return")
+    assert int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count")) >= 1
+
+    d.move_focus("Down")  # the tag's first title
+    with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
+        d.key_then_wait(ITEM_PRESSED, "Return")
+    assert expected.is_title(d.current_node())

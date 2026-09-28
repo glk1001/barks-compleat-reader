@@ -151,3 +151,38 @@ class TestMainIndexScreen:
 
             assert image_info.from_title == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
             assert page == "1"
+
+
+class TestTagMarkers:
+    """The lines a GUI test waits on as a tag or tag group opens beneath its row."""
+
+    def test_opening_a_tag_group_logs_it_and_schedules_its_tags(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        group = next(iter(barks_reader.ui.main_index_screen.BARKS_TAG_GROUPS))
+        with patch.object(Clock, "schedule_once") as schedule:
+            main_index_screen._handle_tag_group(MagicMock(), IndexItem(group, group.value))
+        assert f'Handling tag group: "{group.name}".' in loguru_sink
+        schedule.assert_called_once()
+
+    def test_opening_a_tag_logs_it(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        tag = next(iter(barks_reader.ui.main_index_screen.BARKS_TAGGED_TITLES))
+        with patch.object(Clock, "schedule_once"):
+            main_index_screen._handle_tag(MagicMock(), IndexItem(tag, tag.value))
+        assert f'Handling tag: "{tag.name}".' in loguru_sink
+
+    def test_the_sub_items_added_are_counted(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        group = next(iter(barks_reader.ui.main_index_screen.BARKS_TAG_GROUPS))
+        main_index_screen._open_tag_item = IndexItem(group, group.value)
+        layout = MagicMock()
+        layout.children = [MagicMock()] * 3
+        with (
+            patch.object(main_index_screen, "_get_sub_item_layout", return_value=layout),
+            patch.object(main_index_screen, "_insert_tag_sub_items_layout"),
+        ):
+            main_index_screen._add_sub_items(0)
+        assert f"Index sub-items added under '{group.name}': 3." in loguru_sink

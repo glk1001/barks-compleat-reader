@@ -194,6 +194,10 @@ INDEX_BUILD_COMPLETE: Final = "Index build complete (in {elapsed})."
 INDEX_LETTER_POPULATED: Final = "Populated index page for letter '{letter}' in {elapsed}."
 INDEX_LETTER_EMPTY: Final = "Populated index page for letter '{letter}': no items."
 INDEX_ITEM_PRESSED: Final = "Index item pressed: {item}"
+# The main index opening a tag (its titles) or a tag group (its tags) beneath it.
+INDEX_HANDLING_TAG: Final = 'Handling tag: "{name}".'
+INDEX_HANDLING_TAG_GROUP: Final = 'Handling tag group: "{name}".'
+INDEX_SUB_ITEMS_ADDED: Final = "Index sub-items added under '{name}': {count}."
 INDEX_TERM_HANDLED: Final = 'Handling index term: "{term}".'
 INDEX_PREFIX_PRESSED: Final = "Pressed prefix button: '{prefix}."
 SHOW_BUBBLES_FOR_INDEX_TERMS: Final = (
