@@ -36,8 +36,10 @@
 #                  log's first line
 #   dep-drift      the suite against every dependency upgraded as far as
 #                  pyproject.toml allows, in a venv of its own; uv.lock is put back
-#   siblings       the tests of the sibling repos that use barks-fantagraphics and
-#                  comic-utils (those with tests: ../barks-comic-building)
+#   siblings       the sibling repos that use barks-fantagraphics and comic-utils,
+#                  against this checkout (their venvs install it editable): each
+#                  one's own ty and pyrefly, then its tests where it has any
+#                  (../barks-ocr has none, so its type checks are its only guard)
 #   build          scripts/build.sh, the Nuitka executable; skipped with --app
 #   smoke          smoke-test-build.sh on that build (or on --app PATH), pressing
 #                  Escape to close its popup, as CI does
@@ -207,14 +209,23 @@ dep_drift() (
 siblings() {
     local repo status=0 ran=0
     for repo in "${SIBLINGS[@]}"; do
-        if [[ ! -d "$repo/tests" ]]; then
-            echo "siblings: ${repo}: no tests/, nothing to run"
+        if [[ ! -d "$repo" ]]; then
+            echo "siblings: ${repo}: not checked out, nothing to run"
             continue
         fi
-        echo "siblings: ${repo}"
         ran=1
-        # Their own venv and their lock as it is (--frozen: never rewritten from
-        # here); VIRTUAL_ENV unset, since ours is not theirs.
+        # Their own venv, config and lock as it is (--frozen: never rewritten from
+        # here); VIRTUAL_ENV unset, since ours is not theirs. A name renamed or
+        # removed here fails their type checks before it fails one of their runs.
+        echo "siblings: ${repo}: ty"
+        (cd "$repo" && unset VIRTUAL_ENV && uv run --frozen ty check) || status=1
+        echo "siblings: ${repo}: pyrefly"
+        (cd "$repo" && unset VIRTUAL_ENV && uv run --frozen pyrefly check) || status=1
+        if [[ ! -d "$repo/tests" ]]; then
+            echo "siblings: ${repo}: no tests/"
+            continue
+        fi
+        echo "siblings: ${repo}: tests"
         (cd "$repo" && unset VIRTUAL_ENV && with_display uv run --frozen pytest -q) || status=1
     done
     ((ran)) || return "$SKIPPED"

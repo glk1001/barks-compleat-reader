@@ -293,7 +293,7 @@ just reader
   | `pytest` | `uv sync --locked`, then the whole suite with coverage, kept for the `coverage` stage |
   | `random-order` | The suite shuffled by `pytest-randomly`; the log's first line gives the seed and the command that replays it |
   | `dep-drift` | The suite against every dependency upgraded as far as `pyproject.toml` allows, in a venv of its own; `uv.lock` is put back |
-  | `siblings` | The tests of the sibling repos that use `barks-fantagraphics` and `comic-utils` |
+  | `siblings` | The sibling repos that use `barks-fantagraphics` and `comic-utils`, against this checkout: their own `ty` and `pyrefly`, then their tests where they have any |
   | `build` | `build.sh`, the Nuitka executable; skipped with `--app` |
   | `smoke` | `smoke-test-build.sh --press-escape` on that build (or on `--app PATH`), as CI does |
   | `gui` | `run_gui_overnight.sh`, the built app's stages too (the suite, the matrix, one soak seed), with a longer soak on new seeds each night; the workspace app's coverage is measured (`BARKS_PROBE_COVERAGE`, about 10% slower) |
