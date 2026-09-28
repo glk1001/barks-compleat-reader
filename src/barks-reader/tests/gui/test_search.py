@@ -54,7 +54,7 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     """Type a word, pick its chip, open one story's bubbles, jump in from a bubble."""
     d = boot(nodes.WORD_SEARCH, cues=CUES)
     search.type_query(d, WORD_QUERY)
-    # Return in the box picks the first matching chip (the box yields no other key)
+    # Return in the box picks the first matching chip
     # and lands focus on it; the next Return from there enters the result rows.
     d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
     matched = int(last_field(d, markers.WORD_SEARCH_MATCHED, "count", text=WORD_QUERY))
@@ -85,8 +85,8 @@ def test_a_query_with_no_matches_reports_zero_results(boot: AppBoot) -> None:
 def test_the_clear_button_empties_the_search(boot: AppBoot) -> None:
     """Return in the box focuses the first result; from there Left is the clear button.
 
-    While the box holds the keyboard the main screen yields every key but Escape
-    to it, so Return (the box's own validate) is the only way out by keyboard.
+    Return is the box's own validate; Down, or Right at the text's end, also
+    leave it (test_the_box_clear_button_and_results_are_walked_by_keyboard).
     """
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
@@ -162,18 +162,14 @@ def test_return_on_a_group_opens_its_members_and_again_closes_them(boot: AppBoot
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Left")  # back to the selected chip
 
 
-def test_the_results_and_clear_button_are_walked_by_keyboard(boot: AppBoot) -> None:
-    """Return leaves the box; the results reach the clear button and back; Escape exits.
-
-    While the box holds the keyboard the main screen yields it every key but
-    Escape, so its own Down and Right never reach the search screen.
-    """
+def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) -> None:
+    """Down, or Right at the text's end, leaves the box; the results reach the clear button."""
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
-    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first result row
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # the first result row
     d.key_then_wait(d.FOCUS_MOVED, "Left")  # no chips in title search: the clear button
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # back to the results
     d.key_then_wait(d.FOCUS_MOVED, "Left")
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Left")  # from the clear button, the box
-    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the cursor is at the end: the results
     d.key_then_wait(markers.SEARCH_EXITED_NAV, "Escape")

@@ -10,7 +10,14 @@ import pytest
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT, set_alt_escape_key
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
+    KEY_UP,
+    set_alt_escape_key,
+)
 from barks_reader.ui.screen_bundle import ScreenBundle
 from kivy.uix.screenmanager import Screen
 
@@ -410,3 +417,32 @@ class TestMainScreenMarkers:
         with patch.object(barks_reader.ui.main_screen, "App"):
             main_screen._close_settings()
         assert loguru_sink.count("Settings closed.") == len(("close button", "Escape"))
+
+
+class TestKeyLeavesSingleLineBox:
+    """The remote's way out of a one-line box: Down, or Right at the text's end."""
+
+    @staticmethod
+    def _leaves(key: int, *, text: str = "vac", cursor: int = 3, multiline: bool = False) -> bool:
+        box = MagicMock(multiline=multiline, text=text)
+        box.cursor_index.return_value = cursor
+        with patch.object(barks_reader.ui.main_screen, "_focused_text_input", return_value=box):
+            return barks_reader.ui.main_screen._key_leaves_single_line_box(key)
+
+    def test_down_leaves(self) -> None:
+        assert self._leaves(KEY_DOWN) is True
+
+    def test_right_leaves_only_at_the_end(self) -> None:
+        assert self._leaves(KEY_RIGHT, cursor=3) is True
+        assert self._leaves(KEY_RIGHT, cursor=1) is False
+
+    def test_up_and_letters_stay_with_the_box(self) -> None:
+        assert self._leaves(KEY_UP) is False
+        assert self._leaves(ord("a")) is False
+
+    def test_a_multi_line_box_keeps_them(self) -> None:
+        assert self._leaves(KEY_DOWN, multiline=True) is False
+
+    def test_no_box_no_leaving(self) -> None:
+        with patch.object(barks_reader.ui.main_screen, "_focused_text_input", return_value=None):
+            assert barks_reader.ui.main_screen._key_leaves_single_line_box(KEY_DOWN) is False

@@ -32,6 +32,8 @@ from .main_screen_components import build_main_screen_components
 from .platform_window_utils import WindowManager
 from .popup_widgets import open_confirm_popup
 from .reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_RIGHT,
     ActionBarNavMixin,
     DropdownNavMixin,
     is_escape_key,
@@ -66,7 +68,27 @@ MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 def _text_input_has_focus() -> bool:
-    """Report whether a TextInput currently holds a keyboard (a search box, a settings path).
+    """Report whether a TextInput currently holds a keyboard (a search box, a settings path)."""
+    return _focused_text_input() is not None
+
+
+def _key_leaves_single_line_box(key: int) -> bool:
+    """Report whether `key` is the remote's way out of the focused one-line box.
+
+    Down, or Right with the cursor at the text's end: a one-line box has no use
+    for either there, and the screen behind it (the search screen) takes them to
+    move on to its results. Every other key, Up included, stays with the box.
+    """
+    box = _focused_text_input()
+    if box is None or box.multiline:
+        return False
+    if key == KEY_DOWN:
+        return True
+    return key == KEY_RIGHT and box.cursor_index() >= len(box.text)
+
+
+def _focused_text_input() -> TextInput | None:
+    """Return the TextInput that currently holds a keyboard, or None.
 
     Kivy attaches the requesting widget to the ``target`` of the keyboard it hands
     out and clears the widget's ``focus`` when it releases it, so this reflects the
@@ -83,8 +105,8 @@ def _text_input_has_focus() -> bool:
     for keyboard in keyboards:
         target = getattr(keyboard, "target", None)
         if isinstance(target, TextInput) and bool(getattr(target, "focus", False)):
-            return True
-    return False
+            return target
+    return None
 
 
 _KEYBOARD_REQUEST_AFTER = "_barks_after_keyboard_request"
@@ -365,7 +387,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Escape still falls through, but only a press that produced no character: the
         # alternate Escape keycode is an ordinary letter on a keyboard, and typing it
         # into the field must reach the field. See is_escape_key_for_text_input.
-        if _text_input_has_focus() and not is_escape_key_for_text_input(key, codepoint):
+        # A one-line box's way out for the remote (Down, or Right at the text's end)
+        # goes on to the screen behind it, which moves the focus off the box.
+        if (
+            _text_input_has_focus()
+            and not is_escape_key_for_text_input(key, codepoint)
+            and not _key_leaves_single_line_box(key)
+        ):
             # Logged because it is otherwise invisible: a key that vanishes here
             # looks, from outside, exactly like one that was never delivered.
             logger.debug(f"Key {key} left to the focused text input.")
