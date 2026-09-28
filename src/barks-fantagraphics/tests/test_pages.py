@@ -1,7 +1,8 @@
-# ruff: noqa: PLR2004
+# ruff: noqa: PLR2004, SLF001
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -30,6 +31,7 @@ from barks_fantagraphics.pages import (
     get_page_number_str,
     get_relative_srce_filepath,
     get_required_pages_in_order,
+    get_restored_srce_dependencies,
     get_srce_and_dest_pages_in_order,
     get_srce_dest_map,
 )
@@ -532,3 +534,98 @@ class TestGetSrceDestMap:
         assert result["dest_required_bbox_width"] == 100
         assert result["dest_required_bbox_height"] == 200
         assert result["pages"] == {"2-01.jpg": {"file": "101.jpg", "type": "BODY"}}
+
+
+# ---------------------------------------------------------------------------
+# get_restored_srce_dependencies: the chain the integrity checker grades
+# ---------------------------------------------------------------------------
+
+
+class TestGetRestoredSrceDependencies:
+    """What a restored page is built from, in chain order, with each file's timestamp."""
+
+    FILES = ("segments", "bounds", "restored", "upscayled", "svg", "upscayl", "original")
+
+    @pytest.fixture
+    def comic(self, tmp_path: Path) -> MagicMock:
+        """Fake a comic whose every source file exists, each a second newer than the last."""
+        files = {name: tmp_path / f"{name}.file" for name in (*self.FILES, "ini", "inset")}
+        for mtime, file in enumerate(files.values(), start=1_000):
+            file.write_text("x")
+            os.utime(file, (mtime, mtime))
+        comic = MagicMock()
+        comic.files = files
+        comic.ini_file = files["ini"]
+        comic.intro_inset_file = files["inset"]
+        comic.get_srce_panel_segments_file.return_value = files["segments"]
+        comic.get_final_fixes_panel_bounds_file.return_value = files["bounds"]
+        comic.get_final_srce_story_file.return_value = (files["restored"], ModifiedType.MODIFIED)
+        comic.get_srce_restored_upscayled_story_file.return_value = files["upscayled"]
+        comic.get_srce_restored_svg_story_file.return_value = files["svg"]
+        comic.get_final_srce_upscayled_story_file.return_value = (
+            files["upscayl"],
+            ModifiedType.ORIGINAL,
+        )
+        comic.get_final_srce_original_story_file.return_value = (
+            files["original"],
+            ModifiedType.ADDED,
+        )
+        comic._is_added_fixes_special_case.return_value = False
+        return comic
+
+    @staticmethod
+    def _deps(comic: MagicMock, page_type: PageType) -> list[SrceDependency]:
+        return get_restored_srce_dependencies(comic, CleanPage("012.jpg", page_type, page_num=12))
+
+    def test_a_blank_page_depends_on_nothing(self, comic: MagicMock) -> None:
+        assert self._deps(comic, PageType.BLANK_PAGE) == []
+
+    def test_a_title_page_depends_on_its_ini_and_inset(self, comic: MagicMock) -> None:
+        deps = self._deps(comic, PageType.TITLE)
+        assert [(d.file, d.independent) for d in deps] == [
+            (comic.ini_file, True),
+            (comic.intro_inset_file, True),
+        ]
+        assert deps[1].timestamp == comic.intro_inset_file.stat().st_mtime
+
+    def test_a_title_page_with_no_inset_yet_is_not_an_error(self, comic: MagicMock) -> None:
+        comic.intro_inset_file.unlink()
+        assert self._deps(comic, PageType.TITLE)[1].timestamp == -1
+
+    def test_a_body_page_is_the_whole_chain_in_order(self, comic: MagicMock) -> None:
+        deps = self._deps(comic, PageType.BODY)
+        assert [d.file for d in deps] == [comic.files[name] for name in self.FILES]
+        # The bounds override is off the chain: segments come from it *and* the page.
+        assert [d.independent for d in deps] == [False, True, False, False, False, False, False]
+        assert [d.timestamp for d in deps] == [
+            comic.files[name].stat().st_mtime for name in self.FILES
+        ]
+        assert (deps[2].mod_type, deps[5].mod_type, deps[6].mod_type) == (
+            ModifiedType.MODIFIED,
+            ModifiedType.ORIGINAL,
+            ModifiedType.ADDED,
+        )
+        comic.get_srce_panel_segments_file.assert_called_once_with("012")
+
+    def test_files_not_made_yet_have_the_not_on_disk_timestamp(self, comic: MagicMock) -> None:
+        for name in ("segments", "upscayled", "svg", "upscayl", "original"):
+            comic.files[name].unlink()
+        deps = {d.file: d.timestamp for d in self._deps(comic, PageType.BODY)}
+        assert [deps[comic.files[name]] for name in ("segments", "upscayled", "svg")] == [-1] * 3
+        assert deps[comic.files["upscayl"]] == deps[comic.files["original"]] == -1
+
+    def test_no_bounds_override_leaves_it_out(self, comic: MagicMock) -> None:
+        comic.get_final_fixes_panel_bounds_file.return_value = None
+        files = [d.file for d in self._deps(comic, PageType.BODY)]
+        assert comic.files["bounds"] not in files
+        assert len(files) == len(self.FILES) - 1
+
+    def test_an_added_fixes_page_stops_at_the_restored_file(self, comic: MagicMock) -> None:
+        """A page added in the fixes has no upscayled or original source behind it."""
+        comic._is_added_fixes_special_case.return_value = True
+        assert [d.file for d in self._deps(comic, PageType.BODY)] == [
+            comic.files[name] for name in ("segments", "bounds", "restored")
+        ]
+
+    def test_a_page_that_is_not_restored_has_only_its_final_file(self, comic: MagicMock) -> None:
+        assert [d.file for d in self._deps(comic, PageType.COVER)] == [comic.files["restored"]]

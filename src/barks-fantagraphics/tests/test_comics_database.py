@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR
+from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
     TitleNotFoundError,
@@ -16,8 +16,11 @@ from barks_fantagraphics.comics_helpers import validate_ini_files_against_barks_
 from barks_fantagraphics.fanta_comics_info import (
     FANTAGRAPHICS_DIRNAME,
     FANTAGRAPHICS_FIXES_DIRNAME,
+    FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME,
     FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME,
     FANTAGRAPHICS_RESTORED_DIRNAME,
+    FANTAGRAPHICS_RESTORED_OCR_DIRNAME,
+    FANTAGRAPHICS_RESTORED_SVG_DIRNAME,
     FANTAGRAPHICS_RESTORED_UPSCAYLED_DIRNAME,
     FANTAGRAPHICS_UPSCAYLED_DIRNAME,
     FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME,
@@ -232,3 +235,97 @@ class TestComicsDatabaseInstance:
 
     def test_get_story_titles_dir_is_dir(self, db: ComicsDatabase) -> None:
         assert db.get_story_titles_dir().is_dir()
+
+
+# ---------------------------------------------------------------------------
+# The derived trees' directory getters, which the build and OCR pipelines use
+# ---------------------------------------------------------------------------
+
+# (getter stem, the tree's dirname, whether it has a per-volume images dir)
+_TREES = [
+    ("fantagraphics_upscayled", FANTAGRAPHICS_UPSCAYLED_DIRNAME, True),
+    ("fantagraphics_restored", FANTAGRAPHICS_RESTORED_DIRNAME, True),
+    ("fantagraphics_restored_upscayled", FANTAGRAPHICS_RESTORED_UPSCAYLED_DIRNAME, True),
+    ("fantagraphics_restored_svg", FANTAGRAPHICS_RESTORED_SVG_DIRNAME, True),
+    ("fantagraphics_panel_segments", FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME, False),
+    ("fantagraphics_fixes", FANTAGRAPHICS_FIXES_DIRNAME, True),
+    ("fantagraphics_upscayled_fixes", FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME, True),
+    ("fantagraphics_fixes_scraps", FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME, True),
+]
+
+
+class TestDerivedTreeDirs:
+    """Each tree is <barks root>/<its dirname>/<volume title>[/images]."""
+
+    @pytest.mark.parametrize(("stem", "dirname", "has_images"), _TREES, ids=[t[0] for t in _TREES])
+    def test_root_volume_and_image_dirs(
+        self, db: ComicsDatabase, stem: str, dirname: str, has_images: bool
+    ) -> None:
+        volume = FIRST_VOLUME_NUMBER + 4
+        root = BARKS_ROOT_DIR / dirname
+        volume_dir = root / db.get_fantagraphics_volume_title(volume)
+        assert getattr(db, f"get_{stem}_dirname")() == dirname
+        assert getattr(db, f"get_{stem}_root_dir")() == root
+        assert getattr(db, f"get_{stem}_volume_dir")(volume) == volume_dir
+        if has_images:
+            assert getattr(db, f"get_{stem}_volume_image_dir")(volume) == volume_dir / IMAGES_SUBDIR
+
+    def test_the_originals(self, db: ComicsDatabase) -> None:
+        volume_dir = BARKS_ROOT_DIR / FANTAGRAPHICS_DIRNAME / db.get_fantagraphics_volume_title(5)
+        assert db.get_fantagraphics_original_root_dir() == BARKS_ROOT_DIR / FANTAGRAPHICS_DIRNAME
+        assert db.get_fantagraphics_volume_dir(5) == volume_dir
+        assert db.get_fantagraphics_volume_image_dir(5) == volume_dir / IMAGES_SUBDIR
+
+    def test_the_ocr_tree_has_raw_prelim_and_annotations_under_it(self, db: ComicsDatabase) -> None:
+        root = BARKS_ROOT_DIR / FANTAGRAPHICS_RESTORED_OCR_DIRNAME
+        title = db.get_fantagraphics_volume_title(5)
+        assert db.get_fantagraphics_restored_ocr_dirname() == FANTAGRAPHICS_RESTORED_OCR_DIRNAME
+        assert db.get_fantagraphics_restored_ocr_root_dir() == root
+        assert db.get_fantagraphics_restored_ocr_raw_root_dir() == root / "Raw"
+        assert db.get_fantagraphics_restored_ocr_raw_volume_dir(5) == root / "Raw" / title
+        assert db.get_fantagraphics_restored_ocr_annotations_root_dir() == root / "Annotations"
+        assert (
+            db.get_fantagraphics_restored_ocr_annotations_volume_dir(5)
+            == root / "Annotations" / title
+        )
+        assert db.get_fantagraphics_restored_ocr_prelim_root_dir() == (
+            get_fanta_restored_ocr_prelim_root_dir(root)
+        )
+        assert db.get_fantagraphics_restored_ocr_prelim_volume_dir(5) == (
+            get_fanta_restored_ocr_prelim_volume_dir(root, 5)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Looking a comic up by story or issue title, and what a miss says
+# ---------------------------------------------------------------------------
+
+
+# cspell:ignore Andez Zzzzqqq  (deliberate misses)
+
+
+class TestTitleLookupErrors:
+    def test_an_issue_with_several_stories_is_refused(self, db: ComicsDatabase) -> None:
+        with pytest.raises(RuntimeError, match="an issue title that has multiple titles"):
+            db.get_comic_book("CP 1")
+        with pytest.raises(RuntimeError, match="an issue title that has multiple titles"):
+            db.get_fanta_comic_book_info("CP 1")
+
+    def test_a_near_miss_issue_suggests_the_closest(self, db: ComicsDatabase) -> None:
+        with pytest.raises(RuntimeError, match='Did you mean "FC 199"'):
+            db.get_comic_book("FC 99999")
+        with pytest.raises(RuntimeError, match='Did you mean "FC 199"'):
+            db.get_fanta_comic_book_info("FC 99999")
+
+    def test_a_near_miss_story_title_suggests_the_closest(self, db: ComicsDatabase) -> None:
+        with pytest.raises(TitleNotFoundError, match='Did you mean "Lost in the Andes!"') as err:
+            db.get_comic_book("Lost in the Andez")
+        assert err.value.title == "Lost in the Andez"
+
+    def test_a_title_like_nothing_says_so_plainly(self, db: ComicsDatabase) -> None:
+        with pytest.raises(TitleNotFoundError, match=r'^Could not find title "Zzzzqqq"\.$'):
+            db.get_comic_book("Zzzzqqq")
+
+    def test_a_single_story_issue_finds_its_story(self, db: ComicsDatabase) -> None:
+        info = db.get_fanta_comic_book_info("ANDERS 47")
+        assert info.comic_book_info.get_title_str() == "Pied Piper of Duckburg"
