@@ -1368,11 +1368,12 @@ class OKFViewer(RelativeLayout):
         self._focused_link = idx
         if idx is None:
             return
-        lbl, _ref, occurrence = self._page_links[idx]
+        lbl, ref, occurrence = self._page_links[idx]
         lbl._orig_markup = lbl.text  # noqa: SLF001
         lbl.text = highlight_ref_occurrence(lbl.text, occurrence, LINK_COLOR, LINK_FOCUS_COLOR)
         if self.body.height > self.body_scroll.height:
             self.body_scroll.scroll_to(lbl, padding=dp(24))
+        trace.link_focus(ref)
 
     def _restore_focused_link_markup(self) -> None:
         """Put the focused link's label text back to its unhighlighted markup."""
@@ -1961,6 +1962,7 @@ class OKFViewer(RelativeLayout):
             markup = self._anchors.get(ref)  # tapped [id] → its definition, in a popup
             if markup is not None:
                 self._show_footnote_popup(markup, label._page_path)  # noqa: SLF001
+                trace.footnote_opened(ref)
             return
         target = resolve_link(label._page_path, ref, self.bundle)  # noqa: SLF001
         if target:
@@ -2050,6 +2052,7 @@ class OKFViewer(RelativeLayout):
             self._popup_link_label = None
             self._footnote_popup = None
             self._refresh_cursor()
+            trace.footnote_closed()
 
         popup.bind(on_dismiss=_release_hover)
         popup.open()

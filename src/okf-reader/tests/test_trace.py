@@ -81,3 +81,16 @@ def test_the_search_markers(kivy_log: list[str]) -> None:
         "OKFViewer: Search box focused.",
         "OKFViewer: Search box left for the sidebar.",
     ]
+
+
+def test_the_link_and_footnote_markers(kivy_log: list[str]) -> None:
+    trace.link_focus("../../characters/donald-duck.md")
+    trace.link_focus("fn:bib")
+    trace.footnote_opened("fn:bib")
+    trace.footnote_closed()
+    assert kivy_log == [
+        "OKFViewer: Link focus on '../../characters/donald-duck.md'.",
+        "OKFViewer: Link focus on 'fn:bib'.",
+        "OKFViewer: Footnote 'fn:bib' opened.",
+        "OKFViewer: Footnote closed.",
+    ]

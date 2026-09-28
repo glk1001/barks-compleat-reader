@@ -94,3 +94,22 @@ def search_left() -> None:
 def search_cleared() -> None:
     """Log that the search was cleared and the sidebar shows the tree again."""
     Logger.debug(log_markers.SEARCH_CLEARED)
+
+
+def link_focus(ref: str) -> None:
+    """Log that Up/Down moved the page's link highlight to the link to `ref`.
+
+    A step that only scrolls logs nothing; a test steps until this line names
+    the link it wants.
+    """
+    Logger.debug(log_markers.LINK_FOCUS.format(ref=ref))
+
+
+def footnote_opened(ref: str) -> None:
+    """Log that footnote `ref` (``fn:<label>``) is showing in its popup, which now owns the keys."""
+    Logger.debug(log_markers.FOOTNOTE_OPENED.format(ref=ref))
+
+
+def footnote_closed() -> None:
+    """Log that the footnote popup was dismissed and the keys are the page's again."""
+    Logger.debug(log_markers.FOOTNOTE_CLOSED)

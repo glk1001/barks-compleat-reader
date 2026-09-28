@@ -240,3 +240,57 @@ def test_wiki_round_trips_leave_no_pages_behind(wiki_boot: AppBoot) -> None:
         _leave_by_back_at_root(d)
 
     memory.assert_round_trips_leave_nothing(d, round_trip)
+
+
+KEY_PRESSED = pattern(markers.KEY_PRESSED)
+# Up/Down scrolls a link-free stretch without a log line, so a walk to a link is
+# bounded by presses, not by a marker.
+MAX_LINK_STEPS = 40
+# The story page's first paragraph links Donald first, and its first footnote
+# marker, [^bib], follows the paragraph's four links.
+FIRST_LINK = re.compile(r".*characters/donald-duck\.md")
+FIRST_FOOTNOTE = "fn:bib"
+
+
+def _down_to_link(d: Driver, ref: str | re.Pattern[str]) -> None:
+    """Press Down until the page's link highlight lands on `ref`."""
+    focused = pattern(wiki.LINK_FOCUS, ref=ref)
+    for _ in range(MAX_LINK_STEPS):
+        before = d.match_count(focused)
+        d.key_then_wait(KEY_PRESSED, "Down")
+        if d.match_count(focused) > before:
+            return
+    msg = f"no link focus on /{focused}/ within {MAX_LINK_STEPS} Downs"
+    raise AssertionError(msg)
+
+
+def _open_story_page(app_boot: AppBoot) -> tuple[Driver, re.Pattern[str]]:
+    """Boot on the chip test's story, open its wiki page from the chip; the page has the keys."""
+    story_page = _story_page(app_boot, Titles.GHOST_OF_THE_GROTTO_THE)
+    d = app_boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    d.focus_portal()
+    d.move_focus(*["Up"] * UPS_TO_WIKI_CHIP)
+    with (
+        d.expect(pattern(wiki.PAGE_SHOWN, page=story_page), 30),
+        d.expect(WIKI_ENTERED, 30),
+    ):
+        d.key("Return")
+    return d, story_page
+
+
+def test_a_pages_links_are_walked_and_followed_by_remote(wiki_boot: AppBoot) -> None:
+    """Down walks to the page's first link, Return follows it, and Back (on the bar) returns."""
+    d, story_page = _open_story_page(wiki_boot)
+    _down_to_link(d, FIRST_LINK)
+    d.key_then_wait(pattern(wiki.PAGE_SHOWN, page=FIRST_LINK, depth=2), "Return", timeout=30)
+    d.key_then_wait(TOP_BAR, "Escape")
+    d.key_then_wait(pattern(wiki.BACK_TO, page=story_page), "Return", timeout=30)
+
+
+def test_a_footnote_opens_in_its_popup_and_escape_closes_it(wiki_boot: AppBoot) -> None:
+    """Return on a footnote marker shows its note; Escape closes it; the page has the keys again."""
+    d, _story_page = _open_story_page(wiki_boot)
+    _down_to_link(d, FIRST_FOOTNOTE)
+    d.key_then_wait(pattern(wiki.FOOTNOTE_OPENED, ref=FIRST_FOOTNOTE), "Return")
+    d.key_then_wait(pattern(wiki.FOOTNOTE_CLOSED), "Escape")
+    _down_to_link(d, re.compile(r"fn:.*"))  # the next marker: the page walks on
