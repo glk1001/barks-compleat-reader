@@ -252,7 +252,9 @@ run_pytest() {
 }
 status=0
 gui_run run_pytest || status=$?
-if [[ -n "${BARKS_PROBE_COVERAGE:-}" && -d "$BARKS_PROBE_COVERAGE" ]]; then
+# A built executable measures nothing (only the workspace app runs under coverage),
+# so a run with --app has no boots to merge.
+if [[ -n "${BARKS_PROBE_COVERAGE:-}" && -d "$BARKS_PROBE_COVERAGE" && -z "${BARKS_PROBE_APP:-}" ]]; then
     # Whatever the tests did, keep what the boots measured - small.
     uv run coverage combine --append --quiet \
         --data-file="${BARKS_PROBE_COVERAGE}/.coverage.gui" "$BARKS_PROBE_COVERAGE" ||
