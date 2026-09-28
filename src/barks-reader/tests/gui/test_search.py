@@ -109,3 +109,71 @@ def test_tag_search_by_keyboard_picks_a_tag_then_a_member(boot: AppBoot) -> None
     d.key_then_wait(TAG_OR_MEMBER_SELECTED, "Return")
     # Whatever Return selected, the tag on offer was one the query matched.
     assert TAG_QUERY in last_field(d, markers.TAG_SELECTED_TAG, "tag").lower()
+
+
+# A query whose one chip is a tag group: selected as typed, its members listed under it.
+GROUP_QUERY = "africa"
+GROUP = "Africa"
+GROUP_MEMBERS = ("Algeria", "Arabian Peninsula")
+# A query whose third chip is a group; Return on it selects its first member.
+MULTI_QUERY = "south"
+MULTI_GROUP = "South America"
+MULTI_GROUP_STEPS = 2
+MULTI_FIRST_MEMBER = "Andes"
+
+
+def _chip_focused(text: str) -> str:
+    return pattern(markers.NAV_FOCUS, widget=f'_TagChipButton "{text}"')
+
+
+def test_a_tag_groups_members_are_walked_and_picked_by_keyboard(boot: AppBoot) -> None:
+    """Down walks from the group into its members; Return picks one; Left comes back to it."""
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=GROUP)):  # the only chip: picked as typed
+        search.type_query(d, GROUP_QUERY)
+    d.key_then_wait(_chip_focused(GROUP), "Return")
+    for member in GROUP_MEMBERS:
+        d.key_then_wait(_chip_focused(member), "Down")
+    picked = GROUP_MEMBERS[-1]
+    with d.expect(pattern(markers.TAG_SELECTED_MEMBER, member=picked)):
+        d.key_then_wait(d.FOCUS_MOVED, "Return")  # the member's titles, focused
+    d.key_then_wait(_chip_focused(picked), "Left")  # back to the picked member, not the top
+    for chip in (*reversed(GROUP_MEMBERS[:-1]), GROUP):
+        d.key_then_wait(_chip_focused(chip), "Up")
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")  # off the top chip: back in the box
+
+
+def test_return_on_a_group_opens_its_members_and_again_closes_them(boot: AppBoot) -> None:
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, MULTI_QUERY)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first chip
+    d.move_focus(*["Down"] * MULTI_GROUP_STEPS)
+    with (
+        d.expect(pattern(markers.TAG_SELECTED_TAG, tag=MULTI_GROUP)),
+        d.expect(pattern(markers.TAG_SELECTED_MEMBER, member=MULTI_FIRST_MEMBER)),
+    ):
+        d.key_then_wait(_chip_focused(MULTI_FIRST_MEMBER), "Return")
+    d.key_then_wait(_chip_focused(MULTI_GROUP), "Up")
+    # Return on the open group folds it: its own titles, the focus left on it.
+    d.key_then_wait(_chip_focused(MULTI_GROUP), "Return")
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the group's titles
+    d.key_then_wait(d.FOCUS_MOVED, "Down")
+    d.key_then_wait(d.FOCUS_MOVED, "Up")
+    d.key_then_wait(_chip_focused(MULTI_GROUP), "Left")  # back to the selected chip
+
+
+def test_the_results_and_clear_button_are_walked_by_keyboard(boot: AppBoot) -> None:
+    """Return leaves the box; the results reach the clear button and back; Escape exits.
+
+    While the box holds the keyboard the main screen yields it every key but
+    Escape, so its own Down and Right never reach the search screen.
+    """
+    d = boot(nodes.TITLE_SEARCH)
+    search.type_query(d, CLEAR_QUERY)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first result row
+    d.key_then_wait(d.FOCUS_MOVED, "Left")  # no chips in title search: the clear button
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # back to the results
+    d.key_then_wait(d.FOCUS_MOVED, "Left")
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Left")  # from the clear button, the box
+    d.key_then_wait(d.FOCUS_MOVED, "Return")
+    d.key_then_wait(markers.SEARCH_EXITED_NAV, "Escape")
