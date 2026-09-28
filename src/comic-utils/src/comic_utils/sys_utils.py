@@ -1,10 +1,28 @@
 import hashlib
-import os
 import platform
 import subprocess
 from pathlib import Path
 
 import distro
+
+# Where Linux exposes the machine's DMI identity, and what a hypervisor writes there.
+DMI_FILES = (
+    Path("/sys/class/dmi/id/product_name"),
+    Path("/sys/class/dmi/id/sys_vendor"),
+    Path("/sys/class/dmi/id/board_vendor"),
+)
+VM_SIGNATURES = (
+    "vmware",
+    "virtualbox",
+    "qemu",
+    "kvm",
+    "microsoft corporation",
+    "xen",
+    "parallels",
+    "bhyve",
+    "innotek",
+    "virtio",
+)
 
 
 def get_hash_str(file: Path) -> str:
@@ -46,51 +64,34 @@ def get_os_name() -> str:
 
 
 # noinspection PyBroadException
-def is_virtual_machine() -> bool:  # noqa: C901, PLR0911, PLR0912
+def is_virtual_machine() -> bool:  # noqa: C901, PLR0911
     system = platform.system()
 
     # -------------------------
     # Linux
     # -------------------------
     if system == "Linux":
-        # Check systemd-detect-virt (very reliable)
+        # systemd-detect-virt (very reliable) answers in its exit status: --quiet
+        # prints nothing either way, 0 is a VM and anything else is not.
         try:
-            out = subprocess.check_output(
+            result = subprocess.run(
                 ["systemd-detect-virt", "--vm", "--quiet"],  # noqa: S607
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                check=False,
             )
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except OSError:
+            pass  # not installed: fall back to the DMI strings
         else:
-            return out != b""
+            return result.returncode == 0
 
-        # Fallback: look at DMI strings
-        dmi_files = [
-            "/sys/class/dmi/id/product_name",
-            "/sys/class/dmi/id/sys_vendor",
-            "/sys/class/dmi/id/board_vendor",
-        ]
-        vm_signatures = [
-            "vmware",
-            "virtualbox",
-            "qemu",
-            "kvm",
-            "microsoft corporation",
-            "xen",
-            "parallels",
-            "bhyve",
-            "innotek",
-            "virtio",
-        ]
-
-        for path in dmi_files:
-            if os.path.exists(path):  # noqa: PTH110
-                try:
-                    data = open(path).read().lower()  # noqa: PTH123, SIM115
-                    if any(sig in data for sig in vm_signatures):
-                        return True
-                except Exception:  # noqa: BLE001, S110
-                    pass
+        for path in DMI_FILES:
+            try:
+                data = path.read_text().lower()
+            except OSError:
+                continue
+            if any(sig in data for sig in VM_SIGNATURES):
+                return True
 
         return False
 
