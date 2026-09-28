@@ -74,3 +74,13 @@ def tree_settled(node_text: str, frames: int) -> None:
 def page_action(label: str) -> None:
     """Log that the page's contextual action was run."""
     Logger.info(log_markers.PAGE_ACTION.format(label=label))
+
+
+def search_results(count: int, text: str) -> None:
+    """Log that the sidebar shows `count` results (0 is the no-match note) for `text`."""
+    Logger.debug(log_markers.SEARCH_RESULTS.format(count=count, text=text))
+
+
+def search_cleared() -> None:
+    """Log that the search was cleared and the sidebar shows the tree again."""
+    Logger.debug(log_markers.SEARCH_CLEARED)

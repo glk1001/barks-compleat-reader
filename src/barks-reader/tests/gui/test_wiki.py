@@ -17,7 +17,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_gui import expected, harness, nodes
+from barks_gui import expected, harness, nodes, taps
+from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from okf_reader.core import log_markers as wiki
@@ -137,3 +138,50 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
         d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
     ):
         d.key("Return")
+
+
+# The wiki's search box has no remote key of its own (Ctrl+F is a desktop key):
+# these tap it, as a touch user does, then drive the results with the remote.
+SEARCH_QUERY = "grotto"
+NO_MATCH_QUERY = "qqqqx"  # cspell:disable-line
+SEARCH_CLEARED = pattern(wiki.SEARCH_CLEARED)
+PAGE_REGION = pattern(wiki.FOCUS_REGION, name="PAGE")
+
+
+def _open_wiki_and_search(d: Driver, query: str) -> int:
+    """Open the wiki from its node, tap its search box and type `query`; return the hit count."""
+    d.select_node(nodes.WIKI_NODE)
+    with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
+        d.key("Return")
+    taps.tap(d, kind="TextInput")
+    results = pattern(wiki.SEARCH_RESULTS, text=query)
+    # Each keystroke searches; wait only on the full query's results (the index may
+    # still be warming for the first ones, which then show a wait note instead).
+    d.type_slowly(query, marker=lambda typed: results if typed == query else None)
+    return int(last_field(d, wiki.SEARCH_RESULTS, "count", text=query))
+
+
+def test_wiki_search_opens_hits_from_the_results_and_escape_clears_it(
+    wiki_boot: AppBoot,
+) -> None:
+    """Return opens the top hit; the results take the remote's keys; Escape clears."""
+    d = wiki_boot(nodes.INDEXES)
+    count = _open_wiki_and_search(d, SEARCH_QUERY)
+    assert count >= 2, f"only {count} wiki pages for {SEARCH_QUERY!r}"  # noqa: PLR2004
+    d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)  # the box's Return: the top hit
+    top_hit = d.last_line(SHOWED_PAGE)
+
+    # The wiki opens with the sidebar focused, and opening a hit leaves it there: the
+    # first Down rings the open page's row, the next moves to the second hit.
+    d.move_focus("Down", pattern=d.WIKI_FOCUS_MOVED)
+    d.move_focus("Down", pattern=d.WIKI_FOCUS_MOVED)
+    d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)
+    assert d.last_line(SHOWED_PAGE) != top_hit, "Down then Return opens the second hit"
+
+    d.key_then_wait(PAGE_REGION, "Right")
+    d.key_then_wait(SEARCH_CLEARED, "Escape")  # Escape unwinds the search before the bar
+
+
+def test_wiki_search_with_no_match_says_so(wiki_boot: AppBoot) -> None:
+    d = wiki_boot(nodes.INDEXES)
+    assert _open_wiki_and_search(d, NO_MATCH_QUERY) == 0

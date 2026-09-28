@@ -66,3 +66,14 @@ def test_the_navigation_markers(kivy_log: list[str]) -> None:
         "OKFViewer: Tree settled on 'The Firebug' after 2 frames.",
         "OKFViewer: Page action 'Read comic'.",
     ]
+
+
+def test_the_search_markers(kivy_log: list[str]) -> None:
+    trace.search_results(3, "grotto")
+    trace.search_results(0, "zzzz")
+    trace.search_cleared()
+    assert kivy_log == [
+        "OKFViewer: Search results: 3 for 'grotto'.",
+        "OKFViewer: Search results: 0 for 'zzzz'.",
+        "OKFViewer: Search cleared.",
+    ]

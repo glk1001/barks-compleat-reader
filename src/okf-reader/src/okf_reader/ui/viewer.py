@@ -823,7 +823,8 @@ class OKFViewer(RelativeLayout):
             if failed:
                 self._show_search_error()
             else:
-                self._show_results(self._searcher.search(self.search_field.text))
+                text = self.search_field.text
+                self._show_results(self._searcher.search(text), text)
 
     def _on_search_text(self, _field, text: str) -> None:  # noqa: ANN001
         """Swap the left column between the tree, a wait note, the results, or an error."""
@@ -837,12 +838,13 @@ class OKFViewer(RelativeLayout):
         elif self._search_failed:
             self._show_search_error()
         else:
-            self._show_results(self._searcher.search(text))
+            self._show_results(self._searcher.search(text), text)
 
     def _clear_search(self) -> None:
         """Clear the search field, restoring the tree (the clear button / done searching)."""
         self.search_field.text = ""
         self.search_field.focus = False
+        trace.search_cleared()
 
     def _on_search_enter(self, _field) -> None:  # noqa: ANN001
         """Open the top hit when the search field is submitted (Enter), once ready."""
@@ -890,11 +892,12 @@ class OKFViewer(RelativeLayout):
             )
         )
 
-    def _show_results(self, hits: list[SearchHit]) -> None:
-        """Put the results list in the left column's body slot, replacing the tree."""
+    def _show_results(self, hits: list[SearchHit], text: str) -> None:
+        """Put the results list for query `text` in the left column, replacing the tree."""
         self._sidebar_index = None  # rows are rebuilt; any ringed row is discarded
         self._left_body.clear_widgets()
         self._left_body.add_widget(self._results_widget(hits))
+        trace.search_results(len(hits), text)
 
     def _results_widget(self, hits: list[SearchHit]) -> ScrollView:
         """Build the scrollable results list — one row per hit, or a no-match note."""
@@ -986,6 +989,7 @@ class OKFViewer(RelativeLayout):
         if self.search_field.text or self.search_field.focus:
             self.search_field.text = ""
             self.search_field.focus = False
+            trace.search_cleared()
             return True
         return False
 
