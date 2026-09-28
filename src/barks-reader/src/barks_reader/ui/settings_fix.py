@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
@@ -21,11 +22,12 @@ from kivy.uix.settings import SettingItem, SettingOptions
 from kivy.uix.widget import Widget
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .reader_keyboard_nav import set_alt_escape_key
+from .reader_keyboard_nav import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key, set_alt_escape_key
 
 
 def _rgba(color: Color, alpha: float | None = None) -> str:
@@ -406,9 +408,34 @@ class SettingLongPathPopup(Popup):
         super().__init__(**kwargs)
         self._updating = False  # Flag to prevent infinite loops
         self._update_event = None  # Store the scheduled event
+        # auto_dismiss is off and the main screen hands an open popup every key, so
+        # without its own a remote could never leave: Escape cancels, Enter selects.
+        self.bind(on_open=self._bind_keys, on_dismiss=self._unbind_keys)
+
+    def _bind_keys(self, *_args: object) -> None:
+        Window.bind(on_key_down=self._on_key_down)
+
+    def _unbind_keys(self, *_args: object) -> bool:
+        Window.unbind(on_key_down=self._on_key_down)
+        return False  # do not veto the dismissal
+
+    def _on_key_down(
+        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
+    ) -> bool:
+        """Escape closes the chooser unchanged; Enter takes the path in its box."""
+        if is_escape_key(key):
+            self.dismiss()
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            if self.ids.path_input.focus:
+                return False  # the box's own Enter (on_text_validate) selects
+            self.select_path(self.ids.path_input.text)
+            return True
+        return False
 
     def select_path(self, path: str) -> None:
         """Call the 'Select' button when pressed."""
+        logger.info(log_markers.FOLDER_CHOOSER_SELECTED.format(path=path.strip()))
         if self.setting_widget and path:
             Clock.schedule_once(lambda _dt: self.setting_widget.update_setting_value(path.strip()))
         self.dismiss()
@@ -523,7 +550,9 @@ class SettingLongPath(SettingItem):
                     fc.set_initial_selection([file_path])
                     return
 
+        popup.bind(on_dismiss=lambda *_a: logger.debug(log_markers.FOLDER_CHOOSER_CLOSED))
         popup.open()
+        logger.debug(log_markers.FOLDER_CHOOSER_OPENED.format(title=self.title))
 
         # Set selection after a short delay to ensure files are loaded.
         Clock.schedule_once(set_initial_selection, 0.2)
@@ -585,6 +614,7 @@ class SettingOptionsWithValue(SettingOptions):
             if config:
                 config.set(self.section, self.key, self.value)
                 config.write()
+        logger.info(log_markers.SETTING_OPTION_SET.format(key=self.key, value=self.value))
 
         Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
 

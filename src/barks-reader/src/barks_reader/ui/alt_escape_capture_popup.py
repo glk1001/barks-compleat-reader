@@ -7,6 +7,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+from loguru import logger
+
+from barks_reader.core import log_markers
 
 from .reader_keyboard_nav import KEY_ESCAPE
 
@@ -63,10 +66,19 @@ class AltEscapeCapturePopup(Popup):
         self._captured = False
 
         clear_btn.bind(on_release=self._handle_clear)
-        cancel_btn.bind(on_release=lambda *_a: self.dismiss())
+        cancel_btn.bind(on_release=lambda *_a: self._cancel())
 
         Window.bind(on_key_down=self._on_key_down)
         self.bind(on_dismiss=self._unbind_window)
+        self.bind(
+            on_open=lambda *_a: logger.debug(
+                log_markers.ALT_ESCAPE_CAPTURE_OPENED.format(name=keycode_to_name(current_keycode))
+            )
+        )
+
+    def _cancel(self) -> None:
+        logger.info(log_markers.ALT_ESCAPE_CAPTURE_CANCELLED)
+        self.dismiss()
 
     def _unbind_window(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
@@ -74,6 +86,7 @@ class AltEscapeCapturePopup(Popup):
 
     def _handle_clear(self, *_args: object) -> None:
         self._captured = True
+        logger.info(log_markers.ALT_ESCAPE_CLEARED)
         self._on_clear()
         self.dismiss()
 
@@ -83,9 +96,10 @@ class AltEscapeCapturePopup(Popup):
         if self._captured:
             return False
         if key == KEY_ESCAPE:
-            self.dismiss()
+            self._cancel()
             return True
         self._captured = True
+        logger.info(log_markers.ALT_ESCAPE_CAPTURED.format(name=keycode_to_name(key), keycode=key))
         self._on_capture(key)
         self.dismiss()
         return True

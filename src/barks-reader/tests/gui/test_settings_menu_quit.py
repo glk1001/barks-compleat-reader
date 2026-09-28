@@ -149,3 +149,67 @@ def test_quit_confirmed_closes_the_app_and_saves_the_selected_node(boot: AppBoot
     ):
         d.key("Return")
     _wait_for_saved_node(boot, moved_to)
+
+
+FOLDER_CHOOSER_CLOSED = pattern(markers.FOLDER_CHOOSER_CLOSED)
+
+
+def test_a_folder_setting_opens_its_chooser_and_escape_closes_it(boot: AppBoot) -> None:
+    """The first setting is the library folder; Return opens its chooser, Escape closes it."""
+    d = boot(nodes.THE_STORIES)
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
+    d.key_then_wait(FOLDER_CHOOSER_CLOSED, "Escape")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+
+
+def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> None:
+    """Enter selects the path in the box - on opening, the setting's own - and closes."""
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.THE_STORIES)
+    before = harness.read_ini_value(ini, "fanta_dir").strip()
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
+    with d.expect(FOLDER_CHOOSER_CLOSED):
+        d.key_then_wait(pattern(markers.FOLDER_CHOOSER_SELECTED), "Return")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    assert harness.read_ini_value(ini, "fanta_dir").strip() == before
+
+
+# The options and key-capture settings, by their place in the panel (reader_settings order).
+DOWNS_TO_COLOR_THEME = 4
+DOWNS_TO_ALT_ESCAPE = 13
+KEY_LEFT_CODE = 276
+
+
+def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None:
+    """Return opens the theme's options on the current one; Down, Return picks the next."""
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.THE_STORIES)
+    before = harness.read_ini_value(ini, "color_theme").strip()
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_COLOR_THEME)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
+    d.move_focus("Down")
+    d.key_then_wait(pattern(markers.SETTING_OPTION_SET, key="color_theme"), "Return")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    assert harness.read_ini_value(ini, "color_theme").strip() != before
+
+
+def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> None:
+    """Escape cancels the capture; Left is captured, and then Left closes the settings."""
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.THE_STORIES)
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_ALT_ESCAPE)
+    capture_opened = pattern(markers.ALT_ESCAPE_CAPTURE_OPENED)
+    d.key_then_wait(capture_opened, "Return")
+    d.key_then_wait(markers.ALT_ESCAPE_CAPTURE_CANCELLED, "Escape")
+    d.key_then_wait(capture_opened, "Return")
+    d.key_then_wait(pattern(markers.ALT_ESCAPE_CAPTURED, keycode=KEY_LEFT_CODE), "Left")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Left")  # the new Escape
+    assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_LEFT_CODE)

@@ -76,6 +76,19 @@ CLOSING_APP: Final = "Closing app..."
 DISPLAY_SETTINGS: Final = "Display settings object."
 SETTINGS_CLOSED: Final = "Settings closed."
 CONFIG_CHANGE: Final = "Config change: section = '{section}', key = '{key}', value = '{value}'."
+# A folder setting's picker (Enter on its row opens it; a remote can only Escape it,
+# or tap its box and press Enter to take the path shown).
+FOLDER_CHOOSER_OPENED: Final = 'Folder chooser opened for "{title}".'
+FOLDER_CHOOSER_SELECTED: Final = 'Folder chooser: selected "{path}".'
+FOLDER_CHOOSER_CLOSED: Final = "Folder chooser closed."
+# An options setting's value picked from its list (written straight to the ini, so
+# no CONFIG_CHANGE line follows).
+SETTING_OPTION_SET: Final = 'Setting "{key}" set to "{value}".'
+# The alternate-Escape setting's capture popup: the next key pressed (real Escape cancels).
+ALT_ESCAPE_CAPTURE_OPENED: Final = "Alternate Escape capture opened (current {name})."
+ALT_ESCAPE_CAPTURED: Final = "Alternate Escape captured: {name} ({keycode})."
+ALT_ESCAPE_CAPTURE_CANCELLED: Final = "Alternate Escape capture cancelled."
+ALT_ESCAPE_CLEARED: Final = "Alternate Escape cleared."
 ABOUT_BOX_OPENED: Final = "About box opened."
 ABOUT_BOX_DISMISSED: Final = "About box dismissed."
 # Any popup shown through show_standalone_popup: the About box, the error popups,
