@@ -103,6 +103,12 @@ CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'
 CONFIRM_POPUP_CONFIRMED: Final = 'Confirm popup "{title}": confirmed.'
 CONFIRM_POPUP_CANCELLED: Final = 'Confirm popup "{title}": cancelled.'
 CONFIRM_POPUP_CLOSED: Final = 'Confirm popup "{title}": closed.'
+# A message popup (the error popups): one or two buttons, keyboard-operable like
+# the confirm popup, with its own lines so a test tells the two kinds apart.
+MESSAGE_POPUP_OPENED: Final = 'Message popup opened: "{title}".'
+MESSAGE_POPUP_OK: Final = 'Message popup "{title}": {button} pressed.'
+MESSAGE_POPUP_CANCELLED: Final = 'Message popup "{title}": cancelled.'
+MESSAGE_POPUP_CLOSED: Final = 'Message popup "{title}": closed.'
 
 # -------------------------------------------------------- screen switches --
 SCREEN_ENTERED: Final = "Screen '{name}' entered."

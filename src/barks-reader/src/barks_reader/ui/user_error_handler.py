@@ -9,15 +9,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from kivy.clock import Clock
-
 from barks_reader.core.user_error_messages import (
     ErrorDialogKind,
     ErrorPresentation,
     build_error_presentation,
 )
 
-from .popup_widgets import MessagePopup
+from .popup_widgets import open_message_popup
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,18 +50,16 @@ class UserErrorHandler:
         else:
             self._show_popup_with_close(presentation)
 
-    def _show_popup_with_close(self, presentation: ErrorPresentation) -> None:
-        def _on_close() -> None:
-            popup.dismiss()
-
-        popup = self._show_popup(
+    @staticmethod
+    def _show_popup_with_close(presentation: ErrorPresentation) -> None:
+        open_message_popup(
             title=presentation.title,
             text=presentation.text,
-            msg_halign="center",
             ok_text="",  # No OK button
-            ok_func=None,
+            on_ok=None,
             cancel_text="Close",
-            cancel_func=_on_close,
+            on_cancel=None,
+            msg_halign="center",
         )
 
     def _show_settings_error_popup(
@@ -72,29 +68,23 @@ class UserErrorHandler:
         on_popup_closed: Callable[[str], None] | None,
     ) -> None:
         """Show a popup for a settings-related error, offering to open settings."""
+        assert on_popup_closed
 
         def _on_goto_settings() -> None:
-            popup.dismiss()
             self._open_settings()
-            assert on_popup_closed
             on_popup_closed(presentation.close_message)
 
-        def _on_cancel() -> None:
-            popup.dismiss()
-            assert on_popup_closed
-            on_popup_closed(presentation.close_message)
-
-        popup = self._show_popup(
+        open_message_popup(
             title=presentation.title,
             text=presentation.text,
             ok_text="Settings",
-            ok_func=_on_goto_settings,
+            on_ok=_on_goto_settings,
             cancel_text="Cancel",
-            cancel_func=_on_cancel,
+            on_cancel=lambda: on_popup_closed(presentation.close_message),
         )
 
+    @staticmethod
     def _show_fatal_config_error(
-        self,
         presentation: ErrorPresentation,
         on_popup_closed: Callable[[str], None] | None,
     ) -> None:
@@ -102,42 +92,12 @@ class UserErrorHandler:
 
         and inform the user they must restart the app after fixing the issue.
         """
-
-        def _on_close() -> None:
-            popup.dismiss()
-            assert on_popup_closed
-            on_popup_closed(presentation.close_message)
-
-        popup = self._show_popup(
+        assert on_popup_closed
+        open_message_popup(
             title=presentation.title,
             text=presentation.text,
             ok_text="",  # No OK button
-            ok_func=None,
+            on_ok=None,
             cancel_text="Close",
-            cancel_func=_on_close,
+            on_cancel=lambda: on_popup_closed(presentation.close_message),
         )
-
-    @staticmethod
-    def _show_popup(
-        title: str,
-        text: str,
-        ok_text: str,
-        ok_func: Callable[[], None] | None,
-        cancel_text: str,
-        cancel_func: Callable[[], None] | None,
-        msg_halign: str = "justify",
-    ) -> MessagePopup:
-        """Create and display the MessagePopup."""
-        popup = MessagePopup(
-            text=text,
-            ok_func=ok_func,
-            ok_text=ok_text,
-            cancel_func=cancel_func,
-            cancel_text=cancel_text,
-            title=title,
-            msg_halign=msg_halign,
-        )
-        # Schedule the opening for the next frame to avoid potential graphics issues
-        Clock.schedule_once(lambda _dt: popup.open(), 0)
-
-        return popup

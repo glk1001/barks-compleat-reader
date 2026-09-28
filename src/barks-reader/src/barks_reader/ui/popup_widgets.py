@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import (  # ty: ignore[unresolved-import]
     NumericProperty,
@@ -119,30 +121,127 @@ def open_confirm_popup(
     return popup
 
 
+def open_message_popup(
+    *,
+    title: str,
+    text: str,
+    ok_text: str,
+    on_ok: Callable[[], None] | None,
+    cancel_text: str,
+    on_cancel: Callable[[], None] | None,
+    msg_halign: str = "justify",
+) -> MessagePopup:
+    """Open a keyboard-operable message popup (the error popups), one frame from now.
+
+    The same keys as the confirm popup: Left/Right move the focus ring between
+    the buttons it shows (the first starts focused), Enter presses the focused
+    one and Escape is its cancel. A popup with no ok_text has only its cancel
+    button, which Enter and Escape both press. Without this a remote had no way
+    out: the popup does not dismiss itself on Escape, and the main screen hands
+    every key to it.
+
+    Args:
+        title: The popup window title.
+        text: The message.
+        ok_text: Label of the first button, or "" for none.
+        on_ok: Called after dismissal when that button is pressed.
+        cancel_text: Label of the cancelling button.
+        on_cancel: Called after dismissal on cancel, or None.
+        msg_halign: The message's horizontal alignment.
+
+    Returns:
+        The popup, opened on the next frame (to avoid graphics issues at startup).
+
+    """
+    popup = MessagePopup(
+        text=text,
+        ok_func=None,
+        ok_text=ok_text,
+        cancel_func=None,
+        cancel_text=cancel_text,
+        title=title,
+        msg_halign=msg_halign,
+    )
+    nav = _ConfirmPopupNav(
+        popup, on_ok or (lambda: None), title, on_cancel=on_cancel, markers=_MESSAGE_MARKERS
+    )
+    popup.ok = nav.confirm
+    popup.cancel = nav.cancel
+
+    def _open(_dt: float) -> None:
+        popup.open()
+        nav.show_focus()
+        logger.debug(log_markers.MESSAGE_POPUP_OPENED.format(title=title))
+
+    Clock.schedule_once(_open, 0)
+    return popup
+
+
+@dataclass(frozen=True, slots=True)
+class _NavMarkers:
+    """The lines a popup's keyboard driver logs: a confirm popup's, or a message popup's."""
+
+    confirmed: str
+    cancelled: str
+    closed: str
+
+
+_CONFIRM_MARKERS = _NavMarkers(
+    log_markers.CONFIRM_POPUP_CONFIRMED,
+    log_markers.CONFIRM_POPUP_CANCELLED,
+    log_markers.CONFIRM_POPUP_CLOSED,
+)
+_MESSAGE_MARKERS = _NavMarkers(
+    log_markers.MESSAGE_POPUP_OK,
+    log_markers.MESSAGE_POPUP_CANCELLED,
+    log_markers.MESSAGE_POPUP_CLOSED,
+)
+
+
 class _ConfirmPopupNav:
-    """Keyboard driver for a two-button confirmation popup.
+    """Keyboard driver for a confirmation or message popup.
 
     Owns the focus ring and the window key binding; the binding is removed
-    when the popup is dismissed.
+    when the popup is dismissed. The ring holds the buttons the popup shows:
+    both for a confirmation, the cancel alone for a message with no ok button.
     """
 
-    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None], title: str = "") -> None:
+    def __init__(
+        self,
+        popup: MessagePopup,
+        on_ok: Callable[[], None],
+        title: str = "",
+        *,
+        on_cancel: Callable[[], None] | None = None,
+        markers: _NavMarkers = _CONFIRM_MARKERS,
+    ) -> None:
         self._popup = popup
         self._on_ok = on_ok
+        self._on_cancel = on_cancel
         self._title = title
-        self._buttons: list[Button] = [popup.ids.ok_button, popup.ids.cancel_button]
-        self._focused_idx = 0  # The confirming button starts focused.
+        self._markers = markers
+        self._buttons: list[Button] = [
+            button
+            for button, label in (
+                (popup.ids.ok_button, popup.ok_text),
+                (popup.ids.cancel_button, popup.cancel_text),
+            )
+            if label
+        ]
+        self._focused_idx = 0  # The confirming button (or the only one) starts focused.
         Window.bind(on_key_down=self._on_key_down)
         popup.bind(on_dismiss=self._unbind_window, parent=self._on_parent)
 
     def confirm(self) -> None:
-        logger.info(log_markers.CONFIRM_POPUP_CONFIRMED.format(title=self._title))
+        logger.info(self._markers.confirmed.format(title=self._title, button=self._popup.ok_text))
         self._popup.dismiss()
         self._on_ok()
 
     def cancel(self) -> None:
-        logger.info(log_markers.CONFIRM_POPUP_CANCELLED.format(title=self._title))
+        logger.info(self._markers.cancelled.format(title=self._title))
         self._popup.dismiss()
+        if self._on_cancel is not None:
+            self._on_cancel()
 
     def show_focus(self) -> None:
         update_focus_in_list(self._buttons, self._focused_idx, _CONFIRM_FOCUS_GROUP)
@@ -152,7 +251,7 @@ class _ConfirmPopupNav:
         self.show_focus()
 
     def _activate_focused(self) -> None:
-        if self._focused_idx == 0:
+        if self._buttons[self._focused_idx] is self._popup.ids.ok_button:
             self.confirm()
         else:
             self.cancel()
@@ -184,4 +283,4 @@ class _ConfirmPopupNav:
         outlasted the key gap. The line it waits on is written here instead.
         """
         if parent is None:
-            logger.debug(log_markers.CONFIRM_POPUP_CLOSED.format(title=self._title))
+            logger.debug(self._markers.closed.format(title=self._title))

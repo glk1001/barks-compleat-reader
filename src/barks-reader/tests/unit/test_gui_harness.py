@@ -432,6 +432,15 @@ class TestLogProblems:
         text = self._line(level, "Could not find monitor for pos (0,0).")
         assert harness.log_problems(text) == [text]
 
+    def test_an_expected_error_is_excused_and_no_other(self) -> None:
+        """A test that leaves a volume out expects its error; any other still fails it."""
+        expected = self._line("ERROR", 'Cannot show the title "X". The volume 5 is missing.')
+        other = self._line("ERROR", "Could not find monitor for pos (0,0).")
+        traceback = self._line("DEBUG", "Traceback (most recent call last):")
+        text = f"{expected}\n{other}\n{traceback}"
+        excused = [r"Cannot show the title .* is missing"]
+        assert harness.log_problems(text, excused) == [other, traceback]
+
     def test_a_traceback_and_an_image_failure_are_problems_at_any_level(self) -> None:
         text = "\n".join(
             [

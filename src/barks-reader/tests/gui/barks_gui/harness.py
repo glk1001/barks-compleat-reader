@@ -349,7 +349,7 @@ _SCREEN_LEFT_RE = re.compile(pattern(markers.SCREEN_LEFT, name=re.compile(r"([^'
 PROBLEMS_SHOWN = 12
 
 
-def log_problems(app_log: str) -> list[str]:
+def log_problems(app_log: str, expected_errors: Sequence[str] = ()) -> list[str]:
     """Return what a passing test must not leave in the app log.
 
     Error-level lines and tracebacks; Kivy's image-load failures, which it logs
@@ -359,15 +359,19 @@ def log_problems(app_log: str) -> list[str]:
 
     Args:
         app_log: The app log's text.
+        expected_errors: Regexes of error lines a test provoked on purpose
+            (`AppBoot.expect_error`); only error-level lines are excused.
 
     Returns:
         One short line per problem, in log order.
 
     """
+    excused = [re.compile(expected) for expected in expected_errors]
     problems: list[str] = [
         line.strip()[:200]
         for line in app_log.splitlines()
-        if _LEVEL_RE.match(line) or any(text in line for text in _PROBLEM_TEXTS)
+        if (_LEVEL_RE.match(line) and not any(e.search(line) for e in excused))
+        or any(text in line for text in _PROBLEM_TEXTS)
     ]
     entered = [found[1] for found in _SCREEN_ENTERED_RE.finditer(app_log)]
     left = [found[1] for found in _SCREEN_LEFT_RE.finditer(app_log)]
@@ -429,12 +433,22 @@ class AppBoot:
     # A test that may legitimately end at another size (the random walk can end
     # fullscreen) sets this False; every other teardown check still applies.
     expect_boot_size: bool = True
+    # Error lines this test provokes on purpose (`expect_error`).
+    expected_errors: list[str] = field(default_factory=list)
     _shots: list[Path] = field(default_factory=list)
     # Set before the probe is asked to start, not after the Driver exists: a
     # boot that fails part-way (the app never logs its ready line, say) has
     # still left an X server and pid files behind that `stop` must clear, or
     # every later test on this worker dies with "already running".
     _started: bool = False
+
+    def expect_error(self, regex: str) -> None:
+        """Excuse error-level app log lines matching `regex` from the clean-log check.
+
+        For a test that provokes an error on purpose (a volume left out of its
+        library, say); every other error line still fails it.
+        """
+        self.expected_errors.append(regex)
 
     @property
     def booted(self) -> bool:
@@ -707,7 +721,7 @@ class AppBoot:
             app_log = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
-        problems = log_problems(app_log)
+        problems = log_problems(app_log, self.expected_errors)
         stray = self.stray_key_note()
         if stray:
             problems.append(stray)
