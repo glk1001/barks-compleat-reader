@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from kivy.uix.label import Label
+from kivy.uix.modalview import ModalView
 from okf_reader.core.session import load_session_state
 from okf_reader.ui import viewer as viewer_module
 from okf_reader.ui.keynav import (
@@ -34,6 +35,7 @@ from okf_reader.ui.keynav import (
 from okf_reader.ui.viewer import SEARCH_ERROR_TEXT, FocusRegion, OKFApp, OKFViewer
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from okf_reader.core.search import SearchHit
@@ -69,8 +71,23 @@ def bundle(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def viewer(bundle: Path) -> OKFViewer:
-    return OKFViewer(bundle)
+def viewer(bundle: Path) -> Iterator[OKFViewer]:
+    yield OKFViewer(bundle)
+    _remove_popups_left_open()
+
+
+def _remove_popups_left_open() -> None:
+    """Take any popup a test opened off the window, at once.
+
+    A dismissed popup animates out, and a unit test never ticks the clock, so it
+    would stay on the window for every test after; the main screen hands an open
+    popup every key, and its key tests then fail (a random-order run found it).
+    """
+    from kivy.core.window import Window  # noqa: PLC0415 — the realized window
+
+    for widget in list(Window.children):
+        if isinstance(widget, ModalView):
+            Window.remove_widget(widget)
 
 
 def _page(viewer: OKFViewer) -> str:
