@@ -175,6 +175,10 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   its tappable widgets on request (`barks_gui.taps`, `barks_reader.core.tap_targets`).
   A tap is a click; `--touch` makes it a real touch too, on a virtual touchscreen, and
   needs the udev rule in `scripts/udev/` once (select with `-k test_taps`: one worker).
+  The leak tests (`-k leave_no`) ask the app the same way what it holds after a full
+  garbage collection (`barks_gui.memory`, `barks_reader.core.memory_census`): widgets and
+  textures may not climb over repeated round trips. The app's resident size is no leak
+  signal here: garbage waits long for a full collection, and glibc keeps freed memory.
   Plan: `docs/plans/touch-gui-tests.md`.
   Every duration the app logs is held to a loose budget at teardown
   (`tests/gui/barks_gui/timings.py`): this machine's, once `--calibrate` has written

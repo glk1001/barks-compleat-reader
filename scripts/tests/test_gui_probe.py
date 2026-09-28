@@ -272,9 +272,15 @@ class TestTaps:
         assert (run_dir / "tap-request").read_text(encoding="utf-8") == "5\n"
         assert not list(run_dir.glob("*.tmp"))
 
+    def test_a_memory_census_request_is_written_whole(self, run_dir: Path) -> None:
+        gui_probe.Probe.memory_census("3")
+        assert (run_dir / "census-request").read_text(encoding="utf-8") == "3\n"
+        assert not list(run_dir.glob("*.tmp"))
+
     def test_the_app_is_told_where_requests_go(self, run_dir: Path) -> None:
         env = gui_probe.app_env({})
         assert env["BARKS_READER_TAP_TARGETS_FILE"] == str(run_dir / "tap-request")
+        assert env["BARKS_READER_MEMORY_CENSUS_FILE"] == str(run_dir / "census-request")
 
     def test_touch_mode_is_refused_here(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BARKS_PROBE_TOUCH", "1")

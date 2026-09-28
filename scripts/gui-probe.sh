@@ -25,6 +25,7 @@
 #   scripts/gui-probe.sh tap 120 300      # tap at app WINDOW pixel X,Y: a click, or
 #                                         # with BARKS_PROBE_TOUCH=1 a real touch too
 #   scripts/gui-probe.sh tap-targets 7    # ask the app for its tap targets (request 7)
+#   scripts/gui-probe.sh memory-census 3  # ask the app what it holds after a full GC
 #   scripts/gui-probe.sh key Down Down Return
 #   scripts/gui-probe.sh type "pirate gold"
 #   scripts/gui-probe.sh wait 'Goto title' 10
@@ -89,6 +90,9 @@ APP_LOG="$RUN_DIR/app.log"
 # The file the app answers tap-targets requests from (barks_reader.core.tap_targets):
 # a request id written here comes back as one "Tap targets #<id>:" line in the log.
 TAP_REQUEST="$RUN_DIR/tap-request"
+# The file the app answers memory census requests from (barks_reader.core.memory_census):
+# a request id written here comes back as one "Memory census #<id>:" line in the log.
+CENSUS_REQUEST="$RUN_DIR/census-request"
 # The pid of the runner that started this display (BARKS_PROBE_OWNER_PID), if any.
 OWNER_FILE="$RUN_DIR/owner.pid"
 # Touch mode: the virtual touchscreen's server, its socket and its log.
@@ -363,7 +367,7 @@ cmd_start() {
     fi
     : >"$APP_LOG"
     : >"$INPUT_LOG"
-    rm -f "$TAP_REQUEST"
+    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST"
 
     # The app rewrites its config on exit; keep the user's copy intact. A
     # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1
@@ -391,7 +395,8 @@ cmd_start() {
     # already in the environment for both).
     if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
         setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" \
-            BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" "$BARKS_PROBE_APP" \
+            BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
+            BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" "$BARKS_PROBE_APP" \
             </dev/null >>"$APP_LOG" 2>&1 &
     else
         local run=(main.py)
@@ -401,6 +406,7 @@ cmd_start() {
                 --data-file="${BARKS_PROBE_COVERAGE}/.coverage.gui" main.py)
         fi
         setsid env DISPLAY="$DPY" BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
+            BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \
             uv run --directory "$REPO_ROOT" "${run[@]}" \
             </dev/null >>"$APP_LOG" 2>&1 &
     fi
@@ -507,7 +513,7 @@ cmd_stop() {
         stop_group "$(cat "$TOUCH_PID_FILE")" 5
         rm -f "$TOUCH_PID_FILE" "$TOUCH_SOCK"
     fi
-    rm -f "$TAP_REQUEST"
+    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST"
     if [[ -f "$XEPHYR_PID_FILE" ]] && [[ -z "$KEEP_XSERVER" ]]; then
         stop_group "$(cat "$XEPHYR_PID_FILE")"
     fi
@@ -709,6 +715,16 @@ cmd_tap_targets() {
     mv -f "$TAP_REQUEST.tmp" "$TAP_REQUEST"
 }
 
+# Ask the app what it holds: it runs a full garbage collection and answers with
+# a "Memory census #<id>:" log line (see CENSUS_REQUEST). Written whole, then
+# renamed, as a tap-targets request is.
+cmd_memory_census() {
+    require_running
+    local id="${1:?usage: gui-probe.sh memory-census <request id>}"
+    echo "$id" >"$CENSUS_REQUEST.tmp"
+    mv -f "$CENSUS_REQUEST.tmp" "$CENSUS_REQUEST"
+}
+
 cmd_key() {
     require_running
     [[ $# -gt 0 ]] || die "usage: gui-probe.sh key <keysym>..."
@@ -755,6 +771,7 @@ geometry) shift && cmd_geometry "$@" ;;
 click) shift && cmd_click "$@" ;;
 tap) shift && cmd_tap "$@" ;;
 tap-targets) shift && cmd_tap_targets "$@" ;;
+memory-census) shift && cmd_memory_census "$@" ;;
 key) shift && cmd_key "$@" ;;
 type) shift && cmd_type "$@" ;;
 wait) shift && cmd_wait "$@" ;;

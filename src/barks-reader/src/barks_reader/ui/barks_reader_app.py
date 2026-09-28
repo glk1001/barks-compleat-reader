@@ -56,6 +56,7 @@ from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
+from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
 from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
@@ -334,6 +335,7 @@ class BarksReaderApp(App):
         install_settings_theme_kv()
         _install_key_press_log(Window)
         install_tap_targets_service(Window)
+        install_memory_census_service()
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

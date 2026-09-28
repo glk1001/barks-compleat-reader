@@ -6,7 +6,7 @@ import re
 import string
 from typing import TYPE_CHECKING
 
-from barks_gui import expected, nodes
+from barks_gui import expected, memory, nodes
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -215,3 +215,18 @@ def test_back_to_the_index_puts_the_focus_on_the_item_left(boot: AppBoot) -> Non
     d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.MAIN_INDEX[0]))
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     assert _focused(d) == left_on
+
+
+def test_main_index_round_trips_leave_no_items_behind(boot: AppBoot) -> None:
+    """Walk the letters down and back up, again and again: each is rebuilt, none kept."""
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+
+    def round_trip() -> None:
+        d.key_then_wait(_letter("B"), "Down")
+        d.key_then_wait(_letter("C"), "Down")
+        d.key_then_wait(_letter("B"), "Up")
+        d.key_then_wait(_letter("A"), "Up")
+
+    memory.assert_round_trips_leave_nothing(d, round_trip)

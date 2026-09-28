@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_gui import expected, harness, nodes, taps
+from barks_gui import expected, harness, memory, nodes, taps
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -218,3 +218,25 @@ def test_wiki_search_by_remote_alone(wiki_boot: AppBoot) -> None:
     d.key_then_wait(SEARCH_FOCUSED, "Up")  # off the first result: back into the box
     d.key_then_wait(SEARCH_LEFT, "Down")
     d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)
+
+
+def test_wiki_round_trips_leave_no_pages_behind(wiki_boot: AppBoot) -> None:
+    """Open the wiki, open a page from the sidebar, go Back, leave: again and again.
+
+    Each page is built afresh, hundreds of labels for a long one; a round that
+    kept its pages alive after the wiki was left would show in the census.
+    """
+    d = wiki_boot(nodes.INDEXES)
+    d.select_node(nodes.WIKI_NODE)
+
+    def round_trip() -> None:
+        with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
+            d.key("Return")
+        # The wiki opens with the sidebar focused.
+        d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
+        d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)
+        d.key_then_wait(TOP_BAR, "Escape")
+        d.key_then_wait(pattern(wiki.BACK_TO), "Return", timeout=30)
+        _leave_by_back_at_root(d)
+
+    memory.assert_round_trips_leave_nothing(d, round_trip)

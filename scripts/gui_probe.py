@@ -15,7 +15,7 @@ to some other window. Do not use the machine while a run is going.
 Usage (the same as gui-probe.sh; see there):
   python scripts/gui_probe.py doctor | start | stop | stop-xserver | geometry
   python scripts/gui_probe.py shot OUT.png | click X Y | key NAME... | type TEXT
-  python scripts/gui_probe.py tap X Y | tap-targets ID
+  python scripts/gui_probe.py tap X Y | tap-targets ID | memory-census ID
   python scripts/gui_probe.py wait REGEX [SECS] | settle [QUIET_MS [MAX_SECS]]
   python scripts/gui_probe.py log | config | tail [N]
 
@@ -147,6 +147,11 @@ def tap_request() -> Path:
     return run_dir() / "tap-request"
 
 
+def census_request() -> Path:
+    """Return the file the app answers memory census requests from (as gui-probe.sh's)."""
+    return run_dir() / "census-request"
+
+
 def _pid_file() -> Path:
     return run_dir() / "app.pid"
 
@@ -205,6 +210,7 @@ def app_env(base: Mapping[str, str]) -> dict[str, str]:
         PYTHONIOENCODING="utf-8",
         LOGURU_COLORIZE="0",
         BARKS_READER_TAP_TARGETS_FILE=str(tap_request()),
+        BARKS_READER_MEMORY_CENSUS_FILE=str(census_request()),
     )
 
 
@@ -345,6 +351,7 @@ class Probe:
         app_log().write_text("", encoding="utf-8")
         input_log().write_text("", encoding="utf-8")
         tap_request().unlink(missing_ok=True)
+        census_request().unlink(missing_ok=True)
         # The app rewrites its config as it runs; keep the user's copy intact. A
         # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1.
         if not os.environ.get("BARKS_PROBE_NO_RESTORE"):
@@ -468,6 +475,13 @@ class Probe:
         partial = tap_request().with_suffix(".tmp")
         partial.write_text(f"{request}\n", encoding="utf-8")
         partial.replace(tap_request())
+
+    @staticmethod
+    def memory_census(request: str) -> None:
+        """Ask the app what it holds after a full collection: written whole, then renamed."""
+        partial = census_request().with_suffix(".tmp")
+        partial.write_text(f"{request}\n", encoding="utf-8")
+        partial.replace(census_request())
 
     def key(self, names: Sequence[str]) -> None:
         gap = float(os.environ.get("BARKS_PROBE_KEY_GAP", DEFAULT_KEY_GAP))
@@ -607,6 +621,8 @@ def run_input_command(probe: Probe, command: str, args: list[str]) -> int:
             probe.tap(int(args[0]), int(args[1]))
         case "tap-targets":
             probe.tap_targets(args[0])
+        case "memory-census":
+            probe.memory_census(args[0])
         case "key":
             probe.key(args)
         case "type":

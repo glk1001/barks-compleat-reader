@@ -242,6 +242,14 @@ class Driver:
         """
         self._run(["tap-targets", request])
 
+    def request_memory_census(self, request: str) -> None:
+        """Ask the app to log what it holds after a full collection, as request `request`.
+
+        The answer is one "Memory census #<request>:" line; ``barks_gui.memory``
+        waits for it and reads it.
+        """
+        self._run(["memory-census", request])
+
     def shot(self, path: Path) -> Path:
         """Capture the nested display to a PNG at `path` and return it."""
         self._run(["shot", str(path)])

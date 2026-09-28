@@ -116,7 +116,7 @@ just reader
     ```
     uv run pytest
     ```
-- **GUI path tests** (91, Linux only): boot the real app from a scratch profile on a nested
+- **GUI path tests** (94, Linux only): boot the real app from a scratch profile on a nested
   X display and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the
@@ -127,7 +127,10 @@ just reader
   durations and writes this machine's budgets to `.benchmarks/gui-timings.json` (not
   committed); until then the committed budgets, from the desktop, apply. The check is
   skipped with a warning when the load exceeds what the cores and the run's own workers
-  account for, and turned off by `BARKS_GUI_NO_BUDGETS=1`.
+  account for, and turned off by `BARKS_GUI_NO_BUDGETS=1`. Three tests look for
+  leaks: each goes round the same trip (a wiki page, a comic, the main index) six times and
+  asks the app, after a full garbage collection, how many widgets and textures it holds
+  (`barks_reader.core.memory_census`); the count may not climb after the first two rounds.
     ```
     bash scripts/run_gui_tests.sh                # visible, on a Xephyr window on the second monitor
     bash scripts/run_gui_tests.sh --headless     # on Xvfb, four workers, about three minutes

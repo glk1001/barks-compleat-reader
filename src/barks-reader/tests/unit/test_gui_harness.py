@@ -27,8 +27,9 @@ for _path in (_REPO_ROOT / "scripts", _TESTS_DIR / "gui"):
         sys.path.insert(0, str(_path))
 
 import gui_driver as gd  # noqa: E402
-from barks_gui import expected, harness, logs, persisted, shots, timings  # noqa: E402
+from barks_gui import expected, harness, logs, memory, persisted, shots, timings  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
+from barks_reader.core.memory_census import MemoryCensus  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -1065,3 +1066,28 @@ class TestLiveProfileGuardMessage:
 
     def test_no_log_is_no_runs(self, tmp_path: Path) -> None:
         assert harness.live_runs_since(tmp_path / "missing.log", self.SINCE) == []
+
+
+def _census(widgets: int, textures: int) -> MemoryCensus:
+    return MemoryCensus(widgets=widgets, textures=textures, objects=0, rss_mib=0, took_ms=0)
+
+
+class TestMemoryGrowth:
+    """The leak tests' rule: after the warm-up, rounds may add only the slack."""
+
+    def test_within_the_slack_is_no_problem(self) -> None:
+        first = _census(900, 800)
+        last = _census(900 + memory.WIDGET_SLACK, 800 + memory.TEXTURE_SLACK)
+        assert memory.growth_problems(first, last) == []
+
+    def test_fewer_is_no_problem(self) -> None:
+        assert memory.growth_problems(_census(900, 800), _census(850, 700)) == []
+
+    def test_past_the_slack_names_each_count(self) -> None:
+        first = _census(900, 800)
+        last = _census(901 + memory.WIDGET_SLACK, 801 + memory.TEXTURE_SLACK)
+        problems = memory.growth_problems(first, last)
+        assert [p.split(":")[0] for p in problems] == ["widgets", "textures"]
+        assert problems[0] == (
+            f"widgets: 900 after the warm-up, {901 + memory.WIDGET_SLACK} after the last round"
+        )

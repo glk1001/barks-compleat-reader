@@ -46,6 +46,14 @@ KEY_PRESSED: Final = "Key pressed: {key} ({name})."
 # The answer to a GUI test's tap-targets request (``barks_reader.core.tap_targets``):
 # the window's size in pixels and every tappable widget it shows, as JSON.
 TAP_TARGETS: Final = "Tap targets #{request}: {width}x{height} {targets}"
+
+# ---------------------------------------------------------------- memory --
+# The answer to a GUI test's memory census request (``barks_reader.core.memory_census``):
+# what is alive after a full garbage collection, and the resident size then.
+MEMORY_CENSUS: Final = (
+    "Memory census #{request}: widgets={widgets} textures={textures} objects={objects}"
+    " rss={rss_mib}MiB, took {took_ms}ms."
+)
 # A press on a margin that turns a page (the comic reader) or an image (the fun view).
 LEFT_MARGIN_PRESSED: Final = "Left margin pressed: x_rel,y_rel = {x},{y}."
 RIGHT_MARGIN_PRESSED: Final = "Right margin pressed: x_rel,y_rel = {x},{y}."

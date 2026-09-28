@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from barks_gui import expected, harness, nodes, tree
+from barks_gui import expected, harness, memory, nodes, tree
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -185,3 +185,11 @@ def test_opening_a_story_records_a_history_event(boot: AppBoot) -> None:
     assert events[-1]["closed_at"], "the close should have been recorded too"
     layout = expected.comic_layout(nodes.GHOST_OF_THE_GROTTO_TITLE)
     assert events[-1]["last_body_page"] == layout.last_body_page
+
+
+def test_comic_round_trips_leave_no_pages_behind(boot: AppBoot) -> None:
+    """Open a story, read, close: again and again, and the reader keeps no old pages."""
+    d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    memory.assert_round_trips_leave_nothing(
+        d, lambda: d.open_story(Pick(nodes.GHOST_OF_THE_GROTTO[0], pages=READ.pages, dwell=0.0))
+    )
