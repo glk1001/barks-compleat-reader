@@ -27,7 +27,16 @@ from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .reader_keyboard_nav import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key, set_alt_escape_key
+from .reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    KEY_UP,
+    is_escape_key,
+    set_alt_escape_key,
+)
 
 
 def _rgba(color: Color, alpha: float | None = None) -> str:
@@ -422,16 +431,61 @@ class SettingLongPathPopup(Popup):
     def _on_key_down(
         self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
     ) -> bool:
-        """Escape closes the chooser unchanged; Enter takes the path in its box."""
+        """Take the remote's keys: arrows browse, Enter keeps the box's path, Escape cancels.
+
+        Up/Down move the highlight through the listed entries (the box follows it),
+        Right opens the highlighted folder and Left the parent one. While the box
+        itself has the keyboard, only Escape is taken here.
+        """
         if is_escape_key(key):
             self.dismiss()
             return True
+        if self.ids.path_input.focus:
+            return False  # typing; the box's own Enter (on_text_validate) selects
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            if self.ids.path_input.focus:
-                return False  # the box's own Enter (on_text_validate) selects
             self.select_path(self.ids.path_input.text)
-            return True
-        return False
+        elif key in (KEY_UP, KEY_DOWN):
+            self._move_highlight(-1 if key == KEY_UP else 1)
+        elif key == KEY_RIGHT:
+            self._open_highlighted()
+        elif key == KEY_LEFT:
+            self._open_folder(str(Path(self.ids.file_chooser.path).parent))
+        else:
+            return False
+        return True
+
+    def _move_highlight(self, delta: int) -> None:
+        """Move the selection `delta` entries down the list, scrolling it into view."""
+        chooser = self.ids.file_chooser
+        entries = [entry for entry in chooser._items if getattr(entry, "path", None)]  # noqa: SLF001
+        if not entries:
+            return
+        paths = [entry.path for entry in entries]
+        current = chooser.selection[0] if chooser.selection else None
+        idx = paths.index(current) + delta if current in paths else 0
+        idx = max(0, min(len(entries) - 1, idx))
+        chooser.selection = [paths[idx]]
+        chooser.layout.ids.scrollview.scroll_to(entries[idx])
+        logger.debug(log_markers.FOLDER_CHOOSER_AT.format(path=paths[idx]))
+
+    def _open_highlighted(self) -> None:
+        """Open the highlighted folder ('../' is the parent); a file stays highlighted."""
+        chooser = self.ids.file_chooser
+        if not chooser.selection:
+            return
+        target = chooser.selection[0].rstrip("/\\")
+        if target.endswith(".."):
+            self._open_folder(str(Path(chooser.path).parent))
+        elif Path(target).is_dir():
+            self._open_folder(target)
+
+    def _open_folder(self, folder: str) -> None:
+        """Show `folder`'s entries, nothing highlighted, and put it in the box."""
+        chooser = self.ids.file_chooser
+        chooser.set_path(folder)
+        chooser.selection = []
+        self.ids.path_input.text = folder
+        logger.debug(log_markers.FOLDER_CHOOSER_IN.format(path=folder))
 
     def select_path(self, path: str) -> None:
         """Call the 'Select' button when pressed."""

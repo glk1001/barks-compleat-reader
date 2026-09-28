@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from barks_gui import harness, nodes
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -213,3 +216,51 @@ def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> N
     d.key_then_wait(pattern(markers.ALT_ESCAPE_CAPTURED, keycode=KEY_LEFT_CODE), "Left")
     d.key_then_wait(markers.SETTINGS_CLOSED, "Left")  # the new Escape
     assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_LEFT_CODE)
+
+
+MAX_CHOOSER_STEPS = 8
+
+
+def _chooser_tree(boot: AppBoot, tmp_path: Path) -> Path:
+    """Make root/{alpha,beta,library}, library the real archives; return the library."""
+    real = Path(
+        os.path.expandvars(harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir"))
+    ).expanduser()
+    if not real.is_dir():
+        pytest.skip(f"no Fantagraphics library at {real}")
+    root = tmp_path / "root"
+    for name in ("alpha", "beta"):
+        (root / name).mkdir(parents=True)
+    library = root / "library"
+    library.mkdir()
+    for archive in real.iterdir():
+        (library / archive.name).symlink_to(archive)
+    return library
+
+
+def _at(folder: Path) -> str:
+    return pattern(markers.FOLDER_CHOOSER_AT, path=str(folder))
+
+
+def test_a_folder_chooser_is_browsed_by_remote(boot: AppBoot, tmp_path: Path) -> None:
+    """Up/Down move through the folders, Right opens one, Left goes up, Return keeps one."""
+    library = _chooser_tree(boot, tmp_path)
+    root = library.parent
+    d = boot(nodes.THE_STORIES, ini={"fanta_dir": str(library), "use_prebuilt_comics": "0"})
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
+    d.settle()  # the chooser highlights the setting's own folder once its list is in
+    d.key_then_wait(_at(root / "beta"), "Up")  # the list runs ../, alpha, beta, library
+    d.key_then_wait(pattern(markers.FOLDER_CHOOSER_IN, path=str(root / "beta")), "Right")
+    d.key_then_wait(pattern(markers.FOLDER_CHOOSER_IN, path=str(root)), "Left")
+    for _ in range(MAX_CHOOSER_STEPS):
+        d.key_then_wait(pattern(markers.FOLDER_CHOOSER_AT), "Down")
+        if str(library) in d.last_line(pattern(markers.FOLDER_CHOOSER_AT)):
+            break
+    with d.expect(FOLDER_CHOOSER_CLOSED):
+        d.key_then_wait(pattern(markers.FOLDER_CHOOSER_SELECTED, path=str(library)), "Return")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    assert harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir").strip() == str(
+        library
+    )
