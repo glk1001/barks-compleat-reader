@@ -168,3 +168,50 @@ def test_a_tag_group_opens_its_tags_a_tag_its_titles_and_a_title_goes_there(
     with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
         d.key_then_wait(ITEM_PRESSED, "Return")
     assert expected.is_title(d.current_node())
+
+
+def _focused(d: Driver) -> str:
+    """Return the text of the row the last focus line names."""
+    found = re.search(r'Nav focus on \w+ "([^"]*)"\.', d.last_line(d.FOCUS_MOVED))
+    return found[1] if found else ""
+
+
+def test_items_wrap_between_columns_both_ways(boot: AppBoot) -> None:
+    """Right, Left, and Up or Down off a column's end cross columns; Left at the edge leaves.
+
+    Up off the second column's top reaches the first's bottom, and Down off that
+    bottom wraps back to the second's top.
+    """
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    d.move_focus("Right")  # alphabet panel -> the first item
+    first = _focused(d)
+    d.move_focus("Right")  # the second column's first item
+    second_top = _focused(d)
+    assert second_top != first
+    d.move_focus("Up")  # off its top: the first column's last item
+    first_bottom = _focused(d)
+    assert first_bottom not in {first, second_top}
+    d.move_focus("Down")  # off that bottom: wraps to the second column's top
+    assert _focused(d) == second_top
+    d.move_focus("Left")
+    assert _focused(d) != second_top
+    d.move_focus("Left")  # the first column's left edge: back to the alphabet
+    assert _focused(d) == "A"
+
+
+def test_back_to_the_index_puts_the_focus_on_the_item_left(boot: AppBoot) -> None:
+    """Go to a title from the index, Go Back, re-enter: the focus is where it was."""
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    d.move_focus("Right")
+    d.move_focus(*["Down"] * ITEMS_DOWN)
+    left_on = _focused(d)
+    with d.expect(pattern(markers.GOTO_TITLE)):
+        d.key_then_wait(ITEM_PRESSED, "Return")
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # the title view had the focus
+    d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.MAIN_INDEX[0]))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    assert _focused(d) == left_on
