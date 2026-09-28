@@ -34,6 +34,15 @@ def _press(chooser: MagicMock, key: int) -> bool:
 class TestFolderChooserKeys:
     """auto_dismiss is off, so without these a remote could never leave the chooser."""
 
+    def test_opened_is_logged_once_the_keys_are_bound(self, loguru_sink: list[str]) -> None:
+        """A test waits on this line and presses Escape: before on_open, the panel took it."""
+        chooser = _chooser()
+        chooser.title = "Fantagraphics Directory"
+        with patch.object(settings_fix, "Window") as window:
+            SettingLongPathPopup._bind_keys(chooser)
+        window.bind.assert_called_once_with(on_key_down=chooser._on_key_down)
+        assert 'Folder chooser opened for "Fantagraphics Directory".' in loguru_sink
+
     def test_escape_closes_it_unchanged(self) -> None:
         chooser = _chooser()
         assert _press(chooser, KEY_ESCAPE) is True

@@ -423,6 +423,9 @@ class SettingLongPathPopup(Popup):
 
     def _bind_keys(self, *_args: object) -> None:
         Window.bind(on_key_down=self._on_key_down)
+        # Logged here, once the keys are ours: the popup opens over an animation, and
+        # a key pressed before on_open still goes to the settings panel under it.
+        logger.debug(log_markers.FOLDER_CHOOSER_OPENED.format(title=self.title))
 
     def _unbind_keys(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
@@ -606,7 +609,6 @@ class SettingLongPath(SettingItem):
 
         popup.bind(on_dismiss=lambda *_a: logger.debug(log_markers.FOLDER_CHOOSER_CLOSED))
         popup.open()
-        logger.debug(log_markers.FOLDER_CHOOSER_OPENED.format(title=self.title))
 
         # Set selection after a short delay to ensure files are loaded.
         Clock.schedule_once(set_initial_selection, 0.2)
