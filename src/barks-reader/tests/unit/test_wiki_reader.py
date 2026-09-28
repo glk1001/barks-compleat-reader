@@ -10,6 +10,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.ui import wiki_reader
 from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
     KEY_ESCAPE,
     KEY_F,
     KEY_LEFT,
@@ -261,13 +262,26 @@ class TestWikiReaderScreenKeyDelegation:
 
         wiki_screen._viewer.handle_key.assert_not_called()
 
-    def test_search_focused_key_is_not_delegated(self, wiki_screen: WikiReaderScreen) -> None:
+    def test_while_typing_the_viewer_refuses_a_letter_for_the_field(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        """The viewer sees the key (Down would leave the box) and refuses it, so it types."""
         wiki_screen._viewer = _idle_viewer()
         wiki_screen._viewer.search_focused = True
 
-        wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
+        consumed = wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
 
-        wiki_screen._viewer.handle_key.assert_not_called()
+        assert consumed is False
+        wiki_screen._viewer.handle_key.assert_called_once_with(ord("a"), set())
+
+    def test_while_typing_down_goes_to_the_viewer(self, wiki_screen: WikiReaderScreen) -> None:
+        """Down is the remote's way out of the box, which the viewer takes."""
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = True
+
+        assert wiki_screen._on_key_down(None, KEY_DOWN, 0, "", []) is True
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_DOWN, set())
 
     def test_alt_left_falls_through_to_go_back(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = _idle_viewer()
@@ -287,6 +301,7 @@ class TestWikiReaderScreenKeyboardWhileTyping:
         set_alt_escape_key(ord("r"))
         wiki_screen._viewer = MagicMock()
         wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = False  # refused, as the real one does
 
         consumed = wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
 
@@ -297,6 +312,7 @@ class TestWikiReaderScreenKeyboardWhileTyping:
     def test_plain_letter_passes_through(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = MagicMock()
         wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = False  # refused, as the real one does
 
         consumed = wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
 
@@ -306,6 +322,7 @@ class TestWikiReaderScreenKeyboardWhileTyping:
     def test_alt_left_passes_through_while_typing(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = MagicMock()
         wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = False  # refused, as the real one does
 
         consumed = wiki_screen._on_key_down(None, KEY_LEFT, 0, "", ["alt"])
 
@@ -315,6 +332,7 @@ class TestWikiReaderScreenKeyboardWhileTyping:
     def test_real_escape_backs_out_of_search(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = MagicMock()
         wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = False  # refused, as the real one does
 
         consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
 
@@ -325,6 +343,7 @@ class TestWikiReaderScreenKeyboardWhileTyping:
     def test_ctrl_f_still_focuses_while_typing(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = MagicMock()
         wiki_screen._viewer.search_focused = True
+        wiki_screen._viewer.handle_key.return_value = False  # refused, as the real one does
 
         consumed = wiki_screen._on_key_down(None, KEY_F, 0, "", ["ctrl"])
 

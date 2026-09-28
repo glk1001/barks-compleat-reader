@@ -237,7 +237,9 @@ class WikiReaderScreen(ReaderScreen):
             if key == KEY_ESCAPE:
                 self._viewer.escape_search()
                 return True
-            return False
+            # The viewer takes Down out of the box and refuses the rest, which the
+            # field then types.
+            return self._viewer.handle_key(key, set(modifiers))
         # Translate the alternate Escape to the real keycode before delegating,
         # so the viewer's own Escape handling (footnote popup, search unwind,
         # the top-bar focus toggle) — which knows nothing of the barks-side

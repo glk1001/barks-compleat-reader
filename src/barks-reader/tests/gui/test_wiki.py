@@ -185,3 +185,36 @@ def test_wiki_search_opens_hits_from_the_results_and_escape_clears_it(
 def test_wiki_search_with_no_match_says_so(wiki_boot: AppBoot) -> None:
     d = wiki_boot(nodes.INDEXES)
     assert _open_wiki_and_search(d, NO_MATCH_QUERY) == 0
+
+
+SEARCH_FOCUSED = pattern(wiki.SEARCH_FOCUSED)
+SEARCH_LEFT = pattern(wiki.SEARCH_LEFT)
+MAX_TREE_UPS = 40
+
+
+def _up_into_the_search_box(d: Driver) -> None:
+    """Step Up the sidebar until the focus leaves its top for the search box."""
+    for _ in range(MAX_TREE_UPS):
+        before = d.match_count(SEARCH_FOCUSED)
+        d.key("Up")
+        d.settle()
+        if d.match_count(SEARCH_FOCUSED) > before:
+            return
+    msg = f"no search box within {MAX_TREE_UPS} Ups"
+    raise AssertionError(msg)
+
+
+def test_wiki_search_by_remote_alone(wiki_boot: AppBoot) -> None:
+    """Up off the tree's top enters the box; Down leaves it for the results; Up returns."""
+    d = wiki_boot(nodes.INDEXES)
+    d.select_node(nodes.WIKI_NODE)
+    with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
+        d.key("Return")
+    _up_into_the_search_box(d)
+    results = pattern(wiki.SEARCH_RESULTS, text=SEARCH_QUERY)
+    d.type_slowly(SEARCH_QUERY, marker=lambda typed: results if typed == SEARCH_QUERY else None)
+    with d.expect(d.WIKI_FOCUS_MOVED):  # the first result, ringed
+        d.key_then_wait(SEARCH_LEFT, "Down")
+    d.key_then_wait(SEARCH_FOCUSED, "Up")  # off the first result: back into the box
+    d.key_then_wait(SEARCH_LEFT, "Down")
+    d.key_then_wait(SHOWED_PAGE, "Return", timeout=30)

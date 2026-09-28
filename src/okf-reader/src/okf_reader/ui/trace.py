@@ -81,6 +81,16 @@ def search_results(count: int, text: str) -> None:
     Logger.debug(log_markers.SEARCH_RESULTS.format(count=count, text=text))
 
 
+def search_focused() -> None:
+    """Log that the search box took the keyboard (Up off the sidebar's top, or Ctrl+F)."""
+    Logger.debug(log_markers.SEARCH_FOCUSED)
+
+
+def search_left() -> None:
+    """Log that Down left the search box for the sidebar."""
+    Logger.debug(log_markers.SEARCH_LEFT)
+
+
 def search_cleared() -> None:
     """Log that the search was cleared and the sidebar shows the tree again."""
     Logger.debug(log_markers.SEARCH_CLEARED)

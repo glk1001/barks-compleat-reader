@@ -23,3 +23,5 @@ TREE_SETTLED: Final = f"{PREFIX}: Tree settled on '{{node}}' after {{frames}} fr
 PAGE_ACTION: Final = f"{PREFIX}: Page action '{{label}}'."
 SEARCH_RESULTS: Final = f"{PREFIX}: Search results: {{count}} for '{{text}}'."
 SEARCH_CLEARED: Final = f"{PREFIX}: Search cleared."
+SEARCH_FOCUSED: Final = f"{PREFIX}: Search box focused."
+SEARCH_LEFT: Final = f"{PREFIX}: Search box left for the sidebar."

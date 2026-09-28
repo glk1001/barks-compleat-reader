@@ -72,8 +72,12 @@ def test_the_search_markers(kivy_log: list[str]) -> None:
     trace.search_results(3, "grotto")
     trace.search_results(0, "zzzz")
     trace.search_cleared()
+    trace.search_focused()
+    trace.search_left()
     assert kivy_log == [
         "OKFViewer: Search results: 3 for 'grotto'.",
         "OKFViewer: Search results: 0 for 'zzzz'.",
         "OKFViewer: Search cleared.",
+        "OKFViewer: Search box focused.",
+        "OKFViewer: Search box left for the sidebar.",
     ]

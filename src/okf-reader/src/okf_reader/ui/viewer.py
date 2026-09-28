@@ -977,8 +977,16 @@ class OKFViewer(RelativeLayout):
         return bool(self.search_field.focus)
 
     def focus_search(self) -> None:
-        """Focus the search field. The hosting app routes Ctrl+F here."""
+        """Focus the search field: Ctrl+F from the host, or Up off the sidebar's top."""
+        self._clear_result_focus()
         self.search_field.focus = True
+        trace.search_focused()
+
+    def leave_search(self) -> None:
+        """Leave the search field for the sidebar: its results if any, else the tree."""
+        self.search_field.focus = False
+        self._set_focus_region(FocusRegion.SIDEBAR)
+        trace.search_left()
 
     def escape_search(self) -> bool:
         """Clear and unfocus the search field if active; report whether it consumed Escape.
@@ -1115,8 +1123,8 @@ class OKFViewer(RelativeLayout):
 
         The hosting apps delegate here from their window keyboard handlers (the
         standalone ``OKFApp``, an embedding screen) after their own shortcut
-        handling. Keys carrying command modifiers (Ctrl/Alt/Meta) and keys typed
-        into the focused search field are refused, so host shortcuts (Ctrl+F,
+        handling. Keys carrying command modifiers (Ctrl/Alt/Meta), and all but Down
+        while the search field has the keyboard, are refused, so host shortcuts (Ctrl+F,
         Alt+Left) and search typing are never stolen. Escape is otherwise always
         consumed, unwinding one layer per press: it dismisses an open footnote
         popup, backs out of an active search, and then toggles the keyboard
@@ -1128,7 +1136,9 @@ class OKFViewer(RelativeLayout):
         the 10-foot TV case): Up/Down walk the page's links and scroll its
         link-free stretches; Left/Right move spatially between the sidebar and
         the page (Left goes leftward, Right drills rightward); Enter activates;
-        Esc reaches the top bar's buttons. Tab (region toggle) and
+        Esc reaches the top bar's buttons; Up off the top of the sidebar (its
+        tree or its results) goes into the search box, and Down comes back out
+        of it (while typing, the field takes every other key). Tab (region toggle) and
         PageUp/PageDown/Home/End (page scrolling) are desktop extras. Mouse
         interaction is deliberately not tracked: a click that navigates rebuilds
         the page, which resets the keyboard focus state anyway.
@@ -1141,8 +1151,10 @@ class OKFViewer(RelativeLayout):
             True when the key was consumed.
 
         """
-        if self.search_focused or ({"ctrl", "alt", "meta"} & set(modifiers)):
+        if {"ctrl", "alt", "meta"} & set(modifiers):
             return False
+        if self.search_focused:
+            return self._handle_search_key(key)
         if self._footnote_popup is not None:
             return self._handle_popup_key(key)
         if key == KEY_ESCAPE:
@@ -1156,6 +1168,17 @@ class OKFViewer(RelativeLayout):
             FocusRegion.PAGE: self._handle_page_key,
         }
         return region_handlers[self._focus_region](key)
+
+    def _handle_search_key(self, key: int) -> bool:
+        """While the field types: Down leaves it for the sidebar; it keeps every other key.
+
+        Down is the remote's way out (Enter opens the top hit; Escape, the host's,
+        clears the search).
+        """
+        if key == KEY_DOWN:
+            self.leave_search()
+            return True
+        return False
 
     def _handle_escape_key(self) -> bool:
         """One Escape press: unwind an active search, else toggle the top-bar focus.
@@ -1395,7 +1418,9 @@ class OKFViewer(RelativeLayout):
         focused = self.tree.selected_node
         idx = nodes.index(focused) if focused in nodes else None
         node = focused if idx is not None else None
-        if key in (KEY_UP, KEY_DOWN):
+        if key == KEY_UP and idx == 0:
+            self.focus_search()  # the remote's way into the search box
+        elif key in (KEY_UP, KEY_DOWN):
             self._tree_move(nodes, idx, 1 if key == KEY_DOWN else -1)
         elif key == KEY_HOME:
             self._focus_tree_node(nodes[0])
@@ -1485,6 +1510,9 @@ class OKFViewer(RelativeLayout):
     def _handle_results_key(self, key: int) -> bool:
         """Walk the search-result rows with a drawn focus ring."""
         count = len(self._result_rows)
+        if key == KEY_UP and self._sidebar_index == 0:
+            self.focus_search()  # back up into the box the results came from
+            return True
         if key in (KEY_UP, KEY_DOWN, KEY_HOME, KEY_END):
             if key == KEY_HOME:
                 idx = 0
