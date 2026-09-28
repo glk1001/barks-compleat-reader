@@ -24,6 +24,7 @@ corrupt the working file.
 """
 
 import argparse
+import contextlib
 import os
 import shutil
 import sqlite3
@@ -223,7 +224,9 @@ def update_cpi_db(
         msg = f'Database not found at: "{db_path}"'
         raise FileNotFoundError(msg)
 
-    with sqlite3.connect(db_path) as source_conn:
+    # closing(): a connection's own `with` commits but never closes, and an open
+    # connection to the temp copy would stop the swap-in on Windows.
+    with contextlib.closing(sqlite3.connect(db_path)) as source_conn:
         previous_latest = _latest_year(source_conn, REFERENCE_SERIES)
 
     rows = parse_index_rows(download_all_items(url, user_agent, timeout))
@@ -237,7 +240,7 @@ def update_cpi_db(
     temp_path = Path(temp_name)
     try:
         shutil.copy2(db_path, temp_path)
-        with sqlite3.connect(temp_path) as conn:
+        with contextlib.closing(sqlite3.connect(temp_path)) as conn:
             series_updated = _replace_series(conn, rows)
             latest_year = _verify_latest_year(_latest_year(conn, REFERENCE_SERIES), previous_latest)
 
