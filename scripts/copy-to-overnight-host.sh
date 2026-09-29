@@ -130,6 +130,15 @@ if [[ -n "$repos" ]]; then
         grep '^BARKS_' "${REPO_ROOT}/.env.runtime" |
             remote "umask 077 && cat > $(q "$env_file")"
     fi
+
+    # Two gitignored modules every workspace boot imports: a fresh clone has neither,
+    # and without them each GUI test dies at boot. The panel module needs the key
+    # just written; _version.py is written as build.sh writes it (the overnight
+    # build stage rewrites it each night).
+    say "   the generated modules"
+    reader="${parent}/barks-compleat-reader"
+    change "cd $(q "$reader") && { test -f src/comic-utils/src/comic_utils/get_panel_bytes.py || bash scripts/generate-panel-module.sh; }"
+    change "cd $(q "$reader") && { test -f src/barks-reader/src/barks_reader/_version.py || printf 'COPYRIGHT_YEARS = \"2025-2026\"\n\nVERSION = \"%s\"\n' \"\$(git describe --tags --dirty --always)\" > src/barks-reader/src/barks_reader/_version.py; }"
 fi
 
 if [[ -n "$data" ]]; then
@@ -151,9 +160,17 @@ if [[ -n "$data" ]]; then
         fi
     done
     for link in "${LINKS[@]}"; do
-        name="${link%%|*}"
-        target="${link#*|}"
-        change "mkdir -p $(q "$(dirname "${remote_home}/${name}")") && ln -sfn $(q "${remote_home}/${target}") $(q "${remote_home}/${name}")"
+        name="${remote_home}/${link%%|*}"
+        target="${remote_home}/${link#*|}"
+        # A real folder there (an older install's Reader Files) would get the link
+        # put inside it by ln, and the app would go on reading the old folder: it is
+        # moved aside, not deleted, and said so.
+        if remote "test -d $(q "$name") && ! test -L $(q "$name")"; then
+            aside="${name}.before-copy-$(date +%Y%m%d-%H%M%S)"
+            say "   ${name} is a folder there, not a link: moving it to ${aside}"
+            change "mv $(q "$name") $(q "$aside")"
+        fi
+        change "mkdir -p $(q "$(dirname "$name")") && ln -sfn $(q "$target") $(q "$name")"
     done
 
     say "4. the profile's paths"

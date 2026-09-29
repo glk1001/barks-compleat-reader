@@ -80,6 +80,17 @@ else
     bad "$cpi_db is its git-lfs pointer: git lfs install && git lfs pull"
 fi
 if [[ -d .venv ]]; then ok ".venv"; else bad ".venv: uv sync"; fi
+# Gitignored and generated: every workspace boot imports both (see CLAUDE.md, setup).
+if [[ -f src/comic-utils/src/comic_utils/get_panel_bytes.py ]]; then
+    ok "get_panel_bytes.py"
+else
+    bad "get_panel_bytes.py: bash scripts/generate-panel-module.sh"
+fi
+if [[ -f src/barks-reader/src/barks_reader/_version.py ]]; then
+    ok "_version.py"
+else
+    bad "_version.py: bash scripts/build.sh (its first step writes it)"
+fi
 
 echo "== tools the stages call =="
 for tool in uv git git-lfs bun systemd-inhibit Xvfb xvfb-run; do
