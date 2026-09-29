@@ -568,7 +568,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         self._open_tag_button = button
         self._open_tag_item = item
-        Clock.schedule_once(self._add_title_sub_items, 0)
+        self._schedule_sub_items(self._add_title_sub_items)
 
     def _show_title_speech_bubbles(
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo

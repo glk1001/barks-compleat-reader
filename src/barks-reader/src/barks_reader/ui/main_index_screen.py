@@ -18,7 +18,6 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
-from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -378,7 +377,7 @@ class MainIndexScreen(IndexScreen):
 
         self._open_tag_button = button
         self._open_tag_item = item
-        Clock.schedule_once(self._add_sub_items, 0)
+        self._schedule_sub_items(self._add_sub_items)
 
     def _handle_tag_group(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is TagGroups
@@ -392,7 +391,7 @@ class MainIndexScreen(IndexScreen):
 
         self._open_tag_button = button
         self._open_tag_item = item
-        Clock.schedule_once(self._add_sub_items, 0)
+        self._schedule_sub_items(self._add_sub_items)
 
     def _get_tagged_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
         """Return the first page to goto, and the sortable title with page numbers."""

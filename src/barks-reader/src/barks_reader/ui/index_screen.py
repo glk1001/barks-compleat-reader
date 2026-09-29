@@ -508,6 +508,9 @@ class IndexScreen(FloatLayout):
         self._nav_saved_grid_version: int = -1  # Version when ITEMS nav state was last saved.
         self._nav_focused_btn: Button | None = None  # Button ref for robust position restore.
         self._nav_filled_item_btn: Button | None = None  # Item currently wearing the focus fill.
+        self._sub_items_pending: bool = False  # An expansion's sub-items await the next frame.
+        # The focus to resync once they are in: the item pressed, and the column's count.
+        self._pending_focus_resync: tuple[Button, int] | None = None
 
     def on_goto_background_title(self) -> None:
         assert self.on_goto_background_title_func is not None
@@ -738,14 +741,39 @@ class IndexScreen(FloatLayout):
         if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
             return
         btn = col_buttons[self._nav_focused_item_idx]
+        self._pending_focus_resync = None
         btn.trigger_action(duration=0)
         # Re-sync focus after items may have been added/removed by the action.
-        # duration=0 fires on_release synchronously, so sub-items are scheduled
-        # (via Clock.schedule_once at delay 0) before our resync runs.
+        # duration=0 fires on_release synchronously: a collapse is done by now, and an
+        # expansion has scheduled its sub-items (_schedule_sub_items) for the next frame.
         # Capture count AFTER trigger_action, which synchronously removes old sub-items
         # but before async addition of new ones, so the comparison detects the expansion.
         post_action_count = len(self._get_col_buttons(self._nav_focused_col))
-        Clock.schedule_once(lambda _dt: self._resync_item_focus(btn, post_action_count), 0.05)
+        if self._sub_items_pending:
+            # Moved as they go in. A fixed delay raced that frame: on a slow one it
+            # ran first, and left the focus on the parent instead of its first item.
+            self._pending_focus_resync = (btn, post_action_count)
+        else:
+            self._resync_item_focus(btn, post_action_count)
+
+    def _schedule_sub_items(self, add_sub_items: Callable[[float], None]) -> None:
+        """Add an expansion's sub-items on the next frame, then resync any focus waiting on them.
+
+        Args:
+            add_sub_items: Inserts the sub-item widgets; a Clock callback.
+
+        """
+        self._sub_items_pending = True
+
+        def add(dt: float) -> None:
+            self._sub_items_pending = False
+            add_sub_items(dt)
+            if self._pending_focus_resync is not None:
+                btn, old_count = self._pending_focus_resync
+                self._pending_focus_resync = None
+                self._resync_item_focus(btn, old_count)
+
+        Clock.schedule_once(add, 0)
 
     def _resync_item_focus(self, btn: Button, old_count: int) -> None:
         if not self._nav_active or self._nav_panel != _IndexNavPanel.ITEMS:

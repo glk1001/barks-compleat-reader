@@ -23,6 +23,7 @@ from barks_reader.ui.index_screen import (
     format_page_speech_bubbles,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
+from kivy.clock import Clock
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -250,6 +251,52 @@ class TestIndexScreen:
 
             # Focus should land on new_sub (btn_b is at index 1, so first sub-item is 2).
             assert index_screen._nav_focused_item_idx == 2
+
+    def test_an_expansion_moves_the_focus_once_its_sub_items_are_in(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """However late the frame that adds them: a fixed delay once ran before it."""
+        parent = MagicMock(spec=IndexItemButton)
+        sub_item = MagicMock(spec=IndexItemButton)
+        column = [parent, MagicMock(spec=IndexItemButton)]
+        parent.trigger_action.side_effect = lambda **_kw: index_screen._schedule_sub_items(
+            lambda _dt: column.insert(1, sub_item)
+        )
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        index_screen._nav_focused_col = 0
+        index_screen._nav_focused_item_idx = 0
+
+        with (
+            patch.object(index_screen, "_get_col_buttons", side_effect=lambda _col: column),
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            index_screen._activate_focused_item()
+            assert index_screen._nav_focused_item_idx == 0  # nothing to move to yet
+
+            add_sub_items = schedule.call_args.args[0]
+            add_sub_items(0.2)
+
+        assert index_screen._nav_focused_item_idx == 1  # the first sub-item
+        assert index_screen._pending_focus_resync is None
+
+    def test_a_collapse_resyncs_the_focus_at_once(self, index_screen: ConcreteIndexScreen) -> None:
+        btn_a = MagicMock(spec=IndexItemButton)
+        btn_b = MagicMock(spec=IndexItemButton)
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        index_screen._nav_focused_col = 0
+        index_screen._nav_focused_item_idx = 0
+
+        with (
+            patch.object(index_screen, "_get_col_buttons", return_value=[btn_a, btn_b]),
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            index_screen._activate_focused_item()
+
+        schedule.assert_not_called()
+        btn_a.trigger_action.assert_called_once_with(duration=0)
+        assert index_screen._nav_focused_item_idx == 0
 
     def test_resync_item_focus_collapse(self, index_screen: ConcreteIndexScreen) -> None:
         """Collapse: count unchanged or decreased, focus stays on the parent button."""

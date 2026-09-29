@@ -154,17 +154,22 @@ def test_a_tag_group_opens_its_tags_a_tag_its_titles_and_a_title_goes_there(
     d.move_focus("Right")  # alphabet panel -> items
     _down_to_item(d, TAG_GROUP)
     group_opened = pattern(markers.INDEX_SUB_ITEMS_ADDED, name=TAG_GROUP.upper())
-    with d.expect(pattern(markers.INDEX_HANDLING_TAG_GROUP, name=TAG_GROUP.upper())):
+    # Opening moves the focus onto the first member as the members go in.
+    with (
+        d.expect(pattern(markers.INDEX_HANDLING_TAG_GROUP, name=TAG_GROUP.upper())),
+        d.expect(d.FOCUS_MOVED),
+    ):
         d.key_then_wait(group_opened, "Return")
     tags = int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count"))
     assert tags >= 1, f"{TAG_GROUP} listed no tags"
+    assert f'"{TAG_GROUP}"' not in d.last_line(d.FOCUS_MOVED), "the focus stayed on the group"
 
-    d.move_focus("Down")  # the group's first tag
-    with d.expect(pattern(markers.INDEX_HANDLING_TAG)):
+    # Return on the group's first tag.
+    with d.expect(pattern(markers.INDEX_HANDLING_TAG)), d.expect(d.FOCUS_MOVED):
         d.key_then_wait(pattern(markers.INDEX_SUB_ITEMS_ADDED), "Return")
     assert int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count")) >= 1
 
-    d.move_focus("Down")  # the tag's first title
+    # Return on the tag's first title.
     with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
         d.key_then_wait(ITEM_PRESSED, "Return")
     assert expected.is_title(d.current_node())
