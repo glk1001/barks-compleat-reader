@@ -19,6 +19,7 @@ from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ONE_PAGERS
 from barks_fantagraphics.fanta_comics_info import ALL_LISTS
+from barks_reader.core import log_markers
 from barks_reader.core import view_pipeline as vp_module
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -526,6 +527,37 @@ class TestThemeExpansion:
 
 
 class TestPublicDelegations:
+    def test_render_logs_the_view_state_marker(self, loguru_sink: list[str]) -> None:
+        """The GUI tests wait on this line to know a node's background has changed."""
+        pipeline = _make_pipeline()
+
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INDEX_MAIN_NODE))
+
+        assert (
+            log_markers.UPDATING_BACKGROUND_VIEW_STATE.format(state="ON_INDEX_MAIN_NODE")
+            in loguru_sink
+        )
+
+    def test_set_title_keeps_a_provided_title_image(self) -> None:
+        pipeline = _make_pipeline()
+        title_str = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+
+        pipeline.set_title(title_str, Path("given.png"))
+
+        assert pipeline.current_request().title_str == title_str
+        assert pipeline._bottom_view_title_image_info.filename == Path("given.png")
+        _selector(pipeline).get_random_image_for_title.assert_not_called()
+
+    def test_set_title_without_an_image_picks_one_for_that_title(self) -> None:
+        pipeline = _make_pipeline()
+        _selector(pipeline).get_random_image_for_title.return_value = Path("picked.png")
+        title_str = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+
+        pipeline.set_title(title_str, None)
+
+        assert _selector(pipeline).get_random_image_for_title.call_args.args[0] == title_str
+        assert pipeline._bottom_view_title_image_info.filename == Path("picked.png")
+
     def test_set_bottom_view_fun_image_stores_image_directly(self) -> None:
         pipeline = _make_pipeline()
         info = ImageInfo(filename=Path("override.png"), from_title=Titles.ATTIC_ANTICS)

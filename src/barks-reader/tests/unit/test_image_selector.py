@@ -13,7 +13,12 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core import image_selector as is_module
-from barks_reader.core.image_selector import FIT_MODE_CONTAIN, FIT_MODE_COVER, ImageSelector
+from barks_reader.core.image_selector import (
+    FIT_MODE_CONTAIN,
+    FIT_MODE_COVER,
+    ImageSelector,
+    get_title_str,
+)
 from barks_reader.core.reader_file_paths import EMERGENCY_INSET_FILE, FileTypes
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import get_all_files_in_dir
@@ -522,6 +527,18 @@ class TestImageSelector:
         assert info.filename == Path("cover.png")
         assert info.fit_mode == FIT_MODE_CONTAIN
 
+    def test_better_fitting_asks_for_the_edited_version_of_that_cover(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        resolver = MagicMock(wraps=fake_resolver)
+        image_selector._resolver = resolver
+
+        image_selector._get_better_fitting_image_if_possible(
+            Path("cover.png"), FIT_MODE_COVER, FileTypes.COVER
+        )
+
+        resolver.get_edited_version_if_possible.assert_called_once_with(Path("cover.png"))
+
     def test_use_only_edited_filters_out_non_edited(self, image_selector: ImageSelector) -> None:
         """use_only_edited_if_possible=True excludes is_edited=False candidates."""
         title_str = "Mixed Title"
@@ -874,6 +891,22 @@ class TestImageInfoBuilders:
         assert info.from_title is Titles.VACATION_TIME
         assert info.fit_mode == FIT_MODE_COVER
 
+    def test_random_reading_history_image(self, image_selector: ImageSelector) -> None:
+        info = image_selector.get_random_reading_history_image()
+
+        title_dir = ENUM_TO_STR_TITLE[Titles.CRAZY_QUIZ_SHOW_THE]
+        assert info.filename == Path("/faves") / title_dir / "129-3.png"
+        assert info.from_title is Titles.CRAZY_QUIZ_SHOW_THE
+        assert info.fit_mode == FIT_MODE_COVER
+
+
+class TestGetTitleStr:
+    def test_a_title_is_its_display_string(self) -> None:
+        assert get_title_str(Titles.VACATION_TIME) == ENUM_TO_STR_TITLE[Titles.VACATION_TIME]
+
+    def test_no_title_is_the_empty_string(self) -> None:
+        assert get_title_str(None) == ""
+
 
 class TestGetRandomComicFile:
     def test_passes_the_title_and_edited_preference_through(self) -> None:
@@ -903,11 +936,12 @@ class TestPossibleFilesForTitle:
     ) -> None:
         """`use_only_edited` filters file by file.
 
-        One unedited entry must not abandon the remaining files of that type.
+        One unedited entry must not abandon the remaining files of that type. The
+        unedited file sorts first, so stopping at it would lose both edited ones.
         """
         image_selector._title_image_files["A Title"] = {
             FileTypes.SPLASH: {
-                (Path("plain.png"), False),
+                (Path("a-plain.png"), False),
                 (Path("edited-a.png"), True),
                 (Path("edited-b.png"), True),
             }
@@ -952,6 +986,26 @@ class TestPossibleFilesForTitle:
             "s-b.png",
         ]
 
+    def test_zip_and_filesystem_paths_sort_together_by_name(
+        self, image_selector: ImageSelector, tmp_path: Path
+    ) -> None:
+        """A `Path` and a `zipfile.Path` do not order against each other; their strings do."""
+        panels_zip = tmp_path / "panels.zip"
+        with zipfile.ZipFile(panels_zip, "w") as zf:
+            zf.writestr("a.png", b"image")
+        in_zip = zipfile.Path(panels_zip, "a.png")
+        on_disk = tmp_path / "b.png"
+        image_selector._title_image_files["A Title"] = {
+            FileTypes.SPLASH: {(in_zip, True), (on_disk, True)},
+        }
+
+        possible = image_selector._get_possible_files_for_title(
+            "A Title", {FileTypes.SPLASH}, use_only_edited_if_possible=False
+        )
+
+        # ".../b.png" sorts before ".../panels.zip/a.png".
+        assert [f for f, _t in possible] == [on_disk, in_zip]
+
 
 class TestMruAndIconCycling:
     def test_mru_size_is_honoured(
@@ -983,6 +1037,17 @@ class TestMruAndIconCycling:
             selector = ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
 
         mock_shuffle.assert_called_once_with(selector._all_reader_icon_files)
+
+    def test_icons_are_listed_from_the_settings_icon_dir(
+        self, fake_resolver: FakeResolver, mock_settings: MagicMock
+    ) -> None:
+        with (
+            patch.object(is_module, get_all_files_in_dir.__name__, return_value=[]) as mock_list,
+            patch.object(random, random.shuffle.__name__),
+        ):
+            ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
+
+        mock_list.assert_called_once_with(Path("/icons"))
 
     def test_icon_cycling_advances_forwards(
         self, fake_resolver: FakeResolver, mock_settings: MagicMock
@@ -1082,6 +1147,24 @@ class TestGetRandomImageBookkeeping:
             )
 
         mock_select.assert_called_with([title_info], {FileTypes.SPLASH}, True)  # noqa: FBT003
+
+    def test_the_edited_preference_filters_the_chosen_titles_files(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        title_str = "A Title"
+        edited = Path("edited.png")
+        fake_resolver.files[title_str][FileTypes.SPLASH] = [
+            (Path("plain.png"), False),
+            (edited, True),
+        ]
+        title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
+
+        with patch.object(random, random.choice.__name__, return_value=title_info):
+            _title_str, _title, possible = image_selector._select_random_title_or_nontitle(
+                [title_info], {FileTypes.SPLASH}, use_only_edited_if_possible=True
+            )
+
+        assert possible == [(edited, FileTypes.SPLASH)]
 
     def test_the_selected_title_is_passed_to_candidate_filtering(
         self, image_selector: ImageSelector

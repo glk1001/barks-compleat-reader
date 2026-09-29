@@ -728,6 +728,23 @@ builder, and a `MissingVolumeError` not logged. `TestBarksReadingPassesThrough` 
 `test_a_missing_volume_is_logged` kill them; its 5 left are four `__init__` `None` → `""`
 fields and one debug line.
 
+## Overnight slice (2026-09-29)
+
+Tuesday's slice, the first after the stage was fixed to run on Xvfb (before that it tested
+no mutant and recorded 0 survivors for every module), held 65 survivors and 4 mutants with
+no covering test in `image_selector` and `view_pipeline`. Fifteen were real, and all of
+them were missing assertions, not bugs:
+
+| Module | Before | After | What moved |
+|---|---:|---:|---|
+| `image_selector` | 40 (+2 🫥) | 31 | `get_title_str` had no test. The icon list's directory, the reading-history image's title and fit, the edited flag passed on to a title's files, and the file handed to `get_edited_version_if_possible` were never asserted (`FakeResolver` ignores its argument). The sort key only matters for a `Path` beside a `zipfile.Path`, which no test mixed. The `continue` in the edited-only filter survived as `break` because the test's unedited file sorted *last*; it now sorts first. |
+| `view_pipeline` | 25 (+2 🫥) | 23 | `set_title` had no test, and nothing checked `render` logs `UPDATING_BACKGROUND_VIEW_STATE`, the marker `test_reading.py` waits on. |
+
+The 54 left are equivalents recorded above (the `.get(title, "")` defaults, `encoding`,
+`split("#", 1)`, `FIT_MODE_COVER` passed as `ImageInfo`'s own default, `__init__`'s
+`_never_crop_images` and the two `view_pipeline` fields overwritten in `__init__`) and log
+wording.
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module
@@ -743,7 +760,7 @@ triaged floor** — nothing on this table has a known killable gap left.
 | `view_pipeline` | 148 → 23 |
 | `system_file_paths` | 131 → 41 |
 | `comic_book_loader_platform_settings` | 110 → 26 |
-| `image_selector` | 104 → 35 |
+| `image_selector` | 104 → 35 → 31 |
 | `fantagraphics_volumes` | 69 → 14 |
 | `archive_page_image_source` | 59 → 11 |
 | `reader_formatter` | 56 → 9 |
