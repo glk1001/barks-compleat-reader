@@ -128,11 +128,12 @@ repos:
             stages: [pre-push]
           - id: cspell-commit-msg
             name: cspell commit message
-            # Piped in, with this checkout's config named. Given the file, cspell looks
-            # for a config beside it, and a worktree's message is in the main
-            # checkout's .git: it took the main checkout's words, or checked nothing.
-            # A pipe, not `< "$1"`: under bunx, stdin redirected from a file read as
-            # empty and passed a misspelling.
-            entry: bash -c 'cat -- "$1" | bunx cspell --no-progress --config cspell.config.yaml stdin' --
+            # Piped in, so cspell finds its config from here, the checkout's root. Given
+            # the file, it looks for one beside it, and a worktree's message is in the
+            # main checkout's .git: it took the main checkout's words, or checked
+            # nothing. A pipe, not `< "$1"`: under bunx, stdin redirected from a file
+            # read as empty and passed a misspelling. No --config: bunx now and then
+            # took it for its own and looked cspell.config.yaml up as a package.
+            entry: bash -c 'cat -- "$1" | bunx cspell --no-progress stdin' --
             language: system
             stages: [commit-msg]
