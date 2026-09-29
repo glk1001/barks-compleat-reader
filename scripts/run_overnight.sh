@@ -19,7 +19,9 @@
 #   panel-sources  check-barks-panel-sources.py: every PNG panel belongs to a title
 #   build-check    the ../barks-comic-building integrity checker on the whole build
 #                  tree: every check (pre-push runs only the censorship one), with
-#                  each panel segments file's page size against its restored image
+#                  each panel segments file's page size against its restored image;
+#                  on a machine without the tree, another machine's read-only Samba
+#                  share of it, mounted for the stage (setup-build-share.sh)
 #   wiki-order     check_wiki_story_order.py on the sibling barks-wiki bundle;
 #                  warns only, as in full-lint (that repo gates its own order)
 #   wiki-copy      check_wiki_copy.py: the wiki copy shipped in Reader Files, which
@@ -302,16 +304,62 @@ mutation() {
         | uv run python "${SCRIPT_DIR}/mutation_survivors.py" "${modules[@]}" || return "$WARNED"
 }
 
+# build-check reads the whole comic build tree under ~/Books/Carl Barks (about
+# 330 GB). A machine without it may read another's instead: setup-build-share.sh
+# has then named that machine's read-only Samba share here. It is mounted for this
+# stage alone, and build-check runs with HOME a scratch folder whose Books/Carl
+# Barks is the mount, so every file it checks is that machine's; this machine's own
+# ~/Books is untouched. A failed mount fails the stage, not the run.
+# cspell:ignore cifs mountpoint
+BUILD_SHARE_CONF="${BARKS_BUILD_SHARE_CONF:-/etc/barks-build-share.conf}"
+build_check() {
+    local check=(env -u VIRTUAL_ENV uv run --offline --project ../barks-comic-building
+        barks-check-build --log-level SUCCESS --check-panel-segment-image-size)
+    if [[ ! -f "$BUILD_SHARE_CONF" ]]; then
+        "${check[@]}"
+        return
+    fi
+    local BUILD_SHARE="" BUILD_SHARE_MOUNT_DIR="" BUILD_SHARE_OPTIONS=""
+    # shellcheck source=/dev/null
+    source "$BUILD_SHARE_CONF"
+    local mount_cmd=(sudo -n /usr/bin/mount -t cifs -o "$BUILD_SHARE_OPTIONS"
+        "$BUILD_SHARE" "$BUILD_SHARE_MOUNT_DIR")
+    local umount_cmd=(sudo -n /usr/bin/umount "$BUILD_SHARE_MOUNT_DIR")
+    echo "build-check: the tree on ${BUILD_SHARE}, read-only at ${BUILD_SHARE_MOUNT_DIR}"
+    # A run killed mid-stage leaves it mounted; start clean.
+    mountpoint -q "$BUILD_SHARE_MOUNT_DIR" && "${umount_cmd[@]}"
+    if ! "${mount_cmd[@]}"; then
+        echo "build-check: could not mount ${BUILD_SHARE} - is that machine on and its share up?"
+        echo "  (a missing sudo rule fails the same way: sudo bash scripts/setup-build-share.sh ${BUILD_SHARE})"
+        return 1
+    fi
+    local status=0 home
+    home="$(mktemp -d)"
+    mkdir -p "${home}/Books"
+    ln -s "$BUILD_SHARE_MOUNT_DIR" "${home}/Books/Carl Barks"
+    # barks-comic-building writes its logs (the errors one included) under ~/Prj: to
+    # the real one, not into a scratch folder about to be deleted.
+    ln -s "${HOME}/Prj" "${home}/Prj"
+    if [[ -d "${home}/Books/Carl Barks/Fantagraphics-original" ]]; then
+        # uv's cache and Pythons stay where they are; only the library moves.
+        HOME="$home" UV_CACHE_DIR="$(uv cache dir)" UV_PYTHON_INSTALL_DIR="$(uv python dir)" \
+            "${check[@]}" || status=$?
+    else
+        echo "build-check: ${BUILD_SHARE} has no Fantagraphics-original - is it the comic library?"
+        status=1
+    fi
+    rm -rf "$home" # the links only; rm does not follow them into the mount or ~/Prj
+    "${umount_cmd[@]}" || echo "build-check: could not unmount ${BUILD_SHARE_MOUNT_DIR}"
+    return "$status"
+}
+
 # Run one stage. It returns SKIPPED (saying why) or WARNED as well as pass/fail.
 run_stage() {
     local status=0
     case "$1" in
     validate) uv run scripts/validate-barks-reader-files.py --full-load-check --strict-wiki ;;
     panel-sources) uv run scripts/check-barks-panel-sources.py ;;
-    build-check)
-        env -u VIRTUAL_ENV uv run --offline --project ../barks-comic-building \
-            barks-check-build --log-level SUCCESS --check-panel-segment-image-size
-        ;;
+    build-check) build_check ;;
     wiki-order) uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED" ;;
     wiki-copy)
         uv run scripts/check_wiki_copy.py || status=$?

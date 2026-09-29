@@ -60,8 +60,9 @@ bash scripts/run_overnight.sh
 ```
 To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run] HOST`
 sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
-not the build tree, so it runs with `--skip build-check`), and
-`bash scripts/check-overnight-host.sh` there says what is still missing.
+not the build tree, so it runs with `--skip build-check`, or reads this machine's tree
+for that stage from a read-only Samba share, set up once by `scripts/setup-build-share.sh`),
+and `bash scripts/check-overnight-host.sh` there says what is still missing.
 
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
