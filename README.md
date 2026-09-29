@@ -317,14 +317,33 @@ just reader
   Fantagraphics volumes, the reader's files and the profile, about 36 GB) to the same
   paths under that machine's home, then runs `check-overnight-host.sh` there, which says
   what is still missing. The comic build tree (about 330 GB) is left behind: run there
-  with `--skip build-check`. Calibrate that machine's GUI timings once there.
+  with `--skip build-check`. Once there, record a benchmark baseline (the lint stage
+  compares against it) and calibrate the GUI timings; over ssh there is no display, so
+  both run on Xvfb.
     ```
     bash scripts/copy-to-overnight-host.sh --dry-run user@host   # what it would do
     bash scripts/copy-to-overnight-host.sh user@host             # do it (reruns copy only changes)
     bash scripts/check-overnight-host.sh                            # on the other machine
-    bash scripts/run_gui_tests.sh --calibrate                       # once, there
+    xvfb-run -a bash scripts/record_benchmark_baseline.sh           # once, there
+    bash scripts/run_gui_tests.sh --headless --calibrate            # once, there
     bash scripts/run_overnight.sh --skip build-check                # there
     ```
+  Started over ssh, the run asks for a password ("Authentication is required for an
+  application to inhibit system sleep"): its `systemd-inhibit`, which keeps the machine
+  awake, needs one from a remote session under polkit's defaults. The stages go on
+  meanwhile, but the machine may sleep. To not be asked, a polkit rule there (as root,
+  from a terminal - `pkexec` over ssh has no password agent), for that user only:
+    ```
+    // /etc/polkit-1/rules.d/49-<user>-inhibit-sleep.rules
+    polkit.addRule(function(action, subject) {
+        if ((action.id == "org.freedesktop.login1.inhibit-block-sleep" ||
+             action.id == "org.freedesktop.login1.inhibit-block-idle") &&
+            subject.user == "<user>") {
+            return polkit.Result.YES;
+        }
+    });
+    ```
+  `systemd-inhibit --what=sleep:idle sleep 1` then returns without asking.
 
 The GUI suite's design, its log-marker contract and its history are in
 `docs/plans/gui-test-suite.md`; the runner's options are also described at the top of

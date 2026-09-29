@@ -300,3 +300,5 @@ udevadm
 sysname
 tappable
 usermod
+polkit
+pkexec
