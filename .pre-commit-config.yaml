@@ -113,17 +113,9 @@ repos:
             stages: [pre-push]
           - id: check-censorship-csv
             name: censorship-fixes CSV matches the fixes trees
-            # The data is here (barks-fantagraphics/data) but the checker is in the
-            # sibling barks-comic-building repo, hence --project: this runs that
-            # repo's console script out of its own synced venv, not ours. --offline
-            # so a push never waits on the network to resolve it, and `env -u
-            # VIRTUAL_ENV` because pre-commit exports *our* venv, which uv then warns
-            # it is ignoring - a warning on every push that means nothing is wrong.
-            entry: >-
-              env -u VIRTUAL_ENV
-              uv run --offline
-              --project ../barks-comic-building
-              barks-check-build --log-level SUCCESS --censorship-only
+            # The checker is in the sibling barks-comic-building repo; the script
+            # says how it finds it, from a worktree too.
+            entry: bash scripts/check-censorship-csv.sh
             language: system
             pass_filenames: false
             # always_run, not files: [censorship-fixes.csv]. The check compares the CSV
@@ -136,6 +128,11 @@ repos:
             stages: [pre-push]
           - id: cspell-commit-msg
             name: cspell commit message
-            entry: bunx cspell --no-must-find-files
+            # Piped in, with this checkout's config named. Given the file, cspell looks
+            # for a config beside it, and a worktree's message is in the main
+            # checkout's .git: it took the main checkout's words, or checked nothing.
+            # A pipe, not `< "$1"`: under bunx, stdin redirected from a file read as
+            # empty and passed a misspelling.
+            entry: bash -c 'cat -- "$1" | bunx cspell --no-progress --config cspell.config.yaml stdin' --
             language: system
             stages: [commit-msg]

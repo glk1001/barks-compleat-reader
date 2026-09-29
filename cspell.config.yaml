@@ -17,6 +17,10 @@ files:
 
 # Respect .gitignore, then add ruff/ty-specific excludes
 useGitignore: true
+# Stop at this checkout's own .gitignore. A worktree lives under .claude/worktrees/,
+# which the main checkout's .gitignore excludes, and cspell searching upward found that
+# rule and checked no file at all - while exiting 0.
+gitignoreRoot: "."
 ignorePaths:
   - "data/**"
   - "**/experiments/**"

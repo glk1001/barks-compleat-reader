@@ -252,6 +252,8 @@ wmctrl
 wordclouds
 workerid
 workerinput
+worktree
+worktrees
 xautomation
 xdotool
 xdpyinfo
