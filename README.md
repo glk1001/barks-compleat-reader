@@ -317,9 +317,13 @@ just reader
   Fantagraphics volumes, the reader's files and the profile, about 36 GB) to the same
   paths under that machine's home, then runs `check-overnight-host.sh` there, which says
   what is still missing. The comic build tree (about 330 GB) is left behind: run there
-  with `--skip build-check`. Once there, record a benchmark baseline (the lint stage
-  compares against it) and calibrate the GUI timings; over ssh there is no display, so
-  both run on Xvfb.
+  with `--skip build-check`. It installs no system packages; on Ubuntu the run needs
+  `sudo apt install git-lfs xvfb xautomation x11-utils imagemagick xclip xdotool`, and
+  [bun](https://bun.sh) for cspell. xdotool is the smoke stage's (it presses Escape in the
+  built app), although `gui-probe.sh doctor` calls it optional: the GUI tests use `xte`.
+  Without xclip, every GUI test fails its clean-log check. Once there, record a benchmark
+  baseline (the lint stage compares against it) and calibrate the GUI timings; over ssh
+  there is no display, so both run on Xvfb.
     ```
     bash scripts/copy-to-overnight-host.sh --dry-run user@host   # what it would do
     bash scripts/copy-to-overnight-host.sh user@host             # do it (reruns copy only changes)

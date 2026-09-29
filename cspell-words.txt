@@ -303,3 +303,4 @@ usermod
 polkit
 pkexec
 prek
+xclip
