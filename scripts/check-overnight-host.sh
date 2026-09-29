@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# cspell:ignore cifs
 #
 # Check that this machine can run scripts/run_overnight.sh, and say what is missing.
 #
@@ -116,26 +115,6 @@ else
 fi
 
 echo "== advised =="
-# build-check needs the whole comic build tree (about 330 GB), here or on a share.
-build_share_conf=/etc/barks-build-share.conf
-if [[ -d "${HOME}/Books/Carl Barks/Fantagraphics-restored" ]]; then
-    ok "build-check: the build tree is on this machine"
-elif [[ -f "$build_share_conf" ]]; then
-    share="$(grep '^BUILD_SHARE=' "$build_share_conf" | cut -d= -f2-)"
-    mount_point="$(grep '^BUILD_SHARE_MOUNT_DIR=' "$build_share_conf" | cut -d= -f2-)"
-    options="$(grep '^BUILD_SHARE_OPTIONS=' "$build_share_conf" | cut -d= -f2-)"
-    # sudo -l asks whether exactly these commands may run with no password.
-    if sudo -n -l /usr/bin/mount -t cifs -o "$options" "$share" "$mount_point" >/dev/null 2>&1 &&
-        sudo -n -l /usr/bin/umount "$mount_point" >/dev/null 2>&1; then
-        ok "build-check: reads ${share}, mounted for the stage"
-    else
-        advise "build-check: ${share} is named, but the sudo rule is missing:"
-        advise "  sudo bash scripts/setup-build-share.sh ${share}"
-    fi
-else
-    advise "no build tree here: run with --skip build-check, or mount another machine's"
-    advise "  for the stage (sudo bash scripts/setup-build-share.sh //HOST/BarksLibrary)"
-fi
 if [[ -f .benchmarks/gui-timings.json ]]; then
     ok "this machine's GUI timing calibration"
 else

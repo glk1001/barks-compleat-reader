@@ -344,13 +344,6 @@ just reader
     });
     ```
   `systemd-inhibit --what=sleep:idle sleep 1` then returns without asking.
-  `build-check` can run there too, without the build tree: it reads this machine's
-  instead, from a read-only Samba share mounted for that stage alone, so this machine
-  must be on. Add the share here once (`scripts/samba/barks-library.conf` says how), then
-  on the other machine run `sudo bash scripts/setup-build-share.sh //HOST/BarksLibrary`
-  once: it lets you mount exactly that share with no password, and checks it. After that,
-  a run there that includes `build-check` mounts the share, checks the tree on it, and
-  unmounts it; if the share cannot be mounted, only that stage fails.
 
 The GUI suite's design, its log-marker contract and its history are in
 `docs/plans/gui-test-suite.md`; the runner's options are also described at the top of
