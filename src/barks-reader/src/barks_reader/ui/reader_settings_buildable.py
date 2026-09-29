@@ -69,9 +69,13 @@ class BuildableReaderSettings(ReaderSettings):
             return False
 
         if key == PNG_BARKS_PANELS_DIR:
-            self._reader_file_paths.set_barks_panels_source(
-                value, self._get_barks_panels_ext_type()
-            )
+            # Only PNG mode reads this dir. In JPG mode its validator lets any path
+            # through, and switching to it would read JPGs from the PNG dir - or raise,
+            # if it does not exist yet. It is read when PNG images are turned on.
+            if self._read(USE_PNG_IMAGES):
+                self._reader_file_paths.set_barks_panels_source(
+                    value, self._get_barks_panels_ext_type()
+                )
         elif key == USE_PNG_IMAGES:
             if value:
                 self._reader_file_paths.set_barks_panels_source(

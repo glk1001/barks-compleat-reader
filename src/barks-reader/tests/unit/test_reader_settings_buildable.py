@@ -118,6 +118,16 @@ class TestOnChangedSetting:
             tmp_path, BarksPanelsExtType.MOSTLY_PNG
         )
 
+    def test_a_new_png_panels_dir_waits_in_jpg_mode(
+        self, settings: BuildableReaderSettings, file_paths: MagicMock
+    ) -> None:
+        """The JPG zip stays the source, even for a dir that does not exist yet."""
+        assert (
+            settings.on_changed_setting(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR, "/not/made")
+            is True
+        )
+        file_paths.set_barks_panels_source.assert_not_called()
+
 
 class _FakeSettingItem:
     def __init__(self, section: str, key: str) -> None:
