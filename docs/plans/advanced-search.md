@@ -2,12 +2,12 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phase 0 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-1 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
-> - Phase 0 tag bug fixes: DONE 2026-09-29 ("fix(search): tag search no longer recurses on one letter...")
-> - Phase 1 result types + set operations: TODO
+> - Phase 0 tag bug fixes: DONE 2026-09-29, 4b4a098f
+> - Phase 1 result types + set operations: DONE 2026-09-29 ("refactor(search): the result types in their own module...")
 > - Phase 2 substring word list: TODO
 > - Phase 3 tag substring + counts: TODO
 > - Phase 4 query parser: TODO
@@ -72,7 +72,8 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
 
 ### New Kivy-free modules (`src/barks-fantagraphics/src/barks_fantagraphics/`)
 - `search_results.py`: `SpeechInfo/PageInfo/TitleInfo/TitleDict` move here and are re-exported
-  from `whoosh_search_engine`, because ../barks-ocr `tools/whoosh_find.py` imports them. It adds
+  from `whoosh_search_engine`, because ../barks-ocr `pipeline/whoosh_index.py` imports `TitleDict`
+  from there (`tools/whoosh_find.py` imports only `SearchEngine` and `ENTITY_TYPES`). It adds
   `merge_title_dicts`, `intersect_titles`, `subtract_titles`, `restrict_titles` and
   `hit_counts`.
 - `search_query.py`: AST nodes; `parse_query(text) -> ParsedQuery` (never raises; carries a

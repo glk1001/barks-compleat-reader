@@ -1,9 +1,7 @@
 import heapq
 import json
-import sys
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -20,6 +18,10 @@ from .alpha_split import split_alpha_terms
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
 from .search_ports import CorpusTextTotals
+
+# The result types moved to search_results; imported here, they stay importable from
+# this module too (../barks-ocr's pipeline/whoosh_index.py imports TitleDict from it).
+from .search_results import PageInfo, SpeechInfo, TitleDict, TitleInfo, speech_sort_key
 from .speech_groupers import OcrTypes, SpeechGroups
 from .speech_markup import strip_markup
 from .whoosh_barks_terms import (
@@ -113,46 +115,6 @@ def _is_valid_entity_term(term: str) -> bool:
     return not any(w == w.upper() and len(w) > max_caps_len for w in term.split())
 
 
-@dataclass(frozen=True, slots=True)
-class SpeechInfo:
-    """One matching speech group in a search result.
-
-    ``speech_text`` is plain and ``speech_text_markup`` carries the ``[b]``/``[i]``
-    emphasis tags, the same split as ``SpeechText`` and for the same reason: a
-    caller that has not heard of emphasis gets correct text from the obvious
-    attribute.  Only the reader's bubble list, which renders Kivy markup, wants
-    the other one.
-
-    ``speaker`` mirrors ``SpeechText.speaker``, reduced to the stored value --
-    ``"Scrooge"``, ``"other:Witch Hazel"``, ``"none"`` -- because that is all
-    the index keeps.  ``None`` when the group had no call, and always ``None``
-    from an index built before the field existed.  Turn it into a label with
-    ``speech_speakers.speaker_display_name``.
-    """
-
-    group_id: str
-    panel_num: int
-    speech_text: str
-    speech_text_markup: str
-    entity_types: tuple[str, ...] = ()
-    speaker: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class PageInfo:
-    comic_page: str
-    speech_info_list: list[SpeechInfo]
-
-
-@dataclass(slots=True)
-class TitleInfo:
-    fanta_vol: int = 0
-    fanta_pages: dict[str, PageInfo] = field(default_factory=dict)
-
-
-type TitleDict = dict[str, TitleInfo]
-
-
 def build_index_schema() -> Schema:
     """Return the Whoosh schema for the speech index.
 
@@ -181,17 +143,6 @@ def build_index_schema() -> Schema:
         content_raw=TEXT(stored=True, lang="en"),
         **entity_fields,
     )
-
-
-def _speech_sort_key(speech_info: SpeechInfo) -> tuple[int, str]:
-    """Order speech groups on a page numerically, tolerating non-numeric group ids.
-
-    Group ids are numeric strings in a well-formed index. A malformed one must not
-    take down the whole search, so it sorts after the numbered groups by its text.
-    """
-    if speech_info.group_id.isdigit():
-        return (int(speech_info.group_id), "")
-    return (sys.maxsize, speech_info.group_id)
 
 
 class SearchEngine:
@@ -270,7 +221,7 @@ class SearchEngine:
             title_info = TitleInfo(fanta_vol=prelim_results[title].fanta_vol)
             for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
                 page_info = prelim_results[title].fanta_pages[fanta_page]
-                page_info.speech_info_list.sort(key=_speech_sort_key)
+                page_info.speech_info_list.sort(key=speech_sort_key)
                 title_info.fanta_pages[fanta_page] = page_info
             title_results[title] = title_info
 
