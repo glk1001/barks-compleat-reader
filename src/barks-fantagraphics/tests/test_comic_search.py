@@ -79,6 +79,14 @@ class TestSearch:
         assert result.mode is SearchMode.TAG
         assert result.matched_tags
 
+    def test_tag_mode_lists_each_tag_once_by_display_name(self) -> None:
+        """Deterministic: not a set's order, which the hash seed changes per process."""
+        result = _search_with(InMemoryFullTextSearch()).search("sou", SearchMode.TAG)
+
+        names = [str(tag.value) for tag in result.matched_tags]
+        assert len(names) > 1
+        assert names == sorted(set(names))
+
     def test_unhandled_mode_raises_instead_of_returning_none(self) -> None:
         """The match had no catch-all, so an unexpected mode fell off the end."""
         with pytest.raises(ValueError, match="Unhandled search mode"):

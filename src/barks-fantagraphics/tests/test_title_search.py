@@ -1,5 +1,10 @@
 import pytest
-from barks_fantagraphics.barks_tags import TagGroups, Tags
+from barks_fantagraphics.barks_tags import (
+    BARKS_TAG_ALIASES,
+    BARKS_TAG_GROUPS_ALIASES,
+    TagGroups,
+    Tags,
+)
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_issues import Issues
@@ -90,6 +95,28 @@ class TestBarksTitleSearch:
     def test_get_tags_matching_prefix_no_match(self) -> None:
         """Test a prefix that should not match any tags."""
         assert self.search.get_tags_matching_prefix("xyz") == []
+
+    def test_a_one_letter_prefix_is_searched_not_recursed_on(self) -> None:
+        """It once called itself for ever; the screen's two-letter minimum hid it."""
+        results = self.search.get_tags_matching_prefix("g")
+        assert Tags.GYRO_GEARLOOSE in results
+        aliased = {**BARKS_TAG_ALIASES, **BARKS_TAG_GROUPS_ALIASES}
+        g_tags = {tag for alias, tag in aliased.items() if alias.startswith("g")}
+        assert set(results) == g_tags
+
+    @pytest.mark.parametrize("prefix", ["g", "sou", "pig", "gy"])
+    def test_tags_come_once_each_in_display_name_order(self, prefix: str) -> None:
+        """Not the order of a set, which Python's per-process hash seed shuffles."""
+        results = self.search.get_tags_matching_prefix(prefix)
+        assert results, f"no tags for {prefix!r}"
+        assert len(results) == len(set(results)), "each tag once"
+        names = [str(tag.value) for tag in results]
+        assert names == sorted(names)
+
+    def test_the_prefix_is_matched_in_any_case(self) -> None:
+        assert self.search.get_tags_matching_prefix("SOU") == (
+            self.search.get_tags_matching_prefix("sou")
+        )
 
     def test_get_titles_from_alias_tag_single_tag(self) -> None:
         """Test getting titles from a single tag alias."""

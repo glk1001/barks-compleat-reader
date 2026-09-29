@@ -92,20 +92,32 @@ class BarksTitleSearch:
             if info.issue_name != Issues.EXTRAS and word in info.get_title_str().lower()
         ]
 
-    def get_tags_matching_prefix(self, prefix: str) -> list[Tags] | list[Tags | TagGroups]:
+    def get_tags_matching_prefix(self, prefix: str) -> list[Tags | TagGroups]:
+        """Return the tags and tag groups with an alias starting with `prefix`.
+
+        Each appears once, however many of its aliases match, in the order of its
+        display name - the order the search screen lists them in.
+
+        Args:
+            prefix: The start of an alias, in any case.
+
+        Returns:
+            The matching tags and tag groups; empty for an empty prefix.
+
+        """
         prefix = prefix.lower()
         if not prefix:
             return []
 
         if len(prefix) == 1:
-            return self._get_titles_with_one_char_tag_search(prefix)
+            # A one-letter prefix is shorter than the index's keys: look through all.
+            candidate_aliases = [*BARKS_TAG_ALIASES, *BARKS_TAG_GROUPS_ALIASES]
+        else:
+            candidate_aliases = self.tag_prefix_dict.get(prefix[:PREFIX_LEN], [])
 
-        short_prefix = prefix[:PREFIX_LEN]
-        candidate_aliases = self.tag_prefix_dict.get(short_prefix, [])
+        tags = self._get_tags_from_aliases(prefix, candidate_aliases)
 
-        tag_list = self._get_tags_from_aliases(prefix, candidate_aliases)
-
-        return list(set(tag_list))
+        return sorted(set(tags), key=lambda tag: str(tag.value))
 
     @staticmethod
     def get_titles_from_alias_tag(
@@ -130,21 +142,10 @@ class BarksTitleSearch:
     def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:
         return list(BARKS_TAG_GROUPS.get(tag_group, []))
 
-    def _get_titles_with_one_char_tag_search(self, prefix: str) -> list[Tags | TagGroups]:
-        assert len(prefix) == 1
-        all_aliases = list(BARKS_TAG_ALIASES.keys()) + list(BARKS_TAG_GROUPS_ALIASES.keys())
-        return self._get_tags_from_aliases(prefix, all_aliases)
-
-    def _get_tags_from_aliases(self, prefix: str, aliases: list[str]) -> list[Tags | TagGroups]:
-        prefix = prefix.lower()
-
-        if len(prefix) == 0:
-            return []
-
-        if len(prefix) == 1:
-            return self._get_titles_with_one_char_tag_search(prefix)
-
-        tag_list = []
+    @staticmethod
+    def _get_tags_from_aliases(prefix: str, aliases: list[str]) -> list[Tags | TagGroups]:
+        """Return the tag or tag group of each of `aliases` that starts with `prefix`."""
+        tag_list: list[Tags | TagGroups] = []
         for alias_tag_str in aliases:
             if not alias_tag_str.startswith(prefix):
                 continue
