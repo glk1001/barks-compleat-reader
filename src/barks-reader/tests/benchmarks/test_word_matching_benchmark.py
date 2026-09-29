@@ -1,5 +1,5 @@
 # ruff: noqa: INP001
-"""How long the word search box takes to match a keystroke against the index's words.
+"""How long the word search takes to match a keystroke, and to suggest spellings.
 
 The box re-matches on every keystroke, and from three letters it also looks inside
 every word, so this is paid once per key. The plan (docs/plans/advanced-search.md)
@@ -55,3 +55,16 @@ def test_matching_a_keystroke_benchmark(
     assert result.total > 0
     assert benchmark.stats is not None
     assert benchmark.stats["median"] < BUDGET_SECS, "over the plan's 10 ms a keystroke"
+
+
+# Suggestions run once, on Return, for a word the index does not hold: a looser budget.
+SUGGEST_BUDGET_SECS = 0.100
+
+
+@pytest.mark.parametrize("typo", ["treasre", "scroge"])  # cspell:disable-line
+def test_suggesting_spellings_benchmark(
+    benchmark: BenchmarkFixture, lexicon: TermLexicon, typo: str
+) -> None:
+    benchmark(lexicon.suggest, typo)
+    assert benchmark.stats is not None
+    assert benchmark.stats["median"] < SUGGEST_BUDGET_SECS, "over 100 ms for suggestions"
