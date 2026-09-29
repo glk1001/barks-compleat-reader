@@ -752,6 +752,24 @@ class TestReadsPersisted:
         problems = persisted.reads_persisted_problems(scratch, self._log())
         assert any("are not the pages saved" in p for p in problems)
 
+    def test_a_read_closed_while_loading_keeps_no_count_from_the_read_before(self) -> None:
+        """The soak closed a story before its pages loaded; the count was the last story's."""
+        log = "\n".join(
+            [
+                markers.HISTORY_OPEN_RECORDED.format(title="Rocks to Riches"),
+                markers.SHOWED_PAGE.format(index=0, elapsed="1s"),
+                markers.COMIC_IMAGES_LOADED.format(count=11, comic="Rocks to Riches.cbz"),
+                markers.LAST_READ_PAGE_SAVED.format(title="Rocks to Riches", page="i"),
+                markers.HISTORY_OPEN_RECORDED.format(title=self.TITLE),
+                markers.LAST_READ_PAGE_SAVED.format(title=self.TITLE, page="i"),
+            ]
+        )
+
+        assert persisted._saves_logged(log) == [  # noqa: SLF001
+            ("Rocks to Riches", "i", 0, 11),
+            (self.TITLE, "i", None, None),
+        ]
+
 
 class TestRenderStats:
     """A capture of the nested screen, judged by the app window's part of it alone."""

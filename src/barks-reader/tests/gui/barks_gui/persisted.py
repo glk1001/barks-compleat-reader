@@ -60,12 +60,19 @@ def canned_history_ids() -> set[str]:
 
 
 def _saves_logged(app_log: str) -> list[Save]:
-    """Return every save the app logged, with the page last shown and the pages loaded."""
+    """Return every save the app logged, with the page last shown and the pages loaded.
+
+    Both belong to the read that saved: each open forgets the last read's. A read
+    closed before its comic finished loading logs no page count, and pairing its
+    save with the comic before's count had it judged by the wrong layout.
+    """
     saves: list[Save] = []
     last_shown: int | None = None
     loaded: int | None = None
     for line in app_log.splitlines():
-        if found := _SHOWED_RE.search(line):
+        if _OPEN_RE.search(line):
+            last_shown, loaded = None, None
+        elif found := _SHOWED_RE.search(line):
             last_shown = int(found[1])
         elif found := _LOADED_RE.search(line):
             loaded = int(found[1])
