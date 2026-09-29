@@ -50,6 +50,22 @@ if [[ -f .env.runtime ]]; then
     data_dir="${data_dir//\$\{HOME\}/$HOME}"
     if [[ -n "$data_dir" && -d "${data_dir}/Reader Files" ]]; then
         ok "  ${data_dir}/Reader Files"
+        # A folder copied before the code last needed a new file boots into an error
+        # popup, so ask the app's own boot check (kivy-free) for every file it requires.
+        if missing_file="$(uv run --quiet python -c '
+import sys
+from pathlib import Path
+from barks_reader.core.system_file_paths import SystemFilePaths
+try:
+    SystemFilePaths().set_barks_reader_files_dir(Path(sys.argv[1]))
+except FileNotFoundError as e:
+    print(e)
+    sys.exit(1)
+' "${data_dir}/Reader Files" 2>/dev/null)"; then
+            ok "    every file the app requires in it"
+        else
+            bad "    ${missing_file:-the app could not check it}: copy Reader Files from the main machine again"
+        fi
     else
         bad "  Reader Files in the data folder (${data_dir:-unset})"
     fi

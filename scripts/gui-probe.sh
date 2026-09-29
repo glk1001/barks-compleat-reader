@@ -241,6 +241,15 @@ cmd_doctor() {
             [[ -n "${TOOL_PKGS[$tool]:-}" ]] && missing_pkgs+=("${TOOL_PKGS[$tool]}")
         fi
     done
+    # Without either, Kivy logs a CRITICAL "Cutbuffer" line at boot, and every test
+    # then fails its clean-log check at teardown.
+    if command -v xclip >/dev/null || command -v xsel >/dev/null; then
+        echo "  OK   xclip or xsel (Kivy's X clipboard)"
+    else
+        echo "  FAIL xclip or xsel (Kivy's X clipboard)"
+        fail=1
+        missing_pkgs+=(xclip)
+    fi
 
     echo "== optional =="
     if command -v xdotool >/dev/null; then
