@@ -219,7 +219,9 @@ class SearchScreen(FloatLayout):
 
         # Word search state
         self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
-        self._word_terms = self._search.get_alpha_split_terms()
+        # Read the index's word list now, not on the first keystroke (an empty
+        # query matches nothing, but builds the cached list it matches against).
+        self._search.get_words_matching("")
         self._selected_word: str = ""
         # The speaker the word results are narrowed to; `_ALL_SPEAKERS` for everyone.
         self._selected_speaker: str = _ALL_SPEAKERS
@@ -463,35 +465,31 @@ class SearchScreen(FloatLayout):
         if not self._speaker_chips_built:
             self._build_speaker_chips()
 
-        words = self._get_words_matching_prefix(text)
+        # The words that are the text, then those starting with it, then (from three
+        # characters) those with it inside; at most MAX_MATCHES_SHOWN of them.
+        matches = self._search.get_words_matching(text)
         # A query that matches nothing otherwise looks exactly like a query that
         # never ran: the only word-search log line fires on picking a chip, so a
-        # search returning zero leaves no trace at all.
-        logger.debug(log_markers.WORD_SEARCH_MATCHED.format(text=text, count=len(words)))
+        # search returning zero leaves no trace at all. The count is every match,
+        # shown or not.
+        logger.debug(log_markers.WORD_SEARCH_MATCHED.format(text=text, count=matches.total))
 
-        for i, word in enumerate(words):
+        for i, word in enumerate(matches.words):
             btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
             btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
             self.ids.word_chips_layout.add_widget(btn)
+        if matches.more:
+            # Says what was left out; disabled, so the keyboard walk passes it by.
+            self.ids.word_chips_layout.add_widget(
+                _SearchResultButton(
+                    text=f"... {matches.more} more - type more of the word",
+                    row_index=len(matches.words),
+                    disabled=True,
+                )
+            )
 
-        if len(words) == 1:
-            self._on_word_chip_selected(words[0])
-
-    def _get_words_matching_prefix(self, text: str) -> list[str]:
-        query = text.lower()
-        letter_group = self._word_terms.get(query[0], {})
-
-        # Scan every bucket in the letter group rather than indexing straight to
-        # one. `split_alpha_terms` labels its buckets with the prefix *ranges*
-        # the A-Z button bar displays ("eg-ej"), not with a fixed two-character
-        # prefix, so a `letter_group[query[:2]]` lookup misses every time and the
-        # word search silently returns nothing for any query of two or more
-        # characters. A letter group is a couple of thousand terms at most.
-        candidates = [word for bucket in letter_group.values() for word in bucket]
-
-        matching = [w for w in candidates if w.lower().startswith(query)]
-        matching.sort()
-        return matching
+        if matches.total == 1:
+            self._on_word_chip_selected(matches.words[0])
 
     def _on_word_chip_selected(self, word: str) -> None:
         logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
@@ -1160,7 +1158,8 @@ class SearchScreen(FloatLayout):
     def _get_word_chip_buttons(self) -> list[Button]:
         if not hasattr(self.ids, "word_chips_layout"):
             return []
-        return list(reversed(self.ids.word_chips_layout.children))
+        # Not the disabled "... N more" row that ends a long list.
+        return [b for b in reversed(self.ids.word_chips_layout.children) if not b.disabled]
 
     def _get_active_chip_buttons(self) -> list[Button]:
         if self._active_mode == "Word":

@@ -72,6 +72,23 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Word"))
 
 
+# Inside words only: no word starts with it (airline, airliner, airlines).
+INSIDE_QUERY = "irline"  # cspell:disable-line
+
+
+def test_word_search_matches_inside_a_word(boot: AppBoot) -> None:
+    """From three letters the box also lists words with the text inside; Return picks the first."""
+    d = boot(nodes.WORD_SEARCH)
+    search.type_query(d, INSIDE_QUERY)
+    words = expected.words_matching(INSIDE_QUERY)
+    assert words, f"no word in the index has {INSIDE_QUERY!r} inside it"
+    assert not any(w.lower().startswith(INSIDE_QUERY) for w in words), "inside, not at the start"
+    count = int(last_field(d, markers.WORD_SEARCH_MATCHED, "count", text=INSIDE_QUERY))
+    assert count == len(words), "the count the search facade gives"
+    d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=words[0]), "Return")
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) >= 1
+
+
 NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
 

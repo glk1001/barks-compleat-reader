@@ -133,6 +133,13 @@ def title_search_count(query: str) -> int:
     return len(search.search(query, SearchMode.TITLE).title_strings)
 
 
+@cache
+def words_matching(query: str) -> tuple[str, ...]:
+    """Return every word the word search box lists for `query`, in its order, uncapped."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    return tuple(search.get_words_matching(query, limit=None).words)
+
+
 def wiki_page(bundle: Path, title: Titles) -> Path | None:
     """Return the wiki story page a title's chip opens, or None if the bundle lacks it."""
     return wiki_page_for_title(bundle, title)

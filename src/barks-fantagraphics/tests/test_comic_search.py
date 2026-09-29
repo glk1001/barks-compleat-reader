@@ -79,6 +79,20 @@ class TestSearch:
         assert result.mode is SearchMode.TAG
         assert result.matched_tags
 
+    def test_words_matching_come_from_the_index_s_terms(self) -> None:
+        fake = InMemoryFullTextSearch(cleaned_terms=["airline", "airlines", "hair", "stairs"])
+        matches = _search_with(fake).get_words_matching("air")
+        assert matches.words == ["airline", "airlines", "hair", "stairs"]
+        assert matches.total == 4  # noqa: PLR2004
+
+    def test_the_word_list_is_read_once_per_index(self) -> None:
+        fake = InMemoryFullTextSearch(cleaned_terms=["airline"])
+        _search_with(fake).get_words_matching("air")
+        fake.cleaned_terms = ["something else"]
+        assert _search_with(fake).get_words_matching("air").words == ["airline"]
+        clear_alpha_split_cache()
+        assert _search_with(fake).get_words_matching("air").words == []
+
     def test_tag_mode_lists_each_tag_once_by_display_name(self) -> None:
         """Deterministic: not a set's order, which the hash seed changes per process."""
         result = _search_with(InMemoryFullTextSearch()).search("sou", SearchMode.TAG)

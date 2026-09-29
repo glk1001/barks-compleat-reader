@@ -18,6 +18,7 @@ from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
 from .alpha_split import split_alpha_terms
+from .search_terms import MAX_MATCHES_SHOWN, TermLexicon, TermMatches
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -82,9 +83,22 @@ def _split_terms_for_index(index_dir: Path, engine: FullTextSearchPort) -> Alpha
     return cached
 
 
+# The word search box's matcher over the same term list, cached the same way.
+_LEXICON_CACHE: dict[Path, TermLexicon] = {}
+
+
+def _lexicon_for_index(index_dir: Path, engine: FullTextSearchPort) -> TermLexicon:
+    cached = _LEXICON_CACHE.get(index_dir)
+    if cached is None:
+        cached = TermLexicon(engine.get_cleaned_terms())
+        _LEXICON_CACHE[index_dir] = cached
+    return cached
+
+
 def clear_alpha_split_cache() -> None:
-    """Discard the cached term splits, e.g. after the index has been rebuilt."""
+    """Discard the cached term splits and word lists, e.g. after the index has been rebuilt."""
     _ALPHA_SPLIT_CACHE.clear()
+    _LEXICON_CACHE.clear()
 
 
 class ComicSearch:
@@ -215,6 +229,22 @@ class ComicSearch:
     def get_alpha_split_entity_terms(self, entity_type: str) -> AlphaSplitTerms:
         """Return alphabetically-split entity terms for the given type."""
         return self._get_full_text().get_alpha_split_entity_terms(entity_type)
+
+    def get_words_matching(self, text: str, limit: int | None = MAX_MATCHES_SHOWN) -> TermMatches:
+        """Return the index's words matching `text`, as the word search box lists them.
+
+        The words that are the text, then those starting with it, then (from three
+        characters) those with it inside; see ``TermLexicon.matching``.
+
+        Args:
+            text: What was typed.
+            limit: The most words to return, or None for all.
+
+        Returns:
+            The matching words, best first, and how many matched in all.
+
+        """
+        return _lexicon_for_index(self._index_dir, self._get_full_text()).matching(text, limit)
 
     def get_cleaned_terms(self) -> list[str]:
         """Return the cleaned, display-ready corpus word list."""

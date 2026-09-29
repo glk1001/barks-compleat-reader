@@ -3,25 +3,17 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.alpha_split import split_alpha_terms
+from barks_fantagraphics.search_terms import TermMatches
 from barks_reader.core import log_markers
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-
-def _make_screen(word_terms: dict) -> SearchScreen:
-    """Create a SearchScreen with just enough state for prefix-matching tests."""
-    with patch.object(SearchScreen, "__init__", lambda _self, *_a, **_kw: None):
-        screen = SearchScreen.__new__(SearchScreen)
-        screen._word_terms = word_terms
-        return screen
 
 
 def _make_bare_screen() -> SearchScreen:
@@ -64,71 +56,50 @@ class TestMarkResultSelected:
         assert screen._last_activated_result_idx == 1
 
 
-class TestGetWordsMatchingPrefix:
-    # Bucket keys are the prefix *ranges* `split_alpha_terms` produces for the
-    # A-Z button bar, not two-character prefixes. A fixture keyed by "do"/"da"
-    # passes even when the lookup indexes straight to `letter_group[query[:2]]`,
-    # which is how a word search that matched nothing at all shipped green.
-    TERMS: ClassVar[dict] = {
-        "d": {
-            "do-don": ["don", "Don Gaspar", "Don Quixote", "done", "Donna Duck"],
-            "da-dan": ["dance", "Daniel Boone"],
-        },
-        "q": {"qu-qui": ["quixote"]},
-    }
+class TestWordList:
+    """The word box lists what the search facade matches (the rules: test_search_terms.py)."""
 
-    def _match(self, text: str) -> list[str]:
-        screen = _make_screen(self.TERMS)
-        return screen._get_words_matching_prefix(text)
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._search = MagicMock()
+            bare._speaker_chips_built = True
+            yield bare
 
-    def test_single_word_prefix(self) -> None:
-        assert self._match("do") == [
-            "Don Gaspar",
-            "Don Quixote",
-            "Donna Duck",
-            "don",
-            "done",
-        ]
+    @staticmethod
+    def _rows(screen: SearchScreen) -> list[_SearchResultButton]:
+        return [c.args[0] for c in screen.ids.word_chips_layout.add_widget.call_args_list]
 
-    def test_multi_word_prefix_case_insensitive(self) -> None:
-        """Regression: 'don qu' must match 'Don Quixote' (mixed-case term)."""
-        assert self._match("don qu") == ["Don Quixote"]
+    def test_the_facade_s_words_are_the_rows(self, screen: SearchScreen) -> None:
+        screen._search.get_words_matching.return_value = TermMatches(["don", "abandon"], 2)
+        with patch.object(screen, "_on_word_chip_selected") as picked:
+            screen.on_word_search_text("don")
+        screen._search.get_words_matching.assert_called_once_with("don")
+        assert [r.text for r in self._rows(screen)] == ["don", "abandon"]
+        picked.assert_not_called()
 
-    def test_exact_match(self) -> None:
-        assert self._match("don quixote") == ["Don Quixote"]
+    def test_a_lone_match_is_picked(self, screen: SearchScreen) -> None:
+        screen._search.get_words_matching.return_value = TermMatches(["airline"], 1)
+        with patch.object(screen, "_on_word_chip_selected") as picked:
+            screen.on_word_search_text("airline")
+        picked.assert_called_once_with("airline")
 
-    def test_no_match(self) -> None:
-        assert self._match("doz") == []
+    def test_a_capped_list_ends_with_a_disabled_count_row(self, screen: SearchScreen) -> None:
+        screen._search.get_words_matching.return_value = TermMatches(["gold", "golden"], 40)
+        screen.on_word_search_text("gol")
+        rows = self._rows(screen)
+        assert [r.disabled for r in rows] == [False, False, True]
+        assert rows[-1].text.startswith("... 38 more")
 
-    def test_single_char_returns_all_in_letter_group(self) -> None:
-        results = self._match("d")
-        assert "don" in results
-        assert "Daniel Boone" in results
-
-    def test_different_letter_group(self) -> None:
-        assert self._match("qu") == ["quixote"]
-
-    def test_matches_against_real_bucket_labels(self) -> None:
-        """Regression: the matcher must work on what `split_alpha_terms` really returns.
-
-        The screen gets its terms from `ComicSearch.get_alpha_split_terms`, which
-        computes the split rather than reading the index's two-character sidecar.
-        Building the fixture through the same function keeps this test honest if
-        the bucket labelling ever changes again.
-        """
-        terms = ["egg", "eggbeater", "egghead", "eggs", "eggshell"]
-        terms += ["eel", "elbow", "ember", "end", "eye"]
-        screen = _make_screen(split_alpha_terms(sorted(terms)))
-
-        assert screen._get_words_matching_prefix("eggs") == ["eggs", "eggshell"]
-        assert screen._get_words_matching_prefix("eggnog") == []
-        assert screen._get_words_matching_prefix("egg") == [
-            "egg",
-            "eggbeater",
-            "egghead",
-            "eggs",
-            "eggshell",
-        ]
+    def test_the_keyboard_walk_skips_the_count_row(self, screen: SearchScreen) -> None:
+        words = [_SearchResultButton(text=w) for w in ("gold", "golden")]
+        more = _SearchResultButton(text="... 38 more", disabled=True)
+        screen.ids.word_chips_layout.children = [more, *reversed(words)]  # Kivy: last first
+        assert screen._get_word_chip_buttons() == words
 
 
 class TestSearchInputEnter:
@@ -316,8 +287,9 @@ class TestSearchMarkers:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._speaker_chips_built = True
-        with patch.object(screen, "_get_words_matching_prefix", return_value=[]):
-            screen.on_word_search_text("air")
+        screen._search = MagicMock()
+        screen._search.get_words_matching.return_value = TermMatches([], 0)
+        screen.on_word_search_text("air")
         assert 'Word search: "air" matched 0 words.' in loguru_sink
 
     def test_each_clear_button_logs(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
@@ -440,7 +412,7 @@ class TestSpeakerFilter:
         assert "Word search: index has no speakers; no speaker filter." in loguru_sink
 
     def test_chips_are_built_once_on_the_first_word_typed(self, screen: SearchScreen) -> None:
-        screen._word_terms = {}
+        screen._search.get_words_matching.return_value = TermMatches([], 0)
         with patch.object(screen, "_build_speaker_chips") as build:
             screen.on_word_search_text("d")
             screen._speaker_chips_built = True
@@ -517,7 +489,7 @@ class TestSpeakerFilter:
     def test_editing_the_box_forgets_the_word_so_a_chip_cannot_revive_it(
         self, screen: SearchScreen
     ) -> None:
-        screen._word_terms = {}
+        screen._search.get_words_matching.return_value = TermMatches([], 0)
         screen._selected_word = "money"
         with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
             screen.on_word_search_text("")
