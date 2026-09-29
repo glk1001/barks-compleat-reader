@@ -311,6 +311,21 @@ just reader
   `build/overnight/<stamp>/<stage>.log`, and `summary.txt` there, rewritten after every
   stage, holds each one's result (passed, FAILED, WARNED, skipped or stopped) and time.
 
+  **On another machine.** `copy-to-overnight-host.sh HOST` sets one up over ssh: it clones
+  the four repos beside each other, writes `.env.runtime` there with only its `BARKS_`
+  lines, and copies (rsync) the data the run reads (the prebuilt comics, the PNG panels, the
+  Fantagraphics volumes, the reader's files and the profile, about 36 GB) to the same
+  paths under that machine's home, then runs `check-overnight-host.sh` there, which says
+  what is still missing. The comic build tree (about 330 GB) is left behind: run there
+  with `--skip build-check`. Calibrate that machine's GUI timings once there.
+    ```
+    bash scripts/copy-to-overnight-host.sh --dry-run user@host   # what it would do
+    bash scripts/copy-to-overnight-host.sh user@host             # do it (reruns copy only changes)
+    bash scripts/check-overnight-host.sh                            # on the other machine
+    bash scripts/run_gui_tests.sh --calibrate                       # once, there
+    bash scripts/run_overnight.sh --skip build-check                # there
+    ```
+
 The GUI suite's design, its log-marker contract and its history are in
 `docs/plans/gui-test-suite.md`; the runner's options are also described at the top of
 `scripts/run_gui_tests.sh`.
