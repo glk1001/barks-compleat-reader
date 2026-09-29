@@ -92,6 +92,16 @@ else
     bad "_version.py: bash scripts/build.sh (its first step writes it)"
 fi
 
+echo "== data the app's settings do not name =="
+# barks-comic-building's test_volume_dirs_on_disk (the siblings stage) checks every
+# volume's folder under Fantagraphics-original; its folders alone are enough.
+original="${HOME}/Books/Carl Barks/Fantagraphics-original"
+if [[ -d "$original" ]] && (($(find "$original" -mindepth 1 -maxdepth 1 -type d | wc -l) > 0)); then
+    ok "$original (its volume folders)"
+else
+    bad "$original: copy-to-overnight-host.sh copies its folders"
+fi
+
 echo "== tools the stages call =="
 for tool in uv git git-lfs bun systemd-inhibit Xvfb xvfb-run; do
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else bad "$tool"; fi

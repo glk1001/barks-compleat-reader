@@ -13,7 +13,9 @@
 #      under that machine's home. A folder that is a symlink here (into
 #      /mnt/2tb_drive) arrives as a real folder there; Reader Files, a link into
 #      the Books tree, is made a link again. rsync, so a rerun copies only what
-#      changed, and an interrupted copy resumes;
+#      changed, and an interrupted copy resumes. Fantagraphics-original arrives
+#      as its folders alone: a test there asks only that each volume's folder
+#      exists, and the 8.3 GB of scans inside are never read;
 #   4. rewrites the absolute paths in the profile's barks-reader.ini to that
 #      machine's home, when its home is not this one's;
 #   5. runs scripts/check-overnight-host.sh there, which says what is still missing.
@@ -37,15 +39,21 @@ REPOS=(barks-compleat-reader barks-comic-building barks-ocr barks-wiki)
 SYNCED_REPOS=(barks-compleat-reader barks-comic-building barks-ocr)
 
 # What the overnight run reads beyond the repos, as paths under the home folder
-# (found by tracing the stages' file opens): the prebuilt comics, the PNG panels,
-# the Fantagraphics volumes (the profile's fanta_dir), the reader's own files, and
-# the profile itself.
+# (found by tracing every file access the stages make, build-check aside): the
+# prebuilt comics, the PNG panels, the Fantagraphics volumes (the profile's
+# fanta_dir), the reader's own files, and the profile itself.
 DATA=(
     "Books/Carl Barks/The Comics"
     "Books/Carl Barks/Barks Panels Pngs"
     "Books/Carl Barks/Compleat Barks Disney Reader"
     "Documents/Fantagraphics Complete Carl Barks Disney Library"
     "opt/barks-reader/config"
+)
+# Folders copied as their folders alone, no files: barks-comic-building's
+# test_volume_dirs_on_disk (the siblings stage) checks every volume constant against
+# the folders under Fantagraphics-original, and reads nothing inside them.
+SKELETONS=(
+    "Books/Carl Barks/Fantagraphics-original"
 )
 # Links to make there, as here: path under home -> target under home.
 LINKS=(
@@ -157,6 +165,19 @@ if [[ -n "$data" ]]; then
                 grep -E '^(Number of regular files transferred|Total transferred file size)'
         else
             echo "  would copy all of it to ${dest}"
+        fi
+    done
+    for rel in "${SKELETONS[@]}"; do
+        src="$(readlink -f "${HOME}/${rel}")"
+        dest="${remote_home}/${rel}"
+        say "   ${rel}  (its $(find "$src" -type d | wc -l) folders only)"
+        # Writable there, though read-only here, so a rerun can always update them.
+        skeleton_opts=(-a --protect-args --include "*/" --exclude "*" --chmod "Du+rwx")
+        if [[ -n "$dry_run" ]]; then
+            echo "  would copy its folders, no files, to ${dest}"
+        else
+            remote "mkdir -p $(q "$dest")"
+            rsync "${skeleton_opts[@]}" "${src}/" "${host}:${dest}/"
         fi
     done
     for link in "${LINKS[@]}"; do
