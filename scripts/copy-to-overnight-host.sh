@@ -73,7 +73,11 @@ host="${1:?usage: copy-to-overnight-host.sh [--dry-run] [--no-repos] [--no-data]
 say() { echo "copy-to-overnight-host: $*"; }
 
 # Run a shell command on the host (a dry run only shows the ones that change it).
-remote() { ssh "$host" "$1"; }
+# A command ssh runs gets a bare PATH: the startup files that add the per-user tool
+# folders (uv's installer uses ~/.local/bin, bun ~/.bun/bin) are not read, so a
+# tool installed there looked missing. Every command puts them on PATH first.
+REMOTE_PATH='export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"'
+remote() { ssh "$host" "${REMOTE_PATH}; $1"; }
 change() {
     if [[ -n "$dry_run" ]]; then
         echo "  would run there: $1"
