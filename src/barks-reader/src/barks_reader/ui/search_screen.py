@@ -115,10 +115,16 @@ def _row_stripe(row_index: int) -> Color:
 
 
 class _TagChipButton(Button):
-    """A pill-shaped tag chip button for tag search results."""
+    """A pill-shaped tag chip button for tag search results.
+
+    ``count_text`` is the number of stories the tag lists, shown small at the
+    chip's right; empty for none (a speaker chip). ``text`` stays the tag's name
+    alone: picking a chip looks the tag up by it, and the focus lines name it.
+    """
 
     chip_bg_color = ObjectProperty(_CHIP_BORDER_NONE)
     chip_border_color = ObjectProperty(_CHIP_BORDER_NONE)
+    count_text = StringProperty("")
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -215,6 +221,7 @@ class SearchScreen(FloatLayout):
         self._selected_tag: str = ""
         self._selected_member: str = ""
         self._tag_chip_strings: list[str] = []
+        self._tag_chip_counts: dict[str, int] = {}
         self._tag_titles: list[str] = []
 
         # Word search state
@@ -327,22 +334,28 @@ class SearchScreen(FloatLayout):
     def on_tag_search_text(self, text: str) -> None:
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
+        self._tag_chip_counts = {}
         self._selected_member = ""
         self._clear_tag_title_results()
 
         if len(text) <= 1:
             return
 
-        found_tags = self._search.search(text, SearchMode.TAG).matched_tags
-        self._tag_chip_strings = sorted([str(t.value) for t in found_tags]) if found_tags else []
+        # An alias typed whole first, then aliases starting with the text, then (from
+        # three letters) aliases with it inside; each with the stories it lists.
+        matches = self._search.get_tags_matching(text)
+        self._tag_chip_strings = [match.label for match in matches]
+        self._tag_chip_counts = {match.label: match.title_count for match in matches}
         logger.debug(
             log_markers.SEARCH_TAG_RESULTS.format(count=len(self._tag_chip_strings), text=text)
         )
 
         self._rebuild_tag_chips()
 
-        if len(self._tag_chip_strings) == 1:
-            self._on_tag_result_selected(self._tag_chip_strings[0])
+        # Picked as typed when it is the only one, or the text is its name whole
+        # ("africa" also finds Central and South Africa, but means Africa).
+        if len(matches) == 1 or (matches and matches[0].exact):
+            self._on_tag_result_selected(matches[0].label)
 
     def _rebuild_tag_chips(self) -> None:
         """Rebuild the tag chips layout, inserting member chips after the selected group."""
@@ -376,7 +389,8 @@ class SearchScreen(FloatLayout):
         stack = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(4), padding=dp(2))
         stack.bind(minimum_height=stack.setter("height"))
         for tag_str in tag_strings:
-            btn = _TagChipButton(text=tag_str)
+            count = self._tag_chip_counts.get(tag_str)
+            btn = _TagChipButton(text=tag_str, count_text="" if count is None else str(count))
             btn.chip_bg_color = _chip_bg_active() if tag_str == selected else _chip_bg_normal()
             btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_result_selected(t))
             stack.add_widget(btn)
@@ -398,7 +412,9 @@ class SearchScreen(FloatLayout):
             label = str(member.value)
             if isinstance(member, TagGroups):
                 label += " \u25b8"
-            btn = _TagChipButton(text=label)
+            btn = _TagChipButton(
+                text=label, count_text=str(self._search.get_tag_title_count(member))
+            )
             btn.chip_bg_color = (
                 _chip_bg_active() if label == self._selected_member else _chip_bg_member()
             )
@@ -410,6 +426,7 @@ class SearchScreen(FloatLayout):
         """Look up titles for a tag and populate the results list."""
         _, titles = self._search.resolve_tag(tag_str.lower())
         self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
+        logger.debug(log_markers.TAG_TITLES_LISTED.format(tag=tag_str, count=len(titles)))
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
             title_results_layout, self._tag_titles, self._on_result_goto_title
@@ -447,6 +464,7 @@ class SearchScreen(FloatLayout):
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
+        self._tag_chip_counts = {}
         self._selected_member = ""
         self._clear_tag_title_results()
         self.ids.tag_search_input.focus = True

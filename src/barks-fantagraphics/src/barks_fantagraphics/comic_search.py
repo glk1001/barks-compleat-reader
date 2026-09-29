@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from .barks_tags import TagGroups, Tags
     from .barks_titles import Titles
     from .search_ports import AlphaSplitTerms, CorpusTextTotals, FullTextSearchPort
+    from .tag_query import TagMatch
     from .title_search import BarksTitleSearch
     from .whoosh_search_engine import TitleDict
 
@@ -186,6 +187,26 @@ class ComicSearch:
         ts = self._get_title_search()
         return ts.get_titles_from_alias_tag(tag_str)
 
+    def get_tags_matching(self, text: str) -> list[TagMatch]:
+        """Return the tags and tag groups `text` matches, best first, with their story counts.
+
+        The tag search box's list: an alias typed whole, then aliases starting with
+        the text, then (from three letters) aliases with it inside; see
+        ``BarksTitleSearch.get_tags_matching``.
+
+        Args:
+            text: What was typed.
+
+        Returns:
+            The matches.
+
+        """
+        return self._get_title_search().get_tags_matching(text)
+
+    def get_tag_title_count(self, item: Tags | TagGroups) -> int:
+        """Return how many stories a tag tags; for a group, every story its members tag."""
+        return self._get_title_search().get_tag_title_count(item)
+
     def get_tag_group_members(self, tag_group: TagGroups) -> list[Tags | TagGroups]:
         """Return the direct members of a tag group.
 
@@ -336,11 +357,9 @@ class ComicSearch:
         )
 
     def _search_tags(self, query: str) -> SearchResult:
-        ts = self._get_title_search()
-        matched = ts.get_tags_matching_prefix(query)
         return SearchResult(
             mode=SearchMode.TAG,
-            matched_tags=list(matched),
+            matched_tags=[match.item for match in self.get_tags_matching(query)],
         )
 
     def _search_words(self, query: str) -> SearchResult:

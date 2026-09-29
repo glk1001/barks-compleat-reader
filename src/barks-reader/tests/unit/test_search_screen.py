@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.search_terms import TermMatches
+from barks_fantagraphics.tag_query import TagMatch
 from barks_reader.core import log_markers
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
@@ -100,6 +102,74 @@ class TestWordList:
         more = _SearchResultButton(text="... 38 more", disabled=True)
         screen.ids.word_chips_layout.children = [more, *reversed(words)]  # Kivy: last first
         assert screen._get_word_chip_buttons() == words
+
+
+def _tag(label: str, count: int = 3, *, exact: bool = False) -> TagMatch:
+    return TagMatch(Tags.GYRO_GEARLOOSE, label, count, exact=exact)
+
+
+class TestTagChips:
+    """The chips keep the search's order, show each tag's count, and pick a whole name."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._search = MagicMock()
+            bare._selected_tag = ""
+            bare._current_tag = None
+            yield bare
+
+    def test_the_search_s_order_is_kept_not_resorted(self, screen: SearchScreen) -> None:
+        screen._search.get_tags_matching.return_value = [_tag("Zebra"), _tag("Apple")]
+        with patch.object(screen, "_rebuild_tag_chips"):
+            screen.on_tag_search_text("ze")
+        assert screen._tag_chip_strings == ["Zebra", "Apple"]
+
+    @pytest.mark.parametrize(
+        ("matches", "picked"),
+        [
+            ([_tag("Africa", exact=True), _tag("Central Africa")], "Africa"),  # whole name
+            ([_tag("Duckburg")], "Duckburg"),  # the only one
+            ([_tag("Daisy Duck"), _tag("Duckburg")], None),  # several, none whole
+        ],
+        ids=["exact", "alone", "neither"],
+    )
+    def test_a_whole_name_or_a_lone_tag_is_picked_as_typed(
+        self, screen: SearchScreen, matches: list[TagMatch], picked: str | None
+    ) -> None:
+        screen._search.get_tags_matching.return_value = matches
+        with (
+            patch.object(screen, "_rebuild_tag_chips"),
+            patch.object(screen, "_on_tag_result_selected") as select,
+        ):
+            screen.on_tag_search_text("text")
+        if picked is None:
+            select.assert_not_called()
+        else:
+            select.assert_called_once_with(picked)
+
+    def test_each_chip_shows_its_count_and_keeps_its_name(self, screen: SearchScreen) -> None:
+        screen._tag_chip_counts = {"Africa": 17}
+        stack = screen._make_main_chip_stack(["Africa"], selected="")
+        [chip] = stack.children
+        assert chip.text == "Africa"  # picked and logged by name
+        assert chip.count_text == "17"
+
+    def test_listing_a_tag_s_stories_is_logged_with_their_count(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, ["t1", "t2"])
+        screen._search.get_title_display_strings.return_value = ["T1", "T2"]
+        with (
+            patch.object(screen, "_populate_title_results"),
+            patch.object(screen, "_update_background_from_results"),
+        ):
+            screen._show_tag_titles("Gyro Gearloose")
+        assert 'Tag search: "Gyro Gearloose" lists 2 stories.' in loguru_sink
 
 
 class TestSearchInputEnter:
@@ -266,9 +336,10 @@ class TestSearchMarkers:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._search = MagicMock()
-        screen._search.search.return_value = SimpleNamespace(
-            matched_tags=[SimpleNamespace(value="Scrooge"), SimpleNamespace(value="Scrooge's")]
-        )
+        screen._search.get_tags_matching.return_value = [
+            TagMatch(Tags.SCROOGE_NOT_IN_US, "Scrooge", 5),
+            TagMatch(Tags.GYRO_GEARLOOSE, "Scrooge's", 2),
+        ]
         with (
             patch.object(screen, "_clear_tag_title_results"),
             patch.object(screen, "_rebuild_tag_chips"),

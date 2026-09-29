@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from barks_gui import expected, nodes, search
-from barks_gui.logs import last_field
+from barks_gui.logs import last_field, messages
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -141,6 +142,31 @@ MULTI_FIRST_MEMBER = "Andes"
 
 def _chip_focused(text: str) -> str:
     return pattern(markers.NAV_FOCUS, widget=f'_TagChipButton "{text}"')
+
+
+# Only inside names: Africa, Central Africa, South Africa - none typed whole, so no chip
+# is picked as it is typed.
+INSIDE_TAG_QUERY = "frica"  # cspell:disable-line
+
+
+def test_tag_chips_match_inside_a_name_and_show_counts(boot: AppBoot) -> None:
+    """From three letters a tag is found inside its name; its chip's count is what it lists."""
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, INSIDE_TAG_QUERY)
+    matches = expected.tags_matching(INSIDE_TAG_QUERY)
+    assert matches, f"no tag has {INSIDE_TAG_QUERY!r} inside its name"
+    assert not any(m.exact for m in matches)
+    count = int(last_field(d, markers.SEARCH_TAG_RESULTS, "count", text=INSIDE_TAG_QUERY))
+    assert count == len(matches)
+    # "fr" alone finds only France and picks it; the whole text must pick nothing.
+    log = messages(d.log_path.read_text(encoding="utf-8", errors="replace"))
+    after_results = log[log.rindex(f"tags for '{INSIDE_TAG_QUERY}'") :]
+    assert not re.search(pattern(markers.TAG_SELECTED_TAG), after_results), "none picked as typed"
+
+    first = matches[0]
+    d.key_then_wait(_chip_focused(first.label), "Return")  # the box's Return: the first chip
+    with d.expect(pattern(markers.TAG_TITLES_LISTED, tag=first.label, count=first.title_count)):
+        d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=first.label), "Return")
 
 
 def test_a_tag_groups_members_are_walked_and_picked_by_keyboard(boot: AppBoot) -> None:

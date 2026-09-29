@@ -26,6 +26,9 @@
     # (size_hint_x None, like the speaker chips) must not, or width and text
     # would chase each other down to one letter per line.
     text_size: (self.width - dp(24), None) if self.size_hint_x else (None, None)
+    # With a count at the right, the name keeps clear of it: padding on that side only
+    # (inside text_size), so the name still has the chip's width to wrap in.
+    padding: [0, 0, dp(34), 0] if self.count_text else [0, 0, 0, 0]
     halign: 'center'
     valign: 'middle'
     height: max(dp(26), self.texture_size[1] + dp(8))
@@ -47,6 +50,14 @@
         SmoothLine:
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(12))
             width: dp(1.5)
+    # The stories the tag lists, small at the right (empty on a speaker chip).
+    Label:
+        text: root.count_text
+        font_size: root.font_size * 0.8
+        color: root.color[:3] + [0.7]
+        size_hint: None, None
+        size: self.texture_size
+        pos: root.right - self.width - dp(14), root.center_y - self.height / 2
 
 # A speaker-filter chip on the word search: sized to its name, not to a share
 # of the row, so a short row does not stretch "All" across the panel.

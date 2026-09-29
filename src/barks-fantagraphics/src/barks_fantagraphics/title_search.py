@@ -14,11 +14,16 @@ from .barks_tags import (
 )
 from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO
 from .comic_issues import Issues
+from .search_terms import SUBSTRING_MIN_CHARS
+from .tag_query import TagMatch
 
 if TYPE_CHECKING:
     from .barks_titles import Titles
 
 PREFIX_LEN = 2
+
+# How an alias matched a typed text, best first.
+_EXACT, _PREFIX, _INSIDE = 0, 1, 2
 
 
 class BarksTitleSearch:
@@ -30,21 +35,9 @@ class BarksTitleSearch:
             prefix = info.get_title_str()[:PREFIX_LEN].lower()
             self.title_prefix_dict[prefix].append(info.title)
 
-        self.tag_prefix_dict: defaultdict[str, list[str]] = defaultdict(list)
-        for tag_alias_str in BARKS_TAG_ALIASES:
-            prefix = tag_alias_str[:PREFIX_LEN].lower()
-            self.tag_prefix_dict[prefix].append(tag_alias_str)
-
-        for tag_alias_str in BARKS_TAG_GROUPS_ALIASES:
-            prefix = tag_alias_str[:PREFIX_LEN].lower()
-            self.tag_prefix_dict[prefix].append(tag_alias_str)
-
         # Sort the lists for consistent return order
         for key in self.title_prefix_dict:
             self.title_prefix_dict[key].sort()
-        for key in self.tag_prefix_dict:
-            # Sorting here might be good for determinism if needed, but not strictly necessary
-            self.tag_prefix_dict[key].sort()
 
     @staticmethod
     def get_titles_as_strings(titles: list[Titles]) -> list[str]:
@@ -92,32 +85,56 @@ class BarksTitleSearch:
             if info.issue_name != Issues.EXTRAS and word in info.get_title_str().lower()
         ]
 
-    def get_tags_matching_prefix(self, prefix: str) -> list[Tags | TagGroups]:
-        """Return the tags and tag groups with an alias starting with `prefix`.
+    @staticmethod
+    def get_tags_matching(text: str) -> list[TagMatch]:
+        """Return the tags and tag groups `text` matches, best first, with their story counts.
 
-        Each appears once, however many of its aliases match, in the order of its
-        display name - the order the search screen lists them in.
+        An alias the text is, whole, first (its tag is `exact`); then aliases starting
+        with it; then, from three letters, aliases with it inside. Each tag appears
+        once, at its best match; each group is sorted by display name.
 
         Args:
-            prefix: The start of an alias, in any case.
+            text: What was typed, in any case.
 
         Returns:
-            The matching tags and tag groups; empty for an empty prefix.
+            The matches; empty when nothing is typed.
 
         """
-        prefix = prefix.lower()
-        if not prefix:
+        query = text.strip().lower()
+        if not query:
             return []
+        inside = len(query) >= SUBSTRING_MIN_CHARS
+        best: dict[Tags | TagGroups, int] = {}
+        for alias, item in (*BARKS_TAG_ALIASES.items(), *BARKS_TAG_GROUPS_ALIASES.items()):
+            if alias == query:
+                rank = _EXACT
+            elif alias.startswith(query):
+                rank = _PREFIX
+            elif inside and query in alias:
+                rank = _INSIDE
+            else:
+                continue
+            best[item] = min(rank, best.get(item, rank))
+        ranked = sorted(best, key=lambda item: (best[item], str(item.value)))
+        return [
+            TagMatch(
+                item=item,
+                label=str(item.value),
+                title_count=BarksTitleSearch.get_tag_title_count(item),
+                exact=best[item] == _EXACT,
+            )
+            for item in ranked
+        ]
 
-        if len(prefix) == 1:
-            # A one-letter prefix is shorter than the index's keys: look through all.
-            candidate_aliases = [*BARKS_TAG_ALIASES, *BARKS_TAG_GROUPS_ALIASES]
-        else:
-            candidate_aliases = self.tag_prefix_dict.get(prefix[:PREFIX_LEN], [])
-
-        tags = self._get_tags_from_aliases(prefix, candidate_aliases)
-
-        return sorted(set(tags), key=lambda tag: str(tag.value))
+    @staticmethod
+    def get_tag_title_count(item: Tags | TagGroups) -> int:
+        """Return how many stories a tag tags; for a group, every story its members tag."""
+        if isinstance(item, TagGroups):
+            titles: set[Titles] = set()
+            for tag in get_all_tags_in_tag_group(item):
+                titles.update(BARKS_TAGGED_TITLES.get(tag, []))
+            return len(titles)
+        return len(BARKS_TAGGED_TITLES.get(item, []))
 
     @staticmethod
     def get_titles_from_alias_tag(
@@ -141,17 +158,3 @@ class BarksTitleSearch:
     @staticmethod
     def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:
         return list(BARKS_TAG_GROUPS.get(tag_group, []))
-
-    @staticmethod
-    def _get_tags_from_aliases(prefix: str, aliases: list[str]) -> list[Tags | TagGroups]:
-        """Return the tag or tag group of each of `aliases` that starts with `prefix`."""
-        tag_list: list[Tags | TagGroups] = []
-        for alias_tag_str in aliases:
-            if not alias_tag_str.startswith(prefix):
-                continue
-            if alias_tag_str in BARKS_TAG_ALIASES:
-                tag_list.append(BARKS_TAG_ALIASES[alias_tag_str])
-            if alias_tag_str in BARKS_TAG_GROUPS_ALIASES:
-                tag_list.append(BARKS_TAG_GROUPS_ALIASES[alias_tag_str])
-
-        return tag_list

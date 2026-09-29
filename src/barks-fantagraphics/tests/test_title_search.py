@@ -82,41 +82,53 @@ class TestBarksTitleSearch:
         """Test that searching for a word that is too short returns nothing."""
         assert self.search.get_titles_containing("a") == []
 
-    def test_get_tags_matching_prefix(self) -> None:
-        """Test searching for tags by prefix."""
-        results = self.search.get_tags_matching_prefix("gy")
-        assert Tags.GYRO_GEARLOOSE in results
+    def _tags(self, text: str) -> list[Tags | TagGroups]:
+        return [match.item for match in self.search.get_tags_matching(text)]
 
-    def test_get_tags_matching_prefix_group(self) -> None:
-        """Test that a prefix can match a tag group."""
-        results = self.search.get_tags_matching_prefix("pig v")
-        assert TagGroups.PIG_VILLAINS in results
+    def test_a_tag_is_found_by_the_start_of_an_alias(self) -> None:
+        assert Tags.GYRO_GEARLOOSE in self._tags("gy")
 
-    def test_get_tags_matching_prefix_no_match(self) -> None:
-        """Test a prefix that should not match any tags."""
-        assert self.search.get_tags_matching_prefix("xyz") == []
+    def test_a_tag_group_is_found_too(self) -> None:
+        assert TagGroups.PIG_VILLAINS in self._tags("pig v")
 
-    def test_a_one_letter_prefix_is_searched_not_recursed_on(self) -> None:
+    def test_no_match(self) -> None:
+        assert self.search.get_tags_matching("xyz") == []
+        assert self.search.get_tags_matching("") == []
+
+    def test_a_one_letter_text_is_searched_not_recursed_on(self) -> None:
         """It once called itself for ever; the screen's two-letter minimum hid it."""
-        results = self.search.get_tags_matching_prefix("g")
-        assert Tags.GYRO_GEARLOOSE in results
         aliased = {**BARKS_TAG_ALIASES, **BARKS_TAG_GROUPS_ALIASES}
-        g_tags = {tag for alias, tag in aliased.items() if alias.startswith("g")}
-        assert set(results) == g_tags
+        assert set(self._tags("g")) == {t for a, t in aliased.items() if a.startswith("g")}
 
-    @pytest.mark.parametrize("prefix", ["g", "sou", "pig", "gy"])
-    def test_tags_come_once_each_in_display_name_order(self, prefix: str) -> None:
+    def test_whole_alias_then_start_then_inside(self) -> None:
+        """Africa is typed whole; Central and South Africa have it inside their names."""
+        matches = self.search.get_tags_matching("africa")
+        assert [m.label for m in matches] == ["Africa", "Central Africa", "South Africa"]
+        assert [m.exact for m in matches] == [True, False, False]
+
+    def test_inside_a_name_only_from_three_letters(self) -> None:
+        assert TagGroups.AFRICA not in self._tags("fr")
+        assert self._tags("frica")[:1] == [TagGroups.AFRICA]  # cspell:disable-line
+
+    @pytest.mark.parametrize("text", ["g", "sou", "pig", "gy", "duck"])
+    def test_each_tag_once_and_each_rank_in_display_name_order(self, text: str) -> None:
         """Not the order of a set, which Python's per-process hash seed shuffles."""
-        results = self.search.get_tags_matching_prefix(prefix)
-        assert results, f"no tags for {prefix!r}"
-        assert len(results) == len(set(results)), "each tag once"
-        names = [str(tag.value) for tag in results]
-        assert names == sorted(names)
+        matches = self.search.get_tags_matching(text)
+        assert matches, f"no tags for {text!r}"
+        items = [m.item for m in matches]
+        assert len(items) == len(set(items)), "each tag once"
+        starts = [m for m in matches if not m.exact and m.label.lower().startswith(text)]
+        assert [m.label for m in starts] == sorted(m.label for m in starts)
 
-    def test_the_prefix_is_matched_in_any_case(self) -> None:
-        assert self.search.get_tags_matching_prefix("SOU") == (
-            self.search.get_tags_matching_prefix("sou")
-        )
+    def test_any_case(self) -> None:
+        assert self.search.get_tags_matching("SOU") == self.search.get_tags_matching("sou")
+
+    def test_the_count_is_the_stories_the_tag_lists(self) -> None:
+        """A group's count is every story its members tag, as picking it lists them."""
+        for match in self.search.get_tags_matching("africa"):
+            _, titles = BarksTitleSearch.get_titles_from_alias_tag(match.label.lower())
+            assert match.title_count == len(titles), match.label
+            assert match.title_count > 0
 
     def test_get_titles_from_alias_tag_single_tag(self) -> None:
         """Test getting titles from a single tag alias."""

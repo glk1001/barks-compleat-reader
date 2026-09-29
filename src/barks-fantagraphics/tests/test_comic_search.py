@@ -93,13 +93,20 @@ class TestSearch:
         clear_alpha_split_cache()
         assert _search_with(fake).get_words_matching("air").words == []
 
-    def test_tag_mode_lists_each_tag_once_by_display_name(self) -> None:
+    def test_tag_mode_lists_each_tag_once_in_a_fixed_order(self) -> None:
         """Deterministic: not a set's order, which the hash seed changes per process."""
         result = _search_with(InMemoryFullTextSearch()).search("sou", SearchMode.TAG)
 
         names = [str(tag.value) for tag in result.matched_tags]
         assert len(names) > 1
-        assert names == sorted(set(names))
+        assert names == sorted(set(names))  # all start with "sou": one rank, by name
+
+    def test_tag_mode_and_the_tag_box_agree(self) -> None:
+        search = _search_with(InMemoryFullTextSearch())
+        matches = search.get_tags_matching("africa")
+        assert search.search("africa", SearchMode.TAG).matched_tags == [m.item for m in matches]
+        assert matches[0].exact
+        assert search.get_tag_title_count(matches[0].item) == matches[0].title_count
 
     def test_unhandled_mode_raises_instead_of_returning_none(self) -> None:
         """The match had no catch-all, so an unexpected mode fell off the end."""

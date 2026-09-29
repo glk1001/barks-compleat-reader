@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.comics_database import ComicsDatabase
+from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_gui import harness
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
@@ -25,6 +26,7 @@ from barks_reader.core.wiki_integration import wiki_page_for_title
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from barks_fantagraphics.tag_query import TagMatch
     from barks_reader.core.comic_book_page_info import ComicLayout
 
 # The page image types the document reader shows (document_reader.IMAGE_EXTENSIONS,
@@ -131,6 +133,11 @@ def title_search_count(query: str) -> int:
     """Return how many titles the search screen lists for `query`."""
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
     return len(search.search(query, SearchMode.TITLE).title_strings)
+
+
+def tags_matching(query: str) -> list[TagMatch]:
+    """Return the tag chips the tag search box shows for `query`, in its order, with counts."""
+    return BarksTitleSearch.get_tags_matching(query)
 
 
 @cache

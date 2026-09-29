@@ -246,6 +246,8 @@ WORD_SEARCH_MATCHED: Final = 'Word search: "{text}" matched {count} words.'
 SEARCH_CLEARED: Final = "Search cleared: {mode}."
 TAG_SELECTED_TAG: Final = 'Tag search: selected tag "{tag}".'
 TAG_SELECTED_MEMBER: Final = 'Tag search: selected member "{member}".'
+# The stories a picked tag (or member) lists: its chip shows the same count.
+TAG_TITLES_LISTED: Final = 'Tag search: "{tag}" lists {count} stories.'
 WORD_SELECTED_CHIP: Final = 'Word search: selected chip "{word}".'
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
