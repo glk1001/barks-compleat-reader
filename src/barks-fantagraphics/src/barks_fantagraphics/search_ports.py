@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from .search_query import SearchLeaf
     from .whoosh_search_engine import TitleDict
 
 type AlphaSplitTerms = dict[str, dict[str, list[str]]]
@@ -57,6 +58,21 @@ class FullTextSearchPort(Protocol):
         """Full-text search across all indexed speech bubble text.
 
         ``speaker`` restricts the hits to groups with that stored speaker value.
+        """
+        ...
+
+    def find_bubbles(
+        self,
+        leaf: SearchLeaf,
+        speaker: str | None = None,
+        titles: frozenset[str] | None = None,
+    ) -> TitleDict:
+        """Return the bubbles one query leaf matches: any of some terms, a phrase, a NEAR pair.
+
+        The leaves of a typed word query (``search_query``); the query evaluator
+        combines their results by story. ``titles``, when given, restricts the search
+        to those stories (the evaluator passes down the ones already found); an empty
+        set finds nothing.
         """
         ...
 

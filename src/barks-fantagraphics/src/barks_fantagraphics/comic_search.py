@@ -18,13 +18,15 @@ from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
 from .alpha_split import split_alpha_terms
-from .search_terms import MAX_MATCHES_SHOWN, TermLexicon, TermMatches
+from .search_terms import MAX_MATCHES_SHOWN, MAX_SUGGESTIONS, TermLexicon, TermMatches
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .barks_tags import TagGroups, Tags
     from .barks_titles import Titles
+    from .search_evaluate import WordQueryResult
+    from .search_filters import StoryFilter
     from .search_ports import AlphaSplitTerms, CorpusTextTotals, FullTextSearchPort
     from .tag_query import TagMatch
     from .title_search import BarksTitleSearch
@@ -266,6 +268,56 @@ class ComicSearch:
 
         """
         return _lexicon_for_index(self._index_dir, self._get_full_text()).matching(text, limit)
+
+    def run_word_query(
+        self,
+        text: str,
+        *,
+        speaker: str | None = None,
+        search_filter: StoryFilter | None = None,
+    ) -> WordQueryResult:
+        """Run a typed word query: words, phrases, AND, OR, NOT, NEAR, wildcards, filters.
+
+        AND means the same story; phrases and NEAR pairs, the same bubble. Text that
+        does not parse is searched as it stands, with the syntax error in the result.
+        See ``search_evaluate``.
+
+        Args:
+            text: What was typed.
+            speaker: A stored speaker value every bubble found must have, or None.
+            search_filter: Which stories may be found (an era, a tag selection), or None.
+
+        Returns:
+            The stories found, each one's hit count, the terms to highlight, and
+            notices, suggestions or an error for the user.
+
+        """
+        # Loaded on first use, as the tag tables and the full-text engine are.
+        from .search_evaluate import run_query_text  # noqa: PLC0415
+        from .whoosh_search_engine import MY_STOP_WORDS  # noqa: PLC0415
+
+        engine = self._get_full_text()
+        return run_query_text(
+            text,
+            engine,
+            _lexicon_for_index(self._index_dir, engine),
+            speaker=speaker,
+            search_filter=search_filter,
+            stop_words=MY_STOP_WORDS,
+        )
+
+    def suggest_words(self, word: str, limit: int = MAX_SUGGESTIONS) -> list[str]:
+        """Return close spellings of a word the index does not hold, closest first.
+
+        Args:
+            word: The word typed.
+            limit: The most suggestions to return.
+
+        Returns:
+            The index's words, as the word list shows them; never the word itself.
+
+        """
+        return _lexicon_for_index(self._index_dir, self._get_full_text()).suggest(word, limit)
 
     def get_cleaned_terms(self) -> list[str]:
         """Return the cleaned, display-ready corpus word list."""

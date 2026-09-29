@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+# cspell:ignore monney
 
 from __future__ import annotations
 
@@ -14,11 +15,13 @@ from barks_fantagraphics.comic_search import (
     SearchResult,
     clear_alpha_split_cache,
 )
+from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_ports import (
     CorpusTextTotals,
     SearchIndexUnavailableError,
 )
-from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
+from barks_fantagraphics.search_query import AnyTerm
+from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
 from barks_fantagraphics.title_search import BARKS_ISSUE_DICT
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
 
@@ -191,6 +194,44 @@ class TestAlphaSplitTerms:
 
         assert set(first) == {"a"}
         assert set(second) == {"b"}
+
+
+class TestWordQuery:
+    @staticmethod
+    def _fake() -> InMemoryFullTextSearch:
+        return InMemoryFullTextSearch(
+            cleaned_terms=["gold", "golden", "mine", "money", "the"],
+            bubbles=[
+                FakeBubble("A", "gold in the mine", fanta_vol=1),
+                FakeBubble("B", "golden money", fanta_vol=2, speaker="Scrooge"),
+            ],
+        )
+
+    def test_a_typed_query_runs_against_the_engine(self) -> None:
+        result = _search_with(self._fake()).run_word_query("gol* -mine")
+
+        assert list(result.title_dict) == ["B"]
+        assert result.hit_counts == {"B": 1}
+
+    def test_the_index_stop_words_are_left_out(self) -> None:
+        result = _search_with(self._fake()).run_word_query("the gold")
+
+        assert list(result.title_dict) == ["A"]
+        assert result.notices == ('"the" is too common to search for; left out.',)
+
+    def test_the_speaker_and_filter_are_passed_down(self) -> None:
+        fake = self._fake()
+        search = _search_with(fake)
+
+        result = search.run_word_query(
+            "golden", speaker="Scrooge", search_filter=SearchFilter(volumes=(2, 2))
+        )
+
+        assert list(result.title_dict) == ["B"]
+        assert fake.bubble_calls == [(AnyTerm(("golden",)), "Scrooge", None)]
+
+    def test_suggest_words(self) -> None:
+        assert _search_with(self._fake()).suggest_words("monney") == ["money"]
 
 
 class TestPassThroughs:

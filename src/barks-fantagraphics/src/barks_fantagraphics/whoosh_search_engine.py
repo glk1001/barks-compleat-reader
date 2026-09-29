@@ -11,13 +11,15 @@ from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
-from whoosh.query import And, Query, Term
-from whoosh.searching import Hit
+from whoosh.query import And, Or, Query, Term
+from whoosh.reading import IndexReader
+from whoosh.searching import Hit, Searcher
 
 from .alpha_split import split_alpha_terms
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
 from .search_ports import CorpusTextTotals
+from .search_query import AnyTerm, Near, Phrase, SearchLeaf
 
 # The result types moved to search_results; imported here, they stay importable from
 # this module too (../barks-ocr's pipeline/whoosh_index.py imports TitleDict from it).
@@ -145,6 +147,41 @@ def build_index_schema() -> Schema:
     )
 
 
+def _term_positions(
+    reader: IndexReader, terms: tuple[str, ...], doc_numbers: list[int]
+) -> dict[int, list[int]]:
+    """Return where in each of `doc_numbers` (sorted) any of `terms` stands, from the postings."""
+    positions: dict[int, list[int]] = defaultdict(list)
+    for term in terms:
+        if ("unstemmed", term) not in reader:
+            continue
+        matcher = reader.postings("unstemmed", term)
+        for docnum in doc_numbers:
+            if matcher.is_active() and matcher.id() < docnum:
+                matcher.skip_to(docnum)
+            if not matcher.is_active():
+                break
+            if matcher.id() == docnum:
+                positions[docnum].extend(matcher.value_as("positions"))
+    return positions
+
+
+def _are_near(lefts: list[int], rights: list[int], distance: int) -> bool:
+    """Whether two different words, one from each side, are at most `distance` apart."""
+    return any(i != j and abs(i - j) <= distance for i in lefts for j in rights)
+
+
+def _leaf_words(leaf: SearchLeaf) -> tuple[str, ...]:
+    """Return the words a leaf searches for, to tell which entity types a hit names."""
+    match leaf:
+        case AnyTerm(terms):
+            return terms
+        case Phrase(words):
+            return words
+        case Near(left, right, _):
+            return left.terms + right.terms
+
+
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
         self._index = open_dir(index_dir)
@@ -264,6 +301,78 @@ class SearchEngine:
                     )
             results = searcher.search(query, limit=_SEARCH_RESULT_LIMIT)
             return self._collect_and_sort_results(results, search_words)
+
+    def find_bubbles(
+        self,
+        leaf: SearchLeaf,
+        speaker: str | None = None,
+        titles: frozenset[str] | None = None,
+    ) -> TitleDict:
+        """Return the bubbles one leaf of a typed word query matches.
+
+        Any of a word's terms (its forms, a wildcard's words); a phrase, its words
+        next to each other in order; or a NEAR pair, a term from each side at most
+        ``distance`` words apart in either order (stop words not counted, as the
+        index drops them). All in the unstemmed field, one bubble at a time.
+
+        Args:
+            leaf: What to find.
+            speaker: A stored speaker value to restrict the hits to, or None.
+            titles: The stories to search, or None for all; empty finds nothing.
+
+        Returns:
+            Matching titles with page and speech-bubble detail.
+
+        """
+        if titles is not None and not titles:
+            return {}
+        with self._index.searcher() as searcher:
+            query = self._leaf_query(leaf)
+            if speaker:
+                if "speaker" in self._index.schema:
+                    query = And([query, Term("speaker", speaker)])
+                else:  # built before the field existed: answer unfiltered, as find_words does
+                    logger.warning(
+                        "Search index has no speaker field; ignoring speaker filter."
+                        " The search index needs rebuilding."
+                    )
+            title_filter = None if titles is None else Or([Term("title", t) for t in titles])
+            hits = list(searcher.search(query, limit=_SEARCH_RESULT_LIMIT, filter=title_filter))
+            if isinstance(leaf, Near):
+                hits = self._near_hits(searcher, hits, leaf)
+            return self._collect_and_sort_results(hits, " ".join(_leaf_words(leaf)))
+
+    @staticmethod
+    def _near_hits(searcher: Searcher, hits: list[Hit], near: Near) -> list[Hit]:
+        """Keep the bubbles with a term from each side at most ``distance`` words apart.
+
+        Checked here from the index's positions rather than with Whoosh's SpanNear2,
+        which goes wrong when a term is on both sides (``duck NEAR ducks``: each side
+        holds duck's forms). Against the shipped index, quack NEAR quack found 5
+        bubbles and (quack OR quacking) NEAR quack none.
+        """
+        doc_numbers = sorted({hit.docnum for hit in hits})
+        reader = searcher.reader()
+        lefts = _term_positions(reader, near.left.terms, doc_numbers)
+        rights = _term_positions(reader, near.right.terms, doc_numbers)
+        near_docs = {
+            d for d in doc_numbers if _are_near(lefts.get(d, []), rights.get(d, []), near.distance)
+        }
+        return [hit for hit in hits if hit.docnum in near_docs]
+
+    def _leaf_query(self, leaf: SearchLeaf) -> Query:
+        match leaf:
+            case AnyTerm(terms):
+                return Or([Term("unstemmed", t) for t in terms])
+            case Phrase(words):
+                return self._parse_literal("unstemmed", " ".join(words))
+            case Near(left, right, _):  # the bubbles with both; _near_hits checks the distance
+                return And(
+                    [
+                        Or([Term("unstemmed", t) for t in left.terms]),
+                        Or([Term("unstemmed", t) for t in right.terms]),
+                    ]
+                )
 
     def get_speakers(self) -> dict[str, int]:
         """Return every stored speaker value with its group count, most frequent first.

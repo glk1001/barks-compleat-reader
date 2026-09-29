@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-5 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-6 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -11,8 +11,9 @@
 > - Phase 2 substring word list: DONE 2026-09-29, 46170947
 > - Phase 3 tag substring + counts: DONE 2026-09-29, efddf571
 > - Phase 4 query parser: DONE 2026-09-29, fa82fb5e
-> - Phase 5 lexicon expansion: DONE 2026-09-29 ("feat(search): the word list expands wildcards, finds word forms, suggests spellings")
-> - Phase 6 engine leaves + evaluator: TODO
+> - Phase 5 lexicon expansion: DONE 2026-09-29, 2e39af51
+> - Phase 6 engine leaves + evaluator: DONE 2026-09-30 ("feat(search): typed word queries run
+>   against the index, by story, with filters and suggestions")
 > - Phase 7 multi-term highlighting: TODO
 > - Phase 8 typed queries in the word box: TODO
 > - Phase 8a extract ChipRow: TODO
@@ -60,7 +61,9 @@ built in ../barks-ocr): `unstemmed` keeps positions, so phrases and span-NEAR al
 document (one bubble), so "same story" has to be evaluated in Python anyway. The fake port can
 implement an AST, and the parser never raises: bad syntax falls back to a literal search with a
 notice. Whoosh builds only the leaves: `Or([Term])`, `_parse_literal` for phrases, and
-`SpanNear2`/`SpanOr` for NEAR (Whoosh 2.7.4).
+for NEAR the bubbles holding both sides, whose distance the engine then checks from the
+index's positions. (Phase 6 found `SpanNear2`/`SpanOr`, Whoosh 2.7.4, wrong when a term is on
+both sides, as a word's forms are in `duck NEAR ducks`.)
 
 Grammar: `or_expr := and_expr (OR and_expr)*`;
 `and_expr := unary (AND? unary)*` (a bare space means AND);
