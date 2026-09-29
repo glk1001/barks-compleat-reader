@@ -1,6 +1,6 @@
 # Both non-default hook types must be installed for their gates to exist at all: the
 # full-suite pytest below is pre-push, and cspell-commit-msg is commit-msg. Listing
-# them here means a plain `pre-commit install` writes all three, so the setup step
+# them here means a plain `prek install` writes all three, so the setup step
 # cannot be half-done. Previously only pre-commit was installed, git lfs owned the
 # pre-push slot, and the pytest gate silently never ran - a green commit, a red CI.
 default_install_hook_types: [pre-commit, pre-push, commit-msg]

@@ -302,3 +302,4 @@ tappable
 usermod
 polkit
 pkexec
+prek

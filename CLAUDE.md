@@ -13,21 +13,28 @@ bundle on macOS.
 
 **First-time setup (after cloning, and after any `git lfs install`):**
 ```bash
-uv run pre-commit install
+uv run prek install
 ```
-`pre-commit` comes from the `dev` dependency group (`uv sync`); the cspell hooks also need
-[bun](https://bun.sh) on the PATH (on Windows, `winget install Oven-sh.Bun`, whose package lacks
-`bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. A `bunx.exe` link does
-not do: pre-commit runs it as `bunx.EXE`, and bun matches its own name case-sensitively).
+The hooks run on [prek](https://github.com/j178/prek), as in the two sibling repos; it comes from
+the `dev` dependency group (`uv sync`) and reads `.pre-commit-config.yaml`. The cspell hooks also
+need [bun](https://bun.sh) on the PATH (on Windows, `winget install Oven-sh.Bun`, whose package
+lacks `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. A `bunx.exe`
+link did not do under pre-commit, which ran it as `bunx.EXE` while bun matches its own name
+case-sensitively).
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
-hook types. Without it, `pre-commit install` writes only `.git/hooks/pre-commit` and the pre-push
-(full-suite pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green
-commit and a red CI. `git lfs install` also claims the `pre-push` slot, so re-run this after it;
-pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To verify,
-`.git/hooks/pre-push` should name `--hook-type=pre-push`, not `git lfs pre-push`. On Windows, change
-`pre-push.legacy`'s first line from `#!/bin/sh` to `#!/usr/bin/env sh`: pre-commit looks for an
-absolute shebang as a Windows path, fails every push with "Executable `/bin/sh` not found", and
-pushes nothing.
+hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
+pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
+a red CI. `git lfs install` also claims the `pre-push` slot, so re-run this after it; prek
+preserves the LFS hook as `pre-push.legacy` and chains to it. To verify, `.git/hooks/pre-push`
+should name `--hook-type=pre-push`, not `git lfs pre-push`. On Windows, change
+`pre-push.legacy`'s first line from `#!/bin/sh` to `#!/usr/bin/env sh`: pre-commit looked for an
+absolute shebang as a Windows path, failed every push with "Executable `/bin/sh` not found", and
+pushed nothing. (Both Windows notes were found under pre-commit; not yet re-checked under prek.)
+
+A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
+`uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the
+uninstall puts the LFS hook back, and prek chains it again. Once pre-commit has left the venv,
+`uvx pre-commit uninstall` does the first half. Until then its hooks fail and block commits.
 
 Then generate the two gitignored modules every workspace boot imports:
 ```bash
