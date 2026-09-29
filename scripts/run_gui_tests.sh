@@ -156,6 +156,18 @@ if ! [[ "$BARKS_PROBE_SCREEN" =~ ^[0-9]+x[0-9]+$ ]]; then
     echo "run_gui_tests: screen size must be WxH (e.g. 1920x1080), not '$BARKS_PROBE_SCREEN'" >&2
     exit 2
 fi
+# A workspace run imports two gitignored, generated modules a fresh clone lacks;
+# without them every boot dies on an import and each test fails only at its boot timeout.
+if [[ -z "${BARKS_PROBE_APP:-}" ]]; then
+    [[ -f src/comic-utils/src/comic_utils/get_panel_bytes.py ]] || {
+        echo "run_gui_tests: get_panel_bytes.py is missing: run 'bash scripts/generate-panel-module.sh'" >&2
+        exit 2
+    }
+    [[ -f src/barks-reader/src/barks_reader/_version.py ]] || {
+        echo "run_gui_tests: _version.py is missing: run 'bash scripts/build.sh' once" >&2
+        exit 2
+    }
+fi
 if [[ -n "${BARKS_PROBE_TOUCH:-}" ]]; then
     # Every app reads every touchscreen: two workers would tap each other's app.
     if [[ -n "$workers" && "$workers" != 1 ]]; then

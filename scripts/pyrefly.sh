@@ -12,10 +12,10 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 # Same stub prerequisite as full-lint.sh: pyrefly (like ty) can't resolve the
-# gitignored _version.py module until a normal run/build has generated it.
+# gitignored _version.py module until scripts/build.sh has generated it.
 if [[ ! -f src/barks-reader/src/barks_reader/_version.py ]]; then
     echo "ERROR: src/barks-reader/src/barks_reader/_version.py is missing."
-    echo "       Run the app or build once to generate it (pyrefly will fail without it)."
+    echo "       Run 'bash scripts/build.sh' once to generate it (pyrefly will fail without it)."
     exit 1
 fi
 

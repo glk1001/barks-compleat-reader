@@ -16,10 +16,10 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.."
 
-# CI generates this stub; locally it comes from a normal run/build.
+# CI generates this stub; locally scripts/build.sh writes it (running the app does not).
 if [[ ! -f src/barks-reader/src/barks_reader/_version.py ]]; then
     echo "ERROR: src/barks-reader/src/barks_reader/_version.py is missing."
-    echo "       Run the app or build once to generate it (ty will fail without it)."
+    echo "       Run 'bash scripts/build.sh' once to generate it (ty will fail without it)."
     exit 1
 fi
 

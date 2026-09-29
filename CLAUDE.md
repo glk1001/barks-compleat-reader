@@ -29,6 +29,15 @@ pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To veri
 absolute shebang as a Windows path, fails every push with "Executable `/bin/sh` not found", and
 pushes nothing.
 
+Then generate the two gitignored modules every workspace boot imports:
+```bash
+bash scripts/generate-panel-module.sh   # comic_utils/get_panel_bytes.py; needs BARKS_ZIPS_KEY in .env.runtime
+bash scripts/build.sh                   # barks_reader/_version.py (its first step writes it)
+```
+Without them the app dies on an import at boot (so every GUI test fails at its boot timeout;
+`run_gui_tests.sh` checks for both first), and ty, pyrefly and full-lint refuse to run. Running
+the app does not create either.
+
 **Run benchmarks** (excluded from the default test run; `--quiet` for just the tables):
 ```bash
 bash scripts/run_benchmark.sh
