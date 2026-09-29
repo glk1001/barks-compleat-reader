@@ -2,15 +2,15 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-3 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-4 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
 > - Phase 0 tag bug fixes: DONE 2026-09-29, 4b4a098f
 > - Phase 1 result types + set operations: DONE 2026-09-29, f2e4ec48
 > - Phase 2 substring word list: DONE 2026-09-29, 46170947
-> - Phase 3 tag substring + counts: DONE 2026-09-29 ("feat(search): tags are found inside their names, and each chip shows its count")
-> - Phase 4 query parser: TODO
+> - Phase 3 tag substring + counts: DONE 2026-09-29, efddf571
+> - Phase 4 query parser: DONE 2026-09-29 ("feat(search): a parser for typed word queries...")
 > - Phase 5 lexicon expansion: TODO
 > - Phase 6 engine leaves + evaluator: TODO
 > - Phase 7 multi-term highlighting: TODO
