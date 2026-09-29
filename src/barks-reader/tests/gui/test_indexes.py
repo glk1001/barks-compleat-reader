@@ -202,7 +202,7 @@ def test_items_wrap_between_columns_both_ways(boot: AppBoot) -> None:
 
 
 def test_back_to_the_index_puts_the_focus_on_the_item_left(boot: AppBoot) -> None:
-    """Go to a title from the index, Go Back, re-enter: the focus is where it was."""
+    """Go to a title from the index, Go Back: the focus is back on the item left."""
     d = boot(nodes.MAIN_INDEX)
     d.wait_for(_letter("A"))
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
@@ -212,8 +212,10 @@ def test_back_to_the_index_puts_the_focus_on_the_item_left(boot: AppBoot) -> Non
     with d.expect(pattern(markers.GOTO_TITLE)):
         d.key_then_wait(ITEM_PRESSED, "Return")
     d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # the title view had the focus
-    d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.MAIN_INDEX[0]))
-    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    # A keyboard Go Back re-enters the index on the next frame by itself; a Return
+    # here would race it, and press the item when it lost.
+    with d.expect(markers.INDEX_ENTERED_NAV):
+        d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.MAIN_INDEX[0]))
     assert _focused(d) == left_on
 
 
