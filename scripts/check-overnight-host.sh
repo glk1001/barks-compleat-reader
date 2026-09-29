@@ -14,7 +14,8 @@
 #
 # Usage: scripts/check-overnight-host.sh
 # Exit status: 0 when everything required is there, 1 otherwise. What is only
-# advised (the touch rule, this machine's GUI timing calibration) never fails it.
+# advised (graphify, the touch rule, this machine's GUI timing calibration) never
+# fails it.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -106,6 +107,13 @@ echo "== tools the stages call =="
 for tool in uv git git-lfs bun systemd-inhibit Xvfb xvfb-run; do
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else bad "$tool"; fi
 done
+# The smoke stage presses Escape in the built app with it. gui-probe.sh doctor calls
+# it optional (the GUI tests use xte), so only this says a missing one fails a stage.
+if command -v xdotool >/dev/null 2>&1; then
+    ok "xdotool (the smoke stage's Escape)"
+else
+    bad "xdotool (the smoke stage's Escape): sudo apt install xdotool"
+fi
 
 echo "== the GUI probe (tools, profile, data folders) =="
 if BARKS_PROBE_HEADLESS=1 bash "${SCRIPT_DIR}/gui-probe.sh" doctor; then
@@ -115,6 +123,11 @@ else
 fi
 
 echo "== advised =="
+if command -v graphify >/dev/null 2>&1; then
+    ok "graphify"
+else
+    advise "no graphify here: the overnight graphify stage skips itself"
+fi
 if [[ -f .benchmarks/gui-timings.json ]]; then
     ok "this machine's GUI timing calibration"
 else
