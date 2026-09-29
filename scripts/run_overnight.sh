@@ -319,7 +319,8 @@ run_stage() {
         ((status == 3)) && return "$WARNED"
         return "$status"
         ;;
-    lint) bash "${SCRIPT_DIR}/full-lint.sh" ;;
+    # The benchmarks import the UI, whose screen metrics need a display.
+    lint) with_display bash "${SCRIPT_DIR}/full-lint.sh" ;;
     audit) uv audit || return "$WARNED" ;;
     pytest)
         uv sync --locked
