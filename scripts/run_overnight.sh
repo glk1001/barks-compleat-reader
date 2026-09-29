@@ -289,8 +289,11 @@ mutation() {
     echo "mutation: slice ${day} of 7, ${#globs[@]} module(s):"
     printf '  %s\n' "${globs[@]}"
     # mutmut.sh writes its argument as setup.cfg's only_mutate, where configparser
-    # reads further lines of a value only when they are indented.
-    bash "${SCRIPT_DIR}/mutmut.sh" "$(printf '%s\n' "${globs[@]}" | sed -e '2,$s/^/    /')"
+    # reads further lines of a value only when they are indented. Its tests import
+    # the screen metrics, which need a display. A failed run records nothing: the
+    # stage runs under `||`, where set -e does not stop it, so return explicitly.
+    with_display bash "${SCRIPT_DIR}/mutmut.sh" \
+        "$(printf '%s\n' "${globs[@]}" | sed -e '2,$s/^/    /')" || return 1
     # mutmut passes whatever survives; a module with more survivors than last
     # time is the one worth a look, so that is a warning.
     local modules=()

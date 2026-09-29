@@ -124,7 +124,17 @@ EOF
 
 echo "mutmut: mutating against $(echo "${selection}" | grep -c .) Kivy-free test files"
 rm -rf mutants
-uv run mutmut run "$@" || true   # mutmut exits non-zero when mutants survive
+# mutmut exits non-zero when mutants survive, so its status says nothing; what it
+# prints does. When the test run itself breaks (a collection error, no tests), it
+# tests no mutant, and a summary of zero survivors would read as a clean slice.
+run_log="$(mktemp)"
+uv run mutmut run "$@" 2>&1 | tee "${run_log}" || true
+if grep -qE '^failed to collect stats|^Stopping early, because' "${run_log}"; then
+    rm -f "${run_log}"
+    echo "mutmut: the test run failed, so no mutant was tested (see above)" >&2
+    exit 1
+fi
+rm -f "${run_log}"
 
 echo
 echo "==== survivors by module ===="
@@ -132,7 +142,10 @@ echo "==== survivors by module ===="
 # <module>.xǁ<Class>ǁ<method>__mutmut_N for methods. Strip from whichever marker
 # appears so BOTH forms collapse to the module name - an earlier version only
 # handled the ǁ form, which silently under-reported this summary.
-survivors=$(uv run mutmut results 2>/dev/null | grep ': survived')
-printf '%s\n' "${survivors}" | sed -E 's/.*barks_reader\.core\.//; s/\.(x_|xǁ).*//' \
-    | sort | uniq -c | sort -rn
+# grep finds nothing in a slice with no survivors; under pipefail that is not a failure.
+survivors=$(uv run mutmut results 2>/dev/null | { grep ': survived' || true; })
+if [[ -n "${survivors}" ]]; then
+    printf '%s\n' "${survivors}" | sed -E 's/.*barks_reader\.core\.//; s/\.(x_|xǁ).*//' \
+        | sort | uniq -c | sort -rn
+fi
 echo "  total survivors: $(printf '%s\n' "${survivors}" | grep -c .)"
