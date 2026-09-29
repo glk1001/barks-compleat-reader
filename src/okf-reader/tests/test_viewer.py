@@ -72,7 +72,12 @@ def bundle(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def viewer(bundle: Path) -> Iterator[OKFViewer]:
-    yield OKFViewer(bundle)
+    okf_viewer = OKFViewer(bundle)
+    yield okf_viewer
+    # A focused box holds the window's one keyboard until it lets go, and the main
+    # screen leaves every key to a focused text input: its key tests then fail (a
+    # random-order run found it, after focus_search's test).
+    okf_viewer.search_field.focus = False
     _remove_popups_left_open()
 
 
