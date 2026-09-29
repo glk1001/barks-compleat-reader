@@ -7,8 +7,15 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 24, 121, panel 5 Beak glitch
+Vol 24, 113, panel 5 Glitch in Over
+Vol 24, 110, panel 2 BB plate should be white
+Vol 24, 100, panel 2 Glitch with Dewey
+Vol 24, 049, panel 7 Don's hat not colored
 Vol 24, 042, panel 2 Colorist error: should be green cap
 Vol 24, 032, panel 4 Wisenik
+Vol 23, 170, panel 5 Color continuity error
+Vol 23, 086, panel 7 Check note at bottom
 Vol 23, 021, panel 8 '!' glitch
 Vol 22, 137: panel 5 Colorist error - no cap color
 Vol 22, 128: panel 2 Here's the colorist error - need to swap colors
