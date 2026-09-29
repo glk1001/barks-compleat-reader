@@ -39,7 +39,7 @@ from barks_reader.core.index_text import (
     indexable_title_from_str,
     sortable_string,
 )
-from barks_reader.core.reader_formatter import mark_phrase_in_text
+from barks_reader.core.reader_formatter import mark_terms_in_text
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import (
     ErrorTypes,
@@ -64,7 +64,7 @@ from .reader_keyboard_nav import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.entity_types import EntityType
@@ -177,7 +177,10 @@ def _speaker_label_markup(label: str, font_size: int | None) -> str:
 
 
 def format_page_speech_bubbles(
-    page_info: PageInfo, search_terms: str, speaker_font_size: int | None = None
+    page_info: PageInfo,
+    search_terms: str,
+    speaker_font_size: int | None = None,
+    highlight_terms: Sequence[str] | None = None,
 ) -> str:
     """Return one page's matching bubbles as the markup the popup shows.
 
@@ -203,6 +206,9 @@ def format_page_speech_bubbles(
         search_terms: What was searched for, to highlight.
         speaker_font_size: Pixel size for the speaker line, or None to
             inherit the bubble's.
+        highlight_terms: The words and phrases to highlight instead of
+            ``search_terms`` -- a typed query's, which may be many (each
+            word's forms, a wildcard's words) -- or None.
 
     Returns:
         The page's bubbles joined by blank lines, ready for a markup label.
@@ -210,8 +216,8 @@ def format_page_speech_bubbles(
     """
     bubbles: list[str] = []
     for speech in page_info.speech_info_list:
-        text = mark_phrase_in_text(
-            search_terms,
+        text = mark_terms_in_text(
+            [search_terms] if highlight_terms is None else highlight_terms,
             speech.speech_text_markup,
             _speech_highlight_start_tag(),
             SPEECH_HIGHLIGHT_END_TAG,
@@ -238,6 +244,7 @@ def show_speech_bubbles_popup(
     title_font_size: float,
     speaker: str | None = None,
     text_font_size: float | None = None,
+    highlight_terms: Sequence[str] | None = None,
 ) -> None:
     """Build and show a speech bubbles popup for a title's matching pages.
 
@@ -253,6 +260,9 @@ def show_speech_bubbles_popup(
             itself.
         text_font_size: The bubble lettering's font size; the speaker line is
             set a step smaller than it. None leaves the line at the same size.
+        highlight_terms: The words and phrases to highlight, when a query's
+            differ from ``search_terms`` (which the title still shows); None
+            highlights ``search_terms``.
 
     """
     text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
@@ -261,7 +271,9 @@ def show_speech_bubbles_popup(
     speaker_font_size = round(text_font_size * SPEAKER_LABEL_SCALE) if text_font_size else None
     for page_info in title_speech_info.fanta_pages.values():
         page_text = f"Page {page_info.comic_page}"
-        text = format_page_speech_bubbles(page_info, search_terms, speaker_font_size)
+        text = format_page_speech_bubbles(
+            page_info, search_terms, speaker_font_size, highlight_terms
+        )
         text_box = TextBoxWithTitleAndBorder(title=page_text, content=text)
         text_box.ids.the_text_id.bind(
             on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: on_page_press(bt, bp),

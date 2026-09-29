@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-6 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-7 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -12,9 +12,9 @@
 > - Phase 3 tag substring + counts: DONE 2026-09-29, efddf571
 > - Phase 4 query parser: DONE 2026-09-29, fa82fb5e
 > - Phase 5 lexicon expansion: DONE 2026-09-29, 2e39af51
-> - Phase 6 engine leaves + evaluator: DONE 2026-09-30 ("feat(search): typed word queries run
->   against the index, by story, with filters and suggestions")
-> - Phase 7 multi-term highlighting: TODO
+> - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 1a6e6387
+> - Phase 7 multi-term highlighting: DONE 2026-09-30 ("feat(search): the bubble popup
+>   highlights every word a query searched, whole words only")
 > - Phase 8 typed queries in the word box: TODO
 > - Phase 8a extract ChipRow: TODO
 > - Phase 9 word chip list: TODO
@@ -113,7 +113,11 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
   `find_word_set`, `suggest_words`, `get_tags_matching`, `titles_for_tag_selection` and
   `parse_tag_query`.
 - `barks_reader/core/reader_formatter.py`: add `mark_terms_in_text(terms, …)`, one alternation
-  regex with the longest term first so tags never nest. `mark_phrase_in_text` wraps it.
+  regex with the longest term first so tags never nest. `mark_phrase_in_text` wraps it. A
+  highlight is a whole word (decided in phase 7, for both): an apostrophe, hyphen or soft
+  hyphen joining letters makes one word, as in the index. Over 10,665 real bubbles found by
+  600 sampled words, it missed one highlight that substring matching made (a pun whose
+  lettering hyphenates "demon" into a longer word).
 - `barks_reader/core/search_state.py` (new): `WordBasket`, `TagBasket` (include → exclude →
   removed) and `EraChoice`.
 - `barks_reader/ui/index_screen.py`: the popup takes `highlight_terms=None`, so the speech index

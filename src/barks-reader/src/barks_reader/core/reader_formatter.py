@@ -29,6 +29,8 @@ from .reader_consts_and_types import CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from barks_fantagraphics.comic_book_info import ComicBookInfo
 
     from .reader_colors import Color
@@ -251,60 +253,83 @@ class ReaderFormatter:
         return hyphenate_text(escape_editorial_brackets(BARKS_EXTRA_INFO[title]))
 
 
-def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
-    r"""Find and tag a phrase in a target string.
+# A highlight is a whole word: not preceded or followed by a letter or digit, by a soft
+# hyphen (one word hyphenated for display), or by an apostrophe or hyphen that joins
+# another word to it (DUCK'S, SUPER-DUCK), as the index keeps those as one word.
+_WORD_START = r"(?<![\w\xad])(?<!\w['\u2019-])"
+_WORD_END = r"(?![\w\xad])(?!['\u2019-]\w)"
 
-    The target text is hyphenated for display, so the phrase may be broken in three ways:
-    spaces between words may become newlines (\n) or soft hyphen + newline (\u00AD\n); a
+
+def _term_pattern(term: str) -> str:
+    r"""Return the regex matching one term, a word or several, as the lettering breaks it.
+
+    The target text is hyphenated for display, so a term may be broken in three ways:
+    spaces between words may become newlines (\n) or soft hyphen + newline (­\n); a
     single word may be hyphenated *internally* at a soft hyphen, optionally followed by a
-    newline (e.g. "Moneytubs" stored as "Money\u00ADtubs" / "Money\u00AD\ntubs"); and a
+    newline (e.g. "Moneytubs" stored as "Money­tubs" / "Money­\ntubs"); and a
     compound with a real hyphen may be broken at that hyphen ("never-never" lettered as
-    "NEVER-\nNEVER"). This function tolerates all three and wraps the found phrase in
-    start...end tags.
+    "NEVER-\nNEVER").
     """
-    # 1. Split the original phrase into a list of words
-    #    (split() handles multiple spaces automatically)
-    words = phrase.split()
-
-    # 2. Within a word, a hyphenation break may sit between any two characters: a soft
-    #    hyphen (\xad == \u00AD), optionally followed by a newline where the line wrapped.
-    #    Only soft-hyphen breaks are allowed inside a word (never a bare space/newline), so
-    #    a match can't span a real word boundary. Each character is escaped so regex
-    #    metacharacters ('?', '.', '(', ...) are matched literally.
+    # Within a word, a hyphenation break may sit between any two characters: a soft
+    # hyphen (\xad == ­), optionally followed by a newline where the line wrapped.
+    # Only soft-hyphen breaks are allowed inside a word (never a bare space/newline), so
+    # a match can't span a real word boundary. Each character is escaped so regex
+    # metacharacters ('?', '.', '(', ...) are matched literally.
     intra_word_break = r"(?:\xad\n?)?"
-    # A real hyphen in the phrase may be where the letterer broke the line.
+    # A real hyphen in the term may be where the letterer broke the line.
     word_patterns = [
         intra_word_break.join(re.escape(ch) + (r"\n?" if ch == "-" else "") for ch in word)
-        for word in words
+        for word in term.split()
     ]
-
-    # 3. Create a regex pattern for the between-word separator.
-    #    It matches: A literal space OR a newline OR a soft hyphen followed by newline.
-    #    (?: ...) is a non-capturing group.
+    # Between words: a space, a newline, or a soft hyphen followed by a newline.
     separator_pattern = r"(?: |\n|\xad\n)"
+    return separator_pattern.join(word_patterns)
 
-    # 4. Join the per-word patterns with the flexible separator
-    full_pattern = separator_pattern.join(word_patterns)
 
-    # 5. Perform the substitution, but only on the comic's own lettering.
-    #    We wrap full_pattern in parentheses (...) to create a capturing group.
-    #    We replace it with 'start_tag\1end_tag', where \1 puts back exactly what was found.
-    #
-    #    The target may carry emphasis markup ("[b]SHARP[/b]") and escape
-    #    sequences ("&amp;"), and substituting over the whole string reaches
-    #    inside them: searching for "b" would wrap the b in "[b]", and "amp" the
-    #    amp in "&amp;", each producing a tag Kivy cannot parse -- so the reader
-    #    would show broken text instead of the line.
-    #
-    #    The cost is that a phrase cannot match across a tag, so "really sharp"
-    #    against "REALLY [b]SHARP[/b]" is simply not highlighted. A missed
-    #    highlight is visible and harmless; a mangled tag is neither.
+def mark_terms_in_text(terms: Iterable[str], target_text: str, start_tag: str, end_tag: str) -> str:
+    """Wrap every whole-word occurrence of any of `terms` in start...end tags.
+
+    One pass, the longest term tried first, so "ducking" is marked whole rather
+    than its "duck", "gold mine" rather than its "gold", and no mark ever sits
+    inside another. Case is ignored, and a term matches however the lettering is
+    hyphenated or wrapped (see `_term_pattern`).
+
+    Only the comic's own lettering is searched. The target may carry emphasis
+    markup ("[b]SHARP[/b]") and escape sequences ("&amp;"), and substituting over
+    the whole string reaches inside them: searching for "b" would wrap the b in
+    "[b]", and "amp" the amp in "&amp;", each producing a tag Kivy cannot parse --
+    so the reader would show broken text instead of the line. The cost is that a
+    term cannot match across a tag, so "really sharp" against "REALLY [b]SHARP[/b]"
+    is simply not highlighted. A missed highlight is visible and harmless; a
+    mangled tag is neither.
+
+    Args:
+        terms: The words or phrases to mark.
+        target_text: A bubble's lettering, possibly with markup.
+        start_tag: Put before each occurrence.
+        end_tag: Put after each occurrence.
+
+    Returns:
+        The text with each occurrence marked; unchanged when `terms` has no words.
+
+    """
+    unique = dict.fromkeys(" ".join(t.split()).lower() for t in terms if t.split())
+    if not unique:
+        return target_text
+    patterns = [_term_pattern(t) for t in sorted(unique, key=len, reverse=True)]
+    regex = re.compile(f"{_WORD_START}(?:{'|'.join(patterns)}){_WORD_END}", re.IGNORECASE)
     return transform_lettering_only(
         target_text,
-        lambda segment: re.sub(
-            f"({full_pattern})", rf"{start_tag}\1{end_tag}", segment, flags=re.IGNORECASE
-        ),
+        lambda segment: regex.sub(lambda m: f"{start_tag}{m.group(0)}{end_tag}", segment),
     )
+
+
+def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
+    """Wrap every whole-word occurrence of `phrase` in start...end tags.
+
+    See `mark_terms_in_text`, which this is for a single word or phrase.
+    """
+    return mark_terms_in_text([phrase], target_text, start_tag, end_tag)
 
 
 TITLE_PAGE_NUM_SEPARATOR_STR = ", "

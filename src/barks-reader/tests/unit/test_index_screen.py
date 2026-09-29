@@ -420,6 +420,14 @@ class TestFormatPageSpeechBubbles:
         start = _speech_highlight_start_tag()
         assert text == f"{_label('Donald')}\nOH, {start}DONALD{SPEECH_HIGHLIGHT_END_TAG}!"
 
+    def test_the_query_terms_are_highlighted_instead_of_the_search_text(self) -> None:
+        page = PageInfo("5", [_speech("DUCKS DUCKING GOLD", speaker="Donald")])
+
+        text = format_page_speech_bubbles(page, "duck -gold", highlight_terms=["ducks", "ducking"])
+
+        start, end = _speech_highlight_start_tag(), SPEECH_HIGHLIGHT_END_TAG
+        assert text == f"{_label('Donald')}\n{start}DUCKS{end} {start}DUCKING{end} GOLD"
+
     def test_soft_hyphens_become_hyphens(self) -> None:
         page = PageInfo("5", [_speech("SUPER\u00adDUCK", speaker="Donald")])
 

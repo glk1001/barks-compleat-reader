@@ -1,3 +1,4 @@
+# cspell:ignore duckin
 from __future__ import annotations
 
 from typing import Any
@@ -222,6 +223,62 @@ def test_mark_phrase_in_text_phrase_does_not_span_a_tag() -> None:
     """
     func = reader_formatter.mark_phrase_in_text
     assert func("really sharp", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]SHARP[/b]"
+
+
+def test_a_highlight_is_a_whole_word() -> None:
+    """A term never lights up inside a longer word: the index's words are whole words."""
+    func = reader_formatter.mark_phrase_in_text
+    assert func("gold", "GOLD IN THE GOLDEN MINE", "<m>", "</m>") == (
+        "<m>GOLD</m> IN THE GOLDEN MINE"
+    )
+    assert func("gold", "MARIGOLD, GOLD!", "<m>", "</m>") == "MARIGOLD, <m>GOLD</m>!"
+    # An apostrophe or hyphen joining another word makes one word, as in the index.
+    assert func("duck", "DUCK'S DUCK\u2019S SUPER-DUCK DUCK-", "<m>", "</m>") == (
+        "DUCK'S DUCK\u2019S SUPER-DUCK <m>DUCK</m>-"
+    )
+    assert func("duck's", "THE DUCK'S HAT", "<m>", "</m>") == "THE <m>DUCK'S</m> HAT"
+    # A soft hyphen is inside one word, hyphenated for display.
+    assert func("money", f"MONEY{SOFT_HYPHEN}\nTUBS", "<m>", "</m>") == f"MONEY{SOFT_HYPHEN}\nTUBS"
+    # Terms that start or end in punctuation still match whole.
+    assert func("g.i.", "A G.I. JOE", "<m>", "</m>") == "A <m>G.I.</m> JOE"
+    assert func("duckin'", "DUCKIN' OUT!", "<m>", "</m>") == "<m>DUCKIN'</m> OUT!"
+    assert func("500,000,000...", "ONLY 500,000,000...!", "<m>", "</m>") == (
+        "ONLY <m>500,000,000...</m>!"
+    )
+
+
+def test_mark_terms_in_text_marks_every_term_longest_first() -> None:
+    func = reader_formatter.mark_terms_in_text
+    assert func(["duck", "ducking"], "DUCKING, DUCK!", "<m>", "</m>") == (
+        "<m>DUCKING</m>, <m>DUCK</m>!"
+    )
+    assert func(["gold", "gold mine"], "A GOLD MINE OF GOLD", "<m>", "</m>") == (
+        "A <m>GOLD MINE</m> OF <m>GOLD</m>"
+    )
+    assert func(["Gold", "gold", " gold  mine "], "GOLD\nMINE", "<m>", "</m>") == (
+        "<m>GOLD\nMINE</m>"
+    )
+
+
+def test_mark_terms_in_text_with_no_terms_changes_nothing() -> None:
+    func = reader_formatter.mark_terms_in_text
+    assert func([], "GOLD", "<m>", "</m>") == "GOLD"
+    assert func(["", "  "], "GOLD", "<m>", "</m>") == "GOLD"
+
+
+def test_mark_terms_in_text_puts_the_tags_in_as_they_are() -> None:
+    """The tags are text, not a regex replacement: a backslash in one stays itself."""
+    func = reader_formatter.mark_terms_in_text
+    assert func(["gold"], "GOLD", "[color=#ff0000]\\1", "[/color]") == (
+        "[color=#ff0000]\\1GOLD[/color]"
+    )
+
+
+def test_mark_terms_in_text_never_marks_inside_markup() -> None:
+    func = reader_formatter.mark_terms_in_text
+    assert func(["b", "sharp", "amp"], "REALLY [b]SHARP[/b] &amp; B", "<m>", "</m>") == (
+        "REALLY [b]<m>SHARP</m>[/b] &amp; <m>B</m>"
+    )
 
 
 def test_get_fitted_title_with_page_nums() -> None:
