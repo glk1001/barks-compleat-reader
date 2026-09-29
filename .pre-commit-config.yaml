@@ -101,7 +101,12 @@ repos:
             stages: [pre-commit]
           - id: pytest
             name: pytest (full suite)
-            entry: uv run pytest
+            # screen_metrics asks screeninfo for the monitors at import, which needs an
+            # X display; a push from a shell without one (ssh, a second machine) runs
+            # the suite on a throwaway Xvfb, as CI does.
+            entry: >-
+              bash -c 'if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null;
+              then exec xvfb-run -a uv run pytest; else exec uv run pytest; fi'
             language: system
             pass_filenames: false
             always_run: true
