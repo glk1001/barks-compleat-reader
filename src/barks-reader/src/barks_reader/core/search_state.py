@@ -20,7 +20,7 @@ from enum import StrEnum, auto
 
 from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import Combine
-from barks_fantagraphics.tag_query import TagSelection
+from barks_fantagraphics.tag_query import TagSelection, range_text
 
 
 @dataclass
@@ -61,7 +61,7 @@ class WordBasket:
 
     def flip(self) -> Combine:
         """Switch between ALL and ANY, and return the new choice."""
-        self.combine = Combine.ANY if self.combine is Combine.ALL else Combine.ALL
+        self.combine = self.combine.flipped()
         return self.combine
 
     def clear(self) -> None:
@@ -149,7 +149,7 @@ class TagBasket:
 
     def flip(self) -> Combine:
         """Switch between ALL and ANY, and return the new choice."""
-        self.combine = Combine.ANY if self.combine is Combine.ALL else Combine.ALL
+        self.combine = self.combine.flipped()
         return self.combine
 
     def clear(self) -> None:
@@ -208,8 +208,8 @@ class EraChoice:
 
     @staticmethod
     def label_of(years: tuple[int, int]) -> str:
-        """Return a range's chip label: ``"1951-54"``."""
-        return f"{years[0]}-{years[1] % 100:02d}"
+        """Return a range's chip label, as it would be typed: ``"1951-54"``."""
+        return range_text(years, years=True)
 
     @property
     def value(self) -> str:

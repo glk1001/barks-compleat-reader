@@ -116,11 +116,11 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
   `find_word_set`, `suggest_words`, `get_tags_matching`, `titles_for_tag_selection` and
   `parse_tag_query`.
 - `barks_reader/core/reader_formatter.py`: add `mark_terms_in_text(terms, …)`, one alternation
-  regex with the longest term first so tags never nest. `mark_phrase_in_text` wraps it. A
-  highlight is a whole word (decided in phase 7, for both): an apostrophe, hyphen or soft
-  hyphen joining letters makes one word, as in the index. Over 10,665 real bubbles found by
-  600 sampled words, it missed one highlight that substring matching made (a pun whose
-  lettering hyphenates "demon" into a longer word).
+  regex with the longest term first so tags never nest; `mark_phrase_in_text` wrapped it for
+  one term until nothing but tests called it. A highlight is a whole word (decided in phase
+  7): an apostrophe, hyphen or soft hyphen joining letters makes one word, as in the index.
+  Over 10,665 real bubbles found by 600 sampled words, it missed one highlight that substring
+  matching made (a pun whose lettering hyphenates "demon" into a longer word).
 - `barks_reader/core/search_state.py` (new): `WordBasket`, `TagBasket` (include → exclude →
   removed) and `EraChoice`.
 - `barks_reader/ui/index_screen.py`: the popup takes `highlight_terms=None`, so the speech index

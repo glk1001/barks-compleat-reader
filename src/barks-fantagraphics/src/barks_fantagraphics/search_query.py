@@ -186,6 +186,10 @@ class Combine(StrEnum):
     ALL = auto()
     ANY = auto()
 
+    def flipped(self) -> Combine:
+        """Return the other choice: ANY for ALL, ALL for ANY."""
+        return Combine.ANY if self is Combine.ALL else Combine.ALL
+
 
 def query_from_words(words: list[str], combine: Combine) -> QueryNode | None:
     """Return the query for words picked from the list: each exact, all or any of them.

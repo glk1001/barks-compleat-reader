@@ -803,7 +803,7 @@ assertion, so writing a test for it would only add brittleness.
 | `reader_utils.get_paths_from_directory` ×2 | `.replace("\\", "/")` is a Windows-only path; unreachable on Linux/macOS. |
 | `reader_utils.get_paths_from_zip` (mode arg) | `ZipFile(p, "r")` → `ZipFile(p)`; `"r"` **is** the default. Truly equivalent. |
 | `reader_utils.read_text_paragraphs` (`rstrip(" ")` charset) | Distinguishing it needs a line ending in the literal `X` mutmut injects. |
-| `reader_formatter.mark_phrase_in_text` ×2 | `\xad` → `\xAD` in a regex — same character, same pattern. |
+| `reader_formatter._term_pattern` ×2 | `\xad` → `\xAD` in a regex — same character, same pattern. |
 | `reader_formatter.get_formatted_payment_info` | `datetime.now(UTC)` → `datetime.now(None)`; only the `.year` is used. |
 | `reader_formatter.escape_editorial_brackets` (`last = None`) | `text[None:n]` slices identically to `text[0:n]`. |
 | `reader_formatter.get_fitted_title_with_page_nums` ×5 | The `len_combined` bookkeeping after an `"A "`/`"The "` trim is unobservable: that branch only runs when the trim alone makes it fit, so every later `>` test is False regardless of the value. The second `>` → `>=` is likewise unreachable, since at equality `max_title_len == len(title_str)` and `textwrap.shorten` is a no-op. |

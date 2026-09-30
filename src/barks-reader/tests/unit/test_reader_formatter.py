@@ -140,30 +140,34 @@ def test_get_formatted_payment_info(mock_datetime: MagicMock, mock_inflate: Magi
     mock_inflate.assert_called_with(100.0, 1950)
 
 
-def test_mark_phrase_in_text() -> None:
+def _mark_one(term: str, target_text: str, start_tag: str, end_tag: str) -> str:
+    return reader_formatter.mark_terms_in_text([term], target_text, start_tag, end_tag)
+
+
+def test_mark_one_term_in_text() -> None:
     target = "Hello Donald Duck world"
     phrase = "Donald Duck"
-    res = reader_formatter.mark_phrase_in_text(phrase, target, "<b>", "</b>")
+    res = _mark_one(phrase, target, "<b>", "</b>")
     assert res == "Hello <b>Donald Duck</b> world"
 
     # Test with newline in target
     target_nl = "Hello Donald\nDuck world"
-    res_nl = reader_formatter.mark_phrase_in_text(phrase, target_nl, "<b>", "</b>")
+    res_nl = _mark_one(phrase, target_nl, "<b>", "</b>")
     assert res_nl == "Hello <b>Donald\nDuck</b> world"
 
     # Test with soft hyphen
     target_sh = "Hello Donald\u00ad\nDuck world"
-    res_sh = reader_formatter.mark_phrase_in_text(phrase, target_sh, "<b>", "</b>")
+    res_sh = _mark_one(phrase, target_sh, "<b>", "</b>")
     assert res_sh == "Hello <b>Donald\xad\nDuck</b> world"
 
 
-def test_mark_phrase_in_text_word_hyphenated_internally() -> None:
+def test_mark_one_term_in_text_word_hyphenated_internally() -> None:
     """A single word hyphenated inside itself (soft hyphen) is still matched.
 
     Regression: the word "Moneytubs" stored with an internal soft hyphen (and an
     optional wrap newline) must still be highlighted.
     """
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     shy = SOFT_HYPHEN
 
     # Soft hyphen with a line break inside the word.
@@ -186,48 +190,48 @@ def test_mark_phrase_in_text_word_hyphenated_internally() -> None:
     )
 
 
-def test_mark_phrase_in_text_does_not_cross_word_boundaries() -> None:
+def test_mark_one_term_in_text_does_not_cross_word_boundaries() -> None:
     """Intra-word breaks are soft-hyphen only, so a match can't span a real space/newline.
 
     "cat one" wrapped at the space (its space became a newline) must not match "atone".
     """
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     assert func("atone", "the cat\none day", "<b>", "</b>") == "the cat\none day"
 
 
-def test_mark_phrase_in_text_highlights_inside_emphasis() -> None:
+def test_mark_one_term_in_text_highlights_inside_emphasis() -> None:
     """A word that is bold in the art still gets highlighted, tags kept around it."""
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     assert func("sharp", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]<m>SHARP</m>[/b]"
 
 
-def test_mark_phrase_in_text_never_marks_inside_markup() -> None:
+def test_mark_one_term_in_text_never_marks_inside_markup() -> None:
     """The search must not reach into a tag or an escape sequence.
 
     Wrapping the "b" of "[b]" or the "amp" of "&amp;" produces a tag Kivy cannot
     parse, so the reader would show broken text instead of the line. Both are
     search terms a user could plausibly type.
     """
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     assert func("b", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]SHARP[/b]"
     assert func("amp", "GOLDSTEIN &amp; CO.", "<m>", "</m>") == "GOLDSTEIN &amp; CO."
     assert func("bl", "&bl;Chinese Characters&br;", "<m>", "</m>") == "&bl;Chinese Characters&br;"
 
 
-def test_mark_phrase_in_text_phrase_does_not_span_a_tag() -> None:
+def test_mark_one_term_in_text_phrase_does_not_span_a_tag() -> None:
     """The accepted cost of confining the match to lettering: a missed highlight.
 
     Highlighting "really sharp" across the tag would mean mapping offsets over
     the markup, which is exactly what inline markup was adopted to avoid. A
     missing highlight is visible and harmless; a mangled tag is neither.
     """
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     assert func("really sharp", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]SHARP[/b]"
 
 
 def test_a_highlight_is_a_whole_word() -> None:
     """A term never lights up inside a longer word: the index's words are whole words."""
-    func = reader_formatter.mark_phrase_in_text
+    func = _mark_one
     assert func("gold", "GOLD IN THE GOLDEN MINE", "<m>", "</m>") == (
         "<m>GOLD</m> IN THE GOLDEN MINE"
     )
@@ -796,18 +800,16 @@ class TestReaderFormatterClass:
         assert res == ""
 
 
-def test_mark_phrase_matches_a_compound_broken_at_its_real_hyphen() -> None:
+def test_mark_one_term_matches_a_compound_broken_at_its_real_hyphen() -> None:
     r"""A compound lettered as "NEVER-\nNEVER" is still the phrase, and is highlighted."""
     text = "DEEP\nIN\nTHE\nNEVER-\nNEVER!"
 
-    marked = reader_formatter.mark_phrase_in_text("never-never", text, "<", ">")
+    marked = _mark_one("never-never", text, "<", ">")
 
     assert marked == "DEEP\nIN\nTHE\n<NEVER-\nNEVER>!"
 
 
-def test_mark_phrase_still_matches_an_unbroken_compound() -> None:
-    marked = reader_formatter.mark_phrase_in_text(
-        "never-never", "BUSH OF\nNEVER-NEVER\nLAND!", "<", ">"
-    )
+def test_mark_one_term_still_matches_an_unbroken_compound() -> None:
+    marked = _mark_one("never-never", "BUSH OF\nNEVER-NEVER\nLAND!", "<", ">")
 
     assert marked == "BUSH OF\n<NEVER-NEVER>\nLAND!"

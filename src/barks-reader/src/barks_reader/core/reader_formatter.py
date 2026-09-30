@@ -324,14 +324,6 @@ def mark_terms_in_text(terms: Iterable[str], target_text: str, start_tag: str, e
     )
 
 
-def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
-    """Wrap every whole-word occurrence of `phrase` in start...end tags.
-
-    See `mark_terms_in_text`, which this is for a single word or phrase.
-    """
-    return mark_terms_in_text([phrase], target_text, start_tag, end_tag)
-
-
 TITLE_PAGE_NUM_SEPARATOR_STR = ", "
 LEN_PAGE_NUM_SEPARATOR_STR = len(TITLE_PAGE_NUM_SEPARATOR_STR)
 
