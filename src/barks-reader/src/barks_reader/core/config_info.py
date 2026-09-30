@@ -96,8 +96,9 @@ def get_app_exe_dir() -> Path:
                 return parent.parent
         return exe_path.parent
 
-    main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
-    assert (main_script_dir / "main.py").is_file()
+    # The nearest directory up holding main.py, not a fixed depth: mutmut runs a copy
+    # of this module from a deeper folder (src/barks-reader/mutants/src/...).
+    main_script_dir = next(p for p in Path(__file__).parents if (p / "main.py").is_file())
     return main_script_dir.parent
 
 
