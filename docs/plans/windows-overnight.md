@@ -229,8 +229,19 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   ("Bubbleweight Champ not in Fanta info"), a title in the index with no Fantagraphics
   volume at all, whose tap rightly opens the volume-not-available popup: the test took
   the first title on screen, which depends on the window. Fixed in `test_taps.py` (only
-  titles with a volume are candidates); one wanted a wiki section the laptop's
-  `Reader Files` copy lacks.
+  titles with a volume are candidates); and the wiki tree test landed on a page, not a
+  section, because the wiki opened on the user's last page: a session file left in the
+  data dir from before it moved into the profile, which the app copies into any profile
+  with none, so into every scratch one. Fixed in the harness
+  (`block_legacy_wiki_session`); the leftover moved to `~\barks-reader\old\`. (The
+  laptop's wiki copy was also stale, 804 pages, and was re-exported: see below.)
+- **Then the whole suite passed**, 2026-09-30 14:00: 98 passed, none skipped (the
+  prebuilt-archives test runs now the comics are there), 20 minutes.
+- **barks-wiki's `export_reader_wiki.py` writes CRLF on Windows** (text written without
+  `newline="\n"`), and a clone under `core.autocrlf=true` is CRLF too, so on Windows every
+  page differs from the Linux export and `check_wiki_copy.py` calls an LF copy stale.
+  Here the clone has `core.autocrlf=false` and the export's output was put back to LF.
+  barks-wiki is read-only from here: raise it there.
 - **The soak**, and then `test_a_doubled_volume_is_fatal...` every time: the blank-frame
   check failed drawn frames. It cropped the window at its screen position (792, 10) out
   of the capture, as out of Linux's whole-screen one, but the Windows probe captures the

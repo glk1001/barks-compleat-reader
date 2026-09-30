@@ -26,6 +26,8 @@ from typing import TYPE_CHECKING
 import gui_driver as gd
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.reader_settings import READER_FILES_DIR, WIKI_BUNDLE_SUBDIR
+from barks_reader.core.wiki_integration import wiki_session_path
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -194,6 +196,39 @@ def app_data_dir() -> Path | None:
             )
             value = found[1] if found else None
     return Path(os.path.expandvars(value)) if value else None
+
+
+def block_legacy_wiki_session(profile: Path) -> list[Path]:
+    """Keep a machine's old wiki resume point out of a scratch profile; return what was written.
+
+    The wiki's session file moved from the app data dir into the profile, and the
+    app copies one left in the old place into any profile that has none for its
+    bundle (``migrate_wiki_session``). A scratch profile never has one, so every
+    boot on a machine with such a leftover opened the wiki on the user's last
+    page, not its home page, and a test walking the tree from the top walked
+    from there. An empty session here is one already present to the app and no
+    session to the viewer (``load_session_state``): the home page, as on a
+    machine with no leftover, where this writes nothing.
+
+    Args:
+        profile: The scratch profile the app is about to boot from.
+
+    """
+    data_dir = app_data_dir()
+    if data_dir is None:
+        return []
+    bundles = [data_dir / READER_FILES_DIR / WIKI_BUNDLE_SUBDIR]
+    with contextlib.suppress(configparser.Error):
+        live = read_ini_value(profile / "barks-reader.ini", "wiki_bundle_dir").strip()
+        if live:
+            bundles.append(Path(os.path.expandvars(live)).expanduser())
+    written: list[Path] = []
+    for bundle in bundles:
+        target = wiki_session_path(profile, bundle)
+        if wiki_session_path(data_dir, bundle).is_file() and not target.exists():
+            target.write_text("{}\n", encoding="utf-8")
+            written.append(target)
+    return written
 
 
 # The app's own log, under its config dir (config_info.setup_loguru).
@@ -481,6 +516,7 @@ class AppBoot:
         assert not self.booted, "one boot per test - navigate from where you are instead"
         if ini:
             apply_ini_overrides(self.scratch / "barks-reader.ini", ini)
+        block_legacy_wiki_session(self.scratch)
         if not history:
             (self.scratch / "barks-reader-history.json").write_text(
                 '{"version": 1, "events": []}\n', encoding="utf-8"

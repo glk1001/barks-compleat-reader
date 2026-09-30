@@ -30,6 +30,8 @@ import gui_driver as gd  # noqa: E402
 from barks_gui import expected, harness, logs, memory, persisted, shots, timings  # noqa: E402
 from barks_reader.core import log_markers as markers  # noqa: E402
 from barks_reader.core.memory_census import MemoryCensus  # noqa: E402
+from barks_reader.core.wiki_integration import wiki_session_path  # noqa: E402
+from okf_reader.core.session import load_session_state  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -615,6 +617,59 @@ class TestAppDataDir:
         monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
         monkeypatch.setattr(harness, "REPO_ROOT", tmp_path)
         assert harness.app_data_dir() is None
+
+
+class TestBlockLegacyWikiSession:
+    """A machine's old wiki session, left in the data dir, never reaches a scratch profile."""
+
+    @staticmethod
+    def _dirs(tmp_path: Path, live_bundle: str = "") -> tuple[Path, Path, Path]:
+        data, profile = tmp_path / "data", tmp_path / "profile"
+        bundle = data / "Reader Files" / "Carl Barks Wiki"
+        bundle.mkdir(parents=True)
+        profile.mkdir()
+        (profile / "barks-reader.ini").write_text(
+            f"[Barks Reader]\nwiki_bundle_dir = {live_bundle}\n", encoding="utf-8"
+        )
+        return data, profile, bundle
+
+    def test_a_leftover_is_blocked_by_an_empty_session(self, tmp_path: Path) -> None:
+        data, profile, bundle = self._dirs(tmp_path)
+        wiki_session_path(data, bundle).write_text('{"page": "concept/x.md"}', encoding="utf-8")
+        with patch.object(harness, "app_data_dir", return_value=data):
+            written = harness.block_legacy_wiki_session(profile)
+        target = wiki_session_path(profile, bundle)
+        assert written == [target]
+        # Present to the app (no migration), no session to the viewer (the home page).
+        assert target.read_text(encoding="utf-8") == "{}\n"
+        assert load_session_state(target, bundle) is None
+
+    def test_the_live_bundle_is_covered_too(self, tmp_path: Path) -> None:
+        live = tmp_path / "okf"
+        live.mkdir()
+        data, profile, _ = self._dirs(tmp_path, str(live))
+        wiki_session_path(data, live).write_text('{"page": "index.md"}', encoding="utf-8")
+        with patch.object(harness, "app_data_dir", return_value=data):
+            assert harness.block_legacy_wiki_session(profile) == [wiki_session_path(profile, live)]
+
+    def test_nothing_is_written_without_a_leftover(self, tmp_path: Path) -> None:
+        data, profile, _ = self._dirs(tmp_path)
+        with patch.object(harness, "app_data_dir", return_value=data):
+            assert harness.block_legacy_wiki_session(profile) == []
+        assert list(profile.glob("okf-reader-session-*.json")) == []
+
+    def test_a_session_the_profile_has_is_kept(self, tmp_path: Path) -> None:
+        data, profile, bundle = self._dirs(tmp_path)
+        wiki_session_path(data, bundle).write_text("{}", encoding="utf-8")
+        own = wiki_session_path(profile, bundle)
+        own.write_text('{"page": "concept/mine.md"}', encoding="utf-8")
+        with patch.object(harness, "app_data_dir", return_value=data):
+            assert harness.block_legacy_wiki_session(profile) == []
+        assert own.read_text(encoding="utf-8") == '{"page": "concept/mine.md"}'
+
+    def test_no_data_dir_is_nothing_to_do(self, tmp_path: Path) -> None:
+        with patch.object(harness, "app_data_dir", return_value=None):
+            assert harness.block_legacy_wiki_session(tmp_path) == []
 
 
 class TestReadsPersisted:
