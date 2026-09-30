@@ -14,11 +14,13 @@ from .barks_tags import (
 )
 from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO
 from .comic_issues import Issues
+from .search_query import Combine
 from .search_terms import SUBSTRING_MIN_CHARS
 from .tag_query import TagMatch
 
 if TYPE_CHECKING:
     from .barks_titles import Titles
+    from .tag_query import TagSelection
 
 PREFIX_LEN = 2
 
@@ -135,6 +137,35 @@ class BarksTitleSearch:
                 titles.update(BARKS_TAGGED_TITLES.get(tag, []))
             return len(titles)
         return len(BARKS_TAGGED_TITLES.get(item, []))
+
+    @staticmethod
+    def get_titles_for_selection(selection: TagSelection) -> list[Titles]:
+        """Return the stories a tag selection lists, in chronological order.
+
+        Those every included tag tags (ALL) or any does (ANY), less those any
+        excluded tag tags. A group tags every story its members tag. Nothing is
+        listed without an included tag, and a name that is no tag tags nothing.
+
+        Args:
+            selection: The tags, by name or alias, in any case.
+
+        Returns:
+            The stories.
+
+        """
+        included = [
+            set(BarksTitleSearch.get_titles_from_alias_tag(n.lower())[1])
+            for n in selection.included
+        ]
+        if not included:
+            return []
+        if selection.combine is Combine.ALL:
+            titles = set.intersection(*included)
+        else:
+            titles = set.union(*included)
+        for name in selection.excluded:
+            titles -= set(BarksTitleSearch.get_titles_from_alias_tag(name.lower())[1])
+        return sorted(titles)
 
     @staticmethod
     def get_titles_from_alias_tag(

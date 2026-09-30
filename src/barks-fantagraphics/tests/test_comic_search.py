@@ -1,5 +1,5 @@
 # ruff: noqa: SLF001
-# cspell:ignore monney
+# cspell:ignore clasics monney
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from barks_fantagraphics.search_ports import (
     SearchIndexUnavailableError,
 )
 from barks_fantagraphics.search_query import AnyTerm
+from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
 from barks_fantagraphics.title_search import BARKS_ISSUE_DICT
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
@@ -232,6 +233,27 @@ class TestWordQuery:
 
     def test_suggest_words(self) -> None:
         assert _search_with(self._fake()).suggest_words("monney") == ["money"]
+
+
+class TestTagSelection:
+    def test_a_typed_selection_s_names_are_checked(self) -> None:
+        search = _search_with(InMemoryFullTextSearch())
+        parsed = search.parse_tag_query("andes + the classics")
+        assert parsed.selection == TagSelection(("andes", "the classics"))
+
+    def test_a_name_that_is_no_tag_is_an_error_naming_the_closest(self) -> None:
+        parsed = _search_with(InMemoryFullTextSearch()).parse_tag_query("andes + clasics")
+        assert parsed.selection is None
+        assert parsed.error == 'No tag is called "clasics". Closest: the classics.'
+
+    def test_bad_syntax_is_the_parser_s_error(self) -> None:
+        parsed = _search_with(InMemoryFullTextSearch()).parse_tag_query("a + b | c")
+        assert parsed.error == "Use + or | between tags, not both."
+
+    def test_the_stories_of_a_selection(self) -> None:
+        search = _search_with(InMemoryFullTextSearch())
+        titles = search.titles_for_tag_selection(TagSelection(("andes",)))
+        assert Titles.LOST_IN_THE_ANDES in titles
 
 
 class TestPassThroughs:

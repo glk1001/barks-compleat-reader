@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from .search_evaluate import WordQueryResult
     from .search_filters import StoryFilter
     from .search_ports import AlphaSplitTerms, CorpusTextTotals, FullTextSearchPort
-    from .tag_query import TagMatch
+    from .tag_query import ParsedTagQuery, TagMatch, TagSelection
     from .title_search import BarksTitleSearch
     from .whoosh_search_engine import TitleDict
 
@@ -204,6 +204,40 @@ class ComicSearch:
 
         """
         return self._get_title_search().get_tags_matching(text)
+
+    def parse_tag_query(self, text: str) -> ParsedTagQuery:
+        """Read a typed tag selection (``scrooge + gyro -christmas stories``), checking its names.
+
+        See ``tag_query.parse_tag_query``. A name that is no tag's is an error naming
+        the closest tags.
+
+        Args:
+            text: What was typed.
+
+        Returns:
+            The selection, by the names typed; or why the text is not one.
+
+        """
+        from .search_filters import closest_tags  # noqa: PLC0415
+        from .tag_query import ParsedTagQuery as _ParsedTagQuery  # noqa: PLC0415
+        from .tag_query import parse_tag_query  # noqa: PLC0415
+
+        parsed = parse_tag_query(text)
+        if parsed.selection is None:
+            return parsed
+        ts = self._get_title_search()
+        for name in (*parsed.selection.included, *parsed.selection.excluded):
+            if ts.get_titles_from_alias_tag(name)[0] is None:
+                closest = closest_tags(name)
+                notice = f'No tag is called "{name}".'
+                if closest:
+                    notice += " Closest: " + ", ".join(closest) + "."
+                return _ParsedTagQuery(error=notice)
+        return parsed
+
+    def titles_for_tag_selection(self, selection: TagSelection) -> list[Titles]:
+        """Return the stories a tag selection lists; see ``get_titles_for_selection``."""
+        return self._get_title_search().get_titles_for_selection(selection)
 
     def get_tag_title_count(self, item: Tags | TagGroups) -> int:
         """Return how many stories a tag tags; for a group, every story its members tag."""

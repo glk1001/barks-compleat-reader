@@ -8,6 +8,8 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_issues import Issues
+from barks_fantagraphics.search_query import Combine
+from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.title_search import BarksTitleSearch
 
 
@@ -175,3 +177,40 @@ class TestBarksTitleSearch:
 
         titles = BarksTitleSearch.get_titles_from_issue_num("US 10")
         assert titles == [Titles.FABULOUS_PHILOSOPHERS_STONE_THE, Titles.HEIRLOOM_WATCH]
+
+
+class TestTitlesForSelection:
+    """The stories picked tags list together: ALL, ANY, and some left out."""
+
+    @staticmethod
+    def _titles(name: str) -> set[Titles]:
+        return set(BarksTitleSearch.get_titles_from_alias_tag(name)[1])
+
+    def test_all_is_the_stories_every_tag_tags(self) -> None:
+        both = BarksTitleSearch.get_titles_for_selection(TagSelection(("the classics", "andes")))
+        assert set(both) == self._titles("the classics") & self._titles("andes")
+        assert both
+        assert both == sorted(both)
+
+    def test_any_is_the_stories_either_tags(self) -> None:
+        either = BarksTitleSearch.get_titles_for_selection(
+            TagSelection(("andes", "africa"), (), Combine.ANY)
+        )
+        assert set(either) == self._titles("andes") | self._titles("africa")
+
+    def test_an_excluded_tag_leaves_its_stories_out(self) -> None:
+        titles = BarksTitleSearch.get_titles_for_selection(
+            TagSelection(("the classics",), ("andes",))
+        )
+        assert set(titles) == self._titles("the classics") - self._titles("andes")
+        assert titles
+
+    def test_names_are_matched_in_any_case(self) -> None:
+        upper = BarksTitleSearch.get_titles_for_selection(TagSelection(("Andes",)))
+        assert set(upper) == self._titles("andes")
+
+    def test_nothing_is_listed_without_an_included_tag(self) -> None:
+        assert BarksTitleSearch.get_titles_for_selection(TagSelection((), ("andes",))) == []
+
+    def test_a_name_that_is_no_tag_tags_nothing(self) -> None:
+        assert BarksTitleSearch.get_titles_for_selection(TagSelection(("no such tag",))) == []

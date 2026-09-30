@@ -11,7 +11,8 @@ from barks_fantagraphics.search_query import (
     parse_query,
     query_from_words,
 )
-from barks_reader.core.search_state import WordBasket
+from barks_fantagraphics.tag_query import TagSelection
+from barks_reader.core.search_state import TagBasket, TagState, WordBasket
 
 
 def test_a_word_is_picked_then_put_back_by_the_same_toggle() -> None:
@@ -62,3 +63,53 @@ def test_a_picked_term_of_several_words_runs_as_its_phrase() -> None:
     """Quoted, it parses as the phrase the evaluator makes of an exact term of several words."""
     parsed = parse_query(WordBasket(["gold", "don quixote"]).query_text())
     assert parsed.root == And((Word("gold", exact=True), Phrase(("don", "quixote"))))
+
+
+def test_a_tag_is_picked_to_include_then_put_back_by_the_same_toggle() -> None:
+    basket = TagBasket()
+    assert basket.toggle("Scrooge") is True
+    assert basket.tags == {"Scrooge": TagState.INCLUDED}
+    assert ("Scrooge" in basket, len(basket)) == (True, 1)
+    assert basket.toggle("Scrooge") is False
+    assert not basket
+
+
+def test_a_picked_tag_cycles_included_left_out_put_back() -> None:
+    basket = TagBasket()
+    basket.toggle("Gyro")
+    assert basket.cycle("Gyro") is TagState.EXCLUDED
+    assert basket.cycle("Gyro") is None
+    assert "Gyro" not in basket
+    assert basket.cycle("Gyro") is None  # not picked: nothing to do
+
+
+def test_the_toggle_puts_back_a_left_out_tag_too() -> None:
+    basket = TagBasket()
+    basket.toggle("Gyro")
+    basket.cycle("Gyro")
+    assert basket.toggle("Gyro") is False
+
+
+def test_the_selection_keeps_the_order_picked_and_the_mode() -> None:
+    basket = TagBasket()
+    for tag in ("Scrooge", "Christmas", "Gyro"):
+        basket.toggle(tag)
+    basket.cycle("Christmas")
+    basket.flip()
+    assert basket.selection() == TagSelection(("Scrooge", "Gyro"), ("Christmas",), Combine.ANY)
+    basket.clear()
+    assert (basket.tags, basket.combine) == ({}, Combine.ALL)
+
+
+def test_a_typed_selection_fills_the_basket_with_the_labels_known() -> None:
+    basket = TagBasket()
+    basket.toggle("Donald")
+    basket.fill(
+        TagSelection(("scrooge", "gyro"), ("andes",), Combine.ANY), labels={"scrooge": "Scrooge"}
+    )
+    assert basket.tags == {
+        "Scrooge": TagState.INCLUDED,
+        "gyro": TagState.INCLUDED,
+        "andes": TagState.EXCLUDED,
+    }
+    assert basket.combine is Combine.ANY

@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-9 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-10 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -16,9 +16,9 @@
 > - Phase 7 multi-term highlighting: DONE 2026-09-30, 797eab85
 > - Phase 8 typed queries in the word box: DONE 2026-09-30, bc8968c7
 > - Phase 8a extract ChipRow: DONE 2026-09-30, 26abb3e3
-> - Phase 9 word chip list: DONE 2026-09-30 ("feat(search): a word's + picks it to search with
->   others, all in one story or any")
-> - Phase 10 tag chip list: TODO
+> - Phase 9 word chip list: DONE 2026-09-30, 61e9f5a1
+> - Phase 10 tag chip list: DONE 2026-09-30 ("feat(search): tags picked with their + combine,
+>   ALL or ANY, some left out; typed too")
 > - Phase 11 era filter: TODO
 > - Phase 12 word search limited to tagged stories: TODO
 
@@ -176,6 +176,14 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
 10. **Tag chip list.** Same pattern, with include/exclude cycling and ALL/ANY. Typed
     `a + b | c -d` fills the chips. Markers `TAG_BASKET_CHANGED`, `TAG_BASKET_MODE`,
     `TAG_COMBINED_RESULTS`. GUI test.
+    As built (choices made 2026-09-30): a tag row's `+` includes it (`–` again takes it out);
+    Enter on a picked tag in the row under the box cycles included → "not" → removed; only
+    left-out tags list nothing, with a prompt; typed text uses `+`/`,` (ALL) or `|` (ANY), not
+    both (a notice says so), a leading `-` leaves a tag out, and Return replaces the picked tags
+    (offered as a "Combine:" chip; an unknown name's notice names the closest tags). Also
+    `TAG_QUERY_NOTICE`. `TagSelection`/`parse_tag_query` in `tag_query.py`; the stories come from
+    `BarksTitleSearch.get_titles_for_selection` (not `tag_query`, which `title_search` imports).
+    The member indent halved to 24dp to make room for the `+`.
 11. **Era filter.** A single-choice ChipRow in the right panel for both Tag and Word modes;
     `year:`/`vol:` qualifiers. Marker `ERA_FILTER_SET`. GUI test that the era filter narrows tag
     results.

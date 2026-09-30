@@ -264,6 +264,14 @@ WORD_SUGGESTIONS: Final = 'Word query: for "{word}", suggested {spellings}.'
 # and how they combine (ALL or ANY); the basket then runs as a query (WORD_QUERY_RUN).
 WORD_BASKET_CHANGED: Final = "Word basket: {count} picked ({mode}): {words}."
 WORD_BASKET_MODE: Final = "Word basket: combining {mode}."
+# The tags picked with a tag's + (or typed, "scrooge + gyro -christmas"), after each
+# change, as the selection would be typed; how they combine; and the stories they list
+# together. TAG_TITLES_LISTED stays the line for one tag picked alone.
+TAG_BASKET_CHANGED: Final = "Tag basket: {count} picked ({mode}): {tags}."
+TAG_BASKET_MODE: Final = "Tag basket: combining {mode}."
+TAG_COMBINED_RESULTS: Final = 'Tag search: combined "{tags}" list {count} stories.'
+# Why typed tags could not be combined: a name that is no tag, + and | both used.
+TAG_QUERY_NOTICE: Final = "Tag query notice: {notice}"
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'

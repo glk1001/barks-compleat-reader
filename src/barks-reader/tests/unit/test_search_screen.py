@@ -12,9 +12,9 @@ from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
 from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
-from barks_fantagraphics.tag_query import TagMatch
+from barks_fantagraphics.tag_query import ParsedTagQuery, TagMatch, TagSelection
 from barks_reader.core import log_markers
-from barks_reader.core.search_state import WordBasket
+from barks_reader.core.search_state import TagBasket, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.search_chip_row import ChipRow
@@ -25,6 +25,8 @@ from barks_reader.ui.search_screen import (
     _QueryRowButton,
     _SearchResultButton,
     _SuggestionButton,
+    _TagQueryChip,
+    _TagRow,
     _WordRow,
 )
 
@@ -46,7 +48,12 @@ def _make_bare_screen() -> SearchScreen:
     screen._word_basket = WordBasket()
     screen._basket_row = ChipRow(MagicMock(), _live_chip, screen._on_basket_chip_picked)
     screen._basket_results = False
-    screen._nav_word_list_sub = "word"
+    screen._nav_list_sub = "word"
+    # The picked tags: none, likewise.
+    screen._tag_basket = TagBasket()
+    screen._tag_basket_row = ChipRow(MagicMock(), _live_chip, screen._on_tag_basket_chip_picked)
+    screen._tag_basket_results = False
+    screen._tag_box_query = ""
     return screen
 
 
@@ -514,20 +521,20 @@ class TestWordBasket:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_word_list_sub == "plus"
+        assert screen._nav_list_sub == "plus"
         assert 'Nav focus on _PlusButton "+".' in loguru_sink
 
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert screen._word_basket.words == ["gold"]
-        assert screen._nav_word_list_sub == "plus"  # stays, to put it back or move on
+        assert screen._nav_list_sub == "plus"  # stays, to put it back or move on
 
         assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert screen._nav_word_list_sub == "word"
+        assert screen._nav_list_sub == "word"
 
     def test_down_keeps_to_the_plus_column(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_RIGHT)
         screen.handle_key(search_screen.KEY_DOWN)
-        assert (screen._nav_focused_chip_idx, screen._nav_word_list_sub) == (1, "plus")
+        assert (screen._nav_focused_chip_idx, screen._nav_list_sub) == (1, "plus")
         screen.handle_key(search_screen.KEY_ENTER)
         assert screen._word_basket.words == ["golden"]
 
@@ -537,7 +544,7 @@ class TestWordBasket:
         screen.handle_key(search_screen.KEY_RIGHT)
         with patch.object(screen, "_draw_result_focus"):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._nav_word_list_sub) == ("results", "word")
+        assert (screen._nav_focus_area, screen._nav_list_sub) == ("results", "word")
 
     def test_up_from_the_first_word_is_the_basket_row_when_words_are_picked(
         self, screen: SearchScreen
@@ -645,9 +652,11 @@ class TestTagChips:
     def test_each_chip_shows_its_count_and_keeps_its_name(self, screen: SearchScreen) -> None:
         screen._tag_chip_counts = {"Africa": 17}
         stack = screen._make_main_chip_stack(["Africa"], selected="")
-        [chip] = stack.children
-        assert chip.text == "Africa"  # picked and logged by name
-        assert chip.count_text == "17"
+        [row] = stack.children
+        assert isinstance(row, _TagRow)
+        assert row.chip.text == "Africa"  # picked and logged by name
+        assert row.chip.count_text == "17"
+        assert row.plus_button.text == "+"
 
     def test_listing_a_tag_s_stories_is_logged_with_their_count(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -660,6 +669,208 @@ class TestTagChips:
         ):
             screen._show_tag_titles("Gyro Gearloose")
         assert 'Tag search: "Gyro Gearloose" lists 2 stories.' in loguru_sink
+
+
+def _tag_stack(*labels: str) -> MagicMock:
+    """Return a stand-in tag list stack of a real row per label, as a main chip stack holds."""
+    stack = MagicMock()
+    rows = [
+        _TagRow(search_screen._TagChipButton(text=label), _PlusButton(text="+")) for label in labels
+    ]
+    stack.children = list(reversed(rows))  # Kivy: last first
+    stack.is_member_layout = False
+    return stack
+
+
+class TestTagBasket:
+    """A tag's + picks it; the picked-tags row flips ALL/ANY and steps a tag to left out."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Tag"
+            bare._search = MagicMock()
+            bare._search.titles_for_tag_selection.return_value = ["T1", "T2"]
+            bare._search.get_title_display_strings.return_value = ["Story 1", "Story 2"]
+            bare._search.resolve_tag.side_effect = lambda name: (
+                SimpleNamespace(value=name.title()),
+                [],
+            )
+            bare._tag_titles = []
+            bare.on_search_results_title_changed = None
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            bare._current_tag = None
+            bare._tag_chip_strings = []
+            bare._tag_chip_counts = {}
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "tags"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare.stack = _tag_stack("Scrooge", "Gyro")
+            bare.ids.tag_chips_layout.children = [bare.stack]
+            yield bare
+
+    @staticmethod
+    def _basket_chips(screen: SearchScreen) -> list[MagicMock]:
+        return cast("list[MagicMock]", screen._tag_basket_row.chips)
+
+    def test_a_tags_plus_picks_it_and_lists_the_combined_stories(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(screen, "_populate_title_results") as populate:
+            screen._toggle_tag_basket("Scrooge")
+
+        assert [(c.value, c.text) for c in self._basket_chips(screen)] == [
+            ("", "ALL"),
+            ("Scrooge", "Scrooge"),
+        ]
+        screen._search.titles_for_tag_selection.assert_called_once_with(TagSelection(("Scrooge",)))
+        assert populate.call_args.args[1] == ["Story 1", "Story 2"]
+        assert screen._tag_basket_results
+        assert log_markers.TAG_BASKET_CHANGED.format(count=1, mode="ALL", tags="Scrooge") in (
+            loguru_sink
+        )
+        assert loguru_sink[-1] == log_markers.TAG_COMBINED_RESULTS.format(tags="Scrooge", count=2)
+
+    def test_a_picked_tags_chip_steps_it_to_left_out_then_back(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Scrooge")
+            screen._toggle_tag_basket("Gyro")
+            _press(self._basket_chips(screen)[2])  # Gyro: left out
+            assert self._basket_chips(screen)[2].text == "not Gyro"
+            selection = screen._search.titles_for_tag_selection.call_args.args[0]
+            assert selection == TagSelection(("Scrooge",), ("Gyro",))
+            _press(self._basket_chips(screen)[2])  # and put back
+        assert [c.value for c in self._basket_chips(screen)] == ["", "Scrooge"]
+
+    def test_the_mode_chip_flips_all_and_any(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Scrooge")
+            screen._toggle_tag_basket("Gyro")
+            _press(self._basket_chips(screen)[0])
+        assert self._basket_chips(screen)[0].text == "ANY"
+        assert log_markers.TAG_BASKET_MODE.format(mode="ANY") in loguru_sink
+        assert screen._search.titles_for_tag_selection.call_args.args[0].combine.upper() == "ANY"
+
+    def test_only_left_out_tags_list_nothing_and_say_why(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+            _press(self._basket_chips(screen)[1])
+        added = [c.args[0] for c in screen.ids.tag_title_results_layout.add_widget.call_args_list]
+        assert added[-1].text == "Include a tag to list stories"
+
+    def test_the_plus_shows_what_is_picked(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+        rows = list(reversed(screen.stack.children))
+        assert [r.plus_button.text for r in rows] == ["+", "\u2013"]
+
+    def test_emptying_the_basket_empties_the_results(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+            screen._toggle_tag_basket("Gyro")
+        assert (screen._tag_basket_results, screen._tag_titles) == (False, [])
+
+    def test_typing_keeps_the_combined_stories(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+        screen.ids.tag_title_results_layout.clear_widgets.reset_mock()
+        screen._search.get_tags_matching.return_value = []
+        screen.on_tag_search_text("sc")
+        screen.ids.tag_title_results_layout.clear_widgets.assert_not_called()
+
+    def test_picking_one_tag_alone_ends_the_combined_stories(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+        with patch.object(screen, "_rebuild_tag_chips"), patch.object(screen, "_show_tag_titles"):
+            screen._on_tag_result_selected("Scrooge")
+        assert not screen._tag_basket_results
+
+    def test_clear_empties_the_picked_tags(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+        screen.on_tag_clear()
+        assert (screen._tag_basket.tags, screen._tag_basket_row.chips) == ({}, [])
+
+    # --- typed tags ---
+
+    def test_typed_tags_are_offered_as_one_chip_and_logged_per_keystroke(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen.on_tag_search_text("scrooge + gy")
+        assert screen._tag_box_query == "scrooge + gy"
+        assert log_markers.SEARCH_TAG_RESULTS.format(count=0, text="scrooge + gy") in loguru_sink
+        (stack,) = [c.args[0] for c in screen.ids.tag_chips_layout.add_widget.call_args_list]
+        (chip,) = stack.children
+        assert isinstance(chip, _TagQueryChip)
+        assert chip.text == "Combine:  scrooge + gy"
+        screen._search.get_tags_matching.assert_not_called()
+
+    def test_return_combines_the_typed_tags_in_place_of_the_picked(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._search.parse_tag_query.return_value = ParsedTagQuery(
+            TagSelection(("scrooge",), ("gyro",))
+        )
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Donald")
+            screen._tag_box_query = "scrooge -gyro"
+            with patch.object(screen, "_focus_after_query") as focus:
+                screen.on_search_input_enter()
+        assert [(c.value, c.text) for c in self._basket_chips(screen)] == [
+            ("", "ALL"),
+            ("Scrooge", "Scrooge"),
+            ("Gyro", "not Gyro"),
+        ]
+        focus.assert_called_once_with()
+
+    def test_typed_tags_that_cannot_combine_say_why_under_their_chip(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._search.parse_tag_query.return_value = ParsedTagQuery(error="Use + or |")
+        assert screen._run_tag_query("a + b | c") is False
+        assert log_markers.TAG_QUERY_NOTICE.format(notice="Use + or |") in loguru_sink
+        (stack,) = [c.args[0] for c in screen.ids.tag_chips_layout.add_widget.call_args_list]
+        chip, notice = reversed(stack.children)
+        assert (type(chip), notice.text) == (_TagQueryChip, "Use + or |")
+        assert not screen._tag_basket
+
+    # --- keys ---
+
+    def test_right_moves_to_the_tags_plus_enter_picks_left_goes_back(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_list_sub == "plus"
+        assert 'Nav focus on _PlusButton "+".' in loguru_sink
+        with patch.object(screen, "_populate_title_results"):
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert list(screen._tag_basket.tags) == ["Scrooge"]
+        assert screen.handle_key(search_screen.KEY_LEFT) is True
+        assert screen._nav_list_sub == "word"
+        assert 'Nav focus on _TagChipButton "Scrooge".' in loguru_sink
+
+    def test_up_from_the_first_tag_is_the_picked_tags_row(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Gyro")
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+        with patch.object(screen, "_populate_title_results"):
+            assert screen.handle_key(search_screen.KEY_ENTER) is True  # ALL -> ANY, stays
+        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+        assert screen.handle_key(search_screen.KEY_DOWN) is True  # back to the tag list
+        assert screen._nav_focus_area == "tags"
 
 
 class TestSearchInputEnter:

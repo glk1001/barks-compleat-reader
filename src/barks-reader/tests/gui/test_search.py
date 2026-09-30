@@ -330,10 +330,55 @@ def test_return_on_a_group_opens_its_members_and_again_closes_them(boot: AppBoot
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Up")
     # Return on the open group folds it: its own titles, the focus left on it.
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Return")
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the group's + (it picks tags to combine)
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # the group's titles
     d.key_then_wait(d.FOCUS_MOVED, "Down")
     d.key_then_wait(d.FOCUS_MOVED, "Up")
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Left")  # back to the selected chip
+
+
+COMBINE_QUERY = "gyro"
+
+
+def _combined(d: Driver, **fields: object) -> int:
+    """Return on a tag's + or chip, or in the box: wait for the stories; return their count."""
+    d.key_then_wait(pattern(markers.TAG_COMBINED_RESULTS, **fields), "Return")
+    return int(last_field(d, markers.TAG_COMBINED_RESULTS, "count"))
+
+
+def test_tags_are_combined_and_excluded_by_keyboard(boot: AppBoot) -> None:
+    """A tag's + picks it; two picked list the stories both tag; a picked tag steps to 'not'."""
+    first, second = (m.label for m in expected.tags_matching(COMBINE_QUERY)[:2])
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, COMBINE_QUERY)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first chip
+
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    with d.expect(pattern(markers.TAG_BASKET_CHANGED, count=1)):
+        assert _combined(d, tags=first) == expected.tag_selection_count((first,))
+
+    d.move_focus("Down", pattern=_focus_on("_PlusButton", "+"))  # the second tag's +
+    both = f"{first} + {second}"
+    with d.expect(pattern(markers.TAG_BASKET_CHANGED, count=2, mode="ALL")):
+        count = _combined(d, tags=both)
+    assert count == expected.tag_selection_count((first, second))
+
+    d.move_focus("Up", "Up")  # the first tag's +, then the picked-tags row (on ALL)
+    d.move_focus("Right", pattern=_focus_on("_BasketChipButton", first))
+    d.move_focus("Right", pattern=_focus_on("_BasketChipButton", second))
+    count = _combined(d, tags=f"{first} -{second}")  # the second, left out
+    assert count == expected.tag_selection_count((first,), (second,))
+
+
+def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:
+    """Tags typed with + , | or - make one chip; Return combines them and lists their stories."""
+    first, second = (m.label for m in expected.tags_matching(COMBINE_QUERY)[:2])
+    typed = f"{first.lower()} -{second.lower()}"
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, typed)
+    with d.expect(d.FOCUS_MOVED):  # on the first story they list
+        count = _combined(d, tags=f"{first} -{second}")
+    assert count == expected.tag_selection_count((first,), (second,))
 
 
 def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) -> None:
