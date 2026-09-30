@@ -7,6 +7,8 @@ called, and that summary.txt reads as the Linux run's does.
 
 # ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
+# cspell:ignore PYTHONIOENCODING
+
 from __future__ import annotations
 
 import datetime as dt
