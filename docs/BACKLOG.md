@@ -17,9 +17,11 @@ Found along the way, not yet done:
       arrow key reached the × beside the box, and clearing is also how the picked words/tags
       and the era are reset. Now Right at the end of the box's text is the ×, in every mode
       (Right again, the results).
-- [ ] **Narrow tag panel** — at the GUI tests' 900px window the tag list is ~180px wide; with
-      the + beside each chip, names like "Gyro Gearloose" wrap onto two lines. Rebalance the
-      column widths, or shrink the chip's count margin.
+- [x] **Narrow tag panel** — in the app's tall desktop window (the GUI tests' too) the + beside
+      each tag chip made 44 of the 220 tag names wrap, up from 24. The tag list's column is now
+      40% of the panel (35% in the other modes): 22 wrap. At 1920x1080 and 4K none wraps either
+      way. Trimming the count margin instead was measured too, but a 3-digit count would then
+      touch the name.
 - [ ] **Typed tags with years** — `parse_tag_query` takes names only; `scrooge + year:1950-55`
       is not read (the era row covers it by chip).
 - [ ] **Word-query speed** — an AND of two common words takes ~145ms on the shipped index
