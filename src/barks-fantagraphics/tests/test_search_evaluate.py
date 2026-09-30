@@ -224,6 +224,31 @@ def test_a_word_the_index_holds_brings_no_suggestions_when_the_and_finds_nothing
     assert (result.title_dict, result.suggestions) == ({}, ())
 
 
+def test_every_word_in_no_story_brings_suggestions_though_the_and_stops_at_the_first(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("monney bearz", fake, lexicon)
+    assert result.title_dict == {}
+    assert {s.word for s in result.suggestions} == {"monney", "bearz"}
+    assert result.notices == ('"monney" is in no story.', '"bearz" is in no story.')
+    assert len(fake.bubble_calls) == 1  # the words left are not searched, only looked up
+
+
+def test_a_word_not_searched_after_held_words_still_brings_suggestions(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("helmet coins monney", fake, lexicon)
+    assert {s.word for s in result.suggestions} == {"monney"}
+
+
+def test_a_word_whose_forms_are_held_is_not_in_no_story_when_the_and_finds_nothing(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    # ducked is not in the index, but ducks and ducking are: in stories helmet is not.
+    result = run_query_text("helmet ducked", fake, lexicon)
+    assert (result.title_dict, result.suggestions, result.notices) == ({}, (), ())
+
+
 def test_a_stop_word_is_left_out_of_an_and_with_a_notice(
     fake: InMemoryFullTextSearch, lexicon: TermLexicon
 ) -> None:

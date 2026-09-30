@@ -7,7 +7,8 @@ phrase, a NEAR pair); everything above a leaf is worked out here, by story:
 
 - AND keeps the stories every part found, with each part's bubbles, so each word's
   matches can be shown. Phrases and NEAR pairs, the rarest, run first, and each part
-  searches only the stories found so far; an empty set ends it early.
+  searches only the stories found so far; an empty set ends it early, though a word
+  in no story among the parts left still brings suggestions.
 - OR keeps every story any part found. NOT drops the stories its part found, so it
   needs words beside it in an AND to drop them from.
 - ``tag:``, ``year:`` and ``vol:`` are story filters (``search_filters``), not
@@ -277,6 +278,8 @@ class _Evaluator:
             case Word():
                 return self._eval_word(node, within)
             case Phrase(words):
+                # Each word, not the phrase: the index drops stop words and punctuation,
+                # so "gold mine" finds "GOLD! A MINE", which the phrase would not mark.
                 self._highlight(w.lower() for w in words if w.lower() not in self._stop_words)
                 return self._find(Phrase(tuple(w.lower() for w in words)), within)
             case NearQuery(left, right, distance):
@@ -296,12 +299,15 @@ class _Evaluator:
             within = _narrowed(within, story_filter.candidates)
 
         found: TitleDict | None = None
-        for part in sorted(searched, key=_search_order):
+        ordered = sorted(searched, key=_search_order)
+        for i, part in enumerate(ordered):
             part_found = self._eval(part, within)
             if story_filter is not None:
                 part_found = apply_filter(story_filter, part_found)
             found = part_found if found is None else intersect_titles(found, part_found)
             if not found:
+                for part_left in ordered[i + 1 :]:
+                    self._look_up(part_left)
                 return {}
             within = frozenset(found)
         assert found is not None
@@ -358,11 +364,29 @@ class _Evaluator:
         if not terms:
             return {}
         found = self._find(AnyTerm(terms), within)
-        if not (found or word.exact or word.is_wildcard or self._negated) and (
-            not self._lexicon.contains(lower)
-        ):
+        if not found and self._in_no_story(word, terms):
             self._suggest_for(word.text)
         return found
+
+    def _look_up(self, node: QueryNode) -> None:
+        """Tell of the words in no story in a part an AND did not search, as a search would.
+
+        The index is not searched: a word none of whose forms the index holds is in no
+        story, and a wildcard that matches no word says so.
+        """
+        match node:
+            case Word() if not self._is_stop_word(node):
+                terms = self._terms_of(node)
+                if self._in_no_story(node, terms):
+                    self._suggest_for(node.text)
+            case NearQuery(left, right, _):
+                self._look_up(left)
+                self._look_up(right)
+            case And(parts) | Or(parts):
+                for part in parts:
+                    self._look_up(part)
+            case _:
+                pass
 
     def _eval_near(
         self, left: Word, right: Word, distance: int, within: frozenset[str] | None
@@ -383,6 +407,16 @@ class _Evaluator:
 
     def _is_stop_word(self, word: Word) -> bool:
         return word.text.strip().lower() in self._stop_words
+
+    def _in_no_story(self, word: Word, terms: tuple[str, ...]) -> bool:
+        """Whether a typed word is worth suggestions: the index holds none of its forms.
+
+        Not for a word quoted or picked, a wildcard (which says itself when it matches
+        nothing), or a word under NOT.
+        """
+        if word.exact or word.is_wildcard or self._negated:
+            return False
+        return not any(self._lexicon.contains(t) for t in terms)
 
     def _terms_of(self, word: Word) -> tuple[str, ...]:
         """Return the index terms a word stands for: itself, its forms, or a wildcard's."""
