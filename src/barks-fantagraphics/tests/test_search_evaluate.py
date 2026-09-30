@@ -142,6 +142,12 @@ def test_phrases_run_first_and_each_part_searches_only_the_stories_found(
     ]
 
 
+def test_a_phrase_of_stop_words_only_finds_nothing_as_in_the_index(
+    fake: InMemoryFullTextSearch,
+) -> None:
+    assert fake.find_bubbles(Phrase(("of", "the"))) == {}
+
+
 def test_a_quoted_wildcard_runs_after_the_words_it_is_as_broad_as_any_wildcard(
     fake: InMemoryFullTextSearch, lexicon: TermLexicon
 ) -> None:

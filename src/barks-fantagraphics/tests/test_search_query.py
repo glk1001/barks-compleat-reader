@@ -7,7 +7,9 @@ import pytest
 from barks_fantagraphics.search_query import (
     NEAR_DEFAULT_DISTANCE,
     And,
+    AnyTerm,
     Combine,
+    Near,
     NearQuery,
     Not,
     Or,
@@ -192,6 +194,23 @@ def test_words_picked_from_the_list_are_exact_and_combined() -> None:
     gold, mine = Word("gold", exact=True), Word("mine", exact=True)
     assert query_from_words(["gold", "mine"], Combine.ALL) == And((gold, mine))
     assert query_from_words(["gold", "mine"], Combine.ANY) == Or((gold, mine))
+
+
+@pytest.mark.parametrize(
+    ("lefts", "rights", "near"),
+    [
+        ([1], [3], True),  # two apart, at most two
+        ([3], [1], True),  # either order
+        ([1], [4], False),
+        ([2], [2], False),  # one word is not a pair
+        ([2, 9], [2, 10], True),
+        ([], [1], False),
+    ],
+)
+def test_near_holds_two_different_words_at_most_its_distance_apart(
+    lefts: list[int], rights: list[int], near: bool
+) -> None:
+    assert Near(AnyTerm(("gold",)), AnyTerm(("mine",)), 2).is_near(lefts, rights) is near
 
 
 def test_a_wildcard_word_knows_it_is_one() -> None:

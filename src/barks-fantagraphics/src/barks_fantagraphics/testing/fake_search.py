@@ -162,12 +162,14 @@ def _leaf_matches(leaf: SearchLeaf, tokens: list[str]) -> bool:
         case AnyTerm(terms):
             return any(t in terms for t in tokens)
         case Phrase(words):
+            if not words:  # only stop words: Whoosh's query for it finds nothing
+                return False
             n = len(words)
             return any(tuple(tokens[i : i + n]) == words for i in range(len(tokens) - n + 1))
-        case Near(left, right, distance):
+        case Near(left, right, _):
             lefts = [i for i, t in enumerate(tokens) if t in left.terms]
             rights = [i for i, t in enumerate(tokens) if t in right.terms]
-            return any(i != j and abs(i - j) <= distance for i in lefts for j in rights)
+            return leaf.is_near(lefts, rights)
 
 
 def _filter_by_speaker(found: TitleDict, speaker: str) -> TitleDict:

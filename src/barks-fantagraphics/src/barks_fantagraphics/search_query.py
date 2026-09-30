@@ -138,6 +138,19 @@ class Near:
     right: AnyTerm
     distance: int = NEAR_DEFAULT_DISTANCE
 
+    def is_near(self, lefts: list[int], rights: list[int]) -> bool:
+        """Whether two different words, one from each side, are at most `distance` apart.
+
+        Args:
+            lefts: The positions in a bubble of the left side's terms.
+            rights: The positions of the right side's terms.
+
+        Returns:
+            Whether the bubble holds the pair.
+
+        """
+        return any(i != j and abs(i - j) <= self.distance for i in lefts for j in rights)
+
 
 type SearchLeaf = AnyTerm | Phrase | Near
 

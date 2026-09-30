@@ -166,11 +166,6 @@ def _term_positions(
     return positions
 
 
-def _are_near(lefts: list[int], rights: list[int], distance: int) -> bool:
-    """Whether two different words, one from each side, are at most `distance` apart."""
-    return any(i != j and abs(i - j) <= distance for i in lefts for j in rights)
-
-
 def _leaf_words(leaf: SearchLeaf) -> tuple[str, ...]:
     """Return the words a leaf searches for, to tell which entity types a hit names."""
     match leaf:
@@ -357,9 +352,7 @@ class SearchEngine:
         reader = searcher.reader()
         lefts = _term_positions(reader, near.left.terms, doc_numbers)
         rights = _term_positions(reader, near.right.terms, doc_numbers)
-        near_docs = {
-            d for d in doc_numbers if _are_near(lefts.get(d, []), rights.get(d, []), near.distance)
-        }
+        near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, []))}
         return [hit for hit in hits if hit.docnum in near_docs]
 
     def _docs_of_titles(self, searcher: Searcher, titles: frozenset[str]) -> set[int]:
