@@ -177,8 +177,9 @@ Typing lists the tags whose names match, each with how many stories it tags; a t
 its members beneath it. Pick a tag to list its stories. Each tag has a **+** too: picked tags sit
 under the box, **[ALL] [Gyro Gearloose] [not Christmas]**. Pressing a picked tag steps it from
 included, to *not* (its stories left out), to taken out. Tags can be typed as well —
-`scrooge + gyro -christmas stories` (use `+` or `,` for ALL, `|` for ANY, not both) — and
-**Enter** puts them in place of the tags picked.
+`scrooge + gyro -christmas stories` (use `+` or `,` for ALL, `|` for ANY, not both), with
+`year:1950-55` or `vol:7` to keep only the stories of those years or that volume — and **Enter**
+puts them in place of the tags picked (a range shows as a chip of its own: *years 1950-55*).
 
 ### Narrowing the results
 

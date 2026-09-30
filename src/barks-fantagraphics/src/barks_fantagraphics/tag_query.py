@@ -7,9 +7,10 @@ tags (ALL) or any of them does (ANY), less those an excluded tag tags. The stori
 are found by ``BarksTitleSearch.get_titles_for_selection``.
 
 A selection can be typed too, `parse_tag_query`: tag names separated by ``+`` or
-``,`` (ALL) or ``|`` (ANY), a name after a leading ``-`` left out::
+``,`` (ALL) or ``|`` (ANY), a name after a leading ``-`` left out, and anywhere a
+``year:`` or ``vol:`` range the stories must be in::
 
-    scrooge + gyro -christmas stories
+    scrooge + gyro -christmas stories year:1950-55
 
 A ``-`` is an exclusion only at a name's start, so ``indo-china`` stays one name.
 Nothing here says whether a name is a tag; the search facade does.
@@ -21,7 +22,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .search_query import Combine
+from .search_query import Combine, read_range
 
 if TYPE_CHECKING:
     from .barks_tags import TagGroups, Tags
@@ -59,12 +60,27 @@ class TagSelection:
     included: tuple[str, ...] = ()
     excluded: tuple[str, ...] = ()
     combine: Combine = Combine.ALL
+    years: tuple[int, int] | None = None
+    volumes: tuple[int, int] | None = None
 
     def describe(self) -> str:
-        """Return the selection as it would be typed: ``Scrooge + Gyro -Christmas``."""
+        """Return the selection as it would be typed: ``Scrooge + Gyro -Christmas year:1950-55``."""
         separator = " + " if self.combine is Combine.ALL else " | "
         parts = [separator.join(self.included), *(f"-{name}" for name in self.excluded)]
+        if self.years is not None:
+            parts.append(f"year:{range_text(self.years, years=True)}")
+        if self.volumes is not None:
+            parts.append(f"vol:{range_text(self.volumes, years=False)}")
         return " ".join(part for part in parts if part)
+
+
+def range_text(first_last: tuple[int, int], *, years: bool) -> str:
+    """Return a range as typed: ``1951``, ``1950-55`` (years), ``7``, ``5-8`` (volumes)."""
+    first, last = first_last
+    if first == last:
+        return str(first)
+    same_century = years and first // 100 == last // 100
+    return f"{first}-{last % 100:02d}" if same_century else f"{first}-{last}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,11 +93,30 @@ class ParsedTagQuery:
 
 _TAG_OPERATOR_RE = re.compile(r"\s*([+,|])\s*")
 _EXCLUSION_RE = re.compile(r"(?:^|\s)-\s*\S")
+_QUALIFIER_RE = re.compile(r"(?:^|(?<=\s))(year|vol):(\S*)", re.IGNORECASE)
 
 
 def has_tag_syntax(text: str) -> bool:
-    """Return whether `text` combines tags (``+ , |``, or a name after a leading ``-``)."""
-    return bool(set(text) & {"+", ",", "|"}) or bool(_EXCLUSION_RE.search(text))
+    """Return whether `text` combines tags: ``+ , |``, a leading ``-``, ``year:`` or ``vol:``."""
+    return (
+        bool(set(text) & {"+", ",", "|"})
+        or bool(_EXCLUSION_RE.search(text))
+        or bool(_QUALIFIER_RE.search(text))
+    )
+
+
+def _read_qualifiers(text: str) -> dict[str, tuple[int, int]] | str:
+    """Return the ``year:`` and ``vol:`` ranges in `text`, by key; or why one is wrong."""
+    ranges: dict[str, tuple[int, int]] = {}
+    for match in _QUALIFIER_RE.finditer(text):
+        key = match.group(1).lower()
+        if key in ranges:
+            return f"{key}: is given twice."
+        try:
+            ranges[key] = read_range(match.group(2), years=key == "year")
+        except ValueError as exc:
+            return f"{key}: {exc}."
+    return ranges
 
 
 def parse_tag_query(text: str) -> ParsedTagQuery:
@@ -98,6 +133,10 @@ def parse_tag_query(text: str) -> ParsedTagQuery:
         The selection, by the names typed (lower-cased, spaces tidied); or why not.
 
     """
+    ranges = _read_qualifiers(text)
+    if isinstance(ranges, str):
+        return ParsedTagQuery(error=ranges)
+    text = _QUALIFIER_RE.sub(" ", text)
     if not text.strip():
         return ParsedTagQuery(error="No tag is named.")
     pieces = _TAG_OPERATOR_RE.split(text.strip())
@@ -118,6 +157,10 @@ def parse_tag_query(text: str) -> ParsedTagQuery:
                 return ParsedTagQuery(error="A tag name is missing after -.")
     combine = Combine.ANY if "|" in operators else Combine.ALL
     selection = TagSelection(
-        tuple(dict.fromkeys(included)), tuple(dict.fromkeys(excluded)), combine
+        tuple(dict.fromkeys(included)),
+        tuple(dict.fromkeys(excluded)),
+        combine,
+        years=ranges.get("year"),
+        volumes=ranges.get("vol"),
     )
     return ParsedTagQuery(selection=selection)

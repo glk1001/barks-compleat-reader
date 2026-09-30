@@ -439,6 +439,18 @@ def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:
     assert count == expected.tag_selection_count((first,), (second,))
 
 
+def test_typed_tags_with_a_year_range_list_only_those_years(boot: AppBoot) -> None:
+    """A typed year: range joins the typed tags as a chip; the stories are only those years'."""
+    tag = expected.tags_matching(ERA_TAG_QUERY)[0].label
+    first, last = ERA
+    typed = f"{tag.lower()} year:{first}-{last % 100}"
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, typed)
+    with d.expect(pattern(markers.TAG_BASKET_CHANGED, count=2)):  # the tag and the years
+        count = _combined(d, tags=f"{tag} year:{first}-{last % 100}")
+    assert count == expected.tag_stories_in_years(tag, ERA)
+
+
 def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) -> None:
     """Down leaves the box for the results, Right at the text's end for the clear button."""
     d = boot(nodes.TITLE_SEARCH)

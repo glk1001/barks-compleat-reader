@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 from barks_fantagraphics.search_query import Combine
-from barks_fantagraphics.tag_query import TagSelection, has_tag_syntax, parse_tag_query
+from barks_fantagraphics.tag_query import (
+    TagSelection,
+    has_tag_syntax,
+    parse_tag_query,
+    range_text,
+)
 
 ALL, ANY = Combine.ALL, Combine.ANY
 
@@ -79,3 +84,62 @@ def test_a_selection_describes_itself_as_typed() -> None:
     )
     assert TagSelection(("Scrooge", "Gyro"), (), ANY).describe() == "Scrooge | Gyro"
     assert TagSelection((), ("Gyro",)).describe() == "-Gyro"
+
+
+@pytest.mark.parametrize(
+    ("text", "selection"),
+    [
+        ("scrooge year:1950-55", TagSelection(("scrooge",), years=(1950, 1955))),
+        ("Year:1951 gyro", TagSelection(("gyro",), years=(1951, 1951))),
+        ("scrooge vol:7", TagSelection(("scrooge",), volumes=(7, 7))),
+        (
+            "gyro year:1948-9 vol:5-8 -andes",
+            TagSelection(("gyro",), ("andes",), years=(1948, 1949), volumes=(5, 8)),
+        ),
+        ("scrooge | gyro year:1950", TagSelection(("scrooge", "gyro"), (), ANY, (1950, 1950))),
+    ],
+)
+def test_a_typed_selection_takes_years_and_volumes(text: str, selection: TagSelection) -> None:
+    parsed = parse_tag_query(text)
+    assert (parsed.selection, parsed.error) == (selection, None)
+
+
+@pytest.mark.parametrize(
+    ("text", "says"),
+    [
+        ("gyro year:x", "year: a year must be a number or a range"),
+        ("gyro vol:8-5", "vol: a volume range runs backwards"),
+        ("gyro year:1950 year:1951", "year: is given twice"),
+        ("year:1950", "No tag is named"),
+    ],
+)
+def test_a_bad_year_or_volume_says_why(text: str, says: str) -> None:
+    parsed = parse_tag_query(text)
+    assert parsed.selection is None
+    assert parsed.error is not None
+    assert says in parsed.error
+
+
+def test_year_and_vol_are_tag_syntax_but_a_colon_alone_is_not() -> None:
+    assert has_tag_syntax("gyro year:1950")
+    assert has_tag_syntax("vol:7 gyro")
+    assert not has_tag_syntax("gyro")
+
+
+def test_a_selection_with_years_and_volumes_describes_itself_as_typed() -> None:
+    selection = TagSelection(("Gyro",), years=(1950, 1955), volumes=(5, 8))
+    assert selection.describe() == "Gyro year:1950-55 vol:5-8"
+
+
+@pytest.mark.parametrize(
+    ("first_last", "years", "text"),
+    [
+        ((1951, 1951), True, "1951"),
+        ((1950, 1955), True, "1950-55"),
+        ((1999, 2001), True, "1999-2001"),
+        ((7, 7), False, "7"),
+        ((5, 8), False, "5-8"),
+    ],
+)
+def test_range_text(first_last: tuple[int, int], years: bool, text: str) -> None:
+    assert range_text(first_last, years=years) == text

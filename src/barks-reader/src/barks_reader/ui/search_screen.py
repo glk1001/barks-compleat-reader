@@ -16,7 +16,7 @@ from barks_fantagraphics.speech_speakers import (
     NARRATOR,
     speaker_display_name,
 )
-from barks_fantagraphics.tag_query import has_tag_syntax
+from barks_fantagraphics.tag_query import has_tag_syntax, range_text
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -37,7 +37,15 @@ from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
-from barks_reader.core.search_state import ALL_YEARS, EraChoice, TagBasket, TagState, WordBasket
+from barks_reader.core.search_state import (
+    ALL_YEARS,
+    VOLUMES_KEY,
+    YEARS_KEY,
+    EraChoice,
+    TagBasket,
+    TagState,
+    WordBasket,
+)
 from barks_reader.core.settings_notifier import settings_notifier
 
 from .index_screen import (
@@ -750,6 +758,9 @@ class SearchScreen(FloatLayout):
             logger.info(log_markers.TAG_BASKET_MODE.format(mode=mode.upper()))
             self._show_tag_basket()
             self._run_tag_basket()
+        elif value in (YEARS_KEY, VOLUMES_KEY):  # a typed range: taken out, not stepped on
+            self._tag_basket.drop_range(value)
+            self._on_tag_basket_changed()
         else:
             self._tag_basket.cycle(value)
             self._on_tag_basket_changed()
@@ -774,6 +785,11 @@ class SearchScreen(FloatLayout):
             (tag, tag if state is TagState.INCLUDED else f"not {tag}")
             for tag, state in basket.tags.items()
         ]
+        if basket.years is not None:
+            options.append((YEARS_KEY, f"years {range_text(basket.years, years=True)}"))
+        if basket.volumes is not None:
+            vols = range_text(basket.volumes, years=False)
+            options.append((VOLUMES_KEY, f"vol {vols}" if "-" not in vols else f"vols {vols}"))
         if options:
             options.insert(0, (_BASKET_MODE_VALUE, basket.combine.upper()))
         self._tag_basket_row.set_options(options)

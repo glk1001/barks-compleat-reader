@@ -315,6 +315,28 @@ def _range(value: str, position: int, what: str, *, years: bool) -> tuple[int, i
     return first, last
 
 
+def read_range(value: str, *, years: bool) -> tuple[int, int]:
+    """Return the inclusive range a ``year:`` or ``vol:`` value names: ``7``, ``5-8``, ``1950-55``.
+
+    For other parsers of the same qualifiers (typed tags).
+
+    Args:
+        value: The text after the colon.
+        years: Whether it is years, whose last may be shortened (``1948-9``).
+
+    Returns:
+        The first and last, both included.
+
+    Raises:
+        ValueError: If the value is no number or range, or runs backwards.
+
+    """
+    try:
+        return _range(value, 0, "a year" if years else "a volume", years=years)
+    except _QueryError as exc:
+        raise ValueError(exc.message) from exc
+
+
 class _Parser:
     def __init__(self, tokens: list[_Token], text: str) -> None:
         self._tokens = tokens

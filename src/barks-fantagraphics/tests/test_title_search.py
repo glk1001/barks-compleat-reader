@@ -214,3 +214,18 @@ class TestTitlesForSelection:
 
     def test_a_name_that_is_no_tag_tags_nothing(self) -> None:
         assert BarksTitleSearch.get_titles_for_selection(TagSelection(("no such tag",))) == []
+
+    def test_years_and_volumes_narrow_the_stories(self) -> None:
+        andes = self._titles("andes")
+        in_1948 = BarksTitleSearch.get_titles_for_selection(
+            TagSelection(("andes",), years=(1948, 1948))
+        )
+        assert set(in_1948) == {t for t in andes if BARKS_TITLE_INFO[t].submitted_year == 1948}  # noqa: PLR2004
+        in_vol_7 = BarksTitleSearch.get_titles_for_selection(
+            TagSelection(("andes",), volumes=(7, 7))
+        )
+        assert Titles.LOST_IN_THE_ANDES in in_vol_7
+        assert (
+            BarksTitleSearch.get_titles_for_selection(TagSelection(("andes",), volumes=(29, 29)))
+            == []
+        )

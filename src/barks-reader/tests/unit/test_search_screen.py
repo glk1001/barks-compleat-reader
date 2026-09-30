@@ -868,6 +868,25 @@ class TestTagBasket:
         assert (type(chip), notice.text) == (_TagQueryChip, "Use + or |")
         assert not screen._tag_basket
 
+    def test_a_typed_year_range_is_a_chip_that_enter_takes_out(self, screen: SearchScreen) -> None:
+        screen._search.parse_tag_query.return_value = ParsedTagQuery(
+            TagSelection(("gyro",), years=(1950, 1955), volumes=(5, 8))
+        )
+        with patch.object(screen, "_populate_title_results"):
+            screen._run_tag_query("gyro year:1950-55 vol:5-8")
+            assert [(c.value, c.text) for c in self._basket_chips(screen)] == [
+                ("", "ALL"),
+                ("Gyro", "Gyro"),
+                ("year:", "years 1950-55"),
+                ("vol:", "vols 5-8"),
+            ]
+            selection = screen._search.titles_for_tag_selection.call_args.args[0]
+            assert (selection.years, selection.volumes) == ((1950, 1955), (5, 8))
+            _press(self._basket_chips(screen)[2])  # the years: out, not stepped on
+        assert [c.value for c in self._basket_chips(screen)] == ["", "Gyro", "vol:"]
+        selection = screen._search.titles_for_tag_selection.call_args.args[0]
+        assert (selection.years, selection.volumes) == (None, (5, 8))
+
     # --- keys ---
 
     def test_right_moves_to_the_tags_plus_enter_picks_left_goes_back(

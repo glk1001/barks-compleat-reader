@@ -14,6 +14,7 @@ from .barks_tags import (
 )
 from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO
 from .comic_issues import Issues
+from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
 from .search_terms import SUBSTRING_MIN_CHARS
 from .tag_query import TagMatch
@@ -23,6 +24,13 @@ if TYPE_CHECKING:
     from .tag_query import TagSelection
 
 PREFIX_LEN = 2
+
+
+def _fanta_volume(title: Titles) -> int | None:
+    """Return the Fantagraphics volume a story is in, or None for one in none."""
+    info = get_fanta_info(title)
+    return None if info is None else FANTA_SOURCE_COMICS[info.fantagraphics_volume].volume
+
 
 # How an alias matched a typed text, best first.
 _EXACT, _PREFIX, _INSIDE = 0, 1, 2
@@ -143,8 +151,10 @@ class BarksTitleSearch:
         """Return the stories a tag selection lists, in chronological order.
 
         Those every included tag tags (ALL) or any does (ANY), less those any
-        excluded tag tags. A group tags every story its members tag. Nothing is
-        listed without an included tag, and a name that is no tag tags nothing.
+        excluded tag tags, and of those, the ones submitted in its years and in its
+        Fantagraphics volumes, if it gives them. A group tags every story its
+        members tag. Nothing is listed without an included tag, and a name that is
+        no tag tags nothing.
 
         Args:
             selection: The tags, by name or alias, in any case.
@@ -165,6 +175,12 @@ class BarksTitleSearch:
             titles = set.union(*included)
         for name in selection.excluded:
             titles -= set(BarksTitleSearch.get_titles_from_alias_tag(name.lower())[1])
+        if selection.years is not None:
+            first, last = selection.years
+            titles = {t for t in titles if first <= BARKS_TITLE_INFO[t].submitted_year <= last}
+        if selection.volumes is not None:
+            first, last = selection.volumes
+            titles = {t for t in titles if first <= (_fanta_volume(t) or 0) <= last}
         return sorted(titles)
 
     @staticmethod

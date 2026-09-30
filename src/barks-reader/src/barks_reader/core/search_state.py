@@ -80,6 +80,10 @@ class WordBasket:
         return separator.join(f'"{word}"' for word in self.words)
 
 
+# The picked-tags row's chips for a typed years or volumes range: never a tag's name.
+YEARS_KEY, VOLUMES_KEY = "year:", "vol:"
+
+
 class TagState(StrEnum):
     """Whether a picked tag's stories are listed or left out."""
 
@@ -89,18 +93,31 @@ class TagState(StrEnum):
 
 @dataclass
 class TagBasket:
-    """The tags picked, in the order picked, each included or left out, and ALL or ANY."""
+    """The tags picked, in the order picked, each included or left out, and ALL or ANY.
+
+    A typed selection may also bring a range of submitted years and of Fantagraphics
+    volumes (``year:1950-55``, ``vol:7``), each a chip of its own in the picked row.
+    """
 
     tags: dict[str, TagState] = field(default_factory=dict)
     combine: Combine = Combine.ALL
+    years: tuple[int, int] | None = None
+    volumes: tuple[int, int] | None = None
 
     def __contains__(self, tag: object) -> bool:
         """Return whether `tag` is picked, either way."""
         return tag in self.tags
 
     def __len__(self) -> int:
-        """Return how many tags are picked."""
-        return len(self.tags)
+        """Return how many chips are picked: the tags, and a years or volumes range."""
+        return len(self.tags) + (self.years is not None) + (self.volumes is not None)
+
+    def drop_range(self, key: str) -> None:
+        """Take the years (``"year:"``) or volumes (``"vol:"``) range out."""
+        if key == YEARS_KEY:
+            self.years = None
+        elif key == VOLUMES_KEY:
+            self.volumes = None
 
     def toggle(self, tag: str) -> bool:
         """Pick `tag` to include, or put it back if it is picked either way.
@@ -139,6 +156,7 @@ class TagBasket:
         """Put every tag back; the next tag picked starts an ALL basket."""
         self.tags.clear()
         self.combine = Combine.ALL
+        self.years = self.volumes = None
 
     def fill(self, selection: TagSelection, labels: dict[str, str] | None = None) -> None:
         """Replace the basket with a (typed) selection.
@@ -153,6 +171,7 @@ class TagBasket:
         self.tags = {names.get(t, t): TagState.INCLUDED for t in selection.included}
         self.tags |= {names.get(t, t): TagState.EXCLUDED for t in selection.excluded}
         self.combine = selection.combine
+        self.years, self.volumes = selection.years, selection.volumes
 
     def selection(self) -> TagSelection:
         """Return the basket as a selection of tag names."""
@@ -160,6 +179,8 @@ class TagBasket:
             included=tuple(t for t, s in self.tags.items() if s is TagState.INCLUDED),
             excluded=tuple(t for t, s in self.tags.items() if s is TagState.EXCLUDED),
             combine=self.combine,
+            years=self.years,
+            volumes=self.volumes,
         )
 
 

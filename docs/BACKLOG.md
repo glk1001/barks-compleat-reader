@@ -22,8 +22,10 @@ Found along the way, not yet done:
       40% of the panel (35% in the other modes): 22 wrap. At 1920x1080 and 4K none wraps either
       way. Trimming the count margin instead was measured too, but a 3-digit count would then
       touch the name.
-- [ ] **Typed tags with years** — `parse_tag_query` takes names only; `scrooge + year:1950-55`
-      is not read (the era row covers it by chip).
+- [x] **Typed tags with years** — typed tags take `year:` and `vol:` ranges too
+      (`scrooge + gyro year:1950-55 vol:7`); each shows as a chip in the picked-tags row
+      ("years 1950-55", "vol 7") that Enter takes out, and narrows the stories along with
+      the era row.
 - [x] **Word-query speed** — an AND's later parts search only the stories found so far,
       and Whoosh built that filter from an OR of title terms by walking it document by
       document: `duck money` took ~1s. The engine now reads each title's documents from its

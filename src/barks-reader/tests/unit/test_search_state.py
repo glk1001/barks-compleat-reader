@@ -13,7 +13,15 @@ from barks_fantagraphics.search_query import (
     query_from_words,
 )
 from barks_fantagraphics.tag_query import TagSelection
-from barks_reader.core.search_state import ALL_YEARS, EraChoice, TagBasket, TagState, WordBasket
+from barks_reader.core.search_state import (
+    ALL_YEARS,
+    VOLUMES_KEY,
+    YEARS_KEY,
+    EraChoice,
+    TagBasket,
+    TagState,
+    WordBasket,
+)
 
 
 def test_a_word_is_picked_then_put_back_by_the_same_toggle() -> None:
@@ -147,3 +155,17 @@ def test_picking_an_era_and_lifting_it() -> None:
     assert era.years is None
     era.select("1900-1901")  # not offered
     assert era.years is None
+
+
+def test_a_typed_years_and_volumes_range_are_chips_of_the_tag_basket() -> None:
+    basket = TagBasket()
+    basket.fill(TagSelection(("gyro",), years=(1950, 1955), volumes=(7, 7)))
+    assert len(basket) == 3  # noqa: PLR2004
+    assert basket.selection() == TagSelection(("gyro",), years=(1950, 1955), volumes=(7, 7))
+    basket.drop_range(YEARS_KEY)
+    assert (basket.years, basket.volumes, len(basket)) == (None, (7, 7), 2)
+    basket.drop_range(VOLUMES_KEY)
+    assert basket.selection() == TagSelection(("gyro",))
+    basket.fill(TagSelection(("gyro",), years=(1950, 1955)))
+    basket.clear()
+    assert (basket.years, len(basket)) == (None, 0)

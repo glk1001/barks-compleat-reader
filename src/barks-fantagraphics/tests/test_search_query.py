@@ -19,6 +19,7 @@ from barks_fantagraphics.search_query import (
     has_query_syntax,
     parse_query,
     query_from_words,
+    read_range,
     replace_word,
 )
 from hypothesis import given, settings
@@ -219,3 +220,10 @@ def test_replace_word_swaps_the_whole_word_only(
     text: str, word: str, replacement: str, result: str
 ) -> None:
     assert replace_word(text, word, replacement) == result
+
+
+def test_read_range_is_the_qualifiers_range_for_other_parsers() -> None:
+    assert read_range("1948-9", years=True) == (1948, 1949)
+    assert read_range("5-8", years=False) == (5, 8)
+    with pytest.raises(ValueError, match="runs backwards"):
+        read_range("8-5", years=False)
