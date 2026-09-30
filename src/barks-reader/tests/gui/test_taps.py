@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from barks_gui import nodes, taps
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
@@ -34,8 +35,14 @@ FULLSCREEN_TIMEOUT = 20
 # Long enough for a doubled tap's second press to have turned a second page.
 NO_DOUBLE_TAP_SECS = 1.5
 ANY_FUN_TITLE = pattern(markers.FUN_VIEW_TITLE_SET)
-# Every title as the main index writes it, to tell a title's entry from a tag's.
-INDEXED_TITLES = frozenset(indexable_title(title) for title in Titles)
+# Every title the reader can go to, as the main index writes it: to tell a title's
+# entry from a tag's. A title with no Fantagraphics volume (Bubbleweight Champ, Beach
+# Boy) is indexed too, but tapping it opens the volume-not-available popup instead:
+# which entry is first on screen depends on the window, and on a Windows laptop's it
+# was one of those.
+GOTO_TITLES = frozenset(
+    indexable_title(title) for title in Titles if get_fanta_info(title) is not None
+)
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 
 
@@ -219,7 +226,7 @@ def test_main_index_letter_and_item_taps(boot: AppBoot) -> None:
     # the index writes one, wholly on screen.
     _, shown = taps.targets(d)
     item = next(
-        (t for t in shown if t.kind == "IndexItemButton" and t.whole and t.text in INDEXED_TITLES),
+        (t for t in shown if t.kind == "IndexItemButton" and t.whole and t.text in GOTO_TITLES),
         None,
     )
     assert item is not None, "no title's entry wholly on screen under 'B'"

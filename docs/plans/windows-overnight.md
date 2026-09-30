@@ -226,8 +226,10 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   `Reader Files` there, and the prebuilt comics copied beside it (`docs/setup.md`).
 - **The GUI suite, the same six on both apps** (so not packaging): four build a library of
   symlinks, which needs Developer Mode (turned on; the four pass); one tapped a 1963 story
-  ("Bubbleweight Champ not in Fanta info"; not yet explained: the stick's volumes also
-  stop at 30, so not simply a missing one); one wanted a wiki section the laptop's
+  ("Bubbleweight Champ not in Fanta info"), a title in the index with no Fantagraphics
+  volume at all, whose tap rightly opens the volume-not-available popup: the test took
+  the first title on screen, which depends on the window. Fixed in `test_taps.py` (only
+  titles with a volume are candidates); one wanted a wiki section the laptop's
   `Reader Files` copy lacks.
 - **The soak**, and then `test_a_doubled_volume_is_fatal...` every time: the blank-frame
   check failed drawn frames. It cropped the window at its screen position (792, 10) out
