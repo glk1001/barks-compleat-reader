@@ -2,20 +2,23 @@
 
 <!-- cspell:ignore ntfs iomap Ventoy Mirametrix -->
 
-> Status: **steps 1-3 written 2026-09-30; step 1's clean run and step 3's two nights to
-> come.** Saved here so it survives across machines and sessions; do it on the Windows
-> laptop. Tick a step off here, with its commit, as it lands.
+> Status: **steps 1, 2 and 4 done 2026-09-30; step 1's end-to-end run and step 3's two
+> nights to come.** Saved here so it survives across machines and sessions; do it on the
+> Windows laptop. Tick a step off here, with its commit, as it lands.
 >
 > - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`). First run by
 >   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
->   runner's (below, "First run"). A clean pass waits on them.
+>   runner's (below, "First run"). Since fixed, each stage has passed on its own (the
+>   GUI suite 98/98, `validate`, `fetch-build`); one run of them all, end to end, to come.
 > - Step 2 keeping the machine awake and fit to run: DONE (the runner holds the display;
 >   the one-off setup is in `docs/setup.md`, Windows)
 > - Step 3 the nightly schedule: WRITTEN (`scripts/windows/register-overnight-task.ps1`);
 >   not yet registered, two nights to see
-> - Step 4 the validate stage, once the data is there: BLOCKED (the prebuilt comics are on
->   the Ventoy stick, not yet on the laptop; two titles' files have a `?` Windows cannot
->   name, "Two titles Windows cannot name" below)
+> - Step 4 the validate stage, once the data is there: DONE. `validate --full-load-check
+>   --strict-wiki` passed on the laptop, every phase (e79b5ae5): the prebuilt comics
+>   copied to `~\Books\Carl Barks\The Comics`, the two `?` titles named safely everywhere
+>   (option 1 below, e292c84c), and a fresh Vol. 18: the old one's pages were all dated
+>   2070, which made all 169 of its panel-segments JSONs look stale.
 
 ## Context
 
