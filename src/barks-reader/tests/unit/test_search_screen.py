@@ -15,6 +15,8 @@ from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import TagMatch
 from barks_reader.core import log_markers
 from barks_reader.ui import search_screen
+from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
+from barks_reader.ui.search_chip_row import ChipRow
 from barks_reader.ui.search_screen import (
     SearchScreen,
     _NoticeLabel,
@@ -35,7 +37,28 @@ def _make_bare_screen() -> SearchScreen:
     screen._word_query = ""
     screen._word_query_result = None
     screen._box_query = ""
+    # The speaker row over a stand-in layout, its chips stand-ins too (`_speaker_chip`).
+    screen._speaker_row = ChipRow(MagicMock(), _speaker_chip, screen._on_speaker_chip_selected)
     return screen
+
+
+def _speaker_chip(value: str, label: str) -> MagicMock:
+    chip = MagicMock()
+    chip.value = value
+    chip.text = label
+    return chip
+
+
+def _press(chip: MagicMock) -> None:
+    """Release a stand-in chip as a click does: run the handler the row bound to it."""
+    chip.bind.call_args.kwargs["on_release"](chip)
+
+
+def _offer_speakers(screen: SearchScreen, selected: str = "") -> list[MagicMock]:
+    """Give the screen's speaker row All, Donald and Scrooge, with `selected` picked."""
+    screen._speaker_row.set_options([("", "All"), ("Donald", "Donald"), ("Scrooge", "Scrooge")])
+    screen._speaker_row.set_selected(selected)
+    return cast("list[MagicMock]", screen._speaker_row.chips)
 
 
 def _fake_row(row_index: int) -> _SearchResultButton:
@@ -137,7 +160,6 @@ class TestTypedQuery:
             bare._search = MagicMock()
             bare._speaker_chips_built = True
             bare._selected_word = ""
-            bare._selected_speaker = ""
             bare._word_search_results = []
             bare._selected_result_button = None
             bare._nav_active = True
@@ -264,12 +286,10 @@ class TestTypedQuery:
         run.assert_called_once_with("Scrooge -gold")
 
     def test_the_speaker_filter_reruns_the_query(self, screen: SearchScreen) -> None:
+        chips = _offer_speakers(screen)
         screen._word_query = "gold -mine"
-        with (
-            patch.object(screen, "_run_word_query") as run,
-            patch.object(screen, "_get_speaker_chip_buttons", return_value=[]),
-        ):
-            screen._on_speaker_chip_selected("Scrooge")
+        with patch.object(screen, "_run_word_query") as run:
+            _press(chips[2])
         run.assert_called_once_with("gold -mine")
 
     def test_the_bubbles_popup_highlights_the_query_terms(self, screen: SearchScreen) -> None:
@@ -352,8 +372,7 @@ class TestTypedQuery:
 
     def test_clear_forgets_the_query(self, screen: SearchScreen) -> None:
         screen._word_query, screen._box_query = "gold -mine", "gold -mine"
-        with patch.object(screen, "_update_speaker_chip_colors"):
-            screen.on_word_clear()
+        screen.on_word_clear()
         assert (screen._word_query, screen._box_query, screen._word_query_result) == ("", "", None)
 
 
@@ -675,13 +694,6 @@ class TestNavFocusMarkers:
         assert not [line for line in loguru_sink if line.startswith("Nav focus on")]
 
 
-def _speaker_chip(speaker: str, text: str) -> MagicMock:
-    chip = MagicMock()
-    chip.speaker = speaker
-    chip.text = text
-    return chip
-
-
 class TestSpeakerFilter:
     """The word search offers a who-said-it row, built from what the index knows."""
 
@@ -695,9 +707,7 @@ class TestSpeakerFilter:
             bare._active_mode = "Word"
             bare._search = MagicMock()
             bare._selected_word = ""
-            bare._selected_speaker = ""
             bare._speaker_chips_built = False
-            bare.ids.speaker_chips_layout.children = []
             yield bare
 
     def test_chips_are_the_roster_speakers_the_index_has_plus_all(
@@ -711,19 +721,23 @@ class TestSpeakerFilter:
             "other:Witch Hazel": 12,
             "unknown": 3,
         }
-        with patch.object(search_screen, "_SpeakerChipButton") as chip_cls:
-            chip_cls.side_effect = lambda **kw: _speaker_chip(kw["speaker"], kw["text"])
-            screen._build_speaker_chips()
+        screen._build_speaker_chips()
 
-        added = [c.args[0] for c in screen.ids.speaker_chips_layout.add_widget.call_args_list]
+        chips = cast("list[MagicMock]", screen._speaker_row.chips)
         # Roster order, sentinels other than the narrator left out, `other:` not offered.
-        assert [(c.text, c.speaker) for c in added] == [
+        assert [(c.text, c.value) for c in chips] == [
             ("All", ""),
             ("Donald", "Donald"),
             ("Scrooge", "Scrooge"),
             ("Narrator", "narrator"),
         ]
         assert screen._speaker_chips_built is True
+
+    def test_the_chips_are_speaker_chips(self) -> None:
+        """Their class is in the focus line the app logs, which the GUI tests match."""
+        chip = search_screen._make_speaker_chip("Scrooge", "Scrooge")
+        assert type(chip).__name__ == "_SpeakerChipButton"
+        assert (chip.value, chip.text) == ("Scrooge", "Scrooge")
 
     def test_index_without_speakers_offers_no_row(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -732,7 +746,8 @@ class TestSpeakerFilter:
 
         screen._build_speaker_chips()
 
-        screen.ids.speaker_chips_layout.add_widget.assert_not_called()
+        assert screen._speaker_row.chips == []
+        assert not screen._has_speaker_row()
         assert "Word search: index has no speakers; no speaker filter." in loguru_sink
 
     def test_chips_are_built_once_on_the_first_word_typed(self, screen: SearchScreen) -> None:
@@ -746,66 +761,49 @@ class TestSpeakerFilter:
     def test_picking_a_speaker_reruns_the_search_filtered(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
+        chips = _offer_speakers(screen)
         screen._selected_word = "money"
         screen._search.find_words.return_value = {"A Title": MagicMock()}
         with (
             patch.object(screen, "_build_word_results", return_value=[]),
             patch.object(screen, "_populate_word_results_layout"),
-            patch.object(screen, "_get_speaker_chip_buttons", return_value=[]),
         ):
-            screen._on_speaker_chip_selected("Scrooge")
+            _press(chips[2])
 
         screen._search.find_words.assert_called_once_with("money", speaker="Scrooge")
-        assert screen._selected_speaker == "Scrooge"
+        assert screen._speaker_row.selected == "Scrooge"
         assert log_markers.SPEAKER_FILTER_SET.format(speaker="Scrooge") in loguru_sink
         assert 'Word search: speaker filter "Scrooge".' in loguru_sink  # the line is unchanged
 
     def test_all_lifts_the_filter(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        chips = _offer_speakers(screen, selected="Scrooge")
         screen._selected_word = "money"
-        screen._selected_speaker = "Scrooge"
         screen._search.find_words.return_value = {"A Title": MagicMock()}
         with (
             patch.object(screen, "_build_word_results", return_value=[]),
             patch.object(screen, "_populate_word_results_layout"),
-            patch.object(screen, "_get_speaker_chip_buttons", return_value=[]),
         ):
-            screen._on_speaker_chip_selected("")
+            _press(chips[0])
 
         screen._search.find_words.assert_called_once_with("money", speaker=None)
         assert log_markers.SPEAKER_FILTER_SET.format(speaker="All") in loguru_sink
 
     def test_no_word_picked_yet_only_records_the_choice(self, screen: SearchScreen) -> None:
-        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
-            screen._on_speaker_chip_selected("Donald")
+        _press(_offer_speakers(screen)[1])
 
         screen._search.find_words.assert_not_called()
-        assert screen._selected_speaker == "Donald"
-
-    def test_selected_chip_is_filled_and_focused_chip_bordered_and_logged(
-        self, screen: SearchScreen, loguru_sink: list[str]
-    ) -> None:
-        screen._selected_speaker = "Donald"
-        chips = [_speaker_chip("", "All"), _speaker_chip("Donald", "Donald")]
-
-        screen._update_speaker_chip_colors(cast("list", chips), focused_idx=0)
-
-        assert chips[1].chip_bg_color == search_screen._chip_bg_active()
-        assert chips[0].chip_bg_color == search_screen._chip_bg_normal()
-        assert chips[0].chip_border_color == search_screen._chip_border_focused()
-        assert chips[1].chip_border_color == search_screen._CHIP_BORDER_NONE
-        assert 'Nav focus on MagicMock "All".' in loguru_sink
+        assert screen._speaker_row.selected == "Donald"
 
     def test_clear_resets_the_filter(self, screen: SearchScreen) -> None:
-        screen._selected_speaker = "Scrooge"
-        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
-            screen.on_word_clear()
-        assert screen._selected_speaker == ""
+        _offer_speakers(screen, selected="Scrooge")
+        screen.on_word_clear()
+        assert screen._speaker_row.selected == ""
 
     def test_clear_forgets_the_word_so_a_chip_cannot_revive_it(self, screen: SearchScreen) -> None:
+        chips = _offer_speakers(screen)
         screen._selected_word = "money"
-        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
-            screen.on_word_clear()
-            screen._on_speaker_chip_selected("Scrooge")
+        screen.on_word_clear()
+        _press(chips[2])
 
         assert screen._selected_word == ""
         screen._search.find_words.assert_not_called()
@@ -813,18 +811,18 @@ class TestSpeakerFilter:
     def test_editing_the_box_forgets_the_word_so_a_chip_cannot_revive_it(
         self, screen: SearchScreen
     ) -> None:
+        chips = _offer_speakers(screen)
         screen._search.get_words_matching.return_value = TermMatches([], 0)
         screen._selected_word = "money"
-        with patch.object(screen, "_get_speaker_chip_buttons", return_value=[]):
-            screen.on_word_search_text("")
-            screen._on_speaker_chip_selected("Scrooge")
+        screen.on_word_search_text("")
+        _press(chips[2])
 
         assert screen._selected_word == ""
         screen._search.find_words.assert_not_called()
 
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
+        _offer_speakers(screen, selected="Scrooge")
         screen._selected_word = "money"
-        screen._selected_speaker = "Scrooge"
         screen._speech_bubble_popup = MagicMock()
         screen._font_manager = MagicMock()
         info = MagicMock()
@@ -845,7 +843,8 @@ class TestSpeakerRowKeys:
     """The speaker row is a nav stop between the word list and the results.
 
     Ten-foot rule: everything below is reachable with only the arrows, Enter
-    and Escape.
+    and Escape. The row's own walk is tested in test_search_chip_row.py; these
+    are the ways between it and the rest of the screen.
     """
 
     @pytest.fixture
@@ -859,40 +858,32 @@ class TestSpeakerRowKeys:
             bare._nav_active = True
             bare._nav_on_exit_request = None
             bare._selected_word = "money"
-            bare._selected_speaker = "Donald"
             bare._nav_focus_area = "speakers"
-            bare._nav_focused_speaker_idx = 0
             bare._nav_focused_result_idx = 0
             bare._nav_focused_chip_idx = 0
             bare._nav_word_sub_focus = "title"
-            bare.chips = [
-                _speaker_chip("", "All"),
-                _speaker_chip("Donald", "Donald"),
-                _speaker_chip("Scrooge", "Scrooge"),
-            ]
-            with patch.object(
-                SearchScreen,
-                "_get_speaker_chip_buttons",
-                lambda self: self.chips,
-            ):
-                yield bare
+            bare.chips = _offer_speakers(bare, selected="Donald")
+            bare._speaker_row.enter_focus()  # on Donald, the one picked
+            yield bare
 
     def test_right_and_left_walk_the_chips(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focused_speaker_idx == 1
-        assert 'Nav focus on MagicMock "Donald".' in loguru_sink
+        assert screen._speaker_row.focused == 2  # noqa: PLR2004
+        assert 'Nav focus on MagicMock "Scrooge".' in loguru_sink
 
         assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert screen._nav_focused_speaker_idx == 0
+        assert screen._speaker_row.focused == 1
 
     def test_right_stops_at_the_last_chip(self, screen: SearchScreen) -> None:
-        screen._nav_focused_speaker_idx = 2
+        screen.handle_key(search_screen.KEY_RIGHT)
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focused_speaker_idx == 2  # noqa: PLR2004
+        assert screen._speaker_row.focused == 2  # noqa: PLR2004
+        assert screen._nav_focus_area == "speakers"
 
     def test_left_off_the_first_chip_returns_to_the_word_list(self, screen: SearchScreen) -> None:
+        screen.handle_key(search_screen.KEY_LEFT)  # on All
         word_chips = [MagicMock(text="cash"), MagicMock(text="money")]
         with (
             patch.object(screen, "_get_word_chip_buttons", return_value=word_chips),
@@ -902,10 +893,17 @@ class TestSpeakerRowKeys:
 
         assert screen._nav_focus_area == "tags"
         assert screen._nav_focused_chip_idx == 1  # back on the selected word
+        assert screen._speaker_row.focused is None
         draw.assert_called_once()
 
+    def test_left_off_the_first_chip_stays_without_a_word_list(self, screen: SearchScreen) -> None:
+        screen.handle_key(search_screen.KEY_LEFT)  # on All
+        with patch.object(screen, "_get_word_chip_buttons", return_value=[]):
+            assert screen.handle_key(search_screen.KEY_LEFT) is True
+        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+
     def test_enter_applies_the_focused_chip_and_stays(self, screen: SearchScreen) -> None:
-        screen._nav_focused_speaker_idx = 2
+        screen.handle_key(search_screen.KEY_RIGHT)  # on Scrooge
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         screen.chips[2].trigger_action.assert_called_once_with(duration=0)
         assert screen._nav_focus_area == "speakers"
@@ -918,6 +916,7 @@ class TestSpeakerRowKeys:
             assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert screen._nav_focus_area == "results"
         assert screen._nav_focused_result_idx == 0
+        assert screen._speaker_row.focused is None
         draw.assert_called_once()
 
     def test_down_with_no_results_stays_put(self, screen: SearchScreen) -> None:
@@ -931,9 +930,18 @@ class TestSpeakerRowKeys:
         assert screen._nav_focus_area == "input"
         focus.assert_called_once()
 
+    def test_escape_leaves_the_screen(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_nav_escape") as escape:
+            assert screen.handle_key(KEY_ESCAPE) is True
+        escape.assert_called_once_with()
+
+    def test_other_keys_are_not_the_rows(self, screen: SearchScreen) -> None:
+        assert screen.handle_key(ord("a")) is False
+
     def test_right_from_the_word_list_lands_on_the_selected_speaker(
         self, screen: SearchScreen
     ) -> None:
+        screen._speaker_row.clear_focus()
         screen._nav_focus_area = "tags"
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
@@ -941,13 +949,13 @@ class TestSpeakerRowKeys:
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
         assert screen._nav_focus_area == "speakers"
-        assert screen._nav_focused_speaker_idx == 1  # "Donald" is selected
+        assert screen._speaker_row.focused == 1  # "Donald" is selected
 
     def test_right_from_the_word_list_skips_to_results_without_a_row(
         self, screen: SearchScreen
     ) -> None:
         screen._nav_focus_area = "tags"
-        screen.chips = []
+        screen._speaker_row.set_options([])
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
             patch.object(screen, "_clear_chip_focus"),
@@ -957,6 +965,7 @@ class TestSpeakerRowKeys:
         assert screen._nav_focus_area == "results"
 
     def test_up_from_the_first_result_climbs_to_the_speaker_row(self, screen: SearchScreen) -> None:
+        screen._speaker_row.clear_focus()
         screen._nav_focus_area = "results"
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
@@ -964,11 +973,11 @@ class TestSpeakerRowKeys:
         ):
             assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "speakers"
-        assert screen._nav_focused_speaker_idx == 1
+        assert screen._speaker_row.focused == 1
 
     def test_up_from_the_first_result_is_a_no_op_without_a_row(self, screen: SearchScreen) -> None:
         screen._nav_focus_area = "results"
-        screen.chips = []
+        screen._speaker_row.set_options([])
         with patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]):
             assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "results"

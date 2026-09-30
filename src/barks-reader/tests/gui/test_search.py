@@ -147,6 +147,36 @@ def test_a_misspelling_offers_suggestions_and_return_runs_one(boot: AppBoot) -> 
     assert int(last_field(d, markers.WORD_QUERY_RUN, "count", text=fixed)) == stories
 
 
+SPEAKER_WORD = "money"
+SPEAKER = "Donald"  # the first speaker after All, in the roster's order
+
+
+def _speaker_focused(label: str) -> str:
+    return pattern(markers.NAV_FOCUS, widget=f'_SpeakerChipButton "{label}"')
+
+
+def test_the_speaker_row_filters_the_word_results_by_keyboard(boot: AppBoot) -> None:
+    """Right from the word list is the speaker row; Enter on a speaker filters and stays."""
+    everyone = expected.word_stories(SPEAKER_WORD)
+    by_speaker = expected.word_stories(SPEAKER_WORD, speaker=SPEAKER)
+    assert 0 < by_speaker < everyone, "the filter must narrow the stories, not empty them"
+    word = expected.words_matching(SPEAKER_WORD)[0]
+
+    d = boot(nodes.WORD_SEARCH)
+    search.type_query(d, SPEAKER_WORD)
+    with d.expect(d.FOCUS_MOVED):  # Return picks the first word and lands on it
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=word), "Return")
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == everyone
+
+    d.move_focus("Right", pattern=_speaker_focused("All"))
+    d.move_focus("Right", pattern=_speaker_focused(SPEAKER))
+    with d.expect(pattern(markers.SPEAKER_FILTER_SET, speaker=SPEAKER)):
+        d.key_then_wait(_speaker_focused(SPEAKER), "Return")  # applied; the focus stays
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == by_speaker
+
+    d.move_focus("Down")  # into the filtered results
+
+
 NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
 

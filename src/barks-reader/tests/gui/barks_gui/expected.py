@@ -149,6 +149,13 @@ def words_matching(query: str) -> tuple[str, ...]:
 
 
 @cache
+def word_stories(word: str, speaker: str | None = None) -> int:
+    """Return how many stories the word search lists for a word picked from the list."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    return len(search.find_words(word, speaker=speaker))
+
+
+@cache
 def word_query(text: str) -> WordQueryResult:
     """Return what the word box's typed query `text` finds, with no speaker filter."""
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())

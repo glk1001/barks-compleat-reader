@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-8 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-8a done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -14,9 +14,9 @@
 > - Phase 5 lexicon expansion: DONE 2026-09-29, 2e39af51
 > - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 1a6e6387
 > - Phase 7 multi-term highlighting: DONE 2026-09-30, 797eab85
-> - Phase 8 typed queries in the word box: DONE 2026-09-30 ("feat(search): the word box runs
->   typed queries, with notices, suggestions and hit counts")
-> - Phase 8a extract ChipRow: TODO
+> - Phase 8 typed queries in the word box: DONE 2026-09-30, bc8968c7
+> - Phase 8a extract ChipRow: DONE 2026-09-30 ("refactor(search): the speaker filter is a
+>   ChipRow, a row of chips the era and tag filters can reuse")
 > - Phase 9 word chip list: TODO
 > - Phase 10 tag chip list: TODO
 > - Phase 11 era filter: TODO
@@ -160,7 +160,10 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
    in, `replace_word`); hit counts on typed-query rows only. Also `WORD_QUERY_NOTICE`, and
    result rows now shorten in the middle rather than wrap out of their row.
 8a. **Extract `ChipRow`** from the speaker row (no behaviour change; `search_screen.py` is 1,283
-   lines).
+   lines). As built: the row owns its chips, the pick, focus, Left/Right and Enter, and returns
+   every other key as a `RowKey` (`EXIT_LEFT/UP/DOWN/ESCAPE`, `UNHANDLED`) for the screen to
+   route; chips come from the screen's factory, so their class names in the focus lines stay.
+   A new GUI test drives the speaker row by keyboard; it passes before and after the move.
 9. **Word chip list, ALL/ANY.** A `[word][+]` row pattern, like the existing title/speech
    sub-focus. The chip row `[ALL|ANY] [gold ×] [mine ×]` takes no height while empty. Keys:
    Right → `+`, Enter to toggle; Down from the input goes to the chip row. Markers
