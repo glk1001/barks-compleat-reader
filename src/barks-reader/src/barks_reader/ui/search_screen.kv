@@ -396,6 +396,15 @@
                         height: self.minimum_height if self.children else 0
                         spacing: dp(6), dp(4)
 
+                    # Everywhere, or only in the stories of the tags the tag search has
+                    # selected: no height while it has none.
+                    StackLayout:
+                        id: word_scope_layout
+                        orientation: 'lr-tb'
+                        size_hint_y: None
+                        height: self.minimum_height if self.children else 0
+                        spacing: dp(6), dp(4)
+
                     ReaderScrollView:
                         id: word_results_scroll
 

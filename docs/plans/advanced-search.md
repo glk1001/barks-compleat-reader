@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-11 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-12 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -18,9 +18,9 @@
 > - Phase 8a extract ChipRow: DONE 2026-09-30, e0f8f0c0
 > - Phase 9 word chip list: DONE 2026-09-30, c13b8e79
 > - Phase 10 tag chip list: DONE 2026-09-30, 851809f7
-> - Phase 11 era filter: DONE 2026-09-30 ("feat(search): an era row narrows both searches to a
->   range of submitted years")
-> - Phase 12 word search limited to tagged stories: TODO
+> - Phase 11 era filter: DONE 2026-09-30, c10beed4
+> - Phase 12 word search limited to tagged stories: DONE 2026-09-30 ("feat(search): the word
+>   search can be limited to the stories of the tags selected")
 
 ## Context
 
@@ -196,6 +196,12 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
 12. **Word search limited to tagged stories.** An "Only in: …" chip in the Word panel, shown when
     tags are selected; `tag:"…"` qualifier. Marker `WORD_TAG_FILTER_SET`. GUI test. Final docs
     pass.
+    As built (choices made 2026-09-30): `[Everywhere] [Only in: <tags>]` under the era row, off
+    until picked; the tags are those picked with `+` (their whole selection), else the one tag
+    listed; refreshed on entering Word search, and a limit in force follows a changed selection
+    or lifts with it. It joins the era in one `SearchFilter(years, tag_titles)`. The panel's
+    chip rows (speakers, era, scope) are now one ordered list with one key handler. The typed
+    `tag:` qualifier came in phase 6.
 
 Docs, updated along the way: `docs/how-to-use.md` (a new "Search tips" syntax table; AND means
 same story; the speaker filter applies to each word), `docs/code-walkthrough.md` §7.4 (the

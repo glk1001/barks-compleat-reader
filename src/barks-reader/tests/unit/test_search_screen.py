@@ -64,6 +64,10 @@ def _make_bare_screen() -> SearchScreen:
     }
     for row in screen._era_rows.values():
         row.set_options(screen._era.options())
+    # The word search's tag scope: none offered.
+    screen._scope_row = ChipRow(MagicMock(), _live_chip, screen._on_scope_selected)
+    screen._scope_tags = ""
+    screen._scope_titles = frozenset()
     return screen
 
 
@@ -1194,7 +1198,7 @@ class TestSpeakerFilter:
         screen._build_speaker_chips()
 
         assert screen._speaker_row.chips == []
-        assert not screen._has_speaker_row()
+        assert "speakers" not in dict(screen._panel_rows())
         assert "Word search: index has no speakers; no speaker filter." in loguru_sink
 
     def test_chips_are_built_once_on_the_first_word_typed(self, screen: SearchScreen) -> None:
@@ -1565,3 +1569,154 @@ class TestEra:
         ):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert (screen._era.label, screen._nav_focus_area) == ("1942-46", "era")
+
+
+class TestTagScope:
+    """The word search can be limited to the stories of the tags the tag search selected."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._search = MagicMock()
+            bare._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [PIRATE_GOLD, HELMET])
+            bare._search.titles_for_tag_selection.return_value = [HELMET]
+            bare._search.run_word_query.return_value = WordQueryResult()
+            bare._selected_word = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare.on_search_results_title_changed = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "era"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            yield bare
+
+    @staticmethod
+    def _scope_chips(screen: SearchScreen) -> list[MagicMock]:
+        return cast("list[MagicMock]", screen._scope_row.chips)
+
+    def test_no_tags_selected_offers_no_scope(self, screen: SearchScreen) -> None:
+        screen._refresh_tag_scope()
+        assert screen._scope_row.chips == []
+        assert "scope" not in dict(screen._panel_rows())
+
+    def test_the_tag_listed_alone_is_offered(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        assert [(c.value, c.text) for c in self._scope_chips(screen)] == [
+            ("", "Everywhere"),
+            ("tags", "Only in: Gyro Gearloose"),
+        ]
+        assert screen._scope_titles == frozenset(
+            ENUM_TO_STR_TITLE[t] for t in (PIRATE_GOLD, HELMET)
+        )
+        assert screen._scope_row.selected == ""  # offered, not in force
+
+    def test_picked_tags_come_before_the_one_listed(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._tag_basket.toggle("Scrooge")
+        screen._tag_basket.toggle("Christmas")
+        screen._tag_basket.cycle("Christmas")
+        screen._refresh_tag_scope()
+        assert self._scope_chips(screen)[1].text == "Only in: Scrooge -Christmas"
+        assert screen._scope_titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
+
+    def test_a_long_selection_is_shortened_on_its_chip(self, screen: SearchScreen) -> None:
+        for tag in ("Scrooge", "Gyro Gearloose", "The Beagle Boys", "Gladstone"):
+            screen._tag_basket.toggle(tag)
+        screen._refresh_tag_scope()
+        label = self._scope_chips(screen)[1].text
+        assert label.startswith("Only in: Scrooge")
+        assert label.endswith("…")
+        assert len(label) <= 40  # noqa: PLR2004
+
+    def test_only_in_limits_a_typed_query_and_a_picked_word(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        screen._word_query = "gold -mine"
+        _press(self._scope_chips(screen)[1])
+
+        titles = frozenset(ENUM_TO_STR_TITLE[t] for t in (PIRATE_GOLD, HELMET))
+        search_filter = screen._search.run_word_query.call_args.kwargs["search_filter"]
+        assert search_filter == SearchFilter(tag_titles=titles)
+        assert log_markers.WORD_TAG_FILTER_SET.format(tags="Gyro Gearloose") in loguru_sink
+
+        screen._word_query = ""
+        screen._search.find_words.return_value = {
+            ENUM_TO_STR_TITLE[HELMET]: TitleInfo(11),
+            ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]: TitleInfo(7),
+        }
+        with patch.object(screen, "_list_word_stories") as listed:
+            screen._show_word_results("gold")
+        assert list(listed.call_args.args[0]) == [ENUM_TO_STR_TITLE[HELMET]]
+
+    def test_the_scope_and_the_era_filter_together(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        _press(self._scope_chips(screen)[1])
+        screen._era.select("1951-1954")
+        assert screen._word_search_filter() == SearchFilter(
+            years=(1951, 1954), tag_titles=screen._scope_titles
+        )
+
+    def test_everywhere_lifts_the_limit(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        _press(self._scope_chips(screen)[1])
+        _press(self._scope_chips(screen)[0])
+        assert screen._word_search_filter() is None
+        assert loguru_sink[-1] == log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere")
+
+    def test_a_scope_in_force_follows_the_tags_or_lifts_with_them(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        _press(self._scope_chips(screen)[1])
+        screen._tag_basket.toggle("Scrooge")  # picked since: the scope follows
+        with patch.object(screen, "_rerun_word_results") as again:
+            screen._refresh_tag_scope()
+        again.assert_called_once_with()
+        assert screen._scope_titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
+
+        screen._tag_basket.clear()
+        screen._listed_tag = ""
+        with patch.object(screen, "_rerun_word_results") as again:
+            screen._refresh_tag_scope()
+        again.assert_called_once_with()
+        assert (screen._scope_row.chips, screen._word_search_filter()) == ([], None)
+        assert loguru_sink[-1] == log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere")
+
+    def test_entering_the_word_search_refreshes_the_scope(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_refresh_tag_scope") as refresh:
+            screen.set_mode("Word")
+            screen.set_mode("Tag")
+        refresh.assert_called_once_with()
+
+    def test_the_scope_row_sits_between_the_era_and_the_stories(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        screen._nav_enter_era()
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert (screen._nav_focus_area, screen._scope_row.focused) == ("scope", 0)
+        with (
+            patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
+            patch.object(screen, "_draw_result_focus"),
+        ):
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
+            assert screen._nav_focus_area == "results"
+            with patch.object(screen, "_clear_result_focus"):
+                assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "scope"
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "era"

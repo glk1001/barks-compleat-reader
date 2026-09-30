@@ -395,6 +395,38 @@ def test_the_era_filter_narrows_tag_results(boot: AppBoot) -> None:
     d.move_focus("Down")  # the tag's stories in the era
 
 
+SCOPE_TAG_QUERY = "gyro"  # Gyro Gearloose, typed whole: listed as typed
+SCOPE_WORD_QUERY = "gold"
+
+
+def test_a_word_search_is_restricted_to_a_tag(boot: AppBoot) -> None:
+    """The tag listed in the tag search is offered to the word search: 'Only in: <tag>'."""
+    tag = expected.tags_matching(SCOPE_TAG_QUERY)[0].label
+    word = expected.words_matching(SCOPE_WORD_QUERY)[0]
+    everywhere = expected.word_stories(word)
+    in_tag = expected.word_stories_in_tag(word, tag)
+    assert 0 < in_tag < everywhere, "the tag must narrow the stories, not empty them"
+
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_TITLES_LISTED, tag=tag)):
+        search.type_query(d, SCOPE_TAG_QUERY)
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # from the box to the tree
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Words"), "Down")
+    with d.expect(pattern(markers.SEARCH_MODE_SET, mode="Word")):  # Return opens it
+        search.type_query(d, SCOPE_WORD_QUERY)
+    with d.expect(d.FOCUS_MOVED):  # Return picks the first word and lands on it
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=word), "Return")
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == everywhere
+
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    d.move_focus("Right", pattern=_speaker_focused("All"))
+    d.move_focus("Down", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Down", pattern=_focus_on("_ScopeChipButton", "Everywhere"))
+    d.move_focus("Right", pattern=_focus_on("_ScopeChipButton", f"Only in: {tag}"))
+    with d.expect(pattern(markers.WORD_TAG_FILTER_SET, tags=tag)):
+        d.key_then_wait(pattern(markers.SEARCH_WORD_RESULTS, count=in_tag), "Return")
+
+
 def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:
     """Tags typed with + , | or - make one chip; Return combines them and lists their stories."""
     first, second = (m.label for m in expected.tags_matching(COMBINE_QUERY)[:2])

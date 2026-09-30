@@ -275,6 +275,9 @@ TAG_QUERY_NOTICE: Final = "Tag query notice: {notice}"
 # The era (range of submitted years) both searches list stories from; "All years" once
 # it is lifted.
 ERA_FILTER_SET: Final = 'Search: era "{era}".'
+# The tags whose stories a word search is limited to ("Only in: ..."), as typed;
+# "Everywhere" once the limit is lifted.
+WORD_TAG_FILTER_SET: Final = 'Word search: tag filter "{tags}".'
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'

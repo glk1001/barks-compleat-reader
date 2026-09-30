@@ -12,7 +12,7 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.comics_database import ComicsDatabase
@@ -172,6 +172,15 @@ def word_stories(word: str, speaker: str | None = None) -> int:
     """Return how many stories the word search lists for a word picked from the list."""
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
     return len(search.find_words(word, speaker=speaker))
+
+
+@cache
+def word_stories_in_tag(word: str, tag: str) -> int:
+    """Return how many of the stories the word search lists for `word` a tag tags."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    _, titles = BarksTitleSearch.get_titles_from_alias_tag(tag.lower())
+    tagged = {ENUM_TO_STR_TITLE[t] for t in titles}
+    return len(set(search.find_words(word)) & tagged)
 
 
 @cache
