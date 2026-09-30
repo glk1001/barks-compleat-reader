@@ -11,6 +11,10 @@ bundle on macOS.
 
 ## Commands
 
+A clean machine's whole setup, in order (system packages, tools, sibling repos, hooks,
+secrets, data, the one-off calibrations and the checks that say what is missing), is in
+`docs/setup.md`; keep it current when a new tool or package becomes necessary.
+
 **First-time setup (after cloning, and after any `git lfs install`):**
 ```bash
 uv run prek install

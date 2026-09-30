@@ -53,7 +53,10 @@ More screenshots (including the full index and speech bubble index) are on
 
 ## Installation and Setup
 
-Follow these steps to get the application running on your local machine.
+Follow these steps to get the application running on your local machine. To develop it
+(the tests, the gates, the standalone build) or run the overnight suite, set the machine
+up with [docs/setup.md](docs/setup.md) instead: system packages, tools, the sibling
+repositories, git hooks, secrets and data.
 
 **1. Clone the required repository**
 
@@ -317,11 +320,9 @@ just reader
   Fantagraphics volumes, the reader's files and the profile, about 36 GB) to the same
   paths under that machine's home, then runs `check-overnight-host.sh` there, which says
   what is still missing. The comic build tree (about 330 GB) is left behind: run there
-  with `--skip build-check`. It installs no system packages; on Ubuntu the run needs
-  `sudo apt install git-lfs xvfb xautomation x11-utils imagemagick xclip xdotool`, and
-  [bun](https://bun.sh) for cspell. xdotool is the smoke stage's (it presses Escape in the
-  built app), although `gui-probe.sh doctor` calls it optional: the GUI tests use `xte`.
-  Without xclip, every GUI test fails its clean-log check. Once there, record a benchmark
+  with `--skip build-check`. It installs no system packages or tools: those, the polkit
+  rule that keeps the machine awake without a password over ssh, and the rest of a clean
+  machine's setup are in [docs/setup.md](docs/setup.md). Once there, record a benchmark
   baseline (the lint stage compares against it) and calibrate the GUI timings; over ssh
   there is no display, so both run on Xvfb.
     ```
@@ -332,22 +333,9 @@ just reader
     bash scripts/run_gui_tests.sh --headless --calibrate            # once, there
     bash scripts/run_overnight.sh --skip build-check                # there
     ```
-  Started over ssh, the run asks for a password ("Authentication is required for an
-  application to inhibit system sleep"): its `systemd-inhibit`, which keeps the machine
-  awake, needs one from a remote session under polkit's defaults. The stages go on
-  meanwhile, but the machine may sleep. To not be asked, a polkit rule there (as root,
-  from a terminal - `pkexec` over ssh has no password agent), for that user only:
-    ```
-    // /etc/polkit-1/rules.d/49-<user>-inhibit-sleep.rules
-    polkit.addRule(function(action, subject) {
-        if ((action.id == "org.freedesktop.login1.inhibit-block-sleep" ||
-             action.id == "org.freedesktop.login1.inhibit-block-idle") &&
-            subject.user == "<user>") {
-            return polkit.Result.YES;
-        }
-    });
-    ```
-  `systemd-inhibit --what=sleep:idle sleep 1` then returns without asking.
+  Started over ssh without the polkit rule in [docs/setup.md](docs/setup.md), the run asks
+  for a password ("Authentication is required for an application to inhibit system
+  sleep"); the stages go on meanwhile, but the machine may sleep.
 
 The GUI suite's design, its log-marker contract and its history are in
 `docs/plans/gui-test-suite.md`; the runner's options are also described at the top of
