@@ -226,22 +226,6 @@ def save_pil_image(pil_image: PilImage, dest_file: Path) -> None:
         )
 
 
-def add_jpg_metadata(jpg_file: Path, metadata: dict[str, str]) -> None:
-    pil_image = Image.open(str(jpg_file), "r")
-
-    jpg_metadata = PngInfo()
-    for key, value in metadata.items():
-        jpg_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", value)
-
-    pil_image.save(
-        str(jpg_file),
-        jpginfo=jpg_metadata,
-        optimize=True,
-        compress_level=SAVE_JPG_COMPRESS_LEVEL,
-        quality=SAVE_JPG_QUALITY,
-    )
-
-
 def add_png_metadata(png_file: Path, metadata: dict[str, str]) -> None:
     pil_image = Image.open(str(png_file), "r")
 

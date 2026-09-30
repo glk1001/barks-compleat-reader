@@ -160,10 +160,3 @@ class TestFiles:
         pil_image_utils.add_png_metadata(png, {"title": "Lost in the Andes!"})
         with Image.open(png) as image:
             assert image.info["BARKS:title"] == "Lost in the Andes!"
-
-    def test_a_jpg_given_metadata_is_still_the_same_image(self, tmp_path: Path) -> None:
-        jpg = tmp_path / "page.jpg"
-        _image().save(jpg, format="JPEG")
-        pil_image_utils.add_jpg_metadata(jpg, {"title": "Lost in the Andes!"})
-        with Image.open(jpg) as image:
-            assert (image.format, image.size) == ("JPEG", (40, 20))
