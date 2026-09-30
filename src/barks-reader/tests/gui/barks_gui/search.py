@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 SEARCH_BOX_FOCUSED = pattern(markers.SEARCH_BOX_FOCUS, mode=re.compile(r"\w+"), state="focused")
 
 
-def _results_line(typed: str) -> str | None:
+def results_line(typed: str) -> str | None:
     """Return the line the app logs for `typed` in any search mode; None for one character.
 
     Title and tag search do nothing on a single character, and the word search
@@ -48,7 +48,7 @@ def type_query(d: Driver, query: str) -> None:
     Each keystroke after the first waits on the results line it produces.
     """
     d.key_then_wait(SEARCH_BOX_FOCUSED, "Return")
-    d.type_slowly(query, marker=_results_line)
+    d.type_slowly(query, marker=results_line)
 
 
 def run_typed_query(d: Driver, query: str) -> None:

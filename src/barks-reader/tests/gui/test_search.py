@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from barks_gui import expected, nodes, search
+import pytest
+from barks_gui import expected, memory, nodes, search, taps
 from barks_gui.logs import last_field, messages
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -449,3 +450,36 @@ def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) 
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Left")  # from the clear button, the box
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # the cursor is at the end: the results
     d.key_then_wait(markers.SEARCH_EXITED_NAV, "Escape")
+
+
+# ----------------------------------------------------------------- memory --
+
+LEAK_ROUNDS_QUERY = {"Word": "gold", "Tag": "gyro"}
+PICKED = {"Word": markers.WORD_BASKET_CHANGED, "Tag": markers.TAG_BASKET_CHANGED}
+CLEAR_BUTTON = {"Word": "word_clear_button", "Tag": "tag_clear_button"}
+
+
+@pytest.mark.parametrize(("mode", "node"), [("Word", nodes.WORD_SEARCH), ("Tag", nodes.TAG_SEARCH)])
+def test_search_round_trips_leave_no_chips_behind(
+    boot: AppBoot, mode: str, node: list[str]
+) -> None:
+    """Fill the list, pick two with their +, clear: again and again, and no chip is kept.
+
+    The clear button is tapped: with chips listed, the remote's keys do not reach it.
+    """
+    d = boot(node)
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
+    query = LEAK_ROUNDS_QUERY[mode]
+
+    def round_trip() -> None:
+        d.type_slowly(query, marker=search.results_line)
+        d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word or tag
+        d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+        d.key_then_wait(pattern(PICKED[mode], count=1), "Return")
+        d.move_focus("Down", pattern=_focus_on("_PlusButton", "+"))
+        d.key_then_wait(pattern(PICKED[mode], count=2), "Return")
+        taps.tap_then_wait(
+            d, pattern(markers.SEARCH_CLEARED, mode=mode.lower()), kv_id=CLEAR_BUTTON[mode]
+        )
+
+    memory.assert_round_trips_leave_nothing(d, round_trip)
