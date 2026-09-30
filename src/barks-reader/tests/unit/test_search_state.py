@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import (
     And,
     Combine,
@@ -12,7 +13,7 @@ from barks_fantagraphics.search_query import (
     query_from_words,
 )
 from barks_fantagraphics.tag_query import TagSelection
-from barks_reader.core.search_state import TagBasket, TagState, WordBasket
+from barks_reader.core.search_state import ALL_YEARS, EraChoice, TagBasket, TagState, WordBasket
 
 
 def test_a_word_is_picked_then_put_back_by_the_same_toggle() -> None:
@@ -113,3 +114,36 @@ def test_a_typed_selection_fills_the_basket_with_the_labels_known() -> None:
         "andes": TagState.EXCLUDED,
     }
     assert basket.combine is Combine.ANY
+
+
+RANGES = ((1942, 1946), (1951, 1954), (1962, 1971))
+
+
+def test_the_era_chips_are_all_years_then_each_range() -> None:
+    assert EraChoice(RANGES).options() == [
+        ("", "All years"),
+        ("1942-1946", "1942-46"),
+        ("1951-1954", "1951-54"),
+        ("1962-1971", "1962-71"),
+    ]
+
+
+def test_picking_an_era_and_lifting_it() -> None:
+    era = EraChoice(RANGES)
+    assert (era.years, era.value, era.label, era.search_filter()) == (
+        None,
+        ALL_YEARS,
+        "All years",
+        None,
+    )
+    assert era.allows(1942)
+    era.select("1951-1954")
+    assert (era.years, era.value, era.label) == ((1951, 1954), "1951-1954", "1951-54")
+    assert era.search_filter() == SearchFilter(years=(1951, 1954))
+    assert era.allows(1951)
+    assert era.allows(1954)
+    assert not era.allows(1955)
+    era.select(ALL_YEARS)
+    assert era.years is None
+    era.select("1900-1901")  # not offered
+    assert era.years is None

@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
+from barks_fantagraphics.search_filters import apply_filter
 from barks_fantagraphics.search_query import has_query_syntax, replace_word
 from barks_fantagraphics.speech_speakers import (
     CHARACTER_SPEAKER_OPTIONS,
@@ -30,10 +32,11 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
-from barks_reader.core.search_state import TagBasket, TagState, WordBasket
+from barks_reader.core.search_state import ALL_YEARS, EraChoice, TagBasket, TagState, WordBasket
 from barks_reader.core.settings_notifier import settings_notifier
 
 from .index_screen import (
@@ -216,6 +219,14 @@ def _make_speaker_chip(value: str, label: str) -> _SpeakerChipButton:
     return _SpeakerChipButton(text=label, value=value)
 
 
+class _EraChipButton(_SpeakerChipButton):
+    """A chip of the era row: a range of submitted years, or all of them."""
+
+
+def _make_era_chip(value: str, label: str) -> _EraChipButton:
+    return _EraChipButton(text=label, value=value)
+
+
 class _TagQueryChip(_TagChipButton):
     """The tag list's first chip while the box holds typed tags: pressing it combines them."""
 
@@ -357,6 +368,16 @@ class SearchScreen(FloatLayout):
         self._tag_basket_results: bool = False
         # The tag box's text while it combines tags (Return combines them), else "".
         self._tag_box_query: str = ""
+        # The tag whose stories are listed alone, if any: what a new era lists again.
+        self._listed_tag: str = ""
+        # The era both searches list stories from, and its row in each results panel.
+        self._era = EraChoice(tuple(CHRONO_YEAR_RANGES))
+        self._era_rows = {
+            mode: ChipRow(self.ids[layout_id], _make_era_chip, self._on_era_selected)
+            for mode, layout_id in (("Tag", "tag_era_layout"), ("Word", "word_era_layout"))
+        }
+        for row in self._era_rows.values():
+            row.set_options(self._era.options())
 
         # Last activated result (for restoring focus after go-back)
         self._last_activated_result_idx: int | None = None
@@ -596,15 +617,27 @@ class SearchScreen(FloatLayout):
         return stack
 
     def _show_tag_titles(self, tag_str: str) -> None:
-        """Look up titles for a tag and populate the results list."""
+        """Look up a tag's stories in the era and populate the results list."""
         _, titles = self._search.resolve_tag(tag_str.lower())
+        titles = self._in_era(titles or [])
+        self._listed_tag = tag_str
         self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
         logger.debug(log_markers.TAG_TITLES_LISTED.format(tag=tag_str, count=len(titles)))
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
             title_results_layout, self._tag_titles, self._on_result_goto_title
         )
-        self._update_background_from_results(titles or [])
+        self._add_none_in_era_row(title_results_layout, titles)
+        self._update_background_from_results(titles)
+
+    def _in_era(self, titles: list[Titles]) -> list[Titles]:
+        """Return the stories of `titles` submitted in the era, in the same order."""
+        return [t for t in titles if self._era.allows(BARKS_TITLE_INFO[t].submitted_year)]
+
+    def _add_none_in_era_row(self, layout: BoxLayout, titles: list[Titles]) -> None:
+        """Say so when the era leaves nothing of a list, so an empty list is not a mystery."""
+        if not titles and self._era.years is not None:
+            layout.add_widget(_SearchResultButton(text=f"None in {self._era.label}", disabled=True))
 
     def _on_tag_result_selected(self, tag_str: str) -> None:
         logger.info(log_markers.TAG_SELECTED_TAG.format(tag=tag_str))
@@ -632,6 +665,7 @@ class SearchScreen(FloatLayout):
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
         self._tag_titles = []
+        self._listed_tag = ""
 
     def on_tag_clear(self) -> None:
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
@@ -645,7 +679,10 @@ class SearchScreen(FloatLayout):
         self._tag_basket.clear()
         self._show_tag_basket()
         self._tag_basket_results = False
+        self._selected_tag = ""
+        self._current_tag = None
         self._clear_tag_title_results()
+        self._set_era(ALL_YEARS)
         self.ids.tag_search_input.focus = True
 
     # --- Tag Search: the picked tags ---
@@ -727,7 +764,8 @@ class SearchScreen(FloatLayout):
             return
         self._tag_basket_results = True
         selection = self._tag_basket.selection()
-        titles = self._search.titles_for_tag_selection(selection)
+        titles = self._in_era(self._search.titles_for_tag_selection(selection))
+        self._listed_tag = ""
         self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
         logger.info(
             log_markers.TAG_COMBINED_RESULTS.format(tags=selection.describe(), count=len(titles))
@@ -738,6 +776,8 @@ class SearchScreen(FloatLayout):
             layout.add_widget(
                 _SearchResultButton(text="Include a tag to list stories", disabled=True)
             )
+        elif not titles and self._era.years is not None:
+            self._add_none_in_era_row(layout, titles)
         elif not titles:
             layout.add_widget(_SearchResultButton(text="No story has these tags", disabled=True))
         self._update_background_from_results(titles)
@@ -834,7 +874,11 @@ class SearchScreen(FloatLayout):
                 basket's query, run beside the word list it is picked from.
 
         """
-        result = self._search.run_word_query(query, speaker=self._speaker_row.selected or None)
+        result = self._search.run_word_query(
+            query,
+            speaker=self._speaker_row.selected or None,
+            search_filter=self._era.search_filter(),
+        )
         self._word_query = query
         self._word_query_result = result
         self._selected_word = ""
@@ -1043,6 +1087,9 @@ class SearchScreen(FloatLayout):
     def _show_word_results(self, word: str) -> None:
         """Run the word search under the current speaker filter and list its titles."""
         found = self._search.find_words(word, speaker=self._speaker_row.selected or None)
+        era_filter = self._era.search_filter()
+        if era_filter is not None:
+            found = apply_filter(era_filter, found)
         self._list_word_stories(found, word)
 
     def _list_word_stories(
@@ -1092,6 +1139,73 @@ class SearchScreen(FloatLayout):
     def _on_speaker_chip_selected(self, speaker: str) -> None:
         """Rerun the word search under the speaker the row just picked."""
         logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
+        self._rerun_word_results()
+
+    # --- The era, for both searches ---
+
+    def _on_era_selected(self, value: str) -> None:
+        """List both searches' stories again from the era a row just picked."""
+        self._set_era(value)
+
+    def _set_era(self, value: str) -> None:
+        if value == self._era.value:
+            for row in self._era_rows.values():
+                row.set_selected(value)
+            return
+        self._era.select(value)
+        logger.info(log_markers.ERA_FILTER_SET.format(era=self._era.label))
+        for row in self._era_rows.values():
+            row.set_selected(self._era.value)
+        self._rerun_tag_results()
+        self._rerun_word_results()
+
+    def _rerun_tag_results(self) -> None:
+        if self._tag_basket_results:
+            self._run_tag_basket()
+        elif self._listed_tag:
+            self._show_tag_titles(self._listed_tag)
+
+    def _active_era_row(self) -> ChipRow:
+        return self._era_rows["Tag" if self._active_mode == "Tag" else "Word"]
+
+    def _nav_enter_era(self) -> None:
+        self._nav_focus_area = "era"
+        self._active_era_row().enter_focus()
+
+    def _handle_era_key(self, key: int) -> bool:
+        """Keys on the era row, at the top of the tag results, or under the speakers.
+
+        Enter picks an era and stays. Left off the first chip goes back to the
+        list, Down to the stories, Up to the speakers (word search) or the box.
+        """
+        row = self._active_era_row()
+        match row.handle_key(key):
+            case RowKey.UNHANDLED:
+                return False
+            case RowKey.EXIT_LEFT if self._get_active_chip_buttons():
+                row.clear_focus()
+                if self._active_mode == "Word":
+                    self._nav_back_to_word_chips()
+                else:
+                    self._nav_back_to_tag_chips()
+            case RowKey.EXIT_DOWN if self._get_active_result_rows():
+                row.clear_focus()
+                self._nav_enter_results()
+                self._draw_result_focus()
+            case RowKey.EXIT_UP:
+                row.clear_focus()
+                if self._has_speaker_row():
+                    self._nav_enter_speakers()
+                else:
+                    self._nav_focus_area = "input"
+                    self._focus_active_input()
+            case RowKey.EXIT_ESCAPE:
+                self._nav_escape()
+            case _:
+                pass
+        return True
+
+    def _rerun_word_results(self) -> None:
         if self._word_query:
             self._run_word_query(self._word_query, list_words=not self._basket_results)
         elif self._selected_word:
@@ -1224,6 +1338,7 @@ class SearchScreen(FloatLayout):
         self._show_basket()
         self._basket_results = False
         self._speaker_row.set_selected(_ALL_SPEAKERS)
+        self._set_era(ALL_YEARS)
         self.ids.word_search_input.focus = True
 
     # --- Background Image Update from Results ---
@@ -1394,6 +1509,8 @@ class SearchScreen(FloatLayout):
         self._speaker_row.clear_focus()
         self._basket_row.clear_focus()
         self._tag_basket_row.clear_focus()
+        for era_row in self._era_rows.values():
+            era_row.clear_focus()
         self._clear_clear_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
@@ -1412,6 +1529,7 @@ class SearchScreen(FloatLayout):
             "tags": self._handle_tags_key,
             "speakers": self._handle_speakers_key,
             "basket": self._handle_basket_key,
+            "era": self._handle_era_key,
             "results": self._handle_results_key,
         }
         handler = handlers.get(self._nav_focus_area)
@@ -1486,10 +1604,10 @@ class SearchScreen(FloatLayout):
             self._nav_focused_result_idx -= 1
             self._nav_word_sub_focus = "title"
             self._draw_result_focus()
-        elif self._has_speaker_row():
-            # The speaker row sits directly above the word results.
+        elif self._active_mode in ("Tag", "Word"):
+            # The era row sits directly above the results.
             self._clear_result_focus()
-            self._nav_enter_speakers()
+            self._nav_enter_era()
 
     def _handle_results_left_right(self, key: int) -> bool:
         if key == KEY_RIGHT:
@@ -1507,18 +1625,23 @@ class SearchScreen(FloatLayout):
             self._nav_back_to_word_chips()
         elif self._active_mode == "Tag" and self._get_tag_chip_buttons():
             self._clear_result_focus()
-            self._nav_focus_area = "tags"
-            tag_chips = self._get_tag_chip_buttons()
-            # Go back to the selected member chip if one is active, otherwise the group chip
-            target = self._selected_member or self._selected_tag
-            selected_idx = next((i for i, c in enumerate(tag_chips) if c.text == target), 0)
-            self._nav_focused_chip_idx = selected_idx
-            self._draw_chip_focus()
+            self._nav_back_to_tag_chips()
         else:
             self._clear_result_focus()
             self._nav_focus_area = "clear"
             self._draw_clear_focus()
         return True
+
+    def _nav_back_to_tag_chips(self) -> None:
+        """Focus the tag list: the selected member chip if one is active, else the tag's."""
+        self._nav_focus_area = "tags"
+        self._nav_list_sub = "word"
+        tag_chips = self._get_tag_chip_buttons()
+        target = self._selected_member or self._selected_tag
+        self._nav_focused_chip_idx = next(
+            (i for i, c in enumerate(tag_chips) if c.text == target), 0
+        )
+        self._draw_chip_focus()
 
     def _nav_back_to_word_chips(self) -> None:
         """Focus the word chip list, on the selected word."""
@@ -1545,10 +1668,9 @@ class SearchScreen(FloatLayout):
             case RowKey.EXIT_LEFT if self._get_word_chip_buttons():
                 self._speaker_row.clear_focus()
                 self._nav_back_to_word_chips()
-            case RowKey.EXIT_DOWN if self._get_active_result_rows():
+            case RowKey.EXIT_DOWN:
                 self._speaker_row.clear_focus()
-                self._nav_enter_results()
-                self._draw_result_focus()
+                self._nav_enter_era()  # the era row sits under the speakers
             case RowKey.EXIT_UP:
                 self._speaker_row.clear_focus()
                 self._nav_focus_area = "input"
@@ -1580,6 +1702,8 @@ class SearchScreen(FloatLayout):
         self._speaker_row.clear_focus()
         self._basket_row.clear_focus()
         self._tag_basket_row.clear_focus()
+        for era_row in self._era_rows.values():
+            era_row.clear_focus()
         self._clear_clear_focus()
         self._nav_focus_area = "input"
         self._blur_all_inputs()
@@ -1620,8 +1744,7 @@ class SearchScreen(FloatLayout):
                 # The speaker row is the first thing to the right of the words.
                 self._nav_enter_speakers()
             else:
-                self._nav_enter_results()
-                self._draw_result_focus()
+                self._nav_enter_era()  # the top of the tag results panel
         elif key in (KEY_LEFT, KEY_UP):
             self._handle_tags_up()
         elif key == KEY_TAB:

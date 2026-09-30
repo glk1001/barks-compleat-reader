@@ -176,7 +176,7 @@ def test_the_speaker_row_filters_the_word_results_by_keyboard(boot: AppBoot) -> 
         d.key_then_wait(_speaker_focused(SPEAKER), "Return")  # applied; the focus stays
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == by_speaker
 
-    d.move_focus("Down")  # into the filtered results
+    d.move_focus("Down", "Down")  # the era row under the speakers, then the results
 
 
 BASKET_QUERY = "gold"
@@ -331,9 +331,9 @@ def test_return_on_a_group_opens_its_members_and_again_closes_them(boot: AppBoot
     # Return on the open group folds it: its own titles, the focus left on it.
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Return")
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # the group's + (it picks tags to combine)
-    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the group's titles
-    d.key_then_wait(d.FOCUS_MOVED, "Down")
-    d.key_then_wait(d.FOCUS_MOVED, "Up")
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the era row, above the group's titles
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # the titles
+    d.key_then_wait(d.FOCUS_MOVED, "Up")  # the era row again
     d.key_then_wait(_chip_focused(MULTI_GROUP), "Left")  # back to the selected chip
 
 
@@ -368,6 +368,31 @@ def test_tags_are_combined_and_excluded_by_keyboard(boot: AppBoot) -> None:
     d.move_focus("Right", pattern=_focus_on("_BasketChipButton", second))
     count = _combined(d, tags=f"{first} -{second}")  # the second, left out
     assert count == expected.tag_selection_count((first,), (second,))
+
+
+ERA_TAG_QUERY = "gyro"  # Gyro Gearloose, typed whole: picked as typed
+ERA = (1951, 1954)
+ERA_LABEL = "1951-54"
+ERA_STEPS = 3  # All years, 1942-46, 1947-50, then 1951-54
+
+
+def test_the_era_filter_narrows_tag_results(boot: AppBoot) -> None:
+    """Right from a tag is the era row; Enter on an era lists only that tag's stories then."""
+    tag = expected.tags_matching(ERA_TAG_QUERY)[0].label
+    everyone = expected.tag_stories_in_years(tag)
+    in_era = expected.tag_stories_in_years(tag, ERA)
+    assert 0 < in_era < everyone, "the era must narrow the stories, not empty them"
+
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_TITLES_LISTED, tag=tag, count=everyone)):
+        search.type_query(d, ERA_TAG_QUERY)
+    d.key_then_wait(_chip_focused(tag), "Return")
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus(*["Right"] * ERA_STEPS)
+    with d.expect(pattern(markers.ERA_FILTER_SET, era=ERA_LABEL)):
+        d.key_then_wait(pattern(markers.TAG_TITLES_LISTED, tag=tag, count=in_era), "Return")
+    d.move_focus("Down")  # the tag's stories in the era
 
 
 def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:

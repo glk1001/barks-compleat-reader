@@ -9,12 +9,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_tags import Tags
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
+from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import ParsedTagQuery, TagMatch, TagSelection
 from barks_reader.core import log_markers
-from barks_reader.core.search_state import TagBasket, WordBasket
+from barks_reader.core.search_state import EraChoice, TagBasket, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.search_chip_row import ChipRow
@@ -54,7 +56,20 @@ def _make_bare_screen() -> SearchScreen:
     screen._tag_basket_row = ChipRow(MagicMock(), _live_chip, screen._on_tag_basket_chip_picked)
     screen._tag_basket_results = False
     screen._tag_box_query = ""
+    # The era: all years, a row in each results panel, over stand-ins.
+    screen._listed_tag = ""
+    screen._era = EraChoice(ERA_RANGES)
+    screen._era_rows = {
+        mode: ChipRow(MagicMock(), _live_chip, screen._on_era_selected) for mode in ("Tag", "Word")
+    }
+    for row in screen._era_rows.values():
+        row.set_options(screen._era.options())
     return screen
+
+
+ERA_RANGES = ((1942, 1946), (1951, 1954))
+PIRATE_GOLD = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD  # submitted 1942
+HELMET = Titles.GOLDEN_HELMET_THE  # submitted 1951
 
 
 def _speaker_chip(value: str, label: str) -> MagicMock:
@@ -251,7 +266,9 @@ class TestTypedQuery:
         )
         rows = self._run(screen, "the gold scroge", result)
 
-        screen._search.run_word_query.assert_called_once_with("the gold scroge", speaker=None)
+        screen._search.run_word_query.assert_called_once_with(
+            "the gold scroge", speaker=None, search_filter=None
+        )
         assert [type(r) for r in rows] == [
             _QueryRowButton,
             _NoticeLabel,
@@ -448,7 +465,9 @@ class TestWordBasket:
             ("", "ALL"),
             ("gold", "gold  \u00d7"),
         ]
-        screen._search.run_word_query.assert_called_once_with('"gold"', speaker=None)
+        screen._search.run_word_query.assert_called_once_with(
+            '"gold"', speaker=None, search_filter=None
+        )
         relist.assert_not_called()  # the word list stays, to pick more from
         assert screen._basket_results
         assert screen.rows[0].plus_button.text == "\u2013"
@@ -538,13 +557,12 @@ class TestWordBasket:
         screen.handle_key(search_screen.KEY_ENTER)
         assert screen._word_basket.words == ["golden"]
 
-    def test_right_from_the_plus_goes_on_to_the_speakers_or_results(
+    def test_right_from_the_plus_goes_on_to_the_speakers_or_the_era_row(
         self, screen: SearchScreen
     ) -> None:
         screen.handle_key(search_screen.KEY_RIGHT)
-        with patch.object(screen, "_draw_result_focus"):
-            assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._nav_list_sub) == ("results", "word")
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True  # no speakers here
+        assert (screen._nav_focus_area, screen._nav_list_sub) == ("era", "word")
 
     def test_up_from_the_first_word_is_the_basket_row_when_words_are_picked(
         self, screen: SearchScreen
@@ -661,7 +679,7 @@ class TestTagChips:
     def test_listing_a_tag_s_stories_is_logged_with_their_count(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        screen._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, ["t1", "t2"])
+        screen._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [PIRATE_GOLD, HELMET])
         screen._search.get_title_display_strings.return_value = ["T1", "T2"]
         with (
             patch.object(screen, "_populate_title_results"),
@@ -694,7 +712,7 @@ class TestTagBasket:
             bare = _make_bare_screen()
             bare._active_mode = "Tag"
             bare._search = MagicMock()
-            bare._search.titles_for_tag_selection.return_value = ["T1", "T2"]
+            bare._search.titles_for_tag_selection.return_value = [PIRATE_GOLD, HELMET]
             bare._search.get_title_display_strings.return_value = ["Story 1", "Story 2"]
             bare._search.resolve_tag.side_effect = lambda name: (
                 SimpleNamespace(value=name.title()),
@@ -1337,21 +1355,11 @@ class TestSpeakerRowKeys:
         screen.chips[2].trigger_action.assert_called_once_with(duration=0)
         assert screen._nav_focus_area == "speakers"
 
-    def test_down_drops_into_the_results(self, screen: SearchScreen) -> None:
-        with (
-            patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
-            patch.object(screen, "_draw_result_focus") as draw,
-        ):
-            assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "results"
-        assert screen._nav_focused_result_idx == 0
+    def test_down_goes_to_the_era_row_under_the_speakers(self, screen: SearchScreen) -> None:
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "era"
+        assert screen._era_rows["Word"].focused == 0  # on All years, the one picked
         assert screen._speaker_row.focused is None
-        draw.assert_called_once()
-
-    def test_down_with_no_results_stays_put(self, screen: SearchScreen) -> None:
-        with patch.object(screen, "_get_active_result_rows", return_value=[]):
-            assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "speakers"
 
     def test_up_returns_to_the_search_box(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_focus_active_input") as focus:
@@ -1380,7 +1388,7 @@ class TestSpeakerRowKeys:
         assert screen._nav_focus_area == "speakers"
         assert screen._speaker_row.focused == 1  # "Donald" is selected
 
-    def test_right_from_the_word_list_skips_to_results_without_a_row(
+    def test_right_from_the_word_list_is_the_era_row_without_speakers(
         self, screen: SearchScreen
     ) -> None:
         screen._nav_focus_area = "tags"
@@ -1388,12 +1396,13 @@ class TestSpeakerRowKeys:
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
             patch.object(screen, "_clear_chip_focus"),
-            patch.object(screen, "_draw_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "results"
+        assert screen._nav_focus_area == "era"
 
-    def test_up_from_the_first_result_climbs_to_the_speaker_row(self, screen: SearchScreen) -> None:
+    def test_up_from_the_first_result_climbs_to_the_era_then_the_speakers(
+        self, screen: SearchScreen
+    ) -> None:
         screen._speaker_row.clear_focus()
         screen._nav_focus_area = "results"
         with (
@@ -1401,12 +1410,158 @@ class TestSpeakerRowKeys:
             patch.object(screen, "_clear_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "era"
+        assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "speakers"
-        assert screen._speaker_row.focused == 1
+        assert screen._speaker_row.focused == 1  # Donald, the one picked
 
-    def test_up_from_the_first_result_is_a_no_op_without_a_row(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "results"
+    def test_up_from_the_era_is_the_box_without_speakers(self, screen: SearchScreen) -> None:
         screen._speaker_row.set_options([])
-        with patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]):
+        screen._nav_enter_era()
+        with patch.object(screen, "_focus_active_input") as focus:
             assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+        focus.assert_called_once_with()
+
+
+class TestEra:
+    """One era for both searches: it narrows what each lists, and a row in each panel picks it."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Tag"
+            bare._search = MagicMock()
+            bare._search.get_title_display_strings.side_effect = lambda ts: [t.name for t in ts]
+            bare._tag_titles = []
+            bare.on_search_results_title_changed = None
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            bare._current_tag = None
+            bare._selected_word = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "tags"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            yield bare
+
+    @staticmethod
+    def _pick_era(screen: SearchScreen, index: int) -> None:
+        _press(cast("MagicMock", screen._era_rows["Tag"].chips[index]))
+
+    def test_a_tag_lists_only_its_stories_in_the_era(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [PIRATE_GOLD, HELMET])
+        screen._show_tag_titles("Gyro Gearloose")
+        assert screen._tag_titles == [PIRATE_GOLD.name, HELMET.name]
+
+        self._pick_era(screen, 2)  # 1951-54
+        assert screen._tag_titles == [HELMET.name]  # listed again, in the era
+        assert loguru_sink[-1] == log_markers.TAG_TITLES_LISTED.format(
+            tag="Gyro Gearloose", count=1
+        )
+
+    def test_an_era_that_leaves_nothing_says_so(self, screen: SearchScreen) -> None:
+        screen._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [HELMET])
+        self._pick_era(screen, 1)  # 1942-46
+        screen._show_tag_titles("Gyro Gearloose")
+        added = [c.args[0] for c in screen.ids.tag_title_results_layout.add_widget.call_args_list]
+        assert added[-1].text == "None in 1942-46"
+
+    def test_combined_tags_list_only_their_stories_in_the_era(self, screen: SearchScreen) -> None:
+        screen._search.titles_for_tag_selection.return_value = [PIRATE_GOLD, HELMET]
+        self._pick_era(screen, 1)  # 1942-46
+        screen._toggle_tag_basket("Gyro")
+        assert screen._tag_titles == [PIRATE_GOLD.name]
+
+    def test_a_picked_word_lists_only_its_stories_in_the_era(self, screen: SearchScreen) -> None:
+        screen._active_mode = "Word"
+        screen._search.find_words.return_value = {
+            ENUM_TO_STR_TITLE[PIRATE_GOLD]: TitleInfo(1),
+            ENUM_TO_STR_TITLE[HELMET]: TitleInfo(11),
+        }
+        self._pick_era(screen, 2)  # 1951-54
+        with patch.object(screen, "_list_word_stories") as listed:
+            screen._show_word_results("gold")
+        assert list(listed.call_args.args[0]) == [ENUM_TO_STR_TITLE[HELMET]]
+
+    def test_a_typed_query_is_run_in_the_era(self, screen: SearchScreen) -> None:
+        screen._search.run_word_query.return_value = WordQueryResult()
+        self._pick_era(screen, 2)
+        screen._run_word_query("gold -mine")
+        assert screen._search.run_word_query.call_args.kwargs["search_filter"] == SearchFilter(
+            years=(1951, 1954)
+        )
+
+    def test_picking_an_era_logs_it_shows_it_in_both_rows_and_lists_both_again(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(screen, "_rerun_tag_results") as tags_again,
+            patch.object(screen, "_rerun_word_results") as words_again,
+        ):
+            self._pick_era(screen, 2)
+            self._pick_era(screen, 2)  # the same again: nothing to do
+        assert loguru_sink.count(log_markers.ERA_FILTER_SET.format(era="1951-54")) == 1
+        assert screen._era_rows["Word"].selected == "1951-1954"
+        tags_again.assert_called_once_with()
+        words_again.assert_called_once_with()
+
+    @pytest.mark.parametrize("mode", ["Tag", "Word"])
+    def test_clear_lifts_the_era(self, screen: SearchScreen, mode: str) -> None:
+        self._pick_era(screen, 2)
+        screen._active_mode = mode
+        screen.on_tag_clear() if mode == "Tag" else screen.on_word_clear()
+        assert (screen._era.years, screen._era_rows["Word"].selected) == (None, "")
+
+    # --- keys, in the tag search ---
+
+    def test_right_from_a_tag_reaches_the_era_row_down_the_stories(
+        self, screen: SearchScreen
+    ) -> None:
+        with (
+            patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
+            patch.object(screen, "_clear_chip_focus"),
+        ):
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert (screen._nav_focus_area, screen._era_rows["Tag"].focused) == ("era", 0)
+        with (
+            patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
+            patch.object(screen, "_draw_result_focus"),
+        ):
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert screen._nav_focus_area == "results"
+
+    def test_the_tag_era_rows_ways_out(self, screen: SearchScreen) -> None:
+        screen._nav_enter_era()
+        with patch.object(screen, "_focus_active_input"):
+            assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+
+        screen._nav_enter_era()
+        with (
+            patch.object(screen, "_get_tag_chip_buttons", return_value=[MagicMock(text="x")]),
+            patch.object(screen, "_draw_chip_focus"),
+        ):
+            assert screen.handle_key(search_screen.KEY_LEFT) is True  # off All years
+        assert screen._nav_focus_area == "tags"
+
+    def test_enter_on_an_era_picks_it_and_stays(self, screen: SearchScreen) -> None:
+        screen._nav_enter_era()
+        screen.handle_key(search_screen.KEY_RIGHT)
+        with (
+            patch.object(screen, "_rerun_tag_results"),
+            patch.object(screen, "_rerun_word_results"),
+        ):
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert (screen._era.label, screen._nav_focus_area) == ("1942-46", "era")

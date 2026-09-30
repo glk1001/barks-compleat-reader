@@ -272,6 +272,9 @@ TAG_BASKET_MODE: Final = "Tag basket: combining {mode}."
 TAG_COMBINED_RESULTS: Final = 'Tag search: combined "{tags}" list {count} stories.'
 # Why typed tags could not be combined: a name that is no tag, + and | both used.
 TAG_QUERY_NOTICE: Final = "Tag query notice: {notice}"
+# The era (range of submitted years) both searches list stories from; "All years" once
+# it is lifted.
+ERA_FILTER_SET: Final = 'Search: era "{era}".'
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'

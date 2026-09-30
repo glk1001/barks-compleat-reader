@@ -1,6 +1,6 @@
-"""What the search screen holds between keystrokes: the words and tags picked together.
+"""What the search screen holds between keystrokes: words and tags picked, and an era.
 
-Kivy-free (docs/plans/advanced-search.md, phases 9 and 10). The word search's basket
+Kivy-free (docs/plans/advanced-search.md, phases 9 to 11). The word search's basket
 is the words picked from the word list, combined ALL (every one in the same story) or
 ANY. It runs as a typed query whose words are quoted, so each is found exactly as
 picked and a term of several words is a phrase: the same tree `query_from_words`
@@ -8,6 +8,9 @@ builds, through the same evaluator as anything typed.
 
 The tag search's basket is the tags picked, each included or left out: its stories
 are those every included tag tags (ALL) or any does (ANY), less the left-out tags'.
+
+The era is one range of submitted years, or all of them, that both searches list
+stories from.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 
+from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import Combine
 from barks_fantagraphics.tag_query import TagSelection
 
@@ -157,3 +161,60 @@ class TagBasket:
             excluded=tuple(t for t, s in self.tags.items() if s is TagState.EXCLUDED),
             combine=self.combine,
         )
+
+
+# The era chip that lifts the filter.
+ALL_YEARS = ""
+
+
+@dataclass
+class EraChoice:
+    """Which range of submitted years the searches list stories from; none picked, all.
+
+    Attributes:
+        ranges: The ranges offered, first and last year each, both included.
+        years: The range picked, or None for all years.
+
+    """
+
+    ranges: tuple[tuple[int, int], ...]
+    years: tuple[int, int] | None = None
+
+    @staticmethod
+    def value_of(years: tuple[int, int]) -> str:
+        """Return a range's chip value: ``"1951-1954"``."""
+        return f"{years[0]}-{years[1]}"
+
+    @staticmethod
+    def label_of(years: tuple[int, int]) -> str:
+        """Return a range's chip label: ``"1951-54"``."""
+        return f"{years[0]}-{years[1] % 100:02d}"
+
+    @property
+    def value(self) -> str:
+        """The picked range's chip value, or `ALL_YEARS`."""
+        return ALL_YEARS if self.years is None else self.value_of(self.years)
+
+    @property
+    def label(self) -> str:
+        """The picked range's chip label, or "All years"."""
+        return "All years" if self.years is None else self.label_of(self.years)
+
+    def options(self) -> list[tuple[str, str]]:
+        """Return the chips as ``(value, label)``: all years, then each range."""
+        return [
+            (ALL_YEARS, "All years"),
+            *((self.value_of(r), self.label_of(r)) for r in self.ranges),
+        ]
+
+    def select(self, value: str) -> None:
+        """Pick the range with chip value `value`; `ALL_YEARS`, or one not offered, lifts it."""
+        self.years = next((r for r in self.ranges if self.value_of(r) == value), None)
+
+    def allows(self, year: int) -> bool:
+        """Return whether a story submitted in `year` is listed."""
+        return self.years is None or self.years[0] <= year <= self.years[1]
+
+    def search_filter(self) -> SearchFilter | None:
+        """Return the word search's story filter for the era, or None for all years."""
+        return None if self.years is None else SearchFilter(years=self.years)

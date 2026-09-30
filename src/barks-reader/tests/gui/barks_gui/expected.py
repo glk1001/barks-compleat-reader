@@ -13,6 +13,7 @@ from functools import cache
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.search_query import Combine
@@ -144,6 +145,14 @@ def tag_selection_count(
     """Return how many stories tags picked together list: all (or any) included, less excluded."""
     combine = Combine.ANY if any_of else Combine.ALL
     return len(BarksTitleSearch.get_titles_for_selection(TagSelection(included, excluded, combine)))
+
+
+def tag_stories_in_years(label: str, years: tuple[int, int] | None = None) -> int:
+    """Return how many stories a tag lists, or of those, how many were submitted in `years`."""
+    _, titles = BarksTitleSearch.get_titles_from_alias_tag(label.lower())
+    if years is None:
+        return len(titles)
+    return sum(years[0] <= BARKS_TITLE_INFO[t].submitted_year <= years[1] for t in titles)
 
 
 def tags_matching(query: str) -> list[TagMatch]:

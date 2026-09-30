@@ -2,24 +2,24 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-10 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-11 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
-> - Phase 0 tag bug fixes: DONE 2026-09-29, 4b4a098f
-> - Phase 1 result types + set operations: DONE 2026-09-29, f2e4ec48
-> - Phase 2 substring word list: DONE 2026-09-29, 46170947
-> - Phase 3 tag substring + counts: DONE 2026-09-29, efddf571
-> - Phase 4 query parser: DONE 2026-09-29, fa82fb5e
-> - Phase 5 lexicon expansion: DONE 2026-09-29, 2e39af51
-> - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 1a6e6387
-> - Phase 7 multi-term highlighting: DONE 2026-09-30, 797eab85
-> - Phase 8 typed queries in the word box: DONE 2026-09-30, bc8968c7
-> - Phase 8a extract ChipRow: DONE 2026-09-30, 26abb3e3
-> - Phase 9 word chip list: DONE 2026-09-30, 61e9f5a1
-> - Phase 10 tag chip list: DONE 2026-09-30 ("feat(search): tags picked with their + combine,
->   ALL or ANY, some left out; typed too")
-> - Phase 11 era filter: TODO
+> - Phase 0 tag bug fixes: DONE 2026-09-29, 056cad35
+> - Phase 1 result types + set operations: DONE 2026-09-29, cd3f755a
+> - Phase 2 substring word list: DONE 2026-09-29, 8bceb1dc
+> - Phase 3 tag substring + counts: DONE 2026-09-29, 09715fae
+> - Phase 4 query parser: DONE 2026-09-29, 18072b30
+> - Phase 5 lexicon expansion: DONE 2026-09-29, 317f4867
+> - Phase 6 engine leaves + evaluator: DONE 2026-09-30, ee589e88
+> - Phase 7 multi-term highlighting: DONE 2026-09-30, 78ff0434
+> - Phase 8 typed queries in the word box: DONE 2026-09-30, fb6a4eb7
+> - Phase 8a extract ChipRow: DONE 2026-09-30, e0f8f0c0
+> - Phase 9 word chip list: DONE 2026-09-30, c13b8e79
+> - Phase 10 tag chip list: DONE 2026-09-30, 851809f7
+> - Phase 11 era filter: DONE 2026-09-30 ("feat(search): an era row narrows both searches to a
+>   range of submitted years")
 > - Phase 12 word search limited to tagged stories: TODO
 
 ## Context
@@ -187,6 +187,12 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
 11. **Era filter.** A single-choice ChipRow in the right panel for both Tag and Word modes;
     `year:`/`vol:` qualifiers. Marker `ERA_FILTER_SET`. GUI test that the era filter narrows tag
     results.
+    As built (choices made 2026-09-30): the row tops the tag results and sits under the speakers
+    in Word search (Right from a word still reaches the speakers); one era for both modes, which
+    a mode's clear lifts; chips "All years", "1942-46" ... "1962-71" (`core/search_state.EraChoice`
+    over `CHRONO_YEAR_RANGES`). It narrows a tag's stories, combined tags, a picked word (by
+    `apply_filter`), and typed queries and the word basket (as their `search_filter`); a list
+    it empties says "None in 1942-46". The typed `year:`/`vol:` came in phase 6.
 12. **Word search limited to tagged stories.** An "Only in: …" chip in the Word panel, shown when
     tags are selected; `tag:"…"` qualifier. Marker `WORD_TAG_FILTER_SET`. GUI test. Final docs
     pass.
