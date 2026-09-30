@@ -259,6 +259,16 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   (`cbl-contents`, 1,686 rows, 1.4 GB in the standalone viewer; `bibliography`, 942 rows,
   1.1 GB; the home page 0.2 GB), the app reached 4.4 GB, and with a browser and Windows
   holding about 7.5 GB, Claude Code stopped the run, leaving the app behind. The runner
-  now needs 6 GB free to start a GUI stage and holds the app to 3 GB while it runs
-  (`docs/setup.md`), so this fails the soak with its size instead. Open: why the app did
-  not give the earlier pages' memory back, and the viewer's cost per table row.
+  now needs 6 GB free to start a GUI stage and holds the app to a ceiling while it runs
+  (`docs/setup.md`), so a runaway fails the stage with its size instead.
+- **The ceiling is 4.5 GB, a guard for the machine, not a leak test.** At 3 GB the next
+  full run (6ab6f37f) passed every stage but the soak, which it stopped three walks of
+  four: at 3,162 MB (four comics, three wiki pages), 3,378 MB (the big tables) and
+  3,102 MB (twenty ordinary wiki pages). The suite's peaks were 2,080 MB (workspace app)
+  and 2,216 MB (CI's build). That climb was looked into on Linux on 2026-09-28
+  (b03c077e): no leak, garbage waiting for a rare full collection (dead wiki pages,
+  thousands of labels) and memory the allocator keeps, 3.5 GiB there, then holding. It
+  holds on Windows too: the five `leave_no` tests, which count what the app holds after a
+  full collection over six round trips, pass on both apps. The first run's walk reached
+  4.4 GB, above Linux's plateau; if 4.5 GB proves too tight, the soak's logged peaks say
+  by how much. The viewer's cost per table row (above) is the open question.

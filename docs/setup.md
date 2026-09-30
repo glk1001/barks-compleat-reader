@@ -241,7 +241,7 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     advanced settings, Sleep; `powercfg /waketimers` lists the task's once registered), or
     the task cannot wake a machine that went to standby.
   - **Memory**: a GUI stage starts only with 6 GB free (`BARKS_OVERNIGHT_MIN_FREE_MB`),
-    and fails naming the biggest apps otherwise; the app is held to 3 GB while it runs
+    and fails naming the biggest apps otherwise; the app is held to 4.5 GB while it runs
     (`BARKS_OVERNIGHT_APP_MEMORY_CAP_MB`). On the 16 GB laptop Windows and its services
     take about 5 GB, so leave a browser closed overnight (Firefox held 1.7 GB).
   - **Windows Update's active hours** covering the run, so it does not restart under it.

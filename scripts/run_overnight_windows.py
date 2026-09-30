@@ -34,7 +34,7 @@ Env: BARKS_OVERNIGHT_SOAK_STEPS (default 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 (default: one seed from the day of the year, the first of the Linux run's three,
 so each night walks a new path); GH_REPO (default glk1001/barks-compleat-reader);
 BARKS_OVERNIGHT_MIN_FREE_MB (default 6144) and BARKS_OVERNIGHT_APP_MEMORY_CAP_MB
-(default 3072), below.
+(default 4608), below.
 
 Before the first GUI stage it runs ``gui_probe.py doctor``; on a locked screen, or
 with the app's window already open, the GUI stages do not start, and fail, saying
@@ -102,8 +102,10 @@ DEFAULT_SOAK_STEPS = "1000"
 # What a GUI stage needs free to start: the app on the wiki's heaviest page (a
 # 1,700-row table) is about 1.5 GB, and a walk can hold more than one such page.
 DEFAULT_MIN_FREE_MB = 6144
-# The app's ceiling while a GUI stage runs; a normal suite stays well under it.
-DEFAULT_APP_MEMORY_CAP_MB = 3072
+# The app's ceiling while a GUI stage runs: a guard for the machine, not a leak test
+# (the leave_no GUI tests are those). The suite peaks near 2.2 GB; a soak's walk holds
+# more, garbage that waits for a rare full collection, and reached 3.4 GB here.
+DEFAULT_APP_MEMORY_CAP_MB = 4608
 MEMORY_POLL_SECS = 2.0
 _MB = 1024 * 1024
 
