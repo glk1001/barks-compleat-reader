@@ -701,13 +701,36 @@ overshoot can't hit it).
 
 ### 7.4 The specialized screens
 
-- **Search** (`ui/search_screen.py:121`) — three mode panels (Title/Tag/Word)
+- **Search** (`ui/search_screen.py:264`) — three mode panels (Title/Tag/Word)
   swapped by opacity; all queries go through `barks_fantagraphics.comic_search.ComicSearch`
   over the reader's index dir. Selecting a result invokes injected
   `on_goto_title` / `on_goto_title_with_page` callbacks that route back into
-  navigation. Word mode carries a speaker-filter chip row (`_build_speaker_chips`),
-  offered from the index's `speakers.json` sidecar and passed to
-  `find_words(word, speaker=...)`; an index without the sidecar shows no row.
+  navigation. The word and tag pipelines (plan and decisions:
+  `docs/plans/advanced-search.md`), all Kivy-free below the screen:
+  - *Typing* lists matches: `TermLexicon.matching` (`search_terms.py`; exact, prefix,
+    then substring from three letters, capped at 300) for words,
+    `BarksTitleSearch.get_tags_matching` for tags.
+  - *A typed word query* (`_run_word_query`, `search_screen.py:891`) goes
+    `ComicSearch.run_word_query` → `search_evaluate.run_query_text`: `parse_query`
+    (`search_query.py`, our own grammar, never raises) builds a tree; the evaluator runs its
+    leaves through `FullTextSearchPort.find_bubbles` (any of some terms, a phrase, a NEAR
+    pair; the Whoosh engine checks NEAR from the index's positions) and combines them by
+    story with `search_results`' set operations — AND is the same story, phrases and NEAR
+    the same bubble — expanding bare words to their forms (`TermLexicon.variants`) and
+    wildcards (`expand_wildcard`), and filtering by `search_filters` (`tag:`, `year:`,
+    `vol:`). The result carries hit counts, the terms to highlight
+    (`reader_formatter.mark_terms_in_text`), notices and spelling suggestions.
+  - *Picked words and tags* are `core/search_state`'s `WordBasket` (run as a query of
+    quoted words) and `TagBasket` (a `tag_query.TagSelection`, resolved by
+    `BarksTitleSearch.get_titles_for_selection`); typed tags parse with `parse_tag_query`.
+  - *Filters*: the speaker row (from the index's `speakers.json` sidecar; an index without
+    it shows no row), the era (`EraChoice` over `CHRONO_YEAR_RANGES`, shared by both
+    modes) and the tag scope ("Only in: …") join in one `SearchFilter` for the word search
+    (`_word_search_filter`, `search_screen.py:1312`).
+  - Every chip row (speakers, era, scope, the picked rows) is a `ui/search_chip_row.ChipRow`,
+    which owns its chips, the pick and Left/Right/Enter, and hands every other key back as a
+    `RowKey`; the results panel's rows are one ordered list (`_panel_rows`,
+    `search_screen.py:1195`) with one key handler.
 - **Index screens** (`ui/index_screen.py` base) — A–Z alphabet menu + item grid +
   drill-down + heavy keyboard nav. `MainIndexScreen` builds its index purely from
   the in-memory bibliography (`Titles`/`Tags`/`TagGroups`); `SpeechIndexScreen`

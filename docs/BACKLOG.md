@@ -3,9 +3,28 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-09-19.
+Last updated: 2026-09-30.
 
 ---
+
+## Search
+
+Advanced word and tag search landed 2026-09-29/30 (typed queries, word forms, wildcards,
+suggestions, picked words and tags, era and tag filters; `docs/plans/advanced-search.md`).
+Found along the way, not yet done:
+
+- [ ] **The clear button by remote** — in Word and Tag search, once the list has chips, no
+      arrow key reaches the × beside the box (Left from the results goes to the list, Up from
+      the list to the box), and clearing is now also how the picked words/tags and the era are
+      reset. A remote user can only type over the text. The leak test taps it.
+- [ ] **Narrow tag panel** — at the GUI tests' 900px window the tag list is ~180px wide; with
+      the + beside each chip, names like "Gyro Gearloose" wrap onto two lines. Rebalance the
+      column widths, or shrink the chip's count margin.
+- [ ] **Typed tags with years** — `parse_tag_query` takes names only; `scrooge + year:1950-55`
+      is not read (the era row covers it by chip).
+- [ ] **Word-query speed** — an AND of two common words takes ~145ms on the shipped index
+      (`gold mine`), most of it building bubbles for stories a later part drops; fine now,
+      but the first thing to look at if queries grow.
 
 ## Wiki reader (OKF integration)
 

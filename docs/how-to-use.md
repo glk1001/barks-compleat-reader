@@ -51,9 +51,9 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
     Uncle Scrooge Adventures, etc.).
   - *Categories* — thematic groupings.
-- **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). A word
-  search can be narrowed to who says it — *Donald*, *Scrooge*, the *Nephews*, the *Narrator* — with the
-  speaker row above the results, where the Reader's index knows the speakers.
+- **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). Words and
+  tags can be combined, narrowed to an era, and a word search to who says it or to a tag's
+  stories: see [Searching](#searching) below.
 - **Reading History** — a journal of the comics you've read, grouped by day. The Reader records
   this automatically (it can be turned off with the *Record Reading History* setting), and the
   history can be cleared from within the view.
@@ -128,6 +128,73 @@ screen** or use the **up arrow key** to make it appear. It contains:
   — opens a page selector showing all pages in the comic.
 - <img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — at the far right; return to the main screen.
+
+---
+
+<!-- cspell:ignore irline duckin -->
+
+## Searching
+
+The three searches sit under **Search** in the tree. Type in the box at the top left; what matches
+is listed under it, and the stories on the right.
+
+### Word search
+
+Typing lists the words the stories use that match what you type: the word itself first, then
+words starting with it, then (from three letters) words with it inside (*irline* finds *airline*).
+Pick a word — **Enter**, or a click — to list the stories that use it, each with the pages it is
+on; the speech-bubble button at the end of a story's row shows its matching bubbles, the words
+highlighted.
+
+**Several words.** Each word in the list has a **+** beside it. Picking it adds the word to a row
+under the search box, **[ALL] [gold ×] [mine ×]**, and the stories listed are those with every
+picked word (**ALL**) or any of them (**ANY** — press the ALL chip to switch). Press a word's
+chip, or its **–**, to take it out.
+
+**Typed queries.** Type a query and press **Enter** (or pick the *Search for:* row):
+
+| Type | Finds stories with |
+|---|---|
+| `gold mine` or `gold AND mine` or `gold & mine` | both words, anywhere in the story |
+| `gold OR mine` or `gold \| mine` | either word |
+| `gold -mine` or `gold NOT mine` | *gold* but not *mine* anywhere in the story |
+| `"pirate gold"` | the words next to each other, in one bubble |
+| `gold NEAR mine`, `gold NEAR/2 mine` | both in one bubble, at most 5 (or 2) words apart |
+| `gol*`, `g?ld` | any word the wildcard matches (at most 200) |
+| `(gold OR silver) mine` | brackets group |
+| `tag:scrooge`, `tag:"the classics"` | only stories with that tag |
+| `year:1950-55`, `vol:7` | only stories submitted in those years, or in that Fantagraphics volume |
+
+A bare word also finds its other forms (*duck* finds *ducks*, *ducked*, *ducking*, *duckin'*); in
+quotes it finds only itself. Common words (*the*, *and*, *of*) are left out, with a note. A word
+in no story brings spelling suggestions — press one to search again with it in place. Text that
+cannot be read as a query (an unclosed bracket, say) is searched as it stands, and a note says why.
+Each story shows how many bubbles matched, e.g. *Lost in the Andes!, 3,5 (4)*.
+
+### Tag search
+
+Typing lists the tags whose names match, each with how many stories it tags; a tag group opens
+its members beneath it. Pick a tag to list its stories. Each tag has a **+** too: picked tags sit
+under the box, **[ALL] [Gyro Gearloose] [not Christmas]**. Pressing a picked tag steps it from
+included, to *not* (its stories left out), to taken out. Tags can be typed as well —
+`scrooge + gyro -christmas stories` (use `+` or `,` for ALL, `|` for ANY, not both) — and
+**Enter** puts them in place of the tags picked.
+
+### Narrowing the results
+
+- **Era** — a row of year ranges above the results (*All years*, *1942-46*, …, *1962-71*) lists only
+  stories submitted in that range. It holds for tag and word search alike.
+- **Speaker** — in word search, the *Donald*, *Scrooge*, *Narrator*, … row keeps only the bubbles
+  that character says, for every word of a query.
+- **Only in** — in word search, while tag search has tags picked (or one tag listed),
+  **[Everywhere] [Only in: Gyro Gearloose]** limits the word search to those tags' stories.
+
+The **×** beside the search box clears it, the picked words or tags, and the era.
+
+**By keyboard:** **Down** from the box goes to the picked row (if any) and on to the list;
+**Right** from a word or tag moves to its **+**, and again to the rows above the results;
+**Down | Up** move between those rows and the results. **Enter** picks, and on a filter row stays
+put so you can try another.
 
 ---
 
