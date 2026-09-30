@@ -151,8 +151,11 @@ without the two below. An NTFS stick before it crashed the kernel's `ntfs3` driv
 (`kernel BUG at fs/iomap/buffered-io.c:1061`, writing a 153-byte file of
 `aaa-Chronological-dirs`), so copy to exFAT, with `rsync -rt --modify-window=1`.
 
-The laptop's GUI run skipped its prebuilt-archives test, so until `Chronological` is
-copied onto its disk Phase 7 would fail on every title. Until then the stage skips
+On the laptop it goes to `~\Books\Carl Barks\The Comics\Chronological`, where the
+profile's `prebuilt_dir` points, beside a junction for `Reader Files` (`docs/setup.md`,
+Windows: the code's default root is `~\Books\Carl Barks` on every OS, while the installed
+app keeps its files in `~\barks-reader`). Until `Chronological` is there, Phase 7 would
+fail on every title. Until then the stage skips
 itself, saying which folder is missing, rather than failing every night. (A
 `--no-prebuilt` switch for `validate` that skips Phase 7 would let the rest run sooner;
 decide when this step comes up.)
@@ -218,11 +221,13 @@ By hand from PowerShell, in two parts (`pytest,fetch-build,validate`, then
 build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The failures:
 
 - **`pytest`**: two fixture tests in `barks-fantagraphics` want the FANTA_01 override under
-  `~\Books\Carl Barks\...`; the laptop's data is in the installed app's layout. A junction
-  will do (`docs/setup.md`).
+  `~\Books\Carl Barks\...` (`comics_consts.BARKS_ROOT_DIR`, fixed); the laptop's data was
+  only in the installed app's layout, `~\barks-reader`. Fixed with a junction for
+  `Reader Files` there, and the prebuilt comics copied beside it (`docs/setup.md`).
 - **The GUI suite, the same six on both apps** (so not packaging): four build a library of
   symlinks, which needs Developer Mode (turned on; the four pass); one tapped a 1963 story
-  from a volume past the laptop's 01-30; one wanted a wiki section the laptop's
+  ("Bubbleweight Champ not in Fanta info"; not yet explained: the stick's volumes also
+  stop at 30, so not simply a missing one); one wanted a wiki section the laptop's
   `Reader Files` copy lacks.
 - **The soak**, and then `test_a_doubled_volume_is_fatal...` every time: the blank-frame
   check failed drawn frames. It cropped the window at its screen position (792, 10) out

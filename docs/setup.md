@@ -222,8 +222,18 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     timing budgets are this machine's.
   - **The nightly task**: `powershell -ExecutionPolicy Bypass -File
     scripts\windows\register-overnight-task.ps1` (02:00; `-At` for another time).
-  - The unit suite's data tests look under `~\Books\Carl Barks`, the Linux layout, while
-    the installed app keeps its files in `BARKS_READER_DATA_DIR`; the `pytest` stage needs
-    the former (a junction to the latter's `Reader Files` will do).
+  - **The data under `~\Books\Carl Barks`**, the Linux machines' layout. The code's
+    default root is there (`barks_fantagraphics.comics_consts.BARKS_ROOT_DIR`, fixed: the
+    unit suite's override tests read it), and so is the profile's `prebuilt_dir`. The
+    installed app keeps `Reader Files` in `BARKS_READER_DATA_DIR` instead
+    (`~\barks-reader`), so bridge the two with a junction rather than a second copy:
+    ```powershell
+    $d = "$HOME\Books\Carl Barks\Compleat Barks Disney Reader"
+    New-Item -ItemType Directory -Force $d
+    New-Item -ItemType Junction -Path "$d\Reader Files" -Target "$HOME\barks-reader\Reader Files"
+    ```
+    The prebuilt comics (`The Comics\Chronological`, 8.9 GB, from the stick; see the plan's
+    step 4) are copied to `~\Books\Carl Barks\The Comics`, where `prebuilt_dir` points:
+    `robocopy "<stick>\barks-reader-windows\The Comics" "$HOME\Books\Carl Barks\The Comics" /E`.
 - **macOS.** Only CI runs it (`.github/workflows/`), which installs `ccache` with Homebrew
   for the build.
