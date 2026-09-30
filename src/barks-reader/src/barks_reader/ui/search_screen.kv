@@ -18,6 +18,20 @@
     font_size: fm.search_result_font_size
     padding: [dp(8), 0]
 
+# What a typed query tells the user (a word left out, a syntax error) and the
+# headings over its suggestions: rows of the word list that wrap and take no focus.
+<_NoticeLabel>:
+    size_hint_y: None
+    text_size: self.width, None
+    height: max(dp(28), self.texture_size[1] + dp(8))
+    halign: 'left'
+    valign: 'middle'
+    padding: [dp(8), dp(4)]
+    italic: True
+    font_size: fm.search_result_font_size
+    color: reader_palette.theme().text_secondary
+    disabled_color: reader_palette.theme().text_secondary
+
 <_TagChipButton>:
     size_hint: 1, None
     # A tag longer than the chip wraps onto more lines rather than spilling

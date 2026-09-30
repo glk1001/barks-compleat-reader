@@ -1,18 +1,27 @@
 # ruff: noqa: SLF001
+# cspell:ignore scroge
 
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_tags import Tags
+from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
+from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import TagMatch
 from barks_reader.core import log_markers
 from barks_reader.ui import search_screen
-from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
+from barks_reader.ui.search_screen import (
+    SearchScreen,
+    _NoticeLabel,
+    _QueryRowButton,
+    _SearchResultButton,
+    _SuggestionButton,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -21,7 +30,12 @@ if TYPE_CHECKING:
 def _make_bare_screen() -> SearchScreen:
     """Create a SearchScreen with no state, for exercising individual methods."""
     with patch.object(SearchScreen, "__init__", lambda _self, *_a, **_kw: None):
-        return SearchScreen.__new__(SearchScreen)
+        screen = SearchScreen.__new__(SearchScreen)
+    # The word search's typed-query state, which every word path reads: none yet.
+    screen._word_query = ""
+    screen._word_query_result = None
+    screen._box_query = ""
+    return screen
 
 
 def _fake_row(row_index: int) -> _SearchResultButton:
@@ -102,6 +116,245 @@ class TestWordList:
         more = _SearchResultButton(text="... 38 more", disabled=True)
         screen.ids.word_chips_layout.children = [more, *reversed(words)]  # Kivy: last first
         assert screen._get_word_chip_buttons() == words
+
+
+def _found(*titles: str) -> dict[str, TitleInfo]:
+    speech = SpeechInfo("1", 1, "GOLD!", "GOLD!")
+    return {t: TitleInfo(1, {"001": PageInfo("3", [speech])}) for t in titles}
+
+
+class TestTypedQuery:
+    """Query syntax, or text no word matches, runs as a query from the word box."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._search = MagicMock()
+            bare._speaker_chips_built = True
+            bare._selected_word = ""
+            bare._selected_speaker = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_focus_area = "input"
+            yield bare
+
+    @staticmethod
+    def _rows(screen: SearchScreen) -> list[Any]:
+        return [c.args[0] for c in screen.ids.word_chips_layout.add_widget.call_args_list]
+
+    def _run(self, screen: SearchScreen, query: str, result: WordQueryResult) -> list[Any]:
+        screen._search.run_word_query.return_value = result
+        screen._run_word_query(query)
+        return self._rows(screen)
+
+    @pytest.mark.parametrize(
+        ("text", "matches"),
+        [("gold -mine", TermMatches([], 0)), ("gold mine", TermMatches([], 0))],
+    )
+    def test_a_query_is_offered_as_the_first_row(
+        self, screen: SearchScreen, text: str, matches: TermMatches
+    ) -> None:
+        screen._search.get_words_matching.return_value = matches
+        screen.on_word_search_text(text)
+        (row,) = self._rows(screen)
+        assert isinstance(row, _QueryRowButton)
+        assert row.text == f"Search for:  {text}"
+        assert screen._box_query == text
+
+    def test_query_syntax_is_offered_above_the_words_it_matches_and_none_is_picked(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._search.get_words_matching.return_value = TermMatches(["g.i."], 1)
+        with patch.object(screen, "_on_word_chip_selected") as picked:
+            screen.on_word_search_text("g*")
+        assert [type(r) for r in self._rows(screen)] == [_QueryRowButton, _SearchResultButton]
+        picked.assert_not_called()
+
+    def test_plain_words_that_match_are_not_a_query(self, screen: SearchScreen) -> None:
+        screen._search.get_words_matching.return_value = TermMatches(["gold", "golden"], 2)
+        screen.on_word_search_text("gold")
+        assert not any(isinstance(r, _QueryRowButton) for r in self._rows(screen))
+        assert screen._box_query == ""
+
+    def test_return_in_the_box_runs_the_query_and_hands_on_the_keyboard(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._box_query = "gold -mine"
+        with (
+            patch.object(screen, "_run_word_query") as run,
+            patch.object(screen, "_focus_after_query") as focus,
+        ):
+            screen.on_search_input_enter()
+        run.assert_called_once_with("gold -mine")
+        focus.assert_called_once_with()
+
+    def test_a_query_lists_its_stories_with_counts_notices_and_suggestions(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        result = WordQueryResult(
+            title_dict=_found("Story A"),
+            hit_counts={"Story A": 2},
+            notices=('"the" is too common to search for; left out.',),
+            suggestions=(Suggestion("scroge", "Scrooge"), Suggestion("scroge", "scrounge")),
+        )
+        rows = self._run(screen, "the gold scroge", result)
+
+        screen._search.run_word_query.assert_called_once_with("the gold scroge", speaker=None)
+        assert [type(r) for r in rows] == [
+            _QueryRowButton,
+            _NoticeLabel,
+            _NoticeLabel,
+            _SuggestionButton,
+            _SuggestionButton,
+        ]
+        assert rows[0].selected
+        assert rows[1].text == '"the" is too common to search for; left out.'
+        assert rows[2].text == 'Did you mean, for "scroge":'
+        assert [r.suggestion.spelling for r in rows[3:]] == ["Scrooge", "scrounge"]
+        assert screen._word_search_results[0][2] == "Story A, 3 (2)"
+        assert loguru_sink[-4:] == [
+            log_markers.WORD_QUERY_NOTICE.format(
+                notice='"the" is too common to search for; left out.'
+            ),
+            log_markers.WORD_SUGGESTIONS.format(word="scroge", spellings="Scrooge, scrounge"),
+            log_markers.SEARCH_WORD_RESULTS.format(count=1),
+            log_markers.WORD_QUERY_RUN.format(text="the gold scroge", count=1),
+        ]
+
+    def test_text_that_does_not_parse_says_so_and_lists_the_literal_search(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        notice = "a bracket is not closed: searched for the text as it stands."
+        result = WordQueryResult(
+            title_dict=_found("Story A"),
+            notices=(notice,),
+            used_literal_fallback=True,
+            error="a bracket is not closed",
+            error_position=0,
+        )
+        rows = self._run(screen, "(gold", result)
+        assert [r.text for r in rows[1:]] == [notice]
+        assert (
+            log_markers.WORD_QUERY_FALLBACK.format(text="(gold", error="a bracket is not closed")
+            in loguru_sink
+        )
+
+    def test_a_query_that_cannot_run_shows_why(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        rows = self._run(screen, "tag:andes", WordQueryResult(error="needs a word"))
+        assert [r.text for r in rows[1:]] == ["needs a word"]
+        assert log_markers.WORD_QUERY_NOTICE.format(notice="needs a word") in loguru_sink
+        assert loguru_sink[-1] == log_markers.WORD_QUERY_RUN.format(text="tag:andes", count=0)
+
+    def test_a_picked_suggestion_replaces_its_word_and_runs_again(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._word_query = "scroge -gold"
+        with patch.object(screen, "_run_word_query") as run:
+            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"))
+        assert screen.ids.word_search_input.text == "Scrooge -gold"
+        run.assert_called_once_with("Scrooge -gold")
+
+    def test_the_speaker_filter_reruns_the_query(self, screen: SearchScreen) -> None:
+        screen._word_query = "gold -mine"
+        with (
+            patch.object(screen, "_run_word_query") as run,
+            patch.object(screen, "_get_speaker_chip_buttons", return_value=[]),
+        ):
+            screen._on_speaker_chip_selected("Scrooge")
+        run.assert_called_once_with("gold -mine")
+
+    def test_the_bubbles_popup_highlights_the_query_terms(self, screen: SearchScreen) -> None:
+        screen._word_query = "gold -mine"
+        screen._word_query_result = WordQueryResult(highlight_terms=("gold", "gold's"))
+        screen._speech_bubble_popup = MagicMock()
+        screen._font_manager = MagicMock()
+        with patch.object(search_screen, "show_speech_bubbles_popup") as show:
+            screen._show_word_speech_bubbles("A Title", MagicMock())
+        assert show.call_args.args[2] == "gold -mine"
+        assert show.call_args.kwargs["highlight_terms"] == ("gold", "gold's")
+
+    def test_a_literal_fallback_highlights_its_text_as_a_picked_word_does(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._word_query = "(gold"
+        screen._word_query_result = WordQueryResult(used_literal_fallback=True)
+        screen._speech_bubble_popup = MagicMock()
+        screen._font_manager = MagicMock()
+        with patch.object(search_screen, "show_speech_bubbles_popup") as show:
+            screen._show_word_speech_bubbles("A Title", MagicMock())
+        assert show.call_args.kwargs["highlight_terms"] is None
+
+    def test_after_a_query_the_keyboard_goes_to_its_first_story(self, screen: SearchScreen) -> None:
+        screen._word_search_results = [("Story A", "3", "Story A, 3 (2)", MagicMock())]
+        with (
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(screen, "_draw_result_focus") as draw,
+            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+        ):
+            screen._focus_after_query()
+        assert screen._nav_focus_area == "results"
+        draw.assert_called_once_with()
+
+    def test_with_no_story_it_goes_to_the_first_suggestion(self, screen: SearchScreen) -> None:
+        query_row = _QueryRowButton(text="Search for:  scroge")
+        suggestion = _SuggestionButton(Suggestion("scroge", "Scrooge"), text="Scrooge")
+        with (
+            patch.object(screen, "_get_word_chip_buttons", return_value=[query_row, suggestion]),
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(screen, "_draw_chip_focus") as draw,
+            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+        ):
+            screen._focus_after_query()
+        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 1)
+        draw.assert_called_once_with()
+
+    def test_with_neither_it_goes_back_to_the_box(self, screen: SearchScreen) -> None:
+        with (
+            patch.object(screen, "_get_word_chip_buttons", return_value=[]),
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(screen, "_focus_active_input") as focus_box,
+        ):
+            screen._focus_after_query()
+        assert screen._nav_focus_area == "input"
+        focus_box.assert_called_once_with()
+
+    def test_return_on_the_query_row_or_a_suggestion_runs_it_and_hands_on(
+        self, screen: SearchScreen
+    ) -> None:
+        row = MagicMock(spec=_QueryRowButton)
+        screen._nav_focused_chip_idx = 0
+        with (
+            patch.object(screen, "_clear_chip_focus"),
+            patch.object(screen, "_focus_after_query") as focus,
+        ):
+            screen._handle_tags_enter([row])
+        row.trigger_action.assert_called_once_with(duration=0)
+        focus.assert_called_once_with()
+
+    def test_left_from_the_results_lands_on_the_query_row(self, screen: SearchScreen) -> None:
+        screen._word_query = "gold -mine"
+        rows = [_QueryRowButton(text="Search for:  gold -mine"), _SearchResultButton(text="x")]
+        with (
+            patch.object(screen, "_get_word_chip_buttons", return_value=rows),
+            patch.object(screen, "_draw_chip_focus"),
+        ):
+            screen._nav_back_to_word_chips()
+        assert screen._nav_focused_chip_idx == 0
+
+    def test_clear_forgets_the_query(self, screen: SearchScreen) -> None:
+        screen._word_query, screen._box_query = "gold -mine", "gold -mine"
+        with patch.object(screen, "_update_speaker_chip_colors"):
+            screen.on_word_clear()
+        assert (screen._word_query, screen._box_query, screen._word_query_result) == ("", "", None)
 
 
 def _tag(label: str, count: int = 3, *, exact: bool = False) -> TagMatch:

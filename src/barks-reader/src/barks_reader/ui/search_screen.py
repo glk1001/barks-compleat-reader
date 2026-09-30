@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Self
 from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
+from barks_fantagraphics.search_query import has_query_syntax, replace_word
 from barks_fantagraphics.speech_speakers import (
     CHARACTER_SPEAKER_OPTIONS,
     NARRATOR,
@@ -23,6 +24,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.label import Label
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -55,6 +57,7 @@ from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
@@ -80,6 +83,26 @@ class _SearchResultButton(Button):
     # stays marked when they navigate away and come back. Distinct from the keyboard
     # focus ring, which tracks the live nav cursor.
     selected = BooleanProperty(defaultvalue=False)
+
+
+class _QueryRowButton(_SearchResultButton):
+    """The word list's first row while the box holds a query: pressing it runs the query."""
+
+
+class _SuggestionButton(_SearchResultButton):
+    """A close spelling for a word of the query that is in no story: pressing it swaps it in."""
+
+    def __init__(self, suggestion: Suggestion, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.suggestion = suggestion
+
+
+class _NoticeLabel(Label):
+    """A line of the word list the user reads but cannot pick: a notice, a heading."""
+
+
+def _query_row_text(query: str) -> str:
+    return f"Search for:  {query}"
 
 
 _CHIP_BORDER_NONE = (0, 0, 0, 0)
@@ -230,6 +253,12 @@ class SearchScreen(FloatLayout):
         # query matches nothing, but builds the cached list it matches against).
         self._search.get_words_matching("")
         self._selected_word: str = ""
+        # The typed query the word results are for, and what it found; "" and None
+        # while the results are a picked word's (or there are none).
+        self._word_query: str = ""
+        self._word_query_result: WordQueryResult | None = None
+        # The box's text while it is a query to run (Return runs it), else "".
+        self._box_query: str = ""
         # The speaker the word results are narrowed to; `_ALL_SPEAKERS` for everyone.
         self._selected_speaker: str = _ALL_SPEAKERS
         self._speaker_chips_built: bool = False
@@ -476,8 +505,11 @@ class SearchScreen(FloatLayout):
         self.ids.word_results_layout.clear_widgets()
         self._word_search_results = []
         self._selected_word = ""
+        self._word_query = ""
+        self._word_query_result = None
+        self._box_query = ""
 
-        if not text:
+        if not text.strip():
             return
 
         if not self._speaker_chips_built:
@@ -492,7 +524,16 @@ class SearchScreen(FloatLayout):
         # shown or not.
         logger.debug(log_markers.WORD_SEARCH_MATCHED.format(text=text, count=matches.total))
 
-        for i, word in enumerate(matches.words):
+        # Query syntax, or text no word matches, is a query to run: offered as the
+        # list's first row, which Return in the box also runs.
+        is_query = has_query_syntax(text) or not matches.total
+        first_row = 0
+        if is_query:
+            self._box_query = text
+            self._add_query_row(text)
+            first_row = 1
+
+        for i, word in enumerate(matches.words, start=first_row):
             btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
             btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
             self.ids.word_chips_layout.add_widget(btn)
@@ -501,13 +542,95 @@ class SearchScreen(FloatLayout):
             self.ids.word_chips_layout.add_widget(
                 _SearchResultButton(
                     text=f"... {matches.more} more - type more of the word",
-                    row_index=len(matches.words),
+                    row_index=first_row + len(matches.words),
                     disabled=True,
                 )
             )
 
-        if matches.total == 1:
+        if matches.total == 1 and not is_query:
             self._on_word_chip_selected(matches.words[0])
+
+    def _add_query_row(self, query: str, *, selected: bool = False) -> None:
+        row = _QueryRowButton(
+            text=_query_row_text(query), row_index=0, shorten=True, selected=selected
+        )
+        row.bind(on_release=lambda _b, q=query: self._run_word_query(q))
+        self.ids.word_chips_layout.add_widget(row)
+
+    # --- Word Search: typed queries ---
+
+    def _run_word_query(self, query: str) -> None:
+        """Run a typed query and list what it found, its notices and its suggestions.
+
+        The word list becomes the query's: its row (selected), then what the query
+        tells the user, then close spellings for its words that are in no story.
+        The results list its stories with how many bubbles matched in each.
+        """
+        result = self._search.run_word_query(query, speaker=self._selected_speaker or None)
+        self._word_query = query
+        self._word_query_result = result
+        self._selected_word = ""
+
+        if result.used_literal_fallback:
+            logger.info(log_markers.WORD_QUERY_FALLBACK.format(text=query, error=result.error))
+        notices = list(result.notices)
+        if result.error and not result.used_literal_fallback:
+            notices.insert(0, result.error)
+        for notice in notices:
+            logger.info(log_markers.WORD_QUERY_NOTICE.format(notice=notice))
+
+        layout = self.ids.word_chips_layout
+        layout.clear_widgets()
+        self._add_query_row(query, selected=True)
+        for notice in notices:
+            layout.add_widget(_NoticeLabel(text=notice, disabled=True))
+        self._add_suggestion_rows(result.suggestions)
+
+        self._list_word_stories(result.title_dict, query, result.hit_counts)
+        logger.info(log_markers.WORD_QUERY_RUN.format(text=query, count=len(result.title_dict)))
+
+    def _add_suggestion_rows(self, suggestions: tuple[Suggestion, ...]) -> None:
+        layout = self.ids.word_chips_layout
+        by_word: dict[str, list[Suggestion]] = {}
+        for suggestion in suggestions:
+            by_word.setdefault(suggestion.word, []).append(suggestion)
+        for word, offered in by_word.items():
+            spellings = ", ".join(s.spelling for s in offered)
+            logger.info(log_markers.WORD_SUGGESTIONS.format(word=word, spellings=spellings))
+            layout.add_widget(_NoticeLabel(text=f'Did you mean, for "{word}":', disabled=True))
+            for i, suggestion in enumerate(offered):
+                row = _SuggestionButton(suggestion, text=f"   {suggestion.spelling}", row_index=i)
+                row.bind(on_release=lambda _b, sg=suggestion: self._on_suggestion_picked(sg))
+                layout.add_widget(row)
+
+    def _on_suggestion_picked(self, suggestion: Suggestion) -> None:
+        """Put the spelling in place of the word it is for, in the box, and run the query."""
+        query = replace_word(self._word_query, suggestion.word, suggestion.spelling)
+        self.ids.word_search_input.text = query  # relists the box's words, as typing does
+        self._run_word_query(query)
+
+    def _focus_after_query(self) -> None:
+        """Hand the keyboard on from a query: its first story, else its first suggestion.
+
+        With neither, back to the box to type another.
+        """
+        self._ensure_nav_active()
+        self._blur_all_inputs()
+        if self._word_search_results:
+            self._nav_enter_results()
+            Clock.schedule_once(
+                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
+            )
+            return
+        rows = self._get_word_chip_buttons()
+        first = next((i for i, r in enumerate(rows) if isinstance(r, _SuggestionButton)), None)
+        if first is None:
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+            return
+        self._nav_focus_area = "tags"
+        self._nav_focused_chip_idx = first
+        Clock.schedule_once(lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_chip_focus()))
 
     def _on_word_chip_selected(self, word: str) -> None:
         logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
@@ -524,16 +647,21 @@ class SearchScreen(FloatLayout):
     def _show_word_results(self, word: str) -> None:
         """Run the word search under the current speaker filter and list its titles."""
         found = self._search.find_words(word, speaker=self._selected_speaker or None)
+        self._list_word_stories(found, word)
 
+    def _list_word_stories(
+        self, found: dict[str, TitleInfo], searched: str, hit_counts: dict[str, int] | None = None
+    ) -> None:
+        """List the stories a search found, each with its pages (and hit count, if given)."""
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
 
-        self._word_search_results = self._build_word_results(found)
+        self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
 
         if not found:
             results_layout.add_widget(
-                _SearchResultButton(text=f'No results for "{word}"', disabled=True)
+                _SearchResultButton(text=f'No results for "{searched}"', disabled=True)
             )
             return
 
@@ -571,7 +699,9 @@ class SearchScreen(FloatLayout):
         logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
         self._selected_speaker = speaker
         self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
-        if self._selected_word:
+        if self._word_query:
+            self._run_word_query(self._word_query)
+        elif self._selected_word:
             self._show_word_results(self._selected_word)
 
     def _get_speaker_chip_buttons(self) -> list[_SpeakerChipButton]:
@@ -615,14 +745,24 @@ class SearchScreen(FloatLayout):
         return self._active_mode == "Word" and bool(self._get_speaker_chip_buttons())
 
     @staticmethod
-    def _build_word_results(found: dict[str, TitleInfo]) -> list[tuple[str, str, str, TitleInfo]]:
+    def _build_word_results(
+        found: dict[str, TitleInfo], hit_counts: dict[str, int] | None = None
+    ) -> list[tuple[str, str, str, TitleInfo]]:
+        """Return each story's row: title, first page, row text and its matches.
+
+        With `hit_counts` (a typed query's), each row ends in its story's count of
+        matching bubbles: "Lost in the Andes!, 3,5 (4)".
+        """
         results: list[tuple[str, str, str, TitleInfo]] = []
         for comic_title, title_speech_info in found.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
+            count = "" if hit_counts is None else f" ({hit_counts.get(comic_title, 0)})"
             first_page_num, title_with_pages = get_fitted_title_with_page_nums(
-                comic_title, page_num_list, MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN
+                comic_title, page_num_list, MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN - len(count)
             )
-            results.append((comic_title, first_page_num, title_with_pages, title_speech_info))
+            results.append(
+                (comic_title, first_page_num, title_with_pages + count, title_speech_info)
+            )
         results.sort(key=lambda t: t[2])
         return results
 
@@ -637,15 +777,18 @@ class SearchScreen(FloatLayout):
         ) in enumerate(self._word_search_results):
             row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(28))
 
+            # One line, shortened in the middle when the panel is too narrow for it:
+            # wrapped, a long page list spilled out of its row, and the middle keeps
+            # both the title's start and a query's hit count at the end.
             title_btn = _SearchResultButton(
                 text=title_with_pages,
                 row_index=i,
                 size_hint=(0.94, 1),
                 halign="left",
                 valign="middle",
+                shorten=True,
+                shorten_from="center",
             )
-            title_btn.text_size = (title_btn.width, None)
-            title_btn.bind(size=lambda inst, _val: setattr(inst, "text_size", (inst.width, None)))
             title_btn.bind(
                 on_release=lambda b, ct=comic_title, fp=first_page_num: (
                     self._on_word_result_row_released(b, ct, fp)
@@ -674,7 +817,12 @@ class SearchScreen(FloatLayout):
         self._goto_title_with_page(title_str, page_to_goto)
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
-        search_text = self._selected_word
+        search_text = self._word_query or self._selected_word
+        result = self._word_query_result if self._word_query else None
+        # A query's words and their forms; a literal fallback, as a picked word, its text.
+        highlight_terms = (
+            result.highlight_terms if result and not result.used_literal_fallback else None
+        )
         logger.info(log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title=title_str, text=search_text))
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
@@ -685,6 +833,7 @@ class SearchScreen(FloatLayout):
             self._font_manager.speech_bubble_popup_title_font_size,
             speaker=self._selected_speaker or None,
             text_font_size=self._font_manager.speech_bubble_text_font_size,
+            highlight_terms=highlight_terms,
         )
 
     def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
@@ -707,6 +856,9 @@ class SearchScreen(FloatLayout):
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
         self._selected_word = ""
+        self._word_query = ""
+        self._word_query_result = None
+        self._box_query = ""
         self._selected_speaker = _ALL_SPEAKERS
         self._update_speaker_chip_colors(self._get_speaker_chip_buttons())
         self.ids.word_search_input.focus = True
@@ -804,6 +956,10 @@ class SearchScreen(FloatLayout):
         chip if none is selected yet and land focus on the chips, so Up/Down move
         through them; Enter on a chip then moves focus right to its title list.
         """
+        if self._active_mode == "Word" and self._box_query:
+            self._run_word_query(self._box_query)
+            self._focus_after_query()
+            return
         if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
             self._enter_chips_from_input()
             return
@@ -827,7 +983,7 @@ class SearchScreen(FloatLayout):
 
     def _get_selected_chip_text(self) -> str:
         if self._active_mode == "Word":
-            return self._selected_word
+            return _query_row_text(self._word_query) if self._word_query else self._selected_word
         return self._selected_member or self._selected_tag
 
     def _focus_selected_or_first_chip(self) -> None:
@@ -976,8 +1132,9 @@ class SearchScreen(FloatLayout):
         """Focus the word chip list, on the selected word."""
         self._nav_focus_area = "tags"
         word_buttons = self._get_word_chip_buttons()
+        selected = self._get_selected_chip_text()
         self._nav_focused_chip_idx = next(
-            (i for i, b in enumerate(word_buttons) if b.text == self._selected_word), 0
+            (i for i, b in enumerate(word_buttons) if b.text == selected), 0
         )
         self._draw_chip_focus()
 
@@ -1110,6 +1267,11 @@ class SearchScreen(FloatLayout):
         if not chips or self._nav_focused_chip_idx >= len(chips):
             return
         focused_chip = chips[self._nav_focused_chip_idx]
+        if isinstance(focused_chip, (_QueryRowButton, _SuggestionButton)):
+            focused_chip.trigger_action(duration=0)
+            self._clear_chip_focus()
+            self._focus_after_query()
+            return
         was_main = focused_chip in self._get_main_tag_chip_buttons()
         is_open_group = (
             was_main and focused_chip.text == self._selected_tag and self._get_member_chip_buttons()

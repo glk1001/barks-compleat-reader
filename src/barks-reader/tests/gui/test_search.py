@@ -90,6 +90,63 @@ def test_word_search_matches_inside_a_word(boot: AppBoot) -> None:
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) >= 1
 
 
+AND_QUERY = "gold and mine"
+
+
+def test_a_typed_and_query_lists_stories_with_both_words(boot: AppBoot) -> None:
+    """Return runs a typed query: AND is the same story, and a balloon opens its bubbles."""
+    found = expected.word_query(AND_QUERY).title_dict
+    assert found, f"no story has both words of {AND_QUERY!r}"
+    d = boot(nodes.WORD_SEARCH)
+    search.run_typed_query(d, AND_QUERY)  # the keyboard is on the first story
+    assert int(last_field(d, markers.WORD_QUERY_RUN, "count", text=AND_QUERY)) == len(found)
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == len(found)
+
+    d.move_focus("Right")  # the story's title -> its balloon
+    with (
+        d.expect(pattern(markers.SHOW_BUBBLES_FOR_SEARCH, text=AND_QUERY)),
+        d.expect(markers.BUBBLES_POPUP_OPENED),
+    ):
+        d.key("Return")
+    assert last_field(d, markers.SHOW_BUBBLES_FOR_SEARCH, "title", text=AND_QUERY) in found
+    d.key_then_wait(markers.BUBBLES_POPUP_DISMISSED, "Escape")
+
+
+BAD_QUERY = "(gold"
+
+
+def test_text_that_does_not_parse_is_searched_as_it_stands(boot: AppBoot) -> None:
+    literal = expected.word_query(BAD_QUERY)
+    assert literal.used_literal_fallback
+    assert literal.title_dict, f"the literal search for {BAD_QUERY!r} finds nothing"
+    d = boot(nodes.WORD_SEARCH)
+    with d.expect(pattern(markers.WORD_QUERY_FALLBACK, text=BAD_QUERY)):
+        search.run_typed_query(d, BAD_QUERY)
+    count = int(last_field(d, markers.WORD_QUERY_RUN, "count", text=BAD_QUERY))
+    assert count == len(literal.title_dict)
+
+
+MISSPELT = "scroge"  # cspell:disable-line
+
+
+def test_a_misspelling_offers_suggestions_and_return_runs_one(boot: AppBoot) -> None:
+    """A word in no story brings close spellings; Return on one puts it in and runs again."""
+    offered = [s.spelling for s in expected.word_query(MISSPELT).suggestions]
+    assert offered, f"no spelling is offered for {MISSPELT!r}"
+    fixed = offered[0]
+    stories = len(expected.word_query(fixed).title_dict)
+    assert stories, f"{fixed!r} is in no story"
+
+    d = boot(nodes.WORD_SEARCH)
+    with d.expect(pattern(markers.WORD_SUGGESTIONS, word=MISSPELT)):
+        search.run_typed_query(d, MISSPELT)  # nothing found: the keyboard is on a suggestion
+    assert int(last_field(d, markers.WORD_QUERY_RUN, "count", text=MISSPELT)) == 0
+
+    with d.expect(d.FOCUS_MOVED):  # the first story the spelling finds
+        d.key_then_wait(pattern(markers.WORD_QUERY_RUN, text=fixed), "Return")
+    assert int(last_field(d, markers.WORD_QUERY_RUN, "count", text=fixed)) == stories
+
+
 NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
 

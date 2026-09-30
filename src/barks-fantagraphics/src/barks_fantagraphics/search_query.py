@@ -1,3 +1,4 @@
+# cspell:ignore scroge scroged
 """The word search's typed query language: parsed into a small tree, never raising.
 
 Phase 4 of the reader's search plan (docs/plans/advanced-search.md). A query such
@@ -492,6 +493,26 @@ def parse_query(text: str) -> ParsedQuery:
         return ParsedQuery(text, error=ParseError(exc.message, exc.position))
     except (RecursionError, ValueError) as exc:  # pathological input: still no raise
         return ParsedQuery(text, error=ParseError(f"the query cannot be read ({exc})", 0))
+
+
+def replace_word(text: str, word: str, replacement: str) -> str:
+    """Return `text` with every whole-word `word` in it, in any case, made `replacement`.
+
+    For a spelling suggestion picked in place of a word typed: ``scroge -gold`` with
+    Scrooge for scroge is ``Scrooge -gold``. Operators and brackets around the word
+    stay; a longer word holding it (``scroged``) does not change.
+
+    Args:
+        text: A typed query.
+        word: The word to replace, as typed.
+        replacement: What to put in its place.
+
+    Returns:
+        The query with the word replaced.
+
+    """
+    found = re.compile(rf"(?<![\w'-]){re.escape(word)}(?![\w'-])", re.IGNORECASE)
+    return found.sub(lambda _m: replacement, text)
 
 
 def has_query_syntax(text: str) -> bool:

@@ -51,6 +51,17 @@ def type_query(d: Driver, query: str) -> None:
     d.type_slowly(query, marker=_results_line)
 
 
+def run_typed_query(d: Driver, query: str) -> None:
+    """Type a query into the word box and Return to run it.
+
+    Waits for the line the run logs, and for the keyboard to land where a run
+    hands it: the first story found, else the first spelling suggested.
+    """
+    type_query(d, query)
+    with d.expect(d.FOCUS_MOVED):
+        d.key_then_wait(pattern(markers.WORD_QUERY_RUN, text=query), "Return")
+
+
 def _focus_result_row(d: Driver, row: int) -> None:
     """Leave the box for the first result row and step Down to `row` (counting from 1)."""
     d.key_then_wait(d.FOCUS_MOVED, "Return")

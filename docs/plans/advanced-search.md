@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-7 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-8 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -13,9 +13,9 @@
 > - Phase 4 query parser: DONE 2026-09-29, fa82fb5e
 > - Phase 5 lexicon expansion: DONE 2026-09-29, 2e39af51
 > - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 1a6e6387
-> - Phase 7 multi-term highlighting: DONE 2026-09-30 ("feat(search): the bubble popup
->   highlights every word a query searched, whole words only")
-> - Phase 8 typed queries in the word box: TODO
+> - Phase 7 multi-term highlighting: DONE 2026-09-30, 797eab85
+> - Phase 8 typed queries in the word box: DONE 2026-09-30 ("feat(search): the word box runs
+>   typed queries, with notices, suggestions and hit counts")
 > - Phase 8a extract ChipRow: TODO
 > - Phase 9 word chip list: TODO
 > - Phase 10 tag chip list: TODO
@@ -154,6 +154,11 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
    hit counts, and the speaker filter re-runs the active query. Markers `WORD_QUERY_RUN`,
    `WORD_QUERY_FALLBACK`, `WORD_SUGGESTIONS`. GUI tests: AND query → bubble popup; `(gold` falls
    back; `scroge` → suggestion → query.
+   As built (choices made 2026-09-30): the query is offered as a "Search for:" row at the top of
+   the word list; after a run the list is the query's row, its notices and its suggestions,
+   grouped by the word each is for (`Suggestion(word, spelling)`; picking one swaps that word
+   in, `replace_word`); hit counts on typed-query rows only. Also `WORD_QUERY_NOTICE`, and
+   result rows now shorten in the middle rather than wrap out of their row.
 8a. **Extract `ChipRow`** from the speaker row (no behaviour change; `search_screen.py` is 1,283
    lines).
 9. **Word chip list, ALL/ANY.** A `[word][+]` row pattern, like the existing title/speech

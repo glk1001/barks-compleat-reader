@@ -26,6 +26,7 @@ from barks_reader.core.wiki_integration import wiki_page_for_title
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from barks_fantagraphics.search_evaluate import WordQueryResult
     from barks_fantagraphics.tag_query import TagMatch
     from barks_reader.core.comic_book_page_info import ComicLayout
 
@@ -145,6 +146,13 @@ def words_matching(query: str) -> tuple[str, ...]:
     """Return every word the word search box lists for `query`, in its order, uncapped."""
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
     return tuple(search.get_words_matching(query, limit=None).words)
+
+
+@cache
+def word_query(text: str) -> WordQueryResult:
+    """Return what the word box's typed query `text` finds, with no speaker filter."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    return search.run_word_query(text)
 
 
 def wiki_page(bundle: Path, title: Titles) -> Path | None:

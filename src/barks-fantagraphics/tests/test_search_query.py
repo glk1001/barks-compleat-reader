@@ -1,3 +1,4 @@
+# cspell:ignore chna goldd scroge scroged
 """The word search's query language: text in, a tree or an error out, never an exception."""
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from barks_fantagraphics.search_query import (
     has_query_syntax,
     parse_query,
     query_from_words,
+    replace_word,
 )
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -199,3 +201,21 @@ def test_nesting_past_the_recursion_limit_is_an_error_not_a_crash(text: str) -> 
     parsed = parse_query(text)
     assert parsed.error is not None
     assert parsed.root is None
+
+
+@pytest.mark.parametrize(
+    ("text", "word", "replacement", "result"),
+    [
+        ("scroge", "scroge", "Scrooge", "Scrooge"),
+        ("SCROGE -gold", "scroge", "Scrooge", "Scrooge -gold"),
+        ("(scroge OR gold) scroge", "scroge", "Scrooge", "(Scrooge OR gold) Scrooge"),
+        ("scroged scroge's scroge", "scroge", "Scrooge", "scroged scroge's Scrooge"),
+        ('"pirate goldd"', "goldd", "gold", '"pirate gold"'),
+        ("indo-chna", "indo-chna", "indo-china", "indo-china"),
+        ("a.b a.b", "a.b", "x", "x x"),
+    ],
+)
+def test_replace_word_swaps_the_whole_word_only(
+    text: str, word: str, replacement: str, result: str
+) -> None:
+    assert replace_word(text, word, replacement) == result

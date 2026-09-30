@@ -1,3 +1,4 @@
+# cspell:ignore scroge
 """Run a typed word query: its tree, from ``search_query``, against the full-text index.
 
 The reader's search plan (docs/plans/advanced-search.md), phase 6. The engine finds
@@ -70,6 +71,20 @@ _NOT_IN_OR = "NOT needs words beside it, joined with AND, to take its stories aw
 
 
 @dataclass(frozen=True, slots=True)
+class Suggestion:
+    """A close spelling the index holds, for a word typed that is in no story.
+
+    Attributes:
+        word: The word as typed (``scroge``), to replace in the query text.
+        spelling: The index's word, as the word list shows it (``Scrooge``).
+
+    """
+
+    word: str
+    spelling: str
+
+
+@dataclass(frozen=True, slots=True)
 class WordQueryResult:
     """What a typed word query found, and what the user should be told about it.
 
@@ -80,7 +95,8 @@ class WordQueryResult:
             mark in the bubbles shown.
         notices: Things to tell the user: words left out, limits reached, tags
             not found.
-        suggestions: Close spellings for words found nowhere, as displayed.
+        suggestions: Close spellings for the words found nowhere, each with the
+            word it is for, closest first for each word.
         used_literal_fallback: Whether the text did not parse and was searched as
             it stands.
         error: Why the query could not be run as a query, or None.
@@ -92,7 +108,7 @@ class WordQueryResult:
     hit_counts: dict[str, int] = field(default_factory=dict)
     highlight_terms: tuple[str, ...] = ()
     notices: tuple[str, ...] = ()
-    suggestions: tuple[str, ...] = ()
+    suggestions: tuple[Suggestion, ...] = ()
     used_literal_fallback: bool = False
     error: str | None = None
     error_position: int | None = None
@@ -240,7 +256,7 @@ class _Evaluator:
         self._negated = 0  # inside a NOT: found words are not highlighted or suggested for
         self.notices: list[str] = []
         self.highlights: list[str] = []
-        self.suggestions: list[str] = []
+        self.suggestions: list[Suggestion] = []
 
     def run(self, node: QueryNode, search_filter: StoryFilter | None) -> TitleDict:
         node = _unwrap_double_not(node)
@@ -393,8 +409,7 @@ class _Evaluator:
             self.highlights.extend(terms)
 
     def _suggest_for(self, text: str) -> None:
-        suggestions = self._lexicon.suggest(text)
-        self.suggestions.extend(suggestions)
+        self.suggestions.extend(Suggestion(text, s) for s in self._lexicon.suggest(text))
         self.notices.append(f'"{text}" is in no story.')
 
     # ------------------------------------------------------------------- filters --

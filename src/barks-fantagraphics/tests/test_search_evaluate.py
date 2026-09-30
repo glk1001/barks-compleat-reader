@@ -1,4 +1,4 @@
-# cspell:ignore monney clasics
+# cspell:ignore monney clasics bearz
 """A typed word query, run: AND and NOT by story, phrases and NEAR by bubble, filters, notices.
 
 Against the fake engine over a small corpus of real stories (their years and tags
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.search_evaluate import evaluate_query, run_query_text
+from barks_fantagraphics.search_evaluate import Suggestion, evaluate_query, run_query_text
 from barks_fantagraphics.search_filters import SearchFilter, tag_titles, titles_in_years
 from barks_fantagraphics.search_query import (
     AnyTerm,
@@ -190,8 +190,16 @@ def test_a_word_in_no_story_brings_suggestions(
 ) -> None:
     result = run_query_text("monney", fake, lexicon, stop_words=MY_STOP_WORDS)
     assert result.title_dict == {}
-    assert "money" in result.suggestions
+    assert Suggestion("monney", "money") in result.suggestions
     assert result.notices == ('"monney" is in no story.',)
+
+
+def test_each_suggestion_names_the_word_it_is_for(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("gold OR monney OR bearz", fake, lexicon)
+    assert {s.word for s in result.suggestions} == {"monney", "bearz"}
+    assert Suggestion("bearz", "bears") in result.suggestions
 
 
 def test_a_quoted_word_brings_no_suggestions(

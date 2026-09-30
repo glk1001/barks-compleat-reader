@@ -249,6 +249,17 @@ TAG_SELECTED_MEMBER: Final = 'Tag search: selected member "{member}".'
 # The stories a picked tag (or member) lists: its chip shows the same count.
 TAG_TITLES_LISTED: Final = 'Tag search: "{tag}" lists {count} stories.'
 WORD_SELECTED_CHIP: Final = 'Word search: selected chip "{word}".'
+# A typed query run from the word box (its query syntax, or no word matching it), and
+# how many stories it found. Logged last, after the query's notices and suggestions.
+WORD_QUERY_RUN: Final = 'Word query: "{text}" found {count} stories.'
+# Text that does not parse as a query, searched as it stands instead.
+WORD_QUERY_FALLBACK: Final = (
+    'Word query: "{text}" does not parse ({error}); searched for it as it stands.'
+)
+# Each thing a query's run tells the user: a word left out, a tag not found, an error.
+WORD_QUERY_NOTICE: Final = "Word query notice: {notice}"
+# The close spellings offered for a word of the query that is in no story.
+WORD_SUGGESTIONS: Final = 'Word query: for "{word}", suggested {spellings}.'
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'
