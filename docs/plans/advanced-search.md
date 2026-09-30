@@ -2,25 +2,28 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-12 done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; all phases done 2026-09-30.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
-> - Phase 0 tag bug fixes: DONE 2026-09-29, 056cad35
-> - Phase 1 result types + set operations: DONE 2026-09-29, cd3f755a
-> - Phase 2 substring word list: DONE 2026-09-29, 8bceb1dc
-> - Phase 3 tag substring + counts: DONE 2026-09-29, 09715fae
-> - Phase 4 query parser: DONE 2026-09-29, 18072b30
-> - Phase 5 lexicon expansion: DONE 2026-09-29, 317f4867
-> - Phase 6 engine leaves + evaluator: DONE 2026-09-30, ee589e88
-> - Phase 7 multi-term highlighting: DONE 2026-09-30, 78ff0434
-> - Phase 8 typed queries in the word box: DONE 2026-09-30, fb6a4eb7
-> - Phase 8a extract ChipRow: DONE 2026-09-30, e0f8f0c0
-> - Phase 9 word chip list: DONE 2026-09-30, c13b8e79
-> - Phase 10 tag chip list: DONE 2026-09-30, 851809f7
-> - Phase 11 era filter: DONE 2026-09-30, c10beed4
-> - Phase 12 word search limited to tagged stories: DONE 2026-09-30 ("feat(search): the word
->   search can be limited to the stories of the tags selected")
+> - Phase 0 tag bug fixes: DONE 2026-09-29, 1378b2e4
+> - Phase 1 result types + set operations: DONE 2026-09-29, 0bfd16cd
+> - Phase 2 substring word list: DONE 2026-09-29, 13421107
+> - Phase 3 tag substring + counts: DONE 2026-09-29, 0a339ead
+> - Phase 4 query parser: DONE 2026-09-29, ee699ba9
+> - Phase 5 lexicon expansion: DONE 2026-09-29, b4ff7b3e
+> - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 7ba2756d
+> - Phase 7 multi-term highlighting: DONE 2026-09-30, 6ce25a70
+> - Phase 8 typed queries in the word box: DONE 2026-09-30, 4f730eb6
+> - Phase 8a extract ChipRow: DONE 2026-09-30, c6f34b81
+> - Phase 9 word chip list: DONE 2026-09-30, 5231c23d
+> - Phase 10 tag chip list: DONE 2026-09-30, 38495701
+> - Phase 11 era filter: DONE 2026-09-30, f57b1ca8
+> - Phase 12 word search limited to tagged stories: DONE 2026-09-30, f4de6a08
+> - Final pass: DONE 2026-09-30 - tap test for the chips 7a9b44d9 (clicks and --touch), leak
+>   round trips over the word and tag chip lists e2e1a902, docs 0b57fc99. The search tests
+>   passed under all six run_gui_matrix.sh variants, and one soak (4 walks) passed. Left
+>   for later: docs/BACKLOG.md, "Search".
 
 ## Context
 
