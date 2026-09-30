@@ -2,21 +2,32 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import barks_fantagraphics.comics_helpers as comics_helpers_module
 import pytest
+import typer
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
+from barks_fantagraphics.comic_book_info import ONE_PAGERS
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_helpers import (
     draw_panel_bounds_on_image,
+    get_comic_titles,
     get_display_title,
     get_issue_title,
     get_issue_titles,
     get_title_from_volume_page,
     get_titles,
     get_titles_and_info,
+    get_volume_and_page,
+    validate_ini_files_against_barks_titles,
 )
 from barks_fantagraphics.panel_boxes import PagePanelBoxes, PanelBox
 from PIL import Image
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -410,3 +421,130 @@ class TestDrawPanelBoundsOnImage:
         ppb = self._make_page_panel_boxes(panels, overall)
 
         assert draw_panel_bounds_on_image(image, ppb) is True
+
+
+# ---------------------------------------------------------------------------
+# get_volume_and_page
+# ---------------------------------------------------------------------------
+
+
+def _body_page(filename: str) -> MagicMock:
+    return MagicMock(page_filenames=filename, page_type=PageType.BODY)
+
+
+class TestGetVolumeAndPage:
+    TITLE = "Donald Duck Finds Pirate Gold"
+    ONE_PAGER = ENUM_TO_STR_TITLE[ONE_PAGERS[0]]
+
+    @staticmethod
+    def _db_with_pages(volume: int, pages: list[str]) -> MagicMock:
+        db = _make_db()
+        comic = db.get_comic_book.return_value
+        comic.get_fanta_volume.return_value = volume
+        cover = MagicMock(page_filenames="001", page_type=PageType.FRONT)
+        comic.page_images_in_order = [cover, *(_body_page(p) for p in pages)]
+        return db
+
+    def test_no_page_given_is_the_first_body_page(self) -> None:
+        db = self._db_with_pages(7, ["021", "022", "023"])
+        assert get_volume_and_page(db, self.TITLE, "") == (7, "021")
+
+    def test_a_page_counts_from_the_first_body_page(self) -> None:
+        db = self._db_with_pages(7, ["021", "022", "023"])
+        assert get_volume_and_page(db, self.TITLE, "3") == (7, "023")
+
+    def test_a_page_past_the_story_is_an_error(self) -> None:
+        db = self._db_with_pages(7, ["021", "022", "023"])
+        with pytest.raises(RuntimeError, match=f'Page 4 not valid for "{self.TITLE}"'):
+            get_volume_and_page(db, self.TITLE, "4")
+
+    def test_a_one_pager_comes_from_its_located_page(self) -> None:
+        db = _make_db()
+        with patch.object(
+            comics_helpers_module, "get_one_pager_fanta_vol_and_page", return_value=(12, 45)
+        ):
+            assert get_volume_and_page(db, self.ONE_PAGER, "") == (12, "045")
+        db.get_comic_book.assert_not_called()
+
+    def test_a_one_pager_not_located_is_an_error(self) -> None:
+        with (
+            patch.object(
+                comics_helpers_module,
+                "get_one_pager_fanta_vol_and_page",
+                return_value=(None, None),
+            ),
+            pytest.raises(RuntimeError, match="Could not find one-pager's volume and page"),
+        ):
+            get_volume_and_page(_make_db(), self.ONE_PAGER, "")
+
+
+class TestGetTitleFromVolumePageSkipsOnePagers:
+    def test_a_one_pager_in_the_volume_is_passed_over(self) -> None:
+        """A page number that is no one-pager's goes on to search the stories."""
+        one_pager = ENUM_TO_STR_TITLE[ONE_PAGERS[0]]
+        db = _make_db()
+        db.get_all_titles_in_fantagraphics_volumes.return_value = [
+            (one_pager, MagicMock()),
+            ("Donald Duck Finds Pirate Gold", MagicMock()),
+        ]
+        srce_dest = _make_srce_dest_pages(["999"], [3])
+
+        with patch.object(
+            comics_helpers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+        ):
+            assert get_title_from_volume_page(db, 1, "999") == ("Donald Duck Finds Pirate Gold", 3)
+
+        db.get_comic_book.assert_called_once_with("Donald Duck Finds Pirate Gold")
+
+
+# ---------------------------------------------------------------------------
+# get_comic_titles
+# ---------------------------------------------------------------------------
+
+
+class TestGetComicTitles:
+    def test_volume_and_title_together_are_refused(self) -> None:
+        with pytest.raises(typer.BadParameter, match="mutually exclusive"):
+            get_comic_titles("5", "Some Title")
+
+    def test_a_volume_range_is_expanded(self) -> None:
+        with (
+            patch.object(comics_helpers_module, "ComicsDatabase") as database,
+            patch.object(comics_helpers_module, "get_titles", return_value=["A", "B"]) as titles,
+        ):
+            db, found = get_comic_titles("5-7", "", exclude_non_comics=True)
+
+        assert (db, found) == (database.return_value, ["A", "B"])
+        titles.assert_called_once_with(
+            database.return_value, [5, 6, 7], "", exclude_non_comics=True
+        )
+
+
+# ---------------------------------------------------------------------------
+# validate_ini_files_against_barks_titles
+# ---------------------------------------------------------------------------
+
+
+class TestValidateIniFiles:
+    @staticmethod
+    def _run_with(tmp_path: Path, ini_name: str, title_line: str) -> None:
+        (tmp_path / ini_name).write_text(f"[info]\n{title_line}\n", encoding="utf-8")
+        db = _make_db()
+        db._ini_files = [ini_name]  # noqa: SLF001
+        db.get_story_titles_dir.return_value = tmp_path
+        with patch.object(comics_helpers_module, "ComicsDatabase", return_value=db):
+            validate_ini_files_against_barks_titles()
+
+    def test_a_matching_or_empty_title_passes(self, tmp_path: Path) -> None:
+        self._run_with(tmp_path, "Donald Duck Finds Pirate Gold.ini", "title =")
+        self._run_with(tmp_path, "The Victory Garden.ini", "title = The Victory Garden")
+
+    def test_an_ini_for_no_known_story_is_an_error(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match='Ini story title "No Such Story" not in'):
+            self._run_with(tmp_path, "No Such Story.ini", "title =")
+
+    def test_an_ini_naming_another_title_is_an_error(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match='Ini title "The Victory Garden" != story title'):
+            self._run_with(
+                tmp_path, "Donald Duck Finds Pirate Gold.ini", "title = The Victory Garden"
+            )

@@ -11,15 +11,26 @@ from unittest.mock import patch
 import pytest
 from barks_reader.core import config_info
 from barks_reader.core.config_info import (
+    LINUX_FANTA_VOLUMES_SEARCH_PATH,
+    MACOS_FANTA_VOLUMES_SEARCH_PATH,
     RANDOM_SEED_ENV_VAR,
+    WINDOWS_FANTA_VOLUMES_SEARCH_PATH,
     ConfigInfo,
     _assert_kivy_not_yet_imported,
+    _find_dir_on_search_path,
     _find_dir_under_directory,
+    _find_fanta_volumes,
+    _run_loguru_config,
     barks_reader_installer_failed,
+    find_fanta_volumes_dirpath,
+    get_app_exe_dir,
     get_barks_reader_installer_failed_flag_file,
+    get_log_level,
+    get_log_path,
     remove_barks_reader_installer_failed_flag,
     seed_random_from_env,
     set_barks_reader_installer_failed_flag,
+    setup_loguru,
 )
 from barks_reader.core.platform_info import Platform
 
@@ -274,3 +285,159 @@ class TestSeedRandomFromEnv:
         """A typo in the variable must not stop the app starting."""
         monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "banana")
         assert seed_random_from_env() is None
+
+
+# ---------------------------------------------------------------------------
+# get_app_exe_dir, is_app_installed, _setup_app_config_dir
+# ---------------------------------------------------------------------------
+
+
+class TestGetAppExeDir:
+    def test_a_compiled_build_anchors_beside_its_executable(self, tmp_path: Path) -> None:
+        exe = tmp_path / "bin" / "barks-reader-linux"
+        with patch.object(config_info, "IS_COMPILED", True), patch.object(sys, "argv", [str(exe)]):  # noqa: FBT003
+            assert get_app_exe_dir() == tmp_path.resolve() / "bin"
+
+    def test_a_macos_build_anchors_beside_its_app_bundle(self, tmp_path: Path) -> None:
+        """Inside the bundle is read-only and replaced on update; the data lives beside it."""
+        exe = tmp_path / "Barks Reader.app" / "Contents" / "MacOS" / "barks-reader"
+        with patch.object(config_info, "IS_COMPILED", True), patch.object(sys, "argv", [str(exe)]):  # noqa: FBT003
+            assert get_app_exe_dir() == tmp_path.resolve()
+
+    def test_a_checkout_anchors_beside_the_repository(self) -> None:
+        anchor = get_app_exe_dir()
+        assert any((child / "main.py").is_file() for child in anchor.iterdir())
+
+
+class TestAppConfigDir:
+    def test_installed_once_the_config_file_exists(self, tmp_path: Path) -> None:
+        cfg = _bare_config_info(tmp_path)
+        cfg.app_config_path = tmp_path / "barks-reader.ini"
+        assert not cfg.is_app_installed()
+
+        cfg.app_config_path.touch()
+        assert cfg.is_app_installed()
+
+    def test_a_config_dir_that_cannot_be_made_is_an_error(self, tmp_path: Path) -> None:
+        cfg = _bare_config_info(tmp_path)
+        with (
+            patch.object(cfg, "_get_app_config_dir", return_value=tmp_path / "never-made"),
+            patch.object(Path, "mkdir"),
+            pytest.raises(RuntimeError, match="Could not create app config directory"),
+        ):
+            cfg._setup_app_config_dir()  # noqa: SLF001
+
+
+# ---------------------------------------------------------------------------
+# setup_loguru, _run_loguru_config
+# ---------------------------------------------------------------------------
+
+
+class TestLoguruSetup:
+    @pytest.fixture(autouse=True)
+    def _keep_the_module_globals(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(config_info, "log_level", config_info.log_level)
+        monkeypatch.setattr(config_info, "log_path", config_info.log_path)
+
+    @pytest.fixture
+    def cfg(self, tmp_path: Path) -> ConfigInfo:
+        cfg = _bare_config_info(tmp_path)
+        cfg.app_config_dir = tmp_path
+        cfg.app_log_path = tmp_path / "kivy" / "logs" / "barks-reader.log"
+        return cfg
+
+    def test_setup_records_the_level_and_the_log_path(self, cfg: ConfigInfo) -> None:
+        with patch.object(config_info, "_run_loguru_config") as run:
+            setup_loguru(cfg, "INFO")
+
+        assert get_log_level() == "INFO"
+        assert get_log_path() == cfg.app_config_dir / "kivy" / "logs" / "barks-reader.log"
+        run.assert_called_once_with(cfg)
+
+    def test_a_good_config_is_loaded_once(self, cfg: ConfigInfo) -> None:
+        with (
+            patch.object(config_info.LoguruConfig, "load") as load,
+            patch.object(config_info.logger, "add") as add,
+        ):
+            _run_loguru_config(cfg)
+
+        load.assert_called_once_with(cfg.app_config_dir / "log-config.yaml")
+        add.assert_not_called()
+
+    def test_a_bad_config_falls_back_to_the_console_and_the_log_file(self, cfg: ConfigInfo) -> None:
+        with (
+            patch.object(config_info.LoguruConfig, "load", side_effect=[ValueError("bad"), None]),
+            patch.object(config_info.logger, "add") as add,
+        ):
+            _run_loguru_config(cfg)
+
+        sinks = [call.args[0] for call in add.call_args_list]
+        assert sinks == [sys.stderr, str(cfg.app_log_path)]
+
+    def test_a_config_that_fails_twice_is_logged_and_exits(self, cfg: ConfigInfo) -> None:
+        with (
+            patch.object(config_info.LoguruConfig, "load", side_effect=ValueError("bad")),
+            patch.object(config_info.logger, "add"),
+            patch.object(config_info.logger, "exception") as logged,
+            pytest.raises(SystemExit) as exited,
+        ):
+            _run_loguru_config(cfg)
+
+        assert exited.value.code == 1
+        logged.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# find_fanta_volumes_dirpath and its search
+# ---------------------------------------------------------------------------
+
+
+class TestFindFantaVolumes:
+    @pytest.mark.parametrize(
+        ("platform", "is_macos", "search_path"),
+        [
+            (Platform.WIN, False, WINDOWS_FANTA_VOLUMES_SEARCH_PATH),
+            (Platform.MACOS_ARM64, True, MACOS_FANTA_VOLUMES_SEARCH_PATH),
+            (Platform.LINUX, False, LINUX_FANTA_VOLUMES_SEARCH_PATH),
+        ],
+    )
+    def test_each_platform_searches_its_own_path(
+        self, platform: Platform, is_macos: bool, search_path: list[str], tmp_path: Path
+    ) -> None:
+        cfg = _bare_config_info(tmp_path)
+        with (
+            patch.object(config_info, "PLATFORM", platform),
+            patch.object(config_info, "IS_MACOS", is_macos),
+            patch.object(config_info, "_find_fanta_volumes", return_value=tmp_path) as find,
+        ):
+            assert find_fanta_volumes_dirpath(cfg, "Fanta") == tmp_path
+
+        find.assert_called_once_with(cfg, "Fanta", search_path)
+
+    def test_not_found_is_logged_and_none(self, tmp_path: Path, loguru_sink: list[str]) -> None:
+        cfg = _bare_config_info(tmp_path)
+        with patch.object(config_info, "_find_fanta_volumes", return_value=None):
+            assert find_fanta_volumes_dirpath(cfg, "Fanta") is None
+
+        assert any(
+            'Could not find Fantagraphics Barks Library directory "Fanta".' in line
+            for line in loguru_sink
+        )
+
+    def test_the_data_dir_is_searched_first(self, tmp_path: Path) -> None:
+        cfg = _bare_config_info(tmp_path)
+        cfg.app_data_dir = tmp_path / "data"
+        (cfg.app_data_dir / "Fanta").mkdir(parents=True)
+        (tmp_path / "elsewhere" / "Fanta").mkdir(parents=True)
+
+        found = _find_fanta_volumes(cfg, "Fanta", [str(tmp_path / "elsewhere")])
+
+        assert found == cfg.app_data_dir / "Fanta"
+
+    def test_the_search_passes_over_missing_and_empty_dirs(self, tmp_path: Path) -> None:
+        (tmp_path / "empty").mkdir()
+        (tmp_path / "has-it" / "Fanta").mkdir(parents=True)
+        search_path = [str(tmp_path / "missing"), str(tmp_path / "empty"), str(tmp_path / "has-it")]
+
+        assert _find_dir_on_search_path(search_path, "Fanta") == tmp_path / "has-it" / "Fanta"
+        assert _find_dir_on_search_path(search_path[:2], "Fanta") is None
