@@ -93,7 +93,10 @@ class ParsedTagQuery:
 
 _TAG_OPERATOR_RE = re.compile(r"\s*([+,|])\s*")
 _EXCLUSION_RE = re.compile(r"(?:^|\s)-\s*\S")
-_QUALIFIER_RE = re.compile(r"(?:^|(?<=\s))(year|vol):(\S*)", re.IGNORECASE)
+# A range starts a name, or stands alone between separators; its value ends at one.
+_QUALIFIER_RE = re.compile(r"(?:^|(?<=[\s+,|]))(year|vol):([^\s+,|]*)", re.IGNORECASE)
+# Where a range was, once read: no name holds it, and a part that is only one is dropped.
+_RANGE_MARK = "\0"
 
 
 def has_tag_syntax(text: str) -> bool:
@@ -136,11 +139,12 @@ def parse_tag_query(text: str) -> ParsedTagQuery:
     ranges = _read_qualifiers(text)
     if isinstance(ranges, str):
         return ParsedTagQuery(error=ranges)
-    text = _QUALIFIER_RE.sub(" ", text)
-    if not text.strip():
+    pieces = _TAG_OPERATOR_RE.split(_QUALIFIER_RE.sub(_RANGE_MARK, text).strip())
+    # A range between separators (scrooge + year:1950) is no part of its own.
+    names = [n.replace(_RANGE_MARK, " ") for n in pieces[0::2] if n.strip() != _RANGE_MARK]
+    operators = set(pieces[1::2])
+    if not "".join(names).strip():
         return ParsedTagQuery(error="No tag is named.")
-    pieces = _TAG_OPERATOR_RE.split(text.strip())
-    names, operators = pieces[0::2], set(pieces[1::2])
     if {"|"} & operators and {"+", ","} & operators:
         return ParsedTagQuery(error="Use + or | between tags, not both.")
     included: list[str] = []
