@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import MagicMock
 
 import pytest
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR
 from barks_fantagraphics.comics_utils import (
     delete_all_files_in_directory,
@@ -29,6 +30,7 @@ from barks_fantagraphics.comics_utils import (
     get_ocr_json_suffix,
     get_ocr_type,
     get_relpath,
+    get_safe_file_title,
     get_short_formatted_submitted_date,
     get_short_submitted_day_and_month,
     get_submitted_date,
@@ -58,6 +60,32 @@ class TestGetDestComicDirname:
 class TestGetDestComicZipFileStem:
     def test_includes_brackets_around_issue_name(self) -> None:
         assert get_dest_comic_zip_file_stem("My Title", 5, "FC 123") == "005 My Title [FC 123]"
+
+    def test_a_question_mark_in_the_title_is_left_out(self) -> None:
+        """Windows forbids it in a file name: the prebuilt comic could not exist there."""
+        assert (
+            get_dest_comic_zip_file_stem("Fun? What's That?", 319, "SF 2")
+            == "319 Fun What's That [SF 2]"
+        )
+
+
+class TestGetSafeFileTitle:
+    @pytest.mark.parametrize(
+        ("title", "expected"),
+        [
+            ("Fun? What's That?", "Fun What's That"),
+            ("Want to Buy an Island?", "Want to Buy an Island"),
+            ('A<b>c:d"e/f\\g|h?i*j', "Abcdefghij"),
+            ("Why? Because!", "Why Because!"),
+        ],
+    )
+    def test_leaves_out_what_windows_forbids(self, title: str, expected: str) -> None:
+        assert get_safe_file_title(title) == expected
+
+    def test_every_title_but_the_two_keeps_its_name(self) -> None:
+        """Only the two titles with a "?" change; every other built comic keeps its files."""
+        changed = {t for t in ENUM_TO_STR_TITLE if get_safe_file_title(t) != t}
+        assert changed == {"Fun? What's That?", "Want to Buy an Island?"}
 
 
 class TestGetFormattedDay:

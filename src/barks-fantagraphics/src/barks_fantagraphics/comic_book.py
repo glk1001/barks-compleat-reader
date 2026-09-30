@@ -41,6 +41,7 @@ from .comics_utils import (
     get_dest_comic_zip_file_stem,
     get_formatted_first_published_str,
     get_formatted_submitted_date,
+    get_safe_file_title,
     get_safe_title,
 )
 from .fanta_comics_info import (
@@ -631,7 +632,7 @@ class ComicBook:
         return self.get_dest_zip_root_dir() / self.get_dest_comic_zip_filename()
 
     def get_dest_series_comic_zip_symlink_filename(self) -> str:
-        file_title = _get_lookup_title(self.title, self.get_ini_title())
+        file_title = get_safe_file_title(_get_lookup_title(self.title, self.get_ini_title()))
         full_title = f"{file_title} [{self.get_comic_issue_title()}]"
         return f"{self.number_in_series:03d} {full_title}{CBZ_FILE_EXT}"
 

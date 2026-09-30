@@ -26,8 +26,30 @@ def delete_all_files_in_directory(directory_path: Path) -> None:
             file.unlink()
 
 
+# What Windows does not allow in a file or folder name. A built comic's names come from its
+# title, and two titles end in "?": their prebuilt comics could not exist on Windows.
+_WINDOWS_FORBIDDEN_NAME_CHARS = re.compile(r'[<>:"/\\|?*]')
+
+
+def get_safe_file_title(title: str) -> str:
+    """Return a title as it goes into a built comic's file and folder names.
+
+    The characters Windows forbids in a name are left out, and the spaces they leave
+    closed up, on every OS, so each has the same files: "Fun? What's That?" becomes
+    "Fun What's That", the name its ini file already has. The title shown keeps them.
+
+    Args:
+        title: The title as shown.
+
+    Returns:
+        The title for a file or folder name.
+
+    """
+    return " ".join(_WINDOWS_FORBIDDEN_NAME_CHARS.sub("", title).split())
+
+
 def get_dest_comic_dirname(title: str, chrono_num: int) -> str:
-    return f"{chrono_num:03d} {title}"
+    return f"{chrono_num:03d} {get_safe_file_title(title)}"
 
 
 def get_dest_comic_zip_file_stem(title: str, chrono_num: int, issue_name: str) -> str:
