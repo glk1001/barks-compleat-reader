@@ -260,6 +260,10 @@ WORD_QUERY_FALLBACK: Final = (
 WORD_QUERY_NOTICE: Final = "Word query notice: {notice}"
 # The close spellings offered for a word of the query that is in no story.
 WORD_SUGGESTIONS: Final = 'Word query: for "{word}", suggested {spellings}.'
+# The words picked with a word's + to search together, after each one added or removed,
+# and how they combine (ALL or ANY); the basket then runs as a query (WORD_QUERY_RUN).
+WORD_BASKET_CHANGED: Final = "Word basket: {count} picked ({mode}): {words}."
+WORD_BASKET_MODE: Final = "Word basket: combining {mode}."
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'

@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore scroge -->
 
-> Status: **planned 2026-09-29; phases 0-8a done.** Saved here so the plan survives across
+> Status: **planned 2026-09-29; phases 0-9 done.** Saved here so the plan survives across
 > machines and sessions. To resume, ask for "the next phase of
 > docs/plans/advanced-search.md". Tick a phase off here (with its commit) as it lands.
 >
@@ -15,9 +15,9 @@
 > - Phase 6 engine leaves + evaluator: DONE 2026-09-30, 1a6e6387
 > - Phase 7 multi-term highlighting: DONE 2026-09-30, 797eab85
 > - Phase 8 typed queries in the word box: DONE 2026-09-30, bc8968c7
-> - Phase 8a extract ChipRow: DONE 2026-09-30 ("refactor(search): the speaker filter is a
->   ChipRow, a row of chips the era and tag filters can reuse")
-> - Phase 9 word chip list: TODO
+> - Phase 8a extract ChipRow: DONE 2026-09-30, 26abb3e3
+> - Phase 9 word chip list: DONE 2026-09-30 ("feat(search): a word's + picks it to search with
+>   others, all in one story or any")
 > - Phase 10 tag chip list: TODO
 > - Phase 11 era filter: TODO
 > - Phase 12 word search limited to tagged stories: TODO
@@ -168,6 +168,11 @@ expands to at most 200 terms. A leading `-` counts as NOT only at the start of a
    sub-focus. The chip row `[ALL|ANY] [gold ×] [mine ×]` takes no height while empty. Keys:
    Right → `+`, Enter to toggle; Down from the input goes to the chip row. Markers
    `WORD_BASKET_CHANGED`, `WORD_BASKET_MODE`. GUI test combining two words by keyboard.
+   As built (choices made 2026-09-30): the row sits under the search box; every change reruns
+   the basket at once (an empty one empties the results); the `+` toggles (reads `–` once
+   picked); the clear button empties the basket too. `core/search_state.WordBasket` runs as its
+   words quoted (`"gold" "mine"`, `"gold" | "mine"`), the tree `query_from_words` makes, through
+   `run_word_query` beside the word list, which stays; typing leaves the basket's results.
 10. **Tag chip list.** Same pattern, with include/exclude cycling and ALL/ANY. Typed
     `a + b | c -d` fills the chips. Markers `TAG_BASKET_CHANGED`, `TAG_BASKET_MODE`,
     `TAG_COMBINED_RESULTS`. GUI test.

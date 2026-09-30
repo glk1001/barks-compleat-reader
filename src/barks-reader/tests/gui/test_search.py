@@ -13,6 +13,7 @@ from gui_driver import Pick
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
+    from gui_driver import Driver
 
 TITLE_QUERY = "vacation"
 TITLE_RESULT_ROW = 2
@@ -156,7 +157,7 @@ def _speaker_focused(label: str) -> str:
 
 
 def test_the_speaker_row_filters_the_word_results_by_keyboard(boot: AppBoot) -> None:
-    """Right from the word list is the speaker row; Enter on a speaker filters and stays."""
+    """Right past a word's + is the speaker row; Enter on a speaker filters and stays."""
     everyone = expected.word_stories(SPEAKER_WORD)
     by_speaker = expected.word_stories(SPEAKER_WORD, speaker=SPEAKER)
     assert 0 < by_speaker < everyone, "the filter must narrow the stories, not empty them"
@@ -168,6 +169,7 @@ def test_the_speaker_row_filters_the_word_results_by_keyboard(boot: AppBoot) -> 
         d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=word), "Return")
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == everyone
 
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))  # the word's +, then the row
     d.move_focus("Right", pattern=_speaker_focused("All"))
     d.move_focus("Right", pattern=_speaker_focused(SPEAKER))
     with d.expect(pattern(markers.SPEAKER_FILTER_SET, speaker=SPEAKER)):
@@ -175,6 +177,48 @@ def test_the_speaker_row_filters_the_word_results_by_keyboard(boot: AppBoot) -> 
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == by_speaker
 
     d.move_focus("Down")  # into the filtered results
+
+
+BASKET_QUERY = "gold"
+
+
+def _focus_on(widget_class: str, text: str) -> str:
+    return pattern(markers.NAV_FOCUS, widget=f'{widget_class} "{text}"')
+
+
+def _basket_runs(d: Driver, text: str, **changed: object) -> int:
+    """Return on a basket's + or chip: wait for the change and its run; return its count."""
+    marker = (
+        markers.WORD_BASKET_MODE
+        if "mode" in changed and len(changed) == 1
+        else (markers.WORD_BASKET_CHANGED)
+    )
+    with d.expect(pattern(marker, **changed)):
+        d.key_then_wait(pattern(markers.WORD_QUERY_RUN, text=text), "Return")
+    return int(last_field(d, markers.WORD_QUERY_RUN, "count", text=text))
+
+
+def test_two_words_are_combined_by_keyboard(boot: AppBoot) -> None:
+    """A word's + picks it; two picked search the same story; the ALL chip flips to ANY."""
+    first, second = expected.words_matching(BASKET_QUERY)[:2]
+    both, either = f'"{first}" "{second}"', f'"{first}" | "{second}"'
+    d = boot(nodes.WORD_SEARCH)
+    search.type_query(d, BASKET_QUERY)
+    with d.expect(d.FOCUS_MOVED):  # Return picks the first word and lands on it
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=first), "Return")
+
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    count = _basket_runs(d, f'"{first}"', count=1)
+    assert count == len(expected.word_query(f'"{first}"').title_dict)
+
+    d.move_focus("Down", pattern=_focus_on("_PlusButton", "+"))  # the second word's +
+    count_all = _basket_runs(d, both, count=2, mode="ALL")
+    assert count_all == len(expected.word_query(both).title_dict)
+
+    d.move_focus("Up", "Up", pattern=d.FOCUS_MOVED)  # the first word's +, then the basket row
+    count_any = _basket_runs(d, either, mode="ANY")
+    assert count_any == len(expected.word_query(either).title_dict)
+    assert count_any >= count_all
 
 
 NO_MATCH_QUERY = "zzzz"

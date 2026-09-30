@@ -310,26 +310,39 @@
                         id: word_clear_button
                         on_release: root.on_word_clear()
 
-                SearchPanel:
+                # The words picked with a word's +, and ALL/ANY: no height (and no gap
+                # above the word list) while nothing is picked.
+                BoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(8) if word_basket_layout.children else 0
 
-                    BoxLayout:
-                        size_hint: 1, 1
-                        pos_hint: {'x': 0, 'y': 0}
-                        padding: dp(8)
+                    StackLayout:
+                        id: word_basket_layout
+                        orientation: 'lr-tb'
+                        size_hint_y: None
+                        height: self.minimum_height if self.children else 0
+                        spacing: dp(6), dp(4)
 
-                        ReaderScrollView:
-                            id: word_chips_scroll
+                    SearchPanel:
 
-                            BoxLayout:
-                                id: word_chips_layout
-                                orientation: 'vertical'
-                                size_hint_y: None
-                                height: self.minimum_height
-                                spacing: dp(1)
+                        BoxLayout:
+                            size_hint: 1, 1
+                            pos_hint: {'x': 0, 'y': 0}
+                            padding: dp(8)
 
-                    SearchEmptyPrompt:
-                        text: "Matching words will appear here"
-                        opacity: 0 if word_chips_layout.children else 0.75
+                            ReaderScrollView:
+                                id: word_chips_scroll
+
+                                BoxLayout:
+                                    id: word_chips_layout
+                                    orientation: 'vertical'
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(1)
+
+                        SearchEmptyPrompt:
+                            text: "Matching words will appear here"
+                            opacity: 0 if word_chips_layout.children else 0.75
 
             SearchPanel:
                 size_hint_x: 0.65

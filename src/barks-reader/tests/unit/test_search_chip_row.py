@@ -118,6 +118,13 @@ def test_focus_starts_on_the_first_chip_when_none_is_picked(on_select: MagicMock
     assert row.focused == 0
 
 
+def test_focus_can_start_on_a_given_chip_the_last_past_the_end(row: ChipRow) -> None:
+    row.enter_focus(0)
+    assert row.focused == 0
+    row.enter_focus(9)
+    assert row.focused == 2  # noqa: PLR2004
+
+
 def test_an_empty_row_takes_focus_without_a_chip_to_show_it(
     on_select: MagicMock, loguru_sink: list[str]
 ) -> None:

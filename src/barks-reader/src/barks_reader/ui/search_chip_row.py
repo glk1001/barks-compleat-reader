@@ -146,9 +146,17 @@ class ChipRow:
         self._selected = value
         self._recolor()
 
-    def enter_focus(self) -> None:
-        """Take the keyboard, on the picked chip (the first, if none is)."""
-        self._focused = next((i for i, c in enumerate(self._chips) if c.value == self._selected), 0)
+    def enter_focus(self, index: int | None = None) -> None:
+        """Take the keyboard: on the chip at `index` (the last, past the end), or the picked one.
+
+        Args:
+            index: The chip to focus, or None for the picked chip (the first, if
+                none is).
+
+        """
+        if index is None:
+            index = next((i for i, c in enumerate(self._chips) if c.value == self._selected), 0)
+        self._focused = index
         self._draw_focus()
 
     def clear_focus(self) -> None:

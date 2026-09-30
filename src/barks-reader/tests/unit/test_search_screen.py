@@ -14,15 +14,18 @@ from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import TagMatch
 from barks_reader.core import log_markers
+from barks_reader.core.search_state import WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.search_chip_row import ChipRow
 from barks_reader.ui.search_screen import (
     SearchScreen,
     _NoticeLabel,
+    _PlusButton,
     _QueryRowButton,
     _SearchResultButton,
     _SuggestionButton,
+    _WordRow,
 )
 
 if TYPE_CHECKING:
@@ -39,6 +42,11 @@ def _make_bare_screen() -> SearchScreen:
     screen._box_query = ""
     # The speaker row over a stand-in layout, its chips stand-ins too (`_speaker_chip`).
     screen._speaker_row = ChipRow(MagicMock(), _speaker_chip, screen._on_speaker_chip_selected)
+    # The picked words: none, and their row, likewise over stand-ins.
+    screen._word_basket = WordBasket()
+    screen._basket_row = ChipRow(MagicMock(), _live_chip, screen._on_basket_chip_picked)
+    screen._basket_results = False
+    screen._nav_word_list_sub = "word"
     return screen
 
 
@@ -46,6 +54,13 @@ def _speaker_chip(value: str, label: str) -> MagicMock:
     chip = MagicMock()
     chip.value = value
     chip.text = label
+    return chip
+
+
+def _live_chip(value: str, label: str) -> MagicMock:
+    """Return a stand-in chip whose trigger_action releases it, as a Kivy button's does."""
+    chip = _speaker_chip(value, label)
+    chip.trigger_action.side_effect = lambda duration=0: _press(chip)  # noqa: ARG005
     return chip
 
 
@@ -110,7 +125,7 @@ class TestWordList:
             yield bare
 
     @staticmethod
-    def _rows(screen: SearchScreen) -> list[_SearchResultButton]:
+    def _rows(screen: SearchScreen) -> list[Any]:
         return [c.args[0] for c in screen.ids.word_chips_layout.add_widget.call_args_list]
 
     def test_the_facade_s_words_are_the_rows(self, screen: SearchScreen) -> None:
@@ -118,7 +133,8 @@ class TestWordList:
         with patch.object(screen, "_on_word_chip_selected") as picked:
             screen.on_word_search_text("don")
         screen._search.get_words_matching.assert_called_once_with("don")
-        assert [r.text for r in self._rows(screen)] == ["don", "abandon"]
+        assert [r.word_button.text for r in self._rows(screen)] == ["don", "abandon"]
+        assert [r.plus_button.text for r in self._rows(screen)] == ["+", "+"]
         picked.assert_not_called()
 
     def test_a_lone_match_is_picked(self, screen: SearchScreen) -> None:
@@ -196,7 +212,7 @@ class TestTypedQuery:
         screen._search.get_words_matching.return_value = TermMatches(["g.i."], 1)
         with patch.object(screen, "_on_word_chip_selected") as picked:
             screen.on_word_search_text("g*")
-        assert [type(r) for r in self._rows(screen)] == [_QueryRowButton, _SearchResultButton]
+        assert [type(r) for r in self._rows(screen)] == [_QueryRowButton, _WordRow]
         picked.assert_not_called()
 
     def test_plain_words_that_match_are_not_a_query(self, screen: SearchScreen) -> None:
@@ -290,7 +306,7 @@ class TestTypedQuery:
         screen._word_query = "gold -mine"
         with patch.object(screen, "_run_word_query") as run:
             _press(chips[2])
-        run.assert_called_once_with("gold -mine")
+        run.assert_called_once_with("gold -mine", list_words=True)
 
     def test_the_bubbles_popup_highlights_the_query_terms(self, screen: SearchScreen) -> None:
         screen._word_query = "gold -mine"
@@ -374,6 +390,208 @@ class TestTypedQuery:
         screen._word_query, screen._box_query = "gold -mine", "gold -mine"
         screen.on_word_clear()
         assert (screen._word_query, screen._box_query, screen._word_query_result) == ("", "", None)
+
+
+def _word_row(word: str, row_index: int = 0) -> _WordRow:
+    return _WordRow(_SearchResultButton(text=word, row_index=row_index), _PlusButton(text="+"))
+
+
+class TestWordBasket:
+    """A word's + picks it to search with the others, ALL or ANY, from a row under the box."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._search = MagicMock()
+            bare._search.run_word_query.return_value = WordQueryResult(
+                title_dict=_found("Story A"), hit_counts={"Story A": 1}
+            )
+            bare._speaker_chips_built = True
+            bare._selected_word = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "tags"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare.rows = [_word_row("gold", 0), _word_row("golden", 1)]
+            bare.ids.word_chips_layout.children = list(reversed(bare.rows))  # Kivy: last first
+            yield bare
+
+    @staticmethod
+    def _basket_chips(screen: SearchScreen) -> list[MagicMock]:
+        return cast("list[MagicMock]", screen._basket_row.chips)
+
+    def test_a_words_plus_picks_it_and_runs_the_basket_beside_the_list(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(screen, "_list_query_words") as relist:
+            screen._toggle_basket_word("gold")
+
+        assert screen._word_basket.words == ["gold"]
+        assert [(c.value, c.text) for c in self._basket_chips(screen)] == [
+            ("", "ALL"),
+            ("gold", "gold  \u00d7"),
+        ]
+        screen._search.run_word_query.assert_called_once_with('"gold"', speaker=None)
+        relist.assert_not_called()  # the word list stays, to pick more from
+        assert screen._basket_results
+        assert screen.rows[0].plus_button.text == "\u2013"
+        assert log_markers.WORD_BASKET_CHANGED.format(count=1, mode="ALL", words="gold") in (
+            loguru_sink
+        )
+        assert loguru_sink[-1] == log_markers.WORD_QUERY_RUN.format(text='"gold"', count=1)
+
+    def test_the_mode_chip_flips_all_and_any(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        screen._toggle_basket_word("golden")
+        _press(self._basket_chips(screen)[0])
+
+        assert self._basket_chips(screen)[0].text == "ANY"
+        assert log_markers.WORD_BASKET_MODE.format(mode="ANY") in loguru_sink
+        assert screen._search.run_word_query.call_args.args[0] == '"gold" | "golden"'
+
+    def test_a_words_chip_takes_it_out_and_an_empty_basket_empties_the_results(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        _press(self._basket_chips(screen)[1])
+
+        assert screen._word_basket.words == []
+        assert screen._basket_row.chips == []
+        assert (screen._basket_results, screen._word_query) == (False, "")
+        assert screen.rows[0].plus_button.text == "+"
+
+    def test_the_plus_of_a_picked_word_puts_it_back(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen._toggle_basket_word("gold")
+        assert screen._word_basket.words == []
+
+    def test_typing_keeps_the_baskets_results(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen.ids.word_results_layout.clear_widgets.reset_mock()
+        screen._search.get_words_matching.return_value = TermMatches(["mine"], 1)
+        with patch.object(screen, "_on_word_chip_selected"):
+            screen.on_word_search_text("min")
+        screen.ids.word_results_layout.clear_widgets.assert_not_called()
+        assert screen._word_query == '"gold"'
+
+    def test_picking_a_word_alone_ends_the_baskets_results(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen._search.find_words.return_value = {}
+        screen._on_word_chip_selected("golden")
+        assert (screen._basket_results, screen._word_query) == (False, "")
+        screen._search.find_words.assert_called_once_with("golden", speaker=None)
+        assert screen._word_basket.words == ["gold"]  # still picked, for the next +
+
+    def test_the_speaker_filter_reruns_the_basket_beside_the_list(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        chips = _offer_speakers(screen)
+        with patch.object(screen, "_run_word_query") as run:
+            _press(chips[1])
+        run.assert_called_once_with('"gold"', list_words=False)
+
+    def test_clear_empties_the_basket(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen.on_word_clear()
+        assert (screen._word_basket.words, screen._basket_row.chips) == ([], [])
+
+    # --- keys ---
+
+    def test_right_moves_to_the_plus_enter_picks_left_goes_back(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_word_list_sub == "plus"
+        assert 'Nav focus on _PlusButton "+".' in loguru_sink
+
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert screen._word_basket.words == ["gold"]
+        assert screen._nav_word_list_sub == "plus"  # stays, to put it back or move on
+
+        assert screen.handle_key(search_screen.KEY_LEFT) is True
+        assert screen._nav_word_list_sub == "word"
+
+    def test_down_keeps_to_the_plus_column(self, screen: SearchScreen) -> None:
+        screen.handle_key(search_screen.KEY_RIGHT)
+        screen.handle_key(search_screen.KEY_DOWN)
+        assert (screen._nav_focused_chip_idx, screen._nav_word_list_sub) == (1, "plus")
+        screen.handle_key(search_screen.KEY_ENTER)
+        assert screen._word_basket.words == ["golden"]
+
+    def test_right_from_the_plus_goes_on_to_the_speakers_or_results(
+        self, screen: SearchScreen
+    ) -> None:
+        screen.handle_key(search_screen.KEY_RIGHT)
+        with patch.object(screen, "_draw_result_focus"):
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert (screen._nav_focus_area, screen._nav_word_list_sub) == ("results", "word")
+
+    def test_up_from_the_first_word_is_the_basket_row_when_words_are_picked(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("golden")
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+
+    def test_up_from_the_first_word_is_the_box_with_none_picked(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "_focus_active_input"):
+            assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+
+    def test_down_from_the_box_is_the_basket_row_when_words_are_picked(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        screen._nav_focus_area = "input"
+        with patch.object(screen, "_blur_all_inputs"):
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+
+    def test_the_basket_rows_keys(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen._toggle_basket_word("golden")
+        screen._nav_enter_basket()
+
+        assert screen.handle_key(search_screen.KEY_ENTER) is True  # ALL -> ANY, and stays
+        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+        assert screen._word_basket.combine.upper() == "ANY"
+
+        screen.handle_key(search_screen.KEY_RIGHT)
+        screen.handle_key(search_screen.KEY_RIGHT)
+        assert screen.handle_key(search_screen.KEY_ENTER) is True  # golden comes out
+        assert screen._word_basket.words == ["gold"]
+        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 1)
+
+        assert screen.handle_key(search_screen.KEY_DOWN) is True  # to the word list
+        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
+
+        screen._nav_enter_basket()
+        with patch.object(screen, "_focus_active_input"):
+            assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+
+    def test_taking_the_last_word_out_moves_the_keyboard_to_the_word_list(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        screen._nav_enter_basket()
+        screen.handle_key(search_screen.KEY_RIGHT)
+        screen.handle_key(search_screen.KEY_ENTER)
+        assert screen._word_basket.words == []
+        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
 
 
 def _tag(label: str, count: int = 3, *, exact: bool = False) -> TagMatch:

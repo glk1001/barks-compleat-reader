@@ -32,6 +32,7 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
+from barks_reader.core.search_state import WordBasket
 from barks_reader.core.settings_notifier import settings_notifier
 
 from .index_screen import (
@@ -109,6 +110,25 @@ class _NoticeLabel(Label):
     """A line of the word list the user reads but cannot pick: a notice, a heading."""
 
 
+class _PlusButton(_SearchResultButton):
+    """A word row's + (a dash once the word is picked): puts the word in the basket or back."""
+
+
+class _WordRow(BoxLayout):
+    """A word of the word list: its text, which searches it alone, and its + button."""
+
+    def __init__(self, word_button: _SearchResultButton, plus_button: _PlusButton) -> None:
+        super().__init__(orientation="horizontal", size_hint_y=None, height=dp(28))
+        self.word_button = word_button
+        self.plus_button = plus_button
+        self.add_widget(word_button)
+        self.add_widget(plus_button)
+
+
+def _plus_text(picked: bool) -> str:
+    return "\u2013" if picked else "+"  # an en dash: a minus the width of the +
+
+
 def _query_row_text(query: str) -> str:
     return f"Search for:  {query}"
 
@@ -161,6 +181,18 @@ class _SpeakerChipButton(_TagChipButton):
 
 def _make_speaker_chip(value: str, label: str) -> _SpeakerChipButton:
     return _SpeakerChipButton(text=label, value=value)
+
+
+class _BasketChipButton(_SpeakerChipButton):
+    """A chip of the picked-words row: ALL/ANY, which flips, or a word, which comes out."""
+
+
+def _make_basket_chip(value: str, label: str) -> _BasketChipButton:
+    return _BasketChipButton(text=label, value=value)
+
+
+# The ALL/ANY chip's value in the picked-words row: never a word.
+_BASKET_MODE_VALUE = ""
 
 
 # The *All* chip's speaker value: no filter.
@@ -265,6 +297,18 @@ class SearchScreen(FloatLayout):
             selected=_ALL_SPEAKERS,
         )
         self._speaker_chips_built: bool = False
+        # The words picked with their + to search together, and the row showing them.
+        self._word_basket = WordBasket()
+        self._basket_row = ChipRow(
+            self.ids.word_basket_layout,
+            _make_basket_chip,
+            self._on_basket_chip_picked,
+            selected=_BASKET_MODE_VALUE,
+        )
+        # Whether the results are the basket's, which typing in the box leaves in place.
+        self._basket_results: bool = False
+        # On a word row, which part the keyboard is on: "word" or its "plus".
+        self._nav_word_list_sub: str = "word"
 
         # Last activated result (for restoring focus after go-back)
         self._last_activated_result_idx: int | None = None
@@ -505,12 +549,13 @@ class SearchScreen(FloatLayout):
 
     def on_word_search_text(self, text: str) -> None:
         self.ids.word_chips_layout.clear_widgets()
-        self.ids.word_results_layout.clear_widgets()
-        self._word_search_results = []
         self._selected_word = ""
-        self._word_query = ""
-        self._word_query_result = None
         self._box_query = ""
+        if not self._basket_results:  # the basket's results stay while more words are found
+            self.ids.word_results_layout.clear_widgets()
+            self._word_search_results = []
+            self._word_query = ""
+            self._word_query_result = None
 
         if not text.strip():
             return
@@ -537,9 +582,7 @@ class SearchScreen(FloatLayout):
             first_row = 1
 
         for i, word in enumerate(matches.words, start=first_row):
-            btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
-            btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
-            self.ids.word_chips_layout.add_widget(btn)
+            self.ids.word_chips_layout.add_widget(self._make_word_row(word, i))
         if matches.more:
             # Says what was left out; disabled, so the keyboard walk passes it by.
             self.ids.word_chips_layout.add_widget(
@@ -553,6 +596,25 @@ class SearchScreen(FloatLayout):
         if matches.total == 1 and not is_query:
             self._on_word_chip_selected(matches.words[0])
 
+    def _make_word_row(self, word: str, row_index: int) -> _WordRow:
+        btn = _SearchResultButton(
+            text=word, row_index=row_index, color=theme().text_secondary, size_hint=(0.86, 1)
+        )
+        btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
+        plus = _PlusButton(
+            text=_plus_text(word in self._word_basket),
+            row_index=row_index,
+            size_hint=(0.14, 1),
+            halign="center",
+        )
+        plus.bind(on_release=lambda _b, w=word: self._toggle_basket_word(w))
+        return _WordRow(btn, plus)
+
+    def _word_rows(self) -> list[_WordRow]:
+        if not hasattr(self.ids, "word_chips_layout"):
+            return []
+        return [r for r in reversed(self.ids.word_chips_layout.children) if isinstance(r, _WordRow)]
+
     def _add_query_row(self, query: str, *, selected: bool = False) -> None:
         row = _QueryRowButton(
             text=_query_row_text(query), row_index=0, shorten=True, selected=selected
@@ -562,17 +624,24 @@ class SearchScreen(FloatLayout):
 
     # --- Word Search: typed queries ---
 
-    def _run_word_query(self, query: str) -> None:
+    def _run_word_query(self, query: str, *, list_words: bool = True) -> None:
         """Run a typed query and list what it found, its notices and its suggestions.
 
         The word list becomes the query's: its row (selected), then what the query
         tells the user, then close spellings for its words that are in no story.
         The results list its stories with how many bubbles matched in each.
+
+        Args:
+            query: The query text.
+            list_words: Whether the word list becomes the query's; not for the
+                basket's query, run beside the word list it is picked from.
+
         """
         result = self._search.run_word_query(query, speaker=self._speaker_row.selected or None)
         self._word_query = query
         self._word_query_result = result
         self._selected_word = ""
+        self._basket_results = not list_words
 
         if result.used_literal_fallback:
             logger.info(log_markers.WORD_QUERY_FALLBACK.format(text=query, error=result.error))
@@ -582,15 +651,20 @@ class SearchScreen(FloatLayout):
         for notice in notices:
             logger.info(log_markers.WORD_QUERY_NOTICE.format(notice=notice))
 
+        if list_words:
+            self._list_query_words(query, notices, result.suggestions)
+        self._list_word_stories(result.title_dict, query, result.hit_counts)
+        logger.info(log_markers.WORD_QUERY_RUN.format(text=query, count=len(result.title_dict)))
+
+    def _list_query_words(
+        self, query: str, notices: list[str], suggestions: tuple[Suggestion, ...]
+    ) -> None:
         layout = self.ids.word_chips_layout
         layout.clear_widgets()
         self._add_query_row(query, selected=True)
         for notice in notices:
             layout.add_widget(_NoticeLabel(text=notice, disabled=True))
-        self._add_suggestion_rows(result.suggestions)
-
-        self._list_word_stories(result.title_dict, query, result.hit_counts)
-        logger.info(log_markers.WORD_QUERY_RUN.format(text=query, count=len(result.title_dict)))
+        self._add_suggestion_rows(suggestions)
 
     def _add_suggestion_rows(self, suggestions: tuple[Suggestion, ...]) -> None:
         layout = self.ids.word_chips_layout
@@ -633,19 +707,126 @@ class SearchScreen(FloatLayout):
             return
         self._nav_focus_area = "tags"
         self._nav_focused_chip_idx = first
+        self._nav_word_list_sub = "word"
         Clock.schedule_once(lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_chip_focus()))
 
     def _on_word_chip_selected(self, word: str) -> None:
         logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
+        self._word_query = ""
+        self._word_query_result = None
+        self._basket_results = False
         self._selected_word = word
-
-        for btn in reversed(self.ids.word_chips_layout.children):
-            if btn.text == word:
-                btn.background_color = _word_item_selected_bg()
-            else:
-                btn.background_color = _row_stripe(btn.row_index)
-
+        self._mark_word_rows()
         self._show_word_results(word)
+
+    def _mark_word_rows(self) -> None:
+        """Fill the word searched alone; show each word's + or dash by whether it is picked."""
+        for row in self._word_rows():
+            btn = row.word_button
+            is_selected = btn.text == self._selected_word
+            btn.background_color = (
+                _word_item_selected_bg() if is_selected else _row_stripe(btn.row_index)
+            )
+            row.plus_button.text = _plus_text(btn.text in self._word_basket)
+
+    # --- Word Search: the picked words ---
+
+    def _toggle_basket_word(self, word: str) -> None:
+        """Pick a word to search with the others, or put it back; then run the basket."""
+        self._word_basket.toggle(word)
+        self._on_basket_changed()
+
+    def _on_basket_chip_picked(self, value: str) -> None:
+        """Flip ALL/ANY, or take a word out: its chip in the picked-words row was pressed."""
+        focused = self._basket_row.focused
+        if value == _BASKET_MODE_VALUE:
+            mode = self._word_basket.flip()
+            logger.info(log_markers.WORD_BASKET_MODE.format(mode=mode.upper()))
+            self._show_basket()
+            self._run_basket()
+        else:
+            self._word_basket.remove(value)
+            self._on_basket_changed()
+        if self._nav_focus_area == "basket":
+            self._refocus_basket(focused)
+
+    def _on_basket_changed(self) -> None:
+        basket = self._word_basket
+        logger.info(
+            log_markers.WORD_BASKET_CHANGED.format(
+                count=len(basket), mode=basket.combine.upper(), words=", ".join(basket.words)
+            )
+        )
+        self._show_basket()
+        self._mark_word_rows()
+        self._run_basket()
+
+    def _show_basket(self) -> None:
+        """Rebuild the picked-words row: ALL/ANY, then each word with its x; none if empty."""
+        basket = self._word_basket
+        options = [(w, f"{w}  \u00d7") for w in basket.words]
+        if options:
+            options.insert(0, (_BASKET_MODE_VALUE, basket.combine.upper()))
+        self._basket_row.set_options(options)
+        self._basket_row.set_selected(_BASKET_MODE_VALUE)
+
+    def _run_basket(self) -> None:
+        """Search for the picked words together; with none picked, the results empty."""
+        if self._word_basket:
+            self._run_word_query(self._word_basket.query_text(), list_words=False)
+            return
+        self._basket_results = False
+        self._word_query = ""
+        self._word_query_result = None
+        self._word_search_results = []
+        self.ids.word_results_layout.clear_widgets()
+
+    def _refocus_basket(self, focused: int | None) -> None:
+        """Keep the keyboard on the row, where it was; off an emptied row, to the word list."""
+        if self._word_basket:
+            self._basket_row.enter_focus(focused)
+            return
+        self._nav_to_word_list_or_input()
+
+    def _nav_to_word_list_or_input(self) -> None:
+        if self._get_word_chip_buttons():
+            self._nav_focus_area = "tags"
+            self._nav_focused_chip_idx = 0
+            self._nav_word_list_sub = "word"
+            self._draw_chip_focus()
+        else:
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+
+    def _nav_enter_basket(self) -> None:
+        self._nav_focus_area = "basket"
+        self._basket_row.enter_focus(0)
+
+    def _handle_basket_key(self, key: int) -> bool:
+        """Keys on the picked-words row, under the search box.
+
+        Left and Right walk it, and Enter flips ALL/ANY or takes a word out. Down
+        goes to the word list (or the results, with no list), Up to the box.
+        """
+        match self._basket_row.handle_key(key):
+            case RowKey.UNHANDLED:
+                return False
+            case RowKey.EXIT_DOWN if self._get_word_chip_buttons() or self._word_search_results:
+                self._basket_row.clear_focus()
+                if self._get_word_chip_buttons():
+                    self._nav_to_word_list_or_input()
+                else:
+                    self._nav_enter_results()
+                    self._draw_result_focus()
+            case RowKey.EXIT_UP:
+                self._basket_row.clear_focus()
+                self._nav_focus_area = "input"
+                self._focus_active_input()
+            case RowKey.EXIT_ESCAPE:
+                self._nav_escape()
+            case _:
+                pass
+        return True
 
     def _show_word_results(self, word: str) -> None:
         """Run the word search under the current speaker filter and list its titles."""
@@ -700,7 +881,7 @@ class SearchScreen(FloatLayout):
         """Rerun the word search under the speaker the row just picked."""
         logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
         if self._word_query:
-            self._run_word_query(self._word_query)
+            self._run_word_query(self._word_query, list_words=not self._basket_results)
         elif self._selected_word:
             self._show_word_results(self._selected_word)
 
@@ -827,6 +1008,9 @@ class SearchScreen(FloatLayout):
         self._word_query = ""
         self._word_query_result = None
         self._box_query = ""
+        self._word_basket.clear()
+        self._show_basket()
+        self._basket_results = False
         self._speaker_row.set_selected(_ALL_SPEAKERS)
         self.ids.word_search_input.focus = True
 
@@ -936,6 +1120,7 @@ class SearchScreen(FloatLayout):
 
     def _enter_chips_from_input(self) -> None:
         chips = self._get_active_chip_buttons()
+        self._nav_word_list_sub = "word"
         if not self._get_selected_chip_text():
             # Auto-pick the first chip so its titles show without another keypress.
             chips[0].trigger_action(duration=0)
@@ -974,6 +1159,7 @@ class SearchScreen(FloatLayout):
         self._clear_result_focus()
         self._clear_chip_focus()
         self._speaker_row.clear_focus()
+        self._basket_row.clear_focus()
         self._clear_clear_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
@@ -991,6 +1177,7 @@ class SearchScreen(FloatLayout):
             "clear": self._handle_clear_key,
             "tags": self._handle_tags_key,
             "speakers": self._handle_speakers_key,
+            "basket": self._handle_basket_key,
             "results": self._handle_results_key,
         }
         handler = handlers.get(self._nav_focus_area)
@@ -1021,6 +1208,10 @@ class SearchScreen(FloatLayout):
         return True
 
     def _nav_to_tags_or_results(self) -> None:
+        if self._active_mode == "Word" and self._word_basket:
+            self._nav_enter_basket()
+            return
+        self._nav_word_list_sub = "word"
         if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
             self._nav_focus_area = "tags"
             self._nav_focused_chip_idx = 0
@@ -1098,6 +1289,7 @@ class SearchScreen(FloatLayout):
     def _nav_back_to_word_chips(self) -> None:
         """Focus the word chip list, on the selected word."""
         self._nav_focus_area = "tags"
+        self._nav_word_list_sub = "word"
         word_buttons = self._get_word_chip_buttons()
         selected = self._get_selected_chip_text()
         self._nav_focused_chip_idx = next(
@@ -1152,6 +1344,7 @@ class SearchScreen(FloatLayout):
         self._clear_result_focus()
         self._clear_chip_focus()
         self._speaker_row.clear_focus()
+        self._basket_row.clear_focus()
         self._clear_clear_focus()
         self._nav_focus_area = "input"
         self._blur_all_inputs()
@@ -1179,12 +1372,15 @@ class SearchScreen(FloatLayout):
 
     def _handle_tags_key(self, key: int) -> bool:
         chips = self._get_active_chip_buttons()
+        if self._active_mode == "Word" and self._handle_word_row_key(key, chips):
+            return True
         if key == KEY_DOWN:
             if chips and self._nav_focused_chip_idx < len(chips) - 1:
                 self._nav_focused_chip_idx += 1
                 self._draw_chip_focus()
         elif key == KEY_RIGHT:
             self._clear_chip_focus()
+            self._nav_word_list_sub = "word"
             if self._has_speaker_row():
                 # The speaker row is the first thing to the right of the words.
                 self._nav_enter_speakers()
@@ -1192,13 +1388,7 @@ class SearchScreen(FloatLayout):
                 self._nav_enter_results()
                 self._draw_result_focus()
         elif key in (KEY_LEFT, KEY_UP):
-            if self._nav_focused_chip_idx > 0:
-                self._nav_focused_chip_idx -= 1
-                self._draw_chip_focus()
-            else:
-                self._clear_chip_focus()
-                self._nav_focus_area = "input"
-                self._focus_active_input()
+            self._handle_tags_up()
         elif key == KEY_TAB:
             self._clear_chip_focus()
             self._nav_enter_results()
@@ -1209,6 +1399,41 @@ class SearchScreen(FloatLayout):
             self._nav_escape()
         else:
             return False
+        return True
+
+    def _handle_tags_up(self) -> None:
+        """Up (or Left) on a list: the chip before; off the first, what sits above."""
+        if self._nav_focused_chip_idx > 0:
+            self._nav_focused_chip_idx -= 1
+            self._draw_chip_focus()
+            return
+        self._clear_chip_focus()
+        if self._active_mode == "Word" and self._word_basket:
+            self._nav_enter_basket()  # the picked words sit above the word list
+        else:
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+
+    def _handle_word_row_key(self, key: int, chips: list[Button]) -> bool:
+        """Keys between a word row's text and its +; False for the list's own keys.
+
+        Right on a word's text moves to its +, Left back; Enter on the + picks
+        the word or puts it back, and stays there.
+        """
+        if not chips:
+            return False
+        chip = chips[min(self._nav_focused_chip_idx, len(chips) - 1)]
+        row = chip.parent if isinstance(chip.parent, _WordRow) else None
+        on_plus = row is not None and self._nav_word_list_sub == "plus"
+        if key == KEY_RIGHT and row is not None and not on_plus:
+            self._nav_word_list_sub = "plus"
+        elif key == KEY_LEFT and on_plus:
+            self._nav_word_list_sub = "word"
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER) and row is not None and on_plus:
+            self._toggle_basket_word(row.word_button.text)
+        else:
+            return False
+        self._draw_chip_focus()
         return True
 
     def _handle_tags_enter(self, chips: list[Button]) -> None:
@@ -1286,8 +1511,13 @@ class SearchScreen(FloatLayout):
     def _get_word_chip_buttons(self) -> list[Button]:
         if not hasattr(self.ids, "word_chips_layout"):
             return []
-        # Not the disabled "... N more" row that ends a long list.
-        return [b for b in reversed(self.ids.word_chips_layout.children) if not b.disabled]
+        # A word row's text, and the query and suggestion rows; not a notice, nor the
+        # disabled "... N more" row that ends a long list.
+        return [
+            c.word_button if isinstance(c, _WordRow) else c
+            for c in reversed(self.ids.word_chips_layout.children)
+            if not c.disabled
+        ]
 
     def _get_active_chip_buttons(self) -> list[Button]:
         if self._active_mode == "Word":
@@ -1318,17 +1548,27 @@ class SearchScreen(FloatLayout):
             return
         self._nav_focused_chip_idx = min(self._nav_focused_chip_idx, len(chips) - 1)
         if self._active_mode == "Word":
-            update_focus_in_list(chips, self._nav_focused_chip_idx, _SEARCH_NAV_FOCUS_GROUP)
-            self.ids.word_chips_scroll.scroll_to(chips[self._nav_focused_chip_idx])
+            target = chips[self._nav_focused_chip_idx]
+            if self._nav_word_list_sub == "plus" and isinstance(target.parent, _WordRow):
+                target = target.parent.plus_button
+            else:
+                self._nav_word_list_sub = "word"
+            widgets = self._word_list_focus_widgets(chips)
+            update_focus_in_list(widgets, widgets.index(target), _SEARCH_NAV_FOCUS_GROUP)
+            self.ids.word_chips_scroll.scroll_to(target)
         else:
             self._update_tag_chip_colors(chips, self._nav_focused_chip_idx)
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
         if self._active_mode == "Word":
-            clear_focus_in_list(chips, _SEARCH_NAV_FOCUS_GROUP)
+            clear_focus_in_list(self._word_list_focus_widgets(chips), _SEARCH_NAV_FOCUS_GROUP)
         else:
             self._update_tag_chip_colors(chips)
+
+    def _word_list_focus_widgets(self, chips: list[Button]) -> list[Button]:
+        """Return the word list's rows and their + buttons: all a focus ring can be on."""
+        return [*chips, *(row.plus_button for row in self._word_rows())]
 
     # Must match the SearchClearButton background_color in search_screen.kv.
     _CLEAR_BTN_NORMAL = (0.18, 0.18, 0.18, 0.9)
