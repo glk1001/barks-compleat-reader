@@ -140,8 +140,8 @@ def wiki_copy_checks(data_dir: Path | None) -> list[Check]:
             (
                 "WARN",
                 (
-                    f"the wiki copy at {wiki} has CRLF line endings: re-export it as"
-                    " docs/setup.md says (the export writes CRLF on Windows)"
+                    f"the wiki copy at {wiki} has CRLF line endings, from a barks-wiki"
+                    " before e75af9d4: re-export it as docs/setup.md says"
                 ),
             )
         ]

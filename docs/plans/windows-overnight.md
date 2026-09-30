@@ -237,11 +237,11 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   laptop's wiki copy was also stale, 804 pages, and was re-exported: see below.)
 - **Then the whole suite passed**, 2026-09-30 14:00: 98 passed, none skipped (the
   prebuilt-archives test runs now the comics are there), 20 minutes.
-- **barks-wiki's `export_reader_wiki.py` writes CRLF on Windows** (text written without
-  `newline="\n"`), and a clone under `core.autocrlf=true` is CRLF too, so on Windows every
-  page differs from the Linux export and `check_wiki_copy.py` calls an LF copy stale.
-  Here the clone has `core.autocrlf=false` and the export's output was put back to LF.
-  barks-wiki is read-only from here: raise it there.
+- **barks-wiki wrote CRLF on Windows**, fixed there the same day: a clone under
+  `core.autocrlf=true` was CRLF (87f71837, a `.gitattributes` forcing LF) and the export
+  wrote its rewritten pages without `newline="\n"` (e75af9d4). Tested here: a fresh
+  CRLF-default clone and its export are all LF, the export is byte-identical to the
+  laptop's copy, and `check_wiki_copy.py` calls it current.
 - **The soak**, and then `test_a_doubled_volume_is_fatal...` every time: the blank-frame
   check failed drawn frames. It cropped the window at its screen position (792, 10) out
   of the capture, as out of Linux's whole-screen one, but the Windows probe captures the

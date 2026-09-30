@@ -209,17 +209,11 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     `BARKS_READER_DATA_DIR` at `~/barks-reader` and `BARKS_READER_CONFIG_DIR` at
     `~/barks-reader/config`; the Fantagraphics volumes wherever the profile's `fanta_dir`
     says (here `~\Documents\Fantagraphics Complete Carl Barks Disney Library`).
-  - **The wiki copy**, refreshed from barks-wiki: clone it beside this repo with LF line
-    endings (`git clone -c core.autocrlf=false https://github.com/glk1001/barks-wiki.git`),
-    then from its root `..\barks-compleat-reader\.venv\Scripts\python.exe -B
-    scripts\export_reader_wiki.py "$HOME\barks-reader\Reader Files\Carl Barks Wiki" --apply
-    --clean`. The export writes CRLF on Windows (to be fixed there), so put the copy back
-    to LF afterwards (all text: pages, a `.py`, a `.tsv`, a `.wikitext`; the host check
-    warns while they are CRLF), from this repo's root:
-    ```powershell
-    .venv\Scripts\python.exe -c "from pathlib import Path; [p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n')) for p in Path(r'$HOME\barks-reader\Reader Files\Carl Barks Wiki').rglob('*') if p.is_file()]"
-    ```
-    `check_wiki_copy.py` on Windows calls the LF copy stale until the export is fixed.
+  - **The wiki copy**, refreshed from barks-wiki: clone it beside this repo
+    (`git clone https://github.com/glk1001/barks-wiki.git`; its `.gitattributes` keeps
+    LF on Windows), then from its root `..\barks-compleat-reader\.venv\Scripts\python.exe
+    -B scripts\export_reader_wiki.py "$HOME\barks-reader\Reader Files\Carl Barks Wiki"
+    --apply --clean`. `uv run scripts/check_wiki_copy.py` then says the copy is current.
 
   The GUI stages inject real keys, which reach only an unlocked screen that is on, so
   nothing may blank or lock it overnight:
