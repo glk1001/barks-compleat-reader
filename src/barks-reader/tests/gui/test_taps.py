@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import get_fanta_info
-from barks_gui import nodes, taps
+from barks_gui import expected, nodes, search, taps
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.index_text import indexable_title
@@ -279,3 +279,36 @@ def test_the_search_box_picks_its_keyboard_by_how_it_was_pressed(boot: AppBoot) 
         assert keyboards, "a touch on the search box shows the virtual keyboard"
     else:
         assert not keyboards, "a click on the search box keeps to the system keyboard"
+
+
+# ------------------------------------------------------------ the search chips --
+
+CHIP_WORD_QUERY = "gold"
+
+
+def test_search_chips_are_picked_by_tap(boot: AppBoot) -> None:
+    """A word's +, the picked-words chips and an era chip each act on a tap, by what they show."""
+    d = _boot(boot, nodes.WORD_SEARCH)
+    search.type_query(d, CHIP_WORD_QUERY)
+    # Out of the box: in touch mode its on-screen keyboard covers the lower rows.
+    d.key_then_wait(d.FOCUS_MOVED, "Down")
+    d.settle()
+
+    # Every word's + shows the same "+": which word it picked is read back from the line.
+    taps.tap_then_wait(
+        d, pattern(markers.WORD_BASKET_CHANGED, count=1), kind="_PlusButton", text="+"
+    )
+    word = last_field(d, markers.WORD_BASKET_CHANGED, "words")
+    assert word in expected.words_matching(CHIP_WORD_QUERY)
+    taps.tap_then_wait(
+        d, pattern(markers.WORD_BASKET_MODE, mode="ANY"), kind="_BasketChipButton", text="ALL"
+    )
+    taps.tap_then_wait(
+        d, pattern(markers.ERA_FILTER_SET, era="1951-54"), kind="_EraChipButton", text="1951-54"
+    )
+    taps.tap_then_wait(
+        d,
+        pattern(markers.WORD_BASKET_CHANGED, count=0),
+        kind="_BasketChipButton",
+        text=f"{word} \u00d7",  # as listed: spaces run together
+    )
