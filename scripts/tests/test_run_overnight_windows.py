@@ -185,6 +185,8 @@ def repo(tmp_path: Path) -> Iterator[Path]:
         patch.object(rw, "REPO_ROOT", tmp_path),
         patch.object(rw, "short_commit", return_value="abc1234"),
         patch.object(rw, "say"),
+        # Plenty free, whatever this machine has: the memory tests set their own.
+        patch.object(rw, "available_mb", return_value=64 * 1024),
     ):
         yield tmp_path
 
@@ -292,6 +294,127 @@ class TestRun:
         with patch.object(rw, "prebuilt_dir", return_value=repo / "absent"):
             assert run.run() == 0
         assert _results(repo) == {"validate": "skipped"}
+
+
+class TestMemory:
+    @pytest.mark.parametrize(
+        ("value", "expected"), [("8000", 8000), ("", 6144), ("lots", 6144), (None, 6144)]
+    )
+    def test_env_mb(self, value: str | None, expected: int) -> None:
+        env = {} if value is None else {"X": value}
+        assert rw.env_mb(env, "X", 6144) == expected
+
+    def test_enough_free_memory(self) -> None:
+        assert rw.free_memory_problem(8000, 6144) is None
+        assert rw.free_memory_problem(6144, 6144) is None
+
+    def test_too_little_says_how_much(self) -> None:
+        problem = rw.free_memory_problem(3000, 6144)
+        assert problem is not None
+        assert "3,000 MB" in problem
+        assert "6,144 MB" in problem
+
+    def test_process_tree_mb_of_no_process(self) -> None:
+        assert rw.process_tree_mb(2**31 - 1) is None
+
+    def test_biggest_apps_are_sorted_and_counted(self) -> None:
+        apps = rw.biggest_apps(3)
+        assert len(apps) <= 3
+        assert [size for _, size in apps] == sorted((size for _, size in apps), reverse=True)
+
+
+class TestAppMemoryWatch:
+    @staticmethod
+    def _watch(tmp_path: Path, cap_mb: int = 3000) -> tuple[rw.AppMemoryWatch, MagicMock]:
+        (tmp_path / "app.pid").write_text("4242\n", encoding="utf-8")
+        log = MagicMock(spec=rw.StageLog)
+        return rw.AppMemoryWatch(log, cap_mb, tmp_path / "app.pid", 0.01), log
+
+    def test_under_the_cap_is_only_noted(self, tmp_path: Path) -> None:
+        watch, log = self._watch(tmp_path)
+        with (
+            patch.object(rw, "process_tree_mb", return_value=1200),
+            patch.object(rw, "kill_tree") as kill,
+        ):
+            watch.check()
+        kill.assert_not_called()
+        log.line.assert_not_called()
+        assert watch.peak_mb == 1200
+        assert watch.breaches == []
+
+    def test_over_the_cap_stops_the_app_once(self, tmp_path: Path) -> None:
+        watch, log = self._watch(tmp_path)
+        with (
+            patch.object(rw, "process_tree_mb", return_value=4400),
+            patch.object(rw, "kill_tree") as kill,
+        ):
+            watch.check()
+            watch.check()  # the same app, already stopped: not again
+        kill.assert_called_once_with(4242)
+        assert watch.breaches == [4400]
+        assert "4,400 MB" in log.line.call_args.args[0]
+        assert "over the cap 1 time(s)" in watch.finish()
+
+    def test_no_app_is_nothing(self, tmp_path: Path) -> None:
+        log = MagicMock(spec=rw.StageLog)
+        watch = rw.AppMemoryWatch(log, 3000, tmp_path / "absent.pid", 0.01)
+        watch.check()
+        assert watch.peak_mb == 0
+        assert watch.finish() == "memory: the app's peak was 0 MB (cap 3,000 MB)"
+
+    def test_it_watches_in_its_own_thread(self, tmp_path: Path) -> None:
+        watch, _ = self._watch(tmp_path)
+        with (
+            patch.object(rw, "process_tree_mb", return_value=800),
+            patch.object(rw, "kill_tree"),
+        ):
+            watch.start()
+            for _ in range(200):
+                if watch.peak_mb:
+                    break
+                rw.time.sleep(0.01)
+            line = watch.finish()
+        assert not watch.is_alive()
+        assert "800 MB" in line
+
+
+class TestGuiStageMemory:
+    def test_a_gui_stage_does_not_start_short_of_memory(self, repo: Path) -> None:
+        run = rw.Run(["gui"], None)
+        run.gui_ready = True
+        with (
+            patch.object(rw, "available_mb", return_value=2000),
+            patch.object(rw, "biggest_apps", return_value=[("firefox.exe", 1700)]),
+            patch.object(rw.Run, "stage_gui") as gui,
+        ):
+            assert run.run() == 1
+        gui.assert_not_called()
+        (log,) = repo.glob("build/overnight/*/gui.log")
+        text = log.read_text(encoding="utf-8")
+        assert "2,000 MB" in text
+        assert "firefox.exe" in text
+
+    @pytest.mark.usefixtures("repo")
+    def test_a_breach_fails_a_suite_that_passed(self) -> None:
+        run = rw.Run(["gui"], None)
+        log = MagicMock(spec=rw.StageLog)
+        log.run.return_value = 0
+
+        def breach(watch: rw.AppMemoryWatch) -> None:
+            watch.breaches.append(4400)
+
+        with patch.object(rw.AppMemoryWatch, "start", breach):
+            assert run.gui_tests(log) == 1
+        assert "over the cap" in log.line.call_args.args[0]
+
+    @pytest.mark.usefixtures("repo")
+    def test_a_clean_suite_passes(self) -> None:
+        run = rw.Run(["gui"], None)
+        log = MagicMock(spec=rw.StageLog)
+        log.run.return_value = 0
+        with patch.object(rw.AppMemoryWatch, "start"):
+            assert run.gui_tests(log) == 0
+        assert "peak" in log.line.call_args.args[0]
 
 
 class TestMain:

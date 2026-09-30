@@ -20,6 +20,7 @@ secrets, the profile's folders), then the machine's.
 from __future__ import annotations
 
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -245,8 +246,21 @@ def _prebuilt_dir(ini: Path) -> Path:
     return run_overnight_windows.prebuilt_dir(ini)
 
 
+def memory_check() -> Check:
+    """Judge free memory as a GUI stage will, but only warn: tonight's may differ from now's."""
+    import run_overnight_windows as rw  # noqa: PLC0415 (loads the runner only for this)
+
+    free = rw.available_mb()
+    minimum = rw.env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", rw.DEFAULT_MIN_FREE_MB)
+    problem = rw.free_memory_problem(free, minimum)
+    if problem is None:
+        return ("OK", f"{free:,} MB of memory free (a GUI stage needs {minimum:,})")
+    biggest = ", ".join(f"{name} {size:,} MB" for name, size in rw.biggest_apps(3))
+    return ("WARN", f"{problem}: {biggest}")
+
+
 def machine_checks() -> list[Check]:
-    checks: list[Check] = []
+    checks: list[Check] = [memory_check()]
     dev_mode = _registry(
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock",
         "AllowDevelopmentWithoutDevLicense",

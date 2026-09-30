@@ -254,3 +254,11 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   Windows said: LG Glance by Mirametrix's Walk Away Lock (removed), and behind it the
   hidden 240s non-sensor presence timeout (`docs/setup.md`). The runner's display hold
   alone would not have stopped the first.
+- **The first full run (a86e8b6c) ran the machine out of memory in the soak**, after five
+  stages had passed: the walk opened the wiki's big reference tables one after another
+  (`cbl-contents`, 1,686 rows, 1.4 GB in the standalone viewer; `bibliography`, 942 rows,
+  1.1 GB; the home page 0.2 GB), the app reached 4.4 GB, and with a browser and Windows
+  holding about 7.5 GB, Claude Code stopped the run, leaving the app behind. The runner
+  now needs 6 GB free to start a GUI stage and holds the app to 3 GB while it runs
+  (`docs/setup.md`), so this fails the soak with its size instead. Open: why the app did
+  not give the earlier pages' memory back, and the viewer's cost per table row.

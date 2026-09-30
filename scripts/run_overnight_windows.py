@@ -32,12 +32,20 @@ Usage (from the repo root, in PowerShell or cmd):
   --app    use this executable for built-app instead of fetching CI's
 Env: BARKS_OVERNIGHT_SOAK_STEPS (default 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 (default: one seed from the day of the year, the first of the Linux run's three,
-so each night walks a new path); GH_REPO (default glk1001/barks-compleat-reader).
+so each night walks a new path); GH_REPO (default glk1001/barks-compleat-reader);
+BARKS_OVERNIGHT_MIN_FREE_MB (default 6144) and BARKS_OVERNIGHT_APP_MEMORY_CAP_MB
+(default 3072), below.
 
 Before the first GUI stage it runs ``gui_probe.py doctor``; on a locked screen, or
 with the app's window already open, the GUI stages do not start, and fail, saying
 why: injected keys would go nowhere. While the run lasts the machine and its
 display are kept awake. Leave the machine alone: a key or a click goes to the app.
+
+Memory: a GUI stage starts only with MIN_FREE_MB free, else it fails naming the
+biggest apps; and while it runs, the app (its whole process tree) is held to
+APP_MEMORY_CAP_MB: over it, the app is stopped and the stage fails, saying so,
+rather than the machine running out (a soak's walk through the wiki's big
+reference tables once took the app to 4.4 GB). Each GUI stage logs the app's peak.
 
 A stage's output goes to build/overnight/<stamp>/<stage>.log and summary.txt holds
 the results so far, in the Linux run's format, rewritten after every stage:
@@ -45,7 +53,7 @@ passed, FAILED, WARNED, skipped (the stage says why) or stopped. The exit status
 is non-zero if any stage FAILED.
 """
 
-# cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday
+# cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday pids
 
 from __future__ import annotations
 
@@ -58,6 +66,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -65,6 +74,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TextIO
 
 import gui_probe
+import psutil
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -88,6 +98,14 @@ BUILD_WAIT_SECS = 90 * 60
 BUILD_POLL_SECS = 60
 
 DEFAULT_SOAK_STEPS = "1000"
+
+# What a GUI stage needs free to start: the app on the wiki's heaviest page (a
+# 1,700-row table) is about 1.5 GB, and a walk can hold more than one such page.
+DEFAULT_MIN_FREE_MB = 6144
+# The app's ceiling while a GUI stage runs; a normal suite stays well under it.
+DEFAULT_APP_MEMORY_CAP_MB = 3072
+MEMORY_POLL_SECS = 2.0
+_MB = 1024 * 1024
 
 # The prebuilt comics' default home, as ReaderFilePaths has it, when the ini names none.
 DEFAULT_PREBUILT_DIR = "${HOME}/Books/Carl Barks/The Comics/Chronological"
@@ -209,11 +227,17 @@ class StageLog:
 
     def __init__(self, out: TextIO) -> None:
         self._out = out
+        # The memory watch writes from its own thread while a stage's output streams.
+        self._lock = threading.Lock()
 
     def line(self, text: str) -> None:
-        say(text)
-        self._out.write(text + "\n")
-        self._out.flush()
+        self._write(text + "\n")
+
+    def _write(self, text: str) -> None:
+        with self._lock:
+            print(text, end="", flush=True)  # noqa: T201
+            self._out.write(text)
+            self._out.flush()
 
     def run(self, argv: Sequence[str], env: Mapping[str, str] | None = None) -> int:
         """Run a command, teeing its output here; return its exit status."""
@@ -232,9 +256,7 @@ class StageLog:
             assert process.stdout is not None
             try:
                 for text in process.stdout:
-                    print(text, end="", flush=True)  # noqa: T201
-                    self._out.write(text)
-                    self._out.flush()
+                    self._write(text)
             except KeyboardInterrupt:
                 # Before the with's exit waits on it: a child that ignored the
                 # Ctrl-C (the app under uv) would hold the run open forever.
@@ -266,6 +288,121 @@ def kill_tree(pid: int) -> None:
         capture_output=True,
         check=False,
     )
+
+
+# ----------------------------------------------------------------- memory --
+
+
+def env_mb(env: Mapping[str, str], name: str, default: int) -> int:
+    """Return a size in MB from the environment, or `default` when unset or not a number."""
+    try:
+        return int(env.get(name, ""))
+    except ValueError:
+        return default
+
+
+def available_mb() -> int:
+    """Return the physical memory free for a new process, in MB."""
+    return psutil.virtual_memory().available // _MB
+
+
+def free_memory_problem(free_mb: int, minimum_mb: int) -> str | None:
+    """Return why a GUI stage should not start with `free_mb` free, or None if it may."""
+    if free_mb >= minimum_mb:
+        return None
+    return (
+        f"only {free_mb:,} MB of memory free, under the {minimum_mb:,} MB a GUI stage needs"
+        " (BARKS_OVERNIGHT_MIN_FREE_MB): close the biggest apps below"
+    )
+
+
+def biggest_apps(count: int = 5) -> list[tuple[str, int]]:
+    """Return the apps holding the most memory, as (name, MB), all of an app's processes added."""
+    totals: dict[str, int] = {}
+    for process in psutil.process_iter(["name", "memory_info"]):
+        info = process.info
+        if info.get("memory_info") is not None:
+            name = str(info.get("name") or "?")
+            totals[name] = totals.get(name, 0) + info["memory_info"].rss // _MB
+    return sorted(totals.items(), key=lambda item: -item[1])[:count]
+
+
+# The processes an app launch is made of: uv and the Python it starts, or a build.
+_APP_PROCESS_PREFIXES = ("uv", "python", "barks-reader")
+
+
+def process_tree_mb(pid: int) -> int | None:
+    """Return the memory held by `pid` and every process under it, in MB.
+
+    None when there is no such process, or it is not the app's (a pid file left
+    behind whose number Windows has given to something else).
+    """
+    try:
+        root = psutil.Process(pid)
+        if not root.name().lower().startswith(_APP_PROCESS_PREFIXES):
+            return None
+        tree = [root, *root.children(recursive=True)]
+    except psutil.Error:
+        return None
+    total = 0
+    for process in tree:
+        try:
+            total += process.memory_info().rss
+        except psutil.Error:
+            continue
+    return total // _MB
+
+
+class AppMemoryWatch(threading.Thread):
+    """Hold the app under test to a memory ceiling while a GUI stage runs.
+
+    The app's pid is the probe's (``app.pid``), a new one for every test. Over the
+    cap, the app is stopped - its test then fails as a dead app does - and the
+    stage is failed for it, with the size logged; the next test boots a new app.
+    """
+
+    def __init__(self, log: StageLog, cap_mb: int, pid_file: Path, poll_secs: float) -> None:
+        super().__init__(daemon=True)
+        self._log = log
+        self._cap_mb = cap_mb
+        self._pid_file = pid_file
+        self._poll_secs = poll_secs
+        self._done = threading.Event()
+        self._stopped_pids: set[int] = set()
+        self.peak_mb = 0
+        self.breaches: list[int] = []
+
+    def run(self) -> None:
+        while not self._done.wait(self._poll_secs):
+            self.check()
+
+    def check(self) -> None:
+        """Look at the current app once: note its size, and stop it if over the cap."""
+        try:
+            pid = int(self._pid_file.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return
+        size = process_tree_mb(pid)
+        if size is None or pid in self._stopped_pids:
+            return
+        self.peak_mb = max(self.peak_mb, size)
+        if size <= self._cap_mb:
+            return
+        self._stopped_pids.add(pid)
+        self.breaches.append(size)
+        self._log.line(
+            f"MEMORY: the app reached {size:,} MB, over the {self._cap_mb:,} MB cap"
+            " (BARKS_OVERNIGHT_APP_MEMORY_CAP_MB): stopping it; the stage fails"
+        )
+        kill_tree(pid)
+
+    def finish(self) -> str:
+        """Stop watching; return the stage's memory line."""
+        self._done.set()
+        if self.ident is not None:  # started
+            self.join()
+        over = f"; over the cap {len(self.breaches)} time(s)" if self.breaches else ""
+        return f"memory: the app's peak was {self.peak_mb:,} MB (cap {self._cap_mb:,} MB){over}"
 
 
 # ------------------------------------------------------ keeping awake --
@@ -384,10 +521,18 @@ class Run:
         (self.log_dir / "summary.txt").write_text(text, encoding="utf-8")
 
     def gui_tests(self, log: StageLog, *args: str, **env: str) -> int:
-        return log.run(
-            ["uv", "run", "python", str(SCRIPTS / "run_gui_tests.py"), *args],
-            child_env(os.environ, **env),
-        )
+        """Run the GUI suite, holding the app to its memory ceiling; over it fails the run."""
+        cap = env_mb(os.environ, "BARKS_OVERNIGHT_APP_MEMORY_CAP_MB", DEFAULT_APP_MEMORY_CAP_MB)
+        watch = AppMemoryWatch(log, cap, gui_probe.run_dir() / "app.pid", MEMORY_POLL_SECS)
+        watch.start()
+        try:
+            status = log.run(
+                ["uv", "run", "python", str(SCRIPTS / "run_gui_tests.py"), *args],
+                child_env(os.environ, **env),
+            )
+        finally:
+            log.line(watch.finish())
+        return status or (1 if watch.breaches else 0)
 
     # --- the stages ---
 
@@ -525,6 +670,14 @@ class Run:
             log.line(f"{name}: not run - this machine cannot take injected input tonight;")
             log.line(f"  doctor says why in {self.log_dir_rel}/gui-doctor.log")
             return 1
+        if name in GUI_STAGES:
+            minimum = env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", DEFAULT_MIN_FREE_MB)
+            problem = free_memory_problem(available_mb(), minimum)
+            if problem is not None:
+                log.line(f"{name}: not run - {problem}:")
+                for app, size in biggest_apps():
+                    log.line(f"  {size:>7,} MB  {app}")
+                return 1
         stage: Callable[[StageLog], int] = getattr(self, "stage_" + name.replace("-", "_"))
         return stage(log)
 
