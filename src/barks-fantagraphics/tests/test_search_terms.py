@@ -92,6 +92,10 @@ FORM_WORDS = [
     *("run", "running", "runnin'", "runs", "make", "making", "makin'", "makes"),
     *("city", "cities", "shout", "shouted", "stop", "stopped", "thing", "things", "th"),
     *("Scrooge", "scrounge", "gold", "golden", "goldmines", "Donald", "Don Quixote"),
+    *("hop", "hops", "hopped", "hopping", "hope", "hopes", "hoped", "hoping"),
+    *("visit", "visited", "go", "goes", "going", "bus", "buses", "box", "boxes"),
+    *("be", "being", "bing", "bed", "red", "reed", "ring", "wed", "wing", "the"),
+    *("use", "used", "uses", "using", "see", "sees", "seeing", "doe", "doing"),
 ]
 FORMS = TermLexicon(FORM_WORDS)
 
@@ -111,6 +115,25 @@ FORMS = TermLexicon(FORM_WORDS)
         ("shout", ("shout", "shouted")),
         ("thing", ("thing", "things")),  # not "th" + "ing"
         ("golden", ("golden",)),  # a different word, not a form of gold
+        # hop doubles its p: hoped, hopes and hoping are hope's
+        ("hop", ("hop", "hopped", "hopping", "hops")),
+        ("hopping", ("hop", "hopped", "hopping", "hops")),
+        ("hope", ("hope", "hoped", "hopes", "hoping")),
+        ("hoping", ("hope", "hoped", "hopes", "hoping")),
+        ("hopes", ("hope", "hoped", "hopes", "hoping")),
+        ("visit", ("visit", "visited")),  # two syllables: need not double
+        ("goes", ("go", "goes", "going")),  # -es after o
+        ("bus", ("bus", "buses")),  # not "bu" + "s"
+        ("boxes", ("box", "boxes")),
+        # a stem is three letters: none of these is a form of another word
+        ("bed", ("bed",)),
+        ("red", ("red",)),
+        ("wed", ("wed",)),
+        ("the", ("the",)),  # not "th" + "ing"
+        # -ing drops an e after a consonant with a vowel before it
+        ("using", ("use", "used", "uses", "using")),
+        ("seeing", ("see", "seeing", "sees")),
+        ("doing", ("doing",)),  # not doe's
         ("xyzzy", ()),  # held by nothing: no forms
         ("don quixote", ()),  # several words: a phrase, not a word with forms
         ("", ()),

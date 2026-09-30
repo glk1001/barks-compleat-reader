@@ -37,10 +37,14 @@ MAX_WILDCARD_TERMS = 200
 SUGGESTION_CUTOFF = 0.75
 MAX_SUGGESTIONS = 5
 _VOWELS = frozenset("aeiou")
-# A stem is at least this long ("bus" is not "bu" + "s"), and longer before -ing:
+_VOWEL_RUN_RE = re.compile("[aeiou]+")
+# A stem is at least this long: "bus" is not "bu" + "s", "red" not "re" + "d", and
 # "thing", "king" and "bring" are not forms of "th", "k" and "br".
-_MIN_STEM = 2
-_MIN_ING_STEM = 3
+_MIN_STEM = 3
+# Only these endings take -es (bus: buses; box, church, hero), so a shorter stem is
+# safe before it: goes, go; does, do.
+_MIN_ES_STEM = 2
+_TAKES_ES = ("s", "x", "z", "ch", "sh", "o")
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,7 +200,7 @@ class TermLexicon:
 
 
 def _doubles_last_letter(stem: str) -> bool:
-    """Whether a suffix doubles the stem's last letter: run, running; stop, stopped."""
+    """Whether a suffix may double the stem's last letter: run, running; stop, stopped."""
     min_len = 3
     return (
         len(stem) >= min_len
@@ -207,11 +211,35 @@ def _doubles_last_letter(stem: str) -> bool:
     )
 
 
+def _always_doubles(stem: str) -> bool:
+    """Whether a suffix must double the last letter: one syllable, as hop (hopping, not hoping).
+
+    Longer words may not (visit: visited; begin: beginning), so both are tried for them.
+    """
+    return _doubles_last_letter(stem) and len(_VOWEL_RUN_RE.findall(stem)) == 1
+
+
+def _drops_e(stem: str) -> bool:
+    """Whether -ing drops the stem's last e: make, making; use, using.
+
+    Only after a consonant with a vowel before it: see (seeing), canoe (canoeing) and
+    doe keep theirs, and "thing" is not "the" + "ing".
+    """
+    root = stem[:-1]
+    return stem.endswith("e") and root[-1:] not in _VOWELS and bool(_VOWEL_RUN_RE.search(root))
+
+
 def _forms_of(stem: str) -> set[str]:
     """Return the forms a stem may take (the index keeps the ones it holds)."""
-    forms = {stem, f"{stem}s", f"{stem}es", f"{stem}'s", f"{stem}ed", f"{stem}ing", f"{stem}in'"}
+    forms = {stem, f"{stem}s", f"{stem}'s"}
+    if stem.endswith(_TAKES_ES):
+        forms.add(f"{stem}es")
+    if not _always_doubles(stem):  # hoped and hoping are hope's, not hop's
+        forms |= {f"{stem}ed", f"{stem}ing", f"{stem}in'"}
     if stem.endswith("e"):
-        forms |= {f"{stem}d", f"{stem[:-1]}ing", f"{stem[:-1]}in'"}
+        forms.add(f"{stem}d")
+    if _drops_e(stem):
+        forms |= {f"{stem[:-1]}ing", f"{stem[:-1]}in'"}
     if len(stem) >= _MIN_STEM and stem.endswith("y") and stem[-2] not in _VOWELS:
         forms |= {f"{stem[:-1]}ies", f"{stem[:-1]}ied"}
     if _doubles_last_letter(stem):
@@ -225,16 +253,28 @@ def _stems_of(word: str) -> set[str]:
     stems = {word}
     for suffix in ("'s", "es", "s", "d", "ed", "ing", "in'"):
         base = word.removesuffix(suffix)
-        shortest = _MIN_ING_STEM if suffix in ("ing", "in'") else _MIN_STEM
-        if base == word or len(base) < shortest:
+        if base == word:
             continue
-        stems.add(base)
+        if suffix in ("ing", "in'") and _drops_e(f"{base}e"):
+            stems.add(f"{base}e")  # making, make; using, use
+        if len(base) < (_MIN_ES_STEM if suffix == "es" else _MIN_STEM):
+            continue
+        if suffix == "es" and not base.endswith(_TAKES_ES):
+            continue  # hopes is hope + s, not hop + es
         if suffix in ("ed", "ing", "in'"):
-            stems.add(f"{base}e")  # making, make
             if len(base) > _MIN_STEM and base[-1] == base[-2]:
                 stems.add(base[:-1])  # running, run
+            if _always_doubles(base):
+                continue  # hoping is not hop + ing: that is hopping
+        stems.add(base)
+    return stems | _y_stems_of(word)
+
+
+def _y_stems_of(word: str) -> set[str]:
+    """Return the stems ending in y a word may be a form of: cities, city; cried, cry."""
+    stems: set[str] = set()
     for suffix in ("ies", "ied"):
         base = word.removesuffix(suffix)
         if base != word and len(base) >= 1:
-            stems.add(f"{base}y")  # cities, city
+            stems.add(f"{base}y")
     return stems
