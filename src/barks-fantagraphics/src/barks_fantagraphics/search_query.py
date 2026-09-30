@@ -22,8 +22,9 @@ an operator; ``near`` is a word people search for, so only ``NEAR`` is one. A ``
 is NOT only at the start of a token: ``indo-china`` and ``100-foot`` are words. No
 term in the index holds ``& | + * ? : ( ) "``, so they are syntax wherever they are.
 
-A word holding ``*`` or ``?`` is a wildcard (at least two letters besides them).
-Quotes make a single word exact and several words a phrase. `parse_query` never
+A word holding ``*`` or ``?`` is a wildcard (at least two letters besides them),
+quoted or not: no index term holds either. Quotes make a single word exact and
+several words a phrase. `parse_query` never
 raises: bad syntax comes back as a `ParseError` with the position it was found at,
 for a notice and a literal search instead.
 """
@@ -436,14 +437,13 @@ class _Parser:
         self._take()
         return node
 
-    @staticmethod
-    def _phrase(token: _Token) -> QueryNode:
+    def _phrase(self, token: _Token) -> QueryNode:
         words = tuple(token.text.split())
         if not words:
             msg = "the quotes are empty"
             raise _QueryError(msg, token.position)
         if len(words) == 1:
-            return Word(words[0], exact=True)
+            return self._word(words[0], token.position, exact=True)
         return Phrase(words)
 
     @staticmethod
@@ -462,7 +462,7 @@ class _Parser:
         return VolumeQualifier(*_range(value, token.position, "a volume", years=False))
 
     def _word_or_near(self, token: _Token) -> QueryNode:
-        left = self._word(token)
+        left = self._word(token.text, token.position)
         near = self._peek()
         if near is None or near.kind is not _Kind.NEAR:
             return left
@@ -479,16 +479,16 @@ class _Parser:
             msg = "NEAR needs a word after it"
             raise _QueryError(msg, near.position)
         self._take()
-        return NearQuery(left, self._word(right_token), distance)
+        return NearQuery(left, self._word(right_token.text, right_token.position), distance)
 
     @staticmethod
-    def _word(token: _Token) -> Word:
-        word = Word(token.text)
+    def _word(text: str, position: int, *, exact: bool = False) -> Word:
+        word = Word(text, exact=exact)
         if word.is_wildcard:
-            letters = sum(1 for c in token.text if c not in WILDCARD_CHARS)
+            letters = sum(1 for c in text if c not in WILDCARD_CHARS)
             if letters < MIN_WILDCARD_LETTERS:
                 msg = f"a wildcard needs at least {MIN_WILDCARD_LETTERS} letters besides * and ?"
-                raise _QueryError(msg, token.position)
+                raise _QueryError(msg, position)
         return word
 
 

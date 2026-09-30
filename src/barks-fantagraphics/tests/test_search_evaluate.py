@@ -142,6 +142,14 @@ def test_phrases_run_first_and_each_part_searches_only_the_stories_found(
     ]
 
 
+def test_a_quoted_wildcard_runs_after_the_words_it_is_as_broad_as_any_wildcard(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    run_query_text('"gol*" parrot', fake, lexicon, stop_words=MY_STOP_WORDS)
+    leaves = [leaf for leaf, _, _ in fake.bubble_calls]
+    assert leaves == [AnyTerm(("parrot",)), AnyTerm(("gold", "golden"))]
+
+
 def test_an_and_stops_searching_once_no_story_is_left(
     fake: InMemoryFullTextSearch, lexicon: TermLexicon
 ) -> None:

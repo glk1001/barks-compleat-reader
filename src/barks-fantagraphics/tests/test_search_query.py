@@ -81,6 +81,7 @@ GOLD, MINE, DUCK = Word("gold"), Word("mine"), Word("duck")
         # wildcards
         ("gol*", Word("gol*")),
         ("g?ld", Word("g?ld")),
+        ('"gol*"', Word("gol*", exact=True)),  # quoted, still a wildcard
         # qualifiers
         ("tag:scrooge", TagQualifier("scrooge")),
         ('tag:"uncle scrooge"', TagQualifier("uncle scrooge")),
@@ -121,6 +122,8 @@ def test_a_query_parses_to_its_tree(text: str, tree: object) -> None:
         ("gold NEAR/0 mine", 5, "at least 1"),
         ("*", 0, "wildcard"),
         ("g*", 0, "wildcard"),
+        ('"*"', 0, "wildcard"),  # quotes do not make it a word: no word holds *
+        ('gold "g?"', 5, "wildcard"),
         ("foo:bar", 0, "not a filter"),
         ("tag:", 0, "needs a value"),
         ("year:abc", 0, "a number or a range"),

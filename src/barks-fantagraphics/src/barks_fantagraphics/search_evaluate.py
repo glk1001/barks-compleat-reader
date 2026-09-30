@@ -231,12 +231,12 @@ def _search_order(node: QueryNode) -> int:
     match node:
         case Phrase() | NearQuery():
             return 0
+        case Word() if node.is_wildcard:  # quoted or not
+            return 3
         case Word(exact=True):
             return 1
-        case Word() if not node.is_wildcard:
-            return 2
         case Word():
-            return 3
+            return 2
         case _:
             return 4
 
