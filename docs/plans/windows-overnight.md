@@ -1,5 +1,7 @@
 # Plan: an overnight run on Windows
 
+<!-- cspell:ignore ntfs iomap Ventoy -->
+
 > Status: **planned 2026-09-30, not started.** Saved here so it survives across machines
 > and sessions; do it on the Windows laptop. Tick a step off here, with its commit, as it
 > lands.
@@ -7,7 +9,9 @@
 > - Step 1 the runner, by hand: TODO
 > - Step 2 keeping the machine awake and fit to run: TODO
 > - Step 3 the nightly schedule: TODO
-> - Step 4 the validate stage, once the data is there: BLOCKED (the prebuilt comics)
+> - Step 4 the validate stage, once the data is there: BLOCKED (the prebuilt comics are on
+>   the Ventoy stick, not yet on the laptop; two titles' files have a `?` Windows cannot
+>   name, "Two titles Windows cannot name" below)
 
 ## Context
 
@@ -129,16 +133,62 @@ sends a Linux host, about 34 GB:
 
 | Data | Size | Needed by |
 |---|---|---|
-| The prebuilt comics (`Books/Carl Barks/The Comics`) | 18 GB | Phase 7, always on: every title's prebuilt CBZ must exist |
+| The prebuilt comics (`The Comics/Chronological`, the profile's `prebuilt_dir`) | 8.9 GB | Phase 7, always on: every title's prebuilt CBZ must exist |
 | The Fantagraphics volumes (the profile's `fanta_dir`) | 9.2 GB | Phase 9, `--full-load-check`: decodes every page |
 | The PNG panels | 3.8 GB | the panel phases |
 | `Reader Files` | 2.8 GB | everything |
 
-The laptop's GUI run skipped its prebuilt-archives test, so it likely lacks the prebuilt
-comics: Phase 7 would fail on every title. Until they are copied over, the stage skips
+Of `The Comics` (18 GB) the reader reads only `Chronological`: 465 CBZs, one per title,
+no symlinks or folders. The rest is views made of symlinks (`Chronological Years/`,
+`Comics and Stories/`, ...), which Windows would not follow, and `aaa-Chronological-dirs/`,
+the build's per-title folders. On 2026-09-30 `Chronological` went onto the Ventoy stick
+(exFAT) as `barks-reader-windows/The Comics/Chronological`: 463 files, byte for byte,
+without the two below. An NTFS stick before it crashed the kernel's `ntfs3` driver
+(`kernel BUG at fs/iomap/buffered-io.c:1061`, writing a 153-byte file of
+`aaa-Chronological-dirs`), so copy to exFAT, with `rsync -rt --modify-window=1`.
+
+The laptop's GUI run skipped its prebuilt-archives test, so until `Chronological` is
+copied onto its disk Phase 7 would fail on every title. Until then the stage skips
 itself, saying which folder is missing, rather than failing every night. (A
 `--no-prebuilt` switch for `validate` that skips Phase 7 would let the rest run sooner;
 decide when this step comes up.)
+
+### Two titles Windows cannot name
+
+Settle this before the stage can pass. Two stories' prebuilt files have a `?` in their
+names, which Windows does not allow in a file name (nor exFAT, nor NTFS as Windows
+writes it):
+
+- `319 Fun? What's That? [SF 2].cbz`
+- `353 Want to Buy an Island? [WDCS 235].cbz`
+
+The name is the title as `barks_titles` spells it, through
+`barks_fantagraphics.comics_utils.get_dest_comic_zip_file_stem` (chronological number,
+title, issue). The reader looks a prebuilt comic up by that name
+(`ComicBookLoader._get_prebuilt_comic_path`), and so does `validate`'s Phase 7. So on
+Windows, with `use_prebuilt_comics` on, these two stories cannot be opened, and Phase 7
+reports both missing. The default (`use_prebuilt_comics = 0`) reads them from the
+Fantagraphics volumes and is unaffected.
+
+The same function names the files where they are made: `barks-comic-building`'s
+`zipping`, `build_comics`, `artifact_renaming` and `comics_integrity` use it. So does the
+build's per-title folder under `aaa-Chronological-dirs/`, through
+`get_dest_comic_dirname`, though the reader never reads that tree. The ways out:
+
+1. **One name, safe everywhere (recommended).** The stem leaves out the characters
+   Windows forbids (`<>:"/\|?*`), on every OS; the title shown in the app keeps its `?`.
+   Then rename the two built files (and folders) on the main machine, which
+   `artifact_renaming` may already do for renamed titles, and re-sync the other hosts.
+   It changes `barks-fantagraphics`' behaviour, so it is a coordinated change with
+   `barks-comic-building` (and a check that `barks-ocr` does not build these names).
+2. **A second name on Windows only**, looked up when the first is not there. Two names for
+   one file is what the one-name rule above avoids; not recommended.
+3. **Accept it**: those two stories stay unreadable in Windows prebuilt mode, and Phase 7
+   expects them missing on Windows. The cheapest, and it leaves a known hole.
+
+Check first whether any other title, tag or path the app builds from a title carries a
+Windows-forbidden character: these two are the only file names under `The Comics` that
+do, but the question is the titles, not today's files.
 
 ## Later, not in this plan
 
