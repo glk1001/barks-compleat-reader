@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -185,8 +185,9 @@ fails it. It checks an overnight host's needs, which a development machine share
 
 ## Windows and macOS
 
-Both run the app, the unit tests and the build; the GUI tests and the overnight run are
-Linux-only.
+Both run the app, the unit tests and the build. Windows also runs the GUI tests
+(`scripts/run_gui_tests.py`, one worker in a visible window) and its own overnight run
+(`scripts/run_overnight_windows.py`; plan and stages in `docs/plans/windows-overnight.md`).
 
 - **Windows.** uv from its installer, bun with `winget install Oven-sh.Bun`. That package
   has no `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. After
@@ -194,5 +195,35 @@ Linux-only.
   `#!/usr/bin/env sh`, or every push fails with "Executable `/bin/sh` not found".
   (Both were found under pre-commit and not yet re-checked under prek; see `CLAUDE.md`.)
   The standalone app's own install steps are in `README.md`.
+- **A Windows overnight machine**, once, besides the above (`gh auth login` too, for the
+  `fetch-build` stage). The GUI stages inject real keys, which reach only an unlocked
+  screen that is on, so nothing may blank or lock it overnight:
+  - **Sign-in when away: Never** (Settings, Accounts, Sign-in options, "If you've been
+    away, when should Windows require you to sign in again?"). It also decides whether a
+    wake from standby lands on the lock screen, which fails every GUI stage.
+  - **No screen saver with a password**, and the display and sleep timeouts on AC longer
+    than a run (the runner holds the display on while it runs, but the scheduled task
+    wakes a machine that slept before it).
+  - **On a laptop without a presence sensor**, the hidden "Non-sensor Input Presence
+    Timeout" (240 s) turns the display off, and a Modern Standby machine then goes to
+    standby: `powercfg /setacvalueindex SCHEME_CURRENT
+    8619b916-e004-4dd8-9b66-dae86f806698 5adbbfbc-074e-4da1-ba38-db8b36b2c8f3 10800`, then
+    `powercfg /setactive SCHEME_CURRENT` (PowerShell; in `cmd`, two lines).
+  - **No webcam presence software.** The LG laptop came with LG Glance by Mirametrix, whose
+    Walk Away Lock locked the session 90 seconds after the last input, whatever Windows'
+    own settings said; it was removed (`Get-AppxPackage *Glance* | Remove-AppxPackage`).
+    To find the like on another machine: the Winlogon/Operational log's event 4 (a lock)
+    comes before Kernel-Power's display-off (566, reason 12), not after it.
+  - **Developer Mode** (Settings, System, For developers): four GUI tests build a
+    library of symlinks, which Windows lets a user make only in Developer Mode (else
+    `WinError 1314`, "A required privilege is not held by the client").
+  - **Windows Update's active hours** covering the run, so it does not restart under it.
+  - **Calibrated**: `uv run python scripts/run_gui_tests.py --calibrate` once, so the
+    timing budgets are this machine's.
+  - **The nightly task**: `powershell -ExecutionPolicy Bypass -File
+    scripts\windows\register-overnight-task.ps1` (02:00; `-At` for another time).
+  - The unit suite's data tests look under `~\Books\Carl Barks`, the Linux layout, while
+    the installed app keeps its files in `BARKS_READER_DATA_DIR`; the `pytest` stage needs
+    the former (a junction to the latter's `Reader Files` will do).
 - **macOS.** Only CI runs it (`.github/workflows/`), which installs `ccache` with Homebrew
   for the build.

@@ -1,14 +1,18 @@
 # Plan: an overnight run on Windows
 
-<!-- cspell:ignore ntfs iomap Ventoy -->
+<!-- cspell:ignore ntfs iomap Ventoy Mirametrix -->
 
-> Status: **planned 2026-09-30, not started.** Saved here so it survives across machines
-> and sessions; do it on the Windows laptop. Tick a step off here, with its commit, as it
-> lands.
+> Status: **steps 1-3 written 2026-09-30; step 1's clean run and step 3's two nights to
+> come.** Saved here so it survives across machines and sessions; do it on the Windows
+> laptop. Tick a step off here, with its commit, as it lands.
 >
-> - Step 1 the runner, by hand: TODO
-> - Step 2 keeping the machine awake and fit to run: TODO
-> - Step 3 the nightly schedule: TODO
+> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`). First run by
+>   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
+>   runner's (below, "First run"). A clean pass waits on them.
+> - Step 2 keeping the machine awake and fit to run: DONE (the runner holds the display;
+>   the one-off setup is in `docs/setup.md`, Windows)
+> - Step 3 the nightly schedule: WRITTEN (`scripts/windows/register-overnight-task.ps1`);
+>   not yet registered, two nights to see
 > - Step 4 the validate stage, once the data is there: BLOCKED (the prebuilt comics are on
 >   the Ventoy stick, not yet on the laptop; two titles' files have a `?` Windows cannot
 >   name, "Two titles Windows cannot name" below)
@@ -44,12 +48,12 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 | `update` | `git pull --ff-only`, `uv sync --locked` | The run tests what is on `main` that night. | 1 min |
 | `pytest` | `uv run pytest` with the data pack | CI's Windows leg skips every test that needs it. | 1 min |
 | `fetch-build` | CI's `barks-reader-win.exe` for **this checkout's commit** | The built-app stage must test the same code as the others. | 1 min |
-| `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 13 min |
-| `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 13 min |
-| `soak` | `run_gui_tests.py --soak`, one seed | A long random walk: crashes, stuck screens, file handles. | 5-10 min |
+| `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |
+| `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 20 min |
+| `soak` | `run_gui_tests.py --soak`, one seed | A long random walk: crashes, stuck screens, file handles. | 19 min |
 | `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. | 5 min |
 
-About 40-45 minutes, in one visible window.
+About 65 minutes, in one visible window (the first run's times; the plan guessed 40-45).
 
 - **`fetch-build`** is `scripts/get-win-build.sh`'s logic in Python, with one change: that
   script takes the newest Build Verification run on `main`, but this stage wants the run
@@ -206,3 +210,22 @@ do, but the question is the titles, not today's files.
 - Step 3: two scheduled nights in a row, results read the next morning; one night with a
   deliberately failing test shows FAILED and keeps its artifacts.
 - Step 4: once the data is copied, `validate` passes there as it does on the Linux host.
+
+## First run (2026-09-30)
+
+By hand from PowerShell, in two parts (`pytest,fetch-build,validate`, then
+`gui,built-app,soak --app` with the fetched exe). `fetch-build` found and downloaded CI's
+build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The failures:
+
+- **`pytest`**: two fixture tests in `barks-fantagraphics` want the FANTA_01 override under
+  `~\Books\Carl Barks\...`; the laptop's data is in the installed app's layout. A junction
+  will do (`docs/setup.md`).
+- **The GUI suite, the same six on both apps** (so not packaging): four build a library of
+  symlinks, which needs Developer Mode; one tapped a 1963 story from a volume past the
+  laptop's 01-30; one wanted a wiki section the laptop's `Reader Files` copy lacks.
+- **The soak**: its blank-frame check took a real title page (*That Small Feeling*, 81%
+  cream, 45 colours) for a blank one. A harness false positive, open.
+- **Found on the way, fixed**: the screen locked 90s after the last input, whatever
+  Windows said: LG Glance by Mirametrix's Walk Away Lock (removed), and behind it the
+  hidden 240s non-sensor presence timeout (`docs/setup.md`). The runner's display hold
+  alone would not have stopped the first.

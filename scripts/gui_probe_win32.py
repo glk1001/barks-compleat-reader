@@ -15,7 +15,7 @@ and structures can be tested on every platform.
 """
 
 # cspell:ignore DEVMODE DPIAWARENESSCONTEXT EXTENDEDKEY KEYBDINPUT KEYEVENTF LEFTDOWN
-# cspell:ignore LEFTUP MAPVK MOUSEEVENTF MOUSEINPUT SWITCHDESKTOP HARDWAREINPUT
+# cspell:ignore LEFTUP MAPVK MOUSEEVENTF MOUSEINPUT SWITCHDESKTOP HARDWAREINPUT REMOTESESSION
 # cspell:ignore VSC shcore wparam lparam INPUTUNION KEYUP creationflags getwindowsversion
 # cspell:ignore taskkill pids
 
@@ -48,6 +48,7 @@ _MAPVK_VK_TO_VSC = 0
 _VK_SHIFT = 0x10
 _SW_RESTORE = 9
 _DESKTOP_SWITCHDESKTOP = 0x0100
+_SM_REMOTESESSION = 0x1000
 _SYNCHRONIZE = 0x00100000
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _STILL_ACTIVE = 259
@@ -408,6 +409,10 @@ class Win32Backend:
             if unlocked
             else ("FAIL", "the desktop is locked or disconnected: injected input would go nowhere")
         )
+        if _user32.GetSystemMetrics(_SM_REMOTESESSION):
+            # Whether its window is minimized is not something Windows says here.
+            why = "minimize its window and it stops drawing, and injected input goes nowhere"
+            checks.append(("WARN", f"a Remote Desktop session: {why}"))
         if self.find_window("Compleat Barks Disney Reader") is not None:
             checks.append(("FAIL", "a Barks Reader window is open - close it before a run"))
         try:

@@ -1,0 +1,620 @@
+"""Run the overnight run on Windows: the stages that only this machine can.
+
+The Windows counterpart of ``run_overnight.sh``, which is Linux only (Xvfb,
+systemd-inhibit, bash). CI already covers Windows on every push without the data
+pack: the unit suite, the Nuitka build and a smoke test of it. This runs what CI
+cannot - the real data pack, the real OpenGL drawing, the built executable reading
+comics, and long walks - one stage after another, every stage even after one
+fails, except that nothing runs after a failed ``update``. The whole plan, and what
+is left to Linux and CI, is docs/plans/windows-overnight.md.
+
+Stages (name: what it runs):
+  update         git pull --ff-only, then uv sync --locked: the run tests what is
+                 on main tonight
+  pytest         the unit suite, with the data pack CI's Windows leg does not have
+  fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
+                 its Build Verification run if it is still building); skipped with --app
+  gui            run_gui_tests.py: the GUI suite on the workspace app
+  built-app      run_gui_tests.py --app: the suite on that executable, reading real
+                 comics; skipped, saying why, when there is none
+  soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
+                 of SOAK_SEEDS
+  validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
+                 whole library; skipped, saying which, while the prebuilt comics
+                 are not on this machine
+
+Usage (from the repo root, in PowerShell or cmd):
+  uv run python scripts/run_overnight_windows.py [--list] [--only A,B] [--skip A,B]
+                                                 [--app PATH]
+  --list   print the stages and exit
+  --only   run only these stages (comma-separated)
+  --skip   run every stage but these
+  --app    use this executable for built-app instead of fetching CI's
+Env: BARKS_OVERNIGHT_SOAK_STEPS (default 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
+(default: one seed from the day of the year, the first of the Linux run's three,
+so each night walks a new path); GH_REPO (default glk1001/barks-compleat-reader).
+
+Before the first GUI stage it runs ``gui_probe.py doctor``; on a locked screen, or
+with the app's window already open, the GUI stages do not start, and fail, saying
+why: injected keys would go nowhere. While the run lasts the machine and its
+display are kept awake. Leave the machine alone: a key or a click goes to the app.
+
+A stage's output goes to build/overnight/<stamp>/<stage>.log and summary.txt holds
+the results so far, in the Linux run's format, rewritten after every stage:
+passed, FAILED, WARNED, skipped (the stage says why) or stopped. The exit status
+is non-zero if any stage FAILED.
+"""
+
+# cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import datetime as dt
+import io
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, TextIO
+
+import gui_probe
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Mapping, Sequence
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS = REPO_ROOT / "scripts"
+RUNNER = "run_overnight_windows"
+
+STAGES = ("update", "pytest", "fetch-build", "gui", "built-app", "soak", "validate")
+GUI_STAGES = frozenset({"gui", "built-app", "soak"})
+
+# Status codes a stage returns besides pass (0) and fail (anything else), as the Linux run's.
+SKIPPED = 3
+WARNED = 4
+
+DEFAULT_GH_REPO = "glk1001/barks-compleat-reader"
+BUILD_WORKFLOW = "build.yml"
+WIN_ARTIFACT = "barks-reader-win.exe"
+# How long fetch-build waits for this commit's build to finish, and how often it looks.
+BUILD_WAIT_SECS = 90 * 60
+BUILD_POLL_SECS = 60
+
+DEFAULT_SOAK_STEPS = "1000"
+
+# The prebuilt comics' default home, as ReaderFilePaths has it, when the ini names none.
+DEFAULT_PREBUILT_DIR = "${HOME}/Books/Carl Barks/The Comics/Chronological"
+
+
+def say(*parts: object) -> None:
+    """Print a line of the run's own, straight away."""
+    print(*parts, flush=True)  # noqa: T201
+
+
+# ---------------------------------------------------------------- stages --
+
+
+def list_text(doc: str = __doc__ or "") -> str:
+    """Return the stage list from the module docstring, as ``--list`` prints it."""
+    found = re.search(r"^Stages.*?(?=^Usage)", doc, re.MULTILINE | re.DOTALL)
+    return found[0].rstrip() if found else ""
+
+
+def parse_names(value: str) -> list[str]:
+    """Return the stage names in a comma-separated option value."""
+    return [name for name in value.split(",") if name]
+
+
+def select_stages(only: Sequence[str], skip: Sequence[str]) -> list[str]:
+    """Return the stages to run, in run order.
+
+    Raises:
+        ValueError: A name in `only` or `skip` is not a stage.
+
+    """
+    unknown = [name for name in (*only, *skip) if name not in STAGES]
+    if unknown:
+        msg = f"no stage called {', '.join(unknown)} (see --list)"
+        raise ValueError(msg)
+    return [name for name in STAGES if (not only or name in only) and name not in skip]
+
+
+def result_name(status: int, *, stopped: bool = False) -> str:
+    """Return the summary's word for a stage's exit status."""
+    if stopped:
+        return "stopped"
+    if status == 0:
+        return "passed"
+    if status == SKIPPED:
+        return "skipped"
+    if status == WARNED:
+        return "WARNED"
+    return "FAILED"
+
+
+def soak_seeds(env: Mapping[str, str], today: dt.date) -> list[str]:
+    """Return tonight's soak seeds: BARKS_OVERNIGHT_SOAK_SEEDS, else one from the day of year.
+
+    The default is the first of the Linux run's three (day * 10 + 1): one walk a
+    night, since one worker runs the walks one after another.
+    """
+    given = env.get("BARKS_OVERNIGHT_SOAK_SEEDS", "").split()
+    return given or [str(today.timetuple().tm_yday * 10 + 1)]
+
+
+# --------------------------------------------------------------- summary --
+
+
+@dataclass(frozen=True)
+class StageResult:
+    name: str
+    result: str
+    secs: int
+
+
+def elapsed(secs: float) -> str:
+    """Return a run's length as the Linux run writes it: 1h05m."""
+    secs = int(secs)
+    return f"{secs // 3600}h{secs % 3600 // 60:02d}m"
+
+
+def summary_text(
+    stamp: str, commit: str, state: str, results: Sequence[StageResult], log_dir: str
+) -> str:
+    """Return summary.txt, line for line in the Linux run's format."""
+    lines = [f"==== overnight run, {stamp} ({commit}): {state} ===="]
+    lines += [f"{r.name:<14s} {r.result:<8s} {r.secs // 60:4d}m{r.secs % 60:02d}s" for r in results]
+    lines.append(f"logs: {log_dir}/")
+    return "\n".join(lines) + "\n"
+
+
+def short_commit() -> str:
+    """Return HEAD's short hash, or ? when git cannot say."""
+    done = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607 (git from PATH)
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return done.stdout.strip() or "?"
+
+
+# ------------------------------------------------------------ processes --
+
+
+def child_env(base: Mapping[str, str], **extra: str) -> dict[str, str]:
+    """Return the environment a stage runs in: UTF-8, unbuffered, plain-text logs.
+
+    Git Bash sets TERM, and loguru colours its output whenever TERM is set, even
+    into a log file (see gui_probe.app_env); the console's code page is cp1252,
+    which the app log's characters do not fit.
+    """
+    env = dict(base, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    env["LOGURU_COLORIZE"] = "0"
+    env.pop("TERM", None)
+    env.update(extra)
+    return env
+
+
+class StageLog:
+    """A stage's output: to the console and to its log file, as it comes."""
+
+    def __init__(self, out: TextIO) -> None:
+        self._out = out
+
+    def line(self, text: str) -> None:
+        say(text)
+        self._out.write(text + "\n")
+        self._out.flush()
+
+    def run(self, argv: Sequence[str], env: Mapping[str, str] | None = None) -> int:
+        """Run a command, teeing its output here; return its exit status."""
+        self.line("+ " + " ".join(f'"{a}"' if " " in a else a for a in argv))
+        with subprocess.Popen(  # noqa: S603 (the stages' own commands)
+            argv,
+            cwd=REPO_ROOT,
+            env=dict(env) if env is not None else child_env(os.environ),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        ) as process:
+            assert process.stdout is not None
+            try:
+                for text in process.stdout:
+                    print(text, end="", flush=True)  # noqa: T201
+                    self._out.write(text)
+                    self._out.flush()
+            except KeyboardInterrupt:
+                # Before the with's exit waits on it: a child that ignored the
+                # Ctrl-C (the app under uv) would hold the run open forever.
+                kill_tree(process.pid)
+                raise
+        return process.returncode
+
+    def capture(self, argv: Sequence[str]) -> tuple[int, str]:
+        """Run a command for its output (logged, not echoed); return its status and stdout."""
+        done = subprocess.run(  # noqa: S603 (the stages' own commands)
+            argv,
+            cwd=REPO_ROOT,
+            env=child_env(os.environ),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self._out.write(f"+ {' '.join(argv)}\n{done.stdout}{done.stderr}")
+        self._out.flush()
+        return done.returncode, done.stdout
+
+
+def kill_tree(pid: int) -> None:
+    """End a process and every process it started."""
+    subprocess.run(  # noqa: S603 (a pid of our own)
+        ["taskkill", "/PID", str(pid), "/T", "/F"],  # noqa: S607 (a Windows tool)
+        capture_output=True,
+        check=False,
+    )
+
+
+# ------------------------------------------------------ keeping awake --
+
+# Loaded only where there is one, so the pure helpers import (and are tested) anywhere.
+_kernel32: Any = ctypes.WinDLL("kernel32") if sys.platform == "win32" else None
+
+_ES_CONTINUOUS = 0x80000000
+_ES_SYSTEM_REQUIRED = 0x00000001
+_ES_DISPLAY_REQUIRED = 0x00000002
+
+
+@contextmanager
+def kept_awake() -> Iterator[None]:
+    """Keep the machine and its display awake while the block runs: Windows' systemd-inhibit.
+
+    The display too: SendInput needs a screen that is on and unlocked. Cleared on
+    the way out, however the run ends (and by Windows, should the process die).
+    """
+    _kernel32.SetThreadExecutionState.restype = ctypes.c_uint32
+    _kernel32.SetThreadExecutionState.argtypes = [ctypes.c_uint32]
+    held = _kernel32.SetThreadExecutionState(
+        _ES_CONTINUOUS | _ES_SYSTEM_REQUIRED | _ES_DISPLAY_REQUIRED
+    )
+    if not held:
+        say(f"{RUNNER}: WARNING - could not hold off sleep; the machine may sleep mid-run")
+    try:
+        yield
+    finally:
+        _kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
+
+
+class _SystemPowerStatus(ctypes.Structure):
+    _fields_ = (
+        ("ACLineStatus", ctypes.c_ubyte),
+        ("BatteryFlag", ctypes.c_ubyte),
+        ("BatteryLifePercent", ctypes.c_ubyte),
+        ("SystemStatusFlag", ctypes.c_ubyte),
+        ("BatteryLifeTime", ctypes.c_ulong),
+        ("BatteryFullLifeTime", ctypes.c_ulong),
+    )
+
+
+def on_battery() -> bool:
+    """Return whether the machine is running on its battery (the AC line is off)."""
+    status = _SystemPowerStatus()
+    if not _kernel32.GetSystemPowerStatus(ctypes.byref(status)):
+        return False
+    return status.ACLineStatus == 0
+
+
+# ------------------------------------------------------------ fetch-build --
+
+
+def pick_build_run(runs: Sequence[Mapping[str, object]]) -> Mapping[str, object] | None:
+    """Return the Build Verification run to take the executable from, or None.
+
+    A commit on main has a push run; a commit also on a PR branch has a
+    pull_request one too. The push run is preferred, then the newest (gh lists
+    newest first).
+    """
+    for run in runs:
+        if run.get("event") == "push":
+            return run
+    return runs[0] if runs else None
+
+
+def windows_job(jobs: Sequence[Mapping[str, object]]) -> Mapping[str, object] | None:
+    """Return the run's Windows build job, the one that uploads the executable."""
+    for job in jobs:
+        if "windows" in str(job.get("name", "")).lower():
+            return job
+    return None
+
+
+# ---------------------------------------------------------------- validate --
+
+
+def prebuilt_dir(ini: Path) -> Path:
+    """Return where the validator looks for the prebuilt comics: the ini's prebuilt_dir.
+
+    The validator reads the setting whatever its switch says (its Phase 7 is always
+    on), and the reader's default when the ini has none.
+    """
+    try:
+        text = ini.read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    found = re.search(r"^prebuilt_dir\s*=\s*(.*?)\s*$", text, re.MULTILINE)
+    return Path(gui_probe.expand_home(found[1] if found else DEFAULT_PREBUILT_DIR))
+
+
+# ----------------------------------------------------------------- the run --
+
+
+class Run:
+    """One night's run: the stages, their logs and the summary."""
+
+    def __init__(self, stages: Sequence[str], app: Path | None) -> None:
+        self.stages = list(stages)
+        self.app = app
+        self.stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")  # noqa: DTZ005 (a local folder name)
+        self.log_dir_rel = f"build/overnight/{self.stamp}"
+        self.log_dir = REPO_ROOT / self.log_dir_rel
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        # The executable built-app runs: --app's, else the one fetch-build fetched.
+        self.exe: Path | None = app
+        self.no_exe_why = "fetch-build did not run"
+        # None until the first GUI stage asks; then whether the machine can take input.
+        self.gui_ready: bool | None = None
+        self.results: list[StageResult] = []
+        self.started = time.monotonic()
+
+    def write_summary(self, state: str) -> None:
+        text = summary_text(self.stamp, short_commit(), state, self.results, self.log_dir_rel)
+        (self.log_dir / "summary.txt").write_text(text, encoding="utf-8")
+
+    def gui_tests(self, log: StageLog, *args: str, **env: str) -> int:
+        return log.run(
+            ["uv", "run", "python", str(SCRIPTS / "run_gui_tests.py"), *args],
+            child_env(os.environ, **env),
+        )
+
+    # --- the stages ---
+
+    def stage_update(self, log: StageLog) -> int:
+        status = log.run(["git", "pull", "--ff-only"])
+        return status or log.run(["uv", "sync", "--locked"])
+
+    @staticmethod
+    def stage_pytest(log: StageLog) -> int:
+        return log.run(["uv", "run", "pytest", "-q"])
+
+    def stage_fetch_build(self, log: StageLog) -> int:
+        if self.app is not None:
+            log.line(f"fetch-build: skipped - using --app {self.app}")
+            self.no_exe_why = ""
+            return SKIPPED
+        self.no_exe_why = "fetch-build did not fetch the executable (see fetch-build.log)"
+        repo = os.environ.get("GH_REPO", DEFAULT_GH_REPO)
+        _, sha = log.capture(["git", "rev-parse", "HEAD"])
+        sha = sha.strip()
+        status, out = log.capture(
+            [
+                "gh",
+                "run",
+                "list",
+                "-R",
+                repo,
+                "--commit",
+                sha,
+                "--workflow",
+                BUILD_WORKFLOW,
+                "--json",
+                "databaseId,status,conclusion,event",
+                "-L",
+                "10",
+            ]
+        )
+        run = pick_build_run(json.loads(out)) if status == 0 and out.strip() else None
+        if run is None:
+            log.line(f"fetch-build: no Build Verification run for {sha} in {repo}")
+            log.line("  (is this commit pushed? gh run list needs 'gh auth login' once)")
+            return 1
+        run_id = str(run["databaseId"])
+        log.line(f"fetch-build: run {run_id} ({run['event']}) for {sha[:8]}")
+        job = self._await_windows_job(log, repo, run_id)
+        if job is None:
+            return 1
+        dest = self.log_dir / "build"
+        status = log.run(
+            ["gh", "run", "download", "-R", repo, run_id, "-n", WIN_ARTIFACT, "-D", str(dest)]
+        )
+        exe = dest / WIN_ARTIFACT
+        if status != 0 or not exe.is_file():
+            log.line(f"fetch-build: run {run_id} has no {WIN_ARTIFACT} to download")
+            return status or 1
+        self.exe = exe
+        self.no_exe_why = ""
+        log.line(f"fetch-build: {exe}")
+        return 0
+
+    @staticmethod
+    def _await_windows_job(log: StageLog, repo: str, run_id: str) -> Mapping[str, object] | None:
+        """Wait for the run's Windows job to finish; return it if it succeeded, else None.
+
+        Only the Windows job matters here, so a macOS leg that failed does not
+        cost the night its built-app stage.
+        """
+        deadline = time.monotonic() + BUILD_WAIT_SECS
+        while True:
+            status, out = log.capture(
+                ["gh", "run", "view", "-R", repo, run_id, "--json", "status,conclusion,jobs"]
+            )
+            if status != 0:
+                log.line(f"fetch-build: gh run view {run_id} failed (see the lines above)")
+                return None
+            job = windows_job(json.loads(out).get("jobs", []))
+            if job is not None and job.get("status") == "completed":
+                if job.get("conclusion") == "success":
+                    return job
+                log.line(f"fetch-build: the Windows build {job.get('conclusion')}: nothing to test")
+                return None
+            if time.monotonic() >= deadline:
+                log.line(f"fetch-build: run {run_id}'s Windows build still not done; gave up")
+                return None
+            log.line(f"fetch-build: run {run_id} is still building; looking again in a minute")
+            time.sleep(BUILD_POLL_SECS)
+
+    def stage_gui(self, log: StageLog) -> int:
+        return self.gui_tests(log)
+
+    def stage_built_app(self, log: StageLog) -> int:
+        if self.exe is None:
+            log.line(f"built-app: skipped - no executable: {self.no_exe_why}")
+            return SKIPPED
+        return self.gui_tests(log, "--app", str(self.exe))
+
+    def stage_soak(self, log: StageLog) -> int:
+        steps = os.environ.get("BARKS_OVERNIGHT_SOAK_STEPS", DEFAULT_SOAK_STEPS)
+        status = 0
+        for seed in soak_seeds(os.environ, dt.date.today()):  # noqa: DTZ011 (the local day)
+            log.line(f"soak: seed {seed}, {steps} keys")
+            env = {"BARKS_GUI_WALK_SEED": seed, "BARKS_GUI_WALK_STEPS": steps}
+            status = self.gui_tests(log, "--soak", **env) or status
+        return status
+
+    @staticmethod
+    def stage_validate(log: StageLog) -> int:
+        ini = gui_probe.config_dir() / "barks-reader.ini"
+        comics = prebuilt_dir(ini)
+        if not comics.is_dir():
+            log.line(f"validate: skipped - the prebuilt comics are not on this machine: {comics}")
+            log.line("  (its Phase 7 would fail every title; step 4 of the Windows overnight plan)")
+            return SKIPPED
+        return log.run(
+            [
+                "uv",
+                "run",
+                str(SCRIPTS / "validate-barks-reader-files.py"),
+                "--full-load-check",
+                "--strict-wiki",
+            ]
+        )
+
+    def _gui_ready(self) -> bool:
+        """Return whether the machine can take injected input; ask doctor once, logging it."""
+        if self.gui_ready is None:
+            with (self.log_dir / "gui-doctor.log").open("w", encoding="utf-8") as out:
+                doctor = ["uv", "run", "python", str(SCRIPTS / "gui_probe.py"), "doctor"]
+                status = StageLog(out).run(doctor)
+            self.gui_ready = status == 0
+        return self.gui_ready
+
+    def run_stage(self, name: str, log: StageLog) -> int:
+        if name in GUI_STAGES and not self._gui_ready():
+            log.line(f"{name}: not run - this machine cannot take injected input tonight;")
+            log.line(f"  doctor says why in {self.log_dir_rel}/gui-doctor.log")
+            return 1
+        stage: Callable[[StageLog], int] = getattr(self, "stage_" + name.replace("-", "_"))
+        return stage(log)
+
+    # --- the loop ---
+
+    def run(self) -> int:
+        """Run every stage; return 1 if any failed, 0 if none did, 130 if stopped."""
+        say(f"{RUNNER}: {len(self.stages)} stages: {' '.join(self.stages)}")
+        say(f"{RUNNER}: to stop it and everything it started: Ctrl-C")
+        say(f"{RUNNER}: results so far in {self.log_dir_rel}/summary.txt")
+        failed = False
+        for n, name in enumerate(self.stages, 1):
+            into = elapsed(time.monotonic() - self.started)
+            at = time.strftime("%H:%M")
+            say(f"\n==== [{n}/{len(self.stages)}] {name}, started {at} ({into} into the run) ====")
+            began = time.monotonic()
+            with (self.log_dir / f"{name}.log").open("w", encoding="utf-8") as out:
+                log = StageLog(out)
+                try:
+                    status = self.run_stage(name, log)
+                except KeyboardInterrupt:
+                    return self._stopped(name, began)
+                except Exception as exc:  # noqa: BLE001 (one stage's crash is its failure alone)
+                    log.line(f"{name}: {type(exc).__name__}: {exc}")
+                    status = 1
+            self._record(name, result_name(status), began)
+            failed = failed or self.results[-1].result == "FAILED"
+            if name == "update" and status != 0:
+                say(f"{RUNNER}: update failed, so nothing else runs: it would test the wrong code")
+                return self._finish("stopped after a failed update", 1)
+            self.write_summary(f"{n} of {len(self.stages)} stages done")
+        return self._finish(f"finished in {elapsed(time.monotonic() - self.started)}", int(failed))
+
+    def _record(self, name: str, result: str, began: float) -> None:
+        secs = int(time.monotonic() - began)
+        self.results.append(StageResult(name, result, secs))
+        say(f"==== {name}: {result} in {secs // 60}m{secs % 60}s ====")
+
+    def _stopped(self, name: str, began: float) -> int:
+        self._record(name, "stopped", began)
+        if name in GUI_STAGES:
+            # Close the app and put the profile back, as a GUI runner does on its way out.
+            subprocess.run(  # noqa: S603
+                [sys.executable, str(SCRIPTS / "gui_probe.py"), "stop"], check=False
+            )
+        return self._finish(
+            f"stopped during {name}, {elapsed(time.monotonic() - self.started)} in", 130
+        )
+
+    def _finish(self, state: str, status: int) -> int:
+        self.write_summary(state)
+        say("\n" + (self.log_dir / "summary.txt").read_text(encoding="utf-8").rstrip())
+        return status
+
+
+def _parse(argv: Sequence[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
+    parser.add_argument("--list", action="store_true", help="print the stages and exit")
+    parser.add_argument("--only", default="", help="run only these stages (comma-separated)")
+    parser.add_argument("--skip", default="", help="run every stage but these")
+    parser.add_argument("--app", type=Path, help="the executable built-app runs")
+    return parser.parse_args(argv)
+
+
+def main(argv: Sequence[str]) -> int:
+    """Run the night's stages; return 0 if none failed, 2 for a bad command line."""
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    options = _parse(argv)
+    if options.list:
+        say(list_text())
+        return 0
+    try:
+        stages = select_stages(parse_names(options.only), parse_names(options.skip))
+    except ValueError as exc:
+        print(f"{RUNNER}: {exc}", file=sys.stderr)  # noqa: T201
+        return 2
+    if options.app is not None and not options.app.is_file():
+        print(f"{RUNNER}: not an executable: {options.app}", file=sys.stderr)  # noqa: T201
+        return 2
+    if sys.platform != "win32":
+        print(f"{RUNNER}: Windows only; elsewhere use run_overnight.sh", file=sys.stderr)  # noqa: T201
+        return 2
+    if on_battery():
+        say(f"{RUNNER}: WARNING - on battery: a throttled CPU can fail the timing budgets; plug in")
+    app = options.app.resolve() if options.app is not None else None
+    with kept_awake():
+        return Run(stages, app).run()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
