@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -195,9 +195,34 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   `#!/usr/bin/env sh`, or every push fails with "Executable `/bin/sh` not found".
   (Both were found under pre-commit and not yet re-checked under prek; see `CLAUDE.md`.)
   The standalone app's own install steps are in `README.md`.
-- **A Windows overnight machine**, once, besides the above (`gh auth login` too, for the
-  `fetch-build` stage). The GUI stages inject real keys, which reach only an unlocked
-  screen that is on, so nothing may blank or lock it overnight:
+- **A Windows overnight machine**, once, besides the above. `uv run python
+  scripts/check_windows_overnight_host.py` checks every step below and says what is
+  still missing (the Windows `check-overnight-host.sh`); run it last, and again after a
+  Windows update.
+  - **Tools**: Git for Windows (its Git Bash, which runs the repo's `bash` scripts, and
+    git-lfs), `winget install GitHub.cli` then `gh auth login` (the `fetch-build` stage),
+    uv and bun as above. Then steps 3 to 5 above as written, in Git Bash: the clone
+    (with `git lfs install` before it), `uv sync`, `prek install`, `.env.runtime` and the
+    two generated modules.
+  - **The reader's data**: the installer's data packs into `~\barks-reader` (the
+    standalone install in `README.md`), which gives `Reader Files`; `.env.runtime`'s
+    `BARKS_READER_DATA_DIR` at `~/barks-reader` and `BARKS_READER_CONFIG_DIR` at
+    `~/barks-reader/config`; the Fantagraphics volumes wherever the profile's `fanta_dir`
+    says (here `~\Documents\Fantagraphics Complete Carl Barks Disney Library`).
+  - **The wiki copy**, refreshed from barks-wiki: clone it beside this repo with LF line
+    endings (`git clone -c core.autocrlf=false https://github.com/glk1001/barks-wiki.git`),
+    then from its root `..\barks-compleat-reader\.venv\Scripts\python.exe -B
+    scripts\export_reader_wiki.py "$HOME\barks-reader\Reader Files\Carl Barks Wiki" --apply
+    --clean`. The export writes CRLF on Windows (to be fixed there), so put the copy back
+    to LF afterwards (all text: pages, a `.py`, a `.tsv`, a `.wikitext`; the host check
+    warns while they are CRLF), from this repo's root:
+    ```powershell
+    .venv\Scripts\python.exe -c "from pathlib import Path; [p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n')) for p in Path(r'$HOME\barks-reader\Reader Files\Carl Barks Wiki').rglob('*') if p.is_file()]"
+    ```
+    `check_wiki_copy.py` on Windows calls the LF copy stale until the export is fixed.
+
+  The GUI stages inject real keys, which reach only an unlocked screen that is on, so
+  nothing may blank or lock it overnight:
   - **Sign-in when away: Never** (Settings, Accounts, Sign-in options, "If you've been
     away, when should Windows require you to sign in again?"). It also decides whether a
     wake from standby lands on the lock screen, which fails every GUI stage.
@@ -217,6 +242,10 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   - **Developer Mode** (Settings, System, For developers): four GUI tests build a
     library of symlinks, which Windows lets a user make only in Developer Mode (else
     `WinError 1314`, "A required privilege is not held by the client").
+  - **Awake at 02:00**: on AC power (on battery the CPU throttles and the timing budgets
+    can fail), and "Allow wake timers" on for AC (Control Panel, Power Options, the plan's
+    advanced settings, Sleep; `powercfg /waketimers` lists the task's once registered), or
+    the task cannot wake a machine that went to standby.
   - **Windows Update's active hours** covering the run, so it does not restart under it.
   - **Calibrated**: `uv run python scripts/run_gui_tests.py --calibrate` once, so the
     timing budgets are this machine's.
