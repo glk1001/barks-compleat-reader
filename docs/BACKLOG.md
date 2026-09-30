@@ -24,9 +24,12 @@ Found along the way, not yet done:
       touch the name.
 - [ ] **Typed tags with years** — `parse_tag_query` takes names only; `scrooge + year:1950-55`
       is not read (the era row covers it by chip).
-- [ ] **Word-query speed** — an AND of two common words takes ~145ms on the shipped index
-      (`gold mine`), most of it building bubbles for stories a later part drops; fine now,
-      but the first thing to look at if queries grow.
+- [x] **Word-query speed** — an AND's later parts search only the stories found so far,
+      and Whoosh built that filter from an OR of title terms by walking it document by
+      document: `duck money` took ~1s. The engine now reads each title's documents from its
+      postings, once, and filters by that set: `duck money` 66ms, `gold mine` 32ms, a
+      four-part query ~130-180ms (the rest is reading the bubbles found). Guarded by
+      `tests/benchmarks/test_find_bubbles_benchmark.py` (50ms budget; ~21ms now).
 
 ## Wiki reader (OKF integration)
 

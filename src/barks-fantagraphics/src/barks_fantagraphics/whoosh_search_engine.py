@@ -185,6 +185,8 @@ def _leaf_words(leaf: SearchLeaf) -> tuple[str, ...]:
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
         self._index = open_dir(index_dir)
+        # Each story's documents (bubbles), read once: the index does not change while open.
+        self._title_docs: dict[str, frozenset[int]] = {}
 
         self._unstemmed_terms_path = self._index.storage.folder / "unstemmed-terms.json"
         self._cleaned_terms_path = self._index.storage.folder / "cleaned-unstemmed-terms.json"
@@ -336,7 +338,7 @@ class SearchEngine:
                         "Search index has no speaker field; ignoring speaker filter."
                         " The search index needs rebuilding."
                     )
-            title_filter = None if titles is None else Or([Term("title", t) for t in titles])
+            title_filter = None if titles is None else self._docs_of_titles(searcher, titles)
             hits = list(searcher.search(query, limit=_SEARCH_RESULT_LIMIT, filter=title_filter))
             if isinstance(leaf, Near):
                 hits = self._near_hits(searcher, hits, leaf)
@@ -359,6 +361,24 @@ class SearchEngine:
             d for d in doc_numbers if _are_near(lefts.get(d, []), rights.get(d, []), near.distance)
         }
         return [hit for hit in hits if hit.docnum in near_docs]
+
+    def _docs_of_titles(self, searcher: Searcher, titles: frozenset[str]) -> set[int]:
+        """Return the documents (bubbles) of the stories `titles`: a search's filter, as a set.
+
+        Whoosh turns an OR of title terms into one by walking it document by document,
+        which took a second for a hundred and more stories ("duck money": the stories
+        "duck" was found in). Read from each title's own postings, and kept, it takes
+        a few milliseconds, then none.
+        """
+        reader = searcher.reader()
+        docs: set[int] = set()
+        for title in titles:
+            if title not in self._title_docs:
+                known = ("title", title) in reader
+                ids = reader.postings("title", title).all_ids() if known else ()
+                self._title_docs[title] = frozenset(ids)
+            docs |= self._title_docs[title]
+        return docs
 
     def _leaf_query(self, leaf: SearchLeaf) -> Query:
         match leaf:
