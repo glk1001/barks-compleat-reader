@@ -218,21 +218,16 @@ class ComicSearch:
             The selection, by the names typed; or why the text is not one.
 
         """
-        from .search_filters import closest_tags  # noqa: PLC0415
+        from .search_filters import tag_titles, unknown_tag_notice  # noqa: PLC0415
         from .tag_query import ParsedTagQuery as _ParsedTagQuery  # noqa: PLC0415
         from .tag_query import parse_tag_query  # noqa: PLC0415
 
         parsed = parse_tag_query(text)
         if parsed.selection is None:
             return parsed
-        ts = self._get_title_search()
         for name in (*parsed.selection.included, *parsed.selection.excluded):
-            if ts.get_titles_from_alias_tag(name)[0] is None:
-                closest = closest_tags(name)
-                notice = f'No tag is called "{name}".'
-                if closest:
-                    notice += " Closest: " + ", ".join(closest) + "."
-                return _ParsedTagQuery(error=notice)
+            if tag_titles(name) is None:
+                return _ParsedTagQuery(error=unknown_tag_notice(name))
         return parsed
 
     def titles_for_tag_selection(self, selection: TagSelection) -> list[Titles]:

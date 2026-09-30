@@ -16,6 +16,7 @@ from barks_fantagraphics.search_filters import (
     submitted_year,
     tag_titles,
     titles_in_years,
+    unknown_tag_notice,
 )
 from barks_fantagraphics.search_results import TitleInfo
 
@@ -55,6 +56,11 @@ def test_the_closest_tags_hold_the_text_or_are_spelled_alike() -> None:
     assert "andes" in closest_tags("ande")
     assert len(closest_tags("a")) <= 3  # noqa: PLR2004
     assert closest_tags("zzzzqqq") == []
+
+
+def test_an_unknown_tag_s_notice_names_the_closest_tags_if_any() -> None:
+    assert unknown_tag_notice("clasics") == 'No tag is called "clasics". Closest: the classics.'
+    assert unknown_tag_notice("zzzzqqq") == 'No tag is called "zzzzqqq".'
 
 
 def test_an_empty_filter_allows_everything_and_lists_nothing() -> None:

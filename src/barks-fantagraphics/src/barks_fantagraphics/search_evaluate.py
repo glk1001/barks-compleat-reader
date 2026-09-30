@@ -37,8 +37,8 @@ from .search_filters import (
     SearchFilter,
     StoryFilter,
     apply_filter,
-    closest_tags,
     tag_titles,
+    unknown_tag_notice,
 )
 from .search_query import (
     And,
@@ -453,7 +453,7 @@ class _Evaluator:
             case TagQualifier(name):
                 titles = tag_titles(name)
                 if titles is None:
-                    self.notices.append(_unknown_tag_notice(name))
+                    self.notices.append(unknown_tag_notice(name))
                     titles = frozenset()
                 return SearchFilter(tag_titles=titles)
             case YearQualifier(first, last):
@@ -477,11 +477,3 @@ def _narrowed(
     if allowed is None:
         return within
     return allowed if within is None else within & allowed
-
-
-def _unknown_tag_notice(name: str) -> str:
-    closest = closest_tags(name)
-    notice = f'No tag is called "{name}".'
-    if closest:
-        notice += " Closest: " + ", ".join(closest) + "."
-    return notice

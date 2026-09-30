@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import cache
 from typing import TYPE_CHECKING
 
 from .barks_tags import (
@@ -30,6 +31,16 @@ def _fanta_volume(title: Titles) -> int | None:
     """Return the Fantagraphics volume a story is in, or None for one in none."""
     info = get_fanta_info(title)
     return None if info is None else FANTA_SOURCE_COMICS[info.fantagraphics_volume].volume
+
+
+@cache
+def _titles_tagged_by(item: Tags | TagGroups) -> tuple[Titles, ...]:
+    """Return the stories a tag tags, sorted; a group's, every story its members tag.
+
+    Read once per tag: the tag box counts every tag it lists, on every keystroke.
+    """
+    tags = get_all_tags_in_tag_group(item) if isinstance(item, TagGroups) else {item}
+    return tuple(sorted({title for tag in tags for title in BARKS_TAGGED_TITLES.get(tag, [])}))
 
 
 # How an alias matched a typed text, best first.
@@ -139,12 +150,7 @@ class BarksTitleSearch:
     @staticmethod
     def get_tag_title_count(item: Tags | TagGroups) -> int:
         """Return how many stories a tag tags; for a group, every story its members tag."""
-        if isinstance(item, TagGroups):
-            titles: set[Titles] = set()
-            for tag in get_all_tags_in_tag_group(item):
-                titles.update(BARKS_TAGGED_TITLES.get(tag, []))
-            return len(titles)
-        return len(BARKS_TAGGED_TITLES.get(item, []))
+        return len(_titles_tagged_by(item))
 
     @staticmethod
     def get_titles_for_selection(selection: TagSelection) -> list[Titles]:
@@ -187,20 +193,12 @@ class BarksTitleSearch:
     def get_titles_from_alias_tag(
         alias_tag_str: str,
     ) -> tuple[Tags | TagGroups | None, list[Titles]]:
-        title_set: set[Titles] = set()
-
-        if alias_tag_str in BARKS_TAG_ALIASES:
-            tag = BARKS_TAG_ALIASES[alias_tag_str]
-            title_set.update(BARKS_TAGGED_TITLES[tag])
-            return tag, sorted(title_set)
-
-        if alias_tag_str in BARKS_TAG_GROUPS_ALIASES:
-            tag_group = BARKS_TAG_GROUPS_ALIASES[alias_tag_str]
-            for tag in get_all_tags_in_tag_group(tag_group):
-                title_set.update(BARKS_TAGGED_TITLES[tag])
-            return tag_group, sorted(title_set)
-
-        return None, []
+        item: Tags | TagGroups | None = BARKS_TAG_ALIASES.get(alias_tag_str)
+        if item is None:
+            item = BARKS_TAG_GROUPS_ALIASES.get(alias_tag_str)
+        if item is None:
+            return None, []
+        return item, list(_titles_tagged_by(item))
 
     @staticmethod
     def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:

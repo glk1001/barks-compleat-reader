@@ -201,3 +201,20 @@ def closest_tags(name: str, limit: int = MAX_CLOSEST_TAGS) -> list[str]:
     aliases = [*BARKS_TAG_ALIASES, *BARKS_TAG_GROUPS_ALIASES]
     found += difflib.get_close_matches(lower, aliases, n=limit)
     return list(dict.fromkeys(found))[:limit]
+
+
+def unknown_tag_notice(name: str) -> str:
+    """Return what to tell the user of a tag name that is no tag's: the closest ones.
+
+    Args:
+        name: The name typed.
+
+    Returns:
+        ``No tag is called "x".``, and the closest tags, if any.
+
+    """
+    closest = closest_tags(name)
+    notice = f'No tag is called "{name}".'
+    if closest:
+        notice += " Closest: " + ", ".join(closest) + "."
+    return notice
