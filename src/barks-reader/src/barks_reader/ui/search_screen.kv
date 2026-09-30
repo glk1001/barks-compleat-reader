@@ -259,13 +259,17 @@
                             padding: dp(8)
 
                             ReaderScrollView:
+                                id: tag_chips_scroll
 
+                                # Clear of the scroll bar on the right: the bar can be
+                                # dragged, so a tap on a + beneath it scrolled the list.
                                 BoxLayout:
                                     id: tag_chips_layout
                                     orientation: 'vertical'
                                     size_hint_y: None
                                     height: self.minimum_height
                                     spacing: dp(4)
+                                    padding: [0, 0, tag_chips_scroll.bar_width + dp(4), 0]
 
                         SearchEmptyPrompt:
                             text: "Matching tags will appear here"
@@ -289,19 +293,25 @@
                         height: self.minimum_height if self.children else 0
                         spacing: dp(6), dp(4)
 
-                    ReaderScrollView:
-                        id: tag_results_scroll
+                    # The prompt centres in the list's own space, below the era chips:
+                    # over the whole panel it fell on the chips when they filled its top.
+                    FloatLayout:
 
-                        BoxLayout:
-                            id: tag_title_results_layout
-                            orientation: 'vertical'
-                            size_hint_y: None
-                            height: self.minimum_height
-                            spacing: dp(1)
+                        ReaderScrollView:
+                            id: tag_results_scroll
+                            size_hint: 1, 1
+                            pos_hint: {'x': 0, 'y': 0}
 
-                SearchEmptyPrompt:
-                    text: "Pick a tag to list its stories"
-                    opacity: 0 if tag_title_results_layout.children else 0.75
+                            BoxLayout:
+                                id: tag_title_results_layout
+                                orientation: 'vertical'
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(1)
+
+                        SearchEmptyPrompt:
+                            text: "Pick a tag to list its stories"
+                            opacity: 0 if tag_title_results_layout.children else 0.75
 
         # ---- Word Search Content ----
         BoxLayout:
@@ -358,12 +368,15 @@
                             ReaderScrollView:
                                 id: word_chips_scroll
 
+                                # Clear of the scroll bar on the right: the bar can be
+                                # dragged, so a tap on a + beneath it scrolled the list.
                                 BoxLayout:
                                     id: word_chips_layout
                                     orientation: 'vertical'
                                     size_hint_y: None
                                     height: self.minimum_height
                                     spacing: dp(1)
+                                    padding: [0, 0, word_chips_scroll.bar_width + dp(4), 0]
 
                         SearchEmptyPrompt:
                             text: "Matching words will appear here"
@@ -407,16 +420,22 @@
                         height: self.minimum_height if self.children else 0
                         spacing: dp(6), dp(4)
 
-                    ReaderScrollView:
-                        id: word_results_scroll
+                    # The prompt centres in the list's own space, below the chips: over
+                    # the whole panel it fell on the era chips when they filled its top.
+                    FloatLayout:
 
-                        BoxLayout:
-                            id: word_results_layout
-                            orientation: 'vertical'
-                            size_hint_y: None
-                            height: self.minimum_height
-                            spacing: dp(1)
+                        ReaderScrollView:
+                            id: word_results_scroll
+                            size_hint: 1, 1
+                            pos_hint: {'x': 0, 'y': 0}
 
-                SearchEmptyPrompt:
-                    text: "Pick a word to see where it is spoken"
-                    opacity: 0 if word_results_layout.children else 0.75
+                            BoxLayout:
+                                id: word_results_layout
+                                orientation: 'vertical'
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(1)
+
+                        SearchEmptyPrompt:
+                            text: "Pick a word to see where it is spoken"
+                            opacity: 0 if word_results_layout.children else 0.75
