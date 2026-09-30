@@ -134,6 +134,8 @@ repos:
             # nothing. A pipe, not `< "$1"`: under bunx, stdin redirected from a file
             # read as empty and passed a misspelling. No --config: bunx now and then
             # took it for its own and looked cspell.config.yaml up as a package.
-            entry: bash -c 'cat -- "$1" | bunx cspell --no-progress stdin' --
+            # `bun x`, not `bunx`: inside bash on Windows there is only bunx.cmd, which
+            # bash cannot run, and every commit there failed the hook.
+            entry: bash -c 'cat -- "$1" | bun x cspell --no-progress stdin' --
             language: system
             stages: [commit-msg]
