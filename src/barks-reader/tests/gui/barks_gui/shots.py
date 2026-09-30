@@ -38,15 +38,21 @@ class RenderStats:
 
 
 def render_stats(capture: Path, window: tuple[int, int, int, int]) -> RenderStats:
-    """Return the colour statistics of the app window's part of a nested-display capture.
+    """Return the colour statistics of the app window's part of a capture.
 
     Args:
-        capture: The PNG the probe captured (the whole nested screen).
-        window: The app window's ``(width, height, x, y)`` on that screen.
+        capture: The PNG the probe captured: the whole nested screen on Linux, the
+            window's drawable area alone on Windows (``gui_probe.py``).
+        window: The app window's ``(width, height, x, y)`` on the screen.
 
     """
     width, height, left, top = window
     with Image.open(capture) as image:
+        # A capture the window's size is the window: cropping it at the window's
+        # screen position would judge a strip of it padded out with black, which
+        # failed drawn frames on Windows.
+        if image.size == (width, height):
+            left = top = 0
         region = image.convert("RGB").crop((left, top, left + width, top + height))
         pixels = [
             region.getpixel((x, y))

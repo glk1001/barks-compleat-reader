@@ -221,10 +221,14 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   `~\Books\Carl Barks\...`; the laptop's data is in the installed app's layout. A junction
   will do (`docs/setup.md`).
 - **The GUI suite, the same six on both apps** (so not packaging): four build a library of
-  symlinks, which needs Developer Mode; one tapped a 1963 story from a volume past the
-  laptop's 01-30; one wanted a wiki section the laptop's `Reader Files` copy lacks.
-- **The soak**: its blank-frame check took a real title page (*That Small Feeling*, 81%
-  cream, 45 colours) for a blank one. A harness false positive, open.
+  symlinks, which needs Developer Mode (turned on; the four pass); one tapped a 1963 story
+  from a volume past the laptop's 01-30; one wanted a wiki section the laptop's
+  `Reader Files` copy lacks.
+- **The soak**, and then `test_a_doubled_volume_is_fatal...` every time: the blank-frame
+  check failed drawn frames. It cropped the window at its screen position (792, 10) out
+  of the capture, as out of Linux's whole-screen one, but the Windows probe captures the
+  window alone: it judged a 185-pixel strip padded with black, over 81% black before the
+  app drew a thing. Fixed in `barks_gui.shots` (a window-sized capture is not cropped).
 - **Found on the way, fixed**: the screen locked 90s after the last input, whatever
   Windows said: LG Glance by Mirametrix's Walk Away Lock (removed), and behind it the
   hidden 240s non-sensor presence timeout (`docs/setup.md`). The runner's display hold

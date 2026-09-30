@@ -816,6 +816,28 @@ class TestRenderStats:
         stats = shots.render_stats(capture, self.WINDOW)
         assert stats.samples == (80 // shots.SAMPLE_STEP) * (60 // shots.SAMPLE_STEP)
 
+    @staticmethod
+    def _window_capture(tmp_path: Path, paint: Callable[[int, int], tuple[int, int, int]]) -> Path:
+        """Save a capture of the window alone, as the Windows probe takes it."""
+        image = Image.new("RGB", (80, 60))
+        for y in range(60):
+            for x in range(80):
+                image.putpixel((x, y), paint(x, y))
+        path = tmp_path / "window.png"
+        image.save(path)
+        return path
+
+    def test_a_window_only_capture_is_judged_whole(self, tmp_path: Path) -> None:
+        """Not cropped at the window's screen position, which pads it with black."""
+        capture = self._window_capture(tmp_path, lambda x, y: (x * 3 % 256, y * 4 % 256, 9))
+        stats = shots.render_stats(capture, self.WINDOW)
+        assert stats.samples == (80 // shots.SAMPLE_STEP) * (60 // shots.SAMPLE_STEP)
+        assert not shots.looks_blank(stats)
+
+    def test_a_flat_window_only_capture_is_still_blank(self, tmp_path: Path) -> None:
+        capture = self._window_capture(tmp_path, lambda _x, _y: (0, 0, 0))
+        assert shots.looks_blank(shots.render_stats(capture, self.WINDOW))
+
 
 class TestTimings:
     """The durations the app logs, read back and held to their budgets."""
