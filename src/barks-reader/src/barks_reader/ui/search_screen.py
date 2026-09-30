@@ -1652,9 +1652,11 @@ class SearchScreen(FloatLayout):
         elif key == KEY_RIGHT:
             text_input = self._active_widget(0)
             if text_input.cursor_index() >= len(text_input.text):
+                # At the text's end: the x beside the box, which clears the search (its
+                # picked words or tags, and the era, too); Right again is the results.
                 self._blur_all_inputs()
-                self._nav_enter_results()
-                self._draw_result_focus()
+                self._nav_focus_area = "clear"
+                self._draw_clear_focus()
             else:
                 return False
         else:
@@ -1793,9 +1795,10 @@ class SearchScreen(FloatLayout):
             self._nav_focus_area = "input"
             self._focus_active_input()
         elif key == KEY_RIGHT:
-            self._clear_clear_focus()
-            self._nav_enter_results()
-            self._draw_result_focus()
+            if self._get_active_result_rows():  # with none, the focus stays on the x
+                self._clear_clear_focus()
+                self._nav_enter_results()
+                self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._get_active_clear_button().trigger_action(duration=0)
             self._clear_clear_focus()

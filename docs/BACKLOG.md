@@ -13,10 +13,10 @@ Advanced word and tag search landed 2026-09-29/30 (typed queries, word forms, wi
 suggestions, picked words and tags, era and tag filters; `docs/plans/advanced-search.md`).
 Found along the way, not yet done:
 
-- [ ] **The clear button by remote** — in Word and Tag search, once the list has chips, no
-      arrow key reaches the × beside the box (Left from the results goes to the list, Up from
-      the list to the box), and clearing is now also how the picked words/tags and the era are
-      reset. A remote user can only type over the text. The leak test taps it.
+- [x] **The clear button by remote** — in Word and Tag search, once the list had chips, no
+      arrow key reached the × beside the box, and clearing is also how the picked words/tags
+      and the era are reset. Now Right at the end of the box's text is the ×, in every mode
+      (Right again, the results).
 - [ ] **Narrow tag panel** — at the GUI tests' 900px window the tag list is ~180px wide; with
       the + beside each chip, names like "Gyro Gearloose" wrap onto two lines. Rebalance the
       column widths, or shrink the chip's count margin.

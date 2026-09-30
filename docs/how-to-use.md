@@ -191,10 +191,10 @@ included, to *not* (its stories left out), to taken out. Tags can be typed as we
 
 The **×** beside the search box clears it, the picked words or tags, and the era.
 
-**By keyboard:** **Down** from the box goes to the picked row (if any) and on to the list;
-**Right** from a word or tag moves to its **+**, and again to the rows above the results;
-**Down | Up** move between those rows and the results. **Enter** picks, and on a filter row stays
-put so you can try another.
+**By keyboard:** **Down** from the box goes to the picked row (if any) and on to the list, and
+**Right** at the end of the text to the **×**; **Right** from a word or tag moves to its **+**, and
+again to the rows above the results; **Down | Up** move between those rows and the results.
+**Enter** picks, and on a filter row stays put so you can try another.
 
 ---
 

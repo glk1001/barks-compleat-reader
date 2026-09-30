@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import expected, memory, nodes, search, taps
+from barks_gui import expected, memory, nodes, search
 from barks_gui.logs import last_field, messages
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -440,7 +440,7 @@ def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:
 
 
 def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) -> None:
-    """Down, or Right at the text's end, leaves the box; the results reach the clear button."""
+    """Down leaves the box for the results, Right at the text's end for the clear button."""
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
     d.key_then_wait(d.FOCUS_MOVED, "Down")  # the first result row
@@ -448,15 +448,41 @@ def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) 
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # back to the results
     d.key_then_wait(d.FOCUS_MOVED, "Left")
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Left")  # from the clear button, the box
-    d.key_then_wait(d.FOCUS_MOVED, "Right")  # the cursor is at the end: the results
+    d.key_then_wait(CLEAR_FOCUSED, "Right")  # the cursor is at the end: the clear button
+    d.key_then_wait(d.FOCUS_MOVED, "Right")  # and on to the results
     d.key_then_wait(markers.SEARCH_EXITED_NAV, "Escape")
+
+
+CLEAR_FOCUSED = pattern(markers.NAV_FOCUS, widget=re.compile(r"SearchClearButton.*"))
+CLEAR_WORD_QUERY = "gold"
+
+
+def test_the_clear_button_is_reached_by_keyboard_with_chips_listed(boot: AppBoot) -> None:
+    """Back in the box, Right at the text's end is the clear button: it clears words and era."""
+    d = boot(nodes.WORD_SEARCH)
+    search.type_query(d, CLEAR_WORD_QUERY)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    d.key_then_wait(pattern(markers.WORD_BASKET_CHANGED, count=1), "Return")
+    d.move_focus("Right", pattern=_speaker_focused("All"))
+    d.move_focus("Down", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Right")
+    d.key_then_wait(pattern(markers.ERA_FILTER_SET, era="1942-46"), "Return")
+
+    d.move_focus("Up", pattern=_speaker_focused("All"))
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")
+    d.key_then_wait(CLEAR_FOCUSED, "Right")
+    with (
+        d.expect(pattern(markers.ERA_FILTER_SET, era="All years")),
+        d.expect(search.SEARCH_BOX_FOCUSED),
+    ):
+        d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode="word"), "Return")
 
 
 # ----------------------------------------------------------------- memory --
 
 LEAK_ROUNDS_QUERY = {"Word": "gold", "Tag": "gyro"}
 PICKED = {"Word": markers.WORD_BASKET_CHANGED, "Tag": markers.TAG_BASKET_CHANGED}
-CLEAR_BUTTON = {"Word": "word_clear_button", "Tag": "tag_clear_button"}
 
 
 @pytest.mark.parametrize(("mode", "node"), [("Word", nodes.WORD_SEARCH), ("Tag", nodes.TAG_SEARCH)])
@@ -465,7 +491,7 @@ def test_search_round_trips_leave_no_chips_behind(
 ) -> None:
     """Fill the list, pick two with their +, clear: again and again, and no chip is kept.
 
-    The clear button is tapped: with chips listed, the remote's keys do not reach it.
+    All by the remote's keys: back up to the box, Right to the clear button, Return.
     """
     d = boot(node)
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
@@ -478,8 +504,9 @@ def test_search_round_trips_leave_no_chips_behind(
         d.key_then_wait(pattern(PICKED[mode], count=1), "Return")
         d.move_focus("Down", pattern=_focus_on("_PlusButton", "+"))
         d.key_then_wait(pattern(PICKED[mode], count=2), "Return")
-        taps.tap_then_wait(
-            d, pattern(markers.SEARCH_CLEARED, mode=mode.lower()), kv_id=CLEAR_BUTTON[mode]
-        )
+        d.move_focus("Up", "Up")  # the first row's +, then the picked row
+        d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")
+        d.key_then_wait(CLEAR_FOCUSED, "Right")
+        d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode=mode.lower()), "Return")
 
     memory.assert_round_trips_leave_nothing(d, round_trip)

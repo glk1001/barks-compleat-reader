@@ -1720,3 +1720,82 @@ class TestTagScope:
         assert screen._nav_focus_area == "scope"
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "era"
+
+
+class TestClearButtonKeys:
+    """The x beside the box is Right from the text's end, in every mode: the remote reaches it."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._nav_active = True
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "input"
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            yield bare
+
+    @staticmethod
+    def _box(screen: SearchScreen, text: str, cursor: int) -> None:
+        box = MagicMock(text=text)
+        box.cursor_index.return_value = cursor
+        screen.ids.__getitem__.side_effect = lambda _id: box
+
+    @pytest.mark.parametrize("mode", ["Title", "Tag", "Word"])
+    def test_right_at_the_texts_end_is_the_clear_button(
+        self, screen: SearchScreen, mode: str
+    ) -> None:
+        screen._active_mode = mode
+        self._box(screen, "gold", 4)
+        with (
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(screen, "_draw_clear_focus") as draw,
+        ):
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_focus_area == "clear"
+        draw.assert_called_once_with()
+
+    def test_right_inside_the_text_moves_the_cursor(self, screen: SearchScreen) -> None:
+        screen._active_mode = "Word"
+        self._box(screen, "gold", 2)
+        assert screen.handle_key(search_screen.KEY_RIGHT) is False  # the box's own key
+        assert screen._nav_focus_area == "input"
+
+    def test_right_from_the_clear_button_is_the_results(self, screen: SearchScreen) -> None:
+        screen._active_mode = "Word"
+        screen._nav_focus_area = "clear"
+        with (
+            patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
+            patch.object(screen, "_clear_clear_focus"),
+            patch.object(screen, "_draw_result_focus") as draw,
+        ):
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_focus_area == "results"
+        draw.assert_called_once_with()
+
+    def test_with_no_results_the_focus_stays_on_the_clear_button(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._active_mode = "Word"
+        screen._nav_focus_area = "clear"
+        with patch.object(screen, "_get_active_result_rows", return_value=[]):
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_focus_area == "clear"
+
+    def test_enter_on_the_clear_button_clears_and_returns_to_the_box(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._active_mode = "Word"
+        screen._nav_focus_area = "clear"
+        clear_button = MagicMock()
+        with (
+            patch.object(screen, "_get_active_clear_button", return_value=clear_button),
+            patch.object(screen, "_clear_clear_focus"),
+        ):
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        clear_button.trigger_action.assert_called_once_with(duration=0)
+        assert screen._nav_focus_area == "input"
