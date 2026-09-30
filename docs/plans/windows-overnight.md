@@ -261,7 +261,7 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   holding about 7.5 GB, Claude Code stopped the run, leaving the app behind. The runner
   now needs 6 GB free to start a GUI stage and holds the app to a ceiling while it runs
   (`docs/setup.md`), so a runaway fails the stage with its size instead.
-- **The ceiling is 4.5 GB, a guard for the machine, not a leak test.** At 3 GB the next
+- **The ceiling is 6 GB, a guard for the machine, not a leak test.** At 3 GB the next
   full run (6ab6f37f) passed every stage but the soak, which it stopped three walks of
   four: at 3,162 MB (four comics, three wiki pages), 3,378 MB (the big tables) and
   3,102 MB (twenty ordinary wiki pages). The suite's peaks were 2,080 MB (workspace app)
@@ -269,6 +269,7 @@ build of 5bf601f4 in 38s; `validate` skipped itself (no prebuilt comics). The fa
   (b03c077e): no leak, garbage waiting for a rare full collection (dead wiki pages,
   thousands of labels) and memory the allocator keeps, 3.5 GiB there, then holding. It
   holds on Windows too: the five `leave_no` tests, which count what the app holds after a
-  full collection over six round trips, pass on both apps. The first run's walk reached
-  4.4 GB, above Linux's plateau; if 4.5 GB proves too tight, the soak's logged peaks say
-  by how much. The viewer's cost per table row (above) is the open question.
+  full collection over six round trips, pass on both apps. At 4.5 GB (dfc2a0ca) three
+  walks passed and the one through the big reference tables (`main-index`, seed 2731)
+  reached 4,904 MB, above the first run's 4.4 GB and Linux's plateau, so the ceiling went
+  to 6 GB. The viewer's cost per table row (above) is the open question, and drives it.
