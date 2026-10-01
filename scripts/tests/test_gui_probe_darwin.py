@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 import gui_probe
 import gui_probe_darwin
@@ -104,6 +105,42 @@ class TestWindowPicking:
         front = frontmost_normal_window(windows)
         assert front is not None
         assert front.owner_pid == 7
+
+
+class TestKeyTarget:
+    """Keys go to the app's process alone, never to whatever app is in front."""
+
+    @staticmethod
+    def _backend() -> gui_probe_darwin.DarwinBackend:
+        with patch.object(gui_probe_darwin, "_declare"):
+            return gui_probe_darwin.DarwinBackend()
+
+    def test_no_key_is_sent_before_the_app_was_found_in_front(self) -> None:
+        backend = self._backend()
+        with (
+            patch.object(gui_probe_darwin, "_key") as key,
+            pytest.raises(RuntimeError, match="no app process"),
+        ):
+            backend.send_key("Return")
+        key.assert_not_called()
+
+    def test_keys_and_typed_text_go_to_the_apps_process(self) -> None:
+        backend = self._backend()
+        app = _window(7, "python", "The Compleat Barks Disney Reader", pid=4321)
+        with (
+            patch.object(gui_probe_darwin, "window_list", return_value=[app]),
+            patch.object(gui_probe_darwin, "_key") as key,
+        ):
+            assert backend.bring_to_front(7)
+            backend.send_key("Escape")
+            backend.send_char("M")
+        assert [c.args for c in key.call_args_list] == [
+            (4321, 53),
+            (4321, 53),
+            (4321, 46),
+            (4321, 46),
+        ]
+        assert key.call_args_list[2].kwargs == {"down": True, "shift": True, "char": "M"}
 
 
 class TestLaunch:

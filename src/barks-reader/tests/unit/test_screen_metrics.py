@@ -43,8 +43,44 @@ class TestScreenMetrics:
         with patch.object(screen_metrics_module, "PLATFORM", Platform.WIN):
             assert get_approximate_taskbar_height() == 60  # noqa: PLR2004
 
-        with patch.object(screen_metrics_module, "PLATFORM", Platform.LINUX):
+        with (
+            patch.object(screen_metrics_module, "PLATFORM", Platform.LINUX),
+            patch.object(screen_metrics_module, "IS_MACOS", False),  # noqa: FBT003
+        ):
             assert get_approximate_taskbar_height() == 55  # noqa: PLR2004
+
+    def test_macos_measures_the_menu_bar_and_the_dock(self) -> None:
+        """A fixed guess left the bottom of the window under the Dock."""
+        with (
+            patch.object(screen_metrics_module, "PLATFORM", Platform.MACOS_X64),
+            patch.object(screen_metrics_module, "IS_MACOS", True),  # noqa: FBT003
+            patch.object(screen_metrics_module, "_macos_reserved_height", return_value=110),
+        ):
+            assert get_approximate_taskbar_height() == 110  # noqa: PLR2004
+
+    def test_macos_falls_back_to_the_fixed_allowance_when_app_kit_cannot_say(self) -> None:
+        with (
+            patch.object(screen_metrics_module, "PLATFORM", Platform.MACOS_X64),
+            patch.object(screen_metrics_module, "IS_MACOS", True),  # noqa: FBT003
+            patch.object(screen_metrics_module, "_macos_reserved_height", return_value=None),
+        ):
+            assert get_approximate_taskbar_height() == 55  # noqa: PLR2004
+
+    def test_the_macos_measurement_is_the_frame_less_the_visible_frame(self) -> None:
+        def screen(frame_h: float, visible_h: float) -> MagicMock:
+            mock = MagicMock()
+            mock.frame.return_value.size.height = frame_h
+            mock.visibleFrame.return_value.size.height = visible_h
+            return mock
+
+        app_kit = MagicMock()
+        app_kit.NSScreen.screens.return_value = [screen(1440, 1330), screen(1080, 1080)]
+        with patch.object(screen_metrics_module.importlib, "import_module", return_value=app_kit):
+            assert screen_metrics_module._macos_reserved_height() == 110  # noqa: PLR2004, SLF001
+        with patch.object(
+            screen_metrics_module.importlib, "import_module", side_effect=ImportError("no AppKit")
+        ):
+            assert screen_metrics_module._macos_reserved_height() is None  # noqa: SLF001
 
     def test_get_best_window_height_fit(self) -> None:
         """Test best window height calculation."""

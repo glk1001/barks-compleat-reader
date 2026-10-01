@@ -24,6 +24,47 @@
 >   there could land on it: doctor warns while the Dock does not hide itself. The fix
 >   (the usable screen area, SDL's `SDL_GetDisplayUsableBounds`) is the app's, for
 >   milestone B.
+> - Milestone B: in progress 2026-10-01. **The Dock, fixed in the app:**
+>   `get_approximate_taskbar_height()` measures the menu bar and the Dock on macOS (the
+>   primary `NSScreen`'s frame less its visible frame, by pyobjc, already a macOS
+>   dependency; 110 here, against the fixed 55), so the window is `838x1310+861+25` and
+>   ends above the Dock; every path that fits the window to a screen goes through it.
+>   **The probe** waits up to 5s for the app to come to the front, asking once a second:
+>   once in about ten starts a 2s wait was too short on this guest. **The first whole run**
+>   (`run_gui_tests.py --quiet`, 44 minutes): 110 passed, 1 skipped, 5 failed, 22 teardown
+>   errors. The 22 are all timing budgets (the committed ones: comic images loaded in
+>   9-14s against 6s, post tree setup 4.7s against 3s), for `--calibrate`. The 5:
+>   - `test_word_search_matches_inside_a_word`: a race in the test, fixed. It waited for
+>     the chip line and read the word rows, which the app logs after it, 150ms after
+>     here; it now waits for the rows too, as `test_word_search_bubble_opens_the_story_at_its_page`
+>     does now (it had won the same race).
+>   - `test_the_speaker_list_filters_the_word_results_by_keyboard` and
+>     `test_a_word_search_is_restricted_to_a_tag`: the data. The guest's data pack is the
+>     installed app's of 2026-09-03, whose index has no speakers ("Word search: index has
+>     no speakers; no speaker filter"); not macOS.
+>   - `test_a_typed_and_query_lists_stories_with_both_words`: the last character of
+>     `gold and m` never reached the app (no key line for it, then 15s of silence); it
+>     passed alone. Watch for it in the next run: a dropped key would be the backend's.
+>   - `test_wiki_round_trips_leave_no_pages_behind`: no leak, but rounds that are not the
+>     same. The wiki reopens on its home page with the sidebar on the node of the page
+>     opened last, so each round's two Downs walk on to a new page (Reference, Data,
+>     contents, Chronology, Covers, Kim Weston Index, ...); a branch opened on the way
+>     keeps its rows, and the counts step (1017, 1041 from round 2, 1064 from round 6,
+>     then flat over ten rounds). With the current wiki copy the walk meets no branch in
+>     six rounds, which is why it passes on Linux. Alternating Up and Down does not do:
+>     Return on an open branch's node closes it and shows no page. **Open:** is a sidebar
+>     left on the last page while the home page shows the viewer's bug (okf-reader), or
+>     should the test go to the same page each round?
+>
+>   **Keys went astray.** Posted at the HID tap, a key lands in whatever app is in front;
+>   when the app lost the front between the probe's check and the post (quitting at a
+>   test's end, a click elsewhere), a run's Escape, Return and Left reached the terminal
+>   running Claude Code, interrupting sessions there, submitting their prompts and sending them to the background. Keys
+>   now go to the app's process (`CGEventPostToPid`), remembered from the probe's last
+>   bring-to-front, and none is sent without it; checked with a Finder window in front:
+>   the app took the key and Finder kept the front. Clicks still land by position,
+>   behind the same front check. Do not run the suite on the screen a Claude session is
+>   typing on regardless: a click can still take the focus.
 
 ## Why
 

@@ -1,17 +1,51 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
+from typing import Any
 
 from loguru import logger
 from screeninfo import get_monitors
 
-from .platform_info import PLATFORM, Platform
+from .platform_info import IS_MACOS, PLATFORM, Platform
+
+_WINDOWS_TASKBAR_HEIGHT = 60
+_OTHER_TASKBAR_HEIGHT = 55
 
 
 def get_approximate_taskbar_height() -> int:
-    if PLATFORM != Platform.WIN:
-        return 55
-    return 60
+    """Return how much of the screen's height the desktop keeps for itself.
+
+    On macOS that is measured: the menu bar and the Dock, which a fixed guess left the
+    bottom of the window under. Elsewhere it is a fixed allowance for a taskbar or panel.
+    """
+    if PLATFORM == Platform.WIN:
+        return _WINDOWS_TASKBAR_HEIGHT
+    if IS_MACOS:
+        reserved = _macos_reserved_height()
+        if reserved is not None:
+            return reserved
+    return _OTHER_TASKBAR_HEIGHT
+
+
+def _macos_reserved_height() -> int | None:
+    """Return the height the menu bar and the Dock take on the primary screen, or None.
+
+    The screen's frame less its visible frame, in points, as screeninfo reports the
+    screen. A Dock at the side, or hidden, takes no height. None if AppKit cannot say.
+    """
+    try:
+        # By name: pyobjc is a macOS-only dependency, with no stubs for the type checkers.
+        app_kit: Any = importlib.import_module("AppKit")
+        screens = app_kit.NSScreen.screens()
+        if not screens:
+            return None
+        primary = screens[0]  # the one with the menu bar, as screeninfo's primary
+        reserved = round(primary.frame().size.height - primary.visibleFrame().size.height)
+    except (ImportError, AttributeError) as exc:
+        logger.warning(f"Could not measure the menu bar and Dock: {exc}.")
+        return None
+    return max(reserved, 0)
 
 
 def get_best_window_height_fit(screen_height: int) -> int:

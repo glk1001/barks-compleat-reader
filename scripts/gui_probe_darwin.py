@@ -1,13 +1,14 @@
 """The macOS backend for ``gui_probe.py``: real input through Quartz events.
 
-Keys and clicks are posted at the HID event tap, where a keyboard's and a mouse's
-own events enter, so they reach the app through the window server, SDL and Kivy -
-the path a user's input takes. Nothing is fed into the app from inside it.
+Keys and clicks are Quartz events, as a keyboard's and a mouse's are, so they
+reach the app through the window server, SDL and Kivy - the path a user's input
+takes. Nothing is fed into the app from inside it.
 
-Keyboard events go to the active app, which is why the probe activates the app
-before every burst and checks that its window is frontmost, so nothing reaches
-another app. Posting events needs the Accessibility permission, and window titles
-and screenshots need Screen Recording, both granted to the terminal the probe runs
+Keys are posted to the app's process alone, so a key can reach nothing else even
+if another app takes the front mid-run; clicks land by position, which is why
+the probe activates the app before every burst and checks its window is in front.
+Posting events needs the Accessibility permission, and window titles and
+screenshots need Screen Recording, both granted to the terminal the probe runs
 from (System Preferences, Security & Privacy, Privacy); ``doctor`` checks both.
 
 Coordinates are the window server's: points, from the top left of the main
@@ -69,6 +70,9 @@ _CF_NUMBER_SINT64 = 4
 _NS_ACTIVATE_IGNORING_OTHER_APPS = 1 << 1
 # A process signalled to stop gets this long before it is killed outright.
 _TERM_GRACE_SECS = 3
+# How long the app gets to come to the front, asked again this often.
+_FRONT_WAIT_SECS = 5
+_FRONT_ASK_EVERY_SECS = 1
 
 _LOCKED = "the screen is locked, or there is no desktop session: input would go nowhere"
 _NO_ACCESSIBILITY = (
@@ -200,6 +204,7 @@ def _declare() -> None:
     ]
     cg.CGEventSetFlags.argtypes = [vp, ctypes.c_uint64]
     cg.CGEventPost.argtypes = [ctypes.c_uint32, vp]
+    cg.CGEventPostToPid.argtypes = [ctypes.c_int, vp]
     cg.CGPreflightScreenCaptureAccess.restype = ctypes.c_bool
     cg.CGSessionCopyCurrentDictionary.restype = vp
     ax.AXIsProcessTrusted.restype = ctypes.c_bool
@@ -300,12 +305,16 @@ def _activate(pid: int) -> bool:
         _objc.objc_autoreleasePoolPop(pool)
 
 
-def _post(event: int) -> None:
+def _post(event: int, pid: int | None = None) -> None:
+    """Post `event` to process `pid` alone, or at the HID tap (where it lands by position)."""
     if not event:
         msg = "Quartz would not make the input event"
         raise RuntimeError(msg)
     try:
-        _cg.CGEventPost(_HID_EVENT_TAP, event)
+        if pid is None:
+            _cg.CGEventPost(_HID_EVENT_TAP, event)
+        else:
+            _cg.CGEventPostToPid(pid, event)
     finally:
         _cf.CFRelease(event)
 
@@ -314,7 +323,7 @@ def _mouse(kind: int, x: int, y: int) -> None:
     _post(_cg.CGEventCreateMouseEvent(None, kind, _CGPoint(x, y), _MOUSE_BUTTON_LEFT))
 
 
-def _key(code: int, *, down: bool, shift: bool = False, char: str = "") -> None:
+def _key(pid: int, code: int, *, down: bool, shift: bool = False, char: str = "") -> None:
     event = _cg.CGEventCreateKeyboardEvent(None, code, down)
     if event and shift:
         _cg.CGEventSetFlags(event, _EVENT_FLAG_SHIFT)
@@ -322,7 +331,7 @@ def _key(code: int, *, down: bool, shift: bool = False, char: str = "") -> None:
         units = char.encode("utf-16-le")
         buffer = (ctypes.c_uint16 * (len(units) // 2)).from_buffer_copy(units)
         _cg.CGEventKeyboardSetUnicodeString(event, len(buffer), buffer)
-    _post(event)
+    _post(event, pid)
 
 
 def _screen_locked() -> bool:
@@ -364,6 +373,8 @@ class DarwinBackend:
 
     def __init__(self) -> None:
         _declare()
+        # The app's process, once bring_to_front has found it: keys go to it alone.
+        self._app_pid: int | None = None
 
     @staticmethod
     def workspace_app_argv(repo_root: Path) -> list[str]:
@@ -390,12 +401,18 @@ class DarwinBackend:
 
     def bring_to_front(self, window: int) -> bool:
         owner = self._info(window).owner_pid
-        deadline = time.monotonic() + 2
+        # A slow machine (software drawing on two cores) can take seconds to hand an
+        # app just started the front; asking again at once only queues more requests.
+        now = time.monotonic()
+        deadline, asked = now + _FRONT_WAIT_SECS, now - _FRONT_ASK_EVERY_SECS
         while time.monotonic() < deadline:
             front = frontmost_normal_window(window_list())
             if front is not None and front.owner_pid == owner:
+                self._app_pid = owner
                 return True
-            _activate(owner)
+            if time.monotonic() - asked >= _FRONT_ASK_EVERY_SECS:
+                _activate(owner)
+                asked = time.monotonic()
             time.sleep(0.1)
         return False
 
@@ -407,11 +424,25 @@ class DarwinBackend:
         _mouse(_EVENT_LEFT_MOUSE_DOWN, x, y)
         _mouse(_EVENT_LEFT_MOUSE_UP, x, y)
 
+    def _key_target(self) -> int:
+        """Return the process keys go to: the app's, and never whatever is in front.
+
+        A key posted where a keyboard's go lands in the frontmost app, and a run's
+        Escape, Return or Left that reached a terminal instead (the app quitting, a
+        click elsewhere) interrupted the Claude session running there, submitted its
+        prompt or sent it to the background. Posted to the app's process, a key can
+        reach nothing else.
+        """
+        if self._app_pid is None:
+            msg = "no app process to send keys to: bring its window to the front first"
+            raise RuntimeError(msg)
+        return self._app_pid
+
     def send_key(self, name: str) -> None:
         if name in VIRTUAL_KEYS:
-            code = VIRTUAL_KEYS[name]
-            _key(code, down=True)
-            _key(code, down=False)
+            pid, code = self._key_target(), VIRTUAL_KEYS[name]
+            _key(pid, code, down=True)
+            _key(pid, code, down=False)
         elif len(name) == 1:
             self.send_char(name)
         else:
@@ -421,9 +452,9 @@ class DarwinBackend:
     def send_char(self, char: str) -> None:
         # The US key for it, with the character attached, so the text is exact on
         # any layout; a character no key types goes on the A key, as its text alone.
-        code, shift = CHAR_KEYS.get(char, (0, False))
-        _key(code, down=True, shift=shift, char=char)
-        _key(code, down=False, shift=shift, char=char)
+        pid, (code, shift) = self._key_target(), CHAR_KEYS.get(char, (0, False))
+        _key(pid, code, down=True, shift=shift, char=char)
+        _key(pid, code, down=False, shift=shift, char=char)
 
     def capture(self, rect: tuple[int, int, int, int], out: Path) -> None:
         width, height, x, y = rect

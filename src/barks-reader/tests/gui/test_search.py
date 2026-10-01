@@ -59,7 +59,9 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     search.type_query(d, WORD_QUERY)
     # Return in the box picks the first matching chip
     # and lands focus on it; the next Return from there enters the result rows.
-    d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
+    # The rows are logged after the chip: on a slow machine, well after.
+    with d.expect(pattern(markers.SEARCH_WORD_RESULTS)):
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=WORD_QUERY), "Return")
     matched = int(last_field(d, markers.WORD_SEARCH_MATCHED, "count", text=WORD_QUERY))
     rows = int(last_field(d, markers.SEARCH_WORD_RESULTS, "count"))
     assert matched >= 1, f"{WORD_QUERY!r} matched no words"
@@ -88,7 +90,8 @@ def test_word_search_matches_inside_a_word(boot: AppBoot) -> None:
     assert not any(w.lower().startswith(INSIDE_QUERY) for w in words), "inside, not at the start"
     count = int(last_field(d, markers.WORD_SEARCH_MATCHED, "count", text=INSIDE_QUERY))
     assert count == len(words), "the count the search facade gives"
-    d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=words[0]), "Return")
+    with d.expect(pattern(markers.SEARCH_WORD_RESULTS)):  # logged after the chip
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=words[0]), "Return")
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) >= 1
 
 
