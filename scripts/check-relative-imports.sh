@@ -13,8 +13,9 @@ check_dir() {
     # Remaining args are passed directly to grep (e.g. --exclude-dir, --exclude).
     local extra_args=("$@")
 
-	# Just grep one dir level.
-    local grep_args=(-n "$pattern" "$dir"/* --include='*.py' "${extra_args[@]}")
+	# Just grep one dir level. An empty array expanded under set -u is an unbound
+	# variable to macOS's bash 3.2; the + form expands it to nothing there.
+    local grep_args=(-n "$pattern" "$dir"/* --include='*.py' ${extra_args[@]+"${extra_args[@]}"})
 
     local matches
     matches=$(grep "${grep_args[@]}" 2>/dev/null || true)
