@@ -12,6 +12,7 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
@@ -163,6 +164,15 @@ def tag_stories_in_years(label: str, years: tuple[int, int] | None = None) -> in
 def tags_matching(query: str) -> list[TagMatch]:
     """Return the tag chips the tag search box shows for `query`, in its order, with counts."""
     return BarksTitleSearch.get_tags_matching(query)
+
+
+@cache
+def group_members(label: str) -> tuple[str, ...]:
+    """Return a tag group's member chips, as the tag search lists them under it."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    group, _ = search.resolve_tag(label.lower())
+    assert isinstance(group, TagGroups), f"{label!r} is no tag group"
+    return tuple(str(member.value) for member in search.get_tag_group_members(group))
 
 
 @cache

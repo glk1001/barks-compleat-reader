@@ -231,14 +231,16 @@ class _TagChipButton(Button):
     ``count_text`` is the number of stories the tag lists, shown small at the
     chip's right; empty for none (a speaker chip). ``text`` stays the tag's name
     alone: picking a chip looks the tag up by it, and the focus lines name it.
-    ``is_group`` marks a subgroup among a group's members, with an arrow drawn
-    beside the count (drawn: the font has no arrow glyph).
+    ``is_group`` marks a tag group, with an arrow drawn beside the count (drawn:
+    the font has no arrow glyph), pointing down while ``is_open`` (its members
+    listed under it).
     """
 
     chip_bg_color = ObjectProperty(CHIP_BORDER_NONE)
     chip_border_color = ObjectProperty(CHIP_BORDER_NONE)
     count_text = StringProperty("")
     is_group = BooleanProperty(defaultvalue=False)
+    is_open = BooleanProperty(defaultvalue=False)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -284,10 +286,6 @@ def _make_era_chip(value: str, label: str) -> _EraChipButton:
 
 class _ScopeChipButton(_SpeakerChipButton):
     """A chip of the word search's tag scope row: everywhere, or only the tags' stories."""
-
-
-def _make_scope_chip(value: str, label: str) -> _ScopeChipButton:
-    return _ScopeChipButton(text=label, value=value)
 
 
 # The tag scope row's chips: the word search everywhere, or only in the tags' stories.
@@ -400,6 +398,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._selected_member: str = ""
         self._tag_chip_strings: list[str] = []
         self._tag_chip_counts: dict[str, int] = {}
+        # The listed chips that are groups, which open to their members and close.
+        self._tag_chip_groups: set[str] = set()
+        # The subgroup open among the open group's members (the data nests no deeper).
+        self._open_subgroup: TagGroups | None = None
         self._tag_titles: list[str] = []
 
         # Word search state
@@ -477,12 +479,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         for row in self._era_rows.values():
             row.set_options(self._era.options())
         # The word search's tag scope: everywhere, or only the stories of the tags the tag
-        # search has selected. Offered only while it has some; refreshed on entering Word.
+        # search has selected. Offered only while it would narrow the word results (or
+        # is in force), each choice with its stories; refreshed on entering Word.
         self._scope_row = ChipRow(
-            self.ids.word_scope_layout, _make_scope_chip, self._on_scope_selected
+            self.ids.word_scope_layout, self._make_scope_chip, self._on_scope_selected
         )
         self._scope_tags = ""
         self._scope_titles: frozenset[str] = frozenset()
+        self._scope_counts: dict[str, int] = {}
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
         if not value:
@@ -593,7 +597,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
         self._tag_chip_counts = {}
+        self._tag_chip_groups = set()
         self._selected_member = ""
+        self._open_subgroup = None
         self._tag_box_query = ""
         if not self._tag_basket_results:  # the picked tags' stories stay while typing
             self._clear_tag_title_results()
@@ -615,6 +621,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         matches = self._search.get_tags_matching(text)
         self._tag_chip_strings = [match.label for match in matches]
         self._tag_chip_counts = {match.label: match.title_count for match in matches}
+        self._tag_chip_groups = {m.label for m in matches if isinstance(m.item, TagGroups)}
         logger.debug(
             log_markers.SEARCH_TAG_RESULTS.format(count=len(self._tag_chip_strings), text=text)
         )
@@ -632,22 +639,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         container.clear_widgets()
 
         selected = self._selected_tag
-        selected_is_group = isinstance(self._current_tag, TagGroups) and selected
+        open_group = self._current_tag if isinstance(self._current_tag, TagGroups) else None
 
         # Find the split point (index after the selected group chip)
         split_idx: int | None = None
-        if selected_is_group:
+        if open_group is not None and selected:
             for i, tag_str in enumerate(self._tag_chip_strings):
                 if tag_str == selected:
                     split_idx = i + 1
                     break
 
-        if split_idx is not None:
+        if split_idx is not None and open_group is not None:
             before = self._tag_chip_strings[:split_idx]
             after = self._tag_chip_strings[split_idx:]
             container.add_widget(self._make_main_chip_stack(before, selected))
-            member_stack = self._make_member_chip_stack()
-            if member_stack:
+            for member_stack in self._make_member_stacks(open_group):
                 container.add_widget(member_stack)
             if after:
                 container.add_widget(self._make_main_chip_stack(after, selected))
@@ -659,9 +665,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         stack.bind(minimum_height=stack.setter("height"))
         for tag_str in tag_strings:
             count = self._tag_chip_counts.get(tag_str)
-            btn = _TagChipButton(text=tag_str, count_text="" if count is None else str(count))
+            btn = _TagChipButton(
+                text=tag_str,
+                count_text="" if count is None else str(count),
+                is_group=tag_str in self._tag_chip_groups,
+                is_open=tag_str == selected and isinstance(self._current_tag, TagGroups),
+            )
             btn.chip_bg_color = chip_bg_active() if tag_str == selected else chip_bg_normal()
-            btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_result_selected(t))
+            btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_chip_pressed(t))
             stack.add_widget(self._make_tag_row(btn))
         return stack
 
@@ -700,33 +711,54 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self.ids.tag_chips_layout.clear_widgets()
         self.ids.tag_chips_layout.add_widget(stack)
 
-    def _make_member_chip_stack(self) -> BoxLayout | None:
-        members = self._search.get_tag_group_members(self._current_tag)
-        if not members:
-            return None
+    def _make_member_stacks(self, group: TagGroups, depth: int = 1) -> list[BoxLayout]:
+        """Return the stacks of `group`'s member chips, indented by `depth`.
+
+        An open subgroup's members follow its chip, a level further in: the stack
+        breaks there, so each stack's chips stay one level's.
+        """
+        stacks: list[BoxLayout] = []
+        rows: list[_TagRow] = []
+        for member in self._search.get_tag_group_members(group):
+            rows.append(self._make_member_row(member))
+            if member is self._open_subgroup:
+                stacks.append(self._make_member_stack(rows, depth))
+                rows = []
+                stacks.extend(self._make_member_stacks(member, depth + 1))
+        if rows:
+            stacks.append(self._make_member_stack(rows, depth))
+        return stacks
+
+    @staticmethod
+    def _make_member_stack(rows: list[_TagRow], depth: int) -> BoxLayout:
         stack = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
             spacing=dp(4),
             # Indented to show they belong to the group above; no more, since each
-            # member row also holds its +.
-            padding=[dp(24), dp(2), dp(2), dp(2)],
+            # member row also holds its +, and a subgroup's members less again, so
+            # their chips keep room for a name on one line.
+            padding=[dp(24) + dp(14) * (depth - 1), dp(2), dp(2), dp(2)],
         )
         stack.is_member_layout = True
         stack.bind(minimum_height=stack.setter("height"))
-        for member in members:
-            label = str(member.value)
-            btn = _TagChipButton(
-                text=label,
-                count_text=str(self._search.get_tag_title_count(member)),
-                is_group=isinstance(member, TagGroups),
-            )
-            btn.chip_bg_color = (
-                chip_bg_active() if label == self._selected_member else _chip_bg_member()
-            )
-            btn.bind(on_release=lambda _b, m=label: self._on_member_tag_selected(m))
-            stack.add_widget(self._make_tag_row(btn))
+        for row in rows:
+            stack.add_widget(row)
         return stack
+
+    def _make_member_row(self, member: Tags | TagGroups) -> _TagRow:
+        label = member.value
+        btn = _TagChipButton(
+            text=label,
+            count_text=str(self._search.get_tag_title_count(member)),
+            is_group=isinstance(member, TagGroups),
+            is_open=member is self._open_subgroup,
+        )
+        btn.chip_bg_color = (
+            chip_bg_active() if label == self._selected_member else _chip_bg_member()
+        )
+        btn.bind(on_release=lambda _b, m=member: self._on_member_chip_pressed(m))
+        return self._make_tag_row(btn)
 
     def _show_tag_titles(self, tag_str: str) -> None:
         """Look up a tag's stories in the era and populate the results list."""
@@ -751,26 +783,56 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not titles and self._era.years is not None:
             layout.add_widget(_SearchResultButton(text=f"None in {self._era.label}", disabled=True))
 
+    def _on_tag_chip_pressed(self, tag_str: str) -> None:
+        """Pick a listed tag; pressed again, a picked group closes, or opens again."""
+        if (
+            tag_str == self._selected_tag
+            and tag_str in self._tag_chip_groups
+            and not self._tag_basket_results
+            and isinstance(self._current_tag, TagGroups)
+        ):
+            self._close_tag_group()
+            return
+        self._on_tag_result_selected(tag_str)
+
     def _on_tag_result_selected(self, tag_str: str) -> None:
         logger.info(log_markers.TAG_SELECTED_TAG.format(tag=tag_str))
         self._tag_basket_results = False
         self._selected_tag = tag_str
         self._selected_member = ""
+        self._open_subgroup = None
         self._current_tag, _ = self._search.resolve_tag(tag_str.lower())
         self._rebuild_tag_chips()
         self._show_tag_titles(tag_str)
 
-    def _on_member_tag_selected(self, member_label: str) -> None:
-        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=member_label))
-        self._tag_basket_results = False
-        self._selected_member = member_label
-        self._show_tag_titles(member_label)
+    def _close_tag_group(self) -> None:
+        """Close the picked group: its members go, and its own stories are listed."""
+        logger.info(log_markers.TAG_GROUP_CLOSED.format(group=self._selected_tag))
+        self._selected_member = ""
+        self._open_subgroup = None
+        self._current_tag = None
+        self._rebuild_tag_chips()
+        self._show_tag_titles(self._selected_tag)
 
-        # Highlight the selected member chip
-        for chip in self._get_member_chip_buttons():
-            chip.chip_bg_color = (
-                chip_bg_active() if chip.text == member_label else _chip_bg_member()
-            )
+    def _on_member_chip_pressed(self, member: Tags | TagGroups) -> None:
+        """Pick a member and list its stories; a subgroup opens its members, or closes them."""
+        label = member.value
+        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=label))
+        self._tag_basket_results = False
+        self._selected_member = label
+        if isinstance(member, TagGroups):
+            if member is self._open_subgroup:
+                logger.info(log_markers.TAG_GROUP_CLOSED.format(group=label))
+                self._open_subgroup = None
+            else:
+                logger.info(log_markers.TAG_GROUP_OPENED.format(group=label))
+                self._open_subgroup = member
+            self._rebuild_tag_chips()
+        else:
+            # Highlight the selected member chip
+            for chip in self._get_member_chip_buttons():
+                chip.chip_bg_color = chip_bg_active() if chip.text == label else _chip_bg_member()
+        self._show_tag_titles(label)
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -784,7 +846,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
         self._tag_chip_counts = {}
+        self._tag_chip_groups = set()
         self._selected_member = ""
+        self._open_subgroup = None
         self._tag_box_query = ""
         self._tag_basket.clear()
         self._show_tag_basket()
@@ -1229,13 +1293,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.info(log_markers.SPEAKER_FILTER_LIFTED.format(speaker=self._speaker, text=searched))
         self._speaker = _ALL_SPEAKERS
 
-    def _find_word_stories(self, speaker: str | None) -> dict[str, TitleInfo]:
+    def _find_word_stories(
+        self, speaker: str | None, *, scoped: bool = True
+    ) -> dict[str, TitleInfo]:
         """Return the stories the listed word search finds, said by `speaker` (None: anyone).
 
         The typed query (or the picked words') when there is one, else the picked
-        word; in the era and the tag scope either way.
+        word; in the era either way, and in the tag scope unless not `scoped`.
         """
-        word_filter = self._word_search_filter()
+        word_filter = self._word_search_filter(scoped=scoped)
         if self._word_query:
             result = self._search.run_word_query(
                 self._word_query, speaker=speaker, search_filter=word_filter
@@ -1251,6 +1317,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
         self._show_said_by_chip()
+        self._show_scope_row()
 
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
@@ -1498,6 +1565,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         old_titles = self._scope_titles
         if selected is None:
             self._scope_tags, self._scope_titles = "", frozenset()
+            self._scope_counts = {}
             self._scope_row.set_options([])
             self._scope_row.set_selected(_EVERYWHERE)
             if was_on:
@@ -1505,11 +1573,39 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 self._rerun_word_results()
             return
         self._scope_tags, self._scope_titles = selected
-        label = textwrap.shorten(f"Only in: {self._scope_tags}", _MAX_SCOPE_LABEL, placeholder="…")
-        self._scope_row.set_options([(_EVERYWHERE, "Everywhere"), (_ONLY_IN_TAGS, label)])
+        self._show_scope_row()
         if was_on and self._scope_titles != old_titles:
             logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags=self._scope_tags))
             self._rerun_word_results()
+
+    def _show_scope_row(self) -> None:
+        """Offer the tag scope, each choice with its stories, while it would narrow the list.
+
+        Offered while the word search lists stories of which the tags tag some but
+        not all, counted in the era and under the speaker; and while the scope is in
+        force, so it can be lifted. Not while nothing is searched.
+        """
+        in_force = self._scope_row.selected == _ONLY_IN_TAGS
+        if not self._scope_tags or not (self._word_query or self._selected_word):
+            self._scope_row.set_options([])
+            return
+        everywhere = self._find_word_stories(self._speaker or None, scoped=False)
+        in_tags = sum(1 for title in everywhere if title in self._scope_titles)
+        if not in_force and not 0 < in_tags < len(everywhere):
+            self._scope_row.set_options([])
+            return
+        self._scope_counts = {_EVERYWHERE: len(everywhere), _ONLY_IN_TAGS: in_tags}
+        focused = self._scope_row.focused
+        label = textwrap.shorten(f"Only in: {self._scope_tags}", _MAX_SCOPE_LABEL, placeholder="…")
+        self._scope_row.set_options([(_EVERYWHERE, "Everywhere"), (_ONLY_IN_TAGS, label)])
+        if focused is not None:
+            self._scope_row.enter_focus(focused)
+
+    def _make_scope_chip(self, value: str, label: str) -> _ScopeChipButton:
+        count = self._scope_counts.get(value)
+        return _ScopeChipButton(
+            text=label, value=value, count_text="" if count is None else str(count)
+        )
 
     def _on_scope_selected(self, value: str) -> None:
         """List the word search's stories again, everywhere or only in the tags' stories."""
@@ -1517,9 +1613,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags=tags))
         self._rerun_word_results()
 
-    def _word_search_filter(self) -> SearchFilter | None:
-        """Return the word search's story filter: the era's years and the tag scope's stories."""
-        tag_titles = self._scope_titles if self._scope_row.selected == _ONLY_IN_TAGS else None
+    def _word_search_filter(self, *, scoped: bool = True) -> SearchFilter | None:
+        """Return the word search's story filter: the era's years and the tag scope's stories.
+
+        Without the tag scope's when not `scoped`: the scope row counts what it narrows.
+        """
+        in_force = scoped and self._scope_row.selected == _ONLY_IN_TAGS
+        tag_titles = self._scope_titles if in_force else None
         if self._era.years is None and tag_titles is None:
             return None
         return SearchFilter(years=self._era.years, tag_titles=tag_titles)
@@ -2098,14 +2198,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             was_main and focused_chip.text == self._selected_tag and self._get_member_chip_buttons()
         )
         if is_open_group:
-            # Collapse the open group: show the group's own titles
-            self._selected_member = ""
-            self._current_tag = None
-            self._rebuild_tag_chips()
-            self._show_tag_titles(self._selected_tag)
+            self._close_tag_group()  # its own titles; the focus stays on it
             new_chips = self._get_tag_chip_buttons()
             self._nav_focused_chip_idx = next(
                 (i for i, c in enumerate(new_chips) if c.text == self._selected_tag), 0
+            )
+            self._draw_chip_focus()
+            return
+        if not was_main and isinstance(focused_chip, _TagChipButton) and focused_chip.is_group:
+            # A subgroup opens (or closes) in place: the focus stays on it, so Down
+            # walks into its members.
+            label = focused_chip.text
+            focused_chip.trigger_action(duration=0)
+            new_chips = self._get_tag_chip_buttons()
+            self._nav_focused_chip_idx = next(
+                (i for i, c in enumerate(new_chips) if c.text == label), 0
             )
             self._draw_chip_focus()
             return

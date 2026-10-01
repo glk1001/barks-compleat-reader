@@ -246,6 +246,9 @@ WORD_SEARCH_MATCHED: Final = 'Word search: "{text}" matched {count} words.'
 SEARCH_CLEARED: Final = "Search cleared: {mode}."
 TAG_SELECTED_TAG: Final = 'Tag search: selected tag "{tag}".'
 TAG_SELECTED_MEMBER: Final = 'Tag search: selected member "{member}".'
+# A tag group's members opened under it (a subgroup's, nested), or closed again.
+TAG_GROUP_OPENED: Final = 'Tag search: group "{group}" opened.'
+TAG_GROUP_CLOSED: Final = 'Tag search: group "{group}" closed.'
 # The stories a picked tag (or member) lists: its chip shows the same count.
 TAG_TITLES_LISTED: Final = 'Tag search: "{tag}" lists {count} stories.'
 WORD_SELECTED_CHIP: Final = 'Word search: selected chip "{word}".'

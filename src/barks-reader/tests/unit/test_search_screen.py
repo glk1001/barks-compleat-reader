@@ -31,6 +31,7 @@ from barks_reader.ui.search_screen import (
     _TagRow,
     _WordRow,
 )
+from kivy.metrics import dp
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -62,6 +63,9 @@ def _make_bare_screen() -> SearchScreen:
     screen._tag_basket_row = ChipRow(MagicMock(), _live_chip, screen._on_tag_basket_chip_picked)
     screen._tag_basket_results = False
     screen._tag_box_query = ""
+    # The tag list's groups, and its open subgroup: none.
+    screen._tag_chip_groups = set()
+    screen._open_subgroup = None
     # The era: all years, a row in each results panel, over stand-ins.
     screen._listed_tag = ""
     screen._era = EraChoice(ERA_RANGES)
@@ -74,6 +78,7 @@ def _make_bare_screen() -> SearchScreen:
     screen._scope_row = ChipRow(MagicMock(), _live_chip, screen._on_scope_selected)
     screen._scope_tags = ""
     screen._scope_titles = frozenset()
+    screen._scope_counts = {}
     return screen
 
 
@@ -707,7 +712,9 @@ class TestTagChips:
             bare = _make_bare_screen()
             bare._search = MagicMock()
             bare._selected_tag = ""
+            bare._selected_member = ""
             bare._current_tag = None
+            bare._tag_chip_counts = {}
             yield bare
 
     def test_the_search_s_order_is_kept_not_resorted(self, screen: SearchScreen) -> None:
@@ -752,22 +759,110 @@ class TestTagChips:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         """The arrow is drawn from `is_group`: the font has none, and the name stays the tag's."""
-        screen._current_tag = TagGroups.COUNTRIES
-        screen._selected_member = ""
         screen._search.get_tag_group_members.return_value = [TagGroups.AFRICA, Tags.DUCKBURG]
         screen._search.get_tag_title_count.return_value = 7
-        stack = screen._make_member_chip_stack()
-        assert stack is not None
+        [stack] = screen._make_member_stacks(TagGroups.COUNTRIES)
         chips = [row.chip for row in reversed(stack.children)]
-        assert [(c.text, c.is_group) for c in chips] == [("Africa", True), ("Duckburg", False)]
+        assert [(c.text, c.is_group, c.is_open) for c in chips] == [
+            ("Africa", True, False),
+            ("Duckburg", False, False),
+        ]
 
         with (
             patch.object(screen, "_show_tag_titles") as listed,
-            patch.object(screen, "_get_member_chip_buttons", return_value=chips),
+            patch.object(screen, "_rebuild_tag_chips"),
         ):
             chips[0].dispatch("on_release")
         listed.assert_called_once_with("Africa")
         assert log_markers.TAG_SELECTED_MEMBER.format(member="Africa") in loguru_sink
+
+    @staticmethod
+    def _chemistry(screen: SearchScreen) -> None:
+        """List chemistry, a group whose members hold a subgroup, chemical names."""
+        members = {
+            TagGroups.CHEMISTRY: [Tags.DUCKMITE, TagGroups.CHEMICAL_NAMES, Tags.WEEMITE],
+            TagGroups.CHEMICAL_NAMES: [Tags.GYRO_GEARLOOSE, Tags.DUCKBURG],
+        }
+        screen._search.get_tag_group_members.side_effect = lambda group: members[group]
+        screen._search.get_tag_title_count.return_value = 3
+        screen._search.resolve_tag.return_value = (TagGroups.CHEMISTRY, [])
+        screen._tag_chip_strings = ["chemistry"]
+        screen._tag_chip_groups = {"chemistry"}
+
+    def test_a_picked_group_pressed_again_closes_then_opens(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        self._chemistry(screen)
+        with (
+            patch.object(screen, "_rebuild_tag_chips"),
+            patch.object(screen, "_show_tag_titles") as listed,
+        ):
+            screen._on_tag_chip_pressed("chemistry")
+            assert screen._current_tag is TagGroups.CHEMISTRY  # open: its members listed
+            screen._on_tag_chip_pressed("chemistry")
+            assert screen._current_tag is None  # closed
+            assert screen._selected_tag == "chemistry"  # still picked: its stories listed
+            screen._on_tag_chip_pressed("chemistry")
+            assert screen._current_tag is TagGroups.CHEMISTRY  # open again
+        assert [c.args[0] for c in listed.call_args_list] == ["chemistry"] * 3
+        assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
+
+    def test_a_plain_tag_pressed_again_stays_picked(self, screen: SearchScreen) -> None:
+        screen._search.resolve_tag.return_value = (Tags.DUCKBURG, [])
+        screen._tag_chip_strings = ["Duckburg"]
+        with patch.object(screen, "_rebuild_tag_chips"), patch.object(screen, "_show_tag_titles"):
+            screen._on_tag_chip_pressed("Duckburg")
+            screen._on_tag_chip_pressed("Duckburg")
+        assert (screen._selected_tag, screen._current_tag) == ("Duckburg", Tags.DUCKBURG)
+
+    def test_the_open_group_s_chip_points_down(self, screen: SearchScreen) -> None:
+        self._chemistry(screen)
+        screen._current_tag = TagGroups.CHEMISTRY
+        stack = screen._make_main_chip_stack(["chemistry"], selected="chemistry")
+        [row] = stack.children
+        assert (row.chip.is_group, row.chip.is_open) == (True, True)
+
+    def test_an_open_subgroup_s_members_follow_its_chip_a_level_in(
+        self, screen: SearchScreen
+    ) -> None:
+        self._chemistry(screen)
+        screen._open_subgroup = TagGroups.CHEMICAL_NAMES
+        stacks = screen._make_member_stacks(TagGroups.CHEMISTRY)
+        texts = [[row.chip.text for row in reversed(st.children)] for st in stacks]
+        assert texts == [
+            ["duckmite", "chemical names"],
+            ["Gyro Gearloose", "Duckburg"],  # chemical names', a level in
+            ["weemite"],
+        ]
+        assert [st.padding[0] for st in stacks] == [dp(24), dp(38), dp(24)]
+        assert all(st.is_member_layout for st in stacks)  # all walked as members
+        [_, subgroup] = [row.chip for row in reversed(stacks[0].children)]
+        assert (subgroup.is_group, subgroup.is_open) == (True, True)
+
+    def test_a_subgroup_member_opens_then_closes(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        self._chemistry(screen)
+        with (
+            patch.object(screen, "_rebuild_tag_chips") as rebuilt,
+            patch.object(screen, "_show_tag_titles") as listed,
+        ):
+            screen._on_member_chip_pressed(TagGroups.CHEMICAL_NAMES)
+            assert screen._open_subgroup is TagGroups.CHEMICAL_NAMES
+            screen._on_member_chip_pressed(TagGroups.CHEMICAL_NAMES)
+            assert screen._open_subgroup is None
+        assert rebuilt.call_count == 2  # noqa: PLR2004
+        assert [c.args[0] for c in listed.call_args_list] == ["chemical names"] * 2
+        assert screen._selected_member == "chemical names"  # still picked: its stories listed
+        assert log_markers.TAG_GROUP_OPENED.format(group="chemical names") in loguru_sink
+        assert log_markers.TAG_GROUP_CLOSED.format(group="chemical names") in loguru_sink
+
+    def test_picking_another_tag_closes_the_open_subgroup(self, screen: SearchScreen) -> None:
+        self._chemistry(screen)
+        screen._open_subgroup = TagGroups.CHEMICAL_NAMES
+        with patch.object(screen, "_rebuild_tag_chips"), patch.object(screen, "_show_tag_titles"):
+            screen._on_tag_result_selected("chemistry")
+        assert screen._open_subgroup is None
 
     def test_listing_a_tag_s_stories_is_logged_with_their_count(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -1870,7 +1965,12 @@ class TestTagScope:
             bare._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [PIRATE_GOLD, HELMET])
             bare._search.titles_for_tag_selection.return_value = [HELMET]
             bare._search.run_word_query.return_value = WordQueryResult()
-            bare._selected_word = ""
+            # A word listed in two stories, one of them the tag's: the scope would narrow.
+            bare._selected_word = "gold"
+            bare._search.find_words.return_value = {
+                ENUM_TO_STR_TITLE[HELMET]: TitleInfo(11, {"3": PageInfo("3", [])}),
+                ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]: TitleInfo(7, {"5": PageInfo("5", [])}),
+            }
             bare._word_search_results = []
             bare._selected_result_button = None
             bare.on_search_results_title_changed = None
@@ -1931,8 +2031,8 @@ class TestTagScope:
         _press(self._scope_chips(screen)[1])
 
         titles = frozenset(ENUM_TO_STR_TITLE[t] for t in (PIRATE_GOLD, HELMET))
-        search_filter = screen._search.run_word_query.call_args.kwargs["search_filter"]
-        assert search_filter == SearchFilter(tag_titles=titles)
+        listing = screen._search.run_word_query.call_args_list[0]  # then the row's count
+        assert listing.kwargs["search_filter"] == SearchFilter(tag_titles=titles)
         assert log_markers.WORD_TAG_FILTER_SET.format(tags="Gyro Gearloose") in loguru_sink
 
         screen._word_query = ""
@@ -1959,7 +2059,7 @@ class TestTagScope:
         _press(self._scope_chips(screen)[1])
         _press(self._scope_chips(screen)[0])
         assert screen._word_search_filter() is None
-        assert loguru_sink[-1] == log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere")
+        assert log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere") in loguru_sink
 
     def test_a_scope_in_force_follows_the_tags_or_lifts_with_them(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -1986,6 +2086,67 @@ class TestTagScope:
             screen.set_mode("Word")
             screen.set_mode("Tag")
         refresh.assert_called_once_with()
+
+    @staticmethod
+    def _found_in(*titles: Titles) -> dict[str, TitleInfo]:
+        return {ENUM_TO_STR_TITLE[t]: TitleInfo(1, {"1": PageInfo("1", [])}) for t in titles}
+
+    @pytest.mark.parametrize(
+        ("found", "offered"),
+        [
+            ((HELMET, Titles.LOST_IN_THE_ANDES), True),  # the tag's and another: it narrows
+            ((HELMET, PIRATE_GOLD), False),  # all the tag's: Only in would change nothing
+            ((Titles.LOST_IN_THE_ANDES,), False),  # none the tag's: Only in would list nothing
+        ],
+        ids=["some", "all", "none"],
+    )
+    def test_the_scope_is_offered_only_while_it_would_narrow_the_list(
+        self, screen: SearchScreen, found: tuple[Titles, ...], *, offered: bool
+    ) -> None:
+        screen._listed_tag = "Gyro Gearloose"  # tags Pirate Gold and the Helmet
+        screen._search.find_words.return_value = self._found_in(*found)
+        screen._refresh_tag_scope()
+        assert bool(screen._scope_row.chips) is offered
+        assert ("scope" in dict(screen._panel_rows())) is offered
+
+    def test_each_choice_counts_its_stories(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        assert screen._scope_counts == {"": 2, "tags": 1}  # the fixture's word: 2, 1 the tag's
+        chip = screen._make_scope_chip("tags", "Only in: Gyro Gearloose")
+        assert (type(chip).__name__, chip.text, chip.count_text) == (
+            "_ScopeChipButton",
+            "Only in: Gyro Gearloose",
+            "1",
+        )
+
+    def test_a_scope_in_force_stays_offered_when_it_no_longer_narrows(
+        self, screen: SearchScreen
+    ) -> None:
+        """So it can be lifted: a new word all of whose stories are the tag's."""
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        _press(self._scope_chips(screen)[1])
+        screen._search.find_words.return_value = self._found_in(HELMET, PIRATE_GOLD)
+        screen._show_scope_row()
+        assert [c.value for c in self._scope_chips(screen)] == ["", "tags"]
+
+    def test_nothing_searched_offers_no_scope(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._selected_word = ""
+        screen._refresh_tag_scope()
+        assert screen._scope_row.chips == []
+        screen._search.find_words.assert_not_called()
+
+    def test_the_scope_is_counted_in_the_era_and_under_the_speaker(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._speaker = "Gyro"
+        screen._era.select("1951-1954")  # the Andes (1948) is out: the Helmet alone is left
+        screen._refresh_tag_scope()
+        assert screen._scope_row.chips == []  # all that is left is the tag's
+        assert screen._search.find_words.call_args.kwargs["speaker"] == "Gyro"
 
     def test_the_scope_row_sits_between_the_era_and_the_stories(self, screen: SearchScreen) -> None:
         screen._listed_tag = "Gyro Gearloose"

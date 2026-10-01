@@ -132,13 +132,17 @@
         size_hint: None, None
         size: self.texture_size
         pos: root.right - self.width - dp(14), root.center_y - self.height / 2
-        # A subgroup's arrow, left of the count, pointing on to its members: none on
-        # a plain tag.
+        # A group's arrow, left of the count: pointing on to its members while they
+        # are closed, down while they are listed under it; none on a plain tag.
         canvas.before:
             Color:
                 rgba: root.color[:3] + [0.8 if root.is_group else 0]
             Triangle:
                 points:
+                    [self.x - dp(15), self.center_y + dp(3), \
+                    self.x - dp(5), self.center_y + dp(3), \
+                    self.x - dp(10), self.center_y - dp(4)] \
+                    if root.is_open else \
                     [self.x - dp(14), self.center_y + dp(5), \
                     self.x - dp(14), self.center_y - dp(5), \
                     self.x - dp(7), self.center_y]

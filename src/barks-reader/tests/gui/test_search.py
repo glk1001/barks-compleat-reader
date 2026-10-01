@@ -328,6 +328,32 @@ def test_a_tag_groups_members_are_walked_and_picked_by_keyboard(boot: AppBoot) -
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")  # off the top chip: back in the box
 
 
+# A group among whose members is a subgroup, which opens in place.
+NESTING_GROUP = "chemistry"
+SUBGROUP = "chemical names"
+
+
+def test_a_subgroup_opens_in_place_and_closes_by_keyboard(boot: AppBoot) -> None:
+    """Return on a subgroup among the members lists its own under it; Return again closes them."""
+    members = expected.group_members(NESTING_GROUP)
+    sub_members = expected.group_members(SUBGROUP)
+    after = members[members.index(SUBGROUP) + 1]  # the member after the subgroup
+
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=NESTING_GROUP)):  # picked as typed
+        search.type_query(d, NESTING_GROUP)
+    d.key_then_wait(_chip_focused(NESTING_GROUP), "Return")
+    for member in members[: members.index(SUBGROUP) + 1]:
+        d.key_then_wait(_chip_focused(member), "Down")
+    with d.expect(pattern(markers.TAG_GROUP_OPENED, group=SUBGROUP)):
+        d.key_then_wait(_chip_focused(SUBGROUP), "Return")  # opened; the focus stays on it
+    d.key_then_wait(_chip_focused(sub_members[0]), "Down")  # into its members
+    d.key_then_wait(_chip_focused(SUBGROUP), "Up")
+    with d.expect(pattern(markers.TAG_GROUP_CLOSED, group=SUBGROUP)):
+        d.key_then_wait(_chip_focused(SUBGROUP), "Return")
+    d.key_then_wait(_chip_focused(after), "Down")  # its members gone: the next member
+
+
 def test_return_on_a_group_opens_its_members_and_again_closes_them(boot: AppBoot) -> None:
     d = boot(nodes.TAG_SEARCH)
     search.type_query(d, MULTI_QUERY)
