@@ -203,46 +203,6 @@ def _set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
 _set_tag_alias(Tags.CAMERAS, Tags.PHOTOGRAPHY)
 
 
-def is_tag_group_enum(value: str) -> bool:
-    try:
-        TagGroups(value)
-    except ValueError:
-        return False
-    else:
-        return True
-
-
-def get_tag_group_enum(value: str) -> TagGroups | None:
-    try:
-        return TagGroups(value)
-    except ValueError:
-        return None
-
-
-def is_tag_enum(value: str) -> bool:
-    try:
-        Tags(value)
-    except ValueError:
-        return False
-    else:
-        return True
-
-
-def get_tag_enum(value: str) -> Tags | None:
-    try:
-        return Tags(value)
-    except ValueError:
-        return None
-
-
-def get_num_tagged_titles() -> int:
-    num = 0
-    for titles_list in BARKS_TAGGED_TITLES.values():
-        num += len(titles_list)
-
-    return num
-
-
 def validate_tag_data() -> None:
     """Perform various assertions to ensure the integrity of the tag data.
 
@@ -332,11 +292,6 @@ def get_tag_titles(tag: Tags) -> set[Titles]:
     if tag not in BARKS_TAGGED_TITLES:
         return set()
     return set(BARKS_TAGGED_TITLES[tag])
-
-
-def get_tag_group_titles(tag_group: TagGroups) -> set[Titles]:
-    """Retrieve a set titles associated with a specific tag group."""
-    return _get_titles_for_tags_or_groups([tag_group])
 
 
 def _get_tag_categories_titles() -> dict[TagCategories, list[Titles]]:

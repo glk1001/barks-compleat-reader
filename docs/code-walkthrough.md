@@ -261,7 +261,7 @@ injected everywhere. Key methods:
 
 Module-level helpers used pervasively: `ENUM_TO_STR_TITLE` /
 `STR_TITLE_TO_ENUM`, `get_fanta_info`, the tag API in `barks_tags.py`
-(`get_sorted_tagged_titles` `:320`, `get_tag_group_titles` `:337`, etc.).
+(`get_sorted_tagged_titles` `:280`, `get_tag_titles` `:290`, etc.).
 
 ### 3.4 The parenthesized-title convention
 
