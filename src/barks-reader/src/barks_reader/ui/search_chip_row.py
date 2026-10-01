@@ -187,7 +187,8 @@ class ChipRow:
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             if self._chips and self._focused is not None and self._focused < len(self._chips):
                 self._chips[self._focused].trigger_action(duration=0)
-                self._draw_focus()
+                if self._focused is not None:  # unless the pick gave the keyboard away
+                    self._draw_focus()
             return RowKey.HANDLED
         if is_escape_key(key):
             return RowKey.EXIT_ESCAPE

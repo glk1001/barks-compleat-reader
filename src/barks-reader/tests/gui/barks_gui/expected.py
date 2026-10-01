@@ -17,6 +17,11 @@ from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.search_query import Combine
+from barks_fantagraphics.speech_speakers import (
+    CHARACTER_SPEAKER_OPTIONS,
+    NARRATOR,
+    speaker_display_name,
+)
 from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_gui import harness
@@ -172,6 +177,21 @@ def word_stories(word: str, speaker: str | None = None) -> int:
     """Return how many stories the word search lists for a word picked from the list."""
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
     return len(search.find_words(word, speaker=speaker))
+
+
+@cache
+def speaker_list(word: str) -> tuple[str, ...]:
+    """Return the speakers the speaker filter's list offers for a picked word, as it names them.
+
+    Below anyone: the roster speakers the index has who say the word, most stories
+    first, the roster's order among equals.
+    """
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    indexed = search.get_speakers()
+    roster = [s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed]
+    counts = [(s, len(search.find_words(word, speaker=s))) for s in roster]
+    saying = sorted((sc for sc in counts if sc[1]), key=lambda sc: -sc[1])
+    return tuple(speaker_display_name(s) or s for s, _ in saying)
 
 
 @cache

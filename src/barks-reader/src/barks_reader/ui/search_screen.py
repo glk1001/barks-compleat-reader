@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Self
+from typing import TYPE_CHECKING, ClassVar, Self, cast
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
@@ -17,6 +17,7 @@ from barks_fantagraphics.speech_speakers import (
     speaker_display_name,
 )
 from barks_fantagraphics.tag_query import has_tag_syntax, range_text
+from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -61,9 +62,11 @@ from .reader_keyboard_nav import (
     KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
+    DropdownNavMixin,
     clear_focus_in_list,
     is_escape_key,
     log_nav_focus,
+    open_dropdown,
     update_focus_in_list,
 )
 from .search_chip_row import (
@@ -255,8 +258,22 @@ class _SpeakerChipButton(_TagChipButton):
     value = StringProperty("")
 
 
-def _make_speaker_chip(value: str, label: str) -> _SpeakerChipButton:
-    return _SpeakerChipButton(text=label, value=value)
+class _SaidByChipButton(_SpeakerChipButton):
+    """The word search's speaker filter: one chip, which opens the list of who says it."""
+
+
+def _make_said_by_chip(value: str, label: str) -> _SaidByChipButton:
+    return _SaidByChipButton(text=label, value=value)
+
+
+class _SaidByItem(_SearchResultButton):
+    """A speaker in the speaker filter's list, with the stories they say it in.
+
+    ``value`` is the stored speaker, or empty for anyone (no filter).
+    """
+
+    value = StringProperty("")
+    count_text = StringProperty("")
 
 
 class _EraChipButton(_SpeakerChipButton):
@@ -296,11 +313,19 @@ def _make_basket_chip(value: str, label: str) -> _BasketChipButton:
 _BASKET_MODE_VALUE = ""
 
 
-# The *All* chip's speaker value: no filter.
+# The speaker value for anyone: no filter.
 _ALL_SPEAKERS = ""
+# The speaker filter's one chip, by its value in its row: picked (filled) while a
+# speaker is.
+_SAID_BY = "said by"
 
 
-class SearchScreen(FloatLayout):
+def _speaker_label(speaker: str) -> str:
+    """Return how the speaker filter names a stored speaker; anyone, for none."""
+    return "anyone" if speaker == _ALL_SPEAKERS else speaker_display_name(speaker) or speaker
+
+
+class SearchScreen(DropdownNavMixin, FloatLayout):
     """Bottom view screen for search. Mode is set externally via set_mode()."""
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -391,15 +416,20 @@ class SearchScreen(FloatLayout):
         self._word_query_result: WordQueryResult | None = None
         # The box's text while it is a query to run (Return runs it), else "".
         self._box_query: str = ""
-        # The speaker the word results are narrowed to (its `selected`); `_ALL_SPEAKERS`
-        # for everyone.
+        # The speaker the word results are narrowed to; `_ALL_SPEAKERS` for anyone. Shown
+        # as one chip, filled while a speaker is picked, which opens the list of the
+        # speakers who say what was searched.
+        self._speaker: str = _ALL_SPEAKERS
         self._speaker_row = ChipRow(
-            self.ids.speaker_chips_layout,
-            _make_speaker_chip,
-            self._on_speaker_chip_selected,
-            selected=_ALL_SPEAKERS,
+            self.ids.speaker_chips_layout, _make_said_by_chip, self._on_said_by_chip_pressed
         )
-        self._speaker_chips_built: bool = False
+        # The speakers the filter offers (the index's roster ones); None until read.
+        self._offered_speakers: list[str] | None = None
+        self._said_by_dropdown = ReaderDropDown(auto_width=False, width=dp(220))
+        self._said_by_dropdown.bind(
+            on_select=self._on_said_by_item_selected, on_dismiss=self._on_said_by_dismissed
+        )
+        self._setup_dropdown_nav()
         self._init_picks_and_filters()
 
         # Last activated result (for restoring focus after go-back)
@@ -459,6 +489,7 @@ class SearchScreen(FloatLayout):
     def on_is_visible(self, _instance: Self, value: bool) -> None:
         if not value:
             self._cancel_image_change_event()
+            self._said_by_dropdown.dismiss()  # the speaker list does not outlive the screen
 
     def set_mode(self, mode: str) -> None:
         """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""
@@ -885,12 +916,10 @@ class SearchScreen(FloatLayout):
             self._word_search_results = []
             self._word_query = ""
             self._word_query_result = None
+        self._show_said_by_chip()
 
         if not text.strip():
             return
-
-        if not self._speaker_chips_built:
-            self._build_speaker_chips()
 
         # The words that are the text, then those starting with it, then (from three
         # characters) those with it inside; at most MAX_MATCHES_SHOWN of them.
@@ -968,7 +997,7 @@ class SearchScreen(FloatLayout):
         """
         result = self._search.run_word_query(
             query,
-            speaker=self._speaker_row.selected or None,
+            speaker=self._speaker or None,
             search_filter=self._word_search_filter(),
         )
         self._word_query = query
@@ -1114,6 +1143,7 @@ class SearchScreen(FloatLayout):
         self._word_query_result = None
         self._word_search_results = []
         self.ids.word_results_layout.clear_widgets()
+        self._show_said_by_chip()
 
     def _active_basket_row(self) -> ChipRow:
         return self._tag_basket_row if self._active_mode == "Tag" else self._basket_row
@@ -1176,11 +1206,22 @@ class SearchScreen(FloatLayout):
 
     def _show_word_results(self, word: str) -> None:
         """Run the word search under the current speaker filter and list its titles."""
-        found = self._search.find_words(word, speaker=self._speaker_row.selected or None)
+        self._list_word_stories(self._find_word_stories(self._speaker or None), word)
+
+    def _find_word_stories(self, speaker: str | None) -> dict[str, TitleInfo]:
+        """Return the stories the listed word search finds, said by `speaker` (None: anyone).
+
+        The typed query (or the picked words') when there is one, else the picked
+        word; in the era and the tag scope either way.
+        """
         word_filter = self._word_search_filter()
-        if word_filter is not None:
-            found = apply_filter(word_filter, found)
-        self._list_word_stories(found, word)
+        if self._word_query:
+            result = self._search.run_word_query(
+                self._word_query, speaker=speaker, search_filter=word_filter
+            )
+            return result.title_dict
+        found = self._search.find_words(self._selected_word, speaker=speaker)
+        return found if word_filter is None else apply_filter(word_filter, found)
 
     def _list_word_stories(
         self, found: dict[str, TitleInfo], searched: str, hit_counts: dict[str, int] | None = None
@@ -1188,6 +1229,7 @@ class SearchScreen(FloatLayout):
         """List the stories a search found, each with its pages (and hit count, if given)."""
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
+        self._show_said_by_chip()
 
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
@@ -1203,33 +1245,111 @@ class SearchScreen(FloatLayout):
 
     # --- Word Search: speaker filter ---
 
-    def _build_speaker_chips(self) -> None:
-        """Offer one chip per roster speaker the index knows, plus *All*.
+    def _get_offered_speakers(self) -> list[str]:
+        """Return the speakers the filter offers: the index's roster ones, in its order.
 
-        Built once, from the index's speaker sidecar.  An index without one
-        (built before speakers existed) offers nothing, and the row stays
-        empty and takes no space.  The roster's named characters and the
-        narrator are offered; ``other:`` speakers are a long tail and are not.
+        Read once, from the index's speaker sidecar. An index without one (built
+        before speakers existed) offers none, and no chip shows. The roster's named
+        characters and the narrator are offered; ``other:`` speakers are a long tail
+        and are not.
         """
-        self._speaker_chips_built = True
-        indexed = self._search.get_speakers()
-        offered = [s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed]
-        if not offered:
-            self._speaker_row.set_options([])
-            logger.debug("Word search: index has no speakers; no speaker filter.")
-            return
-
-        self._speaker_row.set_options(
-            [
-                (v, "All" if v == _ALL_SPEAKERS else speaker_display_name(v) or v)
-                for v in (_ALL_SPEAKERS, *offered)
+        if self._offered_speakers is None:
+            indexed = self._search.get_speakers()
+            self._offered_speakers = [
+                s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed
             ]
-        )
+            if not self._offered_speakers:
+                logger.debug("Word search: index has no speakers; no speaker filter.")
+        return self._offered_speakers
 
-    def _on_speaker_chip_selected(self, speaker: str) -> None:
-        """Rerun the word search under the speaker the row just picked."""
+    def _show_said_by_chip(self) -> None:
+        """Show the speaker chip, naming the speaker, while a word search's stories are listed.
+
+        None while nothing is searched, or the index has no speakers. Filled while a
+        speaker is picked. The keyboard stays on it as its text changes.
+        """
+        if not (self._word_query or self._selected_word) or not self._get_offered_speakers():
+            self._speaker_row.set_options([])
+            return
+        focused = self._speaker_row.focused
+        self._speaker_row.set_options([(_SAID_BY, f"Said by: {_speaker_label(self._speaker)}")])
+        self._speaker_row.set_selected(_SAID_BY if self._speaker else "")
+        if focused is not None:
+            self._speaker_row.enter_focus(0)
+
+    def _on_said_by_chip_pressed(self, _value: str) -> None:
+        """Open the list of who says what was searched, each with their stories."""
+        self._speaker_row.set_selected(_SAID_BY if self._speaker else "")  # opening picks none
+        counts = self._speaker_story_counts()
+        dropdown = self._said_by_dropdown
+        dropdown.clear_widgets()
+        for i, (speaker, count) in enumerate(counts):
+            item = _SaidByItem(
+                text=_speaker_label(speaker),
+                value=speaker,
+                count_text=str(count),
+                row_index=i,
+                selected=speaker == self._speaker,
+            )
+            item.bind(on_release=lambda _b, v=speaker: dropdown.select(v))
+            dropdown.add_widget(item)
+        chip = cast("Widget", self._speaker_row.chips[0])
+        if not open_dropdown(dropdown, chip):
+            return
+        logger.info(log_markers.SPEAKER_LIST_OPENED.format(count=len(counts) - 1))
+        if self._nav_focus_area == "speakers" and self._speaker_row.focused is not None:
+            # By the remote: it walks the list, from the speaker picked now.
+            self._nav_focus_area = "said_by_list"
+            self._speaker_row.clear_focus()
+            here = next(i for i, (speaker, _) in enumerate(counts) if speaker == self._speaker)
+            self._enter_dropdown_nav(here)
+
+    def _speaker_story_counts(self) -> list[tuple[str, int]]:
+        """Return anyone's stories, then each speaker's who says what was searched, most first.
+
+        Each count is the search run again under that speaker: the filter wants
+        every bubble a typed query finds to be the speaker's, so counting everyone's
+        bubbles could give too many. The picked speaker stays listed at none, so
+        the filter can be lifted from the list.
+        """
+        total = len(self._find_word_stories(None))
+        counts = [(s, len(self._find_word_stories(s))) for s in self._get_offered_speakers()]
+        listed = [(s, n) for s, n in counts if n or s == self._speaker]
+        listed.sort(key=lambda speaker_count: -speaker_count[1])  # stable: roster order on ties
+        return [(_ALL_SPEAKERS, total), *listed]
+
+    def _on_said_by_item_selected(self, _dropdown: Widget, speaker: str) -> None:
+        """Narrow the word results to the speaker picked from the list, or lift the filter."""
+        self._speaker = speaker
         logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
         self._rerun_word_results()
+        self._show_said_by_chip()
+
+    def _on_said_by_dismissed(self, _dropdown: Widget) -> None:
+        """Give the keyboard back to the speaker chip when the list closes under it."""
+        if not self._dropdown_nav_mode:
+            return
+        self._exit_dropdown_nav()
+        self._nav_focus_area = "speakers"
+        self._speaker_row.enter_focus(0)
+
+    def _handle_said_by_list_key(self, key: int) -> bool:
+        """Keys while the speaker list is open: Up, Down, Enter, Escape; the rest wait."""
+        self._handle_dropdown_key(key)
+        return True
+
+    # --- DropdownNavMixin hooks ---
+
+    def _get_dropdown_buttons(self) -> list[Button]:
+        """Return the speaker list's rows, top to bottom."""
+        return list(reversed(self._said_by_dropdown.container.children))
+
+    def _dismiss_dropdown(self) -> None:
+        self._said_by_dropdown.dismiss()
+
+    def _activate_dropdown_item(self) -> None:
+        # At once, as Enter presses everything on this screen: the list closes on it.
+        self._dropdown_buttons_cache[self._dropdown_focused_idx].trigger_action(duration=0)
 
     # --- The era, for both searches ---
 
@@ -1470,7 +1590,7 @@ class SearchScreen(FloatLayout):
             title_speech_info,
             self._handle_bubble_title_press,
             self._font_manager.speech_bubble_popup_title_font_size,
-            speaker=self._speaker_row.selected or None,
+            speaker=self._speaker or None,
             text_font_size=self._font_manager.speech_bubble_text_font_size,
             highlight_terms=highlight_terms,
         )
@@ -1501,7 +1621,8 @@ class SearchScreen(FloatLayout):
         self._word_basket.clear()
         self._show_basket()
         self._basket_results = False
-        self._speaker_row.set_selected(_ALL_SPEAKERS)
+        self._speaker = _ALL_SPEAKERS
+        self._show_said_by_chip()
         self._set_era(ALL_YEARS)
         self.ids.word_search_input.focus = True
 
@@ -1693,6 +1814,7 @@ class SearchScreen(FloatLayout):
             "clear": self._handle_clear_key,
             "tags": self._handle_tags_key,
             "speakers": self._handle_panel_row_key,
+            "said_by_list": self._handle_said_by_list_key,
             "scope": self._handle_panel_row_key,
             "basket": self._handle_basket_key,
             "era": self._handle_panel_row_key,

@@ -280,6 +280,8 @@ ERA_FILTER_SET: Final = 'Search: era "{era}".'
 WORD_TAG_FILTER_SET: Final = 'Word search: tag filter "{tags}".'
 # The speaker a word search is filtered to; "All" once the filter is lifted.
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
+# The speaker filter's list opened: the speakers who say what was searched, besides anyone.
+SPEAKER_LIST_OPENED: Final = "Word search: speaker list opened with {count} speakers."
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'
 WORD_BUBBLE_PRESS: Final = 'Word search bubble press: "{title}" page {page}.'
 
