@@ -88,7 +88,9 @@
 >     and a symlink test needs Developer Mode (abe1aa4d).
 >
 > **What is left:**
-> 1. macOS window and input coverage needs a real Mac; CI's runners cannot draw.
+> 1. macOS window and input coverage needs a real Mac; CI's runners cannot draw. A macOS
+>    VirtualBox guest can, on software OpenGL (2026-10-01): plan in
+>    `docs/plans/macos-gui-tests.md`.
 > 2. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
 >    -k test_one_pagers_ignore_double_page`.
 > 3. On the move to Kivy 3.0 (SDL3, expected January 2027), recheck the fullscreen frame
