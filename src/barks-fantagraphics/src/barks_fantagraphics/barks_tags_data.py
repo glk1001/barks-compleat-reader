@@ -1653,6 +1653,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.COPPER, Titles.RICHES_RICHES_EVERYWHERE): ["14"],
     (Tags.CORNELIUS_MC_COBB, Titles.VOODOO_HOODOO): ["20", "21", "22", "23"],
     (Tags.CRETE, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["9"],
+    (Tags.DAISY, Titles.MIGHTY_TRAPPER_THE): ["2"],
     (Tags.DAISY, Titles.EYES_IN_THE_DARK): ["7"],
     (Tags.DAMASCUS, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["8"],
     (Tags.DUCKMITE, Titles.MAD_CHEMIST_THE): ["2", "3", "4", "5", "6", "10"],
