@@ -24,6 +24,7 @@ from barks_reader.ui.settings_fix import (
     SettingLongPathPopup,
     SettingOptionsWithValue,
 )
+from kivy.uix import filechooser
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -171,7 +172,11 @@ class TestQuietFileSystem:
             assert QuietFileSystem().is_hidden("C:\\Comics") is False
 
     def test_elsewhere_a_dot_file_is_hidden(self) -> None:
-        with patch.object(settings_fix, "sys", SimpleNamespace(platform="linux")):
+        # Kivy's own check reads its platform, not ours, so it moves off Windows too.
+        with (
+            patch.object(settings_fix, "sys", SimpleNamespace(platform="linux")),
+            patch.object(filechooser, "platform", "linux"),
+        ):
             assert QuietFileSystem().is_hidden("/home/me/.config") is True
             assert QuietFileSystem().is_hidden("/home/me/Comics") is False
 
