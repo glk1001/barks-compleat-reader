@@ -2131,6 +2131,26 @@ class TestTagScope:
         screen._show_scope_row()
         assert [c.value for c in self._scope_chips(screen)] == ["", "tags"]
 
+    @pytest.mark.parametrize("how", ["box emptied", "clear button", "picked words emptied"])
+    def test_the_scope_goes_with_the_results_it_counted(
+        self, screen: SearchScreen, how: str
+    ) -> None:
+        """Its chips and counts are the listed search's: when that empties, so does the row."""
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        assert screen._scope_row.chips  # offered, with its counts
+        screen._search.get_words_matching.return_value = TermMatches([], 0)
+        if how == "box emptied":
+            screen.on_word_search_text("")
+        elif how == "clear button":
+            screen.on_word_clear()
+        else:
+            screen._selected_word = ""
+            screen._word_query = '"gold"'  # the picked words' query, its last word then taken out
+            screen._basket_results = True
+            screen._run_basket()
+        assert screen._scope_row.chips == []
+
     def test_nothing_searched_offers_no_scope(self, screen: SearchScreen) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._selected_word = ""

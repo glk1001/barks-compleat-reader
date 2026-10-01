@@ -975,7 +975,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._word_search_results = []
             self._word_query = ""
             self._word_query_result = None
-        self._show_said_by_chip()
+        self._show_result_filters()
 
         if not text.strip():
             return
@@ -1213,7 +1213,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._word_query_result = None
         self._word_search_results = []
         self.ids.word_results_layout.clear_widgets()
-        self._show_said_by_chip()
+        self._show_result_filters()
 
     def _active_basket_row(self) -> ChipRow:
         return self._tag_basket_row if self._active_mode == "Tag" else self._basket_row
@@ -1316,8 +1316,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """List the stories a search found, each with its pages (and hit count, if given)."""
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
-        self._show_said_by_chip()
-        self._show_scope_row()
+        self._show_result_filters()
 
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
@@ -1332,6 +1331,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._update_background_from_results(word_result_titles)
 
     # --- Word Search: speaker filter ---
+
+    def _show_result_filters(self) -> None:
+        """Show the word results' filters for what is listed now: the speaker chip, the scope.
+
+        Each goes when nothing is searched, so wherever the results empty, both follow.
+        """
+        self._show_said_by_chip()
+        self._show_scope_row()
 
     def _get_offered_speakers(self) -> list[str]:
         """Return the speakers the filter offers: the index's roster ones, in its order.
@@ -1747,7 +1754,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._show_basket()
         self._basket_results = False
         self._speaker = _ALL_SPEAKERS
-        self._show_said_by_chip()
+        self._show_result_filters()
         self._set_era(ALL_YEARS)
         self.ids.word_search_input.focus = True
 
