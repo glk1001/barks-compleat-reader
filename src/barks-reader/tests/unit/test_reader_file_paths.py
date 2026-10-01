@@ -75,6 +75,22 @@ class TestReaderFilePaths:
         assert reader_file_paths._barks_panels_zip is not None
         assert reader_file_paths._panels_ext_type == BarksPanelsExtType.JPG
 
+    def test_a_panels_zip_missing_a_dir_names_the_dir_and_the_zip(
+        self, reader_file_paths: ReaderFilePaths, tmp_path: Path
+    ) -> None:
+        zip_path = tmp_path / "Barks Panels.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for dir_enum in PanelDirNames:
+                if dir_enum is not PanelDirNames.COVERS:
+                    zf.writestr(f"{dir_enum.value}/placeholder.txt", "")
+            zf.writestr(f"{PanelDirNames.INSETS.value}/{EDITED_SUBDIR}/placeholder.txt", "")
+
+        with (
+            patch("os.path.expandvars", return_value=str(zip_path)),
+            pytest.raises(FileNotFoundError, match=r'"Covers" not found or is empty in zip'),
+        ):
+            reader_file_paths.set_barks_panels_source(zip_path, BarksPanelsExtType.JPG)
+
     def test_set_barks_panels_source_missing_dir(
         self, reader_file_paths: ReaderFilePaths, tmp_path: Path
     ) -> None:
