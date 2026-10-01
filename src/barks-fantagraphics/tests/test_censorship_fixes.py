@@ -21,19 +21,30 @@ wiki build and the derive tool at once and only show up as a puzzling integrity 
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
+
 import pytest
 from barks_fantagraphics import comic_book_info as cbi
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.censorship_fixes import (
+    CENSORSHIP_FIXES_HEADER,
     ONE_PAGER_COMIC_PAGE,
     CensorshipFixesError,
+    CensorshipFixRow,
+    censorship_fix_pages,
     censorship_story_pages,
     one_pager_location,
     read_censorship_fixes,
     resolve_censorship_story,
+    story_page_offsets,
+    story_page_offsets_disagree,
 )
 from barks_fantagraphics.comic_book_info import ONE_PAGER_LOCATIONS, get_located_one_pagers
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # The one-pager the CSV actually records a fix against: page 072 of volume 14.
 ONE_PAGER = Titles.DINER_DILEMMA
@@ -156,3 +167,86 @@ class TestTheShippedCsvResolves:
         ]
 
         assert not wrong
+
+
+# ---------------------------------------------------------------------------
+# Reading the CSV, and the checks run over its rows
+# ---------------------------------------------------------------------------
+
+ROW = ["14", "072", "70", "1", "3", "Diner Dilemma", "error", "a hat", "the hat"]
+
+
+def _csv(path: Path, *rows: list[str], header: list[str] = CENSORSHIP_FIXES_HEADER) -> Path:
+    path.write_text("\n".join(",".join(r) for r in (header, *rows)) + "\n", encoding="utf-8")
+    return path
+
+
+class TestReadingTheCsv:
+    def test_rows_are_read_in_order_and_blank_lines_skipped(self, tmp_path: Path) -> None:
+        file = _csv(tmp_path / "fixes.csv", ROW, [], [*ROW[:4], "4", *ROW[5:]])
+        rows = read_censorship_fixes(file)
+        assert [r.panel for r in rows] == ["3", "4"]
+        assert rows[0] == CensorshipFixRow(14, *ROW[1:])
+
+    def test_a_row_reads_back_as_its_cells(self, tmp_path: Path) -> None:
+        (row,) = read_censorship_fixes(_csv(tmp_path / "fixes.csv", ROW))
+        assert row.as_cells() == ROW
+
+    def test_a_missing_file_says_so(self, tmp_path: Path) -> None:
+        with pytest.raises(CensorshipFixesError, match="not found"):
+            read_censorship_fixes(tmp_path / "absent.csv")
+
+    def test_another_header_is_refused(self, tmp_path: Path) -> None:
+        file = _csv(tmp_path / "fixes.csv", ROW, header=["Volume", "Image"])
+        with pytest.raises(CensorshipFixesError, match="Unexpected header"):
+            read_censorship_fixes(file)
+
+    def test_a_row_of_the_wrong_width_names_its_line(self, tmp_path: Path) -> None:
+        file = _csv(tmp_path / "fixes.csv", ROW, ROW[:-1])
+        with pytest.raises(CensorshipFixesError, match="Expected 9 columns on line 3"):
+            read_censorship_fixes(file)
+
+    def test_a_volume_that_is_no_number_names_its_line(self, tmp_path: Path) -> None:
+        file = _csv(tmp_path / "fixes.csv", ["XIV", *ROW[1:]])
+        with pytest.raises(CensorshipFixesError, match=r'Volume is not a number on line 2.*"XIV"'):
+            read_censorship_fixes(file)
+
+
+class TestFixPages:
+    def test_each_volume_has_its_fixed_images_and_whole_story_rows_name_none(self) -> None:
+        rows = [
+            CensorshipFixRow(14, "072", "", "", "", "A", "error", "", ""),
+            CensorshipFixRow(14, "072", "", "", "2", "A", "error", "", ""),
+            CensorshipFixRow(14, "080", "", "", "", "A", "error", "", ""),
+            CensorshipFixRow(3, "", "", "", "", "B", "censorship", "", ""),
+        ]
+        assert censorship_fix_pages(rows) == {14: {"072", "080"}}
+
+
+class TestAnIssueOfSeveralStories:
+    def test_is_refused_naming_them(self) -> None:
+        db = MagicMock(spec=ComicsDatabase)
+        db.get_story_title_from_issue.return_value = (True, ["Story A", "Story B"], "")
+        with pytest.raises(CensorshipFixesError, match="matches 2 stories"):
+            resolve_censorship_story(db, "WDCS  71")
+        db.get_story_title_from_issue.assert_called_once_with("WDCS 71")  # its spaces tidied
+
+
+class TestPageOffsets:
+    def test_one_story_has_one_offset(self) -> None:
+        assert story_page_offsets([("1", "70"), ("2", "71"), ("5", "74")]) == {69}
+
+    def test_pairs_not_both_numbers_are_skipped(self) -> None:
+        assert story_page_offsets([("1", "70"), ("", "71"), ("3", "188a")]) == {69}
+
+    def test_rows_naming_two_starts_disagree(self) -> None:
+        assert story_page_offsets_disagree([("1", "70"), ("2", "90")])
+
+    def test_one_extra_offset_per_folio_is_allowed(self) -> None:
+        """A page restored on a folio ("188a") sets every later page one lower."""
+        pairs = [("1", "186"), ("2", "187"), ("3", "188a"), ("4", "188"), ("5", "189")]
+        assert not story_page_offsets_disagree(pairs)
+
+    def test_a_folios_several_rows_widen_the_allowance_once(self) -> None:
+        pairs = [("3", "188a"), ("3", "188a"), ("1", "186"), ("4", "188"), ("6", "200")]
+        assert story_page_offsets_disagree(pairs)

@@ -286,3 +286,15 @@ class TestGetAllTagsInTagCategory:
     def test_an_empty_category_returns_an_empty_set(self) -> None:
         with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, {TagCategories.THINGS: []}, clear=True):
             assert get_all_tags_in_tag_category(TagCategories.THINGS) == set()
+
+
+class TestTitleLookups:
+    def test_a_tag_with_no_titles_has_none(self) -> None:
+        with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {}, clear=True):
+            assert barks_tags.get_tag_titles(Tags.CLASSICS) == set()
+
+    def test_the_personal_favourites_are_the_picks_given(self) -> None:
+        picks = [Titles.LOST_IN_THE_ANDES, Titles.GOLDEN_HELMET_THE]
+        with patch.dict(barks_tags.BARKS_TAGGED_TITLES):
+            barks_tags.special_case_personal_favourites_tag_update(picks)
+            assert barks_tags.get_tag_titles(Tags.PERSONAL_FAVOURITES) == set(picks)

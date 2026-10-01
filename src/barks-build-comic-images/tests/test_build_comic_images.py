@@ -1,8 +1,12 @@
-# ruff: noqa: PLR2004
+# ruff: noqa: PLR2004, SLF001
+# cspell:ignore getbbox
 
 from __future__ import annotations
 
+import importlib.util
 from dataclasses import FrozenInstanceError
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
@@ -11,14 +15,18 @@ from barks_build_comic_images.build_comic_images import (
     AdaptivePageImageSource,
     AlphaPageImageSource,
     BuildSourceProfile,
+    ComicBookImageBuilder,
     PageImageSource,
     RgbPageImageSource,
 )
+from barks_build_comic_images.consts import FOOTNOTE_CHAR
+from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
+from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.pages import (
     FinalStoryFileResolver,
     SvgPngStoryFileResolver,
 )
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw
 
 
 class TestPageImageSource:
@@ -117,4 +125,75 @@ class TestBuildSourceProfile:
         # have not yet been SVG-rendered still render via the JPG pipeline.
         resolver = SVG_ADAPTIVE_PROFILE.srce_story_file_resolver
         assert isinstance(resolver, SvgPngStoryFileResolver)
-        assert isinstance(resolver._fallback, FinalStoryFileResolver)  # noqa: SLF001
+        assert isinstance(resolver._fallback, FinalStoryFileResolver)
+
+
+# ---------------------------------------------------------------------------
+# The intro page's title: one font for a Barks title; for a non-Barks "Comics and
+# Stories" issue, three, with a superscript footnote mark on a US-censored one.
+# ---------------------------------------------------------------------------
+
+# A TrueType font any workspace has: Kivy's, found without importing Kivy.
+_KIVY_SPEC = importlib.util.find_spec("kivy")
+assert _KIVY_SPEC is not None
+assert _KIVY_SPEC.origin is not None
+TITLE_FONT = Path(_KIVY_SPEC.origin).parent / "data" / "fonts" / "Roboto-Regular.ttf"
+TITLE_FONT_SIZE = 40
+CS_TITLE = f"{ISSUE_NAME[Issues.CS]}91"
+
+
+def _builder(
+    tmp_path: Path, *, title: str, is_barks: bool, ini_title: str
+) -> ComicBookImageBuilder:
+    empty_page = tmp_path / "empty.png"
+    Image.new("RGB", (8, 8), "white").save(empty_page)
+    comic = MagicMock()
+    comic.get_comic_title.return_value = title
+    comic.title_font_file = TITLE_FONT
+    comic.title_font_size = TITLE_FONT_SIZE
+    comic.fanta_info.comic_book_info.is_barks_title = is_barks
+    comic.fanta_info.comic_book_info.issue_name = Issues.CS
+    comic.get_ini_title.return_value = ini_title
+    return ComicBookImageBuilder(comic, empty_page)
+
+
+def _draw() -> ImageDraw.ImageDraw:
+    return ImageDraw.Draw(Image.new("RGB", (600, 400), "white"))
+
+
+class TestTitleAndFonts:
+    def test_a_barks_title_is_one_line_in_one_font(self, tmp_path: Path) -> None:
+        builder = _builder(tmp_path, title="Lost in the Andes!", is_barks=True, ini_title="x")
+        texts, fonts, height = builder._get_title_and_fonts(_draw())
+        assert texts == ["Lost in the Andes!"]
+        assert [f.size for f in fonts] == [TITLE_FONT_SIZE]
+        assert height > 0
+
+    def test_a_comics_and_stories_issue_splits_over_three_fonts(self, tmp_path: Path) -> None:
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
+        texts, fonts, _ = builder._get_title_and_fonts(_draw())
+        assert texts == ["Comics", "and Stories", "91"]
+        assert [f.size for f in fonts] == [TITLE_FONT_SIZE, TITLE_FONT_SIZE // 2, TITLE_FONT_SIZE]
+
+    def test_a_us_censored_one_gets_the_footnote_mark(self, tmp_path: Path) -> None:
+        censored = US_CENSORED_TITLES[0]
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
+        texts, _, _ = builder._get_title_and_fonts(_draw())
+        assert texts[-1] == f"91{FOOTNOTE_CHAR}"
+
+
+class TestDrawingTheTitle:
+    def test_two_lines_and_a_superscript_mark_are_drawn(self, tmp_path: Path) -> None:
+        censored = US_CENSORED_TITLES[0]
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
+        image = Image.new("RGB", (600, 400), "white")
+        draw = ImageDraw.Draw(image)
+        texts, fonts, _ = builder._get_title_and_fonts(draw)
+        texts[2] = "\n" + texts[2]  # the issue number on a line of its own
+        blank = image.copy()
+
+        builder._draw_centered_multiline_title_text(texts, fonts, (0, 0, 0), 20, 10, image, draw)
+
+        drawn = ImageChops.difference(image, blank).getbbox()
+        assert drawn is not None
+        assert drawn[3] - drawn[1] > TITLE_FONT_SIZE  # more than one line high

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +18,9 @@ from barks_reader.core.reader_settings import (
     ReaderSettings,
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture
@@ -141,6 +145,38 @@ class TestReaderSettings:
             reader_settings.is_first_use_of_reader = True
             mock_config.set.assert_called_with(BARKS_READER_SECTION, "is_first_use_of_reader", 1)
             mock_save.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("change", "key", "stored"),
+        [
+            pytest.param(lambda rs: setattr(rs, "double_page_mode", True), "double_page_mode", 1),
+            pytest.param(lambda rs: setattr(rs, "double_page_mode", False), "double_page_mode", 0),
+            pytest.param(lambda rs: rs.set_alt_escape_key(113), "alt_escape_key", 113),
+        ],
+    )
+    def test_a_setting_set_is_stored_and_saved(
+        self,
+        reader_settings: ReaderSettings,
+        mock_config: MagicMock,
+        change: Callable[[ReaderSettings], None],
+        key: str,
+        stored: int,
+    ) -> None:
+        with patch.object(reader_settings, ReaderSettings._save_settings.__name__) as mock_save:
+            change(reader_settings)
+        mock_config.set.assert_called_once_with(BARKS_READER_SECTION, key, stored)
+        mock_save.assert_called_once()
+
+    def test_the_censorship_choices_are_read(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        mock_config.getboolean.return_value = True
+        assert reader_settings.get_use_harpies_instead_of_larkies() is True
+        assert reader_settings.get_use_blank_eyeballs_for_bombie() is True
+
+    def test_the_base_class_saves_nothing(self, reader_settings: ReaderSettings) -> None:
+        """Only the app's subclass writes the ini; the core one has nowhere to."""
+        assert ReaderSettings._save_settings(reader_settings) is None
 
     def test_is_valid_fantagraphics_volumes_dir(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
