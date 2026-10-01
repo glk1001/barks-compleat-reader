@@ -181,6 +181,14 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.screen.set_goto_page_state(COMIC_BEGIN_PAGE, active=True)
         assert self.screen.goto_page_num == ""
 
+    def test_an_offered_goto_page_is_logged_and_none_is_not(self, loguru_sink: list[str]) -> None:
+        self.screen.set_goto_page_state("2", active=True)
+        assert loguru_sink[-1] == 'Goto page "2" offered: active = True.'
+        loguru_sink.clear()
+        self.screen.set_goto_page_state(active=False)
+        self.screen.set_goto_page_state(COMIC_BEGIN_PAGE, active=True)  # the front: no box
+        assert not [line for line in loguru_sink if "offered" in line]
+
     def test_set_overrides_state(self) -> None:
         self.screen.set_overrides_state("Description", active=False)
         assert self.screen.use_overrides_description == "Description"

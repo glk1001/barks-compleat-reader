@@ -119,7 +119,14 @@ def _text(widget: Widget) -> str:
 
 
 def _target(
-    kind: str, text: str, kv_id: str, rect: Rect, window_height: float, *, whole: bool
+    kind: str,
+    text: str,
+    kv_id: str,
+    rect: Rect,
+    window_height: float,
+    *,
+    whole: bool,
+    selected: bool = False,
 ) -> TapTarget:
     x, y, w, h = rect
     return TapTarget(
@@ -131,6 +138,7 @@ def _target(
         width=round(w),
         height=round(h),
         whole=whole,
+        selected=selected,
     )
 
 
@@ -148,7 +156,14 @@ def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarg
     if isinstance(widget, _TAPPABLE) and own[2] >= 1 and own[3] >= 1:
         out.append(
             _target(
-                kind, _text(widget), _kv_id(widget), own, window_height, whole=_is_whole(own, full)
+                kind,
+                _text(widget),
+                _kv_id(widget),
+                own,
+                window_height,
+                whole=_is_whole(own, full),
+                # A list row marked picked; a flag, not just any `selected` attribute.
+                selected=getattr(widget, "selected", False) is True,
             )
         )
     get_regions = getattr(widget, "tap_target_regions", None)

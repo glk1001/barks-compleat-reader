@@ -464,6 +464,84 @@ def test_a_word_search_is_restricted_to_a_tag(boot: AppBoot) -> None:
         d.key_then_wait(pattern(markers.SEARCH_WORD_RESULTS, count=in_tag), "Return")
 
 
+NO_SCOPE_TAG = "Flintheart Glomgold"  # typed whole: picked as typed
+NO_SCOPE_WORD = "d-daisy"  # in one story, which is not his
+
+
+def test_the_only_in_row_is_not_offered_when_it_cannot_narrow(boot: AppBoot) -> None:
+    """A word none of the tag's stories hold: no 'Only in' row; Down from the chip is the list."""
+    word = expected.words_matching(NO_SCOPE_WORD)[0]
+    assert expected.word_stories_in_tag(word, NO_SCOPE_TAG) == 0 < expected.word_stories(word)
+
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=NO_SCOPE_TAG)):
+        search.type_query(d, NO_SCOPE_TAG.lower())
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # from the box to the tree
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Words"), "Down")
+    with d.expect(pattern(markers.SEARCH_MODE_SET, mode="Word")):  # Return opens it
+        search.type_query(d, NO_SCOPE_WORD)
+    with d.expect(d.FOCUS_MOVED):  # Return picks the first word and lands on it
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=word), "Return")
+
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Down", pattern=_said_by_focused("anyone"))
+    d.move_focus("Down")  # no scope row to stop at: the stories
+    focused = last_field(d, markers.NAV_FOCUS, "widget")
+    assert not focused.startswith("_ScopeChipButton"), f"Down from the chip went to {focused}"
+
+
+FIRST_DAISY = "first Daisy appearance"  # typed whole: picked as typed
+FIRST_DAISY_PAGE = "2"  # The Mighty Trapper's, her first appearance
+
+
+def test_a_story_picked_from_a_tag_offers_the_tag_s_page(boot: AppBoot) -> None:
+    """As from the tree's Themes: the title view offers to go to the page the tag marks."""
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=FIRST_DAISY)):
+        search.type_query(d, FIRST_DAISY.lower())
+    d.key_then_wait(_chip_focused(FIRST_DAISY), "Return")  # the box's Return: the chip
+    with d.expect(d.FOCUS_MOVED):  # its one story, focused
+        d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=FIRST_DAISY), "Return")
+    with d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=FIRST_DAISY_PAGE, active=True)):
+        d.key_then_wait(pattern(markers.SEARCH_SELECTED_TITLE), "Return")
+
+
+LIFT_QUERY = "daisy"
+LIFT_SPEAKER = "Gladstone"
+LIFT_WORD = "bumps-a-daisy"  # in one story, which Gladstone says it in nowhere
+
+
+def test_a_new_word_the_speaker_never_says_lifts_the_filter(boot: AppBoot) -> None:
+    """With Gladstone picked, a word only others say lists their stories, not nothing."""
+    words = expected.words_matching(LIFT_QUERY)
+    first = words[0]
+    speakers = expected.speaker_list(first)
+    assert expected.word_stories(LIFT_WORD, speaker=LIFT_SPEAKER) == 0
+    stories = expected.word_stories(LIFT_WORD)
+    assert stories > 0
+
+    d = boot(nodes.WORD_SEARCH)
+    search.type_query(d, LIFT_QUERY)
+    with d.expect(d.FOCUS_MOVED):  # Return picks the first word and lands on it
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=first), "Return")
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Down", pattern=_said_by_focused("anyone"))
+    d.key_then_wait(_speaker_item_focused("anyone"), "Return")
+    for speaker in speakers[: speakers.index(LIFT_SPEAKER) + 1]:
+        d.move_focus("Down", pattern=_speaker_item_focused(speaker))
+    with d.expect(pattern(markers.SPEAKER_FILTER_SET, speaker=LIFT_SPEAKER)):
+        d.key_then_wait(_said_by_focused(LIFT_SPEAKER), "Return")
+
+    d.move_focus("Left", pattern=_focus_on("_SearchResultButton", first))  # back to the words
+    for word in words[1 : words.index(LIFT_WORD) + 1]:
+        d.move_focus("Down", pattern=_focus_on("_SearchResultButton", word))
+    with d.expect(pattern(markers.SPEAKER_FILTER_LIFTED, speaker=LIFT_SPEAKER, text=LIFT_WORD)):
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=LIFT_WORD), "Return")
+    assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == stories
+
+
 def test_typed_tags_are_combined_on_return(boot: AppBoot) -> None:
     """Tags typed with + , | or - make one chip; Return combines them and lists their stories."""
     first, second = (m.label for m in expected.tags_matching(COMBINE_QUERY)[:2])
@@ -556,3 +634,44 @@ def test_search_round_trips_leave_no_chips_behind(
         d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode=mode.lower()), "Return")
 
     memory.assert_round_trips_leave_nothing(d, round_trip)
+
+
+def test_speaker_list_and_subgroup_round_trips_leave_nothing(boot: AppBoot) -> None:
+    """Open and close the Said by list, then a subgroup in place, and clear: no widget kept."""
+    members = expected.group_members(NESTING_GROUP)
+    d = boot(nodes.WORD_SEARCH)
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
+
+    def round_trip() -> None:
+        d.type_slowly(SPEAKER_WORD, marker=search.results_line)
+        d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word, picked
+        d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
+        d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+        d.move_focus("Down", pattern=_said_by_focused("anyone"))
+        d.key_then_wait(pattern(markers.SPEAKER_LIST_OPENED), "Return")
+        d.key_then_wait(_said_by_focused("anyone"), "Escape")  # closed: back on the chip
+        d.move_focus("Up", pattern=_focus_on("_EraChipButton", "All years"))
+        d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")
+        d.key_then_wait(CLEAR_FOCUSED, "Right")
+        d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode="word"), "Return")
+
+    memory.assert_round_trips_leave_nothing(d, round_trip)
+
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # from the box to the tree
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Tags"), "Up")
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
+
+    def group_round_trip() -> None:
+        d.type_slowly(NESTING_GROUP, marker=search.results_line)
+        d.key_then_wait(_chip_focused(NESTING_GROUP), "Return")
+        for member in members[: members.index(SUBGROUP) + 1]:
+            d.key_then_wait(_chip_focused(member), "Down")
+        d.key_then_wait(pattern(markers.TAG_GROUP_OPENED, group=SUBGROUP), "Return")
+        d.key_then_wait(pattern(markers.TAG_GROUP_CLOSED, group=SUBGROUP), "Return")
+        for chip in (*reversed(members[: members.index(SUBGROUP)]), NESTING_GROUP):
+            d.key_then_wait(_chip_focused(chip), "Up")
+        d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")
+        d.key_then_wait(CLEAR_FOCUSED, "Right")
+        d.key_then_wait(pattern(markers.SEARCH_CLEARED, mode="tag"), "Return")
+
+    memory.assert_round_trips_leave_nothing(d, group_round_trip)

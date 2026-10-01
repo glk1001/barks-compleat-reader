@@ -283,6 +283,89 @@ def test_the_search_box_picks_its_keyboard_by_how_it_was_pressed(boot: AppBoot) 
 
 # ------------------------------------------------------------ the search chips --
 
+SAID_BY_QUERY = "money"
+SAID_BY_SPEAKER = "Scrooge"  # its stored name is its shown name, and not first in the list
+
+
+def test_a_tapped_word_stays_marked_and_its_speaker_list_is_picked_by_tap(boot: AppBoot) -> None:
+    """A word tapped stays marked as the one picked; its Said by list opens and picks by tap."""
+    words = expected.words_matching(SAID_BY_QUERY)
+    word = words[0]
+    speakers = expected.speaker_list(word)
+    assert speakers.index(SAID_BY_SPEAKER) > 0
+    d = _boot(boot, nodes.WORD_SEARCH)
+    search.type_query(d, SAID_BY_QUERY)
+    # Out of the box: in touch mode its on-screen keyboard covers the lower rows.
+    d.key_then_wait(d.FOCUS_MOVED, "Down")
+    d.settle()
+
+    taps.tap_then_wait(
+        d, pattern(markers.WORD_SELECTED_CHIP, word=word), kind="_SearchResultButton", text=word
+    )
+    d.settle()  # past the press's lapse, which once painted over the mark
+    _, shown = taps.targets(d)
+    marked = {t.text for t in shown if t.kind == "_SearchResultButton" and t.selected}
+    assert marked == {word}, f"the tapped word alone is marked, not {sorted(marked)}"
+
+    taps.tap_then_wait(
+        d,
+        pattern(markers.SPEAKER_LIST_OPENED, count=len(speakers)),
+        kind="_SaidByChipButton",
+        text="Said by: anyone",
+    )
+    d.settle()
+    taps.tap_then_wait(
+        d,
+        pattern(markers.SPEAKER_FILTER_SET, speaker=SAID_BY_SPEAKER),
+        kind="_SaidByItem",
+        text=SAID_BY_SPEAKER,
+    )
+    d.settle()
+    _, shown = taps.targets(d)
+    taps.find(shown, kind="_SaidByChipButton", text=f"Said by: {SAID_BY_SPEAKER}")
+    assert not [t for t in shown if t.kind == "_SaidByItem"], "the list closes on a pick"
+
+
+NESTING_GROUP = "chemistry"
+SUBGROUP = "chemical names"
+
+
+def test_an_open_tag_group_closes_and_opens_by_tap(boot: AppBoot) -> None:
+    """A tap on the open group closes it, another opens it; a subgroup opens in place."""
+    members = expected.group_members(NESTING_GROUP)
+    d = _boot(boot, nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=NESTING_GROUP)):  # picked as typed
+        search.type_query(d, NESTING_GROUP)
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # out of the box
+    d.settle()
+
+    taps.tap_then_wait(
+        d,
+        pattern(markers.TAG_GROUP_CLOSED, group=NESTING_GROUP),
+        kind="_TagChipButton",
+        text=NESTING_GROUP,
+    )
+    d.settle()
+    _, shown = taps.targets(d)
+    assert not {t.text for t in shown if t.kind == "_TagChipButton"} & set(members)
+    taps.tap_then_wait(
+        d,
+        pattern(markers.TAG_SELECTED_TAG, tag=NESTING_GROUP),
+        kind="_TagChipButton",
+        text=NESTING_GROUP,
+    )
+    d.settle()
+    taps.tap_then_wait(
+        d,
+        pattern(markers.TAG_GROUP_OPENED, group=SUBGROUP),
+        kind="_TagChipButton",
+        text=SUBGROUP,
+    )
+    d.settle()
+    _, shown = taps.targets(d)
+    taps.find(shown, kind="_TagChipButton", text=expected.group_members(SUBGROUP)[0])
+
+
 CHIP_WORD_QUERY = "gold"
 
 

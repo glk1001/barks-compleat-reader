@@ -22,6 +22,7 @@ from barks_reader.core.tap_targets import (
 from barks_reader.ui import tap_targets as ui_tap_targets
 from barks_reader.ui.tap_targets import install_tap_targets_service, screen_changing, snapshot
 from kivy.clock import Clock
+from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -165,6 +166,12 @@ class _Window:
         return x, y
 
 
+class _SelectableButton(Button):
+    """A list row that can be marked picked, as the search lists' rows are."""
+
+    selected = BooleanProperty(defaultvalue=False)
+
+
 def _placed(widget: Widget, x: float, y: float, w: float, h: float) -> Widget:
     widget.size_hint = (None, None)
     widget.pos = (x, y)
@@ -184,6 +191,19 @@ def test_a_button_is_a_target_with_the_origin_top_left() -> None:
     [target] = snapshot(_Window(_root(button)))
     assert target == TapTarget("Button", "Go on", "", 10, WINDOW_H - 70, 100, 50)
     assert target.whole
+
+
+def test_a_row_marked_picked_says_so_and_no_other_selected_counts() -> None:
+    picked = _placed(_SelectableButton(text="picked", selected=True), 0, 0, 50, 20)
+    other = _placed(_SelectableButton(text="other"), 0, 30, 50, 20)
+    odd = _placed(Button(text="odd"), 0, 60, 50, 20)
+    odd.selected = "yes"  # an attribute of that name that is no flag
+    targets = snapshot(_Window(_root(picked, other, odd)))
+    assert {t.text: t.selected for t in targets} == {"picked": True, "other": False, "odd": False}
+    assert decode_targets(encode_targets(targets)) == targets  # the flag survives the log line
+    assert TapTarget(
+        "_SelectableButton", "picked", "", 0, WINDOW_H - 20, 50, 20, selected=True
+    ) in (targets)
 
 
 def test_plain_widgets_are_not_targets() -> None:

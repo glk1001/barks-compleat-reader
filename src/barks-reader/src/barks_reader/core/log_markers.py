@@ -162,6 +162,8 @@ TITLE_FADE_STARTED: Final = "Title view fade started: {duration}s."
 TITLE_FADE_FINISHED: Final = "Title view fade finished."
 USE_OVERRIDES_CHANGED: Final = "Use overrides checkbox changed: use_overrides = {value}."
 GOTO_PAGE_CHECKBOX_TOGGLED: Final = "Goto page checkbox toggled: active = {value}."
+# The title view offers its "Goto page n" box: a last-read page, or a tag's page.
+GOTO_PAGE_OFFERED: Final = 'Goto page "{page}" offered: active = {active}.'
 
 # -------------------------------------------------------- the comic sources --
 # Which source the pages come from, logged once at boot (use_prebuilt_comics).

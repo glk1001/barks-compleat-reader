@@ -63,6 +63,9 @@ class TapTarget:
         whole: False when a scroll view or the window edge hides part of it:
             the rectangle is then only the part on show, and a tap near its
             edge can land on what hides the rest.
+        selected: Whether it is marked as the one picked (a list row's
+            ``selected``), so a test can see a pick stay marked, as no log line
+            says.
 
     """
 
@@ -74,6 +77,7 @@ class TapTarget:
     width: int
     height: int
     whole: bool = True
+    selected: bool = False
 
     @property
     def center(self) -> tuple[int, int]:

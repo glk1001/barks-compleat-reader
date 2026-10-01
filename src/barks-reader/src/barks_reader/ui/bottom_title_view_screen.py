@@ -255,6 +255,10 @@ class BottomTitleViewScreen(FloatLayout):
     def set_goto_page_state(self, page_to_goto: str = "", active: bool = False) -> None:
         self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
         self.goto_page_active = active
+        if self.goto_page_num:
+            logger.debug(
+                log_markers.GOTO_PAGE_OFFERED.format(page=self.goto_page_num, active=active)
+            )
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
         self.use_overrides_active = active
