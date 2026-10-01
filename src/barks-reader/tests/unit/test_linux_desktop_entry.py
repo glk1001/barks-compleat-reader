@@ -107,6 +107,45 @@ def test_an_icon_that_cannot_be_copied_is_referenced_by_its_path(
     assert f"Icon={icon}\n" in _desktop_file(data_home).read_text(encoding="utf-8")
 
 
+def test_an_icon_dir_that_cannot_be_made_leaves_the_icon_by_its_path(
+    data_home: Path, icon: Path
+) -> None:
+    data_home.mkdir()
+    (data_home / "icons").write_text("a file where the icon tree goes", encoding="utf-8")
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
+    assert f"Icon={icon}\n" in _desktop_file(data_home).read_text(encoding="utf-8")
+
+
+def test_an_applications_dir_that_cannot_be_made_writes_no_entry(
+    data_home: Path, icon: Path, loguru_sink: list[str]
+) -> None:
+    data_home.mkdir()
+    (data_home / "applications").write_text("a file, not a dir", encoding="utf-8")
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")  # the app starts all the same
+
+    assert (data_home / "applications").is_file()
+    assert any("Could not create" in line for line in loguru_sink)
+
+
+def test_an_entry_that_cannot_be_written_is_logged_not_raised(
+    data_home: Path, icon: Path, loguru_sink: list[str]
+) -> None:
+    _desktop_file(data_home).mkdir(parents=True)  # a dir where the entry goes
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
+    assert any("Could not write desktop entry" in line for line in loguru_sink)
+
+
+def test_an_icon_whose_size_cannot_be_read_does_not_match(tmp_path: Path) -> None:
+    target = tmp_path / "installed.png"
+    target.write_bytes(b"png bytes")
+    assert lde._files_match(tmp_path / "vanished.png", target) is False
+
+
 def test_nothing_is_written_off_linux(data_home: Path, icon: Path) -> None:
     with patch.object(lde, "PLATFORM", Platform.WIN):
         lde.write_linux_desktop_entry(icon, "Barks Reader")
