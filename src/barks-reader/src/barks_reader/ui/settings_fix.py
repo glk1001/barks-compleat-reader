@@ -1,3 +1,6 @@
+# cspell:ignore hiberfil
+import stat
+import sys
 from pathlib import Path
 
 from kivy.clock import Clock
@@ -15,7 +18,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.settings import SettingItem, SettingOptions
@@ -300,10 +303,31 @@ KV_SETTINGS_OVERRIDE = """
 """
 
 
+class QuietFileSystem(FileSystemLocal):
+    """Kivy's local file system, without its error for a file Windows keeps locked.
+
+    On Windows, Kivy reads each listed file's attributes to tell whether it is hidden.
+    For a file the system holds open (``pagefile.sys``, ``hiberfil.sys``) that fails,
+    and Kivy logs the failure as an error, with its traceback, before taking the file
+    as hidden. Browsing to the root of drive C: filled the log with them. Here such a
+    file is hidden all the same, quietly.
+    """
+
+    def is_hidden(self, fn: str) -> bool:
+        """Return whether `fn` is hidden: a dot file, or on Windows marked hidden or locked."""
+        if sys.platform == "win32":
+            try:
+                return bool(Path(fn).stat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
+            except OSError:
+                return True  # held by the system, so nothing the reader could use
+        return bool(super().is_hidden(fn))
+
+
 class CustomFileChooserListView(FileChooserListView):
     """Custom FileChooser that doesn't open directories on single click."""
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        kwargs.setdefault("file_system", QuietFileSystem())
         super().__init__(**kwargs)
         self._allow_path_change = True
         self._real_path = self.path

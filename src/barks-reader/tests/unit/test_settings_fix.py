@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import stat
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from barks_reader.ui import settings_fix
@@ -16,7 +19,14 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_RIGHT,
     KEY_UP,
 )
-from barks_reader.ui.settings_fix import SettingLongPathPopup, SettingOptionsWithValue
+from barks_reader.ui.settings_fix import (
+    QuietFileSystem,
+    SettingLongPathPopup,
+    SettingOptionsWithValue,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def _chooser(*, box_focused: bool = False) -> MagicMock:
@@ -129,6 +139,41 @@ class TestFolderChooserBrowsing:
         assert chooser.ids.file_chooser.selection == []
         assert chooser.ids.path_input.text == str(tmp_path / "alpha")
         assert f'Folder chooser: in "{tmp_path / "alpha"}".' in loguru_sink
+
+
+class TestQuietFileSystem:
+    """A file Windows keeps locked is hidden without the error Kivy logs for it."""
+
+    @staticmethod
+    @contextmanager
+    def _on_windows(stat_result: object) -> Iterator[None]:
+        def fake_stat() -> object:
+            if isinstance(stat_result, Exception):
+                raise stat_result
+            return stat_result
+
+        with patch.multiple(
+            settings_fix,
+            sys=SimpleNamespace(platform="win32"),
+            Path=lambda _fn: SimpleNamespace(stat=fake_stat),
+        ):
+            yield
+
+    def test_a_locked_file_is_hidden_and_nothing_is_logged(self, loguru_sink: list[str]) -> None:
+        with self._on_windows(PermissionError("in use")):
+            assert QuietFileSystem().is_hidden("C:\\pagefile.sys") is True
+        assert loguru_sink == []
+
+    def test_a_file_marked_hidden_is_hidden_and_others_are_not(self) -> None:
+        with self._on_windows(SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_HIDDEN)):
+            assert QuietFileSystem().is_hidden("C:\\secret") is True
+        with self._on_windows(SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_ARCHIVE)):
+            assert QuietFileSystem().is_hidden("C:\\Comics") is False
+
+    def test_elsewhere_a_dot_file_is_hidden(self) -> None:
+        with patch.object(settings_fix, "sys", SimpleNamespace(platform="linux")):
+            assert QuietFileSystem().is_hidden("/home/me/.config") is True
+            assert QuietFileSystem().is_hidden("/home/me/Comics") is False
 
 
 def test_selecting_a_path_logs_it(loguru_sink: list[str]) -> None:
