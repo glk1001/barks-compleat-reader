@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -273,3 +273,16 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     `robocopy "<stick>\barks-reader-windows\The Comics" "$HOME\Books\Carl Barks\The Comics" /E`.
 - **macOS.** Only CI runs it (`.github/workflows/`), which installs `ccache` with Homebrew
   for the build.
+- **A macOS VirtualBox guest** has no GPU driver, so Kivy cannot open a window ("Failed
+  creating OpenGL pixel format") and the UI unit tests need CI's skips
+  (`KIVY_HEADLESS_CI=1 KIVY_WINDOW=no_provider`). Apple's software OpenGL renderer (2.1) is
+  there, though; Kivy's SDL2 only refuses it by asking for an accelerated one.
+  `scripts/macos/with-soft-gl.sh` builds a small library that drops that request (it needs
+  the Xcode command-line tools' `clang`) and runs a command with it, so the whole unit
+  suite runs (on a 2-core guest, 2026-10-01: 4,610 passed in about a minute):
+  `CI=1 KIVY_DPI=96 KIVY_METRICS_DENSITY=1 KIVY_METRICS_FONTSCALE=1 bash
+  scripts/macos/with-soft-gl.sh uv run pytest -n auto` (`CI=1` skips the tests that want
+  the data pack's override archives). The command it runs must be the repo's (`uv`,
+  `.venv/bin/python`): macOS drops `DYLD_INSERT_LIBRARIES` when it starts `/bin/bash` or
+  another of its own protected programs. The GUI path tests still do not run on macOS:
+  `scripts/gui_probe.py` has no macOS backend.
