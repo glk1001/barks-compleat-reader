@@ -947,6 +947,42 @@ class TestTimings:
     def test_within_budget_is_no_problem(self) -> None:
         assert timings.budget_problems(self._log(), timings.BUDGETS) == []
 
+    @staticmethod
+    def _at(time: str, message: str) -> str:
+        return f"2026-10-01 {time} | INFO     | app : {message}  [barks_reader.ui.x:y:1]"
+
+    def _census_log(self) -> str:
+        """Return the soak walk's lines on the second PC: a census during a comic's load."""
+        census = markers.MEMORY_CENSUS.format(
+            request=2, widgets=4109, textures=2941, objects=2337576, rss_mib=1570, took_ms=6659
+        )
+        return "\n".join(
+            [
+                self._at("15:50:20.000", markers.SHOWED_PAGE.format(index=3, elapsed="0.9s")),
+                self._at("15:50:33.742", census),
+                self._at("15:50:33.749", markers.ALL_IMAGES_LOADED.format(elapsed="7.5s", index=0)),
+                self._at("15:50:40.000", markers.SHOWED_PAGE.format(index=4, elapsed="0.3s")),
+            ]
+        )
+
+    def test_a_census_runs_from_its_took_ms_before_its_answer(self) -> None:
+        ((start, end),) = timings.census_spans(self._census_log())
+        assert (end - start).total_seconds() == 6.659  # noqa: PLR2004
+
+    def test_a_duration_a_census_ran_into_is_left_out(self) -> None:
+        found = timings.durations(self._census_log())
+        assert [(d.name, d.seconds) for d in found] == [("page shown", 0.9), ("page shown", 0.3)]
+        assert timings.budget_problems(self._census_log(), timings.BUDGETS) == []
+
+    def test_a_duration_a_census_did_not_touch_is_still_held_to_its_budget(self) -> None:
+        log = (
+            self._census_log()
+            + "\n"
+            + self._at("15:51:00.000", markers.ALL_IMAGES_LOADED.format(elapsed="7.5s", index=0))
+        )
+        (problem,) = timings.budget_problems(log, timings.BUDGETS)
+        assert problem.startswith("comic images loaded took 7.5s, over its 6s budget")
+
     def test_over_budget_names_the_duration_its_budget_and_the_line(self) -> None:
         slow = self._log() + "\n" + markers.SHOWED_PAGE.format(index=4, elapsed="9.5s")
         (problem,) = timings.budget_problems(slow, {**timings.BUDGETS, "page shown": 2.5})

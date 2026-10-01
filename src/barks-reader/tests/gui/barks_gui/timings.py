@@ -12,6 +12,11 @@ the benchmark baseline beside it); the committed ``BUDGETS`` otherwise, which
 came from the desktop that built the suite. A laptop calibrates once and its
 budgets fit it.
 
+A duration a memory census ran into is not held to its budget, nor calibrated
+from: the census is the test's own full garbage collection (``barks_gui.memory``),
+which stops the app for up to seconds. A soak walk takes one every hundred keys,
+and one that landed during a comic's load took it from five seconds to 7.5.
+
 A busy machine is not a regression: the check is skipped, with a warning that
 says so, when the one-minute load average is above what the machine and the
 run's own workers account for (a six-process image job once stretched boot
@@ -101,6 +106,9 @@ BUDGETS: dict[str, float] = {
 }
 
 _ELAPSED_RE = re.compile(r"^(\d+(?:\.\d+)?)(ms|s)$")
+# A log line's own time, at its start: "2026-10-01 15:50:33.749 | INFO ...".
+_STAMP_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) \|")
+_CENSUS_RE = re.compile(capture(markers.MEMORY_CENSUS, "took_ms"))
 _TIMED_RE: dict[str, re.Pattern[str]] = {
     name: re.compile(capture(template, "elapsed")) for name, template in TIMED.items()
 }
@@ -108,11 +116,19 @@ _TIMED_RE: dict[str, re.Pattern[str]] = {
 
 @dataclass(frozen=True)
 class Duration:
-    """One timed line: what was timed, how long it took, and the line itself."""
+    """One timed line: what was timed, how long it took, the line, and when it was logged."""
 
     name: str
     seconds: float
     line: str
+    end: dt.datetime | None = None  # None for a line without its time
+
+    def overlaps(self, span: tuple[dt.datetime, dt.datetime]) -> bool:
+        """Return whether the timed work and `span` were going on at the same time."""
+        if self.end is None:
+            return False
+        start = self.end - dt.timedelta(seconds=self.seconds)
+        return start < span[1] and span[0] < self.end
 
 
 def parse_elapsed(text: str) -> float:
@@ -130,13 +146,30 @@ def parse_elapsed(text: str) -> float:
     return value / 1000 if unit == "ms" else value
 
 
+def _stamp(line: str) -> dt.datetime | None:
+    found = _STAMP_RE.match(line)
+    return None if found is None else dt.datetime.fromisoformat(found[1])
+
+
+def census_spans(app_log: str) -> list[tuple[dt.datetime, dt.datetime]]:
+    """Return when each memory census held the app: from its start to its answer."""
+    spans = []
+    for line in app_log.splitlines():
+        found = _CENSUS_RE.search(line)
+        end = None if found is None else _stamp(line)
+        if found is not None and end is not None:
+            spans.append((end - dt.timedelta(milliseconds=int(found["took_ms"])), end))
+    return spans
+
+
 def durations(app_log: str) -> list[Duration]:
-    """Return every timed line in the log, in order.
+    """Return every timed line in the log, in order, but those a memory census ran into.
 
     Read from the messages, without each line's trailing location: an elapsed
     field at the end of a message ("...in 0.3s.") would otherwise run on into
     the module path and parse as nothing.
     """
+    censuses = census_spans(app_log)
     found: list[Duration] = []
     for line in messages(app_log).splitlines():
         for name, regex in _TIMED_RE.items():
@@ -147,7 +180,9 @@ def durations(app_log: str) -> list[Duration]:
                 seconds = parse_elapsed(match["elapsed"])
             except ValueError:
                 continue
-            found.append(Duration(name, seconds, line.strip()))
+            duration = Duration(name, seconds, line.strip(), _stamp(line))
+            if not any(duration.overlaps(span) for span in censuses):
+                found.append(duration)
             break
     return found
 
