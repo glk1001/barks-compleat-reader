@@ -25,6 +25,11 @@ does not test the OpenGL drawing the reader uses on real Windows machines.
 Pytest's whole output goes to build/gui-tests/<run>/pytest.log as it runs, beside
 the failed tests' artifacts, so a run that hangs or is killed still leaves a record.
 
+BARKS_PROBE_COVERAGE=<dir> measures the app's coverage where the probe runs it
+under ``coverage run --parallel-mode``: each boot writes its own data file in the
+folder, and the run merges them into <dir>/.coverage.gui as it ends, appending to
+what earlier runs left there (a built executable measures nothing).
+
 The checks, markers and artifacts are the Linux suite's: see run_gui_tests.sh
 and docs/plans/gui-test-suite.md.
 """
@@ -133,6 +138,35 @@ def _run_pytest(cmd: list[str], env: dict[str, str], *, quiet: bool, log: Path) 
     return run.returncode
 
 
+def merge_coverage(env: dict[str, str]) -> None:
+    """Merge each boot's coverage data into ``<BARKS_PROBE_COVERAGE>/.coverage.gui``.
+
+    As ``run_gui_tests.sh`` does. Nothing to do without the folder, against a built
+    executable (it runs no Python to measure), or when no boot wrote any data.
+    """
+    folder = env.get("BARKS_PROBE_COVERAGE")
+    if not folder or env.get("BARKS_PROBE_APP"):
+        return
+    path = Path(folder)
+    if not any(path.glob(".coverage.gui.*")):  # one per boot, named by coverage
+        return
+    merged = subprocess.run(  # noqa: S603 (fixed argv)
+        [
+            sys.executable,
+            "-m",
+            "coverage",
+            "combine",
+            "--append",
+            "--quiet",
+            f"--data-file={path / '.coverage.gui'}",
+            str(path),
+        ],
+        check=False,
+    )
+    if merged.returncode != 0:
+        print(f"run_gui_tests: could not merge the coverage in {path}", file=sys.stderr)  # noqa: T201
+
+
 def main(argv: list[str]) -> int:
     """Run the suite; return pytest's exit status (or 1 if the machine is not ready)."""
     options, pytest_args = _parse(argv)
@@ -155,6 +189,7 @@ def main(argv: list[str]) -> int:
     cmd = [sys.executable, "-m", "pytest", GUI_TESTS, *select, *pytest_args]
     pytest_log = REPO_ROOT / "build" / "gui-tests" / stamp / "pytest.log"
     status = _run_pytest(cmd, env, quiet=options.quiet, log=pytest_log)
+    merge_coverage(env)
     if status != 0:
         print(f"run_gui_tests: pytest's output and the artifacts are in {pytest_log.parent}")  # noqa: T201
 

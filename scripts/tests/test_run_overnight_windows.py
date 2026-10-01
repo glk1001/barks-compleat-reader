@@ -57,7 +57,7 @@ class TestSelectStages:
 
     def test_skip(self) -> None:
         chosen = rw.select_stages([], ["fetch-build", "built-app"])
-        assert chosen == ["update", "pytest", "validate", "gui", "soak"]
+        assert chosen == ["update", "pytest", "validate", "gui", "soak", "coverage"]
 
     def test_an_unknown_name(self) -> None:
         with pytest.raises(ValueError, match="no stage called nope"):
@@ -415,6 +415,78 @@ class TestGuiStageMemory:
         with patch.object(rw.AppMemoryWatch, "start"):
             assert run.gui_tests(log) == 0
         assert "peak" in log.line.call_args.args[0]
+
+
+def _log() -> MagicMock:
+    log = MagicMock(spec=rw.StageLog)
+    log.run.return_value = 0
+    log.capture.return_value = (0, "84.2\n")
+    return log
+
+
+@pytest.mark.usefixtures("repo")
+class TestCoverage:
+    """The pytest and gui stages measure; the coverage stage combines, reports and judges."""
+
+    def test_the_unit_suite_runs_under_coverage(self) -> None:
+        run = rw.Run(["pytest"], None)
+        log = _log()
+        assert run.stage_pytest(log) == 0
+        argv, env = log.run.call_args.args
+        assert "--cov" in argv
+        assert env["COVERAGE_FILE"] == str(run.cov_dir / ".coverage.unit")
+
+    def test_the_gui_stage_gives_the_probe_a_coverage_folder(self) -> None:
+        run = rw.Run(["gui"], None)
+        with patch.object(rw.Run, "gui_tests", return_value=0) as gui_tests:
+            assert run.stage_gui(_log()) == 0
+        assert gui_tests.call_args.kwargs == {"BARKS_PROBE_COVERAGE": str(run.cov_dir)}
+        assert run.cov_dir.is_dir()
+
+    def test_nothing_measured_is_skipped(self) -> None:
+        run = rw.Run(["coverage"], None)
+        log = _log()
+        assert run.stage_coverage(log) == rw.SKIPPED
+        log.run.assert_not_called()
+
+    def _measured(self, *parts: str) -> rw.Run:
+        run = rw.Run(["coverage"], None)
+        run.cov_dir.mkdir()
+        for part in parts:
+            (run.cov_dir / part).write_bytes(b"")
+        return run
+
+    def test_each_part_and_the_combined_figure_are_reported(self) -> None:
+        run = self._measured(".coverage.unit", ".coverage.gui")
+        log = _log()
+        assert run.stage_coverage(log) == 0
+        lines = [c.args[0] for c in log.line.call_args_list]
+        assert "coverage: unit suite  84.2%" in lines
+        assert "coverage: GUI tests   84.2%" in lines
+        assert "coverage: combined    84.2%" in lines
+        combine = log.run.call_args_list[0].args[0]
+        assert combine[2:4] == ["coverage", "combine"]
+        assert combine[-2:] == [
+            str(run.cov_dir / ".coverage.unit"),
+            str(run.cov_dir / ".coverage.gui"),
+        ]
+
+    def test_a_night_without_both_stages_passing_is_not_judged(self) -> None:
+        run = self._measured(".coverage.unit")
+        run.results = [rw.StageResult("pytest", "passed", 1), rw.StageResult("gui", "FAILED", 1)]
+        log = _log()
+        assert run.stage_coverage(log) == 0
+        assert "not judged" in log.line.call_args.args[0]
+        assert not any("coverage_floor.py" in " ".join(c.args[0]) for c in log.run.call_args_list)
+
+    def test_a_night_both_passed_is_held_to_the_floor(self) -> None:
+        run = self._measured(".coverage.unit", ".coverage.gui")
+        run.results = [rw.StageResult("pytest", "passed", 1), rw.StageResult("gui", "passed", 1)]
+        log = _log()
+        log.run.side_effect = [0, 0, 1]  # combine, html, the floor: below it
+        assert run.stage_coverage(log) == 1
+        floor = log.run.call_args.args[0]
+        assert floor[-4:] == [str(rw.SCRIPTS / "coverage_floor.py"), "84.2", "--tolerance", "1.0"]
 
 
 class TestMain:

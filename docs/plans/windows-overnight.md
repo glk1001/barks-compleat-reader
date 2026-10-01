@@ -55,6 +55,7 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 | `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |
 | `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 20 min |
 | `soak` | `run_gui_tests.py --soak`, one seed | A long random walk: crashes, stuck screens, file handles. | 19 min |
+| `coverage` | `coverage combine` of the `pytest` stage's data and the `gui` stage's (`BARKS_PROBE_COVERAGE`), an HTML report, `coverage_floor.py` | The code only Windows runs (`platform_window_win32.py`: 125 of 150 statements never run on Linux), which no Linux run can measure. Held to this machine's own best, on a night `pytest` and `gui` both passed. The `gui` half waits on `gui_probe.py` running the app under coverage; until then it reports the unit suite alone. | 1 min |
 
 About 65 minutes, in one visible window (the first run's times; the plan guessed 40-45).
 

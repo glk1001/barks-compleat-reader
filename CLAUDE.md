@@ -72,10 +72,10 @@ not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
 On Windows, `uv run python scripts/run_overnight_windows.py` (same options and summary)
 runs what only a Windows machine can: the suite with the data pack, the GUI suite on the
-workspace app and on CI's build of this commit, a soak, and `validate`; nightly through
-`scripts/windows/register-overnight-task.ps1`; `uv run python
-scripts/check_windows_overnight_host.py` says what a machine still lacks for it (setup:
-`docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`.
+workspace app and on CI's build of this commit, a soak, `validate`, and the coverage of
+what only Windows runs; nightly through `scripts/windows/register-overnight-task.ps1`;
+`uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
+(setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`.
 
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):

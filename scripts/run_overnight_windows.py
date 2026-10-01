@@ -11,17 +11,24 @@ is left to Linux and CI, is docs/plans/windows-overnight.md.
 Stages (name: what it runs):
   update         git pull --ff-only, then uv sync --locked: the run tests what is
                  on main tonight
-  pytest         the unit suite, with the data pack CI's Windows leg does not have
+  pytest         the unit suite, with the data pack CI's Windows leg does not have,
+                 its coverage measured for the coverage stage
   fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
                  its Build Verification run if it is still building); skipped with --app
   validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
                  whole library; skipped, saying which, while the prebuilt comics
                  are not on this machine. Before the GUI stages: it warms the file cache
-  gui            run_gui_tests.py: the GUI suite on the workspace app
+  gui            run_gui_tests.py: the GUI suite on the workspace app, the app's
+                 coverage measured where the probe can (BARKS_PROBE_COVERAGE)
   built-app      run_gui_tests.py --app: the suite on that executable, reading real
                  comics; skipped, saying why, when there is none
   soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
                  of SOAK_SEEDS
+  coverage       the unit suite's and the GUI suite's coverage, each and combined,
+                 with an HTML report of what nothing ran: the code only Windows
+                 runs, which the Linux run cannot measure. The combined figure is
+                 held within COVERAGE_TOLERANCE of this machine's best
+                 (coverage_floor.py), on a night pytest and gui both passed
 
 Usage (from the repo root, in PowerShell or cmd):
   uv run python scripts/run_overnight_windows.py [--list] [--only A,B] [--skip A,B]
@@ -86,8 +93,10 @@ RUNNER = "run_overnight_windows"
 # validate before the GUI stages, as on Linux: it reads every volume, so the first app
 # the GUI suite boots finds them in the file cache. Run last, it left that app reading
 # cold archives (volumes 20 on, 0.4-0.5s each) and over its post tree setup budget.
-STAGES = ("update", "pytest", "fetch-build", "validate", "gui", "built-app", "soak")
+STAGES = ("update", "pytest", "fetch-build", "validate", "gui", "built-app", "soak", "coverage")
 GUI_STAGES = frozenset({"gui", "built-app", "soak"})
+# How far, in percentage points, the combined coverage may fall below its best (as on Linux).
+COVERAGE_TOLERANCE = 1.0
 
 # Status codes a stage returns besides pass (0) and fail (anything else), as the Linux run's.
 SKIPPED = 3
@@ -514,6 +523,8 @@ class Run:
         self.log_dir_rel = f"build/overnight/{self.stamp}"
         self.log_dir = REPO_ROOT / self.log_dir_rel
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        # The pytest and gui stages' coverage data, which the coverage stage combines.
+        self.cov_dir = self.log_dir / "coverage"
         # The executable built-app runs: --app's, else the one fetch-build fetched.
         self.exe: Path | None = app
         self.no_exe_why = "fetch-build did not run"
@@ -546,9 +557,12 @@ class Run:
         status = log.run(["git", "pull", "--ff-only"])
         return status or log.run(["uv", "sync", "--locked"])
 
-    @staticmethod
-    def stage_pytest(log: StageLog) -> int:
-        return log.run(["uv", "run", "pytest", "-q"])
+    def stage_pytest(self, log: StageLog) -> int:
+        self.cov_dir.mkdir(exist_ok=True)
+        env = child_env(os.environ, COVERAGE_FILE=str(self.cov_dir / ".coverage.unit"))
+        return log.run(
+            ["uv", "run", "pytest", "-q", "--cov", "--cov-report=term:skip-covered"], env
+        )
 
     def stage_fetch_build(self, log: StageLog) -> int:
         if self.app is not None:
@@ -627,7 +641,8 @@ class Run:
             time.sleep(BUILD_POLL_SECS)
 
     def stage_gui(self, log: StageLog) -> int:
-        return self.gui_tests(log)
+        self.cov_dir.mkdir(exist_ok=True)
+        return self.gui_tests(log, BARKS_PROBE_COVERAGE=str(self.cov_dir))
 
     def stage_built_app(self, log: StageLog) -> int:
         if self.exe is None:
@@ -661,6 +676,43 @@ class Run:
                 "--strict-wiki",
             ]
         )
+
+    def stage_coverage(self, log: StageLog) -> int:
+        """Report the unit suite's, the GUI suite's and the combined coverage; judge the last."""
+        unit, gui = self.cov_dir / ".coverage.unit", self.cov_dir / ".coverage.gui"
+        parts = [part for part in (unit, gui) if part.is_file()]
+        if not parts:
+            log.line("coverage: skipped - neither the pytest nor the gui stage measured any")
+            return SKIPPED
+        for label, part in (("unit suite", unit), ("GUI tests", gui)):
+            if part.is_file():
+                log.line(f"coverage: {label:<12}{self._coverage_total(log, part)}%")
+        combined = self.cov_dir / ".coverage.all"
+        cmd = ["uv", "run", "coverage", "combine", "--keep", "--quiet", f"--data-file={combined}"]
+        status = log.run([*cmd, *map(str, parts)])
+        if status != 0:
+            return status
+        total = self._coverage_total(log, combined)
+        log.line(f"coverage: combined    {total}%")
+        html = self.cov_dir / "html"
+        report = ["uv", "run", "coverage", "html", "--fail-under=0", "--quiet", "-d", str(html)]
+        log.run([*report, f"--data-file={combined}"])
+        log.line(f"coverage: what nothing tests: {html / 'index.html'}")
+        if not (self._passed("pytest") and self._passed("gui")):
+            log.line("coverage: not judged - the pytest and gui stages did not both pass")
+            return 0
+        floor = ["uv", "run", "python", str(SCRIPTS / "coverage_floor.py"), total]
+        return log.run([*floor, "--tolerance", str(COVERAGE_TOLERANCE)])
+
+    @staticmethod
+    def _coverage_total(log: StageLog, data_file: Path) -> str:
+        """Return a coverage data file's total, as coverage reports it ("94.7")."""
+        cmd = ["uv", "run", "coverage", "report", "--fail-under=0", "--format=total"]
+        _, out = log.capture([*cmd, "--precision=1", f"--data-file={data_file}"])
+        return out.strip()
+
+    def _passed(self, stage: str) -> bool:
+        return any(r.name == stage and r.result == "passed" for r in self.results)
 
     def _gui_ready(self) -> bool:
         """Return whether the machine can take injected input; ask doctor once, logging it."""
