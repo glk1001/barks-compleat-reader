@@ -346,6 +346,18 @@ def _reap(pid: int) -> None:
         os.waitpid(pid, os.WNOHANG)
 
 
+def _group_alive(pgid: int) -> bool:
+    """Return whether any process of group `pgid` is left (its leader reaped first)."""
+    _reap(pgid)
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 class DarwinBackend:
     """The ``gui_probe.Backend`` for macOS."""
 
@@ -470,7 +482,9 @@ class DarwinBackend:
                 return
             deadline = time.monotonic() + wait
             while time.monotonic() < deadline:
-                if not self.process_alive(pid):
+                # The whole group, not its leader: uv exits first, and the app under it
+                # can still be closing then.
+                if not _group_alive(pid):
                     return
                 time.sleep(0.1)
 
