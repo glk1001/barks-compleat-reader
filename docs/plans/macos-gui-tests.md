@@ -2,10 +2,11 @@
 
 <!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE -->
 
-> Status: **planned 2026-10-01; milestone A done the same day.** Written on the macOS 12.6
-> VirtualBox guest (2 cores, 4 GB, no GPU driver), where the unit suite now runs on Apple's
-> software OpenGL (71900174). Milestones A to C, each committed green; stop after any of
-> them and the earlier ones still pay.
+> Status: **planned 2026-10-01; milestones A and C done, B all but its confirmation run
+> and a soak, the same day.** Written on the macOS 12.6 VirtualBox guest (2 cores, 4 GB, no
+> GPU driver), where the unit suite now runs on Apple's software OpenGL (71900174).
+> Milestones A to C, each committed green; stop after any of them and the earlier ones
+> still pay.
 >
 > - Milestone A: DONE 2026-10-01. `scripts/gui_probe_darwin.py`, by `ctypes` with no new
 >   dependency: the window by title and owner (a `python` or `barks*` process: a terminal
@@ -59,12 +60,31 @@
 >   **Keys went astray.** Posted at the HID tap, a key lands in whatever app is in front;
 >   when the app lost the front between the probe's check and the post (quitting at a
 >   test's end, a click elsewhere), a run's Escape, Return and Left reached the terminal
->   running Claude Code, interrupting sessions there, submitting their prompts and sending them to the background. Keys
->   now go to the app's process (`CGEventPostToPid`), remembered from the probe's last
->   bring-to-front, and none is sent without it; checked with a Finder window in front:
->   the app took the key and Finder kept the front. Clicks still land by position,
->   behind the same front check. Do not run the suite on the screen a Claude session is
->   typing on regardless: a click can still take the focus.
+>   running Claude Code, interrupting sessions there, submitting their prompts and
+>   sending them to the background. Keys now go to the app's process
+>   (`CGEventPostToPid`), remembered from the probe's last bring-to-front, and none is
+>   sent without it; checked with a Finder window in front: the app took the key and
+>   Finder kept the front. Clicks still land by position, behind the same front check.
+>   Do not run the suite on the screen a Claude session is typing on regardless: a
+>   click can still take the focus.
+>
+>   **Current data, then calibrated.** With the data pack refreshed (the installed app's
+>   `Reader Files`, 2026-10-01), the speaker tests and the wiki round trip pass: the
+>   index has speakers, and the wiki copy's sidebar walk meets no branch in six rounds.
+>   The wiki question above stays open, since the test still depends on the copy's
+>   layout. `run_gui_tests.py --calibrate` then ran the whole suite clean, 121 passed and
+>   1 skipped in 45 minutes (the four soak tests deselected), and wrote this guest's
+>   budgets to `.benchmarks/gui-timings.json`, three times the slowest seen: comic images
+>   loaded 43.8s (14.6s seen; the committed budget is 6s), view image loaded 9.6s, post
+>   tree setup 8.7s, title inset image set 4.5s, tree nodes loaded 2.1s. The `gold and m`
+>   key did not go missing again, in this run or since keys go to the app's process.
+>   **Left:** a run with those budgets on (`run_gui_tests.py --quiet`) to confirm it
+>   clean, and one soak (`--soak`), watching memory on the 4 GB guest.
+> - Milestone C: DONE 2026-10-01. `docs/setup.md`'s macOS guest note is a checklist for
+>   the GUI suite (tools, data, permissions, the Dock, an awake display, calibration,
+>   the run); `CLAUDE.md` and `README.md` name `run_gui_tests.py` for macOS beside
+>   Windows; `docs/plans/cross-platform-gui-tests.md`'s item 1 points here. The overnight
+>   runner has no macOS stage: later, if wanted.
 
 ## Why
 

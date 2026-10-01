@@ -88,9 +88,10 @@
 >     and a symlink test needs Developer Mode (abe1aa4d).
 >
 > **What is left:**
-> 1. macOS window and input coverage needs a real Mac; CI's runners cannot draw. A macOS
->    VirtualBox guest can, on software OpenGL (2026-10-01): plan in
->    `docs/plans/macos-gui-tests.md`.
+> 1. macOS window and input coverage: CI's runners cannot draw, but a macOS VirtualBox
+>    guest can, on software OpenGL, and the whole GUI suite ran clean there on
+>    2026-10-01 through `gui_probe_darwin.py` (`docs/plans/macos-gui-tests.md`). A real
+>    Mac is still untried: its GPU, and a Retina display's points against pixels.
 > 2. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
 >    -k test_one_pagers_ignore_double_page`.
 > 3. On the move to Kivy 3.0 (SDL3, expected January 2027), recheck the fullscreen frame
@@ -264,7 +265,11 @@ first runs showed about CI's runners, which changes the step's reach:
   pixel format`), so no Kivy window opens and the build exits in about two seconds; both
   macOS smoke launches pass on the installer's log and flag alone. Key injection works
   there (the Tk experiment), but there is no window to take the key, so the Escape step
-  skips macOS. macOS window and input coverage has to come from a real Mac.
+  skips macOS. macOS window and input coverage comes from a Mac, or a macOS VirtualBox
+  guest (`docs/plans/macos-gui-tests.md`). That guest stopped with the same error, which
+  was SDL insisting on a GPU; `scripts/macos/with-soft-gl.sh` lifts it and the app draws
+  on Apple's software renderer. Whether the runners would draw through it too is
+  untried.
 Every smoke launch now also says what it reached: the app's popup, Kivy's OpenGL error
 box, or no window.
 

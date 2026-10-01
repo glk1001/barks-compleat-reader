@@ -243,6 +243,18 @@ just reader
   bundles Kivy's ANGLE DLLs for this), set the user environment variable
   `KIVY_GL_BACKEND=angle_sdl2`: with 3D acceleration off there is no OpenGL 2.0, and
   ANGLE draws through Direct3D instead. Real Windows machines need nothing set.
+- **The GUI suite on macOS**: the same runner and probe, with Quartz events for input:
+  keys go to the reader's process alone, clicks land on its window. One visible worker,
+  about 45 minutes on a 2-core VirtualBox guest; leave the desktop alone while it runs.
+  The terminal it runs from needs Accessibility and Screen Recording (System
+  Preferences, Security & Privacy, Privacy), and the reader runs through
+  `scripts/macos/with-soft-gl.sh`, so a guest with no GPU draws on Apple's software
+  OpenGL. `uv run python scripts/gui_probe.py doctor` checks the machine; the whole
+  setup is `docs/setup.md`, "A macOS VirtualBox guest".
+    ```
+    uv run python scripts/run_gui_tests.py              # the suite (-k, -x: pytest args)
+    uv run python scripts/run_gui_tests.py --calibrate  # once: this machine's timing budgets
+    ```
 - **A built executable**: `bash scripts/smoke-test-build.sh ./barks-reader-linux` (or the
   Windows `.exe`, or the macOS `.zip`) launches a build in an empty directory as far as
   its first-run installer's "data pack missing" message, which proves the packaged program

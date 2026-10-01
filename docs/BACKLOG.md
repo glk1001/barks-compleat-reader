@@ -281,8 +281,8 @@ in the OCR repo, which is read-only from here:
       real `SendInput` injection, and a data-pack-free key-and-window check on every
       CI build leg (macOS's only regular coverage). Plan:
       `docs/plans/cross-platform-gui-tests.md`. The GUI suite on macOS (a `gui_probe.py`
-      backend, run on the VirtualBox guest with software OpenGL):
-      `docs/plans/macos-gui-tests.md`.
+      backend, run on the VirtualBox guest with software OpenGL; whole suite clean
+      2026-10-01, a real Mac untried): `docs/plans/macos-gui-tests.md`.
 
 - [ ] **Shared Hypothesis strategies** (`tests/strategies.py`) — reusable
       `@st.composite` builders for the domain types so property tests can reach

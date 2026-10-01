@@ -193,7 +193,10 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
 - GUI path tests are in `src/barks-reader/tests/gui/` (outside `testpaths`; run with
   `bash scripts/run_gui_tests.sh`, or `--headless` on Xvfb with no window or desktop
   session, which also runs four workers in parallel on displays :2 to :5, about three
-  minutes for the suite). They boot the real app from a scratch profile and wait
+  minutes for the suite; on Windows and macOS, `uv run python scripts/run_gui_tests.py`,
+  one worker on the real desktop, through `scripts/gui_probe.py`'s backend for each,
+  `gui_probe_win32.py` and `gui_probe_darwin.py`; macOS plan:
+  `docs/plans/macos-gui-tests.md`). They boot the real app from a scratch profile and wait
   only on lines the app logs, so a screen's log markers are part of its contract: when a
   user-visible transition gets no log line, add one (with a `loguru_sink` unit test) rather
   than a sleep. The marker text is written once, in `barks_reader.core.log_markers`

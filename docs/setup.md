@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -299,10 +299,22 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   - **Push gate**: `barks-comic-building` does not install (its OpenCV has macOS x86_64
     wheels only from macOS 14), and the censorship check reads comics trees the guest does
     not have, so push with `SKIP=check-censorship-csv git push`; pytest runs.
-  - **GUI path tests**: `uv run python scripts/run_gui_tests.py`, as on Windows: one
-    worker, the app's window on the guest's own screen, input as Quartz events. The
-    terminal it runs from needs Accessibility and Screen Recording (System Preferences,
-    Security & Privacy, Privacy; granted, they apply at once), and the Dock set to hide
-    itself, or it covers the bottom of the app's window. `uv run python
-    scripts/gui_probe.py doctor` checks all three. Status: one test green; the rest is
-    `docs/plans/macos-gui-tests.md`, milestone B.
+  - **GUI path tests**, as on Windows: `scripts/run_gui_tests.py` through
+    `scripts/gui_probe.py`, one worker, the reader's window on the guest's own screen.
+    Keys go to the reader's process alone; clicks land on its window by position, so
+    leave the desktop alone while a run goes (about 45 minutes). Once per machine:
+    1. **Permissions**: Accessibility (to post keys and clicks) and Screen Recording (for
+       window titles and screenshots) for the terminal the runner is started from, in
+       System Preferences, Security & Privacy, Privacy. Granted, they apply at once.
+    2. **An awake, unlocked screen**: no screen saver with a password, and display sleep
+       longer than a run (Energy Saver), or `caffeinate -d` beside it.
+    3. **Check**: `uv run python scripts/gui_probe.py doctor`, which also wants `clang`
+       (for the software-OpenGL library) and the profile `.env.runtime` points at.
+    4. **Calibrate**: `uv run python scripts/run_gui_tests.py --calibrate`, the whole suite
+       with the budgets off; it writes this machine's to `.benchmarks/gui-timings.json`
+       only if every test passes. On the 2-core guest a comic's images take up to 15s to
+       load, where the committed budget is 6s.
+
+    Then `uv run python scripts/run_gui_tests.py --quiet` (`-k` and pytest's other
+    options pass through; `--soak` for the random walk). The whole suite ran clean there
+    on 2026-10-01: `docs/plans/macos-gui-tests.md`.
