@@ -200,6 +200,22 @@ Check first whether any other title, tag or path the app builds from a title car
 Windows-forbidden character: these two are the only file names under `The Comics` that
 do, but the question is the titles, not today's files.
 
+## Open
+
+- **The wiki viewer's memory on big tables.** A page costs about 1 GB per 1,000-1,700
+  table rows in the standalone viewer (`cbl-contents`, 1,686 rows: 1.4 GB settled;
+  `bibliography`, 942 rows: 1.1 GB; the home page: 0.2 GB), and a soak walk through the
+  reference tables took the app to 4.9 GB (dfc2a0ca) and 5.6 GB (70be95bf) on the laptop,
+  above Linux's 3.5 GiB plateau. It is what sets the soak's memory ceiling. Worth knowing
+  where it goes (a widget per cell? textures per label?) and whether a table could cost
+  less, in `okf-reader`.
+- **A free-memory guard, maybe.** The runner holds the app to a fixed ceiling (6 GB), but
+  what matters is the machine's free memory: at 5.6 GB the app left 3.7 GB free, and the
+  run, started from Claude Code, was stopped from outside (the nightly task's would not
+  be). The watch could instead stop the app when free memory drops below a reserve (say
+  2.5-4 GB), whatever else is open, with the fixed ceiling as a backstop. Decide on the
+  soak's peak from a full run started by hand, outside Claude Code.
+
 ## Later, not in this plan
 
 - **Touch on Windows.** The laptop is a touchscreen, but the Linux touch tests inject

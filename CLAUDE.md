@@ -33,7 +33,11 @@ preserves the LFS hook as `pre-push.legacy` and chains to it. To verify, `.git/h
 should name `--hook-type=pre-push`, not `git lfs pre-push`. On Windows, change
 `pre-push.legacy`'s first line from `#!/bin/sh` to `#!/usr/bin/env sh`: pre-commit looked for an
 absolute shebang as a Windows path, failed every push with "Executable `/bin/sh` not found", and
-pushed nothing. (Both Windows notes were found under pre-commit; not yet re-checked under prek.)
+pushed nothing. (Both Windows notes were found under pre-commit. Under prek, on the Windows
+laptop on 2026-10-01, every commit hook ran, the cspell one through `bunx.cmd`, so the
+`bunx` note holds; the commit-message check calls `bun x` and needs no `bunx`. The
+`pre-push.legacy` shebang is not yet re-checked under prek: that laptop's file already had
+the fix, and its pushes skipped the hook.)
 
 A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
 `uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the
