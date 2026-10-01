@@ -12,6 +12,14 @@ confirmation is one), pressing Escape there instead. It is a soak test, off by
 default: ``run_gui_tests.sh --soak`` selects it alone, and
 ``BARKS_GUI_WALK_STEPS`` / ``BARKS_GUI_WALK_SEED`` set its length and seed
 (the seed is in the test id, so a failure names the walk that found it).
+
+Every ``BARKS_GUI_WALK_CENSUS_EVERY`` keys (0: never) the walk asks the app for its
+memory census, which comes after a full garbage collection. The app collects fully
+only rarely (main.py raises the thresholds), so the big wiki pages a walk opens lie
+as garbage meanwhile: on the Windows laptop a walk passed 6 GB that way, and the
+overnight run's memory guard stopped it. With a collection every so often, the size
+the guard sees is what the app holds; and if the walk fails, its message lists the
+censuses, so a climb that is no garbage shows.
 """
 
 from __future__ import annotations
@@ -24,16 +32,19 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import nodes
+from barks_gui.memory import census
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
+    from barks_reader.core.memory_census import MemoryCensus
     from gui_driver import Driver
 
 REMOTE_KEYS = ("Escape", "Return", "Up", "Down", "Left", "Right")
 STEPS = int(os.environ.get("BARKS_GUI_WALK_STEPS", "200"))
 SEED = int(os.environ.get("BARKS_GUI_WALK_SEED", "1"))
+CENSUS_EVERY = int(os.environ.get("BARKS_GUI_WALK_CENSUS_EVERY", "100"))
 KEY_TIMEOUT = 15
 KEY_PRESSED = pattern(markers.KEY_PRESSED)
 CONFIRM_OPENED = pattern(markers.CONFIRM_POPUP_OPENED)
@@ -55,6 +66,14 @@ START_NODES = {
     "history": nodes.HISTORY,
     "a-story": nodes.GHOST_OF_THE_GROTTO,
 }
+
+
+def _census_lines(censuses: list[tuple[int, MemoryCensus]]) -> str:
+    return "".join(
+        f"\n  after key {step}: {c.widgets} widgets, {c.textures} textures,"
+        f" {c.objects} objects, {c.rss_mib} MiB resident"
+        for step, c in censuses
+    )
 
 
 def _confirm_popup_open(d: Driver) -> bool:
@@ -84,14 +103,20 @@ def test_a_random_walk_leaves_the_app_answering_and_clean(boot: AppBoot, start: 
     # The walk may end fullscreen or mid-reader; the teardown's other checks still apply.
     boot.expect_boot_size = False
     rng = random.Random(f"{SEED}:{start}")
+    censuses: list[tuple[int, MemoryCensus]] = []
     for step in range(STEPS):
+        if CENSUS_EVERY and step and step % CENSUS_EVERY == 0:
+            censuses.append((step, census(d)))
         key = "Escape" if _confirm_popup_open(d) else rng.choice(REMOTE_KEYS)
         may_confirm = key == "Return" and _focus_opens_a_confirm(d)
         confirms_before = d.match_count(CONFIRM_OPENED)
         try:
             d.key_then_wait(KEY_PRESSED, key, timeout=KEY_TIMEOUT)
         except Exception as exc:
-            msg = f"step {step + 1}/{STEPS} ({key}) got no answer from the app: {exc}"
+            msg = (
+                f"step {step + 1}/{STEPS} ({key}) got no answer from the app: {exc}"
+                + _census_lines(censuses)
+            )
             raise AssertionError(msg) from exc
         if may_confirm:
             _await_confirm_opened(d, confirms_before)
