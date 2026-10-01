@@ -364,3 +364,34 @@ def test_the_top_bar_is_walked_and_contrast_toggled_by_remote(wiki_boot: AppBoot
     d.key_then_wait(HOME_RINGED, "Left")
     d.key_then_wait(d.WIKI_FOCUS_MOVED, "Left")  # wraps to the last button, Quit
     d.key_then_wait(SIDEBAR, "Down")  # out of the bar, nothing pressed
+
+
+BIBLIOGRAPHY = pattern(wiki.PAGE_SHOWN, page=re.compile(r".*reference/data/bibliography\.md"))
+# What the bibliography page may add to the app's widgets, its table scrolled into
+# view: the page's own blocks and a screen of row Labels. Built whole, its ~940-row
+# table alone was over 940 Labels (okf_reader's LAZY_TABLE_MIN_ROWS).
+LONG_TABLE_WIDGET_LIMIT = 400
+# Down presses that scroll the page well into its table (a link-free stretch: each
+# press scrolls a step).
+LONG_TABLE_SCROLL_STEPS = 40
+
+
+def test_a_long_tables_rows_are_built_only_near_the_view(wiki_boot: AppBoot) -> None:
+    """The bibliography's table, scrolled through, holds a screen of rows, not all of them.
+
+    Kivy frees a widget only on a full garbage collection, so a page that built every
+    row of a thousand-row table left them all as garbage each time it was left: on
+    Windows a soak walk paging the bibliography passed 6 GB.
+    """
+    d = wiki_boot(nodes.INDEXES)
+    _open_wiki_and_search(d, "bibliography")
+    before = memory.census(d)
+    d.key_then_wait(BIBLIOGRAPHY, "Return", timeout=30)  # the top hit
+    d.key_then_wait(PAGE_REGION, "Right")
+    for _ in range(LONG_TABLE_SCROLL_STEPS):
+        d.key_then_wait(KEY_PRESSED, "Down")
+    after = memory.census(d)
+    added = after.widgets - before.widgets
+    assert added < LONG_TABLE_WIDGET_LIMIT, (
+        f"the bibliography page added {added} widgets (limit {LONG_TABLE_WIDGET_LIMIT})"
+    )
