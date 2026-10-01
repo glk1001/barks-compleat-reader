@@ -1,5 +1,5 @@
 #!/bin/bash
-# cspell:ignore softgl dylib dylibs otool codesign dyld clang Xcode
+# cspell:ignore softgl libsoftgl dylib dylibs dynamiclib otool codesign dyld clang Xcode
 # Run a command with Kivy drawing on Apple's software OpenGL renderer, for a macOS
 # machine with no GPU driver (a VirtualBox guest): see softgl.c.
 #

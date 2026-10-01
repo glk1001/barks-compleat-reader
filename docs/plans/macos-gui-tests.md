@@ -1,6 +1,6 @@
 # Plan: the GUI suite on macOS
 
-<!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow -->
+<!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE -->
 
 > Status: **planned 2026-10-01, not started.** Written on the macOS 12.6 VirtualBox guest
 > (2 cores, 4 GB, no GPU driver), where the unit suite now runs on Apple's software OpenGL
