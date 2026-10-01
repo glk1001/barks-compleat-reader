@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
+from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import comics_database as comics_database_module
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
     TitleNotFoundError,
     _get_story_titles_dir,
+    check_comic_ok_for_building,
     get_fanta_restored_ocr_prelim_root_dir,
     get_fanta_restored_ocr_prelim_volume_dir,
     get_fanta_title_for_volume,
+    make_all_fantagraphics_directories,
 )
 from barks_fantagraphics.comics_helpers import validate_ini_files_against_barks_titles
 from barks_fantagraphics.fanta_comics_info import (
@@ -27,6 +32,10 @@ from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
 )
+from loguru import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 # ---------------------------------------------------------------------------
 # TitleNotFoundError
@@ -329,3 +338,152 @@ class TestTitleLookupErrors:
     def test_a_single_story_issue_finds_its_story(self, db: ComicsDatabase) -> None:
         info = db.get_fanta_comic_book_info("ANDERS 47")
         assert info.comic_book_info.get_title_str() == "Pied Piper of Duckburg"
+
+
+# ---------------------------------------------------------------------------
+# The build pipeline's checks (barks-comic-building calls these; no test reached them)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def log_lines() -> Iterator[list[str]]:
+    """Collect loguru's messages, at every level, while the test runs."""
+    lines: list[str] = []
+    sink = logger.add(lambda message: lines.append(message.record["message"]), level=0)
+    yield lines
+    logger.remove(sink)
+
+
+class _FakeDb:
+    """The volume directory lookups make_all_fantagraphics_directories asks for, under `root`.
+
+    A volume's dir is root/<what>/<NN>; a root dir, root/<what>.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+
+    def __getattr__(self, name: str) -> Callable[..., Path]:
+        what = name.removeprefix("get_fantagraphics_")
+        if what.endswith("_root_dir"):
+            return lambda: self.root / what
+        return lambda volume: self.root / what / f"{volume:02d}"
+
+
+DERIVED_VOLUME_DIRS = [
+    "upscayled_volume_image_dir",
+    "restored_volume_image_dir",
+    "restored_upscayled_volume_image_dir",
+    "restored_svg_volume_image_dir",
+    "restored_ocr_raw_volume_dir",
+    "fixes_volume_image_dir",
+    "upscayled_fixes_volume_image_dir",
+    "panel_segments_volume_dir",
+]
+SYMLINKED_ROOTS = ["upscayled_root_dir", "restored_upscayled_root_dir", "restored_svg_root_dir"]
+
+
+class TestMakeAllFantagraphicsDirectories:
+    @pytest.fixture
+    def made(self, tmp_path: Path, log_lines: list[str]) -> tuple[Path, list[str]]:
+        """Run it over volumes 1 to 3, with originals for 1 and 3 only and one root symlinked."""
+        for volume in (1, 3):
+            (tmp_path / "volume_dir" / f"{volume:02d}").mkdir(parents=True)
+        (tmp_path / "upscayled-target").mkdir()
+        (tmp_path / "upscayled_root_dir").symlink_to(tmp_path / "upscayled-target")
+        with (
+            patch.object(comics_database_module, "FIRST_VOLUME_NUMBER", 1),
+            patch.object(comics_database_module, "LAST_VOLUME_NUMBER", 3),
+            patch.object(comics_database_module, "FANTA_VOLUME_OVERRIDES_ROOT", tmp_path / "ovr"),
+        ):
+            make_all_fantagraphics_directories(cast("ComicsDatabase", _FakeDb(tmp_path)))
+        return tmp_path, log_lines
+
+    def test_each_volume_with_originals_gets_its_derived_dirs(
+        self, made: tuple[Path, list[str]]
+    ) -> None:
+        root, _ = made
+        for volume in ("01", "03"):
+            for what in DERIVED_VOLUME_DIRS:
+                assert (root / what / volume).is_dir(), f"{what} for volume {volume}"
+            for scraps in ("standard", "upscayled", "restored"):
+                assert (root / "fixes_scraps_volume_image_dir" / volume / scraps).is_dir()
+        assert (root / "ovr").is_dir()
+
+    def test_a_volume_without_originals_is_skipped_and_named(
+        self, made: tuple[Path, list[str]]
+    ) -> None:
+        root, lines = made
+        assert not any((root / what / "02").exists() for what in DERIVED_VOLUME_DIRS)
+        assert any("No Fantagraphics original dir for volume 2" in line for line in lines)
+
+    def test_a_missing_symlink_is_an_error_and_a_present_one_is_not(
+        self, made: tuple[Path, list[str]]
+    ) -> None:
+        root, lines = made
+        missing = [line for line in lines if line.startswith("Symlink not found")]
+        assert missing == [f'Symlink not found: "{root / name}".' for name in SYMLINKED_ROOTS[1:]]
+
+    def test_dirs_already_there_are_left_alone(
+        self, made: tuple[Path, list[str]], log_lines: list[str]
+    ) -> None:
+        root, _ = made
+        log_lines.clear()
+        with (
+            patch.object(comics_database_module, "FIRST_VOLUME_NUMBER", 1),
+            patch.object(comics_database_module, "LAST_VOLUME_NUMBER", 1),
+            patch.object(comics_database_module, "FANTA_VOLUME_OVERRIDES_ROOT", root / "ovr"),
+        ):
+            make_all_fantagraphics_directories(cast("ComicsDatabase", _FakeDb(root)))
+        assert not any(line.startswith("Created dir") for line in log_lines)
+        assert any(line.startswith("Dir already exists") for line in log_lines)
+
+    def test_the_database_method_runs_it_for_itself(self) -> None:
+        db = MagicMock(spec=ComicsDatabase)
+        with patch.object(comics_database_module, "make_all_fantagraphics_directories") as made:
+            ComicsDatabase.make_all_fantagraphics_directories(db)
+        made.assert_called_once_with(db)
+
+
+# The directories a comic must have to be built, in the order they are checked: the
+# comic's attribute or method for each, and what the error calls it.
+BUILD_DIRS = [
+    ("dirs.srce_dir", "srce directory"),
+    ("get_srce_image_dir", "srce image directory"),
+    ("dirs.srce_upscayled_dir", "srce upscayled directory"),
+    ("get_srce_upscayled_image_dir", "srce upscayled image directory"),
+    ("dirs.srce_restored_dir", "srce restored directory"),
+    ("get_srce_restored_image_dir", "srce restored image directory"),
+    ("dirs.srce_fixes_dir", "srce fixes directory"),
+    ("get_srce_original_fixes_image_dir", "srce fixes image directory"),
+]
+
+
+def _comic_with_dirs(root: Path, missing: str | None = None) -> MagicMock:
+    """Return a stand-in comic whose build dirs are under `root`, all made but `missing`."""
+    comic = MagicMock()
+    for index, (where, _what) in enumerate(BUILD_DIRS):
+        path = root / f"dir{index}"
+        if where != missing:
+            path.mkdir()
+        if where.startswith("dirs."):
+            setattr(comic.dirs, where.removeprefix("dirs."), path)
+        else:
+            getattr(comic, where).return_value = path
+    return comic
+
+
+class TestCheckComicOkForBuilding:
+    def test_a_comic_with_every_dir_passes(self, tmp_path: Path) -> None:
+        check_comic_ok_for_building(_comic_with_dirs(tmp_path))
+
+    @pytest.mark.parametrize(("where", "what"), BUILD_DIRS)
+    def test_each_missing_dir_is_named(self, tmp_path: Path, where: str, what: str) -> None:
+        with pytest.raises(FileNotFoundError, match=f"Could not find {what} "):
+            check_comic_ok_for_building(_comic_with_dirs(tmp_path, missing=where))
+
+    def test_the_database_method_checks_the_same(self) -> None:
+        comic = MagicMock()
+        with patch.object(comics_database_module, "check_comic_ok_for_building") as checked:
+            ComicsDatabase.check_comic_ok_for_building(comic)
+        checked.assert_called_once_with(comic)

@@ -31,6 +31,9 @@ from barks_fantagraphics.comics_consts import (
     BOUNDED_SUBDIR,
     IMAGES_SUBDIR,
     JSON_METADATA_FILENAME,
+    THE_CHRONOLOGICAL_DIR,
+    THE_COMICS_DIR,
+    THE_YEARS_COMICS_DIR,
     PageType,
 )
 from barks_fantagraphics.fanta_comics_info import FantaBook, FantaComicBookInfo
@@ -917,3 +920,163 @@ class TestGetStoryFileSources:
         sources = comic.get_story_file_sources("042")
         assert fixes_file in sources
         assert original not in sources
+
+
+# ---------------------------------------------------------------------------
+# The build pipeline's file lookups (barks-comic-building and barks-ocr call these)
+# ---------------------------------------------------------------------------
+
+
+def _touch(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch()
+    return path
+
+
+class TestPipelineStoryFileLists:
+    def test_restored_upscayled_and_svg_lists_hold_the_body_pages(self) -> None:
+        comic = _make_comic()
+        body = [PageType.BODY]
+        assert comic.get_srce_restored_story_files(body) == [
+            comic.get_srce_restored_image_dir() / f"{p}.png" for p in ("002", "003")
+        ]
+        assert comic.get_srce_restored_upscayled_story_files(body) == [
+            comic.get_srce_restored_upscayled_story_file(p) for p in ("002", "003")
+        ]
+        assert comic.get_srce_restored_svg_story_files(body) == [
+            comic.get_srce_restored_svg_story_file(p) for p in ("002", "003")
+        ]
+
+    def test_the_ocr_raw_files_come_in_easyocr_and_paddleocr_pairs(self) -> None:
+        comic = _make_comic()
+        (cover,) = comic.get_srce_restored_ocr_raw_story_files([PageType.COVER])
+        assert cover == comic._get_srce_restored_ocr_raw_story_file("001")
+
+    def test_an_svg_page_renders_to_a_png_beside_it(self) -> None:
+        comic = _make_comic()
+        png = comic.get_srce_restored_svg_png_story_file("042")
+        assert png == comic.get_srce_restored_svg_image_dir() / "042.svg.png"
+
+    def test_the_ocr_prelim_and_annotation_files_are_in_their_dirs(self) -> None:
+        comic = _make_comic()
+        groups = comic.get_ocr_prelim_groups_json_file("042", "easyocr")
+        annotated = comic.get_ocr_prelim_annotated_file("042", "easyocr")
+        boxes = comic.get_ocr_boxes_annotated_file("042", "easyocr")
+        assert groups.parent == comic.dirs.srce_restored_ocr_prelim_dir
+        assert annotated.parent == boxes.parent == comic.dirs.srce_restored_ocr_annotations_dir
+        assert len({groups.name, annotated.name, boxes.name}) == 3
+        assert all(
+            f.name.startswith("042") and "easyocr" in f.name for f in (groups, annotated, boxes)
+        )
+
+    def test_the_final_lists_carry_each_pages_modification(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        _touch(comic.get_srce_original_story_file("001"))
+        cover = [PageType.COVER]
+        original = comic.get_srce_original_story_file("001")
+        assert comic.get_final_srce_original_story_files(cover) == [
+            (original, ModifiedType.ORIGINAL)
+        ]
+        assert comic.get_final_srce_upscayled_story_files(cover) == [
+            (comic.get_srce_upscayled_story_file("001"), ModifiedType.ORIGINAL)
+        ]
+        assert comic.get_final_srce_story_files(cover) == [(original, ModifiedType.ORIGINAL)]
+
+
+class TestGetFinalSrceUpscayledStoryFile:
+    def test_without_a_fix_it_is_the_upscayled_file(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        assert comic.get_final_srce_upscayled_story_file("002", PageType.BODY) == (
+            comic.get_srce_upscayled_story_file("002"),
+            ModifiedType.ORIGINAL,
+        )
+
+    def test_a_jpg_fix_is_refused(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        _touch(comic.get_srce_upscayled_fixes_image_dir() / "002.jpg")
+        with pytest.raises(RuntimeError, match=r"must be \.png not \.jpg"):
+            comic.get_final_srce_upscayled_story_file("002", PageType.BODY)
+
+    def test_a_png_fix_of_an_original_page_is_the_modified_file(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        _touch(comic.get_srce_original_story_file("002"))
+        fix = _touch(comic.get_srce_upscayled_fixes_story_file("002"))
+        assert comic.get_final_srce_upscayled_story_file("002", PageType.BODY) == (
+            fix,
+            ModifiedType.MODIFIED,
+        )
+
+    def test_a_fix_beside_an_upscayled_file_is_refused(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        _touch(comic.get_srce_original_story_file("002"))
+        _touch(comic.get_srce_upscayled_fixes_story_file("002"))
+        _touch(comic.get_srce_upscayled_story_file("002"))
+        with pytest.raises(RuntimeError, match="Cannot have an upscayled file and a fixes file"):
+            comic.get_final_srce_upscayled_story_file("002", PageType.BODY)
+
+
+class TestGetFinalSrceStoryFileForACover:
+    """A page type that is never restored (a cover) is read from its original scan."""
+
+    def test_the_original_scan(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        original = _touch(comic.get_srce_original_story_file("001"))
+        assert comic.get_final_srce_story_file("001", PageType.COVER) == (
+            original,
+            ModifiedType.ORIGINAL,
+        )
+
+    def test_no_scan_at_all_is_an_error(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        with pytest.raises(FileNotFoundError, match="Could not find source file"):
+            comic.get_final_srce_story_file("001", PageType.COVER)
+
+
+class TestStoryFileSources:
+    def test_an_upscayled_fix_stands_for_the_upscayled_file(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        _touch(comic.get_srce_upscayled_story_file("002"))
+        fix = _touch(comic.get_srce_upscayled_fixes_story_file("002"))
+        assert comic.get_story_file_sources("002") == [fix]
+
+    def test_without_a_fix_the_upscayled_file_is_a_source(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        upscayled = _touch(comic.get_srce_upscayled_story_file("002"))
+        assert comic.get_story_file_sources("002") == [upscayled]
+
+
+class TestPanelFixes:
+    @pytest.mark.parametrize(
+        ("lookup", "suffix"),
+        [
+            ("get_final_fixes_overall_panel_bounds_file", "-overall-bounds-only.jpg"),
+            ("get_final_fixes_panel_order_file", "-panel-order.json"),
+        ],
+    )
+    def test_a_fix_is_found_only_when_it_is_there(
+        self, tmp_path: Path, lookup: str, suffix: str
+    ) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        assert getattr(comic, lookup)(7) is None
+        fix = _touch(comic.get_srce_original_fixes_bounded_dir() / f"007{suffix}")
+        assert getattr(comic, lookup)(7) == fix
+
+
+class TestDestZipPaths:
+    def test_the_zip_and_its_series_and_year_symlinks(self) -> None:
+        comic = _make_comic(series_name="WDCS", number_in_series=7)
+        zip_name = comic.get_dest_comic_zip_filename()
+        assert zip_name.endswith(".cbz")
+        assert comic.get_dest_comic_zip() == THE_CHRONOLOGICAL_DIR / zip_name
+        assert comic.get_dest_series_zip_symlink_dir() == THE_COMICS_DIR / "WDCS"
+        symlink_name = comic.get_dest_series_comic_zip_symlink_filename()
+        assert symlink_name.startswith("007 Test Title [")
+        assert symlink_name.endswith("].cbz")
+        assert comic.get_dest_series_comic_zip_symlink() == THE_COMICS_DIR / "WDCS" / symlink_name
+        year_dir = THE_YEARS_COMICS_DIR / str(comic.submitted_year)
+        assert comic.get_dest_year_zip_symlink_dir() == year_dir
+        assert comic.get_dest_year_comic_zip_symlink() == year_dir / zip_name
+
+    def test_the_title_enum_comes_from_the_ini_name(self) -> None:
+        comic = _make_comic(title="Lost in the Andes!")
+        assert comic.get_title_enum() is Titles.LOST_IN_THE_ANDES
