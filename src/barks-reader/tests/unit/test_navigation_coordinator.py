@@ -9,8 +9,12 @@ import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
+from barks_fantagraphics.comics_database import TitleNotFoundError
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.user_error_types import ErrorTypes
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 
 
@@ -455,3 +459,130 @@ class TestNavigateToSearchResult:
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
             assert not nav_coord.navigate_to_search_result("No Such Story", (Tags.FIRST_DAISY,))
         chrono.assert_not_called()
+
+
+ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+
+
+class TestUpdateTitle:
+    """A tree label picked: the title view follows a configured story, else stays."""
+
+    def test_a_configured_story_becomes_the_current_title(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        assert nav_coord.update_title(ANDES) is True
+        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        assert nav_coord.current_fanta_info is info
+        mock_deps["renderer"].set_title_without_render.assert_called_once_with(info, None)
+
+    def test_a_label_naming_no_title_changes_nothing(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        assert nav_coord.update_title("No Such Story") is False
+        assert nav_coord.current_fanta_info is None
+        mock_deps["renderer"].set_title_without_render.assert_not_called()
+
+    def test_an_extras_title_is_not_shown(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        extra = next(
+            t for t, info in ALL_FANTA_COMIC_BOOK_INFO.items() if info.series_name == SERIES_EXTRAS
+        )
+        assert nav_coord.update_title(ENUM_TO_STR_TITLE[extra]) is False
+        mock_deps["renderer"].set_title_without_render.assert_not_called()
+
+
+class TestAVolumeNotAvailable:
+    """A comic whose volume is missing is reported to the user, not opened."""
+
+    def _not_found(self, mock_deps: dict[str, MagicMock]) -> None:
+        mock_deps["comics_database"].get_comic_book.side_effect = TitleNotFoundError("gone", ANDES)
+
+    def _assert_reported(self, mock_deps: dict[str, MagicMock]) -> None:
+        handle_error = mock_deps["user_error_handler"].handle_error
+        error_type, error_info = handle_error.call_args.args
+        assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+        assert error_info.title is Titles.LOST_IN_THE_ANDES
+        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
+        mock_deps["on_active_changed"].assert_not_called()
+
+    def test_reading_a_story(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        nav_coord._current_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        self._not_found(mock_deps)
+        assert nav_coord.read_comic() is False
+        self._assert_reported(mock_deps)
+
+    def test_reading_a_page_of_a_collection(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS  # a one-pager
+        nav_coord._current_fanta_info = mock_fanta_info
+        self._not_found(mock_deps)
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_one_pager_collection_page_num",
+                return_value=7,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=MagicMock()
+            ),
+        ):
+            assert nav_coord.read_comic() is False
+        self._assert_reported(mock_deps)
+
+
+class TestYearRangeParentNode:
+    def test_a_title_with_no_year_range_is_an_error(self) -> None:
+        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        with pytest.raises(RuntimeError, match="No year range found"):
+            NavigationCoordinator._year_range_parent_node(None, {}, info)
+
+    def test_a_range_with_no_tree_node_is_an_error(self) -> None:
+        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        with pytest.raises(RuntimeError, match=r"No year node found for range '\(1947, 1950\)'"):
+            NavigationCoordinator._year_range_parent_node((1947, 1950), {}, info)
+
+
+class TestNavigateToTitleWithPage:
+    """From an index screen: to the title, and its goto-page set to the page indexed."""
+
+    def test_an_article_is_read_rather_than_navigated_to(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        article = next(iter(NON_COMIC_TITLES))
+        with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
+            nav_coord.navigate_to_title_with_page(ImageInfo(from_title=article), "3")
+        navigated.assert_not_called()
+        mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
+
+    def test_a_story_goes_to_its_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        image_info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES)
+        with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
+            nav_coord.navigate_to_title_with_page(image_info, "12")
+        navigated.assert_called_once_with(image_info)
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "12", active=True
+        )
+
+    def test_a_one_pager_sets_no_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """Reading one deep-links to its page in the collection; the index's page would mislead."""
+        with patch.object(nav_coord, "navigate_to_chrono_title"):
+            nav_coord.navigate_to_title_with_page(ImageInfo(from_title=Titles.IF_THE_HAT_FITS), "1")
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+
+
+def test_the_wiki_without_a_bundle_opens_nothing(
+    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+) -> None:
+    mock_deps["reader_settings"].wiki_bundle_dir = None
+    nav_coord.open_wiki()
+    mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+    mock_deps["on_active_changed"].assert_not_called()

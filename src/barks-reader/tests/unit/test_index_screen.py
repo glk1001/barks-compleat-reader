@@ -7,9 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
+from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.index_screen import (
     KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
@@ -19,6 +21,7 @@ from barks_reader.ui.index_screen import (
     IndexMenuButton,
     IndexScreen,
     PopupKeyboardNav,
+    TextBoxWithTitleAndBorder,
     _speech_highlight_start_tag,
     format_page_speech_bubbles,
 )
@@ -685,3 +688,208 @@ class TestEnterNavFocusMarker:
             index_screen.enter_nav_focus(lambda: None)
         draw.assert_not_called()
         assert "IndexScreen: entered nav focus." in loguru_sink
+
+
+# ---------------------------------------------------------------------------
+# The remote's keys inside the speech-bubble popup, and in the items panel:
+# the paths no GUI test walks.
+# ---------------------------------------------------------------------------
+
+_module = barks_reader.ui.index_screen
+
+
+class _StubbedPopupNav(PopupKeyboardNav):
+    """The popup's navigator over stand-in bubbles, its drawing recorded rather than done."""
+
+    def __init__(self, entries: list[MagicMock]) -> None:
+        super().__init__(MagicMock())
+        self.entries = entries
+        self.drawn = MagicMock()
+        self.cleared = MagicMock()
+
+    def _get_entries(self) -> list[TextBoxWithTitleAndBorder]:
+        return cast("list[TextBoxWithTitleAndBorder]", self.entries)
+
+    def _draw_focus(self) -> None:
+        self.drawn()
+
+    def _clear_focus(self) -> None:
+        self.cleared()
+
+
+def _popup_nav(entries: list[MagicMock]) -> tuple[_StubbedPopupNav, MagicMock, MagicMock]:
+    nav = _StubbedPopupNav(entries)
+    return nav, nav.drawn, nav.cleared
+
+
+class TestPopupKeyboardNavKeys:
+    def test_down_and_up_step_through_the_bubbles(self) -> None:
+        nav, drawn, _ = _popup_nav([MagicMock(), MagicMock(), MagicMock()])
+        assert nav.handle_key(_module.KEY_DOWN) is True
+        assert nav.handle_key(_module.KEY_DOWN) is True
+        assert nav._focused_idx == 2
+        assert nav.handle_key(_module.KEY_UP) is True
+        assert nav._focused_idx == 1
+        assert drawn.call_count == 3
+
+    def test_the_focus_stops_at_either_end(self) -> None:
+        nav, drawn, cleared = _popup_nav([MagicMock(), MagicMock()])
+        nav.handle_key(_module.KEY_UP)  # already at the first
+        nav._focused_idx = 1
+        nav.handle_key(_module.KEY_DOWN)  # already at the last
+        assert nav._focused_idx == 1
+        drawn.assert_not_called()
+        cleared.assert_not_called()
+
+    def test_with_no_bubbles_nothing_moves(self) -> None:
+        nav, drawn, _ = _popup_nav([])
+        nav.handle_key(_module.KEY_DOWN)
+        assert nav._focused_idx == 0
+        drawn.assert_not_called()
+
+    def test_page_keys_scroll_the_bubbles_within_bounds(self) -> None:
+        nav, _, _ = _popup_nav([])
+        content = MagicMock(spec=_module.ScrollView)
+        content.scroll_y = 0.5
+        nav._popup.content = content
+        assert nav.handle_key(_module.KEY_PAGE_DOWN) is True
+        assert content.scroll_y < 0.5
+        content.scroll_y = 0.95
+        nav.handle_key(_module.KEY_PAGE_UP)
+        assert content.scroll_y == 1.0
+
+    def test_another_key_is_not_the_popups(self) -> None:
+        nav, _, _ = _popup_nav([])
+        assert nav.handle_key(_module.KEY_LEFT) is False
+
+    def test_the_bubbles_are_the_grids_children_in_display_order(self) -> None:
+        nav = PopupKeyboardNav(MagicMock())
+        nav._popup.content = None
+        assert nav._get_entries() == []
+        first, second = MagicMock(), MagicMock()
+        grid = MagicMock()
+        grid.children = [second, first]  # Kivy keeps the last added first
+        nav._popup.content = MagicMock(children=[grid])
+        assert nav._get_entries() == [first, second]
+
+
+@pytest.fixture
+def items_nav(index_screen: ConcreteIndexScreen) -> Generator[tuple[ConcreteIndexScreen, dict]]:
+    """Put the items panel in nav mode, over stand-in columns each test fills."""
+    columns: dict[int, list[MagicMock]] = {0: [], 1: []}
+    index_screen._nav_active = True
+    index_screen._nav_panel = _module._IndexNavPanel.ITEMS
+    index_screen._nav_focused_col = 0
+    index_screen._nav_focused_item_idx = 0
+    with (
+        patch.object(index_screen, "_get_col_buttons", side_effect=lambda col: columns[col]),
+        patch.object(_module, "draw_focus_highlight"),
+        patch.object(_module, "clear_focus_in_list"),
+    ):
+        yield index_screen, columns
+
+
+class TestItemsPanelKeys:
+    def test_a_screen_out_of_nav_mode_takes_no_key(self, index_screen: ConcreteIndexScreen) -> None:
+        index_screen._nav_active = False
+        assert index_screen.handle_key(_module.KEY_DOWN) is False
+
+    def test_page_keys_scroll_the_index(self, items_nav: tuple[ConcreteIndexScreen, dict]) -> None:
+        screen, _ = items_nav
+        screen.ids.index_scroll_view.scroll_y = 0.5
+        assert screen.handle_key(_module.KEY_PAGE_DOWN) is True
+        assert screen.ids.index_scroll_view.scroll_y < 0.5
+        screen.ids.index_scroll_view.scroll_y = 0.05
+        screen.handle_key(_module.KEY_PAGE_DOWN)
+        assert screen.ids.index_scroll_view.scroll_y == 0.0
+        screen.handle_key(_module.KEY_PAGE_UP)
+        assert screen.ids.index_scroll_view.scroll_y > 0.0
+
+    def test_another_key_is_not_the_panels(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, _ = items_nav
+        assert screen.handle_key(_module.KEY_PAGE_DOWN + 1000) is False
+
+    def test_down_past_a_columns_last_item_goes_to_the_next_columns_first(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0], columns[1] = [MagicMock(), MagicMock()], [MagicMock()]
+        screen._nav_focused_item_idx = 1
+        screen.handle_key(_module.KEY_DOWN)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (1, 0)
+
+    def test_up_from_a_columns_first_item_goes_to_the_previous_columns_last(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0], columns[1] = [MagicMock(), MagicMock(), MagicMock()], [MagicMock()]
+        screen._nav_focused_col = 1
+        screen.handle_key(_module.KEY_UP)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 2)
+
+    def test_up_from_the_very_first_item_stays(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock()]
+        screen.handle_key(_module.KEY_UP)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 0)
+
+    def test_right_into_an_empty_column_or_past_the_last_stays(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock()]
+        screen.handle_key(_module.KEY_RIGHT)  # column 1 is empty
+        assert screen._nav_focused_col == 0
+        columns[1] = [MagicMock()]
+        screen._nav_focused_col = 1
+        screen.handle_key(_module.KEY_RIGHT)  # no column 2
+        assert screen._nav_focused_col == 1
+
+    def test_keys_in_an_empty_column_do_nothing(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, _ = items_nav
+        screen.handle_key(_module.KEY_DOWN)
+        screen.handle_key(_module.KEY_ENTER)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 0)
+
+    def test_right_from_the_letters_needs_items_to_go_to(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, _ = items_nav
+        screen._nav_panel = _module._IndexNavPanel.ALPHABET
+        screen._enter_items_panel()
+        assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+
+    def test_a_resync_out_of_the_items_panel_does_nothing(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock(), MagicMock()]
+        screen._nav_panel = _module._IndexNavPanel.ALPHABET
+        screen._nav_focused_item_idx = 1
+        screen._resync_item_focus(MagicMock(), 1)
+        assert screen._nav_focused_item_idx == 1
+
+    def test_a_resync_whose_button_has_gone_stays_near_where_it_was(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock(), MagicMock()]
+        screen._nav_focused_item_idx = 5
+        screen._resync_item_focus(MagicMock(), 3)  # not in the column any more
+        assert screen._nav_focused_item_idx == 1
+
+
+def test_a_title_whose_volume_is_missing_is_reported(index_screen: ConcreteIndexScreen) -> None:
+    item = IndexItem(id=Titles.LOST_IN_THE_ANDES, display_text="Lost in the Andes!")
+    index_screen.on_goto_title = MagicMock(side_effect=TitleNotInFantaInfoError("Andes"))
+    index_screen._user_error_handler = MagicMock()
+    with patch.object(_module.Clock, "schedule_once", side_effect=lambda f, _t: f(0)):
+        index_screen._handle_title(MagicMock(), item)
+    error_type, _info = index_screen._user_error_handler.handle_error.call_args.args
+    assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
