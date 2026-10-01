@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -193,7 +193,8 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   has no `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. After
   `prek install`, change `.git/hooks/pre-push.legacy`'s first line from `#!/bin/sh` to
   `#!/usr/bin/env sh`, or every push fails with "Executable `/bin/sh` not found".
-  (Both were found under pre-commit and not yet re-checked under prek; see `CLAUDE.md`.)
+  (Both were found under pre-commit. Under prek the commit hooks run on Windows, the `bunx`
+  one included; the shebang one is not yet re-checked under prek; see `CLAUDE.md`.)
   The standalone app's own install steps are in `README.md`.
 - **A Windows overnight machine**, once, besides the above. `uv run python
   scripts/check_windows_overnight_host.py` checks every step below and says what is
@@ -249,6 +250,14 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     timing budgets are this machine's.
   - **The nightly task**: `powershell -ExecutionPolicy Bypass -File
     scripts\windows\register-overnight-task.ps1` (02:00; `-At` for another time).
+  - **SSH from the main machine** (optional): from an elevated PowerShell,
+    `powershell -ExecutionPolicy Bypass -File scripts\windows\setup-ssh-server.ps1
+    -MakeNetworkPrivate -Shell bash -PublicKey "<the other machine's .pub line>"`, then
+    `ssh gregg@<its IP>` (with the user name: without one, ssh sends the other machine's,
+    and asks for a password). A DHCP reservation keeps the IP. Windows' own OpenSSH comes
+    through Windows Update and can stall, slowest with an update restart pending; the
+    script says what to do then. An ssh session has no desktop, so a GUI stage cannot run
+    in one: start a whole run with `schtasks /Run /TN "Barks Reader overnight"`.
   - **The data under `~\Books\Carl Barks`**, the Linux machines' layout. The code's
     default root is there (`barks_fantagraphics.comics_consts.BARKS_ROOT_DIR`, fixed: the
     unit suite's override tests read it), and so is the profile's `prebuilt_dir`. The
