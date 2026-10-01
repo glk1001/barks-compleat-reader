@@ -524,6 +524,17 @@ class TestWordBasket:
         screen._search.find_words.assert_called_once_with("golden", speaker=None)
         assert screen._word_basket.words == ["gold"]  # still picked, for the next +
 
+    def test_a_picked_word_s_row_is_marked_selected_and_the_last_one_unmarked(
+        self, screen: SearchScreen
+    ) -> None:
+        # Marked by `selected`, which the kv rule paints: a colour set directly was
+        # painted over when a mouse click's press state lapsed.
+        screen._search.find_words.return_value = {}
+        screen._on_word_chip_selected("gold")
+        assert [r.word_button.selected for r in screen.rows] == [True, False]
+        screen._on_word_chip_selected("golden")
+        assert [r.word_button.selected for r in screen.rows] == [False, True]
+
     def test_the_speaker_filter_reruns_the_basket_beside_the_list(
         self, screen: SearchScreen
     ) -> None:

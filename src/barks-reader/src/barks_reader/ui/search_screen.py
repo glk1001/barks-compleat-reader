@@ -222,10 +222,6 @@ def _chip_bg_member() -> Color:
     return (r * 0.75, g * 0.75, b * 0.75, a)
 
 
-def _word_item_selected_bg() -> Color:
-    return theme().accent_selection
-
-
 def _row_stripe(row_index: int) -> Color:
     active_theme = theme()
     return active_theme.row_stripe_even if row_index % 2 == 0 else active_theme.row_stripe_odd
@@ -1062,12 +1058,10 @@ class SearchScreen(FloatLayout):
     def _mark_word_rows(self) -> None:
         """Fill the word searched alone; show each word's + or dash by whether it is picked."""
         for row in self._word_rows():
-            btn = row.word_button
-            is_selected = btn.text == self._selected_word
-            btn.background_color = (
-                _word_item_selected_bg() if is_selected else _row_stripe(btn.row_index)
-            )
-            row.plus_button.text = _plus_text(btn.text in self._word_basket)
+            # The kv rule paints a selected row. A colour set here was painted over when
+            # a mouse click's press state lapsed, so a clicked word lost its fill.
+            row.word_button.selected = row.word_button.text == self._selected_word
+            row.plus_button.text = _plus_text(row.word_button.text in self._word_basket)
 
     # --- Word Search: the picked words ---
 
