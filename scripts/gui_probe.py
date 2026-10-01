@@ -1,11 +1,12 @@
-"""Drive the Barks Reader GUI on the desktop it runs on: the probe for Windows.
+"""Drive the Barks Reader GUI on the desktop it runs on: the probe for Windows and macOS.
 
 The same commands, arguments, output and exit codes as ``gui-probe.sh``, the
 Linux probe, so ``gui_driver.py`` and the GUI test suite run unchanged on top of
 either. What differs is only how a platform finds the app's window, injects
 input and takes a screenshot; that lives in a backend module
-(``gui_probe_win32.py``). Everything else is here: the run directory, the app
-and input logs, the pid file, the config backup, and the waits on the app log.
+(``gui_probe_win32.py``, ``gui_probe_darwin.py``). Everything else is here: the
+run directory, the app and input logs, the pid file, the config backup, and the
+waits on the app log.
 
 There is no nested display to hide behind, so the app runs on the real desktop
 and keys go to the foreground window. The probe brings the app to the front
@@ -75,6 +76,11 @@ class Backend(Protocol):
     """What a platform supplies: the window, input, screenshots and processes."""
 
     creation_flags: int
+    start_new_session: bool
+
+    def workspace_app_argv(self, repo_root: Path) -> list[str]:
+        """Return the command that runs the workspace's app (not a build) from `repo_root`."""
+        ...
 
     def find_window(self, title: str) -> int | None:
         """Return the handle of the app's visible top-level window whose title contains `title`."""
@@ -393,7 +399,7 @@ class Probe:
             argv = [app]
             env["BARKS_READER_DATA_DIR"] = str(data_dir())
         else:
-            argv = ["uv", "run", "--directory", str(REPO_ROOT), "main.py"]
+            argv = self._backend.workspace_app_argv(REPO_ROOT)
         with app_log().open("ab") as log:
             process = subprocess.Popen(  # noqa: S603 (fixed argv)
                 argv,
@@ -401,7 +407,9 @@ class Probe:
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 env=env,
+                cwd=REPO_ROOT,
                 creationflags=self._backend.creation_flags,
+                start_new_session=self._backend.start_new_session,
             )
         _pid_file().write_text(str(process.pid), encoding="utf-8")
 
@@ -565,6 +573,10 @@ def _backend() -> Backend:
         import gui_probe_win32  # noqa: PLC0415 (a platform's module, loaded on that platform)
 
         return gui_probe_win32.Win32Backend()
+    if sys.platform == "darwin":
+        import gui_probe_darwin  # noqa: PLC0415 (a platform's module, loaded on that platform)
+
+        return gui_probe_darwin.DarwinBackend()
     msg = f"no gui_probe.py backend for {sys.platform}; on Linux use scripts/gui-probe.sh"
     raise ProbeError(msg)
 

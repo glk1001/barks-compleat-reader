@@ -2,10 +2,28 @@
 
 <!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE -->
 
-> Status: **planned 2026-10-01, not started.** Written on the macOS 12.6 VirtualBox guest
-> (2 cores, 4 GB, no GPU driver), where the unit suite now runs on Apple's software OpenGL
-> (71900174). Milestones A to C, each committed green; stop after any of them and the
-> earlier ones still pay.
+> Status: **planned 2026-10-01; milestone A done the same day.** Written on the macOS 12.6
+> VirtualBox guest (2 cores, 4 GB, no GPU driver), where the unit suite now runs on Apple's
+> software OpenGL (71900174). Milestones A to C, each committed green; stop after any of
+> them and the earlier ones still pay.
+>
+> - Milestone A: DONE 2026-10-01. `scripts/gui_probe_darwin.py`, by `ctypes` with no new
+>   dependency: the window by title and owner (a `python` or `barks*` process: a terminal
+>   titled for the repo is not it), Quartz events at the HID tap after activating the app
+>   through `NSRunningApplication`, `screencapture -R`, the app in a session of its own and
+>   ended with its process group. The backend protocol gained `start_new_session` and
+>   `workspace_app_argv` (the app through `with-soft-gl.sh` on macOS, always: it only lifts
+>   SDL's demand for a GPU). `uv run python scripts/run_gui_tests.py -k
+>   test_main_screen_fullscreen_round_trip` passes with every teardown check (19s, the app
+>   up in about 9.5s on soft GL). Measured: the window is `The Compleat Barks Disney
+>   Reader`, owned by `python`, and its window-list bounds are its logged geometry
+>   exactly (`874x1365+843+25` on a 2560x1440 screen), so nothing is subtracted.
+>   **Found:** the app sizes its window to the screen height less 75 and asks for y=10;
+>   macOS puts it below the menu bar (y=25), so its bottom 20-odd pixels sit under a Dock
+>   that is always shown, as a Mac user's would. Screenshots show the Dock, and a tap
+>   there could land on it: doctor warns while the Dock does not hide itself. The fix
+>   (the usable screen area, SDL's `SDL_GetDisplayUsableBounds`) is the app's, for
+>   milestone B.
 
 ## Why
 

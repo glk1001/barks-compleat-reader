@@ -1,12 +1,14 @@
-"""Run the GUI path tests on Windows, against the real app on the real desktop.
+"""Run the GUI path tests on Windows or macOS, against the real app on the real desktop.
 
-The Windows counterpart of ``run_gui_tests.sh``: the same suite, driven through
-``gui_probe.py`` (real keys through SendInput) instead of a nested X server. One
+The Windows and macOS counterpart of ``run_gui_tests.sh``: the same suite, driven
+through ``gui_probe.py`` (real keys through SendInput on Windows, Quartz events on
+macOS) instead of a nested X server. One
 worker, in a visible window: there is no second desktop to run another on, so
 the suite takes longer than a headless Linux run. Leave the machine alone while
 it runs - a key or a click from you goes to the app and fails the test.
 
-Usage (from the repo root, in PowerShell or cmd):
+Usage (from the repo root, in PowerShell or cmd; on macOS, a terminal granted
+Accessibility and Screen Recording):
   uv run python scripts/run_gui_tests.py                  # the suite
   uv run python scripts/run_gui_tests.py -k fullscreen    # extra args go to pytest
   uv run python scripts/run_gui_tests.py --quiet          # failures and the summary only

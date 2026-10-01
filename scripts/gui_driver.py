@@ -8,8 +8,9 @@ wrong screen and a test either passes on evidence or fails with a reason.
 
 On Linux it drives ``scripts/gui-probe.sh`` (Xephyr, xte) and assumes nothing
 else is on the nested display; on Windows, ``scripts/gui_probe.py`` (SendInput on
-the real desktop), which has the same commands and output. Only the standard
-library is used, so this runs without the workspace venv.
+the real desktop; on macOS the same probe over Quartz events), which has the same
+commands and output. Only the standard library is used, so this runs without the
+workspace venv.
 """
 
 from __future__ import annotations
@@ -29,9 +30,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-# The Linux probe runs the app on a nested X server; elsewhere the Python probe
-# drives it on the real desktop. Both take the same commands and print the same.
-PROBE = REPO_ROOT / "scripts" / ("gui_probe.py" if sys.platform == "win32" else "gui-probe.sh")
+# The Linux probe runs the app on a nested X server; on Windows and macOS the
+# Python probe drives it on the real desktop. Both take the same commands and print
+# the same.
+_DESKTOP_PROBE = sys.platform in {"win32", "darwin"}
+PROBE = REPO_ROOT / "scripts" / ("gui_probe.py" if _DESKTOP_PROBE else "gui-probe.sh")
 DISPLAY = os.environ.get("BARKS_PROBE_DISPLAY", ":2")
 # The app reads this on startup and seeds its random module from it; gui-probe
 # launches the app as a child, so setting it here is enough to reach it.

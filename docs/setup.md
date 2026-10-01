@@ -299,5 +299,10 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   - **Push gate**: `barks-comic-building` does not install (its OpenCV has macOS x86_64
     wheels only from macOS 14), and the censorship check reads comics trees the guest does
     not have, so push with `SKIP=check-censorship-csv git push`; pytest runs.
-  - The GUI path tests still do not run on macOS: `scripts/gui_probe.py` has no macOS
-    backend (plan: `docs/plans/macos-gui-tests.md`).
+  - **GUI path tests**: `uv run python scripts/run_gui_tests.py`, as on Windows: one
+    worker, the app's window on the guest's own screen, input as Quartz events. The
+    terminal it runs from needs Accessibility and Screen Recording (System Preferences,
+    Security & Privacy, Privacy; granted, they apply at once), and the Dock set to hide
+    itself, or it covers the bottom of the app's window. `uv run python
+    scripts/gui_probe.py doctor` checks all three. Status: one test green; the rest is
+    `docs/plans/macos-gui-tests.md`, milestone B.

@@ -187,11 +187,11 @@ class TestInputLog:
 
 
 class TestCommands:
-    def test_a_backend_command_off_windows_says_where_to_look(
+    def test_a_backend_command_off_windows_and_macos_says_where_to_look(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        if sys.platform == "win32":
-            pytest.skip("Windows has the backend")
+        if sys.platform in {"win32", "darwin"}:
+            pytest.skip("Windows and macOS have a backend")
         assert gui_probe.main(["geometry"]) == 1
         assert "gui-probe.sh" in capsys.readouterr().err
 

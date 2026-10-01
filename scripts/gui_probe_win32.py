@@ -259,10 +259,15 @@ class Win32Backend:
     # A group of its own, so the probe's console never forwards its Ctrl+C to the
     # app, and no console window pops up for the uv or python child.
     creation_flags = _CREATE_NEW_PROCESS_GROUP | _CREATE_NO_WINDOW
+    start_new_session = False
 
     def __init__(self) -> None:
         _declare()
         _make_dpi_aware()
+
+    @staticmethod
+    def workspace_app_argv(repo_root: Path) -> list[str]:
+        return ["uv", "run", "--directory", str(repo_root), "main.py"]
 
     def find_window(self, title: str) -> int | None:
         found: list[int] = []
