@@ -748,6 +748,27 @@ class TestTagChips:
         assert row.chip.count_text == "17"
         assert row.plus_button.text == "+"
 
+    def test_a_subgroup_member_is_marked_by_its_flag_not_its_name(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        """The arrow is drawn from `is_group`: the font has none, and the name stays the tag's."""
+        screen._current_tag = TagGroups.COUNTRIES
+        screen._selected_member = ""
+        screen._search.get_tag_group_members.return_value = [TagGroups.AFRICA, Tags.DUCKBURG]
+        screen._search.get_tag_title_count.return_value = 7
+        stack = screen._make_member_chip_stack()
+        assert stack is not None
+        chips = [row.chip for row in reversed(stack.children)]
+        assert [(c.text, c.is_group) for c in chips] == [("Africa", True), ("Duckburg", False)]
+
+        with (
+            patch.object(screen, "_show_tag_titles") as listed,
+            patch.object(screen, "_get_member_chip_buttons", return_value=chips),
+        ):
+            chips[0].dispatch("on_release")
+        listed.assert_called_once_with("Africa")
+        assert log_markers.TAG_SELECTED_MEMBER.format(member="Africa") in loguru_sink
+
     def test_listing_a_tag_s_stories_is_logged_with_their_count(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:

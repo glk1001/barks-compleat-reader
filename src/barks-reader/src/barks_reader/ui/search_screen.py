@@ -194,11 +194,6 @@ class _TagRow(BoxLayout):
         self.add_widget(plus_button)
 
 
-def _tag_name(chip_text: str) -> str:
-    """Return a tag chip's tag: its text without the arrow that marks a subgroup."""
-    return chip_text.removesuffix(" \u25b8")
-
-
 def _plus_text(picked: bool) -> str:
     return "\u2013" if picked else "+"  # an en dash: a minus the width of the +
 
@@ -236,11 +231,14 @@ class _TagChipButton(Button):
     ``count_text`` is the number of stories the tag lists, shown small at the
     chip's right; empty for none (a speaker chip). ``text`` stays the tag's name
     alone: picking a chip looks the tag up by it, and the focus lines name it.
+    ``is_group`` marks a subgroup among a group's members, with an arrow drawn
+    beside the count (drawn: the font has no arrow glyph).
     """
 
     chip_bg_color = ObjectProperty(CHIP_BORDER_NONE)
     chip_border_color = ObjectProperty(CHIP_BORDER_NONE)
     count_text = StringProperty("")
+    is_group = BooleanProperty(defaultvalue=False)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -668,7 +666,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         return stack
 
     def _make_tag_row(self, chip: _TagChipButton) -> _TagRow:
-        name = _tag_name(chip.text)
+        name = chip.text
         # Narrow and fixed, so the chip keeps nearly the whole row for a tag's name.
         plus = _PlusButton(
             text=_plus_text(name in self._tag_basket),
@@ -718,11 +716,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         stack.bind(minimum_height=stack.setter("height"))
         for member in members:
             label = str(member.value)
-            if isinstance(member, TagGroups):
-                label += " \u25b8"
             btn = _TagChipButton(
                 text=label,
                 count_text=str(self._search.get_tag_title_count(member)),
+                is_group=isinstance(member, TagGroups),
             )
             btn.chip_bg_color = (
                 chip_bg_active() if label == self._selected_member else _chip_bg_member()
@@ -764,12 +761,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._show_tag_titles(tag_str)
 
     def _on_member_tag_selected(self, member_label: str) -> None:
-        # Strip subgroup indicator suffix
-        member_str = member_label.rstrip(" \u25b8")
-        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=member_str))
+        logger.info(log_markers.TAG_SELECTED_MEMBER.format(member=member_label))
         self._tag_basket_results = False
         self._selected_member = member_label
-        self._show_tag_titles(member_str)
+        self._show_tag_titles(member_label)
 
         # Highlight the selected member chip
         for chip in self._get_member_chip_buttons():
@@ -877,7 +872,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _mark_tag_rows(self) -> None:
         for row in self._tag_rows():
-            row.plus_button.text = _plus_text(_tag_name(row.chip.text) in self._tag_basket)
+            row.plus_button.text = _plus_text(row.chip.text in self._tag_basket)
 
     def _run_tag_basket(self) -> None:
         """List the stories the picked tags list together; none picked, the results empty."""
@@ -2081,7 +2076,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._nav_list_sub = "word"
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER) and row is not None and on_plus:
             if isinstance(row, _TagRow):
-                self._toggle_tag_basket(_tag_name(row.chip.text))
+                self._toggle_tag_basket(row.chip.text)
             else:
                 self._toggle_basket_word(row.item.text)
         else:
