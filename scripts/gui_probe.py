@@ -22,9 +22,9 @@ Usage (the same as gui-probe.sh; see there):
 
 Env: BARKS_PROBE_DISPLAY (":2"; only names the run directory here),
 BARKS_PROBE_KEY_GAP (seconds after each injected key, default 0.4),
-BARKS_READER_CONFIG_DIR, BARKS_PROBE_NO_RESTORE=1 and BARKS_PROBE_APP, all as
-for gui-probe.sh. BARKS_PROBE_TOUCH=1 (touch mode) is Linux only so far: here a
-tap is a click, and touch mode refuses to start.
+BARKS_READER_CONFIG_DIR, BARKS_PROBE_NO_RESTORE=1, BARKS_PROBE_APP and
+BARKS_PROBE_COVERAGE, all as for gui-probe.sh. BARKS_PROBE_TOUCH=1 (touch mode)
+is Linux only so far: here a tap is a click, and touch mode refuses to start.
 
 Only the standard library is used, plus Pillow for ``shot``, as the driver
 runs this with the interpreter it runs under.
@@ -54,6 +54,7 @@ WINDOW_NAME = "Compleat Barks Disney Reader"
 # The app is interactive once its window is shown: a key sent earlier goes nowhere.
 READY_MARKER = "Main window shown."
 DEFAULT_KEY_GAP = 0.4
+COVERAGE_ENV_VAR = "BARKS_PROBE_COVERAGE"
 # How long `start` waits for the app's window to appear once the ready line is logged.
 WINDOW_WAIT_SECS = 10
 # Kivy's line naming the graphics backend it drew through, by the names
@@ -79,7 +80,10 @@ class Backend(Protocol):
     start_new_session: bool
 
     def workspace_app_argv(self, repo_root: Path) -> list[str]:
-        """Return the command that runs the workspace's app (not a build) from `repo_root`."""
+        """Return the command that runs the workspace's app (not a build) from `repo_root`.
+
+        It ends in `python <main.py>`, so the probe can run the app under coverage.
+        """
         ...
 
     def find_window(self, title: str) -> int | None:
@@ -218,6 +222,19 @@ def app_env(base: Mapping[str, str]) -> dict[str, str]:
         BARKS_READER_TAP_TARGETS_FILE=str(tap_request()),
         BARKS_READER_MEMORY_CENSUS_FILE=str(census_request()),
     )
+
+
+def under_coverage(argv: Sequence[str], data_dir: Path) -> list[str]:
+    """Return a backend's workspace command, `python ... main.py`, run under `coverage run`.
+
+    Each boot writes its own data file into `data_dir` (`--parallel-mode`), for the
+    runner to combine once the suite is done. The data is saved as the app exits,
+    so it needs the clean close ``kill_tree`` asks for first.
+    """
+    *start, main = argv
+    data_dir.mkdir(parents=True, exist_ok=True)
+    data_file = data_dir / ".coverage.gui"
+    return [*start, "-m", "coverage", "run", "--parallel-mode", f"--data-file={data_file}", main]
 
 
 def _profile_backups() -> list[tuple[Path, Path]]:
@@ -400,6 +417,9 @@ class Probe:
             env["BARKS_READER_DATA_DIR"] = str(data_dir())
         else:
             argv = self._backend.workspace_app_argv(REPO_ROOT)
+            coverage_dir = os.environ.get(COVERAGE_ENV_VAR)
+            if coverage_dir:
+                argv = under_coverage(argv, Path(coverage_dir))
         with app_log().open("ab") as log:
             process = subprocess.Popen(  # noqa: S603 (fixed argv)
                 argv,

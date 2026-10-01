@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import gui_probe
+import gui_probe_darwin
 import gui_probe_win32
 import pytest
 
@@ -122,6 +123,44 @@ class TestAppEnv:
         env = gui_probe.app_env({"TERM": "xterm", "PATH": "p"})
         assert env["LOGURU_COLORIZE"] == "0"
         assert env["PATH"] == "p"
+
+
+class TestCoverage:
+    def test_the_workspace_app_runs_under_coverage_with_a_data_file_per_boot(
+        self, tmp_path: Path
+    ) -> None:
+        data_dir = tmp_path / "cov"
+        argv = gui_probe.under_coverage(["uv", "run", "python", "main.py"], data_dir)
+        assert argv == [
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "coverage",
+            "run",
+            "--parallel-mode",
+            f"--data-file={data_dir / '.coverage.gui'}",
+            "main.py",
+        ]
+        assert data_dir.is_dir()
+
+    def test_every_backend_ends_its_command_in_python_and_main_py(self) -> None:
+        """What `under_coverage` relies on: the interpreter, then the script."""
+        for backend in (gui_probe_win32.Win32Backend, gui_probe_darwin.DarwinBackend):
+            argv = backend.workspace_app_argv(Path("/repo"))
+            assert argv[-2] == "python"
+            assert Path(argv[-1]).name == "main.py"
+
+    def test_a_build_is_never_run_under_coverage(self, run_dir: Path) -> None:
+        backend = MagicMock()
+        env = {gui_probe.COVERAGE_ENV_VAR: str(run_dir / "cov"), "BARKS_PROBE_APP": "app.exe"}
+        with (
+            patch.dict(os.environ, env),
+            patch.object(gui_probe, "data_dir", return_value=run_dir),
+            patch.object(gui_probe.subprocess, "Popen") as popen,
+        ):
+            gui_probe.Probe(backend)._launch()  # noqa: SLF001
+        assert popen.call_args.args[0] == ["app.exe"]
 
 
 class TestGlBackend:
@@ -352,3 +391,47 @@ class TestWin32Keys:
         # SendInput refuses every event when cbSize is not sizeof(INPUT): 40 on 64-bit, 28 on 32.
         expected = 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28
         assert ctypes.sizeof(gui_probe_win32._INPUT) == expected  # noqa: SLF001
+
+
+class TestWin32Close:
+    """The app is asked to close before it is ended, so coverage can save its data."""
+
+    def test_the_process_tree_takes_children_and_grandchildren_only(self) -> None:
+        parents = {10: 1, 11: 10, 12: 11, 20: 1, 21: 20}
+        assert gui_probe_win32.descendants(10, parents) == {10, 11, 12}
+        assert gui_probe_win32.descendants(99, parents) == {99}
+
+    @staticmethod
+    def _kill(*, window: int | None, exits: bool) -> tuple[MagicMock, MagicMock, MagicMock]:
+        user32 = MagicMock()
+        user32.PostMessageW.return_value = 1
+        kernel32 = MagicMock()
+        kernel32.OpenProcess.return_value = 555
+        kernel32.WaitForSingleObject.return_value = 0 if exits else 0x102  # WAIT_TIMEOUT
+        with (
+            patch.object(gui_probe_win32, "_user32", user32),
+            patch.object(gui_probe_win32, "_kernel32", kernel32),
+            patch.object(gui_probe_win32, "_process_parents", return_value={7: 4}),
+            patch.object(gui_probe_win32, "find_window_of_processes", return_value=window) as find,
+            patch.object(gui_probe_win32.subprocess, "run") as run,
+            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
+        ):
+            gui_probe_win32.Win32Backend().kill_tree(4, max_secs=10)
+        find.assert_called_once_with({4, 7})  # uv and the python under it
+        return user32, kernel32, run
+
+    def test_an_app_that_closes_is_not_killed(self) -> None:
+        user32, kernel32, run = self._kill(window=42, exits=True)
+        user32.PostMessageW.assert_called_once_with(42, 0x0010, 0, 0)  # WM_CLOSE
+        run.assert_not_called()
+        kernel32.CloseHandle.assert_called_once_with(555)
+
+    def test_an_app_that_will_not_close_is_killed(self, capsys: pytest.CaptureFixture[str]) -> None:
+        _, _, run = self._kill(window=42, exits=False)
+        assert run.call_args.args[0][-1] == "/F"
+        assert "ending it by force" in capsys.readouterr().out
+
+    def test_an_app_with_no_window_is_killed(self) -> None:
+        user32, _, run = self._kill(window=None, exits=True)
+        user32.PostMessageW.assert_not_called()
+        assert run.call_args.args[0][-1] == "/F"

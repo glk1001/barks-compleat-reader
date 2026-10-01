@@ -17,7 +17,7 @@ and structures can be tested on every platform.
 # cspell:ignore DEVMODE DPIAWARENESSCONTEXT EXTENDEDKEY KEYBDINPUT KEYEVENTF LEFTDOWN
 # cspell:ignore LEFTUP MAPVK MOUSEEVENTF MOUSEINPUT SWITCHDESKTOP HARDWAREINPUT REMOTESESSION
 # cspell:ignore VSC shcore wparam lparam INPUTUNION KEYUP creationflags getwindowsversion
-# cspell:ignore taskkill pids
+# cspell:ignore taskkill pids Toolhelp SNAPPROCESS PROCESSENTRY
 
 from __future__ import annotations
 
@@ -50,12 +50,17 @@ _SW_RESTORE = 9
 _DESKTOP_SWITCHDESKTOP = 0x0100
 _SM_REMOTESESSION = 0x1000
 _SYNCHRONIZE = 0x00100000
+_TH32CS_SNAPPROCESS = 0x00000002
+_WM_CLOSE = 0x0010
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _STILL_ACTIVE = 259
 _WAIT_OBJECT_0 = 0
 _CREATE_NEW_PROCESS_GROUP = 0x00000200
 _CREATE_NO_WINDOW = 0x08000000
 _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
+# How long `kill_tree` gives the app to close its window and exit before it is
+# ended by force: long enough for Kivy to stop and coverage to save its data.
+CLOSE_GRACE_SECS = 10
 
 # X11 keysym names (what the suite and gui-probe.sh use) -> Windows virtual keys.
 # The arrows and the editing block sit on the extended part of a real keyboard,
@@ -119,6 +124,21 @@ class _INPUT(ctypes.Structure):
     _fields_: ClassVar[list[tuple[str, Any]]] = [("type", wintypes.DWORD), ("u", _INPUTUNION)]
 
 
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ("dwSize", wintypes.DWORD),
+        ("cntUsage", wintypes.DWORD),
+        ("th32ProcessID", wintypes.DWORD),
+        ("th32DefaultHeapID", _ULONG_PTR),
+        ("th32ModuleID", wintypes.DWORD),
+        ("cntThreads", wintypes.DWORD),
+        ("th32ParentProcessID", wintypes.DWORD),
+        ("pcPriClassBase", wintypes.LONG),
+        ("dwFlags", wintypes.DWORD),
+        ("szExeFile", wintypes.WCHAR * 260),
+    ]
+
+
 class _RECT(ctypes.Structure):
     _fields_: ClassVar[list[tuple[str, Any]]] = [
         ("left", wintypes.LONG),
@@ -170,6 +190,11 @@ def _declare() -> None:
     k.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
     k.WaitForSingleObject.restype = wintypes.DWORD
     k.CloseHandle.argtypes = [wintypes.HANDLE]
+    k.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    k.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    u.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 
 
 def _make_dpi_aware() -> None:
@@ -228,6 +253,34 @@ def _is_sdl_window(hwnd: int) -> bool:
     return class_name.value.startswith("SDL")
 
 
+def descendants(root: int, parents: dict[int, int]) -> set[int]:
+    """Return `root` and every process below it, from each process's parent in `parents`."""
+    tree = {root}
+    grew = True
+    while grew:
+        below = {pid for pid, parent in parents.items() if parent in tree and pid not in tree}
+        tree |= below
+        grew = bool(below)
+    return tree
+
+
+def _process_parents() -> dict[int, int]:
+    """Return each running process's parent, from a Toolhelp snapshot."""
+    snapshot = _kernel32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snapshot or snapshot == wintypes.HANDLE(-1).value:
+        return {}
+    parents: dict[int, int] = {}
+    try:
+        entry = _PROCESSENTRY32W(dwSize=ctypes.sizeof(_PROCESSENTRY32W))
+        more = _kernel32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while more:
+            parents[entry.th32ProcessID] = entry.th32ParentProcessID
+            more = _kernel32.Process32NextW(snapshot, ctypes.byref(entry))
+    finally:
+        _kernel32.CloseHandle(snapshot)
+    return parents
+
+
 def find_window_of_processes(pids: set[int]) -> int | None:
     """Return a visible top-level window owned by one of `pids`, SDL's own first.
 
@@ -267,7 +320,7 @@ class Win32Backend:
 
     @staticmethod
     def workspace_app_argv(repo_root: Path) -> list[str]:
-        return ["uv", "run", "--directory", str(repo_root), "main.py"]
+        return ["uv", "run", "--directory", str(repo_root), "python", "main.py"]
 
     def find_window(self, title: str) -> int | None:
         found: list[int] = []
@@ -389,9 +442,14 @@ class Win32Backend:
             _kernel32.CloseHandle(handle)
 
     def kill_tree(self, pid: int, max_secs: float) -> None:
-        # The app has no close handler to ask, and on Linux the probe ends it with
-        # a signal it does not catch either: the same outcome, a forced end.
+        # Closed first, as a user closes it: the app then exits as it would for
+        # them, and coverage, when the app runs under it, saves its data at exit. On
+        # Linux SDL turns the probe's SIGTERM into the same quit. `taskkill` without
+        # /F would ask too, but the app's window belongs to the python under uv.
         handle = _kernel32.OpenProcess(_SYNCHRONIZE, False, pid)  # noqa: FBT003
+        if handle and self._close(pid, handle):
+            _kernel32.CloseHandle(handle)
+            return
         subprocess.run(  # noqa: S603
             ["taskkill", "/PID", str(pid), "/T", "/F"],  # noqa: S607 (a system tool, on PATH)
             capture_output=True,
@@ -402,6 +460,21 @@ class Win32Backend:
                 _kernel32.WaitForSingleObject(handle, int(max_secs * 1000))
             finally:
                 _kernel32.CloseHandle(handle)
+
+    @staticmethod
+    def _close(pid: int, handle: int) -> bool:
+        """Ask the app's window to close; return whether `pid` then exits in time."""
+        window = find_window_of_processes(descendants(pid, _process_parents()))
+        if window is None or not _user32.PostMessageW(window, _WM_CLOSE, 0, 0):
+            return False
+        waited = _kernel32.WaitForSingleObject(handle, CLOSE_GRACE_SECS * 1000)
+        if waited == _WAIT_OBJECT_0:
+            return True
+        print(  # noqa: T201
+            f"gui-probe: the app did not exit within {CLOSE_GRACE_SECS}s of closing its"
+            " window; ending it by force"
+        )
+        return False
 
     def doctor_checks(self) -> list[tuple[str, str]]:
         checks: list[tuple[str, str]] = [("OK", f"Windows {sys.getwindowsversion().major}")]  # ty: ignore[unresolved-attribute]
