@@ -76,6 +76,9 @@ workspace app and on CI's build of this commit, a soak, `validate`, and the cove
 what only Windows runs; nightly through `scripts/windows/register-overnight-task.ps1`;
 `uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
 (setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`.
+`uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST` combines the two
+machines' coverage of the newest commit both ran overnight (`--commit`), reported against
+that commit's source: Linux, Windows, both, and what only Windows ran (report only).
 
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
