@@ -169,6 +169,21 @@ class TestFootnoteLink:
             dismiss.assert_called_once()
 
 
+class TestUnreadablePage:
+    def test_a_page_gone_since_the_tree_was_built_shows_page_unavailable(
+        self, viewer: OKFViewer
+    ) -> None:
+        """The wiki regenerated under the reader: an error page, not a crash."""
+        gone = viewer.bundle / "concept" / "a.md"
+        gone.unlink()
+        with patch.object(viewer_module, "render_page", wraps=viewer_module.render_page) as render:
+            viewer.show_page(gone)
+        text = render.call_args.args[0]
+        assert text.startswith("# Page unavailable")
+        assert "`a.md`" in text
+        assert _page(viewer) == "concept/a.md"
+
+
 class TestMouse:
     def test_the_back_button_goes_back(self, viewer: OKFViewer) -> None:
         viewer.show_page(viewer.bundle / "concept" / "a.md")
