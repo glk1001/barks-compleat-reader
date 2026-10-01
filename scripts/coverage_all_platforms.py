@@ -271,7 +271,7 @@ def _read(data: Path) -> coverage.CoverageData:
 
 
 def _check_mapped(data: coverage.CoverageData, source_root: Path) -> None:
-    unmapped = [f for f in data.measured_files() if not f.startswith(f"{source_root}/")]
+    unmapped = [f for f in data.measured_files() if not Path(f).is_relative_to(source_root)]
     if unmapped:
         msg = f"{len(unmapped)} files did not map onto the commit's source, e.g. {unmapped[0]}"
         raise CoverageAllError(msg)
