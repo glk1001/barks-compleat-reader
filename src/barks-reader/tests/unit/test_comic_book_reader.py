@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import barks_reader.ui.comic_book_reader
 import pytest
+from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import PageInfo
@@ -19,6 +20,8 @@ from barks_reader.ui.comic_book_reader import (
     _ComicPageManager,
 )
 from kivy.uix.floatlayout import FloatLayout
+
+_reader_module = barks_reader.ui.comic_book_reader
 
 
 class TestComicPageManager:
@@ -502,6 +505,56 @@ class TestComicBookReader:
         assert reader.open_goto_page_for_keyboard(on_dismiss) is None
         dropdown.bind.assert_not_called()
         assert log_markers.GOTO_PAGE_DROPDOWN_OPENED not in loguru_sink
+
+    # --- a load error ---
+
+    def test_a_load_warning_closes_the_reader(self, reader: ComicBookReader) -> None:
+        reader._all_loaded = True
+        with patch.object(reader, "close_comic_book_reader") as close:
+            reader._load_error(load_warning_only=True)
+        close.assert_called_once()
+        assert reader._all_loaded is False
+
+    def test_a_load_error_raises_rather_than_show_a_broken_comic(
+        self, reader: ComicBookReader
+    ) -> None:
+        with (
+            patch.object(reader, "close_comic_book_reader") as close,
+            pytest.raises(RuntimeError, match="comic book load error"),
+        ):
+            reader._load_error(load_warning_only=False)
+        close.assert_not_called()
+
+    # --- the collections' titles: the cover or one-pager on show names the bar ---
+
+    def test_the_covers_collection_names_the_cover_on_show(self, reader: ComicBookReader) -> None:
+        reader = self._bare_reader(reader)
+        covers = get_located_covers()[:3]
+        reader._is_covers_collection = True
+        reader._collection_covers = covers
+        reader._page_manager.get_current_page_index.return_value = 1
+        reader._page_manager.get_current_page_str.return_value = "2"
+        with (
+            patch.object(_reader_module, "get_action_bar_title", side_effect=lambda _f, t: t),
+            patch.object(reader, "_get_current_display_indices", return_value=(1, None)),
+            patch.object(reader, "_pages_ready", return_value=True),
+            patch.object(reader, "_render_page"),
+        ):
+            reader._show_page(None, None)
+        assert reader.action_bar_title == get_cover_display_title(covers[1])
+
+    @pytest.mark.parametrize("page_str", ["4", "0x"])
+    @pytest.mark.parametrize(
+        "setter", ["_set_cover_action_bar_title", "_set_one_pager_action_bar_title"]
+    )
+    def test_a_page_with_no_collection_item_leaves_the_title(
+        self, reader: ComicBookReader, setter: str, page_str: str
+    ) -> None:
+        reader._collection_covers = get_located_covers()[:3]
+        reader._collection_one_pagers = [MagicMock()] * 3
+        reader.action_bar_title = "as before"
+        getattr(reader, setter)(page_str)
+        assert reader.action_bar_title == "as before"
 
 
 class TestComicBookReaderScreen:
