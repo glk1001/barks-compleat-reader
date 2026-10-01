@@ -28,6 +28,11 @@ SEARCH_LEFT: Final = f"{PREFIX}: Search box left for the sidebar."
 LINK_FOCUS: Final = f"{PREFIX}: Link focus on '{{ref}}'."
 FOOTNOTE_OPENED: Final = f"{PREFIX}: Footnote '{{ref}}' opened."
 FOOTNOTE_CLOSED: Final = f"{PREFIX}: Footnote closed."
+# An error, so a host's tests fail on it: a lazy table's rows overlap or leave gaps.
+LAZY_ROW_HEIGHT_DIFFERS: Final = (
+    f"{PREFIX}: Lazy table row {{row}} is {{real}}px high, not the {{reserved}}px"
+    " reserved for it: its rows may overlap or leave gaps."
+)
 TREE_BRANCH_OPENED: Final = f"{PREFIX}: Tree branch '{{node}}' opened."
 TREE_BRANCH_CLOSED: Final = f"{PREFIX}: Tree branch '{{node}}' closed."
 CONTRAST: Final = f"{PREFIX}: Contrast {{state}}."

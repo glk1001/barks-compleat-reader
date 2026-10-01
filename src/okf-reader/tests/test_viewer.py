@@ -392,6 +392,25 @@ class TestLazyTable:
         assert 0 not in table.built_rows
         assert {id(lbl) for lbl in table.children} <= labels_before  # reused, none new
 
+    def test_a_row_of_another_height_than_reserved_is_logged_once(
+        self, viewport: ScrollView
+    ) -> None:
+        table = _LazyTable(LONG_TABLE_ROWS, self.FONT_SIZE, viewport)
+        table._tops = [top * 2 for top in table._tops]  # every row's slot twice its height
+        table.y = viewport.top - table.height
+        with patch.object(viewer_module.trace, "lazy_row_height_differs") as logged:
+            table._update()
+        logged.assert_called_once()
+        row, real, reserved = logged.call_args.args
+        assert (row, reserved) == (0, 2 * real)
+
+    def test_rows_of_the_reserved_height_log_nothing(self, viewport: ScrollView) -> None:
+        table = _LazyTable(LONG_TABLE_ROWS, self.FONT_SIZE, viewport)
+        table.y = viewport.top - table.height
+        with patch.object(viewer_module.trace, "lazy_row_height_differs") as logged:
+            table._update()
+        logged.assert_not_called()
+
     def test_the_page_scroll_view_does_not_keep_a_table_alive(self, viewport: ScrollView) -> None:
         table = weakref.ref(_LazyTable(LONG_TABLE_ROWS, self.FONT_SIZE, viewport))
         gc.collect()

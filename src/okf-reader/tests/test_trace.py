@@ -109,3 +109,13 @@ def test_the_contrast_marker(kivy_log: list[str]) -> None:
     trace.contrast(on=True)
     trace.contrast(on=False)
     assert kivy_log == ["OKFViewer: Contrast on.", "OKFViewer: Contrast off."]
+
+
+def test_a_lazy_rows_wrong_height_is_an_error(kivy_log: list[str]) -> None:
+    trace.lazy_row_height_differs(12, 34, 17)
+    assert kivy_log == [
+        (
+            "OKFViewer: Lazy table row 12 is 34px high, not the 17px reserved for it:"
+            " its rows may overlap or leave gaps."
+        )
+    ]

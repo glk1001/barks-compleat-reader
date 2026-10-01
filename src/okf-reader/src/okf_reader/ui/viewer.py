@@ -378,6 +378,7 @@ class _LazyTable(RelativeLayout):
         self.size = (_table_texture_size(widest, font_size)[0], self._tops[-1])
         self._built: dict[int, Label] = {}
         self._spare: list[Label] = []
+        self._height_mismatch_logged = False
         self._update_trigger = Clock.create_trigger(self._update, -1)
         # bind holds a bound method weakly (Kivy's faster variant holds it strongly), so
         # the page's scroll view, which outlives every page, does not keep a table
@@ -427,6 +428,12 @@ class _LazyTable(RelativeLayout):
             )
             label.bind(texture_size=label.setter("size"))
         label.texture_update()
+        reserved = self._tops[index + 1] - self._tops[index]
+        if label.texture_size[1] != reserved and not self._height_mismatch_logged:
+            # Markup that changes a line's height, or a font that renders taller on
+            # one platform, would break the reckoning: say so, once per table.
+            self._height_mismatch_logged = True
+            trace.lazy_row_height_differs(index, label.texture_size[1], reserved)
         label.pos = (0, self.height - self._tops[index + 1])
         self.add_widget(label)
         return label

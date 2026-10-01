@@ -132,3 +132,8 @@ def tree_branch_closed(node_text: str) -> None:
 def contrast(on: bool) -> None:
     """Log that the Contrast toggle turned the page's text bands up (on) or back down (off)."""
     Logger.debug(log_markers.CONTRAST.format(state="on" if on else "off"))
+
+
+def lazy_row_height_differs(row: int, real: int, reserved: int) -> None:
+    """Log, as an error, that a lazy table row is not the height reserved for it."""
+    Logger.error(log_markers.LAZY_ROW_HEIGHT_DIFFERS.format(row=row, real=real, reserved=reserved))
