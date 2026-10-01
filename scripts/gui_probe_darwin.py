@@ -21,7 +21,7 @@ its window picking can be tested on every platform.
 """
 
 # cspell:ignore CGHID CGSS pgid killpg screencapture objc msgsend autorelease
-# cspell:ignore frontmost UniChar keycode keycodes mac_ver appsvc libobjc waitpid WNOHANG autohide
+# cspell:ignore frontmost UniChar keycode keycodes mac_ver appsvc libobjc waitpid WNOHANG
 # cspell:ignore asdfhgzxcv bqweryt
 
 from __future__ import annotations
@@ -82,12 +82,6 @@ _NO_ACCESSIBILITY = (
 _NO_SCREEN_RECORDING = (
     "no Screen Recording permission: the app's window has no title to find it by, and"
     " screenshots show the wallpaper - grant it to the terminal, as Accessibility"
-)
-# The app sizes its window to the screen less a margin, and macOS puts it below the
-# menu bar, so its bottom edge sits under a Dock that is always shown.
-_DOCK_SHOWN = (
-    "the Dock is always shown, over the bottom of the app's window: screenshots show"
-    " it, and a tap there could land on it - System Preferences, Dock, hide automatically"
 )
 
 # X11 keysym names (what the suite and gui-probe.sh use) -> macOS virtual key codes
@@ -352,17 +346,6 @@ def _reap(pid: int) -> None:
         os.waitpid(pid, os.WNOHANG)
 
 
-def _dock_hides() -> bool:
-    """Return whether the Dock is set to hide itself (System Preferences, Dock)."""
-    result = subprocess.run(
-        ["defaults", "read", "com.apple.dock", "autohide"],  # noqa: S607 (a system tool)
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.stdout.strip() == "1"
-
-
 class DarwinBackend:
     """The ``gui_probe.Backend`` for macOS."""
 
@@ -506,7 +489,6 @@ class DarwinBackend:
         )
         if self.find_window("Compleat Barks Disney Reader") is not None:
             checks.append(("FAIL", "a Barks Reader window is open - close it before a run"))
-        checks.append(("OK", "the Dock hides itself") if _dock_hides() else ("WARN", _DOCK_SHOWN))
         checks.append(
             ("OK", "clang (builds the software-OpenGL library)")
             if shutil.which("clang")
