@@ -631,11 +631,9 @@ class TestWordBasket:
         screen.handle_key(search_screen.KEY_ENTER)
         assert screen._word_basket.words == ["golden"]
 
-    def test_right_from_the_plus_goes_on_to_the_speakers_or_the_era_row(
-        self, screen: SearchScreen
-    ) -> None:
+    def test_right_from_the_plus_goes_on_to_the_era_row(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_RIGHT)
-        assert screen.handle_key(search_screen.KEY_RIGHT) is True  # no speakers here
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True
         assert (screen._nav_focus_area, screen._nav_list_sub) == ("era", "word")
 
     def test_up_from_the_first_word_is_the_basket_row_when_words_are_picked(
@@ -1625,17 +1623,21 @@ class TestSpeakerChipKeys:
             assert screen.handle_key(search_screen.KEY_LEFT) is True
         assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
 
-    def test_down_goes_to_the_era_row_under_the_chip(self, screen: SearchScreen) -> None:
-        assert screen.handle_key(search_screen.KEY_DOWN) is True
+    def test_down_goes_to_the_stories_under_the_chip(self, screen: SearchScreen) -> None:
+        with (
+            patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
+            patch.object(screen, "_draw_result_focus") as draw,
+        ):
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "results"
+        assert screen._speaker_row.focused is None
+        draw.assert_called_once_with()
+
+    def test_up_goes_to_the_era_row_over_the_chip(self, screen: SearchScreen) -> None:
+        assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "era"
         assert screen._era_rows["Word"].focused == 0  # on All years, the one picked
         assert screen._speaker_row.focused is None
-
-    def test_up_returns_to_the_search_box(self, screen: SearchScreen) -> None:
-        with patch.object(screen, "_focus_active_input") as focus:
-            assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
-        focus.assert_called_once()
 
     def test_escape_leaves_the_screen(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_nav_escape") as escape:
@@ -1645,29 +1647,28 @@ class TestSpeakerChipKeys:
     def test_other_keys_are_not_the_chips(self, screen: SearchScreen) -> None:
         assert screen.handle_key(ord("a")) is False
 
-    def test_right_from_the_word_list_lands_on_the_chip(self, screen: SearchScreen) -> None:
+    @pytest.mark.parametrize("has_chip", [True, False], ids=["chip", "no-chip"])
+    def test_right_from_the_word_list_lands_on_the_era_row_first(
+        self, screen: SearchScreen, has_chip: bool
+    ) -> None:
         screen._speaker_row.clear_focus()
+        if not has_chip:
+            screen._speaker_row.set_options([])
         screen._nav_focus_area = "tags"
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
             patch.object(screen, "_clear_chip_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+
+    def test_down_from_the_era_is_the_chip(self, screen: SearchScreen) -> None:
+        screen._speaker_row.clear_focus()
+        screen._nav_enter_era()
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
 
-    def test_right_from_the_word_list_is_the_era_row_without_speakers(
-        self, screen: SearchScreen
-    ) -> None:
-        screen._nav_focus_area = "tags"
-        screen._speaker_row.set_options([])
-        with (
-            patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
-            patch.object(screen, "_clear_chip_focus"),
-        ):
-            assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "era"
-
-    def test_up_from_the_first_result_climbs_to_the_era_then_the_chip(
+    def test_up_from_the_first_result_climbs_to_the_chip_then_the_era(
         self, screen: SearchScreen
     ) -> None:
         screen._speaker_row.clear_focus()
@@ -1677,11 +1678,11 @@ class TestSpeakerChipKeys:
             patch.object(screen, "_clear_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "era"
-        assert screen.handle_key(search_screen.KEY_UP) is True
         assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "era"
 
-    def test_up_from_the_era_is_the_box_without_speakers(self, screen: SearchScreen) -> None:
+    def test_up_from_the_era_is_the_box(self, screen: SearchScreen) -> None:
         screen._speaker_row.set_options([])
         screen._nav_enter_era()
         with patch.object(screen, "_focus_active_input") as focus:

@@ -1404,15 +1404,17 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _panel_rows(self) -> list[tuple[str, ChipRow]]:
         """Return the active results panel's chip rows, top to bottom, by nav area.
 
-        Word search: the speakers (when the index has them), the era, and the tag
-        scope (while tags are selected). Tag search: the era.
+        Word search: the era, the speaker chip (while a search is listed and the
+        index has speakers), and the tag scope (while tags are selected). Tag
+        search: the era.
         """
         if self._active_mode == "Tag":
             return [("era", self._era_rows["Tag"])]
         if self._active_mode != "Word":
             return []
-        rows = [("speakers", self._speaker_row)] if self._speaker_row.chips else []
-        rows.append(("era", self._era_rows["Word"]))
+        rows = [("era", self._era_rows["Word"])]
+        if self._speaker_row.chips:
+            rows.append(("speakers", self._speaker_row))
         if self._scope_row.chips:
             rows.append(("scope", self._scope_row))
         return rows

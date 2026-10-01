@@ -493,19 +493,19 @@
                     padding: dp(8)
                     spacing: dp(6)
 
-                    # Who-said-it filter: one chip, which opens the list of the
-                    # speakers who say what was searched. Empty (and zero height)
-                    # while nothing is searched, or on an index with no speakers.
+                    # The era the stories are listed from: shared with the tag search.
                     StackLayout:
-                        id: speaker_chips_layout
+                        id: word_era_layout
                         orientation: 'lr-tb'
                         size_hint_y: None
                         height: self.minimum_height if self.children else 0
                         spacing: dp(6), dp(4)
 
-                    # The era the stories are listed from: shared with the tag search.
+                    # Who-said-it filter, under the era: one chip, which opens the list of the
+                    # speakers who say what was searched. Empty (and zero height)
+                    # while nothing is searched, or on an index with no speakers.
                     StackLayout:
-                        id: word_era_layout
+                        id: speaker_chips_layout
                         orientation: 'lr-tb'
                         size_hint_y: None
                         height: self.minimum_height if self.children else 0

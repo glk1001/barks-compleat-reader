@@ -176,8 +176,9 @@ def test_the_speaker_list_filters_the_word_results_by_keyboard(boot: AppBoot) ->
         d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=word), "Return")
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == everyone
 
-    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))  # the word's +, then the chip
-    d.move_focus("Right", pattern=_said_by_focused("anyone"))
+    d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))  # the word's +, then the era
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Down", pattern=_said_by_focused("anyone"))  # the chip under the era
     with d.expect(pattern(markers.SPEAKER_LIST_OPENED, count=len(speakers))):
         d.key_then_wait(_speaker_item_focused("anyone"), "Return")  # on the one picked
     for speaker in speakers[: speakers.index(SPEAKER) + 1]:  # most stories first
@@ -186,7 +187,7 @@ def test_the_speaker_list_filters_the_word_results_by_keyboard(boot: AppBoot) ->
         d.key_then_wait(_said_by_focused(SPEAKER), "Return")  # applied; back on the chip
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == by_speaker
 
-    d.move_focus("Down", "Down")  # the era row under the chip, then the results
+    d.move_focus("Down")  # the results under the chip
 
 
 BASKET_QUERY = "gold"
@@ -429,8 +430,8 @@ def test_a_word_search_is_restricted_to_a_tag(boot: AppBoot) -> None:
     assert int(last_field(d, markers.SEARCH_WORD_RESULTS, "count")) == everywhere
 
     d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
-    d.move_focus("Right", pattern=_said_by_focused("anyone"))
-    d.move_focus("Down", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Down", pattern=_said_by_focused("anyone"))
     d.move_focus("Down", pattern=_focus_on("_ScopeChipButton", "Everywhere"))
     d.move_focus("Right", pattern=_focus_on("_ScopeChipButton", f"Only in: {tag}"))
     with d.expect(pattern(markers.WORD_TAG_FILTER_SET, tags=tag)):
@@ -485,13 +486,11 @@ def test_the_clear_button_is_reached_by_keyboard_with_chips_listed(boot: AppBoot
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word
     d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
     d.key_then_wait(pattern(markers.WORD_BASKET_CHANGED, count=1), "Return")
-    d.move_focus("Right", pattern=_said_by_focused("anyone"))
-    d.move_focus("Down", pattern=_focus_on("_EraChipButton", "All years"))
+    d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
     d.move_focus("Right")
     d.key_then_wait(pattern(markers.ERA_FILTER_SET, era="1942-46"), "Return")
 
-    d.move_focus("Up", pattern=_said_by_focused("anyone"))
-    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")  # the era is the panel's top row
     d.key_then_wait(CLEAR_FOCUSED, "Right")
     with (
         d.expect(pattern(markers.ERA_FILTER_SET, era="All years")),
