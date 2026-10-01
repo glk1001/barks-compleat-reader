@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.barks_tags import Tags
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
 from barks_fantagraphics.search_filters import SearchFilter
@@ -692,6 +692,23 @@ class TestTagChips:
             screen._show_tag_titles("Gyro Gearloose")
         assert 'Tag search: "Gyro Gearloose" lists 2 stories.' in loguru_sink
 
+    def test_a_listed_story_is_gone_to_with_the_tag_that_listed_it(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._listed_tag = "first Daisy appearance"
+        screen._search.resolve_tag.return_value = (Tags.FIRST_DAISY, [])
+        screen.on_goto_title = MagicMock()
+        screen._on_tag_result_goto_title("The Mighty Trapper")
+        screen._search.resolve_tag.assert_called_once_with("first daisy appearance")
+        screen.on_goto_title.assert_called_once_with("The Mighty Trapper", [Tags.FIRST_DAISY])
+
+    def test_a_group_s_listed_story_is_gone_to_with_no_tag(self, screen: SearchScreen) -> None:
+        screen._listed_tag = "Africa"
+        screen._search.resolve_tag.return_value = (TagGroups.AFRICA, [])
+        screen.on_goto_title = MagicMock()
+        screen._on_tag_result_goto_title("Story 1")
+        screen.on_goto_title.assert_called_once_with("Story 1", [])
+
 
 def _tag_stack(*labels: str) -> MagicMock:
     """Return a stand-in tag list stack of a real row per label, as a main chip stack holds."""
@@ -762,6 +779,21 @@ class TestTagBasket:
             loguru_sink
         )
         assert loguru_sink[-1] == log_markers.TAG_COMBINED_RESULTS.format(tags="Scrooge", count=2)
+
+    def test_a_combined_story_is_gone_to_with_the_included_tags(self, screen: SearchScreen) -> None:
+        items = {
+            "daisy": Tags.DAISY,
+            "gyro": Tags.GYRO_GEARLOOSE,
+            "scrooge": Tags.FIRST_UNCLE_SCROOGE,
+        }
+        screen._search.resolve_tag.side_effect = lambda name: (items[name], [])
+        screen.on_goto_title = MagicMock()
+        with patch.object(screen, "_populate_title_results"):
+            for name in ("Gyro", "Daisy", "Scrooge"):
+                screen._toggle_tag_basket(name)
+            _press(self._basket_chips(screen)[3])  # Scrooge: left out
+        screen._on_tag_result_goto_title("Story 1")
+        screen.on_goto_title.assert_called_once_with("Story 1", [Tags.GYRO_GEARLOOSE, Tags.DAISY])
 
     def test_a_picked_tags_chip_steps_it_to_left_out_then_back(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_populate_title_results"):

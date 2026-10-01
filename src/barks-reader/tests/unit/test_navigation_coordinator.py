@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.navigation_coordinator
 import pytest
+from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -412,3 +413,45 @@ class TestNavigationCoordinator:
         wiki_page_mock.assert_called_with(bundle, Titles.LOST_IN_THE_ANDES)
         mock_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
         mock_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, page)
+
+
+class TestNavigateToSearchResult:
+    """A title picked from tag-search results offers its tagged page, as the tree does."""
+
+    TRAPPER = ENUM_TO_STR_TITLE[Titles.MIGHTY_TRAPPER_THE]
+
+    def _navigate(self, nav_coord: NavigationCoordinator, tags: tuple[Tags, ...]) -> None:
+        with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
+            assert nav_coord.navigate_to_search_result(self.TRAPPER, tags)
+        chrono.assert_called_once_with(ImageInfo(from_title=Titles.MIGHTY_TRAPPER_THE))
+
+    def test_a_tag_with_a_page_in_the_title_sets_goto_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        self._navigate(nav_coord, (Tags.FIRST_DAISY,))
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "2", active=True
+        )
+
+    def test_the_first_tag_with_a_page_in_the_title_is_used(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        self._navigate(nav_coord, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "2", active=True
+        )
+
+    @pytest.mark.parametrize("tags", [(), (Tags.GYRO_GEARLOOSE,)], ids=["no-tags", "no-page"])
+    def test_without_a_tagged_page_the_last_read_page_stands(
+        self,
+        nav_coord: NavigationCoordinator,
+        mock_deps: dict[str, MagicMock],
+        tags: tuple[Tags, ...],
+    ) -> None:
+        self._navigate(nav_coord, tags)
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+
+    def test_an_unknown_title_is_not_navigated_to(self, nav_coord: NavigationCoordinator) -> None:
+        with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
+            assert not nav_coord.navigate_to_search_result("No Such Story", (Tags.FIRST_DAISY,))
+        chrono.assert_not_called()

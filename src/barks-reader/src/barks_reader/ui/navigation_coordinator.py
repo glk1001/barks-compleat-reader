@@ -46,7 +46,7 @@ from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes, TitleNotIn
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from barks_fantagraphics.comic_book import ComicBook
@@ -288,11 +288,14 @@ class NavigationCoordinator:
             logger.debug(f"Setting page to goto: {page_to_goto}.")
             self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
 
-    def navigate_to_search_result(self, title_str: str) -> bool:
+    def navigate_to_search_result(self, title_str: str, tags: Sequence[Tags] = ()) -> bool:
         """Navigate to a title from search results.
 
         Args:
             title_str: The display title string from the search screen.
+            tags: The tags the title was listed by, if any. The first with a tagged
+                page in the title sets the goto-page checkbox, as picking the title
+                under that tag in the tree view does.
 
         Returns:
             False if the title was not found in the title dictionary.
@@ -305,6 +308,10 @@ class NavigationCoordinator:
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         self.navigate_to_chrono_title(image_info)
+
+        tag = next((t for t in tags if (t, title) in BARKS_TAGGED_PAGES), None)
+        if tag is not None:
+            self._set_tag_goto_page_checkbox(tag, title_str)
         return True
 
     def update_title(self, title_str: str) -> bool:

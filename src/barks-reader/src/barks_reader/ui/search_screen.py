@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self
 
-from barks_fantagraphics.barks_tags import TagGroups
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
@@ -77,7 +77,7 @@ from .search_chip_row import (
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
@@ -276,7 +276,9 @@ class SearchScreen(FloatLayout):
     image_texture = ObjectProperty(allownone=True)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=True)
-    on_goto_title: Callable[[str], bool] | None = ObjectProperty(None, allownone=True)
+    on_goto_title: Callable[[str, Sequence[Tags]], bool] | None = ObjectProperty(
+        None, allownone=True
+    )
     on_goto_title_with_page: Callable[[ImageInfo, str], None] | None = ObjectProperty(
         None, allownone=True
     )
@@ -480,10 +482,26 @@ class SearchScreen(FloatLayout):
         self._mark_result_selected(button)
         on_select(title_str)
 
-    def _on_result_goto_title(self, title_str: str) -> None:
+    def _on_result_goto_title(self, title_str: str, tags: Sequence[Tags] = ()) -> None:
         logger.info(log_markers.SEARCH_SELECTED_TITLE.format(title=title_str))
         if self.on_goto_title:
-            self.on_goto_title(title_str)
+            self.on_goto_title(title_str, tags)
+
+    def _on_tag_result_goto_title(self, title_str: str) -> None:
+        self._on_result_goto_title(title_str, self._listed_tags())
+
+    def _listed_tags(self) -> list[Tags]:
+        """Return the tags the listed stories were found by: the one listed, or those picked.
+
+        Only tags, not groups, and of the picked ones only those included: a tagged
+        page is a tag's.
+        """
+        if self._tag_basket_results:
+            names = self._tag_basket.selection().included
+        else:
+            names = (self._listed_tag,) if self._listed_tag else ()
+        items = [self._search.resolve_tag(name.lower())[0] for name in names]
+        return [item for item in items if isinstance(item, Tags)]
 
     # --- Title Search ---
 
@@ -660,7 +678,7 @@ class SearchScreen(FloatLayout):
         logger.debug(log_markers.TAG_TITLES_LISTED.format(tag=tag_str, count=len(titles)))
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
-            title_results_layout, self._tag_titles, self._on_result_goto_title
+            title_results_layout, self._tag_titles, self._on_tag_result_goto_title
         )
         self._add_none_in_era_row(title_results_layout, titles)
         self._update_background_from_results(titles)
@@ -814,7 +832,7 @@ class SearchScreen(FloatLayout):
             log_markers.TAG_COMBINED_RESULTS.format(tags=selection.describe(), count=len(titles))
         )
         layout: BoxLayout = self.ids.tag_title_results_layout
-        self._populate_title_results(layout, self._tag_titles, self._on_result_goto_title)
+        self._populate_title_results(layout, self._tag_titles, self._on_tag_result_goto_title)
         if not selection.included:
             layout.add_widget(
                 _SearchResultButton(text="Include a tag to list stories", disabled=True)
