@@ -282,6 +282,10 @@ WORD_TAG_FILTER_SET: Final = 'Word search: tag filter "{tags}".'
 SPEAKER_FILTER_SET: Final = 'Word search: speaker filter "{speaker}".'
 # The speaker filter's list opened: the speakers who say what was searched, besides anyone.
 SPEAKER_LIST_OPENED: Final = "Word search: speaker list opened with {count} speakers."
+# A new word search the picked speaker says none of (but others do) lifts the filter.
+SPEAKER_FILTER_LIFTED: Final = (
+    'Word search: "{speaker}" never says "{text}"; speaker filter lifted.'
+)
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'
 WORD_BUBBLE_PRESS: Final = 'Word search bubble press: "{title}" page {page}.'
 

@@ -393,7 +393,7 @@ class TestTypedQuery:
         _offer_speakers(screen)
         with patch.object(screen, "_run_word_query") as run:
             _pick_speaker(screen, "Scrooge")
-        run.assert_called_once_with("gold -mine", list_words=True)
+        run.assert_called_once_with("gold -mine", list_words=True, new_search=False)
         assert screen._speaker == "Scrooge"
 
     def test_the_bubbles_popup_highlights_the_query_terms(self, screen: SearchScreen) -> None:
@@ -601,7 +601,7 @@ class TestWordBasket:
         _offer_speakers(screen)
         with patch.object(screen, "_run_word_query") as run:
             _pick_speaker(screen, "Donald")
-        run.assert_called_once_with('"gold"', list_words=False)
+        run.assert_called_once_with('"gold"', list_words=False, new_search=False)
 
     def test_clear_empties_the_basket(self, screen: SearchScreen) -> None:
         screen._toggle_basket_word("gold")
@@ -1454,6 +1454,63 @@ class TestSpeakerFilter:
             _press(_said_by_chip(screen))
         screen.on_is_visible(screen, value=False)
         assert not cast("_FakeSpeakerList", screen._said_by_dropdown).is_open
+
+    @staticmethod
+    def _stories_by(says: dict[str | None, int]) -> object:
+        """Return a find_words stand-in: so many stories for each speaker (None: anyone)."""
+        return lambda _word, speaker: {f"Story {i}": MagicMock() for i in range(says[speaker])}
+
+    @pytest.mark.parametrize(
+        ("says", "speaker_after", "stories"),
+        [
+            ({"Gladstone": 0, None: 4}, "", 4),  # he never says it, others do: lifted
+            ({"Gladstone": 2, None: 4}, "Gladstone", 2),  # he says it: kept
+            ({"Gladstone": 0, None: 0}, "Gladstone", 0),  # nobody says it: not his doing
+        ],
+        ids=["lifted", "kept", "nobody"],
+    )
+    def test_a_new_word_keeps_the_speaker_only_if_they_say_it(
+        self,
+        screen: SearchScreen,
+        loguru_sink: list[str],
+        says: dict[str | None, int],
+        speaker_after: str,
+        stories: int,
+    ) -> None:
+        screen._speaker = "Gladstone"
+        screen._search.find_words.side_effect = self._stories_by(says)
+        with patch.object(screen, "_list_word_stories") as listed:
+            screen._on_word_chip_selected("bumps-a-daisy")
+        assert screen._speaker == speaker_after
+        assert len(listed.call_args.args[0]) == stories
+        lifted = log_markers.SPEAKER_FILTER_LIFTED.format(speaker="Gladstone", text="bumps-a-daisy")
+        assert (lifted in loguru_sink) == (speaker_after == "")
+
+    def test_a_filter_changed_under_the_same_word_is_never_lifted(
+        self, screen: SearchScreen
+    ) -> None:
+        """An era or scope the speaker says none of lists nothing, as asked."""
+        screen._speaker = "Gladstone"
+        screen._selected_word = "bumps-a-daisy"
+        screen._search.find_words.side_effect = self._stories_by({"Gladstone": 0, None: 4})
+        with patch.object(screen, "_list_word_stories") as listed:
+            screen._rerun_word_results()
+        assert screen._speaker == "Gladstone"
+        assert listed.call_args.args[0] == {}
+
+    def test_a_new_query_the_speaker_says_none_of_lifts_the_filter(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._speaker = "Gladstone"
+        screen._search.run_word_query.side_effect = lambda _q, speaker, **_kw: WordQueryResult(
+            title_dict=_found() if speaker else _found("Story A", "Story B")
+        )
+        with patch.object(screen, "_list_query_words"), patch.object(screen, "_list_word_stories"):
+            screen._run_word_query("bumps-a-daisy AND hat")
+        assert screen._speaker == ""
+        assert log_markers.WORD_QUERY_RUN.format(text="bumps-a-daisy AND hat", count=2) in (
+            loguru_sink
+        )
 
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
         screen._speaker = "Scrooge"

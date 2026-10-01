@@ -982,7 +982,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     # --- Word Search: typed queries ---
 
-    def _run_word_query(self, query: str, *, list_words: bool = True) -> None:
+    def _run_word_query(
+        self, query: str, *, list_words: bool = True, new_search: bool = True
+    ) -> None:
         """Run a typed query and list what it found, its notices and its suggestions.
 
         The word list becomes the query's: its row (selected), then what the query
@@ -993,6 +995,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             query: The query text.
             list_words: Whether the word list becomes the query's; not for the
                 basket's query, run beside the word list it is picked from.
+            new_search: Whether the query is new, not the last one again under
+                another filter: then a speaker who says none of it is lifted.
 
         """
         result = self._search.run_word_query(
@@ -1000,6 +1004,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             speaker=self._speaker or None,
             search_filter=self._word_search_filter(),
         )
+        if new_search and self._speaker and not result.title_dict:
+            everyone = self._search.run_word_query(
+                query, speaker=None, search_filter=self._word_search_filter()
+            )
+            if everyone.title_dict:
+                self._lift_speaker(query)
+                result = everyone
         self._word_query = query
         self._word_query_result = result
         self._selected_word = ""
@@ -1204,9 +1215,24 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 pass
         return True
 
-    def _show_word_results(self, word: str) -> None:
-        """Run the word search under the current speaker filter and list its titles."""
-        self._list_word_stories(self._find_word_stories(self._speaker or None), word)
+    def _show_word_results(self, word: str, *, new_search: bool = True) -> None:
+        """Run the word search under the current speaker filter and list its titles.
+
+        A new word (not the last one again under another filter) that the speaker
+        never says, but others do, lifts the filter rather than list nothing.
+        """
+        found = self._find_word_stories(self._speaker or None)
+        if new_search and self._speaker and not found:
+            everyone = self._find_word_stories(None)
+            if everyone:
+                self._lift_speaker(word)
+                found = everyone
+        self._list_word_stories(found, word)
+
+    def _lift_speaker(self, searched: str) -> None:
+        """Go back to anyone: the picked speaker says none of a new search, which others say."""
+        logger.info(log_markers.SPEAKER_FILTER_LIFTED.format(speaker=self._speaker, text=searched))
+        self._speaker = _ALL_SPEAKERS
 
     def _find_word_stories(self, speaker: str | None) -> dict[str, TitleInfo]:
         """Return the stories the listed word search finds, said by `speaker` (None: anyone).
@@ -1441,9 +1467,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _rerun_word_results(self) -> None:
         if self._word_query:
-            self._run_word_query(self._word_query, list_words=not self._basket_results)
+            self._run_word_query(
+                self._word_query, list_words=not self._basket_results, new_search=False
+            )
         elif self._selected_word:
-            self._show_word_results(self._selected_word)
+            self._show_word_results(self._selected_word, new_search=False)
 
     # --- The word search's tag scope ---
 
