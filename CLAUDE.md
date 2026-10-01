@@ -76,6 +76,11 @@ workspace app and on CI's build of this commit, a soak, `validate`, and the cove
 what only Windows runs; nightly through `scripts/windows/register-overnight-task.ps1`;
 `uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
 (setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`.
+Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_windows.py`):
+its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
+runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
+the new coverage stage). The nightly task `register-overnight-task.ps1` registers does
+not pull first.
 `uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST` combines the two
 machines' coverage of the newest commit both ran overnight (`--commit`), reported against
 that commit's source: Linux, Windows, both, and what only Windows ran (report only).
