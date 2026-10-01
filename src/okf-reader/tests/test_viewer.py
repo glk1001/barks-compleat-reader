@@ -1,5 +1,5 @@
 # ruff: noqa: SLF001
-# cspell:ignore pytestmark
+# cspell:ignore ffcc pytestmark
 """The viewer's desktop and mouse paths, on a real viewer over a small bundle.
 
 The remote's paths are the GUI suite's (``src/barks-reader/tests/gui/test_wiki.py``);
@@ -11,7 +11,9 @@ Windows CI runners do not have (KIVY_HEADLESS_CI), so there these are skipped.
 
 from __future__ import annotations
 
+import gc
 import os
+import weakref
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -19,6 +21,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
+from kivy.uix.scrollview import ScrollView
+from okf_reader.core.render import TableBlock
 from okf_reader.core.session import load_session_state
 from okf_reader.ui import viewer as viewer_module
 from okf_reader.ui.keynav import (
@@ -32,12 +36,22 @@ from okf_reader.ui.keynav import (
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
 )
-from okf_reader.ui.viewer import SEARCH_ERROR_TEXT, FocusRegion, OKFApp, OKFViewer
+from okf_reader.ui.viewer import (
+    LAZY_TABLE_MARGIN,
+    LAZY_TABLE_MIN_ROWS,
+    SEARCH_ERROR_TEXT,
+    TABLE_FONT_NAME,
+    FocusRegion,
+    OKFApp,
+    OKFViewer,
+    _LazyTable,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
+    from kivy.uix.widget import Widget
     from okf_reader.core.search import SearchHit
 
 pytestmark = pytest.mark.skipif(
@@ -304,3 +318,101 @@ class TestStandaloneApp:
         state = load_session_state(tmp_path / "session.json", app._viewer.bundle)
         assert state is not None
         assert state.page.name == "a.md"
+
+
+# A long table's rows, as the core pads them: a colored header, one- and two-line rows.
+LONG_TABLE_ROWS = [
+    "[color=ffcc00]Title             Year[/color]",
+    *(
+        f"Story {i:<12}{1940 + i % 30}" if i % 7 else f"Story {i:<12}{1940 + i % 30}\n  (cont.)"
+        for i in range(1, LAZY_TABLE_MIN_ROWS + 150)
+    ),
+]
+
+
+def _eager_heights(rows: list[str], font_size: int) -> list[int]:
+    """Each row's height as the eager table's own row Labels take it."""
+    heights = []
+    for row in rows:
+        lbl = Label(text=row, markup=True, font_name=TABLE_FONT_NAME, font_size=font_size)
+        lbl.texture_update()
+        heights.append(lbl.texture_size[1])
+    return heights
+
+
+class TestLazyTable:
+    """A long, link-free table builds Labels only for the rows near the viewport."""
+
+    FONT_SIZE = 13
+
+    @pytest.fixture
+    def viewport(self) -> ScrollView:
+        return ScrollView(size_hint=(None, None), size=(400, 300), pos=(0, 0))
+
+    @pytest.fixture
+    def table(self, viewport: ScrollView) -> _LazyTable:
+        table = _LazyTable(LONG_TABLE_ROWS, self.FONT_SIZE, viewport)
+        table.y = viewport.top - table.height  # the table's top at the viewport's top
+        table._update()
+        return table
+
+    def test_it_takes_the_eager_tables_size_at_once(self, table: _LazyTable) -> None:
+        heights = _eager_heights(LONG_TABLE_ROWS, self.FONT_SIZE)
+        assert table.height == sum(heights)
+        widths = []
+        for row in LONG_TABLE_ROWS:
+            lbl = Label(text=row, markup=True, font_name=TABLE_FONT_NAME, font_size=self.FONT_SIZE)
+            lbl.texture_update()
+            widths.append(lbl.texture_size[0])
+        assert table.width == max(widths)
+
+    def test_only_the_rows_near_the_viewport_are_built(
+        self, table: _LazyTable, viewport: ScrollView
+    ) -> None:
+        heights = _eager_heights(LONG_TABLE_ROWS, self.FONT_SIZE)
+        reach = viewport.height * (1 + LAZY_TABLE_MARGIN)
+        expected = next(i for i in range(len(heights)) if sum(heights[:i]) >= reach)
+        assert table.built_rows == list(range(expected))
+        assert len(table.children) == expected < len(LONG_TABLE_ROWS)
+
+    def test_each_built_row_sits_where_the_eager_table_puts_it(self, table: _LazyTable) -> None:
+        heights = _eager_heights(LONG_TABLE_ROWS, self.FONT_SIZE)
+        for index in table.built_rows[:20]:
+            label = table._built[index]
+            assert label.top == table.height - sum(heights[:index])
+            assert label.size == label.texture_size
+
+    def test_scrolling_to_the_end_builds_the_last_rows_and_reuses_labels(
+        self, table: _LazyTable, viewport: ScrollView
+    ) -> None:
+        labels_before = {id(lbl) for lbl in table.children}
+        table.y = viewport.y  # the table's bottom at the viewport's bottom
+        table._update()
+        assert table.built_rows[-1] == len(LONG_TABLE_ROWS) - 1
+        assert 0 not in table.built_rows
+        assert {id(lbl) for lbl in table.children} <= labels_before  # reused, none new
+
+    def test_the_page_scroll_view_does_not_keep_a_table_alive(self, viewport: ScrollView) -> None:
+        table = weakref.ref(_LazyTable(LONG_TABLE_ROWS, self.FONT_SIZE, viewport))
+        gc.collect()
+        assert table() is None
+        viewport.scroll_y = 0.5  # its dead binding must not break the scroll view
+
+
+class TestTableWidget:
+    """Which tables the viewer builds lazily: long ones without a link."""
+
+    def _table(self, viewer: OKFViewer, rows: list[str]) -> Widget:
+        return viewer._table_widget(TableBlock(rows), viewer.bundle / "index.md").children[0]
+
+    def test_a_long_table_without_links_is_lazy(self, viewer: OKFViewer) -> None:
+        assert isinstance(self._table(viewer, LONG_TABLE_ROWS), _LazyTable)
+
+    def test_a_short_table_is_built_whole(self, viewer: OKFViewer) -> None:
+        table = self._table(viewer, LONG_TABLE_ROWS[: LAZY_TABLE_MIN_ROWS - 1])
+        assert not isinstance(table, _LazyTable)
+        assert len(table.children) == LAZY_TABLE_MIN_ROWS - 1
+
+    def test_a_long_table_with_a_link_is_built_whole(self, viewer: OKFViewer) -> None:
+        rows = [*LONG_TABLE_ROWS, "[ref=concept/a.md]A[/ref]"]
+        assert not isinstance(self._table(viewer, rows), _LazyTable)

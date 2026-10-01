@@ -362,8 +362,16 @@ def _visible_text(markup: str) -> str:
     return text.replace("&amp;", "&").replace("&bl;", "[").replace("&br;", "]")
 
 
-def _visible_len(markup: str) -> int:
-    """Character count of what a Kivy-markup string displays."""
+def visible_len(markup: str) -> int:
+    """Return the character count of what a Kivy-markup string displays.
+
+    Args:
+        markup: Kivy markup: tags count nothing, an escaped bracket or ampersand one.
+
+    Returns:
+        How many characters show.
+
+    """
     return len(_visible_text(markup))
 
 
@@ -418,7 +426,7 @@ def _table_block(
         col_wrap.append(TABLE_COL_WRAP_WIDTH if override is None else override)
     wrapped: list[list[list[str]]] = [  # rows -> cells -> the cell's wrapped lines
         [
-            _wrap_markup(cell, col_wrap[c]) if _visible_len(cell) > col_wrap[c] else [cell]
+            _wrap_markup(cell, col_wrap[c]) if visible_len(cell) > col_wrap[c] else [cell]
             for c, cell in enumerate(row)
         ]
         for row in rows
@@ -427,7 +435,7 @@ def _table_block(
     for row in wrapped:
         for c, cell in enumerate(row):
             for cell_line in cell:
-                length = _visible_len(cell_line)
+                length = visible_len(cell_line)
                 if length > col_wrap[c]:
                     length = 0  # unbreakable word: overflows its own row only
                 if c == len(widths):
@@ -449,9 +457,9 @@ def _table_block(
             # A cell with fewer lines than the row contributes blank padding.
             segments = ((cell[i] if i < len(cell) else "") for cell in row)
             padded = (
-                " " * max(widths[c] - _visible_len(seg), 0) + seg
+                " " * max(widths[c] - visible_len(seg), 0) + seg
                 if numeric_cols[c]
-                else seg + " " * max(widths[c] - _visible_len(seg), 0)
+                else seg + " " * max(widths[c] - visible_len(seg), 0)
                 for c, seg in enumerate(segments)
             )
             row_lines.append("  ".join(padded).rstrip())

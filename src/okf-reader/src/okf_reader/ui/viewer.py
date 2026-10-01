@@ -12,13 +12,17 @@ from __future__ import annotations
 
 import io
 import threading
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
+from functools import cache
+from itertools import accumulate
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
+from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp, sp
@@ -47,6 +51,7 @@ from okf_reader.core.render import (
     list_children,
     render_page,
     resolve_link,
+    visible_len,
 )
 from okf_reader.core.search import BundleSearcher
 from okf_reader.core.session import resolve_start_page, save_session_state
@@ -98,6 +103,14 @@ BODY_LINE_HEIGHT = 1.25
 TABLE_FONT_NAME = "RobotoMono-Regular"
 # Space between a table's last row and its horizontal scrollbar (see _table_widget).
 TABLE_BAR_GAP = dp(4)
+# A table this long, with no links, keeps Labels only for the rows near the viewport
+# (see _LazyTable). Kivy frees a widget only on a full garbage collection, which the
+# app runs rarely, so each visit to a page of a thousand row Labels left them all as
+# garbage: on Windows, a few visits to the bibliography took the app past 6 GB.
+LAZY_TABLE_MIN_ROWS = 100
+# Rows a lazy table keeps built beyond each edge of the viewport, in viewport heights,
+# so a scroll step finds its rows ready.
+LAZY_TABLE_MARGIN = 0.5
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
@@ -316,6 +329,107 @@ def _scroll_view(theme: ViewerThemeSpec, **kwargs) -> ScrollView:  # noqa: ANN00
         bar_width=dp(12),
         **kwargs,
     )
+
+
+def _table_texture_size(markup: str, font_size: int) -> tuple[int, int]:
+    """Return the texture size a table row Label (see _table_widget) gives `markup`."""
+    core = CoreMarkupLabel(text=markup, font_name=TABLE_FONT_NAME, font_size=font_size)
+    core.refresh()
+    return core.texture.size
+
+
+@cache
+def _table_line_heights(font_size: int) -> tuple[int, int]:
+    """Return a table row's height for its first line, and for each line after it."""
+    one = _table_texture_size("0", font_size)[1]
+    return one, _table_texture_size("0\n0", font_size)[1] - one
+
+
+class _LazyTable(RelativeLayout):
+    """A long, link-free table that keeps Labels only for the rows near the viewport.
+
+    Its rows are monospace and padded to aligned columns, so each row's height is
+    known from its line count, and the table's width from its widest row, without
+    a Label per row: the table takes its full size at once (the page's height, the
+    scroll positions Back restores, are as an eager table's), then builds Labels
+    for the rows within the viewport and LAZY_TABLE_MARGIN beyond, reusing them as
+    the page scrolls. With no links in it, the page's link machinery never needs
+    a row it has not built.
+    """
+
+    def __init__(self, rows: list[str], font_size: int, viewport: ScrollView) -> None:
+        """Size the table for `rows`; its Labels come once it is laid out in `viewport`.
+
+        Args:
+            rows: The rows' markup, as TableBlock holds them.
+            font_size: The rows' font size.
+            viewport: The page's scroll view, whose visible part decides the rows built.
+
+        """
+        super().__init__(size_hint=(None, None))
+        self._rows = rows
+        self._font_size = font_size
+        self._viewport = viewport
+        first, more = _table_line_heights(font_size)
+        heights = [first + more * row.count("\n") for row in rows]
+        # The distance of each row's top below the table's top, and the table's height.
+        self._tops = list(accumulate(heights, initial=0))
+        widest = max(rows, key=lambda row: max(visible_len(line) for line in row.split("\n")))
+        self.size = (_table_texture_size(widest, font_size)[0], self._tops[-1])
+        self._built: dict[int, Label] = {}
+        self._spare: list[Label] = []
+        self._update_trigger = Clock.create_trigger(self._update, -1)
+        # bind holds a bound method weakly (Kivy's faster variant holds it strongly), so
+        # the page's scroll view, which outlives every page, does not keep a table
+        # alive once its page is gone.
+        viewport.bind(scroll_y=self._viewport_moved, height=self._viewport_moved)
+        self.bind(pos=self._viewport_moved)
+
+    @property
+    def built_rows(self) -> list[int]:
+        """The rows that have a Label now, in order."""
+        return sorted(self._built)
+
+    def _viewport_moved(self, *_args: object) -> None:
+        self._update_trigger()
+
+    def _update(self, *_args: object) -> None:
+        """Build the rows near the viewport and give back the Labels of the rest."""
+        viewport = self._viewport
+        margin = viewport.height * LAZY_TABLE_MARGIN
+        viewport_bottom = viewport.to_window(viewport.x, viewport.y)[1]
+        table_top = self.to_window(self.x, self.y)[1] + self.height
+        # The viewport's span, as distances below the table's top.
+        near = table_top - (viewport_bottom + viewport.height) - margin
+        far = table_top - viewport_bottom + margin
+        first = max(bisect_right(self._tops, near) - 1, 0)
+        last = min(bisect_left(self._tops, far), len(self._rows))
+        wanted = range(first, last)
+        for index in [i for i in self._built if i not in wanted]:
+            label = self._built.pop(index)
+            self.remove_widget(label)
+            self._spare.append(label)
+        for index in wanted:
+            if index not in self._built:
+                self._built[index] = self._build_row(index)
+
+    def _build_row(self, index: int) -> Label:
+        if self._spare:
+            label = self._spare.pop()
+            label.text = self._rows[index]
+        else:
+            label = Label(
+                text=self._rows[index],
+                markup=True,
+                font_name=TABLE_FONT_NAME,
+                font_size=self._font_size,
+                size_hint=(None, None),
+            )
+            label.bind(texture_size=label.setter("size"))
+        label.texture_update()
+        label.pos = (0, self.height - self._tops[index + 1])
+        self.add_widget(label)
+        return label
 
 
 # Frames the sidebar reveal will wait for the tree's geometry to stop moving
@@ -1930,7 +2044,12 @@ class OKFViewer(RelativeLayout):
         ScrollView so a wide table scrolls instead of clipping. Cells can carry
         links (the core's ``_inline`` renders them like any other), so rows join
         the same ref-press and hover machinery as body labels.
+
+        A long table with no links is a _LazyTable instead: Labels only for the rows
+        near the viewport (see LAZY_TABLE_MIN_ROWS).
         """
+        if len(blk.rows) >= LAZY_TABLE_MIN_ROWS and not any("[ref=" in r for r in blk.rows):
+            return self._table_scroller(_LazyTable(blk.rows, blk.font_size, self.body_scroll))
         stack = BoxLayout(orientation="vertical", size_hint=(None, None))
         stack.bind(
             minimum_height=stack.setter("height"),
@@ -1950,6 +2069,10 @@ class OKFViewer(RelativeLayout):
             if "[ref=" in row:
                 self._link_labels.append(lbl)
             stack.add_widget(lbl)
+        return self._table_scroller(stack)
+
+    def _table_scroller(self, table: Widget) -> ScrollView:
+        """Put a table's rows in a horizontal ScrollView, so a wide table scrolls."""
         scroller = _scroll_view(self._theme, size_hint=(1, None), do_scroll_y=False, height=0)
 
         def fit_height(*_args: object) -> None:
@@ -1957,14 +2080,15 @@ class OKFViewer(RelativeLayout):
             # the table overflows, reserve room below the rows — otherwise the bar
             # covers the last row. (The bar is only drawn when the table overflows,
             # so fitting tables get no dead strip.)
-            overflows = stack.width > scroller.width
-            scroller.height = stack.height + (
+            overflows = table.width > scroller.width
+            scroller.height = table.height + (
                 scroller.bar_width + TABLE_BAR_GAP if overflows else 0
             )
 
-        stack.bind(height=fit_height, width=fit_height)
+        table.bind(height=fit_height, width=fit_height)
         scroller.bind(width=fit_height)
-        scroller.add_widget(stack)
+        scroller.add_widget(table)
+        fit_height()
         return scroller
 
     def _on_ref(self, label, ref: str) -> None:  # noqa: ANN001
