@@ -278,11 +278,26 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
   (`KIVY_HEADLESS_CI=1 KIVY_WINDOW=no_provider`). Apple's software OpenGL renderer (2.1) is
   there, though; Kivy's SDL2 only refuses it by asking for an accelerated one.
   `scripts/macos/with-soft-gl.sh` builds a small library that drops that request (it needs
-  the Xcode command-line tools' `clang`) and runs a command with it, so the whole unit
-  suite runs (on a 2-core guest, 2026-10-01: 4,610 passed in about a minute):
-  `CI=1 KIVY_DPI=96 KIVY_METRICS_DENSITY=1 KIVY_METRICS_FONTSCALE=1 bash
-  scripts/macos/with-soft-gl.sh uv run pytest -n auto` (`CI=1` skips the tests that want
-  the data pack's override archives). The command it runs must be the repo's (`uv`,
-  `.venv/bin/python`): macOS drops `DYLD_INSERT_LIBRARIES` when it starts `/bin/bash` or
-  another of its own protected programs. The GUI path tests still do not run on macOS:
-  `scripts/gui_probe.py` has no macOS backend.
+  the Xcode command-line tools' `clang`) and runs a command in the venv with it:
+  `bash scripts/macos/with-soft-gl.sh python main.py` runs the app, and
+  `bash scripts/macos/with-soft-gl.sh pytest -n auto` the whole unit suite (on a 2-core
+  guest, 2026-10-01: about 4,700 passed in two minutes). A Mac with a GPU still draws on
+  it. The pre-push pytest hook runs through it on macOS. The library goes in
+  `DYLD_INSERT_LIBRARIES`, which macOS strips as a hardened-runtime program starts (uv
+  since 0.12) or one of its own (`/bin/bash`), so the script hands it to the command with
+  `uv run env`; don't export it yourself. On that guest (macOS 12, Intel):
+  - **Tools** come as release binaries into `~/.local/bin`, not from Homebrew, which has no
+    bottles for macOS 12 and builds from source (git-lfs needed OpenSSL and Go): git-lfs,
+    gh, and bun's `-baseline` build (the guest's CPU shows no AVX2, which the plain build
+    needs), with `bunx` a symlink to `bun`. uv 0.9 knew no Python 3.13.12;
+    `uv self update` did.
+  - **Data**: `.env.runtime` can point at an installed app's folder (`config`, and the
+    folder holding `Reader Files`), as on the Windows laptop. The `barks-fantagraphics`
+    tests read the override archives at the fixed `~/Books/Carl Barks/Compleat Barks
+    Disney Reader/Reader Files`: a symlink there to the installed `Reader Files` serves
+    them.
+  - **Push gate**: `barks-comic-building` does not install (its OpenCV has macOS x86_64
+    wheels only from macOS 14), and the censorship check reads comics trees the guest does
+    not have, so push with `SKIP=check-censorship-csv git push`; pytest runs.
+  - The GUI path tests still do not run on macOS: `scripts/gui_probe.py` has no macOS
+    backend (plan: `docs/plans/macos-gui-tests.md`).

@@ -60,12 +60,14 @@ would not be used. Leave the machine alone while it runs, as on Windows.
 
 3. **Soft GL in the run.** `run_gui_tests.py --soft-gl`, beside `--angle`: build
    `build/macos/libsoftgl.dylib` (split `with-soft-gl.sh` so its build half can run alone,
-   e.g. `--build-only`) and put it in `DYLD_INSERT_LIBRARIES`. The probe hands its
-   environment to `uv run main.py`; `uv` is not one of macOS's protected programs, so the
-   variable reaches Python (checked with `with-soft-gl.sh uv run pytest`). Have the probe
-   refuse a soft-GL run whose app log names a hardware renderer, and the reverse, as
-   `gl_backend_problem` does for ANGLE. `--app` with soft GL is out of scope: a signed
-   build may refuse injected libraries.
+   e.g. `--build-only`) and give it to the app. Not by exporting
+   `DYLD_INSERT_LIBRARIES` for `uv run main.py` to pass on: uv since 0.12 is signed with
+   the hardened runtime, and macOS strips `DYLD_*` as it starts, so the probe launches
+   `uv run env DYLD_INSERT_LIBRARIES=... python main.py`, as `with-soft-gl.sh` does.
+   The library only stops SDL insisting on a GPU (a Mac with one still draws on it), so
+   it could simply always be on for macOS; have doctor say which renderer the app's log
+   names. `--app` with soft GL is out of scope: a signed build may refuse injected
+   libraries.
 
 4. **Dispatch.** `gui_probe._backend()` returns the darwin backend; `gui_driver.PROBE`
    picks `gui_probe.py` on `darwin` as on `win32`; the session check in
@@ -114,11 +116,11 @@ would not be used. Leave the machine alone while it runs, as on Windows.
 - The data pack under `BARKS_READER_DATA_DIR` ("Reader Files"), and the live profile the
   suite copies from (`barks-reader.ini` in `BARKS_READER_CONFIG_DIR`): the session fixture
   skips the suite without it. Run the app once by hand
-  (`bash scripts/macos/with-soft-gl.sh uv run main.py`) to make the profile and see it
+  (`bash scripts/macos/with-soft-gl.sh python main.py`) to make the profile and see it
   draw.
 - The two permissions above, granted once by hand.
 - Unit tests green first: `CI=1 KIVY_DPI=96 KIVY_METRICS_DENSITY=1
-  KIVY_METRICS_FONTSCALE=1 bash scripts/macos/with-soft-gl.sh uv run pytest -n auto`.
+  KIVY_METRICS_FONTSCALE=1 bash scripts/macos/with-soft-gl.sh pytest -n auto`.
 
 ## Open questions
 

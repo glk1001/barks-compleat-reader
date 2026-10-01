@@ -1,20 +1,39 @@
 #!/bin/bash
 # cspell:ignore softgl libsoftgl dylib dylibs dynamiclib otool codesign dyld clang Xcode
-# Run a command with Kivy drawing on Apple's software OpenGL renderer, for a macOS
-# machine with no GPU driver (a VirtualBox guest): see softgl.c.
+# Run a command in the workspace's venv with Kivy free to draw on Apple's software OpenGL
+# renderer, for a macOS machine with no GPU driver (a VirtualBox guest): see softgl.c.
 #
-#   bash scripts/macos/with-soft-gl.sh uv run pytest -n auto
+#   bash scripts/macos/with-soft-gl.sh pytest -n auto
+#   bash scripts/macos/with-soft-gl.sh python main.py
+#
+# A leading "uv run" is accepted and dropped (`with-soft-gl.sh uv run main.py`), as
+# long as no uv option follows it.
 #
 # Builds build/macos/libsoftgl.dylib against the workspace's Kivy SDL2 when it is
-# missing or older than either, so a Kivy upgrade rebuilds it. The command must start a
-# program of the repo's (uv, .venv/bin/python), not /bin/bash or /usr/bin/env: macOS
-# drops DYLD_INSERT_LIBRARIES when it starts one of its own protected programs.
+# missing or older than either, so a Kivy upgrade rebuilds it.
+#
+# The library goes in DYLD_INSERT_LIBRARIES, which macOS strips from the environment of
+# any program signed with the hardened runtime as it starts - uv since 0.12 among them -
+# and of its own protected ones (/bin/bash, /usr/bin/env). So it is not exported to uv:
+# `uv run env VAR=... COMMAND` has env set it after both have started, for the command
+# alone.
 
 set -euo pipefail
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "with-soft-gl.sh: macOS only" >&2
     exit 1
+fi
+if [[ $# -ge 2 && "$1" == "uv" && "$2" == "run" ]]; then
+    shift 2
+    if [[ $# -gt 0 && "$1" == -* ]]; then
+        echo "with-soft-gl.sh: give the command without uv's options (it runs uv run itself)" >&2
+        exit 2
+    fi
+    # `uv run main.py` runs a script; through env it needs its interpreter named.
+    if [[ $# -gt 0 && "$1" == *.py ]]; then
+        set -- python "$@"
+    fi
 fi
 if [[ $# -eq 0 ]]; then
     echo "usage: bash scripts/macos/with-soft-gl.sh COMMAND [ARGS...]" >&2
@@ -42,5 +61,4 @@ if [[ ! -f "$LIB" || "$SOURCE" -nt "$LIB" || "$SDL" -nt "$LIB" ]]; then
     codesign --force --sign - "$LIB"
 fi
 
-export DYLD_INSERT_LIBRARIES="$LIB${DYLD_INSERT_LIBRARIES:+:$DYLD_INSERT_LIBRARIES}"
-exec "$@"
+exec uv run env "DYLD_INSERT_LIBRARIES=${LIB}${DYLD_INSERT_LIBRARIES:+:$DYLD_INSERT_LIBRARIES}" "$@"

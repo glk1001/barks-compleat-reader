@@ -103,9 +103,13 @@ repos:
             name: pytest (full suite)
             # screen_metrics asks screeninfo for the monitors at import, which needs an
             # X display; a push from a shell without one (ssh, a second machine) runs
-            # the suite on a throwaway Xvfb, as CI does.
+            # the suite on a throwaway Xvfb, as CI does. On macOS it runs through
+            # with-soft-gl.sh, so a Mac with no GPU driver (a VirtualBox guest) can open
+            # Kivy's window; a Mac with a GPU still draws on it.
             entry: >-
-              bash -c 'if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null;
+              bash -c 'if [ "$(uname -s)" = Darwin ];
+              then exec bash scripts/macos/with-soft-gl.sh pytest;
+              elif [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null;
               then exec xvfb-run -a uv run pytest; else exec uv run pytest; fi'
             language: system
             pass_filenames: false
