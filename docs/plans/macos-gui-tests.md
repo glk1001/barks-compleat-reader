@@ -128,7 +128,12 @@ would not be used. Leave the machine alone while it runs, as on Windows.
   Decide which unit `client_geometry` reports (the one `WINDOW_GEOMETRY` logs) and scale
   the rest, before a run on real hardware.
 - **The drawable area.** Whether Kivy's window on macOS has the system title bar or the
-  app's own, and so what to subtract from the frame: measure, don't assume.
+  app's own, and so what to subtract from the frame: measure, don't assume. First
+  measurement (2026-10-01, the VM, from source on soft GL): the app's window in
+  `CGWindowListCopyWindowInfo` was `716x1125+442+25`, exactly its log's "Main window
+  geometry (boot): 716x1125+442+25", so nothing to subtract there. Its `kCGWindowName`
+  came back empty, and a `screencapture` showed only the wallpaper, from a terminal
+  without Screen Recording permission: as expected, so match by owner pid.
 - **Focus.** Whether `CGEventPost` to the HID tap after activation is enough on every
   macOS version, or `CGEventPostToPid` is needed (which SDL may ignore when its window is
   not the key window). Try the HID tap first.
