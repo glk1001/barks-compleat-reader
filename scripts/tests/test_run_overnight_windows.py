@@ -57,7 +57,7 @@ class TestSelectStages:
 
     def test_skip(self) -> None:
         chosen = rw.select_stages([], ["fetch-build", "built-app"])
-        assert chosen == ["update", "pytest", "gui", "soak", "validate"]
+        assert chosen == ["update", "pytest", "validate", "gui", "soak"]
 
     def test_an_unknown_name(self) -> None:
         with pytest.raises(ValueError, match="no stage called nope"):

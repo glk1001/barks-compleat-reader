@@ -51,10 +51,10 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 | `update` | `git pull --ff-only`, `uv sync --locked` | The run tests what is on `main` that night. | 1 min |
 | `pytest` | `uv run pytest` with the data pack | CI's Windows leg skips every test that needs it. | 1 min |
 | `fetch-build` | CI's `barks-reader-win.exe` for **this checkout's commit** | The built-app stage must test the same code as the others. | 1 min |
+| `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. Runs before `gui`, as on Linux, so the first app booted finds the volumes in the file cache (2026-10-01: run last, it left that app over its post tree setup budget). | 5 min |
 | `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |
 | `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 20 min |
 | `soak` | `run_gui_tests.py --soak`, one seed | A long random walk: crashes, stuck screens, file handles. | 19 min |
-| `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. | 5 min |
 
 About 65 minutes, in one visible window (the first run's times; the plan guessed 40-45).
 

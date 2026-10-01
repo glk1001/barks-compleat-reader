@@ -14,14 +14,14 @@ Stages (name: what it runs):
   pytest         the unit suite, with the data pack CI's Windows leg does not have
   fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
                  its Build Verification run if it is still building); skipped with --app
+  validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
+                 whole library; skipped, saying which, while the prebuilt comics
+                 are not on this machine. Before the GUI stages: it warms the file cache
   gui            run_gui_tests.py: the GUI suite on the workspace app
   built-app      run_gui_tests.py --app: the suite on that executable, reading real
                  comics; skipped, saying why, when there is none
   soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
                  of SOAK_SEEDS
-  validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
-                 whole library; skipped, saying which, while the prebuilt comics
-                 are not on this machine
 
 Usage (from the repo root, in PowerShell or cmd):
   uv run python scripts/run_overnight_windows.py [--list] [--only A,B] [--skip A,B]
@@ -83,7 +83,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
 RUNNER = "run_overnight_windows"
 
-STAGES = ("update", "pytest", "fetch-build", "gui", "built-app", "soak", "validate")
+# validate before the GUI stages, as on Linux: it reads every volume, so the first app
+# the GUI suite boots finds them in the file cache. Run last, it left that app reading
+# cold archives (volumes 20 on, 0.4-0.5s each) and over its post tree setup budget.
+STAGES = ("update", "pytest", "fetch-build", "validate", "gui", "built-app", "soak")
 GUI_STAGES = frozenset({"gui", "built-app", "soak"})
 
 # Status codes a stage returns besides pass (0) and fail (anything else), as the Linux run's.
