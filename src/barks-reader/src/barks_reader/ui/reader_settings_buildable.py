@@ -16,6 +16,7 @@ from barks_reader.core.reader_settings import (
     Settings,
     _get_reader_settings_json,
     _resolve_default,
+    setting_value_from_panel,
 )
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ class BuildableReaderSettings(ReaderSettings):
             return True
 
         assert key in self._VALIDATION_METHODS
+        value = setting_value_from_panel(key, value)  # the panel's text, typed
         if not self._VALIDATION_METHODS[key](value):
             return False
 

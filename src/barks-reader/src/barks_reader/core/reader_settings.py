@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from configparser import RawConfigParser
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -125,10 +126,46 @@ def read_setting_from_config(config: ConfigReader, key: str) -> Any:  # noqa: AN
             except (ValueError, TypeError):
                 return ALT_ESCAPE_KEY_UNSET
         case FieldKind.LONG_PATH:
-            value = config.get(BARKS_READER_SECTION, key)
-            return Path(os.path.expandvars(value)) if spec.expand_vars else Path(value)
+            return _path_value(spec, config.get(BARKS_READER_SECTION, key))
         case _:
             return config.get(BARKS_READER_SECTION, key)
+
+
+def setting_value_from_panel(key: str, value: Any) -> Any:  # noqa: ANN401
+    """Return a value the settings panel set for ``key``, typed as reading it back types it.
+
+    Kivy's panel hands ``on_config_change`` the text it wrote to the config: ``"0"`` or
+    ``"1"`` for a switch, a plain string for a path. Unconverted, a switch turned off
+    (``"0"``) is true, and a path has no ``/`` to join with.
+
+    Args:
+        key: The setting.
+        value: What the panel set: its text, or a value already typed.
+
+    Returns:
+        The value, as reading the setting back would give it.
+
+    """
+    spec = _FIELDS_BY_KEY[key]
+    text = str(value)
+    match spec.kind:
+        case FieldKind.BOOL:
+            return RawConfigParser.BOOLEAN_STATES[text.lower()]
+        case FieldKind.INT:
+            return int(text)
+        case FieldKind.ALT_ESCAPE:
+            try:
+                return int(text)
+            except ValueError:
+                return ALT_ESCAPE_KEY_UNSET
+        case FieldKind.LONG_PATH:
+            return _path_value(spec, text)
+        case _:
+            return text
+
+
+def _path_value(spec: FieldSpec, text: str) -> Path:
+    return Path(os.path.expandvars(text)) if spec.expand_vars else Path(text)
 
 
 class ReaderSettings:

@@ -16,6 +16,7 @@ from barks_reader.core.reader_settings import (
     JPG_BARKS_PANELS_ZIP,
     PNG_BARKS_PANELS_DIR,
     USE_PNG_IMAGES,
+    WIKI_BUNDLE_DIR,
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
 from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
@@ -127,6 +128,48 @@ class TestOnChangedSetting:
             is True
         )
         file_paths.set_barks_panels_source.assert_not_called()
+
+
+class TestOnChangedSettingTakesThePanelsText:
+    """Kivy's panel sends the text it wrote: "0"/"1" for a switch, a str for a path."""
+
+    def test_a_switch_turned_off_is_off(
+        self, settings: BuildableReaderSettings, file_paths: MagicMock, jpg_zip: Path
+    ) -> None:
+        assert settings.on_changed_setting(BARKS_READER_SECTION, USE_PNG_IMAGES, "0") is True
+        file_paths.set_barks_panels_source.assert_called_once_with(jpg_zip, BarksPanelsExtType.JPG)
+
+    def test_a_new_png_panels_dir_is_a_path(
+        self,
+        settings: BuildableReaderSettings,
+        config: MagicMock,
+        file_paths: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        config.getboolean.return_value = True
+
+        assert settings.on_changed_setting(
+            BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR, str(tmp_path)
+        )
+        file_paths.set_barks_panels_source.assert_called_once_with(
+            tmp_path, BarksPanelsExtType.MOSTLY_PNG
+        )
+
+    def test_a_wiki_dir_that_is_no_bundle_is_refused_not_a_crash(
+        self, settings: BuildableReaderSettings, config: MagicMock, tmp_path: Path
+    ) -> None:
+        """The soak's crash: the wiki dir's check joined a str with "/"."""
+        config.getboolean.return_value = True  # the live wiki bundle is on
+
+        assert not settings.on_changed_setting(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(tmp_path))
+
+    def test_a_wiki_dir_with_its_index_is_taken(
+        self, settings: BuildableReaderSettings, config: MagicMock, tmp_path: Path
+    ) -> None:
+        config.getboolean.return_value = True
+        (tmp_path / "index.md").write_text("")
+
+        assert settings.on_changed_setting(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(tmp_path))
 
 
 class _FakeSettingItem:
