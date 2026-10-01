@@ -162,9 +162,10 @@ jobs:
 
   diff-coverage:
     name: Diff Coverage
-    # Enforce coverage on changed lines only. Runs on PRs, where the base branch to
-    # diff against is well defined. See scripts/diff-cover.sh for the rationale.
-    if: github.event_name == 'pull_request'
+    # Enforce coverage on changed lines only (see scripts/diff-cover.sh for the
+    # rationale). A PR is held to its base branch; a push to main, to the commit main
+    # was at before the push - commits go straight to main here, so a PR-only check
+    # never ran.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -200,8 +201,25 @@ jobs:
       - name: Run tests with coverage
         run: xvfb-run --auto-servernum uv run pytest -q --cov --cov-report=xml
 
+      - name: Choose what the changed lines are measured against
+        id: compare
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "$EVENT" == "pull_request" ]]; then
+            ref="origin/$BASE_REF"
+          elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            ref="$BEFORE"  # main before this push: every commit the push brought
+          else
+            ref="HEAD~1"  # a first push, or one that rewrote history: the last commit
+          fi
+          echo "Measuring changed lines against $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
       - name: Enforce coverage on changed lines
-        run: >
-          uv run diff-cover coverage.xml
-          --compare-branch=origin/${{ github.event.pull_request.base.ref }}
-          --fail-under=80
+        env:
+          COMPARE: ${{ steps.compare.outputs.ref }}
+        run: uv run diff-cover coverage.xml --compare-branch="$COMPARE" --fail-under=80
