@@ -247,6 +247,19 @@ def test_a_word_not_searched_after_held_words_still_brings_suggestions(
     assert {s.word for s in result.suggestions} == {"monney"}
 
 
+def test_words_in_a_near_pair_or_bracket_left_unread_still_bring_suggestions(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    # The phrase finds nothing, so the AND searches no further: the NEAR pair, the
+    # bracketed OR and the second phrase are only looked up.
+    result = run_query_text(
+        '"square mine" monney NEAR gold (bearz OR helmet) "gold pirate"', fake, lexicon
+    )
+    assert result.title_dict == {}
+    assert {s.word for s in result.suggestions} == {"monney", "bearz"}
+    assert len(fake.bubble_calls) == 1
+
+
 def test_a_word_whose_forms_are_held_is_not_in_no_story_when_the_and_finds_nothing(
     fake: InMemoryFullTextSearch, lexicon: TermLexicon
 ) -> None:

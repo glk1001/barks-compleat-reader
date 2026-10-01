@@ -454,6 +454,43 @@ class TestReadSettingFromConfig:
         config.getint.assert_called_once_with(BARKS_READER_SECTION, key)
 
 
+class TestSettingValueFromPanel:
+    """The panel's text for each field kind comes back typed as reading the setting does."""
+
+    @staticmethod
+    def _key_of(kind: reader_settings_module.FieldKind) -> str:
+        key = TestReadSettingFromConfig._key_of(kind)
+        assert key is not None, f"no {kind} field in _FIELDS"
+        return key
+
+    @pytest.mark.parametrize(
+        ("kind", "text", "typed"),
+        [
+            pytest.param(reader_settings_module.FieldKind.BOOL, "0", False, id="switch-off"),
+            pytest.param(reader_settings_module.FieldKind.BOOL, "1", True, id="switch-on"),
+            pytest.param(reader_settings_module.FieldKind.BOOL, True, True, id="already-typed"),
+            pytest.param(reader_settings_module.FieldKind.INT, "1300", 1300, id="number"),
+            pytest.param(reader_settings_module.FieldKind.ALT_ESCAPE, "113", 113, id="alt-escape"),
+            pytest.param(
+                reader_settings_module.FieldKind.ALT_ESCAPE,
+                "",
+                reader_settings_module.ALT_ESCAPE_KEY_UNSET,
+                id="alt-escape-unset",
+            ),
+            pytest.param(reader_settings_module.FieldKind.OPTIONS, "DEBUG", "DEBUG", id="option"),
+        ],
+    )
+    def test_each_kind_is_typed(
+        self, kind: reader_settings_module.FieldKind, text: object, typed: object
+    ) -> None:
+        assert reader_settings_module.setting_value_from_panel(self._key_of(kind), text) == typed
+
+    def test_a_path_is_a_path(self) -> None:
+        key = self._key_of(reader_settings_module.FieldKind.LONG_PATH)
+        typed = reader_settings_module.setting_value_from_panel(key, "/library/volumes")
+        assert typed == Path("/library/volumes")
+
+
 class TestDerivedUserPaths:
     def test_the_user_data_and_history_files_sit_beside_the_settings_file(
         self, reader_settings: ReaderSettings
