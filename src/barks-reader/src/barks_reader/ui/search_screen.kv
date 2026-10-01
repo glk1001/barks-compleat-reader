@@ -497,12 +497,16 @@
                             size_hint: 1, 1
                             pos_hint: {'x': 0, 'y': 0}
 
+                            # Clear of the scroll bar on the right, as the word list is:
+                            # each row ends in its speech-bubble button, which the bar
+                            # half covered, and a click there grabbed the bar instead.
                             BoxLayout:
                                 id: word_results_layout
                                 orientation: 'vertical'
                                 size_hint_y: None
                                 height: self.minimum_height
                                 spacing: dp(1)
+                                padding: [0, 0, word_results_scroll.bar_width + dp(4), 0]
 
                         SearchEmptyPrompt:
                             text: "Pick a word to see where it is spoken"
