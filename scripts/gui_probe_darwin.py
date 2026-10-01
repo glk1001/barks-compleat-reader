@@ -73,6 +73,8 @@ _TERM_GRACE_SECS = 3
 # How long the app gets to come to the front, asked again this often.
 _FRONT_WAIT_SECS = 5
 _FRONT_ASK_EVERY_SECS = 1
+# How long a lookup waits for the app's window through a fullscreen change.
+_FULLSCREEN_CHANGE_SECS = 5
 
 _LOCKED = "the screen is locked, or there is no desktop session: input would go nowhere"
 _NO_ACCESSIBILITY = (
@@ -137,13 +139,27 @@ def is_app_window(window: WindowInfo, title: str) -> bool:
     app (a tab showing the repo, a file open in it), which would otherwise take
     the keys meant for the app.
     """
-    owner = window.owner_name.lower()
-    return window.layer == 0 and title in window.title and owner.startswith(("python", "barks"))
+    return window.layer == 0 and title in window.title and _is_app_owner(window)
+
+
+def _is_app_owner(window: WindowInfo) -> bool:
+    """Return whether `window` belongs to a Python or reader process, as the app's does."""
+    return window.owner_name.lower().startswith(("python", "barks"))
 
 
 def pick_app_window(windows: Iterable[WindowInfo], title: str) -> WindowInfo | None:
     """Return the frontmost of `windows` that is the app's, or None."""
     return next((w for w in windows if is_app_window(w, title)), None)
+
+
+def in_fullscreen_change(windows: Iterable[WindowInfo]) -> bool:
+    """Return whether the app's window is mid-way into or out of fullscreen.
+
+    For about a second, as macOS moves the window to or from its own Space, the
+    window list holds an untitled screen-sized stand-in of the app's process in
+    place of its titled window, which a lookup by title then does not find.
+    """
+    return any(w.layer == 0 and not w.title and _is_app_owner(w) for w in windows)
 
 
 def frontmost_normal_window(windows: Iterable[WindowInfo]) -> WindowInfo | None:
@@ -370,6 +386,8 @@ class DarwinBackend:
         _declare()
         # The app's process, once bring_to_front has found it: keys go to it alone.
         self._app_pid: int | None = None
+        # The title last looked up, to find the window again if it is replaced.
+        self._title: str | None = None
 
     @staticmethod
     def workspace_app_argv(repo_root: Path) -> list[str]:
@@ -379,11 +397,28 @@ class DarwinBackend:
         return ["bash", str(script), "python", str(repo_root / "main.py")]
 
     def find_window(self, title: str) -> int | None:
-        window = pick_app_window(window_list(), title)
-        return window.number if window else None
+        # Mid-way through a fullscreen change the titled window is missing for about
+        # a second (a step of the soak's random walk landed there); wait for it then,
+        # and only then: with nothing of the app's on screen this answers at once.
+        self._title = title
+        deadline = time.monotonic() + _FULLSCREEN_CHANGE_SECS
+        while True:
+            windows = window_list()
+            window = pick_app_window(windows, title)
+            if window is not None:
+                return window.number
+            if not in_fullscreen_change(windows) or time.monotonic() >= deadline:
+                return None
+            time.sleep(0.1)
 
     def _info(self, window: int) -> WindowInfo:
         found = [w for w in window_list(only=window) if w.number == window]
+        if not found and self._title is not None:
+            # Found a moment ago and gone now: a fullscreen change began in between
+            # and the window is being replaced. Look again by title, through it.
+            again = self.find_window(self._title)
+            if again is not None:
+                found = [w for w in window_list(only=again) if w.number == again]
         if not found:
             msg = "the app window has gone"
             raise RuntimeError(msg)

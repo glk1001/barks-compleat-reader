@@ -107,6 +107,60 @@ class TestWindowPicking:
         assert front.owner_pid == 7
 
 
+class TestFullscreenChange:
+    """Into or out of fullscreen, the titled window is missing for about a second."""
+
+    STAND_IN = _window(9, "python", "")  # untitled, screen-sized, the app's process
+
+    def test_an_untitled_window_of_the_app_is_a_fullscreen_change(self) -> None:
+        assert gui_probe_darwin.in_fullscreen_change([self.STAND_IN])
+
+    def test_another_apps_untitled_window_is_not(self) -> None:
+        assert not gui_probe_darwin.in_fullscreen_change([_window(3, "Finder", "")])
+        assert not gui_probe_darwin.in_fullscreen_change([])
+
+    def test_the_lookup_waits_through_the_change_for_the_titled_window(self) -> None:
+        titled = _window(5, "python", "The Compleat Barks Disney Reader")
+        lists = [[self.STAND_IN], [self.STAND_IN], [titled]]
+        with (
+            patch.object(gui_probe_darwin, "_declare"),
+            patch.object(gui_probe_darwin, "window_list", side_effect=lists),
+            patch.object(gui_probe_darwin.time, "sleep"),
+        ):
+            assert gui_probe_darwin.DarwinBackend().find_window(APP_TITLE) == 5
+
+    def test_a_window_replaced_after_it_was_found_is_found_again(self) -> None:
+        """Leaving fullscreen the window found a moment ago goes; its successor is used."""
+        old = _window(5, "python", "The Compleat Barks Disney Reader", pid=77)
+        new = WindowInfo(
+            6, 77, "python", "The Compleat Barks Disney Reader", 0, (838, 1310, 861, 25)
+        )
+        calls = 0
+
+        def listing(*, only: int | None = None) -> list[WindowInfo]:
+            nonlocal calls
+            current = [old] if calls == 0 else [new]  # replaced after the lookup
+            calls += 1
+            return [w for w in current if only is None or w.number == only]
+
+        with (
+            patch.object(gui_probe_darwin, "_declare"),
+            patch.object(gui_probe_darwin, "window_list", side_effect=listing),
+        ):
+            backend = gui_probe_darwin.DarwinBackend()
+            assert backend.find_window(APP_TITLE) == 5
+            assert backend.client_geometry(5) == new.bounds
+
+    def test_with_nothing_of_the_apps_on_screen_the_lookup_answers_at_once(self) -> None:
+        """As before a start: no stand-in, so no wait."""
+        with (
+            patch.object(gui_probe_darwin, "_declare"),
+            patch.object(gui_probe_darwin, "window_list", return_value=[]) as listing,
+        ):
+            assert gui_probe_darwin.DarwinBackend().find_window(APP_TITLE) is None
+        listing.assert_called_once()
+
+
 class TestKeyTarget:
     """Keys go to the app's process alone, never to whatever app is in front."""
 

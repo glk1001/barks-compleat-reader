@@ -2,8 +2,7 @@
 
 <!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE -->
 
-> Status: **planned 2026-10-01; milestones A and C done, B all but its confirmation run
-> and a soak, the same day.** Written on the macOS 12.6 VirtualBox guest (2 cores, 4 GB, no
+> Status: **planned 2026-10-01; milestones A to C done by 2026-10-02.** Written on the macOS 12.6 VirtualBox guest (2 cores, 4 GB, no
 > GPU driver), where the unit suite now runs on Apple's software OpenGL (71900174).
 > Milestones A to C, each committed green; stop after any of them and the earlier ones
 > still pay.
@@ -78,8 +77,18 @@
 >   loaded 43.8s (14.6s seen; the committed budget is 6s), view image loaded 9.6s, post
 >   tree setup 8.7s, title inset image set 4.5s, tree nodes loaded 2.1s. The `gold and m`
 >   key did not go missing again, in this run or since keys go to the app's process.
->   **Left:** a run with those budgets on (`run_gui_tests.py --quiet`) to confirm it
->   clean, and one soak (`--soak`), watching memory on the 4 GB guest.
+>   **Confirmed, 2026-10-02.** With those budgets on, `run_gui_tests.py --quiet`: 121
+>   passed, 1 skipped, and one error, a Left the probe never sent (every one of the
+>   test's 165 keys arrived once, and the stray came between two of them): a key typed
+>   on the guest while the reader was in front. That test passed alone. No budget
+>   failed. **The soak** (`--soak`, four walks of 200 steps) first failed two walks on
+>   the same probe bug: into or out of fullscreen macOS shows, for about a second, an
+>   untitled screen-sized stand-in of the app's process in place of its titled window,
+>   and a step that came then found no window. The backend now waits through that
+>   (up to 5s, only while the stand-in is there) and finds a window replaced between
+>   its lookup and its use again by title; a key sent straight after the fullscreen
+>   button, both ways, now goes through. Then all four walks passed (6.5 minutes). The
+>   app peaked at 862 MB resident, and the guest never had under 1.5 GB free.
 > - Milestone C: DONE 2026-10-01. `docs/setup.md`'s macOS guest note is a checklist for
 >   the GUI suite (tools, data, permissions, the Dock, an awake display, calibration,
 >   the run); `CLAUDE.md` and `README.md` name `run_gui_tests.py` for macOS beside
