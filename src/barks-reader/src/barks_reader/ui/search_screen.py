@@ -86,6 +86,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.reader_colors import Color
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.search_help import HelpExamples
 
     from .font_manager import FontManager
 
@@ -121,6 +122,40 @@ class _SuggestionButton(_SearchResultButton):
 
 class _NoticeLabel(Label):
     """A line of the word list the user reads but cannot pick: a notice, a heading."""
+
+
+class _SyntaxExample(Label):
+    """Something to type, in a search box's syntax help."""
+
+
+class _SyntaxMeaning(Label):
+    """What an example in a search box's syntax help does."""
+
+
+class SearchSyntaxHelp(BoxLayout):
+    """A search box's syntax help: a heading, then each example beside what it does.
+
+    Read, not picked: nothing in it takes focus or a tap.
+    """
+
+    heading = StringProperty()
+    examples: HelpExamples = ObjectProperty(())
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self._show_examples()
+
+    def on_examples(self, _instance: Self, _examples: HelpExamples) -> None:
+        self._show_examples()
+
+    def _show_examples(self) -> None:
+        grid = self.ids.get("examples_grid")
+        if grid is None:  # examples given before the kv rule built the grid
+            return
+        grid.clear_widgets()
+        for example, meaning in self.examples:
+            grid.add_widget(_SyntaxExample(text=example))
+            grid.add_widget(_SyntaxMeaning(text=meaning))
 
 
 class _PlusButton(_SearchResultButton):
