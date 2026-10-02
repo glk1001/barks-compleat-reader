@@ -53,10 +53,8 @@ def _stats_scope(fixture_name: str, config: pytest.Config) -> Literal["module", 
 
 
 @pytest.fixture(scope=_stats_scope)
-def stats(cpi_db: Path) -> CorpusStats:
-    # Inflated with the conftest stand-in, not the shipped cpi.db: that is a
-    # git-lfs object, and a bare checkout (CI's) only has the pointer file.
-    return compute_static_stats(cpi_db)
+def stats() -> CorpusStats:
+    return compute_static_stats()
 
 
 def _section(stats: CorpusStats, heading: str) -> StatSection:
@@ -237,10 +235,10 @@ class TestPaymentSection:
         assert correct > blind
         assert _value(stats, "Payment", "Total paid") == f"${correct:,.0f}"
 
-    def test_inflation_adjustment_is_a_large_multiple(self, cpi_db: Path) -> None:
+    def test_inflation_adjustment_is_a_large_multiple(self) -> None:
         paid = _paid_records()
         nominal = sum(p.payment for p in paid)
-        assert _adjusted_payment_total(paid, cpi_db) > nominal * 10
+        assert _adjusted_payment_total(paid) > nominal * 10
 
     @pytest.mark.parametrize(
         ("label", "expected"),
@@ -252,9 +250,7 @@ class TestPaymentSection:
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
         assert _value(stats, "Payment", label) == expected
 
-    def test_per_year_averages_only_the_working_years(
-        self, stats: CorpusStats, cpi_db: Path
-    ) -> None:
+    def test_per_year_averages_only_the_working_years(self, stats: CorpusStats) -> None:
         # Numerator and denominator have to cover the same span. Payments carry on
         # into 1971 (reprint and script work), and counting that money against
         # years that ended in 1966 would overstate the average.
@@ -262,28 +258,26 @@ class TestPaymentSection:
 
         working = [p for p in _paid_records() if p.accepted_year <= _RETIREMENT_YEAR]
         first_year = min(p.accepted_year for p in working)
-        expected = _adjusted_payment_total(working, cpi_db) / (_RETIREMENT_YEAR - first_year + 1)
+        expected = _adjusted_payment_total(working) / (_RETIREMENT_YEAR - first_year + 1)
 
         assert _payment_value_starting(stats, "Per year") == f"${expected:,.0f}"
 
-    def test_per_year_is_lower_than_averaging_the_whole_ledger(
-        self, stats: CorpusStats, cpi_db: Path
-    ) -> None:
+    def test_per_year_is_lower_than_averaging_the_whole_ledger(self, stats: CorpusStats) -> None:
         # The guard for the mistake above: if the later payments crept back into
         # the numerator the figure would rise, so pin the direction.
         from barks_reader.core.corpus_stats import _RETIREMENT_YEAR  # noqa: PLC0415
 
         paid = _paid_records()
         first_year = min(p.accepted_year for p in paid)
-        naive = _adjusted_payment_total(paid, cpi_db) / (_RETIREMENT_YEAR - first_year + 1)
+        naive = _adjusted_payment_total(paid) / (_RETIREMENT_YEAR - first_year + 1)
 
         reported = float(_payment_value_starting(stats, "Per year").lstrip("$").replace(",", ""))
         assert reported < naive
 
     def test_the_rate_rows_are_labelled_with_the_tables_latest_year(
-        self, stats: CorpusStats, cpi_db: Path
+        self, stats: CorpusStats
     ) -> None:
-        latest = get_latest_year(cpi_db)
+        latest = get_latest_year()
         labels = [r.label for r in _section(stats, "Payment").rows]
         assert f"In {latest} dollars" in labels
         assert f"Per page ({latest} dollars)" in labels
@@ -301,22 +295,14 @@ class TestPaymentSection:
 
 
 class TestAgainstTheShippedCpiTable:
-    """The one check that needs the real cpi.db, so it skips where that is absent.
+    """The table the app ships covers every year the payment ledger asks it about.
 
-    Everything else runs on the conftest stand-in. This is the guard the stand-in
-    cannot give: that the database the app actually ships covers every year the
-    ledger asks it about - a payment accepted in a year the table lacks would
-    crash the page, and only the real table can say whether one exists.
+    A payment accepted in a year the table lacks would crash the page.
     """
 
     def test_every_paid_year_is_in_the_shipped_table(self) -> None:
-        years = sorted({p.accepted_year for p in _paid_records()})
-        try:
-            for year in years:
-                get_adjusted_usd(1.0, year)
-        except FileNotFoundError as exc:
-            # Absent, or a git-lfs pointer (`CpiDatabaseUnavailableError`, a subclass).
-            pytest.skip(f"shipped cpi.db not present: {exc}")
+        for year in sorted({p.accepted_year for p in _paid_records()}):
+            assert get_adjusted_usd(1.0, year) > 1.0
 
 
 class TestCastSection:

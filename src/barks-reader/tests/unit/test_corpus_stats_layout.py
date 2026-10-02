@@ -50,8 +50,8 @@ def _columns_scope(fixture_name: str, config: pytest.Config) -> Literal["module"
 
 
 @pytest.fixture(scope=_columns_scope)
-def columns(cpi_db: Path) -> tuple[list[StatSection], list[StatSection]]:
-    left, right = layout.split_columns(compute_static_stats(cpi_db).sections)
+def columns() -> tuple[list[StatSection], list[StatSection]]:
+    left, right = layout.split_columns(compute_static_stats().sections)
     return list(left), list(right)
 
 
@@ -190,8 +190,8 @@ class TestRowsFitTheColumnWidth:
     # writing a label the way it reads in prose.
     _MAX_ROW_CHARS = 32
 
-    def test_every_row_fits_its_column(self, cpi_db: Path) -> None:
-        sections = list(compute_static_stats(cpi_db).sections)
+    def test_every_row_fits_its_column(self) -> None:
+        sections = list(compute_static_stats().sections)
         too_long = [
             (section.heading, row.label, row.value)
             for section in sections

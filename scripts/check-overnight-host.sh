@@ -5,8 +5,7 @@
 # Run it on the machine that is to run the overnight suite, from its checkout of
 # this repo. It checks what the run reads beyond this repo: the sibling repos
 # beside it, .env.runtime (gitignored: it holds the key that decrypts the comic
-# archives), the real cpi.db rather than its git-lfs pointer, the tools the
-# stages call, and the app's profile and data folders - the last two through
+# archives), the tools the stages call, and the app's profile and data folders - the last two through
 # gui-probe.sh doctor, headless, which knows the app's settings. The comic build
 # tree is not checked: a second machine runs with --skip build-check (that tree
 # is this project's build output, about 330 GB, and is checked where it is made).
@@ -72,13 +71,6 @@ except FileNotFoundError as e:
     fi
 else
     bad ".env.runtime (gitignored; copy its BARKS_ lines from the main machine)"
-fi
-cpi_db=src/comic-utils/src/comic_utils/cpi.db
-# A git-lfs pointer is a few lines of text; the real database is tens of MB.
-if [[ -f "$cpi_db" ]] && (($(stat -c %s "$cpi_db") > 100000)); then
-    ok "$cpi_db (the real file)"
-else
-    bad "$cpi_db is its git-lfs pointer: git lfs install && git lfs pull"
 fi
 if [[ -d .venv ]]; then ok ".venv"; else bad ".venv: uv sync"; fi
 # Gitignored and generated: every workspace boot imports both (see CLAUDE.md, setup).

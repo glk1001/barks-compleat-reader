@@ -1,183 +1,37 @@
-import sqlite3
-from collections.abc import Mapping
-from functools import lru_cache
-from pathlib import Path
-from types import MappingProxyType
+"""US dollars of one year in another's, by the CPI-U (``cpi_table.py``).
 
-CPI_DATABASE_PATH = Path(__file__).parent / "cpi.db"
+The table is generated from the BLS by ``python -m comic_utils.update_cpi_table``;
+its latest year moves with each update, so callers ask for it rather than hardcode it.
+"""
 
-# CPI series used by default: All items in U.S. city average, all urban consumers.
-DEFAULT_SERIES_ID = "CUUR0000SA0"
-
-# Every SQLite file opens with this 16-byte header.
-_SQLITE_MAGIC = b"SQLite format 3\x00"
-
-# cpi.db is stored in git-lfs. A clone without `git lfs install` (or a CI checkout
-# without `lfs: true`) gets the pointer file in its place - a few lines of text
-# beginning like this, at exactly the path the database should be.
-_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/"
+from .cpi_table import ANNUAL_CPI, SERIES_ID
 
 
-class CpiDatabaseUnavailableError(FileNotFoundError):
-    """The file at the database path is not the CPI database.
-
-    A subclass of ``FileNotFoundError`` so that existing handlers keep working:
-    the real database is, in effect, not there.
-    """
+def get_latest_year() -> int:
+    """Return the most recent year the CPI table has."""
+    return max(ANNUAL_CPI)
 
 
-def _check_is_sqlite(db_path: Path) -> None:
-    """Raise a clear error if the file at ``db_path`` is not a SQLite database.
-
-    SQLite's own complaint - "file is not a database" - says nothing about why, and
-    the common cause here is a git-lfs pointer standing in for the real file. Name
-    that case, with the command that fixes it.
-
-    Raises:
-        CpiDatabaseUnavailableError: If the file is a git-lfs pointer or is
-            otherwise not a SQLite database.
-
-    """
-    with db_path.open("rb") as f:
-        head = f.read(max(len(_SQLITE_MAGIC), len(_LFS_POINTER_PREFIX)))
-
-    if head.startswith(_SQLITE_MAGIC):
-        return
-
-    if head.startswith(_LFS_POINTER_PREFIX):
-        msg = (
-            f'"{db_path}" is a git-lfs pointer, not the CPI database.'
-            " Run `git lfs install` and `git lfs pull` to fetch it."
-        )
-    else:
-        msg = f'"{db_path}" is not a SQLite database.'
-    raise CpiDatabaseUnavailableError(msg)
-
-
-@lru_cache(maxsize=8)
-def _avg_cpi_by_year(db_path: Path, series_id: str) -> Mapping[int, float]:
-    """Return the average CPI for every year of a series, in one query.
-
-    ``indexes`` holds 1.7M unindexed rows, so a per-year lookup costs a full
-    table scan. Adjusting a few hundred payments one at a time therefore took
-    about a minute; reading the whole series once takes under a tenth of a
-    second. The result is cached per ``(db_path, series_id)`` - CPI figures for
-    a year do not change under a running process.
-
-    Args:
-        db_path: File path to the 'cpi.db' SQLite database.
-        series_id: The CPI series to read.
-
-    Returns:
-        Year to average index value, read-only: the cache hands the same object
-        to every caller, so it must not be mutable. Empty if the series has no
-        rows.
-
-    Raises:
-        FileNotFoundError: If ``db_path`` does not exist.
-        CpiDatabaseUnavailableError: If the file there is not the database - in
-            practice, a git-lfs pointer that was never resolved.
-
-    """
-    if not db_path.is_file():
-        msg = f'Database not found at: "{db_path}"'
-        raise FileNotFoundError(msg)
-    _check_is_sqlite(db_path)
-
-    conn = sqlite3.connect(db_path)
+def _cpi(year: int) -> float:
     try:
-        rows = conn.execute(
-            "SELECT year, AVG(value) FROM indexes WHERE series = ? GROUP BY year",
-            (series_id,),
-        ).fetchall()
-    finally:
-        conn.close()
-
-    return MappingProxyType({year: value for year, value in rows if value is not None})
+        return ANNUAL_CPI[year]
+    except KeyError:
+        msg = f"No CPI data for {year} in series {SERIES_ID} ({min(ANNUAL_CPI)}-{max(ANNUAL_CPI)})"
+        raise ValueError(msg) from None
 
 
-def get_latest_year(
-    db_path: Path = CPI_DATABASE_PATH,
-    series_id: str = DEFAULT_SERIES_ID,
-) -> int:
-    """Return the most recent year available for a CPI series in the database.
-
-    Use this to discover the newest year the data supports; it tracks each
-    ``cpi.db`` update automatically, so nothing needs to be hardcoded.
+def get_adjusted_usd(amount: float, base_year: int, to_year: int | None = None) -> float:
+    """Return `amount` US dollars of `base_year` in the dollars of `to_year`.
 
     Args:
-        db_path: File path to the 'cpi.db' SQLite database.
-        series_id: The CPI series to inspect. Default is 'CUUR0000SA0'.
-
-    Returns:
-        The latest calendar year with data for ``series_id``.
+        amount: The amount of money to convert.
+        base_year: The year the amount is from.
+        to_year: The year to convert to; the table's latest when None.
 
     Raises:
-        FileNotFoundError: If ``db_path`` does not exist.
-        ValueError: If no data exists for ``series_id``.
+        ValueError: If the table has no figure for either year.
 
     """
-    cpi_by_year = _avg_cpi_by_year(db_path, series_id)
-    if not cpi_by_year:
-        msg = f"No CPI data found for series {series_id}"
-        raise ValueError(msg)
-    return max(cpi_by_year)
-
-
-def get_adjusted_usd(
-    amount: float,
-    base_year: int,
-    to_year: int | None = None,
-    db_path: Path = CPI_DATABASE_PATH,
-    series_id: str = DEFAULT_SERIES_ID,
-) -> float:
-    """Convert USD from a historical year to a target year using a provided cpi.db file.
-
-    Args:
-        amount (float): The amount of money to convert.
-        base_year (int): The year the amount originates from.
-        to_year (int | None): The target year to convert to. If ``None`` (the
-            default), the most recent year available for ``series_id`` in the
-            database is used, so the result tracks each cpi.db update
-            automatically instead of relying on a hardcoded year.
-        db_path (Path): File path to the 'cpi.db' SQLite database.
-        series_id (str): The CPI series to use.
-                         Default is 'CUUR0000SA0' (All items in U.S. city average,
-                         all urban consumers).
-
-    Returns:
-        float: The adjusted dollar amount.
-
-    Raises:
-        FileNotFoundError: If ``db_path`` does not exist.
-        ValueError: If no CPI data exists for ``series_id`` or a requested year.
-
-    """
-    cpi_by_year = _avg_cpi_by_year(db_path, series_id)
-    if not cpi_by_year:
-        errmsg = f"No CPI data found for series {series_id}"
-        raise ValueError(errmsg)
-
-    # Resolve the target year lazily so it reflects the current database.
     if to_year is None:
-        to_year = max(cpi_by_year)
-
-    def get_avg_cpi_for_year(year: int) -> float:
-        value = cpi_by_year.get(year)
-        if value is None:
-            errmsg = f"No CPI data found for year {year} with series {series_id}"
-            raise ValueError(errmsg)
-        return value
-
-    # Formula: (Target CPI / Start CPI) * Amount
-    return (get_avg_cpi_for_year(to_year) / get_avg_cpi_for_year(base_year)) * amount
-
-
-if __name__ == "__main__":
-    # Example: convert $100 from 1945 into the latest year the database supports.
-    try:
-        latest_year = get_latest_year()
-        value = get_adjusted_usd(100, 1945)
-        print(f"$100 in 1945 is equivalent to ${value:.2f} in {latest_year}")  # noqa: T201
-    except (FileNotFoundError, ValueError) as e:
-        print(e)  # noqa: T201
+        to_year = get_latest_year()
+    return _cpi(to_year) / _cpi(base_year) * amount

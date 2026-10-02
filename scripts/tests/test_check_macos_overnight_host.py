@@ -23,23 +23,6 @@ if TYPE_CHECKING:
 NOT_THIS_PLATFORM = 2  # main()'s exit status off macOS
 
 
-class TestCpiDb:
-    def test_the_database_is_ok(self, tmp_path: Path) -> None:
-        db = tmp_path / "cpi.db"
-        db.write_bytes(b"SQLite format 3\x00" + b"\x00" * 100)
-        assert ch.cpi_db_check(db)[0] == "OK"
-
-    def test_the_lfs_pointer_fails_saying_how_to_fetch_it(self, tmp_path: Path) -> None:
-        db = tmp_path / "cpi.db"
-        db.write_text("version https://git-lfs.github.com/spec/v1\noid sha256:ab\nsize 65073152\n")
-        status, text = ch.cpi_db_check(db)
-        assert status == "FAIL"
-        assert "git lfs pull" in text
-
-    def test_no_file_fails(self, tmp_path: Path) -> None:
-        assert ch.cpi_db_check(tmp_path / "cpi.db")[0] == "FAIL"
-
-
 class TestHooks:
     def test_the_prek_hook(self) -> None:
         assert ch.hooks_check('exec "$PREK" hook-impl --hook-type=pre-push -- "$@"')[0] == "OK"

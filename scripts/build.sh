@@ -127,7 +127,8 @@ mkdir -p "${NUITKA_OUT_DIR}"
 #     packaged-layout branch of comics_consts.INTERNAL_DATA_DIR resolves it.
 #     (--include-package-data=barks_fantagraphics separately covers the in-package
 #     empty_page.png.)
-#   - cpi.db ships inside comic_utils, so --include-package-data=comic_utils covers it.
+#   - The CPI figures are a module (comic_utils/cpi_table.py), so
+#     --include-package=comic_utils ships them with the code.
 #
 # .env.runtime is intentionally NOT bundled (it holds secrets); a compiled build reads
 # neither it nor the *_CONFIG_DIR/*_DATA_DIR env vars (see config_info.IS_COMPILED).

@@ -44,7 +44,7 @@ from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.fanta_comics_info import FANTA_SOURCE_COMICS
 from barks_fantagraphics.search_ports import SearchIndexUnavailableError
-from comic_utils.cpi_calculator import CPI_DATABASE_PATH, get_adjusted_usd, get_latest_year
+from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -154,17 +154,12 @@ def get_stories() -> list[ComicBookInfo]:
     return [info for info in BARKS_TITLE_INFO if info.title not in _NON_STORY_TITLES]
 
 
-def compute_static_stats(cpi_db_path: Path = CPI_DATABASE_PATH) -> CorpusStats:
+def compute_static_stats() -> CorpusStats:
     """Compute every statistic that needs no index and no disk access.
 
     Covers the corpus, attribution, length, payment and cast sections. All of it
     is in-memory work over constants that are already imported, so this is fast
     enough to call on the UI thread.
-
-    Args:
-        cpi_db_path: The CPI database the payment figures are inflated with. The
-            shipped one by default; tests hand in a small fixture, because the real
-            file is a git-lfs object that a bare checkout does not have.
 
     Returns:
         The opening lines and the five always-available sections.
@@ -174,7 +169,7 @@ def compute_static_stats(cpi_db_path: Path = CPI_DATABASE_PATH) -> CorpusStats:
     story_pages = _story_page_counts(stories)
     total_pages = sum(story_pages.values())
     paid_records = _paid_records()
-    adjusted_total = _adjusted_payment_total(paid_records, cpi_db_path)
+    adjusted_total = _adjusted_payment_total(paid_records)
     paid_pages = sum(payment.num_pages for payment in paid_records)
     script_and_art = _script_and_art_titles(stories)
 
@@ -184,7 +179,7 @@ def compute_static_stats(cpi_db_path: Path = CPI_DATABASE_PATH) -> CorpusStats:
             _corpus_section(stories),
             _attribution_section(stories),
             _length_section(story_pages, total_pages, len(stories), script_and_art),
-            _payment_section(adjusted_total, paid_records, paid_pages, cpi_db_path),
+            _payment_section(adjusted_total, paid_records, paid_pages),
             _cast_section(),
         ),
     )
@@ -390,16 +385,15 @@ def _payment_section(
     adjusted_total: float,
     paid_records: list[PaymentInfo],
     paid_pages: int,
-    cpi_db_path: Path,
 ) -> StatSection:
     """Build the what-Barks-was-paid section."""
     nominal_total = sum(payment.payment for payment in paid_records)
-    latest_year = get_latest_year(cpi_db_path)
+    latest_year = get_latest_year()
 
     working = [p for p in paid_records if p.accepted_year <= _RETIREMENT_YEAR]
     first_year = min(p.accepted_year for p in working)
     num_working_years = _RETIREMENT_YEAR - first_year + 1
-    per_year = _adjusted_payment_total(working, cpi_db_path) / num_working_years
+    per_year = _adjusted_payment_total(working) / num_working_years
 
     return StatSection(
         heading="Payment",
@@ -480,19 +474,18 @@ def _paid_records() -> list[PaymentInfo]:
     ]
 
 
-def _adjusted_payment_total(paid_records: list[PaymentInfo], cpi_db_path: Path) -> float:
+def _adjusted_payment_total(paid_records: list[PaymentInfo]) -> float:
     """Sum the given payments in current dollars.
 
     Args:
         paid_records: Payments with a known amount and accepted year.
-        cpi_db_path: The CPI database to inflate with.
 
     Returns:
         The inflation-adjusted total.
 
     """
-    latest_year = get_latest_year(cpi_db_path)
+    latest_year = get_latest_year()
     return sum(
-        get_adjusted_usd(payment.payment, payment.accepted_year, latest_year, cpi_db_path)
+        get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
         for payment in paid_records
     )

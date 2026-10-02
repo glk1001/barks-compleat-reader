@@ -34,8 +34,6 @@ if TYPE_CHECKING:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # Where docs/setup.md clones it, and coverage_all_platforms.py looks for it by default.
 EXPECTED_CLONE = Path.home() / "Developer" / "barks-compleat-reader"
-CPI_DB = REPO_ROOT / "src" / "comic-utils" / "src" / "comic_utils" / "cpi.db"
-LFS_POINTER_START = b"version https://git-lfs"
 # The 4 GB guest's GUI stages fit, but the soak's walk once took the app past 4 GB.
 MIN_MEMORY_MB = 8 * 1024
 
@@ -43,22 +41,6 @@ Check = tuple[str, str]
 
 
 # ------------------------------------------------------------ the pure parts --
-
-
-def cpi_db_check(path: Path) -> Check:
-    """Judge cpi.db: the real database, not the git-lfs pointer a checkout without LFS has."""
-    if not path.is_file():
-        return ("FAIL", f"{path.name} missing: run 'git lfs pull'")
-    with path.open("rb") as db:
-        if db.read(len(LFS_POINTER_START)) == LFS_POINTER_START:
-            return (
-                "FAIL",
-                (
-                    f"{path.name} is git-lfs's pointer, not the database: run 'git lfs install'"
-                    " then 'git lfs pull' (the reader stops on it at a page turn)"
-                ),
-            )
-    return ("OK", f"{path.name} ({path.stat().st_size // (1024 * 1024)} MB)")
 
 
 def hooks_check(pre_push: str | None) -> Check:
@@ -169,7 +151,6 @@ def _pre_push_hook() -> str | None:
 def repo_checks() -> list[Check]:
     return [
         *shared.repo_file_checks(),
-        cpi_db_check(CPI_DB),
         hooks_check(_pre_push_hook()),
         clone_check(REPO_ROOT),
     ]
