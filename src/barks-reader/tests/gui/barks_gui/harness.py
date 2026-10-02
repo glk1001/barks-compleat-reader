@@ -438,6 +438,88 @@ def settled_sizes(log_text: str) -> list[tuple[int, int]]:
     return [(int(w), int(h)) for w, h in _GEOMETRY_RE.findall(log_text)]
 
 
+# Where the reader drew its page each time that changed, with the line's time.
+_PLACED_RE = re.compile(
+    r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) .*"
+    + pattern(
+        markers.PAGE_PLACED,
+        **{
+            name: re.compile(r"(-?\d+)")
+            for name in ("width", "height", "x", "y", "win_width", "win_height")
+        },
+    ),
+    re.MULTILINE,
+)
+# A placement the next one replaced within this is a frame on the way, mid-way
+# through a resize or a fullscreen change; one that stood longer was on screen.
+PLACEMENT_SETTLE_SECS = 1.0
+# How far a page's centre may sit from the window's: rounding, an odd pixel.
+PLACEMENT_TOLERANCE_PX = 2
+# The most off-centre placements a failure lists before counting the rest.
+_PLACEMENTS_SHOWN = 5
+
+
+@dataclass(frozen=True)
+class PagePlaced:
+    """A page placement the app logged (``PAGE_PLACED``), with when."""
+
+    at: datetime
+    x: int
+    y: int
+    width: int
+    height: int
+    win_width: int
+    win_height: int
+
+    @property
+    def off_centre(self) -> float:
+        """How far right of the window's centre the page's centre is, in pixels."""
+        return self.x + self.width / 2 - self.win_width / 2
+
+
+def page_placements(log_text: str) -> list[PagePlaced]:
+    """Return every page placement the app logged, in order."""
+    placements = []
+    for stamp, width, height, x, y, win_width, win_height in _PLACED_RE.findall(log_text):
+        placements.append(
+            PagePlaced(
+                at=datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S.%f"),  # noqa: DTZ007 - local, as logged
+                x=int(x),
+                y=int(y),
+                width=int(width),
+                height=int(height),
+                win_width=int(win_width),
+                win_height=int(win_height),
+            )
+        )
+    return placements
+
+
+def settled_placements(
+    placements: list[PagePlaced], settle_secs: float = PLACEMENT_SETTLE_SECS
+) -> list[PagePlaced]:
+    """Return the placements that stood: not replaced within `settle_secs`, or the last."""
+    if not placements:
+        return []
+    return [
+        placed
+        for placed, following in zip(placements, [*placements[1:], None], strict=True)
+        if following is None or (following.at - placed.at).total_seconds() >= settle_secs
+    ]
+
+
+def off_centre_pages(log_text: str, tolerance_px: float = PLACEMENT_TOLERANCE_PX) -> list[str]:
+    """Say where each settled page sat off the horizontal centre of its window."""
+    return [
+        f"at {placed.at:%H:%M:%S.%f}"[:-3]
+        + f" the {placed.width}x{placed.height} page at x={placed.x} sat"
+        f" {placed.off_centre:+.0f}px from the centre of the"
+        f" {placed.win_width}x{placed.win_height} window"
+        for placed in settled_placements(page_placements(log_text))
+        if abs(placed.off_centre) > tolerance_px
+    ]
+
+
 @dataclass
 class _Run:
     dir: Path | None = None
@@ -619,6 +701,34 @@ class AppBoot:
         except gd.DriverError:
             return
         self._assert_drawn(capture, "the final frame")
+
+    def assert_page_centred(self) -> None:
+        """Fail the test if a page the reader drew stood off the window's centre.
+
+        Called from the fixture teardown once the test body has passed. Every
+        placement the reader logged (``PAGE_PLACED``) that stood, as opposed to a
+        frame on the way through a resize, must be centred across the window: a
+        spread drawn half off the screen after fullscreen switches passed every
+        other check, since it logs its pages and is far from blank.
+
+        Raises:
+            AssertionError: Naming each placement off centre, and the artifacts.
+
+        """
+        if self.driver is None:
+            return
+        log_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
+        problems = off_centre_pages(log_text)
+        if not problems:
+            return
+        shown = problems[:_PLACEMENTS_SHOWN]
+        if len(problems) > len(shown):
+            shown.append(f"and {len(problems) - len(shown)} more")
+        listing = "\n".join(str(p) for p in self.save_failure_artifacts())
+        msg = (
+            f"a page stood off the centre of the window: {'; '.join(shown)}; artifacts:\n{listing}"
+        )
+        raise AssertionError(msg)
 
     def assert_timings_within_budget(self) -> None:
         """Fail the test if a duration the app logged is over its budget.

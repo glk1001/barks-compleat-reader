@@ -36,6 +36,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.display_unit import DisplayUnit
+from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
@@ -377,6 +378,36 @@ class ComicBookReader(FloatLayout):
         self._comic_image.fit_mode = "contain"
         self._comic_image.mipmap = False
         self.add_widget(self._comic_image)
+
+        # Where the page lands, logged once a frame at most and only when it moves:
+        # the GUI harness holds it centred (log_markers.PAGE_PLACED).
+        self._last_page_placement: PagePlacement | None = None
+        self._log_page_placement_trigger = Clock.create_trigger(self._log_page_placement, 0)
+        self._comic_image.bind(
+            pos=self._on_page_layout_changed,
+            size=self._on_page_layout_changed,
+            norm_image_size=self._on_page_layout_changed,
+            texture=self._on_page_layout_changed,
+        )
+
+    def _on_page_layout_changed(self, *_args: object) -> None:
+        self._log_page_placement_trigger()
+
+    def _log_page_placement(self, _dt: float) -> None:
+        image = self._comic_image
+        # Not the "loading" placeholder: it shows before the reader has laid itself
+        # out, at the image's default size, and is no page the reader placed.
+        if image.texture is None or image.texture is self._loading_page_texture:
+            return
+        fitted_width, fitted_height = image.norm_image_size
+        x, y, width, height = fitted_page_rect(
+            image.center_x, image.center_y, fitted_width, fitted_height
+        )
+        window_x, window_y = image.to_window(x, y)
+        placement = PagePlacement(
+            round(window_x), round(window_y), width, height, int(Window.width), int(Window.height)
+        )
+        self._last_page_placement = log_page_placement(placement, self._last_page_placement)
 
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
         self._goto_page_widget = goto_page_widget

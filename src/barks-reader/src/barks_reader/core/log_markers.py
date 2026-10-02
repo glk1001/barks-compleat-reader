@@ -120,6 +120,11 @@ MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can re
 # then shows a window that shrank or moved, on any platform - not only a run
 # under the GUI harness.
 WINDOW_GEOMETRY: Final = "Main window geometry ({reason}): {width}x{height}+{left}+{top}."
+# Where the comic reader drew its page image, once fitted, in window pixels from the
+# bottom left, each time that changes. A stray layout (a spread half off the screen
+# after fullscreen switches, which no other line showed) is then in the log, and the
+# GUI harness holds every settled one centred in its window (assert_page_centred).
+PAGE_PLACED: Final = "Page placed: {width}x{height}+{x}+{y} in a {win_width}x{win_height} window."
 
 # ---------------------------------------------------------------- popups --
 CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'

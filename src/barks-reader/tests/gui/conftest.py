@@ -153,6 +153,7 @@ def boot(
                 app_boot.assert_log_clean()
                 app_boot.assert_reads_persisted()
                 app_boot.assert_render_not_blank()
+                app_boot.assert_page_centred()
                 app_boot.assert_timings_within_budget()
                 # Every check passed, so nothing saved these yet (--keep-logs).
                 app_boot.keep_artifacts_if_asked()

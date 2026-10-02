@@ -234,7 +234,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   `.benchmarks/gui-timings.json`, else the committed ones; skipped when the load exceeds
   what the cores and the run's workers account for; `BARKS_GUI_NO_BUDGETS=1` turns it off.
   A new timed line is a marker with an `{elapsed}` field, added to `TIMED` and `BUDGETS`
-  there.
+  there. Every page the comic reader settles on is held centred across the window at
+  teardown too (`assert_page_centred`, from the `PAGE_PLACED` line the reader logs when a
+  page moves; a placement replaced within a second is a frame on the way and not judged).
 
 ## graphify
 

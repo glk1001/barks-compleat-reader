@@ -1277,3 +1277,48 @@ class TestLayoutOfAnotherLength:
             ]
         )
         assert persisted.reads_persisted_problems(tmp_path, log) == []
+
+
+def _placed_line(stamp: str, x: int, width: int = 1280, win_width: int = 2560) -> str:
+    """Return a PAGE_PLACED line as the app's log writes it, at `stamp` (HH:MM:SS.mmm)."""
+    message = markers.PAGE_PLACED.format(
+        width=width, height=1440, x=x, y=0, win_width=win_width, win_height=1440
+    )
+    return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.core.page_placement - {message}"
+
+
+class TestPagePlacement:
+    def test_a_placement_line_is_read_back_with_its_time(self) -> None:
+        (placed,) = harness.page_placements(_placed_line("13:43:30.131", x=640))
+        assert (placed.x, placed.width, placed.win_width) == (640, 1280, 2560)
+        assert placed.at == datetime(2026, 10, 2, 13, 43, 30, 131000)  # noqa: DTZ001
+        assert placed.off_centre == 0
+
+    def test_a_spread_left_past_the_middle_is_off_centre(self) -> None:
+        """The layout seen on the macOS guest: the spread's left edge past half way."""
+        problems = harness.off_centre_pages(_placed_line("13:43:30.131", x=1400))
+        assert len(problems) == 1
+        assert "+760px" in problems[0]
+
+    def test_a_centred_page_and_a_pixel_of_rounding_pass(self) -> None:
+        log = "\n".join([_placed_line("13:00:00.000", x=640), _placed_line("13:00:05.000", x=641)])
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_frame_on_the_way_through_a_resize_is_not_judged(self) -> None:
+        """Replaced within the settle time it never stood on screen."""
+        log = "\n".join([_placed_line("13:00:00.000", x=1400), _placed_line("13:00:00.300", x=640)])
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_placement_that_stood_is_judged_though_a_later_one_is_fine(self) -> None:
+        log = "\n".join([_placed_line("13:00:00.000", x=1400), _placed_line("13:00:04.000", x=640)])
+        assert len(harness.off_centre_pages(log)) == 1
+
+    def test_the_last_placement_always_stood(self) -> None:
+        log = "\n".join([_placed_line("13:00:00.000", x=640), _placed_line("13:00:00.200", x=-300)])
+        problems = harness.off_centre_pages(log)
+        assert len(problems) == 1
+        assert "x=-300" in problems[0]
+
+    def test_a_windowed_page_is_judged_against_its_own_window(self) -> None:
+        line = _placed_line("13:00:00.000", x=0, width=838, win_width=838)
+        assert harness.off_centre_pages(line) == []
