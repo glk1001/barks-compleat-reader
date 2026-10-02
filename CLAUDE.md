@@ -77,8 +77,18 @@ on the workspace app and (Windows only, so far) on CI's build of this commit, a 
 `scripts/windows/register-overnight-task.ps1`, and
 `uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
 (setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`. On a Mac, start it
-in Terminal on the Mac's own desktop, not over ssh: the probe's Accessibility and Screen
-Recording permissions are Terminal's (`docs/plans/macos-gui-tests.md`).
+on the Mac's own desktop, not over ssh, from an app holding the probe's Accessibility and
+Screen Recording permissions (`docs/plans/macos-gui-tests.md`). macOS grants them to the app
+that started the process: Terminal for a run typed in Terminal, but for one Claude Code starts,
+`~/.local/share/claude/ClaudeCode.app` (`com.anthropic.claude-code`), which Claude Code runs
+through since 2.1 as a background process that outlives `/exit`. Check first with
+`uv run python scripts/gui_probe.py doctor`: with either permission missing every GUI stage is
+"not run". To grant them, add the app under System Preferences, Security & Privacy, Privacy,
+Accessibility and Screen Recording (`+`, then Cmd-Shift-G and the path: dragging the app in
+from its hidden folder did not take). On the guest on 2026-10-02, a process in a Claude Code
+shell asking for them (`AXIsProcessTrustedWithOptions` with its prompt option, then a screen
+capture) was what got ClaudeCode.app both, with no restart. Screen Recording can need the
+app restarted, which for ClaudeCode.app means quitting every Claude Code session.
 Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_desktop.py`):
 its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
 runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
