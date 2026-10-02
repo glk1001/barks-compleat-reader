@@ -226,12 +226,46 @@ def test_correction_scheduled_when_width_does_not_match_height(
     expected_width, _ = get_win_dimensions(height - CHROME, 2560)
     bogus_width = expected_width + 200  # Force a mismatch.
 
+    fake_window.size = (bogus_width, height)  # the event reports the window's size
     helper._enforce_aspect_ratio(bogus_width, height)  # noqa: SLF001
 
     assert len(fake_clock.calls) == 1, "Expected exactly one scheduled correction."
 
     fake_clock.fire_last()
     assert fake_window.size == (expected_width, height)
+
+
+def test_a_correction_for_a_size_the_window_has_left_is_dropped(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    """Leaving fullscreen: a transient size's correction, after the restore had landed."""
+    height = 2000
+    right_width, _ = get_win_dimensions(height - CHROME, 2560)
+    fake_window.size = (right_width + 300, height)
+    helper.on_window_resize(fake_window, right_width + 300, height)
+    restored = (right_width - 100, height - 200)
+    fake_window.size = restored  # the restore, before the correction fires
+    fake_clock.fire_last()
+    assert fake_window.size == restored
+    assert any("Aspect-ratio correction dropped" in line for line in loguru_sink)
+
+
+def test_a_resize_already_in_proportion_cancels_a_pending_correction(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    height = 2000
+    right_width, _ = get_win_dimensions(height - CHROME, 2560)
+    fake_window.size = (right_width + 300, height)
+    helper.on_window_resize(fake_window, right_width + 300, height)
+    pending = helper._correction_event  # noqa: SLF001
+    assert pending is not None
+    fake_window.size = (right_width, height)
+    helper.on_window_resize(fake_window, right_width, height)
+    pending.cancel.assert_called_once_with()
+    assert helper._correction_event is None  # noqa: SLF001
 
 
 def test_correction_not_scheduled_when_already_correct(
@@ -257,6 +291,7 @@ def test_min_width_fallback_when_height_is_too_small(
     # Pick an input that produces a correct_width below MIN_WIDTH so the
     # fallback branch fires. The fixture monitor is tall enough to accommodate
     # the fallback height, so it should be applied.
+    fake_window.size = (1000, 800)  # the event reports the window's size
     helper._enforce_aspect_ratio(1000, 800)  # noqa: SLF001
 
     assert len(fake_clock.calls) == 1

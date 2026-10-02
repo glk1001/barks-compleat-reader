@@ -238,6 +238,16 @@ class AppWindowGeometryHelper:
 
             def apply_correction(_dt: float) -> None:
                 self._correction_event = None
+                # The window moved on since this event: leaving fullscreen, the restore
+                # to the saved size lands between a transient size's event and this
+                # correction, which then resized a window already right (a second
+                # resize the software OpenGL renderer crashed drawing through).
+                if tuple(Window.size) != (width, height):
+                    logger.debug(
+                        f"Aspect-ratio correction dropped: it was for {width},{height},"
+                        f" and the window is now {tuple(Window.size)}."
+                    )
+                    return
                 logger.info(
                     f"Aspect-ratio correction: resize event {width},{height}"
                     f" -> Window.size = ({correct_width}, {correct_height});"
@@ -249,6 +259,11 @@ class AppWindowGeometryHelper:
             self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)
             return
 
+        # Already in proportion: a correction still pending for an earlier, transient
+        # size is not wanted any more.
+        if self._correction_event:
+            self._correction_event.cancel()
+            self._correction_event = None
         assert self._update_fonts is not None
         self._update_fonts(height)
 
