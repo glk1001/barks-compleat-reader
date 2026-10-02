@@ -94,6 +94,19 @@
 >   the run); `CLAUDE.md` and `README.md` name `run_gui_tests.py` for macOS beside
 >   Windows; `docs/plans/cross-platform-gui-tests.md`'s item 1 points here. The overnight
 >   runner has no macOS stage: later, if wanted.
+> - Plain fullscreen, 2026-10-02. The first desktop overnight run on the guest (now 4 cores,
+>   8 GB; `run_overnight_desktop.py`: the GUI suite passed in 49 minutes) failed one soak
+>   walk of four (`history`, seed 2751) at step 971: the app's window not found, with the
+>   app still running. A reader closed while it was going fullscreen had left the titled
+>   window on its fullscreen Space, off screen, and macOS's untitled screen-sized
+>   snapshot of it frozen on screen for good, not the second the probe waits through
+>   (the replays failed at steps 107 and 811 the same way). Not the probe's alone: a
+>   user would see the frozen frame. `main.py` now sets `SDL_VIDEO_MAC_FULLSCREEN_SPACES=0`
+>   on macOS (unless already set): fullscreen is a screen-sized window above everything,
+>   at once, with no Space, animation or snapshot (and no swipe to other desktops while
+>   it is up). SDL puts that window at the shielding level, so the probe takes the app's
+>   titled window there as at the normal level, and brings it forward by activating the
+>   app. Then the walk passed its 1,000 keys, and the three fullscreen tests passed.
 
 ## Why
 

@@ -84,6 +84,25 @@ class TestWindowPicking:
     def test_a_window_above_the_normal_layer_is_not_its_window(self) -> None:
         assert not is_app_window(_window(1, "python", APP_TITLE, layer=25), APP_TITLE)
 
+    def test_fullscreen_without_a_space_is_still_its_window(self) -> None:
+        """SDL raises a window fullscreen without a Space of its own to the shielding level."""
+        shielded = _window(1, "python", APP_TITLE, layer=2147483628)
+        assert is_app_window(shielded, APP_TITLE)
+
+    def test_a_shielded_window_comes_forward_by_activating_the_app_alone(self) -> None:
+        """Nothing is in front of it; the app only has to be the active one."""
+        shielded = _window(9, "python", APP_TITLE, layer=2147483628, pid=42)
+        backend = gui_probe_darwin.DarwinBackend.__new__(gui_probe_darwin.DarwinBackend)
+        backend._title = APP_TITLE  # noqa: SLF001
+        backend._app_pid = None  # noqa: SLF001
+        with (
+            patch.object(gui_probe_darwin, "window_list", return_value=[shielded]),
+            patch.object(gui_probe_darwin, "_activate", return_value=True) as activate,
+        ):
+            assert backend.bring_to_front(9)
+        activate.assert_called_once_with(42)
+        assert backend._app_pid == 42  # noqa: SLF001
+
     def test_the_frontmost_of_the_apps_windows_is_picked(self) -> None:
         windows = [
             _window(1, "Terminal", "Compleat Barks Disney Reader"),

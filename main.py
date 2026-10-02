@@ -33,7 +33,7 @@ from barks_reader.core.config_info import (
 )
 from barks_reader.core.log_markers import APP_STARTING
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
-from barks_reader.core.platform_info import PLATFORM, Platform
+from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
@@ -51,6 +51,13 @@ if PLATFORM == Platform.LINUX:
 # the first mouse-down after the window regains focus, so buttons need a
 # second click to fire.
 os.environ["SDL_MOUSE_FOCUS_CLICKTHROUGH"] = "1"
+
+if IS_MACOS:
+    # Plain fullscreen, not a Space of its own. Into or out of a Space, macOS animates
+    # for about a second behind a snapshot of the window, and a reader closed in that
+    # second (it goes fullscreen as it opens) stranded the window on its Space, off
+    # screen, with the snapshot left frozen in its place. Plain fullscreen is instant.
+    os.environ.setdefault("SDL_VIDEO_MAC_FULLSCREEN_SPACES", "0")
 
 load_dotenv(Path(__file__).parent / ".env.runtime")
 

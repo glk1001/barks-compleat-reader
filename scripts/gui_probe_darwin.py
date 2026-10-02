@@ -73,6 +73,11 @@ _TERM_GRACE_SECS = 3
 # How long the app gets to come to the front, asked again this often.
 _FRONT_WAIT_SECS = 5
 _FRONT_ASK_EVERY_SECS = 1
+# The window levels the app's window is at: normal, and the shielding level above
+# everything, where SDL puts a window fullscreen without a Space of its own
+# (SDL_VIDEO_MAC_FULLSCREEN_SPACES=0); CGShieldingWindowLevel().
+_SHIELDING_LAYER = 2147483628
+_APP_LAYERS = frozenset({0, _SHIELDING_LAYER})
 # How long a lookup waits for the app's window through a fullscreen change.
 _FULLSCREEN_CHANGE_SECS = 5
 
@@ -133,13 +138,16 @@ class WindowInfo:
 
 
 def is_app_window(window: WindowInfo, title: str) -> bool:
-    """Return whether `window` is the reader's: a normal window of a Python or reader process.
+    """Return whether `window` is the reader's: a window of a Python or reader process.
+
+    At the normal level, or at the shielding level above everything, where SDL puts a
+    window it makes fullscreen without a Space of its own.
 
     The owner check keeps out a terminal or an editor whose window title names the
     app (a tab showing the repo, a file open in it), which would otherwise take
     the keys meant for the app.
     """
-    return window.layer == 0 and title in window.title and _is_app_owner(window)
+    return window.layer in _APP_LAYERS and title in window.title and _is_app_owner(window)
 
 
 def _is_app_owner(window: WindowInfo) -> bool:
@@ -430,7 +438,15 @@ class DarwinBackend:
         return self._info(window).bounds
 
     def bring_to_front(self, window: int) -> bool:
-        owner = self._info(window).owner_pid
+        info = self._info(window)
+        owner = info.owner_pid
+        if info.layer == _SHIELDING_LAYER:
+            # Fullscreen above every other window: nothing can be in front of it, so
+            # the app only has to be the active one, for the keys.
+            if _activate(owner):
+                self._app_pid = owner
+                return True
+            return False
         # A slow machine (software drawing on two cores) can take seconds to hand an
         # app just started the front; asking again at once only queues more requests.
         now = time.monotonic()
