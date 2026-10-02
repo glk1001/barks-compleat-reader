@@ -16,7 +16,8 @@
 # any program signed with the hardened runtime as it starts - uv since 0.12 among them -
 # and of its own protected ones (/bin/bash, /usr/bin/env). So it is not exported to uv:
 # `uv run env VAR=... COMMAND` has env set it after both have started, for the command
-# alone.
+# alone. Loaded, the library takes itself out of it again (see softgl.c), so the
+# command's own children never inherit it.
 
 set -euo pipefail
 
