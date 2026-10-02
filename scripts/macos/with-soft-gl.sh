@@ -65,4 +65,9 @@ if [[ ! -f "$LIB" || "$SOURCE" -nt "$LIB" || "$SDL" -nt "$LIB" ]]; then
     codesign --force --sign - "$LIB"
 fi
 
-exec uv run env "DYLD_INSERT_LIBRARIES=${LIB}${DYLD_INSERT_LIBRARIES:+:$DYLD_INSERT_LIBRARIES}" "$@"
+# No multisampling (Kivy's graphics.multisamples, 2 by default): Apple's software
+# renderer does it by supersampling, and crashed in glsDownsample2x2_BGRA8888 as it
+# presented the first frame after a fullscreen window went back to its size (a soak
+# walk, 2026-10-02). Already set in the environment, the setting is left as it is.
+exec uv run env "DYLD_INSERT_LIBRARIES=${LIB}${DYLD_INSERT_LIBRARIES:+:$DYLD_INSERT_LIBRARIES}" \
+    "KCFG_GRAPHICS_MULTISAMPLES=${KCFG_GRAPHICS_MULTISAMPLES:-0}" "$@"
