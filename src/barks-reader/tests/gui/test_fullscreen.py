@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes
+from barks_gui import harness, nodes
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -27,6 +27,11 @@ PAGES_TO_A_SPREAD = 6
 # Fullscreen on and off this often on the one spread, as a soak walk did when the
 # spread was seen to stand half off the screen until the reader went windowed.
 SPREAD_ROUND_TRIPS = 6
+
+
+def _booted_two_up(boot: AppBoot) -> bool:
+    """Whether the run booted the reader in double-page mode (the matrix does)."""
+    return harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
 
 
 def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:
@@ -64,8 +69,11 @@ def test_a_spread_stays_centred_through_fullscreen_switches(boot: AppBoot) -> No
     d.open_selected_story()
     for _ in range(PAGES_TO_A_SPREAD):
         d.key_then_wait(SHOWED_PAGE, "Right")
-    with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
-        d.press_menu_button("double_page")
+    # Two-up, unless the run booted two-up already (the matrix does): there the
+    # toggle would turn it off.
+    if not _booted_two_up(boot):
+        with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
+            d.press_menu_button("double_page")
     d.settle()
     width = int(last_field(d, markers.PAGE_PLACED, "width"))
     height = int(last_field(d, markers.PAGE_PLACED, "height"))
