@@ -189,6 +189,44 @@ class TestComicBookReader:
 
             return reader
 
+    @staticmethod
+    def _place_page(reader: ComicBookReader, texture: object) -> None:
+        """Give the (mock) page image a spread fitted at the centre of a 2560x1440 window."""
+        image = reader._comic_image
+        image.texture = texture
+        image.norm_image_size = (1280, 1440)
+        image.center_x, image.center_y = 1280, 720
+        image.to_window = lambda x, y: (x, y)
+
+    def test_a_page_placement_is_logged_once_where_the_fitted_page_lands(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        """PAGE_PLACED: what the GUI harness holds centred in the window."""
+        self._place_page(reader, MagicMock())
+        with patch.object(_reader_module, "Window", MagicMock(width=2560, height=1440)):
+            reader._log_page_placement(0)
+            reader._log_page_placement(0)  # the same placement: not logged again
+        expected = log_markers.PAGE_PLACED.format(
+            width=1280, height=1440, x=640, y=0, win_width=2560, win_height=1440
+        )
+        assert [line for line in loguru_sink if line.startswith("Page placed")] == [expected]
+
+    def test_the_loading_placeholder_and_no_page_are_not_logged(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        """Before the reader has laid itself out, the placeholder is at no real place."""
+        with patch.object(_reader_module, "Window", MagicMock(width=2560, height=1440)):
+            self._place_page(reader, reader._loading_page_texture)
+            reader._log_page_placement(0)
+            self._place_page(reader, None)
+            reader._log_page_placement(0)
+        assert not [line for line in loguru_sink if line.startswith("Page placed")]
+
+    def test_a_layout_change_asks_for_a_placement_log(self, reader: ComicBookReader) -> None:
+        reader._log_page_placement_trigger = MagicMock()
+        reader._on_page_layout_changed(reader._comic_image, (1, 2))
+        reader._log_page_placement_trigger.assert_called_once_with()
+
     def test_read_comic(self, reader: ComicBookReader) -> None:
         fanta_info = MagicMock()
         fanta_info.comic_book_info.get_title_str.return_value = "Title"
