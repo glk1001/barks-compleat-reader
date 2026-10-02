@@ -15,16 +15,17 @@ Stages (name: what it runs):
                  this runner takes effect only on the next run)
   pytest         the unit suite, with the data pack CI's legs do not have, its
                  coverage measured for the coverage stage
-  fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
-                 its Build Verification run if it is still building); skipped with
-                 --app, and on macOS, where CI's app has no software OpenGL to draw
-                 with on a machine without a GPU driver (the workspace app runs
-                 through scripts/macos/with-soft-gl.sh)
   validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
                  whole library; skipped, saying which, while the prebuilt comics
                  are not on this machine. Before the GUI stages: it warms the file cache
   gui            run_gui_tests.py: the GUI suite on the workspace app, the app's
                  coverage measured where the probe can (BARKS_PROBE_COVERAGE)
+  fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
+                 its Build Verification run if it is still building: run here,
+                 late, CI has almost always finished); skipped with --app, and on
+                 macOS, where CI's app has no software OpenGL to draw with on a
+                 machine without a GPU driver (the workspace app runs through
+                 scripts/macos/with-soft-gl.sh)
   built-app      run_gui_tests.py --app: the suite on that executable, reading real
                  comics; skipped, saying why, when there is none
   soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
@@ -106,7 +107,10 @@ ON_MACOS = sys.platform == "darwin"
 # validate before the GUI stages, as on Linux: it reads every volume, so the first app
 # the GUI suite boots finds them in the file cache. Run last, it left that app reading
 # cold archives (volumes 20 on, 0.4-0.5s each) and over its post tree setup budget.
-STAGES = ("update", "pytest", "fetch-build", "validate", "gui", "built-app", "soak", "coverage")
+# fetch-build just before built-app, its one user: a run started soon after a push
+# finds CI still building, and third it waited for that build (about 20 minutes)
+# with every stage behind it idle; after validate and gui the build is done.
+STAGES = ("update", "pytest", "validate", "gui", "fetch-build", "built-app", "soak", "coverage")
 GUI_STAGES = frozenset({"gui", "built-app", "soak"})
 # How far, in percentage points, the combined coverage may fall below its best (as on Linux).
 COVERAGE_TOLERANCE = 1.0

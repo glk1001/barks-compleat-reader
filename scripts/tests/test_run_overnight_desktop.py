@@ -42,6 +42,12 @@ class TestStageTable:
         # Everything after it tests the code it pulled.
         assert rw.STAGES[0] == "update"
 
+    def test_the_build_is_fetched_late_just_before_it_is_used(self) -> None:
+        """After the GUI suite, CI's build of a fresh push is done: no stage waits on it."""
+        stages = list(rw.STAGES)
+        assert stages.index("fetch-build") == stages.index("built-app") - 1
+        assert stages.index("fetch-build") > stages.index("gui")
+
     def test_the_statuses_are_the_linux_runs(self) -> None:
         text = LINUX_RUNNER.read_text(encoding="utf-8")
         assert f"SKIPPED={rw.SKIPPED}" in text
