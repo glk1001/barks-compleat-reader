@@ -227,7 +227,13 @@ def data_checks() -> list[Check]:
     checks.append(
         ("OK", f"{reader_files}")
         if reader_files.is_dir()
-        else ("FAIL", f"{reader_files} missing - the junction in docs/setup.md (pytest needs it)")
+        else (
+            "FAIL",
+            (
+                f"{reader_files} missing - the junction (Windows) or link (macOS) in"
+                " docs/setup.md (pytest needs it)"
+            ),
+        )
     )
     ini = gui_probe.config_dir() / "barks-reader.ini"
     prebuilt = _prebuilt_dir(ini)
@@ -251,7 +257,8 @@ def memory_check() -> Check:
     import run_overnight_desktop as rw  # noqa: PLC0415 (loads the runner only for this)
 
     free = rw.available_mb()
-    minimum = rw.env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", rw.DEFAULT_MIN_FREE_MB)
+    default_minimum, _ = rw.machine_memory_defaults()  # as the runner sizes it to the machine
+    minimum = rw.env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", default_minimum)
     problem = rw.free_memory_problem(free, minimum)
     if problem is None:
         return ("OK", f"{free:,} MB of memory free (a GUI stage needs {minimum:,})")

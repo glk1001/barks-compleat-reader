@@ -75,8 +75,8 @@ summary) runs what only a desktop machine can: the suite with the data pack, the
 on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,
 `validate`, and the coverage of what only that platform runs; on Windows nightly through
 `scripts/windows/register-overnight-task.ps1`, and
-`uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
-(setup: `docs/setup.md`, Windows and "A macOS overnight machine", a clean Mac's checklist).
+`uv run python scripts/check_windows_overnight_host.py` (on a Mac,
+`scripts/check_macos_overnight_host.py`) says what a machine still lacks for it (setup: `docs/setup.md`, Windows and "A macOS overnight machine", a clean Mac's checklist).
 Plan: `docs/plans/windows-overnight.md`. On a Mac, start it
 on the Mac's own desktop, not over ssh, from an app holding the probe's Accessibility and
 Screen Recording permissions (`docs/plans/macos-gui-tests.md`). macOS grants them to the app

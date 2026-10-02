@@ -294,11 +294,22 @@ Both run the app, the unit tests and the build, and the GUI tests
      copy the binary in. On Intel, take bun's `-baseline` build if
      `sysctl -n machdep.cpu.leaf7_features` shows no `AVX2` (a VM's CPU often hides it): the
      plain build needs it. Then `ln -s bun ~/.local/bin/bunx`.
-  4. **The repository**: step 3 above, for this one alone. The desktop runner does not run
-     the siblings' tests, and `barks-comic-building` does not install on macOS 12 (its
-     OpenCV has macOS Intel wheels only from macOS 14). Then `git lfs install`,
-     `git lfs pull` (`cpi.db`: the reader stops on its git-lfs pointer at a page turn),
-     `uv sync`, and `uv run prek install` after the LFS install (step 4). If this Mac will
+  4. **The repository**, this one alone (the desktop runner does not run the siblings'
+     tests, and `barks-comic-building` does not install on macOS 12: its OpenCV has macOS
+     Intel wheels only from macOS 14), in `~/Developer`, where
+     `coverage_all_platforms.py` looks for it on a Mac:
+
+     ```bash
+     git lfs install
+     mkdir -p ~/Developer && cd ~/Developer
+     git clone https://github.com/glk1001/barks-compleat-reader.git
+     cd barks-compleat-reader
+     git lfs pull        # cpi.db: the reader stops on its git-lfs pointer at a page turn
+     uv sync
+     uv run prek install # after `git lfs install`, which claims the pre-push hook (step 4)
+     ```
+
+     If this Mac will
      push, `gh auth login` then `gh auth setup-git`, and a git identity
      (`git config --global user.name` and `user.email`): without one, the guest's commits
      went up under its host name, linked to no account.
@@ -341,9 +352,13 @@ Both run the app, the unit tests and the build, and the GUI tests
   10. **Memory**: 8 GB. A GUI stage starts only with half the machine's memory free, and
       the app is held to three quarters of it (6 GB at most); the soak's walk through the
       wiki's big tables has taken the app past 4 GB on Windows, and peaked at 1.8 GB here.
-  11. **Check**: `uv run python scripts/gui_probe.py doctor` should say "ready" (the
-      unlocked desktop, both permissions, `clang`, `.env.runtime`, the profile and its
-      folders). The unit suite: `bash scripts/macos/with-soft-gl.sh pytest -n auto`.
+  11. **Check**: `uv run python scripts/check_macos_overnight_host.py`, in Terminal on the
+      Mac's desktop, checks every step above and says what is still missing, ending
+      "ready" when nothing FAILs: `doctor`'s checks (the unlocked desktop, both permissions,
+      `clang`, `.env.runtime`, the profile and its folders), then git-lfs, `cpi.db`, the
+      generated modules, the hooks, the clone's place, the override-archive link, the wiki
+      copy, memory and the screen lock. Over ssh its two permission checks fail: they are
+      Terminal's. The unit suite: `bash scripts/macos/with-soft-gl.sh pytest -n auto`.
   12. **Calibrate** once: `uv run python scripts/run_gui_tests.py --calibrate`, the whole
       GUI suite with the timing budgets off; it writes this machine's to
       `.benchmarks/gui-timings.json` only if every test passes. On the 2-core guest a
