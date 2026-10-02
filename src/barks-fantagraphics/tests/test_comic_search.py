@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_search import (
     ComicSearch,
@@ -323,3 +324,28 @@ class TestPassThroughs:
         search.search("christmas", SearchMode.TAG)
 
         assert search._full_text is None
+
+
+class TestTagAndTitlePassThroughs:
+    """What the screens ask of the tag data and the titles, through the facade."""
+
+    def test_a_tag_alias_resolves_to_its_tag_and_stories(self) -> None:
+        item, titles = ComicSearch(Path("idx")).resolve_tag("gyro")
+        assert item is Tags.GYRO_GEARLOOSE
+        assert Titles.GLADSTONES_TERRIBLE_SECRET in titles
+
+    def test_a_group_lists_its_direct_members_subgroups_too(self) -> None:
+        members = ComicSearch(Path("idx")).get_tag_group_members(TagGroups.CHEMISTRY)
+        assert TagGroups.CHEMICAL_NAMES in members
+        assert Tags.DUCKMITE in members
+
+    def test_titles_become_their_display_strings(self) -> None:
+        strings = ComicSearch(Path("idx")).get_title_display_strings([Titles.GOLDEN_HELMET_THE])
+        assert len(strings) == 1
+        assert "Golden Helmet" in strings[0]
+
+    def test_alpha_split_entity_terms_come_from_the_full_text_search(self) -> None:
+        split = {"a": {"ac": ["Acapulco"]}}
+        fake = InMemoryFullTextSearch()
+        fake.alpha_split_entity_terms = {"location": split}
+        assert _search_with(fake).get_alpha_split_entity_terms("location") == split

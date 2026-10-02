@@ -16,6 +16,7 @@ from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import ParsedTagQuery, TagMatch, TagSelection
 from barks_reader.core import log_markers
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.search_state import EraChoice, TagBasket, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
@@ -32,9 +33,11 @@ from barks_reader.ui.search_screen import (
     _WordRow,
 )
 from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 
 def _make_bare_screen() -> SearchScreen:
@@ -2264,3 +2267,399 @@ class TestClearButtonKeys:
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         clear_button.trigger_action.assert_called_once_with(duration=0)
         assert screen._nav_focus_area == "input"
+
+
+class _Ids(dict):
+    """The screen's kv ids, by attribute as by key, as Kivy's are."""
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+
+def _released_into(pressed: list[str]) -> Callable[[Button], None]:
+    return lambda button: pressed.append(button.text)
+
+
+def _word_result_row(title: str, pressed: list[str]) -> BoxLayout:
+    """Return a word result row as the screen builds one: the story, then its bubbles button."""
+    row = BoxLayout()
+    for part in ("title", "speech"):
+        button = Button(text=f"{title} {part}")
+        button.bind(on_release=_released_into(pressed))
+        row.add_widget(button)
+    return row
+
+
+class TestResultsKeys:
+    """The remote on the stories listed: walking them, a story's two parts, and the ways out.
+
+    Over real result rows, so the focus is drawn (and logged) as on screen.
+    """
+
+    @pytest.fixture
+    def pressed(self) -> list[str]:
+        return []
+
+    @pytest.fixture
+    def screen(self, pressed: list[str]) -> Iterator[SearchScreen]:
+        word_results = BoxLayout(orientation="vertical")
+        for title in ("Story A", "Story B", "Story C"):
+            word_results.add_widget(_word_result_row(title, pressed))
+        tag_results = BoxLayout(orientation="vertical")
+        for title in ("Story X", "Story Y"):
+            button = Button(text=title)
+            button.bind(on_release=_released_into(pressed))
+            tag_results.add_widget(button)
+        ids = _Ids(
+            {f"{mode}_search_input": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_clear_button": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
+            | {
+                "word_results_layout": word_results,
+                "tag_title_results_layout": tag_results,
+                "title_results_layout": BoxLayout(),
+                "word_chips_layout": MagicMock(children=[]),
+                "tag_chips_layout": MagicMock(children=[]),
+            }
+        )
+        with (
+            patch.object(SearchScreen, "ids", ids),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._nav_active = True
+            bare._nav_on_exit_request = MagicMock()
+            bare._nav_focus_area = "results"
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare._nav_focused_chip_idx = 0
+            bare._last_activated_result_idx = None
+            bare._last_activated_word_sub_focus = "title"
+            bare._selected_word = ""
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            bare._tag_titles = []
+            yield bare
+
+    @staticmethod
+    def _key(screen: SearchScreen, key: int) -> bool:
+        return screen.handle_key(key)
+
+    def test_down_walks_the_stories_and_stops_at_the_last(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        for expected_idx in (1, 2, 2):
+            assert self._key(screen, search_screen.KEY_DOWN) is True
+            assert screen._nav_focused_result_idx == expected_idx
+        assert loguru_sink[-1] == 'Nav focus on Button "Story C title".'
+
+    def test_right_and_left_move_between_a_story_and_its_bubbles(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        assert self._key(screen, search_screen.KEY_RIGHT) is True
+        assert loguru_sink[-1] == 'Nav focus on Button "Story A speech".'
+        assert self._key(screen, search_screen.KEY_RIGHT) is False  # nothing further right
+        assert self._key(screen, search_screen.KEY_LEFT) is True
+        assert (screen._nav_word_sub_focus, loguru_sink[-1]) == (
+            "title",
+            'Nav focus on Button "Story A title".',
+        )
+
+    def test_enter_presses_the_focused_part_and_remembers_it(
+        self, screen: SearchScreen, pressed: list[str]
+    ) -> None:
+        self._key(screen, search_screen.KEY_DOWN)
+        self._key(screen, search_screen.KEY_RIGHT)
+        assert self._key(screen, search_screen.KEY_ENTER) is True
+        assert pressed == ["Story B speech"]
+        assert (screen._last_activated_result_idx, screen._last_activated_word_sub_focus) == (
+            1,
+            "speech",
+        )
+
+    def test_up_walks_back_then_climbs_to_the_lowest_chip_row(self, screen: SearchScreen) -> None:
+        self._key(screen, search_screen.KEY_DOWN)
+        assert self._key(screen, search_screen.KEY_UP) is True
+        assert screen._nav_focused_result_idx == 0
+        assert self._key(screen, search_screen.KEY_UP) is True  # off the first story
+        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+
+    def test_left_from_a_story_is_the_word_list_or_else_the_clear_button(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(screen, "_get_word_chip_buttons", return_value=[MagicMock()]),
+            patch.object(screen, "_nav_back_to_word_chips") as back,
+        ):
+            assert self._key(screen, search_screen.KEY_LEFT) is True
+        back.assert_called_once_with()
+
+        screen._nav_focus_area = "results"
+        assert self._key(screen, search_screen.KEY_LEFT) is True  # no word list
+        assert screen._nav_focus_area == "clear"
+        assert loguru_sink[-1].startswith("Nav focus on MagicMock")  # the clear button's fill
+
+    def test_tab_is_the_box_escape_leaves_and_other_keys_pass(self, screen: SearchScreen) -> None:
+        assert self._key(screen, search_screen.KEY_TAB) is True
+        assert screen._nav_focus_area == "input"
+        assert screen.ids.word_search_input.focus is True
+
+        screen._nav_focus_area = "results"
+        assert self._key(screen, ord("a")) is False
+        assert self._key(screen, KEY_ESCAPE) is True
+        assert (screen._nav_focus_area, screen.ids.word_search_input.focus) == ("input", False)
+        screen._nav_on_exit_request.assert_called_once_with()
+
+    def test_a_tag_story_has_no_bubbles_and_left_is_the_tag_list(
+        self, screen: SearchScreen, pressed: list[str]
+    ) -> None:
+        screen._active_mode = "Tag"
+        assert self._key(screen, search_screen.KEY_RIGHT) is False
+        assert self._key(screen, search_screen.KEY_ENTER) is True
+        assert pressed == ["Story X"]
+        with (
+            patch.object(screen, "_get_tag_chip_buttons", return_value=[MagicMock()]),
+            patch.object(screen, "_nav_back_to_tag_chips") as back,
+        ):
+            assert self._key(screen, search_screen.KEY_LEFT) is True
+        back.assert_called_once_with()
+
+    def test_coming_back_lands_on_the_last_story_pressed_and_its_part(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._nav_active = False
+        screen._last_activated_result_idx = 9  # since shortened: the last story there is
+        screen._last_activated_word_sub_focus = "speech"
+        exit_request = MagicMock()
+        screen.enter_nav_focus_at_last_result(exit_request)
+        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 2)
+        assert screen._nav_word_sub_focus == "speech"
+        assert screen._nav_on_exit_request is exit_request
+        assert loguru_sink[-1] == "SearchScreen: entered nav focus at last result."
+
+        screen._last_activated_result_idx = None  # none pressed: the box
+        screen.enter_nav_focus_at_last_result(exit_request)
+        assert screen._nav_focus_area == "input"
+        assert screen.ids.word_search_input.focus is True
+
+    def test_entering_and_leaving_the_screen_by_remote(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._nav_active = False
+        screen.enter_nav_focus(MagicMock())
+        assert (screen._nav_active, screen._nav_focus_area) == (True, "input")
+        assert log_markers.SEARCH_ENTERED_NAV in loguru_sink
+        screen._nav_focus_area = "results"
+        screen.exit_nav_focus()
+        assert (screen._nav_active, screen._nav_focus_area) == (False, "input")
+        assert loguru_sink[-1] == log_markers.SEARCH_EXITED_NAV
+
+
+class TestOtherNavKeys:
+    """The clear button, the list's Tab and Right, the box's Right and Escape, the picked row."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        rows = BoxLayout(orientation="vertical")
+        rows.add_widget(_word_result_row("Story A", []))
+        ids = _Ids(
+            {f"{mode}_search_input": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_clear_button": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
+            | {
+                "word_results_layout": rows,
+                "tag_title_results_layout": BoxLayout(),
+                "title_results_layout": BoxLayout(),
+                "word_chips_layout": MagicMock(children=[]),
+                "tag_chips_layout": MagicMock(children=[]),
+            }
+        )
+        with (
+            patch.object(SearchScreen, "ids", ids),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._nav_active = True
+            bare._nav_on_exit_request = MagicMock()
+            bare._nav_focus_area = "clear"
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare._nav_focused_chip_idx = 0
+            bare._selected_word = ""
+            bare._tag_titles = []
+            yield bare
+
+    def test_the_clear_button_s_keys(self, screen: SearchScreen) -> None:
+        clear_button = screen.ids.word_clear_button
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True  # on to the stories
+        assert screen._nav_focus_area == "results"
+
+        screen._nav_focus_area = "clear"
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        clear_button.trigger_action.assert_called_once_with(duration=0)
+        assert screen._nav_focus_area == "input"
+
+        screen._nav_focus_area = "clear"
+        assert screen.handle_key(search_screen.KEY_LEFT) is True
+        assert (screen._nav_focus_area, screen.ids.word_search_input.focus) == ("input", True)
+
+        screen._nav_focus_area = "clear"
+        assert screen.handle_key(ord("a")) is False
+        with patch.object(screen, "_nav_escape") as escape:
+            assert screen.handle_key(KEY_ESCAPE) is True
+        escape.assert_called_once_with()
+
+    def test_right_from_the_clear_button_stays_with_no_stories(self, screen: SearchScreen) -> None:
+        screen.ids.word_results_layout.clear_widgets()
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_focus_area == "clear"
+
+    def test_tab_from_the_list_is_the_stories_and_right_the_top_chip_row(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._nav_focus_area = "tags"
+        with (
+            patch.object(screen, "_get_active_chip_buttons", return_value=[]),
+            patch.object(screen, "_handle_list_row_key", return_value=False),
+        ):
+            assert screen.handle_key(search_screen.KEY_TAB) is True
+            assert screen._nav_focus_area == "results"
+            screen._nav_focus_area = "tags"
+            assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+
+    def test_right_in_the_box_is_the_clear_button_only_at_the_text_s_end(
+        self, screen: SearchScreen
+    ) -> None:
+        box = screen.ids.word_search_input
+        box.text = "gold"
+        box.cursor_index.return_value = 2
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(search_screen.KEY_RIGHT) is False  # the box moves its cursor
+        box.cursor_index.return_value = 4
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True
+        assert screen._nav_focus_area == "clear"
+
+    def test_escape_in_the_box_leaves_the_screen(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(KEY_ESCAPE) is True
+        screen._nav_on_exit_request.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        ("titles", "basket", "box_query", "area"),
+        [
+            (["Story A"], False, "", "results"),  # their first story
+            ([], True, "", "basket"),  # none listed, but tags picked
+            ([], False, "scrooge +", "tags"),  # could not combine: its chip, with the notice
+            ([], False, "", "input"),  # nothing at all: the box
+        ],
+        ids=["stories", "picked", "notice", "box"],
+    )
+    def test_after_combining_tags_the_focus_goes_to_what_they_left(
+        self,
+        screen: SearchScreen,
+        titles: list[str],
+        *,
+        basket: bool,
+        box_query: str,
+        area: str,
+    ) -> None:
+        screen._active_mode = "Tag"
+        screen._tag_titles = titles
+        screen._tag_box_query = box_query
+        if basket:
+            screen._tag_basket.toggle("Scrooge")
+            screen._show_tag_basket()
+        with patch.object(screen, "_draw_chip_focus"):
+            screen._focus_after_tag_query()
+        assert screen._nav_focus_area == area
+
+    @pytest.mark.parametrize(
+        ("chips", "area"), [(True, "tags"), (False, "results")], ids=["list", "no-list"]
+    )
+    def test_down_from_the_picked_words_is_the_list_or_else_the_stories(
+        self, screen: SearchScreen, *, chips: bool, area: str
+    ) -> None:
+        with (
+            patch.object(screen, "_run_word_query"),
+            patch.object(
+                screen, "_get_word_chip_buttons", return_value=[MagicMock()] if chips else []
+            ),
+            patch.object(screen, "_draw_chip_focus"),
+        ):
+            screen._toggle_basket_word("gold")
+            screen._nav_enter_basket()
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == area
+        assert screen._basket_row.focused is None
+
+    def test_up_from_the_picked_words_is_the_box_and_escape_leaves(
+        self, screen: SearchScreen
+    ) -> None:
+        with patch.object(screen, "_run_word_query"):
+            screen._toggle_basket_word("gold")
+        screen._nav_enter_basket()
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+        screen._nav_enter_basket()
+        with patch.object(screen, "_nav_escape") as escape:
+            assert screen.handle_key(KEY_ESCAPE) is True
+        escape.assert_called_once_with()
+
+
+class TestBackgroundAndGoto:
+    """The panel's background follows the stories listed; its arrow goes to the one shown."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with patch.object(SearchScreen, "ids", MagicMock()):
+            bare = _make_bare_screen()
+            bare._search_result_titles = []
+            bare._image_change_event = None
+            bare._current_image_info = None
+            bare.on_search_results_title_changed = MagicMock()
+            bare.on_goto_background_title_func = MagicMock()
+            bare.on_goto_title_with_page = MagicMock()
+            bare._selected_result_button = None
+            yield bare
+
+    def test_the_background_cycles_through_the_stories_listed(self, screen: SearchScreen) -> None:
+        with patch.object(search_screen.Clock, "schedule_interval") as every:
+            screen._update_background_from_results([PIRATE_GOLD, HELMET])
+        assert screen.on_search_results_title_changed.call_args.args[0] in (PIRATE_GOLD, HELMET)
+        every.assert_called_once()
+        screen._next_background_image()
+        assert screen.on_search_results_title_changed.call_count == 2  # noqa: PLR2004
+        screen._cancel_image_change_event()
+        every.return_value.cancel.assert_called_once_with()
+        assert screen._image_change_event is None
+
+    def test_no_stories_or_no_listener_changes_no_background(self, screen: SearchScreen) -> None:
+        screen._update_background_from_results([])
+        screen._next_background_image()
+        screen.on_search_results_title_changed.assert_not_called()
+
+    def test_the_arrow_goes_to_the_story_the_background_shows(self, screen: SearchScreen) -> None:
+        screen.on_goto_background_title()  # none shown yet
+        screen.on_goto_background_title_func.assert_not_called()
+        info = ImageInfo(from_title=HELMET, filename=None)
+        screen.set_background_image(info)
+        assert screen.current_title_str == ENUM_TO_STR_TITLE[HELMET]
+        screen.on_goto_background_title()
+        screen.on_goto_background_title_func.assert_called_once_with(info)
+
+    def test_a_word_result_goes_to_its_story_at_its_page(self, screen: SearchScreen) -> None:
+        goto = cast("MagicMock", screen.on_goto_title_with_page)
+        row = _SearchResultButton(text="The Golden Helmet, 3")
+        screen._on_word_result_row_released(row, ENUM_TO_STR_TITLE[HELMET], "3")
+        assert row.selected
+        goto.assert_called_once_with(ImageInfo(from_title=HELMET, filename=None), "3")
+
+    def test_a_title_no_story_has_goes_nowhere(self, screen: SearchScreen) -> None:
+        screen._goto_title_with_page("No Such Story", "3")
+        cast("MagicMock", screen.on_goto_title_with_page).assert_not_called()
