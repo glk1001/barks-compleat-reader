@@ -1,5 +1,5 @@
 #!/bin/bash
-# cspell:ignore softgl libsoftgl dylib dylibs dynamiclib otool codesign dyld clang Xcode
+# cspell:ignore softgl libsoftgl dylib dylibs dynamiclib otool codesign dyld clang Xcode headerpad
 # Run a command in the workspace's venv with Kivy free to draw on Apple's software OpenGL
 # renderer, for a macOS machine with no GPU driver (a VirtualBox guest): see softgl.c.
 #
@@ -53,7 +53,10 @@ fi
 
 if [[ ! -f "$LIB" || "$SOURCE" -nt "$LIB" || "$SDL" -nt "$LIB" ]]; then
     mkdir -p "$(dirname "$LIB")"
-    clang -dynamiclib -O2 -o "$LIB" "$SOURCE" "$SDL"
+    # Room for the longer SDL2 path written in below: on arm64 the linker leaves
+    # none, and a CI runner's venv path did not fit ("larger updated load commands
+    # do not fit").
+    clang -dynamiclib -O2 -Wl,-headerpad_max_install_names -o "$LIB" "$SOURCE" "$SDL"
     # The wheel's SDL2 names itself by its build path; point the library at the real file,
     # so dyld loads the same image Kivy does.
     install_name="$(otool -D "$SDL" | tail -1)"
