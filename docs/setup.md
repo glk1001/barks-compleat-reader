@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate pmset sleepnow -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate pmset sleepnow softgl multisampling -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -271,60 +271,105 @@ Both run the app, the unit tests and the build, and the GUI tests
     The prebuilt comics (`The Comics\Chronological`, 8.9 GB, from the stick; see the plan's
     step 4) are copied to `~\Books\Carl Barks\The Comics`, where `prebuilt_dir` points:
     `robocopy "<stick>\barks-reader-windows\The Comics" "$HOME\Books\Carl Barks\The Comics" /E`.
-- **macOS.** Only CI runs it (`.github/workflows/`), which installs `ccache` with Homebrew
-  for the build.
-- **A macOS VirtualBox guest** has no GPU driver, so Kivy cannot open a window ("Failed
-  creating OpenGL pixel format") and the UI unit tests need CI's skips
-  (`KIVY_HEADLESS_CI=1 KIVY_WINDOW=no_provider`). Apple's software OpenGL renderer (2.1) is
-  there, though; Kivy's SDL2 only refuses it by asking for an accelerated one.
-  `scripts/macos/with-soft-gl.sh` builds a small library that drops that request (it needs
-  the Xcode command-line tools' `clang`) and runs a command in the venv with it:
-  `bash scripts/macos/with-soft-gl.sh python main.py` runs the app, and
-  `bash scripts/macos/with-soft-gl.sh pytest -n auto` the whole unit suite (on a 2-core
-  guest, 2026-10-01: about 4,700 passed in two minutes). A Mac with a GPU still draws on
-  it. The pre-push pytest hook runs through it on macOS. The library goes in
-  `DYLD_INSERT_LIBRARIES`, which macOS strips as a hardened-runtime program starts (uv
-  since 0.12) or one of its own (`/bin/bash`), so the script hands it to the command with
-  `uv run env`; don't export it yourself. On that guest (macOS 12, Intel):
-  - **Tools** come as release binaries into `~/.local/bin`, not from Homebrew, which has no
-    bottles for macOS 12 and builds from source (git-lfs needed OpenSSL and Go): git-lfs,
-    gh, and bun's `-baseline` build (the guest's CPU shows no AVX2, which the plain build
-    needs), with `bunx` a symlink to `bun`. uv 0.9 knew no Python 3.13.12;
-    `uv self update` did.
-  - **Data**: `.env.runtime` can point at an installed app's folder (`config`, and the
-    folder holding `Reader Files`), as on the Windows laptop. The `barks-fantagraphics`
-    tests read the override archives at the fixed `~/Books/Carl Barks/Compleat Barks
-    Disney Reader/Reader Files`: a symlink there to the installed `Reader Files` serves
-    them.
-  - **Push gate**: `barks-comic-building` does not install (its OpenCV has macOS x86_64
-    wheels only from macOS 14), and the censorship check reads comics trees the guest does
-    not have, so push with `SKIP=check-censorship-csv git push`; pytest runs.
-  - **GUI path tests**, as on Windows: `scripts/run_gui_tests.py` through
-    `scripts/gui_probe.py`, one worker, the reader's window on the guest's own screen.
-    Keys go to the reader's process alone; clicks land on its window by position, so
-    leave the desktop alone while a run goes (about 45 minutes). Once per machine:
-    1. **Permissions**: Accessibility (to post keys and clicks) and Screen Recording (for
-       window titles and screenshots) for the terminal the runner is started from, in
-       System Preferences, Security & Privacy, Privacy. Granted, they apply at once.
-    2. **An awake, unlocked screen**: no screen saver with a password, and display sleep
-       longer than a run (Energy Saver), or `caffeinate -d` beside it.
-    3. **Check**: `uv run python scripts/gui_probe.py doctor`, which also wants `clang`
-       (for the software-OpenGL library) and the profile `.env.runtime` points at.
-    4. **Calibrate**: `uv run python scripts/run_gui_tests.py --calibrate`, the whole suite
-       with the budgets off; it writes this machine's to `.benchmarks/gui-timings.json`
-       only if every test passes. On the 2-core guest a comic's images take up to 15s to
-       load, where the committed budget is 6s.
+- **macOS.** CI runs the unit suite on its macOS runners, drawing on Apple's software
+  OpenGL through `scripts/macos/with-soft-gl.sh` (below), and builds the app, installing
+  `ccache` with Homebrew for the build.
+- **A macOS overnight machine**, from a clean Mac to a passing
+  `scripts/run_overnight_desktop.py` (the unit suite with the data pack, the GUI suite, the
+  soak and coverage). It assumes the Barks Reader is already installed with its data at
+  `~/Applications/BarksReader`, as the standalone app's install in `README.md` leaves it:
+  `config/`, `Reader Files/` and the Fantagraphics volumes beside the `.app`. Written from
+  the macOS 12 VirtualBox guest (Intel, no GPU driver, 4 cores, 8 GB), where the whole run
+  passed on 2026-10-02 in 1h28m.
+  1. **Command-line tools**: `xcode-select --install`, for git and `clang` (which builds the
+     software-OpenGL library).
+  2. **uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`, into `~/.local/bin`; then
+     `uv self update` if it is older than the Python the repository pins (uv 0.9 knew no
+     Python 3.13.12).
+  3. **git-lfs, gh and bun**, into `~/.local/bin` too. From macOS 13, Homebrew has them
+     ready-built (`brew install git-lfs gh oven-sh/bun/bun`). On macOS 12 Homebrew builds
+     them from source (git-lfs alone wanted OpenSSL and Go), so take each one's release zip
+     from GitHub (`git-lfs-darwin-amd64`, `gh_*_macOS_amd64`, `bun-darwin-x64`; the `arm64`
+     and `aarch64` ones on Apple silicon), check it against the release's checksum list, and
+     copy the binary in. On Intel, take bun's `-baseline` build if
+     `sysctl -n machdep.cpu.leaf7_features` shows no `AVX2` (a VM's CPU often hides it): the
+     plain build needs it. Then `ln -s bun ~/.local/bin/bunx`.
+  4. **The repository**: step 3 above, for this one alone. The desktop runner does not run
+     the siblings' tests, and `barks-comic-building` does not install on macOS 12 (its
+     OpenCV has macOS Intel wheels only from macOS 14). Then `git lfs install`,
+     `git lfs pull` (`cpi.db`: the reader stops on its git-lfs pointer at a page turn),
+     `uv sync`, and `uv run prek install` after the LFS install (step 4). If this Mac will
+     push, `gh auth login` then `gh auth setup-git`, and a git identity
+     (`git config --global user.name` and `user.email`): without one, the guest's commits
+     went up under its host name, linked to no account.
+  5. **`.env.runtime`** (step 5), pointing at the installed app:
 
-    Then `uv run python scripts/run_gui_tests.py --quiet` (`-k` and pytest's other
-    options pass through; `--soak` for the random walk). The whole suite ran clean there
-    on 2026-10-01: `docs/plans/macos-gui-tests.md`.
-  - **The overnight run**, once the GUI tests above run: in Terminal on the guest's own
-    desktop (its permissions are Terminal's; an ssh session has none),
-    `git pull --ff-only; uv run python scripts/run_overnight_desktop.py; pmset sleepnow`.
-    It keeps the Mac awake with `caffeinate` while it runs, runs the unit suite and
-    `validate` through `with-soft-gl.sh`, and skips `fetch-build` and `built-app`: CI's
-    macOS app has no software OpenGL for a guest without a GPU driver. Its memory limits
-    follow the machine's (on the 4 GB guest, 2 GB free to start a GUI stage and a 3 GB
-    cap); give the guest 8 GB if the host can, as the soak's walk through the wiki's big
-    tables has taken the app past 4 GB on Windows. `validate` skips until the prebuilt
-    comics are on the guest.
+     ```
+     BARKS_ZIPS_KEY=<the main machine's>
+     BARKS_READER_CONFIG_DIR="${HOME}/Applications/BarksReader/config"
+     BARKS_READER_DATA_DIR="${HOME}/Applications/BarksReader"
+     ```
+
+     Then `bash scripts/generate-panel-module.sh` and `bash scripts/build.sh`: its first
+     step, "Writing version", writes `_version.py`, and the standalone build after it can be
+     stopped with Ctrl-C if it is not wanted.
+  6. **Data as new as the code.** An installed data pack older than the code stops the
+     reader at boot ("Required file not found") or fails a GUI test on what it lacks;
+     install the current data packs over it (`README.md`). The installer sets `fanta_dir` in
+     `config/barks-reader.ini` to the volumes' folder; `doctor` (step 11) checks it.
+  7. **The override archives at their fixed path.** The `barks-fantagraphics` tests read
+     FANTA_01's and FANTA_02's override archives under `~/Books/Carl Barks/Compleat Barks
+     Disney Reader/Reader Files`, whatever `.env.runtime` says; a link serves them:
+
+     ```bash
+     mkdir -p "$HOME/Books/Carl Barks/Compleat Barks Disney Reader"
+     ln -s "$HOME/Applications/BarksReader/Reader Files" \
+         "$HOME/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files"
+     ```
+
+  8. **Permissions**: Accessibility (the probe posts keys and clicks) and Screen Recording
+     (window titles, screenshots), for the app the run is started from: Terminal, or
+     `~/.local/share/claude/ClaudeCode.app` for a run Claude Code starts (`CLAUDE.md` says
+     why, and how that app got both on the guest). In System Preferences, Security &
+     Privacy, Privacy, for each list: unlock, `+`, Cmd-Shift-G, the app's path. Dragging
+     the app in from its hidden folder did not take.
+  9. **An awake, unlocked screen** on the Mac's own desktop, not an ssh session (which has
+     no desktop to draw on): no screen saver with a password, and display sleep longer
+     than a run (Energy Saver; the runner holds the Mac awake with `caffeinate` while it
+     runs). Leave the desktop alone during a run: keys go to the reader alone, but clicks
+     land on its window by position.
+  10. **Memory**: 8 GB. A GUI stage starts only with half the machine's memory free, and
+      the app is held to three quarters of it (6 GB at most); the soak's walk through the
+      wiki's big tables has taken the app past 4 GB on Windows, and peaked at 1.8 GB here.
+  11. **Check**: `uv run python scripts/gui_probe.py doctor` should say "ready" (the
+      unlocked desktop, both permissions, `clang`, `.env.runtime`, the profile and its
+      folders). The unit suite: `bash scripts/macos/with-soft-gl.sh pytest -n auto`.
+  12. **Calibrate** once: `uv run python scripts/run_gui_tests.py --calibrate`, the whole
+      GUI suite with the timing budgets off; it writes this machine's to
+      `.benchmarks/gui-timings.json` only if every test passes. On the 2-core guest a
+      comic's images took up to 15s to load, where the committed budget is 6s.
+  13. **Run it**: `git pull --ff-only; uv run python scripts/run_overnight_desktop.py`
+      (`--list`, `--only`, `--skip`; add `; pmset sleepnow` to sleep the Mac after).
+      Results go to `build/overnight/<stamp>/summary.txt`. On macOS it skips `fetch-build`
+      and `built-app` (CI's macOS app cannot draw on a Mac without a GPU driver, and the
+      workspace app runs through `with-soft-gl.sh`), and `validate` until the prebuilt
+      comics are on the machine. A GUI stage reports "not run" when `doctor` fails, its log
+      says why. To push from this Mac, `SKIP=check-censorship-csv git push`: that hook
+      needs `barks-comic-building` and the comics trees, and pytest still runs.
+- **A Mac with no GPU driver** (a VirtualBox guest) cannot open a Kivy window as Kivy asks
+  for one ("Failed creating OpenGL pixel format"): its SDL2 wants a hardware-accelerated
+  renderer, and the only one there is Apple's software renderer (OpenGL 2.1).
+  `scripts/macos/with-soft-gl.sh` builds a small library that lifts that demand
+  (`scripts/macos/softgl.c`; a Mac with a GPU still draws on it) and runs a command in the
+  venv with it: `bash scripts/macos/with-soft-gl.sh python main.py` runs the app, and the
+  GUI probe, the pre-push pytest hook and CI's macOS leg all go through it. The library
+  goes in `DYLD_INSERT_LIBRARIES`, which macOS strips as a hardened-runtime program starts
+  (uv since 0.12) or one of its own (`/bin/bash`), so the script hands it to the command
+  with `uv run env`; don't export it yourself. Once loaded it takes itself out of the
+  environment again, so nothing the command starts inherits it (on Apple silicon dyld kills
+  Apple's own arm64e programs asked to load it). Three things the guest found, now in the
+  code: plain fullscreen rather than a Space of its own (`main.py`: a reader closed mid-way
+  through the Space's animation left its snapshot frozen on screen); no multisampling on
+  software OpenGL (the script sets it off); and no aspect-ratio correction for a size the
+  window has already left (a second resize leaving fullscreen, which the software renderer
+  crashed drawing through).
