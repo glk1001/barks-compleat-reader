@@ -241,14 +241,14 @@ def data_checks() -> list[Check]:
 
 def _prebuilt_dir(ini: Path) -> Path:
     # As the runner's validate stage reads it.
-    import run_overnight_windows  # noqa: PLC0415 (loads the runner only for this)
+    import run_overnight_desktop  # noqa: PLC0415 (loads the runner only for this)
 
-    return run_overnight_windows.prebuilt_dir(ini)
+    return run_overnight_desktop.prebuilt_dir(ini)
 
 
 def memory_check() -> Check:
     """Judge free memory as a GUI stage will, but only warn: tonight's may differ from now's."""
-    import run_overnight_windows as rw  # noqa: PLC0415 (loads the runner only for this)
+    import run_overnight_desktop as rw  # noqa: PLC0415 (loads the runner only for this)
 
     free = rw.available_mb()
     minimum = rw.env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", rw.DEFAULT_MIN_FREE_MB)

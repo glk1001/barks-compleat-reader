@@ -6,7 +6,8 @@
 > nights to come.** Saved here so it survives across machines and sessions; do it on the
 > Windows laptop. Tick a step off here, with its commit, as it lands.
 >
-> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`). First run by
+> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`, since
+>   2026-10-02 `scripts/run_overnight_desktop.py`, which runs on macOS too). First run by
 >   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
 >   runner's (below, "First run"). Since fixed, each stage has passed on its own (the
 >   GUI suite 98/98, `validate`, `fetch-build`); one run of them all, end to end, to come.
@@ -80,7 +81,7 @@ tests (the main machine's build tree and pipelines); `smoke` (CI's); the GUI tim
 
 ## Step 1: the runner, by hand
 
-`scripts/run_overnight_windows.py`, Python rather than bash: Git Bash sets `TERM`, which
+`scripts/run_overnight_desktop.py`, Python rather than bash: Git Bash sets `TERM`, which
 has loguru colour a log file (ccc3d4f3), and its console is cp1252. The shape follows
 `run_overnight.sh`:
 

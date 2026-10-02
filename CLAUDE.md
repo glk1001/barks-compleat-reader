@@ -70,13 +70,16 @@ To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run
 sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
 not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
-On Windows, `uv run python scripts/run_overnight_windows.py` (same options and summary)
-runs what only a Windows machine can: the suite with the data pack, the GUI suite on the
-workspace app and on CI's build of this commit, a soak, `validate`, and the coverage of
-what only Windows runs; nightly through `scripts/windows/register-overnight-task.ps1`;
+On Windows or macOS, `uv run python scripts/run_overnight_desktop.py` (same options and
+summary) runs what only a desktop machine can: the suite with the data pack, the GUI suite
+on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,
+`validate`, and the coverage of what only that platform runs; on Windows nightly through
+`scripts/windows/register-overnight-task.ps1`, and
 `uv run python scripts/check_windows_overnight_host.py` says what a machine still lacks for it
-(setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`.
-Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_windows.py`):
+(setup: `docs/setup.md`, Windows). Plan: `docs/plans/windows-overnight.md`. On a Mac, start it
+in Terminal on the Mac's own desktop, not over ssh: the probe's Accessibility and Screen
+Recording permissions are Terminal's (`docs/plans/macos-gui-tests.md`).
+Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_desktop.py`):
 its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
 runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
 the new coverage stage). The nightly task `register-overnight-task.ps1` registers does

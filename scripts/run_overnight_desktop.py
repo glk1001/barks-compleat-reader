@@ -1,20 +1,25 @@
-"""Run the overnight run on Windows: the stages that only this machine can.
+"""Run the overnight run on Windows or macOS: the stages only a desktop machine can.
 
-The Windows counterpart of ``run_overnight.sh``, which is Linux only (Xvfb,
-systemd-inhibit, bash). CI already covers Windows on every push without the data
-pack: the unit suite, the Nuitka build and a smoke test of it. This runs what CI
-cannot - the real data pack, the real OpenGL drawing, the built executable reading
-comics, and long walks - one stage after another, every stage even after one
-fails, except that nothing runs after a failed ``update``. The whole plan, and what
-is left to Linux and CI, is docs/plans/windows-overnight.md.
+The desktop counterpart of ``run_overnight.sh``, which is Linux only (Xvfb,
+systemd-inhibit, bash). CI already covers Windows and macOS on every push without
+the data pack: the unit suite, the Nuitka build and a smoke test of it. This runs
+what CI cannot - the real data pack, the real OpenGL drawing, the built executable
+reading comics, and long walks - one stage after another, every stage even after
+one fails, except that nothing runs after a failed ``update``. The whole plan, and
+what is left to Linux and CI, is docs/plans/windows-overnight.md; the macOS GUI
+suite's, docs/plans/macos-gui-tests.md.
 
 Stages (name: what it runs):
   update         git pull --ff-only, then uv sync --locked: the run tests what is
-                 on main tonight
-  pytest         the unit suite, with the data pack CI's Windows leg does not have,
-                 its coverage measured for the coverage stage
+                 on main tonight (pull before starting too: a pull that changes
+                 this runner takes effect only on the next run)
+  pytest         the unit suite, with the data pack CI's legs do not have, its
+                 coverage measured for the coverage stage
   fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
-                 its Build Verification run if it is still building); skipped with --app
+                 its Build Verification run if it is still building); skipped with
+                 --app, and on macOS, where CI's app has no software OpenGL to draw
+                 with on a machine without a GPU driver (the workspace app runs
+                 through scripts/macos/with-soft-gl.sh)
   validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
                  whole library; skipped, saying which, while the prebuilt comics
                  are not on this machine. Before the GUI stages: it warms the file cache
@@ -25,13 +30,15 @@ Stages (name: what it runs):
   soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
                  of SOAK_SEEDS
   coverage       the unit suite's and the GUI suite's coverage, each and combined,
-                 with an HTML report of what nothing ran: the code only Windows
-                 runs, which the Linux run cannot measure. The combined figure is
-                 held within COVERAGE_TOLERANCE of this machine's best
+                 with an HTML report of what nothing ran: the code only this
+                 platform runs, which the Linux run cannot measure. The combined
+                 figure is held within COVERAGE_TOLERANCE of this machine's best
                  (coverage_floor.py), on a night pytest and gui both passed
 
-Usage (from the repo root, in PowerShell or cmd):
-  uv run python scripts/run_overnight_windows.py [--list] [--only A,B] [--skip A,B]
+Usage (from the repo root: PowerShell, cmd or Git Bash on Windows; Terminal on the
+Mac's own desktop, not over ssh, as its Accessibility and Screen Recording
+permissions are Terminal's):
+  uv run python scripts/run_overnight_desktop.py [--list] [--only A,B] [--skip A,B]
                                                  [--app PATH]
   --list   print the stages and exit
   --only   run only these stages (comma-separated)
@@ -40,19 +47,22 @@ Usage (from the repo root, in PowerShell or cmd):
 Env: BARKS_OVERNIGHT_SOAK_STEPS (default 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 (default: one seed from the day of the year, the first of the Linux run's three,
 so each night walks a new path); GH_REPO (default glk1001/barks-compleat-reader);
-BARKS_OVERNIGHT_MIN_FREE_MB (default 6144) and BARKS_OVERNIGHT_APP_MEMORY_CAP_MB
-(default 6144), below.
+BARKS_OVERNIGHT_MIN_FREE_MB and BARKS_OVERNIGHT_APP_MEMORY_CAP_MB (defaults sized
+to the machine, below).
 
 Before the first GUI stage it runs ``gui_probe.py doctor``; on a locked screen, or
 with the app's window already open, the GUI stages do not start, and fail, saying
 why: injected keys would go nowhere. While the run lasts the machine and its
-display are kept awake. Leave the machine alone: a key or a click goes to the app.
+display are kept awake (Windows' SetThreadExecutionState, macOS's caffeinate).
+Leave the machine alone: a key or a click goes to the app.
 
 Memory: a GUI stage starts only with MIN_FREE_MB free, else it fails naming the
 biggest apps; and while it runs, the app (its whole process tree) is held to
 APP_MEMORY_CAP_MB: over it, the app is stopped and the stage fails, saying so,
 rather than the machine running out (a soak's walk through the wiki's big
 reference tables once took the app to 4.4 GB). Each GUI stage logs the app's peak.
+Both default to 6 GB, or where that is more than the machine can give, half its
+memory free and three quarters of it as the cap (the 4 GB macOS guest: 2 and 3 GB).
 
 A stage's output goes to build/overnight/<stamp>/<stage>.log and summary.txt holds
 the results so far, in the Linux run's format, rewritten after every stage:
@@ -60,11 +70,12 @@ passed, FAILED, WARNED, skipped (the stage says why) or stopped. The exit status
 is non-zero if any stage FAILED.
 """
 
-# cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday pids
+# cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday pids caffeinate dimsu pmset
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import ctypes
 import datetime as dt
 import io
@@ -88,7 +99,9 @@ if TYPE_CHECKING:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
-RUNNER = "run_overnight_windows"
+RUNNER = "run_overnight_desktop"
+ON_WINDOWS = sys.platform == "win32"
+ON_MACOS = sys.platform == "darwin"
 
 # validate before the GUI stages, as on Linux: it reads every volume, so the first app
 # the GUI suite boots finds them in the file cache. Run last, it left that app reading
@@ -116,9 +129,12 @@ DEFAULT_SOAK_STEPS = "1000"
 DEFAULT_MIN_FREE_MB = 6144
 # The app's ceiling while a GUI stage runs: a guard for the machine, not a leak test
 # (the leave_no GUI tests are those). The suite peaks near 2.2 GB; a soak's walk holds
-# more, garbage that waits for a rare full collection: 4.9 GB here, through the wiki's
-# big reference tables.
+# more, garbage that waits for a rare full collection: 4.9 GB on the Windows laptop,
+# through the wiki's big reference tables.
 DEFAULT_APP_MEMORY_CAP_MB = 6144
+# On a machine too small for those (the 4 GB macOS guest): these shares of its memory.
+SMALL_MACHINE_MIN_FREE_SHARE = 0.5
+SMALL_MACHINE_CAP_SHARE = 0.75
 MEMORY_POLL_SECS = 2.0
 _MB = 1024 * 1024
 
@@ -223,6 +239,21 @@ def short_commit() -> str:
 # ------------------------------------------------------------ processes --
 
 
+SOFT_GL_WRAPPER = SCRIPTS / "macos" / "with-soft-gl.sh"
+
+
+def venv_command(*args: str) -> list[str]:
+    """Return a command that runs `args` in the workspace venv.
+
+    On macOS through with-soft-gl.sh, as the pre-push hook runs the suite there: a
+    Mac without a GPU driver (the VirtualBox guest) opens no Kivy window without
+    it, and a Mac with one still draws on its GPU.
+    """
+    if ON_MACOS:
+        return ["bash", str(SOFT_GL_WRAPPER), *args]
+    return ["uv", "run", *args]
+
+
 def child_env(base: Mapping[str, str], **extra: str) -> dict[str, str]:
     """Return the environment a stage runs in: UTF-8, unbuffered, plain-text logs.
 
@@ -298,11 +329,21 @@ class StageLog:
 
 def kill_tree(pid: int) -> None:
     """End a process and every process it started."""
-    subprocess.run(  # noqa: S603 (a pid of our own)
-        ["taskkill", "/PID", str(pid), "/T", "/F"],  # noqa: S607 (a Windows tool)
-        capture_output=True,
-        check=False,
-    )
+    if ON_WINDOWS:
+        subprocess.run(  # noqa: S603 (a pid of our own)
+            ["taskkill", "/PID", str(pid), "/T", "/F"],  # noqa: S607 (a Windows tool)
+            capture_output=True,
+            check=False,
+        )
+        return
+    try:
+        root = psutil.Process(pid)
+        tree = [*root.children(recursive=True), root]
+    except psutil.Error:
+        return
+    for process in tree:
+        with contextlib.suppress(psutil.Error):
+            process.kill()
 
 
 # ----------------------------------------------------------------- memory --
@@ -319,6 +360,23 @@ def env_mb(env: Mapping[str, str], name: str, default: int) -> int:
 def available_mb() -> int:
     """Return the physical memory free for a new process, in MB."""
     return psutil.virtual_memory().available // _MB
+
+
+def memory_defaults(total_mb: int) -> tuple[int, int]:
+    """Return the default (MIN_FREE_MB, APP_MEMORY_CAP_MB) for a machine of `total_mb`.
+
+    6 GB each where the machine has room; on a smaller one a share of its memory,
+    so a 4 GB machine still runs its GUI stages, held to what it can give.
+    """
+    return (
+        min(DEFAULT_MIN_FREE_MB, int(total_mb * SMALL_MACHINE_MIN_FREE_SHARE)),
+        min(DEFAULT_APP_MEMORY_CAP_MB, int(total_mb * SMALL_MACHINE_CAP_SHARE)),
+    )
+
+
+def machine_memory_defaults() -> tuple[int, int]:
+    """Return `memory_defaults` for this machine."""
+    return memory_defaults(psutil.virtual_memory().total // _MB)
 
 
 def free_memory_problem(free_mb: int, minimum_mb: int) -> str | None:
@@ -350,7 +408,7 @@ def process_tree_mb(pid: int) -> int | None:
     """Return the memory held by `pid` and every process under it, in MB.
 
     None when there is no such process, or it is not the app's (a pid file left
-    behind whose number Windows has given to something else).
+    behind whose number the system has given to something else).
     """
     try:
         root = psutil.Process(pid)
@@ -432,10 +490,40 @@ _ES_DISPLAY_REQUIRED = 0x00000002
 
 @contextmanager
 def kept_awake() -> Iterator[None]:
-    """Keep the machine and its display awake while the block runs: Windows' systemd-inhibit.
+    """Keep the machine and its display awake while the block runs: Linux's systemd-inhibit.
 
-    The display too: SendInput needs a screen that is on and unlocked. Cleared on
-    the way out, however the run ends (and by Windows, should the process die).
+    The display too: injected input needs a screen that is on and unlocked.
+    """
+    with _kept_awake_windows() if ON_WINDOWS else _kept_awake_macos():
+        yield
+
+
+@contextmanager
+def _kept_awake_macos() -> Iterator[None]:
+    """Hold sleep off with caffeinate, for as long as this process lives.
+
+    ``-w`` ties it to this process, so it lets go even if the run is killed.
+    """
+    try:
+        caffeinate = subprocess.Popen(  # noqa: S603 (fixed argv)
+            ["caffeinate", "-dimsu", "-w", str(os.getpid())],  # noqa: S607 (a macOS tool)
+        )
+    except OSError:
+        say(f"{RUNNER}: WARNING - could not hold off sleep; the machine may sleep mid-run")
+        yield
+        return
+    try:
+        yield
+    finally:
+        caffeinate.terminate()
+
+
+@contextmanager
+def _kept_awake_windows() -> Iterator[None]:
+    """Hold sleep off with SetThreadExecutionState.
+
+    Cleared on the way out, however the run ends (and by Windows, should the
+    process die).
     """
     _kernel32.SetThreadExecutionState.restype = ctypes.c_uint32
     _kernel32.SetThreadExecutionState.argtypes = [ctypes.c_uint32]
@@ -463,10 +551,27 @@ class _SystemPowerStatus(ctypes.Structure):
 
 def on_battery() -> bool:
     """Return whether the machine is running on its battery (the AC line is off)."""
+    if not ON_WINDOWS:
+        done = subprocess.run(
+            ["pmset", "-g", "batt"],  # noqa: S607 (a macOS tool)
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return pmset_on_battery(done.stdout)
     status = _SystemPowerStatus()
     if not _kernel32.GetSystemPowerStatus(ctypes.byref(status)):
         return False
     return status.ACLineStatus == 0
+
+
+def pmset_on_battery(pmset_batt: str) -> bool:
+    """Return whether `pmset -g batt`'s output says the Mac draws from its battery.
+
+    Its first line names the source: "Now drawing from 'Battery Power'" or
+    "... 'AC Power'" (a desktop Mac or a VM says AC).
+    """
+    return "'Battery Power'" in pmset_batt
 
 
 # ------------------------------------------------------------ fetch-build --
@@ -539,7 +644,8 @@ class Run:
 
     def gui_tests(self, log: StageLog, *args: str, **env: str) -> int:
         """Run the GUI suite, holding the app to its memory ceiling; over it fails the run."""
-        cap = env_mb(os.environ, "BARKS_OVERNIGHT_APP_MEMORY_CAP_MB", DEFAULT_APP_MEMORY_CAP_MB)
+        _, default_cap = machine_memory_defaults()
+        cap = env_mb(os.environ, "BARKS_OVERNIGHT_APP_MEMORY_CAP_MB", default_cap)
         watch = AppMemoryWatch(log, cap, gui_probe.run_dir() / "app.pid", MEMORY_POLL_SECS)
         watch.start()
         try:
@@ -560,14 +666,18 @@ class Run:
     def stage_pytest(self, log: StageLog) -> int:
         self.cov_dir.mkdir(exist_ok=True)
         env = child_env(os.environ, COVERAGE_FILE=str(self.cov_dir / ".coverage.unit"))
-        return log.run(
-            ["uv", "run", "pytest", "-q", "--cov", "--cov-report=term:skip-covered"], env
-        )
+        return log.run(venv_command("pytest", "-q", "--cov", "--cov-report=term:skip-covered"), env)
 
     def stage_fetch_build(self, log: StageLog) -> int:
         if self.app is not None:
             log.line(f"fetch-build: skipped - using --app {self.app}")
             self.no_exe_why = ""
+            return SKIPPED
+        if not ON_WINDOWS:
+            log.line("fetch-build: skipped - CI's macOS app is not tried here yet: it has no")
+            log.line("  software OpenGL, which a Mac without a GPU driver needs (the workspace")
+            log.line("  app runs through scripts/macos/with-soft-gl.sh); --app tries one")
+            self.no_exe_why = "fetch-build fetches none on macOS (see fetch-build.log)"
             return SKIPPED
         self.no_exe_why = "fetch-build did not fetch the executable (see fetch-build.log)"
         repo = os.environ.get("GH_REPO", DEFAULT_GH_REPO)
@@ -665,17 +775,10 @@ class Run:
         comics = prebuilt_dir(ini)
         if not comics.is_dir():
             log.line(f"validate: skipped - the prebuilt comics are not on this machine: {comics}")
-            log.line("  (its Phase 7 would fail every title; step 4 of the Windows overnight plan)")
+            log.line("  (its Phase 7 would fail every title: windows-overnight.md, step 4)")
             return SKIPPED
-        return log.run(
-            [
-                "uv",
-                "run",
-                str(SCRIPTS / "validate-barks-reader-files.py"),
-                "--full-load-check",
-                "--strict-wiki",
-            ]
-        )
+        validate = str(SCRIPTS / "validate-barks-reader-files.py")
+        return log.run(venv_command("python", validate, "--full-load-check", "--strict-wiki"))
 
     def stage_coverage(self, log: StageLog) -> int:
         """Report the unit suite's, the GUI suite's and the combined coverage; judge the last."""
@@ -729,7 +832,8 @@ class Run:
             log.line(f"  doctor says why in {self.log_dir_rel}/gui-doctor.log")
             return 1
         if name in GUI_STAGES:
-            minimum = env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", DEFAULT_MIN_FREE_MB)
+            default_minimum, _ = machine_memory_defaults()
+            minimum = env_mb(os.environ, "BARKS_OVERNIGHT_MIN_FREE_MB", default_minimum)
             problem = free_memory_problem(available_mb(), minimum)
             if problem is not None:
                 log.line(f"{name}: not run - {problem}:")
@@ -817,8 +921,8 @@ def main(argv: Sequence[str]) -> int:
     if options.app is not None and not options.app.is_file():
         print(f"{RUNNER}: not an executable: {options.app}", file=sys.stderr)  # noqa: T201
         return 2
-    if sys.platform != "win32":
-        print(f"{RUNNER}: Windows only; elsewhere use run_overnight.sh", file=sys.stderr)  # noqa: T201
+    if not (ON_WINDOWS or ON_MACOS):
+        print(f"{RUNNER}: Windows and macOS only; on Linux use run_overnight.sh", file=sys.stderr)  # noqa: T201
         return 2
     if on_battery():
         say(f"{RUNNER}: WARNING - on battery: a throttled CPU can fail the timing budgets; plug in")

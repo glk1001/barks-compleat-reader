@@ -2,7 +2,7 @@
 # Register the nightly Windows overnight run as a Task Scheduler task, so a second
 # machine is set up the same way (docs/plans/windows-overnight.md, step 3).
 #
-# The task runs scripts/run_overnight_windows.py through uv from this checkout:
+# The task runs scripts/run_overnight_desktop.py through uv from this checkout:
 #   - nightly at -At (default 02:00);
 #   - "Run only when user is logged on" (an Interactive logon): SendInput needs the
 #     interactive desktop, which a task run without a logged-on user does not have;
@@ -40,7 +40,7 @@ if (-not $uv) {
 }
 
 $action = New-ScheduledTaskAction -Execute $uv `
-    -Argument "run --no-sync python scripts\run_overnight_windows.py" `
+    -Argument "run --no-sync python scripts\run_overnight_desktop.py" `
     -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Daily -At $At
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `

@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate -->
+<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate pmset sleepnow -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -185,9 +185,9 @@ fails it. It checks an overnight host's needs, which a development machine share
 
 ## Windows and macOS
 
-Both run the app, the unit tests and the build. Windows also runs the GUI tests
-(`scripts/run_gui_tests.py`, one worker in a visible window) and its own overnight run
-(`scripts/run_overnight_windows.py`; plan and stages in `docs/plans/windows-overnight.md`).
+Both run the app, the unit tests and the build, and the GUI tests
+(`scripts/run_gui_tests.py`, one worker in a visible window) and their own overnight run
+(`scripts/run_overnight_desktop.py`; plan and stages in `docs/plans/windows-overnight.md`).
 
 - **Windows.** uv from its installer, bun with `winget install Oven-sh.Bun`. That package
   has no `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. After
@@ -318,3 +318,13 @@ Both run the app, the unit tests and the build. Windows also runs the GUI tests
     Then `uv run python scripts/run_gui_tests.py --quiet` (`-k` and pytest's other
     options pass through; `--soak` for the random walk). The whole suite ran clean there
     on 2026-10-01: `docs/plans/macos-gui-tests.md`.
+  - **The overnight run**, once the GUI tests above run: in Terminal on the guest's own
+    desktop (its permissions are Terminal's; an ssh session has none),
+    `git pull --ff-only; uv run python scripts/run_overnight_desktop.py; pmset sleepnow`.
+    It keeps the Mac awake with `caffeinate` while it runs, runs the unit suite and
+    `validate` through `with-soft-gl.sh`, and skips `fetch-build` and `built-app`: CI's
+    macOS app has no software OpenGL for a guest without a GPU driver. Its memory limits
+    follow the machine's (on the 4 GB guest, 2 GB free to start a GUI stage and a 3 GB
+    cap); give the guest 8 GB if the host can, as the soak's walk through the wiki's big
+    tables has taken the app past 4 GB on Windows. `validate` skips until the prebuilt
+    comics are on the guest.

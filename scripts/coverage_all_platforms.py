@@ -3,7 +3,7 @@
 
 Each overnight run measures what its own platform runs: the Linux run
 (``run_overnight.sh``) the unit suite and the GUI tests, the Windows run
-(``run_overnight_windows.py``) the same plus the code only Windows reaches
+(``run_overnight_desktop.py``) the same plus the code only Windows reaches
 (``platform_window_win32.py`` and the like). Neither alone counts all of it. This
 fetches both machines' data over ssh, for the newest commit both have measured
 (or ``--commit``), and reports Linux, Windows and the two together, with what
