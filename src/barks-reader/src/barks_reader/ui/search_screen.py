@@ -1631,10 +1631,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             return None
         return SearchFilter(years=self._era.years, tag_titles=tag_titles)
 
-    def _nav_enter_speakers(self) -> None:
-        """Focus the speaker row, on the selected chip."""
-        self._nav_enter_panel_row("speakers")
-
     @staticmethod
     def _build_word_results(
         found: dict[str, TitleInfo], hit_counts: dict[str, int] | None = None
@@ -2080,16 +2076,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._nav_focus_area = "results"
         self._nav_focused_result_idx = 0
         self._nav_word_sub_focus = "title"
-
-    def _nav_up_from_results(self) -> None:
-        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
-            self._nav_focus_area = "tags"
-            chips = self._get_active_chip_buttons()
-            self._nav_focused_chip_idx = len(chips) - 1
-            self._draw_chip_focus()
-        else:
-            self._nav_focus_area = "input"
-            self._focus_active_input()
 
     def _nav_escape(self) -> None:
         self._clear_result_focus()
