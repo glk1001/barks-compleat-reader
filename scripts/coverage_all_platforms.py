@@ -10,10 +10,13 @@ measured (or ``--commit``), and reports each platform and all of them together,
 with what each desktop platform adds to Linux and an HTML report. It is a report
 only: each machine's own coverage stage already holds its own figure to a floor.
 
-The data must be of one commit, since coverage records line numbers: the source
-reported against is that commit's, taken from git (``git archive``), not this
-checkout's, which may have moved on. The machines' absolute paths are mapped onto
-it on combine, the Windows ones written with backslashes.
+The data must be of one commit's code, since coverage records line numbers: the
+source reported against is that commit's, taken from git (``git archive``), not
+this checkout's, which may have moved on. Runs of different commits pair when
+their ``src/`` trees are the same (coverage measures nothing else), so a commit
+that changed only scripts or docs does not keep the machines apart. The machines'
+absolute paths are mapped onto it on combine, the Windows ones written with
+backslashes.
 
 Usage: coverage_all_platforms.py LINUX_HOST[:REPO] WINDOWS_HOST[:REPO]
                                  [MACOS_HOST[:REPO]] [--commit SHA]
@@ -35,13 +38,14 @@ import subprocess
 import sys
 import tarfile
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 import coverage
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT_ROOT = REPO_ROOT / "build" / "coverage-all"
@@ -125,11 +129,45 @@ def same_commit(a: str, b: str) -> bool:
     return a.startswith(b) or b.startswith(a)
 
 
-def pick_runs(runs: Mapping[str, Sequence[Run]], commit: str | None) -> dict[str, Run]:
+def same_source(src_tree: Callable[[str], str | None]) -> Callable[[str, str], bool]:
+    """Return a test of whether two commits measured the same code.
+
+    The same commit, or two whose ``src/`` trees are one (`src_tree` gives a
+    commit's, or None when git does not have it): coverage measures only
+    ``src/``, so a commit that changed only scripts or docs measured the same lines.
+    """
+
+    def same(a: str, b: str) -> bool:
+        if same_commit(a, b):
+            return True
+        tree = src_tree(a)
+        return tree is not None and tree == src_tree(b)
+
+    return same
+
+
+@cache
+def git_src_tree(commit: str) -> str | None:
+    """Return the id of a commit's ``src/`` tree, or None when git here does not have it."""
+    done = subprocess.run(  # noqa: S603
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "--verify", "--quiet", f"{commit}:src"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return done.stdout.strip() or None
+
+
+def pick_runs(
+    runs: Mapping[str, Sequence[Run]],
+    commit: str | None,
+    same: Callable[[str, str], bool] = same_commit,
+) -> dict[str, Run]:
     """Return each platform's newest run of one commit (`commit`, or the newest all have).
 
     `runs` is each platform's runs, newest first; the first platform's order picks
-    the commit.
+    the commit. `same` says whether another platform's run measured that commit's
+    code: by default only a run of that very commit does.
     """
     first, *others = runs
     for run in runs[first]:
@@ -137,7 +175,7 @@ def pick_runs(runs: Mapping[str, Sequence[Run]], commit: str | None) -> dict[str
             continue
         picked = {first: run}
         for platform in others:
-            match = next((r for r in runs[platform] if same_commit(run.commit, r.commit)), None)
+            match = next((r for r in runs[platform] if same(run.commit, r.commit)), None)
             if match is None:
                 break
             picked[platform] = match
@@ -318,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
     """Fetch, combine and report; return the exit code."""
     hosts, commit = _hosts(argv)
     try:
-        runs = pick_runs({h.platform: parse_runs(_ssh(h, _LIST_RUNS)) for h in hosts}, commit)
+        listed = {h.platform: parse_runs(_ssh(h, _LIST_RUNS)) for h in hosts}
+        runs = pick_runs(listed, commit, same_source(git_src_tree))
         out = OUT_ROOT / runs[LINUX].commit
         shutil.rmtree(out, ignore_errors=True)
         source_root = out / "source"
@@ -342,11 +381,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(f"coverage-all: commit {runs[LINUX].commit}")  # noqa: T201
+    others = {r.commit for r in runs.values()} - {runs[LINUX].commit}
+    if others:
+        print(f"  with {', '.join(sorted(others))}: the same src/, so the same lines")  # noqa: T201
     if copied:
         print(f"  not in git, this checkout's copy used: {', '.join(copied)}")  # noqa: T201
     for host in hosts:
         total = _total(data[host.platform])
-        where = f"({host.name}, run {runs[host.platform].stamp})"
+        run = runs[host.platform]
+        where = f"({host.name}, run {run.stamp}, {run.commit})"
         print(f"  {host.platform:<8} {total:>5}%  {where}")  # noqa: T201
     print(f"  {'all':<8} {_total(all_data):>5}%")  # noqa: T201
     linux_data = _read(data[LINUX])

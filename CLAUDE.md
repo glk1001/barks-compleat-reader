@@ -85,9 +85,9 @@ runner itself takes effect only on the next run (on 2026-10-01 a run started tha
 the new coverage stage). The nightly task `register-overnight-task.ps1` registers does
 not pull first.
 `uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST [MACOS_HOST]`
-combines the machines' coverage of the newest commit all ran overnight (`--commit`),
-reported against that commit's source: each platform, all together, and what only each
-desktop platform ran (report only).
+combines the machines' coverage of the newest commit all ran overnight (`--commit`), or of
+commits with the same `src/` tree, reported against that source: each platform, all
+together, and what only each desktop platform ran (report only).
 
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):

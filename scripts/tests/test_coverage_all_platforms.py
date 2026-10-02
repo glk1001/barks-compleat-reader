@@ -1,7 +1,10 @@
 """Tests for coverage_all_platforms.py: picking one commit's runs and mapping every platform."""
 
+# cspell:ignore gpgsign
+
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -68,6 +71,57 @@ class TestRuns:
         windows = [_run("9", "bbbbbbbb"), _run("8", "aaaaaaaa")]
         picked = cap.pick_runs({cap.LINUX: linux, cap.WINDOWS: windows}, "aaaa")
         assert picked == {cap.LINUX: linux[1], cap.WINDOWS: windows[1]}
+
+    def test_runs_of_commits_with_the_same_source_pair(self) -> None:
+        """A commit that changed only scripts or docs keeps the code the others measured."""
+        trees = {"cccccccc": "tree1", "bbbbbbbb": "tree1", "aaaaaaaa": "tree0"}
+        same = cap.same_source(trees.get)
+        linux = [_run("3", "cccccccc")]
+        windows = [_run("9", "bbbbbbbb"), _run("8", "aaaaaaaa")]
+        picked = cap.pick_runs({cap.LINUX: linux, cap.WINDOWS: windows}, None, same)
+        assert picked == {cap.LINUX: linux[0], cap.WINDOWS: windows[0]}
+
+    def test_a_commit_git_does_not_have_pairs_only_with_itself(self) -> None:
+        same = cap.same_source({"aaaaaaaa": "tree0"}.get)
+        assert same("aaaaaaaa", "aaaa")
+        assert not same("ffffffff", "eeeeeeee")  # neither known: no tree to compare
+        assert not same("aaaaaaaa", "ffffffff")
+
+    def test_the_src_tree_follows_src_alone(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A real repository: a docs-only commit keeps src/'s tree, a code commit changes it."""
+        # Run from a git hook (pre-push runs the suite), git's GIT_DIR and the like
+        # are set, and they beat -C: every command here would reach this repo instead.
+        for name in [n for n in os.environ if n.startswith("GIT_")]:
+            monkeypatch.delenv(name)
+        git = [
+            *("git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t"),
+            *("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"),
+        ]
+
+        def commit(path: str, text: str) -> str:
+            (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / path).write_text(text, encoding="utf-8")
+            cap.subprocess.run([*git, "add", "-A"], check=True)
+            cap.subprocess.run([*git, "commit", "-qm", path], check=True)
+            head = [*git, "rev-parse", "HEAD"]
+            return cap.subprocess.run(
+                head, capture_output=True, text=True, check=True
+            ).stdout.strip()
+
+        cap.subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        first = commit("src/a.py", "a = 1\n")
+        docs = commit("docs/notes.md", "notes\n")
+        code = commit("src/a.py", "a = 2\n")
+        cap.git_src_tree.cache_clear()
+        try:
+            with patch.object(cap, "REPO_ROOT", tmp_path):
+                assert cap.git_src_tree(first) == cap.git_src_tree(docs)
+                assert cap.git_src_tree(code) != cap.git_src_tree(first)
+                assert cap.git_src_tree("0" * 40) is None
+        finally:
+            cap.git_src_tree.cache_clear()
 
     def test_no_commit_in_common_names_what_each_machine_has(self) -> None:
         runs = {
