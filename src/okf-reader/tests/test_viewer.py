@@ -5,9 +5,9 @@
 The remote's paths are the GUI suite's (``src/barks-reader/tests/gui/test_wiki.py``);
 what a remote cannot reach is here: the standalone app's keys, PageUp/PageDown/
 Home/End, the mouse's hover and back button, a link inside a footnote, and the
-search index failing to build. A viewer needs a Kivy window, which the macOS CI
-runner does not have (KIVY_HEADLESS_CI), so there these are skipped; the Windows
-runner draws one through ANGLE and runs them.
+search index failing to build. A viewer needs a Kivy window, so these are skipped
+where there is none (KIVY_HEADLESS_CI); every CI runner draws one now (macOS on
+Apple's software renderer, Windows through ANGLE) and runs them.
 """
 
 from __future__ import annotations

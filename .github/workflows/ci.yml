@@ -150,17 +150,24 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum uv run pytest
 
-      # macOS runners cannot create an OpenGL context at all, so the Kivy UI tests
-      # are skipped there (KIVY_HEADLESS_CI; tests/unit/conftest.py).
+      # The runners have no GPU driver for OpenGL, and Kivy's SDL2 refused the software
+      # renderer by asking for an accelerated one ("Failed creating OpenGL pixel
+      # format"), so the UI tests were skipped here. with-soft-gl.sh lifts that request
+      # (scripts/macos/softgl.c), as on the macOS VirtualBox guest. This opens one Kivy
+      # window first and names the renderer, so a runner that cannot draw says so here.
+      - name: OpenGL on the runner (macOS)
+        if: runner.os == 'macOS'
+        run: >-
+          bash scripts/macos/with-soft-gl.sh python -c "import os;
+          os.environ['KIVY_NO_ARGS'] = '1';
+          from kivy.core.window import Window;
+          from kivy.graphics import opengl as gl;
+          assert Window, 'no Kivy window';
+          print('renderer:', gl.glGetString(gl.GL_RENDERER), gl.glGetString(gl.GL_VERSION))"
+
       - name: Run tests (macOS)
         if: runner.os == 'macOS'
-        env:
-          KIVY_DPI: "96"
-          KIVY_METRICS_DENSITY: "1"
-          KIVY_METRICS_FONTSCALE: "1"
-          KIVY_WINDOW: "no_provider"
-          KIVY_HEADLESS_CI: "1"
-        run: uv run pytest
+        run: bash scripts/macos/with-soft-gl.sh pytest
 
       # Windows draws through ANGLE (Direct3D, in software on the runner): its
       # OpenGL is GDI Generic 1.1, below Kivy's 2.0, as Build Verification's smoke

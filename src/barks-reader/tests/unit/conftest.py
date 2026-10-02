@@ -1,10 +1,10 @@
 """Conftest that auto-skips Kivy-UI tests when no OpenGL context is available.
 
-On a headless CI runner without a display server or GPU (macOS: its runners
-create no OpenGL context at all), Kivy cannot create an OpenGL window. Tests
-that import from barks_reader.ui or kivy are skipped when the environment
-variable KIVY_HEADLESS_CI is set. The Windows runner does not set it: it draws
-through ANGLE (Direct3D in software), and runs them.
+On a machine with no display server or GPU, Kivy cannot create an OpenGL window.
+Tests that import from barks_reader.ui or kivy are skipped when the environment
+variable KIVY_HEADLESS_CI is set. No CI runner sets it now: Linux draws on Xvfb,
+Windows through ANGLE (Direct3D in software), and macOS on Apple's software
+renderer through scripts/macos/with-soft-gl.sh; all three run them.
 """
 
 from __future__ import annotations
