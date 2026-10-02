@@ -1,13 +1,13 @@
-"""Tests for the Windows overnight runner: its stage table, its choices and its summary.
+"""Tests for the desktop overnight runner: its stage table, its choices and its summary.
 
-The stages themselves run real tools on the Windows laptop; what is tested here,
+The stages themselves run real tools on the Windows laptop and the Mac; what is tested here,
 on every platform, is what decides which of them run, what each result is
 called, and that summary.txt reads as the Linux run's does.
 """
 
 # ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
-# cspell:ignore PYTHONIOENCODING
+# cspell:ignore PYTHONIOENCODING caffeinate dimsu pmset taskkill procs
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
-import run_overnight_windows as rw
+import run_overnight_desktop as rw
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -41,6 +41,12 @@ class TestStageTable:
     def test_update_comes_first(self) -> None:
         # Everything after it tests the code it pulled.
         assert rw.STAGES[0] == "update"
+
+    def test_the_build_is_fetched_late_just_before_it_is_used(self) -> None:
+        """After the GUI suite, CI's build of a fresh push is done: no stage waits on it."""
+        stages = list(rw.STAGES)
+        assert stages.index("fetch-build") == stages.index("built-app") - 1
+        assert stages.index("fetch-build") > stages.index("gui")
 
     def test_the_statuses_are_the_linux_runs(self) -> None:
         text = LINUX_RUNNER.read_text(encoding="utf-8")
@@ -501,3 +507,100 @@ class TestMain:
     def test_list(self, capsys: pytest.CaptureFixture[str]) -> None:
         assert rw.main(["--list"]) == 0
         assert "fetch-build" in capsys.readouterr().out
+
+    def test_linux_is_sent_to_its_own_runner(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with patch.object(rw, "ON_WINDOWS", False), patch.object(rw, "ON_MACOS", False):  # noqa: FBT003
+            assert rw.main([]) == 2
+        assert "on Linux use run_overnight.sh" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ macOS --
+
+
+class TestMachineMemory:
+    @pytest.mark.parametrize(
+        ("total_mb", "expected"),
+        [
+            (16384, (6144, 6144)),  # the Windows laptop: the 6 GB defaults
+            (8192, (4096, 6144)),
+            (4096, (2048, 3072)),  # the macOS guest: half free to start, three quarters cap
+        ],
+    )
+    def test_the_defaults_fit_the_machine(self, total_mb: int, expected: tuple[int, int]) -> None:
+        assert rw.memory_defaults(total_mb) == expected
+
+
+class TestMacOS:
+    @pytest.mark.parametrize(
+        ("pmset", "on_battery"),
+        [
+            ("Now drawing from 'AC Power'\n", False),  # what the macOS guest says
+            ("Now drawing from 'Battery Power'\n -InternalBattery-0\t87%; discharging", True),
+            ("", False),
+        ],
+    )
+    def test_the_power_source(self, pmset: str, on_battery: bool) -> None:
+        assert rw.pmset_on_battery(pmset) is on_battery
+
+    def test_caffeinate_holds_sleep_off_for_this_process(self) -> None:
+        with (
+            patch.object(rw, "ON_WINDOWS", False),  # noqa: FBT003
+            patch.object(rw.subprocess, "Popen") as popen,
+        ):
+            with rw.kept_awake():
+                popen.return_value.terminate.assert_not_called()
+            popen.return_value.terminate.assert_called_once()
+        assert popen.call_args.args[0] == ["caffeinate", "-dimsu", "-w", str(rw.os.getpid())]
+
+    def test_no_caffeinate_warns_and_runs_on(self) -> None:
+        with (
+            patch.object(rw, "ON_WINDOWS", False),  # noqa: FBT003
+            patch.object(rw.subprocess, "Popen", side_effect=OSError("no caffeinate")),
+            patch.object(rw, "say") as say,
+            rw.kept_awake(),
+        ):
+            pass
+        assert "could not hold off sleep" in say.call_args.args[0]
+
+    def test_a_process_tree_is_ended_without_taskkill(self) -> None:
+        script = (
+            "import subprocess, sys, time;"
+            " subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']);"
+            " time.sleep(60)"
+        )
+        parent = rw.subprocess.Popen([rw.sys.executable, "-c", script])
+        try:
+            children: list[rw.psutil.Process] = []
+            deadline = rw.time.monotonic() + 10
+            while not children and rw.time.monotonic() < deadline:
+                children = rw.psutil.Process(parent.pid).children()
+            assert children, "the parent never started its child"
+            with patch.object(rw, "ON_WINDOWS", False):  # noqa: FBT003
+                rw.kill_tree(parent.pid)
+            assert parent.wait(10) != 0
+            _, alive = rw.psutil.wait_procs(children, timeout=10)
+            assert not alive, f"left running: {alive}"
+        finally:
+            if parent.poll() is None:
+                parent.kill()
+
+    def test_the_suite_runs_through_the_soft_gl_wrapper_on_macos(self) -> None:
+        with patch.object(rw, "ON_MACOS", True):  # noqa: FBT003
+            assert rw.venv_command("pytest", "-q") == [
+                "bash",
+                str(rw.SOFT_GL_WRAPPER),
+                "pytest",
+                "-q",
+            ]
+        assert rw.SOFT_GL_WRAPPER.is_file()
+        with patch.object(rw, "ON_MACOS", False):  # noqa: FBT003
+            assert rw.venv_command("pytest", "-q") == ["uv", "run", "pytest", "-q"]
+
+    def test_fetch_build_fetches_nothing_on_macos(self, repo: Path) -> None:
+        run = rw.Run(["fetch-build", "built-app"], None)
+        run.gui_ready = True
+        with patch.object(rw, "ON_WINDOWS", False):  # noqa: FBT003
+            assert run.run() == 0
+        assert _results(repo) == {"fetch-build": "skipped", "built-app": "skipped"}
+        (log,) = repo.glob("build/overnight/*/fetch-build.log")
+        assert "with-soft-gl.sh" in log.read_text(encoding="utf-8")

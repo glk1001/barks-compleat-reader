@@ -169,14 +169,16 @@ jobs:
         if: runner.os == 'macOS'
         run: bash scripts/macos/with-soft-gl.sh pytest
 
+      # Windows draws through ANGLE (Direct3D, in software on the runner): its
+      # OpenGL is GDI Generic 1.1, below Kivy's 2.0, as Build Verification's smoke
+      # tests found. With a window to draw in, the Kivy UI tests run here too.
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
         env:
           KIVY_DPI: "96"
           KIVY_METRICS_DENSITY: "1"
           KIVY_METRICS_FONTSCALE: "1"
-          KIVY_WINDOW: "no_provider"
-          KIVY_HEADLESS_CI: "1"
+          KIVY_GL_BACKEND: "angle_sdl2"
         run: uv run pytest
 
   diff-coverage:

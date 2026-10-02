@@ -371,3 +371,36 @@ def test_nothing_typed_finds_nothing(fake: InMemoryFullTextSearch, lexicon: Term
     result = run_query_text("   ", fake, lexicon)
     assert (result.title_dict, result.error, result.notices) == ({}, None, ())
     assert fake.bubble_calls == []
+
+
+def test_near_with_a_too_common_word_finds_nothing_and_says_why(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("the NEAR gold", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert (result.title_dict, result.notices) == ({}, ('"the" is too common to search for.',))
+
+
+def test_near_with_a_wildcard_matching_no_word_finds_nothing(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    """A word in no story is still searched as typed; a wildcard that matches none is not."""
+    result = run_query_text("gold NEAR zz*", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert result.title_dict == {}
+    assert not fake.bubble_calls  # nothing left to search for
+
+
+def test_filters_grouped_inside_an_or_all_apply(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    """(year:1947 vol:5) holds only where both do: Bear Mountain; or else 1942's Pirate Gold."""
+    assert set(_stories("mine (year:1942 OR (year:1947 vol:5))", fake, lexicon)) == {PIRATE, BEAR}
+    assert _stories("mine (year:1942 OR (year:1947 vol:7))", fake, lexicon) == [PIRATE]
+
+
+def test_only_a_filter_is_made_into_one() -> None:
+    """The evaluator calls it only on filters; anything else is a bug, and says so."""
+    from barks_fantagraphics.search_evaluate import _Evaluator  # noqa: PLC0415
+
+    evaluator = _Evaluator(InMemoryFullTextSearch(), TermLexicon([]), None, MY_STOP_WORDS)
+    with pytest.raises(ValueError, match="Not a filter"):
+        evaluator._filter_of(Word("gold"))  # noqa: SLF001

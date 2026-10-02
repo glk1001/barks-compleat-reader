@@ -1,4 +1,4 @@
-"""Tests for coverage_all_platforms.py: picking one commit's runs and mapping both platforms."""
+"""Tests for coverage_all_platforms.py: picking one commit's runs and mapping every platform."""
 
 from __future__ import annotations
 
@@ -12,10 +12,13 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-LINUX = cap.Host("gmk", "Prj/barks-compleat-reader")
-WINDOWS = cap.Host("win", "source/repos/barks-compleat-reader")
+LINUX = cap.Host(cap.LINUX, "gmk", "Prj/barks-compleat-reader")
+WINDOWS = cap.Host(cap.WINDOWS, "win", "source/repos/barks-compleat-reader")
+MACOS = cap.Host(cap.MACOS, "mac", "Developer/barks-compleat-reader")
 WIN_FILE = r"C:\Users\me\source\repos\barks-compleat-reader\src\pkg\src\pkg\mod.py"
 LINUX_FILE = "/home/me/Prj/barks-compleat-reader/src/pkg/src/pkg/mod.py"
+MAC_FILE = "/Users/me/Developer/barks-compleat-reader/src/pkg/src/pkg/mod.py"
+NAMES = ("barks-compleat-reader",)
 
 
 def _run(stamp: str, commit: str) -> cap.Run:
@@ -49,46 +52,70 @@ class TestRuns:
     def test_the_newest_commit_both_machines_measured(self) -> None:
         linux = [_run("3", "cccccccc"), _run("2", "bbbbbbbb"), _run("1", "aaaaaaaa")]
         windows = [_run("9", "bbbbbbbb"), _run("8", "aaaaaaaa")]
-        assert cap.pick_runs(linux, windows, None) == (linux[1], windows[0])
+        picked = cap.pick_runs({cap.LINUX: linux, cap.WINDOWS: windows}, None)
+        assert picked == {cap.LINUX: linux[1], cap.WINDOWS: windows[0]}
+
+    def test_the_newest_commit_all_three_measured(self) -> None:
+        """A commit the Mac has not run yet is passed over for one every machine ran."""
+        linux = [_run("3", "cccccccc"), _run("2", "bbbbbbbb")]
+        windows = [_run("9", "cccccccc"), _run("8", "bbbbbbbb")]
+        macos = [_run("5", "bbbbbbbb")]
+        picked = cap.pick_runs({cap.LINUX: linux, cap.WINDOWS: windows, cap.MACOS: macos}, None)
+        assert picked == {cap.LINUX: linux[1], cap.WINDOWS: windows[1], cap.MACOS: macos[0]}
 
     def test_a_named_commit_by_abbreviation(self) -> None:
         linux = [_run("2", "bbbbbbbb"), _run("1", "aaaaaaaa")]
         windows = [_run("9", "bbbbbbbb"), _run("8", "aaaaaaaa")]
-        assert cap.pick_runs(linux, windows, "aaaa") == (linux[1], windows[1])
+        picked = cap.pick_runs({cap.LINUX: linux, cap.WINDOWS: windows}, "aaaa")
+        assert picked == {cap.LINUX: linux[1], cap.WINDOWS: windows[1]}
 
     def test_no_commit_in_common_names_what_each_machine_has(self) -> None:
-        with pytest.raises(cap.CoverageAllError, match=r"Linux: bbbbbbbb; Windows: aaaaaaaa"):
-            cap.pick_runs([_run("2", "bbbbbbbb")], [_run("1", "aaaaaaaa")], None)
+        runs = {
+            cap.LINUX: [_run("2", "bbbbbbbb")],
+            cap.WINDOWS: [_run("1", "aaaaaaaa")],
+            cap.MACOS: [],
+        }
+        match = r"Linux: bbbbbbbb; Windows: aaaaaaaa; macOS: none"
+        with pytest.raises(cap.CoverageAllError, match=match):
+            cap.pick_runs(runs, None)
 
 
 class TestPaths:
     def test_a_host_without_a_repo_takes_the_default(self) -> None:
-        assert cap.parse_host("win", "d/r") == cap.Host("win", "d/r")
-        assert cap.parse_host("win:x/y", "d/r") == cap.Host("win", "x/y")
+        assert cap.parse_host(cap.WINDOWS, "win", "d/r") == cap.Host(cap.WINDOWS, "win", "d/r")
+        assert cap.parse_host(cap.MACOS, "mac:x/y", "d/r") == cap.Host(cap.MACOS, "mac", "x/y")
 
-    def test_either_platforms_path_within_the_repo(self) -> None:
-        names = (LINUX.repo_dir_name, WINDOWS.repo_dir_name)
-        assert cap.repo_relative(WIN_FILE, names) == "src/pkg/src/pkg/mod.py"
-        assert cap.repo_relative(LINUX_FILE, names) == "src/pkg/src/pkg/mod.py"
-        assert cap.repo_relative("/elsewhere/mod.py", names) is None
+    def test_each_platforms_path_within_the_repo(self) -> None:
+        for path in (WIN_FILE, LINUX_FILE, MAC_FILE):
+            assert cap.repo_relative(path, NAMES) == "src/pkg/src/pkg/mod.py"
+        assert cap.repo_relative("/elsewhere/mod.py", NAMES) is None
 
-    def test_both_machines_data_lands_on_the_commits_source(self, tmp_path: Path) -> None:
+    def test_one_pattern_serves_the_machines_that_share_one(self, tmp_path: Path) -> None:
+        config = cap.paths_config(tmp_path, [LINUX, WINDOWS, MACOS])
+        assert config.splitlines()[2:] == [
+            f"    {tmp_path}/src/",
+            "    */barks-compleat-reader/src/",
+            "    *\\barks-compleat-reader\\src\\",
+        ]
+
+    def test_every_machines_data_lands_on_the_commits_source(self, tmp_path: Path) -> None:
         source_root = tmp_path / "source"
         module = source_root / "src" / "pkg" / "src" / "pkg" / "mod.py"
         module.parent.mkdir(parents=True)
-        module.write_text("a = 1\nb = 2\nc = 3\n", encoding="utf-8")
+        module.write_text("a = 1\nb = 2\nc = 3\nd = 4\n", encoding="utf-8")
         config = tmp_path / "paths.rc"
-        config.write_text(cap.paths_config(source_root, LINUX, WINDOWS), encoding="utf-8")
+        config.write_text(cap.paths_config(source_root, [LINUX, WINDOWS, MACOS]), encoding="utf-8")
         inputs = [
             _data(tmp_path / "linux.dat", {LINUX_FILE: [1]}),
             _data(tmp_path / "win.dat", {WIN_FILE: [1, 3]}),
+            _data(tmp_path / "mac.dat", {MAC_FILE: [4]}),
         ]
         combined = tmp_path / "all.dat"
         cap._combine(config, combined, inputs)  # noqa: SLF001
         data = cap._read(combined)  # noqa: SLF001
         cap._check_mapped(data, source_root)  # noqa: SLF001
         assert data.measured_files() == {str(module)}
-        assert sorted(data.lines(str(module)) or []) == [1, 3]
+        assert sorted(data.lines(str(module)) or []) == [1, 3, 4]
 
     def test_a_file_that_maps_nowhere_is_refused(self, tmp_path: Path) -> None:
         data = cap._read(_data(tmp_path / "x.dat", {"/elsewhere/mod.py": [1]}))  # noqa: SLF001
@@ -102,12 +129,22 @@ class TestPaths:
         generated.write_text("v = 1\n", encoding="utf-8")
         source_root = tmp_path / "source"
         inputs = [_data(tmp_path / "win.dat", {WIN_FILE: [1]})]
-        names = (LINUX.repo_dir_name, WINDOWS.repo_dir_name)
         with patch.object(cap, "REPO_ROOT", checkout):
-            assert cap.fill_untracked(inputs, source_root, names) == ["src/pkg/src/pkg/mod.py"]
+            assert cap.fill_untracked(inputs, source_root, NAMES) == ["src/pkg/src/pkg/mod.py"]
             # Once there, it is not copied again.
-            assert cap.fill_untracked(inputs, source_root, names) == []
+            assert cap.fill_untracked(inputs, source_root, NAMES) == []
         assert (source_root / "src/pkg/src/pkg/mod.py").read_text(encoding="utf-8") == "v = 1\n"
+
+
+class TestHosts:
+    def test_the_mac_is_optional(self) -> None:
+        with patch.object(cap, "_main_checkout", return_value=cap.Path.home() / "repo"):
+            hosts, commit = cap._hosts(["gmk", "win"])  # noqa: SLF001
+            assert [h.platform for h in hosts] == [cap.LINUX, cap.WINDOWS]
+            assert commit is None
+            hosts, _ = cap._hosts(["gmk", "win", "mac", "--commit", "abc1234"])  # noqa: SLF001
+        assert [h.platform for h in hosts] == [cap.LINUX, cap.WINDOWS, cap.MACOS]
+        assert hosts[2] == cap.Host(cap.MACOS, "mac", cap.DEFAULT_MACOS_REPO)
 
 
 def test_lines_only_windows_ran(tmp_path: Path) -> None:

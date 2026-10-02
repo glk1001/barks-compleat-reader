@@ -12,6 +12,7 @@ from barks_fantagraphics import whoosh_search_engine as whoosh_search_engine_mod
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.search_ports import CorpusTextTotals
+from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.speech_groupers import OcrTypes
 from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.whoosh_search_engine import (
@@ -210,11 +211,13 @@ class TestGetCleanedTerms:
         # Should have some content from the curated Barks terms
         assert isinstance(result, set)
 
-    def test_term_in_terms_to_remove_excluded(self) -> None:
-        # Inject a term that should be in TERMS_TO_REMOVE and verify removal
-        # Since we can't easily know what's in TERMS_TO_REMOVE, test with real empty list
-        result = SearchEngineCreator._get_cleaned_terms([])
-        assert isinstance(result, set)
+    def test_terms_to_remove_and_fragments_to_suppress_are_left_out(self) -> None:
+        from barks_fantagraphics.whoosh_barks_terms import FRAGMENTS_TO_SUPPRESS, TERMS_TO_REMOVE
+
+        removed, fragment = next(iter(TERMS_TO_REMOVE)), next(iter(FRAGMENTS_TO_SUPPRESS))
+        result = SearchEngineCreator._get_cleaned_terms([removed, fragment, "lollipop"])
+        assert "lollipop" in result
+        assert not {removed, fragment, removed.capitalize(), fragment.capitalize()} & result
 
     def test_entity_names_added_to_result(self) -> None:
         # A known-valid entity name not already in cleaned terms
@@ -549,6 +552,33 @@ class TestFindWords:
         assert results["Old"].fanta_pages["001"].speech_info_list[0].speaker is None
         mock_logger.warning.assert_called_once()
 
+    def test_a_query_leaf_ignores_the_speaker_on_an_index_without_the_field(
+        self, tmp_path: Path
+    ) -> None:
+        """As find_words does: a typed query's leaf finds its bubbles unfiltered, and warns."""
+        from whoosh.index import create_in
+
+        schema = build_index_schema()
+        schema.remove("speaker")
+        writer = create_in(str(tmp_path), schema).writer()
+        writer.add_document(
+            title="Old",
+            fanta_vol="1",
+            fanta_page="001",
+            comic_page="1",
+            content_id="0",
+            panel_num="1",
+            unstemmed="voodoo",
+            content_raw="VOODOO",
+        )
+        writer.commit()
+
+        with patch.object(whoosh_search_engine_module, "logger") as mock_logger:
+            results = SearchEngine(tmp_path).find_bubbles(AnyTerm(("voodoo",)), speaker="Scrooge")
+
+        assert list(results) == ["Old"]
+        mock_logger.warning.assert_called_once()
+
     def test_get_speakers_without_sidecar_is_empty(self, index_dir: Path) -> None:
         """Unlike the term sidecars, a missing speakers file is not an error."""
         engine = SearchEngine(index_dir)
@@ -730,6 +760,18 @@ class TestSearchEngineCreator:
         least = dict(json.loads(next(folder.glob("*least*common*")).read_text()))
         assert "acapulco" not in least
         assert least["square"] == 4
+
+    def test_entity_terms_split_by_first_letter_without_the_garbage(self, tmp_path: Path) -> None:
+        """A term must start with a letter, a digit or an apostrophe; "-ER-" is OCR garbage."""
+        engine = SearchEngine(_build_words_index(tmp_path))
+        assert engine.get_alpha_split_entity_terms("location") == {}  # no sidecar
+        path = engine._entity_terms_paths[EntityType("location")]
+        path.write_text(json.dumps(["-ER-", ""]))
+        assert engine.get_alpha_split_entity_terms("location") == {}  # garbage only
+        path.write_text(json.dumps(["-ER-", "Acapulco", "'Frisco"]))
+        split = engine.get_alpha_split_entity_terms("location")
+        listed = [term for groups in split.values() for terms in groups.values() for term in terms]
+        assert sorted(listed) == ["'Frisco", "Acapulco"]
 
     def test_without_entities_there_are_no_entity_terms(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path)

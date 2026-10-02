@@ -6,7 +6,8 @@
 > nights to come.** Saved here so it survives across machines and sessions; do it on the
 > Windows laptop. Tick a step off here, with its commit, as it lands.
 >
-> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`). First run by
+> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`, since
+>   2026-10-02 `scripts/run_overnight_desktop.py`, which runs on macOS too). First run by
 >   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
 >   runner's (below, "First run"). Since fixed, each stage has passed on its own (the
 >   GUI suite 98/98, `validate`, `fetch-build`); one run of them all, end to end, to come.
@@ -50,9 +51,9 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 |---|---|---|---|
 | `update` | `git pull --ff-only`, `uv sync --locked` | The run tests what is on `main` that night. | 1 min |
 | `pytest` | `uv run pytest` with the data pack | CI's Windows leg skips every test that needs it. | 1 min |
-| `fetch-build` | CI's `barks-reader-win.exe` for **this checkout's commit** | The built-app stage must test the same code as the others. | 1 min |
 | `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. Runs before `gui`, as on Linux, so the first app booted finds the volumes in the file cache (2026-10-01: run last, it left that app over its post tree setup budget). | 5 min |
 | `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |
+| `fetch-build` | CI's `barks-reader-win.exe` for **this checkout's commit** | The built-app stage must test the same code as the others. Run just before it (since 2026-10-02): third, a run started soon after a push waited about 20 minutes for CI's build with every stage behind it idle; after `gui` the build is done. | 1 min |
 | `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 20 min |
 | `soak` | `run_gui_tests.py --soak`, one seed | A long random walk: crashes, stuck screens, file handles. | 19 min |
 | `coverage` | `coverage combine` of the `pytest` stage's data and the `gui` stage's (`BARKS_PROBE_COVERAGE`), an HTML report, `coverage_floor.py` | The code only Windows runs (`platform_window_win32.py`: 125 of 150 statements never run on Linux), which no Linux run can measure. Held to this machine's own best, on a night `pytest` and `gui` both passed. For the `gui` half `gui_probe.py` runs the workspace app under coverage, and at each stop closes its window (`WM_CLOSE`) before any forced end, so each boot saves its data as it exits; the first night with it is not yet seen. `coverage_all_platforms.py`, run from a machine that reaches both, adds this data to a Linux run's of the same commit. | 1 min |
@@ -80,7 +81,7 @@ tests (the main machine's build tree and pipelines); `smoke` (CI's); the GUI tim
 
 ## Step 1: the runner, by hand
 
-`scripts/run_overnight_windows.py`, Python rather than bash: Git Bash sets `TERM`, which
+`scripts/run_overnight_desktop.py`, Python rather than bash: Git Bash sets `TERM`, which
 has loguru colour a log file (ccc3d4f3), and its console is cp1252. The shape follows
 `run_overnight.sh`:
 

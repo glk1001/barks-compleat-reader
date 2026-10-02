@@ -1,6 +1,6 @@
 # Plan: the GUI suite on macOS
 
-<!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE -->
+<!-- cspell:ignore dyld killpg pgrep caffeinate screencapture CGEvent CFDictionary CFArray CFNumber CGWindow softgl libsoftgl osascript frontmost CGHID pgid creationflags FONTSCALE pmset -->
 
 > Status: **planned 2026-10-01; milestones A to C done by 2026-10-02.** Written on the macOS 12.6 VirtualBox guest (2 cores, 4 GB, no
 > GPU driver), where the unit suite now runs on Apple's software OpenGL (71900174).
@@ -195,6 +195,10 @@ would not be used. Leave the machine alone while it runs, as on Windows.
 - `CLAUDE.md`'s GUI section and `docs/plans/cross-platform-gui-tests.md`'s "What is left",
   item 1 ("macOS window and input coverage needs a real Mac").
 - Optional, later: a macOS stage in an overnight runner (as `run_overnight_windows.py`).
+  **Done, 2026-10-02:** that runner became `scripts/run_overnight_desktop.py`, for macOS
+  too (caffeinate, `pmset`, memory limits sized to the 4 GB guest). Not yet: CI's macOS
+  app (`fetch-build` and `built-app` skip there), which has no software OpenGL for a
+  guest without a GPU driver; `--app` tries one.
 
 ## Before starting, on the machine
 

@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""Combine one commit's overnight coverage from a Linux and a Windows machine.
+"""Combine one commit's overnight coverage from Linux, Windows and (optionally) macOS.
 
 Each overnight run measures what its own platform runs: the Linux run
-(``run_overnight.sh``) the unit suite and the GUI tests, the Windows run
-(``run_overnight_windows.py``) the same plus the code only Windows reaches
-(``platform_window_win32.py`` and the like). Neither alone counts all of it. This
-fetches both machines' data over ssh, for the newest commit both have measured
-(or ``--commit``), and reports Linux, Windows and the two together, with what
-Windows adds and an HTML report. It is a report only: each machine's own coverage
-stage already holds its own figure to a floor.
+(``run_overnight.sh``) the unit suite and the GUI tests, the Windows and macOS
+runs (``run_overnight_desktop.py``) the same plus the code only that platform
+reaches (``platform_window_win32.py`` and the like). None alone counts all of it.
+This fetches each machine's data over ssh, for the newest commit all have
+measured (or ``--commit``), and reports each platform and all of them together,
+with what each desktop platform adds to Linux and an HTML report. It is a report
+only: each machine's own coverage stage already holds its own figure to a floor.
 
 The data must be of one commit, since coverage records line numbers: the source
 reported against is that commit's, taken from git (``git archive``), not this
 checkout's, which may have moved on. The machines' absolute paths are mapped onto
 it on combine, the Windows ones written with backslashes.
 
-Usage: coverage_all_platforms.py LINUX_HOST[:REPO] WINDOWS_HOST[:REPO] [--commit SHA]
+Usage: coverage_all_platforms.py LINUX_HOST[:REPO] WINDOWS_HOST[:REPO]
+                                 [MACOS_HOST[:REPO]] [--commit SHA]
 REPO is relative to the remote home: by default this repo's own path for Linux,
-``source/repos/barks-compleat-reader`` for Windows. Both hosts need ssh with a
-key and a bash login shell (Git Bash on Windows). Output: build/coverage-all/SHA/.
+``source/repos/barks-compleat-reader`` for Windows and
+``Developer/barks-compleat-reader`` for macOS. Each host needs ssh with a key and
+a bash shell (Git Bash on Windows). Output: build/coverage-all/SHA/.
 """
 
 # cspell:ignore rcfile
@@ -34,12 +36,18 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
 import coverage
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT_ROOT = REPO_ROOT / "build" / "coverage-all"
+LINUX, WINDOWS, MACOS = "Linux", "Windows", "macOS"
 DEFAULT_WINDOWS_REPO = "source/repos/barks-compleat-reader"
+DEFAULT_MACOS_REPO = "Developer/barks-compleat-reader"
 DATA_FILES = (".coverage.all", ".coverage.unit", ".coverage.gui")
 TOP_FILES = 8
 
@@ -64,12 +72,20 @@ class CoverageAllError(Exception):
 
 @dataclass(frozen=True)
 class Host:
+    platform: str  # LINUX, WINDOWS or MACOS
     name: str
     repo: str  # relative to the remote home
 
     @property
     def repo_dir_name(self) -> str:
         return PurePosixPath(self.repo).name
+
+    @property
+    def path_pattern(self) -> str:
+        """Return the coverage [paths] pattern its measured files match."""
+        if self.platform == WINDOWS:
+            return f"*\\{self.repo_dir_name}\\src\\"
+        return f"*/{self.repo_dir_name}/src/"
 
 
 @dataclass(frozen=True)
@@ -85,10 +101,10 @@ class Run:
         return self.data_files
 
 
-def parse_host(spec: str, default_repo: str) -> Host:
+def parse_host(platform: str, spec: str, default_repo: str) -> Host:
     """Return the host of a `HOST[:REPO]` argument."""
     name, _, repo = spec.partition(":")
-    return Host(name, repo or default_repo)
+    return Host(platform, name, repo or default_repo)
 
 
 def parse_runs(listing: str) -> list[Run]:
@@ -109,33 +125,38 @@ def same_commit(a: str, b: str) -> bool:
     return a.startswith(b) or b.startswith(a)
 
 
-def pick_runs(linux: list[Run], windows: list[Run], commit: str | None) -> tuple[Run, Run]:
-    """Return the newest Linux run and Windows run of one commit (`commit`, or the newest)."""
-    for lin in linux:
-        if commit and not same_commit(lin.commit, commit):
+def pick_runs(runs: Mapping[str, Sequence[Run]], commit: str | None) -> dict[str, Run]:
+    """Return each platform's newest run of one commit (`commit`, or the newest all have).
+
+    `runs` is each platform's runs, newest first; the first platform's order picks
+    the commit.
+    """
+    first, *others = runs
+    for run in runs[first]:
+        if commit and not same_commit(run.commit, commit):
             continue
-        for win in windows:
-            if same_commit(lin.commit, win.commit):
-                return lin, win
-    lin_commits = ", ".join(dict.fromkeys(r.commit for r in linux)) or "none"
-    win_commits = ", ".join(dict.fromkeys(r.commit for r in windows)) or "none"
-    wanted = f"commit {commit}" if commit else "a commit"
-    msg = (
-        f"no {wanted} has coverage from both machines"
-        f" (Linux: {lin_commits}; Windows: {win_commits})"
+        picked = {first: run}
+        for platform in others:
+            match = next((r for r in runs[platform] if same_commit(run.commit, r.commit)), None)
+            if match is None:
+                break
+            picked[platform] = match
+        else:
+            return picked
+    has = "; ".join(
+        f"{platform}: {', '.join(dict.fromkeys(r.commit for r in platform_runs)) or 'none'}"
+        for platform, platform_runs in runs.items()
     )
+    wanted = f"commit {commit}" if commit else "a commit"
+    msg = f"no {wanted} has coverage from every machine ({has})"
     raise CoverageAllError(msg)
 
 
-def paths_config(source_root: Path, linux: Host, windows: Host) -> str:
-    """Return a coverage config mapping both machines' source paths onto `source_root`."""
-    return (
-        "[paths]\n"
-        "source =\n"
-        f"    {source_root}/src/\n"
-        f"    */{linux.repo_dir_name}/src/\n"
-        f"    *\\{windows.repo_dir_name}\\src\\\n"
-    )
+def paths_config(source_root: Path, hosts: Sequence[Host]) -> str:
+    """Return a coverage config mapping every machine's source paths onto `source_root`."""
+    patterns = dict.fromkeys(host.path_pattern for host in hosts)
+    lines = ["[paths]", "source =", f"    {source_root}/src/", *(f"    {p}" for p in patterns)]
+    return "\n".join(lines) + "\n"
 
 
 def lines_only_in(extra: coverage.CoverageData, base: coverage.CoverageData) -> dict[str, int]:
@@ -148,8 +169,8 @@ def lines_only_in(extra: coverage.CoverageData, base: coverage.CoverageData) -> 
     return added
 
 
-def repo_relative(path: str, repo_dir_names: tuple[str, ...]) -> str | None:
-    """Return a measured file's path within its repo (`src/...`), from either platform."""
+def repo_relative(path: str, repo_dir_names: Sequence[str]) -> str | None:
+    """Return a measured file's path within its repo (`src/...`), from any platform."""
     posix = path.replace("\\", "/")
     for name in repo_dir_names:
         _, found, rest = posix.partition(f"/{name}/src/")
@@ -159,7 +180,7 @@ def repo_relative(path: str, repo_dir_names: tuple[str, ...]) -> str | None:
 
 
 def fill_untracked(
-    inputs: list[Path], source_root: Path, repo_dir_names: tuple[str, ...]
+    inputs: list[Path], source_root: Path, repo_dir_names: Sequence[str]
 ) -> list[str]:
     """Copy into `source_root` this checkout's copy of each measured file git does not hold.
 
@@ -277,48 +298,63 @@ def _check_mapped(data: coverage.CoverageData, source_root: Path) -> None:
         raise CoverageAllError(msg)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Fetch, combine and report; return the exit code."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def _hosts(argv: list[str] | None) -> tuple[list[Host], str | None]:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("linux", help="LINUX_HOST[:REPO]")
     parser.add_argument("windows", help="WINDOWS_HOST[:REPO]")
-    parser.add_argument("--commit", help="the commit to combine (default: the newest of both)")
+    parser.add_argument("macos", nargs="?", help="MACOS_HOST[:REPO] (optional)")
+    parser.add_argument("--commit", help="the commit to combine (default: the newest of all)")
     args = parser.parse_args(argv)
-    linux = parse_host(args.linux, str(_main_checkout().relative_to(Path.home())))
-    windows = parse_host(args.windows, DEFAULT_WINDOWS_REPO)
+    hosts = [
+        parse_host(LINUX, args.linux, str(_main_checkout().relative_to(Path.home()))),
+        parse_host(WINDOWS, args.windows, DEFAULT_WINDOWS_REPO),
+    ]
+    if args.macos:
+        hosts.append(parse_host(MACOS, args.macos, DEFAULT_MACOS_REPO))
+    return hosts, args.commit
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Fetch, combine and report; return the exit code."""
+    hosts, commit = _hosts(argv)
     try:
-        lin_run, win_run = pick_runs(
-            parse_runs(_ssh(linux, _LIST_RUNS)), parse_runs(_ssh(windows, _LIST_RUNS)), args.commit
-        )
-        out = OUT_ROOT / lin_run.commit
+        runs = pick_runs({h.platform: parse_runs(_ssh(h, _LIST_RUNS)) for h in hosts}, commit)
+        out = OUT_ROOT / runs[LINUX].commit
         shutil.rmtree(out, ignore_errors=True)
         source_root = out / "source"
-        _extract_source(lin_run.commit, source_root)
+        _extract_source(runs[LINUX].commit, source_root)
         config = out / "paths.rc"
-        config.write_text(paths_config(source_root, linux, windows), encoding="utf-8")
-        lin_inputs = _fetch(linux, lin_run, out / "linux-data")
-        win_inputs = _fetch(windows, win_run, out / "windows-data")
-        names = (linux.repo_dir_name, windows.repo_dir_name)
-        copied = fill_untracked([*lin_inputs, *win_inputs], source_root, names)
-        lin_data, win_data, all_data = out / "linux.dat", out / "windows.dat", out / "all.dat"
-        _combine(config, lin_data, lin_inputs)
-        _combine(config, win_data, win_inputs)
-        _combine(config, all_data, [*lin_inputs, *win_inputs])
+        config.write_text(paths_config(source_root, hosts), encoding="utf-8")
+        inputs = {
+            h.platform: _fetch(h, runs[h.platform], out / f"{h.platform}-data") for h in hosts
+        }
+        every_input = [path for paths in inputs.values() for path in paths]
+        names = list(dict.fromkeys(h.repo_dir_name for h in hosts))
+        copied = fill_untracked(every_input, source_root, names)
+        data = {h.platform: out / f"{h.platform}.dat" for h in hosts}
+        for host in hosts:
+            _combine(config, data[host.platform], inputs[host.platform])
+        all_data = out / "all.dat"
+        _combine(config, all_data, every_input)
         _check_mapped(_read(all_data), source_root)
     except CoverageAllError as exc:
         print(f"coverage-all: {exc}", file=sys.stderr)  # noqa: T201
         return 1
 
-    print(f"coverage-all: commit {lin_run.commit}")  # noqa: T201
+    print(f"coverage-all: commit {runs[LINUX].commit}")  # noqa: T201
     if copied:
         print(f"  not in git, this checkout's copy used: {', '.join(copied)}")  # noqa: T201
-    print(f"  Linux    {_total(lin_data):>5}%  ({linux.name}, run {lin_run.stamp})")  # noqa: T201
-    print(f"  Windows  {_total(win_data):>5}%  ({windows.name}, run {win_run.stamp})")  # noqa: T201
-    print(f"  both     {_total(all_data):>5}%")  # noqa: T201
-    added = lines_only_in(_read(win_data), _read(lin_data))
-    print(f"  lines only Windows ran: {sum(added.values())}")  # noqa: T201
-    for path, count in sorted(added.items(), key=lambda item: -item[1])[:TOP_FILES]:
-        print(f"    {count:>5}  {Path(path).relative_to(source_root)}")  # noqa: T201
+    for host in hosts:
+        total = _total(data[host.platform])
+        where = f"({host.name}, run {runs[host.platform].stamp})"
+        print(f"  {host.platform:<8} {total:>5}%  {where}")  # noqa: T201
+    print(f"  {'all':<8} {_total(all_data):>5}%")  # noqa: T201
+    linux_data = _read(data[LINUX])
+    for host in hosts[1:]:
+        added = lines_only_in(_read(data[host.platform]), linux_data)
+        print(f"  lines only {host.platform} ran: {sum(added.values())}")  # noqa: T201
+        for path, count in sorted(added.items(), key=lambda item: -item[1])[:TOP_FILES]:
+            print(f"    {count:>5}  {Path(path).relative_to(source_root)}")  # noqa: T201
     html = out / "html"
     subprocess.run(  # noqa: S603
         [
