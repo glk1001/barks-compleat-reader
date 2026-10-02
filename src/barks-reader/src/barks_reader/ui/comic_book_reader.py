@@ -393,6 +393,16 @@ class ComicBookReader(FloatLayout):
     def _on_page_layout_changed(self, *_args: object) -> None:
         self._log_page_placement_trigger()
 
+    def log_page_placement_afresh(self) -> None:
+        """Log where the page is, even unchanged: its screen has just come to rest.
+
+        A screen transition moves the whole screen, not the page within it, so the
+        place logged as the screen slid in can stand unreplaced; this is the one the
+        page settles at once the transition is over.
+        """
+        self._last_page_placement = None
+        self._log_page_placement_trigger()
+
     def _log_page_placement(self, _dt: float) -> None:
         image = self._comic_image
         # Not the "loading" placeholder: it shows before the reader has laid itself
@@ -962,6 +972,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
+
+    def on_enter(self, *args: object) -> None:
+        super().on_enter(*args)
+        self.comic_book_reader.log_page_placement_afresh()
 
     def __init__(
         self,

@@ -495,17 +495,66 @@ def page_placements(log_text: str) -> list[PagePlaced]:
     return placements
 
 
+# The reader's screen coming to rest on show, and leaving it (ReaderScreen.on_enter,
+# on_leave: logged as the transition completes, not as it starts).
+_READER_SCREEN = "comic_book_reader"
+_STAMP = r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) .*"
+_READER_ENTERED_RE = re.compile(
+    _STAMP + pattern(markers.SCREEN_ENTERED, name=_READER_SCREEN), re.MULTILINE
+)
+_READER_LEFT_RE = re.compile(
+    _STAMP + pattern(markers.SCREEN_LEFT, name=_READER_SCREEN), re.MULTILINE
+)
+
+
+def _stamp(text: str) -> datetime:
+    return datetime.strptime(text, "%Y-%m-%d %H:%M:%S.%f")  # noqa: DTZ007 - local, as logged
+
+
+def reader_on_screen(log_text: str) -> list[tuple[datetime, datetime | None]]:
+    """Return when the reader's screen was on show: (entered, left), left None if it still is.
+
+    Only then is a page placement what the screen shows: one logged as the screen
+    slides in or out is measured mid-transition, with the screen itself moving.
+    """
+    events = sorted(
+        [(_stamp(t), True) for t in _READER_ENTERED_RE.findall(log_text)]
+        + [(_stamp(t), False) for t in _READER_LEFT_RE.findall(log_text)]
+    )
+    spans: list[tuple[datetime, datetime | None]] = []
+    for at, entered in events:
+        if entered:
+            spans.append((at, None))
+        elif spans and spans[-1][1] is None:
+            spans[-1] = (spans[-1][0], at)
+    return spans
+
+
 def settled_placements(
-    placements: list[PagePlaced], settle_secs: float = PLACEMENT_SETTLE_SECS
+    placements: list[PagePlaced],
+    on_screen: list[tuple[datetime, datetime | None]],
+    settle_secs: float = PLACEMENT_SETTLE_SECS,
 ) -> list[PagePlaced]:
-    """Return the placements that stood: not replaced within `settle_secs`, or the last."""
-    if not placements:
-        return []
-    return [
-        placed
-        for placed, following in zip(placements, [*placements[1:], None], strict=True)
-        if following is None or (following.at - placed.at).total_seconds() >= settle_secs
-    ]
+    """Return the placements that stood on screen for `settle_secs`.
+
+    Only one logged while the reader's screen was on show counts, and it stood
+    until the next placement or until the screen left, whichever came first; to the
+    end of the log if neither did.
+    """
+    settled = []
+    for index, placed in enumerate(placements):
+        span = next(
+            (s for s in on_screen if s[0] <= placed.at and (s[1] is None or placed.at < s[1])),
+            None,
+        )
+        if span is None:
+            continue
+        ends = [later.at for later in placements[index + 1 : index + 2]]
+        if span[1] is not None:
+            ends.append(span[1])
+        if not ends or (min(ends) - placed.at).total_seconds() >= settle_secs:
+            settled.append(placed)
+    return settled
 
 
 def off_centre_pages(log_text: str, tolerance_px: float = PLACEMENT_TOLERANCE_PX) -> list[str]:
@@ -515,7 +564,7 @@ def off_centre_pages(log_text: str, tolerance_px: float = PLACEMENT_TOLERANCE_PX
         + f" the {placed.width}x{placed.height} page at x={placed.x} sat"
         f" {placed.off_centre:+.0f}px from the centre of the"
         f" {placed.win_width}x{placed.win_height} window"
-        for placed in settled_placements(page_placements(log_text))
+        for placed in settled_placements(page_placements(log_text), reader_on_screen(log_text))
         if abs(placed.off_centre) > tolerance_px
     ]
 

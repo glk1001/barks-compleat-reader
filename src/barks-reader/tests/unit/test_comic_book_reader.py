@@ -222,6 +222,14 @@ class TestComicBookReader:
             reader._log_page_placement(0)
         assert not [line for line in loguru_sink if line.startswith("Page placed")]
 
+    def test_logging_afresh_forgets_the_last_placement(self, reader: ComicBookReader) -> None:
+        """At rest after a transition the page is logged even where it was."""
+        reader._last_page_placement = MagicMock()
+        reader._log_page_placement_trigger = MagicMock()
+        reader.log_page_placement_afresh()
+        assert reader._last_page_placement is None
+        reader._log_page_placement_trigger.assert_called_once_with()
+
     def test_a_layout_change_asks_for_a_placement_log(self, reader: ComicBookReader) -> None:
         reader._log_page_placement_trigger = MagicMock()
         reader._on_page_layout_changed(reader._comic_image, (1, 2))
@@ -628,6 +636,15 @@ class TestComicBookReaderScreen:
             # Mock ids on the instance as well, just in case
             screen.ids = mock_ids
             return screen
+
+    def test_entering_logs_the_page_placement_afresh(
+        self, screen: ComicBookReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        """Once the screen is at rest, after the line the GUI harness reads it entered by."""
+        screen.comic_book_reader = MagicMock()
+        screen.on_enter()
+        assert log_markers.SCREEN_ENTERED.format(name=screen.name) in loguru_sink
+        screen.comic_book_reader.log_page_placement_afresh.assert_called_once_with()
 
     def test_is_active(self, screen: ComicBookReaderScreen) -> None:
         screen.is_active(active=True)

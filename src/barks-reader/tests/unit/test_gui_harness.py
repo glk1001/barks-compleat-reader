@@ -1287,6 +1287,18 @@ def _placed_line(stamp: str, x: int, width: int = 1280, win_width: int = 2560) -
     return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.core.page_placement - {message}"
 
 
+def _reader_line(stamp: str, *, entered: bool = True) -> str:
+    """Return the line the reader's screen logs as it comes to rest on show, or leaves."""
+    marker = markers.SCREEN_ENTERED if entered else markers.SCREEN_LEFT
+    message = marker.format(name="comic_book_reader")
+    return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.ui.reader_screens - {message}"
+
+
+def _on_screen(*lines: str) -> str:
+    """Return `lines` as a log in which the reader's screen came on show first."""
+    return "\n".join([_reader_line("12:00:00.000"), *lines])
+
+
 class TestPagePlacement:
     def test_a_placement_line_is_read_back_with_its_time(self) -> None:
         (placed,) = harness.page_placements(_placed_line("13:43:30.131", x=640))
@@ -1296,29 +1308,73 @@ class TestPagePlacement:
 
     def test_a_spread_left_past_the_middle_is_off_centre(self) -> None:
         """The layout seen on the macOS guest: the spread's left edge past half way."""
-        problems = harness.off_centre_pages(_placed_line("13:43:30.131", x=1400))
+        problems = harness.off_centre_pages(_on_screen(_placed_line("13:43:30.131", x=1400)))
         assert len(problems) == 1
         assert "+760px" in problems[0]
 
     def test_a_centred_page_and_a_pixel_of_rounding_pass(self) -> None:
-        log = "\n".join([_placed_line("13:00:00.000", x=640), _placed_line("13:00:05.000", x=641)])
+        log = _on_screen(_placed_line("13:00:00.000", x=640), _placed_line("13:00:05.000", x=641))
         assert harness.off_centre_pages(log) == []
 
     def test_a_frame_on_the_way_through_a_resize_is_not_judged(self) -> None:
         """Replaced within the settle time it never stood on screen."""
-        log = "\n".join([_placed_line("13:00:00.000", x=1400), _placed_line("13:00:00.300", x=640)])
+        log = _on_screen(_placed_line("13:00:00.000", x=1400), _placed_line("13:00:00.300", x=640))
         assert harness.off_centre_pages(log) == []
 
     def test_a_placement_that_stood_is_judged_though_a_later_one_is_fine(self) -> None:
-        log = "\n".join([_placed_line("13:00:00.000", x=1400), _placed_line("13:00:04.000", x=640)])
+        log = _on_screen(_placed_line("13:00:00.000", x=1400), _placed_line("13:00:04.000", x=640))
         assert len(harness.off_centre_pages(log)) == 1
 
-    def test_the_last_placement_always_stood(self) -> None:
-        log = "\n".join([_placed_line("13:00:00.000", x=640), _placed_line("13:00:00.200", x=-300)])
+    def test_the_last_placement_stands_while_the_reader_is_on_show(self) -> None:
+        log = _on_screen(_placed_line("13:00:00.000", x=640), _placed_line("13:00:00.200", x=-300))
         problems = harness.off_centre_pages(log)
         assert len(problems) == 1
         assert "x=-300" in problems[0]
 
     def test_a_windowed_page_is_judged_against_its_own_window(self) -> None:
         line = _placed_line("13:00:00.000", x=0, width=838, win_width=838)
-        assert harness.off_centre_pages(line) == []
+        assert harness.off_centre_pages(_on_screen(line)) == []
+
+    def test_a_placement_as_the_reader_slides_in_is_not_judged(self) -> None:
+        """The screen moves, not the page: measured mid-transition, then afresh at rest."""
+        log = "\n".join(
+            [
+                _placed_line("19:24:06.608", x=501, width=924),
+                _reader_line("19:24:06.780"),
+                _placed_line("19:24:06.800", x=818, width=924),
+            ]
+        )
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_placement_after_the_reader_left_is_not_judged(self) -> None:
+        """A closing reader laid out in a window that went fullscreen as it left."""
+        log = _on_screen(
+            _placed_line("19:17:00.000", x=0, width=838, win_width=838),
+            _reader_line("19:17:02.500", entered=False),
+            _placed_line("19:17:03.158", x=0, width=838),
+        )
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_placement_the_reader_left_soon_after_is_not_judged(self) -> None:
+        log = _on_screen(
+            _placed_line("13:00:00.000", x=1400), _reader_line("13:00:00.400", entered=False)
+        )
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_placement_that_stood_until_the_reader_left_is_judged(self) -> None:
+        log = _on_screen(
+            _placed_line("13:00:00.000", x=1400), _reader_line("13:00:05.000", entered=False)
+        )
+        assert len(harness.off_centre_pages(log)) == 1
+
+    def test_the_reader_on_show_is_read_from_its_screen_lines(self) -> None:
+        log = "\n".join(
+            [
+                _reader_line("13:00:00.000"),
+                _reader_line("13:00:05.000", entered=False),
+                _reader_line("13:00:09.000"),
+            ]
+        )
+        (first, second) = harness.reader_on_screen(log)
+        assert first[1] is not None
+        assert second[1] is None
