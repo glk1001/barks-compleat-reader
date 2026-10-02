@@ -745,6 +745,28 @@ The 54 left are equivalents recorded above (the `.get(title, "")` defaults, `enc
 `_never_crop_images` and the two `view_pipeline` fields overwritten in `__init__`) and log
 wording.
 
+## Overnight slice (2026-10-02)
+
+Friday's slice warned on one module: `comic_book_loader` rose from 88 survivors to 89. Run
+alone (`xvfb-run bash scripts/mutmut.sh '*/core/comic_book_loader.py'` on the overnight
+machine) it held 89 again, of 406 mutants (311 killed, 6 with no covering test), so the
+rise is steady, not a timing mutant that came and went. The module's one change since its
+last slice is `ab44341a`, which moved the images-loaded log line to the
+`COMIC_IMAGES_LOADED` marker, and that line's mutants are all killed. The last slice's
+survivor names were not kept, so which one is new cannot be said; all 89 are log wording,
+the July table's equivalents, or one of these, recorded here for the first time:
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| `_load_pages`'s priming loop: `if not submit_next(): break` → `return` | 1 | Unreachable. The window starts at `get_initial_dynamic_window()`, which is `min(base_max_window, num_pages)`, so priming never runs out of pages to submit. |
+| `_load_pages`'s stop-path `break` → `return` (the stop flag at the top of the loop and after a batch, a stop while handling a page, a cancelled page) | 4 | Only reached once a stop or cancellation is under way. `return` still runs the `finally` (the executor's shutdown) and skips only the "Load finished" debug line; the caller has already accepted the stop. |
+| `wait(futures.keys(), return_when=FIRST_COMPLETED)` → `wait(futures.keys())` | 1 | Timing-only, as the scheduling mutants above: it waits for the whole window instead of the first page, and every page is still delivered. |
+| `_load_comic_in_thread`'s `tb_info[-1]` → `[+1]` / `[-2]` | 2 | Which traceback frame an error message names: wording. |
+
+From this night on, the stage's log lists the module's survivor names, so the next rise in
+this slice can be diffed by name against `build/overnight/20261002-165849/mutation.log`
+on that machine.
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module
