@@ -316,11 +316,6 @@ def _get_error_content(  # noqa: C901
             self.severity_bgnd.pos = instance.pos
             self.severity_bgnd.size = instance.size
 
-        def _update_rect(self, instance: Widget, _value) -> None:  # noqa: ANN001
-            """Update background rectangle for severity banner."""
-            self.severity_rect.pos = instance.pos
-            self.severity_rect.size = instance.size
-
         def toggle_details(self, *_args) -> None:  # noqa: ANN002
             """Toggle visibility of detailed error information."""
             self.details_visible = not self.details_visible

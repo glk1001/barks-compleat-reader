@@ -294,20 +294,15 @@ def _get_background_image_pos_and_size(
     max_width = container_size[0]
     max_height = container_size[1]
 
-    # COVER mode
+    # Fit the image inside the container: the side that is relatively longer fills it.
+    # The other side can come out over the container only by a rounding error, which
+    # the snap below absorbs.
     if container_ratio < texture_ratio:
         bgnd_width = max_width
         bgnd_height = max_width / texture_ratio
     else:
         bgnd_height = max_height
         bgnd_width = max_height * texture_ratio
-
-    if bgnd_width > max_width:
-        bgnd_width = max_width
-        bgnd_height = bgnd_width / texture_ratio
-    elif bgnd_height > max_height:
-        bgnd_height = max_width
-        bgnd_width = bgnd_height * texture_ratio
 
     if (max_width - bgnd_width) < _SAME_SIZE_CUTOFF_PX:
         bgnd_width = max_width
