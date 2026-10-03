@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 import gui_probe
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TASK_NAME = "Barks Reader overnight"
@@ -266,8 +266,35 @@ def memory_check() -> Check:
     return ("WARN", f"{problem}: {biggest}")
 
 
+def opengl_check(renderer: str | None, env: Mapping[str, str]) -> Check:
+    """Judge the OpenGL a run will draw with, as the runner chooses it (gl_backend_for)."""
+    import run_overnight_desktop as rw  # noqa: PLC0415 (loads the runner only for this)
+
+    if "KIVY_GL_BACKEND" in env:
+        return ("OK", f"KIVY_GL_BACKEND={env['KIVY_GL_BACKEND']}: Kivy draws through it")
+    if renderer is None:
+        return (
+            "WARN",
+            "OpenGL unread: run this on the desktop (over ssh Windows offers no GPU driver)",
+        )
+    if rw.gl_backend_for(env, renderer) is not None:
+        return (
+            "OK",
+            (
+                f"OpenGL is {renderer!r} (1.1, no driver): the runner draws through ANGLE;"
+                " give run_gui_tests.py --angle"
+            ),
+        )
+    return ("OK", f"OpenGL: {renderer}")
+
+
 def machine_checks() -> list[Check]:
-    checks: list[Check] = [memory_check()]
+    import gui_probe_win32  # noqa: PLC0415 (Windows only)
+
+    checks: list[Check] = [
+        memory_check(),
+        opengl_check(gui_probe_win32.opengl_renderer(), os.environ),
+    ]
     dev_mode = _registry(
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock",
         "AllowDevelopmentWithoutDevLicense",

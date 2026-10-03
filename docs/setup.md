@@ -244,7 +244,12 @@ Both run the app, the unit tests and the build, and the GUI tests
     take about 5 GB, so leave a browser closed overnight (Firefox held 1.7 GB).
   - **Windows Update's active hours** covering the run, so it does not restart under it.
   - **Calibrated**: `uv run python scripts/run_gui_tests.py --calibrate` once, so the
-    timing budgets are this machine's.
+    timing budgets are this machine's. On a machine with no OpenGL driver (the
+    VirtualBox VM: Windows' own "GDI Generic", OpenGL 1.1, where Kivy needs 2.0) add
+    `--angle`, or Kivy stops on a modal "OpenGL 2.0 NOT found" box and the run waits
+    on it. The overnight runner switches to ANGLE by itself on such a machine (it says
+    so at the start), and `check_windows_overnight_host.py`, run on the desktop, names
+    the OpenGL there.
   - **The nightly task**: `powershell -ExecutionPolicy Bypass -File
     scripts\windows\register-overnight-task.ps1` (02:00; `-At` for another time).
   - **SSH from the main machine** (optional): from an elevated PowerShell,

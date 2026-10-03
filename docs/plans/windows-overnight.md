@@ -41,7 +41,9 @@ backslashes (abe1aa4d), and the fullscreen exit drew the window frame for ~255ms
 
 **Machine: the Windows laptop**, not the VM. The laptop draws through the reader's normal
 OpenGL; the VirtualBox VM needs `--angle` (Direct3D), which does not test that path. The
-laptop is also a touchscreen, for later (below).
+laptop is also a touchscreen, for later (below). (Since 2026-10-03 the runner sees a
+machine with no OpenGL driver and draws through ANGLE itself: the VM's first overnight
+run, started without it, sat all afternoon on Kivy's "OpenGL 2.0 NOT found" box.)
 
 ## The stages
 

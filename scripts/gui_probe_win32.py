@@ -18,6 +18,7 @@ and structures can be tested on every platform.
 # cspell:ignore LEFTUP MAPVK MOUSEEVENTF MOUSEINPUT SWITCHDESKTOP HARDWAREINPUT REMOTESESSION
 # cspell:ignore VSC shcore wparam lparam INPUTUNION KEYUP creationflags getwindowsversion
 # cspell:ignore taskkill pids Toolhelp SNAPPROCESS PROCESSENTRY
+# cspell:ignore PIXELFORMATDESCRIPTOR DOUBLEBUFFER Accum
 
 from __future__ import annotations
 
@@ -58,6 +59,17 @@ _WAIT_OBJECT_0 = 0
 _CREATE_NEW_PROCESS_GROUP = 0x00000200
 _CREATE_NO_WINDOW = 0x08000000
 _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
+_PFD_DOUBLEBUFFER = 0x00000001
+_PFD_DRAW_TO_WINDOW = 0x00000004
+_PFD_SUPPORT_OPENGL = 0x00000020
+_GL_RENDERER = 0x1F01
+# PIXELFORMATDESCRIPTOR's one-byte fields, in order, between dwFlags and dwLayerMask.
+_PFD_BYTE_FIELDS = (
+    "iPixelType", "cColorBits", "cRedBits", "cRedShift", "cGreenBits", "cGreenShift",
+    "cBlueBits", "cBlueShift", "cAlphaBits", "cAlphaShift", "cAccumBits", "cAccumRedBits",
+    "cAccumGreenBits", "cAccumBlueBits", "cAccumAlphaBits", "cDepthBits", "cStencilBits",
+    "cAuxBuffers", "iLayerType", "bReserved",
+)  # fmt: skip
 # How long `kill_tree` gives the app to close its window and exit before it is
 # ended by force: long enough for Kivy to stop and coverage to save its data.
 CLOSE_GRACE_SECS = 10
@@ -304,6 +316,99 @@ def find_window_of_processes(pids: set[int]) -> int | None:
 
     _user32.EnumWindows(_ENUM_WINDOWS_PROC(visit), 0)
     return (sdl or other or [None])[0]
+
+
+class _PIXELFORMATDESCRIPTOR(ctypes.Structure):
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ("nSize", wintypes.WORD),
+        ("nVersion", wintypes.WORD),
+        ("dwFlags", wintypes.DWORD),
+        *((name, ctypes.c_ubyte) for name in _PFD_BYTE_FIELDS),
+        ("dwLayerMask", wintypes.DWORD),
+        ("dwVisibleMask", wintypes.DWORD),
+        ("dwDamageMask", wintypes.DWORD),
+    ]
+
+
+def _session_id() -> int | None:
+    """Return this process's Windows session: 0 is the services' (ssh), 1 up a user's."""
+    if not _ON_WINDOWS:
+        return None
+    kernel32 = ctypes.WinDLL("kernel32")
+    kernel32.ProcessIdToSessionId.argtypes = [wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.ProcessIdToSessionId.restype = wintypes.BOOL
+    session = wintypes.DWORD()
+    if not kernel32.ProcessIdToSessionId(kernel32.GetCurrentProcessId(), ctypes.byref(session)):
+        return None
+    return session.value
+
+
+def opengl_renderer() -> str | None:
+    """Return the renderer Windows' own OpenGL gives a window here, or None if it gives none.
+
+    Read straight from WGL, on a hidden window of its own: Kivy, asked instead,
+    stops on a modal "OpenGL 2.0 NOT found" box where there is no driver (the
+    VirtualBox guest's "GDI Generic", OpenGL 1.1), waiting for a click that an
+    unattended run never gives. None too in session 0, where an ssh login runs:
+    Windows offers no GPU driver there, so every machine would answer "GDI
+    Generic" (win_lg's did, a real GPU and all) and the answer is not the desktop's.
+    """
+    if not _ON_WINDOWS or _session_id() == 0:
+        return None
+    user32 = ctypes.WinDLL("user32")
+    gdi32 = ctypes.WinDLL("gdi32")
+    opengl32 = ctypes.WinDLL("opengl32")
+    user32.CreateWindowExW.argtypes = [
+        wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
+    ]  # fmt: skip
+    user32.CreateWindowExW.restype = wintypes.HWND
+    user32.GetDC.argtypes = [wintypes.HWND]
+    user32.GetDC.restype = wintypes.HDC
+    user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
+    user32.DestroyWindow.argtypes = [wintypes.HWND]
+    pfd_p = ctypes.POINTER(_PIXELFORMATDESCRIPTOR)
+    gdi32.ChoosePixelFormat.argtypes = [wintypes.HDC, pfd_p]
+    gdi32.SetPixelFormat.argtypes = [wintypes.HDC, ctypes.c_int, pfd_p]
+    gdi32.SetPixelFormat.restype = wintypes.BOOL
+    opengl32.wglCreateContext.argtypes = [wintypes.HDC]
+    opengl32.wglCreateContext.restype = wintypes.HANDLE
+    opengl32.wglMakeCurrent.argtypes = [wintypes.HDC, wintypes.HANDLE]
+    opengl32.wglMakeCurrent.restype = wintypes.BOOL
+    opengl32.wglDeleteContext.argtypes = [wintypes.HANDLE]
+    opengl32.glGetString.argtypes = [ctypes.c_uint]
+    opengl32.glGetString.restype = ctypes.c_char_p
+
+    hwnd = user32.CreateWindowExW(0, "STATIC", "gl-probe", 0, 0, 0, 1, 1, None, None, None, None)
+    if not hwnd:
+        return None
+    name = None
+    hdc = user32.GetDC(hwnd)
+    try:
+        pfd = _PIXELFORMATDESCRIPTOR(
+            nSize=ctypes.sizeof(_PIXELFORMATDESCRIPTOR),
+            nVersion=1,
+            dwFlags=_PFD_DRAW_TO_WINDOW | _PFD_SUPPORT_OPENGL | _PFD_DOUBLEBUFFER,
+            cColorBits=32,
+        )
+        fmt = gdi32.ChoosePixelFormat(hdc, ctypes.byref(pfd))
+        context = (
+            opengl32.wglCreateContext(hdc)
+            if fmt and gdi32.SetPixelFormat(hdc, fmt, ctypes.byref(pfd))
+            else None
+        )
+        if context:
+            try:
+                if opengl32.wglMakeCurrent(hdc, context):
+                    name = opengl32.glGetString(_GL_RENDERER)
+                    opengl32.wglMakeCurrent(None, None)
+            finally:
+                opengl32.wglDeleteContext(context)
+    finally:
+        user32.ReleaseDC(hwnd, hdc)
+        user32.DestroyWindow(hwnd)
+    return name.decode(errors="replace") if name else None
 
 
 class Win32Backend:

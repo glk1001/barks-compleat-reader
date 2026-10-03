@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import gui_probe_win32
 import pytest
 import run_overnight_desktop as rw
 
@@ -512,6 +513,67 @@ class TestMain:
         with patch.object(rw, "ON_WINDOWS", False), patch.object(rw, "ON_MACOS", False):  # noqa: FBT003
             assert rw.main([]) == 2
         assert "on Linux use run_overnight.sh" in capsys.readouterr().err
+
+
+class TestGlBackend:
+    """Where Windows has no OpenGL driver, every stage draws through ANGLE."""
+
+    def test_gdi_generic_draws_through_angle(self) -> None:
+        assert rw.gl_backend_for({}, rw.SOFTWARE_OPENGL) == rw.ANGLE_BACKEND
+
+    @pytest.mark.parametrize(
+        ("env", "renderer"),
+        [
+            ({"KIVY_GL_BACKEND": "sdl2"}, rw.SOFTWARE_OPENGL),  # the caller chose
+            ({}, "NVIDIA GeForce RTX 3060/PCIe/SSE2"),  # a real driver
+            ({}, None),  # unread: over ssh, say
+        ],
+    )
+    def test_otherwise_kivy_chooses(self, env: dict[str, str], renderer: str | None) -> None:
+        assert rw.gl_backend_for(env, renderer) is None
+
+    @pytest.fixture
+    def no_backend(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Set, then removed: the test's own setting is undone with the rest.
+        monkeypatch.setenv("KIVY_GL_BACKEND", "-")
+        monkeypatch.delenv("KIVY_GL_BACKEND")
+
+    @pytest.mark.usefixtures("no_backend")
+    def test_the_run_sets_it_for_every_stage_and_says_so(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with (
+            patch.object(rw, "ON_WINDOWS", True),  # noqa: FBT003
+            patch.object(gui_probe_win32, "opengl_renderer", return_value=rw.SOFTWARE_OPENGL),
+        ):
+            rw.choose_gl_backend()
+        assert rw.os.environ["KIVY_GL_BACKEND"] == rw.ANGLE_BACKEND
+        assert rw.child_env(rw.os.environ)["KIVY_GL_BACKEND"] == rw.ANGLE_BACKEND
+        assert "drawing through ANGLE" in capsys.readouterr().out
+
+    @pytest.mark.usefixtures("no_backend")
+    def test_a_real_driver_is_named_and_left_alone(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with (
+            patch.object(rw, "ON_WINDOWS", True),  # noqa: FBT003
+            patch.object(gui_probe_win32, "opengl_renderer", return_value="Intel(R) UHD"),
+        ):
+            rw.choose_gl_backend()
+        assert "KIVY_GL_BACKEND" not in rw.os.environ
+        assert "OpenGL: Intel(R) UHD" in capsys.readouterr().out
+
+    def test_off_windows_nothing_is_asked(self) -> None:
+        with (
+            patch.object(rw, "ON_WINDOWS", False),  # noqa: FBT003
+            patch.object(gui_probe_win32, "opengl_renderer") as asked,
+        ):
+            rw.choose_gl_backend()
+        asked.assert_not_called()
+
+    @pytest.mark.skipif(rw.ON_WINDOWS, reason="on Windows it reads the real OpenGL")
+    def test_the_probe_reads_nothing_off_windows(self) -> None:
+        assert gui_probe_win32.opengl_renderer() is None
 
 
 # ------------------------------------------------------------------ macOS --

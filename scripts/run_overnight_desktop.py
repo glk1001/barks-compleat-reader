@@ -57,6 +57,12 @@ why: injected keys would go nowhere. While the run lasts the machine and its
 display are kept awake (Windows' SetThreadExecutionState, macOS's caffeinate).
 Leave the machine alone: a key or a click goes to the app.
 
+Graphics: on Windows with no OpenGL driver (the VirtualBox guest's "GDI Generic",
+OpenGL 1.1, below Kivy's 2.0) every stage draws through ANGLE, Direct3D in
+software, as CI's Windows runner does: KIVY_GL_BACKEND=angle_sdl2, set by the run
+itself unless KIVY_GL_BACKEND is already set. Without it Kivy stops on a modal
+"OpenGL 2.0 NOT found" box that an unattended run waits on all night.
+
 Memory: a GUI stage starts only with MIN_FREE_MB free, else it fails naming the
 biggest apps; and while it runs, the app (its whole process tree) is held to
 APP_MEMORY_CAP_MB: over it, the app is stopped and the stage fails, saying so,
@@ -120,6 +126,9 @@ SKIPPED = 3
 WARNED = 4
 
 DEFAULT_GH_REPO = "glk1001/barks-compleat-reader"
+# Windows' own OpenGL 1.1, all a machine without a driver has; ANGLE draws instead.
+SOFTWARE_OPENGL = "GDI Generic"
+ANGLE_BACKEND = "angle_sdl2"
 BUILD_WORKFLOW = "build.yml"
 WIN_ARTIFACT = "barks-reader-win.exe"
 # How long fetch-build waits for this commit's build to finish, and how often it looks.
@@ -256,6 +265,40 @@ def venv_command(*args: str) -> list[str]:
     if ON_MACOS:
         return ["bash", str(SOFT_GL_WRAPPER), *args]
     return ["uv", "run", *args]
+
+
+def gl_backend_for(env: Mapping[str, str], renderer: str | None) -> str | None:
+    """Return the Kivy graphics backend to set for this run, or None to leave Kivy's choice.
+
+    ANGLE where Windows' OpenGL is its driverless "GDI Generic"; nothing where
+    KIVY_GL_BACKEND is already set (the caller chose), or the renderer is a real
+    driver's, or it could not be read.
+    """
+    if "KIVY_GL_BACKEND" in env or renderer != SOFTWARE_OPENGL:
+        return None
+    return ANGLE_BACKEND
+
+
+def choose_gl_backend() -> None:
+    """On Windows, draw through ANGLE where there is no OpenGL driver, saying so."""
+    if not ON_WINDOWS:
+        return
+    import gui_probe_win32  # noqa: PLC0415 (Windows only)
+
+    renderer = gui_probe_win32.opengl_renderer()
+    backend = gl_backend_for(os.environ, renderer)
+    if backend is None:
+        chosen = os.environ.get("KIVY_GL_BACKEND")
+        say(
+            f"{RUNNER}: OpenGL: {renderer or 'unread'}"
+            + (f"; KIVY_GL_BACKEND={chosen}" if chosen else "")
+        )
+        return
+    os.environ["KIVY_GL_BACKEND"] = backend
+    say(
+        f"{RUNNER}: OpenGL here is {renderer!r} (1.1, below Kivy's 2.0):"
+        f" drawing through ANGLE (KIVY_GL_BACKEND={backend})"
+    )
 
 
 def child_env(base: Mapping[str, str], **extra: str) -> dict[str, str]:
@@ -931,6 +974,7 @@ def main(argv: Sequence[str]) -> int:
     if on_battery():
         say(f"{RUNNER}: WARNING - on battery: a throttled CPU can fail the timing budgets; plug in")
     app = options.app.resolve() if options.app is not None else None
+    choose_gl_backend()
     with kept_awake():
         return Run(stages, app).run()
 

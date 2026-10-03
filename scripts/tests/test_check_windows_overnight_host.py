@@ -102,6 +102,31 @@ class TestWikiCopyChecks:
         assert ch.wiki_copy_checks(None)[0][0] == "FAIL"
 
 
+class TestOpenglCheck:
+    def test_a_real_driver_is_named(self) -> None:
+        assert ch.opengl_check("Intel(R) UHD Graphics", {}) == (
+            "OK",
+            "OpenGL: Intel(R) UHD Graphics",
+        )
+
+    def test_no_driver_says_the_runner_draws_through_angle(self) -> None:
+        status, text = ch.opengl_check("GDI Generic", {})
+        assert status == "OK"
+        assert "draws through ANGLE" in text
+        assert "--angle" in text
+
+    def test_a_backend_already_set_is_what_draws(self) -> None:
+        assert ch.opengl_check("GDI Generic", {"KIVY_GL_BACKEND": "angle_sdl2"}) == (
+            "OK",
+            "KIVY_GL_BACKEND=angle_sdl2: Kivy draws through it",
+        )
+
+    def test_unread_over_ssh_says_where_to_run_it(self) -> None:
+        status, text = ch.opengl_check(None, {})
+        assert status == "WARN"
+        assert "on the desktop" in text
+
+
 class TestMain:
     def test_windows_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(ch.sys, "platform", "linux")
