@@ -217,6 +217,33 @@ class TestFileChooserTouch:
         assert allowed_during == [False]
         assert chooser._allow_path_change is True
 
+    def test_a_folder_opened_by_a_double_tap_is_put_back(self, tmp_path: Path) -> None:
+        """Kivy opens a double-tapped folder inside the touch: the chooser stays put.
+
+        The revert once called a setter Kivy's properties do not have, and the
+        double tap crashed the app instead.
+        """
+        inside = tmp_path / "Inside"
+        inside.mkdir()
+        chooser = settings_fix.CustomFileChooserListView()
+        chooser.set_path(str(tmp_path))
+
+        def double_tap_on_the_folder(_touch: object) -> bool:
+            chooser.open_entry(SimpleNamespace(path=str(inside), locked=False))
+            return True
+
+        with patch.object(
+            settings_fix.FileChooserListView, "on_touch_down", side_effect=double_tap_on_the_folder
+        ):
+            assert chooser.on_touch_down(MagicMock()) is True
+
+        assert chooser.path == str(tmp_path)
+        assert chooser._real_path == str(tmp_path)
+        assert chooser._allow_path_change is True
+
+        chooser.set_path(str(inside))  # the route that may move it still does
+        assert chooser.path == str(inside)
+
 
 class TestSettingsThemeKv:
     def test_it_is_loaded_once_themed(self) -> None:

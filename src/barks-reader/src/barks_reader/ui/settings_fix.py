@@ -345,9 +345,13 @@ class CustomFileChooserListView(FileChooserListView):
     def on_path(self, _instance, value: str) -> None:  # noqa: ANN001
         """Intercept and block unauthorized path changes."""
         if not self._allow_path_change:
-            # Revert the path change
-            # Use the parent class property setter to avoid recursion
-            FileChooserListView.path.fset(self, self._real_path)
+            # Put the path back. Allowed for the assignment, or the on_path it
+            # fires would block it in turn and recurse.
+            self._allow_path_change = True
+            try:
+                self.path = self._real_path
+            finally:
+                self._allow_path_change = False
             return
 
         # Allowed change, update our tracking.
