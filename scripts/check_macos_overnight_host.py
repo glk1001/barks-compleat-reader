@@ -46,12 +46,12 @@ Check = tuple[str, str]
 def hooks_check(pre_push: str | None) -> Check:
     """Judge the pre-push hook: prek's, which runs the full suite before a push."""
     if pre_push is None:
-        return ("WARN", "no pre-push hook: run 'uv run prek install' (after 'git lfs install')")
+        return ("WARN", "no pre-push hook: run 'uv run prek install'")
     if "--hook-type=pre-push" in pre_push:
         return ("OK", "git hooks (prek)")
     return (
         "WARN",
-        "the pre-push hook is not prek's (git lfs install took it?): run 'uv run prek install'",
+        "the pre-push hook is not prek's: run 'uv run prek install'",
     )
 
 
@@ -114,12 +114,6 @@ def tool_checks() -> list[Check]:
         if shutil.which("git")
         else ("FAIL", "git not on PATH: xcode-select --install"),
     ]
-    status, out = _run(["git", "lfs", "version"])
-    checks.append(
-        ("OK", out.splitlines()[0])
-        if status == 0
-        else ("FAIL", "git-lfs missing: docs/setup.md, macOS step 3 (cpi.db needs it)")
-    )
     if shutil.which("gh"):
         status, _ = _run(["gh", "auth", "status"])
         checks.append(

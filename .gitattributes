@@ -1,6 +1,4 @@
 # Keep LF line endings in every checkout, including on Windows, whatever the client's
 # core.autocrlf (Git for Windows sets it true system-wide): a CRLF .sh script fails under
-# WSL with "$'\r': command not found". Git still leaves binary files alone. Above the LFS
-# rule, which it must not override: later lines win, so cpi.db stays binary and in LFS.
+# WSL with "$'\r': command not found". Git still leaves binary files alone.
 * text=auto eol=lf
-cpi.db filter=lfs diff=lfs merge=lfs -text

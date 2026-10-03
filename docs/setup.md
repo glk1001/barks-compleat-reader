@@ -16,13 +16,12 @@ checks in the last step say what is still missing, so a step skipped here shows 
 ## 1. System packages
 
 ```bash
-sudo apt install git-lfs build-essential gh tmux \
+sudo apt install build-essential gh tmux \
     xvfb xserver-xephyr xautomation x11-utils imagemagick xclip xdotool
 ```
 
 | Package | What needs it |
 |---|---|
-| `git-lfs` | `comic_utils/cpi.db` is stored in LFS; without it the file is a small pointer and the payment tables fail. |
 | `build-essential` | The C compiler Nuitka builds the standalone executable with (`scripts/build.sh`, the overnight `build` stage). CI also installs `patchelf` and `ccache`: the build ran without `patchelf` on Ubuntu 26.04, and `ccache` only makes rebuilds faster. |
 | `gh` | The GitHub CLI: CI status, and `get-win-build.sh`, `upload-data-zips.sh` and `upload-website-videos.sh`. Run `gh auth login` once. |
 | `tmux` | Keeps an overnight run going when the ssh session that started it drops. Optional. |
@@ -67,8 +66,7 @@ mkdir -p ~/Prj/github/barks-compleat-digital && cd ~/Prj/github/barks-compleat-d
 for repo in barks-compleat-reader barks-comic-building barks-ocr barks-wiki; do
     git clone "https://github.com/glk1001/${repo}.git"
 done
-git lfs install
-(cd barks-compleat-reader && git lfs pull && uv sync)
+(cd barks-compleat-reader && uv sync)
 (cd barks-comic-building && uv sync)
 (cd barks-ocr && uv sync)
 ```
@@ -89,10 +87,10 @@ uv run prek install
 
 prek is not a system package: `uv sync` installs it into `.venv` from the `dev`
 dependency group. This one command writes all three hooks (pre-commit, pre-push with the
-full suite, commit-msg with cspell). `git lfs install` also claims the pre-push slot, so
-run `prek install` after it, never before; prek then keeps the LFS hook as
-`pre-push.legacy` and chains to it. To check, `.git/hooks/pre-push` should name
-`--hook-type=pre-push`, and `.git/hooks/pre-push.legacy` should hold `git lfs pre-push`.
+full suite, commit-msg with cspell). To check, `.git/hooks/pre-push` should name
+`--hook-type=pre-push`. A clone made while the repo used git-lfs (before 2026-10-03) may
+hold LFS's hook as `.git/hooks/pre-push.legacy`: delete it if git-lfs is not installed,
+or every push fails.
 
 ## 5. Secrets and the generated modules
 
@@ -200,11 +198,10 @@ Both run the app, the unit tests and the build, and the GUI tests
   scripts/check_windows_overnight_host.py` checks every step below and says what is
   still missing (the Windows `check-overnight-host.sh`); run it last, and again after a
   Windows update.
-  - **Tools**: Git for Windows (its Git Bash, which runs the repo's `bash` scripts, and
-    git-lfs), `winget install GitHub.cli` then `gh auth login` (the `fetch-build` stage),
-    uv and bun as above. Then steps 3 to 5 above as written, in Git Bash: the clone
-    (with `git lfs install` before it), `uv sync`, `prek install`, `.env.runtime` and the
-    two generated modules.
+  - **Tools**: Git for Windows (its Git Bash runs the repo's `bash` scripts),
+    `winget install GitHub.cli` then `gh auth login` (the `fetch-build` stage), uv and bun
+    as above. Then steps 3 to 5 above as written, in Git Bash: the clone, `uv sync`,
+    `prek install`, `.env.runtime` and the two generated modules.
   - **The reader's data**: the installer's data packs into `~\barks-reader` (the
     standalone install in `README.md`), which gives `Reader Files`; `.env.runtime`'s
     `BARKS_READER_DATA_DIR` at `~/barks-reader` and `BARKS_READER_CONFIG_DIR` at
@@ -286,11 +283,11 @@ Both run the app, the unit tests and the build, and the GUI tests
   2. **uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`, into `~/.local/bin`; then
      `uv self update` if it is older than the Python the repository pins (uv 0.9 knew no
      Python 3.13.12).
-  3. **git-lfs, gh and bun**, into `~/.local/bin` too. From macOS 13, Homebrew has them
-     ready-built (`brew install git-lfs gh oven-sh/bun/bun`). On macOS 12 Homebrew builds
-     them from source (git-lfs alone wanted OpenSSL and Go), so take each one's release zip
-     from GitHub (`git-lfs-darwin-amd64`, `gh_*_macOS_amd64`, `bun-darwin-x64`; the `arm64`
-     and `aarch64` ones on Apple silicon), check it against the release's checksum list, and
+  3. **gh and bun**, into `~/.local/bin` too. From macOS 13, Homebrew has them
+     ready-built (`brew install gh oven-sh/bun/bun`). On macOS 12 Homebrew builds them from
+     source, so take each one's release zip from GitHub (`gh_*_macOS_amd64`,
+     `bun-darwin-x64`; the `arm64` and `aarch64` ones on Apple silicon), check it against
+     the release's checksum list, and
      copy the binary in. On Intel, take bun's `-baseline` build if
      `sysctl -n machdep.cpu.leaf7_features` shows no `AVX2` (a VM's CPU often hides it): the
      plain build needs it. Then `ln -s bun ~/.local/bin/bunx`.
@@ -300,13 +297,11 @@ Both run the app, the unit tests and the build, and the GUI tests
      `coverage_all_platforms.py` looks for it on a Mac:
 
      ```bash
-     git lfs install
      mkdir -p ~/Developer && cd ~/Developer
      git clone https://github.com/glk1001/barks-compleat-reader.git
      cd barks-compleat-reader
-     git lfs pull        # cpi.db: the reader stops on its git-lfs pointer at a page turn
      uv sync
-     uv run prek install # after `git lfs install`, which claims the pre-push hook (step 4)
+     uv run prek install
      ```
 
      If this Mac will
@@ -355,8 +350,8 @@ Both run the app, the unit tests and the build, and the GUI tests
   11. **Check**: `uv run python scripts/check_macos_overnight_host.py`, in Terminal on the
       Mac's desktop, checks every step above and says what is still missing, ending
       "ready" when nothing FAILs: `doctor`'s checks (the unlocked desktop, both permissions,
-      `clang`, `.env.runtime`, the profile and its folders), then git-lfs, `cpi.db`, the
-      generated modules, the hooks, the clone's place, the override-archive link, the wiki
+      `clang`, `.env.runtime`, the profile and its folders), then the generated modules,
+      the hooks, the clone's place, the override-archive link, the wiki
       copy, memory and the screen lock. Over ssh its two permission checks fail: they are
       Terminal's. The unit suite: `bash scripts/macos/with-soft-gl.sh pytest -n auto`.
   12. **Calibrate** once: `uv run python scripts/run_gui_tests.py --calibrate`, the whole

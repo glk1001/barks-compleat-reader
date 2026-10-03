@@ -631,7 +631,7 @@ Each milestone is committed independently green, following the repo's rule.
 - Gates before every commit: `ruff check` and `ruff format --check`, `ty check`,
   `bash scripts/pyrefly.sh`, `uv run lint-imports`, `bunx cspell`, `uv run pytest`
   (unit plus `scripts/tests`), then the GUI run for the touched families. GUI tests never
-  run in CI (real data dirs, `.env.runtime`, LFS `cpi.db`).
+  run in CI (real data dirs, `.env.runtime`).
 - After every GUI run the session teardown proves the live profile is untouched.
 - Flakiness policy: no retries and no flaky marks. A test waiting on the clock, other than
   `expect_no_new` for negatives and the driver's functional key pacing, is a defect: wait

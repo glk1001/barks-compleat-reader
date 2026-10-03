@@ -15,7 +15,7 @@ A clean machine's whole setup, in order (system packages, tools, sibling repos, 
 secrets, data, the one-off calibrations and the checks that say what is missing), is in
 `docs/setup.md`; keep it current when a new tool or package becomes necessary.
 
-**First-time setup (after cloning, and after any `git lfs install`):**
+**First-time setup (after cloning):**
 ```bash
 uv run prek install
 ```
@@ -28,16 +28,15 @@ case-sensitively).
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
 hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
 pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
-a red CI. `git lfs install` also claims the `pre-push` slot, so re-run this after it; prek
-preserves the LFS hook as `pre-push.legacy` and chains to it. To verify, `.git/hooks/pre-push`
-should name `--hook-type=pre-push`, not `git lfs pre-push`. On Windows, change
-`pre-push.legacy`'s first line from `#!/bin/sh` to `#!/usr/bin/env sh`: pre-commit looked for an
-absolute shebang as a Windows path, failed every push with "Executable `/bin/sh` not found", and
-pushed nothing. (Both Windows notes were found under pre-commit. Under prek, on the Windows
-laptop on 2026-10-01, every commit hook ran, the cspell one through `bunx.cmd`, so the
-`bunx` note holds; the commit-message check calls `bun x` and needs no `bunx`. The
-`pre-push.legacy` shebang is not yet re-checked under prek: that laptop's file already had
-the fix, and its pushes skipped the hook.)
+a red CI. To verify, `.git/hooks/pre-push` should name `--hook-type=pre-push`. (The `bunx` note
+was found under pre-commit; under prek, on the Windows laptop on 2026-10-01, every commit hook
+ran, the cspell one through `bunx.cmd`. The commit-message check calls `bun x` and needs no
+`bunx`.)
+
+The repo used git-lfs until 2026-10-03 (for `cpi.db`, now `comic_utils/cpi_table.py`), and no
+longer needs it. A clone made before then may hold LFS's own hook as `.git/hooks/pre-push.legacy`,
+which prek runs before each push: harmless while git-lfs is installed, but a push fails once it is
+not, so delete that file (`rm .git/hooks/pre-push.legacy`).
 
 A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
 `uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the

@@ -117,8 +117,8 @@ behaves.
 **Where tests can run.** The reader runs on an Ubuntu desktop, a touchscreen Ubuntu laptop,
 a touchscreen Windows laptop, a Windows VM and a Windows PC. The Windows VM and laptop and
 the Linux laptop are available for regular runs. macOS is not tried yet and can't be tested
-regularly, so CI's macOS leg is its only regular coverage. CI has no data pack (Git LFS
-quota, see the cpi.db rule), so a full suite runs only on those machines.
+regularly, so CI's macOS leg is its only regular coverage. CI has no data pack, so a
+full suite runs only on those machines.
 
 **The input path must stay real.** Keys injected at the OS level found bugs that keys fed
 in inside the app would have hidden:

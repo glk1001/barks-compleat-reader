@@ -5,7 +5,7 @@
 # Run it here, on the main machine. On the other one (HOST, anything ssh takes:
 # user@host or an alias) it:
 #   1. clones the four repos from GitHub into the same folder under its home as
-#      here (git-lfs first, for cpi.db), and runs uv sync in the three with a
+#      here, and runs uv sync in the three with a
 #      Python project; a repo already there is left alone - pull it yourself;
 #   2. writes .env.runtime with only its BARKS_ lines (the comic archives' key
 #      and the reader's folders), mode 600, unless one is already there;
@@ -24,7 +24,7 @@
 # --skip build-check; .benchmarks (this machine's timings: calibrate there with
 # run_gui_tests.sh --calibrate); the profile's Kivy logs.
 #
-# Assumes: that machine has git, git-lfs, rsync and uv, and can clone the repos
+# Assumes: that machine has git, rsync and uv, and can clone the repos
 # from GitHub. It needs about 36 GB free under its home.
 #
 # Usage: scripts/copy-to-overnight-host.sh [--dry-run] [--no-repos] [--no-data] HOST
@@ -106,7 +106,7 @@ parent_rel="${parent_rel#"$HOME"/}"
 
 remote_home="$(remote 'printf %s "$HOME"')"
 say "$host: home is $remote_home"
-missing_tools="$(remote 'for t in git git-lfs rsync uv; do command -v "$t" >/dev/null || printf "%s " "$t"; done')"
+missing_tools="$(remote 'for t in git rsync uv; do command -v "$t" >/dev/null || printf "%s " "$t"; done')"
 if [[ -n "$missing_tools" ]]; then
     say "$host lacks: $missing_tools- install them there first"
     exit 1
@@ -115,7 +115,7 @@ parent="${remote_home}/${parent_rel}"
 
 if [[ -n "$repos" ]]; then
     say "1. the repos, in $parent"
-    change "git lfs install --skip-repo >/dev/null && mkdir -p $(q "$parent")"
+    change "mkdir -p $(q "$parent")"
     for repo in "${REPOS[@]}"; do
         url="$(git -C "${REPO_ROOT}/../${repo}" remote get-url origin)"
         if remote "test -d $(q "${parent}/${repo}/.git")"; then

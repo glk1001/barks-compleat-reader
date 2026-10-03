@@ -96,7 +96,7 @@ else
 fi
 
 echo "== tools the stages call =="
-for tool in uv git git-lfs bun systemd-inhibit Xvfb xvfb-run; do
+for tool in uv git bun systemd-inhibit Xvfb xvfb-run; do
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else bad "$tool"; fi
 done
 # The smoke stage presses Escape in the built app with it. gui-probe.sh doctor calls

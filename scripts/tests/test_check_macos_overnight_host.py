@@ -27,8 +27,7 @@ class TestHooks:
     def test_the_prek_hook(self) -> None:
         assert ch.hooks_check('exec "$PREK" hook-impl --hook-type=pre-push -- "$@"')[0] == "OK"
 
-    def test_the_lfs_hook_alone_warns(self) -> None:
-        """`git lfs install` claims the pre-push slot; prek must be installed after it."""
+    def test_another_hook_warns(self) -> None:
         status, text = ch.hooks_check('git lfs pre-push "$@"')
         assert status == "WARN"
         assert "prek install" in text
