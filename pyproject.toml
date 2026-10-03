@@ -166,12 +166,6 @@ skip_empty = true
 omit = [
     "*/tests/*",
     "*/__init__.py",
-    # First-run installer runs only inside the standalone executable
-    "*/first_run_installer.py",
-    "*/first_run_installer_show_message.py",
-    # Standalone Kivy error/message popups run outside the normal app context
-    "*/kivy_standalone_error_popup.py",
-    "*/kivy_standalone_show_message.py",
     # OpenCV helpers for the sibling barks-ocr and barks-comic-building repos; nothing here
     # imports them, so no test here can reach them.
     "*/comic_utils/cv_image_utils.py",
