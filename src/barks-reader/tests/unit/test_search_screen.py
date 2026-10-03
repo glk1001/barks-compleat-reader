@@ -2663,3 +2663,273 @@ class TestBackgroundAndGoto:
     def test_a_title_no_story_has_goes_nowhere(self, screen: SearchScreen) -> None:
         screen._goto_title_with_page("No Such Story", "3")
         cast("MagicMock", screen.on_goto_title_with_page).assert_not_called()
+
+
+class TestCombinedTagsListingNothing:
+    """Picked tags no story has together say so, in the era or not; a new era relists them."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Tag"
+            bare._search = MagicMock()
+            bare._search.titles_for_tag_selection.return_value = []
+            bare._search.get_title_display_strings.side_effect = lambda ts: [t.name for t in ts]
+            bare._search.resolve_tag.side_effect = lambda name: (
+                SimpleNamespace(value=name.title()),
+                [],
+            )
+            bare._tag_titles = []
+            bare.on_search_results_title_changed = None
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            bare._current_tag = None
+            bare._selected_word = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "tags"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare.ids.tag_chips_layout.children = [_tag_stack("Scrooge", "Gyro")]
+            yield bare
+
+    @staticmethod
+    def _last_row_text(screen: SearchScreen) -> str:
+        added = screen.ids.tag_title_results_layout.add_widget.call_args_list
+        return added[-1].args[0].text
+
+    def test_no_story_with_all_of_them_says_so(self, screen: SearchScreen) -> None:
+        screen._toggle_tag_basket("Scrooge")
+        assert self._last_row_text(screen) == "No story has these tags"
+
+    def test_none_in_the_era_says_which_era(self, screen: SearchScreen) -> None:
+        _press(cast("MagicMock", screen._era_rows["Tag"].chips[1]))  # 1942-46
+        screen._toggle_tag_basket("Scrooge")
+        assert self._last_row_text(screen) == "None in 1942-46"
+
+    def test_a_new_era_lists_the_picked_tags_stories_again(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._search.titles_for_tag_selection.return_value = [PIRATE_GOLD, HELMET]
+        screen._toggle_tag_basket("Scrooge")
+        assert screen._tag_titles == [PIRATE_GOLD.name, HELMET.name]
+
+        _press(cast("MagicMock", screen._era_rows["Tag"].chips[2]))  # 1951-54
+
+        assert screen._tag_titles == [HELMET.name]
+        assert loguru_sink[-1] == log_markers.TAG_COMBINED_RESULTS.format(tags="Scrooge", count=1)
+
+
+class TestBeforeTheLayoutIsBuilt:
+    """Until the kv layout gives the screen its lists, they read as empty, not as errors."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with patch.object(SearchScreen, "ids", _Ids()):
+            yield _make_bare_screen()
+
+    def test_every_list_reads_empty(self, screen: SearchScreen) -> None:
+        assert screen._tag_rows() == []
+        assert screen._word_rows() == []
+        assert screen._get_main_tag_chip_buttons() == []
+        assert screen._get_member_chip_buttons() == []
+        assert screen._get_tag_chip_buttons() == []
+        assert screen._get_word_chip_buttons() == []
+
+
+class TestPanelRowsOutsideTheListSearches:
+    def test_the_title_search_has_no_panel_rows(self) -> None:
+        with patch.object(SearchScreen, "ids", MagicMock()):
+            screen = _make_bare_screen()
+        screen._active_mode = "Title"
+        assert screen._panel_rows() == []
+
+
+class TestEmptiedBasketWithNoList:
+    """Taking the last picked word out, with no word list to go to, puts the keyboard in the box."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        ids = _Ids(
+            {f"{mode}_search_input": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_clear_button": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
+            | {
+                "word_results_layout": BoxLayout(),
+                "tag_title_results_layout": BoxLayout(),
+                "title_results_layout": BoxLayout(),
+                "word_chips_layout": MagicMock(children=[]),
+                "tag_chips_layout": MagicMock(children=[]),
+            }
+        )
+        with (
+            patch.object(SearchScreen, "ids", ids),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._search = MagicMock()
+            bare._search.run_word_query.return_value = WordQueryResult(
+                title_dict=_found("Story A"), hit_counts={"Story A": 1}
+            )
+            bare._selected_word = ""
+            bare._word_search_results = []
+            bare._selected_result_button = None
+            bare._nav_active = True
+            bare.on_request_nav_focus = None
+            bare._nav_on_exit_request = None
+            bare._nav_focus_area = "basket"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            yield bare
+
+    def test_the_keyboard_goes_to_the_search_box(self, screen: SearchScreen) -> None:
+        screen._toggle_basket_word("gold")
+        screen._nav_enter_basket()
+        screen.handle_key(search_screen.KEY_RIGHT)  # onto the word's chip
+        screen.handle_key(search_screen.KEY_ENTER)  # takes it out
+
+        assert screen._word_basket.words == []
+        assert screen._nav_focus_area == "input"
+        assert screen.ids.word_search_input.focus is True
+
+    def test_a_key_the_picked_row_does_not_take_is_left_to_the_host(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._toggle_basket_word("gold")
+        screen._nav_enter_basket()
+        assert screen.handle_key(ord("a")) is False
+        assert screen._nav_focus_area == "basket"
+
+
+class TestSaidByChipEdges:
+    """The speaker chip keeps the keyboard as it changes, and a list that cannot open is quiet."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+            patch.object(SearchScreen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS),
+            patch.object(SearchScreen, "_rerun_word_results"),
+        ):
+            bare = _make_bare_screen()
+            bare._speaker_row = ChipRow(MagicMock(), _live_chip, bare._on_said_by_chip_pressed)
+            bare._active_mode = "Word"
+            bare._nav_active = True
+            bare._nav_on_exit_request = None
+            bare._selected_word = "money"
+            bare._nav_focused_result_idx = 0
+            bare._nav_focused_chip_idx = 0
+            bare._nav_word_sub_focus = "title"
+            _offer_speakers(bare, "Donald")
+            bare._nav_focus_area = "speakers"
+            bare._speaker_row.enter_focus()
+            yield bare
+
+    def test_the_chip_keeps_the_keyboard_when_its_speaker_changes(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._speaker = "Scrooge"
+        screen._show_said_by_chip()
+        assert _said_by_chip(screen).text == "Said by: Scrooge"
+        assert screen._speaker_row.focused == 0
+
+    def test_a_list_that_cannot_open_logs_nothing_and_keeps_the_chip(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(search_screen, "open_dropdown", return_value=False):
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert not any(line.startswith("Word search: speaker list opened") for line in loguru_sink)
+        assert screen._nav_focus_area == "speakers"
+        assert screen._speaker_row.focused == 0
+
+
+class TestNavEdges:
+    """The keys' edges: nothing to focus, a key no area takes, and the box's Enter."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        rows = BoxLayout(orientation="vertical")
+        ids = _Ids(
+            {f"{mode}_search_input": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_clear_button": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
+            | {
+                "word_results_layout": rows,
+                "tag_title_results_layout": BoxLayout(),
+                "title_results_layout": BoxLayout(),
+                "word_chips_layout": MagicMock(children=[]),
+                "tag_chips_layout": MagicMock(children=[]),
+            }
+        )
+        with (
+            patch.object(SearchScreen, "ids", ids),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Word"
+            bare._nav_active = True
+            bare._nav_on_exit_request = MagicMock()
+            bare._nav_focus_area = "input"
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare._nav_focused_chip_idx = 0
+            bare._selected_word = ""
+            bare._tag_titles = []
+            yield bare
+
+    def test_no_key_is_taken_while_the_screen_is_not_navigating(self, screen: SearchScreen) -> None:
+        screen._nav_active = False
+        assert screen.handle_key(search_screen.KEY_DOWN) is False
+
+    def test_enter_in_the_box_runs_the_search(self, screen: SearchScreen) -> None:
+        with patch.object(screen, "on_search_input_enter") as run:
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        run.assert_called_once_with()
+
+    def test_a_typing_key_in_the_box_is_left_to_the_box(self, screen: SearchScreen) -> None:
+        assert screen.handle_key(ord("a")) is False
+
+    def test_on_an_empty_list_escape_leaves_and_other_keys_are_not_taken(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._nav_focus_area = "tags"
+        assert screen.handle_key(ord("a")) is False
+        assert screen.handle_key(search_screen.KEY_ENTER) is True  # nothing to pick
+        assert screen._nav_focus_area == "tags"
+        assert screen.handle_key(KEY_ESCAPE) is True
+        assert screen._nav_focus_area == "input"
+        cast("MagicMock", screen._nav_on_exit_request).assert_called_once_with()
+
+    def test_with_nothing_listed_nothing_takes_the_focus(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "tags"
+        screen._nav_focused_chip_idx = 3
+        screen._focus_selected_or_first_chip()
+        screen._draw_chip_focus()
+        screen._focus_first_result_row()
+        screen._draw_result_focus()
+        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 3)
+        assert screen._get_focused_result_widget([]) is None
+
+    def test_a_notice_row_among_word_results_takes_the_focus_whole(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        rows = screen.ids.word_results_layout
+        rows.add_widget(_word_result_row("Story A", []))
+        rows.add_widget(_SearchResultButton(text="None in 1942-46"))
+        screen._nav_focus_area = "results"
+        screen._nav_focused_result_idx = 1
+
+        screen._draw_result_focus()
+
+        assert loguru_sink[-1] == 'Nav focus on _SearchResultButton "None in 1942-46".'

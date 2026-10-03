@@ -198,3 +198,111 @@ def test_an_option_picked_from_its_list_logs_the_new_value(loguru_sink: list[str
     ):
         SettingOptionsWithValue._set_option(setting, MagicMock())
     assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
+
+
+class TestFileChooserTouch:
+    """A touch on the chooser may not move it to another folder; only set_path may."""
+
+    def test_path_changes_are_held_off_only_while_a_touch_is_handled(self) -> None:
+        chooser = settings_fix.CustomFileChooserListView()
+        allowed_during: list[bool] = []
+
+        def handle(_touch: object) -> bool:
+            allowed_during.append(chooser._allow_path_change)
+            return True
+
+        with patch.object(settings_fix.FileChooserListView, "on_touch_down", side_effect=handle):
+            assert chooser.on_touch_down(MagicMock()) is True
+
+        assert allowed_during == [False]
+        assert chooser._allow_path_change is True
+
+
+class TestSettingsThemeKv:
+    def test_it_is_loaded_once_themed(self) -> None:
+        with (
+            patch.object(settings_fix, "_settings_kv_installed", False),  # noqa: FBT003
+            patch.object(settings_fix, "Builder") as builder,
+        ):
+            settings_fix.install_settings_theme_kv()
+            settings_fix.install_settings_theme_kv()
+
+        builder.load_string.assert_called_once()
+        kv = builder.load_string.call_args.args[0]
+        assert "__SEL_RGBA__" not in kv
+        assert "__TITLE_BAR_H__" not in kv
+
+
+def test_an_empty_folder_has_nothing_to_highlight(tmp_path: Path) -> None:
+    chooser = _browsing(tmp_path, None)
+    chooser.ids.file_chooser._items = []
+
+    SettingLongPathPopup._move_highlight(chooser, 1)
+
+    assert chooser.ids.file_chooser.selection == []
+    chooser.ids.file_chooser.layout.ids.scrollview.scroll_to.assert_not_called()
+
+
+class TestTypingAPath:
+    """What the box holds, once typing pauses, moves the list to it, or to its folder."""
+
+    @staticmethod
+    def _typed(text: str) -> MagicMock:
+        chooser = MagicMock()
+        chooser._updating = False
+        chooser._update_event = None
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.update_file_chooser_path(chooser, text)
+        do_update, delay = clock.schedule_once.call_args.args
+        assert delay == 0.5  # noqa: PLR2004
+        do_update(delay)
+        return chooser
+
+    def test_a_folder_is_shown_and_highlighted(self, tmp_path: Path) -> None:
+        chooser = self._typed(str(tmp_path))
+        chooser.ids.file_chooser.set_path.assert_called_once_with(str(tmp_path))
+        assert chooser.ids.file_chooser.selection == [str(tmp_path)]
+        assert chooser._updating is False
+
+    def test_a_new_name_in_a_folder_shows_that_folder(self, tmp_path: Path) -> None:
+        typed = tmp_path / "not yet made"
+        chooser = self._typed(str(typed))
+        chooser.ids.file_chooser.set_path.assert_called_once_with(str(tmp_path))
+        assert chooser.ids.file_chooser.selection == [str(typed)]
+
+    def test_a_path_nowhere_moves_nothing(self, tmp_path: Path) -> None:
+        chooser = self._typed(str(tmp_path / "no" / "such" / "place"))
+        chooser.ids.file_chooser.set_path.assert_not_called()
+
+    def test_a_path_that_cannot_be_read_is_logged_and_left(self, loguru_sink: list[str]) -> None:
+        chooser = MagicMock()
+        chooser._updating = False
+        chooser._update_event = None
+        with (
+            patch.object(settings_fix, "Clock") as clock,
+            patch.object(settings_fix, "Path", side_effect=RuntimeError("no home")),
+        ):
+            SettingLongPathPopup.update_file_chooser_path(chooser, "~nobody/comics")
+            clock.schedule_once.call_args.args[0](0.5)
+
+        assert 'Invalid path in long path file chooser: "~nobody/comics"' in loguru_sink
+        chooser.ids.file_chooser.set_path.assert_not_called()
+        assert chooser._updating is False
+
+
+class TestAltEscapeKeySetting:
+    """A stored value that is not a keycode reads as unset, and the capture starts from none."""
+
+    def test_a_value_not_a_keycode_shows_as_unset(self) -> None:
+        setting = MagicMock()
+        setting.value = "not a key"
+        settings_fix.SettingAltEscapeKey._refresh_display_text(setting)
+        assert setting.display_text == "<unset>"
+
+    def test_the_capture_starts_from_no_key_for_such_a_value(self) -> None:
+        setting = MagicMock()
+        setting.value = "not a key"
+        with patch.object(settings_fix, "AltEscapeCapturePopup") as popup:
+            settings_fix.SettingAltEscapeKey._open_capture_popup(setting, MagicMock())
+        assert popup.call_args.kwargs["current_keycode"] == 0
+        popup.return_value.open.assert_called_once_with()
