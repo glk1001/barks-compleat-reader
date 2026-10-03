@@ -34,9 +34,13 @@ ran, the cspell one through `bunx.cmd`. The commit-message check calls `bun x` a
 `bunx`.)
 
 The repo used git-lfs until 2026-10-03 (for `cpi.db`, now `comic_utils/cpi_table.py`), and no
-longer needs it. A clone made before then may hold LFS's own hook as `.git/hooks/pre-push.legacy`,
-which prek runs before each push: harmless while git-lfs is installed, but a push fails once it is
-not, so delete that file (`rm .git/hooks/pre-push.legacy`).
+longer needs it. A clone made before then holds `git lfs install`'s four hooks in `.git/hooks`:
+`pre-push.legacy` (which prek runs before each push), `post-checkout`, `post-commit` and
+`post-merge`. Each is harmless while git-lfs is installed and fails its git command once it is not.
+Rename the ones that are only LFS's (`git lfs <hook> "$@"` after a `command -v git-lfs` guard;
+about 350 bytes) to `<name>.lfs-removed`. Where graphify's hook was appended to one (its
+`post-checkout`, `post-commit`), keep the file and delete just those two LFS lines. Done on this
+machine and the three overnight machines on 2026-10-03.
 
 A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
 `uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the

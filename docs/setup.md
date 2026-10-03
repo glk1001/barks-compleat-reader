@@ -88,9 +88,11 @@ uv run prek install
 prek is not a system package: `uv sync` installs it into `.venv` from the `dev`
 dependency group. This one command writes all three hooks (pre-commit, pre-push with the
 full suite, commit-msg with cspell). To check, `.git/hooks/pre-push` should name
-`--hook-type=pre-push`. A clone made while the repo used git-lfs (before 2026-10-03) may
-hold LFS's hook as `.git/hooks/pre-push.legacy`: delete it if git-lfs is not installed,
-or every push fails.
+`--hook-type=pre-push`. A clone made while the repo used git-lfs (before 2026-10-03)
+holds `git lfs install`'s hooks too: `pre-push.legacy`, `post-checkout`, `post-commit` and
+`post-merge`, each failing its git command once git-lfs is not installed. Rename those
+that are only LFS's to `<name>.lfs-removed`; where graphify's hook follows the LFS lines
+in one, delete just the two LFS lines (`CLAUDE.md` has the details).
 
 ## 5. Secrets and the generated modules
 
@@ -188,11 +190,9 @@ Both run the app, the unit tests and the build, and the GUI tests
 (`scripts/run_overnight_desktop.py`; plan and stages in `docs/plans/windows-overnight.md`).
 
 - **Windows.** uv from its installer, bun with `winget install Oven-sh.Bun`. That package
-  has no `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. After
-  `prek install`, change `.git/hooks/pre-push.legacy`'s first line from `#!/bin/sh` to
-  `#!/usr/bin/env sh`, or every push fails with "Executable `/bin/sh` not found".
-  (Both were found under pre-commit. Under prek the commit hooks run on Windows, the `bunx`
-  one included; the shebang one is not yet re-checked under prek; see `CLAUDE.md`.)
+  has no `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`.
+  (Found under pre-commit; under prek the commit hooks run on Windows, the `bunx` one
+  included.) An older clone's git-lfs hooks go as step 4 says.
   The standalone app's own install steps are in `README.md`.
 - **A Windows overnight machine**, once, besides the above. `uv run python
   scripts/check_windows_overnight_host.py` checks every step below and says what is
