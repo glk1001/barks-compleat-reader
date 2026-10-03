@@ -25,6 +25,7 @@ from barks_reader.ui.kivy_standalone_show_message import (
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from kivy.animation import Animation
 from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from PIL import Image
@@ -221,6 +222,56 @@ class TestBackgroundImage:
             if getattr(i, "texture", None) is not None
         ]
         assert (40, 20) in sizes
+
+    def test_the_image_fits_the_card_and_follows_it(self, app: _Loop, tmp_path: Path) -> None:
+        background = _write_png(tmp_path / "background.png", (40, 20))
+        popup = _open(app, background_image_file=background)
+        card = _card(popup)
+
+        card.pos = (50, 60)
+        card.size = (400, 400)
+
+        image = next(
+            i
+            for i in card.canvas.before.children
+            if isinstance(i, RoundedRectangle) and tuple(i.texture.size) == (40, 20)
+        )
+        assert (tuple(image.pos), tuple(image.size)) == ((50, 160), (400, 200))
+
+
+def _card(popup: ModalView) -> Any:  # noqa: ANN401
+    """Return the popup's card: the box under the title bar that holds the content."""
+    return popup.content.children[0]
+
+
+class TestScrim:
+    """The wash between the background art and the content covers the card, however sized.
+
+    The error popups draw dark text on it; were it left behind, that text would sit
+    on the popup's dark grey.
+    """
+
+    @pytest.mark.parametrize("with_image", [False, True])
+    def test_it_covers_the_card_and_follows_it(
+        self, app: _Loop, tmp_path: Path, with_image: bool
+    ) -> None:
+        image = _write_png(tmp_path / "background.png", (40, 20)) if with_image else None
+        popup = _open(app, background_image_file=image)
+        card = _card(popup)
+
+        for pos, size in (((50, 60), (400, 300)), ((70, 80), (500, 350))):
+            card.pos = pos
+            card.size = size
+
+            *_, scrim = (i for i in card.canvas.before.children if isinstance(i, RoundedRectangle))
+            shadow = next(i for i in card.canvas.before.children if type(i) is Rectangle)
+            assert (tuple(scrim.pos), tuple(scrim.size)) == (pos, size)
+            assert (tuple(shadow.pos), tuple(shadow.size)) == ((pos[0] + 2, pos[1] - 2), size)
+
+    def test_its_colour_is_the_one_asked_for(self, app: _Loop) -> None:
+        popup = _open(app, wrapper_scrim=(0.1, 0.1, 0.1, 0.7))
+        *_, scrim_colour = (i for i in _card(popup).canvas.before.children if type(i) is Color)
+        assert tuple(scrim_colour.rgba) == pytest.approx((0.1, 0.1, 0.1, 0.7))
 
 
 class TestBackgroundFit:

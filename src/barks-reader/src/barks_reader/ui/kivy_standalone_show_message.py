@@ -210,6 +210,8 @@ def show_standalone_popup(  # noqa: C901, PLR0915
 
         # Place user content directly inside the wrapper.
         content_wrapper.add_widget(content)
+        # The shadow, the scrim and the art follow the card wherever layout puts it.
+        content_wrapper.bind(pos=update_wrapper_bgnd, size=update_wrapper_bgnd)
 
         # --- Assemble root layout ---
         root_box.add_widget(title_bar)
@@ -250,12 +252,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
 
         popup.bind(parent=on_left_window)
 
-        def popup_is_open() -> None:
-            log_popup_opened(title)
-            if background_image_file and bgnd_rect and bgnd_texture_size:
-                update_wrapper_bgnd(content, 1)
-
-        popup.bind(on_open=lambda *_: popup_is_open())
+        popup.bind(on_open=lambda *_: log_popup_opened(title))
 
         def _on_key_down(_win: object, key: int, *_args: object) -> bool:
             if closes_popup(key):
