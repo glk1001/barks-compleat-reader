@@ -37,6 +37,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tomllib
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path, PurePosixPath
@@ -49,6 +50,16 @@ if TYPE_CHECKING:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT_ROOT = REPO_ROOT / "build" / "coverage-all"
+
+
+def measured_dirs(pyproject: Path) -> tuple[str, ...]:
+    """Return the directories coverage measures: ``[tool.coverage.run] source``."""
+    with pyproject.open("rb") as f:
+        return tuple(tomllib.load(f)["tool"]["coverage"]["run"]["source"])
+
+
+# What a run's coverage covers: the packages' code, not the test suites beside it.
+MEASURED_DIRS = measured_dirs(REPO_ROOT / "pyproject.toml")
 LINUX, WINDOWS, MACOS = "Linux", "Windows", "macOS"
 DEFAULT_WINDOWS_REPO = "source/repos/barks-compleat-reader"
 DEFAULT_MACOS_REPO = "Developer/barks-compleat-reader"
@@ -132,9 +143,9 @@ def same_commit(a: str, b: str) -> bool:
 def same_source(src_tree: Callable[[str], str | None]) -> Callable[[str, str], bool]:
     """Return a test of whether two commits measured the same code.
 
-    The same commit, or two whose ``src/`` trees are one (`src_tree` gives a
-    commit's, or None when git does not have it): coverage measures only
-    ``src/``, so a commit that changed only scripts or docs measured the same lines.
+    The same commit, or two whose measured code is one (`src_tree` gives a
+    commit's, or None when git does not have it): a commit that changed only
+    scripts, docs or tests measured the same lines.
     """
 
     def same(a: str, b: str) -> bool:
@@ -148,14 +159,22 @@ def same_source(src_tree: Callable[[str], str | None]) -> Callable[[str, str], b
 
 @cache
 def git_src_tree(commit: str) -> str | None:
-    """Return the id of a commit's ``src/`` tree, or None when git here does not have it."""
-    done = subprocess.run(  # noqa: S603
-        ["git", "-C", str(REPO_ROOT), "rev-parse", "--verify", "--quiet", f"{commit}:src"],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return done.stdout.strip() or None
+    """Return what identifies a commit's measured code, or None when git here lacks the commit.
+
+    The ids of its MEASURED_DIRS trees, joined ("-" for one the commit has not
+    got): not ``src/`` whole, which holds the test suites too, so a commit that
+    only added tests (a whole day's coverage work, 2026-10-03) kept the machines'
+    runs of one code from pairing.
+    """
+    git = ["git", "-C", str(REPO_ROOT), "rev-parse", "--verify", "--quiet"]
+    if not _git_out([*git, f"{commit}^{{commit}}"]):
+        return None
+    return " ".join(_git_out([*git, f"{commit}:{d}"]) or "-" for d in MEASURED_DIRS)
+
+
+def _git_out(argv: list[str]) -> str:
+    done = subprocess.run(argv, capture_output=True, text=True, check=False)  # noqa: S603
+    return done.stdout.strip()
 
 
 def pick_runs(

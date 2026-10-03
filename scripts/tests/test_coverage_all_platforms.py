@@ -90,7 +90,7 @@ class TestRuns:
     def test_the_src_tree_follows_src_alone(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A real repository: a docs-only commit keeps src/'s tree, a code commit changes it."""
+        """A real repository: docs- and tests-only commits keep it, a code commit changes it."""
         # Run from a git hook (pre-push runs the suite), git's GIT_DIR and the like
         # are set, and they beat -C: every command here would reach this repo instead.
         for name in [n for n in os.environ if n.startswith("GIT_")]:
@@ -111,17 +111,27 @@ class TestRuns:
             ).stdout.strip()
 
         cap.subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-        first = commit("src/a.py", "a = 1\n")
+        first = commit("src/pkg/src/a.py", "a = 1\n")
         docs = commit("docs/notes.md", "notes\n")
-        code = commit("src/a.py", "a = 2\n")
+        tests = commit("src/pkg/tests/test_a.py", "def test_a(): ...\n")
+        code = commit("src/pkg/src/a.py", "a = 2\n")
         cap.git_src_tree.cache_clear()
         try:
-            with patch.object(cap, "REPO_ROOT", tmp_path):
+            with (
+                patch.object(cap, "REPO_ROOT", tmp_path),
+                patch.object(cap, "MEASURED_DIRS", ("src/pkg/src", "src/other/src")),
+            ):
                 assert cap.git_src_tree(first) == cap.git_src_tree(docs)
+                assert cap.git_src_tree(tests) == cap.git_src_tree(first)
                 assert cap.git_src_tree(code) != cap.git_src_tree(first)
                 assert cap.git_src_tree("0" * 40) is None
         finally:
             cap.git_src_tree.cache_clear()
+
+    def test_the_measured_dirs_are_coverages_own(self) -> None:
+        assert cap.measured_dirs(cap.REPO_ROOT / "pyproject.toml") == cap.MEASURED_DIRS
+        assert "src/barks-reader/src/barks_reader" in cap.MEASURED_DIRS
+        assert not any("/tests" in d for d in cap.MEASURED_DIRS)
 
     def test_no_commit_in_common_names_what_each_machine_has(self) -> None:
         runs = {
