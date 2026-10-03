@@ -16,14 +16,16 @@ import gc
 import os
 import weakref
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
+from okf_reader.core.actions import PageAction
 from okf_reader.core.render import TableBlock
+from okf_reader.core.search import SearchHit
 from okf_reader.core.session import load_session_state
 from okf_reader.ui import viewer as viewer_module
 from okf_reader.ui.keynav import (
@@ -36,6 +38,8 @@ from okf_reader.ui.keynav import (
     KEY_LEFT,
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_TAB,
 )
 from okf_reader.ui.viewer import (
     LAZY_TABLE_MARGIN,
@@ -53,7 +57,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from kivy.uix.widget import Widget
-    from okf_reader.core.search import SearchHit
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("KIVY_HEADLESS_CI", "") == "1",
@@ -451,3 +454,365 @@ class TestTableWidget:
     def test_a_long_table_with_a_link_is_built_whole(self, viewer: OKFViewer) -> None:
         rows = [*LONG_TABLE_ROWS, "[ref=concept/a.md]A[/ref]"]
         assert not isinstance(self._table(viewer, rows), _LazyTable)
+
+
+def _concept(viewer: OKFViewer) -> Any:  # noqa: ANN401
+    """Return the tree's one directory node, the bundle's ``concept`` folder."""
+    return next(n for n in viewer.tree.iterate_open_nodes() if n.text == "Concept")
+
+
+def _left_texts(viewer: OKFViewer) -> list[str]:
+    return [w.text for w in viewer._left_body.walk(restrict=True) if isinstance(w, Label)]
+
+
+class _Hits:
+    """A ready search provider with fixed hits."""
+
+    def __init__(self, hits: list[SearchHit]) -> None:
+        self.hits = hits
+
+    def search(self, query: str) -> list[SearchHit]:  # noqa: ARG002
+        return self.hits
+
+
+def _hit(path: Path, title: str) -> SearchHit:
+    return SearchHit(path=path, title=title, breadcrumb="", matched_on="title", score=1)
+
+
+class TestTreeKeys:
+    """The sidebar's tree on the keys a desktop adds, and the edges of the remote's."""
+
+    def test_home_and_end_go_to_the_first_and_last_node(self, viewer: OKFViewer) -> None:
+        concept = _concept(viewer)
+        viewer.tree.toggle_node(concept)
+        viewer._add_tree_nodes(viewer_module.list_children(concept.bundle_path), concept)
+        nodes = list(viewer.tree.iterate_open_nodes())
+
+        assert viewer.handle_key(KEY_END) is True
+        assert viewer.tree.selected_node is nodes[-1]
+        assert viewer.handle_key(KEY_HOME) is True
+        assert viewer.tree.selected_node is nodes[0]
+
+    def test_an_unmapped_key_is_left_to_the_host(self, viewer: OKFViewer) -> None:
+        assert viewer.handle_key(KEY_F) is False
+
+    def test_with_nothing_selected_right_crosses_to_the_page(self, viewer: OKFViewer) -> None:
+        assert viewer.tree.selected_node is None
+        viewer.handle_key(KEY_RIGHT)
+        assert viewer._focus_region is FocusRegion.PAGE
+
+    def test_with_nothing_selected_left_and_enter_do_nothing(self, viewer: OKFViewer) -> None:
+        assert viewer.handle_key(KEY_LEFT) is True
+        assert viewer.handle_key(KEY_ENTER) is True
+        assert _page(viewer) == "index.md"
+        assert viewer._focus_region is FocusRegion.SIDEBAR
+
+    def test_right_on_an_open_empty_folder_stays_put(self, viewer: OKFViewer) -> None:
+        concept = _concept(viewer)
+        viewer.tree.toggle_node(concept)
+        for child in list(concept.nodes):  # a folder whose pages have all gone
+            viewer.tree.remove_node(child)
+        viewer._focus_tree_node(concept)
+
+        viewer.handle_key(KEY_RIGHT)
+
+        assert viewer.tree.selected_node is concept
+
+    def test_an_empty_tree_takes_only_the_navigation_keys(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer.tree, "iterate_open_nodes", return_value=iter(())):
+            assert viewer.handle_key(KEY_DOWN) is True
+        with patch.object(viewer.tree, "iterate_open_nodes", return_value=iter(())):
+            assert viewer.handle_key(KEY_ENTER) is False
+
+    def test_a_folder_without_an_index_page_opens_no_page(self, viewer: OKFViewer) -> None:
+        viewer._on_node(_concept(viewer))
+        viewer._on_node(SimpleNamespace())  # neither a page nor a folder
+        assert _page(viewer) == "index.md"
+
+    def test_a_folder_with_an_index_page_opens_it(self, viewer: OKFViewer) -> None:
+        (viewer.bundle / "concept" / "index.md").write_text("# Concept\n", encoding="utf-8")
+        viewer._on_node(_concept(viewer))
+        assert _page(viewer) == "concept/index.md"
+
+
+class TestSidebarWhileSearching:
+    def _type(self, viewer: OKFViewer, text: str) -> None:
+        viewer.search_field.text = text
+
+    def test_before_the_index_is_ready_it_says_it_is_searching(self, viewer: OKFViewer) -> None:
+        self._type(viewer, "grotto")
+        assert _left_texts(viewer) == ["Searching…"]
+
+    def test_while_waiting_right_crosses_and_the_rest_are_held(self, viewer: OKFViewer) -> None:
+        self._type(viewer, "grotto")
+        assert viewer.handle_key(KEY_DOWN) is True
+        assert viewer.handle_key(KEY_F) is False
+        assert viewer.handle_key(KEY_RIGHT) is True
+        assert viewer._focus_region is FocusRegion.PAGE
+
+    def test_typing_after_a_failed_build_shows_the_error(self, viewer: OKFViewer) -> None:
+        viewer._mark_search_ready(failed=True)
+        self._type(viewer, "grotto")
+        assert _left_texts(viewer) == [SEARCH_ERROR_TEXT]
+
+    def test_typing_once_ready_lists_the_hits(self, viewer: OKFViewer) -> None:
+        a_page = viewer.bundle / "concept" / "a.md"
+        viewer._searcher = _Hits([_hit(a_page, "A")])
+        viewer._mark_search_ready(failed=False)
+
+        self._type(viewer, "a")
+
+        assert [path for path, _btn in viewer._result_rows] == [a_page]
+
+    def test_the_clear_button_puts_the_tree_back(self, viewer: OKFViewer) -> None:
+        self._type(viewer, "grotto")
+        viewer._clear_search()
+        assert viewer.search_field.text == ""
+        assert viewer.tree_scroll.parent is viewer._left_body
+
+    def test_clearing_twice_leaves_the_tree_alone(self, viewer: OKFViewer) -> None:
+        viewer._show_tree_panel()
+        assert viewer.tree_scroll.parent is viewer._left_body
+
+
+class TestResultKeys:
+    @pytest.fixture
+    def results(self, viewer: OKFViewer) -> OKFViewer:
+        hits = [_hit(viewer.bundle / f"p{i}.md", f"Page {i}") for i in range(3)]
+        viewer._searcher = _Hits(hits)
+        viewer._mark_search_ready(failed=False)
+        viewer.search_field.text = "page"
+        viewer._set_focus_region(FocusRegion.SIDEBAR)
+        return viewer
+
+    def test_end_and_home_go_to_the_last_and_first_row(self, results: OKFViewer) -> None:
+        results.handle_key(KEY_END)
+        assert results._sidebar_index == 2  # noqa: PLR2004
+        results.handle_key(KEY_HOME)
+        assert results._sidebar_index == 0
+
+    def test_left_is_held_and_others_are_left_to_the_host(self, results: OKFViewer) -> None:
+        assert results.handle_key(KEY_LEFT) is True
+        assert results.handle_key(KEY_F) is False
+
+    def test_a_row_out_of_view_is_scrolled_to(self, results: OKFViewer) -> None:
+        scroll = results._results_scroll
+        assert scroll is not None
+        scroll.height = 10
+        scroll.children[0].height = 1000
+        with patch.object(scroll, "scroll_to") as scroll_to:
+            results.handle_key(KEY_END)
+        scroll_to.assert_called_once()
+
+
+class TestBarKeys:
+    def test_with_no_bar_buttons_escape_stays_where_it_is(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer, "_bar_nav_buttons", return_value=[]):
+            viewer.handle_key(KEY_ESCAPE)
+        assert viewer._focus_region is FocusRegion.SIDEBAR
+
+    def test_buttons_gone_under_the_ring_drop_the_focus_out(self, viewer: OKFViewer) -> None:
+        viewer.handle_key(KEY_ESCAPE)
+        with patch.object(viewer, "_bar_nav_buttons", return_value=[]):
+            assert viewer.handle_key(KEY_RIGHT) is True
+        assert viewer._focus_region is FocusRegion.SIDEBAR
+
+    def test_a_ringed_button_gone_re_seeds_on_the_first(self, viewer: OKFViewer) -> None:
+        viewer.handle_key(KEY_ESCAPE)
+        first = viewer._bar_nav_buttons()[0]
+        viewer._bar_focus_widget = Label()  # no longer one of the bar's buttons
+        viewer.handle_key(KEY_RIGHT)
+        assert viewer._bar_focus_widget is first
+
+    def test_enter_on_a_ringed_button_gone_does_nothing(self, viewer: OKFViewer) -> None:
+        viewer.handle_key(KEY_ESCAPE)
+        viewer._bar_focus_widget = Label()
+        assert viewer.handle_key(KEY_ENTER) is True
+        assert viewer._focus_region is FocusRegion.TOP_BAR
+
+    def test_tab_leaves_the_bar_for_where_it_came_from(self, viewer: OKFViewer) -> None:
+        viewer.handle_key(KEY_ESCAPE)
+        assert viewer.handle_key(KEY_TAB) is True
+        assert viewer._focus_region is FocusRegion.SIDEBAR
+
+    def test_tab_switches_between_the_sidebar_and_the_page(self, viewer: OKFViewer) -> None:
+        viewer.handle_key(KEY_TAB)
+        assert viewer._focus_region is FocusRegion.PAGE
+        viewer.handle_key(KEY_TAB)
+        assert viewer._focus_region is FocusRegion.SIDEBAR
+
+
+class TestPageKeys:
+    @pytest.fixture
+    def on_page(self, viewer: OKFViewer) -> OKFViewer:
+        viewer._set_focus_region(FocusRegion.PAGE)
+        return viewer
+
+    def test_an_unmapped_key_is_left_to_the_host(self, on_page: OKFViewer) -> None:
+        assert on_page.handle_key(KEY_F) is False
+
+    def test_a_focused_link_scrolled_out_of_view_loses_the_focus(self, on_page: OKFViewer) -> None:
+        on_page._set_link_focus(0)
+        lbl = on_page._page_links[0][0]
+        with patch.object(lbl, "to_window", return_value=(0, -10_000)):
+            on_page._prune_offscreen_link_focus()
+        assert on_page._focused_link is None
+
+    def test_clearing_a_focus_never_drawn_restores_nothing(self, on_page: OKFViewer) -> None:
+        on_page._focused_link = 0
+        text = on_page._page_links[0][0].text
+        on_page._set_link_focus(None)
+        assert on_page._page_links[0][0].text == text
+        assert on_page._focused_link is None
+
+    def test_a_footnote_with_no_definition_opens_nothing(self, on_page: OKFViewer) -> None:
+        on_page._on_ref(on_page._page_links[0][0], "fn:missing")
+        assert on_page._footnote_popup is None
+
+    def test_a_link_that_resolves_nowhere_stays_on_the_page(self, on_page: OKFViewer) -> None:
+        on_page._on_ref(on_page._page_links[0][0], "no/such/page.md")
+        assert _page(on_page) == "index.md"
+
+    def test_a_footnote_link_that_resolves_nowhere_only_closes_it(self, on_page: OKFViewer) -> None:
+        note_label = next(lbl for lbl, ref, _ in on_page._page_links if ref == "fn:note")
+        on_page._on_ref(note_label, "fn:note")
+        popup_label = on_page._popup_link_label
+        assert popup_label is not None
+        popup_label.dispatch("on_ref_press", "no/such/page.md")
+        assert _page(on_page) == "index.md"
+
+    def test_returning_to_the_page_before_any_page_is_shown(self, on_page: OKFViewer) -> None:
+        on_page.history.clear()
+        on_page._set_focus_region(FocusRegion.PAGE)
+        assert on_page._focus_region is FocusRegion.PAGE
+
+
+class TestSyncTree:
+    def test_a_page_outside_the_bundle_leaves_the_tree_alone(
+        self, viewer: OKFViewer, tmp_path: Path
+    ) -> None:
+        viewer._sync_tree_to(tmp_path / "elsewhere.md")
+        assert viewer.tree.selected_node is None
+
+    def test_a_page_in_a_folder_the_tree_lacks_leaves_it_alone(self, viewer: OKFViewer) -> None:
+        viewer._sync_tree_to(viewer.bundle / ".hidden" / "x.md")
+        assert viewer.tree.selected_node is None
+
+
+class TestHistory:
+    def test_back_at_the_root_without_an_exit_does_nothing(self, viewer: OKFViewer) -> None:
+        viewer.go_back()
+        assert _page(viewer) == "index.md"
+
+    def test_reset_before_any_page_lands_on_the_home_page(self, viewer: OKFViewer) -> None:
+        viewer.history.clear()
+        viewer.reset_to()
+        assert _page(viewer) == "index.md"
+        assert len(viewer.history) == 1
+
+    def test_without_a_state_file_nothing_is_saved(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer_module, "save_session_state") as save:
+            viewer.save_session()
+        save.assert_not_called()
+
+
+class TestPageAction:
+    def test_an_action_without_an_icon_is_a_text_button(self, viewer: OKFViewer) -> None:
+        run = MagicMock()
+        viewer._set_page_action(PageAction(label="Read Comic", run=run))
+        assert viewer.action_btn is not None
+        assert viewer.action_btn.text == "Read Comic"
+
+        viewer.action_btn.dispatch("on_release")
+
+        run.assert_called_once_with()
+
+    def test_replacing_the_ringed_action_drops_the_ring(self, viewer: OKFViewer) -> None:
+        viewer._set_page_action(PageAction(label="Read Comic", run=MagicMock()))
+        assert viewer.action_btn is not None
+        viewer._set_bar_focus(viewer.action_btn)
+
+        viewer._set_page_action(None)
+
+        assert viewer._bar_focus_widget is None
+        assert viewer.action_btn is None
+
+    def test_with_no_action_running_one_does_nothing(self, viewer: OKFViewer) -> None:
+        viewer._set_page_action(None)
+        viewer._run_page_action()
+
+    def test_a_white_tint_leaves_an_icon_as_it_is(self) -> None:
+        button = MagicMock()
+        viewer_module._tint_bar_icon(button, (1.0, 1.0, 1.0, 1.0))
+        button.add_widget.assert_not_called()
+
+
+class TestBackground:
+    def test_a_page_with_no_background_clears_the_last(self, bundle: Path) -> None:
+        provider = MagicMock()
+        provider.background_for.return_value = None
+        viewer = OKFViewer(bundle, image_provider=provider)
+        try:
+            assert viewer.bg_image.source == ""
+            assert viewer.bg_image.texture is None
+        finally:
+            _remove_popups_left_open()
+
+
+class TestBlocks:
+    def test_a_page_that_starts_with_a_table_puts_it_in_a_section(self, viewer: OKFViewer) -> None:
+        page = viewer.bundle / "concept" / "table.md"
+        page.write_text("| a | b |\n|---|---|\n| 1 | 2 |\n", encoding="utf-8")
+        viewer.show_page(page)
+        assert viewer.body.children
+
+    def test_a_nested_list_item_is_indented(self, viewer: OKFViewer) -> None:
+        page = viewer.bundle / "concept" / "list.md"
+        page.write_text("- outer\n  - inner\n", encoding="utf-8")
+        with patch.object(viewer_module, "Widget", wraps=viewer_module.Widget) as spacer:
+            viewer.show_page(page)
+        assert any(c.kwargs.get("height") == 1 for c in spacer.call_args_list)
+
+
+class TestOverLink:
+    def test_a_link_under_the_pointer_in_the_page_counts(self, viewer: OKFViewer) -> None:
+        with (
+            patch.object(viewer, "get_root_window", return_value=object()),
+            patch.object(viewer.body_scroll, "collide_point", return_value=True),
+            patch.object(viewer_module, "_ref_under", return_value="concept/a.md"),
+        ):
+            assert viewer._over_link((10, 10)) is True
+
+
+class TestStandaloneAppWindow:
+    @pytest.fixture
+    def app(self, bundle: Path) -> OKFApp:
+        app = OKFApp(bundle)
+        app.build()
+        return app
+
+    def test_on_start_takes_the_titlebar_and_the_keys(self, app: OKFApp) -> None:
+        with patch("kivy.core.window.Window") as window:
+            window.set_custom_titlebar.return_value = True
+            app.on_start()
+        assert window.custom_titlebar is True
+        window.bind.assert_called_once_with(on_keyboard=app._on_keyboard)
+
+    def test_a_system_refusing_a_custom_title_bar_keeps_its_own(
+        self, app: OKFApp, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with patch("kivy.core.window.Window") as window:
+            window.set_custom_titlebar.return_value = False
+            app.on_start()
+        assert "custom titlebar not allowed" in capsys.readouterr().out
+
+    def test_on_stop_before_a_build_saves_nothing(self, bundle: Path) -> None:
+        OKFApp(bundle).on_stop()
+
+    def test_a_key_neither_takes_is_left_to_kivy(self, app: OKFApp) -> None:
+        assert app._on_keyboard(None, KEY_F, 0, "", []) is False
+
+    def test_run_starts_the_app(self, bundle: Path) -> None:
+        with patch.object(OKFApp, "run") as run:
+            viewer_module.run(bundle)
+        run.assert_called_once_with()
