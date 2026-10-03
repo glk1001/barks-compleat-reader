@@ -967,6 +967,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     # Opacity for an action-bar button that is greyed out (e.g. the double-page
     # toggle while reading the single-page-only one-pager collection).
     _GREYED_BUTTON_OPACITY = 0.4
+    # A close waits for the reader to fill the window it closes into (see
+    # _finish_closing_once_laid_out), a frame at a time, but never longer than this.
+    _CLOSE_LAYOUT_MAX_FRAMES = 10
+    # How near the window's size the reader counts as filling it: a resize can land a
+    # pixel apart (2561 against 2560 on the Mac guest).
+    _FILLS_WINDOW_TOLERANCE_PX = 2
     action_bar_title = StringProperty()
     # Width of the inner action bar (centered to match the comic image's aspect-fit width).
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
@@ -1228,7 +1234,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_finished_goto_windowed_mode(self) -> None:
         if self._is_closing:
             logger.debug("Entering windowed mode finished, now closing reader.")
-            self._finish_closing_comic()
+            self._finish_closing_once_laid_out()
 
         self.is_fullscreen = False
         self._update_widget_states()
@@ -1267,9 +1273,43 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         if self._is_closing:
             logger.debug("Entering fullscreen mode finished, now closing reader.")
-            self._finish_closing_comic()
+            self._finish_closing_once_laid_out()
+
+    def _finish_closing_once_laid_out(self, frames_left: int = _CLOSE_LAYOUT_MAX_FRAMES) -> None:
+        """Close once the reader fills the window it closes into, and a frame more.
+
+        The closing animation (a shader transition) draws the reader as it stands
+        when it starts. Closing returns the window to the mode the reader opened in,
+        and the reader is laid out for a new window size a frame or more after the
+        mode change reports itself done: closed at once, the reader fell out at the
+        old size, its page pinned to the screen's left edge. The extra frame lets
+        the page inside it follow. At most _CLOSE_LAYOUT_MAX_FRAMES frames: a reader
+        that never fills the window must still close.
+        """
+        if frames_left > 0 and not self._fills_window():
+            Clock.schedule_once(lambda _dt: self._finish_closing_once_laid_out(frames_left - 1))
+            return
+        if frames_left > 0:
+            Clock.schedule_once(lambda _dt: self._finish_closing_comic())
+            return
+        self._finish_closing_comic()
+
+    def _fills_window(self) -> bool:
+        tolerance = self._FILLS_WINDOW_TOLERANCE_PX
+        return (
+            abs(self.width - Window.width) <= tolerance
+            and abs(self.height - Window.height) <= tolerance
+        )
 
     def _finish_closing_comic(self) -> None:
+        logger.debug(
+            log_markers.READER_CLOSING.format(
+                width=round(self.width),
+                height=round(self.height),
+                win_width=int(Window.width),
+                win_height=int(Window.height),
+            )
+        )
         self._on_close_reader()
         self._is_closing = False
         self.comic_book_reader.reset_comic_book_reader()

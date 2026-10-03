@@ -86,3 +86,41 @@ def test_a_spread_stays_centred_through_fullscreen_switches(boot: AppBoot) -> No
             d.press_menu_button("fullscreen")
         d.settle()
     d.close_reader()
+
+
+def test_closing_from_a_window_falls_out_at_the_full_screen_size(boot: AppBoot) -> None:
+    """Opened full screen, gone windowed on a spread, closed: the reader fills the screen.
+
+    Closing goes back to the window mode the reader was opened in, full screen here,
+    and its fall-out animation draws the reader as it stands when it starts. Started
+    before the reader had been laid out for the full screen, it fell out with the
+    spread at the window's size, pinned to the screen's left edge (a soak on the Mac
+    guest, 2026-10-03, seen there; no check judged it, as the reader was closing).
+    """
+    d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    with d.expect(pattern(markers.ENTERED_FULLSCREEN, screen=MAIN), FULLSCREEN_TIMEOUT):
+        d.main_menu_button("fullscreen")
+    d.settle()
+    d.open_selected_story()
+    for _ in range(PAGES_TO_A_SPREAD):
+        d.key_then_wait(SHOWED_PAGE, "Right")
+    if not _booted_two_up(boot):
+        with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
+            d.press_menu_button("double_page")
+    with d.expect(pattern(markers.ENTERED_WINDOWED, screen=READER), FULLSCREEN_TIMEOUT):
+        d.press_menu_button("fullscreen")
+    d.settle()
+
+    d.close_reader()
+
+    size = [int(last_field(d, markers.READER_CLOSING, f)) for f in ("width", "height")]
+    window = [int(last_field(d, markers.READER_CLOSING, f)) for f in ("win_width", "win_height")]
+    assert all(abs(a - b) <= 2 for a, b in zip(size, window, strict=True)), (  # noqa: PLR2004
+        f"the reader fell out at {size[0]}x{size[1]} in a {window[0]}x{window[1]} window"
+    )
+    # Windowed again, as booted: the teardown holds the window to its boot size. The
+    # closed reader leaves the keyboard on the title view, below the tree.
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
+    with d.expect(pattern(markers.ENTERED_WINDOWED, screen=MAIN), FULLSCREEN_TIMEOUT):
+        d.main_menu_button("fullscreen")
+    d.settle()

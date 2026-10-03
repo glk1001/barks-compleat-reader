@@ -125,6 +125,12 @@ WINDOW_GEOMETRY: Final = "Main window geometry ({reason}): {width}x{height}+{lef
 # after fullscreen switches, which no other line showed) is then in the log, and the
 # GUI harness holds every settled one centred in its window (assert_page_centred).
 PAGE_PLACED: Final = "Page placed: {width}x{height}+{x}+{y} in a {win_width}x{win_height} window."
+# The reader's size as its closing animation starts, which draws the screen as it
+# stands then: closed from a window, the reader goes full screen first, and a reader
+# not yet laid out for it fell out with its page at the old size, at the left edge.
+READER_CLOSING: Final = (
+    "Comic reader closing at {width}x{height} in a {win_width}x{win_height} window."
+)
 
 # ---------------------------------------------------------------- popups --
 CONFIRM_POPUP_OPENED: Final = 'Confirm popup opened: "{title}".'

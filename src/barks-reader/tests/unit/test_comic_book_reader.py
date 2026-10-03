@@ -673,6 +673,93 @@ class TestComicBookReaderScreen:
 
         log_geometry.assert_called_once_with(reason)
 
+    @staticmethod
+    def _run_frames(clock: MagicMock, frames: int) -> None:
+        """Run what the reader scheduled, a frame at a time, as the clock would."""
+        for _ in range(frames):
+            if not clock.schedule_once.call_args_list:
+                return
+            callback = clock.schedule_once.call_args_list.pop(0).args[0]
+            callback(0)
+
+    def test_a_reader_already_filling_the_window_closes_a_frame_later(
+        self, screen: ComicBookReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        """The frame lets the page inside the reader follow its size."""
+        screen.size = (900, 1300)
+        module = barks_reader.ui.comic_book_reader
+        with (
+            patch.object(module, "Clock") as clock,
+            patch.object(module, "Window", width=900, height=1300),
+            patch.object(
+                screen, "_finish_closing_comic", wraps=screen._finish_closing_comic
+            ) as fin,
+        ):
+            screen._finish_closing_once_laid_out()
+            fin.assert_not_called()
+            self._run_frames(clock, 1)
+
+        fin.assert_called_once_with()
+        screen._on_close_reader.assert_called_once_with()
+        assert (
+            log_markers.READER_CLOSING.format(
+                width=900, height=1300, win_width=900, win_height=1300
+            )
+            in loguru_sink
+        )
+
+    def test_a_reader_not_yet_resized_waits_until_it_fills_the_window(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """Closed from a window into full screen: the old size must not fall out."""
+        screen.size = (782, 1225)
+        module = barks_reader.ui.comic_book_reader
+        with (
+            patch.object(module, "Clock") as clock,
+            patch.object(module, "Window", width=900, height=1300),
+            patch.object(screen, "_finish_closing_comic") as fin,
+        ):
+            screen._finish_closing_once_laid_out()
+            self._run_frames(clock, 3)
+            fin.assert_not_called()
+
+            screen.size = (901, 1300)  # laid out, a pixel apart as a resize can land
+            self._run_frames(clock, 2)
+
+        fin.assert_called_once_with()
+
+    def test_a_reader_that_never_fills_the_window_still_closes(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen.size = (100, 100)
+        module = barks_reader.ui.comic_book_reader
+        with (
+            patch.object(module, "Clock") as clock,
+            patch.object(module, "Window", width=900, height=1300),
+            patch.object(screen, "_finish_closing_comic") as fin,
+        ):
+            screen._finish_closing_once_laid_out()
+            self._run_frames(clock, ComicBookReaderScreen._CLOSE_LAYOUT_MAX_FRAMES)
+
+        fin.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        "finish", ["_on_finished_goto_windowed_mode", "_on_finished_goto_fullscreen_mode"]
+    )
+    def test_a_close_waits_for_the_layout_whichever_mode_it_returns_to(
+        self, screen: ComicBookReaderScreen, finish: str
+    ) -> None:
+        screen._is_closing = True
+        with (
+            patch.object(screen, "_update_widget_states"),
+            patch.object(screen, "_update_fullscreen_button"),
+            patch.object(barks_reader.ui.comic_book_reader, "WindowManager"),
+            patch.object(screen, "_finish_closing_once_laid_out") as wait,
+        ):
+            getattr(screen, finish)()
+
+        wait.assert_called_once_with()
+
     def test_goto_page_off_screen_stays_in_menu_mode(self, screen: ComicBookReaderScreen) -> None:
         """Enter on Goto Page mid-fade opens nothing; the menu keeps its focus."""
         screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
