@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import zipfile
 from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -20,6 +22,7 @@ from barks_reader.ui.comic_book_reader import (
     _ComicPageManager,
 )
 from kivy.uix.floatlayout import FloatLayout
+from PIL import Image as PilImage
 
 _reader_module = barks_reader.ui.comic_book_reader
 
@@ -154,6 +157,35 @@ class TestComicPageManager:
         # Expected: Current(2), Prev(1), Next...(3,4), Prev...(0)
         # 2, 1, 3, 4, 0
         assert order == ["2", "1", "3", "4", "0"]
+
+    def test_no_display_unit_before_the_page_map_or_off_it(
+        self, page_manager: tuple[_ComicPageManager, MagicMock]
+    ) -> None:
+        """Before a comic has pages, and on a page no unit holds, there is no unit."""
+        pm, _ = page_manager
+        assert pm.get_current_display_unit() is None
+
+        page_map = OrderedDict(
+            (
+                str(i),
+                PageInfo(
+                    page_index=i,
+                    page_type=PageType.BODY,
+                    display_page_num=str(i),
+                    srce_page=MagicMock(),
+                    dest_page=MagicMock(),
+                ),
+            )
+            for i in range(4)
+        )
+        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        assert pm.get_current_page_index() == -1  # no page chosen yet
+        assert pm.get_current_display_unit() is None
+
+        pm.set_to_first_page_to_read()
+        unit = pm.get_current_display_unit()
+        assert unit is not None
+        assert unit.left_page_index == 0
 
 
 class TestComicBookReader:
@@ -602,6 +634,58 @@ class TestComicBookReader:
         getattr(reader, setter)(page_str)
         assert reader.action_bar_title == "as before"
 
+    # --- edges ---
+
+    def test_a_touch_a_child_widget_takes_turns_no_page(self, reader: ComicBookReader) -> None:
+        """A press on a widget over the page (the goto-page dropdown, say) is that widget's."""
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_right_margin.return_value = True
+        with patch.object(FloatLayout, "on_touch_down", return_value=True):
+            assert reader.on_touch_down(MagicMock(x=100, y=100)) is True
+        reader._page_manager.next_page.assert_not_called()
+
+    def test_closing_twice_closes_once(self, reader: ComicBookReader) -> None:
+        reader._closed = True
+        with patch.object(reader, "_cancel_reveal") as cancel:
+            reader.close_comic_book_reader()
+        cancel.assert_not_called()
+
+    def test_it_says_whether_the_comic_is_the_one_pager_collection(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._is_one_pager_collection = True
+        assert reader.is_one_pager_collection is True
+        reader._is_one_pager_collection = False
+        assert reader.is_one_pager_collection is False
+
+    def test_goto_page_focuses_the_first_button_when_none_is_the_page_on_show(
+        self, reader: ComicBookReader
+    ) -> None:
+        """The page on show is not in the list (a cover, say): the focus starts at the top."""
+        reader._goto_page_dropdown = MagicMock()
+        reader._goto_page_buttons = [MagicMock(text="1"), MagicMock(text="2")]
+        reader._page_manager = MagicMock()
+        reader._page_manager.page_map = {
+            "1": MagicMock(page_index=3),
+            "2": MagicMock(page_index=4),
+        }
+        reader._page_manager.get_current_page_index.return_value = 0
+        on_dismiss = MagicMock()
+        with patch.object(reader, "goto_page", return_value=True):
+            assert reader.open_goto_page_for_keyboard(on_dismiss) == 0
+        reader._goto_page_dropdown.bind.assert_called_once_with(on_dismiss=on_dismiss)
+
+    def test_the_goto_page_dropdown_is_dismissed_only_once_made(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._goto_page_dropdown = None
+        reader.dismiss_goto_page_dropdown()  # nothing made yet: nothing to dismiss
+
+        dropdown = MagicMock()
+        reader._goto_page_dropdown = dropdown
+        reader.dismiss_goto_page_dropdown()
+        dropdown.dismiss.assert_called_once_with()
+
 
 class TestComicBookReaderScreen:
     @pytest.fixture
@@ -825,3 +909,52 @@ class TestComicBookReaderScreen:
                 handled = screen.on_touch_down(touch)
                 assert handled is False
                 mock_show.assert_not_called()
+
+    def test_dismissing_the_dropdown_dismisses_the_readers_goto_page_list(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen.comic_book_reader = MagicMock()
+        screen._dismiss_dropdown()
+        screen.comic_book_reader.dismiss_goto_page_dropdown.assert_called_once_with()
+
+    def test_leaving_the_screen_in_menu_mode_leaves_menu_mode(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen._menu_mode = True
+        with patch.object(screen, "_exit_menu_mode") as exit_menu_mode:
+            screen.is_active(active=False)
+        exit_menu_mode.assert_called_once_with()
+
+    def test_a_fullscreen_switch_that_failed_says_so_and_keeps_the_real_mode(
+        self, screen: ComicBookReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        """The button and action bar follow the window as it is, not as it was asked to be."""
+        with (
+            patch.object(screen, "_update_widget_states"),
+            patch.object(screen, "_update_fullscreen_button"),
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(_reader_module, "log_window_geometry"),
+        ):
+            window_manager.is_fullscreen_now.return_value = False
+            window_manager.get_screen_mode_now.return_value = "windowed"
+            screen._on_finished_goto_fullscreen_mode()
+
+        assert screen.is_fullscreen is False
+        assert any(
+            "Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen" in line
+            and "'windowed'" in line
+            for line in loguru_sink
+        )
+
+
+def test_an_image_in_a_zip_is_read_from_its_bytes(tmp_path: Path) -> None:
+    """A panel in the panels zip is a zipfile.Path: its bytes decode to the texture."""
+    png = io.BytesIO()
+    PilImage.new("RGB", (6, 4), (200, 100, 50)).save(png, format="PNG")
+    archive = tmp_path / "panels.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("Insets/Story.png", png.getvalue())
+
+    texture = _reader_module.get_image_stream(zipfile.Path(archive, "Insets/Story.png"))
+
+    assert tuple(texture.size) == (6, 4)

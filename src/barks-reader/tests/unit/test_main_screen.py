@@ -446,3 +446,104 @@ class TestKeyLeavesSingleLineBox:
     def test_no_box_no_leaving(self) -> None:
         with patch.object(barks_reader.ui.main_screen, "_focused_text_input", return_value=None):
             assert barks_reader.ui.main_screen._key_leaves_single_line_box(KEY_DOWN) is False
+
+
+class TestMainScreenEdges:
+    """The paths no GUI run reaches: repeated states, refusals and bad input."""
+
+    def test_the_same_active_state_again_changes_nothing(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        assert main_screen._active is True
+        with patch.object(barks_reader.ui.main_screen, "Window") as window:
+            main_screen._is_active(active=True)
+
+        assert window.mock_calls == []
+        assert not any("MainScreen active changed" in line for line in loguru_sink)
+
+    @pytest.mark.parametrize(("inside", "exits"), [(False, True), (True, False)])
+    def test_a_touch_outside_the_bottom_view_leaves_its_focus(
+        self, main_screen: MainScreen, inside: bool, exits: bool
+    ) -> None:
+        main_screen._nav.is_in_bottom_focus = True
+        main_screen._bottom_base_view_screen.collide_point.return_value = inside
+        touch = MagicMock(pos=(10, 20))
+
+        main_screen.on_touch_down(touch)
+
+        main_screen._bottom_base_view_screen.collide_point.assert_called_once_with(10, 20)
+        assert main_screen._nav.exit_bottom_focus.called is exits
+
+    def test_an_open_modal_popup_keeps_the_keys(self, main_screen: MainScreen) -> None:
+        """A popup's own key handler binds later, so this one must yield to it."""
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = None
+        with (
+            patch.object(barks_reader.ui.main_screen, "_text_input_has_focus", return_value=False),
+            patch.object(barks_reader.ui.main_screen, "_modal_popup_is_open", return_value=True),
+        ):
+            assert main_screen._on_key_down(None, KEY_DOWN, 0, "", []) is False
+
+        main_screen._nav.handle_key.assert_not_called()
+
+    def test_settings_already_on_the_window_are_not_added_again(
+        self, main_screen: MainScreen
+    ) -> None:
+        settings = MagicMock()
+        app_window = MagicMock(children=[settings])
+
+        assert main_screen.display_settings(app_window, settings) is False
+
+        app_window.add_widget.assert_not_called()
+        assert main_screen._settings_nav is None
+
+    def test_an_unknown_menu_option_is_refused(self, main_screen: MainScreen) -> None:
+        with pytest.raises(ValueError, match=r"Invalid menu option: 'nope'\."):
+            main_screen.on_action_bar_menu_dots_selected(MagicMock(), "nope")
+
+    def test_force_fullscreen_goes_to_the_window_helper(self, main_screen: MainScreen) -> None:
+        main_screen.force_fullscreen()
+        main_screen._window_helper.force_fullscreen.assert_called_once_with()
+
+    def test_an_app_icon_naming_no_title_is_refused(self, main_screen: MainScreen) -> None:
+        main_screen.app_icon_filepath = "/icons/Not A Barks Title.png"
+        with (
+            patch.object(
+                barks_reader.ui.main_screen,
+                "get_title_str_from_reader_icon_file",
+                return_value="Not A Barks Title",
+            ),
+            pytest.raises(ValueError, match=r'Invalid title string: "Not A Barks Title"'),
+        ):
+            main_screen.goto_reader_icon_title()
+
+        main_screen._nav_coord.navigate_to_chrono_title.assert_not_called()
+
+    def test_the_portal_opens_nothing_while_the_volumes_are_not_ready(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._nav_coord.current_fanta_info = MagicMock()
+        main_screen._app_initializer.is_fanta_volumes_state_ok.return_value = (
+            False,
+            "the volumes are still loading",
+        )
+
+        main_screen.on_title_portal_image_pressed()
+
+        main_screen._nav_coord.read_comic.assert_not_called()
+        main_screen._nav.save_focus_before_reader.assert_not_called()
+        assert (
+            "Title portal image pressed pressed. But the volumes are still loading." in loguru_sink
+        )
+
+    def test_the_wiki_page_button_with_no_title_opens_nothing(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._nav_coord.current_fanta_info = None
+
+        main_screen.on_wiki_page_button_pressed()
+
+        main_screen._nav_coord.open_wiki_page_for_title.assert_not_called()
+        main_screen._nav.save_focus_before_reader.assert_not_called()
+        assert "Wiki page button pressed. But no title selected." in loguru_sink

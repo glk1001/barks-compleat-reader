@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -555,3 +556,165 @@ class TestHistoryMarkers:
             screen.on_clear_pressed()
             ask.call_args.kwargs["on_ok"]()
         assert "History: cleared." in loguru_sink
+
+
+class TestDisplayTitle:
+    def test_a_title_the_corpus_lacks_shows_as_stored(self) -> None:
+        """An event logged under a title no longer known: its text, undecorated."""
+        assert history_screen_module._get_display_title("No Such Story") == "No Such Story"
+
+    def test_a_known_title_shows_its_display_form(self) -> None:
+        title = history_screen_module.STR_TITLE_TO_ENUM["Omelet"]
+        info = history_screen_module.get_fanta_info(title)
+        assert info is not None
+        expected = info.comic_book_info.get_display_title()
+        assert history_screen_module._get_display_title("Omelet") == expected
+
+
+class TestViewTabs:
+    def test_a_tab_already_down_stays_down_when_pressed(self) -> None:
+        """The active tab cannot be pressed off: one view is always selected."""
+        button = history_screen_module.HistoryViewButton(group="history-test-tabs")
+        button.state = "down"
+        button._do_press()
+        assert button.state == "down"
+
+    def test_a_tab_up_goes_down_when_pressed(self) -> None:
+        button = history_screen_module.HistoryViewButton(group="history-test-tabs-2")
+        assert button.state == "normal"
+        button._do_press()
+        assert button.state == "down"
+
+    def test_the_journal_and_titles_buttons_select_their_views(
+        self, screen: HistoryScreen, loguru_sink: list[str]
+    ) -> None:
+        screen.on_titles_pressed()
+        assert screen._current_view == _TITLES_VIEW
+        assert screen.ids["titles_button"].state == "down"
+        assert screen.ids["journal_button"].state == "normal"
+
+        screen.on_journal_pressed()
+        assert screen._current_view == _JOURNAL_VIEW
+        assert screen.ids["journal_button"].state == "down"
+        assert (
+            loguru_sink.count(
+                history_screen_module.log_markers.HISTORY_SELECTED_VIEW.format(view=_JOURNAL_VIEW)
+            )
+            == 1
+        )
+
+
+class TestBackgroundImage:
+    @pytest.fixture
+    def with_store(self, screen: HistoryScreen) -> HistoryScreen:
+        screen._history_store = _FakeStore(_EVENTS)
+        return screen
+
+    def test_without_a_picker_or_a_store_nothing_is_loaded(self, screen: HistoryScreen) -> None:
+        screen.update_background_image()  # no picker, no store
+        screen.get_background_image = MagicMock()
+        screen.update_background_image()  # a picker, still no store
+
+        screen.get_background_image.assert_not_called()
+        screen._texture_loader.load_texture.assert_not_called()
+
+    def test_the_picker_is_offered_the_titles_read(self, with_store: HistoryScreen) -> None:
+        picker = MagicMock(return_value=SimpleNamespace(filename="panel.png"))
+        with_store.get_background_image = picker
+
+        with_store.update_background_image()
+
+        titles = picker.call_args.args[0]
+        expected = {
+            history_screen_module.STR_TITLE_TO_ENUM[name]
+            for name in ("Omelet", "Good Deeds", "Lifeguard Daze")
+        }
+        assert set(titles) == expected
+        assert len(titles) == len(expected)  # each title once, however often read
+        with_store._texture_loader.load_texture.assert_called_once()
+        assert with_store._texture_loader.load_texture.call_args.args[0] == "panel.png"
+
+    def test_no_image_picked_keeps_the_backdrop(self, with_store: HistoryScreen) -> None:
+        with_store.get_background_image = MagicMock(return_value=SimpleNamespace(filename=""))
+
+        with_store.update_background_image()
+
+        with_store._texture_loader.load_texture.assert_not_called()
+
+    def test_a_loaded_image_becomes_the_backdrop(self, with_store: HistoryScreen) -> None:
+        with_store.get_background_image = MagicMock(
+            return_value=SimpleNamespace(filename="panel.png")
+        )
+        with_store.update_background_image()
+        on_loaded = with_store._texture_loader.load_texture.call_args.args[1]
+        texture = MagicMock()
+
+        on_loaded(texture, None)
+
+        assert with_store.image_texture is texture
+
+    def test_an_image_that_fails_to_load_is_logged_and_skipped(
+        self, with_store: HistoryScreen, loguru_sink: list[str]
+    ) -> None:
+        with_store.get_background_image = MagicMock(
+            return_value=SimpleNamespace(filename="panel.png")
+        )
+        with_store.update_background_image()
+        on_loaded = with_store._texture_loader.load_texture.call_args.args[1]
+
+        on_loaded(None, OSError("unreadable"))
+
+        assert with_store.image_texture is None
+        assert "History: Could not load background image: unreadable." in loguru_sink
+
+
+class TestRowEdges:
+    def test_a_row_for_an_unknown_title_goes_nowhere(
+        self, screen: HistoryScreen, loguru_sink: list[str]
+    ) -> None:
+        on_goto_title = MagicMock()
+        screen.on_goto_title = on_goto_title
+
+        screen._on_row_pressed("No Such Story")
+
+        on_goto_title.assert_not_called()
+        assert 'History: No title enum for "No Such Story".' in loguru_sink
+
+    def test_a_row_for_a_known_title_goes_to_it(self, screen: HistoryScreen) -> None:
+        on_goto_title = MagicMock()
+        screen.on_goto_title = on_goto_title
+
+        screen._on_row_pressed("Omelet")
+
+        on_goto_title.assert_called_once_with(history_screen_module.STR_TITLE_TO_ENUM["Omelet"])
+
+    def test_leaving_nav_focus_when_not_in_it_changes_nothing(
+        self, nav_screen: HistoryScreen
+    ) -> None:
+        nav_screen.exit_nav_focus()
+
+        assert not nav_screen._nav_active
+        history_screen_module.clear_focus_highlight.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+
+class TestBarEdges:
+    def test_escape_on_the_top_bar_asks_to_leave(self, nav_screen: HistoryScreen) -> None:
+        _add_nav_rows(nav_screen, 1)
+        on_exit_request = MagicMock()
+        nav_screen.enter_nav_focus(on_exit_request)
+        nav_screen.handle_key(KEY_UP)  # into the top bar
+        assert nav_screen._nav_zone == _ZONE_BAR
+
+        assert nav_screen.handle_key(KEY_ESCAPE) is True
+
+        on_exit_request.assert_called_once_with()
+
+    def test_a_key_the_top_bar_does_not_use_is_left_to_the_host(
+        self, nav_screen: HistoryScreen
+    ) -> None:
+        _add_nav_rows(nav_screen, 1)
+        nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # into the top bar
+
+        assert nav_screen.handle_key(KEY_PAGE_DOWN) is False
+        assert nav_screen._nav_zone == _ZONE_BAR
