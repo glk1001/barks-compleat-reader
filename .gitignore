@@ -42,6 +42,9 @@ src/comic-utils/src/comic_utils/get_panel_bytes*.pyd
 .venv/
 logs/
 .env.runtime
+# Nothing here reads a plain .env (the app and scripts load .env.runtime; the uv workspace
+# needs no PYTHONPATH). One an editor wants stays local.
+.env
 .coverage
 
 # Python
