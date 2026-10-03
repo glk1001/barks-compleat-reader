@@ -22,6 +22,10 @@ if TYPE_CHECKING:
 
 # The box takes the keyboard a moment after Return asks for it, and logs when it has.
 SEARCH_BOX_FOCUSED = pattern(markers.SEARCH_BOX_FOCUS, mode=re.compile(r"\w+"), state="focused")
+# Either way: the box logs taking the keyboard and losing it.
+_SEARCH_BOX_FOCUS_CHANGED = pattern(
+    markers.SEARCH_BOX_FOCUS, mode=re.compile(r"\w+"), state=re.compile(r"\w+")
+)
 
 
 def results_line(typed: str) -> str | None:
@@ -42,13 +46,36 @@ def results_line(typed: str) -> str | None:
     )
 
 
+def box_cannot_type(d: Driver) -> str | None:
+    """Return why the search box cannot take typing now, or None while it has the keyboard.
+
+    The box's last focus line says: once it has logged losing the keyboard,
+    whatever is typed goes nowhere.
+    """
+    last = d.last_line(_SEARCH_BOX_FOCUS_CHANGED)
+    if not last:
+        return "the search box has not taken the keyboard"
+    if re.search(SEARCH_BOX_FOCUSED, last):
+        return None
+    return f"the search box has lost the keyboard: {last.strip()}"
+
+
+def type_into_box(d: Driver, text: str) -> None:
+    """Type into the focused search box a keystroke at a time, each after the first waited on.
+
+    Stops with the reason as soon as the box has lost the keyboard, rather than
+    waiting out a results line that will never come.
+    """
+    d.type_slowly(text, marker=results_line, ready=lambda: box_cannot_type(d))
+
+
 def type_query(d: Driver, query: str) -> None:
     """Focus the search box from the tree node and type a query, a keystroke at a time.
 
     Each keystroke after the first waits on the results line it produces.
     """
     d.key_then_wait(SEARCH_BOX_FOCUSED, "Return")
-    d.type_slowly(query, marker=results_line)
+    type_into_box(d, query)
 
 
 def run_typed_query(d: Driver, query: str) -> None:

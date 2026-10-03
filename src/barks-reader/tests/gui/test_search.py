@@ -625,7 +625,7 @@ def test_search_round_trips_leave_no_chips_behind(
     query = LEAK_ROUNDS_QUERY[mode]
 
     def round_trip() -> None:
-        d.type_slowly(query, marker=search.results_line)
+        search.type_into_box(d, query)
         d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word or tag
         d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
         d.key_then_wait(pattern(PICKED[mode], count=1), "Return")
@@ -646,7 +646,7 @@ def test_speaker_list_and_subgroup_round_trips_leave_nothing(boot: AppBoot) -> N
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
 
     def round_trip() -> None:
-        d.type_slowly(SPEAKER_WORD, marker=search.results_line)
+        search.type_into_box(d, SPEAKER_WORD)
         d.key_then_wait(d.FOCUS_MOVED, "Return")  # the first word, picked
         d.move_focus("Right", pattern=_focus_on("_PlusButton", "+"))
         d.move_focus("Right", pattern=_focus_on("_EraChipButton", "All years"))
@@ -665,7 +665,7 @@ def test_speaker_list_and_subgroup_round_trips_leave_nothing(boot: AppBoot) -> N
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
 
     def group_round_trip() -> None:
-        d.type_slowly(NESTING_GROUP, marker=search.results_line)
+        search.type_into_box(d, NESTING_GROUP)
         d.key_then_wait(_chip_focused(NESTING_GROUP), "Return")
         for member in members[: members.index(SUBGROUP) + 1]:
             d.key_then_wait(_chip_focused(member), "Down")

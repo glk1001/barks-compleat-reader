@@ -647,6 +647,45 @@ class TestTypeSlowly:
         assert sleep.call_count == THREE_TURNS
 
 
+class TestTypeSlowlyReady:
+    """A box that has lost the keyboard stops the typing with the reason, not a stall."""
+
+    @staticmethod
+    @contextmanager
+    def _stalls(_pattern: str, _timeout: float = 15) -> Iterator[None]:
+        yield
+        msg = "beat stalled"
+        raise gui_driver.DriverError(msg)
+
+    def test_a_box_that_lost_the_keyboard_is_not_typed_into(self, stub_driver: Driver) -> None:
+        reasons = iter([None, "the box lost the keyboard"])
+        with (
+            patch.object(Driver, "_run") as run,
+            patch.object(gui_driver.time, "sleep"),
+            pytest.raises(gui_driver.DriverError, match="stopped before 'b': the box lost"),
+        ):
+            stub_driver.type_slowly("ab", ready=lambda: next(reasons))
+        run.assert_called_once_with(["type", "a"])
+
+    def test_a_stall_names_the_reason_when_there_is_one(self, stub_driver: Driver) -> None:
+        reasons = iter([None, "the box lost the keyboard"])
+        with (
+            patch.object(Driver, "_run"),
+            patch.object(Driver, "expect", side_effect=self._stalls),
+            pytest.raises(gui_driver.DriverError, match="stalled at 'a': the box lost") as raised,
+        ):
+            stub_driver.type_slowly("a", marker=lambda typed: typed, ready=lambda: next(reasons))
+        assert str(raised.value.__cause__) == "beat stalled"
+
+    def test_a_stall_with_the_box_still_ready_is_the_stall(self, stub_driver: Driver) -> None:
+        with (
+            patch.object(Driver, "_run"),
+            patch.object(Driver, "expect", side_effect=self._stalls),
+            pytest.raises(gui_driver.DriverError, match=r"^beat stalled$"),
+        ):
+            stub_driver.type_slowly("a", marker=lambda typed: typed, ready=lambda: None)
+
+
 class TestTaps:
     def test_a_tap_goes_to_the_probe_in_window_pixels(self, stub_driver: Driver) -> None:
         with patch.object(Driver, "_run") as run:

@@ -296,7 +296,12 @@ class Driver:
         if self._paced:
             self.hold(seconds)
 
-    def type_slowly(self, text: str, marker: Callable[[str], str | None] | None = None) -> None:
+    def type_slowly(
+        self,
+        text: str,
+        marker: Callable[[str], str | None] | None = None,
+        ready: Callable[[], str | None] | None = None,
+    ) -> None:
         """Type into a focused text box one character at a time.
 
         ``gui-probe type`` sends the whole string through ``xte str`` and the
@@ -306,22 +311,42 @@ class Driver:
         (`marker`, given what has been typed, returns the pattern or None for no
         line) or, with no marker, rests for the camera-paced typing gap.
 
+        A box that has lost the keyboard swallows the characters without a word,
+        and the failure would otherwise be a stalled wait for a results line
+        (a stray key on the Windows VM did that). `ready` says so instead:
+        asked before each character, and again when a wait stalls.
+
         Args:
             text: What to type.
             marker: Maps the text typed so far to the log pattern that its
                 keystroke produces, or None where it produces no line.
+            ready: Returns why the box cannot take typing now (it lost the
+                keyboard, say), or None when it can.
+
+        Raises:
+            DriverError: If `ready` gives a reason, before a character or when
+                its wait stalls.
 
         """
         typed = ""
         for char in text:
+            if ready is not None and (why := ready()):
+                msg = f"typing {text!r} stopped before {char!r}: {why}"
+                raise DriverError(msg)
             typed += char
             pattern = marker(typed) if marker is not None else None
             if pattern is None:
                 self._run(["type", char])
                 time.sleep(TYPE_PAUSE)
-            else:
+                continue
+            try:
                 with self.expect(pattern):
                     self._run(["type", char])
+            except DriverError as stalled:
+                if ready is not None and (why := ready()):
+                    msg = f"typing {text!r} stalled at {char!r}: {why}"
+                    raise DriverError(msg) from stalled
+                raise
 
     def current_node(self) -> str:
         """Return the node the app last logged as selected.
