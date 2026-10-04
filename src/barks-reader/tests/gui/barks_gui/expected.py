@@ -145,6 +145,13 @@ def title_search_count(query: str) -> int:
     return len(search.search(query, SearchMode.TITLE).title_strings)
 
 
+@cache
+def title_search_titles(query: str) -> tuple[str, ...]:
+    """Return the titles the search screen lists for `query`, in its order, by enum name."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    return tuple(t.name for t in search.search(query, SearchMode.TITLE).titles)
+
+
 def tag_selection_count(
     included: tuple[str, ...], excluded: tuple[str, ...] = (), *, any_of: bool = False
 ) -> int:

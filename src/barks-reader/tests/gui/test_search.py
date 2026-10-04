@@ -21,6 +21,12 @@ TITLE_RESULT_ROW = 2
 TITLE_RESULT = "VACATION_TIME"
 TITLE_RESULT_NAME = "Vacation Time"
 
+# An issue's number as far as it is typed: CS 10 and CS 100 to 109.
+ISSUE_QUERY = "CS 10"
+COVER_RESULT = "COMICS_AND_STORIES_104_COVER"
+COVER_RESULT_NAME = "(Comics and Stories #104 Cover)"
+COVER_ROW = '_SearchResultButton "[Cover]"'
+
 WORD_QUERY = "airline"
 WORD_RESULT_ROW = 1
 WORD_RESULT_NAME = "Adventure Down Under"
@@ -49,6 +55,25 @@ def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
     d.read_pages(READ)
     assert d.current_page() >= 1
     d.close_reader()
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # focus back to the tree
+    d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Title"))
+
+
+def test_an_issue_lists_its_cover_among_its_stories_and_opens_it(boot: AppBoot) -> None:
+    """Type an issue's number as far as it goes, pick the "[Cover]" row, land on the cover."""
+    d = boot(nodes.TITLE_SEARCH)
+    search.type_query(d, ISSUE_QUERY)
+    count = int(last_field(d, markers.SEARCH_TITLE_RESULTS, "count", text=ISSUE_QUERY))
+    listed = expected.title_search_titles(ISSUE_QUERY)
+    assert count == len(listed), "the count the search facade gives"
+    assert COVER_RESULT in listed, f"{COVER_RESULT} is not listed for {ISSUE_QUERY!r}"
+    row = listed.index(COVER_RESULT) + 1
+    assert row > 1, "the cover sits among its issue's stories, not first"
+    with d.expect(pattern(markers.SEARCH_SELECTED_TITLE, title=COVER_RESULT_NAME)):
+        search.pick_title_result(d, row, COVER_RESULT)
+    picked = d.last_line(pattern(markers.NAV_FOCUS, widget=re.compile(r"_SearchResultButton .*")))
+    assert re.search(pattern(markers.NAV_FOCUS, widget=COVER_ROW), picked), "the row reads [Cover]"
+    assert d.current_node() == COVER_RESULT
     d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # focus back to the tree
     d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Title"))
 
