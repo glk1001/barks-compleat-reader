@@ -1,4 +1,5 @@
 # cspell:ignore dnald duckin makin runnin scroge treasurez xqzv
+# cspell:ignore boxxed canoing cied ducies hopin hoppin
 """The word search box's matcher: the text itself, then prefixes, then (from 3 letters) inside."""
 
 from __future__ import annotations
@@ -193,3 +194,43 @@ def test_contains_and_multi_word() -> None:
     assert not FORMS.contains("xyzzy")
     assert TermLexicon.is_multi_word("Don Quixote")
     assert not TermLexicon.is_multi_word("duck")
+
+
+# Words the stemmer's rules reach, and decoys only a broken rule would make: the
+# variants must hold every real form and none of the decoys.
+_REAL_FORMS = [
+    *("duck", "ducks", "duck's", "ducked", "ducking", "duckin'"),
+    *("hope", "hoped", "hoping", "hopin'", "make", "making", "makin'"),
+    *("stop", "stopped", "stopping", "see", "seeing", "run", "running", "runnin'"),
+    *("cry", "cries", "cried", "story", "stories", "box", "boxes", "boxed"),
+    *("canoe", "canoeing"),
+]
+_DECOYS = ["ducies", "duc", "ducky", "hop", "hopped", "hopping", "se", "cied", "boxxed", "canoing"]
+_DUCK = ("duck", "duck's", "ducked", "duckin'", "ducking", "ducks")
+
+
+@pytest.mark.parametrize(
+    ("word", "forms"),
+    [
+        *((form, _DUCK) for form in _DUCK),  # from any form back to the stem and on
+        ("hoped", ("hope", "hoped", "hopin'", "hoping")),  # hope + d, not hop + ed
+        ("hopin'", ("hope", "hoped", "hopin'", "hoping")),  # hope, not hop: that is hoppin'
+        ("makin'", ("make", "makin'", "making")),  # the dropped e, and the dropped g
+        ("stopped", ("stop", "stopped", "stopping")),  # the doubled last letter undone
+        ("runnin'", ("run", "runnin'", "running")),
+        ("seeing", ("see", "seeing")),  # see's e is no doubled letter: not "se"
+        ("cry", ("cried", "cries", "cry")),  # three letters are a stem: y to ies and ied
+        ("cried", ("cried", "cries", "cry")),
+        ("story", ("stories", "story")),  # the y after a consonant, whatever comes before
+        ("box", ("box", "boxed", "boxes")),  # x is never doubled: no boxxed
+        ("canoe", ("canoe", "canoeing")),  # an e after a vowel stays: no canoing
+    ],
+)
+def test_the_variants_are_every_real_form_and_no_decoy(word: str, forms: tuple[str, ...]) -> None:
+    assert TermLexicon(_REAL_FORMS + _DECOYS).variants(word) == forms
+
+
+def test_a_term_of_several_words_has_no_variants_and_is_no_suggestion() -> None:
+    lexicon = TermLexicon(["gold", "pirate gold"])
+    assert lexicon.variants("pirate gold") == ()
+    assert lexicon.suggest("pirate golf") == []

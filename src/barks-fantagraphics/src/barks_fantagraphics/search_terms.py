@@ -172,8 +172,9 @@ class TermLexicon:
 
         """
         lower = word.strip().lower()
-        if not lower or " " in lower:
+        if not lower:  # its forms would be the bare suffixes
             return ()
+        # A term of several words has none: every form found is a single word.
         forms: set[str] = set()
         for stem in _stems_of(lower):
             forms |= _forms_of(stem)
@@ -275,6 +276,6 @@ def _y_stems_of(word: str) -> set[str]:
     stems: set[str] = set()
     for suffix in ("ies", "ied"):
         base = word.removesuffix(suffix)
-        if base != word and len(base) >= 1:
+        if base != word and base:  # not the bare suffix
             stems.add(f"{base}y")
     return stems
