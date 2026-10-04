@@ -16,8 +16,19 @@
     halign: 'left'
     valign: 'middle'
     text_size: self.width, self.height
+    # A story's issue and year sit at the right; a long title is cut short before them.
+    shorten: bool(self.detail)
+    shorten_from: 'right'
     font_size: fm.search_result_font_size
-    padding: [dp(8), 0]
+    padding: [dp(8), 0, (self.detail_width + dp(20)) if self.detail else dp(8), 0]
+    Label:
+        text: root.detail
+        font_size: fm.search_result_font_size
+        color: reader_palette.theme().text_secondary
+        size_hint: None, None
+        size: self.texture_size[0], root.height
+        pos: root.right - self.width - dp(8), root.y
+        on_texture_size: root.detail_width = self.texture_size[0]
 
 # What a typed query tells the user (a word left out, a syntax error) and the
 # headings over its suggestions: rows of the word list that wrap and take no focus.
@@ -306,6 +317,7 @@
                             size_hint_y: None
                             height: self.minimum_height
                             spacing: dp(1)
+                            padding: [0, 0, title_results_scroll.bar_width + dp(4), 0]
 
                 SearchEmptyPrompt:
                     text: "Matching story titles will appear here"
@@ -415,6 +427,7 @@
                                 size_hint_y: None
                                 height: self.minimum_height
                                 spacing: dp(1)
+                                padding: [0, 0, tag_results_scroll.bar_width + dp(4), 0]
 
                         SearchEmptyPrompt:
                             text: "Pick a tag to list its stories"

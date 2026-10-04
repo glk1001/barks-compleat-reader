@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Self, cast
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.search_filters import SearchFilter, apply_filter
 from barks_fantagraphics.search_query import has_query_syntax, replace_word
@@ -105,10 +105,22 @@ class _SearchResultButton(Button):
     """A clickable result row in a search results list."""
 
     row_index = NumericProperty(0)
+    # Shown faintly at the row's right: a story's issue and year.
+    detail = StringProperty("")
+    detail_width = NumericProperty(0)
     # Persistently highlights the last result the user opened (mouse or keyboard), so it
     # stays marked when they navigate away and come back. Distinct from the keyboard
     # focus ring, which tracks the live nav cursor.
     selected = BooleanProperty(defaultvalue=False)
+
+
+def _title_detail(title_str: str) -> str:
+    """Return a listed story's issue and the year it came out: "FC 408 · 1952"."""
+    title = STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
+    if title is None:
+        return ""
+    info = BARKS_TITLE_INFO[title]
+    return f"{info.get_short_issue_title()} · {info.issue_year}"
 
 
 class _QueryRowButton(_SearchResultButton):
@@ -534,7 +546,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         layout.clear_widgets()
         self._selected_result_button = None
         for i, title_str in enumerate(title_strings):
-            btn = _SearchResultButton(text=title_str, row_index=i)
+            btn = _SearchResultButton(text=title_str, row_index=i, detail=_title_detail(title_str))
             btn.bind(
                 on_release=lambda b, t=title_str: self._on_result_row_released(b, t, on_select)
             )
