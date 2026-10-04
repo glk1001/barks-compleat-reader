@@ -3137,3 +3137,26 @@ def test_listed_stories_carry_their_detail_and_keep_their_title() -> None:
     [row] = layout.children
     assert row.text == "The Golden Helmet"
     assert row.detail == "FC 408, 1952"
+
+
+def test_a_cover_row_says_cover_and_opens_the_cover() -> None:
+    screen = _make_bare_screen()
+    screen._mark_result_selected = MagicMock()
+    layout = BoxLayout()
+    on_select = MagicMock()
+    screen._populate_title_results(layout, ["(Four Color #223 Cover)"], on_select)
+    [row] = layout.children
+    assert row.text == "[Cover]"
+    assert row.is_cover
+    assert row.detail == "FC 223, 1949"
+    row.dispatch("on_release")
+    on_select.assert_called_once_with("(Four Color #223 Cover)")
+
+
+def test_a_story_row_is_no_cover() -> None:
+    screen = _make_bare_screen()
+    layout = BoxLayout()
+    screen._populate_title_results(layout, ["Lost in the Andes!"], MagicMock())
+    [row] = layout.children
+    assert row.text == "Lost in the Andes!"
+    assert not row.is_cover

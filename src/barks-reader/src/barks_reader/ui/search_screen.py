@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Self, cast
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ComicBookInfo
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.search_filters import SearchFilter, apply_filter
 from barks_fantagraphics.search_query import has_query_syntax, replace_word
@@ -107,6 +107,8 @@ class _SearchResultButton(Button):
     row_index = NumericProperty(0)
     # Shown faintly at the row's right: a story's issue and year.
     detail = StringProperty("")
+    # A cover's row says only that it is one, faintly: its issue is the detail.
+    is_cover = BooleanProperty(defaultvalue=False)
     detail_width = NumericProperty(0)
     # Persistently highlights the last result the user opened (mouse or keyboard), so it
     # stays marked when they navigate away and come back. Distinct from the keyboard
@@ -114,9 +116,17 @@ class _SearchResultButton(Button):
     selected = BooleanProperty(defaultvalue=False)
 
 
+COVER_ROW_TEXT = "[Cover]"
+
+
+def _listed_title(title_str: str) -> Titles | None:
+    """Return the title a listed display title is, or None for a row that is no title."""
+    return STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
+
+
 def _title_detail(title_str: str) -> str:
     """Return a listed story's issue and the year it came out: "FC 408, 1952"."""
-    title = STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
+    title = _listed_title(title_str)
     if title is None:
         return ""
     info = BARKS_TITLE_INFO[title]
@@ -546,7 +556,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         layout.clear_widgets()
         self._selected_result_button = None
         for i, title_str in enumerate(title_strings):
-            btn = _SearchResultButton(text=title_str, row_index=i, detail=_title_detail(title_str))
+            is_cover = _listed_title(title_str) in COVERS_SET
+            btn = _SearchResultButton(
+                text=COVER_ROW_TEXT if is_cover else title_str,
+                row_index=i,
+                detail=_title_detail(title_str),
+                is_cover=is_cover,
+            )
             btn.bind(
                 on_release=lambda b, t=title_str: self._on_result_row_released(b, t, on_select)
             )

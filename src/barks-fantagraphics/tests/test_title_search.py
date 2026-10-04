@@ -350,7 +350,7 @@ def test_an_issue_is_named_by_its_code_or_its_names(text: str) -> None:
     assert _in_issues(text) == [Titles.TRUANT_OFFICER_DONALD]
 
 
-def test_an_issue_lists_its_stories_one_pagers_and_cover_last() -> None:
+def test_an_issue_lists_its_stories_one_pagers_and_cover() -> None:
     titles = _find("Four Color 223")
     assert titles[0] == Titles.LOST_IN_THE_ANDES
     assert Titles.TOO_FIT_TO_FIT in titles  # a one-pager
@@ -395,10 +395,35 @@ def test_an_issues_titles_are_a_new_list_each_time() -> None:
     assert Titles.GOLD_RUSH not in (_in_issues("FC 29") or [])
 
 
-def test_covers_come_after_every_story() -> None:
-    """The one story is a lower-ranked match than the "Four Color #n Cover" titles."""
-    titles = _find("four")
-    assert titles[0] == Titles.TWENTY_FOUR_CARAT_MOON_THE
-    assert titles[1:]
-    assert all(t in COVERS_SET for t in titles[1:])
-    assert titles[1:] == sorted(titles[1:])
+def test_title_words_find_stories_not_covers() -> None:
+    """A cover's title is its issue's name: "four" is in every "Four Color #n Cover"."""
+    assert _find("four") == [Titles.TWENTY_FOUR_CARAT_MOON_THE]
+    assert not set(_find("donald")) & COVERS_SET
+
+
+def test_cover_alone_finds_every_cover_in_the_order_handed_in() -> None:
+    covers = _find("covers")
+    assert covers == _find("Cover")
+    searchable = {i.title for i in BARKS_TITLE_INFO if i.issue_name != Issues.EXTRAS}
+    assert set(covers) == COVERS_SET & searchable
+    dated = [BARKS_TITLE_INFO[t] for t in covers if BARKS_TITLE_INFO[t].submitted_year > 0]
+    handed_in = [(i.submitted_year, i.submitted_month, i.submitted_day) for i in dated]
+    assert handed_in == sorted(handed_in)
+
+
+def test_a_cover_with_no_date_goes_by_when_it_came_out() -> None:
+    """Neither has a submission date; they came out in 1971 and 1974, after every other."""
+    assert _find("covers")[-2:] == [
+        Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER,
+        Titles.COMICS_AND_STORIES_405_COVER,
+    ]
+
+
+def test_an_issues_cover_is_among_its_stories_in_the_order_handed_in() -> None:
+    assert _find("dd 26") == [
+        Titles.TRICK_OR_TREAT,
+        Titles.PRANK_ABOVE_A,
+        Titles.FRIGHTFUL_FACE,
+        Titles.DONALD_DUCK_26_COVER,
+        Titles.HOBBLIN_GOBLINS,
+    ]

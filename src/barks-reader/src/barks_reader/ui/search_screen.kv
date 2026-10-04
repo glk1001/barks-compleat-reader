@@ -10,7 +10,10 @@
         if (self.selected or self.state != 'normal') \
         else (reader_palette.theme().row_stripe_even if self.row_index % 2 == 0 \
         else reader_palette.theme().row_stripe_odd)
-    color: reader_palette.theme().text_title
+    color:
+        reader_palette.theme().text_secondary if self.is_cover \
+        else reader_palette.theme().text_title
+    italic: self.is_cover
     size_hint_y: None
     height: dp(28)
     halign: 'left'

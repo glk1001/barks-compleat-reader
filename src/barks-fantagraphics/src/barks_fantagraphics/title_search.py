@@ -87,6 +87,26 @@ def _issue_names() -> dict[str, Issues]:
     return names
 
 
+# What a text typed alone finds: every cover.
+_COVER_WORDS = frozenset({"cover", "covers"})
+
+# A submission date, or part of one, that is not known.
+_NO_DATE = -1
+
+
+def _when_submitted(title: Titles) -> tuple[int, int, int, int]:
+    """Return a title's place in time: when Barks handed it in, then its chronological number.
+
+    Stories and covers are each numbered in the order they were handed in, but every
+    cover after every story, so the date is what places a cover among the stories. The
+    few with no known date go by when they came out.
+    """
+    info = BARKS_TITLE_INFO[title]
+    if info.submitted_year == _NO_DATE:
+        return info.issue_year, info.issue_month, _NO_DATE, title
+    return info.submitted_year, info.submitted_month, info.submitted_day, title
+
+
 # Uncle Scrooge 1 to 3 came out as these Four Color issues.
 _US_AS_FC = ((1, US_1_FC_ISSUE_NUM), (2, US_2_FC_ISSUE_NUM), (3, US_3_FC_ISSUE_NUM))
 
@@ -154,11 +174,12 @@ class BarksTitleSearch:
         return [BARKS_TITLE_INFO[title].get_display_title() for title in titles]
 
     def find_titles(self, query: str) -> list[Titles]:
-        """Return the titles a typed text finds: every story, then every cover.
+        """Return the titles a typed text finds, in the order Barks handed them in.
 
         A text naming an issue ("CS 100", "wdcs100", "Four Color #223") finds what Barks did
-        in it, as `get_titles_in_issues` reads it, and nothing else. Any other text finds a
-        title when:
+        in it, as `get_titles_in_issues` reads it, covers too, and nothing else. "Cover" or
+        "covers" alone finds every cover. Any other text finds the stories, not the covers,
+        where:
 
         - it starts with the text, with or without its leading "The", "A" or "An";
         - from two letters, each typed word starts one of the title's words, or is another
@@ -166,8 +187,7 @@ class BarksTitleSearch:
         - from three letters, each typed word is anywhere in the title ("ost" finds
           "Lost in the Andes!").
 
-        Case, apostrophes and other punctuation are ignored. Stories and covers are each in
-        chronological order.
+        Case, apostrophes and other punctuation are ignored.
 
         Args:
             query: The text typed into the title box.
@@ -182,9 +202,16 @@ class BarksTitleSearch:
         typed_words = text.split()
 
         found = self.get_titles_in_issues(query)
-        if found is None:
-            found = [s.title for s in self._searchable if s.is_found_by(text, typed_words)]
-        return [t for t in found if t not in COVERS_SET] + [t for t in found if t in COVERS_SET]
+        if found is not None:
+            return found
+        if text in _COVER_WORDS:
+            covers = [s.title for s in self._searchable if s.title in COVERS_SET]
+            return sorted(covers, key=_when_submitted)
+        return [
+            s.title
+            for s in self._searchable
+            if s.title not in COVERS_SET and s.is_found_by(text, typed_words)
+        ]
 
     @staticmethod
     def get_titles_in_issues(text: str) -> list[Titles] | None:
@@ -199,7 +226,8 @@ class BarksTitleSearch:
             text: The typed text.
 
         Returns:
-            Each story, one-pager and cover in those issues, in chronological order.
+            Each story, one-pager and cover in those issues, in the order Barks handed
+            them in.
 
         """
         match = _ISSUE.fullmatch(_issue_name_key(text))
@@ -212,11 +240,12 @@ class BarksTitleSearch:
         numbers = {(issue, n) for n in _issue_numbers(issue) if str(n).startswith(digits)}
         if issue == Issues.US:
             numbers |= {(Issues.FC, fc) for us, fc in _US_AS_FC if str(us).startswith(digits)}
-        return [
+        in_issues = [
             info.title
             for info in BARKS_TITLE_INFO
             if (info.issue_name, info.issue_number) in numbers
         ]
+        return sorted(in_issues, key=_when_submitted)
 
     def get_titles_matching_prefix(self, prefix: str) -> list[Titles]:
         prefix = prefix.lower()
