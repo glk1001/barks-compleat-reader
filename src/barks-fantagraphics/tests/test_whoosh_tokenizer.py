@@ -73,3 +73,12 @@ def test_mixed_sentence(analyzer: Tokenizer) -> None:
         "knockin'",
         "'lo",
     ]
+
+
+def test_a_hyphen_before_a_space_joins_nothing(analyzer: Tokenizer) -> None:
+    """A word broken off at a line's end ("well-") is not joined across the space."""
+    assert tokens(analyzer, "well- done") == ["well", "done"]
+
+
+def test_apostrophes_with_no_word_are_no_token(analyzer: Tokenizer) -> None:
+    assert tokens(analyzer, "' '' don't") == ["don't"]

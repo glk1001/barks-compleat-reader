@@ -460,6 +460,17 @@ class TestTypedQuery:
         assert screen._nav_focus_area == "input"
         focus_box.assert_called_once_with()
 
+    def test_in_the_tag_search_it_goes_where_a_tag_query_hands_it(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._active_mode = "Tag"
+        with (
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(screen, "_focus_after_tag_query") as after_tags,
+        ):
+            screen._focus_after_query()
+        after_tags.assert_called_once_with()
+
     def test_return_on_the_query_row_or_a_suggestion_runs_it_and_hands_on(
         self, screen: SearchScreen
     ) -> None:
@@ -2135,6 +2146,15 @@ class TestTagScope:
         screen._show_scope_row()
         assert [c.value for c in self._scope_chips(screen)] == ["", "tags"]
 
+    def test_the_chip_the_keyboard_is_on_keeps_it_when_the_row_is_relisted(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        screen._scope_row.enter_focus(1)
+        screen._show_scope_row()
+        assert screen._scope_row.focused == 1
+
     @pytest.mark.parametrize("how", ["box emptied", "clear button", "picked words emptied"])
     def test_the_scope_goes_with_the_results_it_counted(
         self, screen: SearchScreen, how: str
@@ -2665,6 +2685,28 @@ class TestBackgroundAndGoto:
         screen._goto_title_with_page("No Such Story", "3")
         cast("MagicMock", screen.on_goto_title_with_page).assert_not_called()
 
+    def test_a_bubble_pressed_closes_its_popup_and_goes_to_its_page(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._speech_bubble_popup = MagicMock()
+        title = ENUM_TO_STR_TITLE[HELMET]
+        with (
+            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(screen, "_goto_title_with_page") as goto,
+        ):
+            screen._handle_bubble_title_press(title, "3")
+        screen._speech_bubble_popup.dismiss.assert_called_once_with()
+        goto.assert_called_once_with(title, "3")
+        assert log_markers.WORD_BUBBLE_PRESS.format(title=title, page="3") in loguru_sink
+
+    def test_the_title_info_setting_shows_or_hides_the_title(self, screen: SearchScreen) -> None:
+        screen._reader_settings = MagicMock(show_fun_view_title_info=False)
+        screen._on_change_show_current_title()
+        assert screen.show_current_title is False
+        screen._reader_settings.show_fun_view_title_info = True
+        screen._on_change_show_current_title()
+        assert screen.show_current_title is True
+
 
 class TestCombinedTagsListingNothing:
     """Picked tags no story has together say so, in the era or not; a new era relists them."""
@@ -2888,6 +2930,19 @@ class TestNavEdges:
             bare._selected_word = ""
             bare._tag_titles = []
             yield bare
+
+    @pytest.mark.parametrize("stray", [None, Button()], ids=["no widget", "a widget not listed"])
+    def test_a_focus_the_list_does_not_hold_is_not_drawn(
+        self, screen: SearchScreen, stray: Button | None
+    ) -> None:
+        screen.ids.word_results_layout.add_widget(_word_result_row("Story A", []))
+        screen._nav_focus_area = "results"
+        with (
+            patch.object(screen, "_get_focused_result_widget", return_value=stray),
+            patch.object(search_screen, "update_focus_in_list") as draw,
+        ):
+            screen._draw_result_focus()
+        draw.assert_not_called()
 
     def test_no_key_is_taken_while_the_screen_is_not_navigating(self, screen: SearchScreen) -> None:
         screen._nav_active = False
@@ -3160,3 +3215,13 @@ def test_a_story_row_is_no_cover() -> None:
     [row] = layout.children
     assert row.text == "Lost in the Andes!"
     assert not row.is_cover
+
+
+def test_one_letter_in_the_title_box_lists_nothing() -> None:
+    """A single letter would list too many titles to be any use: the list is cleared."""
+    with patch.object(SearchScreen, "ids", MagicMock()):
+        screen = _make_bare_screen()
+        screen._search = MagicMock()
+        screen.on_title_search_text("g")
+        screen.ids.title_results_layout.clear_widgets.assert_called_once_with()
+    screen._search.search.assert_not_called()
