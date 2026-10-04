@@ -13,7 +13,15 @@ bash scripts/mutmut.sh --changed HEAD~3           # ...plus everything since a r
 bash scripts/mutmut.sh '*/core/reader_utils.py'   # one module
 bash scripts/mutmut.sh '*/core/navigation/*'      # a subpackage
 bash scripts/mutmut.sh                            # all of core/ (~6000 mutants, slow)
+bash scripts/mutmut.sh --package fantagraphics     # the search modules (~2500 mutants)
 ```
+
+`--package fantagraphics` mutates `barks_fantagraphics` instead, from
+`src/barks-fantagraphics/`, against all of its tests (none use Kivy); by default the
+search modules, else a glob such as `'*/barks_fantagraphics/tag_query.py'`, or
+`--changed`. First run 2026-10-04: 2497 mutants, 308 survivors (whoosh_search_engine
+150, search_query 52, search_terms 40, search_evaluate 33, comic_search 13,
+title_search 7, tag_query 7, search_results 3, search_filters 3), not yet triaged.
 
 `--changed` is the everyday mode and the one to reach for by default. With no ref it
 scopes to your working tree (staged, unstaged and untracked); pass a ref to also
@@ -56,11 +64,11 @@ The 436 🫥 *no covering test* mutants are a **separate problem** and won't mov
 matter how many survivors get killed — they are code the Kivy-free suite never
 reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
 
-## Four traps that produce fake numbers
+## Five traps that produce fake numbers
 
 The first two follow from mutmut calling `pytest.main()` **many times in one process**;
 the third from how it decides which mutant is live; the fourth from how it decides which
-tests to run against it.
+tests to run against it; the fifth from what it will mutate at all.
 
 1. **`@given` property tests must be module-level, never test-class methods.** A
    class-scoped `@given` sees a fresh test-class instance on each in-process run and
@@ -99,6 +107,19 @@ tests to run against it.
    Keep such fixtures module-scoped for the suite's speed, but give them a dynamic
    scope that returns `"function"` when `MUTANT_UNDER_TEST` is set (see
    `_stats_scope` in `test_corpus_stats.py`).
+
+5. **Decorated classes and decorated functions get no mutants at all.** mutmut 3.6
+   skips a class with any decorator, whole, and a function with any decorator other than
+   a lone `@staticmethod` or `@classmethod` (`file_mutation.py`, "ignore decorated
+   functions"). So every method of a `@dataclass` and every `@property` body is copied
+   through as it is, and a module made of them scores as clean with nothing tested.
+   Surveyed 2026-10-04: 341 lines of functions in 18 `core/` modules are skipped this
+   way, and five modules entirely - `search_state` (115 lines: `WordBasket`, `TagBasket`,
+   `EraChoice`), `saved_page_info`, `page_image_source`, `ports/scheduler` and
+   `ports/color_source`. A run scoped to such a module alone stops with "could not find
+   any test case for any mutant": there is no mutant for a test to find. Their tests are
+   the only guard; keep them behavioural, and do not read a quiet nightly slice as
+   evidence about them.
 
 When triaging, prefer `uv run mutmut results` over the wrapper's summary if you need
 raw mutant names; the summary collapses them to module counts.
