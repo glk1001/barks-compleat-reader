@@ -69,6 +69,10 @@ DIR_SWITCHES = {
 }
 
 
+# A click this slow waited for its target (gui_probe_darwin's click check): noted.
+_CLICK_WAIT_NOTE_SECS = 0.5
+
+
 class ProbeError(RuntimeError):
     """A command could not do what it was asked; the message says why."""
 
@@ -495,7 +499,13 @@ class Probe:
         note_input(kind, f"{x} {y}")
         self._backend.move_pointer(left + x, top + y)
         time.sleep(0.3)
+        started = time.monotonic()
         self._backend.click(left + x, top + y)
+        # A click that waited for the app's window to be under it (the macOS
+        # backend's check) says so beside the press, in the log a failure keeps.
+        waited = time.monotonic() - started
+        if waited >= _CLICK_WAIT_NOTE_SECS:
+            note_input("wait", f"{waited:.1f}s for the app's window under the {kind}")
 
     @staticmethod
     def tap_targets(request: str) -> None:

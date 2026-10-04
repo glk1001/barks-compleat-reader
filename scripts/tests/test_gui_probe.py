@@ -306,6 +306,21 @@ class TestTaps:
         [line] = gui_probe.input_log().read_text().splitlines()
         assert line.split(" ", 1)[1] == "click 10 20"
 
+    def test_a_click_that_waited_for_its_target_says_so_in_the_log(self, run_dir: Path) -> None:
+        """The macOS backend waits for the app's window under the point: the log shows it."""
+        backend = MagicMock()
+        backend.bring_to_front.return_value = True
+        backend.client_geometry.return_value = (800, 600, 100, 50)
+        (run_dir / "app.pid").write_text("1234")
+        clock = iter([100.0, 112.5])
+        with (
+            patch.object(gui_probe.time, "sleep"),
+            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+        ):
+            gui_probe.Probe(backend).tap(10, 20)
+        lines = [line.split(" ", 1)[1] for line in gui_probe.input_log().read_text().splitlines()]
+        assert lines == ["tap 10 20", "wait 12.5s for the app's window under the tap"]
+
     def test_a_tap_targets_request_is_written_whole(self, run_dir: Path) -> None:
         gui_probe.Probe.tap_targets("5")
         assert (run_dir / "tap-request").read_text(encoding="utf-8") == "5\n"

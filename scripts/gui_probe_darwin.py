@@ -80,6 +80,17 @@ _SHIELDING_LAYER = 2147483628
 _APP_LAYERS = frozenset({0, _SHIELDING_LAYER})
 # How long a lookup waits for the app's window through a fullscreen change.
 _FULLSCREEN_CHANGE_SECS = 5
+# How long a click waits for the app's window to be the one under its point
+# (click_blocker), polling: what is over it then is named, rather than the click
+# landing elsewhere unseen. Taps went astray for about 80 seconds after the
+# fullscreen tap test on the 2-core guest (2026-10-03 and -04).
+_CLICK_TARGET_WAIT_SECS = 20
+_CLICK_TARGET_POLL_SECS = 0.2
+# Windows on the list that cover the screen but take no click meant for the app:
+# the Dock's (its bar and Mission Control share one screen-sized window, at layer
+# 20) and the window server's own. Seen on the macOS 12 guest, 2026-10-04.
+_CLICK_PASS_THROUGH_OWNERS = frozenset({"Dock", "Window Server"})
+_CF_NUMBER_FLOAT64 = 6
 
 _LOCKED = "the screen is locked, or there is no desktop session: input would go nowhere"
 _NO_ACCESSIBILITY = (
@@ -135,6 +146,7 @@ class WindowInfo:
     title: str
     layer: int
     bounds: tuple[int, int, int, int]  # width, height, x, y
+    alpha: float = 1.0  # 0 is invisible: such a window takes no click
 
 
 def is_app_window(window: WindowInfo, title: str) -> bool:
@@ -173,6 +185,38 @@ def in_fullscreen_change(windows: Iterable[WindowInfo]) -> bool:
 def frontmost_normal_window(windows: Iterable[WindowInfo]) -> WindowInfo | None:
     """Return the frontmost ordinary (layer 0) window: the one the active app is showing."""
     return next((w for w in windows if w.layer == 0), None)
+
+
+def window_under(windows: Iterable[WindowInfo], x: int, y: int) -> WindowInfo | None:
+    """Return the frontmost window that would take a click at screen point (`x`, `y`).
+
+    Not an invisible one, nor the Dock's or the window server's screen-sized ones
+    (_CLICK_PASS_THROUGH_OWNERS), which lie over every app's window on the list.
+    """
+    for window in windows:
+        if window.alpha <= 0 or window.owner_name in _CLICK_PASS_THROUGH_OWNERS:
+            continue
+        width, height, left, top = window.bounds
+        if left <= x < left + width and top <= y < top + height:
+            return window
+    return None
+
+
+def click_blocker(windows: Iterable[WindowInfo], x: int, y: int, app_pid: int) -> str | None:
+    """Return why a click at screen point (`x`, `y`) would miss the app, or None if it would not."""
+    windows = list(windows)
+    if in_fullscreen_change(windows):
+        return "the app's window is moving into or out of fullscreen"
+    window = window_under(windows, x, y)
+    if window is None:
+        return f"no window is at ({x}, {y})"
+    if window.owner_pid == app_pid:
+        return None
+    width, height, left, top = window.bounds
+    return (
+        f"a {window.owner_name} window {window.title!r} (layer {window.layer},"
+        f" {width}x{height}+{left}+{top}) is over ({x}, {y})"
+    )
 
 
 class _CGPoint(ctypes.Structure):
@@ -254,6 +298,14 @@ def _dict_int(info: int, key: str) -> int:
     return out.value
 
 
+def _dict_float(info: int, key: str, *, default: float) -> float:
+    value = _dict_get(info, key)
+    out = ctypes.c_double(default)
+    if value:
+        _cf.CFNumberGetValue(value, _CF_NUMBER_FLOAT64, ctypes.byref(out))
+    return out.value
+
+
 def _dict_str(info: int, key: str) -> str:
     value = _dict_get(info, key)
     if not value:
@@ -292,6 +344,7 @@ def window_list(*, only: int | None = None) -> list[WindowInfo]:
                     title=_dict_str(info, "kCGWindowName"),
                     layer=_dict_int(info, "kCGWindowLayer"),
                     bounds=_dict_bounds(info),
+                    alpha=_dict_float(info, "kCGWindowAlpha", default=1.0),
                 )
             )
         return windows
@@ -466,9 +519,31 @@ class DarwinBackend:
         _mouse(_EVENT_MOUSE_MOVED, x, y)
 
     def click(self, x: int, y: int) -> None:
+        self._wait_for_click_target(x, y)
         _mouse(_EVENT_MOUSE_MOVED, x, y)
         _mouse(_EVENT_LEFT_MOUSE_DOWN, x, y)
         _mouse(_EVENT_LEFT_MOUSE_UP, x, y)
+
+    def _wait_for_click_target(self, x: int, y: int) -> None:
+        """Wait until the app's window is the one a click at (`x`, `y`) would reach.
+
+        A click is posted at a screen point and taken by whatever is over it; one
+        that missed the app went unseen, and the test failed on a wait for what the
+        tap should have done. Named instead, after _CLICK_TARGET_WAIT_SECS.
+
+        Raises:
+            RuntimeError: If the app's window is still not under the point by then.
+
+        """
+        if self._app_pid is None:  # no window brought to the front yet: nothing to check
+            return
+        started = time.monotonic()
+        # How long it waited shows in the input log (gui_probe.Probe._press_at).
+        while why := click_blocker(window_list(), x, y, self._app_pid):
+            if time.monotonic() - started > _CLICK_TARGET_WAIT_SECS:
+                msg = f"a click at ({x}, {y}) would not reach the app: {why}"
+                raise RuntimeError(msg)
+            time.sleep(_CLICK_TARGET_POLL_SECS)
 
     def _key_target(self) -> int:
         """Return the process keys go to: the app's, and never whatever is in front.

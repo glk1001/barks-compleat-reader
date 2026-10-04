@@ -6,7 +6,7 @@ calls into the window server and the process handling run on macOS only.
 
 # ruff: noqa: PLR2004  (key codes and pixel counts are the point of these tests)
 
-# cspell:ignore pids frontmost unshifted pgrep
+# cspell:ignore pids frontmost unshifted pgrep loginwindow
 
 from __future__ import annotations
 
@@ -178,6 +178,122 @@ class TestFullscreenChange:
         ):
             assert gui_probe_darwin.DarwinBackend().find_window(APP_TITLE) is None
         listing.assert_called_once()
+
+
+def _at(
+    owner: str,
+    bounds: tuple[int, int, int, int],
+    layer: int = 0,
+    pid: int = 1,
+    alpha: float = 1.0,
+    title: str = "",
+) -> WindowInfo:
+    return WindowInfo(
+        number=0, owner_pid=pid, owner_name=owner, title=title, layer=layer, bounds=bounds,
+        alpha=alpha,
+    )  # fmt: skip
+
+
+# The macOS 12 guest's own list, front to back, with the app's window under them all:
+# the window server's and the Dock's cover the screen, the menu bar its top strip.
+_SCREEN = (2560, 1440, 0, 0)
+_APP_PID = 4321
+_GUEST = [
+    _at("Window Server", (17, 23, 1, 651), layer=2147483630),
+    _at("Window Server", _SCREEN, layer=2147483646),
+    _at("Control Centre", (152, 24, 2408, 0), layer=25),
+    _at("Window Server", (2560, 24, 0, 0), layer=24),
+    _at("Dock", _SCREEN, layer=20),
+]
+_APP = _at("python3.13", (838, 1310, 861, 25), pid=_APP_PID, title=APP_TITLE)
+# A point inside the app's window, and one beside it.
+_IN_APP, _BESIDE = (1551, 47), (300, 300)
+
+
+class TestClickTarget:
+    """A click goes only where the app's own window is the one under the point."""
+
+    def test_the_app_under_the_screens_own_overlays_takes_it(self) -> None:
+        assert gui_probe_darwin.click_blocker([*_GUEST, _APP], *_IN_APP, _APP_PID) is None
+
+    def test_another_apps_window_in_front_is_named(self) -> None:
+        terminal = _at("Terminal", (1645, 1022, 407, 112), pid=99)
+        why = gui_probe_darwin.click_blocker([*_GUEST, terminal, _APP], 1551, 200, _APP_PID)
+        assert why == "a Terminal window '' (layer 0, 1645x1022+407+112) is over (1551, 200)"
+
+    def test_a_banner_above_the_app_is_named(self) -> None:
+        banner = _at("NotificationCenter", (360, 90, 1400, 30), layer=23, pid=77)
+        why = gui_probe_darwin.click_blocker([banner, *_GUEST, _APP], *_IN_APP, _APP_PID)
+        assert why is not None
+        assert why.startswith("a NotificationCenter window")
+
+    def test_the_lock_screen_is_named(self) -> None:
+        lock = _at("loginwindow", _SCREEN, layer=2000, pid=55)
+        why = gui_probe_darwin.click_blocker([lock, *_GUEST, _APP], *_IN_APP, _APP_PID)
+        assert why is not None
+        assert "loginwindow" in why
+
+    def test_an_invisible_window_takes_no_click(self) -> None:
+        ghost = _at("Terminal", _SCREEN, pid=99, alpha=0.0)
+        assert gui_probe_darwin.click_blocker([ghost, *_GUEST, _APP], *_IN_APP, _APP_PID) is None
+
+    def test_beside_the_app_nothing_takes_it(self) -> None:
+        why = gui_probe_darwin.click_blocker([*_GUEST, _APP], *_BESIDE, _APP_PID)
+        assert why == "no window is at (300, 300)"
+
+    def test_mid_way_into_fullscreen_it_waits(self) -> None:
+        stand_in = _at("python3.13", _SCREEN, pid=_APP_PID)  # untitled, as mid-switch
+        why = gui_probe_darwin.click_blocker([*_GUEST, stand_in], *_IN_APP, _APP_PID)
+        assert why == "the app's window is moving into or out of fullscreen"
+
+
+class TestClickWait:
+    @staticmethod
+    def _backend() -> gui_probe_darwin.DarwinBackend:
+        with patch.object(gui_probe_darwin, "_declare"):
+            backend = gui_probe_darwin.DarwinBackend()
+        backend._app_pid = _APP_PID  # noqa: SLF001 (as bring_to_front leaves it)
+        return backend
+
+    def test_it_clicks_once_the_app_is_under_the_point(self) -> None:
+        terminal = _at("Terminal", _SCREEN, pid=99)
+        lists = iter([[terminal, _APP], [terminal, _APP], [_APP]])
+        with (
+            patch.object(gui_probe_darwin, "window_list", side_effect=lambda: next(lists)),
+            patch.object(gui_probe_darwin.time, "sleep") as sleep,
+            patch.object(gui_probe_darwin, "_mouse") as mouse,
+        ):
+            self._backend().click(*_IN_APP)
+        assert sleep.call_count == 2
+        assert [c.args[0] for c in mouse.call_args_list] == [
+            gui_probe_darwin._EVENT_MOUSE_MOVED,  # noqa: SLF001
+            gui_probe_darwin._EVENT_LEFT_MOUSE_DOWN,  # noqa: SLF001
+            gui_probe_darwin._EVENT_LEFT_MOUSE_UP,  # noqa: SLF001
+        ]
+
+    def test_it_never_clicks_what_stays_over_the_app_and_says_what_it_is(self) -> None:
+        terminal = _at("Terminal", _SCREEN, pid=99)
+        clock = iter(range(0, 1000, 5))
+        with (
+            patch.object(gui_probe_darwin, "window_list", return_value=[terminal, _APP]),
+            patch.object(gui_probe_darwin.time, "sleep"),
+            patch.object(gui_probe_darwin.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe_darwin, "_mouse") as mouse,
+            pytest.raises(RuntimeError, match=r"would not reach the app: a Terminal window"),
+        ):
+            self._backend().click(*_IN_APP)
+        mouse.assert_not_called()
+
+    def test_before_the_app_was_found_it_clicks_unchecked(self) -> None:
+        with patch.object(gui_probe_darwin, "_declare"):
+            backend = gui_probe_darwin.DarwinBackend()
+        with (
+            patch.object(gui_probe_darwin, "window_list") as listed,
+            patch.object(gui_probe_darwin, "_mouse") as mouse,
+        ):
+            backend.click(*_IN_APP)
+        listed.assert_not_called()
+        assert mouse.call_count == 3
 
 
 class TestKeyTarget:
