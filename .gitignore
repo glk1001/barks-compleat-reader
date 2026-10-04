@@ -85,6 +85,7 @@ mutants/
 .mutmut-cache
 mutmut-stats.json
 /src/barks-reader/setup.cfg
+/src/barks-fantagraphics/setup.cfg
 /coverage.xml
 /.hypothesis/
 

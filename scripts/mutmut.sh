@@ -1,5 +1,6 @@
 #!/bin/bash
-# Mutation testing for barks_reader with mutmut.
+# Mutation testing for barks_reader (or, with --package fantagraphics, the
+# barks_fantagraphics search modules) with mutmut.
 #
 # Why a wrapper (mutmut can't just run at the repo root):
 #   1. Layout — mutmut's source-shadowing assumes a repo-root src/ layout, but the
@@ -12,8 +13,14 @@
 #      baseline. This list is computed fresh each run, so new pure tests join
 #      automatically and no brittle hand-maintained list can drift.
 #
-# The mutmut config is written to a throwaway src/barks-reader/setup.cfg (gitignored);
-# keeping [tool.mutmut] out of pyproject.toml keeps that file clean.
+# The mutmut config is written to a throwaway setup.cfg in the package's folder
+# (gitignored); keeping [tool.mutmut] out of pyproject.toml keeps that file clean.
+#
+# --package fantagraphics (first argument) runs the same way in src/barks-fantagraphics:
+# its own src/ layout, all of its tests (none use Kivy), and by default the search
+# modules - the query parser and evaluator, tag queries, terms, filters, results, the
+# facade, title search and the Whoosh engine. A glob or --changed then works as below,
+# with */barks_fantagraphics/ in place of */core/.
 #
 # Usage:
 #   bash scripts/mutmut.sh                             # mutate all of core/
@@ -21,23 +28,62 @@
 #   bash scripts/mutmut.sh '*/core/navigation/navigation_model.py'   # one module
 #   bash scripts/mutmut.sh --changed                   # only core/ modules you have touched
 #   bash scripts/mutmut.sh --changed HEAD~3            # ...plus everything since a ref
+#   bash scripts/mutmut.sh --package fantagraphics      # the search modules
+#   bash scripts/mutmut.sh --package fantagraphics '*/barks_fantagraphics/tag_query.py'
 #
 # --changed is the everyday mode: a full core/ sweep is ~6000 mutants and many
 # minutes, but one module is a minute or two, which is fast enough to run while the
 # code is still fresh in your head. With no ref it scopes to your working tree
 # (staged, unstaged and untracked); pass a ref to also include commits since then.
 #
-# Inspect afterwards (from src/barks-reader):
+# Inspect afterwards (from the package's folder, src/barks-reader or src/barks-fantagraphics):
 #   uv run mutmut results | grep survived
 #   uv run mutmut show <mutant-name>
-# Four traps that make survivor counts lie (property tests in classes, functools.cache,
-# cleared environments, module-scoped fixtures): see docs/mutation-testing.md first.
+# Five traps that make survivor counts lie (property tests in classes, functools.cache,
+# cleared environments, module-scoped fixtures, decorated classes and functions, which
+# get no mutants at all): see docs/mutation-testing.md first.
 
 set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
-core_rel="src/barks-reader/src/barks_reader/core"
-tests_rel="src/barks-reader/tests/unit"
+
+package="reader"
+if [[ "${1:-}" == "--package" ]]; then
+    package="${2:-}"
+    shift 2 || true
+fi
+case "${package}" in
+    reader)
+        package_dir="src/barks-reader"
+        source_path="src/barks_reader"
+        core_rel="src/barks-reader/src/barks_reader/core"  # the modules mutated
+        tests_rel="src/barks-reader/tests/unit"
+        glob_prefix="*/core/"
+        default_globs="*/core/*"
+        module_prefix='barks_reader\.core\.'  # stripped from mutant names in the summary
+        also_copy=""
+        ;;
+    fantagraphics)
+        package_dir="src/barks-fantagraphics"
+        source_path="src/barks_fantagraphics"
+        core_rel="src/barks-fantagraphics/src/barks_fantagraphics"
+        tests_rel="src/barks-fantagraphics/tests"
+        glob_prefix="*/barks_fantagraphics/"
+        default_globs=""
+        for module in search_query search_evaluate tag_query search_terms search_filters \
+            search_results comic_search title_search whoosh_search_engine; do
+            default_globs+="${default_globs:+$'\n'}*/barks_fantagraphics/${module}.py"
+        done
+        module_prefix='barks_fantagraphics\.'
+        # comics_consts asserts its data folder exists, beside src/ in the source tree;
+        # the sandbox has none unless mutmut copies it to mutants/data.
+        also_copy="data"
+        ;;
+    *)
+        echo "mutmut: unknown --package '${package}' (reader or fantagraphics)" >&2
+        exit 2
+        ;;
+esac
 
 # Core modules touched in the working tree, plus (if a base ref is given) any touched
 # by commits since it. Deleted files are dropped - there is nothing left to mutate.
@@ -59,7 +105,7 @@ changed_core_globs() {
         case "${path}" in
             "${core_rel}"/*)
                 [[ -f "${repo_root}/${path}" ]] || continue
-                printf '%s\n' "${path/#"${core_rel}"\//*/core/}"
+                printf '%s%s\n' "${glob_prefix}" "${path#"${core_rel}"/}"
                 ;;
             "${tests_rel}"/test_*.py)
                 local module="${path##*/test_}"
@@ -68,7 +114,7 @@ changed_core_globs() {
                 # made the whole pipeline fail, and the script exited before mutating
                 # anything - silently, since the failure was inside "globs=$(...)".
                 if [[ -f "${repo_root}/${core_rel}/${module}" ]]; then
-                    printf '*/core/%s\n' "${module}"
+                    printf '%s%s\n' "${glob_prefix}" "${module}"
                 fi
                 ;;
         esac
@@ -94,11 +140,11 @@ if [[ "${1:-}" == "--changed" ]]; then
     # indented, so every glob after the first gets four spaces.
     only_mutate=$(printf '%s\n' "${globs}" | sed -e '2,$s/^/    /')
 else
-    only_mutate="${1:-*/core/*}"
+    only_mutate="${1:-$(printf '%s\n' "${default_globs}" | sed -e '2,$s/^/    /')}"
     [[ $# -gt 0 ]] && shift || true
 fi
 
-cd "${repo_root}/src/barks-reader"
+cd "${repo_root}/${package_dir}"
 
 # Kivy-free unit tests only — UI tests fail in mutmut's sandbox and abort the run.
 # Two more are left out, since mutmut copies the tests under mutants/ and runs
@@ -107,17 +153,19 @@ cd "${repo_root}/src/barks-reader"
 # asserts in the sandbox), and the GUI harness's tests (they put scripts/ and
 # tests/gui on sys.path relative to their own file, which is elsewhere in the
 # sandbox). Either takes the whole baseline down before a single mutant runs.
-selection=$(cd tests/unit && for f in test_*.py; do
+tests_dir="${tests_rel#"${package_dir}"/}"
+selection=$(cd "${tests_dir}" && for f in test_*.py; do
     grep -qE '^(import kivy|from kivy|import barks_reader\.ui|from barks_reader\.ui|from barks_reader import first_run_installer|from barks_reader\.first_run_installer|import gui_driver|from barks_gui)' "$f" \
-        || printf '    tests/unit/%s\n' "$f"
+        || printf '    %s/%s\n' "${tests_dir}" "$f"
 done)
 
 cat > setup.cfg <<EOF
 # Generated by scripts/mutmut.sh at runtime — do not edit or commit (gitignored).
 [mutmut]
-source_paths = src/barks_reader
+source_paths = ${source_path}
 only_mutate = ${only_mutate}
-pytest_add_cli_args = --import-mode=importlib
+${also_copy:+also_copy = ${also_copy}
+}pytest_add_cli_args = --import-mode=importlib
 pytest_add_cli_args_test_selection =
 ${selection}
 EOF
@@ -145,7 +193,7 @@ echo "==== survivors by module ===="
 # grep finds nothing in a slice with no survivors; under pipefail that is not a failure.
 survivors=$(uv run mutmut results 2>/dev/null | { grep ': survived' || true; })
 if [[ -n "${survivors}" ]]; then
-    printf '%s\n' "${survivors}" | sed -E 's/.*barks_reader\.core\.//; s/\.(x_|xǁ).*//' \
+    printf '%s\n' "${survivors}" | sed -E "s/.*${module_prefix}//; s/\\.(x_|xǁ).*//" \
         | sort | uniq -c | sort -rn
 fi
 echo "  total survivors: $(printf '%s\n' "${survivors}" | grep -c .)"
