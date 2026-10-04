@@ -364,10 +364,9 @@ class _Parser:
     def _peek(self) -> _Token | None:
         return self._tokens[self._i] if self._i < len(self._tokens) else None
 
-    def _take(self) -> _Token:
-        token = self._tokens[self._i]
+    def _take(self) -> None:
+        """Step past the token `_peek` showed (every caller has it already)."""
         self._i += 1
-        return token
 
     def _end(self) -> int:
         return len(self._text)

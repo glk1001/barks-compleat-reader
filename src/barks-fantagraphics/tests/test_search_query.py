@@ -13,6 +13,7 @@ from barks_fantagraphics.search_query import (
     NearQuery,
     Not,
     Or,
+    ParseError,
     Phrase,
     TagQualifier,
     VolumeQualifier,
@@ -105,48 +106,74 @@ def test_a_query_parses_to_its_tree(text: str, tree: object) -> None:
 
 
 @pytest.mark.parametrize(
-    ("text", "position", "says"),
+    ("text", "position", "message"),
     [
-        ("(gold", 0, "not closed"),
-        ("gold)", 4, "no opening"),
-        ("()", 0, "empty"),
-        ('"gold', 0, "not closed"),
-        ('""', 0, "empty"),
-        ("gold AND", 5, "nothing to search after"),
-        ("gold OR", 5, "nothing to search after"),
-        ("-", 0, "nothing to search after"),
-        ("gold -", 5, "nothing to search after"),
-        ("NOT", 0, "nothing to search after"),
-        ("gold | | mine", 5, "nothing to search after"),
-        ("AND gold", 0, "needs something"),
-        ("gold NEAR", 5, "needs a word after"),
-        ('gold NEAR "pirate gold"', 5, "needs a word after"),
-        ("gold NEAR/0 mine", 5, "at least 1"),
-        ("*", 0, "wildcard"),
-        ("g*", 0, "wildcard"),
-        ('"*"', 0, "wildcard"),  # quotes do not make it a word: no word holds *
-        ('gold "g?"', 5, "wildcard"),
-        ("foo:bar", 0, "not a filter"),
-        ("tag:", 0, "needs a value"),
-        ("year:abc", 0, "a number or a range"),
-        ("year:1955-50", 0, "backwards"),
-        ('vol:"7"', 0, "not quotes"),
-        ("gold year:x-1", 5, "a number or a range"),
+        ("(gold", 0, "a bracket is not closed"),
+        ("gold)", 4, "a closing bracket has no opening one"),
+        (") gold", 0, "a closing bracket has no opening one"),
+        ("()", 0, "the brackets are empty"),
+        ("gold (", 6, "the query ends too soon"),
+        ('"gold', 0, "a quote is not closed"),
+        ('""', 0, "the quotes are empty"),
+        ("gold AND", 5, 'nothing to search after "AND"'),
+        ("gold OR", 5, 'nothing to search after "OR"'),
+        ("gold &", 5, 'nothing to search after "&"'),
+        ("-", 0, 'nothing to search after "-"'),
+        ("gold -", 5, 'nothing to search after "-"'),
+        ("NOT", 0, 'nothing to search after "NOT"'),
+        ("gold | | mine", 5, 'nothing to search after "|"'),
+        ("AND gold", 0, '"AND" needs something to search before it'),
+        ("gold NEAR", 5, "NEAR needs a word after it"),
+        ('gold NEAR "pirate gold"', 5, "NEAR needs a word after it"),
+        ("gold NEAR/0 mine", 5, "NEAR/n needs a distance of at least 1"),
+        ("*", 0, "a wildcard needs at least 2 letters besides * and ?"),
+        ("g*", 0, "a wildcard needs at least 2 letters besides * and ?"),
+        ('"*"', 0, "a wildcard needs at least 2 letters besides * and ?"),  # no word holds *
+        ('gold "g?"', 5, "a wildcard needs at least 2 letters besides * and ?"),
+        ("gold NEAR z*", 10, "a wildcard needs at least 2 letters besides * and ?"),
+        ("foo:bar", 0, '"foo:" is not a filter (tag:, year: or vol:)'),
+        ("tag:", 0, '"tag:" needs a value'),
+        ("year:abc", 0, "a year must be a number or a range, like 1950-55"),
+        ("gold year:x-1", 5, "a year must be a number or a range, like 1950-55"),
+        ("year:1955-50", 0, "a year range runs backwards"),
+        ("vol:abc", 0, "a volume must be a number or a range, like 5-8"),
+        ("gold vol:12-5", 5, "a volume range runs backwards"),  # not shortened, as a year is
+        ('vol:"7"', 0, '"vol:" takes a number, not quotes'),
     ],
 )
-def test_bad_syntax_is_an_error_at_its_position(text: str, position: int, says: str) -> None:
+def test_bad_syntax_is_an_error_at_its_position(text: str, position: int, message: str) -> None:
+    """The whole message, as the word list shows it as a notice, and where it points."""
     parsed = parse_query(text)
     assert parsed.root is None
-    assert parsed.error is not None
-    assert parsed.error.position == position
-    assert says in parsed.error.message
+    assert parsed.error == ParseError(message, position)
+    assert parsed.text == text
     assert not parsed.ok
+
+
+@pytest.mark.parametrize(
+    ("text", "tree"),
+    [
+        # An X is a letter: none of the syntax characters' tests may take it as one.
+        ("Xmas gift", And((Word("Xmas"), Word("gift")))),
+        # A closing quote ends the phrase; the word right after it is read whole.
+        ('"pirate gold"mine', And((Phrase(("pirate", "gold")), Word("mine")))),
+        # Only a value's first colon ends its key.
+        ("gold tag:x:y", And((Word("gold"), TagQualifier("x:y")))),
+    ],
+)
+def test_letters_and_colons_in_odd_places_are_read_as_they_stand(text: str, tree: object) -> None:
+    parsed = parse_query(text)
+    assert (parsed.root, parsed.text) == (tree, text)
 
 
 def test_nothing_typed_is_neither_tree_nor_error() -> None:
     for text in ("", "   "):
         parsed = parse_query(text)
-        assert (parsed.root, parsed.error, parsed.ok) == (None, None, False)
+        assert (parsed.root, parsed.error, parsed.ok, parsed.text) == (None, None, False, text)
+
+
+def test_a_parsed_query_keeps_its_text() -> None:
+    assert parse_query("gold mine").text == "gold mine"
 
 
 @given(st.text(max_size=80))
@@ -222,8 +249,10 @@ def test_a_wildcard_word_knows_it_is_one() -> None:
 @pytest.mark.parametrize("text", ["(" * 5000 + "gold" + ")" * 5000, "-" * 5000 + "gold"])
 def test_nesting_past_the_recursion_limit_is_an_error_not_a_crash(text: str) -> None:
     parsed = parse_query(text)
-    assert parsed.error is not None
     assert parsed.root is None
+    assert parsed.error is not None
+    assert parsed.error.message.startswith("the query cannot be read (")
+    assert (parsed.error.position, parsed.text) == (0, text)
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-# cspell:ignore monney clasics bearz
+# cspell:ignore monney clasics bearz parott
 """A typed word query, run: AND and NOT by story, phrases and NEAR by bubble, filters, notices.
 
 Against the fake engine over a small corpus of real stories (their years and tags
@@ -12,13 +12,16 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.search_evaluate import Suggestion, evaluate_query, run_query_text
 from barks_fantagraphics.search_filters import SearchFilter, tag_titles, titles_in_years
 from barks_fantagraphics.search_query import (
+    And,
     AnyTerm,
     Combine,
+    NearQuery,
+    Or,
     Phrase,
     Word,
     query_from_words,
 )
-from barks_fantagraphics.search_results import TitleInfo
+from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import MAX_WILDCARD_TERMS, TermLexicon
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
 from barks_fantagraphics.whoosh_search_engine import MY_STOP_WORDS, build_index_schema
@@ -404,3 +407,145 @@ def test_only_a_filter_is_made_into_one() -> None:
     evaluator = _Evaluator(InMemoryFullTextSearch(), TermLexicon([]), None, MY_STOP_WORDS)
     with pytest.raises(ValueError, match="Not a filter"):
         evaluator._filter_of(Word("gold"))  # noqa: SLF001
+
+
+# --- What each search is told to search: the stories found so far, not everything --
+
+
+MINE_STORIES = frozenset({PIRATE, BEAR, ANDES})  # "mine" alone finds these
+
+
+def _titles_searched(fake: InMemoryFullTextSearch) -> list[tuple[str, frozenset[str] | None]]:
+    return [(type(leaf).__name__, titles) for leaf, _, titles in fake.bubble_calls]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'mine ("pirate gold" OR "square eggs")',  # phrases
+        "mine (gold NEAR/3 mine OR parrot)",  # a NEAR pair
+        "mine (gold parrot OR bear)",  # an AND inside an OR
+    ],
+    ids=["phrase", "near", "inner-and"],
+)
+def test_what_comes_after_the_first_search_is_searched_only_in_its_stories(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon, text: str
+) -> None:
+    run_query_text(text, fake, lexicon, stop_words=MY_STOP_WORDS)
+    first, *after = _titles_searched(fake)
+    assert first == ("AnyTerm", None)
+    assert after
+    assert after[0][1] == MINE_STORIES
+
+
+def test_a_term_picked_whole_is_searched_as_its_phrase_in_the_stories_so_far(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    """A several-word term picked from the list (exact) is a phrase, in lower case."""
+    tree = And((Word("mine"), Or((Word("Pirate Gold", exact=True), Word("bear")))))
+    evaluate_query(tree, fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert fake.bubble_calls[1][0] == Phrase(("pirate", "gold"))
+    assert fake.bubble_calls[1][2] == MINE_STORIES
+
+
+def test_an_ands_own_filter_narrows_the_screens_era_not_replaces_it(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    era = SearchFilter(years=(1942, 1948))
+    run_query_text(
+        'gold tag:"the classics"', fake, lexicon, search_filter=era, stop_words=MY_STOP_WORDS
+    )
+    classics = tag_titles("the classics")
+    assert classics is not None
+    assert fake.bubble_calls[0][2] == titles_in_years(1942, 1948) & classics
+
+
+# --- Words under NOT are neither highlighted nor suggested for; the rest still are --
+
+
+def test_after_a_not_in_one_branch_the_next_branch_is_highlighted(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("(gold -mine) OR parrot", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert "parrot" in result.highlight_terms
+    assert "mine" not in result.highlight_terms
+
+
+def test_after_a_not_in_one_branch_the_next_branch_is_suggested_for(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("(gold -mine) OR parott", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert '"parott" is in no story.' in result.notices
+
+
+def test_a_not_inside_a_not_leaves_the_outer_not_in_force(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    """After -(mine -bear), the -parrot is still under NOT: parrot is not highlighted."""
+    result = run_query_text("gold -(mine -bear) -parrot", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert list(result.title_dict) == [POOR]
+    assert result.highlight_terms == ("gold",)
+
+
+def test_a_phrases_stop_words_are_not_highlighted(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text('"mine of gold"', fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert result.highlight_terms == ("mine", "gold")
+
+
+# --- What an AND stopped early still tells: words in no story, not empty wildcards --
+
+
+def test_an_and_stopped_early_still_tells_of_a_near_pairs_word_in_no_story(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text(
+        '"square bear" gold NEAR parott', fake, lexicon, stop_words=MY_STOP_WORDS
+    )
+    assert result.title_dict == {}
+    assert result.notices == ('"parott" is in no story.',)
+
+
+def test_an_and_stopped_early_does_not_call_an_empty_wildcard_in_no_story(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text('"square bear" zz*', fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert result.notices == ('No word matches "zz*".',)
+    assert result.suggestions == ()
+
+
+def test_a_query_that_cannot_run_keeps_what_it_told_before(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("the -gold", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert result.error is not None
+    assert result.notices == ('"the" is too common to search for; left out.',)
+
+
+# --- Text that does not parse: searched literally, under the speaker, counted --
+
+
+def test_the_literal_search_keeps_the_speaker_and_counts_the_bubbles() -> None:
+    def speech(speaker: str) -> SpeechInfo:
+        return SpeechInfo("1", 1, "(gold", "(gold", speaker=speaker)
+
+    found = {POOR: TitleInfo(12, {"020": PageInfo("20", [speech("Scrooge"), speech("Donald")])})}
+    fake = InMemoryFullTextSearch(find_words_results={"(gold": found})
+    result = run_query_text("(gold", fake, TermLexicon([]), speaker="Scrooge")
+    assert result.used_literal_fallback
+    assert result.hit_counts == {POOR: 1}  # the Scrooge bubble only
+
+
+# --- The order an AND searches its parts in: rarest first ---
+
+
+def test_an_and_searches_phrases_then_picked_words_then_words_then_wildcards_then_groups() -> None:
+    from barks_fantagraphics.search_evaluate import _search_order  # noqa: PLC0415
+
+    group = Or((Word("bear"), Word("duck")))
+    wildcard, word, picked = Word("gol*"), Word("parrot"), Word("mine", exact=True)
+    near, phrase = NearQuery(Word("gold"), Word("mine"), 5), Phrase(("pirate", "gold"))
+    # Typed in an order the sort must undo, every rank after one it outranks.
+    typed = [group, wildcard, word, picked, near, phrase]
+    assert sorted(typed, key=_search_order) == [near, phrase, picked, word, wildcard, group]

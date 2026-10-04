@@ -161,3 +161,13 @@ def test_no_operation_changes_its_arguments(operation) -> None:  # noqa: ANN001
             page.speech_info_list.append(_speech("99"))
     assert gold == GOLD
     assert mine == MINE
+
+
+def test_one_speech_group_found_twice_keeps_both_finds_entity_types() -> None:
+    def found(entity: str) -> TitleDict:
+        speech = SpeechInfo("3", 1, "Duckburg!", "Duckburg!", entity_types=(entity,))
+        return {"A Story": TitleInfo(5, {"010": PageInfo("10", [speech])})}
+
+    merged = merge_title_dicts(found("location"), found("person"))
+    [speech] = merged["A Story"].fanta_pages["010"].speech_info_list
+    assert speech.entity_types == ("location", "person")

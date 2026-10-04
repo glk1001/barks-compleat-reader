@@ -229,3 +229,39 @@ class TestTitlesForSelection:
             BarksTitleSearch.get_titles_for_selection(TagSelection(("andes",), volumes=(29, 29)))
             == []
         )
+
+
+def test_a_prefix_finds_only_the_titles_it_starts() -> None:
+    titles = BarksTitleSearch().get_titles_matching_prefix("vacation")
+    assert titles
+    assert all(BARKS_TITLE_INFO[t].get_title_str().lower().startswith("vacation") for t in titles)
+
+
+def test_two_letters_are_enough_to_look_inside_titles() -> None:
+    assert BarksTitleSearch().get_titles_containing("go")
+
+
+def test_three_letters_find_tags_with_the_text_inside_their_names() -> None:
+    labels = [m.label for m in BarksTitleSearch().get_tags_matching("fri")]
+    assert labels == ["Africa", "Central Africa", "South Africa"]
+
+
+def test_a_tag_named_by_several_aliases_keeps_its_best_rank() -> None:
+    """Car 313 is "313" whole, and later also a name holding it: it stays the exact match."""
+    matches = BarksTitleSearch().get_tags_matching("313")
+    [car] = [m for m in matches if m.item is Tags.CAR_313]
+    assert car.exact
+    assert matches[0] is car
+
+
+def test_one_letter_finds_only_the_titles_starting_with_it() -> None:
+    titles = BarksTitleSearch().get_titles_matching_prefix("v")
+    assert titles
+    assert all(BARKS_TITLE_INFO[t].get_title_str().lower().startswith("v") for t in titles)
+
+
+def test_a_volume_range_leaves_out_stories_in_no_volume() -> None:
+    selection = TagSelection(("abduction stories",), volumes=(1, 30))
+    titles = BarksTitleSearch().get_titles_for_selection(selection)
+    assert Titles.CAPN_BLIGHTS_MYSTERY_SHIP not in titles  # in no Fantagraphics volume
+    assert titles

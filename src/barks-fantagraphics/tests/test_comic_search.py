@@ -1,10 +1,10 @@
 # ruff: noqa: SLF001
-# cspell:ignore clasics monney
+# cspell:ignore clasics monney scro scroge scrooged
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -349,3 +349,73 @@ class TestTagAndTitlePassThroughs:
         fake = InMemoryFullTextSearch()
         fake.alpha_split_entity_terms = {"location": split}
         assert _search_with(fake).get_alpha_split_entity_terms("location") == split
+
+
+class TestFacadePassesItsArgumentsOn:
+    """What the facade is asked, it asks its parts: limits, filters, and its own index."""
+
+    BUBBLES: ClassVar[list[FakeBubble]] = [
+        FakeBubble("Donald Duck Finds Pirate Gold", "gold and gold coins", 1, "001"),
+        FakeBubble("The Golden Helmet", "the golden helmet", 11, "030"),
+    ]
+
+    @staticmethod
+    def _fake(terms: list[str]) -> InMemoryFullTextSearch:
+        return InMemoryFullTextSearch(
+            cleaned_terms=terms,
+            bubbles=list(TestFacadePassesItsArgumentsOn.BUBBLES),
+            tokenize=str.split,
+        )
+
+    def test_an_entity_search_is_a_word_search(self) -> None:
+        assert _search_with(InMemoryFullTextSearch()).search_entity("person", "x").mode is (
+            SearchMode.WORD
+        )
+
+    def test_the_words_matching_stop_at_the_limit_asked_for(self) -> None:
+        search = _search_with(self._fake(["gold", "golden", "goldfish"]))
+        matches = search.get_words_matching("gold", limit=1)
+        assert (matches.words, matches.total) == (["gold"], 3)
+
+    def test_the_suggestions_stop_at_the_limit_asked_for(self) -> None:
+        search = _search_with(self._fake(["Scrooge", "scrounge", "scrooged"]))
+        assert len(search.suggest_words("scroge", limit=1)) == 1
+
+    def test_a_typed_query_is_run_in_the_filter_given(self) -> None:
+        search = _search_with(self._fake(["gold", "golden"]))
+        only_1951 = SearchFilter(years=(1951, 1951))
+        assert list(search.run_word_query("gold OR golden").title_dict) == [
+            "Donald Duck Finds Pirate Gold",
+            "The Golden Helmet",
+        ]
+        assert list(
+            search.run_word_query("gold OR golden", search_filter=only_1951).title_dict
+        ) == ["The Golden Helmet"]
+
+    def test_each_index_has_its_own_word_list(self) -> None:
+        """The word lists are cached by index folder: one index's is not another's."""
+        first = _search_with(self._fake(["gold"]), index_dir="one")
+        second = _search_with(self._fake(["Scrooge"]), index_dir="two")
+        # The first index's list is built (and cached) by each way of asking first.
+        assert first.get_words_matching("scro").words == []
+        assert first.suggest_words("scroge") == []
+        assert first.run_word_query("scroge").suggestions == ()
+        assert second.get_words_matching("scro").words == ["Scrooge"]
+        assert second.suggest_words("scroge") == ["Scrooge"]
+        assert second.run_word_query("scroge").suggestions[0].spelling == "Scrooge"
+
+    def test_a_missing_index_names_its_folder(self) -> None:
+        with pytest.raises(SearchIndexUnavailableError) as raised:
+            ComicSearch(Path("does-not-exist")).get_corpus_text_totals()
+        assert str(raised.value) == 'No usable search index in "does-not-exist".'
+
+    def test_an_index_there_is_opened_from_its_folder(self, tmp_path: Path) -> None:
+        from barks_fantagraphics.whoosh_search_engine import build_index_schema  # noqa: PLC0415
+        from whoosh.index import create_in  # noqa: PLC0415
+
+        create_in(str(tmp_path), build_index_schema())
+        assert ComicSearch(tmp_path).get_speakers() == {}  # opened, and empty
+
+    def test_three_letters_no_title_starts_fall_back_to_titles_holding_them(self) -> None:
+        result = ComicSearch(Path("idx")).search("ost", SearchMode.TITLE)
+        assert result.titles  # none starts "ost"; "Lost in the Andes!" holds it

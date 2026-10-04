@@ -151,3 +151,23 @@ def test_a_selection_with_years_and_volumes_describes_itself_as_typed() -> None:
 )
 def test_range_text(first_last: tuple[int, int], years: bool, text: str) -> None:
     assert range_text(first_last, years=years) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "error"),
+    [
+        ("", "No tag is named."),
+        (" + ", "No tag is named."),  # separators only: no name, not a missing one
+        ("scrooge, gyro | daisy", "Use + or | between tags, not both."),  # a comma is a +
+        ("scrooge +", "A tag name is missing next to + , or |."),
+        ("scrooge -", "A tag name is missing after -."),
+    ],
+)
+def test_text_that_names_no_tags_says_exactly_why(text: str, error: str) -> None:
+    parsed = parse_tag_query(text)
+    assert (parsed.selection, parsed.error) == (None, error)
+
+
+def test_a_range_in_one_century_shortens_its_last_year_in_any_century() -> None:
+    assert range_text((1910, 1915), years=True) == "1910-15"
+    assert range_text((1899, 1905), years=True) == "1899-1905"

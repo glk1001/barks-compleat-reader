@@ -1,4 +1,4 @@
-# cspell:ignore ande clasics zzzzqqq
+# cspell:ignore ande clasics zzzzqqq glomgo storie
 """Story filters for a word search: tags, submitted years, Fantagraphics volumes."""
 
 from __future__ import annotations
@@ -108,3 +108,23 @@ def test_applying_a_filter_keeps_the_allowed_stories_in_order() -> None:
     kept = apply_filter(SearchFilter(volumes=(5, 12)), found)
     assert list(kept) == [ANDES, POOR]
     assert kept[ANDES] is found[ANDES]
+
+
+def test_the_closest_tags_put_names_holding_the_text_before_close_spellings() -> None:
+    assert closest_tags("glomgo") == [
+        "Flintheart Glomgold",
+        "first Flintheart Glomgold appearance",
+        "glomgold",
+    ]
+
+
+def test_the_closest_tags_go_up_to_the_limit_asked_for() -> None:
+    limit = 6  # more than difflib's own default of 3
+    assert len(closest_tags("alien storie", limit=limit)) == limit
+
+
+def test_the_notice_lists_the_closest_tags_comma_separated() -> None:
+    assert unknown_tag_notice("glomgo") == (
+        'No tag is called "glomgo". Closest: Flintheart Glomgold,'
+        " first Flintheart Glomgold appearance, glomgold."
+    )

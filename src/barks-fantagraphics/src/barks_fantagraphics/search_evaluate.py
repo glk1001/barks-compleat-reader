@@ -357,9 +357,8 @@ class _Evaluator:
         if self._is_stop_word(word):
             self.notices.append(f'"{word.text}" is too common to search for.')
             return {}
-        lower = word.text.strip().lower()
-        if word.exact and self._lexicon.is_multi_word(lower):  # a term picked from the list
-            return self._eval(Phrase(tuple(lower.split())), within)
+        if word.exact and self._lexicon.is_multi_word(word.text):  # a term picked from the list
+            return self._eval(Phrase(tuple(word.text.split())), within)  # it lowers the words
         terms = self._terms_of(word)
         if not terms:
             return {}
