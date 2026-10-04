@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -2933,3 +2933,188 @@ class TestNavEdges:
         screen._draw_result_focus()
 
         assert loguru_sink[-1] == 'Nav focus on _SearchResultButton "None in 1942-46".'
+
+
+class TestTagListKeys:
+    """The tag list by remote, over real chip stacks: walking it, groups opened and closed.
+
+    Chemistry is a group whose members hold a subgroup, chemical names; Duckburg a tag.
+    """
+
+    MEMBERS: ClassVar[dict[TagGroups, list[Tags | TagGroups]]] = {
+        TagGroups.CHEMISTRY: [Tags.DUCKMITE, TagGroups.CHEMICAL_NAMES, Tags.WEEMITE],
+        TagGroups.CHEMICAL_NAMES: [Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY],
+    }
+    ITEMS: ClassVar[dict[str, Tags | TagGroups]] = {
+        "chemistry": TagGroups.CHEMISTRY,
+        "duckburg": Tags.DUCKBURG,
+    }
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        results = BoxLayout(orientation="vertical")
+        results.add_widget(Button(text="A Story"))
+        ids = _Ids(
+            {f"{mode}_search_input": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_clear_button": MagicMock() for mode in ("title", "tag", "word")}
+            | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
+            | {
+                "tag_chips_layout": BoxLayout(orientation="vertical"),
+                "tag_title_results_layout": results,
+                "word_results_layout": BoxLayout(),
+                "title_results_layout": BoxLayout(),
+                "word_chips_layout": MagicMock(children=[]),
+            }
+        )
+        with (
+            patch.object(SearchScreen, "ids", ids),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+            patch.object(SearchScreen, "_show_tag_titles"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Tag"
+            bare._search = MagicMock()
+            bare._search.get_tag_group_members.side_effect = lambda group: self.MEMBERS[group]
+            bare._search.get_tag_title_count.return_value = 3
+            bare._search.resolve_tag.side_effect = lambda name: (self.ITEMS[name], [])
+            bare._tag_chip_strings = ["chemistry", "Duckburg"]
+            bare._tag_chip_counts = {"chemistry": 24, "Duckburg": 5}
+            bare._tag_chip_groups = {"chemistry"}
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            bare._current_tag = None
+            bare._nav_active = True
+            bare._nav_on_exit_request = MagicMock()
+            bare._nav_focus_area = "tags"
+            bare._nav_focused_chip_idx = 0
+            bare._nav_focused_result_idx = 0
+            bare._nav_word_sub_focus = "title"
+            bare._rebuild_tag_chips()
+            yield bare
+
+    @staticmethod
+    def _texts(chips: list[Any]) -> list[str]:
+        return [chip.text for chip in chips]
+
+    def test_the_open_group_s_members_sit_between_it_and_the_chips_after(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._on_tag_result_selected("chemistry")
+        assert self._texts(screen._get_tag_chip_buttons()) == [
+            "chemistry",
+            "duckmite",
+            "chemical names",
+            "weemite",
+            "Duckburg",
+        ]
+        assert self._texts(screen._get_main_tag_chip_buttons()) == ["chemistry", "Duckburg"]
+        assert self._texts(screen._get_member_chip_buttons()) == [
+            "duckmite",
+            "chemical names",
+            "weemite",
+        ]
+        [chemistry, *_] = screen._get_tag_chip_buttons()
+        assert (chemistry.is_group, chemistry.is_open) == (True, True)
+
+    def test_enter_on_a_group_opens_it_and_picks_its_first_member(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert screen._current_tag is TagGroups.CHEMISTRY
+        assert screen._selected_member == "duckmite"
+        assert screen._nav_focused_chip_idx == 1  # on the first member, once drawn
+        assert log_markers.TAG_SELECTED_MEMBER.format(member="duckmite") in loguru_sink
+
+    def test_enter_on_the_open_group_closes_it_and_stays_on_it(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._on_tag_result_selected("chemistry")
+        screen._nav_focused_chip_idx = 0
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert self._texts(screen._get_tag_chip_buttons()) == ["chemistry", "Duckburg"]
+        assert screen._nav_focused_chip_idx == 0
+        assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemistry".'
+        assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
+
+    def test_enter_on_a_subgroup_opens_it_in_place_and_stays_on_it(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._on_tag_result_selected("chemistry")
+        screen._nav_focused_chip_idx = 2  # chemical names
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert self._texts(screen._get_tag_chip_buttons()) == [
+            "chemistry",
+            "duckmite",
+            "chemical names",
+            "Gyro Gearloose",
+            "first Daisy appearance",
+            "weemite",
+            "Duckburg",
+        ]
+        assert screen._nav_focused_chip_idx == 2  # noqa: PLR2004
+        assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemical names".'
+
+        assert screen.handle_key(search_screen.KEY_ENTER) is True  # and again: closed
+        assert "Gyro Gearloose" not in self._texts(screen._get_tag_chip_buttons())
+        assert screen._nav_focused_chip_idx == 2  # noqa: PLR2004
+
+    def test_enter_on_a_plain_member_lists_it_and_goes_to_its_stories(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._on_tag_result_selected("chemistry")
+        screen._nav_focused_chip_idx = 3  # weemite
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert screen._selected_member == "weemite"
+        assert screen._nav_focus_area == "results"
+
+    def test_enter_on_a_plain_tag_goes_to_its_stories(self, screen: SearchScreen) -> None:
+        screen._nav_focused_chip_idx = 1  # Duckburg
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert (screen._selected_tag, screen._current_tag) == ("Duckburg", Tags.DUCKBURG)
+        assert screen._nav_focus_area == "results"
+
+    def test_enter_past_the_last_chip_does_nothing(self, screen: SearchScreen) -> None:
+        screen._nav_focused_chip_idx = 9
+        screen._handle_tags_enter(cast("list[Button]", screen._get_tag_chip_buttons()))
+        assert (screen._selected_tag, screen._nav_focus_area) == ("", "tags")
+
+    def test_down_walks_the_list_and_stops_at_its_end(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert loguru_sink[-1] == 'Nav focus on _TagChipButton "Duckburg".'
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focused_chip_idx == 1
+
+    def test_up_walks_back_and_off_the_top_is_the_box(self, screen: SearchScreen) -> None:
+        screen._nav_focused_chip_idx = 1
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focused_chip_idx == 0
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert (screen._nav_focus_area, screen.ids.tag_search_input.focus) == ("input", True)
+
+    def test_up_off_the_top_is_the_picked_tags_when_there_are_some(
+        self, screen: SearchScreen
+    ) -> None:
+        with patch.object(screen, "_run_tag_basket"):
+            screen._toggle_tag_basket("Duckburg")
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+
+    def test_tab_is_the_stories_and_right_the_era(self, screen: SearchScreen) -> None:
+        assert screen.handle_key(search_screen.KEY_TAB) is True
+        assert screen._nav_focus_area == "results"
+        screen._nav_focus_area = "tags"
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True  # onto the +
+        assert screen.handle_key(search_screen.KEY_RIGHT) is True  # then the era row
+        assert (screen._nav_focus_area, screen._era_rows["Tag"].focused) == ("era", 0)
+
+    def test_down_from_the_box_is_the_list_or_else_the_stories(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
+
+        screen.ids.tag_chips_layout.clear_widgets()
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "results"
