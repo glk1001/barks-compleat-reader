@@ -115,12 +115,12 @@ class _SearchResultButton(Button):
 
 
 def _title_detail(title_str: str) -> str:
-    """Return a listed story's issue and the year it came out: "FC 408 · 1952"."""
+    """Return a listed story's issue and the year it came out: "FC 408, 1952"."""
     title = STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
     if title is None:
         return ""
     info = BARKS_TITLE_INFO[title]
-    return f"{info.get_short_issue_title()} · {info.issue_year}"
+    return f"{info.get_shortest_issue_title()}, {info.issue_year}"
 
 
 class _QueryRowButton(_SearchResultButton):

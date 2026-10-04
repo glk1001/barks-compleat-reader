@@ -54,6 +54,10 @@ class ComicBookInfo:
         short_issue_name = SHORT_ISSUE_NAME[self.issue_name]
         return f"{short_issue_name} {self.issue_number}"
 
+    def get_shortest_issue_title(self) -> str:
+        """Return the issue as briefly as it is written: "CS 100" where the short form is WDCS."""
+        return f"{_get_shortest_issue_name(self.issue_name)} {self.issue_number}"
+
     def get_title_from_issue_name(self) -> str:
         if self.title in USEFUL_TITLES:
             return USEFUL_TITLES[self.title]

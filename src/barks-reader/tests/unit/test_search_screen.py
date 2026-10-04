@@ -3122,8 +3122,8 @@ class TestTagListKeys:
 
 
 def test_a_story_row_shows_its_issue_and_the_year_it_came_out() -> None:
-    assert _title_detail("The Golden Helmet") == "FC 408 · 1952"
-    assert _title_detail("(The Victory Garden)") == "WDCS 31 · 1943"  # its display form
+    assert _title_detail("The Golden Helmet") == "FC 408, 1952"
+    assert _title_detail("(The Victory Garden)") == "CS 31, 1943"  # its display form
 
 
 def test_a_row_that_is_no_story_shows_no_detail() -> None:
@@ -3136,4 +3136,4 @@ def test_listed_stories_carry_their_detail_and_keep_their_title() -> None:
     screen._populate_title_results(layout, ["The Golden Helmet"], MagicMock())
     [row] = layout.children
     assert row.text == "The Golden Helmet"
-    assert row.detail == "FC 408 · 1952"
+    assert row.detail == "FC 408, 1952"

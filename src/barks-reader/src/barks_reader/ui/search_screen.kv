@@ -23,7 +23,8 @@
     padding: [dp(8), 0, (self.detail_width + dp(20)) if self.detail else dp(8), 0]
     Label:
         text: root.detail
-        font_size: fm.search_result_font_size
+        font_size: 0.8 * fm.search_result_font_size
+        italic: True
         color: reader_palette.theme().text_secondary
         size_hint: None, None
         size: self.texture_size[0], root.height

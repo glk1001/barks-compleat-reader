@@ -51,6 +51,14 @@ class TestComicBookInfo:
         expected_title_us = f"{SHORT_ISSUE_NAME[Issues.US]} 31"
         assert info_us.get_short_issue_title() == expected_title_us
 
+    def test_get_shortest_issue_title(self) -> None:
+        """Comics and Stories is CS at its shortest; every other issue keeps its short name."""
+        cs = BARKS_TITLE_INFO[Titles.VICTORY_GARDEN_THE]
+        fc = BARKS_TITLE_INFO[Titles.GOLDEN_HELMET_THE]
+        assert cs.get_short_issue_title() == "WDCS 31"
+        assert cs.get_shortest_issue_title() == "CS 31"
+        assert fc.get_shortest_issue_title() == "FC 408"
+
 
 class TestBarksInfo:
     def test_sorted_by_chronological_number(self) -> None:
