@@ -142,24 +142,25 @@ class TestSearchTitles:
     def test_titles_starting_with_the_text_do_not_hide_the_others(self) -> None:
         result = _search_with(InMemoryFullTextSearch()).search("gold", SearchMode.TITLE)
 
-        assert result.titles.index(Titles.GOLD_RUSH) < result.titles.index(Titles.FROZEN_GOLD)
+        assert Titles.GOLD_RUSH in result.titles
+        assert Titles.FROZEN_GOLD in result.titles
 
     def test_issue_number_fallback_finds_titles(self) -> None:
         result = _search_with(InMemoryFullTextSearch()).search("FC 29", SearchMode.TITLE)
 
         assert len(result.titles) > 1
 
-    def test_issue_number_fallback_does_not_mutate_shared_data(self) -> None:
-        """get_titles_from_issue_num hands back a shared list; it must not be extended."""
+    def test_issue_number_search_does_not_mutate_shared_data(self) -> None:
+        """The issue table's lists are shared; a search must not extend them."""
         search = _search_with(InMemoryFullTextSearch())
+        before = list(BARKS_ISSUE_DICT["FC 29"])
 
         first = list(search.search("FC 29", SearchMode.TITLE).titles)
         second = list(search.search("FC 29", SearchMode.TITLE).titles)
 
         assert first
         assert first == second
-        # Prove the shared source list itself is untouched.
-        assert BARKS_ISSUE_DICT["FC 29"] == first
+        assert BARKS_ISSUE_DICT["FC 29"] == before
 
 
 class TestAlphaSplitTerms:

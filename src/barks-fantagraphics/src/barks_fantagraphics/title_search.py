@@ -15,8 +15,9 @@ from .barks_tags import (
     Tags,
     get_all_tags_in_tag_group,
 )
+from .barks_titles import US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM
 from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO, COVERS_SET
-from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues, _get_shortest_issue_name
+from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
 from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
 from .search_terms import SUBSTRING_MIN_CHARS, _stems_of
@@ -86,6 +87,16 @@ def _issue_names() -> dict[str, Issues]:
     return names
 
 
+# Uncle Scrooge 1 to 3 came out as these Four Color issues.
+_US_AS_FC = ((1, US_1_FC_ISSUE_NUM), (2, US_2_FC_ISSUE_NUM), (3, US_3_FC_ISSUE_NUM))
+
+
+@cache
+def _issue_numbers(issue: Issues) -> frozenset[int]:
+    """Return the numbers of an issue's comics that hold something Barks did."""
+    return frozenset(info.issue_number for info in BARKS_TITLE_INFO if info.issue_name == issue)
+
+
 @dataclass(frozen=True, slots=True)
 class _SearchableTitle:
     title: Titles
@@ -93,6 +104,21 @@ class _SearchableTitle:
     bare: str  # the same without a leading "the", "a" or "an"
     words: tuple[str, ...]
     stems: frozenset[str]  # every stem each word may be a form of: fleecing, fleece
+
+    def is_found_by(self, text: str, typed_words: list[str]) -> bool:
+        """Whether a typed text, as `_words_only` reads it, finds this title.
+
+        See `BarksTitleSearch.find_titles` for the rules.
+        """
+        return (
+            self.text.startswith(text)
+            or self.bare.startswith(text)
+            or (len(text) >= PREFIX_LEN and all(map(self.has_word_for, typed_words)))
+            or (
+                len(text) >= SUBSTRING_MIN_CHARS
+                and all(typed in self.text for typed in typed_words)
+            )
+        )
 
     def has_word_for(self, typed: str) -> bool:
         """Whether a typed word starts one of the title's words or shares a stem with one."""
@@ -128,20 +154,20 @@ class BarksTitleSearch:
         return [BARKS_TITLE_INFO[title].get_display_title() for title in titles]
 
     def find_titles(self, query: str) -> list[Titles]:
-        """Return the titles a typed text finds, best matches first.
+        """Return the titles a typed text finds: every story, then every cover.
 
-        An issue the text names ("CS 100", "wdcs100", "Four Color #223") comes first, with
-        its stories. Then, in publication order within each:
+        A text naming an issue ("CS 100", "wdcs100", "Four Color #223") finds what Barks did
+        in it, as `get_titles_in_issues` reads it, and nothing else. Any other text finds a
+        title when:
 
-        1. titles starting with the text, with or without their leading "The", "A" or "An";
-        2. from two letters, titles where each typed word starts one of the title's words,
-           or is another form of one, in any order ("gold fleece" finds "The Golden
-           Fleecing");
-        3. from three letters, titles holding each typed word anywhere ("ost" finds
-           "Lost in the Andes!").
+        - it starts with the text, with or without its leading "The", "A" or "An";
+        - from two letters, each typed word starts one of the title's words, or is another
+          form of one, in any order ("gold fleece" finds "The Golden Fleecing");
+        - from three letters, each typed word is anywhere in the title ("ost" finds
+          "Lost in the Andes!").
 
-        Covers come after every story, in the same order among themselves. Case,
-        apostrophes and other punctuation are ignored.
+        Case, apostrophes and other punctuation are ignored. Stories and covers are each in
+        chronological order.
 
         Args:
             query: The text typed into the title box.
@@ -155,44 +181,42 @@ class BarksTitleSearch:
             return []
         typed_words = text.split()
 
-        ranks: tuple[list[Titles], list[Titles], list[Titles]] = ([], [], [])
-        for searchable in self._searchable:
-            if searchable.text.startswith(text) or searchable.bare.startswith(text):
-                ranks[0].append(searchable.title)
-            elif len(text) >= PREFIX_LEN and all(map(searchable.has_word_for, typed_words)):
-                ranks[1].append(searchable.title)
-            elif len(text) >= SUBSTRING_MIN_CHARS and all(
-                typed in searchable.text for typed in typed_words
-            ):
-                ranks[2].append(searchable.title)
-
-        found = dict.fromkeys(self.get_titles_in_issue(query))
-        for rank in ranks:
-            found.update(dict.fromkeys(rank))
+        found = self.get_titles_in_issues(query)
+        if found is None:
+            found = [s.title for s in self._searchable if s.is_found_by(text, typed_words)]
         return [t for t in found if t not in COVERS_SET] + [t for t in found if t in COVERS_SET]
 
     @staticmethod
-    def get_titles_in_issue(text: str) -> list[Titles]:
-        """Return the stories in the issue a text names, or none when it names none.
+    def get_titles_in_issues(text: str) -> list[Titles] | None:
+        """Return what Barks did in each issue a text names, or None when it names none.
 
-        The issue is its code, short name or full name, then its number, in any case, with
-        or without spaces, punctuation or "#": "CS 100", "wdcs100", "Four Color #223".
+        The issue is its code, short name or full name, then the start of its number, in
+        any case, with or without spaces, punctuation or "#": "CS 100", "wdcs100", "Four
+        Color #223". "CS 10" names CS 10 and CS 100 to 109, as the number is typed.
+        Uncle Scrooge 1 to 3 are the Four Color issues they came out as.
 
         Args:
             text: The typed text.
 
         Returns:
-            The issue's stories, as `get_titles_from_issue_num` gives them, in a new list.
+            Each story, one-pager and cover in those issues, in chronological order.
 
         """
         match = _ISSUE.fullmatch(_issue_name_key(text))
         if match is None:
-            return []
+            return None
         issue = _issue_names().get(match[1])
         if issue is None:
-            return []
-        number = int(match[2])
-        return list(BARKS_ISSUE_DICT.get(f"{_get_shortest_issue_name(issue)} {number}", []))
+            return None
+        digits = match[2]
+        numbers = {(issue, n) for n in _issue_numbers(issue) if str(n).startswith(digits)}
+        if issue == Issues.US:
+            numbers |= {(Issues.FC, fc) for us, fc in _US_AS_FC if str(us).startswith(digits)}
+        return [
+            info.title
+            for info in BARKS_TITLE_INFO
+            if (info.issue_name, info.issue_number) in numbers
+        ]
 
     def get_titles_matching_prefix(self, prefix: str) -> list[Titles]:
         prefix = prefix.lower()

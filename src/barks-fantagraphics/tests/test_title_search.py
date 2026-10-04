@@ -281,14 +281,14 @@ def test_nothing_typed_finds_nothing() -> None:
     assert _find(" !? ") == []
 
 
-def test_titles_starting_with_the_text_come_first_in_publication_order() -> None:
+def test_stories_found_are_in_chronological_order() -> None:
+    """Titles starting with the text and titles with it later on are one list."""
     titles = _find("gold")
-    starting = [t for t in titles if _starts_with(t, "gold")]
-    assert titles[: len(starting)] == sorted(starting)
-    assert Titles.GOLD_RUSH in starting
-    assert Titles.GOLDEN_HELMET_THE in starting  # its "The" is passed over
-    assert titles[len(starting) :] == sorted(titles[len(starting) :])
-    assert Titles.FROZEN_GOLD in titles[len(starting) :]
+    assert titles == sorted(titles)
+    assert Titles.GOLD_RUSH in titles
+    assert Titles.GOLDEN_HELMET_THE in titles  # its "The" is passed over
+    assert Titles.FROZEN_GOLD in titles  # "gold" starts its second word
+    assert titles.index(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) == 0
 
 
 def test_a_title_is_found_without_its_leading_article() -> None:
@@ -311,9 +311,11 @@ def test_case_apostrophes_and_punctuation_are_ignored() -> None:
     assert _find("fun? what") == [Titles.FUN_WHATS_THAT]
 
 
-def test_word_starts_rank_above_text_inside_a_word() -> None:
+def test_text_inside_a_word_is_found_in_its_chronological_place() -> None:
     titles = _find("old")
-    assert titles.index(Titles.ONLY_A_POOR_OLD_MAN) < titles.index(Titles.FROZEN_GOLD)
+    assert Titles.ONLY_A_POOR_OLD_MAN in titles
+    assert Titles.FROZEN_GOLD in titles
+    assert titles == sorted(titles)
 
 
 def test_two_letters_find_word_starts_and_three_look_inside_words() -> None:
@@ -330,9 +332,8 @@ def test_one_letter_finds_only_titles_starting_with_it() -> None:
     assert all(_starts_with(t, "v") for t in titles)
 
 
-def test_each_title_is_found_once() -> None:
-    titles = _find("Four Color 223")
-    assert titles == [Titles.LOST_IN_THE_ANDES, Titles.FOUR_COLOR_223_COVER]
+def _in_issues(text: str) -> list[Titles] | None:
+    return BarksTitleSearch.get_titles_in_issues(text)
 
 
 @pytest.mark.parametrize(
@@ -346,27 +347,52 @@ def test_each_title_is_found_once() -> None:
     ],
 )
 def test_an_issue_is_named_by_its_code_or_its_names(text: str) -> None:
-    assert BarksTitleSearch.get_titles_in_issue(text) == [Titles.TRUANT_OFFICER_DONALD]
+    assert _in_issues(text) == [Titles.TRUANT_OFFICER_DONALD]
 
 
-def test_an_issues_stories_come_before_the_titles_the_text_finds() -> None:
-    titles = _find("Uncle Scrooge 4")
-    assert titles[0] == Titles.MENEHUNE_MYSTERY_THE
-    assert titles[1] == Titles.UNCLE_SCROOGE_4_COVER
-    assert _find("us4") == [Titles.MENEHUNE_MYSTERY_THE]
+def test_an_issue_lists_its_stories_one_pagers_and_cover_last() -> None:
+    titles = _find("Four Color 223")
+    assert titles[0] == Titles.LOST_IN_THE_ANDES
+    assert Titles.TOO_FIT_TO_FIT in titles  # a one-pager
+    assert titles[-1] == Titles.FOUR_COLOR_223_COVER
+    assert len(titles) == len(set(titles))
 
 
-def test_a_text_naming_no_issue_finds_no_issue() -> None:
-    assert BarksTitleSearch.get_titles_in_issue("zz 4") == []
-    assert BarksTitleSearch.get_titles_in_issue("US 999") == []
-    assert BarksTitleSearch.get_titles_in_issue("US") == []
-    assert BarksTitleSearch.get_titles_in_issue("gold") == []
+def test_an_issue_number_is_matched_as_it_is_typed() -> None:
+    """Typing CS 10 names CS 10 and CS 100 to 109: Truant Officer Donald is in CS 100."""
+    titles = _find("CS 10")
+    assert Titles.TRUANT_OFFICER_DONALD in titles
+    assert all(BARKS_TITLE_INFO[t].issue_name == Issues.CS for t in titles)
+    assert all(str(BARKS_TITLE_INFO[t].issue_number).startswith("10") for t in titles)
+    stories = [t for t in titles if t not in COVERS_SET]
+    assert stories == sorted(stories)
 
 
-def test_an_issues_stories_are_a_new_list_each_time() -> None:
-    first = BarksTitleSearch.get_titles_in_issue("FC 29")
+def test_a_text_naming_an_issue_finds_no_titles_by_their_words() -> None:
+    """Typed "cs" is inside "Comics" and "10" inside "#310", but CS 310's cover is left out."""
+    assert Titles.COMICS_AND_STORIES_310_COVER not in _find("CS 10")
+    assert _find("US 999") == []
+
+
+def test_uncle_scrooge_1_to_3_are_their_four_color_issues() -> None:
+    assert Titles.ONLY_A_POOR_OLD_MAN in _find("us 1")
+    assert Titles.BACK_TO_THE_KLONDIKE in _find("Uncle Scrooge 2")
+    assert Titles.ONLY_A_POOR_OLD_MAN not in _find("us 4")
+    assert Titles.MENEHUNE_MYSTERY_THE in _find("us4")
+
+
+def test_a_text_naming_no_issue_is_told_apart_from_an_empty_issue() -> None:
+    assert _in_issues("zz 4") is None
+    assert _in_issues("US") is None
+    assert _in_issues("gold") is None
+    assert _in_issues("US 999") == []
+
+
+def test_an_issues_titles_are_a_new_list_each_time() -> None:
+    first = _in_issues("FC 29")
+    assert first
     first.append(Titles.GOLD_RUSH)
-    assert Titles.GOLD_RUSH not in BarksTitleSearch.get_titles_in_issue("FC 29")
+    assert Titles.GOLD_RUSH not in (_in_issues("FC 29") or [])
 
 
 def test_covers_come_after_every_story() -> None:
