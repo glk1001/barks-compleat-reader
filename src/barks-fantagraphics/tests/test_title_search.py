@@ -19,70 +19,50 @@ class TestBarksTitleSearch:
         """Set up a new BarksTitleSearch instance for each test."""
         self.search = BarksTitleSearch()
 
-    def test_get_titles_matching_prefix_empty(self) -> None:
-        """Test that an empty prefix returns an empty list."""
-        assert self.search.get_titles_matching_prefix("") == []
-
-    def test_every_title_is_found_by_its_canonical_title(self) -> None:
-        """Typing a whole title finds it, for every title the search indexes.
+    def test_every_story_is_found_by_its_canonical_title(self) -> None:
+        """Typing a whole title finds it, for every story the search indexes.
 
         Extras are not indexed. The query is the plain canonical title, not the
-        parenthesised display form. Membership, not position: a title that is a
-        prefix of another still matches both.
+        parenthesised display form. Membership, not position: a title that starts
+        another still finds both.
         """
         not_found = [
             info.get_title_str()
             for info in BARKS_TITLE_INFO
             if info.issue_name != Issues.EXTRAS
-            and info.title not in self.search.get_titles_matching_prefix(info.get_title_str())
+            and info.title not in COVERS_SET
+            and info.title not in self.search.find_titles(info.get_title_str())
         ]
         assert not_found == []
 
-    def test_get_titles_matching_prefix_one_char(self) -> None:
-        """Test searching with a single character prefix."""
-        # Assuming there are titles starting with 'C'
-        results = self.search.get_titles_matching_prefix("C")
-        assert len(results) > 0
-        # Check if a known title is in the results
-        assert Titles.CHRISTMAS_IN_DUCKBURG in results
+    def test_every_cover_is_found_by_its_issue(self) -> None:
+        not_found = [
+            info.get_title_str()
+            for info in BARKS_TITLE_INFO
+            if info.issue_name != Issues.EXTRAS
+            and info.title in COVERS_SET
+            and info.title not in self.search.find_titles(info.get_shortest_issue_title())
+        ]
+        assert not_found == []
 
-    def test_get_titles_matching_prefix_two_chars(self) -> None:
-        """Test searching with a two-character prefix."""
-        results = self.search.get_titles_matching_prefix("in")
-        assert Titles.IN_OLD_CALIFORNIA in results
-        assert Titles.IN_ANCIENT_PERSIA in results
-
-    def test_get_titles_matching_prefix_long_prefix(self) -> None:
-        """Test searching with a prefix longer than two characters."""
-        results = self.search.get_titles_matching_prefix("the golden")
+    def test_a_title_is_found_by_its_first_words(self) -> None:
+        results = self.search.find_titles("the golden")
         assert Titles.GOLDEN_HELMET_THE in results
         assert Titles.GHOST_OF_THE_GROTTO_THE not in results
 
-    def test_get_titles_matching_prefix_case_insensitivity(self) -> None:
-        """Test that prefix matching is case-insensitive."""
-        results_lower = self.search.get_titles_matching_prefix("va")
-        results_upper = self.search.get_titles_matching_prefix("VA")
-        assert results_lower == results_upper
-        assert Titles.VACATION_TIME in results_lower
+    def test_case_makes_no_difference(self) -> None:
+        assert self.search.find_titles("va") == self.search.find_titles("VA")
+        assert Titles.VACATION_TIME in self.search.find_titles("va")
 
-    def test_get_titles_matching_prefix_no_match(self) -> None:
-        """Test a prefix that should not match any titles."""
-        assert self.search.get_titles_matching_prefix("xyz") == []
-
-    def test_get_titles_containing_word(self) -> None:
-        """Test searching for titles containing a specific word."""
-        results = self.search.get_titles_containing("christmas")
+    def test_a_word_finds_only_the_titles_holding_it(self) -> None:
+        results = self.search.find_titles("christmas")
         assert Titles.CHRISTMAS_IN_DUCKBURG in results
         assert Titles.BLACK_PEARLS_OF_TABU_YAMA_THE not in results
         assert Titles.GOLDEN_HELMET_THE not in results
 
-    def test_get_titles_containing_word_no_match(self) -> None:
-        """Test searching for a word that is not in any title."""
-        assert self.search.get_titles_containing("establish") == []
-
-    def test_get_titles_containing_word_too_short(self) -> None:
-        """Test that searching for a word that is too short returns nothing."""
-        assert self.search.get_titles_containing("a") == []
+    def test_text_in_no_title_finds_nothing(self) -> None:
+        assert self.search.find_titles("xyz") == []
+        assert self.search.find_titles("establish") == []
 
     def _tags(self, text: str) -> list[Tags | TagGroups]:
         return [match.item for match in self.search.get_tags_matching(text)]
@@ -162,21 +142,18 @@ class TestBarksTitleSearch:
         assert "The Golden Helmet" in titles_str
         assert "Vacation Time" in titles_str
 
-    def test_get_titles_from_issue_nums(self) -> None:
-        titles = BarksTitleSearch.get_titles_from_issue_num("CS 106")
-        assert titles == [Titles.PLENTY_OF_PETS]
+    def test_an_issue_lists_its_stories(self) -> None:
+        def issue(text: str) -> list[Titles]:
+            return BarksTitleSearch.get_titles_in_issues(text) or []
 
-        titles = BarksTitleSearch.get_titles_from_issue_num("US 3")
-        assert titles == [Titles.HORSERADISH_STORY_THE, Titles.ROUND_MONEY_BIN_THE]
-
-        titles = BarksTitleSearch.get_titles_from_issue_num("FC 495")
-        assert titles == [Titles.HORSERADISH_STORY_THE, Titles.ROUND_MONEY_BIN_THE]
-
-        titles = BarksTitleSearch.get_titles_from_issue_num("FC 238")
-        assert titles == [Titles.VOODOO_HOODOO]
-
-        titles = BarksTitleSearch.get_titles_from_issue_num("US 10")
-        assert titles == [Titles.FABULOUS_PHILOSOPHERS_STONE_THE, Titles.HEIRLOOM_WATCH]
+        assert Titles.PLENTY_OF_PETS in issue("CS 106")
+        assert Titles.VOODOO_HOODOO in issue("FC 238")
+        uncle_scrooge_3 = issue("US 3")  # Four Color 495
+        assert Titles.HORSERADISH_STORY_THE in uncle_scrooge_3
+        assert Titles.ROUND_MONEY_BIN_THE in uncle_scrooge_3
+        uncle_scrooge_10 = issue("US 10")
+        assert Titles.FABULOUS_PHILOSOPHERS_STONE_THE in uncle_scrooge_10
+        assert Titles.HEIRLOOM_WATCH in uncle_scrooge_10
 
 
 class TestTitlesForSelection:
@@ -231,16 +208,6 @@ class TestTitlesForSelection:
         )
 
 
-def test_a_prefix_finds_only_the_titles_it_starts() -> None:
-    titles = BarksTitleSearch().get_titles_matching_prefix("vacation")
-    assert titles
-    assert all(BARKS_TITLE_INFO[t].get_title_str().lower().startswith("vacation") for t in titles)
-
-
-def test_two_letters_are_enough_to_look_inside_titles() -> None:
-    assert BarksTitleSearch().get_titles_containing("go")
-
-
 def test_three_letters_find_tags_with_the_text_inside_their_names() -> None:
     labels = [m.label for m in BarksTitleSearch().get_tags_matching("fri")]
     assert labels == ["Africa", "Central Africa", "South Africa"]
@@ -252,12 +219,6 @@ def test_a_tag_named_by_several_aliases_keeps_its_best_rank() -> None:
     [car] = [m for m in matches if m.item is Tags.CAR_313]
     assert car.exact
     assert matches[0] is car
-
-
-def test_one_letter_finds_only_the_titles_starting_with_it() -> None:
-    titles = BarksTitleSearch().get_titles_matching_prefix("v")
-    assert titles
-    assert all(BARKS_TITLE_INFO[t].get_title_str().lower().startswith("v") for t in titles)
 
 
 def test_a_volume_range_leaves_out_stories_in_no_volume() -> None:

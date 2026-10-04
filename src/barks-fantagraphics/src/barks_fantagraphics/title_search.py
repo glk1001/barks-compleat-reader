@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
 from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING
@@ -16,7 +15,7 @@ from .barks_tags import (
     get_all_tags_in_tag_group,
 )
 from .barks_titles import US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM
-from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO, COVERS_SET
+from .comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
 from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
@@ -150,13 +149,9 @@ class _SearchableTitle:
 class BarksTitleSearch:
     def __init__(self) -> None:
         self._searchable: list[_SearchableTitle] = []
-        self.title_prefix_dict: defaultdict[str, list[Titles]] = defaultdict(list)
         for info in BARKS_TITLE_INFO:
             if info.issue_name == Issues.EXTRAS:
                 continue
-            prefix = info.get_title_str()[:PREFIX_LEN].lower()
-            self.title_prefix_dict[prefix].append(info.title)
-
             text = _words_only(info.get_title_str())
             article = next((a for a in _ARTICLES if text.startswith(a)), "")
             words = tuple(text.split())
@@ -164,10 +159,6 @@ class BarksTitleSearch:
             self._searchable.append(
                 _SearchableTitle(info.title, text, text[len(article) :], words, stems)
             )
-
-        # Sort the lists for consistent return order
-        for key in self.title_prefix_dict:
-            self.title_prefix_dict[key].sort()
 
     @staticmethod
     def get_titles_as_strings(titles: list[Titles]) -> list[str]:
@@ -247,48 +238,6 @@ class BarksTitleSearch:
             if (info.issue_name, info.issue_number) in numbers
         ]
         return sorted(in_issues, key=_when_submitted)
-
-    def get_titles_matching_prefix(self, prefix: str) -> list[Titles]:
-        prefix = prefix.lower()
-
-        if len(prefix) == 0:
-            return []
-
-        if len(prefix) == 1:
-            # For a single character, we check all titles starting with it.
-            return [
-                info.title
-                for info in BARKS_TITLE_INFO
-                if info.issue_name != Issues.EXTRAS
-                and info.get_title_str().lower().startswith(prefix)
-            ]
-
-        short_prefix = prefix[:PREFIX_LEN]
-        candidate_titles = self.title_prefix_dict.get(short_prefix, [])
-        return [
-            t
-            for t in candidate_titles
-            if BARKS_TITLE_INFO[t].get_title_str().lower().startswith(prefix)
-        ]
-
-    @staticmethod
-    def get_titles_from_issue_num(issue_num: str) -> list[Titles]:
-        issue_num = issue_num.upper()
-        if issue_num not in BARKS_ISSUE_DICT:
-            return []
-        return BARKS_ISSUE_DICT[issue_num]
-
-    @staticmethod
-    def get_titles_containing(word: str) -> list[Titles]:
-        if len(word) <= 1:
-            return []
-
-        word = word.lower()
-        return [
-            info.title
-            for info in BARKS_TITLE_INFO
-            if info.issue_name != Issues.EXTRAS and word in info.get_title_str().lower()
-        ]
 
     @staticmethod
     def get_tags_matching(text: str) -> list[TagMatch]:

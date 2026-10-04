@@ -24,7 +24,6 @@ from barks_fantagraphics.search_ports import (
 from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
-from barks_fantagraphics.title_search import BARKS_ISSUE_DICT
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
 
 if TYPE_CHECKING:
@@ -150,17 +149,14 @@ class TestSearchTitles:
 
         assert len(result.titles) > 1
 
-    def test_issue_number_search_does_not_mutate_shared_data(self) -> None:
-        """The issue table's lists are shared; a search must not extend them."""
+    def test_an_issue_search_gives_the_same_titles_each_time(self) -> None:
         search = _search_with(InMemoryFullTextSearch())
-        before = list(BARKS_ISSUE_DICT["FC 29"])
 
         first = list(search.search("FC 29", SearchMode.TITLE).titles)
         second = list(search.search("FC 29", SearchMode.TITLE).titles)
 
         assert first
         assert first == second
-        assert BARKS_ISSUE_DICT["FC 29"] == before
 
 
 class TestAlphaSplitTerms:
