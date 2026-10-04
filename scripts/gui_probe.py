@@ -46,6 +46,9 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, Protocol
 
+from barks_reader.core import log_markers as markers
+from barks_reader.core.log_markers import pattern
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
@@ -71,6 +74,23 @@ DIR_SWITCHES = {
 
 # A click this slow waited for its target (gui_probe_darwin's click check): noted.
 _CLICK_WAIT_NOTE_SECS = 0.5
+# The app's lines that start and end a window-mode switch, and their time stamps.
+_SCREEN = re.compile(r"\w+")
+_MODE_SWITCH_STARTED_RE = re.compile(
+    "|".join(
+        pattern(m, screen=_SCREEN)
+        for m in (markers.ENTERING_FULLSCREEN, markers.EXITING_FULLSCREEN)
+    )
+)
+_MODE_SWITCH_DONE_RE = re.compile(
+    "|".join(
+        pattern(m, screen=_SCREEN) for m in (markers.ENTERED_FULLSCREEN, markers.ENTERED_WINDOWED)
+    )
+)
+_LOG_TIME_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
+# How long input waits for a window-mode switch to finish and settle, at most.
+_MODE_SWITCH_WAIT_SECS = 10
+_MODE_SWITCH_POLL_SECS = 0.1
 
 
 class ProbeError(RuntimeError):
@@ -315,6 +335,27 @@ def note_input(kind: str, detail: str) -> None:
         out.write(f"{stamp} {kind} {detail}\n")
 
 
+def window_mode_settling(log_text: str, now: dt.datetime, settle_secs: float) -> bool:
+    """Return whether the app's log shows a window-mode switch under way, or just ended.
+
+    Under way: its newest start line (ENTERING_FULLSCREEN, EXITING_FULLSCREEN) has no
+    end line (ENTERED_FULLSCREEN, ENTERED_WINDOWED) after it. Just ended: the end line
+    is less than `settle_secs` before `now`, by the app's clock, this machine's.
+    """
+    started = done = -1
+    done_at: dt.datetime | None = None
+    for index, line in enumerate(log_text.splitlines()):
+        if _MODE_SWITCH_STARTED_RE.search(line):
+            started = index
+        elif _MODE_SWITCH_DONE_RE.search(line):
+            done = index
+            stamp = _LOG_TIME_RE.match(line)
+            done_at = dt.datetime.fromisoformat(stamp[1]) if stamp else None
+    if started > done:
+        return True
+    return done_at is not None and (now - done_at).total_seconds() < settle_secs
+
+
 # ------------------------------------------------------------ the probe --
 
 
@@ -346,6 +387,32 @@ class Probe:
             msg = f"app window ({WINDOW_NAME}) not found"
             raise ProbeError(msg)
         return window
+
+    def _hold_for_mode_switch(self, what: str) -> None:
+        """Wait while the app switches window mode, where the backend asks for it.
+
+        On macOS a key or a click sent while the window moved to or from its
+        fullscreen Space was lost (a soak step, sent 70 ms before the switch ended,
+        2026-10-04), and the walk then failed waiting for the app to answer it. The
+        backend's ``mode_switch_settle_secs`` (none elsewhere) is how long after the
+        switch's end it still waits. A wait shows in the input log.
+        """
+        settle = float(getattr(self._backend, "mode_switch_settle_secs", 0.0))
+        log = app_log()
+        if settle <= 0 or not log.is_file():
+            return
+        started = time.monotonic()
+        while window_mode_settling(
+            log.read_text(encoding="utf-8", errors="replace"),
+            dt.datetime.now(),  # noqa: DTZ005 (the app's local clock)
+            settle,
+        ):
+            if time.monotonic() - started > _MODE_SWITCH_WAIT_SECS:
+                break
+            time.sleep(_MODE_SWITCH_POLL_SECS)
+        waited = time.monotonic() - started
+        if waited >= _CLICK_WAIT_NOTE_SECS:
+            note_input("wait", f"{waited:.1f}s for a window-mode switch before the {what}")
 
     def _front_window(self) -> int:
         """Return the app's window once it is in front, so input can only go to it."""
@@ -494,6 +561,7 @@ class Probe:
 
     def _press_at(self, kind: str, x: int, y: int) -> None:
         """Log a press as `kind`, then move to window pixel `x`, `y` and click there."""
+        self._hold_for_mode_switch(kind)
         window = self._front_window()
         _, _, left, top = self._backend.client_geometry(window)
         note_input(kind, f"{x} {y}")
@@ -524,12 +592,14 @@ class Probe:
     def key(self, names: Sequence[str]) -> None:
         gap = float(os.environ.get("BARKS_PROBE_KEY_GAP", DEFAULT_KEY_GAP))
         for name in names:
+            self._hold_for_mode_switch(f"key {name}")
             self._front_window()
             note_input("key", name)
             self._backend.send_key(name)
             time.sleep(gap)
 
     def type(self, text: str) -> None:
+        self._hold_for_mode_switch("typing")
         self._front_window()
         # Logged like keys are: the harness counts one key press per character.
         note_input("type", text)

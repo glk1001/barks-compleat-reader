@@ -442,6 +442,9 @@ class DarwinBackend:
     # Ctrl+C to it, and the whole tree (uv, then Python) ends with one signal.
     creation_flags = 0
     start_new_session = True
+    # Input waits out a window-mode switch and this long after it (Probe's
+    # _hold_for_mode_switch): macOS lost a key sent as the window left its Space.
+    mode_switch_settle_secs = 1.0
 
     def __init__(self) -> None:
         _declare()

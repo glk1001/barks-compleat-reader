@@ -110,6 +110,11 @@ STANDALONE_POPUP_CLOSED: Final = 'Standalone popup closed: "{title}".'
 WIKI_PAGE_BUTTON_PRESSED: Final = "Wiki page button pressed."
 ENTERED_FULLSCREEN: Final = "Entered fullscreen mode on {screen}."
 ENTERED_WINDOWED: Final = "Entered windowed mode on {screen}."
+# A window-mode switch starting; ENTERED_FULLSCREEN or ENTERED_WINDOWED ends it. The
+# macOS GUI probe holds input between the two and a moment after: a key or click sent
+# while the window moved to or from its fullscreen Space was lost there.
+ENTERING_FULLSCREEN: Final = "{screen}: Entering fullscreen mode."
+EXITING_FULLSCREEN: Final = "{screen}: Exiting fullscreen mode."
 # Every window resize event the app receives: the GUI harness compares the last
 # one a test leaves against the first, since a shrink after a reader close or a
 # fullscreen round trip is a defect whatever the test asserted.

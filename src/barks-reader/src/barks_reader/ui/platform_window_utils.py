@@ -468,12 +468,12 @@ class WindowModeController:
 
     def goto_fullscreen(self) -> None:
         """Enter fullscreen via the shared manager, with this screen's callbacks."""
-        logger.info(f"{self._client}: Entering fullscreen mode.")
+        logger.info(log_markers.ENTERING_FULLSCREEN.format(screen=self._client))
         self._window_manager.goto_fullscreen_mode(self._callbacks)
 
     def goto_windowed(self) -> None:
         """Exit to windowed mode via the shared manager, with this screen's callbacks."""
-        logger.info(f"{self._client}: Exiting fullscreen mode.")
+        logger.info(log_markers.EXITING_FULLSCREEN.format(screen=self._client))
         self._window_manager.goto_windowed_mode(self._callbacks)
 
 

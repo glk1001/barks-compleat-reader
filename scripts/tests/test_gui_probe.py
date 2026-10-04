@@ -13,6 +13,7 @@ harness parses. The Windows backend's structures are checked on Windows.
 from __future__ import annotations
 
 import ctypes
+import datetime
 import os
 import subprocess
 import sys
@@ -450,3 +451,82 @@ class TestWin32Close:
         user32, _, run = self._kill(window=None, exits=True)
         user32.PostMessageW.assert_not_called()
         assert run.call_args.args[0][-1] == "/F"
+
+
+def _app_line(stamp: str, message: str) -> str:
+    """Return an app log line as the app's file formatter writes it."""
+    return f"2026-10-04 {stamp} | INFO     | app : {message}  [barks_reader.ui.m:f:1]"
+
+
+_EXITING = _app_line("16:37:22.990", "ComicBookReaderScreen: Exiting fullscreen mode.")
+_ENTERED = _app_line("16:37:23.325", "Entered windowed mode on ComicBookReaderScreen.")
+
+
+class TestWindowModeSettling:
+    """Input on macOS waits out a window-mode switch, and a moment after it."""
+
+    @staticmethod
+    def _at(stamp: str) -> datetime.datetime:
+        return datetime.datetime.fromisoformat(f"2026-10-04 {stamp}")
+
+    def test_a_switch_started_and_not_ended_is_under_way(self) -> None:
+        log = f"{_ENTERED}\n{_EXITING}"
+        assert gui_probe.window_mode_settling(log, self._at("16:40:00"), 1.0)
+
+    def test_an_ended_switch_settles_for_a_moment(self) -> None:
+        log = f"{_EXITING}\n{_ENTERED}"
+        assert gui_probe.window_mode_settling(log, self._at("16:37:23.900"), 1.0)
+        assert not gui_probe.window_mode_settling(log, self._at("16:37:24.400"), 1.0)
+
+    def test_a_log_with_no_switch_never_waits(self) -> None:
+        log = _app_line("16:37:22.990", "Entering fullscreen mode finished, now closing reader.")
+        assert not gui_probe.window_mode_settling(log, self._at("16:37:23"), 1.0)
+
+    def test_entering_fullscreen_counts_as_a_switch_too(self) -> None:
+        entering = _app_line("16:37:22.990", "MainScreen: Entering fullscreen mode.")
+        assert gui_probe.window_mode_settling(entering, self._at("16:37:30"), 1.0)
+
+
+class TestHoldForModeSwitch:
+    @staticmethod
+    def _probe(settle: float) -> gui_probe.Probe:
+        backend = MagicMock(spec=["bring_to_front", "send_key", "mode_switch_settle_secs"])
+        backend.mode_switch_settle_secs = settle
+        backend.bring_to_front.return_value = True
+        return gui_probe.Probe(backend)
+
+    @pytest.mark.usefixtures("run_dir")
+    def test_a_key_waits_until_the_switch_has_ended_and_says_so(self) -> None:
+        gui_probe.app_log().write_text(_EXITING + "\n", encoding="utf-8")
+        clock = iter([0.0, 0.0, 2.5, 2.5])
+        with (
+            patch.object(gui_probe.time, "sleep"),
+            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe, "window_mode_settling", side_effect=[True, False]),
+        ):
+            self._probe(1.0)._hold_for_mode_switch("key Right")  # noqa: SLF001
+        lines = [line.split(" ", 1)[1] for line in gui_probe.input_log().read_text().splitlines()]
+        assert lines == ["wait 2.5s for a window-mode switch before the key Right"]
+
+    @pytest.mark.usefixtures("run_dir")
+    def test_a_switch_that_never_ends_holds_input_no_longer_than_the_limit(self) -> None:
+        gui_probe.app_log().write_text(_EXITING + "\n", encoding="utf-8")
+        clock = iter(range(0, 100, 3))
+        with (
+            patch.object(gui_probe.time, "sleep"),
+            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+        ):
+            self._probe(1.0)._hold_for_mode_switch("tap")  # noqa: SLF001
+        assert "for a window-mode switch before the tap" in gui_probe.input_log().read_text()
+
+    @pytest.mark.usefixtures("run_dir")
+    def test_a_backend_that_does_not_ask_never_waits(self) -> None:
+        gui_probe.app_log().write_text(_EXITING + "\n", encoding="utf-8")
+        backend = MagicMock(spec=["bring_to_front"])
+        with patch.object(gui_probe, "window_mode_settling") as settling:
+            gui_probe.Probe(backend)._hold_for_mode_switch("key Up")  # noqa: SLF001
+        settling.assert_not_called()
+        assert not gui_probe.input_log().exists()
+
+    def test_the_mac_backend_asks(self) -> None:
+        assert gui_probe_darwin.DarwinBackend.mode_switch_settle_secs > 0
