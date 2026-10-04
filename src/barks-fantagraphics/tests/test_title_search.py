@@ -265,3 +265,105 @@ def test_a_volume_range_leaves_out_stories_in_no_volume() -> None:
     titles = BarksTitleSearch().get_titles_for_selection(selection)
     assert Titles.CAPN_BLIGHTS_MYSTERY_SHIP not in titles  # in no Fantagraphics volume
     assert titles
+
+
+def _find(query: str) -> list[Titles]:
+    return BarksTitleSearch().find_titles(query)
+
+
+def _starts_with(title: Titles, text: str) -> bool:
+    lower = BARKS_TITLE_INFO[title].get_title_str().lower()
+    return lower.startswith(text) or lower.removeprefix("the ").startswith(text)
+
+
+def test_nothing_typed_finds_nothing() -> None:
+    assert _find("") == []
+    assert _find(" !? ") == []
+
+
+def test_titles_starting_with_the_text_come_first_in_publication_order() -> None:
+    titles = _find("gold")
+    starting = [t for t in titles if _starts_with(t, "gold")]
+    assert titles[: len(starting)] == sorted(starting)
+    assert Titles.GOLD_RUSH in starting
+    assert Titles.GOLDEN_HELMET_THE in starting  # its "The" is passed over
+    assert titles[len(starting) :] == sorted(titles[len(starting) :])
+    assert Titles.FROZEN_GOLD in titles[len(starting) :]
+
+
+def test_a_title_is_found_without_its_leading_article() -> None:
+    assert _find("golden helmet") == [Titles.GOLDEN_HELMET_THE]
+
+
+def test_typed_words_may_start_any_of_the_titles_words_in_any_order() -> None:
+    assert _find("andes lost") == [Titles.LOST_IN_THE_ANDES]
+
+
+def test_a_typed_word_may_be_another_form_of_a_titles_word() -> None:
+    assert _find("gold fleece") == [Titles.GOLDEN_FLEECING_THE]
+    assert _find("helmets") == [Titles.GOLDEN_HELMET_THE]
+
+
+def test_case_apostrophes_and_punctuation_are_ignored() -> None:
+    assert Titles.GOLD_FINDER_THE in _find("GOLD FINDER")
+    assert _find("rabbits foot")[0] == Titles.RABBITS_FOOT_THE
+    assert _find("rabbit\N{RIGHT SINGLE QUOTATION MARK}s foot")[0] == Titles.RABBITS_FOOT_THE
+    assert _find("fun? what") == [Titles.FUN_WHATS_THAT]
+
+
+def test_word_starts_rank_above_text_inside_a_word() -> None:
+    titles = _find("old")
+    assert titles.index(Titles.ONLY_A_POOR_OLD_MAN) < titles.index(Titles.FROZEN_GOLD)
+
+
+def test_two_letters_find_word_starts_and_three_look_inside_words() -> None:
+    assert Titles.LOST_IN_THE_ANDES in _find("an")
+    assert Titles.LOST_IN_THE_ANDES not in _find("os")
+    assert Titles.LOST_IN_THE_ANDES in _find("ost")
+    assert _find("ost andes") == [Titles.LOST_IN_THE_ANDES]
+
+
+def test_one_letter_finds_only_titles_starting_with_it() -> None:
+    titles = _find("v")
+    assert Titles.VACATION_TIME in titles
+    assert Titles.VICTORY_GARDEN_THE in titles
+    assert all(_starts_with(t, "v") for t in titles)
+
+
+def test_each_title_is_found_once() -> None:
+    titles = _find("Four Color 223")
+    assert titles == [Titles.LOST_IN_THE_ANDES, Titles.FOUR_COLOR_223_COVER]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "CS 100",
+        "cs100",
+        "WDCS 100",
+        "Comics and Stories 100",
+        "Walt Disney's Comics and Stories #100",
+    ],
+)
+def test_an_issue_is_named_by_its_code_or_its_names(text: str) -> None:
+    assert BarksTitleSearch.get_titles_in_issue(text) == [Titles.TRUANT_OFFICER_DONALD]
+
+
+def test_an_issues_stories_come_before_the_titles_the_text_finds() -> None:
+    titles = _find("Uncle Scrooge 4")
+    assert titles[0] == Titles.MENEHUNE_MYSTERY_THE
+    assert titles[1] == Titles.UNCLE_SCROOGE_4_COVER
+    assert _find("us4") == [Titles.MENEHUNE_MYSTERY_THE]
+
+
+def test_a_text_naming_no_issue_finds_no_issue() -> None:
+    assert BarksTitleSearch.get_titles_in_issue("zz 4") == []
+    assert BarksTitleSearch.get_titles_in_issue("US 999") == []
+    assert BarksTitleSearch.get_titles_in_issue("US") == []
+    assert BarksTitleSearch.get_titles_in_issue("gold") == []
+
+
+def test_an_issues_stories_are_a_new_list_each_time() -> None:
+    first = BarksTitleSearch.get_titles_in_issue("FC 29")
+    first.append(Titles.GOLD_RUSH)
+    assert Titles.GOLD_RUSH not in BarksTitleSearch.get_titles_in_issue("FC 29")

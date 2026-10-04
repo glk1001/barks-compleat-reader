@@ -68,11 +68,6 @@ class SearchResult:
     matched_tag_or_group: Tags | TagGroups | None = None
 
 
-def _unique_preserving_order(titles: list[Titles]) -> list[Titles]:
-    """Drop repeated titles, keeping the first occurrence of each."""
-    return list(dict.fromkeys(titles))
-
-
 # The reader builds one ComicSearch per screen, all over the same index. Caching by
 # index directory means the term list is read and split once rather than per screen.
 _ALPHA_SPLIT_CACHE: dict[Path, AlphaSplitTerms] = {}
@@ -422,15 +417,7 @@ class ComicSearch:
 
     def _search_titles(self, query: str) -> SearchResult:
         ts = self._get_title_search()
-        titles = ts.get_titles_matching_prefix(query)
-        min_chars = 2
-        if len(query) > min_chars and not titles:
-            # Fall back through progressively looser matches. Each fallback runs only
-            # when the previous one found nothing, so the results never need merging.
-            # `get_titles_from_issue_num` hands back a shared list, so copy before use.
-            titles = list(ts.get_titles_from_issue_num(query))
-            if not titles:
-                titles = _unique_preserving_order(ts.get_titles_containing(query))
+        titles = ts.find_titles(query)
         return SearchResult(
             mode=SearchMode.TITLE,
             titles=titles,

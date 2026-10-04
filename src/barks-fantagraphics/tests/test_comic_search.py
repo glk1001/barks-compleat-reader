@@ -139,6 +139,11 @@ class TestSearchTitles:
         assert result.titles
         assert len(result.titles) == len(set(result.titles))
 
+    def test_titles_starting_with_the_text_do_not_hide_the_others(self) -> None:
+        result = _search_with(InMemoryFullTextSearch()).search("gold", SearchMode.TITLE)
+
+        assert result.titles.index(Titles.GOLD_RUSH) < result.titles.index(Titles.FROZEN_GOLD)
+
     def test_issue_number_fallback_finds_titles(self) -> None:
         result = _search_with(InMemoryFullTextSearch()).search("FC 29", SearchMode.TITLE)
 
