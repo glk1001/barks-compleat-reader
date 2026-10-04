@@ -128,6 +128,17 @@ class TestSummary:
             'echo "==== overnight run, ${stamp} ($(git rev-parse --short HEAD)): $1 ===="' in text
         )
 
+    def test_stages_started_on_battery_are_named_under_the_table(self) -> None:
+        results = [rw.StageResult("pytest", "passed", 61), rw.StageResult("gui", "FAILED", 3000)]
+        stamp = "20261004-115956"
+        text = rw.summary_text(
+            stamp, "1cd7b90", "finished", results, f"build/overnight/{stamp}", ["gui"]
+        )
+        assert text.splitlines()[3:] == [
+            "warning: on battery for gui (a throttled CPU can fail the timing budgets; plug in)",
+            "logs: build/overnight/20261004-115956/",
+        ]
+
     @pytest.mark.parametrize(
         ("secs", "text"), [(0, "0h00m"), (59, "0h00m"), (61 * 60, "1h01m"), (10 * 3600, "10h00m")]
     )
@@ -194,6 +205,8 @@ def repo(tmp_path: Path) -> Iterator[Path]:
         patch.object(rw, "say"),
         # Plenty free, whatever this machine has: the memory tests set their own.
         patch.object(rw, "available_mb", return_value=64 * 1024),
+        # Plugged in, whatever this machine is: the battery tests set their own.
+        patch.object(rw, "on_battery", return_value=False),
     ):
         yield tmp_path
 
@@ -204,8 +217,10 @@ def _summary(repo: Path) -> str:
 
 
 def _results(repo: Path) -> dict[str, str]:
-    lines = _summary(repo).splitlines()[1:-1]
-    return {line.split()[0]: line.split()[1] for line in lines}
+    """Return the summary's stage table: the lines between its header and any warning."""
+    lines = _summary(repo).splitlines()[1:]
+    table = [line for line in lines if not line.startswith(("warning:", "logs:"))]
+    return {line.split()[0]: line.split()[1] for line in table}
 
 
 class TestRun:
@@ -234,6 +249,23 @@ class TestRun:
         with patch.object(rw.Run, "run_stage", side_effect=lambda name, _log: statuses[name]):
             assert run.run() == 0
         assert _results(repo) == {"gui": "WARNED", "validate": "skipped"}
+
+    def test_the_stages_started_on_battery_are_in_the_summary(self, repo: Path) -> None:
+        """Unplugged after the first stage: the later ones are named, the first is not."""
+        run = rw.Run(["update", "pytest", "gui"], None)
+        with (
+            patch.object(rw, "on_battery", side_effect=[False, True, True]),
+            patch.object(rw.Run, "run_stage", return_value=0),
+        ):
+            assert run.run() == 0
+        assert _results(repo) == {"update": "passed", "pytest": "passed", "gui": "passed"}
+        assert "warning: on battery for pytest, gui (" in _summary(repo)
+
+    def test_plugged_in_the_summary_has_no_warning(self, repo: Path) -> None:
+        run = rw.Run(["update"], None)
+        with patch.object(rw.Run, "run_stage", return_value=0):
+            run.run()
+        assert "warning:" not in _summary(repo)
 
     def test_a_crashing_stage_is_its_failure_alone(self, repo: Path) -> None:
         def stage(name: str, _log: rw.StageLog) -> int:

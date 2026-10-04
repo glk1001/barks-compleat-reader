@@ -228,11 +228,27 @@ def elapsed(secs: float) -> str:
 
 
 def summary_text(
-    stamp: str, commit: str, state: str, results: Sequence[StageResult], log_dir: str
+    stamp: str,
+    commit: str,
+    state: str,
+    results: Sequence[StageResult],
+    log_dir: str,
+    battery_stages: Sequence[str] = (),
 ) -> str:
-    """Return summary.txt, line for line in the Linux run's format."""
+    """Return summary.txt, line for line in the Linux run's format.
+
+    With a warning under the stages for those that started on battery: a laptop
+    throttles its CPU there, and its GUI stages then fail their timing budgets
+    (the Windows laptop's, unplugged, 2026-10-04), which the console's warning at
+    the start of the run, read after the night, does not explain.
+    """
     lines = [f"==== overnight run, {stamp} ({commit}): {state} ===="]
     lines += [f"{r.name:<14s} {r.result:<8s} {r.secs // 60:4d}m{r.secs % 60:02d}s" for r in results]
+    if battery_stages:
+        lines.append(
+            f"warning: on battery for {', '.join(battery_stages)}"
+            " (a throttled CPU can fail the timing budgets; plug in)"
+        )
     lines.append(f"logs: {log_dir}/")
     return "\n".join(lines) + "\n"
 
@@ -683,10 +699,14 @@ class Run:
         # None until the first GUI stage asks; then whether the machine can take input.
         self.gui_ready: bool | None = None
         self.results: list[StageResult] = []
+        # The stages that started with the machine on its battery, for the summary.
+        self.battery_stages: list[str] = []
         self.started = time.monotonic()
 
     def write_summary(self, state: str) -> None:
-        text = summary_text(self.stamp, short_commit(), state, self.results, self.log_dir_rel)
+        text = summary_text(
+            self.stamp, short_commit(), state, self.results, self.log_dir_rel, self.battery_stages
+        )
         (self.log_dir / "summary.txt").write_text(text, encoding="utf-8")
 
     def gui_tests(self, log: StageLog, *args: str, **env: str) -> int:
@@ -902,6 +922,9 @@ class Run:
             into = elapsed(time.monotonic() - self.started)
             at = time.strftime("%H:%M")
             say(f"\n==== [{n}/{len(self.stages)}] {name}, started {at} ({into} into the run) ====")
+            if on_battery():
+                self.battery_stages.append(name)
+                say(f"{RUNNER}: WARNING - {name} starts on battery: its timings may suffer")
             began = time.monotonic()
             with (self.log_dir / f"{name}.log").open("w", encoding="utf-8") as out:
                 log = StageLog(out)
