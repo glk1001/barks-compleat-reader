@@ -789,6 +789,23 @@ From this night on, the stage's log lists the module's survivor names, so the ne
 this slice can be diffed by name against `build/overnight/20261002-165849/mutation.log`
 on that machine.
 
+## Overnight slice (2026-10-05)
+
+Monday's slice warned on `config_info`: 4 survivors to 64. Neither the module nor its
+tests had changed since this slice last ran, and running the module alone under the
+mutation script as it stood before `191e16ba` (the fantagraphics `--package` change) gave
+the same 64. The cause was the test round of 2026-09-30, `db05881d`: it reached the
+config dir's setup, the emergency logging and the search path's debug lines for the first
+time, so their mutants moved from "no tests" (🫥, not counted) to survivors, but it
+asserted almost nothing they produce. They were real gaps, not equivalents, and now none
+survive:
+
+| Function | Survived | What the tests now hold |
+|---|---:|---|
+| `ConfigInfo._setup_app_config_dir` | 35 | The whole layout: the ini, data, `kivy` and `kivy/logs` paths, `KIVY_HOME`, nested folders made, and a second run over them. Mutants as plain as `app_config_path = None` survived. |
+| `_run_loguru_config` | 23 | The emergency sinks' level, `backtrace` and `diagnose`, the config file's name on both tries, and the second failure's message. |
+| `_assert_kivy_not_yet_imported`, `seed_random_from_env`, `_find_dir_on_search_path` | 6 | `kivy` alone in `sys.modules` (the test process's own `kivy.*` modules had hidden it), and each log line's text. |
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module

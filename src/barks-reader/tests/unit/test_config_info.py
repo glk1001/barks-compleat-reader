@@ -39,10 +39,12 @@ _NOT_UNDER_PYTEST = patch.object(config_info, "_running_under_pytest", return_va
 
 class TestAssertKivyNotYetImported:
     def test_raises_when_kivy_in_sys_modules(self) -> None:
-        fake_modules = {**sys.modules, "kivy": ModuleType("kivy")}
+        # The package alone: none of the kivy.* submodules this test process has loaded.
+        clean = {k: v for k, v in sys.modules.items() if k != "kivy" and not k.startswith("kivy.")}
+        clean["kivy"] = ModuleType("kivy")
         with (
             _NOT_UNDER_PYTEST,
-            patch.dict(sys.modules, fake_modules),
+            patch.dict(sys.modules, clean, clear=True),
             pytest.raises(ImportError, match="Kivy was imported before"),
         ):
             _assert_kivy_not_yet_imported()
@@ -262,9 +264,12 @@ class TestSeedRandomFromEnv:
         monkeypatch.delenv(RANDOM_SEED_ENV_VAR, raising=False)
         assert seed_random_from_env() is None
 
-    def test_same_seed_gives_the_same_sequence(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_same_seed_gives_the_same_sequence(
+        self, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
         monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "1234")
         assert seed_random_from_env() == 1234  # noqa: PLR2004
+        assert f"Random seed pinned to 1234 by {RANDOM_SEED_ENV_VAR}." in loguru_sink
         first = self._sample()
         seed_random_from_env()
         assert self._sample() == first
@@ -280,11 +285,12 @@ class TestSeedRandomFromEnv:
         assert self._sample() != first
 
     def test_a_non_number_is_ignored_rather_than_fatal(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
     ) -> None:
-        """A typo in the variable must not stop the app starting."""
+        """A typo in the variable must not stop the app starting, and says why it was ignored."""
         monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "banana")
         assert seed_random_from_env() is None
+        assert f'Ignoring {RANDOM_SEED_ENV_VAR}="banana": expected a whole number.' in loguru_sink
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +323,30 @@ class TestAppConfigDir:
 
         cfg.app_config_path.touch()
         assert cfg.is_app_installed()
+
+    def test_the_config_dir_is_laid_out_and_kivy_is_pointed_at_it(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Nested folders made as needed, twice over without complaint; KIVY_HOME set."""
+        monkeypatch.setenv("KIVY_HOME", "-")  # put back after the test, whatever it sets
+        config = tmp_path / "not" / "yet" / "config"
+        cfg = _bare_config_info(tmp_path)
+        with (
+            patch.object(cfg, "_get_app_config_dir", return_value=config),
+            patch.object(cfg, "_get_app_data_dir", return_value=tmp_path / "data"),
+            patch.object(config_info, "_assert_kivy_not_yet_imported") as kivy_check,
+        ):
+            cfg._setup_app_config_dir()  # noqa: SLF001
+            cfg._setup_app_config_dir()  # noqa: SLF001  (a second launch: all there already)
+
+        assert cfg.app_config_dir == config
+        assert cfg.app_config_path == config / "barks-reader.ini"
+        assert cfg.app_data_dir == tmp_path / "data"
+        assert cfg.kivy_config_dir == config / "kivy"
+        assert cfg.app_log_path == config / "kivy" / "logs" / "barks-reader.log"
+        assert (config / "kivy" / "logs").is_dir()
+        assert config_info.os.environ["KIVY_HOME"] == str(config / "kivy")
+        assert kivy_check.call_count == 2  # noqa: PLR2004
 
     def test_a_config_dir_that_cannot_be_made_is_an_error(self, tmp_path: Path) -> None:
         cfg = _bare_config_info(tmp_path)
@@ -365,14 +395,23 @@ class TestLoguruSetup:
         add.assert_not_called()
 
     def test_a_bad_config_falls_back_to_the_console_and_the_log_file(self, cfg: ConfigInfo) -> None:
+        """At the app's level, with full tracebacks, then the config is tried once more."""
+        config_info.log_level = "WARNING"  # put back by _keep_the_module_globals
         with (
-            patch.object(config_info.LoguruConfig, "load", side_effect=[ValueError("bad"), None]),
+            patch.object(
+                config_info.LoguruConfig, "load", side_effect=[ValueError("bad"), None]
+            ) as load,
             patch.object(config_info.logger, "add") as add,
         ):
             _run_loguru_config(cfg)
 
-        sinks = [call.args[0] for call in add.call_args_list]
-        assert sinks == [sys.stderr, str(cfg.app_log_path)]
+        assert [(c.args, c.kwargs) for c in add.call_args_list] == [
+            ((sink,), {"level": "WARNING", "backtrace": True, "diagnose": True})
+            for sink in (sys.stderr, str(cfg.app_log_path))
+        ]
+        assert [c.args for c in load.call_args_list] == [
+            (cfg.app_config_dir / "log-config.yaml",)
+        ] * 2
 
     def test_a_config_that_fails_twice_is_logged_and_exits(self, cfg: ConfigInfo) -> None:
         with (
@@ -384,7 +423,7 @@ class TestLoguruSetup:
             _run_loguru_config(cfg)
 
         assert exited.value.code == 1
-        logged.assert_called_once()
+        logged.assert_called_once_with("LoguruConfig failed: ")
 
 
 # ---------------------------------------------------------------------------
@@ -434,10 +473,14 @@ class TestFindFantaVolumes:
 
         assert found == cfg.app_data_dir / "Fanta"
 
-    def test_the_search_passes_over_missing_and_empty_dirs(self, tmp_path: Path) -> None:
+    def test_the_search_passes_over_missing_and_empty_dirs(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
         (tmp_path / "empty").mkdir()
         (tmp_path / "has-it" / "Fanta").mkdir(parents=True)
         search_path = [str(tmp_path / "missing"), str(tmp_path / "empty"), str(tmp_path / "has-it")]
 
         assert _find_dir_on_search_path(search_path, "Fanta") == tmp_path / "has-it" / "Fanta"
         assert _find_dir_on_search_path(search_path[:2], "Fanta") is None
+        assert f'Searching: "{tmp_path / "missing"}" is not a directory.' in loguru_sink
+        assert f'Searching: "Fanta" not found under "{tmp_path / "empty"}".' in loguru_sink
