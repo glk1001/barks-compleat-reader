@@ -325,7 +325,16 @@
 
                 SearchEmptyPrompt:
                     text: "Matching story titles will appear here"
-                    opacity: 0 if title_results_layout.children else 0.75
+                    opacity:
+                        0 if title_results_layout.children \
+                        or not title_search_input.text else 0.75
+
+                SearchSyntaxHelp:
+                    heading: search_help.TITLE_HELP_HEADING
+                    examples: search_help.TITLE_HELP
+                    opacity:
+                        0 if title_results_layout.children \
+                        or title_search_input.text else 1
 
         # ---- Tag Search Content ----
         BoxLayout:

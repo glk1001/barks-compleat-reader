@@ -4,6 +4,8 @@ import re
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 from barks_fantagraphics.search_filters import tag_titles
 from barks_fantagraphics.search_query import (
     NEAR_DEFAULT_DISTANCE,
@@ -14,12 +16,14 @@ from barks_fantagraphics.search_query import (
     parse_query,
 )
 from barks_fantagraphics.tag_query import parse_tag_query
-from barks_reader.core.search_help import TAG_HELP, WORD_HELP
+from barks_fantagraphics.title_search import BarksTitleSearch
+from barks_reader.core.search_help import TAG_HELP, TITLE_HELP, WORD_HELP
 from barks_reader.ui.search_screen import SearchSyntaxHelp, _SyntaxExample, _SyntaxMeaning
 
 _NO_QUERY_ALONE = (Not, TagQualifier, VolumeQualifier, YearQualifier)
 _WORD_EXAMPLES = [example for example, _ in WORD_HELP]
 _TAG_EXAMPLES = [example for example, _ in TAG_HELP]
+_TITLE_EXAMPLES = [example for example, _ in TITLE_HELP]
 
 
 class TestTheHelpMatchesTheSyntax:
@@ -45,6 +49,22 @@ class TestTheHelpMatchesTheSyntax:
         assert parsed.selection is not None
         for name in (*parsed.selection.included, *parsed.selection.excluded):
             assert tag_titles(name) is not None, name
+
+    @pytest.mark.parametrize("example", _TITLE_EXAMPLES)
+    def test_a_title_example_finds_titles(self, example: str) -> None:
+        assert BarksTitleSearch().find_titles(example)
+
+    def test_the_title_examples_do_what_they_say(self) -> None:
+        find = BarksTitleSearch().find_titles
+        assert find("golden helmet") == [Titles.GOLDEN_HELMET_THE]
+        assert find("gold fleece") == [Titles.GOLDEN_FLEECING_THE]
+        assert set(find("CS 104")) & COVERS_SET
+        cs_10 = find("CS 10")
+        assert Titles.TRUANT_OFFICER_DONALD in cs_10  # CS 100
+        assert all(str(BARKS_TITLE_INFO[t].issue_number).startswith("10") for t in cs_10)
+        assert Titles.LOST_IN_THE_ANDES in find("Four Color 223")
+        assert find("covers")
+        assert set(find("covers")) <= COVERS_SET
 
     def test_near_s_distance_is_the_parser_s(self) -> None:
         meaning = dict(WORD_HELP)["gold NEAR mine"]
