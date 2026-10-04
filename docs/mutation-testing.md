@@ -1,5 +1,7 @@
 # Mutation testing (mutmut) — status & backlog
 
+<!-- cspell:ignore ducies cied boxxed canoing Xwxy -->
+
 Mutation testing flips small pieces of source (`>` → `>=`, `and` → `or`, a
 constant to a sentinel, …) and checks whether any test fails. A **survivor** is a
 mutation no test caught — a line that is executed but not actually *asserted*.
@@ -19,9 +21,8 @@ bash scripts/mutmut.sh --package fantagraphics     # the search modules (~2500 m
 `--package fantagraphics` mutates `barks_fantagraphics` instead, from
 `src/barks-fantagraphics/`, against all of its tests (none use Kivy); by default the
 search modules, else a glob such as `'*/barks_fantagraphics/tag_query.py'`, or
-`--changed`. First run 2026-10-04: 2497 mutants, 308 survivors (whoosh_search_engine
-150, search_query 52, search_terms 40, search_evaluate 33, comic_search 13,
-title_search 7, tag_query 7, search_results 3, search_filters 3), not yet triaged.
+`--changed`. Triaged 2026-10-04 (see "Fantagraphics search pass" below): 85 survivors
+left of 2490 mutants, every one a known equivalent.
 
 `--changed` is the everyday mode and the one to reach for by default. With no ref it
 scopes to your working tree (staged, unstaged and untracked); pass a ref to also
@@ -942,3 +943,85 @@ pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks th
   without brittleness, while the real gaps sat in plain sequential code beside it.
 - Already addressed: the `None`-category branch in `navigation_model.view_state_for`
   (one real gap this run surfaced) now has an assertion; that survivor is killed.
+
+## Fantagraphics search pass (2026-10-04)
+
+The first `--package fantagraphics` run over the search modules: 2497 mutants, **308
+survivors**. After the pass: 2490 mutants (a few simplifications removed code), 2387
+killed, 17 timed out (caught), 1 with no test reaching it, **85 survivors, all
+equivalent**.
+
+| module | before | after |
+|---|---:|---:|
+| `whoosh_search_engine` | 150 | 65 |
+| `search_query` | 52 | 8 |
+| `search_terms` | 40 | 4 |
+| `search_evaluate` | 33 | 5 |
+| `comic_search` | 13 | 0 |
+| `title_search` | 7 | 2 |
+| `tag_query` | 7 | 0 |
+| `search_results` | 3 | 1 |
+| `search_filters` | 3 | 0 |
+
+### What worked
+
+- **Whole messages, not substrings.** The parser's error test checked `says in
+  message`, so every reworded message survived; comparing the whole `ParseError`
+  (message and position) killed them all at once. The same for the tag queries'
+  errors, the closest-tags notice, the missing-sidecar errors and the old-index warning.
+- **Assert what each search was told, not only what it found.** An AND narrows each
+  later part to the stories found so far; a mutant that searches everywhere returns the
+  same stories in the end. The fake's `bubble_calls` (each leaf and the titles it was
+  given) is what tells them apart.
+- **Real forms plus decoys.** The stemmer over-generates by design (the lexicon keeps
+  only forms it holds), so pinning raw stem sets would be brittle. Instead a lexicon of
+  every real form the rules reach, plus decoys only a broken rule makes (`ducies`,
+  `ducky`, `duc`, `se`, `cied`, `boxxed`, `canoing`, `hop` for hope): the variants must
+  hold all the real forms and none of the decoys.
+- **Patch the limit down.** `_SEARCH_RESULT_LIMIT` is 100,000 and Whoosh's own default
+  10; no test index reaches either. Patched to 1, each search's limit shows.
+- **A set loop in sorted order.** `_normalize_entity_names` looped over a set, so a
+  `continue` turned `break` survived or died with the hash seed. It now loops sorted:
+  deterministic builds, and a stable test.
+
+### Real gaps this found
+
+- Searches after the first in an AND were never checked to be narrowed, nor an AND's
+  own filter to be narrowed within the screen's era (a union would have passed).
+- After a NOT in one branch of an OR, the next branch's highlights and suggestions; a
+  NOT nested in a NOT leaving the outer one in force.
+- The literal fallback (text that does not parse) dropping the speaker.
+- `get_titles_matching_prefix`'s one-letter branch with `and` turned `or` (every title).
+- Word lists cached under one key for every index folder.
+- A NEAR side whose first form is not in the index ending the positions search.
+- Entity names split on commas; the builder's database and speech-group calls, its
+  folder made with parents and rebuilt in place, mixed-OCR pages, the sidecar names
+  `generate_stats_images.py` opens, collated term order.
+
+### Known-equivalent survivors from the fantagraphics search pass (2026-10-04)
+
+| mutant(s) | count | why it cannot be killed |
+|---|---:|---|
+| `json.dump(..., indent=4)` to `None`, `5` or no indent (index builder) | 24 | Only the sidecars' layout changes; every reader parses them. |
+| `decode("utf-8")` to `"UTF-8"` | 5 | Codec names are case-insensitive. |
+| `cast("dict[...]", ...)` strings | 4 | `cast` does nothing at run time. |
+| schema `lang=` (unstemmed has its own analyzer; content_raw is stored for display, never searched) | 10 | No search reads what the language would change. |
+| schema `scorable=` on the entity fields | 3 | Results are sorted by title, never by score. |
+| `.get(key, default)` defaults never reached: NEAR positions (every hit holds both sides), entity fields (stored on every bubble), curated sets (every type has one), the filtered entities (every type present) | 11 | The key is always there. |
+| entity fields of a bubble with none: `""` to `None`, or left out | 3 | Whoosh stores nothing for any of them. |
+| `_term_positions`: `and` to `or`, `<` to `<=` before `skip_to` | 2 | Skipping to a document the matcher is at, or past, does not move it. |
+| `_parse_literal`: backslash or quote left unescaped | 2 | Whoosh's parser copes either way; the results are pinned by a test. |
+| `_index_volume_titles(skip_missing_pages=False)` default to `True` | 1 | Its one caller always passes it. |
+| `__init__` passing `None` to `Exception` (`_QueryError`, `_QueryNeedsWordsError`) | 2 | Nothing reads `str(exc)`; the message attribute is used. |
+| `_read_quoted`'s `end < 0` to `<= 0` or `< 1` | 2 | The search starts after the opening quote, so `end` is never 0. |
+| `_range`'s `<` to `<=` for a shortened year | 1 | Same-length numbers give the same year either way. |
+| `read_range` passing position `None` or `1` | 2 | It discards the position. |
+| a volume's `years=False` to `None` | 1 | Both falsy everywhere they are read. |
+| a paren token's text to `None` | 1 | No message shows a bracket's text. |
+| `_is_filter`'s final `case _: return False` removed; `run` testing `_is_filter(None)` | 2 | `None` reads as `False`; a filter-only query is refused one step later with the same message. |
+| `_search_order`'s last rank 4 to 5; `_look_up`'s empty `case _` removed | 2 | Only relative order matters; the case did nothing. |
+| `suggest`'s `n=limit + 1` to `+ 2` | 1 | The list is cut to `limit` either way. |
+| `_doubles_last_letter`'s `"wxy"` to `"XXwxyXX"` | 1 | Stems are lower case: the capitals never match. |
+| `_stems_of`: `continue` to `break` (short base; always-doubled base) | 2 | A later suffix that also matches has a shorter base; only junk stems (`ab'`) differ. |
+| `speech_sort_key`'s `""` to `"XXXX"` | 1 | Every numbered group shares it. |
+| `get_direct_group_members`'s default `[]` to `None` or none | 2 | Every `TagGroups` member is a key. |
