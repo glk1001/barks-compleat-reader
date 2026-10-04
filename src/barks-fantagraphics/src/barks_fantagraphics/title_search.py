@@ -15,7 +15,7 @@ from .barks_tags import (
     Tags,
     get_all_tags_in_tag_group,
 )
-from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO
+from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO, COVERS_SET
 from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues, _get_shortest_issue_name
 from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
@@ -140,7 +140,8 @@ class BarksTitleSearch:
         3. from three letters, titles holding each typed word anywhere ("ost" finds
            "Lost in the Andes!").
 
-        Case, apostrophes and other punctuation are ignored.
+        Covers come after every story, in the same order among themselves. Case,
+        apostrophes and other punctuation are ignored.
 
         Args:
             query: The text typed into the title box.
@@ -168,7 +169,7 @@ class BarksTitleSearch:
         found = dict.fromkeys(self.get_titles_in_issue(query))
         for rank in ranks:
             found.update(dict.fromkeys(rank))
-        return list(found)
+        return [t for t in found if t not in COVERS_SET] + [t for t in found if t in COVERS_SET]
 
     @staticmethod
     def get_titles_in_issue(text: str) -> list[Titles]:

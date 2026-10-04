@@ -6,7 +6,7 @@ from barks_fantagraphics.barks_tags import (
     Tags,
 )
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.search_query import Combine
 from barks_fantagraphics.tag_query import TagSelection
@@ -367,3 +367,12 @@ def test_an_issues_stories_are_a_new_list_each_time() -> None:
     first = BarksTitleSearch.get_titles_in_issue("FC 29")
     first.append(Titles.GOLD_RUSH)
     assert Titles.GOLD_RUSH not in BarksTitleSearch.get_titles_in_issue("FC 29")
+
+
+def test_covers_come_after_every_story() -> None:
+    """The one story is a lower-ranked match than the "Four Color #n Cover" titles."""
+    titles = _find("four")
+    assert titles[0] == Titles.TWENTY_FOUR_CARAT_MOON_THE
+    assert titles[1:]
+    assert all(t in COVERS_SET for t in titles[1:])
+    assert titles[1:] == sorted(titles[1:])
