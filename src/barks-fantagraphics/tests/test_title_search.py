@@ -427,3 +427,10 @@ def test_an_issues_cover_is_among_its_stories_in_the_order_handed_in() -> None:
         Titles.DONALD_DUCK_26_COVER,
         Titles.HOBBLIN_GOBLINS,
     ]
+
+
+def test_a_leading_zero_in_an_issue_number_is_passed_over() -> None:
+    assert _in_issues("CS 0100") == [Titles.TRUANT_OFFICER_DONALD]
+    assert _in_issues("CS 010") == _in_issues("CS 10")
+    assert _in_issues("CS 0") == []
+    assert _in_issues("CS 000") == []

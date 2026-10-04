@@ -219,7 +219,8 @@ class BarksTitleSearch:
 
         The issue is its code, short name or full name, then the start of its number, in
         any case, with or without spaces, punctuation or "#": "CS 100", "wdcs100", "Four
-        Color #223". "CS 10" names CS 10 and CS 100 to 109, as the number is typed.
+        Color #223". "CS 10" names CS 10 and CS 100 to 109, as the number is typed; a
+        leading 0 is passed over.
         Uncle Scrooge 1 to 3 are the Four Color issues they came out as.
 
         Args:
@@ -236,7 +237,7 @@ class BarksTitleSearch:
         issue = _issue_names().get(match[1])
         if issue is None:
             return None
-        digits = match[2]
+        digits = str(int(match[2]))  # "CS 010" is CS 10
         numbers = {(issue, n) for n in _issue_numbers(issue) if str(n).startswith(digits)}
         if issue == Issues.US:
             numbers |= {(Issues.FC, fc) for us, fc in _US_AS_FC if str(us).startswith(digits)}
