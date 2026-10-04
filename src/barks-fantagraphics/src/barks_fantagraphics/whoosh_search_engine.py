@@ -90,7 +90,7 @@ def _filter_entities_to_curated(
 def _normalize_entity_names(extra_terms: set[str], existing_lower: set[str]) -> set[str]:
     """Normalize entity names against curated sets, filtering garbage spaCy names."""
     normalized = set()
-    for t in extra_terms:
+    for t in sorted(extra_terms):  # in one order every build, whatever the set's
         low = t.lower()
         # Skip if a single-word term already covers this
         if low in existing_lower:

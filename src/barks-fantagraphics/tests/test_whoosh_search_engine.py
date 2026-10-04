@@ -16,6 +16,7 @@ from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.speech_groupers import OcrTypes
 from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.whoosh_search_engine import (
+    ENTITY_TYPES,
     SearchEngine,
     SearchEngineCreator,
     _build_curated_entity_sets,
@@ -26,6 +27,7 @@ from barks_fantagraphics.whoosh_search_engine import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from whoosh.searching import Hit
@@ -705,18 +707,24 @@ PAGES = {
 
 class TestSearchEngineCreator:
     @staticmethod
-    def _build(tmp_path: Path, **kwargs: object) -> tuple[SearchEngineCreator, MagicMock]:
+    def _build(
+        tmp_path: Path,
+        pages: dict[Titles, list[SimpleNamespace]] | None = None,
+        index_dir: Path | None = None,
+        **kwargs: object,
+    ) -> tuple[SearchEngineCreator, MagicMock]:
+        pages = PAGES if pages is None else pages
         db = MagicMock()
         db.get_configured_titles_in_fantagraphics_volumes.return_value = [
             (ENUM_TO_STR_TITLE[t], SimpleNamespace(comic_book_info=SimpleNamespace(title=t)))
-            for t in PAGES
+            for t in pages
         ]
         speech_groups = MagicMock()
         speech_groups.return_value.get_speech_page_groups.side_effect = (
-            lambda title, skip_missing: PAGES[title]  # noqa: ARG005
+            lambda title, skip_missing: pages[title]  # noqa: ARG005
         )
         with patch.object(whoosh_search_engine_module, "SpeechGroups", speech_groups):
-            creator = SearchEngineCreator(db, tmp_path / "index", OcrTypes.EASYOCR)
+            creator = SearchEngineCreator(db, index_dir or tmp_path / "index", OcrTypes.EASYOCR)
             creator.index_volumes([5, 6], **kwargs)  # ty: ignore[invalid-argument-type]
         return creator, speech_groups
 
@@ -803,3 +811,272 @@ class TestSearchEngineCreator:
         calls = speech_groups.return_value.get_speech_page_groups.call_args_list
         assert calls
         assert all(call.kwargs == {"skip_missing": True} for call in calls)
+
+
+# ---------------------------------------------------------------------------
+# What mutation testing found unchecked: the builder's calls and sidecars, the
+# entity types a found bubble names, limits, messages, and the term rules.
+# ---------------------------------------------------------------------------
+
+_ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+_GOOD_DEEDS = ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]
+_NO_SPEAKER_FIELD = (
+    "Search index has no speaker field; ignoring speaker filter. The search index needs rebuilding."
+)
+
+
+def _good_deeds_entities(title: str, page: str, group: str) -> dict[str, set[str]]:
+    if (title, page, group) == (_GOOD_DEEDS, "007", "0"):
+        return {"person": {"abie", "adam"}, "location": {"acapulco"}}
+    return {}
+
+
+class TestTheBuilderMore:
+    _build = staticmethod(TestSearchEngineCreator._build)
+
+    def test_it_asks_for_the_volumes_comics_and_their_pages(self, tmp_path: Path) -> None:
+        creator, speech_groups = self._build(tmp_path)
+        db = cast("MagicMock", creator._comics_database)
+        db.get_configured_titles_in_fantagraphics_volumes.assert_called_once_with(
+            [5, 6], exclude_non_comics=True
+        )
+        speech_groups.assert_called_once_with(db)
+        calls = speech_groups.return_value.get_speech_page_groups.call_args_list
+        assert all(call.kwargs == {"skip_missing": False} for call in calls)  # by default
+
+    def test_a_page_read_by_the_other_ocr_engine_does_not_end_the_story(
+        self, tmp_path: Path
+    ) -> None:
+        pages = {
+            Titles.LOST_IN_THE_ANDES: [
+                _page(OcrTypes.PADDLEOCR, "040", {"0": _speech("paddleocr only words")}),
+                _page(OcrTypes.EASYOCR, "041", {"0": _speech("Square eggs!")}),
+            ]
+        }
+        engine, _ = self._build(tmp_path, pages)
+        assert set(engine.find_words("eggs")) == {_ANDES}
+
+    def test_its_folder_is_made_with_its_parents_and_built_again_in_place(
+        self, tmp_path: Path
+    ) -> None:
+        deep = tmp_path / "a" / "b" / "index"
+        self._build(tmp_path, index_dir=deep)
+        engine, _ = self._build(tmp_path, index_dir=deep)  # again: no error
+        assert set(engine.find_words("eggs")) == {_ANDES}
+
+    def test_the_sidecar_files_have_the_names_their_readers_open(self, tmp_path: Path) -> None:
+        """generate_stats_images.py opens most-common-unstemmed-terms.json by name."""
+        engine, _ = self._build(tmp_path)
+        folder = tmp_path / "index"
+        with engine._index.reader() as reader:
+            lexicon = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
+        assert json.loads((folder / "unstemmed-terms.json").read_text()) == lexicon
+        assert (folder / "most-common-unstemmed-terms.json").is_file()
+        assert (folder / "least-common-unstemmed-terms.json").is_file()
+
+    def test_the_cleaned_terms_are_in_collated_order_not_code_points(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        cleaned = engine.get_cleaned_terms()
+        assert cleaned.index("Cattail Slough") < cleaned.index("chickens")
+        assert cleaned.index("chickens") < cleaned.index("Chickie Biddy")
+
+    def test_entity_names_join_the_cleaned_terms(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
+        assert {"abie", "adam"} <= set(engine.get_cleaned_terms())
+
+    def test_each_of_a_bubbles_entities_is_found_by_its_own_name(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
+        assert set(engine.find_entities("person", "abie")) == {_GOOD_DEEDS}
+        assert set(engine.find_entities("person", "adam")) == {_GOOD_DEEDS}
+
+    def test_a_bubble_with_no_entities_stores_none(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        for fields in engine.iter_all_stored_fields():
+            assert not any(fields.get(f"entities_{t}") for t in ENTITY_TYPES), fields
+
+    def test_a_speakers_bubbles_are_all_counted(self, tmp_path: Path) -> None:
+        pages = {
+            Titles.LOST_IN_THE_ANDES: [
+                _page(
+                    OcrTypes.EASYOCR,
+                    "041",
+                    {
+                        "0": _speech("Eggs!", speaker="Scrooge"),
+                        "1": _speech("Square!", speaker="Scrooge"),
+                    },
+                )
+            ]
+        }
+        engine, _ = self._build(tmp_path, pages)
+        assert engine.get_speakers() == {"Scrooge": 2}
+
+    def test_the_least_common_list_keeps_words_used_twice_and_stops_at_200(
+        self, tmp_path: Path
+    ) -> None:
+        words = " ".join(f"word{i:03d}" for i in range(205))
+        pages = {
+            Titles.LOST_IN_THE_ANDES: [
+                _page(OcrTypes.EASYOCR, "041", {"0": _speech(words), "1": _speech(words)})
+            ]
+        }
+        self._build(tmp_path, pages)
+        least = json.loads((tmp_path / "index" / "least-common-unstemmed-terms.json").read_text())
+        assert len(least) == 200
+        assert all(count == 2 for _, count in least)
+
+
+class TestWhatAFoundBubbleCarries:
+    _build = staticmethod(TestSearchEngineCreator._build)
+
+    def test_its_text_with_its_markup(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        speech = engine.find_words("eggs")[_ANDES].fanta_pages["041"].speech_info_list[0]
+        assert speech.speech_text_markup == "[b]SQUARE[/b] eggs in the Andes!"
+
+    def test_the_entity_types_whose_names_hold_a_word_searched(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
+        [speech] = engine.find_words("acapulco")[_GOOD_DEEDS].fanta_pages["007"].speech_info_list
+        assert speech.entity_types == ("location",)  # its people are named, but not searched
+
+    def test_a_name_after_a_comma_is_matched_whole(self, tmp_path: Path) -> None:
+        """The person field holds "abie,adam": adam is its own name, not "abie,adam"."""
+        engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
+        found = engine.find_bubbles(AnyTerm(("adam", "deed")))
+        [speech] = found[_GOOD_DEEDS].fanta_pages["007"].speech_info_list
+        assert speech.entity_types == ("person",)
+
+
+class TestLimitsAndMessages:
+    _build = staticmethod(TestSearchEngineCreator._build)
+
+    def test_each_search_stops_at_the_result_limit(self, tmp_path: Path) -> None:
+        """Each search past the limit returns fewer than it would: Whoosh's own default is 10."""
+
+        def abie_twice(_title: str, _page: str, group: str) -> dict[str, set[str]]:
+            return {"person": {"abie"}} if group == "0" else {}
+
+        engine, _ = self._build(tmp_path, entity_provider=abie_twice)
+        with patch.object(whoosh_search_engine_module, "_SEARCH_RESULT_LIMIT", 1):
+            square = engine.find_words("square")  # in two of the Andes' bubbles
+            assert len(square[_ANDES].fanta_pages["041"].speech_info_list) == 1
+            hits = engine.find_bubbles(AnyTerm(("square", "deed")))  # three bubbles, two stories
+            assert (
+                sum(len(p.speech_info_list) for t in hits.values() for p in t.fanta_pages.values())
+                == 1
+            )
+            assert len(engine.find_entities("person", "abie")) == 1  # in both stories
+        assert len(engine.find_entities("person", "abie")) == 2
+
+    def test_the_old_index_warning_says_what_to_do(self, tmp_path: Path) -> None:
+        from whoosh.index import create_in
+
+        schema = build_index_schema()
+        schema.remove("speaker")
+        writer = create_in(str(tmp_path), schema).writer()
+        writer.add_document(
+            title="Old",
+            fanta_vol="1",
+            fanta_page="001",
+            comic_page="1",
+            content_id="0",
+            panel_num="1",
+            unstemmed="voodoo",
+            content_raw="VOODOO",
+        )
+        writer.commit()
+        engine = SearchEngine(tmp_path)
+        with patch.object(whoosh_search_engine_module, "logger") as mock_logger:
+            engine.find_words("voodoo", speaker="Scrooge")
+            engine.find_bubbles(AnyTerm(("voodoo",)), speaker="Scrooge")
+        assert [c.args[0] for c in mock_logger.warning.call_args_list] == [_NO_SPEAKER_FIELD] * 2
+
+    @pytest.mark.parametrize(
+        ("read", "name"),
+        [
+            (SearchEngine.get_cleaned_terms, "cleaned-unstemmed-terms.json"),
+            (
+                SearchEngine.get_cleaned_alpha_split_terms,
+                "cleaned-alpha-split-unstemmed-terms.json",
+            ),
+        ],
+    )
+    def test_a_missing_sidecar_says_which_and_what_to_do(
+        self, tmp_path: Path, read: Callable[[SearchEngine], object], name: str
+    ) -> None:
+        engine = SearchEngine(_build_words_index(tmp_path))
+        with pytest.raises(FileNotFoundError) as raised:
+            read(engine)
+        assert str(raised.value) == (
+            f"Index sidecar file is missing: {engine._index.storage.folder / name}."
+            " The search index needs rebuilding."
+        )
+
+    def test_quotes_and_backslashes_in_a_search_are_searched_as_text(self, tmp_path: Path) -> None:
+        engine, _ = self._build(tmp_path)
+        for text in ('square "eggs"', "square\\", '"eggs', 'eggs\\"x'):
+            assert set(engine.find_words(text)) == {_ANDES}, text
+
+
+class TestTermRules:
+    @pytest.mark.parametrize(
+        ("term", "valid"),
+        [
+            ("apple", True),
+            ("zebra", True),
+            ("Zebra", True),  # its first letter is read lower-cased
+            ("00 agent", True),  # a word of capitals is two letters at most
+            ("9 lives", True),
+            ("'frisco", True),
+            ("_bad", False),
+            ("[bracket", False),
+            ("@home", False),
+            ("-er-", False),
+            ("", False),
+        ],
+    )
+    def test_an_entity_term_starts_with_a_letter_a_digit_or_an_apostrophe(
+        self, term: str, valid: bool
+    ) -> None:
+        assert _is_valid_entity_term(term) is valid
+
+    def test_the_letters_split_keeps_the_same_terms(self, tmp_path: Path) -> None:
+        engine = SearchEngine(_build_words_index(tmp_path))
+        terms = ["apple", "zebra", "00 agent", "9 lives", "'frisco", "_bad", "[x", "@home", "-ER-"]
+        engine._entity_terms_paths[EntityType("person")].write_text(json.dumps(terms))
+        split = engine.get_alpha_split_entity_terms("person")
+        listed = sorted(t for groups in split.values() for ts in groups.values() for t in ts)
+        assert listed == ["'frisco", "00 agent", "9 lives", "apple", "zebra"]
+
+    def test_a_term_already_a_word_is_not_added_again_and_the_rest_still_are(self) -> None:
+        assert _normalize_entity_names({"Gold", "Zebra Land"}, {"gold"}) == {"Zebra Land"}
+
+    def test_a_curated_name_takes_its_casing_and_the_rest_still_follow(self) -> None:
+        normalized = _normalize_entity_names({"alice in wonderland", "Zebra Land"}, set())
+        assert normalized == {"Alice in Wonderland", "Zebra Land"}
+
+    def test_cleaning_capitalizes_drops_what_a_word_covers_and_suppresses(self) -> None:
+        from barks_fantagraphics.whoosh_barks_terms import (
+            MULTI_WORD_TERMS_TO_SUPPRESS,
+            TERMS_TO_CAPITALIZE,
+        )
+
+        to_capitalize = min(TERMS_TO_CAPITALIZE)
+        suppressed = min(MULTI_WORD_TERMS_TO_SUPPRESS)
+        cleaned = SearchEngineCreator._get_cleaned_terms(
+            [to_capitalize, "gold"], entity_names={"Gold", suppressed.lower(), "Zebra Land"}
+        )
+        assert to_capitalize.capitalize() in cleaned
+        assert "Gold" not in cleaned  # "gold" covers it
+        assert "Zebra Land" in cleaned
+        assert not {t for t in cleaned if t.lower() == suppressed.lower()}
+
+    def test_near_finds_the_pair_when_a_form_is_not_in_the_index(self, tmp_path: Path) -> None:
+        from barks_fantagraphics.search_query import Near
+
+        engine, _ = self._build_index(tmp_path)
+        near = Near(AnyTerm(("aardvark", "square")), AnyTerm(("eggs",)), 3)
+        assert set(engine.find_bubbles(near)) == {_ANDES}
+
+    @staticmethod
+    def _build_index(tmp_path: Path) -> tuple[SearchEngineCreator, MagicMock]:
+        return TestSearchEngineCreator._build(tmp_path)
