@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 _ABS_MT_POSITION_X = 0x35
 _EXCLUDE_DEVICE_NAMES = {"touchpad", "mouse", "pen"}
+_SYSFS_INPUT = Path("/sys/class/input")
 
 
 def _find_touchscreen_devices() -> list[str]:
@@ -54,10 +55,9 @@ def _find_touchscreen_devices() -> list[str]:
 
     long_bit = ctypes.sizeof(ctypes.c_long) * 8
     devices: list[str] = []
-    sysfs_input = Path("/sys/class/input")
-    if not sysfs_input.is_dir():
+    if not _SYSFS_INPUT.is_dir():
         return devices
-    for entry in sorted(sysfs_input.glob("event*")):
+    for entry in sorted(_SYSFS_INPUT.glob("event*")):
         name_path = entry / "device" / "name"
         try:
             name = name_path.read_text().strip()
