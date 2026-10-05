@@ -8,11 +8,11 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.index_screen
 import barks_reader.ui.main_index_screen
 import pytest
-from barks_fantagraphics.barks_tags import Tags
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_reader.ui.index_screen import IndexItem
-from barks_reader.ui.main_index_screen import MainIndexScreen
+from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy
 from kivy.clock import Clock
 
 if TYPE_CHECKING:
@@ -204,3 +204,60 @@ class TestTagMarkers:
         ):
             main_index_screen._add_sub_items(0)
         assert f"Index sub-items added under '{group.name}': 3." in loguru_sink
+
+    def test_a_tag_group_with_no_tags_opens_nothing(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        group = TagGroups.AFRICA
+        main_index_screen._open_tag_button = MagicMock()
+
+        with (
+            patch.object(barks_reader.ui.main_index_screen, "BARKS_TAG_GROUPS", {}),
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            main_index_screen._handle_tag_group(MagicMock(), IndexItem(group, group.value))
+
+        schedule.assert_not_called()
+        assert main_index_screen._open_tag_button is None
+        assert f"No tags found for tag group: {group.name}" in loguru_sink
+
+
+class TestTaggedTitleRows:
+    """A title under a tag shows the pages the tag is on, and opens at the first."""
+
+    def test_a_title_tagged_on_pages_shows_them_and_opens_at_the_first(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        pages = {(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7", "8", "9", "12"]}
+        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", pages):
+            row = main_index_screen._get_tagged_title_with_page_nums(
+                Titles.BACK_TO_THE_KLONDIKE, Tags.ALASKA
+            )
+        assert row == ("7", "Back to the Klondike, 7-9,12")
+
+    def test_a_title_tagged_as_a_whole_opens_at_its_start(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", {}):
+            row = main_index_screen._get_tagged_title_with_page_nums(
+                Titles.BACK_TO_THE_KLONDIKE, Tags.ALASKA
+            )
+        assert row == ("", "Back to the Klondike")
+
+
+class TestTitleHierarchy:
+    """A title found under a tag says where: "Title (group/tag) "."""
+
+    def test_a_title_found_directly_is_just_its_title(self) -> None:
+        hierarchy = TitleHierarchy(None, None, Titles.BACK_TO_THE_KLONDIKE)
+        assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike"
+
+    def test_a_title_under_a_tag_in_a_group_names_both(self) -> None:
+        hierarchy = TitleHierarchy(TagGroups.AFRICA, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
+        assert hierarchy.get_title_with_hierarchy() == (
+            f"Back to the Klondike ({TagGroups.AFRICA.value}/{Tags.ALASKA.value}) "
+        )
+
+    def test_a_title_under_a_top_level_tag_names_the_tag(self) -> None:
+        hierarchy = TitleHierarchy(None, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
+        assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike (Alaska) "
