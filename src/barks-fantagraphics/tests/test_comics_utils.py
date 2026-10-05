@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import zipfile
 from datetime import date, datetime
 from pathlib import Path
@@ -39,7 +38,6 @@ from barks_fantagraphics.comics_utils import (
     get_titles_and_info_chronologically_sorted,
     get_titles_and_info_sorted_by_submission_date,
     get_titles_sorted_by_submission_date,
-    get_work_dir,
 )
 
 if TYPE_CHECKING:
@@ -351,12 +349,6 @@ class TestDirsAndPaths:
         (tmp_path / "sub").mkdir()
         delete_all_files_in_directory(tmp_path)
         assert [p.name for p in tmp_path.iterdir()] == ["sub"]
-
-    def test_a_work_dir_is_a_new_timestamped_dir_under_its_root(self, tmp_path: Path) -> None:
-        work = Path(get_work_dir(str(tmp_path / "work")))
-        assert work.is_dir()
-        assert work.parent == tmp_path / "work"
-        assert re.fullmatch(r"\d{4}_\d\d_\d\d-\d\d_\d\d_\d\d\.\d{6}", work.name)
 
     def test_a_path_under_the_barks_root_is_relative_to_it(self) -> None:
         assert get_relpath(BARKS_ROOT_DIR / "Fanta" / "x.jpg") == "Fanta/x.jpg"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import zipfile
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
@@ -93,16 +93,6 @@ def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
         fanta_info.comic_book_info.submitted_month,
         submitted_day,
     )
-
-
-def get_work_dir(work_dir_root: str) -> str:
-    work_dir_root_path = Path(work_dir_root)
-    work_dir_root_path.mkdir(parents=True, exist_ok=True)
-
-    work_dir = work_dir_root_path / datetime.now(UTC).strftime("%Y_%m_%d-%H_%M_%S.%f")
-    work_dir.mkdir()
-
-    return str(work_dir)
 
 
 def get_abbrev_path(file: str | Path | zipfile.Path) -> str:
