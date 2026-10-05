@@ -21,6 +21,8 @@ from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.ui.app_window_geometry import (
+    MOVE_SETTLE_DELAY,
+    RESIZE_CORRECTION_DELAY,
     AppWindowGeometryHelper,
     WindowSizeConstraints,
 )
@@ -32,9 +34,9 @@ CHROME = 45
 MIN_WIDTH = 900
 
 
-def _make_screen_info(width: int = 2560, height: int = 2400) -> ScreenInfo:
+def _make_screen_info(width: int = 2560, height: int = 2400, display: int = 0) -> ScreenInfo:
     return ScreenInfo(
-        display=0,
+        display=display,
         monitor_x=0,
         monitor_y=0,
         width_pixels=width,
@@ -552,3 +554,136 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
 
     # No correction scheduled — the second degenerate guard should have fired.
     assert fake_clock.calls == []
+
+
+# --- The guarded resize's three steps, as the clock runs them ---
+
+
+def test_a_guarded_resize_sizes_then_moves_the_window_then_drops_its_guard(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+) -> None:
+    helper._schedule_guarded_resize(1200, 1800, reposition=(30, 40))  # noqa: SLF001
+    (resize, resize_at), (move, move_at), (reset, reset_at) = fake_clock.calls
+    assert (resize_at, move_at, reset_at) == (0, RESIZE_CORRECTION_DELAY, MOVE_SETTLE_DELAY)
+    assert helper._resize_requested_size == (1200, 1800)  # noqa: SLF001
+    assert helper._resize_event is not None  # noqa: SLF001
+
+    resize(0.0)
+    assert fake_window.size == (1200, 1800)
+
+    move(0.0)
+    assert (fake_window.left, fake_window.top) == (30, 40)
+
+    reset(0.0)
+    assert helper._resize_event is None  # noqa: SLF001
+    assert helper._resize_requested_size == (0, 0)  # noqa: SLF001
+
+
+def test_a_guarded_resize_with_nowhere_to_go_leaves_the_window_where_it_is(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+) -> None:
+    helper._schedule_guarded_resize(1200, 1800)  # noqa: SLF001
+    _, (move, _), _ = fake_clock.calls
+    move(0.0)
+    assert (fake_window.left, fake_window.top) == (100, 100)
+
+
+# --- Monitors that cannot be found, and moves that need no resize ---
+
+
+def _helper_with_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+    fake_metrics: MagicMock,
+) -> AppWindowGeometryHelper:
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+    return h
+
+
+def test_a_window_starting_off_every_monitor_takes_the_primary(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    """Windows can report an off-screen Window.left/top at startup."""
+    primary = _make_screen_info(display=3)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = None
+    fake_metrics.get_primary_screen_info.return_value = primary
+
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    assert h._current_monitor is primary  # noqa: SLF001
+
+
+def test_a_move_to_a_monitor_of_the_same_height_keeps_the_size(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    monitor_a, monitor_b = _make_screen_info(display=0), _make_screen_info(display=1)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = monitor_a
+    fake_metrics.get_primary_screen_info.return_value = monitor_a
+    fake_window.height = 2000
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    fake_metrics.get_monitor_for_pos.return_value = monitor_b
+
+    h.on_window_pos_change(fake_window)
+
+    assert h._current_monitor is monitor_b  # noqa: SLF001
+    assert fake_clock.calls == []
+
+
+def test_a_rotation_off_every_monitor_fits_the_primary(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    primary = _make_screen_info(width=1440, height=2560, display=2)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = None
+    fake_metrics.get_primary_screen_info.return_value = primary
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    h._handle_rotation()  # noqa: SLF001
+
+    assert h._current_monitor is primary  # noqa: SLF001
+    width, height = h._resize_requested_size  # noqa: SLF001
+    assert 0 < width <= primary.width_pixels
+    assert 0 < height <= primary.height_pixels
+
+
+def test_stopping_polling_that_never_started_does_nothing(
+    helper: AppWindowGeometryHelper,
+) -> None:
+    helper.stop_polling()
+    assert helper._rotation_poll_event is None  # noqa: SLF001
+
+
+def test_a_second_drag_step_replaces_the_pending_correction(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+) -> None:
+    """Only one correction fires after a drag: each new step cancels the last one's."""
+    height = 2000
+    right_width, _ = get_win_dimensions(height - CHROME, 2560)
+    fake_window.size = (right_width + 200, height)
+    helper._enforce_aspect_ratio(right_width + 200, height)  # noqa: SLF001
+    first = helper._correction_event  # noqa: SLF001
+
+    fake_window.size = (right_width + 250, height)
+    helper._enforce_aspect_ratio(right_width + 250, height)  # noqa: SLF001
+
+    first.cancel.assert_called_once_with()
+    assert helper._correction_event is not first  # noqa: SLF001
+    assert len(fake_clock.calls) == 2  # noqa: PLR2004
