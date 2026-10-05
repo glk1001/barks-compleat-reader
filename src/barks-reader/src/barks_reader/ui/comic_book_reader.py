@@ -674,7 +674,7 @@ class ComicBookReader(FloatLayout):
         # (rather than flashing a blank loading page) and wait without blocking the
         # UI thread. _render_page swaps to the new page once it is ready. The initial
         # comic open has no current page, so read_comic shows the loading page there.
-        logger.info(f"Page index {self._current_page_index} not loaded yet; awaiting load.")
+        logger.info(log_markers.PAGE_AWAITING_LOAD.format(index=self._current_page_index))
         self._prioritize_pending(left_idx, right_idx)
         self._start_pending_poll()
 

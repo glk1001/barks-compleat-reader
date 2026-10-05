@@ -31,10 +31,11 @@ _SAVED_RE = re.compile(pattern(markers.LAST_READ_PAGE_SAVED, title=_QUOTED, page
 _OPEN_RE = re.compile(pattern(markers.HISTORY_OPEN_RECORDED, title=_QUOTED))
 _CLOSE_RE = re.compile(pattern(markers.HISTORY_CLOSE_RECORDED, title=_QUOTED))
 _SHOWED_RE = re.compile(pattern(markers.SHOWED_PAGE, index=re.compile(r"(\d+)")))
+_AWAITING_RE = re.compile(pattern(markers.PAGE_AWAITING_LOAD, index=re.compile(r"(\d+)")))
 _LOADED_RE = re.compile(pattern(markers.COMIC_IMAGES_LOADED, count=re.compile(r"(\d+)")))
 _DOUBLE_PAGE_ON = pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)
 
-# A save: (title, page saved, index of the page last shown, pages the comic loaded).
+# A save: (title, page saved, index of the page the reader was last on, pages loaded).
 type Save = tuple[str, str, int | None, int | None]
 
 
@@ -60,24 +61,28 @@ def canned_history_ids() -> set[str]:
 
 
 def _saves_logged(app_log: str) -> list[Save]:
-    """Return every save the app logged, with the page last shown and the pages loaded.
+    """Return every save the app logged, with the page the reader was on and the pages loaded.
+
+    The page the reader was on is the last one shown, or one turned to and still
+    loading: a read closed before that page arrived saves it, never having shown it
+    (the soak on 2026-10-06).
 
     Both belong to the read that saved: each open forgets the last read's. A read
     closed before its comic finished loading logs no page count, and pairing its
     save with the comic before's count had it judged by the wrong layout.
     """
     saves: list[Save] = []
-    last_shown: int | None = None
+    last_on: int | None = None
     loaded: int | None = None
     for line in app_log.splitlines():
         if _OPEN_RE.search(line):
-            last_shown, loaded = None, None
-        elif found := _SHOWED_RE.search(line):
-            last_shown = int(found[1])
+            last_on, loaded = None, None
+        elif found := _SHOWED_RE.search(line) or _AWAITING_RE.search(line):
+            last_on = int(found[1])
         elif found := _LOADED_RE.search(line):
             loaded = int(found[1])
         elif found := _SAVED_RE.search(line):
-            saves.append((found[1], found[2], last_shown, loaded))
+            saves.append((found[1], found[2], last_on, loaded))
     return saves
 
 
@@ -95,7 +100,9 @@ def _cue_problems(scratch: Path, saves: list[Save], *, hold_index: bool) -> list
         if cue_page != page:
             problems.append(f'"{title}": cue page {cue_page!r}, app saved {page!r}')
         if hold_index and index is not None and cue_index != index:
-            problems.append(f'"{title}": cue page index {cue_index}, last shown {index}')
+            problems.append(
+                f'"{title}": cue page index {cue_index}, the reader was last on {index}'
+            )
     return problems
 
 
@@ -183,7 +190,8 @@ def reads_persisted_problems(scratch: Path, app_log: str) -> list[str]:
     """Return how the profile disagrees with the reads the app logged.
 
     For every read that saved progress: the title's cue holds the page the app
-    said it saved, and (in single-page mode) the index of the page last shown.
+    said it saved, and (in single-page mode) the index of the page the reader was
+    last on.
     For the history: one event per open the app recorded, in order; each close
     the app recorded set its event's close time; each event with a page carries
     the page the read saved.

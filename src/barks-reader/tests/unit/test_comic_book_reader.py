@@ -385,7 +385,7 @@ class TestComicBookReader:
         reader._comic_book_loader.cursor.set_busy.assert_not_called()
 
     def test_show_page_keeps_current_page_and_polls_when_not_loaded(
-        self, reader: ComicBookReader
+        self, reader: ComicBookReader, loguru_sink: list[str]
     ) -> None:
         self._stub_current_page(reader, 3)
         reader._all_loaded = False
@@ -407,6 +407,7 @@ class TestComicBookReader:
         reader._comic_book_loader.prioritize_page.assert_called_once_with(3)
         mock_sched.assert_called_once()
         assert reader._pending_poll_ev is handle
+        assert log_markers.PAGE_AWAITING_LOAD.format(index=3) in loguru_sink
 
     def test_start_pending_poll_does_not_double_schedule(self, reader: ComicBookReader) -> None:
         reader._pending_poll_ev = MagicMock()  # a poll is already running

@@ -746,7 +746,20 @@ class TestReadsPersisted:
         problems = persisted.reads_persisted_problems(scratch, self._log())
         assert len(problems) == 2, problems  # noqa: PLR2004
         assert "cue page '9', app saved '4'" in problems[0]
-        assert "cue page index 8, last shown 3" in problems[1]
+        assert "cue page index 8, the reader was last on 3" in problems[1]
+
+    def test_a_page_turned_to_and_still_loading_is_the_one_the_reader_is_on(
+        self, tmp_path: Path
+    ) -> None:
+        """The soak, 2026-10-06: Left to a page not loaded yet, then Close before it came."""
+        scratch = self._scratch(tmp_path, self._cue(page="3", index=2), [self._event(page="3")])
+        log = self._log(page="3").replace(
+            markers.LAST_READ_PAGE_SAVED.format(title=self.TITLE, page="3"),
+            markers.PAGE_AWAITING_LOAD.format(index=2)
+            + "\n"
+            + markers.LAST_READ_PAGE_SAVED.format(title=self.TITLE, page="3"),
+        )
+        assert persisted.reads_persisted_problems(scratch, log) == []
 
     def test_the_index_is_not_held_to_the_page_shown_in_double_page_mode(
         self, tmp_path: Path

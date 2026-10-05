@@ -208,6 +208,9 @@ HISTORY_CLOSE_RECORDED: Final = 'History: Recorded close of "{title}".'
 # --------------------------------------------------------- the comic reader --
 ALL_IMAGES_LOADED: Final = "All images loaded in {elapsed}: current page index = {index}."
 SHOWED_PAGE: Final = "Showed page {index} in {elapsed}."
+# A page turned to before it has loaded: the reader is on it, and shows it (SHOWED_PAGE)
+# once it arrives. A read closed in between saves this page, never shown.
+PAGE_AWAITING_LOAD: Final = "Page index {index} not loaded yet; awaiting load."
 ALREADY_ON_FIRST_PAGE: Final = "Already on the first page: current index = {index}."
 ALREADY_ON_LAST_PAGE: Final = "Already on the last page: current index = {index}."
 GOTO_START_PAGE: Final = "Goto start page: requested index = {index}."
