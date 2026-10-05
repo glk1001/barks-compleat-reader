@@ -98,9 +98,6 @@ def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
 def get_work_dir(work_dir_root: str) -> str:
     work_dir_root_path = Path(work_dir_root)
     work_dir_root_path.mkdir(parents=True, exist_ok=True)
-    if not work_dir_root_path.is_dir():
-        msg = f'Could not find work root directory "{work_dir_root}".'
-        raise FileNotFoundError(msg)
 
     work_dir = work_dir_root_path / datetime.now(UTC).strftime("%Y_%m_%d-%H_%M_%S.%f")
     work_dir.mkdir()
