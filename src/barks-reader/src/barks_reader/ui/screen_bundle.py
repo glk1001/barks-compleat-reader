@@ -73,7 +73,3 @@ class ScreenBundle:
             self.names_index,
             self.locations_index,
         )
-
-    def any_bottom_visible(self) -> bool:
-        """Return True if any bottom screen is currently visible."""
-        return any(s.is_visible for s in self.bottom_screens)

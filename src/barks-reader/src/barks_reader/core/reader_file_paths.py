@@ -76,7 +76,6 @@ class ReaderFilePaths:
     def __init__(self) -> None:
         self._barks_reader_files_dir: Path | None = None
         self._reader_icon_files_dir: Path | None = None
-        self._app_icon_path: Path | None = None
 
         self._barks_panels_source: Path | None = None
         self._barks_panels_zip: zipfile.ZipFile | None = None
@@ -242,10 +241,6 @@ class ReaderFilePaths:
 
     def get_comic_splash_files_dir(self) -> PanelPath:
         return self._panel_dirs[PanelDirNames.SPLASH]
-
-    def get_barks_reader_app_icon_file(self) -> Path:
-        assert self._app_icon_path
-        return self._app_icon_path
 
     def get_comic_inset_file(
         self, title: Titles, use_only_edited_if_possible: bool = False
