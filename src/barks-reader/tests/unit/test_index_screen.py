@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
@@ -24,6 +25,7 @@ from barks_reader.ui.index_screen import (
     TextBoxWithTitleAndBorder,
     _speech_highlight_start_tag,
     format_page_speech_bubbles,
+    show_speech_bubbles_popup,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
@@ -758,6 +760,13 @@ class TestPopupKeyboardNavKeys:
         nav.handle_key(_module.KEY_PAGE_UP)
         assert content.scroll_y == 1.0
 
+    def test_with_no_bubbles_no_focus_is_drawn(self, loguru_sink: list[str]) -> None:
+        nav = PopupKeyboardNav(MagicMock())
+        nav._popup.content = None
+        nav._draw_focus()
+        assert nav._focused_idx == 0
+        assert not any(line.startswith("Nav focus on") for line in loguru_sink)
+
     def test_another_key_is_not_the_popups(self) -> None:
         nav, _, _ = _popup_nav([])
         assert nav.handle_key(_module.KEY_LEFT) is False
@@ -829,6 +838,16 @@ class TestItemsPanelKeys:
         screen.handle_key(_module.KEY_UP)
         assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 2)
 
+    def test_up_from_a_later_item_goes_to_the_one_above(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock(), MagicMock(), MagicMock()]
+        screen._nav_focused_item_idx = 2
+        screen.handle_key(_module.KEY_UP)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 1)
+        assert screen._nav_focused_btn is columns[0][1]
+
     def test_up_from_the_very_first_item_stays(
         self, items_nav: tuple[ConcreteIndexScreen, dict]
     ) -> None:
@@ -883,6 +902,119 @@ class TestItemsPanelKeys:
         screen._nav_focused_item_idx = 5
         screen._resync_item_focus(MagicMock(), 3)  # not in the column any more
         assert screen._nav_focused_item_idx == 1
+
+    def test_an_item_whose_action_empties_its_column_leaves_no_focus_to_draw(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        only_item = MagicMock()
+        columns[0] = [only_item]
+        only_item.trigger_action.side_effect = lambda **_kw: columns[0].clear()
+
+        screen.handle_key(_module.KEY_ENTER)
+
+        only_item.trigger_action.assert_called_once_with(duration=0)
+        assert screen._nav_focused_item_idx == 0
+        assert screen._nav_focused_btn is None
+        screen.ids.index_scroll_view.scroll_to.assert_not_called()
+
+    def test_a_saved_item_focus_whose_button_has_gone_falls_back_to_the_letters(
+        self, items_nav: tuple[ConcreteIndexScreen, dict], loguru_sink: list[str]
+    ) -> None:
+        """The grid is unchanged by its version, but the button is in no column."""
+        screen, columns = items_nav
+        columns[0], columns[1] = [MagicMock()], [MagicMock()]
+        screen._nav_saved_grid_version = screen._grid_version
+        screen._nav_focused_btn = MagicMock()
+        with patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw_letter:
+            screen.enter_nav_focus(lambda: None)
+        draw_letter.assert_called_once()
+        assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+        assert "IndexScreen: entered nav focus." in loguru_sink
+
+
+class TestShowSpeechBubblesPopup:
+    @pytest.fixture
+    def popup(self) -> Generator[MagicMock]:
+        """Fill a stand-in popup, the widgets it is built from stood in for too."""
+        with (
+            patch.object(_module, "GridLayout"),
+            patch.object(_module, "TextBoxWithTitleAndBorder"),
+            patch.object(_module, "ReaderScrollView") as scroll_view_cls,
+        ):
+            popup = MagicMock()
+            popup.scroll_view = scroll_view_cls.return_value
+            yield popup
+
+    def test_a_speaker_filter_is_named_in_the_title(self, popup: MagicMock) -> None:
+        show_speech_bubbles_popup(
+            popup,
+            "Lost in the Andes!",
+            "square eggs",
+            MagicMock(fanta_pages={}),
+            MagicMock(),
+            title_font_size=20,
+            speaker="other:Goldstein & Co.",
+        )
+
+        assert popup.title == (
+            "[b][i]Lost in the Andes!  —  [/i]'square eggs'[/b][b]  —  [/b]Goldstein &amp; Co."
+        )
+        assert popup.content is popup.scroll_view
+        popup.open.assert_called_once()
+
+    def test_without_a_speaker_the_title_is_the_story_and_the_search(
+        self, popup: MagicMock
+    ) -> None:
+        show_speech_bubbles_popup(
+            popup, "Lost in the Andes!", "eggs", MagicMock(fanta_pages={}), MagicMock(), 20
+        )
+        assert popup.title == "[b][i]Lost in the Andes!  —  [/i]'eggs'[/b]"
+
+
+class TestSetBackgroundImage:
+    @staticmethod
+    def _load_andes(screen: ConcreteIndexScreen) -> tuple[ImageInfo, Any]:
+        """Set the Andes panel as the background; return it and the loader's ready callback."""
+        loader = MagicMock()
+        screen._texture_loader = loader
+        info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=Path("andes.png"))
+        screen._set_background_image(info)
+        filename, on_ready = loader.load_texture.call_args.args
+        assert filename == Path("andes.png")
+        return info, on_ready
+
+    def test_a_failed_load_is_raised(self, index_screen: ConcreteIndexScreen) -> None:
+        _info, on_ready = self._load_andes(index_screen)
+
+        with pytest.raises(RuntimeError, match="no such panel"):
+            on_ready(None, FileNotFoundError("no such panel"))
+
+    def test_a_loaded_texture_becomes_the_background(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        info, on_ready = self._load_andes(index_screen)
+        texture = MagicMock()
+
+        on_ready(texture, None)
+
+        assert index_screen.image_texture is texture
+        assert index_screen._current_image_info is info
+        assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+
+    def test_an_image_with_no_file_clears_the_background(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        _info, on_ready = self._load_andes(index_screen)
+        on_ready(MagicMock(), None)
+        loader = MagicMock()
+        index_screen._texture_loader = loader
+
+        index_screen._set_background_image(ImageInfo(from_title=Titles.LOST_IN_THE_ANDES))
+
+        assert index_screen.image_texture is None
+        loader.load_texture.assert_not_called()
+        assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
 
 
 def test_a_title_whose_volume_is_missing_is_reported(index_screen: ConcreteIndexScreen) -> None:

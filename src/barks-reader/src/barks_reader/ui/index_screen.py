@@ -36,7 +36,6 @@ from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_text import (
     indexable_title,
-    indexable_title_from_str,
     sortable_string,
 )
 from barks_reader.core.reader_formatter import mark_terms_in_text
@@ -469,7 +468,7 @@ class IndexScreen(FloatLayout):
     # The <IndexScreen> kv rule binds all three, so they belong to the base class
     # even though only subclasses set them.
     is_visible = BooleanProperty(defaultvalue=False)
-    image_texture = ObjectProperty()
+    image_texture = ObjectProperty(allownone=True)
     current_title_str = StringProperty()
     # Opt-in prefix bar above the items grid (the word index only).
     has_prefix_bar = BooleanProperty(defaultvalue=False)
@@ -1083,9 +1082,6 @@ class IndexScreen(FloatLayout):
 
     def _get_indexable_title(self, title: Titles) -> str:
         return indexable_title(title)
-
-    def _get_indexable_title_from_str(self, title_str: str) -> str:
-        return indexable_title_from_str(title_str)
 
     @staticmethod
     def _get_sortable_string(text: str) -> str:
