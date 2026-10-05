@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics import comics_database as comics_database_module
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
@@ -338,6 +340,57 @@ class TestTitleLookupErrors:
     def test_a_single_story_issue_finds_its_story(self, db: ComicsDatabase) -> None:
         info = db.get_fanta_comic_book_info("ANDERS 47")
         assert info.comic_book_info.get_title_str() == "Pied Piper of Duckburg"
+
+    def test_a_single_story_issue_opens_the_comic_book_of_its_story(
+        self, db: ComicsDatabase
+    ) -> None:
+        comic = db.get_comic_book("ANDERS 47")
+        assert comic.ini_file.name == "Pied Piper of Duckburg.ini"
+
+
+class TestTitleEnumWrappers:
+    """The lookups for callers that already hold a ``Titles`` member."""
+
+    def test_a_titles_volume_is_its_story_titles(self, db: ComicsDatabase) -> None:
+        assert db.get_fanta_volume_int_for(Titles.PIED_PIPER_OF_DUCKBURG) == (
+            db.get_fanta_volume_int("Pied Piper of Duckburg")
+        )
+
+    def test_a_titles_comic_book_is_its_story_titles(self, db: ComicsDatabase) -> None:
+        comic = db.get_comic_book_for(Titles.PIED_PIPER_OF_DUCKBURG)
+        assert comic.ini_file.name == "Pied Piper of Duckburg.ini"
+
+
+class TestNonComicTitles:
+    """A volume's articles and introductions can be left out of its titles."""
+
+    def test_they_are_left_out_only_when_asked(self, db: ComicsDatabase) -> None:
+        every = {title for title, _ in db.get_configured_titles_in_fantagraphics_volume(7)}
+        comics = {
+            title
+            for title, _ in db.get_configured_titles_in_fantagraphics_volume(
+                7, exclude_non_comics=True
+            )
+        }
+        assert every - comics == {
+            "Don Ault - Fantagraphics Introduction",
+            "Rich Tommaso - On Coloring Barks",
+        }
+        assert all(STR_TITLE_TO_ENUM[title] in NON_COMIC_TITLES for title in every - comics)
+        assert not any(STR_TITLE_TO_ENUM[title] in NON_COMIC_TITLES for title in comics)
+
+
+class TestBuildingChecks:
+    def test_a_database_for_building_checks_each_comic_it_opens(self) -> None:
+        builder = ComicsDatabase(for_building_comics=True)
+        with patch.object(comics_database_module, "check_comic_ok_for_building") as checked:
+            comic = builder.get_comic_book("Pied Piper of Duckburg")
+        checked.assert_called_once_with(comic)
+
+    def test_a_database_for_reading_does_not(self, db: ComicsDatabase) -> None:
+        with patch.object(comics_database_module, "check_comic_ok_for_building") as checked:
+            db.get_comic_book("Pied Piper of Duckburg")
+        checked.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

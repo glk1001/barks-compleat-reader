@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import pages as pages_module
 from barks_fantagraphics.comic_book import ModifiedType
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.page_classes import (
@@ -27,14 +29,20 @@ from barks_fantagraphics.pages import (
     SrceStoryFileResolver,
     SvgPngStoryFileResolver,
     get_full_srce_filepath,
+    get_max_timestamp,
     get_page_mod_type,
     get_page_number_str,
     get_relative_srce_filepath,
     get_required_pages_in_order,
     get_restored_srce_dependencies,
+    get_sorted_srce_and_dest_pages,
+    get_sorted_srce_and_dest_pages_with_dimensions,
     get_srce_and_dest_pages_in_order,
     get_srce_dest_map,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -629,3 +637,89 @@ class TestGetRestoredSrceDependencies:
 
     def test_a_page_that_is_not_restored_has_only_its_final_file(self, comic: MagicMock) -> None:
         assert [d.file for d in self._deps(comic, PageType.COVER)] == [comic.files["restored"]]
+
+
+# ---------------------------------------------------------------------------
+# Front matter numbered as an ordinary book, page times, and the sorted-pages wrappers
+# ---------------------------------------------------------------------------
+
+
+class TestArabicFrontMatter:
+    def test_a_synthetic_collections_front_matter_is_numbered_in_arabic(self) -> None:
+        """Its front matter runs to hundreds of pages; roman numerals stop at "x"."""
+        page = CleanPage("001", PageType.FRONT_MATTER, 1, use_arabic_page_num=True)
+        assert get_page_number_str(page, 214) == "214"
+
+
+class TestGetMaxTimestamp:
+    def test_it_is_the_newest_pages_file_time(self, tmp_path: Path) -> None:
+        pages = []
+        for name, mtime in (("001.jpg", 3_000), ("002.jpg", 5_000), ("003.jpg", 4_000)):
+            file = tmp_path / name
+            file.write_text("x")
+            os.utime(file, (mtime, mtime))
+            pages.append(CleanPage(str(file), PageType.BODY, 1))
+        assert get_max_timestamp(pages) == 5_000
+
+
+class TestSortedPagesWrappers:
+    def test_the_sorted_pages_are_the_pages_in_order(self) -> None:
+        comic, resolver = MagicMock(), MagicMock()
+        with patch.object(pages_module, "get_srce_and_dest_pages_in_order") as in_order:
+            result = get_sorted_srce_and_dest_pages(
+                comic, get_full_paths=True, srce_story_file_resolver=resolver
+            )
+        assert in_order.call_args.args == (comic, True, resolver)
+        assert result is in_order.return_value
+
+    @pytest.fixture
+    def geometry(self) -> Iterator[tuple[CleanPage, MagicMock]]:
+        srce_page = CleanPage("005", PageType.BODY, 5)
+        with (
+            patch.object(
+                pages_module,
+                "get_srce_and_dest_pages_in_order",
+                return_value=SrceAndDestPages([srce_page], []),
+            ),
+            patch.object(pages_module, "set_srce_panel_bounding_boxes") as set_srce_boxes,
+            patch.object(
+                pages_module,
+                "get_required_panels_bbox_width_height",
+                return_value=("srce dim", "required dim"),
+            ),
+            patch.object(pages_module, "set_dest_panel_bounding_boxes"),
+        ):
+            yield srce_page, set_srce_boxes
+
+    def test_without_a_segments_file_getter_the_comics_own_is_used(
+        self, geometry: tuple[CleanPage, MagicMock]
+    ) -> None:
+        srce_page, set_srce_boxes = geometry
+        comic = MagicMock()
+
+        _, srce_dim, required_dim = get_sorted_srce_and_dest_pages_with_dimensions(
+            comic, get_full_paths=False
+        )
+
+        comic.get_srce_panel_segments_file.assert_called_once_with(pages_module.get_page_str(5))
+        assert set_srce_boxes.call_args.args == (
+            [srce_page],
+            [comic.get_srce_panel_segments_file.return_value],
+            True,
+        )
+        assert (srce_dim, required_dim) == ("srce dim", "required dim")
+
+    def test_a_getter_given_is_used_instead(self, geometry: tuple[CleanPage, MagicMock]) -> None:
+        _, set_srce_boxes = geometry
+        comic = MagicMock()
+        getter = MagicMock(return_value=Path("segments.json"))
+
+        get_sorted_srce_and_dest_pages_with_dimensions(
+            comic,
+            get_full_paths=False,
+            get_srce_panel_segments_file=getter,
+            check_srce_page_timestamps=False,
+        )
+
+        comic.get_srce_panel_segments_file.assert_not_called()
+        assert set_srce_boxes.call_args.args[1:] == ([Path("segments.json")], False)
