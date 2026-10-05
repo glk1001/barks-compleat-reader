@@ -600,8 +600,8 @@ class ComicBookLoader:
             """Return the next page key to load, honoring user navigation requests.
 
             Priority requests (pages the user navigated to) jump ahead of the
-            normal prefetch order. Keys already submitted or loaded are skipped so
-            every page is still submitted exactly once.
+            normal prefetch order. Keys already submitted are skipped (a loaded page
+            was submitted first), so every page is still submitted exactly once.
             """
             while True:
                 try:
@@ -609,9 +609,6 @@ class ComicBookLoader:
                 except queue.Empty:
                     break
                 if key in submitted:
-                    continue
-                if self._image_loaded_events[self._page_map[key].page_index].is_set():
-                    submitted.add(key)
                     continue
                 return key
 

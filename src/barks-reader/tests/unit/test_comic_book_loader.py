@@ -8,6 +8,7 @@ import threading
 import time
 import zipfile
 from collections import OrderedDict
+from concurrent.futures import CancelledError
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -1520,3 +1521,81 @@ class TestBlankPageDetectionUsesPageType:
 
         assert loader_module._page_needs_real_archive(page, archive) is True
         archive.needs_real_archive_for.assert_called_once_with("empty_page")
+
+
+class PageCancellingSource(FakePageImageSource):
+    """A source whose load of one page is cancelled, as an executor shutdown would."""
+
+    def __init__(self, cancelled_index: int) -> None:
+        super().__init__()
+        self._cancelled_index = cancelled_index
+
+    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+        if page_info.page_index == self._cancelled_index:
+            msg = "cancelled"
+            raise CancelledError(msg)
+        return super().load_page_image(page_info)
+
+
+class TestPrefetchLoop:
+    """The background loop's rarer ways out: a smaller window, a cancel, a stop."""
+
+    def test_a_window_that_shrinks_mid_load_still_loads_every_page(
+        self,
+        loader: ComicBookLoader,
+        mock_callbacks: dict[str, MagicMock],
+    ) -> None:
+        """Memory pressure narrows the window: new loads wait for room, none are lost."""
+        tuning = MagicMock()
+        tuning.get_initial_dynamic_window.return_value = 2
+        tuning.get_new_dynamic_window.return_value = (900.0, 1)
+        tuning.get_traced_peak_mib.return_value = 12.5
+        source = FakePageImageSource()
+
+        with patch.object(loader_module, get_prefetch_tuning.__name__, return_value=tuning):
+            _run_load(loader, _make_indexed_page_map(4), source)
+
+        assert source.load_count == 4  # noqa: PLR2004
+        mock_callbacks["on_all_images_loaded"].assert_called_once()
+        mock_callbacks["on_load_error"].assert_not_called()
+
+    def test_a_page_cancelled_without_a_stop_fails_the_load(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        _run_load(loader, page_map_and_order, PageCancellingSource(cancelled_index=1))
+
+        assert "Page 1 cancelled." in loguru_sink
+        mock_callbacks["on_all_images_loaded"].assert_not_called()
+        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+
+    def test_a_stop_as_the_first_page_shows_loads_no_more(
+        self,
+        loader: ComicBookLoader,
+        mock_callbacks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """Closing the comic the moment it becomes readable: nothing more is fetched."""
+
+        def close_on_first_page() -> None:
+            loader._stop = True
+
+        mock_callbacks["on_first_image_loaded"].side_effect = close_on_first_page
+        source = FakePageImageSource()
+        tuning = MagicMock()
+        tuning.get_initial_dynamic_window.return_value = 1
+        tuning.get_new_dynamic_window.return_value = (50.0, 1)
+        tuning.get_traced_peak_mib.return_value = 12.5
+
+        with patch.object(loader_module, get_prefetch_tuning.__name__, return_value=tuning):
+            _run_load(loader, _make_indexed_page_map(3), source)
+
+        assert source.load_count == 1
+        mock_callbacks["on_first_image_loaded"].assert_called_once()
+        mock_callbacks["on_all_images_loaded"].assert_not_called()
+        assert any(
+            m.startswith("Image loading stopped before all images loaded.") for m in loguru_sink
+        )
