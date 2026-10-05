@@ -38,8 +38,10 @@
 #                  pyproject.toml allows, in a venv of its own; uv.lock is put back
 #   siblings       the sibling repos that use barks-fantagraphics and comic-utils,
 #                  against this checkout (their venvs install it editable): each
-#                  one's own ty and pyrefly, then its tests where it has any
-#                  (../barks-ocr has none, so its type checks are its only guard)
+#                  one pulled to its upstream first where that is safe
+#                  (pull_sibling.sh; WARNED where it is not), then its own ty and
+#                  pyrefly, then its tests where it has any (../barks-ocr has none,
+#                  so its type checks are its only guard)
 #   build          scripts/build.sh, the Nuitka executable; skipped with --app
 #   smoke          smoke-test-build.sh on that build (or on --app PATH), pressing
 #                  Escape to close its popup, as CI does
@@ -207,13 +209,17 @@ dep_drift() (
 )
 
 siblings() {
-    local repo status=0 ran=0
+    local repo status=0 ran=0 stale=0
     for repo in "${SIBLINGS[@]}"; do
         if [[ ! -d "$repo" ]]; then
             echo "siblings: ${repo}: not checked out, nothing to run"
             continue
         fi
         ran=1
+        # Up to its upstream first: a sibling left behind fails on names this repo
+        # has changed and it has caught up with. One that cannot be pulled safely is
+        # tested as it is, and the stage warns.
+        "${SCRIPT_DIR}/pull_sibling.sh" "$repo" || stale=1
         # Their own venv, config and lock as it is (--frozen: never rewritten from
         # here); VIRTUAL_ENV unset, since ours is not theirs. A name renamed or
         # removed here fails their type checks before it fails one of their runs.
@@ -229,6 +235,7 @@ siblings() {
         (cd "$repo" && unset VIRTUAL_ENV && with_display uv run --frozen pytest -q) || status=1
     done
     ((ran)) || return "$SKIPPED"
+    ((status == 0 && stale)) && return "$WARNED"
     return "$status"
 }
 
