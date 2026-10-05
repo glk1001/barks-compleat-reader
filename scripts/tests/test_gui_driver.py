@@ -11,7 +11,7 @@ import re
 import subprocess
 from contextlib import contextmanager, nullcontext
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import gui_driver
 import pytest
@@ -631,6 +631,7 @@ class TestTypeSlowly:
         with (
             patch.object(Driver, "_run"),
             patch.object(Driver, "expect", side_effect=fake_expect),
+            patch.object(Driver, "match_count", return_value=0),
             patch.object(gui_driver.time, "sleep") as sleep,
         ):
             stub_driver.type_slowly("abc", marker=lambda typed: typed if typed[1:] else None)
@@ -672,18 +673,59 @@ class TestTypeSlowlyReady:
         with (
             patch.object(Driver, "_run"),
             patch.object(Driver, "expect", side_effect=self._stalls),
+            patch.object(Driver, "match_count", return_value=0),
             pytest.raises(gui_driver.DriverError, match="stalled at 'a': the box lost") as raised,
         ):
             stub_driver.type_slowly("a", marker=lambda typed: typed, ready=lambda: next(reasons))
         assert str(raised.value.__cause__) == "beat stalled"
 
     def test_a_stall_with_the_box_still_ready_is_the_stall(self, stub_driver: Driver) -> None:
+        """The key reached the app (its key line was logged): the app did not answer it."""
         with (
-            patch.object(Driver, "_run"),
+            patch.object(Driver, "_run") as run,
             patch.object(Driver, "expect", side_effect=self._stalls),
+            patch.object(Driver, "match_count", side_effect=[0, 1]),
             pytest.raises(gui_driver.DriverError, match=r"^beat stalled$"),
         ):
             stub_driver.type_slowly("a", marker=lambda typed: typed, ready=lambda: None)
+        run.assert_called_once_with(["type", "a"])
+
+
+class TestTypeSlowlyLostKey:
+    """A character the app never logged as given is typed once more (the macOS VM lost one)."""
+
+    def test_a_key_the_app_never_got_is_typed_again(
+        self, stub_driver: Driver, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        waits = iter([TestTypeSlowlyReady._stalls, _answers])  # noqa: SLF001
+        with (
+            patch.object(Driver, "_run") as run,
+            patch.object(Driver, "expect", side_effect=lambda p, t=15: next(waits)(p, t)),
+            patch.object(Driver, "match_count", return_value=0),
+        ):
+            stub_driver.type_slowly("d", marker=lambda typed: typed, ready=lambda: None)
+        assert run.call_args_list == [call(["type", "d"]), call(["type", "d"])]
+        assert "'d' never reached the app; typing it again" in capsys.readouterr().err
+
+    def test_it_is_typed_again_only_once(self, stub_driver: Driver) -> None:
+        with (
+            patch.object(Driver, "_run") as run,
+            patch.object(Driver, "expect", side_effect=TestTypeSlowlyReady._stalls),  # noqa: SLF001
+            patch.object(Driver, "match_count", return_value=0),
+            pytest.raises(gui_driver.DriverError, match=r"^beat stalled$"),
+        ):
+            stub_driver.type_slowly("d", marker=lambda typed: typed, ready=lambda: None)
+        assert run.call_count == 2  # noqa: PLR2004
+
+    def test_the_key_line_is_the_one_the_app_logs(self) -> None:
+        logged = log_markers.KEY_PRESSED.format(key=ord("d"), name="d")
+        expected = gui_driver.KEY_PRESSED_LINE.format(key=ord("d"))
+        assert logged.startswith(expected)
+
+
+@contextmanager
+def _answers(_pattern: str, _timeout: float = 15) -> Iterator[None]:
+    yield
 
 
 class TestTaps:

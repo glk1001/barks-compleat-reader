@@ -54,6 +54,9 @@ CONFIG_DIR_ENV_VAR = "BARKS_READER_CONFIG_DIR"
 # when the driver was built `paced` (the demo recorder).
 WALK_PAUSE = 0.45  # a single Down while walking the tree
 TYPE_PAUSE = 0.4  # a single character into a search box
+# The line the app logs for every key it is given: log_markers.KEY_PRESSED, written out
+# here as this file imports nothing from the workspace. Its key is the character's code.
+KEY_PRESSED_LINE = "Key pressed: {key} ("
 GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
 GOTO_STEP_PAUSE = 0.12  # a single step through the page list
 GOTO_PICK_PAUSE = 0.6  # on the chosen page entry, before picking it
@@ -316,6 +319,11 @@ class Driver:
         (a stray key on the Windows VM did that). `ready` says so instead:
         asked before each character, and again when a wait stalls.
 
+        A character the app was never given is typed once more: on the macOS VM
+        on 2026-10-05, a key posted while the app was busy redrawing the word
+        list never arrived. One that arrived is never typed again, so a stall
+        after it is the app's and is raised.
+
         Args:
             text: What to type.
             marker: Maps the text typed so far to the log pattern that its
@@ -339,6 +347,8 @@ class Driver:
                 self._run(["type", char])
                 time.sleep(TYPE_PAUSE)
                 continue
+            given = re.escape(KEY_PRESSED_LINE.format(key=ord(char.lower())))
+            given_before = self.match_count(given)
             try:
                 with self.expect(pattern):
                     self._run(["type", char])
@@ -346,7 +356,12 @@ class Driver:
                 if ready is not None and (why := ready()):
                     msg = f"typing {text!r} stalled at {char!r}: {why}"
                     raise DriverError(msg) from stalled
-                raise
+                if self.match_count(given) > given_before:
+                    raise
+                msg = f"gui_driver: {char!r} never reached the app; typing it again"
+                print(msg, file=sys.stderr)  # noqa: T201
+                with self.expect(pattern):
+                    self._run(["type", char])
 
     def current_node(self) -> str:
         """Return the node the app last logged as selected.
