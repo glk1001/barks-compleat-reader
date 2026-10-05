@@ -5,17 +5,24 @@ from a git hook (pre-push runs the suite), git's GIT_DIR and the like are set an
 beat -C, so they are cleared, and the throwaway repos run no hooks.
 """
 
-# cspell:ignore NOSYSTEM gpgsign
+# cspell:ignore NOSYSTEM gpgsign pytestmark
 
 from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 SCRIPT = Path(__file__).resolve().parent.parent / "pull_sibling.sh"
+
+# The script runs only in the Linux overnight runner's siblings stage. On Windows
+# "bash" can be WSL's launcher, which fails with no distribution installed (CI's).
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="pull_sibling.sh runs in the Linux overnight runner only"
+)
 
 
 @pytest.fixture(autouse=True)
