@@ -22,7 +22,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
     get_fanta_volume_from_str,
 )
-from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
+from comic_utils.comic_consts import CBZ_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_png_bytes
 from comic_utils.timing import Timing
 from loguru import logger
@@ -396,9 +396,6 @@ class ComicBookLoader:
         comic_path = Path(self._reader_settings.prebuilt_comics_dir) / (
             comic_file_stem + CBZ_FILE_EXT
         )
-        if comic_path.suffix not in [CBZ_FILE_EXT, ZIP_FILE_EXT]:
-            msg = f"Expected '{CBZ_FILE_EXT}' or '{ZIP_FILE_EXT}' file."
-            raise ValueError(msg)
         if not comic_path.is_file():
             msg = f'Could not find comic file "{comic_path}".'
             raise FileNotFoundError(msg)

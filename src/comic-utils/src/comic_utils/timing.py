@@ -20,14 +20,6 @@ class Timing:
         elapsed_time = end_time - self._start_time
         return int(round(elapsed_time.total_seconds(), 1))
 
-    def get_elapsed_time_in_microseconds(self) -> int:
-        assert self._start_time is not None
-
-        end_time = datetime.now(UTC)
-
-        elapsed_time = end_time - self._start_time
-        return int(round(elapsed_time.microseconds, 1))
-
     def get_elapsed_time_with_unit(self) -> str:
         assert self._start_time is not None
 

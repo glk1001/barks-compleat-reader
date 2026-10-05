@@ -597,6 +597,71 @@ def test_get_prebuilt_comic_path_raises_when_file_missing(
         loader._get_prebuilt_comic_path(fanta_info)
 
 
+def test_resolve_archive_for_comic_reads_the_volumes_first_when_not_yet_read(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+) -> None:
+    mock_reader_settings.use_prebuilt_archives = False
+    fake_archive = MagicMock(is_missing=False, archive_filename="/fake/path/07.cbz")
+    fake_archive.has_overrides.return_value = False
+    volumes = MagicMock()
+    volumes.get_fantagraphics_archive.return_value = fake_archive
+    loader._fanta_volume_archives = None
+
+    def read_volumes() -> None:
+        loader._fanta_volume_archives = volumes
+
+    with patch.object(loader, "init_data", side_effect=read_volumes) as init_data:
+        _, returned = loader.resolve_archive_for_comic(_make_fanta_info(), _make_page_map())
+    init_data.assert_called_once_with()
+    assert returned is fake_archive
+
+
+def test_a_new_comic_stops_the_one_still_loading(
+    loader: ComicBookLoader,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+) -> None:
+    page_map, load_order = page_map_and_order
+    still_loading = MagicMock()
+    still_loading.is_alive.return_value = True
+    loader._thread = still_loading
+    with (
+        patch.object(loader, "stop_now") as stop_now,
+        patch.object(loader, "_start_loading_thread"),
+    ):
+        loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="next.cbz")
+    stop_now.assert_called_once_with()
+
+
+def test_waiting_on_a_page_with_no_comic_open_returns_at_once(loader: ComicBookLoader) -> None:
+    assert loader.wait_load_event(0, timeout=0.0) is True
+
+
+def test_waiting_on_a_loaded_page_goes_by_its_load_event(
+    loader: ComicBookLoader,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+) -> None:
+    page_map, load_order = page_map_and_order
+    loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="test.cbz")
+    assert loader._thread is not None
+    loader._thread.join(timeout=5.0)  # the thread lays out the pages, then loads them
+    assert loader.wait_load_event(1, timeout=0.0) is True
+    loader._image_loaded_events[1].clear()
+    assert loader.wait_load_event(1, timeout=0.0) is False
+
+
+def test_a_loading_thread_that_will_not_stop_is_reported(
+    loader: ComicBookLoader, loguru_sink: list[str]
+) -> None:
+    stuck = MagicMock()
+    stuck.is_alive.return_value = True
+    loader._thread = stuck
+    loader.stop_now()
+    stuck.join.assert_called_once_with(timeout=2.0)
+    assert "Image loading thread did not terminate in time." in loguru_sink
+    assert loader._thread is None
+
+
 def test_get_double_page_image_ready_for_reading_composes_two_pages(
     loader: ComicBookLoader,
 ) -> None:

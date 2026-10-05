@@ -13,9 +13,11 @@ from barks_fantagraphics.comic_book_info import (
     BARKS_ISSUE_DICT,
     BARKS_TITLE_INFO,
     COVERS,
+    NON_COMIC_TITLES,
     ComicBookInfo,
     check_cover_submitted_order,
     check_story_submitted_order,
+    is_non_comic_title,
 )
 from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
 
@@ -58,6 +60,18 @@ class TestComicBookInfo:
         assert cs.get_short_issue_title() == "WDCS 31"
         assert cs.get_shortest_issue_title() == "CS 31"
         assert fc.get_shortest_issue_title() == "FC 408"
+
+    def test_get_formatted_title_from_issue_name(self) -> None:
+        """A long issue name is wrapped over lines its own way; any other goes above its number."""
+        uncle_scrooge = BARKS_TITLE_INFO[Titles.MENEHUNE_MYSTERY_THE]
+        four_color = BARKS_TITLE_INFO[Titles.GOLDEN_HELMET_THE]
+        assert uncle_scrooge.get_formatted_title_from_issue_name() == "Uncle\nScrooge #4"
+        assert four_color.get_formatted_title_from_issue_name() == "Four Color\n408"
+
+    def test_is_non_comic_title(self) -> None:
+        article = next(iter(NON_COMIC_TITLES))
+        assert is_non_comic_title(ENUM_TO_STR_TITLE[article])
+        assert not is_non_comic_title(ENUM_TO_STR_TITLE[Titles.GOLDEN_HELMET_THE])
 
 
 class TestBarksInfo:
