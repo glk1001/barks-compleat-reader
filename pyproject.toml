@@ -169,6 +169,9 @@ omit = [
     # OpenCV helpers for the sibling barks-ocr and barks-comic-building repos; nothing here
     # imports them, so no test here can reach them.
     "*/comic_utils/cv_image_utils.py",
+    # Generated and gitignored (scripts/generate-panel-module.sh writes it with the key), so
+    # its lines are a build's, not the repo's.
+    "*/comic_utils/get_panel_bytes.py",
 ]
 # A module's own demo, run by hand (loguru_setup's is its whole remainder).
 exclude_also = ['if __name__ == .__main__.:']
