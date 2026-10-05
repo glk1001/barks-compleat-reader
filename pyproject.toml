@@ -237,6 +237,9 @@ DEP002 = [
 # Dead-code detection, gating at min_confidence 80 (lower levels are dominated by
 # Kivy property/handler false positives). Known false positives that vulture cannot
 # resolve statically live in vulture_whitelist.py — see that file before adding to it.
+# Unused functions and methods never score above 60, so the gate cannot see them: the
+# overnight dead-code stage (scripts/dead_code_report.py) lists those at 60 that its
+# coverage data never ran.
 paths = [
     "src/barks-reader/src",
     "src/barks-fantagraphics/src",

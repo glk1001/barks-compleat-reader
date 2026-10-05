@@ -57,6 +57,10 @@
 #                  fails when the combined total is COVERAGE_TOLERANCE points below
 #                  the best recorded (coverage_floor.py, .benchmarks/); only when both the
 #                  pytest and gui stages passed, else it reports without judging
+#   dead-code      dead_code_report.py: vulture's unused functions, methods and
+#                  classes (at 60%, below the gate's 80) that the coverage stage's
+#                  data never ran and no .kv file, script or sibling repo names;
+#                  warns when there are any
 #   graphify       graphify update ., the knowledge graph (gitignored)
 #   mutation       mutmut.sh on one seventh of core/, a different one each weekday;
 #                  warns when a module has more survivors than the last time it
@@ -83,7 +87,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
 STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
-    dep-drift siblings build smoke gui gui-timings coverage graphify mutation)
+    dep-drift siblings build smoke gui gui-timings coverage dead-code graphify mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
 
@@ -277,6 +281,21 @@ coverage_stage() {
     uv run python "${SCRIPT_DIR}/coverage_floor.py" "$total" --tolerance "$COVERAGE_TOLERANCE"
 }
 
+# Unused code that nothing ran, judged on the coverage stage's combined data. With
+# a GUI stage that did not pass, less ran, so more may be listed: a warning either way.
+dead_code() {
+    local all="${cov_dir}/.coverage.all" status=0
+    if [[ ! -f "$all" ]]; then
+        echo "dead-code: skipped - the coverage stage combined no data"
+        return "$SKIPPED"
+    fi
+    [[ "$(result_of gui)" != passed ]] && echo "dead-code: the gui stage did not pass; less ran"
+    uv run python "${SCRIPT_DIR}/dead_code_report.py" "$all" --siblings "${SIBLINGS[@]}" \
+        || status=$?
+    ((status == 1)) && return "$WARNED"
+    return "$status"
+}
+
 # One seventh of core/'s modules, by weekday: every module once a week, and a
 # night's slice a few hundred mutants instead of a full sweep's six thousand.
 # The testing helpers are left out; they are not the code under test.
@@ -389,6 +408,7 @@ run_stage() {
         graphify update .
         ;;
     coverage) coverage_stage ;;
+    dead-code) dead_code ;;
     mutation) mutation ;;
     esac
 }
