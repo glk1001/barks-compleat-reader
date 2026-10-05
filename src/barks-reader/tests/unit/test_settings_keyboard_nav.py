@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
@@ -289,3 +290,99 @@ class TestPopupKeyboardNav:
             popup_nav._handle_dismiss()
 
         assert cleared == [True]
+
+
+def _settings_with_content(content: SimpleNamespace) -> MagicMock:
+    settings = MagicMock()
+    settings.interface.content = content
+    return settings
+
+
+class TestFindCurrentPanel:
+    def test_settings_with_no_interface_consume_no_keys(self) -> None:
+        nav = SettingsKeyboardNav(MagicMock(spec=[]))
+        assert nav.handle_key(KEY_DOWN) is False
+        assert nav.handle_key(KEY_ENTER) is False
+
+    def test_without_a_current_panel_the_child_holding_items_is_used(self) -> None:
+        items = [_make_item(), _make_item()]
+        empty_child = SimpleNamespace(children=[MagicMock()])
+        panel = SimpleNamespace(children=list(reversed(items)))
+        content = SimpleNamespace(current_panel=None, children=[empty_child, panel])
+        nav = SettingsKeyboardNav(_settings_with_content(content))
+
+        with _patch_settingitem(items), patch.object(nav_module, "draw_focus_highlight") as draw:
+            assert nav.handle_key(KEY_DOWN) is True
+
+        draw.assert_called_once_with(items[1], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def test_without_a_current_panel_or_any_items_no_keys_are_consumed(self) -> None:
+        content = SimpleNamespace(
+            current_panel=None, children=[SimpleNamespace(children=[MagicMock()])]
+        )
+        nav = SettingsKeyboardNav(_settings_with_content(content))
+
+        assert nav.handle_key(KEY_DOWN) is False
+
+
+class TestBooleanToggleEdges:
+    def test_a_boolean_with_fewer_than_two_values_is_left_alone(self) -> None:
+        item = MagicMock(values=["1"], value="1")
+        nav_module._toggle_boolean(item)
+        assert item.value == "1"
+
+
+class TestPopupKeyboardNavEdges:
+    def test_a_popup_with_nothing_to_focus_consumes_only_escape(self) -> None:
+        popup = MagicMock()
+        popup.content.children = []
+        popup_nav = nav_module._PopupKeyboardNav(popup, lambda: None)
+
+        assert popup_nav.handle_key(KEY_DOWN) is False
+        assert popup_nav.handle_key(KEY_ENTER) is False
+        assert popup_nav.handle_key(KEY_ESCAPE) is True
+        popup.dismiss.assert_called_once()
+
+    def test_an_unknown_key_passes_through_a_button_list(self) -> None:
+        buttons = [MagicMock(state="normal"), MagicMock(state="normal")]
+        popup = MagicMock()
+        popup.content.children = list(reversed(buttons))
+
+        with (
+            TestPopupKeyboardNav._patch(buttons),
+            patch.object(nav_module, "draw_focus_highlight"),
+        ):
+            popup_nav = nav_module._PopupKeyboardNav(popup, lambda: None)
+            assert popup_nav.handle_key(ord("a")) is False
+
+        assert popup_nav._focused_idx == 0
+        for button in buttons:
+            button.dispatch.assert_not_called()
+
+    def test_dismissing_with_no_focus_drawn_clears_nothing_but_still_reports(self) -> None:
+        popup = MagicMock()
+        popup.content.children = []
+        dismissed = []
+
+        with patch.object(nav_module, "clear_focus_highlight") as mock_clear:
+            popup_nav = nav_module._PopupKeyboardNav(popup, lambda: dismissed.append(True))
+            popup_nav._handle_dismiss()
+
+        mock_clear.assert_not_called()
+        assert dismissed == [True]
+
+    def test_a_text_input_nested_in_a_layout_is_found_and_focused(self) -> None:
+        class _FakeInput:
+            children: ClassVar[list] = []
+            focus = False
+
+        textinput = _FakeInput()
+        layout = SimpleNamespace(children=[textinput])
+        popup = MagicMock()
+        popup.content.children = [layout]
+
+        with TestPopupKeyboardNav._patch([], textinput=textinput):
+            popup_nav = nav_module._PopupKeyboardNav(popup, lambda: None)
+
+        assert popup_nav._textinput is textinput
+        assert textinput.focus is True

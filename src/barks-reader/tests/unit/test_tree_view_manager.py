@@ -417,3 +417,103 @@ class TestTreeViewManager:
         mock_dependencies["nav_coordinator"].read_article.assert_called_with(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, ViewStates.ON_INTRO_NODE
         )
+
+    def test_on_node_expanded_with_one_title_child_selects_that_title(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        # A tag holding a single title skips the tag's own view and goes straight
+        # to the title, keeping the top view (no fun-image flicker in between).
+        fanta = _fake_fanta()
+        only_title = MagicMock(spec=TitleTreeViewNode)
+        only_title.destination = TitleDestination(fanta_info=fanta)
+
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.get_name.return_value = "Africa"
+        node.populate_callback = None
+        node.repopulate_on_expand = False
+        node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
+        node.nodes = [only_title]
+        node.parent_node = None
+
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
+            tree_view_manager.on_node_expanded(MagicMock(), node)
+
+        screen_mocks["tree_view"].select_node.assert_called_once_with(only_title)
+        select_title = mock_dependencies["nav_coordinator"].select_title
+        target = select_title.call_args.args[0]
+        assert target.fanta_info is fanta
+        assert target.tag is TagGroups.AFRICA
+        assert select_title.call_args.kwargs["preserve_top_view"] is True
+        mock_dependencies["renderer"].render.assert_not_called()
+        assert "Single-child node 'Africa': auto-selecting only title." in loguru_sink
+
+    def test_close_siblings_of_a_root_node_toggles_nothing(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.parent_node = None
+
+        tree_view_manager._close_siblings(node)
+
+        screen_mocks["tree_view"].ids.reader_tree_view.toggle_node.assert_not_called()
+
+    @pytest.mark.usefixtures("tree_view_manager")
+    def test_collapse_overlay_press_on_open_node_closes_selects_and_scrolls(
+        self, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        tree_view = screen_mocks["tree_view"]
+        on_pressed = tree_view.setup_collapse_overlay.call_args.args[0]
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.is_open = True
+
+        on_pressed(node)
+
+        tree_view.ids.reader_tree_view.toggle_node.assert_called_once_with(node)
+        tree_view.select_node.assert_called_once_with(node)
+        tree_view.scroll_to_node.assert_called_once_with(node)
+
+    @pytest.mark.usefixtures("tree_view_manager")
+    def test_collapse_overlay_press_on_closed_node_only_selects_and_scrolls(
+        self, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        tree_view = screen_mocks["tree_view"]
+        on_pressed = tree_view.setup_collapse_overlay.call_args.args[0]
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.is_open = False
+
+        on_pressed(node)
+
+        tree_view.ids.reader_tree_view.toggle_node.assert_not_called()
+        tree_view.select_node.assert_called_once_with(node)
+        tree_view.scroll_to_node.assert_called_once_with(node)
+
+    def test_speech_words_node_press_renders_words_view_and_holds_view_state_a_frame(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            tree_view_manager.on_speech_words_node_pressed(MagicMock())
+
+            mock_dependencies["renderer"].render_state.assert_called_once_with(
+                ViewStates.ON_INDEX_SPEECH_WORDS_NODE
+            )
+            # View-state changes stay off until the next frame.
+            assert tree_view_manager._allow_view_state_change is False
+            mock_clock.call_args.args[0](0)
+
+        assert tree_view_manager._allow_view_state_change is True
+        assert "Speech Words node pressed." in loguru_sink
+
+    def test_search_node_is_the_one_created(self, tree_view_manager: TreeViewManager) -> None:
+        assert tree_view_manager.search_node is None
+        node = MagicMock()
+
+        tree_view_manager.on_search_node_created(node)
+
+        assert tree_view_manager.search_node is node

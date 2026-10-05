@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_reader.ui import reader_keyboard_nav as nav_module
 from barks_reader.ui.reader_keyboard_nav import (
     _FOCUS_BINDING_ATTR,
+    KEY_LEFT,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
     ActionBarNavMixin,
     DropdownNavMixin,
     clear_focus_highlight,
@@ -259,3 +264,87 @@ class TestOpenDropdown:
         dropdown.open_if_shown.return_value = True
         assert open_dropdown(dropdown, _make_widget()) is True
         assert not any("Dropdown not opened" in line for line in loguru_sink)
+
+
+class TestPageTurnHooks:
+    """A screen that turns pages by keyboard must supply its own page turns."""
+
+    def test_right_without_an_override_raises(self) -> None:
+        screen = _StubScreen([MagicMock()])
+        with pytest.raises(NotImplementedError):
+            screen._handle_reader_key(KEY_RIGHT)
+
+    def test_left_without_an_override_raises(self) -> None:
+        screen = _StubScreen([MagicMock()])
+        with pytest.raises(NotImplementedError):
+            screen._handle_reader_key(KEY_LEFT)
+
+
+class _BareDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
+    """Overrides none of the dropdown hooks."""
+
+    def __init__(self) -> None:
+        self._setup_action_bar_nav([MagicMock()])
+        self._setup_dropdown_nav()
+
+
+class TestDropdownHookDefaults:
+    def test_a_screen_naming_no_buttons_offers_none(self) -> None:
+        assert _BareDropdownScreen()._get_dropdown_buttons() == []
+
+
+class _PagedDropdownScreen(_StubDropdownScreen):
+    _dropdown_page_step = 3
+
+    def __init__(self, count: int) -> None:
+        super().__init__()
+        self._items = [MagicMock() for _ in range(count)]
+
+
+class TestDropdownPageKeys:
+    """Page Up and Down jump a page step through a long dropdown, clamped at its ends."""
+
+    def test_page_down_jumps_a_step_and_stops_at_the_last_item(self) -> None:
+        screen = _PagedDropdownScreen(8)
+        with (
+            patch.object(nav_module, "draw_focus_highlight"),
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav()
+            visited = []
+            for _ in range(3):
+                assert screen._handle_menu_key(KEY_PAGE_DOWN) is True
+                visited.append(screen._dropdown_focused_idx)
+        assert visited == [3, 6, 7]
+
+    def test_page_up_jumps_a_step_and_stops_at_the_first_item(self) -> None:
+        screen = _PagedDropdownScreen(8)
+        with (
+            patch.object(nav_module, "draw_focus_highlight"),
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav(initial_idx=7)
+            visited = []
+            for _ in range(3):
+                assert screen._handle_menu_key(KEY_PAGE_UP) is True
+                visited.append(screen._dropdown_focused_idx)
+        assert visited == [4, 1, 0]
+
+    def test_the_focus_ring_follows_a_page_jump(self) -> None:
+        screen = _PagedDropdownScreen(8)
+        with (
+            patch.object(nav_module, "draw_focus_highlight") as mock_draw,
+            patch.object(nav_module, "clear_focus_highlight") as mock_clear,
+        ):
+            screen._enter_dropdown_nav()
+            screen._handle_menu_key(KEY_PAGE_DOWN)
+        mock_clear.assert_called_once_with(screen._items[0], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+        mock_draw.assert_called_with(screen._items[3], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def test_page_keys_are_not_consumed_without_a_page_step(self) -> None:
+        screen = _StubDropdownScreen()
+        with patch.object(nav_module, "draw_focus_highlight"):
+            screen._enter_dropdown_nav()
+        assert screen._handle_menu_key(KEY_PAGE_DOWN) is False
+        assert screen._handle_menu_key(KEY_PAGE_UP) is False
+        assert screen._dropdown_focused_idx == 0

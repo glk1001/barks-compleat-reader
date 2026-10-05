@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.index_screen
 import barks_reader.ui.main_index_screen
 import pytest
+from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_reader.ui.index_screen import IndexItem
@@ -172,6 +173,23 @@ class TestTagMarkers:
         with patch.object(Clock, "schedule_once"):
             main_index_screen._handle_tag(MagicMock(), IndexItem(tag, tag.value))
         assert f'Handling tag: "{tag.name}".' in loguru_sink
+
+    def test_a_tag_no_title_carries_opens_nothing(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """A tag is indexed whether or not any title carries it, as "My Picks" can be."""
+        tag = Tags.PERSONAL_FAVOURITES
+        main_index_screen._open_tag_button = MagicMock()
+
+        with (
+            patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_TITLES", {}),
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            main_index_screen._handle_tag(MagicMock(), IndexItem(tag, tag.value))
+
+        schedule.assert_not_called()
+        assert main_index_screen._open_tag_button is None
+        assert f"No titles found for tag: {tag.name}" in loguru_sink
 
     def test_the_sub_items_added_are_counted(
         self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
