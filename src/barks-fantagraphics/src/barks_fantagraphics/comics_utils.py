@@ -141,13 +141,27 @@ def get_clean_path(file: Path | zipfile.Path) -> Path:
 
 
 def get_timestamp(file: Path | zipfile.Path) -> float:
+    """Return when `file` was last modified, in seconds since the epoch.
+
+    A symlink's own time, not its target's. A file inside a zip has no ``stat``: its
+    time is the one the zip records for it, in local time to two seconds (an intro
+    inset can be read from the panels zip).
+
+    Args:
+        file: A file on disk, or one inside a zip.
+
+    Returns:
+        The modification time.
+
+    """
     if isinstance(file, zipfile.Path):
-        logger.warning(f'Trying to get stat for zipfile.Path: "{file}".')
+        recorded = file.root.getinfo(file.at).date_time
+        return datetime(*recorded).timestamp()  # noqa: DTZ001 (zip times are local)
 
     if file.is_symlink():
-        return file.lstat().st_mtime  # ty:ignore[unresolved-attribute]
+        return file.lstat().st_mtime
 
-    return file.stat().st_mtime  # ty:ignore[unresolved-attribute]
+    return file.stat().st_mtime
 
 
 def get_max_timestamp(files: list[Path]) -> float:

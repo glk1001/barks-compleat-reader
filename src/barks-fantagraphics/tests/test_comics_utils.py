@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 import zipfile
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import MagicMock
@@ -302,6 +302,14 @@ class TestFileTimes:
         os.utime(link, (1_000, 1_000), follow_symlinks=False)
         assert get_timestamp(link) == 1_000
         assert get_timestamp(target) == 2_000
+
+    def test_a_file_inside_a_zip_has_the_time_the_zip_records(self, tmp_path: Path) -> None:
+        """Zips record local time, to two seconds; an intro inset can come from one."""
+        archive = tmp_path / "panels.zip"
+        with zipfile.ZipFile(archive, "w") as zipped:
+            zipped.writestr(zipfile.ZipInfo("insets/Title.png", (2024, 5, 6, 7, 8, 10)), "x")
+        expected = datetime(2024, 5, 6, 7, 8, 10).timestamp()  # noqa: DTZ001
+        assert get_timestamp(zipfile.Path(archive, "insets/Title.png")) == expected
 
     def test_the_newest_of_several(self, tmp_path: Path) -> None:
         files = [_file(tmp_path / f"f{n}", t) for n, t in enumerate((3_000, 5_000, 4_000))]
