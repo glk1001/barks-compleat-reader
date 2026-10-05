@@ -143,14 +143,24 @@ class TestWithoutAnApp:
         no_app.stop.assert_called_once_with()
 
     def test_once_closed_it_takes_no_more_keys(self, no_app: _Loop) -> None:
-        _open(no_app)
-        no_app.popup.dismiss()
-        no_app.finish_closing()
+        """Its key handler leaves the window with it.
 
-        with patch.object(no_app.popup, "dismiss") as dismiss:
-            Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])
+        Checked by the handler itself, not by a key sent to the window: the
+        window is the test process's one, and a key sent there once reached a
+        handler another test had left bound (a random-order run, 2026-10-05).
+        """
+        with (
+            patch.object(Window, "bind", wraps=Window.bind) as bind,
+            patch.object(Window, "unbind", wraps=Window.unbind) as unbind,
+        ):
+            _open(no_app)
+            (handler,) = [
+                c.kwargs["on_key_down"] for c in bind.call_args_list if "on_key_down" in c.kwargs
+            ]
+            no_app.popup.dismiss()
+            no_app.finish_closing()
 
-        dismiss.assert_not_called()
+        unbind.assert_any_call(on_key_down=handler)
 
     def test_a_loop_that_fails_is_logged_and_raised(
         self, no_app: _Loop, loguru_sink: list[str]
