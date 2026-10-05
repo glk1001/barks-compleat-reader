@@ -19,7 +19,7 @@ import re
 import shutil
 import warnings
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -530,16 +530,47 @@ def reader_on_screen(log_text: str) -> list[tuple[datetime, datetime | None]]:
     return spans
 
 
+# A memory census the test asked for: the app answers when it is done, saying how
+# long the full garbage collection held it.
+_CENSUS_RE = re.compile(
+    _STAMP + pattern(markers.MEMORY_CENSUS, took_ms=re.compile(r"(\d+)")), re.MULTILINE
+)
+
+
+def census_holds(log_text: str) -> list[tuple[datetime, datetime]]:
+    """Return when the test's memory censuses held the app: (start, end) of each.
+
+    The app draws nothing while one runs, so a frame on the way stands through it:
+    on the macOS guest on 2026-10-05 a 952ms census stood a closing reader's
+    fullscreen-sized frame for just over the settle time.
+    """
+    holds = []
+    for stamp, took_ms in _CENSUS_RE.findall(log_text):
+        end = _stamp(stamp)
+        holds.append((end - timedelta(milliseconds=int(took_ms)), end))
+    return holds
+
+
+def _held_secs(start: datetime, end: datetime, holds: list[tuple[datetime, datetime]]) -> float:
+    """Return how much of `start` to `end` the holds cover, in seconds."""
+    return sum(
+        max(0.0, (min(end, hold_end) - max(start, hold_start)).total_seconds())
+        for hold_start, hold_end in holds
+    )
+
+
 def settled_placements(
     placements: list[PagePlaced],
     on_screen: list[tuple[datetime, datetime | None]],
     settle_secs: float = PLACEMENT_SETTLE_SECS,
+    holds: list[tuple[datetime, datetime]] | None = None,
 ) -> list[PagePlaced]:
     """Return the placements that stood on screen for `settle_secs`.
 
     Only one logged while the reader's screen was on show counts, and it stood
     until the next placement or until the screen left, whichever came first; to the
-    end of the log if neither did.
+    end of the log if neither did. Time a census held the app (`holds`) does not
+    count: the test, not the app, kept the frame up then.
     """
     settled = []
     for index, placed in enumerate(placements):
@@ -552,7 +583,11 @@ def settled_placements(
         ends = [later.at for later in placements[index + 1 : index + 2]]
         if span[1] is not None:
             ends.append(span[1])
-        if not ends or (min(ends) - placed.at).total_seconds() >= settle_secs:
+        if not ends:
+            settled.append(placed)
+            continue
+        stood = (min(ends) - placed.at).total_seconds()
+        if stood - _held_secs(placed.at, min(ends), holds or []) >= settle_secs:
             settled.append(placed)
     return settled
 
@@ -564,7 +599,9 @@ def off_centre_pages(log_text: str, tolerance_px: float = PLACEMENT_TOLERANCE_PX
         + f" the {placed.width}x{placed.height} page at x={placed.x} sat"
         f" {placed.off_centre:+.0f}px from the centre of the"
         f" {placed.win_width}x{placed.win_height} window"
-        for placed in settled_placements(page_placements(log_text), reader_on_screen(log_text))
+        for placed in settled_placements(
+            page_placements(log_text), reader_on_screen(log_text), holds=census_holds(log_text)
+        )
         if abs(placed.off_centre) > tolerance_px
     ]
 

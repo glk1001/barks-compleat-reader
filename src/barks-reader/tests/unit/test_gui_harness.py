@@ -1299,6 +1299,14 @@ def _on_screen(*lines: str) -> str:
     return "\n".join([_reader_line("12:00:00.000"), *lines])
 
 
+def _census_line(stamp: str, took_ms: int) -> str:
+    """Return the line the app logs as it answers a memory census, at `stamp`."""
+    message = markers.MEMORY_CENSUS.format(
+        request=2, widgets=1988, textures=1483, objects=1256598, rss_mib=685, took_ms=took_ms
+    )
+    return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.ui.memory_census - {message}"
+
+
 class TestPagePlacement:
     def test_a_placement_line_is_read_back_with_its_time(self) -> None:
         (placed,) = harness.page_placements(_placed_line("13:43:30.131", x=640))
@@ -1320,6 +1328,32 @@ class TestPagePlacement:
         """Replaced within the settle time it never stood on screen."""
         log = _on_screen(_placed_line("13:00:00.000", x=1400), _placed_line("13:00:00.300", x=640))
         assert harness.off_centre_pages(log) == []
+
+    def test_a_frame_a_census_held_up_is_not_judged(self) -> None:
+        """A frame stood longer only while the test's own census held the app.
+
+        The macOS soak, 2026-10-05: a closing reader's fullscreen-sized frame stood
+        1.045s, 952ms of it while the app answered the census.
+        """
+        log = _on_screen(
+            _placed_line("21:15:17.543", x=804, width=954, win_width=838),
+            _census_line("21:15:18.576", took_ms=952),
+            _placed_line("21:15:18.588", x=0, width=838, win_width=838),
+        )
+        assert harness.off_centre_pages(log) == []
+
+    def test_a_placement_that_stood_beyond_a_census_is_judged(self) -> None:
+        log = _on_screen(
+            _placed_line("13:00:00.000", x=1400),
+            _census_line("13:00:01.000", took_ms=300),
+            _placed_line("13:00:01.500", x=640),
+        )
+        assert len(harness.off_centre_pages(log)) == 1
+
+    def test_a_census_is_read_back_as_the_span_it_held_the_app(self) -> None:
+        ((start, end),) = harness.census_holds(_census_line("21:15:18.576", took_ms=952))
+        assert end == datetime(2026, 10, 2, 21, 15, 18, 576000)  # noqa: DTZ001
+        assert (end - start).total_seconds() == pytest.approx(0.952)
 
     def test_a_placement_that_stood_is_judged_though_a_later_one_is_fine(self) -> None:
         log = _on_screen(_placed_line("13:00:00.000", x=1400), _placed_line("13:00:04.000", x=640))
