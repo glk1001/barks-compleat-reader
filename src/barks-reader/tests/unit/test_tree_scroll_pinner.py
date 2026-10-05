@@ -166,3 +166,25 @@ def test_a_pin_that_never_starts_holds_nothing() -> None:
     )
     pinner.pin_while_populating(_make_parent_node(), populate=None)
     assert not layout_settling()
+
+
+def test_a_container_that_goes_missing_is_waited_for_then_given_up_on() -> None:
+    """The tree's container can be swapped out mid-settle: wait, but not for ever."""
+    clock = _FakeClock()
+    on_settled = MagicMock()
+    scroll_view = _make_scroll_view()
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=on_settled,
+        schedule_once=clock.schedule_once,
+    )
+    pinner.pin_while_populating(_make_parent_node(), populate=None)
+    scroll_view.children = []
+
+    frames = 0
+    while clock.run_next():
+        frames += 1
+
+    assert frames == TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001
+    on_settled.assert_called_once()
+    assert not layout_settling()

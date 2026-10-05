@@ -157,12 +157,9 @@ class TreeScrollPinner:
         # Convert pixel delta to normalized scroll_y delta:
         #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
         #  - Moving content up by +delta_px means increase scroll_y.
-        denominator = cont_h - viewport_h
-        if denominator <= 0:
-            self._settled(checks)
-            return
-
-        delta_norm = delta_px / denominator
+        # The content is taller than the viewport here (checked above), so this divides
+        # by a positive height.
+        delta_norm = delta_px / (cont_h - viewport_h)
         new_scroll_y = self._clamp01(scroll_view.scroll_y + delta_norm)
 
         # Apply in one shot (no animation to avoid visible bounce)
