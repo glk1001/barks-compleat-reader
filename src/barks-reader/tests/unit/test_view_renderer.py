@@ -324,3 +324,42 @@ class TestTitleDestinationViaRender:
 
         # TitleDestination resolves to ON_TITLE_NODE without a title_str param.
         assert _rendered_request(deps).view_state == ViewStates.ON_TITLE_NODE
+
+
+class TestThemeEdges:
+    def test_an_unknown_theme_choice_is_refused(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        view_renderer, _ = renderer
+        with pytest.raises(ValueError, match="Unimplemented ImageThemesToUse"):
+            view_renderer.bottom_view_fun_image_themes_changed(MagicMock(name="SOME"))
+
+    def test_a_theme_added_back_is_used_again(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        view_renderer, deps = renderer
+        view_renderer.bottom_view_fun_image_themes_changed(ImageThemesToUse.CUSTOM)
+        view_renderer.bottom_view_alter_fun_image_themes(
+            ImageThemes.FORTIES, ImageThemesChange.DISCARD
+        )
+        view_renderer.bottom_view_alter_fun_image_themes(ImageThemes.FORTIES, ImageThemesChange.ADD)
+
+        view_renderer.render_state(ViewStates.ON_INTRO_NODE)
+        themes_arg = _rendered_request(deps).fun_image_themes
+        assert themes_arg is not None
+        assert ImageThemes.FORTIES in themes_arg
+
+
+def test_a_search_title_with_no_background_image_leaves_the_background(
+    renderer: tuple[ViewRenderer, dict[str, Any]],
+) -> None:
+    view_renderer, deps = renderer
+    no_image = MagicMock()
+    no_image.filename = None
+    deps["pipeline"].get_search_screen_image_info.return_value = no_image
+
+    view_renderer.update_search_background(Titles.ATTIC_ANTICS)
+
+    deps["pipeline"].set_search_screen_image_for_title.assert_called_with(Titles.ATTIC_ANTICS)
+    deps["screens"].search.set_background_image.assert_not_called()
+    deps["applicator"].load_search_texture.assert_not_called()

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_nodes
 from barks_reader.ui.action_bar_helpers import hide_action_bar, show_action_bar
 from barks_reader.ui.tree_view_nodes import (
+    BaseTreeViewNode,
     ButtonTreeViewNode,
+    IntroTextTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
     TitleTreeViewNode,
@@ -81,6 +84,29 @@ class TestButtonTreeViewNode:
         with patch.object(node, "_get_nodes_treeview", return_value=mock_tree):
             node.on_press()
             mock_tree.toggle_node.assert_called_with(node)
+
+    def test_its_tree_is_found_through_the_rows_between(self) -> None:
+        """A node can sit in a layout inside the tree, not straight under it."""
+        tree = ReaderTreeView()
+        node = SimpleNamespace(parent=SimpleNamespace(parent=tree))
+        assert ButtonTreeViewNode._get_nodes_treeview(node) is tree  # ty: ignore[invalid-argument-type]
+
+    def test_a_node_in_no_tree_is_not_toggled(self) -> None:
+        node = ButtonTreeViewNode()
+        assert ButtonTreeViewNode._get_nodes_treeview(node) is None
+        node.on_press()  # nothing to toggle, and no error
+
+
+class TestNodeNames:
+    """The names the selection log line gives the rows that are not titles."""
+
+    def test_a_plain_node_has_no_name_of_its_own(self) -> None:
+        assert BaseTreeViewNode().get_name() == "<unknown>"
+
+    def test_a_playlist_intro_is_named_for_what_it_is_and_cannot_be_selected(self) -> None:
+        node = IntroTextTreeViewNode()
+        assert node.get_name() == "<playlist-intro>"
+        assert node.no_selection is True
 
 
 class TestTitleTreeViewNode:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -257,3 +258,92 @@ class TestSnapshotApplicator:
         applicator.apply(snap)
 
         assert screen_mocks["fun_image_view"].goto_title_button_active is not None
+
+
+class TestWhatIsLeftAlone:
+    """A snapshot with nothing to show for a view leaves that view's widgets as they are."""
+
+    def test_a_top_view_with_no_image_loads_nothing(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        snap = _make_snapshot()
+        snap = replace(snap, top_view=replace(snap.top_view, image_info=ImageInfo()))
+        tree = screen_mocks["tree_view"]
+        texture_before = tree.top_view_image_texture
+
+        applicator.apply(snap)
+
+        assert tree.top_view_image_texture is texture_before
+        tree.set_title.assert_not_called()
+        assert applicator.get_prev_top_view_image_info() == ImageInfo()
+
+    def test_a_top_image_from_no_title_sets_no_title(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        snap = _make_snapshot()
+        no_title = ImageInfo(filename=Path("emblem.png"))
+        snap = replace(snap, top_view=replace(snap.top_view, image_info=no_title))
+
+        applicator.apply(snap)
+
+        assert screen_mocks["tree_view"].top_view_image_texture is not None
+        screen_mocks["tree_view"].set_title.assert_not_called()
+
+    def test_a_visible_fun_view_with_no_image_is_left_as_it_is(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        snap = replace(_make_snapshot(), fun_view=FunViewSnapshot(is_visible=True))
+        fun = screen_mocks["fun_image_view"]
+        texture_before = fun.image_texture
+
+        applicator.apply(snap)
+
+        assert fun.is_visible is True
+        assert fun.image_texture is texture_before
+        fun.set_last_loaded_image_info.assert_not_called()
+
+    def test_a_fun_image_with_no_file_clears_the_fun_view(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        info = ImageInfo(from_title=Titles.GIFT_LION)
+        snap = replace(_make_snapshot(), fun_view=FunViewSnapshot(is_visible=True, image_info=info))
+
+        applicator.apply(snap)
+
+        fun = screen_mocks["fun_image_view"]
+        assert fun.image_texture is None
+        fun.set_last_loaded_image_info.assert_not_called()
+        assert applicator.get_prev_fun_view_image_info() is info
+
+    def test_a_search_with_no_mode_keeps_the_mode_it_has(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        applicator.apply(_make_snapshot(search_visible=True, search_mode=""))
+
+        search = screen_mocks["search"]
+        search.set_mode.assert_not_called()
+        search.set_background_image.assert_called_once()
+
+    def test_a_search_with_no_background_image_loads_none(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        snap = replace(_make_snapshot(), search_view=SearchViewSnapshot(is_visible=True))
+
+        applicator.apply(snap)
+
+        search = screen_mocks["search"]
+        assert search.is_visible is True
+        search.set_background_image.assert_not_called()
+
+
+def test_a_texture_that_failed_to_load_is_raised() -> None:
+    loader = MagicMock()
+    loader.load_texture.side_effect = lambda _filename, callback: callback(None, OSError("bad png"))
+    applied: list[object] = []
+
+    with pytest.raises(RuntimeError, match="bad png"):
+        SnapshotApplicator._load_texture(  # noqa: SLF001
+            loader, ImageInfo(filename=Path("broken.png")), applied.append
+        )
+
+    assert applied == []

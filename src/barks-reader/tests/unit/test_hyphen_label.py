@@ -157,3 +157,39 @@ class TestHyphenatingLabel:
             label._refine()
 
         assert label.text == "hyphen"
+
+    def test_a_refine_asked_for_during_one_is_ignored(self) -> None:
+        """Setting the text re-triggers a refine; the one running must not recurse."""
+        label = _make_label(f"hy{SHY}phen")
+        label.text = "in progress"
+        label._refining = True
+
+        with patch.object(HyphenatingLabel, "texture_update", autospec=True) as texture_update:
+            label._refine()
+
+        texture_update.assert_not_called()
+        assert label.text == "in progress"
+
+    def test_words_wrapped_without_a_hyphen_are_named(self, loguru_sink: list[str]) -> None:
+        """Breaks found unstable, then the hyphen-less fallback wraps a word: say which."""
+        label = _make_label(f"hy{SHY}phen")
+        renders: list[str] = []
+
+        def fake_texture_update(instance: HyphenatingLabel) -> None:
+            renders.append(instance.text)
+            # The first render loses its refs (refinement fails); the fallback's
+            # render breaks the word at the gap.
+            breaking = {f"{REF_PREFIX}1": 1}
+            instance.refs = {} if len(renders) == 1 else _refs_from_markup(instance.text, breaking)
+
+        with patch.object(
+            HyphenatingLabel, "texture_update", autospec=True, side_effect=fake_texture_update
+        ):
+            label._refine()
+
+        assert len(renders) == 2  # noqa: PLR2004
+        assert label.text == f"[ref={REF_PREFIX}0]hy[/ref][ref={REF_PREFIX}1]phen[/ref]"
+        assert (
+            "Hyphenation did not stabilize for 'hyphen'...: 1 word(s) wrapped without a hyphen:"
+            " ['hyphen']" in loguru_sink
+        )
