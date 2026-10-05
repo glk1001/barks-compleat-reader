@@ -327,8 +327,6 @@ class FunImageViewScreen(BoxLayout):
 
     def _handle_menu_key(self, key: int) -> bool:
         widgets = self._menu_focus_widgets()
-        if not widgets:
-            return False  # No focusable menu widgets: leave the key unhandled.
         self._menu_idx = min(self._menu_idx, len(widgets) - 1)
         if key == KEY_UP:
             self._menu_idx = max(0, self._menu_idx - 1)
@@ -369,7 +367,7 @@ class FunImageViewScreen(BoxLayout):
     def _menu_focus_widgets(self) -> list[Widget]:
         """Return the currently keyboard-focusable menu widgets, top to bottom.
 
-        The close (x) button leads, then the All/Custom radios. Selecting Custom
+        Never empty: the close (x) button leads, then the All/Custom radios. Selecting Custom
         reveals the Clear-All button (which sits at the top of the custom area) and
         the theme rows below it.
         """
@@ -411,9 +409,8 @@ class FunImageViewScreen(BoxLayout):
             draw_focus_highlight(self.ids.fun_options_button, _FILTER_FOCUS_GROUP)
         else:  # MENU
             widgets = self._menu_focus_widgets()
-            if widgets:
-                self._menu_idx = max(0, min(self._menu_idx, len(widgets) - 1))
-                update_focus_in_list(widgets, self._menu_idx, _MENU_FOCUS_GROUP)
+            self._menu_idx = max(0, min(self._menu_idx, len(widgets) - 1))
+            update_focus_in_list(widgets, self._menu_idx, _MENU_FOCUS_GROUP)
 
     def _clear_nav_focus(self) -> None:
         clear_focus_highlight(self.ids.goto_title_overlay.goto_button, _GOTO_FOCUS_GROUP)

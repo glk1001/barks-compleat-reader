@@ -15,6 +15,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
     KEY_SPACE,
     KEY_UP,
 )
@@ -39,53 +41,54 @@ def _no_focus_draw() -> Generator[None]:
         yield
 
 
+@pytest.fixture
+def screen_setup() -> Generator[tuple[FunImageViewScreen, Any, MagicMock], Any]:
+    """Set up the FunImageViewScreen with mocked dependencies."""
+    mock_settings = MagicMock()
+    mock_settings.show_fun_view_title_info = True
+
+    # Mock dependencies used in __init__
+    with (
+        patch.object(barks_reader.ui.fun_image_view_screen, "ReaderNavigation") as mock_nav_cls,
+        patch.object(BoxLayout, "__init__", autospec=True) as mock_layout_init,
+    ):
+        mock_nav_instance = mock_nav_cls.return_value
+
+        # Mock ids for view_options_clear_all_button_pressed
+        mock_custom_options_box = MagicMock()
+        mock_custom_options_box.children = []
+
+        def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
+            mock_goto_button = MagicMock()
+            mock_goto_button.collide_point.return_value = False
+            mock_goto_title_overlay = MagicMock()
+            mock_goto_title_overlay.goto_button = mock_goto_button
+            mock_all_checkbox = MagicMock()
+            mock_all_checkbox.active = True
+            mock_custom_checkbox = MagicMock()
+            mock_custom_checkbox.active = False
+            instance.ids = {
+                "custom_options_box": mock_custom_options_box,
+                "goto_title_overlay": mock_goto_title_overlay,
+                "fun_options_button": MagicMock(),
+                "clear_all_button": MagicMock(),
+                "checkbox_all_image_types": mock_all_checkbox,
+                "checkbox_custom_image_types": mock_custom_checkbox,
+            }
+            # Initialize properties that might be set in kv
+            instance.x = 0
+            instance.y = 0
+            instance.width = 100
+            instance.height = 100
+
+        mock_layout_init.side_effect = side_effect
+
+        screen = FunImageViewScreen(mock_settings)
+
+        yield screen, mock_nav_instance, mock_settings
+
+
 class TestFunImageViewScreen:
-    @pytest.fixture
-    def screen_setup(self) -> Generator[tuple[FunImageViewScreen, Any, MagicMock], Any]:
-        """Set up the FunImageViewScreen with mocked dependencies."""
-        mock_settings = MagicMock()
-        mock_settings.show_fun_view_title_info = True
-
-        # Mock dependencies used in __init__
-        with (
-            patch.object(barks_reader.ui.fun_image_view_screen, "ReaderNavigation") as mock_nav_cls,
-            patch.object(BoxLayout, "__init__", autospec=True) as mock_layout_init,
-        ):
-            mock_nav_instance = mock_nav_cls.return_value
-
-            # Mock ids for view_options_clear_all_button_pressed
-            mock_custom_options_box = MagicMock()
-            mock_custom_options_box.children = []
-
-            def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
-                mock_goto_button = MagicMock()
-                mock_goto_button.collide_point.return_value = False
-                mock_goto_title_overlay = MagicMock()
-                mock_goto_title_overlay.goto_button = mock_goto_button
-                mock_all_checkbox = MagicMock()
-                mock_all_checkbox.active = True
-                mock_custom_checkbox = MagicMock()
-                mock_custom_checkbox.active = False
-                instance.ids = {
-                    "custom_options_box": mock_custom_options_box,
-                    "goto_title_overlay": mock_goto_title_overlay,
-                    "fun_options_button": MagicMock(),
-                    "clear_all_button": MagicMock(),
-                    "checkbox_all_image_types": mock_all_checkbox,
-                    "checkbox_custom_image_types": mock_custom_checkbox,
-                }
-                # Initialize properties that might be set in kv
-                instance.x = 0
-                instance.y = 0
-                instance.width = 100
-                instance.height = 100
-
-            mock_layout_init.side_effect = side_effect
-
-            screen = FunImageViewScreen(mock_settings)
-
-            yield screen, mock_nav_instance, mock_settings
-
     def test_initialization(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
     ) -> None:
@@ -401,3 +404,190 @@ class TestFunImageViewScreen:
 
         screen.exit_nav_focus()
         assert not screen.is_nav_active
+
+
+_Setup = tuple[FunImageViewScreen, MagicMock, MagicMock]
+
+
+class TestTapsAndClicks:
+    """Which presses the margins take, and which go on to the widgets under them."""
+
+    def test_the_tap_targets_are_the_two_margins(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        nav.tap_regions.return_value = {
+            "left margin": (0, 10, 20, 30),
+            "right margin": (80, 10, 20, 30),
+            "top margin": (0, 90, 100, 10),
+        }
+        with patch.object(
+            barks_reader.ui.fun_image_view_screen,
+            "window_rect",
+            side_effect=lambda _widget, *rect: rect,
+        ):
+            regions = screen.tap_target_regions()
+
+        nav.tap_regions.assert_called_once_with(100, 100)
+        assert regions == {"left margin": (0, 10, 20, 30), "right margin": (80, 10, 20, 30)}
+
+    @pytest.mark.parametrize(("visible", "menu_open"), [(False, False), (True, True)])
+    def test_hidden_or_under_the_menu_there_is_nothing_to_tap(
+        self, screen_setup: _Setup, visible: bool, menu_open: bool
+    ) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = visible
+        screen.fun_options_enabled = menu_open
+        assert screen.tap_target_regions() == {}
+        nav.tap_regions.assert_not_called()
+
+    @pytest.mark.parametrize(("visible", "menu_open"), [(False, False), (True, True)])
+    def test_hidden_or_under_the_menu_a_press_goes_to_the_widgets(
+        self, screen_setup: _Setup, visible: bool, menu_open: bool
+    ) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = visible
+        screen.fun_options_enabled = menu_open
+        nav.is_in_left_margin.return_value = True
+        with (
+            patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
+            patch.object(screen, "_goto_previous_image") as previous,
+        ):
+            assert screen.on_touch_down(MagicMock(x=5, y=5)) is True
+        widgets_press.assert_called_once()
+        previous.assert_not_called()
+
+    def test_the_goto_arrow_wins_over_the_margin_under_it(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        screen.ids["goto_title_overlay"].goto_button.collide_point.return_value = True
+        nav.is_in_right_margin.return_value = True
+        with (
+            patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
+            patch.object(screen, "_goto_next_image") as next_image,
+        ):
+            assert screen.on_touch_down(MagicMock(x=95, y=95)) is True
+        widgets_press.assert_called_once()
+        next_image.assert_not_called()
+
+    def test_a_press_outside_the_margins_goes_to_the_widgets(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        nav.is_in_left_margin.return_value = False
+        nav.is_in_right_margin.return_value = False
+        with patch.object(BoxLayout, "on_touch_down", return_value=False) as widgets_press:
+            assert screen.on_touch_down(MagicMock(x=50, y=50)) is False
+        widgets_press.assert_called_once()
+
+    def test_with_debugging_on_a_press_is_logged(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        nav.is_in_left_margin.return_value = True
+        with (
+            patch.object(barks_reader.ui.fun_image_view_screen, "_DEBUG", True),  # noqa: FBT003
+            patch.object(screen, "_goto_previous_image"),
+        ):
+            screen.on_touch_down(MagicMock(x=5, y=6))
+        assert any(m.startswith("Touch down event: ") for m in loguru_sink)
+
+
+class TestOptionsMenu:
+    def test_clear_all_clears_every_theme_row(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, _, _ = screen_setup
+        rows = [MagicMock(active=True), MagicMock(active=False), MagicMock(active=True)]
+        screen.ids["custom_options_box"].children = rows
+
+        screen.view_options_clear_all_button_pressed()
+
+        assert [r.active for r in rows] == [False, False, False]
+        assert (
+            "Fun view options clear all pressed. Setting all checkboxes to inactive." in loguru_sink
+        )
+
+
+@pytest.mark.usefixtures("_no_focus_draw")
+class TestKeysLeftAlone:
+    """Keys the fun view does not use are handed back, and dead ends do nothing."""
+
+    def test_without_focus_no_key_is_taken(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        assert not screen.is_nav_active
+        assert screen.handle_key(KEY_ENTER) is False
+
+    def test_an_unused_key_on_the_buttons_is_handed_back(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.enter_nav_focus(MagicMock())
+        assert screen.handle_key(ord("a")) is False
+
+    def test_an_unused_key_in_the_menu_is_handed_back(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.fun_options_enabled = True
+        screen.enter_nav_focus(MagicMock())
+        assert screen.handle_key(ord("a")) is False
+        assert screen._nav_focus is _FunFocus.MENU
+
+    def test_left_and_right_in_the_menu_do_not_change_the_image(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.fun_options_enabled = True
+        screen.enter_nav_focus(MagicMock())
+        with (
+            patch.object(screen, "prev_image") as prev_image,
+            patch.object(screen, "next_image") as next_image,
+        ):
+            assert screen.handle_key(KEY_LEFT) is True
+            assert screen.handle_key(KEY_RIGHT) is True
+        prev_image.assert_not_called()
+        next_image.assert_not_called()
+
+    def test_enter_on_an_arrow_that_went_inactive_does_nothing(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        goto = MagicMock()
+        screen.on_goto_title_func = goto
+        screen.enter_nav_focus(MagicMock())  # on the arrow
+        screen.goto_title_button_active = False
+
+        assert screen.handle_key(KEY_ENTER) is True
+
+        goto.assert_not_called()
+        assert screen._nav_focus is _FunFocus.ARROW
+
+    def test_escape_in_a_menu_already_closed_still_returns_to_the_filter(
+        self, screen_setup: _Setup
+    ) -> None:
+        """The menu can be shut by a click while keyboard focus is in it."""
+        screen, _, _ = screen_setup
+        screen.fun_options_enabled = True
+        screen.enter_nav_focus(MagicMock())
+        screen.fun_options_enabled = False
+
+        assert screen.handle_key(KEY_ESCAPE) is True
+
+        assert screen.fun_options_enabled is False  # not toggled back open
+        assert screen._nav_focus is _FunFocus.FILTER
+
+    def test_escape_with_no_one_to_return_focus_to_just_leaves(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.enter_nav_focus(MagicMock())
+        screen._nav_on_exit_request = None
+
+        assert screen.handle_key(KEY_ESCAPE) is True
+        assert not screen.is_nav_active
+
+
+def test_an_inactive_arrow_is_given_no_focus_ring(
+    screen_setup: _Setup,
+) -> None:
+    screen, _, _ = screen_setup
+    mod = barks_reader.ui.fun_image_view_screen
+    screen._nav_focus = _FunFocus.ARROW
+    screen.goto_title_button_active = False
+    with (
+        patch.object(mod, "draw_focus_highlight") as draw,
+        patch.object(mod, "clear_focus_highlight") as clear,
+    ):
+        screen._draw_nav_focus()
+    draw.assert_not_called()
+    assert clear.call_count == 2  # noqa: PLR2004
