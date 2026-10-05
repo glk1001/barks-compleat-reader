@@ -824,7 +824,7 @@ triaged floor** — nothing on this table has a known killable gap left.
 | `image_selector` | 104 → 35 → 31 |
 | `fantagraphics_volumes` | 69 → 14 |
 | `archive_page_image_source` | 59 → 11 |
-| `reader_formatter` | 56 → 9 |
+| `reader_formatter` | 56 → 9 → 12 (the search highlighter's three, below) |
 | `collection_page_groups` | 53 → 0 |
 | `reader_utils` | 50 → 4 |
 | `platform_info` | 45 → 3 |
@@ -868,6 +868,8 @@ assertion, so writing a test for it would only add brittleness.
 | `reader_formatter.get_formatted_payment_info` | `datetime.now(UTC)` → `datetime.now(None)`; only the `.year` is used. |
 | `reader_formatter.escape_editorial_brackets` (`last = None`) | `text[None:n]` slices identically to `text[0:n]`. |
 | `reader_formatter.get_fitted_title_with_page_nums` ×5 | The `len_combined` bookkeeping after an `"A "`/`"The "` trim is unobservable: that branch only runs when the trim alone makes it fit, so every later `>` test is False regardless of the value. The second `>` → `>=` is likewise unreachable, since at equality `max_title_len == len(title_str)` and `textwrap.shorten` is a no-op. |
+| `reader_formatter.mark_terms_in_text` (`.lower()` → `.upper()` on the terms; 2026-10-06) | The regex is compiled `IGNORECASE`, so the terms dedupe and match the same either way. Only a letter whose upper case is longer (`ß` → `SS`) would differ, and none is in Barks's lettering. |
+| `reader_formatter.mark_terms_in_text` ×2 (`sorted(key=len)` → `key=None` or no key; 2026-10-06) | Order matters only between terms that can match at the same place, so one a prefix of the other ("gold", "gold mine"); reverse alphabetical order puts the longer first as surely as length does. |
 
 ### Known-equivalent survivors from the big-cluster pass (2026-07-26)
 
