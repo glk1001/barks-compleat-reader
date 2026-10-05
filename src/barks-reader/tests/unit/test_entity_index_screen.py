@@ -206,3 +206,29 @@ class TestEntityIndexScreen:
                 mock_font_manager,
                 mock_user_error_handler,
             )
+
+    def test_an_empty_term_is_left_out(
+        self,
+        mock_settings: MagicMock,
+        mock_font_manager: MagicMock,
+        mock_user_error_handler: MagicMock,
+    ) -> None:
+        with _patched_screen_deps(alpha_split_terms={}, entity_terms=["", "Alice"]):
+            screen = EntityIndexScreen(
+                EntityType.PERSON, mock_settings, mock_font_manager, mock_user_error_handler
+            )
+        assert {letter: [i.id for i in items] for letter, items in screen._item_index.items()} == {
+            "A": ["Alice"]
+        }
+
+    def test_up_from_the_top_row_goes_back_to_the_alphabet(
+        self, person_index_screen: EntityIndexScreen
+    ) -> None:
+        """There is no prefix bar between the items and the A-Z menu to land on."""
+        with (
+            patch.object(person_index_screen, "_clear_all_item_focus") as clear_focus,
+            patch.object(person_index_screen, "_enter_alphabet_panel") as enter_alphabet,
+        ):
+            person_index_screen._on_up_from_first_item()
+        clear_focus.assert_called_once_with()
+        enter_alphabet.assert_called_once_with()

@@ -728,9 +728,8 @@ class IndexScreen(FloatLayout):
                     self._nav_focused_item_idx = 0
                     self._draw_item_focus()
             return
-        new_idx = max(0, new_idx)
-        if new_idx == self._nav_focused_item_idx:
-            return
+        # Up reaches here only from below the column's first item (_handle_items_up), so
+        # new_idx is never negative and never the current one.
         self._clear_all_item_focus()
         self._nav_focused_item_idx = new_idx
         self._draw_item_focus()
@@ -988,7 +987,7 @@ class IndexScreen(FloatLayout):
 
     @abstractmethod
     def _create_index_button(self, item: Any) -> IndexItemButton:  # noqa: ANN401
-        pass
+        """Return the button that shows ``item`` in the grid."""
 
     @abstractmethod
     def _get_no_items_button(self, letter: str) -> IndexItemButton:
@@ -1001,11 +1000,11 @@ class IndexScreen(FloatLayout):
 
     @abstractmethod
     def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
-        pass
+        """Return the items listed under ``first_letter``."""
 
     @abstractmethod
     def _populate_index_for_letter(self, first_letter: str) -> None:
-        pass
+        """Fill the grid (and any prefix bar) for ``first_letter``."""
 
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""

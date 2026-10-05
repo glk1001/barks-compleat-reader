@@ -31,6 +31,7 @@ from barks_reader.ui.speech_index_screen import (
     SpeechIndexScreen,
     _SpeechIndexTitleItemButton,
     _store_bounded,
+    shorten_if_necessary,
     stacked_prefix_label,
 )
 from kivy.clock import Clock
@@ -664,3 +665,139 @@ class TestPrefixBarEdges:
             speech_index_screen.exit_nav_focus()
         cleared.assert_called_once()
         assert speech_index_screen._nav_active is False
+
+
+class TestSpeechButtonDeadEnds:
+    """Keys on a title row whose speech button has gone, or with no rows at all."""
+
+    @staticmethod
+    def _unpaired_title(screen: SpeechIndexScreen) -> MagicMock:
+        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn.parent = MagicMock(children=[MagicMock(), title_btn])
+        screen._nav_focused_col = 0
+        screen._nav_focused_item_idx = 0
+        return title_btn
+
+    def test_a_title_row_with_no_speech_button_draws_no_focus(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn = self._unpaired_title(speech_index_screen)
+        speech_index_screen._nav_on_speech_btn = True
+        speech_index_screen._nav_focused_btn = None
+        with (
+            patch.object(speech_index_screen, "_get_col_buttons", return_value=[title_btn]),
+            patch.object(_speech_module, "draw_focus_highlight") as drawn,
+        ):
+            speech_index_screen._draw_item_focus()
+        drawn.assert_not_called()
+        assert speech_index_screen._nav_focused_btn is None
+
+    def test_enter_with_no_title_rows_is_taken_and_does_nothing(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        speech_index_screen._nav_on_speech_btn = True
+        speech_index_screen._nav_focused_col = 0
+        speech_index_screen._nav_focused_item_idx = 0
+        with patch.object(speech_index_screen, "_get_col_buttons", return_value=[]):
+            assert speech_index_screen._handle_items_key(KEY_ENTER) is True
+
+    def test_enter_on_a_title_row_with_no_speech_button_opens_nothing(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn = self._unpaired_title(speech_index_screen)
+        speech_index_screen._nav_on_speech_btn = True
+        neighbour = title_btn.parent.children[0]
+        with patch.object(speech_index_screen, "_get_col_buttons", return_value=[title_btn]):
+            assert speech_index_screen._handle_items_key(KEY_ENTER) is True
+        neighbour.trigger_action.assert_not_called()
+
+    def test_right_with_no_title_rows_goes_on_to_the_grid(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        speech_index_screen._nav_on_speech_btn = False
+        speech_index_screen._nav_focused_col = 0
+        speech_index_screen._nav_focused_item_idx = 0
+        with (
+            patch.object(speech_index_screen, "_get_col_buttons", return_value=[]),
+            patch.object(
+                barks_reader.ui.index_screen.IndexScreen, "_handle_items_key", return_value=True
+            ) as grid_key,
+        ):
+            assert speech_index_screen._handle_items_key(KEY_RIGHT) is True
+        grid_key.assert_called_once_with(KEY_RIGHT)
+        assert speech_index_screen._nav_on_speech_btn is False
+
+
+class TestSearchCaches:
+    def test_a_letter_with_no_terms_changes_no_background(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        speech_index_screen._selected_letter_button = MagicMock(text="Q")
+        speech_index_screen._item_index["Q"] = []
+        speech_index_screen._next_background_image()
+        speech_index_screen._random_title_images.get_random_image.assert_not_called()
+
+    def test_a_term_searched_before_is_not_searched_again_for_a_background(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        item = IndexItem("term", "term")
+        speech_index_screen._selected_letter_button = MagicMock(text="T")
+        speech_index_screen._item_index["T"] = [item]
+        speech_index_screen._background_titles_cache[item] = ["Donald Duck Finds Pirate Gold"]
+        with (
+            patch.object(speech_index_screen, "_find_words_for_item") as searched,
+            patch.object(speech_index_screen, "_set_background_image") as set_background,
+        ):
+            speech_index_screen._next_background_image()
+        searched.assert_not_called()
+        (found_titles,) = speech_index_screen._random_title_images.get_random_image.call_args.args
+        assert found_titles == [
+            _speech_module.ALL_FANTA_COMIC_BOOK_INFO[Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+        ]
+        set_background.assert_called_once()
+
+    def test_a_term_searched_before_is_not_searched_again_for_its_titles(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        item = IndexItem("term", "term")
+        speech_index_screen._found_words_cache[item] = {}
+        with patch.object(speech_index_screen, "_find_words_for_item") as searched:
+            assert speech_index_screen._get_sub_items_data(item) == []
+        searched.assert_not_called()
+
+
+def test_a_bubble_goto_with_no_focus_hand_off_still_goes_to_the_title(
+    speech_index_screen: SpeechIndexScreen,
+) -> None:
+    goto = MagicMock()
+    speech_index_screen.on_goto_title = goto
+    speech_index_screen.on_after_popup_goto_title = None
+    with patch.object(Clock, "schedule_once") as schedule:
+        speech_index_screen._handle_title_from_bubble_press("Donald Duck Finds Pirate Gold", "5")
+    schedule.call_args.args[0](0)
+    goto.assert_called_once()
+
+
+def test_an_empty_prefix_bar_draws_no_focus(speech_index_screen: SpeechIndexScreen) -> None:
+    speech_index_screen.ids.alphabet_top_split_layout.children = []
+    with patch.object(_speech_module, "draw_focus_highlight") as drawn:
+        speech_index_screen._draw_prefix_focus()
+    drawn.assert_not_called()
+
+
+class TestShortenIfNecessary:
+    def test_a_short_term_is_left_as_it_is(self) -> None:
+        assert shorten_if_necessary("Uncle Scrooge") == "Uncle Scrooge"
+
+    def test_a_long_term_is_cut_at_a_word_with_an_ellipsis(self) -> None:
+        text = "the quick brown fox jumps over the lazy dog again"
+        shortened = shorten_if_necessary(text)
+        assert shortened == "the quick brown fox jumps..."
+        assert len(shortened) <= _speech_module.INDEX_ITEM_MAX_TEXT_WIDTH
+
+    def test_the_huge_number_is_written_out_in_words(self) -> None:
+        """A number of 77 zeros, said in a story, would not shorten readably."""
+        number = "500,000" + ",000" * 24 + ".16"
+        assert (
+            shorten_if_necessary(number) == "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"
+        )

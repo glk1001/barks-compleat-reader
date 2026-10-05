@@ -361,3 +361,25 @@ class TestCorpusStatsMarkers:
         with patch.object(corpus_stats_screen_module, "Window"):
             screen.close()
         assert "CorpusStats: closing." in loguru_sink
+
+
+class TestBeforeTheStatsArrive:
+    def test_a_resize_before_opening_lays_out_nothing(self, screen: CorpusStatsScreen) -> None:
+        """The resize trigger can fire before open() has computed anything."""
+        _rebuild(screen)
+        assert screen.ids["stats_body"].padding == []
+        assert screen.ids["stats_left"].children == []
+
+
+class TestTouch:
+    def test_a_touch_closes_an_open_menu_and_reaches_the_page(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        touch = MagicMock()
+        with (
+            patch.object(screen, "_clear_menu_on_touch") as clear_menu,
+            patch.object(ReaderScreen, "on_touch_down", return_value=True) as page_touch,
+        ):
+            assert screen.on_touch_down(touch) is True
+        clear_menu.assert_called_once_with()
+        page_touch.assert_called_once_with(touch)

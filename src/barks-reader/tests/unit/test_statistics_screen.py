@@ -15,6 +15,7 @@ from barks_reader.ui.statistics_screen import (
     _discover_wordclouds,
 )
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.togglebutton import ToggleButton
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -86,6 +87,15 @@ class TestDiscoverWordclouds:
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Test that an empty directory returns no wordclouds."""
         assert _discover_wordclouds(tmp_path) == []
+
+    def test_a_wordcloud_with_no_period_in_its_name_is_left_out(self, tmp_path: Path) -> None:
+        """The glob matches an empty period, but there is nothing to label it with."""
+        (tmp_path / "tfidf_wordcloud_.png").touch()
+        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
+
+        assert _discover_wordclouds(tmp_path) == [
+            ("Word Cloud 1943-46", "tfidf_wordcloud_1943-46.png")
+        ]
 
     def test_no_matching_files(self, tmp_path: Path) -> None:
         """Test that non-matching files are excluded."""
@@ -282,3 +292,75 @@ class TestStatisticsScreen:
             # 3. Verify that dismissing the Kivy dropdown exits the navigation mode
             screen._on_dropdown_dismissed(None)
             assert screen._dropdown_nav_mode is False
+
+
+class TestStatMenuButton:
+    @pytest.mark.parametrize(("state", "pressed"), [("normal", True), ("down", False)])
+    def test_the_selected_tab_cannot_be_pressed_off(self, state: str, pressed: bool) -> None:
+        button = StatMenuButton(group="stats-test")
+        button.state = state
+        with patch.object(ToggleButton, "_do_press") as toggle_press:
+            button._do_press()
+        assert toggle_press.called is pressed
+
+
+class TestStatisticsScreenEdges:
+    def test_becoming_hidden_selects_nothing(self, screen: StatisticsScreen) -> None:
+        with patch.object(screen, "_on_screen_activated") as mock_activate:
+            screen.on_is_visible(screen, value=False)
+        mock_activate.assert_not_called()
+
+    def test_with_no_tabs_activating_shows_nothing(self, screen: StatisticsScreen) -> None:
+        screen._stat_buttons = []
+        with patch.object(screen, "show_stat") as mock_show_stat:
+            screen._on_screen_activated()
+        mock_show_stat.assert_not_called()
+
+    def test_a_word_stat_is_shown_even_without_its_tab(
+        self, screen: StatisticsScreen, statistics_dir: Path
+    ) -> None:
+        screen._word_stat_button = None
+        with patch.object(screen, "show_stat") as mock_show_stat:
+            screen._on_word_stat_selected(None, "word_stat.png")
+        mock_show_stat.assert_called_once_with(statistics_dir / "word_stat.png")
+
+    def test_dismissing_the_dropdown_dismisses_the_word_stat_dropdown(
+        self, screen: StatisticsScreen
+    ) -> None:
+        screen._dismiss_dropdown()
+        screen._word_stat_dropdown.dismiss.assert_called_once_with()
+
+    def test_leaving_from_the_dropdown_leaves_its_navigation_too(
+        self, screen: StatisticsScreen
+    ) -> None:
+        screen._dropdown_nav_mode = True
+        with (
+            patch.object(statistics_screen_module, "clear_focus_in_list"),
+            patch.object(screen, "_exit_dropdown_nav") as exit_dropdown_nav,
+        ):
+            screen.exit_nav_focus()
+        exit_dropdown_nav.assert_called_once_with()
+        screen._word_stat_dropdown.dismiss.assert_called_once_with()
+
+    def test_leaving_with_no_dropdown_built_still_leaves(self, screen: StatisticsScreen) -> None:
+        screen._nav_active = True
+        screen._word_stat_dropdown = None
+        with patch.object(statistics_screen_module, "clear_focus_in_list"):
+            screen.exit_nav_focus()
+        assert screen._nav_active is False
+
+    def test_without_focus_no_key_is_taken(self, screen: StatisticsScreen) -> None:
+        assert screen.handle_key(statistics_screen_module.KEY_RIGHT) is False
+
+    def test_escape_with_no_one_to_hand_focus_back_to_is_still_taken(
+        self, screen: StatisticsScreen
+    ) -> None:
+        with patch.object(statistics_screen_module, "update_focus_in_list"):
+            screen.enter_nav_focus(MagicMock())
+        screen._nav_on_exit_request = None
+        assert screen.handle_key(KEY_ESCAPE) is True
+
+    def test_an_unused_key_on_the_tabs_is_handed_back(self, screen: StatisticsScreen) -> None:
+        with patch.object(statistics_screen_module, "update_focus_in_list"):
+            screen.enter_nav_focus(MagicMock())
+        assert screen.handle_key(KEY_DOWN) is False

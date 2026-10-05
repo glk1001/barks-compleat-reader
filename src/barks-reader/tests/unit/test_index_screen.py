@@ -27,6 +27,7 @@ from barks_reader.ui.index_screen import (
     format_page_speech_bubbles,
     show_speech_bubbles_popup,
 )
+from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
 
@@ -1025,3 +1026,120 @@ def test_a_title_whose_volume_is_missing_is_reported(index_screen: ConcreteIndex
         index_screen._handle_title(MagicMock(), item)
     error_type, _info = index_screen._user_error_handler.handle_error.call_args.args
     assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+
+
+class TestPopupKeyboardNavDeadEnds:
+    def test_enter_with_no_bubbles_opens_nothing(self) -> None:
+        nav, drawn, _ = _popup_nav([])
+        assert nav.handle_key(_module.KEY_ENTER) is True
+        drawn.assert_not_called()
+
+    def test_page_keys_on_content_that_does_not_scroll_change_nothing(self) -> None:
+        nav, _, _ = _popup_nav([])
+        content = MagicMock()  # not a ScrollView
+        content.scroll_y = 0.5
+        nav._popup.content = content
+        assert nav.handle_key(_module.KEY_PAGE_DOWN) is True
+        assert content.scroll_y == 0.5
+
+
+class TestAlphabetPanelEdges:
+    def test_a_selected_letter_outside_the_alphabet_keeps_the_focus_where_it_was(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._selected_letter_button = MagicMock(text="#")
+        index_screen._nav_focused_letter_idx = 3
+        with (
+            patch.object(ConcreteIndexScreen, "_restore_item_focus", return_value=False),
+            patch.object(ConcreteIndexScreen, "_draw_letter_focus"),
+        ):
+            index_screen.enter_nav_focus(lambda: None)
+        assert index_screen._nav_focused_letter_idx == 3
+
+    def test_escape_with_no_one_to_hand_focus_back_to_still_leaves(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._nav_active = True
+        index_screen._nav_panel = _module._IndexNavPanel.ALPHABET
+        index_screen._nav_on_exit_request = None
+        with patch.object(_module, "clear_focus_in_list"):
+            assert index_screen.handle_key(KEY_ESCAPE) is True
+        assert index_screen._nav_active is False
+
+    def test_a_letter_with_no_button_is_not_selected(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._alphabet_buttons = {}
+        index_screen._nav_focused_letter_idx = 0
+        with patch.object(index_screen, "on_letter_press") as pressed:
+            index_screen._select_focused_letter()
+        pressed.assert_not_called()
+
+    def test_a_letter_with_no_button_gets_no_focus_ring(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._alphabet_buttons = {}
+        index_screen._nav_focused_letter_idx = 0
+        with patch.object(_module, "draw_focus_highlight") as drawn:
+            index_screen._draw_letter_focus()
+        drawn.assert_not_called()
+
+
+class TestItemsPanelColumnEdges:
+    def test_up_from_a_columns_top_with_an_empty_column_before_goes_up_out(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[1] = [MagicMock()]
+        screen._nav_focused_col = 1
+        with patch.object(screen, "_on_up_from_first_item") as up_out:
+            screen.handle_key(_module.KEY_UP)
+        up_out.assert_called_once_with()
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (1, 0)
+
+    def test_down_past_the_last_columns_last_item_stays(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        screen.num_columns = 2
+        columns[0], columns[1] = [MagicMock()], [MagicMock()]
+        screen._nav_focused_col = 1
+        screen.handle_key(_module.KEY_DOWN)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (1, 0)
+
+    def test_down_past_a_last_item_with_an_empty_column_next_stays(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        screen.num_columns = 2
+        columns[0] = [MagicMock()]
+        screen.handle_key(_module.KEY_DOWN)
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 0)
+
+
+class TestExpansionStateMachineEdges:
+    def test_a_collapse_drops_a_level_already_taken_off_the_screen(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        detached = _FakeWidget(parent=None)
+        index_screen._open_tag_widgets = [detached]
+        index_screen._handle_collapse(0)
+        assert index_screen._open_tag_widgets == []
+
+    def test_a_switch_drops_a_level_already_taken_off_the_screen(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        detached = _FakeWidget(parent=None)
+        index_screen._open_tag_widgets = [detached]
+        index_screen._handle_expand_or_switch(cast("Button", _FakeWidget()))
+        assert index_screen._open_tag_widgets == []
+
+    def test_a_cycle_of_parents_is_walked_only_so_far(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The walk up is capped, so a widget tree that loops cannot hang the press."""
+        looped = _FakeWidget()
+        looped.parent = looped
+        index_screen._open_tag_widgets = [_FakeWidget(), _FakeWidget()]
+        level = index_screen._get_level_of_click_for_expand_or_switch(cast("Button", looped))
+        assert level == -1
