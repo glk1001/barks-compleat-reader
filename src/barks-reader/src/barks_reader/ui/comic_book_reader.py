@@ -278,9 +278,9 @@ class _ComicPageManager(EventDispatcher):
         # Start with the current page
         image_load_order = [self._index_to_page_map[self._first_page_to_read_index]]
 
-        # Then the previous page (for immediate back navigation).
-        if self._first_page_to_read_index > 0:
-            image_load_order.append(self._index_to_page_map[self._first_page_to_read_index - 1])
+        # Then the previous page (for immediate back navigation): there is one, as a
+        # start at index 0 returned above.
+        image_load_order.append(self._index_to_page_map[self._first_page_to_read_index - 1])
 
         # Then all subsequent pages.
         image_load_order.extend(
@@ -914,8 +914,8 @@ class ComicBookReader(FloatLayout):
         """
         if not self.goto_page():
             return None
-        if self._goto_page_dropdown:
-            self._goto_page_dropdown.bind(on_dismiss=on_dismiss)
+        assert self._goto_page_dropdown is not None  # goto_page made it, to open it
+        self._goto_page_dropdown.bind(on_dismiss=on_dismiss)
         for i, btn in enumerate(self._goto_page_buttons):
             if self._page_map[btn.text].page_index == self._current_page_index:
                 return i

@@ -52,6 +52,11 @@ class TestParseFrontmatter:
         assert fm == {"title": "A---B", "type": "x"}
         assert body == "Body"
 
+    def test_an_unclosed_block_is_no_frontmatter(self) -> None:
+        """A leading --- with no closing line leaves the whole text as the body."""
+        text = "---\ntitle: X\nNo closing line."
+        assert okf.parse_frontmatter(text) == ({}, text)
+
 
 class TestResolveLink:
     @staticmethod
@@ -453,6 +458,52 @@ class TestRenderPage:
         assert f"[color={okf.CODE_COLOR}]code[/color]" in body
         definition = next(b.markup for b in blocks if b.anchor == "fn:1")
         assert f"[color={okf.FOOTNOTE_CODE_COLOR}]path/to/file.py[/color]" in definition
+
+
+class TestInlineMarkup:
+    def test_a_hard_line_break_is_kept(self) -> None:
+        """Two trailing spaces end a line inside a paragraph."""
+        (block,) = _text_blocks(okf.render_page("first line  \nsecond line"))
+        assert block.markup == "first line\nsecond line"
+
+    def test_raw_inline_html_is_left_out(self) -> None:
+        """The bundle is markdown: an inline HTML tag shows nothing, its text stays."""
+        (block,) = _text_blocks(okf.render_page("a <span>b</span> c"))
+        assert block.markup == "a b c"
+
+
+class TestWrapMarkup:
+    """Table cells wrap at visible spaces; their lines stay markup-balanced."""
+
+    def test_a_run_of_spaces_breaks_once(self) -> None:
+        assert okf._wrap_markup("one  two three", 7) == ["one two", "three"]  # noqa: SLF001
+
+    def test_a_trailing_space_adds_no_empty_word(self) -> None:
+        """An inline HTML tag dropped from a cell's end leaves the space before it."""
+        assert okf._wrap_markup("one two three ", 7) == ["one two", "three"]  # noqa: SLF001
+
+    def test_nothing_to_wrap_is_one_empty_line(self) -> None:
+        assert okf._wrap_markup("", 5) == [""]  # noqa: SLF001
+
+    def test_tags_closed_out_of_order_are_balanced(self) -> None:
+        """A table rewriter may hand in any Kivy markup, mis-nested closers included."""
+        assert okf._balance_markup_lines(["[b][i]one", "two[/b] three[/i]"]) == [  # noqa: SLF001
+            "[b][i]one[/i][/b]",
+            "[b][i]two[/b] three[/i]",
+        ]
+
+    def test_an_anchor_is_not_carried_onto_the_next_line(self) -> None:
+        """[anchor=…] is Kivy's one point tag: nothing to close or reopen."""
+        assert okf._balance_markup_lines(["[anchor=top]one [b]two", "three[/b]"]) == [  # noqa: SLF001
+            "[anchor=top]one [b]two[/b]",
+            "[b]three[/b]",
+        ]
+
+    def test_a_closer_with_nothing_open_is_left_alone(self) -> None:
+        assert okf._balance_markup_lines(["one[/i] [b]two", "three[/b]"]) == [  # noqa: SLF001
+            "one[/i] [b]two[/b]",
+            "[b]three[/b]",
+        ]
 
 
 class TestConceptTitle:

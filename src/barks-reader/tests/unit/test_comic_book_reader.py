@@ -585,6 +585,26 @@ class TestComicBookReader:
         dropdown.bind.assert_not_called()
         assert log_markers.GOTO_PAGE_DROPDOWN_OPENED not in loguru_sink
 
+    def test_with_the_goto_page_list_gone_a_scroll_or_unbind_does_nothing(
+        self, reader: ComicBookReader
+    ) -> None:
+        """A comic closed with the list open resets it before its dismissal unbinds."""
+        reader.reset_comic_book_reader()
+        assert reader._goto_page_dropdown is None
+
+        reader.scroll_goto_page_to(MagicMock())
+        reader.unbind_goto_page_dismiss(MagicMock())
+
+    def test_the_goto_page_list_opened_by_keyboard_tells_its_dismissal(
+        self, reader: ComicBookReader
+    ) -> None:
+        dropdown = MagicMock()
+        reader._goto_page_dropdown = dropdown
+        on_dismiss = MagicMock()
+        with patch.object(reader, "goto_page", return_value=True):
+            assert reader.open_goto_page_for_keyboard(on_dismiss) == 0
+        dropdown.bind.assert_called_once_with(on_dismiss=on_dismiss)
+
     # --- a load error ---
 
     def test_a_load_warning_closes_the_reader(self, reader: ComicBookReader) -> None:
@@ -910,6 +930,27 @@ class TestComicBookReaderScreen:
                 handled = screen.on_touch_down(touch)
                 assert handled is False
                 mock_show.assert_not_called()
+
+    def test_the_menu_over_a_visible_action_bar_leaves_it_as_it_is(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """Windowed, the bar is always up: entering the menu has nothing to show."""
+        with (
+            patch.object(_reader_module, "is_action_bar_visible", return_value=True),
+            patch.object(_reader_module, "set_action_bar_visibility") as set_visibility,
+        ):
+            screen._on_action_bar_shown_for_menu()
+        set_visibility.assert_not_called()
+
+    def test_the_menu_over_a_hidden_action_bar_shows_it(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        with (
+            patch.object(_reader_module, "is_action_bar_visible", return_value=False),
+            patch.object(_reader_module, "set_action_bar_visibility") as set_visibility,
+        ):
+            screen._on_action_bar_shown_for_menu()
+        set_visibility.assert_called_once()
 
     def test_dismissing_the_dropdown_dismisses_the_readers_goto_page_list(
         self, screen: ComicBookReaderScreen
