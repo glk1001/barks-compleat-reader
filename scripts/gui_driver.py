@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -57,6 +58,10 @@ TYPE_PAUSE = 0.4  # a single character into a search box
 # The line the app logs for every key it is given: log_markers.KEY_PRESSED, written out
 # here as this file imports nothing from the workspace. Its key is the character's code.
 KEY_PRESSED_LINE = "Key pressed: {key} ("
+# The app's answer to a frame request: log_markers.FRAME_CAPTURED, written out here
+# for the same reason, with the request id and the saved PNG as groups.
+FRAME_CAPTURED_RE = re.compile(r'Frame #(\S+) captured: \d+x\d+ to "([^"]+)"\.')
+FRAME_CAPTURE_TIMEOUT = 15
 GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
 GOTO_STEP_PAUSE = 0.12  # a single step through the page list
 GOTO_PICK_PAUSE = 0.6  # on the chosen page entry, before picking it
@@ -259,6 +264,37 @@ class Driver:
     def shot(self, path: Path) -> Path:
         """Capture the nested display to a PNG at `path` and return it."""
         self._run(["shot", str(path)])
+        return path
+
+    def frame_capture(self, path: Path, request: str) -> Path:
+        """Have the app save what its window draws, copy it to `path` and return that.
+
+        The app draws its window again off screen (``barks_reader.ui.frame_capture``),
+        so this is what the app drew whatever the desktop shows: a screen capture of
+        a fullscreen window on Windows can read black.
+
+        Args:
+            path: Where to put the PNG.
+            request: An id for the request, unique within the app's run.
+
+        Returns:
+            `path`.
+
+        Raises:
+            DriverError: If the app does not answer in time.
+
+        """
+        answer = rf"Frame #{re.escape(request)} captured: "
+        with self.expect(answer, FRAME_CAPTURE_TIMEOUT):
+            self._run(["frame-capture", request])
+        saved = [
+            found[2]
+            for found in FRAME_CAPTURED_RE.finditer(
+                self._log.read_text(encoding="utf-8", errors="replace")
+            )
+            if found[1] == request
+        ]
+        shutil.copyfile(saved[-1], path)
         return path
 
     # A position can be negative: a window on a monitor left of or above the primary.

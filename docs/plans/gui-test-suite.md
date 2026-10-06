@@ -146,6 +146,13 @@
 >   colours. Calibrated on all 62 tests' final frames: 3% to 26% and 4,600 to 25,000. A
 >   named checkpoint (`AppBoot.checkpoint`, with `BARKS_GUI_SHOTS=1`) is judged the same
 >   way when it is taken. No comparison to a reference, no pixel coordinates.
+> - 2026-10-06: the final frame is the app's own. A screen capture read black on Windows
+>   for a fullscreen reader showing a page (the soak, 2026-10-03 and 2026-10-06): a
+>   fullscreen window that has stood a few seconds can be handed the screen directly. So
+>   the teardown asks the app (`frame-capture`, `barks_reader.ui.frame_capture`), which
+>   draws its window again into an off-screen buffer and saves it; the whole of that is
+>   judged, and kept with a failure's artifacts as `<test>-frame.png` beside the screen
+>   capture. The screen, as before, when the app does not answer.
 > - 2026-09-23: three more kinds of test. (1) A random walk, `test_random_walk.py`: a
 >   seeded stream of the remote's six keys from four boot nodes, each key waited on through
 >   the `KEY_PRESSED` line (a main loop that stops answering fails at that key), never

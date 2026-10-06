@@ -54,6 +54,9 @@ MEMORY_CENSUS: Final = (
     "Memory census #{request}: widgets={widgets} textures={textures} objects={objects}"
     " rss={rss_mib}MiB, took {took_ms}ms."
 )
+# The answer to a GUI test's frame request (``barks_reader.ui.frame_capture``): what the
+# window draws, drawn again off screen and saved as a PNG beside the request file.
+FRAME_CAPTURED: Final = 'Frame #{request} captured: {width}x{height} to "{path}".'
 # A press on a margin that turns a page (the comic reader) or an image (the fun view).
 LEFT_MARGIN_PRESSED: Final = "Left margin pressed: x_rel,y_rel = {x},{y}."
 RIGHT_MARGIN_PRESSED: Final = "Right margin pressed: x_rel,y_rel = {x},{y}."

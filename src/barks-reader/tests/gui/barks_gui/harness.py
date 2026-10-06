@@ -783,10 +783,22 @@ class AppBoot:
             return
         try:
             self.driver.window_geometry()
-            capture = self.driver.shot(self.scratch / "final-frame.png")
         except gd.DriverError:
             return
-        self._assert_drawn(capture, "the final frame")
+        capture = self.scratch / "final-frame.png"
+        # The app's own frame, drawn again off screen: a capture of the screen read
+        # black on Windows for a fullscreen reader showing a page (the soak, 2026-10-03
+        # and 2026-10-06). The screen, as before, when the app does not answer.
+        try:
+            self.driver.frame_capture(capture, "final")
+        except gd.DriverError:
+            try:
+                self.driver.shot(capture)
+            except gd.DriverError:
+                return
+            self._assert_drawn(capture, "the final frame")
+            return
+        self._assert_drawn(capture, "the final frame", whole_image=True)
 
     def assert_page_centred(self) -> None:
         """Fail the test if a page the reader drew stood off the window's centre.
@@ -863,15 +875,19 @@ class AppBoot:
         msg = f"the app took longer than its budget ({source}):\n{shown}\nartifacts:\n{listing}"
         raise AssertionError(msg)
 
-    def _assert_drawn(self, capture: Path, what: str) -> None:
+    def _assert_drawn(self, capture: Path, what: str, *, whole_image: bool = False) -> None:
+        """Fail if `capture` looks not drawn: the window's part of it, or all of it."""
         # Imported here: shots pulls in Pillow, which nothing else in the harness needs.
-        from barks_gui.shots import looks_blank, render_stats  # noqa: PLC0415
+        from barks_gui.shots import image_size, looks_blank, render_stats  # noqa: PLC0415
 
         assert self.driver is not None
-        try:
-            window = self.driver.window_geometry()
-        except gd.DriverError:
-            return
+        if whole_image:
+            window = (*image_size(capture), 0, 0)
+        else:
+            try:
+                window = self.driver.window_geometry()
+            except gd.DriverError:
+                return
         stats = render_stats(capture, window)
         if not looks_blank(stats):
             return
@@ -926,6 +942,13 @@ class AppBoot:
         for log in (self.scratch / COPIED_KIVY_DIR / "logs").glob("*.log"):
             target = out / artifact_name(self.nodeid, f"-{log.name}")
             shutil.copy2(log, target)
+            saved.append(target)
+        # The frame the app drew itself (assert_render_not_blank), beside the screen
+        # capture above: the two differ when the screen, not the app, was blank.
+        frame = self.scratch / "final-frame.png"
+        if frame.is_file():
+            target = out / artifact_name(self.nodeid, "-frame.png")
+            shutil.copy2(frame, target)
             saved.append(target)
         # The profile the app booted from, as it stands now: what a hand reboot
         # into the failing state needs (BARKS_READER_CONFIG_DIR at a copy of it).

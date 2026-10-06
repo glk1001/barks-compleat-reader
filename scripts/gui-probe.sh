@@ -26,6 +26,7 @@
 #                                         # with BARKS_PROBE_TOUCH=1 a real touch too
 #   scripts/gui-probe.sh tap-targets 7    # ask the app for its tap targets (request 7)
 #   scripts/gui-probe.sh memory-census 3  # ask the app what it holds after a full GC
+#   scripts/gui-probe.sh frame-capture 4  # ask the app to save what its window draws
 #   scripts/gui-probe.sh key Down Down Return
 #   scripts/gui-probe.sh type "pirate gold"
 #   scripts/gui-probe.sh wait 'Goto title' 10
@@ -93,6 +94,10 @@ TAP_REQUEST="$RUN_DIR/tap-request"
 # The file the app answers memory census requests from (barks_reader.core.memory_census):
 # a request id written here comes back as one "Memory census #<id>:" line in the log.
 CENSUS_REQUEST="$RUN_DIR/census-request"
+# The file the app answers frame requests from (barks_reader.ui.frame_capture): a
+# request id written here comes back as one "Frame #<id> captured:" line in the log,
+# naming the PNG it saved beside this file.
+FRAME_REQUEST="$RUN_DIR/frame-request"
 # The pid of the runner that started this display (BARKS_PROBE_OWNER_PID), if any.
 OWNER_FILE="$RUN_DIR/owner.pid"
 # Touch mode: the virtual touchscreen's server, its socket and its log.
@@ -376,7 +381,7 @@ cmd_start() {
     fi
     : >"$APP_LOG"
     : >"$INPUT_LOG"
-    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST"
+    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST" "$FRAME_REQUEST" "$RUN_DIR"/frame-*.png
 
     # The app rewrites its config on exit; keep the user's copy intact. A
     # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1
@@ -405,7 +410,8 @@ cmd_start() {
     if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
         setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" \
             BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
-            BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" "$BARKS_PROBE_APP" \
+            BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \
+            BARKS_READER_FRAME_CAPTURE_FILE="$FRAME_REQUEST" "$BARKS_PROBE_APP" \
             </dev/null >>"$APP_LOG" 2>&1 &
     else
         local run=(main.py)
@@ -416,6 +422,7 @@ cmd_start() {
         fi
         setsid env DISPLAY="$DPY" BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
             BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \
+            BARKS_READER_FRAME_CAPTURE_FILE="$FRAME_REQUEST" \
             uv run --directory "$REPO_ROOT" "${run[@]}" \
             </dev/null >>"$APP_LOG" 2>&1 &
     fi
@@ -522,7 +529,7 @@ cmd_stop() {
         stop_group "$(cat "$TOUCH_PID_FILE")" 5
         rm -f "$TOUCH_PID_FILE" "$TOUCH_SOCK"
     fi
-    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST"
+    rm -f "$TAP_REQUEST" "$CENSUS_REQUEST" "$FRAME_REQUEST" "$RUN_DIR"/frame-*.png
     if [[ -f "$XEPHYR_PID_FILE" ]] && [[ -z "$KEEP_XSERVER" ]]; then
         stop_group "$(cat "$XEPHYR_PID_FILE")"
     fi
@@ -734,6 +741,16 @@ cmd_memory_census() {
     mv -f "$CENSUS_REQUEST.tmp" "$CENSUS_REQUEST"
 }
 
+# Ask the app to save what its window draws: it draws it again off screen and
+# answers with a "Frame #<id> captured:" log line naming the PNG (see FRAME_REQUEST).
+# Written whole, then renamed, as a tap-targets request is.
+cmd_frame_capture() {
+    require_running
+    local id="${1:?usage: gui-probe.sh frame-capture <request id>}"
+    echo "$id" >"$FRAME_REQUEST.tmp"
+    mv -f "$FRAME_REQUEST.tmp" "$FRAME_REQUEST"
+}
+
 cmd_key() {
     require_running
     [[ $# -gt 0 ]] || die "usage: gui-probe.sh key <keysym>..."
@@ -781,6 +798,7 @@ click) shift && cmd_click "$@" ;;
 tap) shift && cmd_tap "$@" ;;
 tap-targets) shift && cmd_tap_targets "$@" ;;
 memory-census) shift && cmd_memory_census "$@" ;;
+frame-capture) shift && cmd_frame_capture "$@" ;;
 key) shift && cmd_key "$@" ;;
 type) shift && cmd_type "$@" ;;
 wait) shift && cmd_wait "$@" ;;

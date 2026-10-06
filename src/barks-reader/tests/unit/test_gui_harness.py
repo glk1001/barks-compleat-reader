@@ -10,6 +10,7 @@ conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import zipfile
 from datetime import datetime
@@ -1425,3 +1426,109 @@ class TestPagePlacement:
         (first, second) = harness.reader_on_screen(log)
         assert first[1] is not None
         assert second[1] is None
+
+
+def _png(path: Path, size: tuple[int, int], *, drawn: bool) -> Path:
+    """Write a PNG `size` big: black, or striped in many colours."""
+    image = Image.new("RGB", size)
+    if drawn:
+        for x in range(size[0]):
+            for y in range(size[1]):
+                image.putpixel((x, y), ((x * 7) % 256, (y * 5) % 256, (x + y) % 256))
+    image.save(path)
+    return path
+
+
+class TestFinalFrame:
+    """The final frame is the app's own, drawn again off screen; the screen's if it cannot."""
+
+    class _Driver:
+        def __init__(self, *, frame: Path | None, screen: Path | None) -> None:
+            self.frame = frame
+            self.screen = screen
+            self.shots: list[Path] = []
+
+        def window_geometry(self) -> tuple[int, int, int, int]:
+            return (40, 30, 500, 600)
+
+        def frame_capture(self, path: Path, _request: str) -> Path:
+            if self.frame is None:
+                msg = "beat stalled"
+                raise gd.DriverError(msg)
+            shutil.copyfile(self.frame, path)
+            return path
+
+        def shot(self, path: Path) -> Path:
+            if self.screen is None:
+                msg = "no display"
+                raise gd.DriverError(msg)
+            self.shots.append(path)
+            shutil.copyfile(self.screen, path)
+            return path
+
+    @pytest.fixture
+    def app_boot(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> harness.AppBoot:
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        app_boot = harness.AppBoot(scratch=scratch, nodeid="test_x.py::test_y")
+        monkeypatch.setattr(app_boot, "save_failure_artifacts", lambda: [tmp_path / "test_y.png"])
+        return app_boot
+
+    def test_the_apps_frame_is_judged_though_the_screen_reads_black(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        """The Windows soak: a fullscreen reader showing a page, a black screen capture."""
+        driver = self._Driver(
+            frame=_png(tmp_path / "frame.png", (40, 30), drawn=True),
+            screen=_png(tmp_path / "screen.png", (40, 30), drawn=False),
+        )
+        app_boot.driver = driver  # ty: ignore[invalid-assignment]
+
+        app_boot.assert_render_not_blank()
+
+        assert driver.shots == []
+
+    def test_a_blank_frame_from_the_app_fails(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        app_boot.driver = self._Driver(  # ty: ignore[invalid-assignment]
+            frame=_png(tmp_path / "frame.png", (40, 30), drawn=False), screen=None
+        )
+        with pytest.raises(AssertionError, match="the final frame looks blank"):
+            app_boot.assert_render_not_blank()
+
+    def test_a_frame_the_window_size_in_other_units_is_judged_whole(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        """A frame in pixels for a window measured in points (a Retina Mac) is not cropped."""
+        app_boot.driver = self._Driver(  # ty: ignore[invalid-assignment]
+            frame=_png(tmp_path / "frame.png", (80, 60), drawn=True), screen=None
+        )
+        app_boot.assert_render_not_blank()
+
+    def test_without_an_answer_the_screen_is_judged(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        driver = self._Driver(frame=None, screen=_png(tmp_path / "s.png", (40, 30), drawn=False))
+        app_boot.driver = driver  # ty: ignore[invalid-assignment]
+
+        with pytest.raises(AssertionError, match="the final frame looks blank"):
+            app_boot.assert_render_not_blank()
+
+        assert driver.shots == [app_boot.scratch / "final-frame.png"]
+
+    def test_the_apps_frame_is_kept_with_a_failures_artifacts(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        _png(scratch / "final-frame.png", (4, 3), drawn=True)
+        out = tmp_path / "artifacts"
+        out.mkdir()
+        monkeypatch.setattr(harness, "artifacts_dir", lambda: out)
+        app_boot = harness.AppBoot(scratch=scratch, nodeid="test_x.py::test_y")
+
+        saved = app_boot.save_failure_artifacts()
+
+        assert out / "test_y-frame.png" in saved
+        assert (out / "test_y-frame.png").read_bytes() == (scratch / "final-frame.png").read_bytes()

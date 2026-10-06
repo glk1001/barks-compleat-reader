@@ -37,6 +37,12 @@ class RenderStats:
     samples: int
 
 
+def image_size(capture: Path) -> tuple[int, int]:
+    """Return a PNG's width and height."""
+    with Image.open(capture) as image:
+        return image.size
+
+
 def render_stats(capture: Path, window: tuple[int, int, int, int]) -> RenderStats:
     """Return the colour statistics of the app window's part of a capture.
 

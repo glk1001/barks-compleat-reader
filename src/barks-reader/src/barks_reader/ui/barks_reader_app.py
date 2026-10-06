@@ -50,6 +50,7 @@ from .document_reader import get_document_reader_screen
 from .entity_index_screen import EntityIndexScreen
 from .error_handling import handle_app_fail_with_traceback
 from .font_manager import FontManager
+from .frame_capture import install_frame_capture_service
 from .fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from .goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
 from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
@@ -336,6 +337,7 @@ class BarksReaderApp(App):
         _install_key_press_log(Window)
         install_tap_targets_service(Window)
         install_memory_census_service()
+        install_frame_capture_service()
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

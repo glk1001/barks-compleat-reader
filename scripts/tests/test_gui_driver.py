@@ -728,6 +728,42 @@ def _answers(_pattern: str, _timeout: float = 15) -> Iterator[None]:
     yield
 
 
+class TestFrameCapture:
+    """The app saves what its window draws; the driver copies the PNG its answer names."""
+
+    def test_the_frame_the_app_names_is_copied_out(
+        self, stub_driver: Driver, tmp_path: Path
+    ) -> None:
+        saved = tmp_path / "frame-final.png"
+        saved.write_bytes(b"png")
+        log = tmp_path / "app.log"
+        log.write_text(
+            log_markers.FRAME_CAPTURED.format(request="final", width=8, height=6, path=saved)
+            + "\n",
+            encoding="utf-8",
+        )
+        stub_driver._log = log  # noqa: SLF001
+        out = tmp_path / "out.png"
+
+        with (
+            patch.object(Driver, "_run") as run,
+            patch.object(Driver, "expect", return_value=nullcontext()) as expect,
+        ):
+            assert stub_driver.frame_capture(out, "final") == out
+
+        run.assert_called_once_with(["frame-capture", "final"])
+        assert re.search(expect.call_args.args[0], log.read_text(encoding="utf-8"))
+        assert out.read_bytes() == b"png"
+
+    def test_the_answer_pattern_reads_the_line_the_app_logs(self) -> None:
+        line = log_markers.FRAME_CAPTURED.format(
+            request="7", width=782, height=1225, path="/run/x/frame-7.png"
+        )
+        found = gui_driver.FRAME_CAPTURED_RE.search(line)
+        assert found is not None
+        assert (found[1], found[2]) == ("7", "/run/x/frame-7.png")
+
+
 class TestTaps:
     def test_a_tap_goes_to_the_probe_in_window_pixels(self, stub_driver: Driver) -> None:
         with patch.object(Driver, "_run") as run:
