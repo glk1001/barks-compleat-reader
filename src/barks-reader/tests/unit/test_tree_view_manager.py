@@ -23,6 +23,7 @@ from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
+    IntroTextTreeViewNode,
     TitleTreeViewNode,
 )
 
@@ -517,3 +518,79 @@ class TestTreeViewManager:
         tree_view_manager.on_search_node_created(node)
 
         assert tree_view_manager.search_node is node
+
+
+class TestNodesThatDoNothingMore:
+    """A node with nothing to do on selection is selected, and that is all."""
+
+    def test_activating_an_intro_text_node_only_selects_it(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        node = MagicMock(spec=IntroTextTreeViewNode)
+        tree_view_manager.activate_node(node)
+        screen_mocks["tree_view"].select_node.assert_called_once_with(node)
+        mock_dependencies["nav_coordinator"].select_title.assert_not_called()
+        mock_dependencies["renderer"].render.assert_not_called()
+
+    def test_setting_up_an_intro_text_node_opens_and_selects_it_only(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        node = MagicMock(spec=IntroTextTreeViewNode)
+        tree_view_manager.setup_and_select_node(node)
+        screen_mocks["tree_view"].open_node.assert_called_once_with(node)
+        screen_mocks["tree_view"].select_node.assert_called_once_with(node)
+        mock_dependencies["nav_coordinator"].select_title.assert_not_called()
+        mock_dependencies["renderer"].render.assert_not_called()
+
+    def test_a_closed_button_node_with_no_destination_renders_nothing(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.saved_state = {"open": False}
+        node.destination = None
+
+        tree_view_manager.setup_and_select_node(node)
+
+        node.trigger_action.assert_not_called()
+        mock_dependencies["renderer"].render.assert_not_called()
+
+    def test_going_to_a_node_without_scrolling_selects_it_next_frame(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock()
+        with (
+            patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock,
+            patch.object(tree_view_manager, "scroll_to_node") as scroll,
+        ):
+            tree_view_manager.goto_node(node)
+            mock_clock.call_args.args[0](0)
+
+        screen_mocks["tree_view"].select_node.assert_called_once_with(node)
+        scroll.assert_not_called()
+
+    def test_the_speech_index_before_its_words_node_exists_selects_no_child(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        tree_view_manager.on_speech_index_node_pressed(MagicMock())
+
+        mock_dependencies["renderer"].render_state.assert_called_once_with(
+            ViewStates.ON_INDEX_SPEECH_NODE
+        )
+        screen_mocks["tree_view"].select_node.assert_not_called()
+
+    def test_the_speech_index_selects_its_words_node_once_it_exists(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        words = MagicMock()
+        tree_view_manager.on_speech_words_node_created(words)
+        tree_view_manager.on_speech_index_node_pressed(MagicMock())
+        screen_mocks["tree_view"].select_node.assert_called_once_with(words)

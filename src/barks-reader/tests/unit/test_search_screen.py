@@ -804,6 +804,37 @@ class TestTagChips:
         screen._tag_chip_strings = ["chemistry"]
         screen._tag_chip_groups = {"chemistry"}
 
+    def test_a_group_left_out_of_a_new_search_opens_no_members(self, screen: SearchScreen) -> None:
+        """Typing on with a group open: the new chips list without it, and nothing opens."""
+        screen._selected_tag = "Africa"
+        screen._current_tag = TagGroups.AFRICA
+        screen._tag_chip_strings = ["Europe", "Asia"]
+        with patch.object(screen, "_make_member_stacks") as members:
+            screen._rebuild_tag_chips()
+        members.assert_not_called()
+        [stack] = [c.args[0] for c in screen.ids.tag_chips_layout.add_widget.call_args_list]
+        assert [row.chip.text for row in reversed(stack.children)] == ["Europe", "Asia"]
+
+    def test_a_subgroup_last_in_its_group_ends_the_stacks_with_its_members(
+        self, screen: SearchScreen
+    ) -> None:
+        members = {
+            TagGroups.CHEMISTRY: [Tags.DUCKMITE, TagGroups.CHEMICAL_NAMES],
+            TagGroups.CHEMICAL_NAMES: [Tags.GYRO_GEARLOOSE, Tags.DUCKBURG],
+        }
+        screen._search.get_tag_group_members.side_effect = lambda group: members[group]
+        screen._search.get_tag_title_count.return_value = 3
+        screen._open_subgroup = TagGroups.CHEMICAL_NAMES
+
+        stacks = screen._make_member_stacks(TagGroups.CHEMISTRY)
+
+        texts = [[row.chip.text for row in reversed(st.children)] for st in stacks]
+        assert texts == [["duckmite", "chemical names"], ["Gyro Gearloose", "Duckburg"]]
+
+    def test_a_chip_given_its_colour_keeps_it(self) -> None:
+        chip = search_screen._TagChipButton(text="Africa", chip_bg_color=(0.1, 0.2, 0.3, 1))
+        assert tuple(chip.chip_bg_color) == pytest.approx((0.1, 0.2, 0.3, 1))
+
     def test_a_picked_group_pressed_again_closes_then_opens(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
@@ -1640,6 +1671,18 @@ class TestSpeakerFilter:
         assert log_markers.WORD_QUERY_RUN.format(text="bumps-a-daisy AND hat", count=2) in (
             loguru_sink
         )
+
+    def test_a_new_query_nobody_says_keeps_the_speaker(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        """Not the speaker's doing: lifting the filter would find nothing either."""
+        screen._speaker = "Gladstone"
+        screen._search.run_word_query.return_value = WordQueryResult(title_dict=_found())
+        with patch.object(screen, "_list_query_words"), patch.object(screen, "_list_word_stories"):
+            screen._run_word_query("bumps-a-daisy AND hat")
+        assert screen._speaker == "Gladstone"
+        assert screen._search.run_word_query.call_count == 2  # noqa: PLR2004
+        assert not any(line.startswith("Speaker filter lifted") for line in loguru_sink)
 
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
         screen._speaker = "Scrooge"
@@ -2681,6 +2724,19 @@ class TestBackgroundAndGoto:
         assert row.selected
         goto.assert_called_once_with(ImageInfo(from_title=HELMET, filename=None), "3")
 
+    def test_a_title_result_with_no_listener_is_only_logged(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen.on_goto_title = None
+        screen._on_result_goto_title(ENUM_TO_STR_TITLE[HELMET])
+        assert log_markers.SEARCH_SELECTED_TITLE.format(title=ENUM_TO_STR_TITLE[HELMET]) in (
+            loguru_sink
+        )
+
+    def test_a_word_result_with_no_listener_goes_nowhere(self, screen: SearchScreen) -> None:
+        screen.on_goto_title_with_page = None
+        screen._goto_title_with_page(ENUM_TO_STR_TITLE[HELMET], "3")  # nothing to call
+
     def test_a_title_no_story_has_goes_nowhere(self, screen: SearchScreen) -> None:
         screen._goto_title_with_page("No Such Story", "3")
         cast("MagicMock", screen.on_goto_title_with_page).assert_not_called()
@@ -2943,6 +2999,34 @@ class TestNavEdges:
         ):
             screen._draw_result_focus()
         draw.assert_not_called()
+
+    def test_escape_in_the_box_with_nowhere_to_return_leaves_the_box(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._nav_on_exit_request = None
+        with patch.object(screen, "_blur_all_inputs") as blur:
+            assert screen.handle_key(KEY_ESCAPE) is True
+        blur.assert_called_once_with()
+
+    def test_enter_on_an_empty_results_list_picks_nothing(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "results"
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert getattr(screen, "_last_activated_result_idx", None) is None
+
+    def test_up_from_the_first_title_result_stays_there(self, screen: SearchScreen) -> None:
+        """The title search has no chip rows above its results to go up to."""
+        screen._active_mode = "Title"
+        screen._nav_focus_area = "results"
+        assert screen.handle_key(search_screen.KEY_UP) is True
+        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
+
+    def test_escape_from_the_results_with_nowhere_to_return_goes_to_the_box(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._nav_on_exit_request = None
+        screen._nav_focus_area = "results"
+        assert screen.handle_key(KEY_ESCAPE) is True
+        assert screen._nav_focus_area == "input"
 
     def test_no_key_is_taken_while_the_screen_is_not_navigating(self, screen: SearchScreen) -> None:
         screen._nav_active = False
