@@ -75,12 +75,31 @@ class TestScreenMetrics:
 
         app_kit = MagicMock()
         app_kit.NSScreen.screens.return_value = [screen(1440, 1330), screen(1080, 1080)]
-        with patch.object(screen_metrics_module.importlib, "import_module", return_value=app_kit):
+        with patch.object(
+            screen_metrics_module.importlib, "import_module", return_value=app_kit
+        ) as import_module:
             assert screen_metrics_module._macos_reserved_height() == 110  # noqa: PLR2004, SLF001
+        import_module.assert_called_once_with("AppKit")
         with patch.object(
             screen_metrics_module.importlib, "import_module", side_effect=ImportError("no AppKit")
         ):
             assert screen_metrics_module._macos_reserved_height() is None  # noqa: SLF001
+
+    def test_a_dock_at_the_side_or_hidden_takes_no_height(self) -> None:
+        primary = MagicMock()
+        primary.frame.return_value.size.height = 1080
+        primary.visibleFrame.return_value.size.height = 1080
+        app_kit = MagicMock()
+        app_kit.NSScreen.screens.return_value = [primary]
+        with patch.object(screen_metrics_module.importlib, "import_module", return_value=app_kit):
+            assert screen_metrics_module._macos_reserved_height() == 0  # noqa: SLF001
+
+    def test_no_app_kit_is_logged_with_the_reason(self, loguru_sink: list[str]) -> None:
+        with patch.object(
+            screen_metrics_module.importlib, "import_module", side_effect=ImportError("no AppKit")
+        ):
+            screen_metrics_module._macos_reserved_height()  # noqa: SLF001
+        assert "Could not measure the menu bar and Dock: no AppKit." in loguru_sink
 
     def test_get_best_window_height_fit(self) -> None:
         """Test best window height calculation."""
@@ -89,12 +108,13 @@ class TestScreenMetrics:
         ):
             assert get_best_window_height_fit(1000) == 940  # noqa: PLR2004
 
-    def test_init_no_monitors(self) -> None:
+    def test_init_no_monitors(self, loguru_sink: list[str]) -> None:
         """Test initialization when no monitors are found."""
         with patch.object(screen_metrics_module, get_monitors.__name__, return_value=[]):
             metrics = ScreenMetrics()
             assert metrics.SCREEN_INFO == []
             assert metrics.NUM_MONITORS == 0
+        assert "No monitors found by screeninfo." in loguru_sink
 
     def test_init_valid_monitors(self) -> None:
         """Test initialization with valid monitors."""
@@ -425,8 +445,29 @@ class TestMonitorForPosBounds:
             logger.remove(handle)
         assert records == ["WARNING"]
 
+    def test_a_miss_names_the_position_and_the_monitors(self, loguru_sink: list[str]) -> None:
+        self._two_monitors().get_monitor_for_pos(436, -21)
+        assert "Could not find monitor for pos (436,-21). (There are 2 monitors.)" in loguru_sink
+
 
 class TestFittedWindowHeightBranches:
+    def test_a_window_exactly_as_wide_as_the_budget_takes_the_whole_height(self) -> None:
+        """At equality the height budget is used: deriving from the width rounds down a pixel.
+
+        A 1001-pixel height at 1.5 gives a 667-pixel width, exactly the width budget;
+        667 * 1.5 is 1000.5, which rounds to 1000.
+        """
+        assert (
+            calculate_fitted_window_height(
+                screen_width=667,
+                screen_height=1001,
+                aspect_ratio=1.5,
+                action_bar_height=0,
+                fit_fraction=1.0,
+            )
+            == 1001  # noqa: PLR2004
+        )
+
     def test_width_limited_result_is_derived_from_the_width_budget(self) -> None:
         """A tall/narrow screen forces the width-limited branch.
 

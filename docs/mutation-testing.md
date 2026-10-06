@@ -831,7 +831,7 @@ triaged floor** — nothing on this table has a known killable gap left.
 | `wiki_integration` | 44 → 10 |
 | `reader_settings` | 41 → 6 |
 | `reader_file_paths` | 37 → 21 |
-| `screen_metrics` | 27 → 8 |
+| `screen_metrics` | 27 → 8 → 0 (2026-10-07: the macOS Dock measurement's six, the log wording, and the boundaries) |
 | `filtered_title_lists` | 22 → 1 |
 | `comic_reader_manager` | 22 → 9 → 5 |
 | `hyphen_break_engine` | 19 → 6 |

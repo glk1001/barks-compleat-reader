@@ -82,21 +82,16 @@ class ScreenMetrics:
         inch_in_mm = 25.4
         screens = []
         for i, monitor in enumerate(monitors):
-            if not (
-                monitor.width_mm
-                and monitor.height_mm
-                and monitor.width_mm > 0
-                and monitor.height_mm > 0
-            ):
+            # screeninfo reports None for a size it does not know, and some displays 0.
+            width_mm = monitor.width_mm or 0
+            height_mm = monitor.height_mm or 0
+            if not (width_mm > 0 and height_mm > 0):
                 width_mm = 0
                 height_mm = 0
                 width_in = 0
                 height_in = 0
                 avg_dpi = 0
             else:
-                width_mm = monitor.width_mm
-                height_mm = monitor.height_mm
-
                 width_in = round(width_mm / inch_in_mm)
                 height_in = round(height_mm / inch_in_mm)
 
