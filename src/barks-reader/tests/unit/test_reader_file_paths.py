@@ -352,6 +352,20 @@ class TestFileTypeTitles:
         assert paths_with_covers.get_file_type_titles(FileTypes.SPLASH) == ["SplashTitle"]
 
 
+class TestDefaultSources:
+    """The default places for the data, under the user's home."""
+
+    def test_the_default_panel_sources_are_under_the_barks_folder_in_home(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        barks = tmp_path / "Books" / "Carl Barks"
+        assert ReaderFilePaths.get_default_jpg_barks_panels_source() == (
+            barks / "Compleat Barks Disney Reader" / "Reader Files" / "Barks Panels.zip"
+        )
+        assert ReaderFilePaths.get_default_png_barks_panels_source() == barks / "Barks Panels Pngs"
+
+
 class TestEditedFilesAreOptIn:
     """`use_only_edited_if_possible` defaults to False across the file getters.
 

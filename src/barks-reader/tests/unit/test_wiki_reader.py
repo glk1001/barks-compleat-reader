@@ -430,6 +430,28 @@ class TestWikiReaderScreenBuildViewer:
 
         assert viewer_cls.call_args.kwargs["on_exit"] == wiki_screen.close
 
+    def test_a_rebuild_saves_the_outgoing_viewers_place_and_replaces_it(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        """Switching bundles keeps the old bundle's resume point, and one viewer on screen."""
+        outgoing = MagicMock()
+        wiki_screen._viewer = outgoing
+        with (
+            patch.object(wiki_reader, "OKFViewer") as viewer_cls,
+            patch.object(wiki_reader, "wiki_top_bar_spec"),
+            patch.object(wiki_reader, "wiki_session_path"),
+            patch.object(wiki_reader, "BarksPanelsImageProvider"),
+            patch.object(wiki_reader, "BarksTableRewriter"),
+            patch.object(wiki_screen, "add_widget") as add_widget,
+            patch.object(wiki_screen, "remove_widget") as remove_widget,
+        ):
+            wiki_screen._build_viewer(self.BUNDLE)
+
+        outgoing.save_session.assert_called_once_with()
+        remove_widget.assert_called_once_with(outgoing)
+        add_widget.assert_called_once_with(viewer_cls.return_value)
+        assert wiki_screen._viewer is viewer_cls.return_value
+
 
 class TestWikiFullscreenViewerSize:
     """The pure fullscreen-strip math (comic aspect, width from height)."""
