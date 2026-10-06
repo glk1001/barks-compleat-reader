@@ -540,3 +540,21 @@ class TestGotoPageToggleLog(ScreenFixtureBase):
         self.screen._activate_focused_widget()
         assert ids.goto_page_checkbox.active is False
         assert "Goto page checkbox toggled: active = False." in loguru_sink
+
+
+class TestInsetImageEdges(ScreenFixtureBase):
+    def test_toggling_overrides_with_no_title_shown_loads_nothing(
+        self, loguru_sink: list[str]
+    ) -> None:
+        self.screen._on_use_overrides_checkbox_changed(None, use_overrides=True)
+
+        assert log_markers.USE_OVERRIDES_CHANGED.format(value=True) in loguru_sink
+        self.mock_overrides.get_title_page_inset_file.assert_not_called()
+        self.mock_loader.load_texture.assert_not_called()
+
+    def test_an_inset_image_that_failed_to_load_is_raised(self) -> None:
+        self.mock_loader.load_texture.side_effect = lambda _src, on_ready: on_ready(
+            None, OSError("inset.png is gone")
+        )
+        with pytest.raises(RuntimeError, match=r"inset\.png is gone"):
+            self.screen._set_title_inset_image(Path("inset.png"))

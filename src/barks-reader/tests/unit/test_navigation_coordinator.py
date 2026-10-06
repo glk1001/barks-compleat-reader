@@ -14,7 +14,7 @@ from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.user_error_types import ErrorTypes
+from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 
 
@@ -586,3 +586,20 @@ def test_the_wiki_without_a_bundle_opens_nothing(
     nav_coord.open_wiki()
     mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
     mock_deps["on_active_changed"].assert_not_called()
+
+
+def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
+    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], loguru_sink: list[str]
+) -> None:
+    with patch.object(barks_reader.ui.navigation_coordinator, "BARKS_TAGGED_PAGES", {}):
+        nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, "Back to the Klondike")
+    mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+    assert 'No pages for (Alaska, "Back to the Klondike").' in loguru_sink
+
+
+def test_a_title_with_no_fanta_info_is_refused() -> None:
+    with (
+        patch.object(barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=None),
+        pytest.raises(TitleNotInFantaInfoError),
+    ):
+        NavigationCoordinator._get_fanta_info(Titles.BACK_TO_THE_KLONDIKE)

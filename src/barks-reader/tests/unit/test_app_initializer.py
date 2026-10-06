@@ -281,3 +281,45 @@ class TestAppInitializer:
 
         assert mock_dependencies["tree_view_screen"].main_files_not_loaded_msg == "Popup Message"
         assert mock_dependencies["tree_view_screen"].main_files_not_loaded is True
+
+
+class TestSavedNodeOnStart:
+    """Going to the node saved last time, when there is one and it is still in the tree."""
+
+    @staticmethod
+    def _setup(
+        app_initializer: AppInitializer,
+        deps: dict[str, MagicMock],
+        saved: tuple[list[str], dict[str, str]],
+    ) -> None:
+        deps["reader_settings"].use_prebuilt_archives = True
+        deps["reader_settings"].goto_saved_node_on_start = True
+        deps["json_settings_manager"].get_last_selected_node_path.return_value = saved
+        with patch.object(
+            app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
+        ):
+            app_initializer._post_build_setup()
+
+    def test_with_no_saved_node_none_is_looked_for(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        self._setup(app_initializer, mock_dependencies, ([], {}))
+        mock_dependencies["tree_view_screen"].find_node_by_path.assert_not_called()
+        mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
+
+    def test_a_saved_node_no_longer_in_the_tree_is_not_selected(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        mock_dependencies["tree_view_screen"].find_node_by_path.return_value = None
+        self._setup(app_initializer, mock_dependencies, (["root", "gone"], {"state": "x"}))
+        mock_dependencies["tree_view_screen"].find_node_by_path.assert_called_once_with(
+            ["root", "gone"]
+        )
+        mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
+
+
+def test_a_ready_library_state_has_no_reason_to_be_bad(app_initializer: AppInitializer) -> None:
+    """Only the error states have a reason; asking for a ready one's is a programming error."""
+    app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_EXIST
+    with pytest.raises(RuntimeError, match="Unexpected fanta volumes state"):
+        app_initializer.get_bad_fanta_volumes_reason()

@@ -70,3 +70,30 @@ class TestDocumentReaderMarkers:
         with patch.object(document_reader_module, "Window"):
             screen.close()
         assert "Document reader closing." in loguru_sink
+
+
+class TestEdges:
+    def test_a_document_with_no_pages_shows_none(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        (tmp_path / "notes.txt").write_text("not a page")
+        _open(screen, tmp_path)
+        assert screen.page_source == ""
+        assert 'Document reader opened "How To" with 0 pages.' in loguru_sink
+
+    def test_a_touch_off_the_bar_and_the_page_goes_on_to_the_screen(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        for name in PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _open(screen, tmp_path)
+        off_it = MagicMock()
+        off_it.collide_point.return_value = False
+        screen.ids = {"doc_action_bar": off_it, "doc_page": off_it}
+        with (
+            patch.object(screen, "_clear_menu_on_touch"),
+            patch.object(ReaderScreen, "on_touch_down", return_value=True) as screen_press,
+        ):
+            assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5)) is True
+        screen_press.assert_called_once()
+        assert screen._current_page_index == 0
