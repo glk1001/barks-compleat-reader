@@ -275,6 +275,31 @@ class TestInsetFileLookup:
 
         assert paths.get_comic_inset_file(title, use_only_edited_if_possible=True) == main
 
+    def test_the_inset_list_holds_the_edited_inset_then_the_plain_one(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        """As the other file getters list a title's files: edited first, then the rest."""
+        main = panels_dir / "Insets" / "Donald Duck Finds Pirate Gold.png"
+        edited = panels_dir / "Insets" / EDITED_SUBDIR / "Donald Duck Finds Pirate Gold.png"
+        main.touch()
+        edited.touch()
+
+        assert paths.get_comic_inset_files("Donald Duck Finds Pirate Gold") == [edited, main]
+        assert paths.get_comic_inset_files(
+            "Donald Duck Finds Pirate Gold", use_only_edited_if_possible=True
+        ) == [edited]
+
+    def test_with_no_edited_inset_the_list_is_the_plain_one(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        main = panels_dir / "Insets" / "Donald Duck Finds Pirate Gold.png"
+        main.touch()
+
+        for edited_only in (False, True):
+            assert paths.get_comic_inset_files(
+                "Donald Duck Finds Pirate Gold", use_only_edited_if_possible=edited_only
+            ) == [main]
+
     def test_the_inset_filename_uses_the_titles_own_name_and_extension(
         self, paths: ReaderFilePaths, panels_dir: Path
     ) -> None:

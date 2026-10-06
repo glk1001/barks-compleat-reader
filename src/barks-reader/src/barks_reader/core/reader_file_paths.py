@@ -271,7 +271,9 @@ class ReaderFilePaths:
 
         inset_list = []
 
-        edited_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible)
+        # The edited inset where there is one, as every other file getter lists it first;
+        # the plain one after it unless only edited ones were asked for.
+        edited_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible=True)
         if edited_inset_file != self.get_emergency_inset_file():
             inset_list.append(edited_inset_file)
         if use_only_edited_if_possible:
