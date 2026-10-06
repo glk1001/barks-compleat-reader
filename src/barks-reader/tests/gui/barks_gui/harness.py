@@ -19,7 +19,7 @@ import re
 import shutil
 import warnings
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -530,27 +530,6 @@ def reader_on_screen(log_text: str) -> list[tuple[datetime, datetime | None]]:
     return spans
 
 
-# A memory census the test asked for: the app answers when it is done, saying how
-# long the full garbage collection held it.
-_CENSUS_RE = re.compile(
-    _STAMP + pattern(markers.MEMORY_CENSUS, took_ms=re.compile(r"(\d+)")), re.MULTILINE
-)
-
-
-def census_holds(log_text: str) -> list[tuple[datetime, datetime]]:
-    """Return when the test's memory censuses held the app: (start, end) of each.
-
-    The app draws nothing while one runs, so a frame on the way stands through it:
-    on the macOS guest on 2026-10-05 a 952ms census stood a closing reader's
-    fullscreen-sized frame for just over the settle time.
-    """
-    holds = []
-    for stamp, took_ms in _CENSUS_RE.findall(log_text):
-        end = _stamp(stamp)
-        holds.append((end - timedelta(milliseconds=int(took_ms)), end))
-    return holds
-
-
 def _held_secs(start: datetime, end: datetime, holds: list[tuple[datetime, datetime]]) -> float:
     """Return how much of `start` to `end` the holds cover, in seconds."""
     return sum(
@@ -593,14 +572,23 @@ def settled_placements(
 
 
 def off_centre_pages(log_text: str, tolerance_px: float = PLACEMENT_TOLERANCE_PX) -> list[str]:
-    """Say where each settled page sat off the horizontal centre of its window."""
+    """Say where each settled page sat off the horizontal centre of its window.
+
+    Time a memory census held the app is left out of how long a page stood: the app
+    draws nothing while one runs, and on the macOS guest on 2026-10-05 a 952ms census
+    stood a closing reader's fullscreen-sized frame for just over the settle time.
+    """
+    # Imported here, as in assert_timings_within_budget: timings keeps the budgets
+    # out of the harness proper.
+    from barks_gui.timings import census_spans  # noqa: PLC0415
+
     return [
         f"at {placed.at:%H:%M:%S.%f}"[:-3]
         + f" the {placed.width}x{placed.height} page at x={placed.x} sat"
         f" {placed.off_centre:+.0f}px from the centre of the"
         f" {placed.win_width}x{placed.win_height} window"
         for placed in settled_placements(
-            page_placements(log_text), reader_on_screen(log_text), holds=census_holds(log_text)
+            page_placements(log_text), reader_on_screen(log_text), holds=census_spans(log_text)
         )
         if abs(placed.off_centre) > tolerance_px
     ]

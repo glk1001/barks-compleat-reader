@@ -1364,11 +1364,6 @@ class TestPagePlacement:
         )
         assert len(harness.off_centre_pages(log)) == 1
 
-    def test_a_census_is_read_back_as_the_span_it_held_the_app(self) -> None:
-        ((start, end),) = harness.census_holds(_census_line("21:15:18.576", took_ms=952))
-        assert end == datetime(2026, 10, 2, 21, 15, 18, 576000)  # noqa: DTZ001
-        assert (end - start).total_seconds() == pytest.approx(0.952)
-
     def test_a_placement_that_stood_is_judged_though_a_later_one_is_fine(self) -> None:
         log = _on_screen(_placed_line("13:00:00.000", x=1400), _placed_line("13:00:04.000", x=640))
         assert len(harness.off_centre_pages(log)) == 1
