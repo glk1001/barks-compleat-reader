@@ -19,6 +19,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     set_alt_escape_key,
 )
 from barks_reader.ui.screen_bundle import ScreenBundle
+from barks_reader.ui.view_renderer import ImageThemesChange
 from kivy.uix.screenmanager import Screen
 
 if TYPE_CHECKING:
@@ -547,3 +548,69 @@ class TestMainScreenEdges:
         main_screen._nav_coord.open_wiki_page_for_title.assert_not_called()
         main_screen._nav.save_focus_before_reader.assert_not_called()
         assert "Wiki page button pressed. But no title selected." in loguru_sink
+
+
+class TestMainScreenQuietPaths:
+    """Main-screen paths that change nothing visible: a window too small, a screen not shown."""
+
+    def test_the_menu_dropdown_is_dismissed(self, main_screen: MainScreen) -> None:
+        main_screen.menu_dots_dropdown = MagicMock()
+        main_screen._dismiss_dropdown()
+        main_screen.menu_dots_dropdown.dismiss.assert_called_once_with()
+
+    def test_a_window_too_small_for_a_page_leaves_the_screen_its_size(
+        self, main_screen: MainScreen
+    ) -> None:
+        """A minimized window on Windows reports a size of nothing."""
+        main_screen.size = (782, 1225)
+        with (
+            patch.object(barks_reader.ui.main_screen, "Window"),
+            patch.object(barks_reader.ui.main_screen, "get_win_dimensions", return_value=(0, 0)),
+        ):
+            main_screen._is_active(active=False)
+        assert tuple(main_screen.size) == (782, 1225)
+
+    def test_a_touch_while_the_screen_is_not_shown_goes_straight_to_its_widgets(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen._active = False
+        main_screen._nav.is_in_bottom_focus = True
+        with (
+            patch.object(main_screen, "_clear_menu_on_touch") as clear_menu,
+            patch.object(Screen, "on_touch_down", return_value=True) as widgets_press,
+        ):
+            assert main_screen.on_touch_down(MagicMock(pos=(1, 2))) is True
+        clear_menu.assert_not_called()
+        main_screen._nav.exit_bottom_focus.assert_not_called()
+        widgets_press.assert_called_once()
+
+    def test_a_settings_close_button_already_off_the_window_is_just_forgotten(
+        self, main_screen: MainScreen
+    ) -> None:
+        button = MagicMock()
+        button.parent = None  # not MagicMock(parent=None): that names the mock's own parent
+        main_screen._settings_close_button = button
+        main_screen._remove_settings_close_button()
+        assert main_screen._settings_close_button is None
+
+    @pytest.mark.parametrize("active", [True, False])
+    def test_a_theme_row_turned_on_or_off_adds_or_drops_its_theme(
+        self, main_screen: MainScreen, active: bool
+    ) -> None:
+        row = MagicMock(active=active)
+        main_screen.on_checkbox_row_changed(row)
+        expected = ImageThemesChange.ADD if active else ImageThemesChange.DISCARD
+        main_screen._renderer.bottom_view_alter_fun_image_themes.assert_called_once_with(
+            row.theme_enum, expected
+        )
+
+    def test_a_comic_that_does_not_open_leaves_the_first_use_as_it_is(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen._nav_coord.current_fanta_info = MagicMock()
+        main_screen._app_initializer.is_fanta_volumes_state_ok.return_value = (True, "")
+        main_screen._nav_coord.read_comic.return_value = False
+        with patch.object(main_screen, "_set_no_longer_first_use") as no_longer_first_use:
+            main_screen.on_title_portal_image_pressed()
+        main_screen._nav_coord.read_comic.assert_called_once_with()
+        no_longer_first_use.assert_not_called()

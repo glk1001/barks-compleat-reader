@@ -7,6 +7,7 @@ the window and Kivy's clock stood in for; no Kivy app is booted.
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
@@ -244,3 +245,115 @@ class TestAppFailure:
             line.startswith("There's been a program error - the Barks reader app is terminating")
             for line in loguru_sink
         )
+
+
+class TestOnStop:
+    """Closing saves the main screen's and the wiki's state, whichever of them exists."""
+
+    @pytest.mark.parametrize("has_main", [False, True])
+    @pytest.mark.parametrize("has_wiki", [False, True])
+    def test_whatever_screens_were_built_are_saved_once(
+        self, has_main: bool, has_wiki: bool
+    ) -> None:
+        main = MagicMock() if has_main else None
+        wiki = MagicMock() if has_wiki else None
+        app = _app(
+            _on_stop_done=False,
+            _window_geometry=MagicMock(),
+            _main_screen=main,
+            _wiki_reader_screen=wiki,
+        )
+        BarksReaderApp.on_stop(app)
+        BarksReaderApp.on_stop(app)
+
+        app._window_geometry.stop_polling.assert_called_once_with()
+        if main is not None:
+            main.app_closing.assert_called_once_with()
+        if wiki is not None:
+            wiki.save_session.assert_called_once_with()
+
+
+def test_a_second_build_leaves_the_swap_transition_patch_alone() -> None:
+    class _StopBuildError(Exception):
+        pass
+
+    original = MagicMock(name="SwapTransition.on_complete")
+    app = _app(_initialize_settings_and_db=MagicMock(side_effect=_StopBuildError))
+    with (
+        patch.object(SwapTransition, _WORKAROUND_FLAG, True, create=True),  # noqa: FBT003
+        patch.object(SwapTransition, "on_complete", original),
+        patch.object(app_module, "apply_text_input_remove_group_patch"),
+    ):
+        with pytest.raises(_StopBuildError):
+            BarksReaderApp.build(app)
+        assert SwapTransition.on_complete is original
+
+
+# Everything _build_screens makes before the wiki screen, stood in for.
+_BUILT_BEFORE_THE_WIKI = (
+    "UserErrorHandler",
+    "FilteredTitleLists",
+    "ReaderTreeBuilderEventDispatcher",
+    "TreeViewScreen",
+    "BottomTitleViewScreen",
+    "FunImageViewScreen",
+    "MainIndexScreen",
+    "SpeechIndexScreen",
+    "EntityIndexScreen",
+    "StatisticsScreen",
+    "HistoryScreen",
+    "SearchScreen",
+    "WindowManager",
+    "ScreenBundle",
+    "MainScreen",
+    "get_barks_comic_reader_screen",
+    "get_document_reader_screen",
+)
+
+
+class TestWikiSessionMigration:
+    """At build, a wiki session kept beside the app data is copied into the profile."""
+
+    class _StopBuildError(Exception):
+        pass
+
+    def _build_to_the_wiki(self, bundle: Path | None, migrated: Path | None) -> MagicMock:
+        app = _app(
+            reader_settings=MagicMock(wiki_bundle_dir=bundle),
+            font_manager=MagicMock(),
+            _reader_screen_manager=MagicMock(),
+            _screen_switchers=MagicMock(),
+            _comics_database=MagicMock(),
+            _config_info=SimpleNamespace(app_config_dir="/profile", app_data_dir="/data"),
+            _set_custom_title_bar=MagicMock(),
+            _main_screen=None,
+        )
+        with ExitStack() as stack:
+            for name in _BUILT_BEFORE_THE_WIKI:
+                stack.enter_context(patch.object(app_module, name))
+            stack.enter_context(patch.object(app_module.Config, "getint", return_value=1000))
+            migrate = stack.enter_context(
+                patch.object(app_module, "migrate_wiki_session", return_value=migrated)
+            )
+            stack.enter_context(
+                patch.object(app_module, "get_wiki_reader_screen", side_effect=self._StopBuildError)
+            )
+            with pytest.raises(self._StopBuildError):
+                BarksReaderApp._build_screens(app)
+        return migrate
+
+    def test_a_session_found_is_copied_and_said(self, loguru_sink: list[str]) -> None:
+        migrate = self._build_to_the_wiki(Path("/bundle"), Path("/profile/wiki-session.json"))
+        migrate.assert_called_once_with(Path("/data"), Path("/profile"), Path("/bundle"))
+        assert (
+            f'Copied the wiki session into the profile: "{Path("/profile/wiki-session.json")}".'
+            in loguru_sink
+        )
+
+    def test_none_found_is_not_said(self, loguru_sink: list[str]) -> None:
+        self._build_to_the_wiki(Path("/bundle"), None)
+        assert not any("Copied the wiki session" in line for line in loguru_sink)
+
+    def test_with_no_wiki_bundle_nothing_is_looked_for(self) -> None:
+        migrate = self._build_to_the_wiki(None, None)
+        migrate.assert_not_called()

@@ -7,9 +7,10 @@ import stat
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_reader.ui import settings_fix
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
@@ -25,9 +26,17 @@ from barks_reader.ui.settings_fix import (
     SettingOptionsWithValue,
 )
 from kivy.uix import filechooser
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+
+def _stand_in(**attrs: object) -> Any:  # noqa: ANN401
+    """Stand in for a widget as `self`: only the attributes the method reads."""
+    return cast("Any", SimpleNamespace(**attrs))
 
 
 def _chooser(*, box_focused: bool = False) -> MagicMock:
@@ -333,3 +342,121 @@ class TestAltEscapeKeySetting:
             settings_fix.SettingAltEscapeKey._open_capture_popup(setting, MagicMock())
         assert popup.call_args.kwargs["current_keycode"] == 0
         popup.return_value.open.assert_called_once_with()
+
+
+class TestFolderChooserEdges:
+    """The chooser's quieter paths: entries with no path, nothing highlighted, no setting."""
+
+    def test_a_new_selection_marks_only_entries_that_have_a_path(self) -> None:
+        chosen = SimpleNamespace(path="/library/alpha", is_selected=False)
+        other = SimpleNamespace(path="/library/beta", is_selected=True)
+        no_path = SimpleNamespace()  # the '../' row and the like
+        chooser = _stand_in(_items=[chosen, no_path, other])
+
+        settings_fix.CustomFileChooserListView._on_selection_changed(
+            chooser, None, ["/library/alpha"]
+        )
+
+        assert (chosen.is_selected, other.is_selected) == (True, False)
+        assert not hasattr(no_path, "is_selected")
+
+    def test_with_nothing_highlighted_right_opens_nothing(self, tmp_path: Path) -> None:
+        chooser = _browsing(tmp_path, None)
+        SettingLongPathPopup._open_highlighted(chooser)
+        chooser._open_folder.assert_not_called()
+
+    @pytest.mark.parametrize(("has_setting", "path"), [(False, "/library"), (True, "")])
+    def test_with_no_setting_or_no_path_nothing_is_set(self, has_setting: bool, path: str) -> None:
+        chooser = _chooser()
+        chooser.setting_widget = MagicMock() if has_setting else None
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.select_path(chooser, path)
+        clock.schedule_once.assert_not_called()
+        chooser.dismiss.assert_called_once_with()
+
+
+class TestLongPathPopupStart:
+    """The popup opens on the setting's folder and highlights it once the files are listed."""
+
+    @staticmethod
+    def _open(tmp_path: Path, listed: list[str]) -> MagicMock:
+        setting = _stand_in(value=str(tmp_path / "library"), title="Fantagraphics")
+        with (
+            patch.object(settings_fix, "SettingLongPathPopup") as popup_class,
+            patch.object(settings_fix, "Clock") as clock,
+        ):
+            settings_fix.SettingLongPath._create_popup(setting, MagicMock())
+        popup = popup_class.return_value
+        popup.ids.file_chooser.files = listed
+        (set_initial_selection, _delay), _ = clock.schedule_once.call_args
+        set_initial_selection(0)
+        return popup.ids.file_chooser
+
+    def test_the_settings_folder_is_highlighted_when_listed(self, tmp_path: Path) -> None:
+        library = str(tmp_path / "library")
+        chooser = self._open(tmp_path, [str(tmp_path / "other"), library])
+        chooser.set_initial_selection.assert_called_once_with([library])
+
+    def test_a_folder_not_listed_leaves_nothing_highlighted(self, tmp_path: Path) -> None:
+        chooser = self._open(tmp_path, [str(tmp_path / "other")])
+        chooser.set_initial_selection.assert_not_called()
+
+
+class TestOptionValueDisplay:
+    """An option's value is shown in its row's value box, whatever else that box holds."""
+
+    @staticmethod
+    def _row(content_box: object, *, columns: int = 2) -> Any:  # noqa: ANN401
+        main_box = SimpleNamespace(children=[content_box, *[Widget() for _ in range(columns - 1)]])
+        return _stand_in(value="Duckburg", children=[main_box])
+
+    def test_an_existing_label_past_other_widgets_gets_the_value(self) -> None:
+        label = Label(text="old")
+        content_box = BoxLayout()
+        content_box.add_widget(label)
+        content_box.add_widget(Widget())  # children are newest first: this one comes first
+
+        SettingOptionsWithValue._update_value_display(self._row(content_box))
+
+        assert label.text == "Duckburg"
+        assert len(content_box.children) == 2  # noqa: PLR2004
+
+    def test_a_row_without_a_value_box_is_left_alone(self) -> None:
+        not_a_box = Widget()
+        SettingOptionsWithValue._update_value_display(self._row(not_a_box))
+        assert not_a_box.children == []
+
+    def test_a_row_with_one_column_is_left_alone(self) -> None:
+        content_box = BoxLayout()
+        SettingOptionsWithValue._update_value_display(self._row(content_box, columns=1))
+        assert content_box.children == []
+
+
+class TestSettingsSavedWithoutAConfig:
+    """A setting with no panel, or a panel with no config, takes the value and writes nothing."""
+
+    def test_an_option_set_with_no_config_is_still_logged(self, loguru_sink: list[str]) -> None:
+        setting = MagicMock(spec=SettingOptionsWithValue)
+        setting.key, setting.value = "color_theme", "Duckburg"
+        setting.panel = MagicMock(config=None)
+        with (
+            patch.object(settings_fix.SettingOptions, "_set_option"),
+            patch.object(settings_fix, "Clock"),
+        ):
+            SettingOptionsWithValue._set_option(setting, MagicMock())
+        assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
+
+    @pytest.mark.parametrize("has_panel", [False, True])
+    def test_a_captured_key_takes_effect_without_a_config(self, has_panel: bool) -> None:
+        setting = _stand_in(value="", panel=MagicMock(config=None) if has_panel else None)
+        with patch.object(settings_fix, "set_alt_escape_key") as set_key:
+            settings_fix.SettingAltEscapeKey._set_keycode(setting, 96)
+        assert setting.value == "96"
+        set_key.assert_called_once_with(96)
+
+
+def test_the_long_path_rows_title_column_shrinks_to_its_text() -> None:
+    label = SimpleNamespace(size_hint_x=0.6, width=100)
+    settings_fix.SettingLongPath.on_kv_post(_stand_in(ids=SimpleNamespace(labellayout=label)), None)
+    assert label.size_hint_x is None
+    assert label.width == settings_fix.dp(310)

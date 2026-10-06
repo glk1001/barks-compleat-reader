@@ -596,10 +596,10 @@ class SettingLongPath(SettingItem):
         the value ``content`` box (the only remaining size-hinted sibling) expand
         to fill the rest, so the path sits next to the title and stays readable.
         """
-        label = self.ids.get("labellayout")
-        if label is not None:
-            label.size_hint_x = None
-            label.width = dp(310)
+        # Every setting row has it: Kivy's <SettingItem> rule and the themed one above.
+        label = self.ids.labellayout
+        label.size_hint_x = None
+        label.width = dp(310)
 
     def update_setting_value(self, new_path: str) -> None:
         """Update the setting with a new path value."""
