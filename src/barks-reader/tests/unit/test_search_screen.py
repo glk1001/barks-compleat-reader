@@ -36,6 +36,7 @@ from barks_reader.ui.search_screen import (
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -3309,3 +3310,27 @@ def test_one_letter_in_the_title_box_lists_nothing() -> None:
         screen.on_title_search_text("g")
         screen.ids.title_results_layout.clear_widgets.assert_called_once_with()
     screen._search.search.assert_not_called()
+
+
+def _scrolled_down_list() -> tuple[ScrollView, BoxLayout]:
+    rows = BoxLayout(orientation="vertical", size_hint_y=None)
+    scroll = ScrollView()
+    scroll.add_widget(rows)
+    scroll.scroll_y = 0  # scrolled to the bottom of an earlier list
+    return scroll, rows
+
+
+def test_a_new_title_list_starts_at_its_first_row() -> None:
+    """Pick "US" after scrolling down "CS": the US list starts at its top."""
+    screen = _make_bare_screen()
+    scroll, rows = _scrolled_down_list()
+    screen._populate_title_results(rows, ["Lost in the Andes!"], MagicMock())
+    assert scroll.scroll_y == 1
+
+
+def test_a_new_word_result_list_starts_at_its_first_row() -> None:
+    screen = _make_bare_screen()
+    screen._word_search_results = []
+    scroll, rows = _scrolled_down_list()
+    screen._populate_word_results_layout(rows)
+    assert scroll.scroll_y == 1

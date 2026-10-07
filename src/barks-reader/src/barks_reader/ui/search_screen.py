@@ -30,6 +30,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -84,7 +85,6 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
-    from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_colors import Color
@@ -117,6 +117,12 @@ class _SearchResultButton(Button):
 
 
 COVER_ROW_TEXT = "[Cover]"
+
+
+def _show_from_the_top(layout: BoxLayout) -> None:
+    """Show a list just filled from its first row: its scroll view keeps its place otherwise."""
+    if isinstance(layout.parent, ScrollView):
+        layout.parent.scroll_y = 1
 
 
 def _listed_title(title_str: str) -> Titles | None:
@@ -567,6 +573,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 on_release=lambda b, t=title_str: self._on_result_row_released(b, t, on_select)
             )
             layout.add_widget(btn)
+        _show_from_the_top(layout)
 
     def _on_result_row_released(
         self, button: _SearchResultButton, title_str: str, on_select: Callable[[str], None]
@@ -1720,6 +1727,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             row.add_widget(speech_btn)
 
             results_layout.add_widget(row)
+        _show_from_the_top(results_layout)
 
     def _on_word_result_row_released(
         self, button: _SearchResultButton, title_str: str, page_to_goto: str
