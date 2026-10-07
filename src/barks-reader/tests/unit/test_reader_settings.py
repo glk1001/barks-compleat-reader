@@ -167,6 +167,13 @@ class TestReaderSettings:
         mock_config.set.assert_called_once_with(BARKS_READER_SECTION, key, stored)
         mock_save.assert_called_once()
 
+    def test_a_captured_alt_escape_key_is_logged(
+        self, reader_settings: ReaderSettings, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(reader_settings, ReaderSettings._save_settings.__name__):
+            reader_settings.set_alt_escape_key(113)
+        assert "Setting alt_escape_key = 113." in loguru_sink
+
     def test_the_censorship_choices_are_read(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:

@@ -279,7 +279,7 @@ class ReaderFilePaths:
         if use_only_edited_if_possible:
             return inset_list
 
-        main_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible=False)
+        main_inset_file = self.get_comic_inset_file(title)
         if (main_inset_file != self.get_emergency_inset_file()) and (
             main_inset_file not in inset_list
         ):
