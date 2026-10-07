@@ -77,7 +77,17 @@ class ComicBookInfo:
 
     @staticmethod
     def get_title_str_from_display_title(display_title: str) -> str:
-        return display_title.strip(")(")
+        """Return the canonical title a display title shows.
+
+        A title Barks did not name is shown in one pair of parentheses, and only that
+        pair goes: a title of his own can hold parentheses of its own, as "Maple Sugar
+        Time (How Sweet It Is!)" does, and is shown as it is.
+        """
+        if display_title in STR_TITLE_TO_ENUM:
+            return display_title
+        if display_title.startswith("(") and display_title.endswith(")"):
+            return display_title[1:-1]
+        return display_title
 
 
 # fmt: off

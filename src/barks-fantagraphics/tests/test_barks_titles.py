@@ -68,6 +68,19 @@ class TestComicBookInfo:
         assert uncle_scrooge.get_formatted_title_from_issue_name() == "Uncle\nScrooge #4"
         assert four_color.get_formatted_title_from_issue_name() == "Four Color\n408"
 
+    def test_every_display_title_gives_back_its_title(self) -> None:
+        """Even one of Barks's own that ends in parentheses of its own."""
+        not_given_back = [
+            info.get_display_title()
+            for info in BARKS_TITLE_INFO
+            if ComicBookInfo.get_title_str_from_display_title(info.get_display_title())
+            != info.get_title_str()
+        ]
+        assert not_given_back == []
+        maple_sugar = "Maple Sugar Time (How Sweet It Is!)"
+        assert ComicBookInfo.get_title_str_from_display_title(maple_sugar) == maple_sugar
+        assert ComicBookInfo.get_title_str_from_display_title("(Gold Rush)") == "Gold Rush"
+
     def test_is_non_comic_title(self) -> None:
         article = next(iter(NON_COMIC_TITLES))
         assert is_non_comic_title(ENUM_TO_STR_TITLE[article])
