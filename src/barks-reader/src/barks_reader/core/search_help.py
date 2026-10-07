@@ -20,6 +20,7 @@ TITLE_HELP: Final[HelpExamples] = (
     ("CS 104", "an issue and cover"),
     ("CS 10", "CS 10 and 100-109"),
     ("Four Color 223", "an issue by name"),
+    ("FC", "a whole series"),
     ("covers", "every cover"),
 )
 

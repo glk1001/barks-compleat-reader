@@ -63,6 +63,9 @@ class TestTheHelpMatchesTheSyntax:
         assert Titles.TRUANT_OFFICER_DONALD in cs_10  # CS 100
         assert all(str(BARKS_TITLE_INFO[t].issue_number).startswith("10") for t in cs_10)
         assert Titles.LOST_IN_THE_ANDES in find("Four Color 223")
+        four_color = find("FC")
+        assert Titles.LOST_IN_THE_ANDES in four_color
+        assert {BARKS_TITLE_INFO[t].issue_name.name for t in four_color} == {"FC"}
         assert find("covers")
         assert set(find("covers")) <= COVERS_SET
 

@@ -16,7 +16,7 @@ from .barks_tags import (
 )
 from .barks_titles import US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM
 from .comic_book_info import BARKS_TITLE_INFO, COVERS_SET
-from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
+from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues, _get_shortest_issue_name
 from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
 from .search_terms import SUBSTRING_MIN_CHARS, _stems_of
@@ -71,6 +71,17 @@ def _issue_name_key(name: str) -> str:
     So "Four Color #223", "four-color 223" and "FourColor223" all read the same.
     """
     return _words_only(name).replace(" ", "")
+
+
+@cache
+def _series_codes() -> dict[str, Issues]:
+    """Return the codes a series is listed under on its titles' rows: "fc", "cs", "wdcs"."""
+    return {
+        code.lower(): issue
+        for issue in Issues
+        if issue != Issues.EXTRAS
+        for code in (SHORT_ISSUE_NAME[issue], _get_shortest_issue_name(issue))
+    }
 
 
 @cache
@@ -167,8 +178,9 @@ class BarksTitleSearch:
     def find_titles(self, query: str) -> list[Titles]:
         """Return the titles a typed text finds, in the order Barks handed them in.
 
-        A text naming an issue ("CS 100", "wdcs100", "Four Color #223") finds what Barks did
-        in it, as `get_titles_in_issues` reads it, covers too, and nothing else. "Cover" or
+        A text naming an issue ("CS 100", "wdcs100", "Four Color #223") or a series by its
+        code ("FC") finds what Barks did in it, as `get_titles_in_issues` reads it, covers
+        too, and nothing else. "Cover" or
         "covers" alone finds every cover. Any other text finds the stories, not the covers,
         where:
 
@@ -211,8 +223,9 @@ class BarksTitleSearch:
         The issue is its code, short name or full name, then the start of its number, in
         any case, with or without spaces, punctuation or "#": "CS 100", "wdcs100", "Four
         Color #223". "CS 10" names CS 10 and CS 100 to 109, as the number is typed; a
-        leading 0 is passed over.
-        Uncle Scrooge 1 to 3 are the Four Color issues they came out as.
+        leading 0 is passed over. A series' code alone, as its titles' rows show it,
+        names every issue of it: "FC", "CS" or "WDCS", "MOC". Uncle Scrooge 1 to 3 are
+        the Four Color issues they came out as.
 
         Args:
             text: The typed text.
@@ -222,13 +235,18 @@ class BarksTitleSearch:
             them in.
 
         """
-        match = _ISSUE.fullmatch(_issue_name_key(text))
-        if match is None:
-            return None
-        issue = _issue_names().get(match[1])
-        if issue is None:
-            return None
-        digits = str(int(match[2]))  # "CS 010" is CS 10
+        key = _issue_name_key(text)
+        series = _series_codes().get(key)
+        if series is not None:
+            issue, digits = series, ""  # every number starts with ""
+        else:
+            match = _ISSUE.fullmatch(key)
+            if match is None:
+                return None
+            named = _issue_names().get(match[1])
+            if named is None:
+                return None
+            issue, digits = named, str(int(match[2]))  # "CS 010" is CS 10
         numbers = {(issue, n) for n in _issue_numbers(issue) if str(n).startswith(digits)}
         if issue == Issues.US:
             numbers |= {(Issues.FC, fc) for us, fc in _US_AS_FC if str(us).startswith(digits)}

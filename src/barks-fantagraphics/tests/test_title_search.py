@@ -344,7 +344,7 @@ def test_uncle_scrooge_1_to_3_are_their_four_color_issues() -> None:
 
 def test_a_text_naming_no_issue_is_told_apart_from_an_empty_issue() -> None:
     assert _in_issues("zz 4") is None
-    assert _in_issues("US") is None
+    assert _in_issues("Uncle Scrooge") is None  # a full name needs a number
     assert _in_issues("gold") is None
     assert _in_issues("US 999") == []
 
@@ -395,3 +395,55 @@ def test_a_leading_zero_in_an_issue_number_is_passed_over() -> None:
     assert _in_issues("CS 010") == _in_issues("CS 10")
     assert _in_issues("CS 0") == []
     assert _in_issues("CS 000") == []
+
+
+@pytest.mark.parametrize(
+    ("code", "issue"),
+    [
+        ("fc", Issues.FC),
+        ("CS", Issues.CS),
+        ("WDCS", Issues.CS),
+        ("dd", Issues.DD),
+        ("moc", Issues.MC),
+    ],
+)
+def test_a_series_code_alone_lists_the_whole_series(code: str, issue: Issues) -> None:
+    titles = _find(code)
+    in_series = [i.title for i in BARKS_TITLE_INFO if i.issue_name == issue]
+    assert sorted(titles) == sorted(in_series)
+
+
+def test_a_series_is_listed_in_the_order_barks_handed_it_in() -> None:
+    handed_in = [
+        (i.submitted_year, i.submitted_month, i.submitted_day)
+        for i in (BARKS_TITLE_INFO[t] for t in _find("dd"))
+    ]
+    assert handed_in == sorted(handed_in)
+    assert set(_find("dd")) & COVERS_SET  # its covers among its stories
+
+
+def test_uncle_scrooge_lists_its_first_three_four_color_issues_too() -> None:
+    titles = _find("US")
+    assert Titles.ONLY_A_POOR_OLD_MAN in titles  # US 1, Four Color 386
+    assert Titles.MENEHUNE_MYSTERY_THE in titles
+
+
+@pytest.mark.parametrize(
+    ("text", "title"),
+    [
+        ("mc", Titles.MCDUCK_OF_ARABIA),
+        ("ch", Titles.CHRISTMAS_ON_BEAR_MOUNTAIN),
+        ("ki", Titles.KITE_WEATHER),
+    ],
+)
+def test_a_code_not_shown_on_rows_stays_a_word_search(text: str, title: Titles) -> None:
+    """March of Comics, Cheerios and Kites rows show MOC, CG and KG: these start words."""
+    assert _in_issues(text) is None
+    assert title in _find(text)
+
+
+def test_a_full_name_alone_is_no_series() -> None:
+    """Full names name a series only with a number, so "Donald Duck" stays a title search."""
+    assert _in_issues("Four Color") is None
+    assert Titles.DONALD_DUCK_FINDS_PIRATE_GOLD in _find("donald duck")
+    assert len(_find("donald duck")) < len(_find("dd"))
