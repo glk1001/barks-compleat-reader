@@ -79,6 +79,8 @@ for d in $(ls -1r build/overnight 2>/dev/null | grep '^20'); do
 done
 """
 _HEADER_COMMIT = re.compile(r"\(([0-9a-f]{7,40})\)")
+# What a run's summary header says once every stage has run ("finished in 3h12m").
+_FINISHED = "): finished"
 
 
 class CoverageAllError(Exception):
@@ -123,14 +125,19 @@ def parse_host(platform: str, spec: str, default_repo: str) -> Host:
 
 
 def parse_runs(listing: str) -> list[Run]:
-    """Return the runs in a `_LIST_RUNS` listing that measured coverage, newest first."""
+    """Return the finished runs in a `_LIST_RUNS` listing that measured coverage, newest first.
+
+    Finished: a run still going, or stopped, has measured only its stages so far (the
+    unit suite before the GUI tests), and on 2026-10-07 one taken mid-run put Linux at
+    93.6% for a commit whose finished run measured 98.9%.
+    """
     runs = []
     for line in listing.splitlines():
         stamp, _, rest = line.partition("\t")
         header, _, files = rest.partition("\t")
         found = _HEADER_COMMIT.search(header)
         data_files = tuple(f for f in files.split() if f in DATA_FILES)
-        if found and data_files:
+        if found and data_files and _FINISHED in header:
             runs.append(Run(stamp, found[1], data_files))
     return runs
 

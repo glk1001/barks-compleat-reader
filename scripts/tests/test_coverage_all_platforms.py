@@ -47,6 +47,20 @@ class TestRuns:
             cap.Run("20261002-040000", "aa630aa3", (".coverage.unit", ".coverage.gui"))
         ]
 
+    def test_a_run_still_going_or_stopped_is_passed_over(self) -> None:
+        """Its data is only the stages so far: the unit suite, without the GUI tests."""
+        listing = (
+            "20261007-160548\t==== overnight run, 20261007-160548 (f5985a31):"
+            " 9 of 18 stages done ====\t.coverage.unit \n"
+            "20261007-120000\t==== overnight run, 20261007-120000 (f5985a31):"
+            " stopped during gui, 1h02m in ====\t.coverage.unit \n"
+            "20261007-091407\t==== overnight run, 20261007-091407 (f5985a31):"
+            " finished in 3h12m ====\t.coverage.all \n"
+        )
+        assert cap.parse_runs(listing) == [
+            cap.Run("20261007-091407", "f5985a31", (".coverage.all",))
+        ]
+
     def test_a_runs_own_combination_is_preferred_to_its_parts(self) -> None:
         run = cap.Run("s", "c", (".coverage.all", ".coverage.unit", ".coverage.gui"))
         assert run.inputs() == (".coverage.all",)
