@@ -64,7 +64,9 @@ bash scripts/run_benchmark.sh
 **Run the whole repo overnight** (the data-pack validators, full-lint, the suite with coverage,
 in random order and against upgraded dependencies, the sibling repos' tests, a Nuitka build and
 its smoke test, every GUI stage below against that build, GUI timing drift, unused code that
-nothing ran (`dead_code_report.py`, warns only), a weekday slice of mutation testing; `--list`, `--only`, `--skip`, `--app PATH`; results in
+nothing ran (`dead_code_report.py`, warns only), mutation testing of all of `core/` and the
+fantagraphics search modules (`BARKS_OVERNIGHT_MUTATION_SCOPE=core` or `fantagraphics` gives a
+machine one share); `--list`, `--only`, `--skip`, `--app PATH`; results in
 `build/overnight/<stamp>/summary.txt`, where a warn-only stage shows WARNED):
 ```bash
 bash scripts/run_overnight.sh

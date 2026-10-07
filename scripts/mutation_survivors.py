@@ -17,6 +17,10 @@ appears.
 
 Usage, with the modules mutated (dotted below ``barks_reader.core``) as arguments:
     (cd src/barks-reader && uv run mutmut results) | python scripts/mutation_survivors.py MODULE...
+or for another package, its modules taken from every mutant the results list:
+    (cd src/barks-fantagraphics && uv run mutmut results --all true) \
+        | python scripts/mutation_survivors.py --package barks_fantagraphics
+A module outside ``barks_reader.core`` is recorded under its full dotted name.
 
 Exits 1 when any module's count rose, 0 otherwise (including the first run, which
 only records).
@@ -33,25 +37,49 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RECORD_FILE = REPO_ROOT / ".benchmarks" / "mutation-survivors.json"
 
+CORE = "barks_reader.core"
+
+
 # mutmut names a mutant <module>.x_<func>__mutmut_N for a plain function and
 # <module>.xǁ<Class>ǁ<method>__mutmut_N for a method (as mutmut.sh's summary).
-_SURVIVOR = re.compile(r"^\s*barks_reader\.core\.(?P<module>.+?)\.(?:x_|xǁ).*: survived\s*$")
+def _mutant_re(package: str, status: str) -> re.Pattern[str]:
+    return re.compile(rf"^\s*{re.escape(package)}\.(?P<module>.+?)\.(?:x_|xǁ).*: {status}\s*$")
 
 
-def survivors_by_module(results: str, modules: list[str]) -> dict[str, list[str]]:
+def modules_mutated(results: str, package: str) -> list[str]:
+    """Return the modules of `package` that `results` lists any mutant of, in order.
+
+    Args:
+        results: ``mutmut results --all true`` output, which lists killed ones too.
+        package: The dotted package the modules are below.
+
+    Returns:
+        The modules, dotted below `package`.
+
+    """
+    mutant = _mutant_re(package, r"\S.*")
+    found = (match["module"] for line in results.splitlines() if (match := mutant.match(line)))
+    return list(dict.fromkeys(found))
+
+
+def survivors_by_module(
+    results: str, modules: list[str], package: str = CORE
+) -> dict[str, list[str]]:
     """Return each mutated module's surviving mutant names (a module with none gets []).
 
     Args:
         results: ``mutmut results`` output.
-        modules: The modules this run mutated, dotted below ``barks_reader.core``.
+        modules: The modules this run mutated, dotted below `package`.
+        package: The dotted package they are below.
 
     Returns:
         Survivor names, by module, for exactly `modules`.
 
     """
+    survivor = _mutant_re(package, "survived")
     found: dict[str, list[str]] = {module: [] for module in modules}
     for line in results.splitlines():
-        match = _SURVIVOR.match(line)
+        match = survivor.match(line)
         if match and match["module"] in found:
             found[match["module"]].append(line.strip().removesuffix(": survived"))
     return found
@@ -84,9 +112,18 @@ def write_record(path: Path, record: dict[str, int], found: dict[str, list[str]]
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 
-def main(modules: list[str], results: str, record_file: Path = RECORD_FILE) -> int:
-    """Compare, report and record; return 1 when a module's survivors rose."""
-    found = survivors_by_module(results, modules)
+def main(
+    modules: list[str], results: str, record_file: Path = RECORD_FILE, package: str = CORE
+) -> int:
+    """Compare, report and record; return 1 when a module's survivors rose.
+
+    With no `modules`, they are the ones `results` lists any mutant of.
+    """
+    modules = modules or modules_mutated(results, package)
+    by_module = survivors_by_module(results, modules, package)
+    # The core's modules keep the short names their records have always had.
+    found = {(m if package == CORE else f"{package}.{m}"): names for m, names in by_module.items()}
+    modules = list(found)
     record = read_record(record_file)
     report = rises(found, record)
     new = [module for module in modules if module not in record]
@@ -103,7 +140,11 @@ def main(modules: list[str], results: str, record_file: Path = RECORD_FILE) -> i
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:  # noqa: PLR2004
+    args = sys.argv[1:]
+    chosen = CORE
+    if args[:1] == ["--package"] and len(args) > 1:
+        chosen, args = args[1], args[2:]
+    if not args and chosen == CORE:
         print(__doc__)  # noqa: T201
         sys.exit(2)
-    sys.exit(main(sys.argv[1:], sys.stdin.read()))
+    sys.exit(main(args, sys.stdin.read(), package=chosen))

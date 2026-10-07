@@ -734,8 +734,8 @@ Everything else this pass found was a trap or an equivalent.
 
 ## Overnight slice (2026-09-27)
 
-`run_overnight.sh`'s mutation stage mutates one seventh of `core/` a night, and since this
-date it warns when a module has more survivors than the last time it was mutated
+`run_overnight.sh`'s mutation stage mutated one seventh of `core/` a night (since 2026-10-07,
+all of it and the `barks_fantagraphics` search modules: see below), and since this date it warns when a module has more survivors than the last time it was mutated
 (`scripts/mutation_survivors.py`; the per-module counts live in
 `.benchmarks/mutation-survivors.json`, machine-local). Counts rather than names, since
 mutmut renumbers a function's mutants on any edit. A rise is reported once, with the
@@ -1044,3 +1044,21 @@ equivalent**.
 | `_stems_of`: `continue` to `break` (short base; always-doubled base) | 2 | A later suffix that also matches has a shorter base; only junk stems (`ab'`) differ. |
 | `speech_sort_key`'s `""` to `"XXXX"` | 1 | Every numbered group shares it. |
 | `get_direct_group_members`'s default `[]` to `None` or none | 2 | Every `TagGroups` member is a key. |
+
+## The whole of `core/` every night (2026-10-07)
+
+The weekday slice dated from when a full `core/` sweep was thought to take too long. Timed
+on the main PC: all of `core/`, 6,948 mutants, in 7.5 minutes; the `barks_fantagraphics`
+search modules, 2,537, in 2.8. So the mutation stage now mutates both every night, and a
+change to `core/` is mutated the next morning, not on its weekday up to a week later: the
+macOS Dock measurement went in on 2026-10-05 and was first mutated on 2026-10-07.
+`BARKS_OVERNIGHT_MUTATION_SCOPE` (`all`, the default, `core` or `fantagraphics`) splits the
+work between two Linux machines rather than both doing all of it. The fantagraphics modules
+are recorded under their full dotted names (`barks_fantagraphics.search_query`), beside the
+core's short ones.
+
+That first full sweep also counted 168 core mutants no selected test reaches (🫥):
+`reader_file_paths` 66, `memory_census` 34, `tap_targets` 32, `reader_settings` 14,
+`user_error_types` 13, `config_info` 9. The stage reports survivors, not these: a module
+whose only tests need Kivy (`memory_census`, `tap_targets`) is never mutation-tested.
+

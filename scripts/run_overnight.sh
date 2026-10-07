@@ -62,9 +62,11 @@
 #                  data never ran and no .kv file, script or sibling repo names;
 #                  warns when there are any
 #   graphify       graphify update ., the knowledge graph (gitignored)
-#   mutation       mutmut.sh on one seventh of core/, a different one each weekday;
-#                  warns when a module has more survivors than the last time it
-#                  was mutated (mutation_survivors.py, .benchmarks/)
+#   mutation       mutmut.sh on all of core/ (under eight minutes) and on the
+#                  barks_fantagraphics search modules (under three), or on the share
+#                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns when a module has more
+#                  survivors than the last time it was mutated (mutation_survivors.py,
+#                  .benchmarks/)
 #
 # Usage: scripts/run_overnight.sh [--list] [--only A,B] [--skip A,B] [--app PATH]
 #   --list   print the stages and exit
@@ -73,7 +75,8 @@
 #   --app    use this built executable instead of building one (skips build)
 # Env: BARKS_OVERNIGHT_SOAK_STEPS (default here 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 # (default: three seeds from the day of the year, so each night walks new paths);
-# BARKS_OVERNIGHT_MUTATION_DAY (1-7, default today's weekday) picks the mutation slice.
+# BARKS_OVERNIGHT_MUTATION_SCOPE (all, core or fantagraphics; default all) is what the
+# mutation stage mutates: two Linux machines can each take a share.
 #
 # Linux only (xvfb, systemd-inhibit, the GUI probe). A stage's output goes to
 # build/overnight/<stamp>/<stage>.log and summary.txt holds the results so far,
@@ -296,24 +299,19 @@ dead_code() {
     return "$status"
 }
 
-# One seventh of core/'s modules, by weekday: every module once a week, and a
-# night's slice a few hundred mutants instead of a full sweep's six thousand.
-# The testing helpers are left out; they are not the code under test.
-mutation() {
-    local day="${BARKS_OVERNIGHT_MUTATION_DAY:-$(date +%u)}"
+# All of core/'s modules (the testing helpers left out: they are not the code under
+# test), every night: about 7,000 mutants in under eight minutes, so new code is
+# checked the next morning rather than on its weekday a week later.
+mutation_core() {
     local core="src/barks-reader/src/barks_reader/core"
-    local globs=() i=0 path
+    local globs=() modules=() path
     while read -r path; do
-        (( i % 7 == day - 1 )) && globs+=("*/core/${path#"${core}/"}")
-        i=$((i + 1))
+        globs+=("*/core/${path#"${core}/"}")
+        path="${path#"${core}/"}"
+        modules+=("$(tr / . <<<"${path%.py}")")
     done < <(find "$core" -name '*.py' ! -name '__init__.py' ! -path '*/testing/*' \
         ! -path '*/__pycache__/*' | sort)
-    if ((${#globs[@]} == 0)); then
-        echo "mutation: no modules in slice ${day} of 7"
-        return "$SKIPPED"
-    fi
-    echo "mutation: slice ${day} of 7, ${#globs[@]} module(s):"
-    printf '  %s\n' "${globs[@]}"
+    echo "mutation: core/, ${#globs[@]} module(s)"
     # mutmut.sh writes its argument as setup.cfg's only_mutate, where configparser
     # reads further lines of a value only when they are indented. Its tests import
     # the screen metrics, which need a display. A failed run records nothing: the
@@ -322,13 +320,43 @@ mutation() {
         "$(printf '%s\n' "${globs[@]}" | sed -e '2,$s/^/    /')" || return 1
     # mutmut passes whatever survives; a module with more survivors than last
     # time is the one worth a look, so that is a warning.
-    local modules=()
-    for path in "${globs[@]}"; do
-        path="${path#\*/core/}"
-        modules+=("$(tr / . <<<"${path%.py}")")
-    done
     (cd src/barks-reader && uv run mutmut results 2>/dev/null) \
         | uv run python "${SCRIPT_DIR}/mutation_survivors.py" "${modules[@]}" || return "$WARNED"
+}
+
+# The barks_fantagraphics search modules (mutmut.sh --package fantagraphics), under
+# three minutes. Their modules are the ones the results list, as mutmut.sh clears
+# the last run's first.
+mutation_fantagraphics() {
+    echo "mutation: barks_fantagraphics search modules"
+    with_display bash "${SCRIPT_DIR}/mutmut.sh" --package fantagraphics || return 1
+    (cd src/barks-fantagraphics && uv run mutmut results --all true 2>/dev/null) \
+        | uv run python "${SCRIPT_DIR}/mutation_survivors.py" --package barks_fantagraphics \
+        || return "$WARNED"
+}
+
+# What this machine mutates: BARKS_OVERNIGHT_MUTATION_SCOPE, so two Linux machines can
+# share the work rather than both doing all of it. A failure outranks a warning.
+mutation() {
+    local scope="${BARKS_OVERNIGHT_MUTATION_SCOPE:-all}" status=0 part
+    case "$scope" in
+    all | core | fantagraphics) ;;
+    *)
+        echo "mutation: BARKS_OVERNIGHT_MUTATION_SCOPE is '${scope}': all, core or fantagraphics"
+        return 1
+        ;;
+    esac
+    for part in core fantagraphics; do
+        [[ "$scope" == all || "$scope" == "$part" ]] || continue
+        local part_status=0
+        "mutation_${part}" || part_status=$?
+        if ((part_status == 1)); then
+            status=1
+        elif ((part_status != 0 && status == 0)); then
+            status=$part_status
+        fi
+    done
+    return "$status"
 }
 
 # Run one stage. It returns SKIPPED (saying why) or WARNED as well as pass/fail.

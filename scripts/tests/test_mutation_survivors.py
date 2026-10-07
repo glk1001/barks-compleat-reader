@@ -6,10 +6,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from mutation_survivors import main, read_record, survivors_by_module
+from mutation_survivors import main, modules_mutated, read_record, survivors_by_module
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 RESULTS = """\
     barks_reader.core.reader_formatter.x_mark_phrase_in_text__mutmut_4: survived
@@ -61,3 +63,49 @@ class TestMain:
         main(["comic_reader_manager"], RESULTS, record)
         main(["reader_formatter"], RESULTS, record)
         assert read_record(record) == {"comic_reader_manager": 1, "reader_formatter": 1}
+
+
+FANTAGRAPHICS_RESULTS = """\
+    barks_fantagraphics.search_query.x_parse__mutmut_1: killed
+    barks_fantagraphics.search_query.x_parse__mutmut_2: survived
+    barks_fantagraphics.title_search.xǁTitleSearchǁfind__mutmut_4: killed
+    barks_reader.core.reader_formatter.x_mark_phrase_in_text__mutmut_4: survived
+"""
+
+
+class TestAnotherPackage:
+    """The fantagraphics search modules: their modules from the results, recorded in full."""
+
+    def test_the_modules_are_every_one_the_results_list_a_mutant_of(self) -> None:
+        assert modules_mutated(FANTAGRAPHICS_RESULTS, "barks_fantagraphics") == [
+            "search_query",
+            "title_search",
+        ]
+
+    def test_a_module_with_every_mutant_killed_is_recorded_at_zero(self, tmp_path: Path) -> None:
+        record = tmp_path / "mutation-survivors.json"
+        assert main([], FANTAGRAPHICS_RESULTS, record, package="barks_fantagraphics") == 0
+        assert read_record(record) == {
+            "barks_fantagraphics.search_query": 1,
+            "barks_fantagraphics.title_search": 0,
+        }
+
+    def test_its_records_sit_beside_the_cores_short_names(self, tmp_path: Path) -> None:
+        record = tmp_path / "mutation-survivors.json"
+        main(["reader_formatter"], RESULTS, record)
+        main([], FANTAGRAPHICS_RESULTS, record, package="barks_fantagraphics")
+        assert read_record(record)["reader_formatter"] == 1
+        assert read_record(record)["barks_fantagraphics.search_query"] == 1
+
+    def test_a_rise_names_the_module_in_full(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        record = tmp_path / "mutation-survivors.json"
+        main(
+            [],
+            "    barks_fantagraphics.search_query.x_parse__mutmut_1: killed\n",
+            record,
+            package="barks_fantagraphics",
+        )
+        assert main([], FANTAGRAPHICS_RESULTS, record, package="barks_fantagraphics") == 1
+        assert "barks_fantagraphics.search_query: 0 -> 1 survivors" in capsys.readouterr().out
