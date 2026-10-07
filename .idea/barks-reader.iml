@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/src/barks-reader">
       <sourceFolder url="file://$MODULE_DIR$/src/barks-reader/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/src/barks-reader/mutants" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="barks-build-comic-images" exported="" />
