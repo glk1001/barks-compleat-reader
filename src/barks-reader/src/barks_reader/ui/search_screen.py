@@ -164,13 +164,14 @@ class _SyntaxMeaning(Label):
 
 
 class SearchSyntaxHelp(BoxLayout):
-    """A search box's syntax help: a heading, then each example beside what it does.
+    """A search box's syntax help: a heading, each example beside what it does, a note.
 
     Read, not picked: nothing in it takes focus or a tap.
     """
 
     heading = StringProperty()
     examples: HelpExamples = ObjectProperty(())
+    note = StringProperty()  # under the examples; none takes no room
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)

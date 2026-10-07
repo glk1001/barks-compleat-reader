@@ -106,6 +106,17 @@
                 rounded_rectangle: (self.x, self.y, self.width, self.height, dp(8))
                 width: dp(1)
 
+    Label:
+        text: root.note
+        italic: True
+        font_size: fm.search_label_font_size
+        color: reader_palette.theme().text_secondary
+        size_hint_y: None
+        text_size: self.width, None
+        height: self.texture_size[1] if root.note else 0
+        opacity: 1 if root.note else 0
+        halign: 'left'
+
 <_TagChipButton>:
     size_hint: 1, None
     # A tag longer than the chip wraps onto more lines rather than spilling
@@ -329,12 +340,27 @@
                         0 if title_results_layout.children \
                         or not title_search_input.text else 0.75
 
-                SearchSyntaxHelp:
-                    heading: search_help.TITLE_HELP_HEADING
-                    examples: search_help.TITLE_HELP
+                # The examples, then the series a code alone lists.
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint: 0.95, None
+                    height: self.minimum_height
+                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                    spacing: dp(16)
                     opacity:
                         0 if title_results_layout.children \
                         or title_search_input.text else 1
+
+                    SearchSyntaxHelp:
+                        size_hint_x: 1
+                        heading: search_help.TITLE_HELP_HEADING
+                        examples: search_help.TITLE_HELP
+
+                    SearchSyntaxHelp:
+                        size_hint_x: 1
+                        heading: search_help.TITLE_SERIES_HEADING
+                        examples: search_help.TITLE_SERIES
+                        note: search_help.TITLE_SERIES_NOTE
 
         # ---- Tag Search Content ----
         BoxLayout:

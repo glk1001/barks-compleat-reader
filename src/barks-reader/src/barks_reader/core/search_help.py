@@ -20,8 +20,21 @@ TITLE_HELP: Final[HelpExamples] = (
     ("CS 104", "an issue and cover"),
     ("CS 10", "CS 10 and 100-109"),
     ("Four Color 223", "an issue by name"),
-    ("FC", "a whole series"),
     ("covers", "every cover"),
+)
+
+# The series a code alone lists (as the title rows show it): the five with most of
+# the stories, then the rest by code only, alphabetically but for ANDERS last.
+TITLE_SERIES_HEADING: Final = "Issue to type:"
+TITLE_SERIES: Final[HelpExamples] = (
+    ("CS", "Comics and Stories"),
+    ("FC", "Four Color"),
+    ("DD", "Donald Duck"),
+    ("US", "Uncle Scrooge"),
+    ("HDL", "Junior Woodchucks"),
+)
+TITLE_SERIES_NOTE: Final = (
+    "Also CG, CID, CP, DIBP, FG, KG, MMA, MOC, SF, USA, USGTD, VP and ANDERS."
 )
 
 WORD_HELP_HEADING: Final = "Type a word, or combine them:"

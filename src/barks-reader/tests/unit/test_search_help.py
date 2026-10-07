@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
+from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues, _get_shortest_issue_name
 from barks_fantagraphics.search_filters import tag_titles
 from barks_fantagraphics.search_query import (
     NEAR_DEFAULT_DISTANCE,
@@ -17,7 +18,13 @@ from barks_fantagraphics.search_query import (
 )
 from barks_fantagraphics.tag_query import parse_tag_query
 from barks_fantagraphics.title_search import BarksTitleSearch
-from barks_reader.core.search_help import TAG_HELP, TITLE_HELP, WORD_HELP
+from barks_reader.core.search_help import (
+    TAG_HELP,
+    TITLE_HELP,
+    TITLE_SERIES,
+    TITLE_SERIES_NOTE,
+    WORD_HELP,
+)
 from barks_reader.ui.search_screen import SearchSyntaxHelp, _SyntaxExample, _SyntaxMeaning
 
 _NO_QUERY_ALONE = (Not, TagQualifier, VolumeQualifier, YearQualifier)
@@ -68,6 +75,27 @@ class TestTheHelpMatchesTheSyntax:
         assert {BARKS_TITLE_INFO[t].issue_name.name for t in four_color} == {"FC"}
         assert find("covers")
         assert set(find("covers")) <= COVERS_SET
+
+    @pytest.mark.parametrize(("code", "name"), TITLE_SERIES)
+    def test_a_series_shown_is_the_one_its_code_lists(self, code: str, name: str) -> None:
+        titles = BarksTitleSearch().find_titles(code)
+        assert titles
+        assert all(
+            ISSUE_NAME[BARKS_TITLE_INFO[t].issue_name].endswith(name)
+            or code == "US"  # Uncle Scrooge 1 to 3 came out as Four Color issues
+            for t in titles
+        )
+
+    def test_the_series_shown_and_named_are_every_series_a_code_lists(self) -> None:
+        named = set(re.findall(r"[A-Z]{2,}", TITLE_SERIES_NOTE))
+        shown = {code for code, _ in TITLE_SERIES} | named
+        every = {
+            _get_shortest_issue_name(i.issue_name)
+            for i in BARKS_TITLE_INFO
+            if i.issue_name != Issues.EXTRAS
+        }
+        assert shown == every
+        assert all(BarksTitleSearch.get_titles_in_issues(code) for code in shown)
 
     def test_near_s_distance_is_the_parser_s(self) -> None:
         meaning = dict(WORD_HELP)["gold NEAR mine"]
