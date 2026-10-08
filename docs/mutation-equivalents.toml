@@ -1,0 +1,2550 @@
+# Surviving mutants of the overnight mutation stage, by what they are: module, function
+# and the change (the lines the mutant takes out, "- ", and puts in, "+ ").
+# scripts/mutation_survivors.py reads this; see docs/mutation-testing.md.
+#
+# [[equivalent]]: no test can tell the mutant from the code; the reason says why.
+# [[untriaged]]:  the backlog, recorded on 2026-10-08. Kill one with a test (then take
+#                 it out), or move it to [[equivalent]] and give it a reason.
+# A change only to what a logger call is given is equivalent without being listed,
+# unless the call uses log_markers.
+
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._barks_reader_files_dir: Path | None = None
++ self._barks_reader_files_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._reader_icon_files_dir: Path | None = None
++ self._reader_icon_files_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._app_window_icon_path: Path | None = None
++ self._app_window_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._various_files_dir: Path | None = None
++ self._various_files_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._indexes_dir: Path | None = None
++ self._indexes_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._error_background_path: Path | None = None
++ self._error_background_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._success_background_path: Path | None = None
++ self._success_background_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._action_bar_icons_dir: Path | None = None
++ self._action_bar_icons_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._close_icon_path: Path | None = None
++ self._close_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._go_back_icon_path: Path | None = None
++ self._go_back_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._collapse_icon_path: Path | None = None
++ self._collapse_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._refresh_arrow_icon_path: Path | None = None
++ self._refresh_arrow_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._settings_icon_path: Path | None = None
++ self._settings_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._menu_dots_icon_path: Path | None = None
++ self._menu_dots_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._fullscreen_icon_path: Path | None = None
++ self._fullscreen_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._fullscreen_exit_icon_path: Path | None = None
++ self._fullscreen_exit_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._single_page_icon_path: Path | None = None
++ self._single_page_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._double_page_icon_path: Path | None = None
++ self._double_page_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._goto_icon_path: Path | None = None
++ self._goto_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._goto_start_icon_path: Path | None = None
++ self._goto_start_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._goto_end_icon_path: Path | None = None
++ self._goto_end_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._contrast_on_icon_path: Path | None = None
++ self._contrast_on_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._contrast_off_icon_path: Path | None = None
++ self._contrast_off_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._goto_title_icon_path: Path | None = None
++ self._goto_title_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._hamburger_menu_icon_path: Path | None = None
++ self._hamburger_menu_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._app_identity_image_path: Path | None = None
++ self._app_identity_image_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._speech_bubble_icon_path: Path | None = None
++ self._speech_bubble_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._eye_open_icon_path: Path | None = None
++ self._eye_open_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._eye_off_icon_path: Path | None = None
++ self._eye_off_icon_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._up_arrow_path: Path | None = None
++ self._up_arrow_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._down_arrow_path: Path | None = None
++ self._down_arrow_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._transparent_blank_path: Path | None = None
++ self._transparent_blank_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._empty_page_path: Path | None = None
++ self._empty_page_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._favourite_titles_path: Path | None = None
++ self._favourite_titles_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._by_the_numbers_background_path: Path | None = None
++ self._by_the_numbers_background_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._intro_doc_dir: Path | None = None
++ self._intro_doc_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._censorship_fixes_doc_dir: Path | None = None
++ self._censorship_fixes_doc_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._how_to_doc_dir: Path | None = None
++ self._how_to_doc_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._fantagraphics_overrides_root_dir: Path | None = None
++ self._fantagraphics_overrides_root_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._fantagraphics_panel_segments_root_dir: Path | None = None
++ self._fantagraphics_panel_segments_root_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._statistics_dir: Path | None = None
++ self._statistics_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- disabled = disabled | (hyphens ^ self._hyphens)
++ disabled = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- disabled = disabled | (hyphens ^ self._hyphens)
++ disabled = disabled & (hyphens ^ self._hyphens)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- disabled = disabled | (hyphens ^ self._hyphens)
++ disabled = disabled | (hyphens & self._hyphens)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- hyphens = hyphens - disabled
++ hyphens = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- hyphens = hyphens - disabled
++ hyphens = hyphens + disabled
+"""
+
+[[untriaged]]
+module = "barks_reader.core.hyphen_break_engine"
+function = "BreakRefinement.observe"
+change = """
+- self._seen.add((hyphens, disabled))
++ self._seen.add(None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager.__init__"
+change = """
+- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
++ if store_path.exists() and (contents := store_path.read_text(encoding=None).strip()):
+"""
+
+[[untriaged]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager.__init__"
+change = """
+- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
++ if store_path.exists() and (contents := store_path.read_text(encoding="UTF-8").strip()):
+"""
+
+[[untriaged]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(self._data, indent=4), encoding=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(self._data, indent=4), )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(self._data, indent=4), encoding="UTF-8")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "compute_text_stats"
+change = """
+- search = ComicSearch(indexes_dir)
++ search = ComicSearch(None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script and art", counts.get(None, 0)),
++ _row("Script and art", counts.get(None, None)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script and art", counts.get(None, 0)),
++ _row("Script and art", counts.get(None, )),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script and art", counts.get(None, 0)),
++ _row("Script and art", counts.get(None, 1)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
++ _row("Art only", counts.get(Qualifier.ART_ONLY, None)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
++ _row("Art only", counts.get(Qualifier.ART_ONLY, )),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
++ _row("Art only", counts.get(Qualifier.ART_ONLY, 1)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
++ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, None)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
++ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, )),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
++ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 1)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
++ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, None)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
++ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, )),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_attribution_section"
+change = """
+- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
++ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 1)),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_length_section"
+change = """
+- key=lambda item: (-item[1], ENUM_TO_STR_TITLE[item[0]]),
++ key=lambda item: (-item[1], ENUM_TO_STR_TITLE[item[1]]),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_paid_records"
+change = """
+- if payment.payment > 0 and payment.accepted_year != _UNKNOWN
++ if payment.payment > 1 and payment.accepted_year != _UNKNOWN
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_adjusted_payment_total"
+change = """
+- latest_year = get_latest_year()
++ latest_year = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_adjusted_payment_total"
+change = """
+- get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
++ get_adjusted_usd(payment.payment, payment.accepted_year, None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.corpus_stats"
+function = "_adjusted_payment_total"
+change = """
+- get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
++ get_adjusted_usd(payment.payment, payment.accepted_year, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader_platform_settings"
+function = "PrefetchTuning.get_new_dynamic_window"
+change = """
+- if new_window != dynamic_window:
++ if new_window == dynamic_window:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader_platform_settings"
+function = "PrefetchTuning.detect_system_profile"
+change = """
+- cpu_count = os.cpu_count() or 1
++ cpu_count = os.cpu_count() or 2
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader_platform_settings"
+function = "autotune_worker_count"
+change = """
+- cpu_count = os.cpu_count() or 1
++ cpu_count = os.cpu_count() or 2
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader_platform_settings"
+function = "autotune_worker_count"
+change = """
+- _AUTO_TUNED_THREAD_COUNT = 1
++ _AUTO_TUNED_THREAD_COUNT = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.collection_page_groups"
+function = "_group_ranges"
+change = """
+- located_titles: list[Titles], year_ranges: list[tuple[int, int]], hint: str = ""
++ located_titles: list[Titles], year_ranges: list[tuple[int, int]], hint: str = "XXXX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.collection_page_groups"
+function = "_group_ranges"
+change = """
+- _assert_tiling(ranges, len(located_titles), hint)
++ _assert_tiling(ranges, len(located_titles), None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.collection_page_groups"
+function = "_group_ranges"
+change = """
+- _assert_tiling(ranges, len(located_titles), hint)
++ _assert_tiling(ranges, len(located_titles), )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.collection_page_groups"
+function = "_assert_tiling"
+change = """
+- def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "") -> None:
++ def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "XXXX") -> None:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_hicolor_icon"
+change = """
+- suffix = source_icon_path.suffix or ".png"
++ suffix = source_icon_path.suffix and ".png"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_hicolor_icon"
+change = """
+- suffix = source_icon_path.suffix or ".png"
++ suffix = source_icon_path.suffix or "XX.pngXX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_hicolor_icon"
+change = """
+- suffix = source_icon_path.suffix or ".png"
++ suffix = source_icon_path.suffix or ".PNG"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_desktop_file"
+change = """
+- if desktop_file.is_file() and desktop_file.read_text(encoding="utf-8") == content:
++ if desktop_file.is_file() and desktop_file.read_text(encoding=None) == content:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_desktop_file"
+change = """
+- if desktop_file.is_file() and desktop_file.read_text(encoding="utf-8") == content:
++ if desktop_file.is_file() and desktop_file.read_text(encoding="UTF-8") == content:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_desktop_file"
+change = """
+- desktop_file.write_text(content, encoding="utf-8")
++ desktop_file.write_text(content, encoding=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_desktop_file"
+change = """
+- desktop_file.write_text(content, encoding="utf-8")
++ desktop_file.write_text(content, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_install_desktop_file"
+change = """
+- desktop_file.write_text(content, encoding="utf-8")
++ desktop_file.write_text(content, encoding="UTF-8")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_resolve_exec_command"
+change = """
+- script = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
++ script = Path(sys.argv[0]).resolve() if sys.argv or sys.argv[0] else None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.index_text"
+function = "indexable_title_from_str"
+change = """
+- textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
++ textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.index_text"
+function = "indexable_title_from_str"
+change = """
+- textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
++ textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="XX...XX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_page_info"
+function = "_build_page_map"
+change = """
+- zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
++ zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_page_info"
+function = "_build_page_map"
+change = """
+- zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
++ zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.__init__"
+change = """
+- self._never_crop_images = self._load_never_crop_images()
++ self._never_crop_images = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._get_fallback_image_info"
+change = """
+- FIT_MODE_COVER,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_search_image"
+change = """
+- FIT_MODE_COVER,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_search_image_for_title"
+change = """
+- FIT_MODE_COVER,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_censorship_fix_image"
+change = """
+- FIT_MODE_COVER,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_reading_history_image"
+change = """
+- FIT_MODE_COVER,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_image_for_title"
+change = """
+- if image_info[0] != self._last_title_image.get(title_str, "")
++ if image_info[0] != self._last_title_image.get(title_str, None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_image_for_title"
+change = """
+- if image_info[0] != self._last_title_image.get(title_str, "")
++ if image_info[0] != self._last_title_image.get(title_str, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_image_for_title"
+change = """
+- if image_info[0] != self._last_title_image.get(title_str, "")
++ if image_info[0] != self._last_title_image.get(title_str, "XXXX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._select_best_candidate_image"
+change = """
+- and (title_str is None or filename != self._last_title_image.get(title_str, ""))
++ and (title_str is None or filename != self._last_title_image.get(title_str, None))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._select_best_candidate_image"
+change = """
+- and (title_str is None or filename != self._last_title_image.get(title_str, ""))
++ and (title_str is None or filename != self._last_title_image.get(title_str, ))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._select_best_candidate_image"
+change = """
+- and (title_str is None or filename != self._last_title_image.get(title_str, ""))
++ and (title_str is None or filename != self._last_title_image.get(title_str, "XXXX"))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._load_never_crop_images"
+change = """
+- lines = config_file.read_text(encoding="utf-8").splitlines()
++ lines = config_file.read_text(encoding=None).splitlines()
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._load_never_crop_images"
+change = """
+- lines = config_file.read_text(encoding="utf-8").splitlines()
++ lines = config_file.read_text(encoding="UTF-8").splitlines()
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._load_never_crop_images"
+change = """
+- if (cleaned := line.split("#", 1)[0].strip())
++ if (cleaned := line.split("#", )[0].strip())
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._load_never_crop_images"
+change = """
+- if (cleaned := line.split("#", 1)[0].strip())
++ if (cleaned := line.split("#", 2)[0].strip())
+"""
+
+[[untriaged]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector._get_possible_files_for_title"
+change = """
+- title_files[file_type], key=lambda entry: str(entry[0])
++ title_files[file_type], key=lambda entry: str(entry[1])
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "escape_editorial_brackets"
+change = """
+- last = 0
++ last = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_formatted_payment_info"
+change = """
+- current_year = datetime.now(UTC).year
++ current_year = datetime.now(None).year
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "_term_pattern"
+change = """
+- intra_word_break = r"(?:\\xad\\n?)?"
++ intra_word_break = r"(?:\\xAD\\n?)?"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "_term_pattern"
+change = """
+- separator_pattern = r"(?: |\\n|\\xad\\n)"
++ separator_pattern = r"(?: |\\n|\\xAD\\n)"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "mark_terms_in_text"
+change = """
+- unique = dict.fromkeys(" ".join(t.split()).lower() for t in terms if t.split())
++ unique = dict.fromkeys(" ".join(t.split()).upper() for t in terms if t.split())
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "mark_terms_in_text"
+change = """
+- patterns = [_term_pattern(t) for t in sorted(unique, key=len, reverse=True)]
++ patterns = [_term_pattern(t) for t in sorted(unique, key=None, reverse=True)]
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "mark_terms_in_text"
+change = """
+- patterns = [_term_pattern(t) for t in sorted(unique, key=len, reverse=True)]
++ patterns = [_term_pattern(t) for t in sorted(unique, reverse=True)]
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_fitted_title_with_page_nums"
+change = """
+- len_combined -= 2
++ len_combined = 2
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_fitted_title_with_page_nums"
+change = """
+- len_combined -= 2
++ len_combined -= 3
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_fitted_title_with_page_nums"
+change = """
+- len_combined -= 4
++ len_combined = 4
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_fitted_title_with_page_nums"
+change = """
+- len_combined -= 4
++ len_combined -= 5
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_formatter"
+function = "get_fitted_title_with_page_nums"
+change = """
+- if len_combined > max_title_with_pages_len:
++ if len_combined >= max_title_with_pages_len:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_session_path"
+change = """
+- digest = hashlib.sha256(str(bundle.resolve()).encode("utf-8")).hexdigest()[:12]
++ digest = hashlib.sha256(str(bundle.resolve()).encode("UTF-8")).hexdigest()[:12]
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(parents=None, exist_ok=True)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(parents=True, exist_ok=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(exist_ok=True)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(parents=True, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(parents=False, exist_ok=True)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "migrate_wiki_session"
+change = """
+- target.parent.mkdir(parents=True, exist_ok=True)
++ target.parent.mkdir(parents=True, exist_ok=False)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_top_bar_spec"
+change = "- bg_color=ACTION_BAR_BG_COLOR,"
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_top_bar_spec"
+change = "- separator_color=ACTION_BAR_SEPARATOR_COLOR,"
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_top_bar_spec"
+change = "- icon_width=RAW_ACTION_BAR_ICON_WIDTH,"
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_top_bar_spec"
+change = """
+- quit_fence_width=RAW_QUIT_FENCE_WIDTH,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_theme_spec"
+change = """
+- title_hex = color_to_markup_hex(theme().text_title).lstrip("#")
++ title_hex = color_to_markup_hex(theme().text_title).lstrip("XX#XX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_theme_spec"
+change = """
+- crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("#"),
++ crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("XX#XX"),
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "story_slug"
+change = """
+- return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
++ return re.sub(r"[^a-z0-9]+", "-", lowered).strip("XX-XX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "canonical_title"
+change = """
+- title_enum = STR_TITLE_TO_ENUM.get(text)
++ title_enum = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.wiki_integration"
+function = "canonical_title"
+change = """
+- title_enum = STR_TITLE_TO_ENUM.get(text)
++ title_enum = STR_TITLE_TO_ENUM.get(None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_utils"
+function = "read_text_paragraphs"
+change = """
+- line = ln.rstrip(" ")
++ line = ln.rstrip("XX XX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_utils"
+function = "get_paths_from_directory"
+change = """
+- paths.add(str(relative_path.with_suffix("")).replace("\\\\", "/"))
++ paths.add(str(relative_path.with_suffix("")).replace("XX\\\\XX", "/"))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_utils"
+function = "get_paths_from_directory"
+change = """
+- paths.add(str(relative_path.with_suffix("")).replace("\\\\", "/"))
++ paths.add(str(relative_path.with_suffix("")).replace("\\\\", "XX/XX"))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_utils"
+function = "get_paths_from_zip"
+change = """
+- with zipfile.ZipFile(zip_path, "r") as zf:
++ with zipfile.ZipFile(zip_path, ) as zf:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore.__init__"
+change = """
+- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
++ if store_path.exists() and (contents := store_path.read_text(encoding=None).strip()):
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore.__init__"
+change = """
+- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
++ if store_path.exists() and (contents := store_path.read_text(encoding="UTF-8").strip()):
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore._sync"
+change = """
+- self._revision += 1
++ self._revision += 2
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore._sync"
+change = """
+- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(json_data, indent=4), encoding=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore._sync"
+change = """
+- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(json_data, indent=4), )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore._sync"
+change = """
+- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
++ self._store_path.write_text(json.dumps(json_data, indent=4), encoding="UTF-8")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "EmptyArchiveError.__init__"
+change = """
+- exts = ", ".join(_VALID_IMAGE_EXTENSION)
++ exts = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "EmptyArchiveError.__init__"
+change = """
+- exts = ", ".join(_VALID_IMAGE_EXTENSION)
++ exts = "XX, XX".join(_VALID_IMAGE_EXTENSION)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives.load"
+change = """
+- override_archive_filename = override_archive_filenames.get(missing_volume, None)
++ override_archive_filename = override_archive_filenames.get(missing_volume, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives.load"
+change = """
+- override_archive_filename = override_archive_filenames.get(fanta_volume, None)
++ override_archive_filename = override_archive_filenames.get(fanta_volume, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives.load"
+change = """
+- is_missing=False,
+- )
++ )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives.load"
+change = """
+- raise MissingArchiveFilesError(missing_volumes, self._archive_root)
++ raise MissingArchiveFilesError(missing_volumes, None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives.get_all_volume_override_archives"
+change = """
+- continue
++ break
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives._get_archive_contents"
+change = """
+- with zipfile.ZipFile(archive_filename, "r") as archive:
++ with zipfile.ZipFile(archive_filename, ) as archive:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.fantagraphics_volumes"
+function = "FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps"
+change = """
+- with zipfile.ZipFile(override_archive_filename, "r") as archive:
++ with zipfile.ZipFile(override_archive_filename, ) as archive:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.init_data"
+change = """
+- log_markers.VOLUMES_LOADED.format(elapsed=timing.get_elapsed_time_with_unit())
++ log_markers.VOLUMES_LOADED.format(elapsed=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.resolve_archive_for_comic"
+change = """
+- fanta_volume_archive.override_archive_filename, "r"
+- )
++ fanta_volume_archive.override_archive_filename, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.wait_load_event"
+change = """
+- assert 0 <= page_index < len(self._images)
++ assert 1 <= page_index < len(self._images)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.wait_load_event"
+change = """
+- assert 0 <= page_index < len(self._images)
++ assert 0 < page_index < len(self._images)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.wait_load_event"
+change = """
+- assert 0 <= page_index < len(self._images)
++ assert 0 <= page_index <= len(self._images)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_comic_in_thread"
+change = """
+- load_error = False
++ load_error = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "XXLoad cancelled before starting work.XX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "load cancelled before starting work."
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "LOAD CANCELLED BEFORE STARTING WORK."
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- raise CancelledError(msg)
++ raise CancelledError(None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "XXLoad cancelled during work.XX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "load cancelled during work."
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "LOAD CANCELLED DURING WORK."
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- continue
++ break
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- if len(futures) >= dynamic_window:
++ if len(futures) > dynamic_window:
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- return False
++ return True
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- return True
++ return False
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- if not submit_next():
++ if submit_next():
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- break
++ return
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- raise CancelledError(e) from e
++ raise CancelledError(None) from e
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- executor.shutdown(cancel_futures=True)
++ executor.shutdown(cancel_futures=None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- executor.shutdown(cancel_futures=True)
++ executor.shutdown(cancel_futures=False)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._barks_reader_files_dir: Path | None = None
++ self._barks_reader_files_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._reader_icon_files_dir: Path | None = None
++ self._reader_icon_files_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._barks_panels_source: Path | None = None
++ self._barks_panels_source: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self.barks_panels_are_encrypted: bool = False
++ self.barks_panels_are_encrypted: bool = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self.barks_panels_are_encrypted: bool = False
++ self.barks_panels_are_encrypted: bool = True
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._panels_ext_type: BarksPanelsExtType | None = None
++ self._panels_ext_type: BarksPanelsExtType | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._inset_edited_files_dir: PanelPath | None = None
++ self._inset_edited_files_dir: PanelPath | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._inset_files_ext = ""
++ self._inset_files_ext = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._inset_files_ext = ""
++ self._inset_files_ext = "XXXX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._edited_files_ext = ""
++ self._edited_files_ext = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._edited_files_ext = ""
++ self._edited_files_ext = "XXXX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- ] = {
+- # COVER special case: returns single string or None
+- FileTypes.COVER: self.get_comic_cover_file,
+- FileTypes.AI: self.get_comic_ai_files,
+- FileTypes.BLACK_AND_WHITE: self.get_comic_bw_files,
+- FileTypes.CENSORSHIP: self.get_comic_censorship_files,
+- FileTypes.CLOSEUP: self.get_comic_closeup_files,
+- FileTypes.FAVOURITE: self.get_comic_favourite_files,
+- FileTypes.INSET: self.get_comic_inset_files,
+- FileTypes.ORIGINAL_ART: self.get_comic_original_art_files,
+- FileTypes.SILHOUETTE: self.get_comic_silhouette_files,
+- FileTypes.SPLASH: self.get_comic_splash_files,
+- }
++ ] = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.set_barks_panels_source"
+change = """
+- self._barks_panels_zip = zipfile.ZipFile(self._barks_panels_source, "r")
++ self._barks_panels_zip = zipfile.ZipFile(self._barks_panels_source, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths._check_panels_dirs"
+change = """
+- dirs_to_check.insert(0, self._barks_panels_source)
++ dirs_to_check.insert(1, self._barks_panels_source)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths._check_dirs"
+change = """
+- msg = f'Required directory not found: "{dir_path}".'
++ msg = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths._check_dirs"
+change = """
+- raise FileNotFoundError(msg)
++ raise FileNotFoundError(None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.get_file_type_titles"
+change = """
+- allowed_titles = set()
++ allowed_titles = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline.__init__"
+change = """
+- self._fun_image_themes: set[ImageThemes] | None = None
++ self._fun_image_themes: set[ImageThemes] | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline.__init__"
+change = """
+- self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
++ self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline._set_top_view_image_fixed"
+change = """
+- self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+- )
++ self._reader_settings.file_paths.get_comic_inset_file(title), title, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", None)
+"""
+
+[[untriaged]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", "XXXX")
+"""
+
+[[untriaged]]
+module = "barks_reader.core.page_info_adapters"
+function = "FantagraphicsPanelSegmentsAdapter.__init__"
+change = """
+- self._cached_for: ComicBook | None = None
++ self._cached_for: ComicBook | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.page_info_adapters"
+function = "FantagraphicsPanelSegmentsAdapter.__init__"
+change = """
+- self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = None
++ self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._layout: ComicLayout | None = None
++ self._layout: ComicLayout | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
++ self._comic_book_reader_screen: ComicBookReaderScreenPort | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._comic_book_reader: ComicBookReaderPort | None = None
++ self._comic_book_reader: ComicBookReaderPort | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._fanta_info: FantaComicBookInfo | None = None
++ self._fanta_info: FantaComicBookInfo | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_settings"
+function = "ReaderSettings.__init__"
+change = """
+- self._config: ConfigParser | None = None
++ self._config: ConfigParser | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_settings"
+function = "ReaderSettings.__init__"
+change = """
+- self._app_settings_path: Path | None = None
++ self._app_settings_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_settings"
+function = "ReaderSettings.__init__"
+change = """
+- self._app_data_dir: Path | None = None
++ self._app_data_dir: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_settings"
+function = "ReaderSettings.__init__"
+change = """
+- self._user_data_path: Path | None = None
++ self._user_data_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_settings"
+function = "ReaderSettings.__init__"
+change = """
+- self._user_history_path: Path | None = None
++ self._user_history_path: Path | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._save_enabled = False
++ self._save_enabled = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._current_title: str | None = None
++ self._current_title: str | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._current_layout: ComicLayout | None = None
++ self._current_layout: ComicLayout | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.__init__"
+change = """
+- self._archive: zipfile.ZipFile | None = None
++ self._archive: zipfile.ZipFile | None = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.__init__"
+change = """
+- self._comic_book_image_builder = comic_book_image_builder
++ self._comic_book_image_builder = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.__init__"
+change = """
+- self._empty_page_image = empty_page_image
++ self._empty_page_image = None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.open"
+change = """
+- self._archive = zipfile.ZipFile(self._archive_path, "r")
++ self._archive = zipfile.ZipFile(self._archive_path, )
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.close"
+change = """
+- self._archive = None
++ self._archive = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.close"
+change = """
+- self._fanta_volume_archive.override_archive = None
++ self._fanta_volume_archive.override_archive = ""
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._get_image_path"
+change = """
+- return str(raw[0]).replace("\\\\", "/"), raw[1]
++ return str(raw[0]).replace("XX\\\\XX", "/"), raw[1]
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._get_image_path"
+change = """
+- return str(raw[0]).replace("\\\\", "/"), raw[1]
++ return str(raw[0]).replace("\\\\", "XX/XX"), raw[1]
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._get_fanta_volume_image_path"
+change = """
+- page_info.srce_page.page_filename, page_info.page_type
++ page_info.srce_page.page_filename, None
+"""
+
+[[untriaged]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._read_image"
+change = """
+- "Page requires the Fantagraphics library archive, but it is not available."
++ "XXPage requires the Fantagraphics library archive, but it is not available.XX"
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast(None, current_node.nodes))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("XXlist[TitleTreeViewNodeProtocol]XX", current_node.nodes))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("list[titletreeviewnodeprotocol]", current_node.nodes))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("LIST[TITLETREEVIEWNODEPROTOCOL]", current_node.nodes))
+"""
+
+[[untriaged]]
+module = "barks_reader.core.navigation.tree_spec"
+function = "_SpecBuilder._tag_or_group_specs"
+change = """
+- assert_never(tag_or_group)
++ assert_never(None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.title_search"
+function = "BarksTitleSearch.get_direct_group_members"
+change = """
+- return list(BARKS_TAG_GROUPS.get(tag_group, []))
++ return list(BARKS_TAG_GROUPS.get(tag_group, None))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.title_search"
+function = "BarksTitleSearch.get_direct_group_members"
+change = """
+- return list(BARKS_TAG_GROUPS.get(tag_group, []))
++ return list(BARKS_TAG_GROUPS.get(tag_group, ))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_QueryError.__init__"
+change = """
+- super().__init__(message)
++ super().__init__(None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_read_quoted"
+change = """
+- if end < 0:
++ if end <= 0:
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_read_quoted"
+change = """
+- if end < 0:
++ if end < 1:
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_tokenize"
+change = """
+- tokens.append(_Token(_Kind.LPAREN if ch == "(" else _Kind.RPAREN, ch, i))
++ tokens.append(_Token(_Kind.LPAREN if ch == "(" else _Kind.RPAREN, None, i))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_range"
+change = """
+- if years and len(last_text) < len(first_text):  # 1950-55: the last two digits
++ if years and len(last_text) <= len(first_text):  # 1950-55: the last two digits
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "read_range"
+change = """
+- return _range(value, 0, "a year" if years else "a volume", years=years)
++ return _range(value, None, "a year" if years else "a volume", years=years)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "read_range"
+change = """
+- return _range(value, 0, "a year" if years else "a volume", years=years)
++ return _range(value, 1, "a year" if years else "a volume", years=years)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_query"
+function = "_Parser._qualifier"
+change = """
+- return VolumeQualifier(*_range(value, token.position, "a volume", years=False))
++ return VolumeQualifier(*_range(value, token.position, "a volume", years=None))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_results"
+function = "speech_sort_key"
+change = """
+- return (int(speech_info.group_id), "")
++ return (int(speech_info.group_id), "XXXX")
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_evaluate"
+function = "_QueryNeedsWordsError.__init__"
+change = """
+- super().__init__(message)
++ super().__init__(None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_evaluate"
+function = "_is_filter"
+change = """
+- case _:
+- return False
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_evaluate"
+function = "_search_order"
+change = """
+- return 4
++ return 5
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_evaluate"
+function = "_Evaluator.run"
+change = """
+- if _is_filter(node) or isinstance(node, Not):
++ if _is_filter(None) or isinstance(node, Not):
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_evaluate"
+function = "_Evaluator._look_up"
+change = """
+- case _:
+- pass
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_terms"
+function = "TermLexicon.suggest"
+change = """
+- close = difflib.get_close_matches(lower, self._words, n=limit + 1, cutoff=SUGGESTION_CUTOFF)
++ close = difflib.get_close_matches(lower, self._words, n=limit + 2, cutoff=SUGGESTION_CUTOFF)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_terms"
+function = "_doubles_last_letter"
+change = """
+- and stem[-1] not in "wxy"
++ and stem[-1] not in "XXwxyXX"
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_terms"
+function = "_stems_of"
+change = """
+- continue
++ break
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.search_terms"
+function = "_stems_of"
+change = """
+- continue  # hoping is not hop + ing: that is hopping
++ break  # hoping is not hop + ing: that is hopping
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "_filter_entities_to_curated"
+change = """
+- curated = curated_sets.get(EntityType(entity_type), set())
++ curated = curated_sets.get(EntityType(entity_type), None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "_filter_entities_to_curated"
+change = """
+- curated = curated_sets.get(EntityType(entity_type), set())
++ curated = curated_sets.get(EntityType(entity_type), )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=True)
++ f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=True)
++ f"entities_{entity_type}": KEYWORD(stored=True, commas=True, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=True)
++ f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=False)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(stored=None, lang="en", analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(stored=False, lang=None, analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(lang="en", analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(stored=False, analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(stored=False, lang="XXenXX", analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
++ unstemmed=TEXT(stored=False, lang="EN", analyzer=punct_analyzer),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- content_raw=TEXT(stored=True, lang="en"),
++ content_raw=TEXT(stored=True, lang=None),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- content_raw=TEXT(stored=True, lang="en"),
++ content_raw=TEXT(stored=True, ),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- content_raw=TEXT(stored=True, lang="en"),
++ content_raw=TEXT(stored=True, lang="XXenXX"),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "build_index_schema"
+change = """
+- content_raw=TEXT(stored=True, lang="en"),
++ content_raw=TEXT(stored=True, lang="EN"),
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "_term_positions"
+change = """
+- if matcher.is_active() and matcher.id() < docnum:
++ if matcher.is_active() or matcher.id() < docnum:
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "_term_positions"
+change = """
+- if matcher.is_active() and matcher.id() < docnum:
++ if matcher.is_active() and matcher.id() <= docnum:
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._get_entity_types"
+change = """
+- field_value = hit.get(f"entities_{entity_type}", "")
++ field_value = hit.get(f"entities_{entity_type}", None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._get_entity_types"
+change = """
+- field_value = hit.get(f"entities_{entity_type}", "")
++ field_value = hit.get(f"entities_{entity_type}", )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._get_entity_types"
+change = """
+- field_value = hit.get(f"entities_{entity_type}", "")
++ field_value = hit.get(f"entities_{entity_type}", "XXXX")
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._parse_literal"
+change = """
+- escaped = text.replace("\\\\", "\\\\\\\\").replace('"', '\\\\"')
++ escaped = text.replace("XX\\\\XX", "\\\\\\\\").replace('"', '\\\\"')
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._parse_literal"
+change = """
+- escaped = text.replace("\\\\", "\\\\\\\\").replace('"', '\\\\"')
++ escaped = text.replace("\\\\", "\\\\\\\\").replace('XX"XX', '\\\\"')
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._near_hits"
+change = """
+- near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, []))}
++ near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, None), rights.get(d, []))}
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._near_hits"
+change = """
+- near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, []))}
++ near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, ), rights.get(d, []))}
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._near_hits"
+change = """
+- near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, []))}
++ near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, None))}
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine._near_hits"
+change = """
+- near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, []))}
++ near_docs = {d for d in doc_numbers if near.is_near(lefts.get(d, []), rights.get(d, ))}
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngine.get_all_titles"
+change = """
+- return {t.decode("utf-8") for t in reader.lexicon("title")}
++ return {t.decode("UTF-8") for t in reader.lexicon("title")}
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(volumes, f, indent=4)
++ json.dump(volumes, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(volumes, f, indent=4)
++ json.dump(volumes, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(volumes, f, indent=4)
++ json.dump(volumes, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
++ all_unstemmed_terms = [t.decode("UTF-8") for t in reader.lexicon("unstemmed")]
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(all_unstemmed_terms, f, indent=4)
++ json.dump(all_unstemmed_terms, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(all_unstemmed_terms, f, indent=4)
++ json.dump(all_unstemmed_terms, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(all_unstemmed_terms, f, indent=4)
++ json.dump(all_unstemmed_terms, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(cleaned_terms, f, indent=4)
++ json.dump(cleaned_terms, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(cleaned_terms, f, indent=4)
++ json.dump(cleaned_terms, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(cleaned_terms, f, indent=4)
++ json.dump(cleaned_terms, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
++ json.dump(split_alpha_terms(cleaned_terms), f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
++ json.dump(split_alpha_terms(cleaned_terms), f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
++ json.dump(split_alpha_terms(cleaned_terms), f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(most_frequent_words, f, indent=4)
++ json.dump(most_frequent_words, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(most_frequent_words, f, indent=4)
++ json.dump(most_frequent_words, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(most_frequent_words, f, indent=4)
++ json.dump(most_frequent_words, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(least_frequent_words, f, indent=4)
++ json.dump(least_frequent_words, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(least_frequent_words, f, indent=4)
++ json.dump(least_frequent_words, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(least_frequent_words, f, indent=4)
++ json.dump(least_frequent_words, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(self._get_speaker_counts(), f, indent=4)
++ json.dump(self._get_speaker_counts(), f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(self._get_speaker_counts(), f, indent=4)
++ json.dump(self._get_speaker_counts(), f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator.index_volumes"
+change = """
+- json.dump(self._get_speaker_counts(), f, indent=4)
++ json.dump(self._get_speaker_counts(), f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- skip_missing_pages: bool = False,
++ skip_missing_pages: bool = True,
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- cast("dict[EntityType, set[str]]", entities), curated_sets
++ cast(None, entities), curated_sets
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- cast("dict[EntityType, set[str]]", entities), curated_sets
++ cast("XXdict[EntityType, set[str]]XX", entities), curated_sets
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- cast("dict[EntityType, set[str]]", entities), curated_sets
++ cast("dict[entitytype, set[str]]", entities), curated_sets
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- cast("dict[EntityType, set[str]]", entities), curated_sets
++ cast("DICT[ENTITYTYPE, SET[STR]]", entities), curated_sets
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- f"entities_{et}": ",".join(sorted(entities.get(et, set())))
++ f"entities_{et}": ",".join(sorted(entities.get(et, None)))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- f"entities_{et}": ",".join(sorted(entities.get(et, set())))
++ f"entities_{et}": ",".join(sorted(entities.get(et, )))
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
++ entity_kwargs = dict.fromkeys(ENTITY_FIELDS, None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
++ entity_kwargs = dict.fromkeys("")
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._index_volume_titles"
+change = """
+- entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
++ entity_kwargs = dict.fromkeys(ENTITY_FIELDS, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._generate_entity_term_lists"
+change = """
+- terms = sorted({t.decode("utf-8") for t in reader.lexicon(field_name)})
++ terms = sorted({t.decode("UTF-8") for t in reader.lexicon(field_name)})
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._generate_entity_term_lists"
+change = """
+- json.dump(terms, f, indent=4)
++ json.dump(terms, f, indent=None)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._generate_entity_term_lists"
+change = """
+- json.dump(terms, f, indent=4)
++ json.dump(terms, f, )
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._generate_entity_term_lists"
+change = """
+- json.dump(terms, f, indent=4)
++ json.dump(terms, f, indent=5)
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._get_ai_text_term_frequencies"
+change = """
+- token_counts[text.decode("utf-8")] = round(terminfo.weight())
++ token_counts[text.decode("UTF-8")] = round(terminfo.weight())
+"""
+
+[[untriaged]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._get_least_common_ai_text_terms"
+change = """
+- (text.decode("utf-8"), round(terminfo.weight()))
++ (text.decode("UTF-8"), round(terminfo.weight()))
+"""

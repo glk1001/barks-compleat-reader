@@ -64,9 +64,9 @@
 #   graphify       graphify update ., the knowledge graph (gitignored)
 #   mutation       mutmut.sh on all of core/ (under eight minutes) and on the
 #                  barks_fantagraphics search modules (under three), or on the share
-#                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns when a module has more
-#                  survivors than the last time it was mutated (mutation_survivors.py,
-#                  .benchmarks/)
+#                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns on a survivor neither a
+#                  known equivalent nor in the backlog, by what it changes
+#                  (mutation_survivors.py, docs/mutation-equivalents.toml)
 #
 # Usage: scripts/run_overnight.sh [--list] [--only A,B] [--skip A,B] [--app PATH]
 #   --list   print the stages and exit
@@ -304,11 +304,9 @@ dead_code() {
 # checked the next morning rather than on its weekday a week later.
 mutation_core() {
     local core="src/barks-reader/src/barks_reader/core"
-    local globs=() modules=() path
+    local globs=() path
     while read -r path; do
         globs+=("*/core/${path#"${core}/"}")
-        path="${path#"${core}/"}"
-        modules+=("$(tr / . <<<"${path%.py}")")
     done < <(find "$core" -name '*.py' ! -name '__init__.py' ! -path '*/testing/*' \
         ! -path '*/__pycache__/*' | sort)
     echo "mutation: core/, ${#globs[@]} module(s)"
@@ -318,20 +316,18 @@ mutation_core() {
     # stage runs under `||`, where set -e does not stop it, so return explicitly.
     with_display bash "${SCRIPT_DIR}/mutmut.sh" \
         "$(printf '%s\n' "${globs[@]}" | sed -e '2,$s/^/    /')" || return 1
-    # mutmut passes whatever survives; a module with more survivors than last
-    # time is the one worth a look, so that is a warning.
-    (cd src/barks-reader && uv run mutmut results 2>/dev/null) \
-        | uv run python "${SCRIPT_DIR}/mutation_survivors.py" "${modules[@]}" || return "$WARNED"
+    # mutmut passes whatever survives; a survivor neither a known equivalent nor in
+    # the backlog (docs/mutation-equivalents.toml) is the one worth a look: a warning.
+    uv run python "${SCRIPT_DIR}/mutation_survivors.py" --package-dir src/barks-reader \
+        || return "$WARNED"
 }
 
 # The barks_fantagraphics search modules (mutmut.sh --package fantagraphics), under
-# three minutes. Their modules are the ones the results list, as mutmut.sh clears
-# the last run's first.
+# three minutes.
 mutation_fantagraphics() {
     echo "mutation: barks_fantagraphics search modules"
     with_display bash "${SCRIPT_DIR}/mutmut.sh" --package fantagraphics || return 1
-    (cd src/barks-fantagraphics && uv run mutmut results --all true 2>/dev/null) \
-        | uv run python "${SCRIPT_DIR}/mutation_survivors.py" --package barks_fantagraphics \
+    uv run python "${SCRIPT_DIR}/mutation_survivors.py" --package-dir src/barks-fantagraphics \
         || return "$WARNED"
 }
 

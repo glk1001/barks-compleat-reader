@@ -856,6 +856,10 @@ triaged floor** — nothing on this table has a known killable gap left.
 
 ## Known-equivalent survivors (triaged — do not re-triage)
 
+> Since 2026-10-08 the list the overnight stage reads is `docs/mutation-equivalents.toml`
+> (see the last section). The tables below are the reasoning from the passes that triaged
+> them; their survivors are in that file's backlog until each is moved to `[[equivalent]]`.
+
 Deliberately left alive in the five modules above. Each was checked; none is a missing
 assertion, so writing a test for it would only add brittleness.
 
@@ -1061,4 +1065,32 @@ That first full sweep also counted 168 core mutants no selected test reaches (�
 `reader_file_paths` 66, `memory_census` 34, `tap_targets` 32, `reader_settings` 14,
 `user_error_types` 13, `config_info` 9. The stage reports survivors, not these: a module
 whose only tests need Kivy (`memory_census`, `tap_targets`) is never mutation-tested.
+
+## Survivors by what they are, not how many (2026-10-08)
+
+Counting survivors per module had two flaws. A survivor killed and a new one born in the
+same module left the count where it was, so the new one went unseen; and a rise named
+only mutmut's numbers, which move on any edit, so triaging one meant rebuilding the last
+run of the old code (as on 2026-10-07, for `reader_file_paths` and `reader_settings`).
+
+`scripts/mutation_survivors.py` now identifies each survivor by its module, its function
+and its change, the lines it takes out and puts in, read through mutmut's own API from
+the `mutants/` a run leaves (about 12 seconds for all of `core/`). Each is then:
+
+- **equivalent**: listed under `[[equivalent]]` in `docs/mutation-equivalents.toml`, with
+  its reason; or a change only to what a `logger` call is given (log wording), unless the
+  call uses `log_markers`, whose text the GUI tests wait on;
+- **untriaged**: under `[[untriaged]]`, the backlog;
+- **new**: neither, and the only kind the stage warns on.
+
+A listed entry of a module the run mutated that no longer survives is named, to be taken
+out. The backlog was recorded on 2026-10-08 from full runs of both packages (`--baseline`):
+`core/` 366 survivors, 127 of them log wording and 239 untriaged; the fantagraphics search
+modules 85, all untriaged. 316 entries in all, as 8 pairs share a function and a change.
+`.benchmarks/mutation-survivors.json`, the per-module counts, is no longer read.
+
+**Triage** is now per entry: kill the mutant with a test and take its entry out, or move
+it from `[[untriaged]]` to `[[equivalent]]` and give it a reason. The tables above say
+why for many of the backlog's entries already (the `__init__` `None` to `""` family, the
+`json.dump` indents, the threaded loader's clusters); moving those is the first job.
 
