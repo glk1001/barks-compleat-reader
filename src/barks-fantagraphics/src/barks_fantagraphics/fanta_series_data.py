@@ -1,4 +1,4 @@
-# ruff: noqa: E501, ERA001
+# ruff: noqa: E501
 from __future__ import annotations
 
 from .barks_covers import COVER_LOCATIONS, get_cover_title, get_located_covers
@@ -493,18 +493,14 @@ SERIES_INFO: list[FantaSeriesInfo] = [
     FantaSeriesInfo(Bt.HONEY_OF_A_HEN_A, DIGI, SERIES_MISC, FANTA_21),
     FantaSeriesInfo(Bt.WEATHER_WATCHERS_THE, DIGI, SERIES_MISC, FANTA_21),
     FantaSeriesInfo(Bt.SHEEPISH_COWBOYS_THE, DIGI, SERIES_MISC, FANTA_21),
-    # FantaSeriesInfo(Bt.DAISYS_DAZED_DAYS, GLEA, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.LIBRARIAN_THE, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.DOUBLE_DATE_THE, DIGI, SERIES_MISC, FANTA_23),
-    # FantaSeriesInfo(Bt.FRAMED_MIRROR_THE, GLEA, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.TV_BABYSITTER_THE, DIGI, SERIES_MISC, FANTA_23),
-    # FantaSeriesInfo(Bt.NEW_GIRL_THE, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.CHRISTMAS_CHA_CHA_THE, GLEA, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.BEAUTY_QUEEN_THE, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.DONALDS_PARTY, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.TOUCHE_TOUPEE, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.FREE_SKI_SPREE, DIGI, SERIES_MISC, FANTA_23),
-    # FantaSeriesInfo(Bt.MOPPING_UP, GLEA, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.SNOW_CHASER_THE, DIGI, SERIES_MISC, FANTA_23),
     FantaSeriesInfo(Bt.PIED_PIPER_OF_DUCKBURG_THE, NEA, SERIES_MISC, FANTA_24),
     FantaSeriesInfo(Bt.WHOLE_HERD_OF_HELP_THE, EROS, SERIES_MISC, FANTA_25),

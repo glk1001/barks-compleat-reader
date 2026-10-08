@@ -1180,7 +1180,12 @@ ONE_PAGERS = [
     Titles.CRAWLS_FOR_CASH,
     Titles.BIRD_CAMERA_THE,
     Titles.ODD_ORDER_THE,
+    Titles.DAISYS_DAZED_DAYS,
+    Titles.TIGHT_SHOES,
+    Titles.FRAMED_MIRROR_THE,
+    Titles.NEW_GIRL_THE,
     Titles.MONEY_HAT_THE,
+    Titles.MOPPING_UP,
     Titles.CALL_OF_THE_WILD_THE,
     Titles.TALE_OF_THE_TAPE,
     Titles.HIS_SHINING_HOUR,
@@ -1190,6 +1195,7 @@ ONE_PAGERS = [
     Titles.UNDERCOVER_GIRL,
     Titles.INVENTIVE_GENTLEMAN_THE,
     Titles.THRIFT_GIFT_A,
+    Titles.NOSE_KNOWS_THE,
     Titles.OLD_TIMER_THE,
     Titles.MECHANIZED_MESS,
     Titles.UNCLE_SCROOGE___MONKEY_BUSINESS,
@@ -1227,7 +1233,7 @@ ONE_PAGERS = [
 # derives its reference order by filtering BARKS_TITLE_INFO *through* this list, and
 # ONE_PAGER_LOCATIONS only covers the located ones. This count is that missing
 # independent check - bump it deliberately when a one-pager is genuinely added.
-NUM_ONE_PAGERS = 155
+NUM_ONE_PAGERS = 161
 assert len(ONE_PAGERS) == NUM_ONE_PAGERS, f"{len(ONE_PAGERS)} != {NUM_ONE_PAGERS}"
 assert len(set(ONE_PAGERS)) == NUM_ONE_PAGERS, "ONE_PAGERS has a duplicate entry"
 
@@ -1367,7 +1373,12 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.ALL_CHOKED_UP: (22, 28, 0),
     Titles.BIRD_CAMERA_THE: (24, 87, 35),
     Titles.ODD_ORDER_THE: (24, 97, 36),
+    Titles.DAISYS_DAZED_DAYS: _TODO,
+    Titles.TIGHT_SHOES: _TODO,
+    Titles.FRAMED_MIRROR_THE: _TODO,
+    Titles.NEW_GIRL_THE: _TODO,
     Titles.MONEY_HAT_THE: (24, 27, 0),
+    Titles.MOPPING_UP: _TODO,
     Titles.CALL_OF_THE_WILD_THE: (26, 156, 2),
     Titles.TALE_OF_THE_TAPE: (26, 164, 35),
     Titles.HIS_SHINING_HOUR: (26, 124, 36),
@@ -1387,6 +1398,7 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     # The two FC 1184 Gyro cover gags (Barks art). INDUCKS lists them at FANTA_28
     # pages 137 and 145 - flip to (28, 137, 0) / (28, 145, 0) at the next re-bake
     # if verified in the volume.
+    Titles.NOSE_KNOWS_THE: _TODO,
     Titles.OLD_TIMER_THE: _TODO,
     Titles.MECHANIZED_MESS: _TODO,
     Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: _TODO,

@@ -109,7 +109,7 @@ class TestCorpusSection:
         ("label", "expected"),
         [
             ("Stories", "683"),
-            ("One-pagers", "155"),
+            ("One-pagers", "161"),
             ("Covers", "264"),
             ("Fantagraphics Volumes", "30"),
             ("Submitted to Western", "1942–1973"),  # noqa: RUF001
