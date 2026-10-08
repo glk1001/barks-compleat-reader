@@ -1163,6 +1163,30 @@ class TestPrefetchWindow:
         assert peak <= 2  # noqa: PLR2004
         assert all(entry is not None for entry in loader._images)
 
+    def test_a_page_is_delivered_while_a_slower_one_is_still_loading(
+        self, loader: ComicBookLoader
+    ) -> None:
+        """Each page is handed over as it lands, not once the whole window has."""
+        page_map, load_order = _make_indexed_page_map(2)
+        release = threading.Event()
+
+        class SlowSecondPage(FakePageImageSource):
+            def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+                if page_info.page_index == 1:
+                    release.wait(timeout=5.0)
+                return io.BytesIO(b"png"), ".png"
+
+        loader._max_worker_count = 2
+        loader.set_comic(SlowSecondPage(), load_order, page_map, archive_desc="t.cbz")
+        try:
+            assert loader._image_loaded_events[0].wait(2.0)
+            assert not loader._image_loaded_events[1].is_set()
+        finally:
+            release.set()
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+        assert loader._image_loaded_events[1].is_set()
+
     def test_the_first_page_callback_fires_once_for_the_first_page_only(
         self, loader: ComicBookLoader, mock_callbacks: dict[str, MagicMock]
     ) -> None:
