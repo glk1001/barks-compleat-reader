@@ -59,8 +59,11 @@ BUDGET_FACTOR = 3.0
 MIN_BUDGET_SECS = 1.0
 # Floors above the minimum for a kind whose calibration run cannot see its
 # worst case: the volumes are read from a warm cache in a run (0.2s), and
-# from disk after a reboot.
-MIN_BUDGETS: dict[str, float] = {"volumes loaded": 10.0}
+# from disk after a reboot. A comic's first page opened full screen is drawn
+# at the screen's size while the loader's threads build the rest: on the Mac
+# guest's software OpenGL, 1.4s in 2 of 24 nights (test_fullscreen, from
+# 2026-10-03), against a calibrated slowest of 0.2s.
+MIN_BUDGETS: dict[str, float] = {"volumes loaded": 10.0, "page shown": 2.0}
 # The load one headless worker adds (its Xvfb, the app and its image threads):
 # a four-worker run took a quiet 16-core machine to about 12.
 PER_WORKER_LOAD = 3.0

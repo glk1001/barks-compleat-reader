@@ -235,7 +235,10 @@
 >   passed) folds them into `.benchmarks/gui-timings.json`, gitignored like the benchmark
 >   baseline; `timings.budgets()` then uses three times this machine's slowest, never under
 >   a second (ten for the volumes, read from a warm cache in a run and from disk after a
->   reboot), with the committed budget for a kind never seen, and a failure names which.
+>   reboot; two for a page shown since 2026-10-08, when a comic's first page opened full
+>   screen took 1.4s on the Mac guest's software OpenGL in 2 of 24 nights, against a
+>   calibrated 0.2s), with the committed budget for a kind never seen, and a failure
+>   names which.
 >   The load rule discounts the run's own workers: busy means the one-minute load above the
 >   core count plus three per worker (a four-worker run took a quiet 16-core desktop to
 >   about 12), so four workers on an eight-core laptop no longer silence the check.

@@ -1079,6 +1079,13 @@ class TestTimings:
         assert source.startswith("budgets calibrated on ")
         assert str(path) in source
 
+    def test_a_page_shown_quickly_in_calibration_still_gets_its_floor(self, tmp_path: Path) -> None:
+        """A first page opened full screen is slower than any calibration run sees."""
+        path = tmp_path / "gui-timings.json"
+        timings.write_baseline(path, {"page shown": 0.2}, workers=1)
+        in_force, _ = timings.budgets(path)
+        assert in_force["page shown"] == timings.MIN_BUDGETS["page shown"]
+
     def test_budgets_are_the_committed_ones_without_a_baseline(self, tmp_path: Path) -> None:
         in_force, source = timings.budgets(tmp_path / "none.json")
         assert in_force == timings.BUDGETS
