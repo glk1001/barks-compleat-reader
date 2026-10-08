@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 
     from gui_driver import Driver
 
-ANSWER_TIMEOUT = 15
+# A census is a full garbage collection, slower as the app holds more: a soak walk on
+# the desktop (2026-10-09) took 11s at four million objects and missed 15s on its next.
+ANSWER_TIMEOUT = 30
 # How many times a leak test goes round, and how many of those only build.
 ROUNDS = 6
 WARMUP_ROUNDS = 2
