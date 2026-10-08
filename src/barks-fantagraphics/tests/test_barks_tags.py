@@ -368,3 +368,19 @@ def test_gyro_series_missing_from_the_bibliography_fails() -> None:
     with patch.object(barks_tags, "BIBLIOGRAPHY", []):
         with pytest.raises(AssertionError, match="series in the bibliography"):
             barks_tags.validate_tag_data()
+
+
+# --- Every tag's titles in chronological order ---
+
+
+def test_tag_titles_out_of_chronological_order_fail() -> None:
+    titles = [Titles.FIREMAN_DONALD, Titles.FIREBUG_THE]  # FIREBUG_THE comes first.
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.FIRE: titles}):
+        with pytest.raises(AssertionError, match=r"not in chronological order: \['FIRE'\]"):
+            barks_tags.validate_tag_data()
+
+
+def test_personal_favourites_keep_their_own_order() -> None:
+    titles = [Titles.FIREMAN_DONALD, Titles.FIREBUG_THE]
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.PERSONAL_FAVOURITES: titles}):
+        barks_tags.validate_tag_data()

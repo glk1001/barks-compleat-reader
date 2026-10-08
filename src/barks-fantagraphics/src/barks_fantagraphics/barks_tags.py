@@ -213,6 +213,19 @@ def _validate_gyro_tags() -> None:
     assert not missing, f"Stories from a Gyro Gearloose issue missing from GYRO_IN_GG: {missing}"
 
 
+def _validate_chronological_order() -> None:
+    """Each tag lists its titles in chronological order: the order of `Titles`.
+
+    PERSONAL_FAVOURITES is the reader's own list, put in by the app, in its own order.
+    """
+    unsorted = [
+        tag.name
+        for tag, titles in BARKS_TAGGED_TITLES.items()
+        if tag != Tags.PERSONAL_FAVOURITES and titles != sorted(titles)
+    ]
+    assert not unsorted, f"Tags not in chronological order: {unsorted}"
+
+
 def _validate_uncle_scrooge_tags() -> None:
     us_not_in_us_titles = set(BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US])
     wrong_titles = [
@@ -292,6 +305,7 @@ def validate_tag_data() -> None:
     _validate_places()
     _validate_firsts_tags()
     _validate_gyro_tags()
+    _validate_chronological_order()
     _validate_uncle_scrooge_tags()
 
 
