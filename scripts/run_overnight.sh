@@ -76,7 +76,9 @@
 # Env: BARKS_OVERNIGHT_SOAK_STEPS (default here 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 # (default: three seeds from the day of the year, so each night walks new paths);
 # BARKS_OVERNIGHT_MUTATION_SCOPE (all, core or fantagraphics; default all) is what the
-# mutation stage mutates: two Linux machines can each take a share.
+# mutation stage mutates: two Linux machines can each take a share. A machine keeps its
+# own in .env.overnight (gitignored, and not copied by copy-to-overnight-host.sh), one
+# NAME=value per line; the environment, a one-off on the command line, wins over it.
 #
 # Linux only (xvfb, systemd-inhibit, the GUI probe). A stage's output goes to
 # build/overnight/<stamp>/<stage>.log and summary.txt holds the results so far,
@@ -88,6 +90,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
+
+# This machine's own settings: each BARKS_OVERNIGHT_ line of .env.overnight the
+# environment does not already set. Read, not sourced: nothing in it runs.
+FROM_OVERNIGHT_ENV=""
+if [[ -f .env.overnight ]]; then
+    while IFS='=' read -r name value || [[ -n "$name" ]]; do
+        [[ "$name" =~ ^BARKS_OVERNIGHT_[A-Z_]+$ && -z "${!name+x}" ]] || continue
+        export "${name}=${value%$'\r'}"
+        FROM_OVERNIGHT_ENV+=" ${name}"
+    done <.env.overnight
+fi
 
 STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
     dep-drift siblings build smoke gui gui-timings coverage dead-code graphify mutation)
@@ -334,7 +347,13 @@ mutation_fantagraphics() {
 # What this machine mutates: BARKS_OVERNIGHT_MUTATION_SCOPE, so two Linux machines can
 # share the work rather than both doing all of it. A failure outranks a warning.
 mutation() {
-    local scope="${BARKS_OVERNIGHT_MUTATION_SCOPE:-all}" status=0 part
+    local scope="${BARKS_OVERNIGHT_MUTATION_SCOPE:-all}" status=0 part from="the environment"
+    if [[ " ${FROM_OVERNIGHT_ENV} " == *" BARKS_OVERNIGHT_MUTATION_SCOPE "* ]]; then
+        from=".env.overnight"
+    elif [[ -z "${BARKS_OVERNIGHT_MUTATION_SCOPE+x}" ]]; then
+        from="the default"
+    fi
+    echo "mutation: scope ${scope} (from ${from})"
     case "$scope" in
     all | core | fantagraphics) ;;
     *)

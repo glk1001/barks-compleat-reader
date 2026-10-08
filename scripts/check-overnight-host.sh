@@ -39,6 +39,9 @@ for repo in barks-comic-building barks-ocr barks-wiki; do
 done
 
 echo "== this repo =="
+# This machine's share of the mutation stage (a note, not a failure: unset does all of it).
+scope="$(grep -s '^BARKS_OVERNIGHT_MUTATION_SCOPE=' .env.overnight | cut -d= -f2-)"
+ok "mutation scope: ${scope:-all (no BARKS_OVERNIGHT_MUTATION_SCOPE in .env.overnight)}"
 if [[ -f .env.runtime ]]; then
     ok ".env.runtime"
     for var in BARKS_ZIPS_KEY BARKS_READER_CONFIG_DIR BARKS_READER_DATA_DIR; do

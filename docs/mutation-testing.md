@@ -1057,7 +1057,11 @@ search modules, 2,537, in 2.8. So the mutation stage now mutates both every nigh
 change to `core/` is mutated the next morning, not on its weekday up to a week later: the
 macOS Dock measurement went in on 2026-10-05 and was first mutated on 2026-10-07.
 `BARKS_OVERNIGHT_MUTATION_SCOPE` (`all`, the default, `core` or `fantagraphics`) splits the
-work between two Linux machines rather than both doing all of it. The fantagraphics modules
+work between two Linux machines rather than both doing all of it. Typed on the command line
+that starts a run, it was lost on both machines on 2026-10-08, and each did both shares; since
+2026-10-09 each machine keeps its share in `.env.overnight` (gitignored, one `NAME=value` a
+line, and not copied by `copy-to-overnight-host.sh`, which copies `.env.runtime`), and the
+mutation log's first line says where the scope came from. The fantagraphics modules
 are recorded under their full dotted names (`barks_fantagraphics.search_query`), beside the
 core's short ones.
 
