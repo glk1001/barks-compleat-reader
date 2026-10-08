@@ -7,6 +7,12 @@ GYRO_GEARLOOSE = "Gyro Gearloose"
 US_1_FC_ISSUE_NUM = 386
 US_2_FC_ISSUE_NUM = 456
 US_3_FC_ISSUE_NUM = 495
+# Uncle Scrooge 1 to 3 came out as these Four Color issues.
+US_ISSUE_AS_FC_ISSUE: dict[int, int] = {
+    1: US_1_FC_ISSUE_NUM,
+    2: US_2_FC_ISSUE_NUM,
+    3: US_3_FC_ISSUE_NUM,
+}
 
 
 @verify(CONTINUOUS, UNIQUE)

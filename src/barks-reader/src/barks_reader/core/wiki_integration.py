@@ -22,6 +22,16 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
+from barks_fantagraphics.fanta_series_info import (
+    SERIES_CS,
+    SERIES_DDA,
+    SERIES_DDS,
+    SERIES_GG,
+    SERIES_MISC,
+    SERIES_ONE_PAGERS,
+    SERIES_USA,
+    SERIES_USS,
+)
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
@@ -155,14 +165,14 @@ def wiki_theme_spec() -> ViewerThemeSpec:
 # series name, in candidate order — Gyro Gearloose and Misc material is filed
 # across two dirs. "Extras" (introductions/appreciations) has no story pages.
 SERIES_TO_STORY_DIRS = {
-    "Comics and Stories": ("comics-and-stories",),
-    "Donald Duck Adventures": ("donald-duck-adventures",),
-    "Donald Duck Short Stories": ("donald-duck-short-stories",),
-    "Uncle Scrooge Adventures": ("uncle-scrooge-adventures",),
-    "Uncle Scrooge Short Stories": ("uncle-scrooge-short-stories",),
-    "Gyro Gearloose": ("gyro-gearloose-stories", "misc"),
-    "Misc": ("misc", "gyro-gearloose-stories"),
-    "One Pagers": ("one-pagers",),
+    SERIES_CS: ("comics-and-stories",),
+    SERIES_DDA: ("donald-duck-adventures",),
+    SERIES_DDS: ("donald-duck-short-stories",),
+    SERIES_USA: ("uncle-scrooge-adventures",),
+    SERIES_USS: ("uncle-scrooge-short-stories",),
+    SERIES_GG: ("gyro-gearloose-stories", "misc"),
+    SERIES_MISC: ("misc", "gyro-gearloose-stories"),
+    SERIES_ONE_PAGERS: ("one-pagers",),
 }
 
 

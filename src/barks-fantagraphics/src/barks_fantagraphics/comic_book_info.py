@@ -15,6 +15,7 @@ from .barks_titles import (
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
+    US_ISSUE_AS_FC_ISSUE,
     Titles,
 )
 from .comic_issues import (
@@ -22,7 +23,7 @@ from .comic_issues import (
     ISSUE_NAME_WRAPPED,
     SHORT_ISSUE_NAME,
     Issues,
-    _get_shortest_issue_name,
+    get_shortest_issue_name,
 )
 from .comics_consts import PageType
 from .page_classes import OriginalPage
@@ -56,7 +57,7 @@ class ComicBookInfo:
 
     def get_shortest_issue_title(self) -> str:
         """Return the issue as briefly as it is written: "CS 100" where the short form is WDCS."""
-        return f"{_get_shortest_issue_name(self.issue_name)} {self.issue_number}"
+        return f"{get_shortest_issue_name(self.issue_name)} {self.issue_number}"
 
     def get_title_from_issue_name(self) -> str:
         if self.title in USEFUL_TITLES:
@@ -1657,7 +1658,7 @@ SYNTHETIC_TITLES = [
 ]
 
 BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
-    f"{_get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
+    f"{get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
         inf.title
         for inf in BARKS_TITLE_INFO
         if (inf.issue_name == info.issue_name)
@@ -1667,16 +1668,11 @@ BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
     )
     for info in BARKS_TITLE_INFO
 }
-# Add Uncle Scrooge special cases:
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 1"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_1_FC_ISSUE_NUM}"
-]
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 2"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_2_FC_ISSUE_NUM}"
-]
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 3"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_3_FC_ISSUE_NUM}"
-]
+# Uncle Scrooge 1 to 3 are the Four Color issues they came out as.
+for _us_issue, _fc_issue in US_ISSUE_AS_FC_ISSUE.items():
+    BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} {_us_issue}"] = BARKS_ISSUE_DICT[
+        f"{SHORT_ISSUE_NAME[Issues.FC]} {_fc_issue}"
+    ]
 
 _FUN_WHATS_THAT = "Fun? What's That?"
 _WANT_TO_BUY_AN_ISLAND = "Want to Buy an Island?"

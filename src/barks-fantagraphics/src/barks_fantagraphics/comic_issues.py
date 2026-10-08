@@ -76,5 +76,14 @@ ISSUE_NAME_WRAPPED = {
 }
 
 
-def _get_shortest_issue_name(issue_name: Issues) -> str:
+def get_shortest_issue_name(issue_name: Issues) -> str:
+    """Return an issue's code as its titles' rows show it: its short name, but CS for WDCS.
+
+    Args:
+        issue_name: The issue.
+
+    Returns:
+        The code, such as "CS", "FC" or "MOC".
+
+    """
     return "CS" if issue_name == Issues.CS else SHORT_ISSUE_NAME[issue_name]

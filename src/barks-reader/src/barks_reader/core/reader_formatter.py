@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS, get_one_pager_fanta_page
-from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
+from barks_fantagraphics.comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
@@ -161,8 +161,12 @@ class ReaderFormatter:
         self._title_info_issue_name = ISSUE_NAME.copy()
         self._title_info_issue_name[Issues.CS] = "Comics & Stories"
         self._title_info_issue_name[Issues.MC] = "March of Comics"
-        self._title_info_issue_name[Issues.USGTD] = "US Goes to Disneyland"
-        self._title_info_issue_name[Issues.HDL] = "HDL Junior Woodchucks"
+        self._title_info_issue_name[Issues.USGTD] = (
+            f"{SHORT_ISSUE_NAME[Issues.US]} Goes to Disneyland"
+        )
+        self._title_info_issue_name[Issues.HDL] = (
+            f"{SHORT_ISSUE_NAME[Issues.HDL]} Junior Woodchucks"
+        )
 
     @staticmethod
     def get_main_title(title_str: str, add_footnote: bool) -> str:

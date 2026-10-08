@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
-from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues, _get_shortest_issue_name
+from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues, get_shortest_issue_name
 from barks_fantagraphics.search_filters import tag_titles
 from barks_fantagraphics.search_query import (
     NEAR_DEFAULT_DISTANCE,
@@ -90,7 +90,7 @@ class TestTheHelpMatchesTheSyntax:
         named = set(re.findall(r"[A-Z]{2,}", TITLE_SERIES_NOTE))
         shown = {code for code, _ in TITLE_SERIES} | named
         every = {
-            _get_shortest_issue_name(i.issue_name)
+            get_shortest_issue_name(i.issue_name)
             for i in BARKS_TITLE_INFO
             if i.issue_name != Issues.EXTRAS
         }

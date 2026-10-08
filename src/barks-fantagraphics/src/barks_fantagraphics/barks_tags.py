@@ -11,12 +11,7 @@ from .barks_tags_data import (
     BARKS_TAGGED_TITLES,
 )
 from .barks_tags_enums import TagCategories, TagGroups, Tags
-from .barks_titles import (
-    US_1_FC_ISSUE_NUM,
-    US_2_FC_ISSUE_NUM,
-    US_3_FC_ISSUE_NUM,
-    Titles,
-)
+from .barks_titles import US_ISSUE_AS_FC_ISSUE, Titles
 from .comic_book_info import BARKS_TITLE_INFO
 from .comic_issues import Issues
 
@@ -178,10 +173,7 @@ def _validate_uncle_scrooge_tags() -> None:
         t
         for t in us_not_in_us_titles
         if (BARKS_TITLE_INFO[t].issue_name == Issues.US)
-        or (
-            BARKS_TITLE_INFO[t].issue_number
-            in [US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM]
-        )
+        or (BARKS_TITLE_INFO[t].issue_number in US_ISSUE_AS_FC_ISSUE.values())
     ]
     assert len(wrong_titles) == 0, f"{wrong_titles}"
 

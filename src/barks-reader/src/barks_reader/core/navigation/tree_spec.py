@@ -24,13 +24,8 @@ from barks_fantagraphics.barks_tags import (
     get_sorted_tagged_titles,
     special_case_personal_favourites_tag_update,
 )
-from barks_fantagraphics.barks_titles import (
-    US_1_FC_ISSUE_NUM,
-    US_2_FC_ISSUE_NUM,
-    US_3_FC_ISSUE_NUM,
-    Titles,
-)
-from barks_fantagraphics.comic_issues import Issues
+from barks_fantagraphics.barks_titles import US_ISSUE_AS_FC_ISSUE, Titles
+from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -308,7 +303,7 @@ def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
     if not issue_numbers:
         return ""
 
-    return f"WDCS {min(issue_numbers)}-{max(issue_numbers)}"
+    return f"{SHORT_ISSUE_NAME[Issues.CS]} {min(issue_numbers)}-{max(issue_numbers)}"
 
 
 def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
@@ -318,11 +313,7 @@ def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
 
 # US 1-3 shipped as Four Color issues, so they carry an 'FC' issue name and an issue number
 # in the hundreds. They are matched by that number rather than by their issue name.
-_US_ISSUE_NUM_FOR_FC_ISSUE_NUM = {
-    US_1_FC_ISSUE_NUM: 1,
-    US_2_FC_ISSUE_NUM: 2,
-    US_3_FC_ISSUE_NUM: 3,
-}
+_US_ISSUE_NUM_FOR_FC_ISSUE_NUM = {fc: us for us, fc in US_ISSUE_AS_FC_ISSUE.items()}
 
 
 def _get_us_issue_number(fanta_info: FantaComicBookInfo) -> int | None:
@@ -355,7 +346,7 @@ def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
     if not issue_numbers:
         return ""
 
-    return f"US {min(issue_numbers)}-{max(issue_numbers)}"
+    return f"{SHORT_ISSUE_NAME[Issues.US]} {min(issue_numbers)}-{max(issue_numbers)}"
 
 
 class _SpecBuilder:

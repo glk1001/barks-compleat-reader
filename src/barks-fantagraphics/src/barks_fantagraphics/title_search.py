@@ -14,9 +14,9 @@ from .barks_tags import (
     Tags,
     get_all_tags_in_tag_group,
 )
-from .barks_titles import US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM
+from .barks_titles import US_ISSUE_AS_FC_ISSUE
 from .comic_book_info import BARKS_TITLE_INFO, COVERS_SET
-from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues, _get_shortest_issue_name
+from .comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues, get_shortest_issue_name
 from .fanta_comics_info import FANTA_SOURCE_COMICS, get_fanta_info
 from .search_query import Combine
 from .search_terms import SUBSTRING_MIN_CHARS, _stems_of
@@ -80,7 +80,7 @@ def _series_codes() -> dict[str, Issues]:
         code.lower(): issue
         for issue in Issues
         if issue != Issues.EXTRAS
-        for code in (SHORT_ISSUE_NAME[issue], _get_shortest_issue_name(issue))
+        for code in (SHORT_ISSUE_NAME[issue], get_shortest_issue_name(issue))
     }
 
 
@@ -115,10 +115,6 @@ def _when_submitted(title: Titles) -> tuple[int, int, int, int]:
     if info.submitted_year == _NO_DATE:
         return info.issue_year, info.issue_month, _NO_DATE, title
     return info.submitted_year, info.submitted_month, info.submitted_day, title
-
-
-# Uncle Scrooge 1 to 3 came out as these Four Color issues.
-_US_AS_FC = ((1, US_1_FC_ISSUE_NUM), (2, US_2_FC_ISSUE_NUM), (3, US_3_FC_ISSUE_NUM))
 
 
 @cache
@@ -249,7 +245,11 @@ class BarksTitleSearch:
             issue, digits = named, str(int(match[2]))  # "CS 010" is CS 10
         numbers = {(issue, n) for n in _issue_numbers(issue) if str(n).startswith(digits)}
         if issue == Issues.US:
-            numbers |= {(Issues.FC, fc) for us, fc in _US_AS_FC if str(us).startswith(digits)}
+            numbers |= {
+                (Issues.FC, fc)
+                for us, fc in US_ISSUE_AS_FC_ISSUE.items()
+                if str(us).startswith(digits)
+            }
         in_issues = [
             info.title
             for info in BARKS_TITLE_INFO

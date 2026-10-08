@@ -81,6 +81,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.fanta_series_info import SERIES_CS, SERIES_DDA
 from gui_driver import DISPLAY, PROBE, Driver, DriverError, Pick, boot_app_at, probe
 
 if TYPE_CHECKING:
@@ -564,9 +565,9 @@ def series_view(d: Driver) -> None:
     this only has to walk into them.
     """
     d.hold(1.0)
-    d.select_node("Comics and Stories")
+    d.select_node(SERIES_CS)
     d.hold(1.0)
-    d.select_node("Donald Duck Adventures")
+    d.select_node(SERIES_DDA)
     d.hold(1.0)
     d.key("Return")  # expand it: a series lists its stories directly, no volumes
     d.settle()
@@ -696,7 +697,7 @@ def search_words(d: Driver) -> None:
 def _setup_read_story(d: Driver) -> None:
     # Off camera: reach the story this beat reads, so the recording opens on it.
     d.open_branch("Series")
-    d.open_branch("Donald Duck Adventures")
+    d.open_branch(SERIES_DDA)
     d.select_node(READ_STORY_PICK.title)
 
 
