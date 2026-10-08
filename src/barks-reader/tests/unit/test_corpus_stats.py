@@ -309,7 +309,7 @@ class TestCastSection:
     @pytest.mark.parametrize(
         ("label", "expected"),
         [
-            ("Named characters", "50"),
+            ("Named characters", "47"),
             ("Places", "62"),
             ("Themes", "78"),
             ("Things", "43"),

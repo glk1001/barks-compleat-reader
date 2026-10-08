@@ -26,12 +26,12 @@ installed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY, Qualifier
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_TITLES, get_all_tags_in_tag_category
-from barks_fantagraphics.barks_tags_enums import TagCategories
+from barks_fantagraphics.barks_tags_enums import TagCategories, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_INFO,
@@ -441,9 +441,18 @@ def _cast_section() -> StatSection:
     return StatSection(heading="The cast", rows=tuple(rows))
 
 
+# Tags that hold part of another tag's stories, not a character, place or thing of
+# their own: counting them would count Gyro three times and Scrooge twice.
+_PART_TAGS: Final = frozenset({Tags.GYRO_IN_GG, Tags.GYRO_NOT_IN_GG, Tags.SCROOGE_NOT_IN_US})
+
+
 def _num_tags_with_stories(category: TagCategories) -> int:
     """Count the tags in a category that are attached to at least one story."""
-    return sum(1 for tag in get_all_tags_in_tag_category(category) if BARKS_TAGGED_TITLES.get(tag))
+    return sum(
+        1
+        for tag in get_all_tags_in_tag_category(category) - _PART_TAGS
+        if BARKS_TAGGED_TITLES.get(tag)
+    )
 
 
 def _story_page_counts(stories: list[ComicBookInfo]) -> dict[Titles, int]:
