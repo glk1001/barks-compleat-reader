@@ -298,3 +298,73 @@ class TestTitleLookups:
         with patch.dict(barks_tags.BARKS_TAGGED_TITLES):
             barks_tags.special_case_personal_favourites_tag_update(picks)
             assert barks_tags.get_tag_titles(Tags.PERSONAL_FAVOURITES) == set(picks)
+
+
+# --- The Gyro tags: every Gyro story, split by first issue ---
+
+_GG_STORY = Titles.GAB_MUFFER_THE  # Four Color 1047, Gyro's own comic.
+_NOT_GG_STORY = Titles.TALKING_DOG_THE  # Comics and Stories 152.
+
+
+def _gyro_tags(gyro: set[Titles], in_gg: set[Titles], not_in_gg: set[Titles]) -> dict:
+    return {
+        Tags.GYRO_GEARLOOSE: sorted(gyro),
+        Tags.GYRO_IN_GG: sorted(in_gg),
+        Tags.GYRO_NOT_IN_GG: sorted(not_in_gg),
+    }
+
+
+def _validate_gyro_with(gyro: set[Titles], in_gg: set[Titles], not_in_gg: set[Titles]) -> None:
+    """Validate the real Gyro lists after the given titles have been added or taken away."""
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, _gyro_tags(gyro, in_gg, not_in_gg)):
+        barks_tags.validate_tag_data()
+
+
+def _real_gyro_sets() -> tuple[set[Titles], set[Titles], set[Titles]]:
+    return (
+        set(barks_tags.BARKS_TAGGED_TITLES[Tags.GYRO_GEARLOOSE]),
+        set(barks_tags.BARKS_TAGGED_TITLES[Tags.GYRO_IN_GG]),
+        set(barks_tags.BARKS_TAGGED_TITLES[Tags.GYRO_NOT_IN_GG]),
+    )
+
+
+def test_gyro_story_in_both_parts_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="In both GYRO_IN_GG and GYRO_NOT_IN_GG"):
+        _validate_gyro_with(gyro, in_gg, not_in_gg | {_GG_STORY})
+
+
+def test_gyro_story_in_neither_part_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="in neither GYRO_IN_GG nor GYRO_NOT_IN_GG"):
+        _validate_gyro_with(gyro, in_gg, not_in_gg - {_NOT_GG_STORY})
+
+
+def test_gyro_part_not_in_gyro_gearloose_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="Not in GYRO_GEARLOOSE"):
+        _validate_gyro_with(gyro - {_NOT_GG_STORY}, in_gg, not_in_gg)
+
+
+def test_gyro_in_gg_story_from_another_comic_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="In GYRO_IN_GG but not from a Gyro Gearloose issue"):
+        _validate_gyro_with(gyro, in_gg | {_NOT_GG_STORY}, not_in_gg - {_NOT_GG_STORY})
+
+
+def test_gyro_not_in_gg_story_from_gyros_comic_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="In GYRO_NOT_IN_GG but from a Gyro Gearloose issue"):
+        _validate_gyro_with(gyro, in_gg - {_GG_STORY}, not_in_gg | {_GG_STORY})
+
+
+def test_gyro_comic_story_missing_from_gyro_in_gg_fails() -> None:
+    gyro, in_gg, not_in_gg = _real_gyro_sets()
+    with pytest.raises(AssertionError, match="missing from GYRO_IN_GG"):
+        _validate_gyro_with(gyro - {_GG_STORY}, in_gg - {_GG_STORY}, not_in_gg)
+
+
+def test_gyro_series_missing_from_the_bibliography_fails() -> None:
+    with patch.object(barks_tags, "BIBLIOGRAPHY", []):
+        with pytest.raises(AssertionError, match="series in the bibliography"):
+            barks_tags.validate_tag_data()

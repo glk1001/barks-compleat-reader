@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .barks_bibliography import BIBLIOGRAPHY
 from .barks_tags_data import (
     BARKS_TAG_CATEGORIES,
     BARKS_TAG_GROUPS,
@@ -12,7 +13,7 @@ from .barks_tags_data import (
 )
 from .barks_tags_enums import TagCategories, TagGroups, Tags
 from .barks_titles import US_ISSUE_AS_FC_ISSUE, Titles
-from .comic_book_info import BARKS_TITLE_INFO
+from .comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 from .comic_issues import Issues
 
 if TYPE_CHECKING:
@@ -161,10 +162,55 @@ def _validate_firsts_tags() -> None:
     assert not missing, f"FIRST_ tags missing from BARKS_TAG_GROUPS[FIRSTS]: {missing}"
 
 
+# The bibliography's heading over Gyro's own comic: Four Color 1047, 1095, 1184 and 1267,
+# then Gold Key's Gyro Gearloose 1 (a cover only).
+_GYRO_GEARLOOSE_BIB_SERIES = "GYRO GEARLOOSE (Dell)"
+
+
+def _get_gyro_gearloose_issues() -> set[tuple[Issues | None, int]]:
+    """Return the (issue name, number) of each issue of Gyro's own comic."""
+    gg_issues = {
+        (issue.issue_name, issue.issue_number)
+        for series in BIBLIOGRAPHY
+        if series.h1_name == _GYRO_GEARLOOSE_BIB_SERIES
+        for issue in series.issues
+    }
+    assert gg_issues, f'No "{_GYRO_GEARLOOSE_BIB_SERIES}" series in the bibliography.'
+    return gg_issues
+
+
 def _validate_gyro_tags() -> None:
-    gyro_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_GEARLOOSE])
-    gyro_not_in_gg_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_NOT_IN_GG])
-    assert gyro_not_in_gg_titles.issubset(gyro_titles), f"{gyro_not_in_gg_titles - gyro_titles}"
+    """GYRO_GEARLOOSE is every Gyro story, split by first issue into GYRO_IN_GG and GYRO_NOT_IN_GG.
+
+    "In GG" means first published in Gyro's own comic, so the two parts cannot overlap,
+    and every story of that comic is a Gyro story.
+    """
+    gg_issues = _get_gyro_gearloose_issues()
+
+    def in_gg(title: Titles) -> bool:
+        info = BARKS_TITLE_INFO[title]
+        return (info.issue_name, info.issue_number) in gg_issues
+
+    gyro = set(BARKS_TAGGED_TITLES[Tags.GYRO_GEARLOOSE])
+    in_gg_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_IN_GG])
+    not_in_gg_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_NOT_IN_GG])
+
+    both = in_gg_titles & not_in_gg_titles
+    assert not both, f"In both GYRO_IN_GG and GYRO_NOT_IN_GG: {sorted(both)}"
+    parts = in_gg_titles | not_in_gg_titles
+    assert parts == gyro, (
+        f"Not in GYRO_GEARLOOSE: {sorted(parts - gyro)};"
+        f" in neither GYRO_IN_GG nor GYRO_NOT_IN_GG: {sorted(gyro - parts)}"
+    )
+
+    wrong_in = sorted(t for t in in_gg_titles if not in_gg(t))
+    assert not wrong_in, f"In GYRO_IN_GG but not from a Gyro Gearloose issue: {wrong_in}"
+    wrong_not_in = sorted(t for t in not_in_gg_titles if in_gg(t))
+    assert not wrong_not_in, f"In GYRO_NOT_IN_GG but from a Gyro Gearloose issue: {wrong_not_in}"
+
+    gg_stories = {info.title for info in BARKS_TITLE_INFO if in_gg(info.title)} - COVERS_SET
+    missing = sorted(gg_stories - in_gg_titles)
+    assert not missing, f"Stories from a Gyro Gearloose issue missing from GYRO_IN_GG: {missing}"
 
 
 def _validate_uncle_scrooge_tags() -> None:

@@ -309,11 +309,11 @@ class TestCastSection:
     @pytest.mark.parametrize(
         ("label", "expected"),
         [
-            ("Named characters", "49"),
+            ("Named characters", "50"),
             ("Places", "62"),
             ("Themes", "78"),
             ("Things", "43"),
-            ("Most-tagged character", "Daisy Duck, 78 stories"),
+            ("Most-tagged character", "Gyro Gearloose, 83 stories"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:

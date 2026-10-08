@@ -107,6 +107,7 @@ class Tags(Enum):
     GRANDMA_DUCK = "Grandma Duck"
     GREECE = "Greece"
     GYRO_GEARLOOSE = "Gyro Gearloose"
+    GYRO_IN_GG = "Gyro in GG series"
     GYRO_NOT_IN_GG = "Gyro not in GG series"
     HASSAN_BEN_JAILD = "Hassan Ben Jaild"
     HDL_DRIVING_CAR = "HDL driving car"
