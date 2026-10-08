@@ -1,8 +1,12 @@
 name: Build Verification
 
+# As in ci.yml, a change only to docs (docs/ or Markdown) builds nothing; a tag push and a
+# run started by hand always build.
 on:
   push:
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 
 env:
