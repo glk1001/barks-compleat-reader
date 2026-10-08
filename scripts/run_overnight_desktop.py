@@ -22,10 +22,12 @@ Stages (name: what it runs):
                  coverage measured where the probe can (BARKS_PROBE_COVERAGE)
   fetch-build    CI's barks-reader-win.exe for this checkout's commit (waiting for
                  its Build Verification run if it is still building: run here,
-                 late, CI has almost always finished); skipped with --app, and on
-                 macOS, where CI's app has no software OpenGL to draw with on a
-                 machine without a GPU driver (the workspace app runs through
-                 scripts/macos/with-soft-gl.sh)
+                 late, CI has almost always finished); a commit CI did not build
+                 ([skip ci], or only docs) takes the newest build before it when
+                 only docs changed since, else is skipped, saying why; skipped with
+                 --app, and on macOS, where CI's app has no software OpenGL to draw
+                 with on a machine without a GPU driver (the workspace app runs
+                 through scripts/macos/with-soft-gl.sh)
   built-app      run_gui_tests.py --app: the suite on that executable, reading real
                  comics; skipped, saying why, when there is none
   soak           run_gui_tests.py --soak: the random walk, SOAK_STEPS keys from each
@@ -134,6 +136,8 @@ WIN_ARTIFACT = "barks-reader-win.exe"
 # How long fetch-build waits for this commit's build to finish, and how often it looks.
 BUILD_WAIT_SECS = 90 * 60
 BUILD_POLL_SECS = 60
+# How far back fetch-build looks for a build when CI did not build this commit.
+BUILD_SEARCH_DEPTH = 20
 
 DEFAULT_SOAK_STEPS = "1000"
 
@@ -653,6 +657,14 @@ def pick_build_run(runs: Sequence[Mapping[str, object]]) -> Mapping[str, object]
     return runs[0] if runs else None
 
 
+def reaches_no_build(paths: Sequence[str]) -> bool:
+    """Return whether a change to only these paths leaves the executable as it was.
+
+    They are what build.yml's paths-ignore builds nothing for: docs/ and Markdown.
+    """
+    return all(path.startswith("docs/") or path.endswith(".md") for path in paths)
+
+
 def windows_job(jobs: Sequence[Mapping[str, object]]) -> Mapping[str, object] | None:
     """Return the run's Windows build job, the one that uploads the executable."""
     for job in jobs:
@@ -750,6 +762,65 @@ class Run:
         repo = os.environ.get("GH_REPO", DEFAULT_GH_REPO)
         _, sha = log.capture(["git", "rev-parse", "HEAD"])
         sha = sha.strip()
+        found = self._build_run(log, repo, sha)
+        if found is None:
+            return 1
+        built, run = found
+        if run is None:
+            return self._no_build(log, repo, sha, built)
+        run_id = str(run["databaseId"])
+        log.line(f"fetch-build: run {run_id} ({run['event']}) for {built[:8]}")
+        if self._await_windows_job(log, repo, run_id) is None:
+            return 1
+        return self._download(log, repo, run_id)
+
+    def _download(self, log: StageLog, repo: str, run_id: str) -> int:
+        """Download the run's Windows executable for built-app."""
+        dest = self.log_dir / "build"
+        status = log.run(
+            ["gh", "run", "download", "-R", repo, run_id, "-n", WIN_ARTIFACT, "-D", str(dest)]
+        )
+        exe = dest / WIN_ARTIFACT
+        if status != 0 or not exe.is_file():
+            log.line(f"fetch-build: run {run_id} has no {WIN_ARTIFACT} to download")
+            return status or 1
+        self.exe = exe
+        self.no_exe_why = ""
+        log.line(f"fetch-build: {exe}")
+        return 0
+
+    def _build_run(
+        self, log: StageLog, repo: str, sha: str
+    ) -> tuple[str, Mapping[str, object] | None] | None:
+        """Return the commit whose build to take and its run, or None if gh failed.
+
+        That is this commit's run if CI built it, else the newest earlier one's when
+        only docs changed since (the same executable); else the run is None.
+        """
+        runs = self._commit_runs(log, repo, sha)
+        if runs is None:
+            return None
+        if runs:
+            return sha, pick_build_run(runs)
+        _, out = log.capture(
+            ["git", "rev-list", "--first-parent", f"--max-count={BUILD_SEARCH_DEPTH}", f"{sha}^"]
+        )
+        for earlier in out.split():
+            _, changed = log.capture(["git", "diff", "--name-only", "--no-renames", earlier, sha])
+            if not reaches_no_build(changed.splitlines()):
+                return earlier, None
+            runs = self._commit_runs(log, repo, earlier)
+            if runs is None:
+                return None
+            if runs:
+                log.line(f"fetch-build: CI did not build {sha[:8]}; only docs changed since")
+                log.line(f"  {earlier[:8]}, so its build is this commit's executable")
+                return earlier, pick_build_run(runs)
+        return sha, None
+
+    @staticmethod
+    def _commit_runs(log: StageLog, repo: str, sha: str) -> list[Mapping[str, object]] | None:
+        """Return a commit's Build Verification runs (newest first), or None if gh failed."""
         status, out = log.capture(
             [
                 "gh",
@@ -767,28 +838,25 @@ class Run:
                 "10",
             ]
         )
-        run = pick_build_run(json.loads(out)) if status == 0 and out.strip() else None
-        if run is None:
-            log.line(f"fetch-build: no Build Verification run for {sha} in {repo}")
-            log.line("  (is this commit pushed? gh run list needs 'gh auth login' once)")
+        if status != 0:
+            log.line("fetch-build: gh run list failed (gh needs 'gh auth login' once)")
+            return None
+        return json.loads(out) if out.strip() else []
+
+    @staticmethod
+    def _no_build(log: StageLog, repo: str, sha: str, changed_from: str) -> int:
+        """Say why there is no build to take: skipped if CI chose not to build, else failed."""
+        _, branches = log.capture(["git", "branch", "-r", "--contains", sha])
+        if not branches.strip():
+            log.line(f"fetch-build: {sha[:8]} is not pushed, so CI has not built it")
             return 1
-        run_id = str(run["databaseId"])
-        log.line(f"fetch-build: run {run_id} ({run['event']}) for {sha[:8]}")
-        job = self._await_windows_job(log, repo, run_id)
-        if job is None:
+        if changed_from == sha:
+            log.line(f"fetch-build: no Build Verification run in {repo} for {sha[:8]} or the")
+            log.line(f"  {BUILD_SEARCH_DEPTH} commits before it")
             return 1
-        dest = self.log_dir / "build"
-        status = log.run(
-            ["gh", "run", "download", "-R", repo, run_id, "-n", WIN_ARTIFACT, "-D", str(dest)]
-        )
-        exe = dest / WIN_ARTIFACT
-        if status != 0 or not exe.is_file():
-            log.line(f"fetch-build: run {run_id} has no {WIN_ARTIFACT} to download")
-            return status or 1
-        self.exe = exe
-        self.no_exe_why = ""
-        log.line(f"fetch-build: {exe}")
-        return 0
+        log.line(f"fetch-build: skipped - CI did not build {sha[:8]} ([skip ci], or only docs),")
+        log.line(f"  and it changes more than docs since {changed_from[:8]}; see the diff above")
+        return SKIPPED
 
     @staticmethod
     def _await_windows_job(log: StageLog, repo: str, run_id: str) -> Mapping[str, object] | None:

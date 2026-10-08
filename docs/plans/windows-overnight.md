@@ -65,8 +65,11 @@ About 65 minutes, in one visible window (the first run's times; the plan guessed
 - **`fetch-build`** is `scripts/get-win-build.sh`'s logic in Python, with one change: that
   script takes the newest Build Verification run on `main`, but this stage wants the run
   whose head is `git rev-parse HEAD` (`gh run list --commit <sha> --workflow "Build
-  Verification"`), waiting for it if it is still building. When there is none, or it
-  failed, `fetch-build` fails and `built-app` skips itself, saying why. The artifact goes
+  Verification"`), waiting for it if it is still building. When CI did not build that
+  commit (`[skip ci]`, or a change only to docs), it takes the newest build before it if
+  only docs (`docs/`, Markdown) changed since, the same executable, and otherwise skips,
+  saying why. When the commit is not pushed, or its build failed, `fetch-build` fails.
+  Either way `built-app` skips itself, saying why. The artifact goes
   under `build/overnight/<stamp>/`, not over the last night's.
 - **The soak seed** comes from the day of the year, as the Linux run's do, but one a night
   rather than three, since one worker runs them one after another

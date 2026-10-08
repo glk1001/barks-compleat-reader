@@ -12,6 +12,7 @@ called, and that summary.txt reads as the Linux run's does.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -165,6 +166,11 @@ class TestFetchBuildChoices:
         jobs = [{"name": "Build (ubuntu-latest)"}, {"name": "Build (windows-latest)"}]
         assert rw.windows_job(jobs) == jobs[1]
         assert rw.windows_job(jobs[:1]) is None
+
+    def test_only_docs_and_markdown_reach_no_build(self) -> None:
+        assert rw.reaches_no_build(["docs/plans/x.txt", "README.md", "src/a/notes.md"])
+        assert not rw.reaches_no_build(["docs/x.md", "src/a/b.py"])
+        assert rw.reaches_no_build([])
 
 
 class TestPrebuiltDir:
@@ -333,6 +339,86 @@ class TestRun:
         with patch.object(rw, "prebuilt_dir", return_value=repo / "absent"):
             assert run.run() == 0
         assert _results(repo) == {"validate": "skipped"}
+
+
+def _ci(
+    builds: dict[str, int], changed: dict[str, str], *, pushed: bool = True, gh_ok: bool = True
+) -> object:
+    """Fake git and gh for fetch-build: HEAD c3, then c2 and c1 before it.
+
+    builds: the commits CI built, and their run ids; changed: each earlier commit's
+    files changed since, up to c3.
+    """
+
+    def capture(argv: list[str]) -> tuple[int, str]:
+        match argv:
+            case ["git", "rev-parse", "HEAD"]:
+                return 0, "c3\n"
+            case ["git", "rev-list", *_]:
+                return 0, "c2\nc1\n"
+            case ["git", "diff", *_, earlier, "c3"]:
+                return 0, changed[earlier]
+            case ["git", "branch", *_]:
+                return 0, "  origin/main\n" if pushed else ""
+            case ["gh", "run", "list", *rest]:
+                commit = rest[rest.index("--commit") + 1]
+                runs = [{"databaseId": builds[commit], "event": "push"}] if commit in builds else []
+                return (0, json.dumps(runs)) if gh_ok else (1, "")
+        raise AssertionError(argv)
+
+    return capture
+
+
+class TestFetchBuild:
+    @staticmethod
+    def _fetch(repo: Path, capture: object) -> tuple[MagicMock, str]:
+        """Run fetch-build on Windows with git and gh faked; return the download and log."""
+        run = rw.Run(["fetch-build"], None)
+        with (
+            patch.object(rw, "ON_WINDOWS", True),  # noqa: FBT003
+            patch.object(rw.StageLog, "capture", side_effect=capture),
+            patch.object(rw.Run, "_await_windows_job", return_value={}),
+            patch.object(rw.Run, "_download", return_value=0) as download,
+        ):
+            run.run()
+        (log,) = repo.glob("build/overnight/*/fetch-build.log")
+        return download, log.read_text(encoding="utf-8")
+
+    def test_this_commits_build(self, repo: Path) -> None:
+        download, _ = self._fetch(repo, _ci({"c3": 30, "c2": 20}, {}))
+        assert download.call_args.args[-1] == "30"
+        assert _results(repo) == {"fetch-build": "passed"}
+
+    def test_an_earlier_build_when_only_docs_changed_since(self, repo: Path) -> None:
+        changed = {"c2": "docs/a.md\n", "c1": "docs/a.md\nREADME.md\n"}
+        download, log = self._fetch(repo, _ci({"c1": 10}, changed))
+        assert download.call_args.args[-1] == "10"
+        assert "only docs changed since" in log
+        assert _results(repo) == {"fetch-build": "passed"}
+
+    def test_skipped_when_more_than_docs_changed_since_the_last_build(self, repo: Path) -> None:
+        """[skip ci] on a code change: there is no build of this code to test."""
+        changed = {"c2": "src/a.py\n"}
+        download, log = self._fetch(repo, _ci({"c2": 20}, changed))
+        download.assert_not_called()
+        assert "changes more than docs since c2" in log
+        assert _results(repo) == {"fetch-build": "skipped"}
+
+    def test_a_commit_not_pushed_fails(self, repo: Path) -> None:
+        _, log = self._fetch(repo, _ci({"c2": 20}, {"c2": "src/a.py\n"}, pushed=False))
+        assert "c3 is not pushed" in log
+        assert _results(repo) == {"fetch-build": "FAILED"}
+
+    def test_no_build_in_the_commits_before_fails(self, repo: Path) -> None:
+        changed = {"c2": "docs/a.md\n", "c1": "docs/a.md\n"}
+        _, log = self._fetch(repo, _ci({}, changed))
+        assert "20 commits before it" in log
+        assert _results(repo) == {"fetch-build": "FAILED"}
+
+    def test_gh_failing_fails(self, repo: Path) -> None:
+        _, log = self._fetch(repo, _ci({"c3": 30}, {}, gh_ok=False))
+        assert "gh run list failed" in log
+        assert _results(repo) == {"fetch-build": "FAILED"}
 
 
 class TestMemory:
