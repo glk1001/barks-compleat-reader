@@ -78,7 +78,7 @@ not the build tree, so it runs with `--skip build-check`), and
 On Windows or macOS, `uv run python scripts/run_overnight_desktop.py` (same options and
 summary) runs what only a desktop machine can: the suite with the data pack, the GUI suite
 on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,
-`validate`, and the coverage of what only that platform runs; on Windows nightly through
+`validate`, the wiki copy's freshness (barks-wiki pulled first, where safe), and the coverage of what only that platform runs; on Windows nightly through
 `scripts/windows/register-overnight-task.ps1`, and
 `uv run python scripts/check_windows_overnight_host.py` (on a Mac,
 `scripts/check_macos_overnight_host.py`) says what a machine still lacks for it (setup: `docs/setup.md`, Windows and "A macOS overnight machine", a clean Mac's checklist).

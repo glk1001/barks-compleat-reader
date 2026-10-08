@@ -20,7 +20,9 @@
 #   build-check    the ../barks-comic-building integrity checker on the whole build
 #                  tree: every check (pre-push runs only the censorship one), with
 #                  each panel segments file's page size against its restored image
-#   wiki-order     check_wiki_story_order.py on the sibling barks-wiki bundle;
+#   wiki-order     check_wiki_story_order.py on the sibling barks-wiki bundle, first
+#                  pulled to its upstream where that is safe (pull_sibling.py; WARNED
+#                  where it is not, as this and wiki-copy then read an old bundle);
 #                  warns only, as in full-lint (that repo gates its own order)
 #   wiki-copy      check_wiki_copy.py: the wiki copy shipped in Reader Files, which
 #                  the live-bundle setting hides from validate - a broken join
@@ -39,7 +41,7 @@
 #   siblings       the sibling repos that use barks-fantagraphics and comic-utils,
 #                  against this checkout (their venvs install it editable): each
 #                  one pulled to its upstream first where that is safe
-#                  (pull_sibling.sh; WARNED where it is not), then its own ty and
+#                  (pull_sibling.py; WARNED where it is not), then its own ty and
 #                  pyrefly, then its tests where it has any (../barks-ocr has none,
 #                  so its type checks are its only guard)
 #   build          scripts/build.sh, the Nuitka executable; skipped with --app
@@ -239,7 +241,7 @@ siblings() {
         # Up to its upstream first: a sibling left behind fails on names this repo
         # has changed and it has caught up with. One that cannot be pulled safely is
         # tested as it is, and the stage warns.
-        "${SCRIPT_DIR}/pull_sibling.sh" "$repo" || stale=1
+        uv run python "${SCRIPT_DIR}/pull_sibling.py" "$repo" || stale=1
         # Their own venv, config and lock as it is (--frozen: never rewritten from
         # here); VIRTUAL_ENV unset, since ours is not theirs. A name renamed or
         # removed here fails their type checks before it fails one of their runs.
@@ -384,7 +386,13 @@ run_stage() {
         env -u VIRTUAL_ENV uv run --offline --project ../barks-comic-building \
             barks-check-build --log-level SUCCESS --check-panel-segment-image-size
         ;;
-    wiki-order) uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED" ;;
+    wiki-order)
+        if [[ -d ../barks-wiki ]]; then
+            uv run python scripts/pull_sibling.py ../barks-wiki --stage wiki-order || status=$WARNED
+        fi
+        uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED"
+        return "$status"
+        ;;
     wiki-copy)
         uv run scripts/check_wiki_copy.py || status=$?
         # Its 3 is a stale copy with sound joins: a warning, not a failure.

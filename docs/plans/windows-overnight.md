@@ -52,6 +52,7 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 | Stage | What it runs | Why on Windows | Time |
 |---|---|---|---|
 | `update` | `git pull --ff-only`, `uv sync --locked` | The run tests what is on `main` that night. | 1 min |
+| `wiki-copy` | `pull_sibling.py ../barks-wiki` (a fast-forward only where safe), then `check_wiki_copy.py` | The GUI stages show the wiki copy in Reader Files, and nothing else here said when it went stale: on 2026-10-09 the Windows laptop's barks-wiki was eight days old and its copy matched it, so the check said "current". A stale copy warns, and so does a barks-wiki that could not be pulled; a broken join fails. Since 2026-10-09. | 1 min |
 | `pytest` | `uv run pytest` with the data pack | CI's Windows leg skips every test that needs it. | 1 min |
 | `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. Runs before `gui`, as on Linux, so the first app booted finds the volumes in the file cache (2026-10-01: run last, it left that app over its post tree setup budget). | 5 min |
 | `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |

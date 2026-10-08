@@ -1,11 +1,11 @@
-"""pull_sibling.sh: a sibling repo is brought up to its upstream only where that is safe.
+"""pull_sibling.py: a sibling repo is brought up to its upstream only where that is safe.
 
 Each test builds a real upstream and a clone of it in a temporary directory. Run
 from a git hook (pre-push runs the suite), git's GIT_DIR and the like are set and
 beat -C, so they are cleared, and the throwaway repos run no hooks.
 """
 
-# cspell:ignore NOSYSTEM gpgsign pytestmark
+# cspell:ignore NOSYSTEM gpgsign
 
 from __future__ import annotations
 
@@ -16,13 +16,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parent.parent / "pull_sibling.sh"
-
-# The script runs only in the Linux overnight runner's siblings stage. On Windows
-# "bash" can be WSL's launcher, which fails with no distribution installed (CI's).
-pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="pull_sibling.sh runs in the Linux overnight runner only"
-)
+SCRIPT = Path(__file__).resolve().parent.parent / "pull_sibling.py"
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +63,7 @@ def repos(tmp_path: Path) -> tuple[Path, Path]:
 
 def _pull(sibling: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603 (the script under test)
-        ["bash", str(SCRIPT), str(sibling)],  # noqa: S607
+        [sys.executable, str(SCRIPT), str(sibling)],
         capture_output=True,
         text=True,
         check=False,
@@ -155,3 +149,15 @@ def test_an_upstream_that_cannot_be_reached_is_said(repos: tuple[Path, Path]) ->
     done = _pull(sibling)
     assert done.returncode == 1
     assert "could not fetch" in done.stdout
+
+
+def test_the_stage_names_the_message(repos: tuple[Path, Path]) -> None:
+    """The desktop runner's wiki-copy stage pulls barks-wiki under its own name."""
+    _, sibling = repos
+    done = subprocess.run(  # noqa: S603 (the script under test)
+        [sys.executable, str(SCRIPT), str(sibling), "--stage", "wiki-copy"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.stdout.strip() == "wiki-copy: barks-sibling: up to date"

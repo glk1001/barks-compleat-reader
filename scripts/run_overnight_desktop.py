@@ -13,6 +13,12 @@ Stages (name: what it runs):
   update         git pull --ff-only, then uv sync --locked: the run tests what is
                  on main tonight (pull before starting too: a pull that changes
                  this runner takes effect only on the next run)
+  wiki-copy      the sibling barks-wiki pulled to its upstream where that is safe
+                 (pull_sibling.py), then check_wiki_copy.py: the wiki copy in Reader
+                 Files, which the GUI stages show - a broken join fails, a copy
+                 older than a fresh export of the live bundle warns, and so does a
+                 barks-wiki that could not be pulled (the copy is then checked
+                 against it as it is); skipped without barks-wiki
   pytest         the unit suite, with the data pack CI's legs do not have, its
                  coverage measured for the coverage stage
   validate       validate-barks-reader-files.py --full-load-check --strict-wiki: the
@@ -102,6 +108,7 @@ from typing import TYPE_CHECKING, Any, TextIO
 
 import gui_probe
 import psutil
+import pull_sibling
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -118,7 +125,17 @@ ON_MACOS = sys.platform == "darwin"
 # fetch-build just before built-app, its one user: a run started soon after a push
 # finds CI still building, and third it waited for that build (about 20 minutes)
 # with every stage behind it idle; after validate and gui the build is done.
-STAGES = ("update", "pytest", "validate", "gui", "fetch-build", "built-app", "soak", "coverage")
+STAGES = (
+    "update",
+    "wiki-copy",
+    "pytest",
+    "validate",
+    "gui",
+    "fetch-build",
+    "built-app",
+    "soak",
+    "coverage",
+)
 GUI_STAGES = frozenset({"gui", "built-app", "soak"})
 # How far, in percentage points, the combined coverage may fall below its best (as on Linux).
 COVERAGE_TOLERANCE = 1.0
@@ -128,6 +145,9 @@ SKIPPED = 3
 WARNED = 4
 
 DEFAULT_GH_REPO = "glk1001/barks-compleat-reader"
+WIKI_REPO = REPO_ROOT.parent / "barks-wiki"
+# check_wiki_copy.py's exit for a stale copy whose joins hold.
+WIKI_COPY_STALE = 3
 # Windows' own OpenGL 1.1, all a machine without a driver has; ANGLE draws instead.
 SOFTWARE_OPENGL = "GDI Generic"
 ANGLE_BACKEND = "angle_sdl2"
@@ -902,6 +922,20 @@ class Run:
             log.line(f"soak: seed {seed}, {steps} keys")
             env = {"BARKS_GUI_WALK_SEED": seed, "BARKS_GUI_WALK_STEPS": steps}
             status = self.gui_tests(log, "--soak", **env) or status
+        return status
+
+    @staticmethod
+    def stage_wiki_copy(log: StageLog) -> int:
+        if not WIKI_REPO.is_dir():
+            log.line(f"wiki-copy: skipped - no barks-wiki beside this repo ({WIKI_REPO})")
+            return SKIPPED
+        pulled, message = pull_sibling.pull(WIKI_REPO, stage="wiki-copy")
+        log.line(message)
+        status = log.run(venv_command("python", str(SCRIPTS / "check_wiki_copy.py")))
+        if status == WIKI_COPY_STALE:
+            return WARNED
+        if status == 0 and not pulled:
+            return WARNED
         return status
 
     @staticmethod

@@ -50,6 +50,11 @@ class TestStageTable:
         assert stages.index("fetch-build") == stages.index("built-app") - 1
         assert stages.index("fetch-build") > stages.index("gui")
 
+    def test_the_wiki_is_pulled_before_anything_reads_it(self) -> None:
+        stages = list(rw.STAGES)
+        assert stages.index("wiki-copy") == 1
+        assert stages.index("wiki-copy") < stages.index("validate") < stages.index("gui")
+
     def test_the_statuses_are_the_linux_runs(self) -> None:
         text = LINUX_RUNNER.read_text(encoding="utf-8")
         assert f"SKIPPED={rw.SKIPPED}" in text
@@ -65,7 +70,7 @@ class TestSelectStages:
 
     def test_skip(self) -> None:
         chosen = rw.select_stages([], ["fetch-build", "built-app"])
-        assert chosen == ["update", "pytest", "validate", "gui", "soak", "coverage"]
+        assert chosen == ["update", "wiki-copy", "pytest", "validate", "gui", "soak", "coverage"]
 
     def test_an_unknown_name(self) -> None:
         with pytest.raises(ValueError, match="no stage called nope"):
@@ -339,6 +344,54 @@ class TestRun:
         with patch.object(rw, "prebuilt_dir", return_value=repo / "absent"):
             assert run.run() == 0
         assert _results(repo) == {"validate": "skipped"}
+
+
+class TestWikiCopy:
+    @staticmethod
+    def _stage(repo: Path, *, pulled: bool, status: int, wiki: bool = True) -> MagicMock:
+        """Run wiki-copy with the pull and check_wiki_copy.py faked; return the pull."""
+        wiki_repo = repo / "barks-wiki"
+        if wiki:
+            wiki_repo.mkdir()
+        run = rw.Run(["wiki-copy"], None)
+        with (
+            patch.object(rw, "WIKI_REPO", wiki_repo),
+            patch.object(rw.pull_sibling, "pull", return_value=(pulled, "wiki-copy: said")) as pull,
+            patch.object(rw.StageLog, "run", return_value=status),
+        ):
+            run.run()
+        return pull
+
+    def test_pulled_and_current_passes(self, repo: Path) -> None:
+        pull = self._stage(repo, pulled=True, status=0)
+        assert pull.call_args.kwargs == {"stage": "wiki-copy"}
+        assert _results(repo) == {"wiki-copy": "passed"}
+        (log,) = repo.glob("build/overnight/*/wiki-copy.log")
+        assert "wiki-copy: said" in log.read_text(encoding="utf-8")
+
+    def test_a_stale_copy_warns(self, repo: Path) -> None:
+        self._stage(repo, pulled=True, status=rw.WIKI_COPY_STALE)
+        assert _results(repo) == {"wiki-copy": "WARNED"}
+
+    def test_a_wiki_that_could_not_be_pulled_warns_though_the_copy_matches_it(
+        self, repo: Path
+    ) -> None:
+        """Current against a checkout days old is no news: the Windows laptop's, 2026-10-09."""
+        self._stage(repo, pulled=False, status=0)
+        assert _results(repo) == {"wiki-copy": "WARNED"}
+
+    def test_a_broken_join_fails(self, repo: Path) -> None:
+        self._stage(repo, pulled=False, status=1)
+        assert _results(repo) == {"wiki-copy": "FAILED"}
+
+    def test_skipped_without_barks_wiki(self, repo: Path) -> None:
+        pull = self._stage(repo, pulled=True, status=0, wiki=False)
+        pull.assert_not_called()
+        assert _results(repo) == {"wiki-copy": "skipped"}
+
+    def test_the_stale_status_matches_check_wiki_copy(self) -> None:
+        source = (Path(rw.__file__).parent / "check_wiki_copy.py").read_text(encoding="utf-8")
+        assert f"STALE_EXIT = {rw.WIKI_COPY_STALE}" in source
 
 
 def _ci(
