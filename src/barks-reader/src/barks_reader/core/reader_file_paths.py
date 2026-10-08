@@ -74,9 +74,6 @@ class BarksPanelsExtType(Enum):
 
 class ReaderFilePaths:
     def __init__(self) -> None:
-        self._barks_reader_files_dir: Path | None = None
-        self._reader_icon_files_dir: Path | None = None
-
         self._barks_panels_source: Path | None = None
         self._barks_panels_zip: zipfile.ZipFile | None = None
         self.barks_panels_are_encrypted: bool = False
