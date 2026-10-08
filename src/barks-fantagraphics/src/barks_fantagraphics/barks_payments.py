@@ -1,10 +1,14 @@
 # ruff: noqa: E501, T201, ERA001
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date
+from fractions import Fraction
 
 from dateutil.relativedelta import relativedelta
 
+from .barks_bibliography import TITLE_TO_BIB_ENTRY
 from .barks_titles import ENUM_TO_STR_TITLE, Titles
 from .comic_book_info import (
     BARKS_TITLE_INFO,
@@ -1020,9 +1024,6 @@ def validate_payment_data() -> None:
         assert payment_info.title == title, (
             f"Payment title {payment_info.title.name} is different from title {title.name}"
         )
-        assert (title not in ONE_PAGERS) or payment_info.num_pages == 1, (
-            f"Payment num pages != 1 for one-pager {payment_info.title.name}"
-        )
 
         submitted_day = 1 if title_info.submitted_day == -1 else title_info.submitted_day
         submitted_date = date(title_info.submitted_year, title_info.submitted_month, submitted_day)
@@ -1057,3 +1058,73 @@ def validate_payment_data() -> None:
     )
 
     assert missing_payment_errors == 0
+
+
+# The page count a bibliography entry starts with: "1", "7/8", "⅞", "5¾" or "10". The
+# rest of the entry ("(inside back cover)", "(pp. 1-10)") says where, not how many.
+_BIB_PAGE_COUNT = re.compile(r"(?P<whole>\d*)(?:/(?P<denominator>\d+)|(?P<vulgar>[⅛¼⅜½⅝¾⅞]?))")
+
+
+def _get_bib_page_count(page_count: str) -> Fraction | None:
+    match = _BIB_PAGE_COUNT.match(page_count.strip())
+    if match is None or not (match["whole"] or match["vulgar"]):
+        return None  # A cover: the bibliography gives no count.
+    if match["denominator"]:
+        return Fraction(int(match["whole"]), int(match["denominator"]))
+    whole = Fraction(int(match["whole"] or "0"))
+    if match["vulgar"]:
+        return whole + Fraction(unicodedata.numeric(match["vulgar"]))
+    return whole
+
+
+def get_one_pager_page_count_errors() -> list[str]:
+    """Check ONE_PAGERS against the page counts in the payments and the bibliography.
+
+    A one-pager must have a payment row for one page, and a bibliography count, where
+    it has one, of at most one page (several are a fraction, down to 3/8). The other
+    way, a title paid for one page, or of at most one page in the bibliography, must be
+    a one-pager unless it is a cover. Three one-pagers have no bibliography entry
+    (BIRD_CAMERA_THE, UP_AND_AT_IT, IT_HAPPENED_ONE_WINTER); that is not an error.
+
+    Returns:
+        One message per problem found, empty when ONE_PAGERS agrees with both tables.
+
+    """
+    errors = []
+
+    for title in ONE_PAGERS:
+        payment_info = BARKS_PAYMENTS.get(title)
+        if payment_info is None:
+            errors.append(f"One-pager {title.name} has no payment info.")
+        elif payment_info.num_pages != 1:
+            errors.append(
+                f"One-pager {title.name} was paid for {payment_info.num_pages} pages, not 1."
+            )
+
+        bib_entry = TITLE_TO_BIB_ENTRY.get(title)
+        if bib_entry is None:
+            continue
+        bib_count = _get_bib_page_count(bib_entry.page_count)
+        if bib_count is None or bib_count > 1:
+            errors.append(
+                f'One-pager {title.name} is "{bib_entry.page_count}" pages in the bibliography.'
+            )
+
+    one_pagers = set(ONE_PAGERS)
+    for title, payment_info in BARKS_PAYMENTS.items():
+        if payment_info.num_pages == 1 and title not in one_pagers and title not in COVERS_SET:
+            errors.append(f"{title.name} was paid for 1 page but is not in ONE_PAGERS.")
+    for title, bib_entry in TITLE_TO_BIB_ENTRY.items():
+        bib_count = _get_bib_page_count(bib_entry.page_count)
+        if (
+            bib_count is not None
+            and bib_count <= 1
+            and title not in one_pagers
+            and title not in COVERS_SET
+        ):
+            errors.append(
+                f'{title.name} is "{bib_entry.page_count}" pages in the bibliography'
+                " but is not in ONE_PAGERS."
+            )
+
+    return errors

@@ -7,11 +7,16 @@ module-level data tables with minimal synthetic fixtures.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics import barks_payments as bp_module
-from barks_fantagraphics.barks_payments import PaymentInfo, validate_payment_data
+from barks_fantagraphics.barks_payments import (
+    PaymentInfo,
+    get_one_pager_page_count_errors,
+    validate_payment_data,
+)
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
@@ -210,3 +215,94 @@ class TestValidatePaymentData:
         assert "missing one-pager payments: 1" in out
         assert "accepted-before-submitted: 1" in out
         assert "13-months-after-submitted: 1" in out
+
+
+def _one_pager_errors(
+    *,
+    one_pagers: list[Titles],
+    payments: dict[Titles, PaymentInfo],
+    bib_page_counts: dict[Titles, str],
+    covers: frozenset[Titles] = frozenset(),
+) -> list[str]:
+    """Run ``get_one_pager_page_count_errors`` against patched tables."""
+    any_entry = next(iter(bp_module.TITLE_TO_BIB_ENTRY.values()))
+    bib = {t: replace(any_entry, title=t, page_count=c) for t, c in bib_page_counts.items()}
+    with (
+        patch.object(bp_module, "ONE_PAGERS", one_pagers),
+        patch.object(bp_module, "BARKS_PAYMENTS", payments),
+        patch.object(bp_module, "TITLE_TO_BIB_ENTRY", bib),
+        patch.object(bp_module, "COVERS_SET", covers),
+    ):
+        return get_one_pager_page_count_errors()
+
+
+def _paid(title: Titles, num_pages: int) -> PaymentInfo:
+    return replace(_payment(title, 1, 1, 1943), num_pages=num_pages)
+
+
+_ONE = Titles.VICTORY_GARDEN_THE
+_STORY = Titles.RABBITS_FOOT_THE
+
+
+class TestOnePagerPageCountErrors:
+    def test_one_page_or_less_in_both_tables_is_no_error(self) -> None:
+        errors = _one_pager_errors(
+            one_pagers=[_ONE, Titles.GOOD_DEEDS],
+            payments={_ONE: _paid(_ONE, 1), Titles.GOOD_DEEDS: _paid(Titles.GOOD_DEEDS, 1)},
+            bib_page_counts={_ONE: "7/8 (back cover)", Titles.GOOD_DEEDS: "½"},
+        )
+        assert errors == []
+
+    def test_a_one_pager_with_no_bibliography_entry_is_no_error(self) -> None:
+        # The one-pager after it is still checked: here its count is too long.
+        later = Titles.GOOD_DEEDS
+        errors = _one_pager_errors(
+            one_pagers=[_ONE, later],
+            payments={_ONE: _paid(_ONE, 1), later: _paid(later, 1)},
+            bib_page_counts={later: "2"},
+        )
+        assert errors == [f'One-pager {later.name} is "2" pages in the bibliography.']
+
+    def test_a_one_pager_with_no_payment_is_an_error(self) -> None:
+        errors = _one_pager_errors(one_pagers=[_ONE], payments={}, bib_page_counts={})
+        assert errors == [f"One-pager {_ONE.name} has no payment info."]
+
+    def test_a_one_pager_paid_for_more_pages_is_an_error(self) -> None:
+        errors = _one_pager_errors(
+            one_pagers=[_ONE], payments={_ONE: _paid(_ONE, 2)}, bib_page_counts={}
+        )
+        assert errors == [f"One-pager {_ONE.name} was paid for 2 pages, not 1."]
+
+    @pytest.mark.parametrize("page_count", ["2", "1¾", "3/2", ""])
+    def test_a_one_pager_longer_than_a_page_in_the_bibliography_is_an_error(
+        self, page_count: str
+    ) -> None:
+        errors = _one_pager_errors(
+            one_pagers=[_ONE], payments={_ONE: _paid(_ONE, 1)}, bib_page_counts={_ONE: page_count}
+        )
+        assert errors == [f'One-pager {_ONE.name} is "{page_count}" pages in the bibliography.']
+
+    def test_a_title_paid_for_one_page_must_be_a_one_pager(self) -> None:
+        errors = _one_pager_errors(
+            one_pagers=[], payments={_STORY: _paid(_STORY, 1)}, bib_page_counts={}
+        )
+        assert errors == [f"{_STORY.name} was paid for 1 page but is not in ONE_PAGERS."]
+
+    @pytest.mark.parametrize("page_count", ["1 (inside front cover)", "⅞", "3/8"])
+    def test_a_title_of_a_page_or_less_in_the_bibliography_must_be_a_one_pager(
+        self, page_count: str
+    ) -> None:
+        errors = _one_pager_errors(one_pagers=[], payments={}, bib_page_counts={_STORY: page_count})
+        assert errors == [
+            f'{_STORY.name} is "{page_count}" pages in the bibliography but is not in ONE_PAGERS.'
+        ]
+
+    def test_longer_stories_and_covers_need_not_be_one_pagers(self) -> None:
+        cover = Titles.COMICS_AND_STORIES_405_COVER
+        errors = _one_pager_errors(
+            one_pagers=[],
+            payments={_STORY: _paid(_STORY, 10), cover: _paid(cover, 1)},
+            bib_page_counts={_STORY: "10 (pp. 1-10)", Titles.GOOD_DEEDS: "5¾", cover: "1"},
+            covers=frozenset({cover}),
+        )
+        assert errors == []

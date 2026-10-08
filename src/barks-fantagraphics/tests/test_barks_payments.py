@@ -1,5 +1,9 @@
 import pytest
-from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, validate_payment_data
+from barks_fantagraphics.barks_payments import (
+    BARKS_PAYMENTS,
+    get_one_pager_page_count_errors,
+    validate_payment_data,
+)
 from barks_fantagraphics.barks_titles import Titles
 
 
@@ -12,6 +16,9 @@ class TestBarksPayments:
             validate_payment_data()
         except AssertionError:
             pytest.fail("validate_payment_data() failed.")
+
+    def test_one_pagers_agree_with_the_payment_and_bibliography_page_counts(self) -> None:
+        assert get_one_pager_page_count_errors() == []
 
     def test_barks_payments_submission_order(self) -> None:
         titles_as_list = list(Titles)
