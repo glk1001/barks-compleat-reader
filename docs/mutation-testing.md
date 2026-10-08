@@ -1094,3 +1094,16 @@ it from `[[untriaged]]` to `[[equivalent]]` and give it a reason. The tables abo
 why for many of the backlog's entries already (the `__init__` `None` to `""` family, the
 `json.dump` indents, the threaded loader's clusters); moving those is the first job.
 
+
+**First triage (2026-10-08).** The families the tables above explain were moved to
+`[[equivalent]]` with their reasons, each matched by the exact shape of its change: the
+fantagraphics search modules' 85 all (their 2026-10-04 table), and in `core/` 52 `__init__`
+`None` to `""` defaults (each attribute only asserted or tested for truth; the 8 that are
+compared with `is None` stay untriaged, a small real gap), the codec-name spellings,
+dropped encodings (equivalent on Linux only: the reason says to keep them for Windows),
+`json.dump` indents, `ZipFile`'s `"r"`, `cast` strings, `reader_formatter`'s 12 and the
+image selector's and loader settings' tabled ones. Not moved, though a table named it:
+`ImageSelector.__init__`'s never-crop list replaced by `None`, which drops every entry the
+list file has, so a real gap. Two `ReaderFilePaths` attributes set in `__init__` and never
+read were deleted. Left: 120 untriaged, all in `core/`, led by `comic_book_loader` (23, its
+threaded `_load_pages`), `corpus_stats` (18), `wiki_integration` (15) and `image_selector`.
