@@ -313,7 +313,7 @@ class TestCastSection:
             ("Places", "62"),
             ("Themes", "78"),
             ("Things", "43"),
-            ("Most-tagged character", "Gyro Gearloose, 73 stories"),
+            ("Most-tagged character", "Daisy Duck, 78 stories"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
