@@ -452,3 +452,15 @@ def test_following_the_title_moves_sorts_the_list() -> None:
             0 if where == ["to", "the", "top"] else titles.index(Titles[where[1]]) + 1, title
         )
     assert titles == sorted(titles)
+
+
+# --- Little Helper is only in Gyro stories ---
+
+
+def test_little_helper_story_without_gyro_fails() -> None:
+    helper = sorted({*barks_tags.BARKS_TAGGED_TITLES[Tags.LITTLE_HELPER], Titles.FIREBUG_THE})
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.LITTLE_HELPER: helper}):
+        with pytest.raises(
+            AssertionError, match=r"LITTLE_HELPER but not in GYRO_GEARLOOSE: \['FIREBUG_THE'\]"
+        ):
+            barks_tags.validate_tag_data()

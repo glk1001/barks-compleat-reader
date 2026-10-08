@@ -282,6 +282,13 @@ def _validate_unique_titles() -> None:
     assert not repeated, f"Tags listing a title more than once: {repeated}"
 
 
+def _validate_little_helper_tags() -> None:
+    """Little Helper is Gyro's: every story he is in is a Gyro story."""
+    gyro = set(BARKS_TAGGED_TITLES[Tags.GYRO_GEARLOOSE])
+    not_gyro = [t.name for t in BARKS_TAGGED_TITLES[Tags.LITTLE_HELPER] if t not in gyro]
+    assert not not_gyro, f"In LITTLE_HELPER but not in GYRO_GEARLOOSE: {not_gyro}"
+
+
 def _validate_uncle_scrooge_tags() -> None:
     us_not_in_us_titles = set(BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US])
     wrong_titles = [
@@ -361,6 +368,7 @@ def validate_tag_data() -> None:
     _validate_places()
     _validate_firsts_tags()
     _validate_gyro_tags()
+    _validate_little_helper_tags()
     _validate_chronological_order()
     _validate_unique_titles()
     _validate_uncle_scrooge_tags()
