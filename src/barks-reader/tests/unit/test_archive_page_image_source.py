@@ -96,6 +96,29 @@ class TestArchivePageImageSourcePrebuilt:
         # Second close is a no-op.
         source.close()
 
+    def test_an_archive_page_cannot_be_read_while_the_archive_is_shut(
+        self, prebuilt_cbz: Path
+    ) -> None:
+        """Before open() and after close() alike: the assertion that says why, no stray error."""
+        source = ArchivePageImageSource(
+            archive_path=prebuilt_cbz,
+            fanta_volume_archive=None,
+            comic_book_image_builder=None,
+            empty_page_image=b"",
+            use_fantagraphics_overrides=False,
+            max_width=100,
+            max_height=100,
+        )
+        page = _make_page_info("p01.png")
+        why = "requires the Fantagraphics library archive"
+        with pytest.raises(AssertionError, match=why):
+            source.load_page_image(page)
+
+        source.open()
+        source.close()
+        with pytest.raises(AssertionError, match=why):
+            source.load_page_image(page)
+
     def test_get_image_info_str_describes_source(self, prebuilt_cbz: Path) -> None:
         source = ArchivePageImageSource(
             archive_path=prebuilt_cbz,

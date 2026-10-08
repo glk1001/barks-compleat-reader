@@ -473,6 +473,16 @@ class TestImageSelector:
 
         assert entries == frozenset({"Lost in the Andes/012-3.png", "The Golden Helmet/034-1.png"})
 
+    def test_the_never_crop_list_is_loaded_when_the_selector_is_made(
+        self, fake_resolver: FakeResolver, mock_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        (tmp_path / "never-crop.txt").write_text("Lost in the Andes/012-3.png\n", encoding="utf-8")
+        mock_settings.get_app_settings_path.return_value = tmp_path / "barks-reader.ini"
+        with patch.object(is_module, get_all_files_in_dir.__name__, return_value=[]):
+            selector = ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
+
+        assert selector._is_never_crop(Path("/comics/Lost in the Andes/012-3.png"))
+
     def test_load_never_crop_images_missing_file_returns_empty(
         self,
         image_selector: ImageSelector,

@@ -1762,6 +1762,105 @@ change = """
 """
 reason = "Needs an unparseable file name iterated before a valid one, and Path.iterdir() order is the filesystem's: a test relying on it would be flaky."
 
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._barks_panels_source: Path | None = None
++ self._barks_panels_source: Path | None = ""
+"""
+reason = "Set by set_barks_panels_source just before _check_panels_dirs, its only reader, runs."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._panels_ext_type: BarksPanelsExtType | None = None
++ self._panels_ext_type: BarksPanelsExtType | None = ""
+"""
+reason = "Only ever compared with BarksPanelsExtType.JPG, which neither None nor \"\" is."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._inset_files_ext = ""
++ self._inset_files_ext = None
+"""
+reason = "Set by set_barks_panels_source before anything reads it."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._inset_files_ext = ""
++ self._inset_files_ext = "XXXX"
+"""
+reason = "Set by set_barks_panels_source before anything reads it."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._edited_files_ext = ""
++ self._edited_files_ext = None
+"""
+reason = "Set by set_barks_panels_source before anything reads it."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self._edited_files_ext = ""
++ self._edited_files_ext = "XXXX"
+"""
+reason = "Set by set_barks_panels_source before anything reads it."
+
+[[equivalent]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline.__init__"
+change = """
+- self._fun_image_themes: set[ImageThemes] | None = None
++ self._fun_image_themes: set[ImageThemes] | None = ""
+"""
+reason = "Overwritten on the next line of __init__ by _set_fun_image_themes(None)."
+
+[[equivalent]]
+module = "barks_reader.core.page_info_adapters"
+function = "FantagraphicsPanelSegmentsAdapter.__init__"
+change = """
+- self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = None
++ self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = ""
+"""
+reason = "Read only once _cached_for is the comic asked for, which it becomes only as _cached is set."
+
+[[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
++ self._comic_book_reader_screen: ComicBookReaderScreenPort | None = ""
+"""
+reason = "set_comic_book_reader_screen sets it with the reader, and every path that reads it needs the reader first."
+
+[[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._current_title: str | None = None
++ self._current_title: str | None = ""
+"""
+reason = "begin() sets it with _current_layout; end() before begin() fails the other's assert either way."
+
+[[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._current_layout: ComicLayout | None = None
++ self._current_layout: ComicLayout | None = ""
+"""
+reason = "begin() sets it with _current_title; end() before begin() fails the other's assert first either way."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
@@ -2056,22 +2155,6 @@ function = "_build_page_map"
 change = """
 - zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
 + zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.image_selector"
-function = "ImageSelector.__init__"
-change = """
-- self._never_crop_images = self._load_never_crop_images()
-+ self._never_crop_images = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.image_selector"
-function = "ImageSelector._get_possible_files_for_title"
-change = """
-- title_files[file_type], key=lambda entry: str(entry[0])
-+ title_files[file_type], key=lambda entry: str(entry[1])
 """
 
 [[untriaged]]
@@ -2430,14 +2513,6 @@ change = """
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """
-- self._barks_panels_source: Path | None = None
-+ self._barks_panels_source: Path | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
 - self.barks_panels_are_encrypted: bool = False
 + self.barks_panels_are_encrypted: bool = None
 """
@@ -2448,46 +2523,6 @@ function = "ReaderFilePaths.__init__"
 change = """
 - self.barks_panels_are_encrypted: bool = False
 + self.barks_panels_are_encrypted: bool = True
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self._panels_ext_type: BarksPanelsExtType | None = None
-+ self._panels_ext_type: BarksPanelsExtType | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self._inset_files_ext = ""
-+ self._inset_files_ext = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self._inset_files_ext = ""
-+ self._inset_files_ext = "XXXX"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self._edited_files_ext = ""
-+ self._edited_files_ext = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self._edited_files_ext = ""
-+ self._edited_files_ext = "XXXX"
 """
 
 [[untriaged]]
@@ -2544,14 +2579,6 @@ change = """
 
 [[untriaged]]
 module = "barks_reader.core.view_pipeline"
-function = "ViewPipeline.__init__"
-change = """
-- self._fun_image_themes: set[ImageThemes] | None = None
-+ self._fun_image_themes: set[ImageThemes] | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.view_pipeline"
 function = "ViewPipeline._set_top_view_image_fixed"
 change = """
 - self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
@@ -2584,51 +2611,11 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.page_info_adapters"
-function = "FantagraphicsPanelSegmentsAdapter.__init__"
-change = """
-- self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = None
-+ self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_reader_manager"
-function = "ComicReaderManager.__init__"
-change = """
-- self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
-+ self._comic_book_reader_screen: ComicBookReaderScreenPort | None = ""
-"""
-
-[[untriaged]]
 module = "barks_reader.core.last_read_page_tracker"
 function = "LastReadPageTracker.__init__"
 change = """
 - self._save_enabled = False
 + self._save_enabled = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.last_read_page_tracker"
-function = "LastReadPageTracker.__init__"
-change = """
-- self._current_title: str | None = None
-+ self._current_title: str | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.last_read_page_tracker"
-function = "LastReadPageTracker.__init__"
-change = """
-- self._current_layout: ComicLayout | None = None
-+ self._current_layout: ComicLayout | None = ""
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.__init__"
-change = """
-- self._archive: zipfile.ZipFile | None = None
-+ self._archive: zipfile.ZipFile | None = ""
 """
 
 [[untriaged]]
@@ -2645,14 +2632,6 @@ function = "ArchivePageImageSource.__init__"
 change = """
 - self._empty_page_image = empty_page_image
 + self._empty_page_image = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.close"
-change = """
-- self._archive = None
-+ self._archive = ""
 """
 
 [[untriaged]]
