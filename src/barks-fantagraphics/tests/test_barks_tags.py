@@ -384,3 +384,20 @@ def test_personal_favourites_keep_their_own_order() -> None:
     titles = [Titles.FIREMAN_DONALD, Titles.FIREBUG_THE]
     with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.PERSONAL_FAVOURITES: titles}):
         barks_tags.validate_tag_data()
+
+
+# --- No title twice under one tag ---
+
+
+def test_tag_listing_a_title_twice_fails() -> None:
+    titles = [Titles.FIREBUG_THE, Titles.FIREBUG_THE, Titles.FIREMAN_DONALD]
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.FIRE: titles}):
+        with pytest.raises(AssertionError, match=r"more than once: \{'FIRE': \['FIREBUG_THE'\]\}"):
+            barks_tags.validate_tag_data()
+
+
+def test_personal_favourites_listing_a_title_twice_fails() -> None:
+    titles = [Titles.FIREMAN_DONALD, Titles.FIREBUG_THE, Titles.FIREMAN_DONALD]
+    with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.PERSONAL_FAVOURITES: titles}):
+        with pytest.raises(AssertionError, match="PERSONAL_FAVOURITES"):
+            barks_tags.validate_tag_data()

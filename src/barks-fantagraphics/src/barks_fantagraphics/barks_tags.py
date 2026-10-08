@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import TYPE_CHECKING
 
 from .barks_bibliography import BIBLIOGRAPHY
@@ -226,6 +227,16 @@ def _validate_chronological_order() -> None:
     assert not unsorted, f"Tags not in chronological order: {unsorted}"
 
 
+def _validate_unique_titles() -> None:
+    """No tag lists a title more than once."""
+    repeated = {
+        tag.name: sorted(title.name for title, count in Counter(titles).items() if count > 1)
+        for tag, titles in BARKS_TAGGED_TITLES.items()
+        if len(set(titles)) != len(titles)
+    }
+    assert not repeated, f"Tags listing a title more than once: {repeated}"
+
+
 def _validate_uncle_scrooge_tags() -> None:
     us_not_in_us_titles = set(BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US])
     wrong_titles = [
@@ -306,6 +317,7 @@ def validate_tag_data() -> None:
     _validate_firsts_tags()
     _validate_gyro_tags()
     _validate_chronological_order()
+    _validate_unique_titles()
     _validate_uncle_scrooge_tags()
 
 
