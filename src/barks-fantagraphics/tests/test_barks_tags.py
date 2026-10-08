@@ -376,7 +376,9 @@ def test_gyro_series_missing_from_the_bibliography_fails() -> None:
 def test_tag_titles_out_of_chronological_order_fail() -> None:
     titles = [Titles.FIREMAN_DONALD, Titles.FIREBUG_THE]  # FIREBUG_THE comes first.
     with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.FIRE: titles}):
-        with pytest.raises(AssertionError, match=r"not in chronological order: \['FIRE'\]"):
+        with pytest.raises(
+            AssertionError, match="not in chronological order:\n  FIRE: move FIREBUG_THE to the top"
+        ):
             barks_tags.validate_tag_data()
 
 
@@ -401,3 +403,52 @@ def test_personal_favourites_listing_a_title_twice_fails() -> None:
     with patch.dict(barks_tags.BARKS_TAGGED_TITLES, {Tags.PERSONAL_FAVOURITES: titles}):
         with pytest.raises(AssertionError, match="PERSONAL_FAVOURITES"):
             barks_tags.validate_tag_data()
+
+
+# --- Where to move titles that are out of order ---
+
+_A, _B, _C, _D, _E = sorted(
+    [
+        Titles.FIREBUG_THE,
+        Titles.FIREMAN_DONALD,
+        Titles.GOOD_DEEDS,
+        Titles.LIFEGUARD_DAZE,
+        Titles.RABBITS_FOOT_THE,
+    ]
+)
+
+
+@pytest.mark.parametrize(
+    ("titles", "moves"),
+    [
+        ([], []),
+        ([_A, _B, _C], []),
+        # A new title put on the end goes back to its place.
+        ([_A, _C, _D, _B], [f"move {_B.name} after {_A.name}"]),
+        ([_B, _C, _A], [f"move {_A.name} to the top"]),
+        # One title too early moves, not the run it jumped ahead of.
+        ([_D, _A, _B, _C, _E], [f"move {_D.name} after {_C.name}"]),
+        # Fully reversed: all but one move.
+        (
+            [_C, _B, _A],
+            [f"move {_A.name} to the top", f"move {_B.name} after {_A.name}"],
+        ),
+    ],
+)
+def test_title_moves_name_the_fewest_titles_and_where_they_go(
+    titles: list[Titles], moves: list[str]
+) -> None:
+    assert barks_tags.get_title_moves(titles) == moves
+
+
+def test_following_the_title_moves_sorts_the_list() -> None:
+    titles = [_E, _B, _D, _A, _C]
+    moves = barks_tags.get_title_moves(titles)
+    for move in moves:
+        _, name, *where = move.split()
+        title = Titles[name]
+        titles.remove(title)
+        titles.insert(
+            0 if where == ["to", "the", "top"] else titles.index(Titles[where[1]]) + 1, title
+        )
+    assert titles == sorted(titles)

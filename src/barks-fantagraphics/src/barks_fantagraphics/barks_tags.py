@@ -214,17 +214,62 @@ def _validate_gyro_tags() -> None:
     assert not missing, f"Stories from a Gyro Gearloose issue missing from GYRO_IN_GG: {missing}"
 
 
+def _get_longest_ordered_run(titles: list[Titles]) -> set[int]:
+    """Return the positions of the most titles already in order with each other."""
+    run_length = [1] * len(titles)
+    previous = [-1] * len(titles)
+    for i, title in enumerate(titles):
+        for j in range(i):
+            if titles[j] < title and run_length[j] + 1 > run_length[i]:
+                run_length[i] = run_length[j] + 1
+                previous[i] = j
+
+    run = set()
+    i = max(range(len(titles)), key=run_length.__getitem__, default=-1)
+    while i >= 0:
+        run.add(i)
+        i = previous[i]
+    return run
+
+
+def get_title_moves(titles: list[Titles]) -> list[str]:
+    """Say how to put a list of titles into chronological order with the fewest moves.
+
+    The most titles already in order with each other stay where they are; each other
+    title goes straight after the title that comes before it chronologically.
+
+    Args:
+        titles: The titles, in the order they are listed.
+
+    Returns:
+        One "move X after Y" (or "move X to the top") for each title to move, in the
+        order to make them (chronological, so that each Y is in place before X moves);
+        empty when the titles are already in order.
+
+    """
+    staying = _get_longest_ordered_run(titles)
+    in_order = sorted(titles)
+    moves = []
+    for title in sorted(title for i, title in enumerate(titles) if i not in staying):
+        position = in_order.index(title)
+        where = f"after {in_order[position - 1].name}" if position else "to the top"
+        moves.append(f"move {title.name} {where}")
+    return moves
+
+
 def _validate_chronological_order() -> None:
     """Each tag lists its titles in chronological order: the order of `Titles`.
 
     PERSONAL_FAVOURITES is the reader's own list, put in by the app, in its own order.
     """
-    unsorted = [
-        tag.name
+    unsorted = {
+        tag.name: get_title_moves(titles)
         for tag, titles in BARKS_TAGGED_TITLES.items()
         if tag != Tags.PERSONAL_FAVOURITES and titles != sorted(titles)
-    ]
-    assert not unsorted, f"Tags not in chronological order: {unsorted}"
+    }
+    assert not unsorted, "Tags not in chronological order:" + "".join(
+        f"\n  {tag}: {'; '.join(moves)}" for tag, moves in unsorted.items()
+    )
 
 
 def _validate_unique_titles() -> None:
