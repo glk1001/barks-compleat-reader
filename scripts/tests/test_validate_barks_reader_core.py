@@ -1,4 +1,4 @@
-"""Tests for the reader-files validator's layout (10) and wiki-join (11) phases.
+"""Tests for the reader-files validator's layout (10), wiki-join (11) and splash (12) phases.
 
 Phase 10 runs the reader's own layout builder, so these tests stub only what
 reads the data pack (the comics database, the panel-segments adapter and the
@@ -8,6 +8,7 @@ bundles written under ``tmp_path``.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import zipfile
@@ -20,13 +21,17 @@ import pytest
 import validate_barks_reader_core as core
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import (
+    NON_COMIC_TITLES,
     ONE_PAGERS,
     get_filename_from_title,
     get_located_one_pagers,
+    is_covers_collection,
+    is_one_pager_collection,
 )
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.page_classes import CleanPage, SrceAndDestPages
+from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     UNSET_WIKI_BUNDLE_DIR_MARKER,
@@ -460,3 +465,140 @@ class TestResolveWikiBundleDir:
         (tmp_path / WIKI_BUNDLE_SUBDIR).mkdir()
         cfg_info = self._cfg_info(tmp_path, **{USE_LIVE_WIKI_BUNDLE: "0"})
         assert core.resolve_wiki_bundle_dir(cfg_info, tmp_path, None) is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 12
+# ---------------------------------------------------------------------------
+
+_NORMAL_PAGE = [[0, 0, 100, 100]] * 8
+_SPLASH_PAGE = [[0, 0, 400, 100], *[[0, 0, 100, 100]] * 4]
+
+
+def _write_segments(segments_dir: Path, stem: str, panels: list[list[int]]) -> None:
+    segments = {"overall_bounds": [0, 0, 800, 100], "panels": panels}
+    (segments_dir / f"{stem}.json").write_text(json.dumps(segments))
+
+
+class TestFindTitleSplashPages:
+    @staticmethod
+    def _find(tmp_path: Path, page_types: list[PageType]) -> list[str]:
+        page_map = {
+            str(num): PageInfo(
+                num - 1,
+                str(num),
+                page_type,
+                CleanPage(f"{num:03d}.jpg", page_type),
+                CleanPage(f"{num:03d}.jpg", page_type),
+            )
+            for num, page_type in enumerate(page_types, 1)
+        }
+        db = MagicMock()
+        db.get_fantagraphics_volume_title.return_value = VOLUME_DIR
+        builder = MagicMock()
+        builder.build.return_value.page_map = page_map
+        return core.find_title_splash_pages(db, builder, tmp_path, ANDES)
+
+    def test_a_splash_after_page_1_is_found_by_its_page_number(self, tmp_path: Path) -> None:
+        (tmp_path / VOLUME_DIR).mkdir()
+        for stem, panels in (("001", _NORMAL_PAGE), ("002", _NORMAL_PAGE), ("003", _SPLASH_PAGE)):
+            _write_segments(tmp_path / VOLUME_DIR, stem, panels)
+        assert self._find(tmp_path, [PageType.BODY] * 3) == ["3"]
+
+    def test_page_1_is_never_a_splash(self, tmp_path: Path) -> None:
+        (tmp_path / VOLUME_DIR).mkdir()
+        for stem, panels in (("001", _SPLASH_PAGE), ("002", _NORMAL_PAGE), ("003", _NORMAL_PAGE)):
+            _write_segments(tmp_path / VOLUME_DIR, stem, panels)
+        assert self._find(tmp_path, [PageType.BODY] * 3) == []
+
+    def test_only_body_pages_are_read(self, tmp_path: Path) -> None:
+        # The back-matter page has no JSON: reading it would raise.
+        (tmp_path / VOLUME_DIR).mkdir()
+        for stem, panels in (("001", _NORMAL_PAGE), ("002", _SPLASH_PAGE)):
+            _write_segments(tmp_path / VOLUME_DIR, stem, panels)
+        assert self._find(tmp_path, [PageType.BODY, PageType.BODY, PageType.BACK_MATTER]) == ["2"]
+
+
+_SPLASH_STORY = Titles.LOST_IN_THE_ANDES
+_OTHER_STORY = Titles.VOODOO_HOODOO
+
+
+class TestPhase12SplashTags:
+    @staticmethod
+    def _run(
+        found: dict[Titles, list[str] | Exception],
+        tagged: dict[Titles, list[str]],
+        titles_filter: list[str] | None = None,
+        story_titles: list[Titles] | None = None,
+    ) -> core.PhaseResult:
+        def find(_db: object, _builder: object, _root: Path, title_str: str) -> list[str]:
+            result = found.get(STR_TITLE_TO_ENUM[title_str], [])
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        stories = [ENUM_TO_STR_TITLE[t] for t in (story_titles or list(found))]
+        collector = core.ErrorCollector()
+        with (
+            patch.object(core, "ComicsDatabase"),
+            patch.object(core, "get_splash_story_titles", return_value=stories),
+            patch.object(core, "find_title_splash_pages", side_effect=find),
+            patch.object(core, "BARKS_TAGGED_TITLES", {core.Tags.SPLASH: list(tagged)}),
+            patch.object(
+                core,
+                "BARKS_TAGGED_PAGES",
+                {(core.Tags.SPLASH, title): pages for title, pages in tagged.items()},
+            ),
+        ):
+            core.phase12_splash_tags(collector, MagicMock(), titles_filter)
+        return _only_phase(collector)
+
+    def test_tags_that_agree_with_the_panels_pass(self) -> None:
+        found: dict[Titles, list[str] | Exception] = {_SPLASH_STORY: ["7", "20"], _OTHER_STORY: []}
+        phase = self._run(found, {_SPLASH_STORY: ["7", "20"]})
+        assert phase.errors == []
+        assert phase.items_checked == len(found)
+
+    def test_an_untagged_splash(self) -> None:
+        phase = self._run({_SPLASH_STORY: ["7"]}, {})
+        assert _kinds(phase) == ["kind=splash_untagged"]
+        assert "pages=7" in phase.errors[0]
+
+    def test_a_tag_on_a_story_with_no_splash(self) -> None:
+        phase = self._run({_SPLASH_STORY: []}, {_SPLASH_STORY: ["7"]})
+        assert _kinds(phase) == ["kind=splash_tagged_without_splash"]
+
+    def test_tagged_pages_that_differ(self) -> None:
+        phase = self._run({_SPLASH_STORY: ["7", "20"]}, {_SPLASH_STORY: ["7"]})
+        assert _kinds(phase) == ["kind=splash_pages_differ"]
+        assert "found=7,20 tagged=7" in phase.errors[0]
+
+    def test_a_story_whose_pages_cannot_be_read_is_unchecked(self) -> None:
+        phase = self._run({_SPLASH_STORY: FileNotFoundError("no json")}, {_SPLASH_STORY: ["7"]})
+        assert _kinds(phase) == ["kind=splash_unchecked"]
+
+    def test_a_tagged_title_that_is_no_story_checked(self) -> None:
+        one_pager = next(iter(ONE_PAGERS))
+        phase = self._run(
+            {_SPLASH_STORY: ["7"]},
+            {_SPLASH_STORY: ["7"], one_pager: []},
+            story_titles=[_SPLASH_STORY],
+        )
+        assert _kinds(phase) == ["kind=splash_tagged_not_a_story"]
+
+    def test_a_title_filter_judges_only_its_titles(self) -> None:
+        phase = self._run(
+            {_SPLASH_STORY: ["7"]},
+            {_SPLASH_STORY: ["7"], _OTHER_STORY: ["3"]},
+            titles_filter=[ENUM_TO_STR_TITLE[_SPLASH_STORY]],
+        )
+        assert phase.errors == []
+
+
+class TestGetSplashStoryTitles:
+    def test_articles_and_collections_are_left_out(self) -> None:
+        titles = {STR_TITLE_TO_ENUM[t] for t in core.get_splash_story_titles()}
+        assert _SPLASH_STORY in titles
+        assert not titles & set(NON_COMIC_TITLES)
+        assert not titles & set(ONE_PAGERS)
+        assert not any(is_one_pager_collection(t) or is_covers_collection(t) for t in titles)

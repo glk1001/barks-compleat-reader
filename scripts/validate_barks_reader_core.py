@@ -3,10 +3,12 @@
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
 prebuilt comics, per-title panel files, per-title layouts (with their
-panel-segments JSONs) and the wiki story-page joins into a single report.
+panel-segments JSONs), the wiki story-page joins and the splash tags into a
+single report.
 Exits non-zero on any failure.
 """
 
+import json
 import os
 import time
 import zipfile
@@ -16,6 +18,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
+from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, BARKS_TAGGED_TITLES, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
@@ -27,7 +30,7 @@ from barks_fantagraphics.comic_book_info import (
     is_one_pager_collection,
     is_one_pager_located,
 )
-from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS
+from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS, PageType
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
 from barks_fantagraphics.comics_utils import (
     get_dest_comic_zip_file_stem,
@@ -42,6 +45,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
+from barks_fantagraphics.splash_pages import get_panel_area_fractions, get_splash_pages
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
@@ -2302,3 +2306,148 @@ def _story_dirs(title_enum: Titles) -> str:
     """Return the story directories the reader looks in for a title, comma-joined."""
     series_name = ALL_FANTA_COMIC_BOOK_INFO[title_enum].series_name
     return ",".join(SERIES_TO_STORY_DIRS.get(series_name, ()))
+
+
+# ---------------------------------------------------------------------------
+# Phase 12 - Splash tags
+# ---------------------------------------------------------------------------
+#
+# Tags.SPLASH and its pages in BARKS_TAGGED_PAGES are written by hand (from
+# scripts/find-splash-pages.py); the panel-segments JSONs say which pages are
+# splashes. Page 1 is left out: its title panel is often as big as a splash.
+
+_PANEL_BOUNDING_LOGGER = "barks_fantagraphics.panel_bounding"
+
+
+def get_splash_story_titles(titles_filter: list[str] | None = None) -> list[str]:
+    """Return the stories whose pages are judged for splashes, filtered.
+
+    Args:
+        titles_filter: Optional subset of titles. ``None`` returns every story.
+
+    Returns:
+        The titles the reader opens as comics of their own, less articles and
+        the one-pager and cover collections.
+
+    """
+    return [
+        title_str
+        for title_str, _fanta_info in _loadable_titles(titles_filter)
+        if STR_TITLE_TO_ENUM[title_str] not in NON_COMIC_TITLES
+        and not is_one_pager_collection(STR_TITLE_TO_ENUM[title_str])
+        and not is_covers_collection(STR_TITLE_TO_ENUM[title_str])
+    ]
+
+
+def find_title_splash_pages(
+    db: ComicsDatabase, builder: ComicLayoutBuilder, panel_segments_root: Path, title_str: str
+) -> list[str]:
+    """Return a story's splash pages after page 1, numbered as the reader numbers them.
+
+    Args:
+        db: The comics database.
+        builder: A layout builder reading the same panel-segments root.
+        panel_segments_root: The directory holding each volume's panel-segments JSONs.
+        title_str: The story.
+
+    Returns:
+        The splash pages' numbers, in page order.
+
+    """
+    comic = db.get_comic_book(title_str)
+    segments_dir = panel_segments_root / db.get_fantagraphics_volume_title(comic.get_fanta_volume())
+    pages = {
+        page.display_page_num: get_panel_area_fractions(
+            json.loads(
+                (
+                    segments_dir / (Path(page.srce_page.page_filename).stem + JSON_FILE_EXT)
+                ).read_text(encoding="utf-8")
+            )
+        )
+        for page in builder.build(comic).page_map.values()
+        if page.page_type == PageType.BODY
+    }
+    return [page for page in get_splash_pages(pages) if page != "1"]
+
+
+def make_splash_layout_builder(db: ComicsDatabase, panel_segments_root: Path) -> ComicLayoutBuilder:
+    """Return the reader's layout builder, reading panel segments from a given root."""
+    return ComicLayoutBuilder(
+        sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
+    )
+
+
+def phase12_splash_tags(
+    collector: ErrorCollector,
+    sys_paths: SystemFilePaths,
+    titles_filter: list[str] | None = None,
+) -> None:
+    """Phase 12: check Tags.SPLASH and its pages against the panel-segments JSONs.
+
+    Args:
+        collector: Aggregator for phase results.
+        sys_paths: Resolved :class:`SystemFilePaths`, for the panel-segments root.
+        titles_filter: Optional subset of titles to check. ``None`` runs all titles,
+            and then also reports a tagged title that is no story checked here.
+
+    """
+    phase = collector.start_phase("Splash Tags", "12")
+
+    try:
+        db = ComicsDatabase(for_building_comics=False)
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not construct ComicsDatabase: {exc}")
+        collector.finalize_phase(phase)
+        return
+
+    panel_segments_root = sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
+    builder = make_splash_layout_builder(db, panel_segments_root)
+    tagged_titles = set(BARKS_TAGGED_TITLES.get(Tags.SPLASH, []))
+
+    story_titles = get_splash_story_titles(titles_filter)
+    # Building each layout again would repeat the panel-bounds warnings Phase 10 logged.
+    logger.disable(_PANEL_BOUNDING_LOGGER)
+    try:
+        for title_str in story_titles:
+            phase.items_checked += 1
+            _check_title_splash_tags(
+                phase, db, builder, panel_segments_root, title_str, tagged_titles
+            )
+    finally:
+        logger.enable(_PANEL_BOUNDING_LOGGER)
+
+    if titles_filter is None:
+        checked = {STR_TITLE_TO_ENUM[title_str] for title_str in story_titles}
+        for title in sorted(tagged_titles - checked):
+            phase.add(f"Title:{ENUM_TO_STR_TITLE[title]} kind=splash_tagged_not_a_story")
+
+    phase.summary_extra = f"({len(tagged_titles)} tagged)"
+    collector.finalize_phase(phase)
+
+
+def _check_title_splash_tags(
+    phase: PhaseResult,
+    db: ComicsDatabase,
+    builder: ComicLayoutBuilder,
+    panel_segments_root: Path,
+    title_str: str,
+    tagged_titles: set[Titles],
+) -> None:
+    """Check one story's splash tag and pages against its panel-segments JSONs."""
+    title = STR_TITLE_TO_ENUM[title_str]
+    try:
+        found = find_title_splash_pages(db, builder, panel_segments_root, title_str)
+    except Exception as exc:  # noqa: BLE001 - Phase 10 says why; here it goes unchecked
+        phase.add(f"Title:{title_str} kind=splash_unchecked reason={type(exc).__name__}: {exc}")
+        return
+    tagged = BARKS_TAGGED_PAGES.get((Tags.SPLASH, title), [])
+    if title not in tagged_titles:
+        if found:
+            phase.add(f"Title:{title_str} kind=splash_untagged pages={','.join(found)}")
+    elif not found:
+        phase.add(f"Title:{title_str} kind=splash_tagged_without_splash")
+    elif found != tagged:
+        phase.add(
+            f"Title:{title_str} kind=splash_pages_differ"
+            f" found={','.join(found)} tagged={','.join(tagged)}"
+        )
