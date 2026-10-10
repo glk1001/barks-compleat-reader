@@ -234,6 +234,7 @@ class TestNavigationCoordinator:
         mock_deps["bottom_title_view_screen"].goto_page_active = True
         mock_deps["bottom_title_view_screen"].goto_page_num = "10"
         mock_deps["bottom_title_view_screen"].use_overrides_active = False
+        mock_deps["bottom_title_view_screen"].tagged_pages = ["10", "11", "14"]
         mock_comic = MagicMock()
         mock_deps["comics_database"].get_comic_book.return_value = mock_comic
 
@@ -241,7 +242,13 @@ class TestNavigationCoordinator:
 
         assert result is True
         mock_deps["on_active_changed"].assert_called_once()
-        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_called_once()
+        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_called_once_with(
+            mock_fanta_info,
+            mock_comic,
+            "10",
+            False,  # noqa: FBT003 - use_overrides_active, passed positionally
+            tagged_pages=["10", "11", "14"],
+        )
 
     def test_read_comic_one_pager_opens_collection_at_its_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]

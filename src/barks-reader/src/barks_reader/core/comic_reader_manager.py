@@ -12,6 +12,8 @@ from .reader_setup import prepare_comic_for_reading
 from .user_error_types import ErrorInfo, ErrorTypes
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -119,6 +121,7 @@ class ComicReaderManager:
         use_overrides_active: bool,
         history_title_str: str | None = None,
         collection_page_range: tuple[int, int] | None = None,
+        tagged_pages: Sequence[str] = (),
     ) -> None:
         """Open a Barks comic book in the reader.
 
@@ -134,6 +137,8 @@ class ComicReaderManager:
                 ("All One-Pagers"/"All Covers"), the inclusive 1-based page range
                 of the member's year-range group. Only that slice is opened, so
                 the loader holds ~40-55 pages instead of the whole collection.
+            tagged_pages: The pages a tag marks in the comic, when it was opened
+                through the tag: the goto-page list shows them in their own colour.
 
         """
         self._fanta_info = fanta_info
@@ -144,6 +149,7 @@ class ComicReaderManager:
             use_overrides_active=use_overrides_active,
             history_title_str=history_title_str,
             collection_page_range=collection_page_range,
+            tagged_pages=tagged_pages,
         )
 
     def _read_comic_book(
@@ -155,6 +161,7 @@ class ComicReaderManager:
         use_overrides_active: bool = True,
         history_title_str: str | None = None,
         collection_page_range: tuple[int, int] | None = None,
+        tagged_pages: Sequence[str] = (),
     ) -> None:
         assert page_to_first_goto
         assert self._comic_book_reader
@@ -183,6 +190,7 @@ class ComicReaderManager:
                 comic_book_image_builder,
                 page_to_first_goto,
                 self._layout.page_map,
+                tagged_pages=tagged_pages,
             )
         except MissingVolumeError as e:
             logger.error(e)

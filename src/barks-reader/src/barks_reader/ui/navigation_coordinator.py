@@ -389,6 +389,7 @@ class NavigationCoordinator:
             comic_book,
             self._get_page_to_first_goto(),
             self._bottom_title_view_screen.use_overrides_active,
+            tagged_pages=self._bottom_title_view_screen.tagged_pages,
         )
         return True
 

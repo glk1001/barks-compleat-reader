@@ -66,7 +66,7 @@ from .tap_targets import Rect, window_rect
 
 if TYPE_CHECKING:
     from collections import OrderedDict
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from barks_fantagraphics.barks_covers import BarksCover
@@ -99,6 +99,8 @@ GOTO_PAGE_BUTTON_HEIGHT = dp(25)
 GOTO_PAGE_BUTTON_BODY_COLOR = (0, 1, 1, 1)
 GOTO_PAGE_BUTTON_NONBODY_COLOR = (0, 0.5, 0.5, 1)
 GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR = (1, 1, 0, 1)
+# A page the tag the comic was opened through marks.
+GOTO_PAGE_BUTTON_TAGGED_COLOR = (1, 0.55, 0, 1)
 
 COMIC_BOOK_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -360,6 +362,7 @@ class ComicBookReader(FloatLayout):
         self._reveal_ev: ClockEvent | None = None
         self._goto_page_dropdown: ReaderDropDown | None = None
         self._goto_page_buttons: list[Button] = []
+        self._tagged_pages: frozenset[str] = frozenset()
 
         # Bind property changes to update the display
         self._page_manager = _ComicPageManager(self._show_page)
@@ -501,8 +504,10 @@ class ComicBookReader(FloatLayout):
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
+        tagged_pages: Sequence[str] = (),
     ) -> None:
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
+        self._tagged_pages = frozenset(tagged_pages)
 
         self._current_title_str = self.get_reader_comic_title(fanta_info)
 
@@ -885,6 +890,8 @@ class ComicBookReader(FloatLayout):
             if page_info.page_index == self._current_page_index:
                 button.background_color = GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR
                 selected_button = button
+            elif button.text in self._tagged_pages:
+                button.background_color = GOTO_PAGE_BUTTON_TAGGED_COLOR
             else:
                 button.background_color = (
                     GOTO_PAGE_BUTTON_BODY_COLOR

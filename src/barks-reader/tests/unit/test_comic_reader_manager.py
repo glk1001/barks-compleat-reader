@@ -151,6 +151,23 @@ class TestComicReaderManager:
 
             mock_dependencies["reading_history_tracker"].begin.assert_called_once_with("Title")
 
+    def test_a_tags_pages_are_handed_to_the_reader(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info, MagicMock(), "1", use_overrides_active=True, tagged_pages=["1"]
+            )
+
+        _, kwargs = mock_reader.read_comic.call_args
+        assert kwargs["tagged_pages"] == ["1"]
+
     def test_collection_page_range_slices_the_layout(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:

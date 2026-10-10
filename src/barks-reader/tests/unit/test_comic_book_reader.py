@@ -696,6 +696,29 @@ class TestComicBookReader:
             assert reader.open_goto_page_for_keyboard(on_dismiss) == 0
         reader._goto_page_dropdown.bind.assert_called_once_with(on_dismiss=on_dismiss)
 
+    def test_goto_page_colours_the_pages_the_tag_marks(self, reader: ComicBookReader) -> None:
+        """Opened through a tag: its pages stand out, though the page on show stays yellow."""
+        cbr = barks_reader.ui.comic_book_reader
+        reader._goto_page_dropdown = MagicMock()
+        reader._goto_page_widget = MagicMock()
+        reader._goto_page_buttons = [MagicMock(text=str(page)) for page in range(1, 5)]
+        reader._page_manager = MagicMock()
+        reader._page_manager.page_map = {
+            str(page): MagicMock(page_index=page - 1, page_type=PageType.BODY)
+            for page in range(1, 5)
+        }
+        reader._page_manager.get_current_page_index.return_value = 0  # page "1"
+        reader._tagged_pages = frozenset({"1", "3"})
+        with patch.object(cbr, "open_dropdown", return_value=True):
+            assert reader.goto_page()
+        colours = [button.background_color for button in reader._goto_page_buttons]
+        assert colours == [
+            cbr.GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR,
+            cbr.GOTO_PAGE_BUTTON_BODY_COLOR,
+            cbr.GOTO_PAGE_BUTTON_TAGGED_COLOR,
+            cbr.GOTO_PAGE_BUTTON_BODY_COLOR,
+        ]
+
     def test_the_goto_page_dropdown_is_dismissed_only_once_made(
         self, reader: ComicBookReader
     ) -> None:
