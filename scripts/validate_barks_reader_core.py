@@ -2343,7 +2343,7 @@ def get_splash_story_titles(titles_filter: list[str] | None = None) -> list[str]
 def find_title_splash_pages(
     db: ComicsDatabase, builder: ComicLayoutBuilder, panel_segments_root: Path, title_str: str
 ) -> list[str]:
-    """Return a story's splash pages after page 1, numbered as the reader numbers them.
+    """Return a story's splash pages, numbered as the reader numbers them.
 
     Args:
         db: The comics database.
@@ -2368,7 +2368,7 @@ def find_title_splash_pages(
         for page in builder.build(comic).page_map.values()
         if page.page_type == PageType.BODY
     }
-    return [page for page in get_splash_pages(pages) if page != "1"]
+    return get_splash_pages(pages)
 
 
 def get_expected_splash_pages(title: Titles, found: Sequence[str]) -> list[str]:

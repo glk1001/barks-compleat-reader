@@ -499,17 +499,17 @@ class TestFindTitleSplashPages:
         builder.build.return_value.page_map = page_map
         return core.find_title_splash_pages(db, builder, tmp_path, ANDES)
 
-    def test_a_splash_after_page_1_is_found_by_its_page_number(self, tmp_path: Path) -> None:
+    def test_a_splash_is_found_by_its_page_number(self, tmp_path: Path) -> None:
         (tmp_path / VOLUME_DIR).mkdir()
         for stem, panels in (("001", _NORMAL_PAGE), ("002", _NORMAL_PAGE), ("003", _SPLASH_PAGE)):
             _write_segments(tmp_path / VOLUME_DIR, stem, panels)
         assert self._find(tmp_path, [PageType.BODY] * 3) == ["3"]
 
-    def test_page_1_is_never_a_splash(self, tmp_path: Path) -> None:
+    def test_page_1_can_be_a_splash(self, tmp_path: Path) -> None:
         (tmp_path / VOLUME_DIR).mkdir()
         for stem, panels in (("001", _SPLASH_PAGE), ("002", _NORMAL_PAGE), ("003", _NORMAL_PAGE)):
             _write_segments(tmp_path / VOLUME_DIR, stem, panels)
-        assert self._find(tmp_path, [PageType.BODY] * 3) == []
+        assert self._find(tmp_path, [PageType.BODY] * 3) == ["1"]
 
     def test_only_body_pages_are_read(self, tmp_path: Path) -> None:
         # The back-matter page has no JSON: reading it would raise.

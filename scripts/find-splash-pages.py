@@ -2,7 +2,7 @@
 """Find every story's splash pages from its panel boxes, and print them as tag data.
 
 A splash panel takes the space of four of the story's normal panels
-(barks_fantagraphics.splash_pages); page 1 is left out. The pages are read from the
+(barks_fantagraphics.splash_pages), page 1 included. The pages are read from the
 Fantagraphics panel-segments JSONs (ComicsDatabase's panel-segments root) and
 numbered as the reader numbers them.
 
