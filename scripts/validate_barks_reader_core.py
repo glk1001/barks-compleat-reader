@@ -12,13 +12,14 @@ import json
 import os
 import time
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from configparser import ConfigParser
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, BARKS_TAGGED_TITLES, Tags
+from barks_fantagraphics.barks_tags_data import SPLASH_EXCEPTIONS
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
@@ -2370,6 +2371,25 @@ def find_title_splash_pages(
     return [page for page in get_splash_pages(pages) if page != "1"]
 
 
+def get_expected_splash_pages(title: Titles, found: Sequence[str]) -> list[str]:
+    """Return the splash pages a story should be tagged with, once its exceptions are left out.
+
+    Args:
+        title: The story.
+        found: Its splash pages, as the panel boxes find them.
+
+    Returns:
+        ``found`` less the pages SPLASH_EXCEPTIONS exempts; none when it exempts the title.
+
+    """
+    if title not in SPLASH_EXCEPTIONS:
+        return list(found)
+    exempt = SPLASH_EXCEPTIONS[title]
+    if not exempt:
+        return []
+    return [page for page in found if page not in exempt]
+
+
 def make_splash_layout_builder(db: ComicsDatabase, panel_segments_root: Path) -> ComicLayoutBuilder:
     """Return the reader's layout builder, reading panel segments from a given root."""
     return ComicLayoutBuilder(
@@ -2383,6 +2403,9 @@ def phase12_splash_tags(
     titles_filter: list[str] | None = None,
 ) -> None:
     """Phase 12: check Tags.SPLASH and its pages against the panel-segments JSONs.
+
+    The pages SPLASH_EXCEPTIONS lists are left out of what the tag should hold, and an
+    exception that names no splash page fails.
 
     Args:
         collector: Aggregator for phase results.
@@ -2420,8 +2443,10 @@ def phase12_splash_tags(
         checked = {STR_TITLE_TO_ENUM[title_str] for title_str in story_titles}
         for title in sorted(tagged_titles - checked):
             phase.add(f"Title:{ENUM_TO_STR_TITLE[title]} kind=splash_tagged_not_a_story")
+        for title in sorted(SPLASH_EXCEPTIONS.keys() - checked):
+            phase.add(f"Title:{ENUM_TO_STR_TITLE[title]} kind=splash_exception_not_a_story")
 
-    phase.summary_extra = f"({len(tagged_titles)} tagged)"
+    phase.summary_extra = f"({len(tagged_titles)} tagged, {len(SPLASH_EXCEPTIONS)} excepted)"
     collector.finalize_phase(phase)
 
 
@@ -2440,6 +2465,12 @@ def _check_title_splash_tags(
     except Exception as exc:  # noqa: BLE001 - Phase 10 says why; here it goes unchecked
         phase.add(f"Title:{title_str} kind=splash_unchecked reason={type(exc).__name__}: {exc}")
         return
+    if title in SPLASH_EXCEPTIONS:
+        if not found:
+            phase.add(f"Title:{title_str} kind=splash_exception_stale reason=no splash pages")
+        elif stale := [page for page in SPLASH_EXCEPTIONS[title] if page not in found]:
+            phase.add(f"Title:{title_str} kind=splash_exception_stale pages={','.join(stale)}")
+        found = get_expected_splash_pages(title, found)
     tagged = BARKS_TAGGED_PAGES.get((Tags.SPLASH, title), [])
     if title not in tagged_titles:
         if found:

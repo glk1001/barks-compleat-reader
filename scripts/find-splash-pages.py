@@ -7,7 +7,9 @@ Fantagraphics panel-segments JSONs (ComicsDatabase's panel-segments root) and
 numbered as the reader numbers them.
 
 Prints the Tags.SPLASH list for BARKS_TAGGED_TITLES and its BARKS_TAGGED_PAGES
-entries, ready to paste into barks_tags_data.py, then a cross-check against the
+entries, ready to paste into barks_tags_data.py, less the pages its SPLASH_EXCEPTIONS
+leaves out (listed after them, with each exception that no longer applies), then a
+cross-check against the
 two other sources: the ini files' "= SPLASH" pages and the Barks panels Splash
 folder (from the reader's settings, PNG panels). Those mostly hold Fantagraphics
 back-matter reproductions, so they confirm a title, not a page; a Splash-folder
@@ -22,7 +24,8 @@ from configparser import ConfigParser
 from pathlib import Path
 
 import typer
-from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.barks_tags_data import SPLASH_EXCEPTIONS
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import get_num_splashes
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
@@ -31,6 +34,7 @@ from barks_reader.core.reader_settings import ReaderSettings
 from loguru import logger
 from validate_barks_reader_core import (
     find_title_splash_pages,
+    get_expected_splash_pages,
     get_splash_story_titles,
     make_splash_layout_builder,
 )
@@ -61,6 +65,18 @@ def _print_tag_data(splash_pages: dict[Titles, list[str]]) -> None:
     for title in sorted(splash_pages, key=lambda t: t.name):
         pages = ", ".join(f'"{page}"' for page in splash_pages[title])
         print(f"    (Tags.SPLASH, Titles.{title.name}): [{pages}],")
+
+
+def _print_exceptions(found_pages: dict[Titles, list[str]]) -> None:
+    """Print what SPLASH_EXCEPTIONS leaves out, and each exception that no longer applies."""
+    print(f"# {len(SPLASH_EXCEPTIONS)} exception(s).")
+    for title in sorted(SPLASH_EXCEPTIONS):
+        exempt = SPLASH_EXCEPTIONS[title]
+        found = found_pages.get(title, [])
+        left_out = ", ".join(exempt) if exempt else "whole title"
+        stale = [page for page in exempt if page not in found] if found else ["no splash pages"]
+        note = f" - STALE: {', '.join(stale)}" if stale else ""
+        print(f"#   {ENUM_TO_STR_TITLE[title]}: {left_out}{note}")
 
 
 def _cross_check(
@@ -105,17 +121,23 @@ def main() -> None:
     panel_segments_root = db.get_fantagraphics_panel_segments_root_dir()
     builder = make_splash_layout_builder(db, panel_segments_root)
 
-    splash_pages: dict[Titles, list[str]] = {}
+    found_pages: dict[Titles, list[str]] = {}
     for title_str in get_splash_story_titles():
         pages = find_title_splash_pages(db, builder, panel_segments_root, title_str)
         if pages:
-            splash_pages[STR_TITLE_TO_ENUM[title_str]] = pages
+            found_pages[STR_TITLE_TO_ENUM[title_str]] = pages
+    splash_pages = {
+        title: expected
+        for title, pages in found_pages.items()
+        if (expected := get_expected_splash_pages(title, pages))
+    }
 
     _print_tag_data(splash_pages)
 
     print()
     print(f"# {len(splash_pages)} stories, {sum(map(len, splash_pages.values()))} splash pages.")
-    disagreements = _cross_check(db, splash_pages, _get_splash_dir())
+    _print_exceptions(found_pages)
+    disagreements = _cross_check(db, found_pages, _get_splash_dir())
     print(f"# Cross-check: {len(disagreements)} disagreement(s).")
     for disagreement in disagreements:
         print(f"#   {disagreement}")

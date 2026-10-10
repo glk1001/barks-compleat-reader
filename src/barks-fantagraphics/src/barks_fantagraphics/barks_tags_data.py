@@ -2060,3 +2060,8 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.ZINC, Titles.KRANKENSTEIN_GYRO): ["1"],
     (Tags.ZIRCONIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["23"],
 }
+
+# Splash pages the panel boxes find (scripts/find-splash-pages.py) but that are left out of
+# Tags.SPLASH on purpose. A title with no pages is left out whole; with pages, only those
+# pages are. The nightly check fails on an entry that no longer names a splash page.
+SPLASH_EXCEPTIONS: dict[Titles, list[str]] = {}

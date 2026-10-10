@@ -530,6 +530,7 @@ class TestPhase12SplashTags:
         tagged: dict[Titles, list[str]],
         titles_filter: list[str] | None = None,
         story_titles: list[Titles] | None = None,
+        exceptions: dict[Titles, list[str]] | None = None,
     ) -> core.PhaseResult:
         def find(_db: object, _builder: object, _root: Path, title_str: str) -> list[str]:
             result = found.get(STR_TITLE_TO_ENUM[title_str], [])
@@ -549,6 +550,7 @@ class TestPhase12SplashTags:
                 "BARKS_TAGGED_PAGES",
                 {(core.Tags.SPLASH, title): pages for title, pages in tagged.items()},
             ),
+            patch.object(core, "SPLASH_EXCEPTIONS", exceptions or {}),
         ):
             core.phase12_splash_tags(collector, MagicMock(), titles_filter)
         return _only_phase(collector)
@@ -593,6 +595,62 @@ class TestPhase12SplashTags:
             titles_filter=[ENUM_TO_STR_TITLE[_SPLASH_STORY]],
         )
         assert phase.errors == []
+
+    def test_an_excepted_title_may_go_untagged(self) -> None:
+        phase = self._run({_SPLASH_STORY: ["1", "7"]}, {}, exceptions={_SPLASH_STORY: []})
+        assert phase.errors == []
+        assert "1 excepted" in phase.summary_extra
+
+    def test_an_excepted_title_may_not_be_tagged(self) -> None:
+        phase = self._run(
+            {_SPLASH_STORY: ["1", "7"]},
+            {_SPLASH_STORY: ["1", "7"]},
+            exceptions={_SPLASH_STORY: []},
+        )
+        assert _kinds(phase) == ["kind=splash_tagged_without_splash"]
+
+    def test_an_excepted_page_is_left_out_of_the_tag(self) -> None:
+        found: dict[Titles, list[str] | Exception] = {_SPLASH_STORY: ["1", "7"]}
+        exceptions = {_SPLASH_STORY: ["1"]}
+        assert self._run(found, {_SPLASH_STORY: ["7"]}, exceptions=exceptions).errors == []
+        phase = self._run(found, {_SPLASH_STORY: ["1", "7"]}, exceptions=exceptions)
+        assert _kinds(phase) == ["kind=splash_pages_differ"]
+        assert "found=7 tagged=1,7" in phase.errors[0]
+
+    def test_an_exception_for_a_page_that_is_no_splash_is_stale(self) -> None:
+        phase = self._run(
+            {_SPLASH_STORY: ["7"]}, {_SPLASH_STORY: ["7"]}, exceptions={_SPLASH_STORY: ["1"]}
+        )
+        assert _kinds(phase) == ["kind=splash_exception_stale"]
+        assert "pages=1" in phase.errors[0]
+
+    def test_an_exception_for_a_story_with_no_splash_is_stale(self) -> None:
+        phase = self._run({_SPLASH_STORY: []}, {}, exceptions={_SPLASH_STORY: []})
+        assert _kinds(phase) == ["kind=splash_exception_stale"]
+
+    def test_an_exception_that_is_no_story_checked(self) -> None:
+        one_pager = next(iter(ONE_PAGERS))
+        phase = self._run(
+            {_SPLASH_STORY: ["7"]},
+            {_SPLASH_STORY: ["7"]},
+            story_titles=[_SPLASH_STORY],
+            exceptions={one_pager: []},
+        )
+        assert _kinds(phase) == ["kind=splash_exception_not_a_story"]
+
+
+class TestGetExpectedSplashPages:
+    def test_a_title_without_exceptions_keeps_its_pages(self) -> None:
+        with patch.object(core, "SPLASH_EXCEPTIONS", {}):
+            assert core.get_expected_splash_pages(_SPLASH_STORY, ["1", "7"]) == ["1", "7"]
+
+    def test_an_excepted_title_keeps_none(self) -> None:
+        with patch.object(core, "SPLASH_EXCEPTIONS", {_SPLASH_STORY: []}):
+            assert core.get_expected_splash_pages(_SPLASH_STORY, ["1", "7"]) == []
+
+    def test_excepted_pages_are_left_out(self) -> None:
+        with patch.object(core, "SPLASH_EXCEPTIONS", {_SPLASH_STORY: ["1"]}):
+            assert core.get_expected_splash_pages(_SPLASH_STORY, ["1", "7"]) == ["7"]
 
 
 class TestGetSplashStoryTitles:
