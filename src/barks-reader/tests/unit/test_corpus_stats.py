@@ -311,7 +311,7 @@ class TestCastSection:
         [
             ("Named characters", "47"),
             ("Places", "62"),
-            ("Themes", "78"),
+            ("Themes", "79"),
             ("Things", "43"),
             ("Most-tagged character", "Gyro Gearloose, 86 stories"),
         ],

@@ -80,6 +80,8 @@ BARKS_TAG_EXTRA_ALIASES = {
     "snozzie": Tags.GENERAL_SNOZZIE,
     "south pole": Tags.ANTARCTICA,
     "spell": Tags.MAGICA_DE_SPELL,
+    "splash": Tags.SPLASH,
+    "splashes": Tags.SPLASH,
     "teengiggle": Tags.APPLECHEEKS_TEENGIGGLE,
     "the beagle boys": Tags.BEAGLE_BOYS,
     "utopia": Tags.UTOPIAN_STORIES,

@@ -187,6 +187,7 @@ class Tags(Enum):
     SOAPY_SLICK = "Soapy Slick"
     SOUTH_AFRICA = "South Africa"
     SPAIN = "Spain"
+    SPLASH = "splash pages"
     SQUARE_EGGS = "square eggs"
     STICKAREE_INDIANS = "Stickaree Indians"
     STROMBOLIUM = "strombolium"
