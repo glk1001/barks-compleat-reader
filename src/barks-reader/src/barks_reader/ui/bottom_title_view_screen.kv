@@ -1,5 +1,28 @@
 #:import reader_palette barks_reader.core.reader_palette
 
+# Steps the goto-page row through a tag's pages: drawn, not typed (the font has no
+# arrow glyph), with a dark halo like the row's label so it shows on bright pages.
+<GotoPageArrowButton@Button>:
+    direction: 1
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    canvas.after:
+        Color:
+            rgba: 0, 0, 0, 1
+        Triangle:
+            points:
+                [self.center_x - self.direction * dp(7), self.center_y + dp(8), \
+                self.center_x - self.direction * dp(7), self.center_y - dp(8), \
+                self.center_x + self.direction * dp(7), self.center_y]
+        Color:
+            rgba: reader_palette.theme().search_heading
+        Triangle:
+            points:
+                [self.center_x - self.direction * dp(5), self.center_y + dp(5.5), \
+                self.center_x - self.direction * dp(5), self.center_y - dp(5.5), \
+                self.center_x + self.direction * dp(4.5), self.center_y]
+
 <BottomTitleViewScreen>:
     size_hint: 1, 1
     opacity: 1 if root.is_visible else 0
@@ -216,7 +239,7 @@
                             title_portal_image_button.top + (0.85 * fm.check_box_font_size)
                         opacity: 1 if root.goto_page_num else 0
                         Label:
-                            text: "Goto page " + root.goto_page_num + ":"
+                            text: "Goto page " + root.goto_page_num + root.goto_page_position + ":"
                             color: reader_palette.theme().search_heading
                             # Dark halo so the cyan stays legible over bright title pages.
                             bold: True
@@ -227,6 +250,20 @@
                             text_size: (self.width, self.height)
                             halign: "right"
                             valign: "center"
+                        GotoPageArrowButton:
+                            id: goto_page_previous_button
+                            direction: -1
+                            size_hint_x: 0.09 if len(root.goto_pages) > 1 else 0
+                            opacity: 1 if len(root.goto_pages) > 1 else 0
+                            disabled: len(root.goto_pages) < 2
+                            on_release: root.step_goto_page(-1)
+                        GotoPageArrowButton:
+                            id: goto_page_next_button
+                            direction: 1
+                            size_hint_x: 0.09 if len(root.goto_pages) > 1 else 0
+                            opacity: 1 if len(root.goto_pages) > 1 else 0
+                            disabled: len(root.goto_pages) < 2
+                            on_release: root.step_goto_page(1)
                         CheckBox:
                             id: goto_page_checkbox
                             color: (1, 1, 1, 1)

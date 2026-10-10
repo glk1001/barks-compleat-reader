@@ -244,6 +244,20 @@ class TestTaggedTitleRows:
             )
         assert row == ("", "Back to the Klondike")
 
+    def test_a_title_under_a_tag_carries_all_the_tags_pages(self) -> None:
+        pages = {(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7", "8", "9", "12"]}
+        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", pages):
+            assert MainIndexScreen._get_tagged_pages(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE) == (
+                "7",
+                "8",
+                "9",
+                "12",
+            )
+            assert MainIndexScreen._get_tagged_pages(Tags.ALASKA, Titles.TRICK_OR_TREAT) == ()
+
+    def test_a_tag_under_a_group_carries_no_pages(self) -> None:
+        assert MainIndexScreen._get_tagged_pages(TagGroups.AFRICA, Tags.ALASKA) == ()
+
 
 class TestTitleHierarchy:
     """A title found under a tag says where: "Title (group/tag) "."""

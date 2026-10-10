@@ -16,6 +16,7 @@ from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
+    ListProperty,
     ObjectProperty,
     StringProperty,
 )
@@ -26,7 +27,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
-from barks_reader.core.reader_utils import title_needs_footnote
+from barks_reader.core.reader_utils import get_page_run_starts, title_needs_footnote
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
 # HyphenatingLabel must be imported (Factory-registered) before this screen's kv
@@ -36,7 +37,9 @@ from .panel_texture_loader import PanelTextureLoader
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
+    KEY_LEFT,
     KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
     KEY_UP,
     clear_focus_in_list,
     is_escape_key,
@@ -44,7 +47,7 @@ from .reader_keyboard_nav import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -145,6 +148,12 @@ class BottomTitleViewScreen(FloatLayout):
 
     goto_page_num = StringProperty()
     goto_page_active = BooleanProperty(default=False)
+    # A tag's pages in this title: every one (handed on to the comic), and the start of
+    # each run of them, which the goto-page row steps through.
+    tagged_pages = ListProperty()
+    goto_pages = ListProperty()
+    # " (2 of 3)" while stepping through several goto pages, else empty.
+    goto_page_position = StringProperty()
     use_overrides_active = BooleanProperty(default=True)
     use_overrides_description = StringProperty()
 
@@ -252,13 +261,64 @@ class BottomTitleViewScreen(FloatLayout):
     def _get_title_portal_opening_animation_duration_secs() -> int:
         return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
 
-    def set_goto_page_state(self, page_to_goto: str = "", active: bool = False) -> None:
+    def set_goto_page_state(
+        self, page_to_goto: str = "", active: bool = False, tagged_pages: Sequence[str] = ()
+    ) -> None:
+        """Offer a page to open the comic at, or none.
+
+        Args:
+            page_to_goto: The page offered; none for "", or for the comic's beginning.
+            active: Whether the offer starts ticked.
+            tagged_pages: A tag's pages in the title, when the offer comes from a tag:
+                the goto-page row then steps through the start of each run of them.
+                Any other offer clears them, so they never follow another title.
+
+        """
+        self.tagged_pages = list(tagged_pages)
+        self.goto_pages = get_page_run_starts(tagged_pages)
         self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
         self.goto_page_active = active
+        self._set_goto_page_position()
         if self.goto_page_num:
             logger.debug(
                 log_markers.GOTO_PAGE_OFFERED.format(page=self.goto_page_num, active=active)
             )
+
+    @property
+    def can_step_goto_page(self) -> bool:
+        """Return whether the goto-page row has more than one page to step through."""
+        return len(self.goto_pages) > 1
+
+    def step_goto_page(self, delta: int) -> None:
+        """Offer the next (or previous) of a tag's goto pages, wrapping round, and tick it.
+
+        Args:
+            delta: How many goto pages to move: 1 for the next, -1 for the previous.
+
+        """
+        if not self.can_step_goto_page:
+            return
+        index = (
+            self.goto_pages.index(self.goto_page_num)
+            if self.goto_page_num in self.goto_pages
+            else 0
+        )
+        index = (index + delta) % len(self.goto_pages)
+        self.goto_page_num = self.goto_pages[index]
+        self.goto_page_active = True  # Choosing a page means wanting to go there.
+        self._set_goto_page_position()
+        logger.debug(
+            log_markers.GOTO_PAGE_STEPPED.format(
+                page=self.goto_page_num, index=index + 1, count=len(self.goto_pages)
+            )
+        )
+
+    def _set_goto_page_position(self) -> None:
+        self.goto_page_position = (
+            f" ({self.goto_pages.index(self.goto_page_num) + 1} of {len(self.goto_pages)})"
+            if self.can_step_goto_page and self.goto_page_num in self.goto_pages
+            else ""
+        )
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
         self.use_overrides_active = active
@@ -349,6 +409,12 @@ class BottomTitleViewScreen(FloatLayout):
             self._activate_focused_widget()
         elif is_escape_key(key):
             self._request_nav_exit()
+        elif (
+            key in (KEY_LEFT, KEY_RIGHT)
+            and self._nav_focused_widget is self.ids.goto_page_layout
+            and self.can_step_goto_page
+        ):
+            self.step_goto_page(-1 if key == KEY_LEFT else 1)
         else:
             return False
         return True

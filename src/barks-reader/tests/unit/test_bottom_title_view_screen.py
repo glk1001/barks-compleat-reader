@@ -14,7 +14,14 @@ from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-from barks_reader.ui.reader_keyboard_nav import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_UP
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
+    KEY_UP,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -540,6 +547,76 @@ class TestGotoPageToggleLog(ScreenFixtureBase):
         self.screen._activate_focused_widget()
         assert ids.goto_page_checkbox.active is False
         assert "Goto page checkbox toggled: active = False." in loguru_sink
+
+
+# Adventure Down Under under Australian Aboriginals: 7, 13 and 16 to 23.
+_TAGGED_PAGES = ["7", "13", "16", "17", "18", "19", "20", "21", "22", "23"]
+
+
+class TestGotoPageSteps(ScreenFixtureBase):
+    """A tag's pages in the title: the goto-page row steps through each run's start."""
+
+    def _offer(self, active: bool = True) -> None:
+        self.screen.set_goto_page_state("7", active=active, tagged_pages=_TAGGED_PAGES)
+
+    def _focus_goto_row(self) -> None:
+        self.screen.enter_nav_focus(MagicMock())
+        self.screen._nav_focused_widget = self.screen.ids.goto_page_layout
+
+    def test_a_tag_offers_the_start_of_each_run(self) -> None:
+        self._offer()
+        assert self.screen.goto_pages == ["7", "13", "16"]
+        assert self.screen.tagged_pages == _TAGGED_PAGES
+        assert self.screen.goto_page_position == " (1 of 3)"
+
+    def test_stepping_wraps_round_both_ways(self) -> None:
+        self._offer()
+        pages = []
+        for _ in range(3):
+            self.screen.step_goto_page(1)
+            pages.append(self.screen.goto_page_num)
+        assert pages == ["13", "16", "7"]
+        self.screen.step_goto_page(-1)
+        assert self.screen.goto_page_num == "16"
+        assert self.screen.goto_page_position == " (3 of 3)"
+
+    def test_stepping_ticks_the_box_and_is_logged(self, loguru_sink: list[str]) -> None:
+        self._offer(active=False)
+        self.screen.step_goto_page(1)
+        assert self.screen.goto_page_active
+        assert any(
+            re.search(log_markers.pattern(log_markers.GOTO_PAGE_STEPPED), line)
+            for line in loguru_sink
+        )
+        assert 'Goto page stepped to "13" (2 of 3).' in loguru_sink
+
+    @pytest.mark.parametrize(("key", "page"), [(KEY_RIGHT, "13"), (KEY_LEFT, "16")])
+    def test_left_and_right_step_on_the_goto_row(self, key: int, page: str) -> None:
+        self._offer()
+        self._focus_goto_row()
+        assert self.screen.handle_key(key) is True
+        assert self.screen.goto_page_num == page
+
+    def test_left_and_right_are_not_taken_off_the_goto_row(self) -> None:
+        self._offer()
+        self.screen.enter_nav_focus(MagicMock())  # Focus on the portal.
+        assert self.screen.handle_key(KEY_RIGHT) is False
+        assert self.screen.goto_page_num == "7"
+
+    def test_one_run_has_nothing_to_step_through(self) -> None:
+        self.screen.set_goto_page_state("4", active=True, tagged_pages=["4", "5", "6"])
+        self._focus_goto_row()
+        assert self.screen.handle_key(KEY_RIGHT) is False
+        self.screen.step_goto_page(1)
+        assert self.screen.goto_page_num == "4"
+        assert self.screen.goto_page_position == ""
+
+    def test_any_other_offer_forgets_the_tag(self) -> None:
+        self._offer()
+        self.screen.set_goto_page_state("12", active=True)  # E.g. the last page read.
+        assert self.screen.goto_pages == []
+        assert self.screen.tagged_pages == []
+        assert self.screen.goto_page_position == ""
 
 
 class TestInsetImageEdges(ScreenFixtureBase):

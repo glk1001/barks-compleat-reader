@@ -140,6 +140,8 @@ class IndexItem:
     id: str | Titles | Tags | TagGroups
     display_text: str
     page_to_goto: str = ""
+    # A tag's pages in the title, for a title listed under a tag (see page_to_goto).
+    tagged_pages: tuple[str, ...] = ()
     entity_type: EntityType | None = None  # None = plain word search; set for entity index items
 
 
@@ -496,7 +498,7 @@ class IndexScreen(FloatLayout):
         self._index_image_change_event = None
         self._user_error_handler: UserErrorHandler | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
-        self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
+        self.on_goto_title: Callable[[ImageInfo, str, tuple[str, ...]], None] | None = None
         # Called right after a popup-driven goto-title (e.g. the speech-bubble browser)
         # to hand keyboard focus to the title portal. The popup owns the keyboard while
         # open, so such a goto bypasses the main screen's normal key hand-off path.
@@ -540,7 +542,7 @@ class IndexScreen(FloatLayout):
         def goto_title() -> None:
             assert self.on_goto_title is not None
             try:
-                self.on_goto_title(image_info, item.page_to_goto)
+                self.on_goto_title(image_info, item.page_to_goto, item.tagged_pages)
             except TitleNotInFantaInfoError as e:
                 logger.error(e)
                 assert self._user_error_handler is not None

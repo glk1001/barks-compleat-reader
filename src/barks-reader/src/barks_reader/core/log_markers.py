@@ -183,6 +183,7 @@ USE_OVERRIDES_CHANGED: Final = "Use overrides checkbox changed: use_overrides = 
 GOTO_PAGE_CHECKBOX_TOGGLED: Final = "Goto page checkbox toggled: active = {value}."
 # The title view offers its "Goto page n" box: a last-read page, or a tag's page.
 GOTO_PAGE_OFFERED: Final = 'Goto page "{page}" offered: active = {active}.'
+GOTO_PAGE_STEPPED: Final = 'Goto page stepped to "{page}" ({index} of {count}).'
 
 # -------------------------------------------------------- the comic sources --
 # Which source the pages come from, logged once at boot (use_prebuilt_comics).

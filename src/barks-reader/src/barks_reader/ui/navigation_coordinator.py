@@ -271,10 +271,14 @@ class NavigationCoordinator:
             raise RuntimeError(msg)
         return year_node
 
-    def navigate_to_title_with_page(self, image_info: ImageInfo, page_to_goto: str) -> None:
+    def navigate_to_title_with_page(
+        self, image_info: ImageInfo, page_to_goto: str, tagged_pages: Sequence[str] = ()
+    ) -> None:
         """Navigate to a title and set a specific page (from index screens).
 
         Delegates to navigate_to_chrono_title, then sets the goto-page checkbox.
+        ``tagged_pages`` are a tag's pages in the title, for a title listed under a tag:
+        the goto-page row steps through them, and the comic marks them.
         """
         if image_info.from_title in NON_COMIC_TITLES:
             self.read_article(image_info.from_title, ViewStates.ON_INDEX_NODE)
@@ -286,7 +290,9 @@ class NavigationCoordinator:
         # the collection), so don't set a misleading goto-page checkbox for them.
         if page_to_goto and image_info.from_title not in ONE_PAGERS:
             logger.debug(f"Setting page to goto: {page_to_goto}.")
-            self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
+            self._bottom_title_view_screen.set_goto_page_state(
+                page_to_goto, active=True, tagged_pages=tagged_pages
+            )
 
     def navigate_to_search_result(self, title_str: str, tags: Sequence[Tags] = ()) -> bool:
         """Navigate to a title from search results.
@@ -543,9 +549,12 @@ class NavigationCoordinator:
             if (tag, title) not in BARKS_TAGGED_PAGES:
                 logger.debug(f'No pages for ({tag.value}, "{title_str}").')
             else:
-                page_to_goto = BARKS_TAGGED_PAGES[(tag, title)][0]
+                tagged_pages = BARKS_TAGGED_PAGES[(tag, title)]
+                page_to_goto = tagged_pages[0]
                 logger.debug(f"Setting page to goto: {page_to_goto}.")
-                self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
+                self._bottom_title_view_screen.set_goto_page_state(
+                    page_to_goto, active=True, tagged_pages=tagged_pages
+                )
 
     def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo | None = None) -> None:
         if not last_read_page:

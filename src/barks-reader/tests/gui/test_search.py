@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import expected, memory, nodes, search
+from barks_gui import expected, harness, memory, nodes, search
 from barks_gui.logs import last_field, messages
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -533,6 +533,40 @@ def test_a_story_picked_from_a_tag_offers_the_tag_s_page(boot: AppBoot) -> None:
         d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=FIRST_DAISY), "Return")
     with d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=FIRST_DAISY_PAGE, active=True)):
         d.key_then_wait(pattern(markers.SEARCH_SELECTED_TITLE), "Return")
+
+
+AWFULTONIANS = "Awfultonians"  # one story: Lost in the Andes, pages 19-24, 26-29 and 31
+AWFULTONIANS_STOPS = ("19", "26", "31")
+
+
+def test_a_tag_on_several_runs_of_pages_steps_through_them(boot: AppBoot) -> None:
+    """Right on the goto-page row offers the next run's first page; the story opens there."""
+    d = boot(nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=AWFULTONIANS)):
+        search.type_query(d, AWFULTONIANS.lower())
+    d.key_then_wait(_chip_focused(AWFULTONIANS), "Return")  # the box's Return: the chip
+    with d.expect(d.FOCUS_MOVED):  # its one story, focused
+        d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=AWFULTONIANS), "Return")
+    first, second, _third = AWFULTONIANS_STOPS
+    with (
+        d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=first, active=True)),
+        d.expect(pattern(markers.TITLE_VIEW_ENTERED_AT_PORTAL)),
+    ):
+        d.key_then_wait(pattern(markers.SEARCH_SELECTED_TITLE), "Return")
+
+    d.move_focus("Up")  # from the portal to the goto-page row
+    d.key_then_wait(
+        pattern(markers.GOTO_PAGE_STEPPED, page=second, index=2, count=len(AWFULTONIANS_STOPS)),
+        "Right",
+    )
+    d.move_focus("Down")  # back to the portal
+    d.key_then_wait(d.ALL_IMAGES_LOADED, "Return", timeout=30)
+
+    layout = expected.comic_layout(nodes.LOST_IN_THE_ANDES_TITLE)
+    page_index = layout.page_map[second].page_index
+    two_up = harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
+    shows = expected.unit_start(nodes.LOST_IN_THE_ANDES_TITLE, page_index) if two_up else page_index
+    assert d.current_page() == shows
 
 
 LIFT_QUERY = "daisy"

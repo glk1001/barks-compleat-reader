@@ -434,7 +434,7 @@ class TestNavigateToSearchResult:
     ) -> None:
         self._navigate(nav_coord, (Tags.FIRST_DAISY,))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True
+            "2", active=True, tagged_pages=["2"]
         )
 
     def test_the_first_tag_with_a_page_in_the_title_is_used(
@@ -442,7 +442,7 @@ class TestNavigateToSearchResult:
     ) -> None:
         self._navigate(nav_coord, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True
+            "2", active=True, tagged_pages=["2"]
         )
 
     @pytest.mark.parametrize("tags", [(), (Tags.GYRO_GEARLOOSE,)], ids=["no-tags", "no-page"])
@@ -567,7 +567,17 @@ class TestNavigateToTitleWithPage:
             nav_coord.navigate_to_title_with_page(image_info, "12")
         navigated.assert_called_once_with(image_info)
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "12", active=True
+            "12", active=True, tagged_pages=()
+        )
+
+    def test_a_title_under_a_tag_offers_all_its_tagged_pages(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        image_info = ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
+        with patch.object(nav_coord, "navigate_to_chrono_title"):
+            nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13", "16", "17"))
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "7", active=True, tagged_pages=("7", "13", "16", "17")
         )
 
     def test_a_one_pager_sets_no_page(

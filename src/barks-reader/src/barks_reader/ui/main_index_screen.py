@@ -330,6 +330,7 @@ class MainIndexScreen(IndexScreen):
                 id=sub_item_id,
                 display_text=sub_item_text,
                 page_to_goto=sub_item_page_to_goto,
+                tagged_pages=self._get_tagged_pages(item_id, sub_item_id),
             )
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
@@ -392,6 +393,13 @@ class MainIndexScreen(IndexScreen):
         self._open_tag_button = button
         self._open_tag_item = item
         self._schedule_sub_items(self._add_sub_items)
+
+    @staticmethod
+    def _get_tagged_pages(item_id: Tags | TagGroups, sub_item_id: Titles | Tags) -> tuple[str, ...]:
+        """Return a tag's pages in a title listed under it; none for a tag group's tags."""
+        if not isinstance(item_id, Tags) or not isinstance(sub_item_id, Titles):
+            return ()
+        return tuple(BARKS_TAGGED_PAGES.get((item_id, sub_item_id), ()))
 
     def _get_tagged_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
         """Return the first page to goto, and the sortable title with page numbers."""
