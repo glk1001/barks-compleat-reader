@@ -27,7 +27,11 @@ from barks_reader.core import log_markers
 from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
-from barks_reader.core.reader_utils import get_page_run_starts, title_needs_footnote
+from barks_reader.core.reader_utils import (
+    get_page_run_starts,
+    get_page_sort_key,
+    title_needs_footnote,
+)
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
 # HyphenatingLabel must be imported (Factory-registered) before this screen's kv
@@ -270,13 +274,17 @@ class BottomTitleViewScreen(FloatLayout):
             page_to_goto: The page offered; none for "", or for the comic's beginning.
             active: Whether the offer starts ticked.
             tagged_pages: A tag's pages in the title, when the offer comes from a tag:
-                the goto-page row then steps through the start of each run of them.
-                Any other offer clears them, so they never follow another title.
+                the goto-page row then steps through the start of each run of them,
+                and through the page offered, when that is none of them (the page the
+                comic was closed on). Any other offer clears them, so they never follow
+                another title.
 
         """
         self.tagged_pages = list(tagged_pages)
-        self.goto_pages = get_page_run_starts(tagged_pages)
         self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
+        self.goto_pages = get_page_run_starts(tagged_pages)
+        if self.goto_pages and self.goto_page_num and self.goto_page_num not in self.goto_pages:
+            self.goto_pages = sorted([*self.goto_pages, self.goto_page_num], key=get_page_sort_key)
         self.goto_page_active = active
         self._set_goto_page_position()
         if self.goto_page_num:

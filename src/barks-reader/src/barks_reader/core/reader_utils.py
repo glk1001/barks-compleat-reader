@@ -33,6 +33,7 @@ COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0
 EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 ROMAN_NUMERALS_SET = set(ROMAN_NUMERALS.values())
+_ROMAN_NUMERAL_VALUES = {numeral: value for value, numeral in ROMAN_NUMERALS.items()}
 
 
 def get_win_width_from_height(win_height: int) -> int:
@@ -221,6 +222,22 @@ def get_page_run_starts(page_nums_str: Sequence[str]) -> list[str]:
     roman_pages = sorted({p for p in page_nums_str if p in ROMAN_NUMERALS_SET})
     int_pages = [int(p) for p in page_nums_str if p not in ROMAN_NUMERALS_SET]
     return roman_pages + [str(first) for first, _last in intspan(int_pages).ranges()]
+
+
+def get_page_sort_key(page_num_str: str) -> tuple[int, int]:
+    """Return a page's place in the comic, for sorting page numbers.
+
+    Args:
+        page_num_str: A page number, as the reader numbers them.
+
+    Returns:
+        A key that puts front-matter pages (roman numerals) first, in their order, then
+        the numbered pages by number.
+
+    """
+    if page_num_str in _ROMAN_NUMERAL_VALUES:
+        return 0, _ROMAN_NUMERAL_VALUES[page_num_str]
+    return 1, int(page_num_str)
 
 
 def quote_and_join_with_and(items: list[Any]) -> str:

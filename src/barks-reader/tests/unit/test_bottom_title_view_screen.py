@@ -611,6 +611,24 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.goto_page_num == "4"
         assert self.screen.goto_page_position == ""
 
+    def test_a_page_among_none_of_the_runs_is_a_stop_of_its_own(self) -> None:
+        # E.g. the page the comic was closed on, read under the tag.
+        self.screen.set_goto_page_state("9", active=True, tagged_pages=_TAGGED_PAGES)
+        assert self.screen.goto_pages == ["7", "9", "13", "16"]
+        assert self.screen.tagged_pages == _TAGGED_PAGES
+        assert self.screen.goto_page_position == " (2 of 4)"
+        self.screen.step_goto_page(1)
+        assert self.screen.goto_page_num == "13"
+
+    def test_a_page_inside_a_run_is_a_stop_too(self) -> None:
+        self.screen.set_goto_page_state("18", active=True, tagged_pages=_TAGGED_PAGES)
+        assert self.screen.goto_pages == ["7", "13", "16", "18"]
+
+    def test_a_runs_first_page_is_no_extra_stop(self) -> None:
+        self.screen.set_goto_page_state("13", active=True, tagged_pages=_TAGGED_PAGES)
+        assert self.screen.goto_pages == ["7", "13", "16"]
+        assert self.screen.goto_page_position == " (2 of 3)"
+
     def test_any_other_offer_forgets_the_tag(self) -> None:
         self._offer()
         self.screen.set_goto_page_state("12", active=True)  # E.g. the last page read.

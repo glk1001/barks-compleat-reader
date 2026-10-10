@@ -14,6 +14,7 @@ from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 
@@ -247,7 +248,7 @@ class TestNavigationCoordinator:
             mock_comic,
             "10",
             False,  # noqa: FBT003 - use_overrides_active, passed positionally
-            tagged_pages=["10", "11", "14"],
+            tagged_pages=("10", "11", "14"),
         )
 
     def test_read_comic_one_pager_opens_collection_at_its_page(
@@ -364,6 +365,43 @@ class TestNavigationCoordinator:
 
         mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INDEX_NODE)
         assert nav_coord._read_comic_view_state is None
+
+    @staticmethod
+    def _close_comic_read_under_a_tag(
+        nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], last_read: str
+    ) -> MagicMock:
+        nav_coord._current_fanta_info = MagicMock()
+        bottom = mock_deps["bottom_title_view_screen"]
+        bottom.tagged_pages = ["1", "14"]
+        nav_coord.read_comic()
+        bottom.tagged_pages = []  # what the panel holds now must not matter
+        last_page = MagicMock()
+        last_page.display_page_num = last_read
+        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+        bottom.set_goto_page_state.reset_mock()
+        nav_coord.on_comic_closed()
+        return bottom.set_goto_page_state
+
+    def test_a_comic_closed_under_a_tag_offers_the_last_page_among_the_tags(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
+        offered.assert_called_once_with("9", active=True, tagged_pages=("1", "14"))
+
+    def test_a_comic_closed_at_its_beginning_under_a_tag_offers_the_tags_first_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, COMIC_BEGIN_PAGE)
+        offered.assert_called_once_with("1", active=True, tagged_pages=("1", "14"))
+
+    def test_the_tags_pages_last_only_until_the_comic_closes(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
+        offered = mock_deps["bottom_title_view_screen"].set_goto_page_state
+        offered.reset_mock()
+        nav_coord.on_comic_closed()  # a comic opened some other way, e.g. a collection
+        offered.assert_called_once_with("9", active=True, tagged_pages=())
 
     def test_on_document_closed_restores_view_state(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]

@@ -19,6 +19,7 @@ from barks_reader.core.reader_utils import (
     get_centred_position_on_primary_monitor,
     get_concat_page_nums_str,
     get_page_run_starts,
+    get_page_sort_key,
     get_paths_from_directory,
     get_paths_from_zip,
     get_quoted_items,
@@ -313,6 +314,10 @@ class TestReaderUtils:
     def test_get_page_run_starts_puts_each_front_matter_page_first(self) -> None:
         with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
             assert get_page_run_starts(["2", "ii", "1", "i", "5"]) == ["i", "ii", "1", "5"]
+
+    def test_get_page_sort_key_puts_front_matter_first_then_numbers(self) -> None:
+        pages = ["9", "x", "14", "1", "iv", "ii"]
+        assert sorted(pages, key=get_page_sort_key) == ["ii", "iv", "x", "1", "9", "14"]
 
     def test_join_with_and(self) -> None:
         """Test joining list with 'and'."""

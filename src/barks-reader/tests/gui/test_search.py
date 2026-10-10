@@ -539,20 +539,26 @@ AWFULTONIANS = "Awfultonians"  # one story: Lost in the Andes, pages 19-24, 26-2
 AWFULTONIANS_STOPS = ("19", "26", "31")
 
 
-def test_a_tag_on_several_runs_of_pages_steps_through_them(boot: AppBoot) -> None:
-    """Right on the goto-page row offers the next run's first page; the story opens there."""
+def _offer_the_awfultonians_story(boot: AppBoot) -> Driver:
+    """Search the Awfultonians tag and pick its one story: the portal, offering the first stop."""
     d = boot(nodes.TAG_SEARCH)
     with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=AWFULTONIANS)):
         search.type_query(d, AWFULTONIANS.lower())
     d.key_then_wait(_chip_focused(AWFULTONIANS), "Return")  # the box's Return: the chip
     with d.expect(d.FOCUS_MOVED):  # its one story, focused
         d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=AWFULTONIANS), "Return")
-    first, second, _third = AWFULTONIANS_STOPS
     with (
-        d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=first, active=True)),
+        d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=AWFULTONIANS_STOPS[0], active=True)),
         d.expect(pattern(markers.TITLE_VIEW_ENTERED_AT_PORTAL)),
     ):
         d.key_then_wait(pattern(markers.SEARCH_SELECTED_TITLE), "Return")
+    return d
+
+
+def test_a_tag_on_several_runs_of_pages_steps_through_them(boot: AppBoot) -> None:
+    """Right on the goto-page row offers the next run's first page; the story opens there."""
+    d = _offer_the_awfultonians_story(boot)
+    second = AWFULTONIANS_STOPS[1]
 
     d.move_focus("Up")  # from the portal to the goto-page row
     d.key_then_wait(
@@ -567,6 +573,27 @@ def test_a_tag_on_several_runs_of_pages_steps_through_them(boot: AppBoot) -> Non
     two_up = harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
     shows = expected.unit_start(nodes.LOST_IN_THE_ANDES_TITLE, page_index) if two_up else page_index
     assert d.current_page() == shows
+
+
+def test_a_tags_pages_are_still_a_step_away_after_reading(boot: AppBoot) -> None:
+    """Closed on none of the tag's pages, the row offers that page, among the tag's stops."""
+    d = _offer_the_awfultonians_story(boot)
+    d.key_then_wait(d.ALL_IMAGES_LOADED, "Return", timeout=30)  # opens at the first stop
+    d.read_pages(Pick(pages=2, dwell=0.0))  # one page on: none of the tag's
+    with d.expect(pattern(markers.GOTO_PAGE_OFFERED, active=True)):
+        d.close_reader()
+
+    last_read = last_field(d, markers.GOTO_PAGE_OFFERED, "page")
+    assert last_read == last_field(d, markers.LAST_READ_PAGE_SAVED, "page")
+    assert last_read not in AWFULTONIANS_STOPS
+    stops = sorted([*AWFULTONIANS_STOPS, last_read], key=int)
+    after = stops.index(last_read) + 1
+
+    d.move_focus("Up")  # from the portal to the goto-page row
+    d.key_then_wait(
+        pattern(markers.GOTO_PAGE_STEPPED, page=stops[after], index=after + 1, count=len(stops)),
+        "Right",
+    )
 
 
 LIFT_QUERY = "daisy"

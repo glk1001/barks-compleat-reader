@@ -120,6 +120,8 @@ class NavigationCoordinator:
         self._series_nodes: dict[str, ButtonTreeViewNode] = {}
         self._current_fanta_info: FantaComicBookInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
+        # A tag's pages in the comic open now, for the goto-page row when it closes.
+        self._read_comic_tagged_pages: tuple[str, ...] = ()
         self._doc_reader_close_view_state: ViewStates | None = None
 
     def set_tree_view_manager(self, tree_view_manager: TreeViewManager) -> None:
@@ -383,13 +385,14 @@ class NavigationCoordinator:
 
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = None
+        self._read_comic_tagged_pages = tuple(self._bottom_title_view_screen.tagged_pages)
 
         self._comic_reader_manager.read_barks_comic_book(
             self._current_fanta_info,
             comic_book,
             self._get_page_to_first_goto(),
             self._bottom_title_view_screen.use_overrides_active,
-            tagged_pages=self._bottom_title_view_screen.tagged_pages,
+            tagged_pages=self._read_comic_tagged_pages,
         )
         return True
 
@@ -510,11 +513,15 @@ class NavigationCoordinator:
             self._renderer.render_state(self._read_comic_view_state)
             self._read_comic_view_state = None
 
+        # Only the title's own comic, opened under a tag, has a tag's pages to keep.
+        tagged_pages = self._read_comic_tagged_pages
+        self._read_comic_tagged_pages = ()
+
         if not self._current_fanta_info:
             return
 
         last_read_page = self._comic_reader_manager.comic_closed()
-        self._set_goto_page_checkbox(last_read_page)
+        self._set_goto_page_checkbox(last_read_page, tagged_pages)
 
     def on_document_closed(self) -> None:
         """Handle return from document reader. Restores view state."""
@@ -557,17 +564,32 @@ class NavigationCoordinator:
                     page_to_goto, active=True, tagged_pages=tagged_pages
                 )
 
-    def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo | None = None) -> None:
+    def _set_goto_page_checkbox(
+        self, last_read_page: SavedPageInfo | None = None, tagged_pages: Sequence[str] = ()
+    ) -> None:
+        """Offer the page last read, among a tag's pages when the title is under one.
+
+        Args:
+            last_read_page: The page last read; looked up when not given.
+            tagged_pages: The tag's pages in the title, kept a step away from the page
+                last read; with nothing read, the first of them is offered, as on arrival.
+
+        """
         if not last_read_page:
             assert self._current_fanta_info is not None
             title_str = self._current_fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 
         if not last_read_page or (last_read_page.display_page_num == COMIC_BEGIN_PAGE):
-            self._bottom_title_view_screen.set_goto_page_state(active=False)
+            if tagged_pages:
+                self._bottom_title_view_screen.set_goto_page_state(
+                    tagged_pages[0], active=True, tagged_pages=tagged_pages
+                )
+            else:
+                self._bottom_title_view_screen.set_goto_page_state(active=False)
         else:
             self._bottom_title_view_screen.set_goto_page_state(
-                last_read_page.display_page_num, active=True
+                last_read_page.display_page_num, active=True, tagged_pages=tagged_pages
             )
 
     def _set_use_overrides_checkbox(self) -> None:
