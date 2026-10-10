@@ -24,7 +24,7 @@ from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterator, Sequence
 
     from comic_utils.comic_consts import PanelPath
 
@@ -932,6 +932,17 @@ class TestGetRandomComicFile:
         assert result == Path("a.png")
 
 
+class _ArrivalOrderSet(set[tuple["PanelPath", bool]]):
+    """A set that iterates in the order its items were given, whatever the hash seed."""
+
+    def __init__(self, items: Sequence[tuple[PanelPath, bool]]) -> None:
+        super().__init__(items)
+        self._order = list(items)
+
+    def __iter__(self) -> Iterator[tuple[PanelPath, bool]]:
+        return iter(self._order)
+
+
 class TestPossibleFilesForTitle:
     def test_unknown_title_has_no_possible_files(self, image_selector: ImageSelector) -> None:
         assert (
@@ -995,6 +1006,27 @@ class TestPossibleFilesForTitle:
             "s-a.png",
             "s-b.png",
         ]
+
+    def test_files_sort_by_path_whatever_order_they_arrive_in(
+        self, image_selector: ImageSelector
+    ) -> None:
+        """Each type's files are sorted by path, not left as their set gives them.
+
+        A set's order follows the process's string-hash seed, so a test on a real set
+        passes by luck in some processes even where nothing sorts (a mutant that
+        sorted by the edited flag survived the 2026-10-10 overnight run that way).
+        Here the files arrive in reverse, every run.
+        """
+        reversed_paths = [(Path(f"s-{n}.png"), True) for n in reversed(range(5))]
+        image_selector._title_image_files["A Title"] = {
+            FileTypes.SPLASH: _ArrivalOrderSet(reversed_paths),
+        }
+
+        possible = image_selector._get_possible_files_for_title(
+            "A Title", {FileTypes.SPLASH}, use_only_edited_if_possible=False
+        )
+
+        assert [str(f) for f, _t in possible] == [f"s-{n}.png" for n in range(5)]
 
     def test_zip_and_filesystem_paths_sort_together_by_name(
         self, image_selector: ImageSelector, tmp_path: Path
