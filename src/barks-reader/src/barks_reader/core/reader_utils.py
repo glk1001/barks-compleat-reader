@@ -22,6 +22,8 @@ from intspan import intspan
 from .config_info import IS_COMPILED
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.pages import CleanPage
     from comic_utils.comic_consts import PanelPath
@@ -202,6 +204,23 @@ def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
         return ",".join(roman_pages)
 
     return get_abbrev_page_list(page_nums_str)
+
+
+def get_page_run_starts(page_nums_str: Sequence[str]) -> list[str]:
+    """Return the first page of each run of consecutive pages.
+
+    Front-matter pages (roman numerals) have no run: each is a start of its own, first.
+
+    Args:
+        page_nums_str: Page numbers, as the reader numbers them, in any order.
+
+    Returns:
+        Each run's first page, in page order: ["7", "13", "16"] for 7, 13 and 16 to 23.
+
+    """
+    roman_pages = sorted({p for p in page_nums_str if p in ROMAN_NUMERALS_SET})
+    int_pages = [int(p) for p in page_nums_str if p not in ROMAN_NUMERALS_SET]
+    return roman_pages + [str(first) for first, _last in intspan(int_pages).ranges()]
 
 
 def quote_and_join_with_and(items: list[Any]) -> str:

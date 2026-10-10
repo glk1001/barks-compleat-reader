@@ -18,6 +18,7 @@ from barks_reader.core.reader_utils import (
     get_all_files_in_dir,
     get_centred_position_on_primary_monitor,
     get_concat_page_nums_str,
+    get_page_run_starts,
     get_paths_from_directory,
     get_paths_from_zip,
     get_quoted_items,
@@ -295,6 +296,23 @@ class TestReaderUtils:
             with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
                 res = get_concat_page_nums_str(["i", "1", "2", "3"])
                 assert res == "i,1-3"
+
+    @pytest.mark.parametrize(
+        ("pages", "starts"),
+        [
+            (["7"], ["7"]),
+            (["4", "5", "6", "7"], ["4"]),
+            (["7", "13", "16", "17", "18", "19", "20", "21", "22", "23"], ["7", "13", "16"]),
+            (["24", "19", "20", "31", "21"], ["19", "24", "31"]),
+            ([], []),
+        ],
+    )
+    def test_get_page_run_starts(self, pages: list[str], starts: list[str]) -> None:
+        assert get_page_run_starts(pages) == starts
+
+    def test_get_page_run_starts_puts_each_front_matter_page_first(self) -> None:
+        with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
+            assert get_page_run_starts(["2", "ii", "1", "i", "5"]) == ["i", "ii", "1", "5"]
 
     def test_join_with_and(self) -> None:
         """Test joining list with 'and'."""
