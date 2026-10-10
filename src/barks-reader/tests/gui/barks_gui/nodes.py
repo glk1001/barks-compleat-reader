@@ -61,6 +61,17 @@ LOST_IN_THE_ANDES_CUE: Cue = {
     "last_body_page": "32",
 }
 
+# The same story under a tag that marks three runs of its pages: 19-24, 26-29 and 31.
+LOST_IN_THE_ANDES_UNDER_AWFULTONIANS = [
+    "LOST_IN_THE_ANDES",
+    "Awfultonians",
+    "cultural groups",
+    "Themes",
+    "Categories",
+    "The Stories",
+    "root",
+]
+
 # A censored-but-fixed story with an overrides row (the GLK alternate ending).
 THE_FIREBUG = [
     "FIREBUG_THE",

@@ -63,9 +63,11 @@ def test_a_story_reads_from_the_volumes_with_its_override_off(boot: AppBoot) -> 
     d = boot(nodes.THE_FIREBUG, cues=nodes.NO_CUES, ini={"use_prebuilt_comics": "0"})
     d.wait_for(pattern(markers.VOLUMES_LOADED), VOLUMES_LOAD_TIMEOUT)
     d.focus_portal()
-    d.move_focus("Up")  # the overrides row sits right above the portal (no cue, no goto row)
+    # Up from the portal: the goto-page row (the censored-but-fixed tag's page 13),
+    # then the overrides row above it.
+    d.move_focus("Up", "Up")
     d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=False), "Return")
-    d.move_focus("Down")
+    d.move_focus("Down", "Down")
     d.key_then_wait(pattern(markers.ALL_IMAGES_LOADED), "Return", timeout=30)
     d.wait_for(pattern(markers.SHOWED_PAGE))
     d.read_pages(READ)

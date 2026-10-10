@@ -14,6 +14,7 @@ from barks_reader.core.navigation import (
     IntroDestination,
     MainIndexDestination,
     RandomTitlesDestination,
+    TagDestination,
     TagGroupDestination,
     TitleDestination,
     WikiIndexDestination,
@@ -376,6 +377,32 @@ class TestTreeViewManager:
 
         kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
         assert kwargs["preserve_top_view"] is True
+
+    def test_render_title_node_under_a_tag_offers_the_tags_pages(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        # Arrow keys and the saved-node restore at boot render titles here: one under a
+        # tag carries the tag, as a click on its row does, so its goto page is offered.
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.parent_node.destination = TagDestination(tag=Tags.AWFULTONIANS)
+
+        tree_view_manager.render_title_node(node)
+
+        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        assert target.tag is Tags.AWFULTONIANS
+
+    def test_render_title_node_outside_a_tag_carries_none(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.parent_node = None
+
+        tree_view_manager.render_title_node(node)
+
+        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        assert target.tag is None
 
     def test_render_title_node_with_scroll(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]

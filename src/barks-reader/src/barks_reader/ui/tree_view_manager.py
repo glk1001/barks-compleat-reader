@@ -32,8 +32,10 @@ from .tree_view_nodes import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from barks_fantagraphics.barks_tags import TagGroups, Tags
     from kivy.uix.button import Button
 
+    from barks_reader.core.navigation import Destination
     from barks_reader.core.system_file_paths import SystemFilePaths
 
     from .collapse_parent_overlay import CollapseParentOverlay
@@ -124,7 +126,9 @@ class TreeViewManager:
         """Render the bottom title view for `node` without re-selecting it.
 
         Titles under a 'Choose for me' node keep the themed top view
-        (character/decade backdrop) instead of re-rolling a generic image.
+        (character/decade backdrop) instead of re-rolling a generic image. A title
+        under a tag offers the tag's pages, as a click on its row does: arrow keys
+        and the saved-node restore at boot both render titles here.
 
         Args:
             node: The title node whose view should be rendered.
@@ -136,7 +140,10 @@ class TreeViewManager:
         assert isinstance(node.destination, TitleDestination)
         parent_destination = getattr(node.parent_node, "destination", None)
         self._nav.select_title(
-            TitleTarget(fanta_info=node.destination.fanta_info),
+            TitleTarget(
+                fanta_info=node.destination.fanta_info,
+                tag=self._tag_context_of(parent_destination),
+            ),
             preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
         )
         if scroll_to:
@@ -353,18 +360,17 @@ class TreeViewManager:
         assert isinstance(title_node.destination, TitleDestination)
         fanta_info = title_node.destination.fanta_info
 
-        parent_node = title_node.parent_node
-        parent_destination = getattr(parent_node, "destination", None)
-        tag = (
-            self._nav_model.tag_context(parent_destination)
-            if parent_destination is not None
-            else None
-        )
-
+        parent_destination = getattr(title_node.parent_node, "destination", None)
         self._nav.select_title(
-            TitleTarget(fanta_info=fanta_info, tag=tag),
+            TitleTarget(fanta_info=fanta_info, tag=self._tag_context_of(parent_destination)),
             preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
         )
+
+    def _tag_context_of(self, parent_destination: Destination | None) -> Tags | TagGroups | None:
+        """Return the tag (or tag group) a title is listed under, from its parent node."""
+        if parent_destination is None:
+            return None
+        return self._nav_model.tag_context(parent_destination)
 
     def on_intro_doc_pressed(self, _button: Button) -> None:
         assert self._sys_file_paths

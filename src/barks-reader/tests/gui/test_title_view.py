@@ -27,16 +27,17 @@ def test_return_enters_at_the_portal_and_escape_leaves(boot: AppBoot) -> None:
 
 
 def test_overrides_row_toggles(boot: AppBoot) -> None:
-    """On a story with an override, Up from the portal is the overrides checkbox.
+    """On a story with an override, the overrides checkbox sits above the goto-page row.
 
     The row exists only when the comics come from the Fantagraphics volumes: a
     prebuilt comic has its override baked in, and the coordinator hides the row
-    (navigation_coordinator._set_use_overrides_checkbox). No cue, so no goto-page
-    row sits between the portal and it.
+    (navigation_coordinator._set_use_overrides_checkbox). No cue, but the story is
+    under the censored-but-fixed tag, whose page 13 the goto-page row offers between
+    the portal and it.
     """
     d = boot(nodes.THE_FIREBUG, cues=nodes.NO_CUES, ini={"use_prebuilt_comics": "0"})
     d.focus_portal()
-    d.move_focus("Up")
+    d.move_focus("Up", "Up")
     d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=False), "Return")
     d.key_then_wait(pattern(markers.USE_OVERRIDES_CHANGED, value=True), "Return")
 
@@ -60,6 +61,18 @@ def test_unchecking_the_goto_page_row_opens_at_the_front(boot: AppBoot) -> None:
     d.wait_for(pattern(markers.SHOWED_PAGE))
     assert d.current_page() < nodes.LOST_IN_THE_ANDES_PAGE
     d.close_reader()
+
+
+def test_a_story_restored_under_a_tag_steps_through_the_tags_pages(boot: AppBoot) -> None:
+    """Booted onto a story under a tag, the goto-page row offers the tag's pages.
+
+    The restore renders the story without a click, as the arrow keys do; the row
+    must still know the tag, not fall back to the (here, absent) last-read page.
+    """
+    d = boot(nodes.LOST_IN_THE_ANDES_UNDER_AWFULTONIANS, cues=nodes.NO_CUES)
+    d.focus_portal()
+    d.move_focus("Up")  # the goto-page row sits right above the portal
+    d.key_then_wait(pattern(markers.GOTO_PAGE_STEPPED, page="26", index=2, count=3), "Right")
 
 
 def test_the_fade_is_logged_from_start_to_finish(boot: AppBoot) -> None:
