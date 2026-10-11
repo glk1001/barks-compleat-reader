@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import zipfile
 from enum import Enum, auto
 from pathlib import Path
@@ -18,7 +17,7 @@ from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT, P
 from loguru import logger
 
 from .reader_consts_and_types import NO_OVERRIDES_SUFFIX
-from .reader_utils import get_all_files_in_dir
+from .reader_utils import expand_path_vars, get_all_files_in_dir
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -117,7 +116,7 @@ class ReaderFilePaths:
         }
 
     def set_barks_panels_source(self, panels_source: Path, ext_type: BarksPanelsExtType) -> None:
-        source = Path(os.path.expandvars(panels_source))
+        source = Path(expand_path_vars(panels_source))
         self._barks_panels_source = source
         self._panels_ext_type = ext_type
 
@@ -193,15 +192,15 @@ class ReaderFilePaths:
 
     @staticmethod
     def get_default_png_barks_panels_source() -> Path:
-        return Path(os.path.expandvars(_DEFAULT_PNG_BARKS_PANELS_SOURCE))
+        return Path(expand_path_vars(_DEFAULT_PNG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_jpg_barks_panels_source() -> Path:
-        return Path(os.path.expandvars(_DEFAULT_JPG_BARKS_PANELS_SOURCE))
+        return Path(expand_path_vars(_DEFAULT_JPG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_prebuilt_comic_zips_dir() -> Path:
-        return Path(os.path.expandvars(_DEFAULT_THE_COMIC_ZIPS_DIR))
+        return Path(expand_path_vars(_DEFAULT_THE_COMIC_ZIPS_DIR))
 
     def get_comic_bw_files_dir(self) -> PanelPath:
         return self._panel_dirs[PanelDirNames.BW]

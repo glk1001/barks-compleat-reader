@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import reader_settings as reader_settings_module
+from barks_reader.core import reader_utils as reader_utils_module
 from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
@@ -107,9 +108,9 @@ class TestReaderSettings:
         """Test forcing Barks panels directory to PNG."""
         mock_config.get.return_value = "$VAR/panels"
 
-        # Patch os.path.expandvars in the module
+        # Patch os.path.expandvars, which expand_path_vars calls
         with patch.object(
-            reader_settings_module.os.path,
+            reader_utils_module.os.path,
             os.path.expandvars.__name__,
             return_value="/expanded/panels",
         ) as mock_expand:
@@ -214,7 +215,7 @@ class TestReaderSettings:
         mock_config.get.return_value = "/png/dir"
         with (
             patch.object(
-                reader_settings_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
+                reader_utils_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
             ),
             patch.object(Path, Path.is_dir.__name__, return_value=True),
         ):
@@ -222,7 +223,7 @@ class TestReaderSettings:
 
         with (
             patch.object(
-                reader_settings_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
+                reader_utils_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
             ),
             patch.object(Path, Path.is_dir.__name__, return_value=False),
         ):
@@ -261,7 +262,7 @@ class TestReaderSettings:
         mock_config.get.return_value = "/wiki/bundle"
         with (
             patch.object(
-                reader_settings_module.os.path,
+                reader_utils_module.os.path,
                 os.path.expandvars.__name__,
                 return_value="/wiki/bundle",
             ),
@@ -272,7 +273,7 @@ class TestReaderSettings:
         # Setting points at a non-bundle directory (no root index.md).
         with (
             patch.object(
-                reader_settings_module.os.path,
+                reader_utils_module.os.path,
                 os.path.expandvars.__name__,
                 return_value="/wiki/bundle",
             ),
@@ -283,7 +284,7 @@ class TestReaderSettings:
         # Setting is the unset marker.
         mock_config.get.return_value = UNSET_WIKI_BUNDLE_DIR_MARKER
         with patch.object(
-            reader_settings_module.os.path,
+            reader_utils_module.os.path,
             os.path.expandvars.__name__,
             return_value=UNSET_WIKI_BUNDLE_DIR_MARKER,
         ):
@@ -329,7 +330,7 @@ class TestReaderSettings:
         mock_config.get.return_value = "/wiki/bundle"
         with (
             patch.object(
-                reader_settings_module.os.path,
+                reader_utils_module.os.path,
                 os.path.expandvars.__name__,
                 return_value="/wiki/bundle",
             ),
@@ -340,7 +341,7 @@ class TestReaderSettings:
 
         with (
             patch.object(
-                reader_settings_module.os.path,
+                reader_utils_module.os.path,
                 os.path.expandvars.__name__,
                 return_value="/wiki/bundle",
             ),
@@ -352,7 +353,7 @@ class TestReaderSettings:
 
         mock_config.get.return_value = UNSET_WIKI_BUNDLE_DIR_MARKER
         with patch.object(
-            reader_settings_module.os.path,
+            reader_utils_module.os.path,
             os.path.expandvars.__name__,
             return_value=UNSET_WIKI_BUNDLE_DIR_MARKER,
         ):

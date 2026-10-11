@@ -198,15 +198,16 @@ class TestReaderFilePaths:
 
 class TestPanelsSourceSetup:
     def test_the_source_path_is_expanded_before_use(
-        self, reader_file_paths: ReaderFilePaths, panels_dir: Path
+        self, reader_file_paths: ReaderFilePaths, panels_dir: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`${HOME}`-style defaults only work if the raw path reaches `expandvars`."""
+        monkeypatch.setenv("HOME", "/set/home")  # unset, ${HOME} is replaced before expandvars
         with patch("os.path.expandvars", return_value=str(panels_dir)) as mock_expand:
             reader_file_paths.set_barks_panels_source(
                 Path("${HOME}/panels"), BarksPanelsExtType.MOSTLY_PNG
             )
 
-        mock_expand.assert_called_once_with(Path("${HOME}/panels"))
+        mock_expand.assert_called_once_with(str(Path("${HOME}/panels")))
 
     def test_a_directory_source_is_not_encrypted(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path

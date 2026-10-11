@@ -12,9 +12,11 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import reader_utils as utils_module
+from barks_reader.core.reader_file_paths import ReaderFilePaths
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
     EMPTY_PAGE_KEY,
+    expand_path_vars,
     get_all_files_in_dir,
     get_centred_position_on_primary_monitor,
     get_concat_page_nums_str,
@@ -476,3 +478,45 @@ class TestReaderUtils:
             assert safe_import_check("json") is True
             assert safe_import_check("no_such_module_anywhere_xyz") is False
             mock_run.assert_not_called()
+
+
+class TestExpandPathVars:
+    FAKE_HOME = Path("/fake/home")
+
+    @pytest.mark.parametrize("home_var", ["${HOME}", "$HOME"])
+    def test_home_is_the_users_home_when_the_environment_has_no_home(
+        self, monkeypatch: pytest.MonkeyPatch, home_var: str
+    ) -> None:
+        """Windows sets no HOME: started from Explorer or PowerShell, the app has none."""
+        monkeypatch.delenv("HOME", raising=False)
+        with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
+            assert expand_path_vars(f"{home_var}/Books") == f"{self.FAKE_HOME}/Books"
+
+    def test_a_set_home_is_used(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("HOME", "/set/home")
+        with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
+            assert expand_path_vars("${HOME}/Books") == "/set/home/Books"
+
+    def test_a_longer_name_starting_with_home_is_not_home(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("HOME", raising=False)
+        monkeypatch.setenv("HOMEPATH", "/home/path")
+        with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
+            assert expand_path_vars("$HOMEPATH/Books") == "/home/path/Books"
+
+    def test_other_variables_are_still_expanded(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("HOME", raising=False)
+        monkeypatch.setenv("BARKS_TEST_DIR", "/barks/test")
+        with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
+            assert expand_path_vars(Path("${BARKS_TEST_DIR}/x")) == str(Path("/barks/test/x"))
+
+    def test_the_default_prebuilt_dir_is_under_the_home_when_the_environment_has_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """win_lg's overnight validate looked for a folder named "${HOME}" (2026-10-11)."""
+        monkeypatch.delenv("HOME", raising=False)
+        with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
+            prebuilt_dir = ReaderFilePaths.get_default_prebuilt_comic_zips_dir()
+
+        assert prebuilt_dir.is_relative_to(self.FAKE_HOME)

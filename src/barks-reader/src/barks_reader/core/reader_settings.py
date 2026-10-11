@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from configparser import RawConfigParser
 from dataclasses import dataclass
 from enum import Enum
@@ -13,6 +12,7 @@ from loguru import logger
 from .reader_consts_and_types import ALT_ESCAPE_KEY_SETTING, LONG_PATH_SETTING
 from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from .reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
+from .reader_utils import expand_path_vars
 from .system_file_paths import SystemFilePaths
 
 if TYPE_CHECKING:
@@ -165,7 +165,7 @@ def setting_value_from_panel(key: str, value: Any) -> Any:  # noqa: ANN401
 
 
 def _path_value(spec: FieldSpec, text: str) -> Path:
-    return Path(os.path.expandvars(text)) if spec.expand_vars else Path(text)
+    return Path(expand_path_vars(text)) if spec.expand_vars else Path(text)
 
 
 class ReaderSettings:

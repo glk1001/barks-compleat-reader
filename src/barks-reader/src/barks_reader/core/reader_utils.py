@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,6 +24,7 @@ from .config_info import IS_COMPILED
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from os import PathLike
 
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.pages import CleanPage
@@ -34,6 +36,30 @@ EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 ROMAN_NUMERALS_SET = set(ROMAN_NUMERALS.values())
 _ROMAN_NUMERAL_VALUES = {numeral: value for value, numeral in ROMAN_NUMERALS.items()}
+
+# $HOME or ${HOME}, but not the start of a longer name such as Windows' $HOMEPATH.
+_HOME_VAR_RE = re.compile(r"\$\{HOME\}|\$HOME(?![A-Za-z0-9_])")
+
+
+def expand_path_vars(path: str | PathLike[str]) -> str:
+    """Expand a path's environment variables, $HOME to the user's home even when unset.
+
+    Windows sets no HOME (Git Bash and ssh sessions do), and `os.path.expandvars` leaves
+    a variable it cannot find as it is: the app started from Explorer, or a run started
+    from PowerShell, read "${HOME}/Books/..." as a folder of that name (win_lg's
+    overnight validate, 2026-10-11). Where HOME is set, it is used, as before.
+
+    Args:
+        path: A path that may hold $NAME, ${NAME} or (on Windows) %NAME% variables.
+
+    Returns:
+        The path with every variable the environment knows expanded.
+
+    """
+    text = str(path)
+    if "HOME" not in os.environ:
+        text = _HOME_VAR_RE.sub(lambda _found: str(Path.home()), text)
+    return os.path.expandvars(text)
 
 
 def get_win_width_from_height(win_height: int) -> int:
