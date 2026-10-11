@@ -214,7 +214,7 @@ def get_ocr_json_suffix(ocr_json_file: Path) -> str:
 
 
 def get_formatted_day(day: int) -> str:
-    if day in {1, 31}:
+    if day in {1, 21, 31}:
         day_str = str(day) + "st"
     elif day in {2, 22}:
         day_str = str(day) + "nd"

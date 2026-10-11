@@ -101,6 +101,7 @@ class TestGetFormattedDay:
             (13, "th"),
             (14, "th"),
             (20, "th"),
+            (21, "st"),
             (22, "nd"),
             (23, "rd"),
             (25, "th"),
@@ -111,14 +112,6 @@ class TestGetFormattedDay:
     def test_ordinal_suffixes(self, day: int, expected_suffix: str) -> None:
         result = get_formatted_day(day)
         assert result == f"{day}{expected_suffix}"
-
-    # noinspection GrazieInspection,GrazieInspectionRunner
-    def test_day_21_bug(self) -> None:
-        # noinspection GrazieInspectionRunner
-        """Day 21 should end in 'st' but current implementation returns '21th'."""
-        result = get_formatted_day(21)
-        # This documents the current (buggy) behavior: 21 -> "21th" instead of "21st"
-        assert result == "21th"
 
 
 class TestGetRelpath:
