@@ -93,6 +93,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
+# bun (the cspell checks): its installer puts ~/.bun/bin on the PATH in .bashrc, past the
+# line that returns for a non-interactive shell, so a run started over ssh or from a tmux
+# one-liner lacks it, and lint failed on "bunx: command not found" (2026-10-11).
+if ! command -v bunx >/dev/null 2>&1 && [[ -x "${HOME}/.bun/bin/bunx" ]]; then
+    export PATH="${HOME}/.bun/bin:${PATH}"
+fi
+
 # This machine's own settings: each BARKS_OVERNIGHT_ line of .env.overnight the
 # environment does not already set. Read, not sourced: nothing in it runs.
 FROM_OVERNIGHT_ENV=""
