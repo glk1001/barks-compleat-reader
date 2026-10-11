@@ -509,7 +509,8 @@ class TestExpandPathVars:
         monkeypatch.delenv("HOME", raising=False)
         monkeypatch.setenv("BARKS_TEST_DIR", "/barks/test")
         with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
-            assert expand_path_vars(Path("${BARKS_TEST_DIR}/x")) == str(Path("/barks/test/x"))
+            # As paths: on Windows the expansion keeps the variable's "/" beside a "\".
+            assert Path(expand_path_vars(Path("${BARKS_TEST_DIR}/x"))) == Path("/barks/test/x")
 
     def test_the_default_prebuilt_dir_is_under_the_home_when_the_environment_has_none(
         self, monkeypatch: pytest.MonkeyPatch
