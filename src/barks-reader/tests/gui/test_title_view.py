@@ -75,6 +75,14 @@ def test_a_story_restored_under_a_tag_steps_through_the_tags_pages(boot: AppBoot
     d.key_then_wait(pattern(markers.GOTO_PAGE_STEPPED, page="26", index=2, count=3), "Right")
 
 
+def test_a_story_restored_under_a_tags_year_group_offers_the_tags_page(boot: AppBoot) -> None:
+    """A tag split into year groups still hands its page to a story in one of them."""
+    d = boot(nodes.LOST_IN_THE_ANDES_UNDER_SPLASH, cues=nodes.NO_CUES)
+    d.focus_portal()
+    offered = pattern(markers.GOTO_PAGE_OFFERED, page=nodes.LOST_IN_THE_ANDES_SPLASH_PAGE)
+    assert d.match_count(offered) >= 1
+
+
 def test_the_fade_is_logged_from_start_to_finish(boot: AppBoot) -> None:
     """Both ends of the random-length fade are logged, so nothing waits on the clock."""
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)

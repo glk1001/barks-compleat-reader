@@ -51,6 +51,7 @@ _YEAR_RANGE_KIND_TO_WIDTH: dict[YearRangeKind, float] = {
     YearRangeKind.US: dp(250),
     YearRangeKind.ONE_PAGER: dp(150),
     YearRangeKind.COVER: dp(150),
+    YearRangeKind.TAG: dp(150),
 }
 
 _NODE_CLASSES: dict[NodeKind, type[ButtonTreeViewNode]] = {

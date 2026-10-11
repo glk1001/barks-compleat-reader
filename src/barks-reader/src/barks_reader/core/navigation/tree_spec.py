@@ -131,6 +131,7 @@ from .destinations import (
     TagDestination,
     TagGroupDestination,
     TagSearchDestination,
+    TagYearRangeDestination,
     TitleSearchDestination,
     WikiIndexDestination,
     WordSearchDestination,
@@ -288,6 +289,42 @@ def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
     """Make title rows for tagged titles, skipping any not in the Fanta info."""
     title_infos = (get_fanta_info(title) for title in titles)
     return _title_rows(info for info in title_infos if info is not None)
+
+
+# Tags with titles enough to split into year groups in the tree, by submitted year as
+# Chronological splits. Every tagged title must fall in one of its tag's ranges.
+TAG_YEAR_RANGES: dict[Tags, tuple[tuple[int, int], ...]] = {
+    Tags.SPLASH: ((1947, 1952), (1953, 1956), (1957, 1959), (1960, 1973)),
+}
+
+
+def _tag_year_range_specs(tag: Tags, titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
+    """Make a tag's year-range groups, each deferring its title rows."""
+    title_infos = [info for info in map(get_fanta_info, titles) if info is not None]
+    specs: list[NodeSpec] = []
+    grouped_count = 0
+    for start, end in TAG_YEAR_RANGES[tag]:
+        year_range_titles = [
+            info for info in title_infos if start <= info.comic_book_info.submitted_year <= end
+        ]
+        grouped_count += len(year_range_titles)
+        specs.append(
+            NodeSpec(
+                kind=NodeKind.YEAR_RANGE,
+                text=get_markup_text_with_extra(
+                    FilteredTitleLists.get_range_str((start, end)),
+                    _get_count_extra_text(year_range_titles),
+                ),
+                destination=TagYearRangeDestination(tag=tag, start=start, end=end),
+                year_range_kind=YearRangeKind.TAG,
+                lazy_children=partial(_title_rows, year_range_titles),
+            )
+        )
+    assert grouped_count == len(title_infos), (
+        f'"{tag.value}" year-range groups hold {grouped_count} titles'
+        f" but the tag has {len(title_infos)}"
+    )
+    return tuple(specs)
 
 
 def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
@@ -881,7 +918,11 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=get_markup_text_with_num_titles(tag.value, len(titles)),
             destination=TagDestination(tag=tag),
-            lazy_children=partial(_tagged_title_rows, titles),
+            lazy_children=(
+                partial(_tag_year_range_specs, tag, titles)
+                if tag in TAG_YEAR_RANGES
+                else partial(_tagged_title_rows, titles)
+            ),
         )
 
     def _get_tagged_titles(self, tag: Tags) -> list[Titles]:

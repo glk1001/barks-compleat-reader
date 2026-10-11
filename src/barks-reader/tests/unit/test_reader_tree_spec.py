@@ -22,6 +22,7 @@ from barks_fantagraphics.barks_titles import (
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
+    Titles,
 )
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
@@ -48,13 +49,17 @@ from barks_reader.core.navigation import (
     ReadingDestination,
     TagDestination,
     TagGroupDestination,
+    TagYearRangeDestination,
+    YearRangeKind,
     build_reader_tree_spec,
 )
 from barks_reader.core.navigation.tree_spec import (
     NUM_RANDOM_TITLES,
+    TAG_YEAR_RANGES,
     _get_count_extra_text,
     _get_cs_year_range_extra_text,
     _get_us_year_range_extra_text,
+    _tag_year_range_specs,
 )
 from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.reader_consts_and_types import (
@@ -494,6 +499,63 @@ class TestStoriesSubtree:
         # Rows are the tagged titles minus any not (yet) in the Fanta info.
         assert 0 < len(title_rows) <= len(tagged_titles)
         assert all(row.fanta_info is not None for row in title_rows)
+
+
+def _find_tag_spec(specs: tuple[NodeSpec, ...], tag: Tags) -> NodeSpec:
+    """Return the Categories subtree's node for a tag."""
+
+    def find(spec: NodeSpec) -> NodeSpec | None:
+        if spec.destination == TagDestination(tag=tag):
+            return spec
+        return next((found for child in spec.children if (found := find(child))), None)
+
+    found = find(specs[1].children[2])
+    assert found is not None, tag
+    return found
+
+
+class TestTagYearRanges:
+    @pytest.mark.parametrize("tag", list(TAG_YEAR_RANGES))
+    def test_a_long_tag_is_split_into_its_year_ranges(
+        self, specs: tuple[NodeSpec, ...], tag: Tags
+    ) -> None:
+        tag_spec = _find_tag_spec(specs, tag)
+        assert tag_spec.lazy_children is not None
+        groups = tag_spec.lazy_children()
+        assert [group.destination for group in groups] == [
+            TagYearRangeDestination(tag=tag, start=start, end=end)
+            for start, end in TAG_YEAR_RANGES[tag]
+        ]
+
+        titles: list[Titles] = []
+        for group, (start, end) in zip(groups, TAG_YEAR_RANGES[tag], strict=True):
+            assert group.kind is NodeKind.YEAR_RANGE
+            assert group.year_range_kind is YearRangeKind.TAG
+            assert group.lazy_children is not None
+            rows = group.lazy_children()
+            infos = [row.fanta_info for row in rows if row.fanta_info is not None]
+            assert len(infos) == len(rows) > 0
+            assert all(start <= info.comic_book_info.submitted_year <= end for info in infos)
+            range_str = FilteredTitleLists.get_range_str((start, end))
+            assert group.text == f"[b]{range_str}[/b] [i]({len(rows)})[/i]"
+            titles.extend(info.comic_book_info.title for info in infos)
+
+        # Every tagged title once, in the tag's chronological order.
+        assert titles == get_sorted_tagged_titles(tag)
+
+    def test_a_title_outside_every_range_fails_loudly(self) -> None:
+        titles = get_sorted_tagged_titles(Tags.SPLASH)
+        with (
+            patch.dict(TAG_YEAR_RANGES, {Tags.SPLASH: ((1947, 1952),)}),
+            pytest.raises(AssertionError, match="year-range groups hold"),
+        ):
+            _tag_year_range_specs(Tags.SPLASH, titles)
+
+    def test_any_other_tag_lists_its_titles_directly(self, specs: tuple[NodeSpec, ...]) -> None:
+        assert Tags.AWFULTONIANS not in TAG_YEAR_RANGES
+        tag_spec = _find_tag_spec(specs, Tags.AWFULTONIANS)
+        assert tag_spec.lazy_children is not None
+        assert all(row.kind is NodeKind.TITLE_ROW for row in tag_spec.lazy_children())
 
 
 class TestReadingSubtree:

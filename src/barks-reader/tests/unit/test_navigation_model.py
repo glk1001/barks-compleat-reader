@@ -61,6 +61,7 @@ from barks_reader.core.navigation import (
     TagDestination,
     TagGroupDestination,
     TagSearchDestination,
+    TagYearRangeDestination,
     TitleDestination,
     TitleSearchDestination,
     WordSearchDestination,
@@ -275,6 +276,12 @@ def test_view_state_for_tag(model: NavigationModel) -> None:
     assert request.tag == Tags.AIRPLANES
 
 
+def test_view_state_for_a_tags_year_group_is_the_tags(model: NavigationModel) -> None:
+    request = model.view_state_for(TagYearRangeDestination(tag=Tags.SPLASH, start=1953, end=1956))
+    assert request.view_state is ViewStates.ON_TAG_NODE
+    assert request.tag == Tags.SPLASH
+
+
 # --- view_state_for: article ----------------------------------------
 
 
@@ -347,6 +354,11 @@ def test_auto_select_target_ignores_non_title_siblings(model: NavigationModel) -
 
 def test_tag_context_extracts_tag(model: NavigationModel) -> None:
     assert model.tag_context(TagDestination(tag=Tags.AIRPLANES)) is Tags.AIRPLANES
+
+
+def test_tag_context_extracts_the_tag_of_its_year_group(model: NavigationModel) -> None:
+    destination = TagYearRangeDestination(tag=Tags.SPLASH, start=1947, end=1952)
+    assert model.tag_context(destination) is Tags.SPLASH
 
 
 def test_tag_context_extracts_tag_group(model: NavigationModel) -> None:

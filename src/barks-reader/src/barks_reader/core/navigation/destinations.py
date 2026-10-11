@@ -172,6 +172,7 @@ class YearRangeKind(StrEnum):
     US = "us"
     ONE_PAGER = "one_pager"
     COVER = "cover"
+    TAG = "tag"  # A year group of a tag's titles (`TagYearRangeDestination`).
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,6 +210,15 @@ class TagDestination(Destination):
     """A single Tag container (e.g., Tags.AIRPLANES)."""
 
     tag: Tags
+
+
+@dataclass(frozen=True, slots=True)
+class TagYearRangeDestination(Destination):
+    """A year-range group of a long tag's titles (e.g., Tags.SPLASH, 1953-1956)."""
+
+    tag: Tags
+    start: int
+    end: int
 
 
 @dataclass(frozen=True, slots=True)

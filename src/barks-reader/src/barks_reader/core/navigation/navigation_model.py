@@ -59,6 +59,7 @@ from .destinations import (
     TagDestination,
     TagGroupDestination,
     TagSearchDestination,
+    TagYearRangeDestination,
     TitleDestination,
     TitleSearchDestination,
     WikiIndexDestination,
@@ -163,7 +164,8 @@ class NavigationModel:
         if isinstance(dest, TagGroupDestination):
             return ViewRequest(view_state=ViewStates.ON_TAG_GROUP_NODE, tag_group=dest.tag_group)
 
-        if isinstance(dest, TagDestination):
+        if isinstance(dest, TagDestination | TagYearRangeDestination):
+            # A tag's year group keeps the tag's own top view.
             return ViewRequest(view_state=ViewStates.ON_TAG_NODE, tag=dest.tag)
 
         if isinstance(dest, RandomTitlesDestination):
@@ -235,7 +237,7 @@ class NavigationModel:
         Used when a title is selected under a tag container to determine which
         page to jump to (via `BARKS_TAGGED_PAGES`).
         """
-        if isinstance(dest, TagDestination):
+        if isinstance(dest, TagDestination | TagYearRangeDestination):
             return dest.tag
         if isinstance(dest, TagGroupDestination):
             return dest.tag_group

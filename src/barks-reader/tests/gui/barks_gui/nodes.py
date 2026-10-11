@@ -71,6 +71,17 @@ LOST_IN_THE_ANDES_UNDER_AWFULTONIANS = [
     "The Stories",
     "root",
 ]
+# And under the splash tag, which groups its titles by year: its splash is page 17.
+LOST_IN_THE_ANDES_UNDER_SPLASH = [
+    "LOST_IN_THE_ANDES",
+    "1947-1952",
+    "splash pages",
+    "Themes",
+    "Categories",
+    "The Stories",
+    "root",
+]
+LOST_IN_THE_ANDES_SPLASH_PAGE = "17"
 
 # A censored-but-fixed story with an overrides row (the GLK alternate ending).
 THE_FIREBUG = [
