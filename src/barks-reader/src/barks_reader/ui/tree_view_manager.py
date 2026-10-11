@@ -338,9 +338,7 @@ class TreeViewManager:
         self._tree_view_screen.select_node(only_child)
         assert isinstance(only_child.destination, TitleDestination)
         fanta_info = only_child.destination.fanta_info
-        tag = (
-            self._nav_model.tag_context(node.destination) if node.destination is not None else None
-        )
+        tag = self._tag_context_of(node.destination)
         self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag), preserve_top_view=True)
         # Don't call scroll_to_node here — the parent is already being pinned in view
         # by _pin_parent_position_while_populating and the child is right below it.
