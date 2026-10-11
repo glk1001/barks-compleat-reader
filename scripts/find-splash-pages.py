@@ -3,7 +3,7 @@
 
 A splash panel takes the space of four of the story's normal panels
 (barks_fantagraphics.splash_pages), page 1 included. The pages are read from the
-Fantagraphics panel-segments JSONs (ComicsDatabase's panel-segments root) and
+reader data pack's Fantagraphics panel-segments JSONs, the ones Phase 12 checks, and
 numbered as the reader numbers them.
 
 Prints the Tags.SPLASH list for BARKS_TAGGED_TITLES and its BARKS_TAGGED_PAGES
@@ -20,8 +20,11 @@ Phase 12 of validate-barks-reader-files.py checks the pasted data nightly.
 Run via ``uv run scripts/find-splash-pages.py``.
 """
 
+from __future__ import annotations
+
 from configparser import ConfigParser
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from barks_fantagraphics.barks_tags_data import SPLASH_EXCEPTIONS
@@ -31,6 +34,7 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.system_file_paths import SystemFilePaths
 from loguru import logger
 from validate_barks_reader_core import (
     find_title_splash_pages,
@@ -39,16 +43,31 @@ from validate_barks_reader_core import (
     make_splash_layout_builder,
 )
 
+if TYPE_CHECKING:
+    from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
+
 app = typer.Typer()
 
 
-def _get_splash_dir() -> Path:
-    """Return the Splash folder of the reader's PNG Barks panels."""
+def _get_reader_settings() -> ReaderSettings:
+    """Return the reader's settings, from its config."""
     config_info = ConfigInfo()
     config = ConfigParser()
     config.read(config_info.app_config_path)
     reader_settings = ReaderSettings()
     reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
+    return reader_settings
+
+
+def _get_panel_segments_root(reader_settings: ReaderSettings) -> Path:
+    """Return the data pack's panel-segments root, as validate-barks-reader-files.py finds it."""
+    sys_paths = SystemFilePaths()
+    sys_paths.set_barks_reader_files_dir(reader_settings.reader_files_dir, check_files=False)
+    return sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
+
+
+def _get_splash_dir(reader_settings: ReaderSettings) -> Path:
+    """Return the Splash folder of the reader's PNG Barks panels."""
     reader_settings.force_barks_panels_dir(use_png_images=True)
     splash_dir = reader_settings.file_paths.get_comic_splash_files_dir()
     assert isinstance(splash_dir, Path), "PNG panels are a directory, not a zip."
@@ -80,7 +99,10 @@ def _print_exceptions(found_pages: dict[Titles, list[str]]) -> None:
 
 
 def _cross_check(
-    db: ComicsDatabase, splash_pages: dict[Titles, list[str]], splash_dir: Path
+    db: ComicsDatabase,
+    builder: ComicLayoutBuilder,
+    splash_pages: dict[Titles, list[str]],
+    splash_dir: Path,
 ) -> list[str]:
     """Return each way the ini files and the Splash folder disagree with the panel boxes."""
     disagreements = [
@@ -90,7 +112,6 @@ def _cross_check(
         and STR_TITLE_TO_ENUM[title_str] not in splash_pages
     ]
 
-    builder = make_splash_layout_builder(db, db.get_fantagraphics_panel_segments_root_dir())
     for title_dir in sorted(d for d in splash_dir.iterdir() if d.is_dir()):
         title = STR_TITLE_TO_ENUM.get(title_dir.name)
         if title is None:
@@ -118,7 +139,8 @@ def _cross_check(
 def main() -> None:
     logger.remove()
     db = ComicsDatabase(for_building_comics=False)
-    panel_segments_root = db.get_fantagraphics_panel_segments_root_dir()
+    reader_settings = _get_reader_settings()
+    panel_segments_root = _get_panel_segments_root(reader_settings)
     builder = make_splash_layout_builder(db, panel_segments_root)
 
     found_pages: dict[Titles, list[str]] = {}
@@ -137,7 +159,7 @@ def main() -> None:
     print()
     print(f"# {len(splash_pages)} stories, {sum(map(len, splash_pages.values()))} splash pages.")
     _print_exceptions(found_pages)
-    disagreements = _cross_check(db, found_pages, _get_splash_dir())
+    disagreements = _cross_check(db, builder, found_pages, _get_splash_dir(reader_settings))
     print(f"# Cross-check: {len(disagreements)} disagreement(s).")
     for disagreement in disagreements:
         print(f"#   {disagreement}")
