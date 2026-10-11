@@ -285,6 +285,24 @@ def _playlist_rows(intro_text: str, title_infos: list[FantaComicBookInfo]) -> tu
     return (intro_row, *_title_rows(title_infos))
 
 
+def _year_range_node(
+    year_range: tuple[int, int],
+    year_range_titles: list[FantaComicBookInfo],
+    *,
+    extra_text: str,
+    destination: Destination,
+    kind: YearRangeKind,
+) -> NodeSpec:
+    """Make a year-range group node, deferring its title rows until it opens."""
+    return NodeSpec(
+        kind=NodeKind.YEAR_RANGE,
+        text=get_markup_text_with_extra(FilteredTitleLists.get_range_str(year_range), extra_text),
+        destination=destination,
+        year_range_kind=kind,
+        lazy_children=partial(_title_rows, year_range_titles),
+    )
+
+
 def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
     """Make title rows for tagged titles, skipping any not in the Fanta info."""
     title_infos = (get_fanta_info(title) for title in titles)
@@ -309,15 +327,12 @@ def _tag_year_range_specs(tag: Tags, titles: Iterable[Titles]) -> tuple[NodeSpec
         ]
         grouped_count += len(year_range_titles)
         specs.append(
-            NodeSpec(
-                kind=NodeKind.YEAR_RANGE,
-                text=get_markup_text_with_extra(
-                    FilteredTitleLists.get_range_str((start, end)),
-                    _get_count_extra_text(year_range_titles),
-                ),
+            _year_range_node(
+                (start, end),
+                year_range_titles,
+                extra_text=_get_count_extra_text(year_range_titles),
                 destination=TagYearRangeDestination(tag=tag, start=start, end=end),
-                year_range_kind=YearRangeKind.TAG,
-                lazy_children=partial(_title_rows, year_range_titles),
+                kind=YearRangeKind.TAG,
             )
         )
     assert grouped_count == len(title_infos), (
@@ -862,13 +877,12 @@ class _SpecBuilder:
         extra_text: str,
         kind: YearRangeKind,
     ) -> NodeSpec:
-        year_range_str = FilteredTitleLists.get_range_str(year_range)
-        return NodeSpec(
-            kind=NodeKind.YEAR_RANGE,
-            text=get_markup_text_with_extra(year_range_str, extra_text),
+        return _year_range_node(
+            year_range,
+            year_range_titles,
+            extra_text=extra_text,
             destination=YearRangeDestination(start=year_range[0], end=year_range[1], kind=kind),
-            year_range_kind=kind,
-            lazy_children=partial(_title_rows, year_range_titles),
+            kind=kind,
         )
 
     def _year_range_titles(
