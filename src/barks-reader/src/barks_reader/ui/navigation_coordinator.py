@@ -432,6 +432,7 @@ class NavigationCoordinator:
 
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = None
+        self._read_comic_tagged_pages = ()
 
         # Open only the member's year-range group so the loader holds ~40-55 pages
         # instead of the whole 128/186-page collection.
@@ -451,6 +452,7 @@ class NavigationCoordinator:
         """Open a non-comic article in the comic reader."""
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = return_view_state
+        self._read_comic_tagged_pages = ()
 
         page_to_first_goto = (
             "i" if article_title == Titles.RICH_TOMMASO___ON_COLORING_BARKS else "1"

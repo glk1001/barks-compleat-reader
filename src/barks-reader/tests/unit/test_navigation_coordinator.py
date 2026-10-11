@@ -403,6 +403,29 @@ class TestNavigationCoordinator:
         nav_coord.on_comic_closed()  # a comic opened some other way, e.g. a collection
         offered.assert_called_once_with("9", active=True, tagged_pages=())
 
+    @pytest.mark.parametrize("opener", ["collection", "article"])
+    def test_a_comic_opened_another_way_drops_the_tags_pages_of_one_never_closed(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], opener: str
+    ) -> None:
+        nav_coord._current_fanta_info = MagicMock()
+        bottom = mock_deps["bottom_title_view_screen"]
+        bottom.tagged_pages = ["1", "14"]
+        nav_coord.read_comic()  # its reader never opened, so it never closed
+        if opener == "collection":
+            assert nav_coord._read_title_in_collection(
+                Titles.IF_THE_HAT_FITS, Titles.ALL_ONE_PAGERS, 1
+            )
+        else:
+            nav_coord.read_article(next(iter(NON_COMIC_TITLES)), ViewStates.ON_INDEX_NODE)
+        last_page = MagicMock()
+        last_page.display_page_num = "9"
+        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+        bottom.set_goto_page_state.reset_mock()
+
+        nav_coord.on_comic_closed()
+
+        bottom.set_goto_page_state.assert_called_once_with("9", active=True, tagged_pages=())
+
     def test_a_comic_closed_at_its_beginning_with_no_tag_offers_no_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
