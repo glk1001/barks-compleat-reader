@@ -11,14 +11,19 @@ _SIX_PANELS = [_SIXTH] * 6
 
 class TestGetPanelAreaFractions:
     def test_each_panel_is_a_fraction_of_the_overall_bounds(self) -> None:
+        # The bounds are inclusive: x 100 to 299 and y 200 to 599 are 200 by 400 pixels.
         segments = {
-            "overall_bounds": [100, 200, 300, 600],
+            "overall_bounds": [100, 200, 299, 599],
             "panels": [[100, 200, 200, 200], [100, 400, 100, 200]],
         }
         assert get_panel_area_fractions(segments) == [0.5, 0.25]
 
     def test_a_page_with_no_panels_has_no_fractions(self) -> None:
         assert get_panel_area_fractions({"overall_bounds": [0, 0, 0, 0], "panels": []}) == []
+
+    def test_bounds_with_no_area_give_no_fractions(self) -> None:
+        segments = {"overall_bounds": [300, 200, 100, 600], "panels": [[100, 200, 200, 200]]}
+        assert get_panel_area_fractions(segments) == []
 
 
 class TestGetSplashPages:

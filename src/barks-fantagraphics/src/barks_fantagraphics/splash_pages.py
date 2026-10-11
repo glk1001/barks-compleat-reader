@@ -27,14 +27,14 @@ def get_panel_area_fractions(segments: Mapping[str, Any]) -> list[float]:
 
     Args:
         segments: A page's panel-segments JSON: "panels" as [x, y, width, height]
-            boxes and "overall_bounds" as [x0, y0, x1, y1].
+            boxes and "overall_bounds" as inclusive [x0, y0, x1, y1] pixel coordinates.
 
     Returns:
         One fraction per panel, in the JSON's order; empty for a page with no panels.
 
     """
     x0, y0, x1, y1 = segments["overall_bounds"]
-    page_area = (x1 - x0) * (y1 - y0)
+    page_area = (x1 - x0 + 1) * (y1 - y0 + 1)
     if page_area <= 0:
         return []
     return [width * height / page_area for _x, _y, width, height in segments["panels"]]

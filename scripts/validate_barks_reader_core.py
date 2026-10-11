@@ -1916,9 +1916,7 @@ def phase10_layout(
             )
             continue
 
-        panel_segments_dir = panel_segments_root / db.get_fantagraphics_volume_title(
-            comic.get_fanta_volume()
-        )
+        panel_segments_dir = _get_panel_segments_dir(db, panel_segments_root, comic)
         archive = _volume_archive(fanta_state, fanta_info)
         if not _check_title_segments(phase, counts, title_str, comic, archive, panel_segments_dir):
             # The layout build reads those same JSONs: it could only fail again on
@@ -1937,6 +1935,18 @@ def phase10_layout(
     )
     collector.finalize_phase(phase)
     return built
+
+
+def _get_panel_segments_dir(
+    db: ComicsDatabase, panel_segments_root: Path, comic: ComicBook
+) -> Path:
+    """Return the directory holding a comic's volume's panel-segments JSONs."""
+    return panel_segments_root / db.get_fantagraphics_volume_title(comic.get_fanta_volume())
+
+
+def _get_panel_segments_file(panel_segments_dir: Path, page_str: str) -> Path:
+    """Return a page's panel-segments JSON, from its source file's stem ("007")."""
+    return panel_segments_dir / (page_str + JSON_FILE_EXT)
 
 
 def _loadable_titles(titles_filter: list[str] | None) -> list[tuple[str, FantaComicBookInfo]]:
@@ -2035,7 +2045,7 @@ def _check_segments_json(
         False if the JSON is missing; True otherwise, stale or not.
 
     """
-    json_path = panel_segments_dir / (page_str + JSON_FILE_EXT)
+    json_path = _get_panel_segments_file(panel_segments_dir, page_str)
     if not json_path.is_file():
         counts.missing_json += 1
         phase.add(f"Title:{title_str} kind=missing_segments_json page={page_str} path={json_path}")
@@ -2392,12 +2402,12 @@ def find_title_splash_pages(
         The splash pages' numbers, in page order.
 
     """
-    segments_dir = panel_segments_root / db.get_fantagraphics_volume_title(comic.get_fanta_volume())
+    segments_dir = _get_panel_segments_dir(db, panel_segments_root, comic)
     pages = {
         page.display_page_num: get_panel_area_fractions(
             json.loads(
-                (
-                    segments_dir / (Path(page.srce_page.page_filename).stem + JSON_FILE_EXT)
+                _get_panel_segments_file(
+                    segments_dir, Path(page.srce_page.page_filename).stem
                 ).read_text(encoding="utf-8")
             )
         )
