@@ -1633,7 +1633,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.MASTER_GLASSER_THE,
         Titles.CHRISTMAS_CHA_CHA_THE,
         Titles.DONALDS_PARTY,
-        Titles.UNDER_THE_POLAR_ICE,
+        Titles.ISLAND_IN_THE_SKY,
         Titles.TOUCHE_TOUPEE,
         Titles.FREE_SKI_SPREE,
         Titles.SNOW_CHASER_THE,
