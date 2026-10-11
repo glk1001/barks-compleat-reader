@@ -505,6 +505,15 @@ change = """
 reason = "ZipFile's mode defaults to \"r\"."
 
 [[equivalent]]
+module = "barks_reader.core.reader_utils"
+function = "get_page_sort_key"
+change = """
+- return 1, int(page_num_str)
++ return 2, int(page_num_str)
+"""
+reason = "Only ever a sort key, where any first value above front matter's 0 puts the numbered pages after it in the same order."
+
+[[equivalent]]
 module = "barks_reader.core.reading_history"
 function = "ReadingHistoryStore.__init__"
 change = """
