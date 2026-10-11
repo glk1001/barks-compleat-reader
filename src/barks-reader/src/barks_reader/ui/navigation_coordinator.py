@@ -562,8 +562,15 @@ class NavigationCoordinator:
                 tagged_pages = BARKS_TAGGED_PAGES[(tag, title)]
                 page_to_goto = tagged_pages[0]
                 logger.debug(f"Setting page to goto: {page_to_goto}.")
+                # The tag's page is offered, but the page last read stays a step away.
+                last_read_page = self._comic_reader_manager.get_last_read_page(
+                    ENUM_TO_STR_TITLE[title]
+                )
                 self._bottom_title_view_screen.set_goto_page_state(
-                    page_to_goto, active=True, tagged_pages=tagged_pages
+                    page_to_goto,
+                    active=True,
+                    tagged_pages=tagged_pages,
+                    kept_page=last_read_page.display_page_num if last_read_page else "",
                 )
 
     def _set_goto_page_checkbox(

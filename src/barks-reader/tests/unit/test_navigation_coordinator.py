@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.navigation_coordinator
 import pytest
@@ -506,7 +506,13 @@ class TestNavigateToSearchResult:
 
     TRAPPER = ENUM_TO_STR_TITLE[Titles.MIGHTY_TRAPPER_THE]
 
-    def _navigate(self, nav_coord: NavigationCoordinator, tags: tuple[Tags, ...]) -> None:
+    def _navigate(
+        self,
+        nav_coord: NavigationCoordinator,
+        mock_deps: dict[str, MagicMock],
+        tags: tuple[Tags, ...],
+    ) -> None:
+        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
             assert nav_coord.navigate_to_search_result(self.TRAPPER, tags)
         chrono.assert_called_once_with(ImageInfo(from_title=Titles.MIGHTY_TRAPPER_THE))
@@ -514,17 +520,17 @@ class TestNavigateToSearchResult:
     def test_a_tag_with_a_page_in_the_title_sets_goto_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
-        self._navigate(nav_coord, (Tags.FIRST_DAISY,))
+        self._navigate(nav_coord, mock_deps, (Tags.FIRST_DAISY,))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True, tagged_pages=["2"]
+            "2", active=True, tagged_pages=["2"], kept_page=""
         )
 
     def test_the_first_tag_with_a_page_in_the_title_is_used(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
-        self._navigate(nav_coord, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
+        self._navigate(nav_coord, mock_deps, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True, tagged_pages=["2"]
+            "2", active=True, tagged_pages=["2"], kept_page=""
         )
 
     @pytest.mark.parametrize("tags", [(), (Tags.GYRO_GEARLOOSE,)], ids=["no-tags", "no-page"])
@@ -534,7 +540,7 @@ class TestNavigateToSearchResult:
         mock_deps: dict[str, MagicMock],
         tags: tuple[Tags, ...],
     ) -> None:
-        self._navigate(nav_coord, tags)
+        self._navigate(nav_coord, mock_deps, tags)
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
 
     def test_an_unknown_title_is_not_navigated_to(self, nav_coord: NavigationCoordinator) -> None:
@@ -678,6 +684,50 @@ def test_the_wiki_without_a_bundle_opens_nothing(
     nav_coord.open_wiki()
     mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
     mock_deps["on_active_changed"].assert_not_called()
+
+
+class TestTitleSelectedUnderATag:
+    """Arriving under a tag offers its first page; the page last read stays a step away."""
+
+    ANDES = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+
+    def _select(
+        self,
+        nav_coord: NavigationCoordinator,
+        mock_deps: dict[str, MagicMock],
+        last_read: str | None,
+    ) -> MagicMock:
+        last_page = None
+        if last_read is not None:
+            last_page = MagicMock()
+            last_page.display_page_num = last_read
+        mock_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
+        with patch.object(
+            barks_reader.ui.navigation_coordinator,
+            "BARKS_TAGGED_PAGES",
+            {(Tags.AWFULTONIANS, Titles.LOST_IN_THE_ANDES): ["19", "26", "31"]},
+        ):
+            nav_coord.select_title(TitleTarget(fanta_info=self.ANDES, tag=Tags.AWFULTONIANS))
+        mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
+            "Lost in the Andes!"
+        )
+        return mock_deps["bottom_title_view_screen"].set_goto_page_state
+
+    def test_the_tags_first_page_is_offered_and_the_page_last_read_kept(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        offered = self._select(nav_coord, mock_deps, "25")
+        assert offered.call_args_list[-1] == call(
+            "19", active=True, tagged_pages=["19", "26", "31"], kept_page="25"
+        )
+
+    def test_with_nothing_read_only_the_tags_pages_are_offered(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        offered = self._select(nav_coord, mock_deps, None)
+        assert offered.call_args_list[-1] == call(
+            "19", active=True, tagged_pages=["19", "26", "31"], kept_page=""
+        )
 
 
 def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(

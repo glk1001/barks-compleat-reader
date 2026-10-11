@@ -629,6 +629,26 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.goto_pages == ["7", "13", "16"]
         assert self.screen.goto_page_position == " (2 of 3)"
 
+    def test_a_kept_page_is_a_stop_though_the_tags_page_is_offered(self) -> None:
+        # E.g. the page last read, when the title is reached under the tag.
+        self.screen.set_goto_page_state("7", active=True, tagged_pages=_TAGGED_PAGES, kept_page="9")
+        assert self.screen.goto_page_num == "7"
+        assert self.screen.goto_pages == ["7", "9", "13", "16"]
+        assert self.screen.goto_page_position == " (1 of 4)"
+        self.screen.step_goto_page(1)
+        assert self.screen.goto_page_num == "9"
+
+    @pytest.mark.parametrize("kept_page", ["", COMIC_BEGIN_PAGE, "13"])
+    def test_no_kept_page_or_one_already_a_stop_adds_none(self, kept_page: str) -> None:
+        self.screen.set_goto_page_state(
+            "7", active=True, tagged_pages=_TAGGED_PAGES, kept_page=kept_page
+        )
+        assert self.screen.goto_pages == ["7", "13", "16"]
+
+    def test_a_kept_page_without_a_tag_is_no_stop(self) -> None:
+        self.screen.set_goto_page_state("12", active=True, kept_page="9")
+        assert self.screen.goto_pages == []
+
     def test_any_other_offer_forgets_the_tag(self) -> None:
         self._offer()
         self.screen.set_goto_page_state("12", active=True)  # E.g. the last page read.

@@ -266,7 +266,11 @@ class BottomTitleViewScreen(FloatLayout):
         return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
 
     def set_goto_page_state(
-        self, page_to_goto: str = "", active: bool = False, tagged_pages: Sequence[str] = ()
+        self,
+        page_to_goto: str = "",
+        active: bool = False,
+        tagged_pages: Sequence[str] = (),
+        kept_page: str = "",
     ) -> None:
         """Offer a page to open the comic at, or none.
 
@@ -278,13 +282,21 @@ class BottomTitleViewScreen(FloatLayout):
                 and through the page offered, when that is none of them (the page the
                 comic was closed on). Any other offer clears them, so they never follow
                 another title.
+            kept_page: Another page to step through with a tag's pages, though not the
+                one offered: the page the comic was closed on, when a tag offers its own.
 
         """
         self.tagged_pages = list(tagged_pages)
         self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
         self.goto_pages = get_page_run_starts(tagged_pages)
-        if self.goto_pages and self.goto_page_num and self.goto_page_num not in self.goto_pages:
-            self.goto_pages = sorted([*self.goto_pages, self.goto_page_num], key=get_page_sort_key)
+        if self.goto_pages:
+            extra_pages = {
+                page
+                for page in (self.goto_page_num, kept_page)
+                if page and page != COMIC_BEGIN_PAGE and page not in self.goto_pages
+            }
+            if extra_pages:
+                self.goto_pages = sorted([*self.goto_pages, *extra_pages], key=get_page_sort_key)
         self.goto_page_active = active
         self._set_goto_page_position()
         if self.goto_page_num:
