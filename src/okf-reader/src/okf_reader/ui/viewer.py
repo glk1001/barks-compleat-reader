@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import threading
+import time
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from functools import cache
@@ -936,15 +937,20 @@ class OKFViewer(RelativeLayout):
         recovers to an error note rather than hanging on "Searching…" forever; the
         exception must not escape here or the daemon thread would die silently.
         """
+        trace.search_index_building()
+        start = time.perf_counter()
         try:
             warm()
-        except Exception:  # noqa: BLE001 — any build failure must surface, not hang
+        except Exception as error:  # noqa: BLE001 — any build failure must surface, not hang
+            trace.search_index_failed(time.perf_counter() - start, error)
             Clock.schedule_once(lambda _dt: self._mark_search_ready(failed=True), 0)
             return
+        trace.search_index_built(time.perf_counter() - start)
         Clock.schedule_once(lambda _dt: self._mark_search_ready(failed=False), 0)
 
     def _mark_search_ready(self, *, failed: bool) -> None:
         """Mark the index ready (or failed) and refresh any query typed while warming."""
+        trace.search_ready(failed=failed, text=self.search_field.text)
         self._search_ready = True
         self._search_failed = failed
         if self.search_field.text.strip():

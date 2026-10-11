@@ -91,6 +91,28 @@ def search_left() -> None:
     Logger.debug(log_markers.SEARCH_LEFT)
 
 
+def search_index_building() -> None:
+    """Log that the worker thread has started building the search index."""
+    Logger.debug(log_markers.SEARCH_INDEX_BUILDING)
+
+
+def search_index_built(seconds: float) -> None:
+    """Log, from the worker thread, that the search index was built in `seconds`."""
+    Logger.debug(log_markers.SEARCH_INDEX_BUILT.format(elapsed=f"{seconds:.1f}s"))
+
+
+def search_index_failed(seconds: float, error: BaseException) -> None:
+    """Log, from the worker thread, that building the search index raised `error`."""
+    Logger.warning(
+        log_markers.SEARCH_INDEX_FAILED.format(elapsed=f"{seconds:.1f}s", error=repr(error))
+    )
+
+
+def search_ready(*, failed: bool, text: str) -> None:
+    """Log that the UI thread took the build's outcome, with the query typed meanwhile."""
+    Logger.debug(log_markers.SEARCH_READY.format(state="failed" if failed else "built", text=text))
+
+
 def search_cleared() -> None:
     """Log that the search was cleared and the sidebar shows the tree again."""
     Logger.debug(log_markers.SEARCH_CLEARED)

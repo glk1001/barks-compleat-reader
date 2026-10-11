@@ -283,6 +283,48 @@ class TestSearchIndexFailure:
             clock.schedule_once.call_args.args[0](0)
         mark.assert_called_once_with(failed=True)
 
+    def test_the_worker_logs_a_failed_build_with_its_error(self, viewer: OKFViewer) -> None:
+        error = OSError("gone")
+
+        def broken() -> None:
+            raise error
+
+        with (
+            patch.object(viewer_module, "Clock"),
+            patch.object(viewer_module, "trace") as trace,
+        ):
+            viewer._warm_search_index(broken)
+        trace.search_index_building.assert_called_once_with()
+        trace.search_index_failed.assert_called_once()
+        assert trace.search_index_failed.call_args.args[1] is error
+        trace.search_index_built.assert_not_called()
+
+    def test_the_worker_logs_the_build_before_handing_it_to_the_ui(self, viewer: OKFViewer) -> None:
+        """A stall on "Searching…" then shows whether the build or the hand-over stopped."""
+        calls = MagicMock()
+        with (
+            patch.object(viewer_module, "Clock", calls.clock),
+            patch.object(viewer_module, "trace", calls.trace),
+        ):
+            viewer._warm_search_index(calls.warm)
+        assert [name for name, _args, _kwargs in calls.mock_calls] == [
+            "trace.search_index_building",
+            "warm",
+            "trace.search_index_built",
+            "clock.schedule_once",
+        ]
+        with patch.object(viewer, "_mark_search_ready") as mark:
+            calls.clock.schedule_once.call_args.args[0](0)
+        mark.assert_called_once_with(failed=False)
+
+    def test_taking_the_outcome_is_logged_with_the_query_typed_meanwhile(
+        self, viewer: OKFViewer
+    ) -> None:
+        viewer.search_field.text = "grotto"
+        with patch.object(viewer_module.trace, "search_ready") as ready:
+            viewer._mark_search_ready(failed=True)
+        ready.assert_called_once_with(failed=True, text="grotto")
+
     def test_a_provider_that_needs_no_warming_is_ready_at_once(self, viewer: OKFViewer) -> None:
         viewer._searcher = _NoWarmSearcher()
         viewer._on_search_focus(None, focused=True)

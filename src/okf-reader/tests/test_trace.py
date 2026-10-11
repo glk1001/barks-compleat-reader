@@ -83,6 +83,21 @@ def test_the_search_markers(kivy_log: list[str]) -> None:
     ]
 
 
+def test_the_search_index_markers(kivy_log: list[str]) -> None:
+    trace.search_index_building()
+    trace.search_index_built(2.43)
+    trace.search_index_failed(0.5, OSError("gone"))
+    trace.search_ready(failed=False, text="grotto")
+    trace.search_ready(failed=True, text="")
+    assert kivy_log == [
+        "OKFViewer: Search index build started.",
+        "OKFViewer: Search index built in 2.4s.",
+        "OKFViewer: Search index build failed after 0.5s: OSError('gone')",
+        "OKFViewer: Search ready (built), with 'grotto' typed.",
+        "OKFViewer: Search ready (failed), with '' typed.",
+    ]
+
+
 def test_the_link_and_footnote_markers(kivy_log: list[str]) -> None:
     trace.link_focus("../../characters/donald-duck.md")
     trace.link_focus("fn:bib")
