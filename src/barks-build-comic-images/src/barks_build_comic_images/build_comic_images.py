@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 
-from barks_fantagraphics.comic_book import ComicBook
+from barks_fantagraphics.comic_book import INTRO_TITLE_DEFAULT_FONT_SIZE, ComicBook
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import (
     BACK_NO_PANELS_PAGES,
@@ -56,9 +56,15 @@ from .image_io import open_image_for_reading
 INTRO_TOP = 330
 INTRO_BOTTOM_MARGIN = 380
 INTRO_TITLE_SPACING = 40
-INTRO_TITLE_COLOR = (0, 0, 0)
 INTRO_TITLE_BYLINE_MIN_GAP = 170
 INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
+# The title is lettered like a splash-page title: the story's title colour inside a black
+# outline, the letters spaced a little apart. Letters the font kerns close still share an
+# outline, as in hand lettering; spacing them all apart would push the longest titles off
+# the page. Both are for the default title font size, and scale with it.
+INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
+INTRO_TITLE_OUTLINE_WIDTH = 6
+INTRO_TITLE_TRACKING = 8
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
@@ -564,7 +570,7 @@ class ComicBookImageBuilder:
         self._draw_centered_multiline_title_text(
             title,
             title_fonts,
-            INTRO_TITLE_COLOR,
+            self._comic.title_color,
             top,
             spacing=INTRO_TITLE_SPACING,
             image=dest_page_image,
@@ -734,9 +740,57 @@ class ComicBookImageBuilder:
         return round(text_bbox[3] - text_bbox[1])
 
     @staticmethod
-    def _get_intro_text_width(draw: PilImageDraw, text: str, font: FreeTypeFont) -> int:
-        text_bbox = draw.multiline_textbbox((0, 0), text, font=font, spacing=INTRO_TITLE_SPACING)
-        return round(text_bbox[2] - text_bbox[0])
+    def _get_title_scaled(size: int, font: FreeTypeFont) -> float:
+        return size * font.size / INTRO_TITLE_DEFAULT_FONT_SIZE
+
+    def _get_title_line_width(self, line: str, font: FreeTypeFont) -> float:
+        tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, font)
+        return font.getlength(line) + (tracking * max(0, len(line) - 1))
+
+    def _get_title_text_width(self, text: str, font: FreeTypeFont) -> int:
+        return round(max(self._get_title_line_width(line, font) for line in text.split("\n")))
+
+    def _draw_title_text(
+        self,
+        draw: PilImageDraw,
+        left: float,
+        top: float,
+        text: str,
+        font: FreeTypeFont,
+        color: tuple[int, int, int],
+        spacing: int,
+    ) -> None:
+        """Letter title text in its colour inside a black outline, with spaced letters.
+
+        Each line is centred on the widest, and lines are as far apart as Pillow's
+        multiline text puts them. All the outlines go down before any colour, so a
+        letter's outline never covers its neighbour's colour.
+        """
+        tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, font)
+        outline_width = max(1, round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)))
+        line_advance = font.getbbox("A")[3] + spacing
+
+        lines = text.split("\n")
+        line_widths = [self._get_title_line_width(line, font) for line in lines]
+        letters = []
+        for line_num, (line, line_width) in enumerate(zip(lines, line_widths, strict=True)):
+            line_left = left + ((max(line_widths) - line_width) / 2)
+            line_top = top + (line_num * line_advance)
+            for i, letter in enumerate(line):
+                letter_left = line_left + font.getlength(line[:i]) + (i * tracking)
+                letters.append(((letter_left, line_top), letter))
+
+        for xy, letter in letters:
+            draw.text(
+                xy,
+                letter,
+                fill=INTRO_TITLE_OUTLINE_COLOR,
+                font=font,
+                stroke_width=outline_width,
+                stroke_fill=INTRO_TITLE_OUTLINE_COLOR,
+            )
+        for xy, letter in letters:
+            draw.text(xy, letter, fill=color, font=font)
 
     def _get_title_and_fonts(
         self,
@@ -813,7 +867,7 @@ class ComicBookImageBuilder:
             line_width = 0
             text_line = []
             for text, font in line:
-                text_width = self._get_intro_text_width(draw, text, font)
+                text_width = self._get_title_text_width(text, font)
                 line_width += text_width
                 text_line.append((text, font, text_width))
             line_widths.append(line_width)
@@ -845,13 +899,8 @@ class ComicBookImageBuilder:
                     text = text[:-1]
                     text_width -= 1
 
-                draw.multiline_text(
-                    (left, line_top + line_top_extra),
-                    text,
-                    fill=color,
-                    font=font,
-                    align="center",
-                    spacing=spacing,
+                self._draw_title_text(
+                    draw, left, line_top + line_top_extra, text, font, color, spacing
                 )
                 left += text_width
 
@@ -879,16 +928,14 @@ class ComicBookImageBuilder:
     ) -> None:
         superscript_font_size = int(0.7 * self._comic.title_font_size)
         superscript_font = ImageFont.truetype(self._comic.title_font_file, superscript_font_size)
-        draw.multiline_text(
-            (
-                left - int(0.75 * superscript_font_size),
-                top - 20,
-            ),
+        self._draw_title_text(
+            draw,
+            left - int(0.75 * superscript_font_size),
+            top - 20,
             text,
-            fill=color,
-            font=superscript_font,
-            align="center",
-            spacing=spacing,
+            superscript_font,
+            color,
+            spacing,
         )
 
 

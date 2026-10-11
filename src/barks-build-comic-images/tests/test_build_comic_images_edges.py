@@ -26,6 +26,9 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_PUB_TEXT_COLOR,
     INTRO_TITLE_BYLINE_GAP_SHARE,
     INTRO_TITLE_BYLINE_MIN_GAP,
+    INTRO_TITLE_OUTLINE_COLOR,
+    INTRO_TITLE_OUTLINE_WIDTH,
+    INTRO_TITLE_TRACKING,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
     _PubTextLine,
@@ -41,7 +44,7 @@ from barks_fantagraphics.comics_consts import (
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.panel_geometry import BoundingBox
 from comic_utils.decryption import DecryptionError
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -291,6 +294,7 @@ class TestTheIntroPageLayout:
     """The title and the publication text are pinned; the room between them is shared."""
 
     INSET_COLOR = (0, 120, 255)
+    TITLE_COLOR = (38, 104, 178)
 
     def _intro_page(self, tmp_path: Path, inset_size: tuple[int, int]) -> Image.Image:
         inset_file = tmp_path / f"inset-{inset_size[0]}x{inset_size[1]}.png"
@@ -299,6 +303,7 @@ class TestTheIntroPageLayout:
         comic.get_comic_title.return_value = "Lost in the\nAndes!"
         comic.title_font_file = CARL_BARKS_FONT_FILE
         comic.title_font_size = 155
+        comic.title_color = self.TITLE_COLOR
         comic.author_font_size = 90
         comic.fanta_info.comic_book_info.is_barks_title = True
         comic.publication_text = PUBLICATION_TEXT
@@ -367,3 +372,61 @@ class TestTheIntroPageLayout:
         assert abs(above - below) <= GAP_TOLERANCE
         assert above >= INTRO_INSET_MIN_GAP
         assert page.getpixel((page.width // 2, inset_top - 1)) == INTRO_INSET_BORDER_COLOR
+
+
+class TestTheIntroTitle:
+    """The title is in its colour inside a black outline, its letters spaced apart."""
+
+    @staticmethod
+    def _font(size: int) -> ImageFont.FreeTypeFont:
+        return ImageFont.truetype(CARL_BARKS_FONT_FILE, size)
+
+    @staticmethod
+    def _color_mask(image: Image.Image, color: tuple[int, int, int]) -> Image.Image:
+        """Return a mask of the pixels that are exactly `color`."""
+        red, green, blue = ImageChops.difference(image, Image.new("RGB", image.size, color)).split()
+        off = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+        return off.point(lambda v: 255 if v == 0 else 0)
+
+    def test_the_title_colour_sits_inside_a_black_outline(self, tmp_path: Path) -> None:
+        color = (38, 104, 178)
+        image = Image.new("RGB", (900, 300), WHITE)
+        builder = _builder(tmp_path, (8, 8))
+
+        builder._draw_title_text(ImageDraw.Draw(image), 20, 20, "Lost", self._font(155), color, 40)
+
+        colored_box = self._color_mask(image, color).getbbox()
+        outlined_box = self._color_mask(image, INTRO_TITLE_OUTLINE_COLOR).getbbox()
+        assert colored_box is not None
+        assert outlined_box is not None
+        w = INTRO_TITLE_OUTLINE_WIDTH
+        assert colored_box[0] - outlined_box[0] == pytest.approx(w, abs=1)
+        assert colored_box[1] - outlined_box[1] == pytest.approx(w, abs=1)
+        assert outlined_box[2] - colored_box[2] == pytest.approx(w, abs=1)
+        assert outlined_box[3] - colored_box[3] == pytest.approx(w, abs=1)
+
+    def test_the_letters_are_spaced_apart(self, tmp_path: Path) -> None:
+        font = self._font(155)
+        builder = _builder(tmp_path, (8, 8))
+
+        width = builder._get_title_text_width("Lost in\nthe Andes", font)
+
+        assert width == round(font.getlength("the Andes") + (8 * INTRO_TITLE_TRACKING))
+
+    def test_the_outline_and_spacing_scale_with_the_font_size(self, tmp_path: Path) -> None:
+        font = self._font(155 // 2)
+        builder = _builder(tmp_path, (8, 8))
+
+        width = builder._get_title_text_width("and", font)
+
+        tracking = INTRO_TITLE_TRACKING * font.size / 155
+        assert width == round(font.getlength("and") + (2 * tracking))
+        assert builder._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font) == pytest.approx(
+            INTRO_TITLE_OUTLINE_WIDTH / 2, abs=0.1
+        )
+
+    def test_the_title_page_title_is_in_the_comics_title_colour(self, tmp_path: Path) -> None:
+        page = TestTheIntroPageLayout()._intro_page(tmp_path, (300, 100))
+        title_band = page.crop((0, 0, page.width, 700))
+
+        assert self._color_mask(title_band, TestTheIntroPageLayout.TITLE_COLOR).getbbox()

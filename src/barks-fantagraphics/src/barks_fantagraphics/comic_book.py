@@ -63,6 +63,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 INTRO_TITLE_DEFAULT_FONT_SIZE = 155
+INTRO_TITLE_DEFAULT_COLOR = (214, 48, 39)  # #D63027; an ini's "title_color" overrides it
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
 # (volume, page_num) pairs that are "edited" or "added" fixes special cases.
@@ -139,6 +140,7 @@ class ComicBook:
     title: str
     title_font_file: Path
     title_font_size: int
+    title_color: tuple[int, int, int]
     # NOTE: Need 'issue_title' to force a series title that has
     #       changed from another title. E.g., FC 495 == Uncle Scrooge #3
     issue_title: str

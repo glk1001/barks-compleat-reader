@@ -1,3 +1,4 @@
+# cspell:ignore RRGGBB
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,12 +8,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics import comics_database as comics_database_module
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.comic_book import INTRO_TITLE_DEFAULT_COLOR
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
     TitleNotFoundError,
     _get_story_titles_dir,
+    _get_title_color,
     check_comic_ok_for_building,
     get_fanta_restored_ocr_prelim_root_dir,
     get_fanta_restored_ocr_prelim_volume_dir,
@@ -98,6 +101,23 @@ class TestGetStoryTitlesDir:
         story_titles.mkdir()
         result = _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]
         assert result == story_titles
+
+
+class TestGetTitleColor:
+    def test_no_value_is_the_default_colour(self) -> None:
+        assert _get_title_color("", Path("/ini/a.ini")) == INTRO_TITLE_DEFAULT_COLOR
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [("#D63027", (214, 48, 39)), ("#2668b2", (38, 104, 178)), (" #000000 ", (0, 0, 0))],
+    )
+    def test_hex_value_is_the_colour(self, value: str, expected: tuple[int, int, int]) -> None:
+        assert _get_title_color(value, Path("/ini/a.ini")) == expected
+
+    @pytest.mark.parametrize("value", ["D63027", "#D630", "#D6302700", "#GG3027", "red"])
+    def test_a_bad_value_names_its_ini(self, value: str) -> None:
+        with pytest.raises(ValueError, match=r"a\.ini.*is not #RRGGBB"):
+            _get_title_color(value, Path("/ini/a.ini"))
 
 
 class TestComicBookIniFiles:

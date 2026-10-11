@@ -1,8 +1,10 @@
 # ruff: noqa: ERA001
+# cspell:ignore RRGGBB
 
 import configparser
 import difflib
 import functools
+import re
 from configparser import ConfigParser, ExtendedInterpolation
 from pathlib import Path
 
@@ -13,6 +15,7 @@ from .barks_covers import get_cover_collection_pages
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
+    INTRO_TITLE_DEFAULT_COLOR,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
     ComicBook,
     ComicBookDirs,
@@ -491,6 +494,35 @@ class ComicsDatabase:
         return self._inset_dir / inset_filename
 
 
+_HEX_COLOR = re.compile(r"#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})")
+
+
+def _get_title_color(value: str, ini_file: Path) -> tuple[int, int, int]:
+    """Return the title colour an ini's ``title_color`` gives, as ``#RRGGBB``.
+
+    Args:
+        value: The ``title_color`` value, or "" when the ini has none.
+        ini_file: The ini it came from, named if the value is bad.
+
+    Returns:
+        The colour, or the default title colour when there is no value.
+
+    Raises:
+        ValueError: If the value is not ``#RRGGBB``.
+
+    """
+    if not value:
+        return INTRO_TITLE_DEFAULT_COLOR
+
+    match = _HEX_COLOR.fullmatch(value.strip())
+    if match is None:
+        msg = f'Title color "{value}" in "{get_relpath(ini_file)}" is not #RRGGBB.'
+        raise ValueError(msg)
+
+    red, green, blue = (int(c, 16) for c in match.groups())
+    return red, green, blue
+
+
 def _build_comic_book(
     story_title: str,
     ini_file: Path,
@@ -551,6 +583,7 @@ def _build_comic_book(
         title=title,
         title_font_file=INTRO_TITLE_DEFAULT_FONT_FILE,
         title_font_size=config["info"].getint("title_font_size", INTRO_TITLE_DEFAULT_FONT_SIZE),
+        title_color=_get_title_color(config["info"].get("title_color", ""), ini_file),
         issue_title=issue_title,
         author_font_size=config["info"].getint(
             "author_font_size",
