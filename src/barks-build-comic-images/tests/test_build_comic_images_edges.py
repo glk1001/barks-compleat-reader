@@ -19,12 +19,13 @@ import pytest
 from barks_build_comic_images.build_comic_images import (
     INTRO_INSET_BORDER_COLOR,
     INTRO_INSET_BORDER_WIDTH,
-    INTRO_INSET_MAX_GAP,
     INTRO_INSET_MIN_GAP,
     INTRO_PUB_CREDITS_COLOR,
     INTRO_PUB_CREDITS_LINE_ADVANCE,
     INTRO_PUB_PARAGRAPH_GAP,
     INTRO_PUB_TEXT_COLOR,
+    INTRO_TITLE_BYLINE_GAP_SHARE,
+    INTRO_TITLE_BYLINE_MIN_GAP,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
     _PubTextLine,
@@ -287,7 +288,7 @@ class TestThePublicationText:
 
 
 class TestTheIntroPageLayout:
-    """The title starts at a fixed height; the inset sits midway between byline and text."""
+    """The title and the publication text are pinned; the room between them is shared."""
 
     INSET_COLOR = (0, 120, 255)
 
@@ -311,16 +312,44 @@ class TestTheIntroPageLayout:
         ink = page.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0)
         return [y for y in range(page.height) if ink.crop((0, y, page.width, y + 1)).getbbox()]
 
+    @classmethod
+    def _ink_bands(cls, page: Image.Image) -> list[tuple[int, int]]:
+        """Return the first and last row of each run of ink rows, top to bottom."""
+        rows = cls._ink_rows(page)
+        bands = [(rows[0], rows[0])]
+        for y in rows[1:]:
+            if y == bands[-1][1] + 1:
+                bands[-1] = (bands[-1][0], y)
+            else:
+                bands.append((y, y))
+        return bands
+
     def _inset_rows(self, page: Image.Image) -> tuple[int, int]:
         column = page.width // 2
         rows = [y for y in range(page.height) if page.getpixel((column, y)) == self.INSET_COLOR]
         return rows[0], rows[-1]
 
-    def test_the_title_starts_at_the_same_height_whatever_the_inset(self, tmp_path: Path) -> None:
-        wide = self._intro_page(tmp_path, (300, 100))
-        tall = self._intro_page(tmp_path, (300, 400))
+    def test_the_title_and_publication_text_are_pinned_whatever_the_inset(
+        self, tmp_path: Path
+    ) -> None:
+        wide = self._ink_rows(self._intro_page(tmp_path, (300, 100)))
+        tall = self._ink_rows(self._intro_page(tmp_path, (300, 400)))
 
-        assert self._ink_rows(wide)[0] == self._ink_rows(tall)[0]
+        assert wide[0] == tall[0]
+        assert wide[-1] == tall[-1]
+
+    def test_spare_room_widens_the_byline_gap_by_a_smaller_share(self, tmp_path: Path) -> None:
+        page = self._intro_page(tmp_path, (300, 100))
+        inset_top, _ = self._inset_rows(page)
+        # The border runs on into the inset, so the last two bands wholly above the
+        # inset are the title's last line and the byline.
+        above_inset = [band for band in self._ink_bands(page) if band[1] < inset_top]
+        (_, title_bottom), (byline_top, byline_bottom) = above_inset[-2:]
+
+        byline_gap = byline_top - title_bottom
+        inset_gap = inset_top - byline_bottom
+        assert byline_gap > INTRO_TITLE_BYLINE_MIN_GAP
+        assert byline_gap / inset_gap == pytest.approx(INTRO_TITLE_BYLINE_GAP_SHARE, abs=0.03)
 
     @pytest.mark.parametrize("inset_size", [(300, 100), (300, 200), (300, 400)])
     def test_the_inset_is_centred_between_the_byline_and_the_publication_text(
@@ -336,5 +365,5 @@ class TestTheIntroPageLayout:
         above = inset_top - byline_bottom
         below = text_top - inset_bottom
         assert abs(above - below) <= GAP_TOLERANCE
-        assert INTRO_INSET_MIN_GAP <= above <= INTRO_INSET_MAX_GAP + GAP_TOLERANCE
+        assert above >= INTRO_INSET_MIN_GAP
         assert page.getpixel((page.width // 2, inset_top - 1)) == INTRO_INSET_BORDER_COLOR

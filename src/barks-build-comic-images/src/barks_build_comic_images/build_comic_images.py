@@ -49,14 +49,16 @@ from PIL.ImageFont import FreeTypeFont
 from .consts import FOOTNOTE_CHAR
 from .image_io import open_image_for_reading
 
-# The intro (title) page. The title starts at a fixed height on every story; the inset
-# and the publication text share the space below the byline, with equal gaps above,
-# between and below them.
+# The intro (title) page. On every story the title starts at the same height and the
+# publication text ends at the same height. The room between them, after the byline and
+# the inset, is shared by three gaps: title to byline, which takes the smaller share so
+# the byline stays with the title, and the equal gaps above and below the inset.
 INTRO_TOP = 330
-INTRO_BOTTOM_MARGIN = 260
+INTRO_BOTTOM_MARGIN = 380
 INTRO_TITLE_SPACING = 40
 INTRO_TITLE_COLOR = (0, 0, 0)
-INTRO_TITLE_BYLINE_GAP = 130
+INTRO_TITLE_BYLINE_MIN_GAP = 170
+INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
@@ -65,7 +67,6 @@ INTRO_BY_AUTHOR_GAP = 28
 # width cap lines it up with the widest title lines.
 INTRO_INSET_MAX_WIDTH = 1450
 INTRO_INSET_MIN_GAP = 130
-INTRO_INSET_MAX_GAP = 200
 INTRO_INSET_BORDER_COLOR = (138, 117, 96)
 INTRO_INSET_BORDER_WIDTH = 4
 # The first paragraph of the publication text (the original publication) is in ink,
@@ -569,36 +570,51 @@ class ComicBookImageBuilder:
             image=dest_page_image,
             draw=draw,
         )
-        top += text_height + INTRO_TITLE_SPACING + INTRO_TITLE_BYLINE_GAP
+        title_bottom = top + text_height
 
-        top = self._draw_byline(dest_page_image, draw, top)
-
-        # The inset and the publication text share what is left, with equal gaps above,
-        # between and below them; any room beyond the largest gap falls below the text.
         pub_lines = self._get_publication_text_lines()
         pub_height = self._get_publication_text_height(pub_lines)
-        room = dest_page_image.height - INTRO_BOTTOM_MARGIN - top
+        pub_top = dest_page_image.height - INTRO_BOTTOM_MARGIN - pub_height
+
+        # What is left for the inset and the three gaps around the byline and the inset.
+        room = pub_top - title_bottom - self._get_byline_height()
         inset = self._get_resized_inset(
             INTRO_INSET_MAX_WIDTH,
-            room - pub_height - (3 * INTRO_INSET_MIN_GAP),
+            room - INTRO_TITLE_BYLINE_MIN_GAP - (2 * INTRO_INSET_MIN_GAP),
         )
-        gap = (room - inset.height - pub_height) // 3
-        gap = max(INTRO_INSET_MIN_GAP, min(INTRO_INSET_MAX_GAP, gap))
+        spare = room - inset.height
+        byline_gap = round(
+            spare * INTRO_TITLE_BYLINE_GAP_SHARE / (INTRO_TITLE_BYLINE_GAP_SHARE + 2)
+        )
+        byline_gap = max(INTRO_TITLE_BYLINE_MIN_GAP, byline_gap)
+        inset_gap = (spare - byline_gap) // 2
 
-        top += gap
+        top = self._draw_byline(dest_page_image, draw, title_bottom + byline_gap)
+
+        top += inset_gap
         inset_left = (dest_page_image.width - inset.width) // 2
         dest_page_image.paste(inset, (inset_left, top))
         self._draw_inset_border(draw, inset_left, top, inset.width, inset.height)
-        top += inset.height + gap
 
-        self._draw_publication_text(dest_page_image, draw, pub_lines, top)
+        self._draw_publication_text(dest_page_image, draw, pub_lines, pub_top)
+
+    def _get_byline_fonts(self) -> tuple[FreeTypeFont, FreeTypeFont]:
+        """Return the fonts for the byline's "by" and for the author's name."""
+        author_font_size = self._comic.author_font_size
+        by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
+        return (
+            ImageFont.truetype(self._comic.title_font_file, by_font_size),
+            ImageFont.truetype(self._comic.title_font_file, author_font_size),
+        )
+
+    def _get_byline_height(self) -> int:
+        _, author_font = self._get_byline_fonts()
+        _, ink_top, _, ink_bottom = author_font.getbbox(BARKS, anchor="ls")
+        return round(ink_bottom - ink_top)
 
     def _draw_byline(self, image: PilImage, draw: PilImageDraw, top: int) -> int:
         """Draw "by Carl Barks" with the top of its ink at ``top``; return its ink bottom."""
-        author_font_size = self._comic.author_font_size
-        author_font = ImageFont.truetype(self._comic.title_font_file, author_font_size)
-        by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
-        by_font = ImageFont.truetype(self._comic.title_font_file, by_font_size)
+        by_font, author_font = self._get_byline_fonts()
 
         _, ink_top, _, ink_bottom = author_font.getbbox(BARKS, anchor="ls")
         baseline = top - ink_top
