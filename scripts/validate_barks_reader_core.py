@@ -2436,6 +2436,26 @@ def get_expected_splash_pages(title: Titles, found: Sequence[str]) -> list[str]:
     return [page for page in found if page not in exempt]
 
 
+def get_stale_splash_exception_pages(title: Titles, found: Sequence[str]) -> list[str] | None:
+    """Return what no longer applies in a story's SPLASH_EXCEPTIONS entry, if anything.
+
+    Args:
+        title: The story.
+        found: Its splash pages, as the panel boxes find them.
+
+    Returns:
+        None when the story has no exception or it still applies. Otherwise the exempt
+        pages the panel boxes no longer call splashes, or [] when they find no splash
+        at all, so the whole exception is stale.
+
+    """
+    if title not in SPLASH_EXCEPTIONS:
+        return None
+    if not found:
+        return []
+    return [page for page in SPLASH_EXCEPTIONS[title] if page not in found] or None
+
+
 def phase12_splash_tags(
     collector: ErrorCollector,
     built: BuiltLayouts | None,
@@ -2492,12 +2512,11 @@ def _check_title_splash_tags(
     except Exception as exc:  # noqa: BLE001 - Phase 10 says why; here it goes unchecked
         phase.add(f"Title:{title_str} kind=splash_unchecked reason={type(exc).__name__}: {exc}")
         return
-    if title in SPLASH_EXCEPTIONS:
-        if not found:
-            phase.add(f"Title:{title_str} kind=splash_exception_stale reason=no splash pages")
-        elif stale := [page for page in SPLASH_EXCEPTIONS[title] if page not in found]:
-            phase.add(f"Title:{title_str} kind=splash_exception_stale pages={','.join(stale)}")
-        found = get_expected_splash_pages(title, found)
+    stale = get_stale_splash_exception_pages(title, found)
+    if stale is not None:
+        detail = f"pages={','.join(stale)}" if stale else "reason=no splash pages"
+        phase.add(f"Title:{title_str} kind=splash_exception_stale {detail}")
+    found = get_expected_splash_pages(title, found)
     tagged = BARKS_TAGGED_PAGES.get((Tags.SPLASH, title), [])
     if title not in tagged_titles:
         if found:

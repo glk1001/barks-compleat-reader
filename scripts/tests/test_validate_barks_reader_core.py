@@ -705,6 +705,29 @@ class TestGetExpectedSplashPages:
             assert core.get_expected_splash_pages(_SPLASH_STORY, ["1", "7"]) == ["7"]
 
 
+class TestGetStaleSplashExceptionPages:
+    @staticmethod
+    def _stale(found: list[str], exceptions: dict[Titles, list[str]]) -> list[str] | None:
+        with patch.object(core, "SPLASH_EXCEPTIONS", exceptions):
+            return core.get_stale_splash_exception_pages(_SPLASH_STORY, found)
+
+    def test_a_title_without_an_exception_has_nothing_stale(self) -> None:
+        assert self._stale([], {}) is None
+
+    def test_an_exception_whose_pages_are_still_splashes_holds(self) -> None:
+        assert self._stale(["1", "7"], {_SPLASH_STORY: ["1"]}) is None
+
+    def test_a_whole_title_exception_holds_while_there_is_a_splash(self) -> None:
+        assert self._stale(["7"], {_SPLASH_STORY: []}) is None
+
+    def test_exempt_pages_no_longer_splashes_are_stale(self) -> None:
+        assert self._stale(["7"], {_SPLASH_STORY: ["1", "7", "9"]}) == ["1", "9"]
+
+    def test_with_no_splash_at_all_the_whole_exception_is_stale(self) -> None:
+        assert self._stale([], {_SPLASH_STORY: ["1"]}) == []
+        assert self._stale([], {_SPLASH_STORY: []}) == []
+
+
 class TestGetSplashStoryTitles:
     def test_articles_and_collections_are_left_out(self) -> None:
         titles = {STR_TITLE_TO_ENUM[t] for t in core.get_splash_story_titles()}

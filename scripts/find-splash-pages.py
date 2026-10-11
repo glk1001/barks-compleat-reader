@@ -40,6 +40,7 @@ from validate_barks_reader_core import (
     find_title_splash_pages,
     get_expected_splash_pages,
     get_splash_story_titles,
+    get_stale_splash_exception_pages,
     make_layout_builder,
 )
 
@@ -91,10 +92,9 @@ def _print_exceptions(found_pages: dict[Titles, list[str]]) -> None:
     print(f"# {len(SPLASH_EXCEPTIONS)} exception(s).")
     for title in sorted(SPLASH_EXCEPTIONS):
         exempt = SPLASH_EXCEPTIONS[title]
-        found = found_pages.get(title, [])
         left_out = ", ".join(exempt) if exempt else "whole title"
-        stale = [page for page in exempt if page not in found] if found else ["no splash pages"]
-        note = f" - STALE: {', '.join(stale)}" if stale else ""
+        stale = get_stale_splash_exception_pages(title, found_pages.get(title, []))
+        note = "" if stale is None else f" - STALE: {', '.join(stale) or 'no splash pages'}"
         print(f"#   {ENUM_TO_STR_TITLE[title]}: {left_out}{note}")
 
 
