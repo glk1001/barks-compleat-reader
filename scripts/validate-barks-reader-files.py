@@ -234,14 +234,14 @@ def main(
     if full_load_check:
         phase9_per_title_load(collector, fanta_state, titles_filter)
 
-    phase10_layout(collector, sys_paths, fanta_state, titles_filter)
+    built_layouts = phase10_layout(collector, sys_paths, fanta_state, titles_filter)
     phase11_wiki(
         collector,
         resolve_wiki_bundle_dir(cfg_info, reader_files_dir, wiki_bundle),
         titles_filter,
         strict=strict_wiki,
     )
-    phase12_splash_tags(collector, sys_paths, titles_filter)
+    phase12_splash_tags(collector, built_layouts, titles_filter)
 
     _print_final_report(collector, time.time() - started, titles_filter)
     if collector.any_failed:

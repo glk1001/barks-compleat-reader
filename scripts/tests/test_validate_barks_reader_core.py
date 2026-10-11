@@ -121,6 +121,33 @@ class TestPhase10Layout:
         assert phase.errors == []
         assert phase.items_checked == 1
 
+    @pytest.mark.usefixtures("pages")
+    def test_the_layouts_built_are_kept_for_phase_12(
+        self, sys_paths: MagicMock, segments_root: Path, db: MagicMock
+    ) -> None:
+        self._write_segment_files(segments_root, "001", "002")
+        built = core.phase10_layout(core.ErrorCollector(), sys_paths, core.FantaState(), [ANDES])
+        assert built is not None
+        assert built.db is db
+        assert built.panel_segments_root == segments_root
+        comic, layout = built.layouts[ANDES]
+        assert comic is db.get_comic_book.return_value
+        assert list(layout.page_map) == ["1", "2"]
+
+    @pytest.mark.usefixtures("db")
+    def test_a_layout_that_failed_is_not_kept(
+        self, sys_paths: MagicMock, segments_root: Path, pages: MagicMock
+    ) -> None:
+        self._write_segment_files(segments_root, "001", "002")
+        pages.get_sorted_pages.side_effect = FileNotFoundError("no such json")
+        built = core.phase10_layout(core.ErrorCollector(), sys_paths, core.FantaState(), [ANDES])
+        assert built is not None
+        assert built.layouts == {}
+
+    def test_without_a_database_there_are_no_layouts(self, sys_paths: MagicMock) -> None:
+        with patch.object(core, "ComicsDatabase", side_effect=RuntimeError("no ini")):
+            assert core.phase10_layout(core.ErrorCollector(), sys_paths, core.FantaState()) is None
+
     @pytest.mark.usefixtures("db")
     def test_a_raising_build_is_a_layout_failure(
         self, sys_paths: MagicMock, segments_root: Path, pages: MagicMock
@@ -495,9 +522,9 @@ class TestFindTitleSplashPages:
         }
         db = MagicMock()
         db.get_fantagraphics_volume_title.return_value = VOLUME_DIR
-        builder = MagicMock()
-        builder.build.return_value.page_map = page_map
-        return core.find_title_splash_pages(db, builder, tmp_path, ANDES)
+        layout = MagicMock()
+        layout.page_map = page_map
+        return core.find_title_splash_pages(db, MagicMock(), layout, tmp_path)
 
     def test_a_splash_is_found_by_its_page_number(self, tmp_path: Path) -> None:
         (tmp_path / VOLUME_DIR).mkdir()
@@ -523,6 +550,16 @@ _SPLASH_STORY = Titles.LOST_IN_THE_ANDES
 _OTHER_STORY = Titles.VOODOO_HOODOO
 
 
+def _built_layouts(*title_strs: str) -> core.BuiltLayouts:
+    """Stand in for Phase 10's layouts: each story's comic carries its title."""
+    built = core.BuiltLayouts(MagicMock(), Path("segments"))
+    for title_str in title_strs:
+        comic = MagicMock()
+        comic.title_str = title_str
+        built.layouts[title_str] = (comic, MagicMock())
+    return built
+
+
 class TestPhase12SplashTags:
     @staticmethod
     def _run(
@@ -532,16 +569,16 @@ class TestPhase12SplashTags:
         story_titles: list[Titles] | None = None,
         exceptions: dict[Titles, list[str]] | None = None,
     ) -> core.PhaseResult:
-        def find(_db: object, _builder: object, _root: Path, title_str: str) -> list[str]:
-            result = found.get(STR_TITLE_TO_ENUM[title_str], [])
+        def find(_db: object, comic: MagicMock, _layout: object, _root: Path) -> list[str]:
+            result = found.get(STR_TITLE_TO_ENUM[comic.title_str], [])
             if isinstance(result, Exception):
                 raise result
             return result
 
         stories = [ENUM_TO_STR_TITLE[t] for t in (story_titles or list(found))]
+        built = _built_layouts(*stories)
         collector = core.ErrorCollector()
         with (
-            patch.object(core, "ComicsDatabase"),
             patch.object(core, "get_splash_story_titles", return_value=stories),
             patch.object(core, "find_title_splash_pages", side_effect=find),
             patch.object(core, "BARKS_TAGGED_TITLES", {core.Tags.SPLASH: list(tagged)}),
@@ -552,7 +589,7 @@ class TestPhase12SplashTags:
             ),
             patch.object(core, "SPLASH_EXCEPTIONS", exceptions or {}),
         ):
-            core.phase12_splash_tags(collector, MagicMock(), titles_filter)
+            core.phase12_splash_tags(collector, built, titles_filter)
         return _only_phase(collector)
 
     def test_tags_that_agree_with_the_panels_pass(self) -> None:
@@ -578,6 +615,21 @@ class TestPhase12SplashTags:
     def test_a_story_whose_pages_cannot_be_read_is_unchecked(self) -> None:
         phase = self._run({_SPLASH_STORY: FileNotFoundError("no json")}, {_SPLASH_STORY: ["7"]})
         assert _kinds(phase) == ["kind=splash_unchecked"]
+
+    def test_a_story_phase_10_could_not_lay_out_is_unchecked(self) -> None:
+        collector = core.ErrorCollector()
+        with patch.object(core, "get_splash_story_titles", return_value=[ANDES]):
+            core.phase12_splash_tags(collector, _built_layouts(), [ANDES])
+        phase = _only_phase(collector)
+        assert _kinds(phase) == ["kind=splash_unchecked"]
+        assert "no layout from Phase 10" in phase.errors[0]
+
+    def test_without_phase_10s_layouts_nothing_is_checked(self) -> None:
+        collector = core.ErrorCollector()
+        core.phase12_splash_tags(collector, None)
+        phase = _only_phase(collector)
+        assert phase.errors == ["unchecked: Phase 10 built no layouts (no comics database)"]
+        assert phase.items_checked == 0
 
     def test_a_tagged_title_that_is_no_story_checked(self) -> None:
         one_pager = next(iter(ONE_PAGERS))

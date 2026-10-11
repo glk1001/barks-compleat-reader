@@ -40,7 +40,7 @@ from validate_barks_reader_core import (
     find_title_splash_pages,
     get_expected_splash_pages,
     get_splash_story_titles,
-    make_splash_layout_builder,
+    make_layout_builder,
 )
 
 if TYPE_CHECKING:
@@ -147,11 +147,12 @@ def main() -> None:
     db = ComicsDatabase(for_building_comics=False)
     reader_settings = _get_reader_settings()
     panel_segments_root = _get_panel_segments_root(reader_settings)
-    builder = make_splash_layout_builder(db, panel_segments_root)
+    builder = make_layout_builder(db, panel_segments_root)
 
     found_pages: dict[Titles, list[str]] = {}
     for title_str in get_splash_story_titles():
-        pages = find_title_splash_pages(db, builder, panel_segments_root, title_str)
+        comic = db.get_comic_book(title_str)
+        pages = find_title_splash_pages(db, comic, builder.build(comic), panel_segments_root)
         if pages:
             found_pages[STR_TITLE_TO_ENUM[title_str]] = pages
     splash_pages = {

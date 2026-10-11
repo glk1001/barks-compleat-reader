@@ -47,7 +47,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
 from barks_fantagraphics.splash_pages import get_panel_area_fractions, get_splash_pages
-from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
+from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     EmptyArchiveError,
@@ -1840,12 +1840,38 @@ class _Phase10Counts:
     stale_json: int = 0
 
 
+@dataclass(frozen=True, slots=True)
+class BuiltLayouts:
+    """The layouts Phase 10 built, for Phase 12 to judge without building them again."""
+
+    db: ComicsDatabase
+    panel_segments_root: Path
+    # Each title laid out cleanly enough to read: its comic and its layout.
+    layouts: dict[str, tuple[ComicBook, ComicLayout]] = field(default_factory=dict)
+
+
+def make_layout_builder(db: ComicsDatabase, panel_segments_root: Path) -> ComicLayoutBuilder:
+    """Return the reader's layout builder, reading panel segments from a given root.
+
+    Args:
+        db: The comics database.
+        panel_segments_root: The directory holding each volume's panel-segments JSONs.
+
+    Returns:
+        A builder that lays out each comic's pages as the reader does.
+
+    """
+    return ComicLayoutBuilder(
+        sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
+    )
+
+
 def phase10_layout(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     fanta_state: FantaState,
     titles_filter: list[str] | None = None,
-) -> None:
+) -> BuiltLayouts | None:
     """Phase 10: check panel-segments JSONs and build each title's reader layout.
 
     Args:
@@ -1855,6 +1881,9 @@ def phase10_layout(
             what each JSON's staleness is measured against.
         titles_filter: Optional subset of titles to check. ``None`` runs all titles.
 
+    Returns:
+        The layouts built, for Phase 12; None if the comics database could not be made.
+
     """
     phase = collector.start_phase("Per-title Layouts", "10")
 
@@ -1863,12 +1892,11 @@ def phase10_layout(
     except Exception as exc:  # noqa: BLE001
         phase.add(f"could not construct ComicsDatabase: {exc}")
         collector.finalize_phase(phase)
-        return
+        return None
 
     panel_segments_root = sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
-    builder = ComicLayoutBuilder(
-        sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
-    )
+    builder = make_layout_builder(db, panel_segments_root)
+    built = BuiltLayouts(db, panel_segments_root)
     counts = _Phase10Counts()
 
     for title_str, fanta_info in _loadable_titles(titles_filter):
@@ -1896,7 +1924,9 @@ def phase10_layout(
             # The layout build reads those same JSONs: it could only fail again on
             # the file already reported.
             continue
-        _check_title_layout(phase, counts, title_str, comic, builder)
+        layout = _check_title_layout(phase, counts, title_str, comic, builder)
+        if layout is not None:
+            built.layouts[title_str] = (comic, layout)
 
     phase.summary_extra = (
         f"({counts.load_failed} load-failed,"
@@ -1906,6 +1936,7 @@ def phase10_layout(
         f" {counts.stale_json} stale-json)"
     )
     collector.finalize_phase(phase)
+    return built
 
 
 def _loadable_titles(titles_filter: list[str] | None) -> list[tuple[str, FantaComicBookInfo]]:
@@ -2040,20 +2071,25 @@ def _check_title_layout(
     title_str: str,
     comic: ComicBook,
     builder: ComicLayoutBuilder,
-) -> None:
-    """Build a title's layout as the reader does, and sanity-check the result."""
+) -> ComicLayout | None:
+    """Build a title's layout as the reader does, and sanity-check the result.
+
+    Returns:
+        The layout, when it built and has pages; None otherwise.
+
+    """
     try:
         layout = builder.build(comic)
     except Exception as exc:  # noqa: BLE001 - any raise is a title the reader cannot open
         counts.layout_failed += 1
         phase.add(f"Title:{title_str} kind=layout_build_failed reason={type(exc).__name__}: {exc}")
-        return
+        return None
 
     page_map = layout.page_map
     if not page_map:
         counts.layout_failed += 1
         phase.add(f"Title:{title_str} kind=layout_empty")
-        return
+        return None
     if not layout.last_body_page and STR_TITLE_TO_ENUM[title_str] not in NON_COMIC_TITLES:
         counts.layout_failed += 1
         phase.add(f"Title:{title_str} kind=layout_no_body_page")
@@ -2061,6 +2097,7 @@ def _check_title_layout(
     if indexes != list(range(len(indexes))):
         counts.layout_failed += 1
         phase.add(f"Title:{title_str} kind=layout_index_gap indexes={indexes}")
+    return layout
 
 
 # ---------------------------------------------------------------------------
@@ -2317,9 +2354,7 @@ def _story_dirs(title_enum: Titles) -> str:
 # scripts/find-splash-pages.py); the panel-segments JSONs say which pages are
 # splashes. Page 1 is judged too, but its title panel is often near a splash's size,
 # so SPLASH_EXCEPTIONS leaves out by hand each page the panel boxes call a splash
-# that is not one.
-
-_PANEL_BOUNDING_LOGGER = "barks_fantagraphics.panel_bounding"
+# that is not one. The pages are numbered by the layouts Phase 10 built.
 
 
 def get_splash_story_titles(titles_filter: list[str] | None = None) -> list[str]:
@@ -2343,21 +2378,20 @@ def get_splash_story_titles(titles_filter: list[str] | None = None) -> list[str]
 
 
 def find_title_splash_pages(
-    db: ComicsDatabase, builder: ComicLayoutBuilder, panel_segments_root: Path, title_str: str
+    db: ComicsDatabase, comic: ComicBook, layout: ComicLayout, panel_segments_root: Path
 ) -> list[str]:
     """Return a story's splash pages, numbered as the reader numbers them.
 
     Args:
         db: The comics database.
-        builder: A layout builder reading the same panel-segments root.
+        comic: The story.
+        layout: Its layout, built from the same panel-segments root.
         panel_segments_root: The directory holding each volume's panel-segments JSONs.
-        title_str: The story.
 
     Returns:
         The splash pages' numbers, in page order.
 
     """
-    comic = db.get_comic_book(title_str)
     segments_dir = panel_segments_root / db.get_fantagraphics_volume_title(comic.get_fanta_volume())
     pages = {
         page.display_page_num: get_panel_area_fractions(
@@ -2367,7 +2401,7 @@ def find_title_splash_pages(
                 ).read_text(encoding="utf-8")
             )
         )
-        for page in builder.build(comic).page_map.values()
+        for page in layout.page_map.values()
         if page.page_type == PageType.BODY
     }
     return get_splash_pages(pages)
@@ -2392,25 +2426,9 @@ def get_expected_splash_pages(title: Titles, found: Sequence[str]) -> list[str]:
     return [page for page in found if page not in exempt]
 
 
-def make_splash_layout_builder(db: ComicsDatabase, panel_segments_root: Path) -> ComicLayoutBuilder:
-    """Return the reader's layout builder, reading panel segments from a given root.
-
-    Args:
-        db: The comics database.
-        panel_segments_root: The directory holding each volume's panel-segments JSONs.
-
-    Returns:
-        A builder that lays out each comic's pages as the reader does.
-
-    """
-    return ComicLayoutBuilder(
-        sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
-    )
-
-
 def phase12_splash_tags(
     collector: ErrorCollector,
-    sys_paths: SystemFilePaths,
+    built: BuiltLayouts | None,
     titles_filter: list[str] | None = None,
 ) -> None:
     """Phase 12: check Tags.SPLASH and its pages against the panel-segments JSONs.
@@ -2420,35 +2438,24 @@ def phase12_splash_tags(
 
     Args:
         collector: Aggregator for phase results.
-        sys_paths: Resolved :class:`SystemFilePaths`, for the panel-segments root.
+        built: The layouts Phase 10 built, run with the same ``titles_filter``; None
+            if it could not make the comics database (it said why).
         titles_filter: Optional subset of titles to check. ``None`` runs all titles,
             and then also reports a tagged title that is no story checked here.
 
     """
     phase = collector.start_phase("Splash Tags", "12")
 
-    try:
-        db = ComicsDatabase(for_building_comics=False)
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not construct ComicsDatabase: {exc}")
+    if built is None:
+        phase.add("unchecked: Phase 10 built no layouts (no comics database)")
         collector.finalize_phase(phase)
         return
 
-    panel_segments_root = sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
-    builder = make_splash_layout_builder(db, panel_segments_root)
     tagged_titles = set(BARKS_TAGGED_TITLES.get(Tags.SPLASH, []))
-
     story_titles = get_splash_story_titles(titles_filter)
-    # Building each layout again would repeat the panel-bounds warnings Phase 10 logged.
-    logger.disable(_PANEL_BOUNDING_LOGGER)
-    try:
-        for title_str in story_titles:
-            phase.items_checked += 1
-            _check_title_splash_tags(
-                phase, db, builder, panel_segments_root, title_str, tagged_titles
-            )
-    finally:
-        logger.enable(_PANEL_BOUNDING_LOGGER)
+    for title_str in story_titles:
+        phase.items_checked += 1
+        _check_title_splash_tags(phase, built, title_str, tagged_titles)
 
     if titles_filter is None:
         checked = {STR_TITLE_TO_ENUM[title_str] for title_str in story_titles}
@@ -2462,17 +2469,16 @@ def phase12_splash_tags(
 
 
 def _check_title_splash_tags(
-    phase: PhaseResult,
-    db: ComicsDatabase,
-    builder: ComicLayoutBuilder,
-    panel_segments_root: Path,
-    title_str: str,
-    tagged_titles: set[Titles],
+    phase: PhaseResult, built: BuiltLayouts, title_str: str, tagged_titles: set[Titles]
 ) -> None:
     """Check one story's splash tag and pages against its panel-segments JSONs."""
     title = STR_TITLE_TO_ENUM[title_str]
+    if title_str not in built.layouts:
+        phase.add(f"Title:{title_str} kind=splash_unchecked reason=no layout from Phase 10")
+        return
+    comic, layout = built.layouts[title_str]
     try:
-        found = find_title_splash_pages(db, builder, panel_segments_root, title_str)
+        found = find_title_splash_pages(built.db, comic, layout, built.panel_segments_root)
     except Exception as exc:  # noqa: BLE001 - Phase 10 says why; here it goes unchecked
         phase.add(f"Title:{title_str} kind=splash_unchecked reason={type(exc).__name__}: {exc}")
         return
