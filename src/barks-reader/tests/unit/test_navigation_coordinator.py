@@ -403,6 +403,20 @@ class TestNavigationCoordinator:
         nav_coord.on_comic_closed()  # a comic opened some other way, e.g. a collection
         offered.assert_called_once_with("9", active=True, tagged_pages=())
 
+    def test_a_comic_closed_at_its_beginning_with_no_tag_offers_no_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        nav_coord._current_fanta_info = MagicMock()
+        last_page = MagicMock()
+        last_page.display_page_num = COMIC_BEGIN_PAGE
+        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+
+        nav_coord.on_comic_closed()
+
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            active=False
+        )
+
     def test_on_document_closed_restores_view_state(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
