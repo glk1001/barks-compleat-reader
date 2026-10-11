@@ -13,8 +13,10 @@
 >   GUI suite 98/98, `validate`, `fetch-build`); one run of them all, end to end, to come.
 > - Step 2 keeping the machine awake and fit to run: DONE (the runner holds the display;
 >   the one-off setup is in `docs/setup.md`, Windows)
-> - Step 3 the nightly schedule: WRITTEN (`scripts/windows/register-overnight-task.ps1`);
->   not yet registered, two nights to see
+> - Step 3 the nightly schedule: DONE another way, 2026-10-11: the laptop runs nightly
+>   through the wake, run and sleep task in `docs/overnight-schedule.md` (01:00, pulls
+>   first); `scripts/windows/register-overnight-task.ps1` stays as the simpler
+>   alternative, not registered. Two nights to see
 > - Step 4 the validate stage, once the data is there: DONE. `validate --full-load-check
 >   --strict-wiki` passed on the laptop, every phase (e79b5ae5): the prebuilt comics
 >   copied to `~\Books\Carl Barks\The Comics`, the two `?` titles named safely everywhere

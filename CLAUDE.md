@@ -79,7 +79,9 @@ On Windows or macOS, `uv run python scripts/run_overnight_desktop.py` (same opti
 summary) runs what only a desktop machine can: the suite with the data pack, the GUI suite
 on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,
 `validate`, the wiki copy's freshness (barks-wiki pulled first, where safe), and the coverage of what only that platform runs; on Windows nightly through
-`scripts/windows/register-overnight-task.ps1`, and
+the wake, run and sleep task in `docs/overnight-schedule.md` (which schedules the Linux
+machines too, and lists the commands to run, watch, stop and pause each one;
+`scripts/windows/register-overnight-task.ps1` is the simpler alternative), and
 `uv run python scripts/check_windows_overnight_host.py` (on a Mac,
 `scripts/check_macos_overnight_host.py`) says what a machine still lacks for it (setup: `docs/setup.md`, Windows and "A macOS overnight machine", a clean Mac's checklist).
 Plan: `docs/plans/windows-overnight.md`. On a Mac, start it
@@ -99,7 +101,7 @@ Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnigh
 its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
 runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
 the new coverage stage). The nightly task `register-overnight-task.ps1` registers does
-not pull first.
+not pull first; the one in `docs/overnight-schedule.md` does.
 `uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST [MACOS_HOST]`
 combines the machines' coverage of the newest commit all ran overnight (`--commit`), or of
 commits with the same `src/` tree, reported against that source: each platform, all
