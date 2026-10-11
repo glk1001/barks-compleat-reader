@@ -2315,7 +2315,9 @@ def _story_dirs(title_enum: Titles) -> str:
 #
 # Tags.SPLASH and its pages in BARKS_TAGGED_PAGES are written by hand (from
 # scripts/find-splash-pages.py); the panel-segments JSONs say which pages are
-# splashes. Page 1 is left out: its title panel is often as big as a splash.
+# splashes. Page 1 is judged too, but its title panel is often near a splash's size,
+# so SPLASH_EXCEPTIONS leaves out by hand each page the panel boxes call a splash
+# that is not one.
 
 _PANEL_BOUNDING_LOGGER = "barks_fantagraphics.panel_bounding"
 
@@ -2391,7 +2393,16 @@ def get_expected_splash_pages(title: Titles, found: Sequence[str]) -> list[str]:
 
 
 def make_splash_layout_builder(db: ComicsDatabase, panel_segments_root: Path) -> ComicLayoutBuilder:
-    """Return the reader's layout builder, reading panel segments from a given root."""
+    """Return the reader's layout builder, reading panel segments from a given root.
+
+    Args:
+        db: The comics database.
+        panel_segments_root: The directory holding each volume's panel-segments JSONs.
+
+    Returns:
+        A builder that lays out each comic's pages as the reader does.
+
+    """
     return ComicLayoutBuilder(
         sorted_pages_port=FantagraphicsPanelSegmentsAdapter(db, panel_segments_root)
     )

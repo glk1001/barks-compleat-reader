@@ -13,8 +13,12 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 # How many normal panels' space a page's largest panel must cover to be a splash.
-# Measured over every Fantagraphics story: each splash covers 3.7 to 4.2 (and some
-# bigger panels 5.4 to 8.3), while the largest non-splash covers at most 3.1.
+# Measured over every Fantagraphics story (2026-10-11): off page 1 it divides cleanly,
+# each splash covering at least 3.9 and no other panel more than 3.1. Page 1 has no
+# such gap: dozens of title panels cover 3.45 to 3.56 (one 3.95), among page-1
+# splashes from 3.53 up. The 35 title panels over the line are left out by hand
+# (SPLASH_EXCEPTIONS), and Phase 12 of validate-barks-reader-files.py fails on any
+# page that crosses it either way.
 SPLASH_PANEL_UNITS: Final = 3.5
 
 

@@ -137,6 +137,12 @@ def _cross_check(
 
 @app.command(help="Find every story's splash pages and print them as tag data.")
 def main() -> None:
+    """Find every story's splash pages and print them as tag data, then cross-check them.
+
+    Prints the Tags.SPLASH data less SPLASH_EXCEPTIONS' pages, each exception and
+    whether it still applies, and each way the ini files and the Splash folder
+    disagree with the panel boxes.
+    """
     logger.remove()
     db = ComicsDatabase(for_building_comics=False)
     reader_settings = _get_reader_settings()
