@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-09-30.
+Last updated: 2026-10-11.
 
 ---
 
@@ -235,6 +235,19 @@ in the OCR repo, which is read-only from here:
 - [ ] **DMG packaging** — `hdiutil` in build.sh to produce the familiar
       drag-to-Applications disk image instead of a bare zip. Cosmetic; a few
       lines in CI; lowest priority.
+
+## Title view layout
+
+- [ ] **Title over the info lines on a narrow, tall window** — seen 2026-10-11 while
+      checking the goto-page row (4f640223): at 700x1300 on the nested probe display,
+      the story title (`main_title_label`) is drawn over the "1st Issue / Submitted /
+      Payslip / Source" lines (`title_info_label`), for both Lost in the Andes! and The
+      Firebug. At 900x1300 and 900x1000 they do not touch. The font sizes are chosen by
+      window height alone (`font_manager.update_font_sizes`: the large group above
+      1090 px), not width, so a narrow window over that height gets the large fonts in
+      too little width; that is the likely cause, not yet confirmed. To reproduce: boot
+      the probe with `BARKS_PROBE_SCREEN=700x1300` onto any story. No GUI test runs that
+      size.
 
 ## Architecture / testability
 
