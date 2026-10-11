@@ -219,7 +219,9 @@ def get_page_run_starts(page_nums_str: Sequence[str]) -> list[str]:
         Each run's first page, in page order: ["7", "13", "16"] for 7, 13 and 16 to 23.
 
     """
-    roman_pages = sorted({p for p in page_nums_str if p in ROMAN_NUMERALS_SET})
+    roman_pages = sorted(
+        {p for p in page_nums_str if p in ROMAN_NUMERALS_SET}, key=get_page_sort_key
+    )
     int_pages = [int(p) for p in page_nums_str if p not in ROMAN_NUMERALS_SET]
     return roman_pages + [str(first) for first, _last in intspan(int_pages).ranges()]
 

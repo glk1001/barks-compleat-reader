@@ -311,9 +311,10 @@ class TestReaderUtils:
     def test_get_page_run_starts(self, pages: list[str], starts: list[str]) -> None:
         assert get_page_run_starts(pages) == starts
 
-    def test_get_page_run_starts_puts_each_front_matter_page_first(self) -> None:
-        with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
-            assert get_page_run_starts(["2", "ii", "1", "i", "5"]) == ["i", "ii", "1", "5"]
+    def test_get_page_run_starts_puts_each_front_matter_page_first_in_page_order(self) -> None:
+        # Sorted as strings, "ix" would come before "v", and "iv" before both.
+        pages = ["2", "v", "1", "ix", "5", "iv"]
+        assert get_page_run_starts(pages) == ["iv", "v", "ix", "1", "5"]
 
     def test_get_page_sort_key_puts_front_matter_first_then_numbers(self) -> None:
         pages = ["9", "x", "14", "1", "iv", "ii"]
