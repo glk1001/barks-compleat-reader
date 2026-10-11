@@ -1,4 +1,5 @@
 # ruff: noqa: PLR0911
+# cspell:ignore getbbox
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -15,7 +16,8 @@ from barks_fantagraphics.comics_consts import (
     DEST_TARGET_HEIGHT,
     DEST_TARGET_WIDTH,
     DEST_TARGET_X_MARGIN,
-    INTRO_TEXT_FONT_FILE,
+    INTRO_PUB_TEXT_BOLD_FONT_FILE,
+    INTRO_PUB_TEXT_FONT_FILE,
     PAGE_NUM_COLOR,
     PAGE_NUM_FONT_FILE,
     PAGE_NUM_FONT_SIZE,
@@ -47,19 +49,35 @@ from PIL.ImageFont import FreeTypeFont
 from .consts import FOOTNOTE_CHAR
 from .image_io import open_image_for_reading
 
-INTRO_TOP = 350
-INTRO_BOTTOM_MARGIN = INTRO_TOP
-INTRO_TITLE_SPACING = 50
+# The intro (title) page. The title starts at a fixed height on every story; the inset
+# and the publication text share the space below the byline, with equal gaps above,
+# between and below them.
+INTRO_TOP = 330
+INTRO_BOTTOM_MARGIN = 260
+INTRO_TITLE_SPACING = 40
 INTRO_TITLE_COLOR = (0, 0, 0)
-INTRO_TITLE_AUTHOR_GAP = 130
-INTRO_TITLE_AUTHOR_BY_GAP = INTRO_TITLE_AUTHOR_GAP
+INTRO_TITLE_BYLINE_GAP = 130
+# "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
-INTRO_AUTHOR_INSET_GAP = 8
-INTRO_MAX_WIDTH_INSET_MARGIN_FRAC = 0.05
-INTRO_MAX_HEIGHT_INSET_MARGIN_FRAC = 0.18
-INTRO_PUB_TEXT_FONT_SIZE = 35
+INTRO_BY_FONT_SIZE_FRAC = 0.6
+INTRO_BY_AUTHOR_GAP = 28
+# The inset is framed like a story panel, but in sepia rather than black ink. Its
+# width cap lines it up with the widest title lines.
+INTRO_INSET_MAX_WIDTH = 1450
+INTRO_INSET_MIN_GAP = 130
+INTRO_INSET_MAX_GAP = 200
+INTRO_INSET_BORDER_COLOR = (138, 117, 96)
+INTRO_INSET_BORDER_WIDTH = 4
+# The first paragraph of the publication text (the original publication) is in ink,
+# its first line bold; any later paragraphs (this edition's credits) are smaller and
+# in sepia. Advances are baseline to baseline.
+INTRO_PUB_TEXT_FONT_SIZE = 40
 INTRO_PUB_TEXT_COLOR = (0, 0, 0)
-INTRO_PUB_TEXT_SPACING = 20
+INTRO_PUB_TEXT_LINE_ADVANCE = 58
+INTRO_PUB_CREDITS_FONT_SIZE = 35
+INTRO_PUB_CREDITS_COLOR = (84, 72, 60)
+INTRO_PUB_CREDITS_LINE_ADVANCE = 50
+INTRO_PUB_PARAGRAPH_GAP = 34
 
 SPLASH_BORDER_COLOR = (0, 0, 0)
 SPLASH_BORDER_WIDTH = 10
@@ -166,6 +184,20 @@ class BuildSourceProfile:
 
     page_image_source: PageImageSource
     srce_story_file_resolver: SrceStoryFileResolver
+
+
+@dataclass(frozen=True)
+class _PubTextLine:
+    """One line of the intro page's publication text, styled for drawing.
+
+    ``advance`` is the distance from the previous line's baseline; the first line's
+    is unused, since the block is placed by the top of its ink.
+    """
+
+    text: str
+    font: FreeTypeFont
+    color: tuple[int, int, int]
+    advance: int
 
 
 RGB_PROFILE = BuildSourceProfile(
@@ -537,53 +569,122 @@ class ComicBookImageBuilder:
             image=dest_page_image,
             draw=draw,
         )
-        top += text_height + INTRO_TITLE_SPACING
+        top += text_height + INTRO_TITLE_SPACING + INTRO_TITLE_BYLINE_GAP
 
-        top += INTRO_TITLE_AUTHOR_GAP
-        text = "by"
-        by_font_size = int(0.6 * self._comic.author_font_size)
+        top = self._draw_byline(dest_page_image, draw, top)
+
+        # The inset and the publication text share what is left, with equal gaps above,
+        # between and below them; any room beyond the largest gap falls below the text.
+        pub_lines = self._get_publication_text_lines()
+        pub_height = self._get_publication_text_height(pub_lines)
+        room = dest_page_image.height - INTRO_BOTTOM_MARGIN - top
+        inset = self._get_resized_inset(
+            INTRO_INSET_MAX_WIDTH,
+            room - pub_height - (3 * INTRO_INSET_MIN_GAP),
+        )
+        gap = (room - inset.height - pub_height) // 3
+        gap = max(INTRO_INSET_MIN_GAP, min(INTRO_INSET_MAX_GAP, gap))
+
+        top += gap
+        inset_left = (dest_page_image.width - inset.width) // 2
+        dest_page_image.paste(inset, (inset_left, top))
+        self._draw_inset_border(draw, inset_left, top, inset.width, inset.height)
+        top += inset.height + gap
+
+        self._draw_publication_text(dest_page_image, draw, pub_lines, top)
+
+    def _draw_byline(self, image: PilImage, draw: PilImageDraw, top: int) -> int:
+        """Draw "by Carl Barks" with the top of its ink at ``top``; return its ink bottom."""
+        author_font_size = self._comic.author_font_size
+        author_font = ImageFont.truetype(self._comic.title_font_file, author_font_size)
+        by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
         by_font = ImageFont.truetype(self._comic.title_font_file, by_font_size)
-        text_height = self._get_intro_text_height(draw, text, by_font)
-        self._draw_centered_text(text, dest_page_image, draw, by_font, INTRO_AUTHOR_COLOR, top)
-        top += text_height
 
-        top += INTRO_TITLE_AUTHOR_BY_GAP
-        text = f"{BARKS}"
-        author_font = ImageFont.truetype(self._comic.title_font_file, self._comic.author_font_size)
-        text_height = self._get_intro_text_height(draw, text, author_font)
-        self._draw_centered_text(text, dest_page_image, draw, author_font, INTRO_AUTHOR_COLOR, top)
-        top += text_height + INTRO_AUTHOR_INSET_GAP
+        _, ink_top, _, ink_bottom = author_font.getbbox(BARKS, anchor="ls")
+        baseline = top - ink_top
 
-        pub_text_font = FreeTypeFont(
-            INTRO_TEXT_FONT_FILE,
-            INTRO_PUB_TEXT_FONT_SIZE,
-        )
-        text_height = self._get_intro_text_height(draw, self._comic.publication_text, pub_text_font)
-        pub_text_top = dest_page_image.height - INTRO_BOTTOM_MARGIN - text_height
-
-        inset_pos, new_inset = self._get_resized_inset(
-            top,
-            pub_text_top,
-            dest_page_image.width,
-        )
-        dest_page_image.paste(new_inset, inset_pos)
-
-        self._draw_centered_multiline_text(
-            self._comic.publication_text,
-            dest_page_image,
-            draw,
-            pub_text_font,
-            INTRO_PUB_TEXT_COLOR,
-            pub_text_top,
-            INTRO_PUB_TEXT_SPACING,
+        by_width = draw.textlength("by", by_font)
+        author_width = draw.textlength(BARKS, author_font)
+        left = (image.width - (by_width + INTRO_BY_AUTHOR_GAP + author_width)) / 2
+        draw.text((left, baseline), "by", fill=INTRO_AUTHOR_COLOR, font=by_font, anchor="ls")
+        author_left = left + by_width + INTRO_BY_AUTHOR_GAP
+        draw.text(
+            (author_left, baseline), BARKS, fill=INTRO_AUTHOR_COLOR, font=author_font, anchor="ls"
         )
 
-    def _get_resized_inset(
-        self,
-        top: int,
-        bottom: int,
-        page_width: int,
-    ) -> tuple[tuple[int, int], PilImage]:
+        return round(baseline + ink_bottom)
+
+    def _get_publication_text_lines(self) -> list[_PubTextLine]:
+        first_paragraph, *credit_paragraphs = self._comic.publication_text.strip("\n").split("\n\n")
+
+        bold_font = ImageFont.truetype(INTRO_PUB_TEXT_BOLD_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
+        font = ImageFont.truetype(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
+        credits_font = ImageFont.truetype(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_CREDITS_FONT_SIZE)
+
+        lines = [
+            _PubTextLine(
+                text,
+                bold_font if i == 0 else font,
+                INTRO_PUB_TEXT_COLOR,
+                INTRO_PUB_TEXT_LINE_ADVANCE,
+            )
+            for i, text in enumerate(first_paragraph.split("\n"))
+        ]
+        for paragraph in credit_paragraphs:
+            for i, text in enumerate(paragraph.split("\n")):
+                advance = INTRO_PUB_CREDITS_LINE_ADVANCE
+                if i == 0:
+                    advance += INTRO_PUB_PARAGRAPH_GAP
+                lines.append(_PubTextLine(text, credits_font, INTRO_PUB_CREDITS_COLOR, advance))
+
+        return lines
+
+    @staticmethod
+    def _get_publication_text_baselines(lines: list[_PubTextLine], top: int) -> list[int]:
+        """Return each line's baseline, for a block whose ink starts at ``top``."""
+        first = lines[0]
+        baseline = round(top - first.font.getbbox(first.text, anchor="ms")[1])
+        baselines = [baseline]
+        for line in lines[1:]:
+            baseline += line.advance
+            baselines.append(baseline)
+        return baselines
+
+    def _get_publication_text_height(self, lines: list[_PubTextLine]) -> int:
+        last = lines[-1]
+        last_baseline = self._get_publication_text_baselines(lines, 0)[-1]
+        return round(last_baseline + last.font.getbbox(last.text, anchor="ms")[3])
+
+    def _draw_publication_text(
+        self, image: PilImage, draw: PilImageDraw, lines: list[_PubTextLine], top: int
+    ) -> None:
+        centre = image.width / 2
+        for line, baseline in zip(
+            lines, self._get_publication_text_baselines(lines, top), strict=True
+        ):
+            draw.text((centre, baseline), line.text, fill=line.color, font=line.font, anchor="ms")
+
+    @staticmethod
+    def _draw_inset_border(
+        draw: PilImageDraw, left: int, top: int, width: int, height: int
+    ) -> None:
+        """Frame the inset with a border drawn just outside it, leaving the art untouched."""
+        b = INTRO_INSET_BORDER_WIDTH
+        draw.rectangle(
+            (left - b, top - b, left + width + b - 1, top + height + b - 1),
+            outline=INTRO_INSET_BORDER_COLOR,
+            width=b,
+        )
+
+    def _get_resized_inset(self, max_width: int, max_height: int) -> PilImage:
+        """Return the inset scaled, keeping its shape, to the largest size within the box."""
+        if max_height <= 0:
+            msg = (
+                f"No room for the intro inset: the title, byline and publication text"
+                f' leave {max_height} pixels for "{self._comic.intro_inset_file}".'
+            )
+            raise ValueError(msg)
+
         if isinstance(self._comic.intro_inset_file, Path):
             inset = open_image_for_reading(self._comic.intro_inset_file)
         else:
@@ -600,29 +701,16 @@ class ComicBookImageBuilder:
 
         inset_width, inset_height = inset.size
 
-        usable_width = page_width - (2 * DEST_TARGET_X_MARGIN)
-        usable_height = bottom - top
+        new_inset_width = max_width
+        new_inset_height = round((inset_height / inset_width) * new_inset_width)
+        if new_inset_height > max_height:
+            new_inset_height = max_height
+            new_inset_width = round((inset_width / inset_height) * new_inset_height)
 
-        width_margin = int(INTRO_MAX_WIDTH_INSET_MARGIN_FRAC * usable_width)
-        height_margin = int(INTRO_MAX_HEIGHT_INSET_MARGIN_FRAC * usable_height)
-
-        new_inset_width = usable_width - (2 * width_margin)
-        new_inset_height = int((inset_height / inset_width) * new_inset_width)
-
-        max_inset_height = usable_height - (2 * height_margin)
-        if new_inset_height > max_inset_height:
-            new_inset_height = max_inset_height
-            new_inset_width = int((inset_width / inset_height) * new_inset_height)
-
-        new_inset = inset.resize(
+        return inset.resize(
             size=(new_inset_width, new_inset_height),
             resample=Image.Resampling.BICUBIC,
         )
-
-        inset_left = int((page_width - new_inset_width) / 2)
-        inset_top = top + int(((bottom - top) - new_inset_height) / 2)
-
-        return (inset_left, inset_top), new_inset
 
     @staticmethod
     def _get_intro_text_height(draw: PilImageDraw, text: str, font: FreeTypeFont) -> int:
@@ -682,27 +770,6 @@ class ComicBookImageBuilder:
         text_height = self._get_intro_text_height(draw, title, title_fonts[0])
 
         return title_split, title_fonts, text_height
-
-    def _draw_centered_multiline_text(
-        self,
-        text: str,
-        image: PilImage,
-        draw: PilImageDraw,
-        font: FreeTypeFont,
-        color: tuple[int, int, int],
-        top: int,
-        spacing: int,
-    ) -> None:
-        text_width = self._get_intro_text_width(draw, text, font)
-        left = (image.width - text_width) / 2
-        draw.multiline_text(
-            (left, top),
-            text,
-            fill=color,
-            font=font,
-            align="center",
-            spacing=spacing,
-        )
 
     def _draw_centered_multiline_title_text(
         self,
