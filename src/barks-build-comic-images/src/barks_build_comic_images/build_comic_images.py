@@ -63,7 +63,7 @@ INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 # outline, as in hand lettering; spacing them all apart would push the longest titles off
 # the page. Both are for the default title font size, and scale with it.
 INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
-INTRO_TITLE_OUTLINE_WIDTH = 8
+INTRO_TITLE_OUTLINE_WIDTH = 9
 INTRO_TITLE_TRACKING = 8
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
