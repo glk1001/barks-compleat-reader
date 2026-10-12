@@ -83,6 +83,12 @@ A stage's output goes to build/overnight/<stamp>/<stage>.log and summary.txt hol
 the results so far, in the Linux run's format, rewritten after every stage:
 passed, FAILED, WARNED, skipped (the stage says why) or stopped. The exit status
 is non-zero if any stage FAILED.
+
+Each run starts by deleting the build/ and coverage/ folders (CI's executable, about
+50 MB, and the coverage data and report, about 40 MB) of every run but the newest
+KEEP_WHOLE_RUNS, its own among them: they are of no use after a few nights, and
+uncleared they took the Windows laptop's runs to 4.7 GB in two weeks. Every run's logs
+and summary.txt stay, to search old failures in.
 """
 
 # cspell:ignore PYTHONIOENCODING PYTHONUNBUFFERED taskkill yday pids caffeinate dimsu pmset
@@ -97,6 +103,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -177,6 +184,12 @@ _MB = 1024 * 1024
 
 # The prebuilt comics' default home, as ReaderFilePaths has it, when the ini names none.
 DEFAULT_PREBUILT_DIR = "${HOME}/Books/Carl Barks/The Comics/Chronological"
+
+
+# The runs left whole, and what is deleted from the older ones (the module docstring).
+KEEP_WHOLE_RUNS = 5
+BULKY_RUN_DIRS = ("build", "coverage")
+_RUN_STAMP_RE = re.compile(r"^\d{8}-\d{6}$")
 
 
 def say(*parts: object) -> None:
@@ -713,6 +726,46 @@ def prebuilt_dir(ini: Path) -> Path:
 # ----------------------------------------------------------------- the run --
 
 
+def _tree_bytes(folder: Path) -> int:
+    return sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+
+
+def prune_old_runs(
+    overnight: Path, keep: int = KEEP_WHOLE_RUNS
+) -> tuple[list[Path], list[Path], int]:
+    """Delete the bulky folders of every run in `overnight` but the newest `keep`.
+
+    Args:
+        overnight: The folder holding one folder per run, named by its stamp.
+        keep: How many of the newest runs to leave whole.
+
+    Returns:
+        The folders deleted, those that could not be (a file still open, on Windows;
+        the next run tries again), and the bytes the deleted ones held.
+
+    """
+    if not overnight.is_dir():
+        return [], [], 0
+    runs = sorted(d for d in overnight.iterdir() if d.is_dir() and _RUN_STAMP_RE.match(d.name))
+    deleted: list[Path] = []
+    stuck: list[Path] = []
+    freed = 0
+    for run in runs[: max(len(runs) - keep, 0)]:
+        for name in BULKY_RUN_DIRS:
+            folder = run / name
+            if not folder.is_dir():
+                continue
+            size = _tree_bytes(folder)
+            try:
+                shutil.rmtree(folder)
+            except OSError:
+                stuck.append(folder)
+                continue
+            deleted.append(folder)
+            freed += size
+    return deleted, stuck, freed
+
+
 class Run:
     """One night's run: the stages, their logs and the summary."""
 
@@ -1016,6 +1069,7 @@ class Run:
 
     def run(self) -> int:
         """Run every stage; return 1 if any failed, 0 if none did, 130 if stopped."""
+        self._prune_old_runs()
         say(f"{RUNNER}: {len(self.stages)} stages: {' '.join(self.stages)}")
         say(f"{RUNNER}: to stop it and everything it started: Ctrl-C")
         say(f"{RUNNER}: results so far in {self.log_dir_rel}/summary.txt")
@@ -1044,6 +1098,17 @@ class Run:
                 return self._finish("stopped after a failed update", 1)
             self.write_summary(f"{n} of {len(self.stages)} stages done")
         return self._finish(f"finished in {elapsed(time.monotonic() - self.started)}", int(failed))
+
+    def _prune_old_runs(self) -> None:
+        deleted, stuck, freed = prune_old_runs(self.log_dir.parent)
+        if deleted:
+            runs = len({folder.parent for folder in deleted})
+            say(
+                f"{RUNNER}: freed {freed // _MB:,} MB: {' and '.join(BULKY_RUN_DIRS)} of {runs}"
+                f" run(s) older than the newest {KEEP_WHOLE_RUNS}"
+            )
+        for folder in stuck:
+            say(f"{RUNNER}: could not delete {folder} (in use?); the next run tries again")
 
     def _record(self, name: str, result: str, began: float) -> None:
         secs = int(time.monotonic() - began)

@@ -346,6 +346,91 @@ class TestRun:
         assert _results(repo) == {"validate": "skipped"}
 
 
+def _old_run(overnight: Path, stamp: str) -> Path:
+    """Make a run folder as a night leaves it: its logs, CI's executable and coverage."""
+    run = overnight / stamp
+    for name in ("build/barks-reader-win.exe", "coverage/html/index.html", "gui.log"):
+        (run / name).parent.mkdir(parents=True, exist_ok=True)
+        (run / name).write_bytes(b"x" * 1000)
+    (run / "summary.txt").write_text("==== overnight run ====\n", encoding="utf-8")
+    return run
+
+
+class TestPruneOldRuns:
+    def test_all_but_the_newest_lose_their_build_and_coverage_and_keep_their_logs(
+        self, tmp_path: Path
+    ) -> None:
+        runs = [_old_run(tmp_path, f"2026100{day}-010000") for day in range(1, 8)]
+
+        deleted, stuck, freed = rw.prune_old_runs(tmp_path, keep=5)
+
+        assert sorted(deleted) == sorted(
+            run / name for run in runs[:2] for name in ("build", "coverage")
+        )
+        assert stuck == []
+        assert freed == 2 * 2000
+        for run in runs[:2]:
+            assert sorted(p.name for p in run.iterdir()) == ["gui.log", "summary.txt"]
+        for run in runs[2:]:
+            assert (run / "build").is_dir()
+            assert (run / "coverage").is_dir()
+
+    def test_runs_are_ordered_by_stamp_and_other_entries_left_alone(self, tmp_path: Path) -> None:
+        older = _old_run(tmp_path, "20260930-235959")
+        newer = _old_run(tmp_path, "20261001-000000")
+        notes = tmp_path / "notes"
+        (notes / "build").mkdir(parents=True)
+        (tmp_path / "20260101-000000.txt").write_text("", encoding="utf-8")
+
+        deleted, _, _ = rw.prune_old_runs(tmp_path, keep=1)
+
+        assert sorted(deleted) == [older / "build", older / "coverage"]
+        assert (newer / "build").is_dir()
+        assert (notes / "build").is_dir()
+
+    def test_with_no_more_runs_than_are_kept_nothing_goes(self, tmp_path: Path) -> None:
+        for day in range(1, 6):
+            _old_run(tmp_path, f"2026100{day}-010000")
+        assert rw.prune_old_runs(tmp_path, keep=5) == ([], [], 0)
+
+    def test_no_overnight_folder_is_nothing_to_do(self, tmp_path: Path) -> None:
+        assert rw.prune_old_runs(tmp_path / "absent") == ([], [], 0)
+
+    def test_a_folder_that_cannot_be_deleted_is_left_for_the_next_run(self, tmp_path: Path) -> None:
+        run = _old_run(tmp_path, "20261001-010000")
+        _old_run(tmp_path, "20261002-010000")
+        real_rmtree = rw.shutil.rmtree
+
+        def in_use(path: Path) -> None:
+            if path.name == "build":
+                raise PermissionError(path)
+            real_rmtree(path)
+
+        with patch.object(rw.shutil, "rmtree", side_effect=in_use):
+            deleted, stuck, freed = rw.prune_old_runs(tmp_path, keep=1)
+
+        assert deleted == [run / "coverage"]
+        assert stuck == [run / "build"]
+        assert freed == 1000
+        assert (run / "build").is_dir()
+
+    def test_a_run_prunes_the_older_runs_first_and_says_so(self, repo: Path) -> None:
+        overnight = repo / "build" / "overnight"
+        old = [_old_run(overnight, f"2026100{day}-010000") for day in range(1, 7)]
+        run = rw.Run(["update"], None)
+        with (
+            patch.object(rw.Run, "run_stage", return_value=0),
+            patch.object(rw, "say") as say,
+        ):
+            assert run.run() == 0
+        # Tonight's is the newest of the five kept whole.
+        assert not (old[0] / "build").exists()
+        assert not (old[1] / "build").exists()
+        assert (old[2] / "build").is_dir()
+        said = [c.args[0] for c in say.call_args_list]
+        assert any("freed 0 MB: build and coverage of 2 run(s)" in line for line in said)
+
+
 class TestWikiCopy:
     @staticmethod
     def _stage(repo: Path, *, pulled: bool, status: int, wiki: bool = True) -> MagicMock:
