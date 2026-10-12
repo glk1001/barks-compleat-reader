@@ -1,4 +1,3 @@
-# cspell:ignore RRGGBB
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics import comics_database as comics_database_module
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book import INTRO_TITLE_DEFAULT_COLOR
+from barks_fantagraphics.comic_book import TITLE_COLORS
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
@@ -104,19 +103,20 @@ class TestGetStoryTitlesDir:
 
 
 class TestGetTitleColor:
-    def test_no_value_is_the_default_colour(self) -> None:
-        assert _get_title_color("", Path("/ini/a.ini")) == INTRO_TITLE_DEFAULT_COLOR
+    def test_no_value_is_the_default_colour_red(self) -> None:
+        assert _get_title_color("", Path("/ini/a.ini")) == TITLE_COLORS["red"]
 
-    @pytest.mark.parametrize(
-        ("value", "expected"),
-        [("#D63027", (214, 48, 39)), ("#2668b2", (38, 104, 178)), (" #000000 ", (0, 0, 0))],
-    )
-    def test_hex_value_is_the_colour(self, value: str, expected: tuple[int, int, int]) -> None:
-        assert _get_title_color(value, Path("/ini/a.ini")) == expected
+    @pytest.mark.parametrize("name", list(TITLE_COLORS))
+    def test_each_colour_name_is_its_colour(self, name: str) -> None:
+        assert _get_title_color(name, Path("/ini/a.ini")) == TITLE_COLORS[name]
 
-    @pytest.mark.parametrize("value", ["D63027", "#D630", "#D6302700", "#GG3027", "red"])
-    def test_a_bad_value_names_its_ini(self, value: str) -> None:
-        with pytest.raises(ValueError, match=r"a\.ini.*is not #RRGGBB"):
+    @pytest.mark.parametrize("value", ["Green", "GREEN", " green "])
+    def test_a_name_is_matched_whatever_its_case_and_spaces(self, value: str) -> None:
+        assert _get_title_color(value, Path("/ini/a.ini")) == TITLE_COLORS["green"]
+
+    @pytest.mark.parametrize("value", ["#3E9B3A", "pink", "dark green"])
+    def test_a_bad_value_names_its_ini_and_the_colours(self, value: str) -> None:
+        with pytest.raises(ValueError, match=r"a\.ini.*is not one of: red, orange, .*brown"):
             _get_title_color(value, Path("/ini/a.ini"))
 
 

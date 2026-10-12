@@ -63,7 +63,19 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 INTRO_TITLE_DEFAULT_FONT_SIZE = 155
-INTRO_TITLE_DEFAULT_COLOR = (214, 48, 39)  # #D63027; an ini's "title_color" overrides it
+# The colours a story's ini can name as its "title_color": flat colours like old comic
+# printing, each strong enough to read inside the title's black outline on the cream page.
+TITLE_COLORS: dict[str, tuple[int, int, int]] = {
+    "red": (214, 48, 39),
+    "orange": (232, 115, 42),
+    "yellow": (247, 196, 38),
+    "green": (62, 155, 58),
+    "teal": (31, 154, 168),
+    "blue": (38, 104, 178),
+    "purple": (106, 63, 160),
+    "brown": (181, 101, 29),
+}
+INTRO_TITLE_DEFAULT_COLOR = TITLE_COLORS["red"]
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
 # (volume, page_num) pairs that are "edited" or "added" fixes special cases.
