@@ -49,7 +49,11 @@ LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",
     Titles.DONALD_DUCK_AND_THE_MUMMYS_RING: "The Mummy's Ring",
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown of Genghis\nKhan!",
+    Titles.TWENTY_FOUR_CARAT_MOON_THE: "The Twenty-four Carat\nMoon",
+    Titles.DAY_THE_FARM_STOOD_STILL_THE: "The Day the Farm Stood\nStill",
+    Titles.MANY_FACES_OF_MAGICA_DE_SPELL_THE: "The Many Faces of Magica\nDe Spell",
     Titles.CASE_OF_THE_STICKY_MONEY_THE: "The Case of the Sticky\nMoney!",
+    Titles.DAY_THE_MOUNTAIN_SHOOK_THE: "The Day the Mountain\nShook",
 }
 
 # Pass a concrete dictionary file path rather than lang="en_US". pyphen's lang lookup
