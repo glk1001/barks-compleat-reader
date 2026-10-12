@@ -197,7 +197,8 @@ Both run the app, the unit tests and the build, and the GUI tests
 - **A Windows overnight machine**, once, besides the above. `uv run python
   scripts/check_windows_overnight_host.py` checks every step below and says what is
   still missing (the Windows `check-overnight-host.sh`); run it last, and again after a
-  Windows update.
+  Windows update. Run it on the desktop: over ssh it always FAILs "the desktop is locked
+  or disconnected" (an ssh session has none) and cannot read the OpenGL.
   - **Tools**: Git for Windows (its Git Bash runs the repo's `bash` scripts),
     `winget install GitHub.cli` then `gh auth login` (the `fetch-build` stage), uv and bun
     as above. Then steps 3 to 5 above as written, in Git Bash: the clone, `uv sync`,
@@ -207,6 +208,11 @@ Both run the app, the unit tests and the build, and the GUI tests
     `BARKS_READER_DATA_DIR` at `~/barks-reader` and `BARKS_READER_CONFIG_DIR` at
     `~/barks-reader/config`; the Fantagraphics volumes wherever the profile's `fanta_dir`
     says (here `~\Documents\Fantagraphics Complete Carl Barks Disney Library`).
+    A profile copied from another machine needs the whole `config` folder,
+    `kivy\config.ini` included: it is Kivy's own settings (the app's `KIVY_HOME`), and
+    without it Kivy's default `exit_on_escape = 1` stops the app at startup with an "App
+    Error" box (`assert Config.getint("kivy", "exit_on_escape") == 0`). The calibration
+    is the first to meet it.
   - **The wiki copy**, refreshed from barks-wiki: clone it beside this repo
     (`git clone https://github.com/glk1001/barks-wiki.git`; its `.gitattributes` keeps
     LF on Windows), then from its root `..\barks-compleat-reader\.venv\Scripts\python.exe
@@ -221,9 +227,9 @@ Both run the app, the unit tests and the build, and the GUI tests
   - **No screen saver with a password**, and the display and sleep timeouts on AC longer
     than a run (the runner holds the display on while it runs, but the scheduled task
     wakes a machine that slept before it).
-  - **On a laptop without a presence sensor**, the hidden "Non-sensor Input Presence
-    Timeout" (240 s) turns the display off, and a Modern Standby machine then goes to
-    standby: `powercfg /setacvalueindex SCHEME_CURRENT
+  - **On a machine without a presence sensor**, a desktop as well as a laptop, the
+    hidden "Non-sensor Input Presence Timeout" (240 s) turns the display off, and a
+    Modern Standby machine then goes to standby: `powercfg /setacvalueindex SCHEME_CURRENT
     8619b916-e004-4dd8-9b66-dae86f806698 5adbbfbc-074e-4da1-ba38-db8b36b2c8f3 10800`, then
     `powercfg /setactive SCHEME_CURRENT` (PowerShell; in `cmd`, two lines).
   - **No webcam presence software.** The LG laptop came with LG Glance by Mirametrix, whose
@@ -241,7 +247,11 @@ Both run the app, the unit tests and the build, and the GUI tests
   - **Memory**: a GUI stage starts only with 6 GB free (`BARKS_OVERNIGHT_MIN_FREE_MB`),
     and fails naming the biggest apps otherwise; the app is held to 6 GB while it runs
     (`BARKS_OVERNIGHT_APP_MEMORY_CAP_MB`). On the 16 GB laptop Windows and its services
-    take about 5 GB, so leave a browser closed overnight (Firefox held 1.7 GB).
+    take about 5 GB, so leave a browser closed overnight (Firefox held 1.7 GB). On a
+    machine too small for 6 GB the floor is half its memory instead, which on the 8 GB
+    desktop (greg-dell) is about all that is free at idle: there it is lowered to 3 GB
+    (`BARKS_OVERNIGHT_MIN_FREE_MB=3072`, a user environment variable). The whole run
+    passed with it.
   - **Windows Update's active hours** covering the run, so it does not restart under it.
   - **Calibrated**: `uv run python scripts/run_gui_tests.py --calibrate` once, so the
     timing budgets are this machine's. On a machine with no OpenGL driver (the
@@ -262,7 +272,8 @@ Both run the app, the unit tests and the build, and the GUI tests
     and asks for a password). A DHCP reservation keeps the IP. Windows' own OpenSSH comes
     through Windows Update and can stall, slowest with an update restart pending; the
     script says what to do then. An ssh session has no desktop, so a GUI stage cannot run
-    in one: start a whole run with `schtasks /Run /TN "Barks Reader overnight"`.
+    in one: start a whole run with `schtasks /Run /TN "Barks Reader overnight"`, or the
+    nightly task's own commands in `docs/overnight-schedule.md`.
   - **The data under `~\Books\Carl Barks`**, the Linux machines' layout. The code's
     default root is there (`barks_fantagraphics.comics_consts.BARKS_ROOT_DIR`, fixed: the
     unit suite's override tests read it), and so is the profile's `prebuilt_dir`. The
