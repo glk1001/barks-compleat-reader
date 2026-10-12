@@ -65,6 +65,10 @@ INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
 INTRO_TITLE_OUTLINE_WIDTH = 9
 INTRO_TITLE_TRACKING = 8
+# This font's space is narrow, and a letter like T can overhang it, so words get extra
+# room; a hyphen gets room on either side so its outline doesn't join the letters.
+INTRO_TITLE_WORD_GAP = 25
+INTRO_TITLE_HYPHEN_GAP = 16
 # A title line made only of small words, like "of the", is lettered smaller, as on a
 # splash-page logo, unless the whole title is small words.
 INTRO_TITLE_SMALL_WORDS = frozenset(
@@ -795,8 +799,31 @@ class ComicBookImageBuilder:
         return size * font.size / INTRO_TITLE_DEFAULT_FONT_SIZE
 
     def _get_title_line_width(self, line: str, font: FreeTypeFont) -> float:
+        _, width = self._get_title_letter_offsets(line, font)
+        return width
+
+    def _get_title_letter_offsets(self, line: str, font: FreeTypeFont) -> tuple[list[float], float]:
+        """Return how far each letter of a title line is from the line's start, and its width.
+
+        Letters are spaced apart, a space gets extra room, and a hyphen is set off from
+        the letters either side of it.
+        """
         tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, font)
-        return font.getlength(line) + (tracking * max(0, len(line) - 1))
+        word_gap = self._get_title_scaled(INTRO_TITLE_WORD_GAP, font)
+        hyphen_gap = self._get_title_scaled(INTRO_TITLE_HYPHEN_GAP, font)
+
+        offsets = []
+        extra = 0.0
+        for i, letter in enumerate(line):
+            if letter == "-" and i > 0:
+                extra += hyphen_gap
+            offsets.append(font.getlength(line[:i]) + (i * tracking) + extra)
+            if letter == " ":
+                extra += word_gap
+            elif letter == "-" and i < len(line) - 1:
+                extra += hyphen_gap
+
+        return offsets, font.getlength(line) + (tracking * max(0, len(line) - 1)) + extra
 
     def _get_title_text_width(self, text: str, font: FreeTypeFont) -> int:
         lines = text.split("\n")
@@ -831,11 +858,10 @@ class ComicBookImageBuilder:
         for line, line_font, line_top, line_width in zip(
             lines, fonts, tops, line_widths, strict=True
         ):
-            tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, line_font)
             line_left = left + ((max(line_widths) - line_width) / 2)
-            for i, letter in enumerate(line):
-                letter_left = line_left + line_font.getlength(line[:i]) + (i * tracking)
-                letters.append(((letter_left, top + line_top), letter, line_font))
+            offsets, _ = self._get_title_letter_offsets(line, line_font)
+            for letter, offset in zip(line, offsets, strict=True):
+                letters.append(((line_left + offset, top + line_top), letter, line_font))
 
         for xy, letter, letter_font in letters:
             outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))

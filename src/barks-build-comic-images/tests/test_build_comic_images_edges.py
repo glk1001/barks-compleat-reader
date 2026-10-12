@@ -11,6 +11,7 @@ an intro inset that is missing, or that fails to decrypt. The pages are real
 from __future__ import annotations
 
 import io
+import itertools
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -26,11 +27,13 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_PUB_TEXT_COLOR,
     INTRO_TITLE_BYLINE_GAP_SHARE,
     INTRO_TITLE_BYLINE_MIN_GAP,
+    INTRO_TITLE_HYPHEN_GAP,
     INTRO_TITLE_OUTLINE_COLOR,
     INTRO_TITLE_OUTLINE_WIDTH,
     INTRO_TITLE_SMALL_WORD_SIZE_FRAC,
     INTRO_TITLE_SPACING,
     INTRO_TITLE_TRACKING,
+    INTRO_TITLE_WORD_GAP,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
     _PubTextLine,
@@ -413,7 +416,37 @@ class TestTheIntroTitle:
 
         width = builder._get_title_text_width("Lost in\nthe Andes", font)
 
-        assert width == round(font.getlength("the Andes") + (8 * INTRO_TITLE_TRACKING))
+        spaced = 8 * INTRO_TITLE_TRACKING
+        assert width == round(font.getlength("the Andes") + spaced + INTRO_TITLE_WORD_GAP)
+
+    @pytest.mark.parametrize(
+        ("line", "hyphen_gaps"),
+        [("Two-Way Luck", 2), ("Second-", 1)],  # a hyphen ending a line has nothing after it
+    )
+    def test_words_and_hyphens_get_extra_room(
+        self, tmp_path: Path, line: str, hyphen_gaps: int
+    ) -> None:
+        font = self._font(155)
+        builder = _builder(tmp_path, (8, 8))
+
+        width = builder._get_title_line_width(line, font)
+
+        spaced = font.getlength(line) + (INTRO_TITLE_TRACKING * (len(line) - 1))
+        extra = (line.count(" ") * INTRO_TITLE_WORD_GAP) + (hyphen_gaps * INTRO_TITLE_HYPHEN_GAP)
+        assert width == pytest.approx(spaced + extra)
+
+    def test_words_stand_apart_where_a_letter_overhangs_the_space(self, tmp_path: Path) -> None:
+        image = Image.new("RGB", (1600, 300), WHITE)
+        builder = _builder(tmp_path, (8, 8))
+
+        builder._draw_title_text(
+            ImageDraw.Draw(image), 20, 20, "Carat Moon", self._font(155), (214, 48, 39), 40
+        )
+
+        ink = image.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0)
+        columns = [x for x in range(image.width) if ink.crop((x, 0, x + 1, image.height)).getbbox()]
+        widest_gap = max(right - left - 1 for left, right in itertools.pairwise(columns))
+        assert widest_gap >= INTRO_TITLE_WORD_GAP  # without it, T and M are 6px apart
 
     def test_the_outline_and_spacing_scale_with_the_font_size(self, tmp_path: Path) -> None:
         font = self._font(155 // 2)
