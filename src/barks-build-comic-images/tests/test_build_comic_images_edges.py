@@ -29,6 +29,7 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_BYLINE_GAP_SHARE,
     INTRO_TITLE_BYLINE_MIN_GAP,
     INTRO_TITLE_HYPHEN_GAP,
+    INTRO_TITLE_MIN_MARGIN,
     INTRO_TITLE_OUTLINE_COLOR,
     INTRO_TITLE_OUTLINE_WIDTH,
     INTRO_TITLE_SMALL_WORD_SIZE_FRAC,
@@ -491,6 +492,41 @@ class TestTheIntroTitle:
         title_band = page.crop((0, 0, page.width, 700))
 
         assert self._color_mask(title_band, TestTheIntroPageLayout.TITLE_COLOR).getbbox()
+
+
+class TestTheTitleFont:
+    """The title is lettered the same on every platform, and fitted to the page."""
+
+    @staticmethod
+    def _title_builder(tmp_path: Path, title: str) -> ComicBookImageBuilder:
+        comic = MagicMock()
+        comic.get_comic_title.return_value = title
+        comic.title_font_file = CARL_BARKS_FONT_FILE
+        comic.title_font_size = 155
+        comic.fanta_info.comic_book_info.is_barks_title = True
+        return _builder(tmp_path, (8, 8), comic=comic)
+
+    def test_the_title_uses_the_basic_layout(self, tmp_path: Path) -> None:
+        _, fonts, _ = self._title_builder(tmp_path, "Lost\nin the\nAndes!")._get_title_and_fonts()
+
+        assert fonts[0].layout_engine == ImageFont.Layout.BASIC
+
+    def test_a_title_that_fits_keeps_its_size(self, tmp_path: Path) -> None:
+        _, fonts, _ = self._title_builder(tmp_path, "Lost\nin the\nAndes!")._get_title_and_fonts()
+
+        assert fonts[0].size == 155  # noqa: PLR2004
+
+    def test_a_title_too_wide_is_lettered_smaller_to_fit(self, tmp_path: Path) -> None:
+        builder = self._title_builder(tmp_path, "The Paul Bunyan Machine Goes West")
+
+        _, fonts, _ = builder._get_title_and_fonts()
+
+        max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
+        title = "The Paul Bunyan Machine Goes West"
+        assert fonts[0].size < 155  # noqa: PLR2004
+        assert builder._get_title_ink_width(title, fonts[0]) <= max_width
+        bigger = fonts[0].font_variant(size=fonts[0].size + 1)
+        assert builder._get_title_ink_width(title, bigger) > max_width
 
 
 class TestSmallWordTitleLines:

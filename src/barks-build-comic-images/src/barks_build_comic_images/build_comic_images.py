@@ -1,5 +1,5 @@
 # ruff: noqa: PLR0911
-# cspell:ignore getbbox
+# cspell:ignore getbbox Raqm
 
 import re
 from abc import ABC, abstractmethod
@@ -78,6 +78,9 @@ INTRO_TITLE_SMALL_WORDS = frozenset(
     {"a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "the", "to", "with"}
 )
 INTRO_TITLE_SMALL_WORD_SIZE_FRAC = 0.55
+# A title whose widest line would come nearer the page's edges than this is lettered
+# smaller, so it fits.
+INTRO_TITLE_MIN_MARGIN = 50
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
@@ -622,8 +625,8 @@ class ComicBookImageBuilder:
         author_font_size = self._comic.author_font_size
         by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
         return (
-            ImageFont.truetype(self._comic.title_font_file, by_font_size),
-            ImageFont.truetype(self._comic.title_font_file, author_font_size),
+            _get_title_font(self._comic.title_font_file, by_font_size),
+            _get_title_font(self._comic.title_font_file, author_font_size),
         )
 
     def _get_byline_height(self) -> int:
@@ -911,9 +914,22 @@ class ComicBookImageBuilder:
                 add_footnote,
             )
 
-        title_font = ImageFont.truetype(font_file, font_size)
+        title_font = self._get_fitted_title_font(title, font_file, font_size)
         text_height = self._get_intro_text_height(title, title_font)
         return [title], [title_font], text_height
+
+    def _get_fitted_title_font(self, title: str, font_file: Path, font_size: int) -> FreeTypeFont:
+        """Return the title's font, smaller if its widest line would not fit the page."""
+        max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
+        font = _get_title_font(font_file, font_size)
+        while font.size > 1 and self._get_title_ink_width(title, font) > max_width:
+            font = font.font_variant(size=font.size - 1)
+        return font
+
+    def _get_title_ink_width(self, title: str, font: FreeTypeFont) -> float:
+        """Return the width of a title's widest line, its outline included."""
+        outline_width = self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)
+        return self._get_title_text_width(title, font) + (2 * outline_width)
 
     def _get_comics_and_stories_title_and_fonts(
         self,
@@ -930,9 +946,9 @@ class ComicBookImageBuilder:
 
         title_split = ["Comics", "and Stories", comic_num]
         title_fonts = [
-            ImageFont.truetype(str(font_file), font_size),
-            ImageFont.truetype(str(font_file), int(0.5 * font_size)),
-            ImageFont.truetype(str(font_file), font_size),
+            _get_title_font(font_file, font_size),
+            _get_title_font(font_file, int(0.5 * font_size)),
+            _get_title_font(font_file, font_size),
         ]
 
         text_height = self._get_intro_text_height(title, title_fonts[0])
@@ -1025,7 +1041,7 @@ class ComicBookImageBuilder:
         draw: PilImageDraw,
     ) -> None:
         superscript_font_size = int(0.7 * self._comic.title_font_size)
-        superscript_font = ImageFont.truetype(self._comic.title_font_file, superscript_font_size)
+        superscript_font = _get_title_font(self._comic.title_font_file, superscript_font_size)
         self._draw_title_text(
             draw,
             left - int(0.75 * superscript_font_size),
@@ -1035,6 +1051,25 @@ class ComicBookImageBuilder:
             color,
             spacing,
         )
+
+
+def _get_title_font(font_file: str | Path, size: int) -> FreeTypeFont:
+    """Return the Barks lettering font for the title page, at a size.
+
+    It always uses Pillow's basic text layout. With the Raqm layout, Pillow applies this
+    font's kerning, which pulls some letters 30px closer; but Raqm is not there on every
+    platform (not on Windows), and the reader letters title pages as it runs. The basic
+    layout letters a title the same everywhere, built page or reader.
+
+    Args:
+        font_file: The font file.
+        size: The font size.
+
+    Returns:
+        The font.
+
+    """
+    return ImageFont.truetype(str(font_file), size, layout_engine=ImageFont.Layout.BASIC)
 
 
 def build_double_page_image(left: PilImage, right: PilImage) -> PilImage:

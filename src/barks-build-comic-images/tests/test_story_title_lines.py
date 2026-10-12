@@ -12,7 +12,8 @@ breaks, so these tests hold them to the rules the lettering is designed around:
    Pizarro" is "The Prize / of / Pizarro").
 3. A small line keeps the small words after it ("Mystery / of / the Swamp" is
    "Mystery / of the / Swamp").
-4. Every line fits the page, with room to spare.
+4. A title fits the page without much shrinking: one too wide is lettered smaller to fit,
+   but a title that needs much of that should be broken differently.
 
 What no test can check is that a name stays on one line ("Cape / Quack"): telling a
 name from two words needs a reader.
@@ -24,7 +25,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
-    INTRO_TITLE_OUTLINE_WIDTH,
+    INTRO_TITLE_MIN_MARGIN,
     INTRO_TITLE_SMALL_WORDS,
     ComicBookImageBuilder,
 )
@@ -32,7 +33,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES, SYNTHETIC_TITLES
 from barks_fantagraphics.comics_consts import DEST_TARGET_WIDTH
 from barks_fantagraphics.comics_database import ComicsDatabase
-from PIL import Image, ImageFont
+from PIL import Image
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,8 +44,8 @@ if TYPE_CHECKING:
 # belongs to the noun after it ("The Day / the Mountain / Shook").
 _JOINING_WORDS = INTRO_TITLE_SMALL_WORDS - {"a", "an", "the"}
 
-# The least room a title line may leave at either side of the page, outline included.
-_MIN_TITLE_MARGIN = 50
+# The most a title may be shrunk to fit the page before it should be broken differently.
+_MAX_TITLE_SHRINK = 0.1
 
 
 def _is_small_word_line(line: str) -> bool:
@@ -146,26 +147,26 @@ class TestEveryStoryTitle:
 
         assert not problems, "Title lines break the rules:\n" + "\n".join(problems)
 
-    def test_every_title_line_fits_the_page(
+    def test_every_title_fits_the_page_without_much_shrinking(
         self, comics: list[ComicBook], empty_page: Path
     ) -> None:
-        max_width = DEST_TARGET_WIDTH - (2 * _MIN_TITLE_MARGIN)
-        too_wide = []
+        max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
+        problems = []
         for comic in comics:
             builder = ComicBookImageBuilder(comic, empty_page)
-            texts, _, _ = builder._get_title_and_fonts()
+            texts, fonts, _ = builder._get_title_and_fonts()
             if len(texts) > 1:
                 continue  # a "Comics and Stories" title: fixed pieces, not ini lines
 
-            title = comic.get_comic_title()
-            font = ImageFont.truetype(comic.title_font_file, comic.title_font_size)
-            outline = builder._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)
-            width = builder._get_title_text_width(title, font) + (2 * outline)
+            width = builder._get_title_ink_width(comic.get_comic_title(), fonts[0])
+            shrink = 1 - (fonts[0].size / comic.title_font_size)
             if width > max_width:
-                too_wide.append(f"{comic.ini_file.name}: {width:.0f}px wide")
+                problems.append(f"{comic.ini_file.name}: {width:.0f}px wide")
+            elif shrink > _MAX_TITLE_SHRINK:
+                problems.append(f"{comic.ini_file.name}: shrunk {shrink:.0%} to fit")
 
-        assert not too_wide, (
-            f"Title lines wider than {max_width}px (less than {_MIN_TITLE_MARGIN}px from"
-            " the page edge): re-break them, or set a smaller title_font_size:\n"
-            + "\n".join(too_wide)
+        assert not problems, (
+            f"Titles that don't fit {max_width}px, or only shrunk more than"
+            f" {_MAX_TITLE_SHRINK:.0%}: re-break them, or set a smaller title_font_size:\n"
+            + "\n".join(problems)
         )
