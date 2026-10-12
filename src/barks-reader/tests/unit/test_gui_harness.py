@@ -598,6 +598,23 @@ class TestExpected:
         assert expected.document_page_count(tmp_path) == len(pages)
 
 
+class TestExpandPath:
+    def test_home_is_the_users_home_when_the_environment_has_no_home(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A nightly run on the Windows desktop has no HOME (2026-10-12)."""
+        monkeypatch.delenv("HOME", raising=False)
+        with patch.object(Path, Path.home.__name__, return_value=tmp_path):
+            assert harness.expand_path("${HOME}/Books/Comics") == tmp_path / "Books" / "Comics"
+
+    def test_a_set_home_is_used(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        assert harness.expand_path("${HOME}/Books") == tmp_path / "Books"
+
+    def test_a_plain_path_is_kept(self, tmp_path: Path) -> None:
+        assert harness.expand_path(str(tmp_path / "library")) == tmp_path / "library"
+
+
 class TestAppDataDir:
     def test_the_env_var_wins(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("BARKS_READER_DATA_DIR", str(tmp_path))

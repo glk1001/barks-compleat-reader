@@ -27,6 +27,7 @@ import gui_driver as gd
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_settings import READER_FILES_DIR, WIKI_BUNDLE_SUBDIR
+from barks_reader.core.reader_utils import expand_path_vars
 from barks_reader.core.wiki_integration import wiki_session_path
 
 if TYPE_CHECKING:
@@ -179,6 +180,25 @@ def read_ini_value(ini: Path, key: str) -> str:
     return parser.get(INI_SECTION, key)
 
 
+def expand_path(value: str) -> Path:
+    """Return a path setting as the app reads it: its variables and ``~`` expanded.
+
+    ``${HOME}`` becomes the user's home even where the environment has no HOME, as in
+    the app (``expand_path_vars``): Windows sets none outside ssh and Git Bash, and
+    ``os.path.expandvars`` left it as it was, so a nightly run on the desktop found no
+    ``${HOME}/Books/...`` folder and skipped the prebuilt-comics test (greg-dell,
+    2026-10-12).
+
+    Args:
+        value: A path as an ini or ``.env.runtime`` holds it.
+
+    Returns:
+        The path the app would open.
+
+    """
+    return Path(expand_path_vars(value)).expanduser()
+
+
 def app_data_dir() -> Path | None:
     """Return the app data directory a dev run uses: the env var, else ``.env.runtime``.
 
@@ -195,7 +215,7 @@ def app_data_dir() -> Path | None:
                 re.MULTILINE,
             )
             value = found[1] if found else None
-    return Path(os.path.expandvars(value)) if value else None
+    return expand_path(value) if value else None
 
 
 def block_legacy_wiki_session(profile: Path) -> list[Path]:
@@ -221,7 +241,7 @@ def block_legacy_wiki_session(profile: Path) -> list[Path]:
     with contextlib.suppress(configparser.Error):
         live = read_ini_value(profile / "barks-reader.ini", "wiki_bundle_dir").strip()
         if live:
-            bundles.append(Path(os.path.expandvars(live)).expanduser())
+            bundles.append(expand_path(live))
     written: list[Path] = []
     for bundle in bundles:
         target = wiki_session_path(profile, bundle)

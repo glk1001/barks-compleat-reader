@@ -9,8 +9,6 @@ who met one could not get past it.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,6 +17,8 @@ from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_gui.harness import AppBoot
 
 # Volume 5 holds The Ghost of the Grotto, one of the suite's story nodes.
@@ -29,7 +29,7 @@ VOLUME_MISSING = "Fantagraphics Volume Missing"
 def _library(boot: AppBoot, tmp_path: Path, *, leave_out: str = "", double: str = "") -> Path:
     """Make a library of symlinks to the profile's real archives, one left out or doubled."""
     value = harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir")
-    real = Path(os.path.expandvars(value)).expanduser()
+    real = harness.expand_path(value)
     if not real.is_dir():
         pytest.skip(f"no Fantagraphics library at {real}")
     library = tmp_path / "library"

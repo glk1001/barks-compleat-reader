@@ -14,7 +14,6 @@ missing skips rather than fails, so a machine without the volumes stays green.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -35,9 +34,7 @@ JPG_PANELS_ZIP = Path("Reader Files") / "Barks Panels.zip"
 
 def _ini_dir(app_boot: AppBoot, key: str) -> Path:
     """Return a directory setting from the scratch ini, ``${HOME}`` expanded as the app does."""
-    return Path(
-        os.path.expandvars(harness.read_ini_value(app_boot.scratch / "barks-reader.ini", key))
-    )
+    return harness.expand_path(harness.read_ini_value(app_boot.scratch / "barks-reader.ini", key))
 
 
 def _require_dir(path: Path, what: str) -> None:

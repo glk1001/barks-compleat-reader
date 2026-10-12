@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,6 +13,8 @@ from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
 
@@ -231,9 +231,9 @@ MAX_CHOOSER_STEPS = 8
 
 def _chooser_tree(boot: AppBoot, tmp_path: Path) -> Path:
     """Make root/{alpha,beta,library}, library the real archives; return the library."""
-    real = Path(
-        os.path.expandvars(harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir"))
-    ).expanduser()
+    real = harness.expand_path(
+        harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir")
+    )
     if not real.is_dir():
         pytest.skip(f"no Fantagraphics library at {real}")
     root = tmp_path / "root"

@@ -10,7 +10,6 @@ the app log; the patterns below are substrings of them.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -53,7 +52,7 @@ UNSET_WIKI_DIR = "<Carl Barks Wiki Not Set>"
 
 def _expand_path(value: str) -> Path:
     """Return an ini path as the app reads it: environment variables (``${HOME}``) and ``~``."""
-    return Path(os.path.expandvars(value)).expanduser()
+    return harness.expand_path(value)
 
 
 @pytest.fixture
