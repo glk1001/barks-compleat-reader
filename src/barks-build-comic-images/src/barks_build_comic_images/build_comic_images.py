@@ -1,6 +1,7 @@
 # ruff: noqa: PLR0911
 # cspell:ignore getbbox
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -65,10 +66,12 @@ INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
 INTRO_TITLE_OUTLINE_WIDTH = 9
 INTRO_TITLE_TRACKING = 8
-# This font's space is narrow, and a letter like T can overhang it, so words get extra
-# room; a hyphen gets room on either side so its outline doesn't join the letters.
-INTRO_TITLE_WORD_GAP = 25
-INTRO_TITLE_HYPHEN_GAP = 16
+# This font's space is narrow, and letters like T and Y reach past their own width, so
+# the gap between two words, and between a hyphen and the letters either side of it, is
+# measured from the letters themselves: always this much, whatever the letters.
+INTRO_TITLE_WORD_GAP = 60
+INTRO_TITLE_HYPHEN_GAP = 28
+_TITLE_LINE_PIECES = re.compile(r" +|-|[^ -]+")
 # A title line made only of small words, like "of the", is lettered smaller, as on a
 # splash-page logo, unless the whole title is small words.
 INTRO_TITLE_SMALL_WORDS = frozenset(
@@ -805,25 +808,41 @@ class ComicBookImageBuilder:
     def _get_title_letter_offsets(self, line: str, font: FreeTypeFont) -> tuple[list[float], float]:
         """Return how far each letter of a title line is from the line's start, and its width.
 
-        Letters are spaced apart, a space gets extra room, and a hyphen is set off from
-        the letters either side of it.
+        Within a word the letters are spaced apart from where the font puts them. Between
+        two words, and either side of a hyphen, the gap is measured from the
+        letters' ink, so it is the same whatever the letters. A space has no ink, so its
+        offset is where the word before it ends.
         """
         tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, font)
-        word_gap = self._get_title_scaled(INTRO_TITLE_WORD_GAP, font)
-        hyphen_gap = self._get_title_scaled(INTRO_TITLE_HYPHEN_GAP, font)
+        offsets = [0.0] * len(line)
+        ink_right: float | None = None
+        after_space = after_hyphen = False
+        width = 0.0
+        for piece in _TITLE_LINE_PIECES.finditer(line):
+            text = piece.group()
+            if text.startswith(" "):
+                for i in range(piece.start(), piece.end()):
+                    offsets[i] = width
+                after_space = True
+                continue
 
-        offsets = []
-        extra = 0.0
-        for i, letter in enumerate(line):
-            if letter == "-" and i > 0:
-                extra += hyphen_gap
-            offsets.append(font.getlength(line[:i]) + (i * tracking) + extra)
-            if letter == " ":
-                extra += word_gap
-            elif letter == "-" and i < len(line) - 1:
-                extra += hyphen_gap
+            letter_offsets = [font.getlength(text[:i]) + (i * tracking) for i in range(len(text))]
+            if ink_right is None:
+                origin = 0.0
+            else:
+                gap = INTRO_TITLE_WORD_GAP if after_space else 0
+                if text == "-" or after_hyphen:
+                    gap = max(gap, INTRO_TITLE_HYPHEN_GAP)
+                ink_left = letter_offsets[0] + font.getbbox(text[0])[0]
+                origin = ink_right + self._get_title_scaled(gap, font) - ink_left
 
-        return offsets, font.getlength(line) + (tracking * max(0, len(line) - 1)) + extra
+            for i, letter_offset in enumerate(letter_offsets):
+                offsets[piece.start() + i] = origin + letter_offset
+            ink_right = origin + letter_offsets[-1] + font.getbbox(text[-1])[2]
+            width = origin + font.getlength(text) + (tracking * (len(text) - 1))
+            after_space, after_hyphen = False, text == "-"
+
+        return offsets, width
 
     def _get_title_text_width(self, text: str, font: FreeTypeFont) -> int:
         lines = text.split("\n")

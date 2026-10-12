@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import itertools
+import re
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -414,26 +415,49 @@ class TestTheIntroTitle:
         font = self._font(155)
         builder = _builder(tmp_path, (8, 8))
 
-        width = builder._get_title_text_width("Lost in\nthe Andes", font)
+        width = builder._get_title_text_width("Lost\nAndes!", font)
 
-        spaced = 8 * INTRO_TITLE_TRACKING
-        assert width == round(font.getlength("the Andes") + spaced + INTRO_TITLE_WORD_GAP)
+        widths = [
+            font.getlength(line) + (INTRO_TITLE_TRACKING * (len(line) - 1))
+            for line in ("Lost", "Andes!")
+        ]
+        assert width == round(max(widths))
 
-    @pytest.mark.parametrize(
-        ("line", "hyphen_gaps"),
-        [("Two-Way Luck", 2), ("Second-", 1)],  # a hyphen ending a line has nothing after it
-    )
-    def test_words_and_hyphens_get_extra_room(
-        self, tmp_path: Path, line: str, hyphen_gaps: int
+    @staticmethod
+    def _ink_gaps(
+        builder: ComicBookImageBuilder, line: str, font: ImageFont.FreeTypeFont
+    ) -> list[float]:
+        """Return the gaps between the ink of each word or hyphen and the next."""
+        offsets, _ = builder._get_title_letter_offsets(line, font)
+        pieces = [m.span() for m in re.finditer(r"-|[^ -]+", line)]
+        gaps = []
+        for (_, left_end), (right_start, _) in itertools.pairwise(pieces):
+            left_ink = offsets[left_end - 1] + font.getbbox(line[left_end - 1])[2]
+            right_ink = offsets[right_start] + font.getbbox(line[right_start])[0]
+            gaps.append(right_ink - left_ink)
+        return gaps
+
+    @pytest.mark.parametrize("size", [155, 85])
+    def test_word_and_hyphen_gaps_are_measured_from_the_letters(
+        self, tmp_path: Path, size: int
     ) -> None:
+        font = self._font(size)
+        builder = _builder(tmp_path, (8, 8))
+
+        gaps = self._ink_gaps(builder, "Twenty-four Carat Moon", font)
+
+        scale = size / 155
+        hyphen, word = INTRO_TITLE_HYPHEN_GAP * scale, INTRO_TITLE_WORD_GAP * scale
+        assert gaps == pytest.approx([hyphen, hyphen, word, word])
+
+    def test_letters_within_a_word_keep_the_fonts_spacing(self, tmp_path: Path) -> None:
         font = self._font(155)
         builder = _builder(tmp_path, (8, 8))
 
-        width = builder._get_title_line_width(line, font)
+        offsets, _ = builder._get_title_letter_offsets("Carat Moon", font)
 
-        spaced = font.getlength(line) + (INTRO_TITLE_TRACKING * (len(line) - 1))
-        extra = (line.count(" ") * INTRO_TITLE_WORD_GAP) + (hyphen_gaps * INTRO_TITLE_HYPHEN_GAP)
-        assert width == pytest.approx(spaced + extra)
+        expected = [font.getlength("Carat"[:i]) + (i * INTRO_TITLE_TRACKING) for i in range(5)]
+        assert offsets[:5] == pytest.approx(expected)
 
     def test_words_stand_apart_where_a_letter_overhangs_the_space(self, tmp_path: Path) -> None:
         image = Image.new("RGB", (1600, 300), WHITE)
@@ -446,7 +470,9 @@ class TestTheIntroTitle:
         ink = image.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0)
         columns = [x for x in range(image.width) if ink.crop((x, 0, x + 1, image.height)).getbbox()]
         widest_gap = max(right - left - 1 for left, right in itertools.pairwise(columns))
-        assert widest_gap >= INTRO_TITLE_WORD_GAP  # without it, T and M are 6px apart
+        # At least the gap less the two outlines around it shows between the words (a
+        # letter's box is a little wider than its ink). Without the gap, T and M touch.
+        assert widest_gap >= INTRO_TITLE_WORD_GAP - (2 * INTRO_TITLE_OUTLINE_WIDTH)
 
     def test_the_outline_and_spacing_scale_with_the_font_size(self, tmp_path: Path) -> None:
         font = self._font(155 // 2)
