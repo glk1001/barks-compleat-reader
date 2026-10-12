@@ -157,28 +157,24 @@ def _builder(
     return ComicBookImageBuilder(comic, empty_page)
 
 
-def _draw() -> ImageDraw.ImageDraw:
-    return ImageDraw.Draw(Image.new("RGB", (600, 400), "white"))
-
-
 class TestTitleAndFonts:
     def test_a_barks_title_is_one_line_in_one_font(self, tmp_path: Path) -> None:
         builder = _builder(tmp_path, title="Lost in the Andes!", is_barks=True, ini_title="x")
-        texts, fonts, height = builder._get_title_and_fonts(_draw())
+        texts, fonts, height = builder._get_title_and_fonts()
         assert texts == ["Lost in the Andes!"]
         assert [f.size for f in fonts] == [TITLE_FONT_SIZE]
         assert height > 0
 
     def test_a_comics_and_stories_issue_splits_over_three_fonts(self, tmp_path: Path) -> None:
         builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
-        texts, fonts, _ = builder._get_title_and_fonts(_draw())
+        texts, fonts, _ = builder._get_title_and_fonts()
         assert texts == ["Comics", "and Stories", "91"]
         assert [f.size for f in fonts] == [TITLE_FONT_SIZE, TITLE_FONT_SIZE // 2, TITLE_FONT_SIZE]
 
     def test_a_us_censored_one_gets_the_footnote_mark(self, tmp_path: Path) -> None:
         censored = US_CENSORED_TITLES[0]
         builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
-        texts, _, _ = builder._get_title_and_fonts(_draw())
+        texts, _, _ = builder._get_title_and_fonts()
         assert texts[-1] == f"91{FOOTNOTE_CHAR}"
 
 
@@ -188,7 +184,7 @@ class TestDrawingTheTitle:
         builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
         image = Image.new("RGB", (600, 400), "white")
         draw = ImageDraw.Draw(image)
-        texts, fonts, _ = builder._get_title_and_fonts(draw)
+        texts, fonts, _ = builder._get_title_and_fonts()
         texts[2] = "\n" + texts[2]  # the issue number on a line of its own
         blank = image.copy()
 

@@ -28,6 +28,8 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_BYLINE_MIN_GAP,
     INTRO_TITLE_OUTLINE_COLOR,
     INTRO_TITLE_OUTLINE_WIDTH,
+    INTRO_TITLE_SMALL_WORD_SIZE_FRAC,
+    INTRO_TITLE_SPACING,
     INTRO_TITLE_TRACKING,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
@@ -430,3 +432,71 @@ class TestTheIntroTitle:
         title_band = page.crop((0, 0, page.width, 700))
 
         assert self._color_mask(title_band, TestTheIntroPageLayout.TITLE_COLOR).getbbox()
+
+
+class TestSmallWordTitleLines:
+    """A title line of small words, like "of the", is lettered smaller, evenly spaced."""
+
+    SIZE = 155
+    SMALL_SIZE = round(INTRO_TITLE_SMALL_WORD_SIZE_FRAC * SIZE)
+
+    @staticmethod
+    def _font(size: int) -> ImageFont.FreeTypeFont:
+        return ImageFont.truetype(CARL_BARKS_FONT_FILE, size)
+
+    @pytest.mark.parametrize(
+        ("title", "sizes"),
+        [
+            ("Hound\nof the\nMoaning Hills", [SIZE, SMALL_SIZE, SIZE]),
+            ("The\nBear Tamer", [SMALL_SIZE, SIZE]),
+            ("Hound of the\nMoaning Hills", [SIZE, SIZE]),
+            ("Of The\nIn", [SIZE, SIZE]),  # all small words: nothing to set off
+        ],
+    )
+    def test_only_a_line_of_small_words_is_smaller(
+        self, tmp_path: Path, title: str, sizes: list[int]
+    ) -> None:
+        builder = _builder(tmp_path, (8, 8))
+
+        fonts = builder._get_title_line_fonts(title.split("\n"), self._font(self.SIZE))
+
+        assert [f.size for f in fonts] == sizes
+
+    def test_full_size_lines_keep_their_spacing(self, tmp_path: Path) -> None:
+        font = self._font(self.SIZE)
+        builder = _builder(tmp_path, (8, 8))
+        lines = ["Lost in the", "Andes!"]
+
+        tops = builder._get_title_line_tops(lines, [font, font], font, INTRO_TITLE_SPACING)
+
+        assert tops == [0, font.getbbox("A")[3] + INTRO_TITLE_SPACING]
+
+    def test_a_small_line_has_even_gaps_above_and_below(self, tmp_path: Path) -> None:
+        image = Image.new("RGB", (2120, 800), WHITE)
+        builder = _builder(tmp_path, (8, 8))
+
+        builder._draw_title_text(
+            ImageDraw.Draw(image),
+            100,
+            50,
+            "Knights\nof the\nFlying Sleds",
+            self._font(self.SIZE),
+            (214, 48, 39),
+            INTRO_TITLE_SPACING,
+        )
+
+        (_, first_bottom), (small_top, small_bottom), (last_top, _) = (
+            TestTheIntroPageLayout._ink_bands(image)
+        )
+        gap_above = small_top - first_bottom
+        gap_below = last_top - small_bottom
+        assert abs(gap_above - gap_below) <= GAP_TOLERANCE
+
+    def test_a_small_line_makes_the_title_shorter(self, tmp_path: Path) -> None:
+        font = self._font(self.SIZE)
+        builder = _builder(tmp_path, (8, 8))
+
+        small = builder._get_intro_text_height("Hound\nof the\nMoaning Hills", font)
+        full = builder._get_intro_text_height("Hound\nof thy\nMoaning Hills", font)
+
+        assert small < full

@@ -65,6 +65,12 @@ INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
 INTRO_TITLE_OUTLINE_WIDTH = 9
 INTRO_TITLE_TRACKING = 8
+# A title line made only of small words, like "of the", is lettered smaller, as on a
+# splash-page logo, unless the whole title is small words.
+INTRO_TITLE_SMALL_WORDS = frozenset(
+    {"a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "the", "to", "with"}
+)
+INTRO_TITLE_SMALL_WORD_SIZE_FRAC = 0.55
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
@@ -565,7 +571,7 @@ class ComicBookImageBuilder:
 
         top = INTRO_TOP
 
-        title, title_fonts, text_height = self._get_title_and_fonts(draw)
+        title, title_fonts, text_height = self._get_title_and_fonts()
 
         self._draw_centered_multiline_title_text(
             title,
@@ -734,10 +740,55 @@ class ComicBookImageBuilder:
             resample=Image.Resampling.BICUBIC,
         )
 
+    def _get_intro_text_height(self, text: str, font: FreeTypeFont) -> int:
+        lines = text.split("\n")
+        fonts = self._get_title_line_fonts(lines, font)
+        tops = self._get_title_line_tops(lines, fonts, font, INTRO_TITLE_SPACING)
+        bboxes = [f.getbbox(line) for line, f in zip(lines, fonts, strict=True)]
+        ink_top = min(top + bbox[1] for top, bbox in zip(tops, bboxes, strict=True))
+        ink_bottom = max(top + bbox[3] for top, bbox in zip(tops, bboxes, strict=True))
+        return round(ink_bottom - ink_top)
+
     @staticmethod
-    def _get_intro_text_height(draw: PilImageDraw, text: str, font: FreeTypeFont) -> int:
-        text_bbox = draw.multiline_textbbox((0, 0), text, font=font, spacing=INTRO_TITLE_SPACING)
-        return round(text_bbox[3] - text_bbox[1])
+    def _is_small_word_line(line: str) -> bool:
+        words = line.split()
+        return bool(words) and all(word.lower() in INTRO_TITLE_SMALL_WORDS for word in words)
+
+    def _get_title_line_fonts(self, lines: list[str], font: FreeTypeFont) -> list[FreeTypeFont]:
+        is_small = [self._is_small_word_line(line) for line in lines]
+        if all(is_small):
+            return [font] * len(lines)
+
+        small_font = font.font_variant(size=round(INTRO_TITLE_SMALL_WORD_SIZE_FRAC * font.size))
+        return [small_font if small else font for small in is_small]
+
+    @staticmethod
+    def _get_title_line_tops(
+        lines: list[str], fonts: list[FreeTypeFont], font: FreeTypeFont, spacing: int
+    ) -> list[float]:
+        """Return each title line's top, relative to the first's.
+
+        Two full-size lines are as far apart as Pillow's multiline text puts them: the
+        gap between their capitals is the spacing plus the room above a capital. A small
+        line has that same gap to the lines either side, measured from its own letters, as a
+        line of small words may have no capital at all.
+        """
+        cap_top, cap_bottom = font.getbbox("A")[1], font.getbbox("A")[3]
+        gap = spacing + cap_top
+
+        def get_extent(line: str, line_font: FreeTypeFont) -> tuple[float, float]:
+            if line_font.size == font.size:
+                return cap_top, cap_bottom
+            bbox = line_font.getbbox(line)
+            return bbox[1], bbox[3]
+
+        tops = [0.0]
+        for line_num in range(1, len(lines)):
+            _, above_bottom = get_extent(lines[line_num - 1], fonts[line_num - 1])
+            below_top, _ = get_extent(lines[line_num], fonts[line_num])
+            tops.append(tops[-1] + above_bottom + gap - below_top)
+
+        return tops
 
     @staticmethod
     def _get_title_scaled(size: int, font: FreeTypeFont) -> float:
@@ -748,7 +799,11 @@ class ComicBookImageBuilder:
         return font.getlength(line) + (tracking * max(0, len(line) - 1))
 
     def _get_title_text_width(self, text: str, font: FreeTypeFont) -> int:
-        return round(max(self._get_title_line_width(line, font) for line in text.split("\n")))
+        lines = text.split("\n")
+        fonts = self._get_title_line_fonts(lines, font)
+        return round(
+            max(self._get_title_line_width(line, f) for line, f in zip(lines, fonts, strict=True))
+        )
 
     def _draw_title_text(
         self,
@@ -762,40 +817,40 @@ class ComicBookImageBuilder:
     ) -> None:
         """Letter title text in its colour inside a black outline, with spaced letters.
 
-        Each line is centred on the widest, and lines are as far apart as Pillow's
-        multiline text puts them. All the outlines go down before any colour, so a
-        letter's outline never covers its neighbour's colour.
+        Each line is centred on the widest, and a line of small words is smaller (see
+        `_get_title_line_tops` for how far apart the lines are). All the outlines go
+        down before any colour, so a letter's outline never covers its neighbour's colour.
         """
-        tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, font)
-        outline_width = max(1, round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)))
-        line_advance = font.getbbox("A")[3] + spacing
-
         lines = text.split("\n")
-        line_widths = [self._get_title_line_width(line, font) for line in lines]
+        fonts = self._get_title_line_fonts(lines, font)
+        tops = self._get_title_line_tops(lines, fonts, font, spacing)
+        line_widths = [
+            self._get_title_line_width(line, f) for line, f in zip(lines, fonts, strict=True)
+        ]
         letters = []
-        for line_num, (line, line_width) in enumerate(zip(lines, line_widths, strict=True)):
+        for line, line_font, line_top, line_width in zip(
+            lines, fonts, tops, line_widths, strict=True
+        ):
+            tracking = self._get_title_scaled(INTRO_TITLE_TRACKING, line_font)
             line_left = left + ((max(line_widths) - line_width) / 2)
-            line_top = top + (line_num * line_advance)
             for i, letter in enumerate(line):
-                letter_left = line_left + font.getlength(line[:i]) + (i * tracking)
-                letters.append(((letter_left, line_top), letter))
+                letter_left = line_left + line_font.getlength(line[:i]) + (i * tracking)
+                letters.append(((letter_left, top + line_top), letter, line_font))
 
-        for xy, letter in letters:
+        for xy, letter, letter_font in letters:
+            outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))
             draw.text(
                 xy,
                 letter,
                 fill=INTRO_TITLE_OUTLINE_COLOR,
-                font=font,
-                stroke_width=outline_width,
+                font=letter_font,
+                stroke_width=max(1, outline_width),
                 stroke_fill=INTRO_TITLE_OUTLINE_COLOR,
             )
-        for xy, letter in letters:
-            draw.text(xy, letter, fill=color, font=font)
+        for xy, letter, letter_font in letters:
+            draw.text(xy, letter, fill=color, font=letter_font)
 
-    def _get_title_and_fonts(
-        self,
-        draw: PilImageDraw,
-    ) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
+    def _get_title_and_fonts(self) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
         title = self._comic.get_comic_title()
         font_file = self._comic.title_font_file
         font_size = self._comic.title_font_size
@@ -805,7 +860,6 @@ class ComicBookImageBuilder:
             add_footnote = self._comic.get_ini_title() in US_CENSORED_TITLES
 
             return self._get_comics_and_stories_title_and_fonts(
-                draw,
                 title,
                 font_file,
                 font_size,
@@ -813,12 +867,11 @@ class ComicBookImageBuilder:
             )
 
         title_font = ImageFont.truetype(font_file, font_size)
-        text_height = self._get_intro_text_height(draw, title, title_font)
+        text_height = self._get_intro_text_height(title, title_font)
         return [title], [title_font], text_height
 
     def _get_comics_and_stories_title_and_fonts(
         self,
-        draw: PilImageDraw,
         title: str,
         font_file: Path,
         font_size: int,
@@ -837,7 +890,7 @@ class ComicBookImageBuilder:
             ImageFont.truetype(str(font_file), font_size),
         ]
 
-        text_height = self._get_intro_text_height(draw, title, title_fonts[0])
+        text_height = self._get_intro_text_height(title, title_fonts[0])
 
         return title_split, title_fonts, text_height
 
@@ -873,7 +926,7 @@ class ComicBookImageBuilder:
             line_widths.append(line_width)
             text_lines.append(text_line)
 
-        max_font_height = self._get_intro_text_height(draw, text_vals[0], fonts[0])
+        max_font_height = self._get_intro_text_height(text_vals[0], fonts[0])
         line_top = top
         for text_line, line_width in zip(text_lines, line_widths, strict=False):
             left = (image.width - line_width) / 2
@@ -882,7 +935,7 @@ class ComicBookImageBuilder:
                 text = txt
                 text_width = txt_width
 
-                font_height = self._get_intro_text_height(draw, text, font)
+                font_height = self._get_intro_text_height(text, font)
                 assert font_height <= max_font_height
 
                 if line_start or font_height == max_font_height:
