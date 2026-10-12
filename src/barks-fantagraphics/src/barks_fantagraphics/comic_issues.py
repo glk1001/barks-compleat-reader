@@ -71,7 +71,7 @@ ISSUE_NAME_WRAPPED = {
     Issues.US: "Uncle\nScrooge",
     Issues.FG: "Firestone\nGiveaway",
     Issues.HDL: "Huey, Dewey\nand Louie\nJunior Woodchucks",
-    Issues.USGTD: "Uncle Scrooge\nGoes to\nDisneyland",
+    Issues.USGTD: "Uncle Scrooge\nGoes\nto\nDisneyland",
     Issues.CID: "Christmas\nin\nDisneyland",
 }
 
