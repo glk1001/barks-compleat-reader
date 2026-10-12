@@ -66,14 +66,14 @@ INTRO_TITLE_DEFAULT_FONT_SIZE = 155
 # The colours a story's ini can name as its "title_color": flat colours like old comic
 # printing, each strong enough to read inside the title's black outline on the cream page.
 TITLE_COLORS: dict[str, tuple[int, int, int]] = {
-    "red": (214, 48, 39),
-    "orange": (232, 115, 42),
-    "yellow": (247, 196, 38),
-    "green": (62, 155, 58),
-    "teal": (31, 154, 168),
-    "blue": (38, 104, 178),
-    "purple": (106, 63, 160),
-    "brown": (181, 101, 29),
+    "red": (214, 48, 39),  # the default: any story; the strongest on the cream
+    "orange": (232, 115, 42),  # desert, autumn and fire stories
+    "yellow": (247, 196, 38),  # gold and treasure; the weakest on the cream, leans on the outline
+    "green": (62, 155, 58),  # jungle, farm and Christmas stories
+    "teal": (31, 154, 168),  # sea and island stories
+    "blue": (38, 104, 178),  # sky, snow and water stories
+    "purple": (106, 63, 160),  # spooky and mystery stories
+    "brown": (181, 101, 29),  # western, frontier and mining stories
 }
 INTRO_TITLE_DEFAULT_COLOR = TITLE_COLORS["red"]
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
