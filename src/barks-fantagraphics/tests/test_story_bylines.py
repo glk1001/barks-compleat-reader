@@ -12,10 +12,10 @@ from __future__ import annotations
 import re
 
 import pytest
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, SYNTHETIC_TITLES
+from barks_fantagraphics.comic_book_info import TITLES_WITHOUT_TITLE_PAGE
 from barks_fantagraphics.comics_database import ComicsDatabase
+from title_page_allowlists import misc_titles, plain_byline_titles
 
 # A credit naming another scriptwriter: "Script not by Barks", "Script by Vic Lockman",
 # "Script: Bob Karp", or "script and finished art by Don Rosa"; but not "Script and layout
@@ -25,23 +25,6 @@ _OTHER_SCRIPT_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Stories whose credits name another scriptwriter but whose title page may still say
-# plain "by Carl Barks", mapped to the reason why.
-_PLAIN_BYLINE_ALLOWED: dict[Titles, str] = {
-    Titles.CHRISTMAS_CHA_CHA_THE: "Barks drew it all and co-wrote the script with Bob Gregory.",
-    Titles.VICTORY_GARDEN_THE: "Barks drew it all and revised the script he was given.",
-}
-
-# The essays and the collections have no title page.
-_NO_TITLE_PAGE = {ENUM_TO_STR_TITLE[title] for title in [*NON_COMIC_TITLES, *SYNTHETIC_TITLES]}
-
-
-def _plain_byline_titles() -> dict[str, str]:
-    return {
-        BARKS_TITLE_INFO[title].get_title_str(): reason
-        for title, reason in _PLAIN_BYLINE_ALLOWED.items()
-    }
-
 
 @pytest.fixture(scope="module")
 def other_script_bylines() -> dict[str, str]:
@@ -49,7 +32,7 @@ def other_script_bylines() -> dict[str, str]:
     db = ComicsDatabase(for_building_comics=False)
     bylines = {}
     for title in db.get_all_story_titles():
-        if title in _NO_TITLE_PAGE:
+        if title in TITLES_WITHOUT_TITLE_PAGE:
             continue
         comic = db.get_comic_book(title)
         if _OTHER_SCRIPT_RE.search(comic.extra_pub_info):
@@ -92,7 +75,7 @@ class TestEveryStoryByline:
     def test_another_scriptwriters_story_names_his_part(
         self, other_script_bylines: dict[str, str]
     ) -> None:
-        allowed = _plain_byline_titles()
+        allowed = plain_byline_titles()
         problems = [
             title
             for title, byline in other_script_bylines.items()
@@ -102,15 +85,17 @@ class TestEveryStoryByline:
         assert not problems, (
             "These stories' credits name another scriptwriter, but their title page says"
             ' plain "by Carl Barks". Name his part in the ini, e.g. "byline = art by", or'
-            " add the story to _PLAIN_BYLINE_ALLOWED with a reason:\n" + "\n".join(problems)
+            " add the story to PLAIN_BYLINE_ALLOWED in title_page_allowlists.py with a"
+            " reason:\n" + "\n".join(problems)
         )
 
-    @pytest.mark.parametrize("title", _plain_byline_titles())
+    # That each entry's byline is still plain is test_misc_series_ini's check.
+    @pytest.mark.parametrize("title", plain_byline_titles())
     def test_an_allowed_plain_byline_still_needs_allowing(
         self, other_script_bylines: dict[str, str], title: str
     ) -> None:
-        assert other_script_bylines.get(title) == INTRO_DEFAULT_BYLINE, (
+        assert title in other_script_bylines or title in misc_titles(), (
             f'"{title}" is allowed a plain byline, but its credits no longer name another'
-            " scriptwriter, or its ini now names Barks's part. Remove it from"
-            " _PLAIN_BYLINE_ALLOWED."
+            " scriptwriter and it is not a Misc story, so no check questions its byline."
+            " Remove it from PLAIN_BYLINE_ALLOWED in title_page_allowlists.py."
         )

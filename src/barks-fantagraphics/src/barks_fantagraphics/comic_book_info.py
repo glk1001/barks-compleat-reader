@@ -1669,6 +1669,12 @@ SYNTHETIC_TITLES = [
     Titles.ALL_COVERS,
 ]
 
+# The essays and the collections have no title page: nothing in their ini files is a
+# TITLE page, so no title is lettered for them.
+TITLES_WITHOUT_TITLE_PAGE = frozenset(
+    ENUM_TO_STR_TITLE[title] for title in [*NON_COMIC_TITLES, *SYNTHETIC_TITLES]
+)
+
 BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
     f"{get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
         inf.title

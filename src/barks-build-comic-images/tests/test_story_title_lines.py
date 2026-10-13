@@ -28,8 +28,7 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_SMALL_WORDS,
     ComicBookImageBuilder,
 )
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
-from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES, SYNTHETIC_TITLES
+from barks_fantagraphics.comic_book_info import TITLES_WITHOUT_TITLE_PAGE
 from barks_fantagraphics.comics_consts import DEST_TARGET_WIDTH
 from barks_fantagraphics.comics_database import ComicsDatabase
 from PIL import Image
@@ -84,8 +83,8 @@ _NAMES = (
 )
 
 
-def _is_small_word_line(line: str) -> bool:
-    return all(word.lower() in INTRO_TITLE_SMALL_WORDS for word in line.split())
+# The lettering's own test, so the rules here hold exactly the lines it letters small.
+_is_small_word_line = ComicBookImageBuilder._is_small_word_line
 
 
 def _get_line_break_problems(title: str) -> list[str]:
@@ -135,10 +134,6 @@ def _get_split_names(title: str) -> list[str]:
     ]
 
 
-# The essays and the collections have no title page.
-_NO_TITLE_PAGE = {ENUM_TO_STR_TITLE[title] for title in [*NON_COMIC_TITLES, *SYNTHETIC_TITLES]}
-
-
 @pytest.fixture(scope="module")
 def comics() -> list[ComicBook]:
     """Every story with a title page, read from its ini file."""
@@ -146,7 +141,7 @@ def comics() -> list[ComicBook]:
     return [
         db.get_comic_book(title)
         for title in db.get_all_story_titles()
-        if title not in _NO_TITLE_PAGE
+        if title not in TITLES_WITHOUT_TITLE_PAGE
     ]
 
 

@@ -24,8 +24,8 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.fanta_series_info import SERIES_MISC
+from title_page_allowlists import misc_titles, plain_byline_titles
 
 # An attribution names who did the script and/or the art. The wording varies a lot -- from a
 # bare 'Script not by Barks', through 'Script by Vic Lockman', to the Daan Jippes titles that
@@ -49,28 +49,6 @@ _ATTRIBUTION_NOT_REQUIRED: dict[Titles, str] = {
 }
 
 
-# Misc titles whose title page may still say plain "by Carl Barks", mapped to the reason why.
-_PLAIN_BYLINE_ALLOWED: dict[Titles, str] = {
-    Titles.RIDDLE_OF_THE_RED_HAT_THE: (
-        "Barks wrote and drew it; it's in the Misc series for featuring Mickey Mouse."
-    ),
-    Titles.CHRISTMAS_CHA_CHA_THE: "Barks drew it all and co-wrote the script with Bob Gregory.",
-}
-
-
-def _plain_byline_titles() -> dict[str, str]:
-    """Return the titles allowed a plain "by" byline as display strings, mapped to the reason.
-
-    Returns:
-        Display title to the reason that title may keep a plain "by".
-
-    """
-    return {
-        BARKS_TITLE_INFO[title].get_title_str(): reason
-        for title, reason in _PLAIN_BYLINE_ALLOWED.items()
-    }
-
-
 def _exempt_titles() -> dict[str, str]:
     """Return the exempt story titles as display strings, mapped to their reason.
 
@@ -84,29 +62,15 @@ def _exempt_titles() -> dict[str, str]:
     }
 
 
-def _misc_titles() -> list[str]:
-    """Return the display titles of every story in the Fantagraphics 'Misc' series.
-
-    Returns:
-        The story titles, in ``ALL_FANTA_COMIC_BOOK_INFO`` order.
-
-    """
-    return [
-        info.comic_book_info.get_title_str()
-        for info in ALL_FANTA_COMIC_BOOK_INFO.values()
-        if info.series_name == SERIES_MISC
-    ]
-
-
 def _misc_titles_needing_attribution() -> list[str]:
     """Return the Misc titles whose ini file must carry an authorship credit.
 
     Returns:
-        The story titles of ``_misc_titles`` less those in ``_ATTRIBUTION_NOT_REQUIRED``.
+        The story titles of ``misc_titles`` less those in ``_ATTRIBUTION_NOT_REQUIRED``.
 
     """
     exempt = _exempt_titles()
-    return [title for title in _misc_titles() if title not in exempt]
+    return [title for title in misc_titles() if title not in exempt]
 
 
 def _get_extra_pub_info(db: ComicsDatabase, story_title: str) -> str:
@@ -139,7 +103,7 @@ class TestMiscSeriesAttribution:
     def test_misc_series_is_not_empty(self) -> None:
         # Guards the parametrize source below: if this ever returns nothing, the
         # per-title tests would silently collect zero cases and pass vacuously.
-        assert _misc_titles(), f'No titles found for the "{SERIES_MISC}" series.'
+        assert misc_titles(), f'No titles found for the "{SERIES_MISC}" series.'
 
     @pytest.mark.parametrize("story_title", _misc_titles_needing_attribution())
     def test_misc_title_ini_declares_authorship(self, db: ComicsDatabase, story_title: str) -> None:
@@ -165,7 +129,7 @@ class TestAttributionExemptions:
 
     @pytest.mark.parametrize("story_title", _exempt_titles())
     def test_exempt_title_is_still_in_misc_series(self, story_title: str) -> None:
-        assert story_title in _misc_titles(), (
+        assert story_title in misc_titles(), (
             f'"{story_title}" is exempt from the {SERIES_MISC} authorship check but is no'
             f" longer in the {SERIES_MISC} series. Remove it from _ATTRIBUTION_NOT_REQUIRED."
         )
@@ -191,8 +155,10 @@ class TestAttributionExemptions:
 
 
 class TestMiscSeriesByline:
+    """A Misc story's byline names Barks's part, unless ``title_page_allowlists`` says why not."""
+
     @pytest.mark.parametrize(
-        "story_title", [t for t in _misc_titles() if t not in _plain_byline_titles()]
+        "story_title", [t for t in misc_titles() if t not in plain_byline_titles()]
     )
     def test_misc_title_byline_names_his_part(self, db: ComicsDatabase, story_title: str) -> None:
         byline = db.get_comic_book(story_title).byline
@@ -201,17 +167,12 @@ class TestMiscSeriesByline:
             f'{SERIES_MISC} title "{story_title}" has the plain byline "{byline} Carl Barks".'
             f" Stories in the {SERIES_MISC} series were not solely his, so its ini file must"
             f' name his part, e.g. "byline = art by". If this title is an exception, add it'
-            f" to _PLAIN_BYLINE_ALLOWED with a reason."
+            f" to PLAIN_BYLINE_ALLOWED in title_page_allowlists.py with a reason."
         )
 
-    @pytest.mark.parametrize("story_title", _plain_byline_titles())
-    def test_plain_byline_title_is_still_in_misc_series(self, story_title: str) -> None:
-        assert story_title in _misc_titles(), (
-            f'"{story_title}" is allowed a plain byline but is no longer in the {SERIES_MISC}'
-            f" series. Remove it from _PLAIN_BYLINE_ALLOWED."
-        )
-
-    @pytest.mark.parametrize("story_title", _plain_byline_titles())
+    # Whether an entry is still needed at all is test_story_bylines's check, which sees
+    # the credits as well as the series.
+    @pytest.mark.parametrize("story_title", plain_byline_titles())
     def test_plain_byline_title_still_has_a_plain_byline(
         self, db: ComicsDatabase, story_title: str
     ) -> None:
@@ -219,5 +180,5 @@ class TestMiscSeriesByline:
 
         assert byline == INTRO_DEFAULT_BYLINE, (
             f'"{story_title}" is allowed a plain byline but its ini file now names'
-            f' "{byline}". Remove it from _PLAIN_BYLINE_ALLOWED.'
+            f' "{byline}". Remove it from PLAIN_BYLINE_ALLOWED in title_page_allowlists.py.'
         )
