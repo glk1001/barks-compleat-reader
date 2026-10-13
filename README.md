@@ -427,6 +427,20 @@ Macs.
    success popup; subsequent launches go straight to the reader. If the install fails, the
    log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 
+**On a macOS VM** (an Intel VirtualBox guest, with no GPU driver), launching the `.app` from
+Finder fails: its first window stops with "Failed creating OpenGL pixel format", as Kivy's
+SDL2 asks for a hardware renderer and the guest has only Apple's software one. To test the
+installer and app there, start the bundle from Terminal on the VM's own screen, from a
+checkout of this repo:
+```
+bash scripts/macos/run-app-soft-gl.sh ~/BarksReader/barks-reader-macos-x64.app
+```
+It builds the repo's soft-GL shim (beside the script) against the bundle's own SDL2 and
+starts the app with it loaded, so the installer's success popup and the reader both draw.
+For a true first run, move any `config/` and `Reader Files/` beside the `.app` out of the
+way first: the installer only runs when `config/barks-reader.ini` is missing. Why it works
+this way is in the script's header.
+
 ## Deployment
 
 Releases are assembled by CI — don't upload executables by hand.
