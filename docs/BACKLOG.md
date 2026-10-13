@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-10-11.
+Last updated: 2026-10-13.
 
 ---
 
@@ -320,9 +320,9 @@ in the OCR repo, which is read-only from here:
       `comic_book_loader`'s timing-only scheduling mutants). No known killable gap
       is left in `core/`. Ten modules are at zero. Full write-up, per-pass tables and
       equivalence tables in `docs/mutation-testing.md`.
-      **Note the 363 is derived** — a sum of seven separately-scoped runs, not one
-      measurement; see the full-sweep item below. The 436 no-test mutants are
-      untouched by this and belong to the GUI acceptance-harness item above.
+      **The 363 was derived** — a sum of seven separately-scoped runs, not one
+      measurement; the full sweep below measured 361. The no-test mutants (436 then)
+      are untouched by this and belong to the GUI acceptance-harness item above.
       Five real bugs came out of it: a `dedent` that silently did nothing once the
       interpolated path wrapped, a dead `SettingsNotifier._on_change` field, an
       unreachable `story_page_title` branch, and two swallowed-error bugs in
@@ -413,18 +413,14 @@ in the OCR repo, which is read-only from here:
       exception × state, moving arithmetic out of log lines, and
       `assert_called_once_with` wherever the return value is a mock — are written up
       in the doc.
-- [ ] **Run a full `core/` mutmut sweep** (~6000 mutants, 15–20 min) —
-      `bash scripts/mutmut.sh`. The burn-down's headline "363 survivors" is
-      **derived**: it sums the per-module "after" counts from seven separately-scoped
-      runs taken at different times, so it does not account for mutants added or
-      removed by the source changes made along the way. One sweep replaces it with a
-      real measurement, refreshes the per-module table in `docs/mutation-testing.md`
-      (whose last measured totals are from 2026-07-25), and re-checks the 🫥 no-test
-      count now that the suite has grown. Expect ~94% of checked mutants killed if
-      the derivation is right — a materially lower number means something drifted, so
-      read the per-module counts before assuming the burn-down held.
-      Not urgent, and **not a gate**: it is a periodic health check, the "sweep the
-      whole of `core/` occasionally" item from the doc's working-practice section.
+- [x] **Run a full `core/` mutmut sweep** — **DONE**: the overnight mutation stage
+      has mutated all of `core/` every night since 2026-10-07 (`run_overnight.sh`,
+      `mutation_core`, a fresh `mutants/` each run). The 2026-10-13 run measured
+      6995 mutants in 6m30s: 6464 killed, 361 survived, 166 with no covering test,
+      4 timeouts, so ≈94.7% of checked mutants killed against the ~94% the derived
+      363 predicted: the burn-down held. Of the 361, 249 are equivalent and 112
+      untriaged (`docs/mutation-equivalents.toml`). The outcome and per-module
+      survivor tables are in `docs/mutation-testing.md`, "Where things stand".
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

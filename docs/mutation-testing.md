@@ -50,10 +50,10 @@ shifts as soon as code moves, so don't try to keep it current. Going forward:
 
 - **Run `--changed` when you write or rework pure-logic `core` code.** That is where
   the value is: catching a decorative test while you still remember the function.
-- **Sweep the whole of `core/` occasionally** (a couple of times a year, or after a
-  big refactor) to see whether anything drifted. Read the per-module counts, act on
-  the one or two that look wrong, ignore the rest.
-- **Leave settled modules alone.** `collection_page_groups` is at 0; it needs nothing
+- **The whole of `core/` is swept every night** (the overnight mutation stage, since
+  2026-10-07). It warns only on a new survivor; read that one, and the untriaged backlog
+  when there is time, and ignore the rest.
+- **Leave settled modules alone.** `user_error_messages` is at 0; it needs nothing
   until someone touches it.
 - **Stop around ~90%+ on a pure-logic module.** Equivalent mutants make 100%
   unreachable, and the last stretch is where tests turn brittle — pinning log wording
@@ -61,9 +61,9 @@ shifts as soon as code moves, so don't try to keep it current. Going forward:
 - **Record equivalents** (see the table further down) so the next round skips them.
   Triage is the expensive part of mutation testing; fixing usually isn't.
 
-The 436 🫥 *no covering test* mutants are a **separate problem** and won't move no
-matter how many survivors get killed — they are code the Kivy-free suite never
-reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
+The 🫥 *no covering test* mutants (436 in July, 166 on 2026-10-13) are a **separate
+problem** and won't move no matter how many survivors get killed — they are code the
+Kivy-free suite never reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
 
 ## Five traps that produce fake numbers
 
@@ -140,28 +140,76 @@ all; a mutation score is evidence about the *code paths*, not the data.
 ## Where things stand
 
 **The burn-down is finished.** All 37 modules on the backlog table below have been swept
-and every remaining survivor is triaged as not worth killing — log/message wording,
+and every remaining survivor then was triaged as not worth killing — log/message wording,
 recorded equivalents, dead code, or (in `comic_book_loader`) scheduling mutants that
-change timing but never the result. **There is no known killable gap left in `core/`.**
+change timing but never the result. Survivors are now judged one by one against
+`docs/mutation-equivalents.toml` (see the last section), whose `[[untriaged]]` backlog is
+the work that is left.
 
 | | survivors |
 |---|---:|
 | 2026-07-25 full run | 1523 |
-| after the seven passes below | **363** |
+| after the seven passes below (derived) | 363 |
+| 2026-10-13 full run (measured) | **361** |
 
-Ten modules are at zero. The largest remainders are `comic_book_loader` (97, of which 78
-are log wording), `system_file_paths` (41, of which 40 are one `__init__` equivalence
-class), `image_selector` (35), `comic_book_loader_platform_settings` (26) and
-`view_pipeline` (23).
+The derived 363 was the sum of the per-module "after" counts from seven separately-scoped
+runs taken at different times. The overnight stage has mutated all of `core/` every night
+since 2026-10-07; the run below replaces it with a single measurement, and it held.
 
-> **The 363 is derived, not measured.** It is the sum of the per-module "after" counts
-> from seven separately-scoped runs taken at different times, so it does not account for
-> mutants added or removed by the source changes made along the way. Deriving from the
-> 2026-07-25 totals puts the score at roughly **94%** of checked mutants killed
-> (≈5272/5635), against 73% before. A full `core/` sweep is on the backlog to replace both
-> figures with a single real measurement.
+### Last measured full run — `core/` (2026-10-13)
 
-### Baseline: the last measured full run — `core/` (2026-07-25)
+The overnight run of 2026-10-13 (commit `d310e943`, `scope core`, 64 modules, mutated
+against 57 Kivy-free test files, 6m30s on the main PC). Its log is
+`build/overnight/20261013-000713/mutation.log`.
+
+| Outcome | Count |
+|---|---:|
+| 🎉 killed | 6464 |
+| 🙁 survived | 361 |
+| 🫥 no covering test | 166 |
+| ⏰ timeout | 4 |
+| **total mutants** | **6995** |
+
+Mutation score ≈ **94.7%** of checked mutants killed (6464/6825, counted as for the
+July baseline: killed over killed plus survived), against the ~94% the passes predicted.
+`scripts/mutation_survivors.py` read the 361 as 249 equivalent (122 listed, 127 log
+wording), 112 untriaged and 0 new.
+
+36 of the 64 modules have no survivors. Those that do:
+
+| Module (`barks_reader.core.*`) | survivors |
+|---|---:|
+| `comic_book_loader` | 76 |
+| `system_file_paths` | 42 |
+| `image_selector` | 30 |
+| `comic_book_loader_platform_settings` | 25 |
+| `view_pipeline` | 23 |
+| `corpus_stats` | 18 |
+| `wiki_integration` | 16 |
+| `reader_file_paths` | 16 |
+| `linux_desktop_entry` | 14 |
+| `fantagraphics_volumes` | 14 |
+| `reader_formatter` | 12 |
+| `reading_history` | 9 |
+| `archive_page_image_source` | 9 |
+| `json_settings_manager` | 7 |
+| `reader_settings` | 6 |
+| `hyphen_break_engine` | 6 |
+| `reader_utils` | 5 |
+| `reader_tree_view_utils` | 5 |
+| `last_read_page_tracker` | 5 |
+| `comic_reader_manager` | 5 |
+| `collection_page_groups` | 4 |
+| `platform_info` | 3 |
+| `minimal_config_info` | 3 |
+| `page_info_adapters` | 2 |
+| `index_text` | 2 |
+| `comic_book_page_info` | 2 |
+| `panel_image_loader` | 1 |
+| `navigation.tree_spec` | 1 |
+| **total** | **361** |
+
+### Baseline: the first measured full run — `core/` (2026-07-25)
 
 Kept as the historical starting point. **These numbers are superseded** by the passes
 below; do not read them as current.
