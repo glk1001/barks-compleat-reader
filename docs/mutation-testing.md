@@ -14,7 +14,7 @@ bash scripts/mutmut.sh --changed                  # only core/ modules you have 
 bash scripts/mutmut.sh --changed HEAD~3           # ...plus everything since a ref
 bash scripts/mutmut.sh '*/core/reader_utils.py'   # one module
 bash scripts/mutmut.sh '*/core/navigation/*'      # a subpackage
-bash scripts/mutmut.sh                            # all of core/ (~6000 mutants, slow)
+bash scripts/mutmut.sh                            # all of core/ (~7000 mutants, slow)
 bash scripts/mutmut.sh --package fantagraphics     # the search modules (~2500 mutants)
 ```
 
@@ -63,7 +63,8 @@ shifts as soon as code moves, so don't try to keep it current. Going forward:
 
 The 🫥 *no covering test* mutants (436 in July, 166 on 2026-10-13) are a **separate
 problem** and won't move no matter how many survivors get killed — they are code the
-Kivy-free suite never reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
+Kivy-free suite never reaches. That is the GUI suite's ground (`tests/gui/`, measured on the
+app with `BARKS_PROBE_COVERAGE`), not this one.
 
 ## Five traps that produce fake numbers
 
@@ -1004,8 +1005,9 @@ pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks th
 
 ## Notes
 
-- `436` mutants had **no covering test** at all (🫥) — these live in code paths the
-  Kivy-free unit tests never reach (often only exercised via UI-touching tests).
+- `436` mutants had **no covering test** at all (🫥) in July, 166 on 2026-10-13 — these
+  live in code paths the Kivy-free unit tests never reach (often only exercised via
+  UI-touching tests).
 - **The backlog is finished.** Every module has been swept and every remaining survivor is
   triaged. Neither of the two "needs a test-harness build" modules actually did:
   `view_pipeline`'s lever was its ordered top-view dispatch, and `comic_book_loader`'s was its
@@ -1159,3 +1161,7 @@ image selector's and loader settings' tabled ones. Not moved, though a table nam
 list file has, so a real gap. Two `ReaderFilePaths` attributes set in `__init__` and never
 read were deleted. Left: 120 untriaged, all in `core/`, led by `comic_book_loader` (23, its
 threaded `_load_pages`), `corpus_stats` (18), `wiki_integration` (15) and `image_selector`.
+A second round the same day (`5bcdc075`: the never-crop list, the shut archive and nine
+checked defaults) killed or explained 15 more, and `e228d39f` (2026-10-12) one: **105
+untriaged** now, led by `comic_book_loader` (23), `corpus_stats` (18), `wiki_integration`
+(15), then `reader_file_paths` and `archive_page_image_source` (7 each).

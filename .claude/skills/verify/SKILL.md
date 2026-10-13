@@ -73,13 +73,18 @@ scripts/gui-probe.sh click 823 74           # click at screenshot coordinates, 1
 scripts/gui-probe.sh key Down Down Return   # keysym names, not scancodes
 scripts/gui-probe.sh type "pirate gold"
 scripts/gui-probe.sh wait 'Goto title' 10   # block on a log regex; non-zero on timeout
+scripts/gui-probe.sh settle                 # block until rendering has stopped
+scripts/gui-probe.sh geometry               # app window WxH+X+Y on the nested display
+scripts/gui-probe.sh tap 120 300            # tap at app-window pixels (click, or a touch too)
 scripts/gui-probe.sh tail 30                # last N app log lines
 scripts/gui-probe.sh log                    # print the log path for your own grep
 scripts/gui-probe.sh stop                   # kills both, restores the user's config
+scripts/gui-probe.sh cleanup                # stop what a killed run left, on any display
 ```
 
-`start` backs up `barks-reader.json` and `stop` restores it, so navigating around
-during a check never leaves the user's saved node changed. **Always `stop`**,
+`start` backs up `barks-reader.json` and the reading history, and `stop` restores
+both (`BARKS_PROBE_NO_RESTORE=1` turns that off), so navigating around during a
+check never leaves the user's saved node or history changed. **Always `stop`**,
 even when the check failed.
 
 Screen size defaults to 900x1300; override with `BARKS_PROBE_SCREEN=1200x1300`. The

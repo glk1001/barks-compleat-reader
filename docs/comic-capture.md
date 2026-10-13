@@ -13,7 +13,7 @@ and does not work, and what has never been verified.
 ## First run on a new machine
 
 ```bash
-sudo apt install ydotool imagemagick x11-utils      # plus firefox
+sudo apt install ydotool imagemagick x11-xserver-utils xdg-user-dirs   # plus firefox; xrandr reads the monitor layout
 systemctl --user start ydotool                       # needs /dev/uinput access
 
 scripts/comic-capture.sh --calibrate   # measure the pointer -> CLICK_DIV_X/Y

@@ -116,9 +116,11 @@ behaves.
 
 **Where tests can run.** The reader runs on an Ubuntu desktop, a touchscreen Ubuntu laptop,
 a touchscreen Windows laptop, a Windows VM and a Windows PC. The Windows VM and laptop and
-the Linux laptop are available for regular runs. macOS is not tried yet and can't be tested
-regularly, so CI's macOS leg is its only regular coverage. CI has no data pack, so a
-full suite runs only on those machines.
+the Linux laptop are available for regular runs. macOS runs on a VirtualBox guest on
+software OpenGL, nightly through `run_overnight_desktop.py`
+(`docs/plans/macos-gui-tests.md`); a real Mac is untried, so CI's macOS leg is the only
+coverage of real Apple hardware. CI has no data pack, so a full suite runs only on those
+machines.
 
 **The input path must stay real.** Keys injected at the OS level found bugs that keys fed
 in inside the app would have hidden:
@@ -177,12 +179,13 @@ every push, with no data pack.
 
 **The seam.** `scripts/gui_driver.py` calls the probe only through `probe()`, and the
 probe's subcommands are a fixed set: `doctor`, `start`, `stop`, `stop-xserver`,
-`geometry`, `shot`, `settle`, `click`, `key`, `type`, `wait`. The port is a second
-implementation of exactly that set, as a Python script, `scripts/gui_probe_win.py`, with
-the same arguments, output formats and exit codes. `probe()` picks it on Windows. Nothing
-in the tests changes.
+`geometry`, `shot`, `settle`, `click`, `key`, `type`, `wait` (since then also `tap`,
+`tap-targets`, `memory-census`, `frame-capture`, `tail` and `log`). The port is a second
+implementation of exactly that set, as a Python script, `scripts/gui_probe.py` (Win32
+backend `gui_probe_win32.py`), with the same arguments, output formats and exit codes.
+`probe()` picks it on Windows. Nothing in the tests changes.
 
-| Subcommand | Linux (`gui-probe.sh`) | Windows (`gui_probe_win.py`) |
+| Subcommand | Linux (`gui-probe.sh`) | Windows (`gui_probe.py`) |
 |---|---|---|
 | `start` | Xephyr/Xvfb, `setsid` the app, wait for the ready marker | `subprocess.Popen` the app (new process group), same env vars (config dir, data dir, seed), wait for `MAIN_WINDOW_SHOWN` in the log, then bring the window to the foreground |
 | `key` / `type` | `xte key` | `SendInput` via `ctypes` (virtual-key codes for the six remote keys plus the few desktop keys the waiver list allows; its Unicode flag for `type`) |

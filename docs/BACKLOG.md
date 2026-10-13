@@ -87,13 +87,15 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 
 ## Data completeness (`barks_fantagraphics`)
 
-- [ ] **Regenerate unauthored dates** — ~107 `_TODO = (0, 0, 0)` placeholder
-      entries in `comic_book_info.py` mark stories with unknown authored dates.
+- [ ] **Regenerate unauthored dates** — ~31 `_TODO = (0, 0, 0)` placeholder
+      entries in `comic_book_info.py` mark stories with unknown authored dates
+      (107 before the 2026-07-17 INDUCKS backfill, `b1dde680`).
       Regenerate from the bibliography source (`experiments/bibliography/`).
-- [ ] **Reconcile date discrepancies** — ~24 dates flagged as differing from
-      Barrier's bibliography when `barks_bibliography.py` was generated.
-- [ ] **Tag data validation** — resolve the `TODO: NEED TO CHECK THESE` markers
-      in `barks_tags_data.py` (incomplete data validation).
+- [ ] **Reconcile date discrepancies** — 14 dates flagged as differing from
+      Barrier's bibliography (27 when `barks_bibliography.py` was generated;
+      listed in `experiments/bibliography/PLAN-one-to-one.md`).
+- [x] **Tag data validation** — the last `NEED TO CHECK THESE` marker in
+      `barks_tags_data.py` went with the Gyro split (`579da591`, 2026-10-08).
 
 ## Speakers (cross-repo follow-ups in `../barks-ocr`)
 
@@ -136,7 +138,7 @@ in the OCR repo, which is read-only from here:
 > coordinated, breaking, 3-repo change — do it deliberately, all at once, not
 > piecemeal.
 
-- [ ] **`srce` → `source`** — 462 in-repo occurrences, baked into public
+- [ ] **`srce` → `source`** — about 1,200 in-repo occurrences, baked into public
       `ComicsDatabase` / file-path resolver method names.
 - [ ] **Normalize `upscayl` spelling** — `upscayl` / `upscayled` / `upscaled`
       used inconsistently. Note: "Upscayl" is a real tool, so `upscayled`
@@ -273,45 +275,46 @@ in the OCR repo, which is read-only from here:
 - [ ] **Architecture deep-dive** — run the `improve-codebase-architecture`
       exploration to find shallow modules to deepen and untested seams to
       surface across the codebase.
-- [ ] **Make wide signatures keyword-only** — 49 functions take more than 5
+- [ ] **Make wide signatures keyword-only** — 62 functions take more than 5
       positional params (PLR0917, surfaced when ruff 0.16.0 stabilized the rule;
       now ignored in `.ruff.toml` alongside PLR0913). The rule's implied fix —
       bundling params into config objects — is the *wrong* one here: the hits are
       overwhelmingly dependency-injection constructors, and many collaborators is
       the pattern we chose. The right fix is a bare `*` in the signature, making
       them keyword-only at zero design cost. Do it incrementally, worst first:
-      the 14 signatures with 8+ positional params, i.e. `NavigationCoordinator`
+      the 15 signatures with 8+ positional params, i.e. `NavigationCoordinator`
       (10), `show_error_popup` (10), `OKFViewer` (10, okf-reader),
       `MainScreen` (9), `MainScreenWindowHelper` (9),
       `scripts/make_one_pager_mosaic.py` (9). Then fix any positional call sites
       the `*` breaks. Most already pass by keyword (`NavigationCoordinator` is
       all-keyword in both prod and tests), but `MainScreen` is constructed
-      positionally with 9 args at `barks_reader_app.py:396` — the concrete
+      positionally with 9 args at `barks_reader_app.py:406` — the concrete
       transposition hazard, and the best place to start.
       Re-list current hits with `uv run ruff check . --select PLR0917`.
-- [ ] **GUI acceptance harness + deterministic dev mode** — turn the
-      remote keyboard-driving recipe (`.claude/skills/verify/SKILL.md`) into a
-      repeatable Claude-in-the-loop smoke layer. Highest-leverage first step:
-      pin the app's run-to-run variation (seeded `ImageSelector` RNG, fixed
-      window geometry, hermetic config dir, page-settled log signal) — same
-      binary, env-gated. Full design discussion:
+- [x] **GUI acceptance harness + deterministic dev mode** — built 2026-09-15 as
+      the GUI suite (`tests/gui/`, `scripts/gui_driver.py`, `run_gui_tests.sh`):
+      seeded RNG (`BARKS_READER_RANDOM_SEED`), a pinned nested screen, a scratch
+      profile per test and the app's log markers as the oracle; only the
+      in-process autopilot rung was dropped as unneeded. Plan and what was built:
       `docs/plans/gui-testing-deterministic-mode.md`.
 
 ## Testing (property-based & mutation)
 
-> Infra landed: Hypothesis dev/ci settings profiles (root `conftest.py`), the
-> first property tests on `story_slug` (`test_wiki_integration.py`), and mutmut
-> mutation testing (`scripts/mutmut.sh`, backlog in `docs/mutation-testing.md`).
+> Infra landed: Hypothesis dev/ci settings profiles (root `conftest.py`), property
+> tests in `test_properties.py` (comic layout, saved page, year ranges, hyphen
+> engine, log markers), `test_wiki_integration.py` (`story_slug`) and
+> `test_search_query.py`, and mutmut mutation testing (`scripts/mutmut.sh`,
+> backlog in `docs/mutation-testing.md`).
 > Remaining is broadening property-based coverage and burning down the mutmut
 > survivors — the two reinforce each other: properties assert *behaviour*, so
 > they kill far more mutants than example tests.
 
-- [ ] **GUI and window coverage on Windows and macOS** — the GUI suite is X11-only and
-      the Win32 window code is tested only with mocks, so the window-shrink class is
-      invisible where most of that code runs. Four steps, each useful alone: geometry
-      markers, real Win32 calls in Windows CI, the GUI suite on the Windows VM with
-      real `SendInput` injection, and a data-pack-free key-and-window check on every
-      CI build leg (macOS's only regular coverage). Plan:
+- [x] **GUI and window coverage on Windows and macOS** — the GUI suite was X11-only and
+      the Win32 window code tested only with mocks, so the window-shrink class was
+      invisible where most of that code runs. Four steps, each useful alone, all done
+      2026-09-23: geometry markers, real Win32 calls in Windows CI, the GUI suite on the
+      Windows VM with real `SendInput` injection, and a data-pack-free key-and-window
+      check on every CI build leg (macOS's only regular coverage). Plan and what remains:
       `docs/plans/cross-platform-gui-tests.md`. The GUI suite on macOS (a `gui_probe.py`
       backend, run on the VirtualBox guest with software OpenGL; whole suite clean
       2026-10-01, a real Mac untried): `docs/plans/macos-gui-tests.md`.
@@ -323,10 +326,10 @@ in the OCR repo, which is read-only from here:
       `comic_book_info()` via `st.builds(...)`, page/panel specs, `intspan`
       page ranges. This is the main investment; everything below draws on it.
 - [ ] **Round-trip property tests** — the easy, high-value wins after strategies
-      exist: `hyphen_break_engine` (`build_markup(parse_marked_text(x))` round-
-      trips; joining hyphenated parts reconstructs the word), the year-range
-      `get_range_str` format/parse round-trip, `reader_formatter`, comic-layout
-      math, `cpi_calculator` (monotonic/bounded inflation).
+      exist. Done in `test_properties.py`: `hyphen_break_engine` (markup with no
+      hyphens unchanged; gaps are exactly the breaks), comic-layout math and the
+      saved page's JSON. Still open: the year-range `get_range_str` format/parse
+      round-trip, `reader_formatter`, `cpi_calculator` (monotonic/bounded inflation).
 - [ ] **Stateful testing pilot** — a Hypothesis `RuleBasedStateMachine` that
       generates *sequences* of operations and checks invariants after each.
       Start with `reading_history` / `last_read_page_tracker` ("current page
@@ -341,7 +344,7 @@ in the OCR repo, which is read-only from here:
       equivalence tables in `docs/mutation-testing.md`.
       **The 363 was derived** — a sum of seven separately-scoped runs, not one
       measurement; the full sweep below measured 361. The no-test mutants (436 then)
-      are untouched by this and belong to the GUI acceptance-harness item above.
+      are untouched by this and are the GUI suite's ground (`BARKS_PROBE_COVERAGE`).
       Five real bugs came out of it: a `dedent` that silently did nothing once the
       interpolated path wrapped, a dead `SettingsNotifier._on_change` field, an
       unreachable `story_page_title` branch, and two swallowed-error bugs in

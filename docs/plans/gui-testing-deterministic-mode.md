@@ -134,8 +134,9 @@ The plan and its milestone log live in `docs/plans/gui-test-suite.md`; the suite
   suite runs with no window and no desktop session. Still machine-bound by data (the
   real data dirs, `.env.runtime`), so it never runs in CI.
 
-The "mouse-only flows" limit narrowed: search result rows and word balloons are
-clicked by pixel behind the geometry fence, and the search box turns out to hand
-Return to the results. The suite found one real bug on its first day (Escape never
-reached the fun view's options menu, fixed in 0feb4d4).
+The "mouse-only flows" limit narrowed: search result rows and word balloons were
+first clicked by pixel behind a geometry fence (since 2026-09-21 they are keyboard
+moves and no pixel click remains), and the search box turns out to hand Return to
+the results. The suite found one real bug on its first day (Escape never reached
+the fun view's options menu, fixed in 0feb4d4).
 

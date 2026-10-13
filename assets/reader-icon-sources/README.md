@@ -10,8 +10,8 @@ data, not version-controlled here — these SVGs are the source of truth for
 regeneration). Install locations differ by icon, matching where the app loads
 them (see `core/system_file_paths.py`):
 
-    <reader_files_dir>/Reader Icons/ActionBar Icons/   # single/double-page, goto-title
-    <reader_files_dir>/Various/                        # menu-hamburger-icon, eye icons
+    <reader_files_dir>/Reader Icons/ActionBar Icons/   # single/double-page, goto-title, menu-hamburger-icon
+    <reader_files_dir>/Various/                        # eye icons
 
 - `icon-single-page` / `icon-double-page` — comic-reader page-mode toggle
   (replaced the old white-on-black boxed versions).

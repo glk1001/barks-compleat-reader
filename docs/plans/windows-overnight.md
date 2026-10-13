@@ -2,9 +2,10 @@
 
 <!-- cspell:ignore ntfs iomap Ventoy Mirametrix -->
 
-> Status: **steps 1, 2 and 4 done 2026-09-30; step 1's end-to-end run and step 3's two
-> nights to come.** Saved here so it survives across machines and sessions; do it on the
-> Windows laptop. Tick a step off here, with its commit, as it lands.
+> Status: **all four steps done** (steps 1, 2 and 4 on 2026-09-30, step 3 on 2026-10-11
+> through `docs/overnight-schedule.md`); full runs by hand since 2026-09-30, see "First
+> run". Saved here so it survives across machines and sessions; do it on the Windows
+> laptop. Tick a step off here, with its commit, as it lands.
 >
 > - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`, since
 >   2026-10-02 `scripts/run_overnight_desktop.py`, which runs on macOS too). First run by
@@ -16,7 +17,7 @@
 > - Step 3 the nightly schedule: DONE another way, 2026-10-11: the laptop runs nightly
 >   through the wake, run and sleep task in `docs/overnight-schedule.md` (01:00, pulls
 >   first); `scripts/windows/register-overnight-task.ps1` stays as the simpler
->   alternative, not registered. Two nights to see
+>   alternative, not registered.
 > - Step 4 the validate stage, once the data is there: DONE. `validate --full-load-check
 >   --strict-wiki` passed on the laptop, every phase (e79b5ae5): the prebuilt comics
 >   copied to `~\Books\Carl Barks\The Comics`, the two `?` titles named safely everywhere
@@ -56,7 +57,7 @@ In this order, each logged to `build/overnight/<stamp>/<stage>.log`:
 | `update` | `git pull --ff-only`, `uv sync --locked` | The run tests what is on `main` that night. | 1 min |
 | `wiki-copy` | `pull_sibling.py ../barks-wiki` (a fast-forward only where safe), then `check_wiki_copy.py` | The GUI stages show the wiki copy in Reader Files, and nothing else here said when it went stale: on 2026-10-09 the Windows laptop's barks-wiki was eight days old and its copy matched it, so the check said "current". A stale copy warns, and so does a barks-wiki that could not be pulled; a broken join fails. Since 2026-10-09. | 1 min |
 | `pytest` | `uv run pytest` with the data pack | CI's Windows leg skips every test that needs it. | 1 min |
-| `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself until step 4. Runs before `gui`, as on Linux, so the first app booted finds the volumes in the file cache (2026-10-01: run last, it left that app over its post tree setup budget). | 5 min |
+| `validate` | `validate-barks-reader-files.py --full-load-check --strict-wiki` | The whole library through Windows paths and zip reading. Skips itself, saying which folder is missing, while the prebuilt comics are not there. Runs before `gui`, as on Linux, so the first app booted finds the volumes in the file cache (2026-10-01: run last, it left that app over its post tree setup budget). | 5 min |
 | `gui` | `run_gui_tests.py`, the workspace app | Real OpenGL and Windows paths through every screen. | 23 min |
 | `fetch-build` | CI's `barks-reader-win.exe` for **this checkout's commit** | The built-app stage must test the same code as the others. Run just before it (since 2026-10-02): third, a run started soon after a push waited about 20 minutes for CI's build with every stage behind it idle; after `gui` the build is done. | 1 min |
 | `built-app` | `run_gui_tests.py --app <exe>` | CI only checks the build starts; packaging bugs (DLLs, onefile paths, zip members) show only when it reads comics. | 20 min |
@@ -218,19 +219,24 @@ do, but the question is the titles, not today's files.
   reference tables took the app to 4.9 GB (dfc2a0ca) and 5.6 GB (70be95bf) on the laptop,
   above Linux's 3.5 GiB plateau. It is what sets the soak's memory ceiling. Worth knowing
   where it goes (a widget per cell? textures per label?) and whether a table could cost
-  less, in `okf-reader`.
-- **A free-memory guard, maybe.** The runner holds the app to a fixed ceiling (6 GB), but
-  what matters is the machine's free memory: at 5.6 GB the app left 3.7 GB free, and the
-  run, started from Claude Code, was stopped from outside (the nightly task's would not
-  be). The watch could instead stop the app when free memory drops below a reserve (say
-  2.5-4 GB), whatever else is open, with the fixed ceiling as a backstop. Decide on the
-  soak's peak from a full run started by hand, outside Claude Code.
+  less, in `okf-reader`. Partly answered 2026-10-01 (62a3dd08): a long table without
+  links builds only the rows near the view; the per-row cost of linked tables is what is
+  left.
+- **A free-memory guard, maybe.** Done at stage start: a GUI stage needs 6 GB free
+  (`BARKS_OVERNIGHT_MIN_FREE_MB`) or fails naming the shortfall. Still open only if a
+  mid-run stop is wanted beside the fixed cap: the runner holds the app to a fixed
+  ceiling (6 GB), but what matters is the machine's free memory: at 5.6 GB the app left
+  3.7 GB free, and the run, started from Claude Code, was stopped from outside (the
+  nightly task's would not be). The watch could instead stop the app when free memory
+  drops below a reserve (say 2.5-4 GB), whatever else is open, with the fixed ceiling as
+  a backstop. Decide on the soak's peak from a full run started by hand, outside Claude
+  Code.
 
 ## Later, not in this plan
 
 - **Touch on Windows.** The laptop is a touchscreen, but the Linux touch tests inject
-  through `uinput`. Windows would need touch injection (`InjectSyntheticPointerInput`),
-  which is new work: see `docs/plans/touch-gui-tests.md`.
+  through `uinput`. Windows would need touch injection (`InitializeTouchInjection` /
+  `InjectTouchInput`), which is new work: see `docs/plans/touch-gui-tests.md`.
 - **The settings matrix** in full, beyond one variant a night.
 
 ## Verification

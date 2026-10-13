@@ -1,4 +1,9 @@
-# Handover: story indexes in the wiki bundle are not in chronological order
+# Handover (resolved): story indexes in the wiki bundle are not in chronological order
+
+**Status (2026-10-13): resolved.** `barks-wiki` reordered every story index on
+2026-09-14 (`e57d72f6`) and guards it with `scripts/regenerate_indexes.py --check`
+(`/lint-wiki` #40); `scripts/check_wiki_story_order.py` reports 0 out-of-order pairs
+across 10 indexes. The sections below are the report as handed over.
 
 For the `barks-wiki` maintainers. Written from `barks-compleat-reader`, which only
 reads the bundle — nothing here has been changed in `barks-wiki`.
@@ -80,8 +85,9 @@ That has not been examined in any detail — it was found by name, not read.
 
 ## Who checks what
 
-`barks-wiki` gates its own ordering — that is where the data and the generator
-live, and where a failure is actionable.
+`barks-wiki` checks its own ordering (`scripts/regenerate_indexes.py --check`,
+`/lint-wiki` #40) — that is where the data and the generator live, and where a
+failure is actionable.
 
 This repo keeps the same check in `scripts/full-lint.sh` as a **non-gating**
 warning, for the same reason `uv audit` is non-gating there: its subject sits
@@ -98,6 +104,7 @@ Committed here as a diagnostic (it never writes to the bundle):
 scripts/check_wiki_story_order.py                 # the sibling bundle
 scripts/check_wiki_story_order.py --bundle DIR
 scripts/check_wiki_story_order.py --show-order    # print each index's corrected link order
+scripts/check_wiki_story_order.py --quiet         # only the verdict (what full-lint runs)
 ```
 
 `--show-order` prints the full corrected list of `*.md` links per index, which is the

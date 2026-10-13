@@ -302,8 +302,9 @@ Both run the app, the unit tests and the build, and the GUI tests
 - **A macOS overnight machine**, from a clean Mac to a passing
   `scripts/run_overnight_desktop.py` (the unit suite with the data pack, the GUI suite, the
   soak and coverage). It assumes the Barks Reader is already installed with its data at
-  `~/Applications/BarksReader`, as the standalone app's install in `README.md` leaves it:
-  `config/`, `Reader Files/` and the Fantagraphics volumes beside the `.app`. Written from
+  `~/Applications/BarksReader` (the folder the guest used; `README.md`'s example is
+  `~/BarksReader`, and the app searches both), with `config/`, `Reader Files/` and the
+  Fantagraphics volumes beside the `.app`, as the standalone install leaves them. Written from
   the macOS 12 VirtualBox guest (Intel, no GPU driver, 4 cores, 8 GB), where the whole run
   passed on 2026-10-02 in 1h28m.
   1. **Command-line tools**: `xcode-select --install`, for git and `clang` (which builds the

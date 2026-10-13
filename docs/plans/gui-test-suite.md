@@ -1,7 +1,9 @@
 # Plan: a comprehensive GUI path test suite for the Barks Reader
 
-> Status: **approved 2026-09-15**, in progress; each milestone is committed green on
-> its own. Saved here so the plan survives across machines and sessions.
+> Status: **approved 2026-09-15, all four milestones done by 2026-09-16**; the entries
+> below are the running log of what came after (133 tests as of 2026-10-13). Each
+> milestone was committed green on its own. Saved here so the plan survives across
+> machines and sessions.
 >
 > - M0 harness: DONE (526d1f6). The helper package is `barks_gui/`, not `screens/`.
 > - M1 strong-oracle families: DONE (33 GUI tests, 7m37s). Deviations from the matrix:

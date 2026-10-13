@@ -1,8 +1,10 @@
 # Plan: Unify the two WindowManager instances into one shared instance
 
-> Status: **not started** — scoped design, saved for later execution.
-> Related backlog item: `docs/BACKLOG.md` → "Two `WindowManager` instances over
-> one global `Window`". Line numbers below are indicative and may drift.
+> Status: **done 2026-07-09** (b101a312; the "Fragility #4" dedup followed the same
+> day in e96a184f, and 766ebecd fixed overlapping-transition races). Kept for the
+> design; the seeding coupling is gone, and `comic_reader_manager.py` now lives in
+> `core/`. Related backlog item: `docs/BACKLOG.md` → "Two `WindowManager` instances
+> over one global `Window`". Line numbers below are indicative and may drift.
 
 ## Context
 

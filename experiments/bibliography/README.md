@@ -37,10 +37,17 @@ uv run python parse_bibliography.py --emit
 uv run python parse_bibliography.py --emit-covers
 ```
 
+**Do not run `--emit` until the matcher knows cover titles.** Since covers became
+`Titles` members (2a7ec0f0, 2026-07-23) the report shows UNMATCHED 261 /
+UNDISPOSED 8 / 11 disposition warnings against the live data; the committed
+module (2026-08-24) is the last good emit and its tests pass. `--emit` has no
+guard.
+
 The report sections: **COVERAGE** (match counts), **ISSUE HEADERS NOT IN
 &lt;h2&gt;** (headers the EPUB tagged `<strong>`/`<h3>`/`<p>` instead of `<h2>` —
 worth fixing in source), **NOT IN BARRIER** / **NO BARRIER ENTRY** (titles with
-no counterpart — expected), **UNMATCHED** (needs an override — should be 0),
+no counterpart — expected), **UNMATCHED** (needs an override — 0 before covers
+became titles; 261 cover records today, see the warning above),
 **MATCHED BY KEYWORD / ORDER ALIGNMENT** (heuristic matches to spot-check),
 **DATE DISCREPANCIES** (`cbi=` is the reader's date, `bib=` is Barrier's), and
 **DISPOSITIONS / UNDISPOSED** (see below).
@@ -111,7 +118,8 @@ Issue identity is keyed on `(issue_name, issue_number)` — Barrier's cover-date
 the reliable join key, not the year. Within an issue, each `ComicBookInfo` record
 is matched to one entry by, in order: full-title substring → description keyword →
 sole-remaining-candidate → conservative exact-date alignment → manual override.
-Front covers are never matched (they aren't reader titles).
+Front covers were never matched when this was written (they were not reader
+titles); since 2a7ec0f0 they are, which is what the 261 UNMATCHED rows are.
 
 The order pass is deliberately conservative: it pairs a record to an entry only
 when they are each other's *unique same-date partner*. It never guesses across a

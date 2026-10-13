@@ -234,6 +234,8 @@ Helper changes in `barks_gui/search.py`:
   quotes and parentheses.
 - New helpers: `run_typed_query(d, text)` (type, Return, wait for `WORD_QUERY_RUN`);
   `add_to_basket(d)` (Right to `+`, Return, wait for `*_BASKET_CHANGED`); `choose_era(d, label)`.
+  As built: `results_line` and `run_typed_query` in `barks_gui/search.py`; the basket is
+  driven by `_basket_runs` in `test_search.py`; no `choose_era` helper.
 - `barks_gui/expected.py`: per-query expected counts read from the real index or tag data, like
   `title_search_count`, so tests assert real numbers rather than just "at least 1".
 
@@ -242,8 +244,9 @@ text:
 - Phase 2: `test_word_search_matches_inside_a_word`
 - Phase 3: `test_tag_chips_match_inside_a_name_and_show_counts`
 - Phase 8: `test_a_typed_and_query_lists_stories_with_both_words` (then opening the bubble
-  popup), `test_bad_syntax_falls_back_to_plain_text` (`(gold`),
-  `test_a_misspelling_offers_suggestions` (`scroge` → Return on the suggestion)
+  popup), `test_text_that_does_not_parse_is_searched_as_it_stands` (`(gold`),
+  `test_a_misspelling_offers_suggestions_and_return_runs_one` (`scroge` → Return on the
+  suggestion)
 - Phase 9: `test_two_words_are_combined_by_keyboard` (ALL → ANY flip)
 - Phase 10: `test_tags_are_combined_and_excluded_by_keyboard`
 - Phase 11: `test_the_era_filter_narrows_tag_results`

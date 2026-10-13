@@ -24,7 +24,7 @@
 >   there could land on it: doctor warns while the Dock does not hide itself. The fix
 >   (the usable screen area, SDL's `SDL_GetDisplayUsableBounds`) is the app's, for
 >   milestone B.
-> - Milestone B: in progress 2026-10-01. **The Dock, fixed in the app:**
+> - Milestone B: DONE 2026-10-02. **The Dock, fixed in the app:**
 >   `get_approximate_taskbar_height()` measures the menu bar and the Dock on macOS (the
 >   primary `NSScreen`'s frame less its visible frame, by pyobjc, already a macOS
 >   dependency; 110 here, against the fixed 55), so the window is `838x1310+861+25` and
@@ -93,7 +93,7 @@
 >   the GUI suite (tools, data, permissions, the Dock, an awake display, calibration,
 >   the run); `CLAUDE.md` and `README.md` name `run_gui_tests.py` for macOS beside
 >   Windows; `docs/plans/cross-platform-gui-tests.md`'s item 1 points here. The overnight
->   runner has no macOS stage: later, if wanted.
+>   runner: `run_overnight_desktop.py` runs here since 2026-10-02 (below).
 > - Plain fullscreen, 2026-10-02. The first desktop overnight run on the guest (now 4 cores,
 >   8 GB; `run_overnight_desktop.py`: the GUI suite passed in 49 minutes) failed one soak
 >   walk of four (`history`, seed 2751) at step 971: the app's window not found, with the
@@ -168,7 +168,8 @@ would not be used. Leave the machine alone while it runs, as on Windows.
    The library only stops SDL insisting on a GPU (a Mac with one still draws on it), so
    it could simply always be on for macOS; have doctor say which renderer the app's log
    names. `--app` with soft GL is out of scope: a signed build may refuse injected
-   libraries.
+   libraries. As built: no `--soft-gl` flag; the darwin backend's `workspace_app_argv`
+   always wraps the app in `with-soft-gl.sh`.
 
 4. **Dispatch.** `gui_probe._backend()` returns the darwin backend; `gui_driver.PROBE`
    picks `gui_probe.py` on `darwin` as on `win32`; the session check in
@@ -182,7 +183,7 @@ would not be used. Leave the machine alone while it runs, as on Windows.
    drawable-area arithmetic; doctor's verdicts from faked checks. Plus the probe change in
    step 2 in `test_gui_probe.py`.
 
-6. **One test green** on the VM: `uv run python scripts/run_gui_tests.py --soft-gl -k
+6. **One test green** on the VM: `uv run python scripts/run_gui_tests.py -k
    test_main_screen_fullscreen_round_trip`, with every teardown check (window size kept,
    no blank frame, timing budgets or their skip). Expect the first findings here, as on
    Windows: record each in `docs/plans/gui-test-suite.md`'s status list.
@@ -197,7 +198,7 @@ would not be used. Leave the machine alone while it runs, as on Windows.
   with `BARKS_GUI_NO_BUDGETS=1`.
 - Skip what macOS cannot do, with the reason in the skip: touch (`test_taps.py --touch`
   injects through `uinput`); anything else found.
-- The soak, once: `--soft-gl --soak`, watching memory (4 GB guest).
+- The soak, once: `--soak`, watching memory (4 GB guest).
 
 ## Milestone C: docs and coverage
 
@@ -245,4 +246,4 @@ would not be used. Leave the machine alone while it runs, as on Windows.
   macOS version, or `CGEventPostToPid` is needed (which SDL may ignore when its window is
   not the key window). Try the HID tap first.
 - **A real Mac.** The VM proves the harness; it does not test the GPU drawing users get.
-  One run on real hardware (no `--soft-gl`) once milestone B is green.
+  One run on real hardware (without `with-soft-gl.sh`) once milestone B is green.

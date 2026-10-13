@@ -6,8 +6,9 @@
 >
 > - Tap targets: DONE 2026-09-25. The app tells a test where its tappable widgets
 >   are; nothing is tapped by a pixel the test worked out.
-> - Tap tests: DONE 2026-09-25. `test_taps.py` has 11 tests, all green by click
->   (headless, 4 workers, 51s). The whole suite, 73 tests, passes with them.
+> - Tap tests: DONE 2026-09-25. `test_taps.py` had 11 tests, all green by click
+>   (headless, 4 workers, 51s); the whole suite, 73 tests, passed with them. Advanced
+>   search (7a9b44d9) added three more: 14 tests.
 > - Touch mode on Linux: DONE 2026-09-25, on the touchscreen Ubuntu laptop with the
 >   udev rule installed. `bash scripts/run_gui_tests.sh --headless --touch -k test_taps`:
 >   11 passed in 3m16s (one worker). The app registered the test touchscreen beside
@@ -127,6 +128,9 @@ touchscreen event, and the click after it.
 | main index | the letter B, then an item: a B title, selected in the tree |
 | speech index | B, a prefix, a term, a speech button, then outside the popup |
 | search box | the box, with the virtual keyboard on: a click keeps the system keyboard, a touch shows the virtual one |
+| word row | a word in the word list, which stays marked; then a speaker in its Said by list |
+| tag group | an open tag group: a tap closes it, another opens it, and a subgroup opens in place |
+| search chips | a word's `+`, the picked-words chips and an era chip, each by what it shows |
 
 The search box test is the one that changes with the mode. The rest pass the same
 either way, and in touch mode they also run with the app reading the touchscreen.

@@ -108,7 +108,8 @@ A `TagGroups | Tags | Titles | str` (or similar) value flows into a narrower slo
 - [ ] `ui/tree_view_manager.py:283` + `:286` — `Literal[True]` assigned to attribute
       `populated` inferred as `Never`. `populated` is already a Kivy `BooleanProperty`
       (`tree_view_nodes.py`), so this is the Kivy stub gap, not a missing annotation. The
-      `:283` site came with `d895eabd`; one baseline entry covers both.
+      `:283` site came with `d895eabd`; the regenerated baseline holds two identical entries
+      for them (same kind, same column).
 
 ## P5 — not on the July list
 
