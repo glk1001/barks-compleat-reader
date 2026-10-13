@@ -1,6 +1,8 @@
 # The nightly schedule: wake, run, sleep
 
 <!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk -->
+<!-- docs-refs: skip -->
+<!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
 Each overnight machine wakes itself from sleep at **01:00**, pulls this repo, runs its
 overnight run, and goes back to sleep, but only if it woke up for the run. A machine

@@ -75,6 +75,13 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [pre-commit]
+          - id: check-docs-line-numbers
+            name: check the evergreen docs name symbols, not line numbers
+            entry: uv run scripts/check_docs_refs.py --only line-number
+            language: system
+            types: [markdown]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: lint-imports
             name: lint-imports (import-linter contracts)
             entry: uv run lint-imports

@@ -88,6 +88,12 @@ bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
 bunx cspell
 ```
 
+**Check the docs name things that exist** (paths, modules, script flags, links, `BARKS_*`
+variables; no line numbers in the evergreen docs; `--only RULE`, `--quiet`):
+```bash
+uv run scripts/check_docs_refs.py
+```
+
 **Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, deptry, vulture, relative imports, .kv imports, the GUI-key check, cspell, benchmark compare; `uv audit` and the wiki story-order check warn only; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
 ```bash
 bash scripts/full-lint.sh
@@ -172,7 +178,13 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   JSONs, wiki joins and splash tags) is `scripts/validate-barks-reader-files.py`, run against the real
   data pack, nightly rather than in a gate; its tests are in `scripts/tests/`. The GUI tests
   assert one sample title each and leave the whole corpus to it.
-- Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
+- Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`. <!-- docs-refs: ok -->
+- Docs name paths and symbols, never line numbers (`core/image_selector.py` and
+  `ImageSelector`, not the file with a colon and a line): `scripts/check_docs_refs.py` holds the
+  README, `CLAUDE.md` and `docs/*.md` to that and to naming files, modules, flags, links
+  and `BARKS_*` variables that exist (warn-only in `full-lint.sh` and the overnight run;
+  the pre-commit hook gates the line numbers). A dated note under `docs/plans/` keeps its
+  record. A line that must name something gone carries `<!-- docs-refs: ok -->`.
 - GUI path tests are in `src/barks-reader/tests/gui/` (outside `testpaths`; run with
   `bash scripts/run_gui_tests.sh`; runners, options, taps, leak tests and timing budgets:
   `src/barks-reader/tests/gui/CLAUDE.md`). They boot the real app from a scratch profile and

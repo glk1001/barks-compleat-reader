@@ -7,7 +7,7 @@
 > run". Saved here so it survives across machines and sessions; do it on the Windows
 > laptop. Tick a step off here, with its commit, as it lands.
 >
-> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`, since
+> - Step 1 the runner, by hand: WRITTEN (`scripts/run_overnight_windows.py`, since <!-- docs-refs: ok -->
 >   2026-10-02 `scripts/run_overnight_desktop.py`, which runs on macOS too). First run by
 >   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
 >   runner's (below, "First run"). Since fixed, each stage has passed on its own (the

@@ -63,6 +63,9 @@
 #                  classes (at 60%, below the gate's 80) that the coverage stage's
 #                  data never ran and no .kv file, script or sibling repo names;
 #                  warns when there are any
+#   docs-refs      check_docs_refs.py: a doc naming a path, module, script flag,
+#                  link or BARKS_* variable the repo does not have, or a line
+#                  number in an evergreen doc; warns when there are any
 #   mutation       mutmut.sh on all of core/ (under eight minutes) and on the
 #                  barks_fantagraphics search modules (under three), or on the share
 #                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns on a survivor neither a
@@ -111,7 +114,7 @@ if [[ -f .env.overnight ]]; then
 fi
 
 STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
-    dep-drift siblings build smoke gui gui-timings coverage dead-code mutation)
+    dep-drift siblings build smoke gui gui-timings coverage dead-code docs-refs mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
 
@@ -459,6 +462,7 @@ run_stage() {
         ;;
     coverage) coverage_stage ;;
     dead-code) dead_code ;;
+    docs-refs) uv run scripts/check_docs_refs.py --quiet || return "$WARNED" ;;
     mutation) mutation ;;
     esac
 }
