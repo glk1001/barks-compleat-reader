@@ -14,9 +14,8 @@ breaks, so these tests hold them to the rules the lettering is designed around:
    "Mystery / of the / Swamp").
 4. A title fits the page without much shrinking: one too wide is lettered smaller to fit,
    but a title that needs much of that should be broken differently.
-
-What no test can check is that a name stays on one line ("Cape / Quack"): telling a
-name from two words needs a reader.
+5. A name stays on one line ("Cape / Quack" is "Cape Quack"). Telling a name from two
+   words needs a reader, so this only checks the names listed in ``_NAMES``.
 """
 
 from __future__ import annotations
@@ -46,6 +45,43 @@ _JOINING_WORDS = INTRO_TITLE_SMALL_WORDS - {"a", "an", "the"}
 
 # The most a title may be shrunk to fit the page before it should be broken differently.
 _MAX_TITLE_SHRINK = 0.1
+
+# Names a title must not break across lines: those in titles now, and the main cast, for
+# titles to come. "Philosopher's Stone" is left out: on one line it would shrink its title
+# by a quarter.
+_NAMES = (
+    "Ali Baba",
+    "Bear Mountain",
+    "Black Forest",
+    "Bullet Valley",
+    "Cape Quack",
+    "Flying Dutchman",
+    "Fraidy Falcon",
+    "Genghis Khan",
+    "Handy Andy",
+    "King Solomon",
+    "Magica De Spell",
+    "Moaning Hills",
+    "Old California",
+    "Paul Bunyan",
+    "Peg Leg Mine",
+    "Pied Piper",
+    "Pony Express",
+    "Pygmy Indians",
+    "South Seas",
+    "Troop 'A'",
+    # The cast.
+    "Beagle Boys",
+    "Daisy Duck",
+    "Donald Duck",
+    "Flintheart Glomgold",
+    "Gladstone Gander",
+    "Grandma Duck",
+    "Gyro Gearloose",
+    "Junior Woodchucks",
+    "Neighbor Jones",
+    "Uncle Scrooge",
+)
 
 
 def _is_small_word_line(line: str) -> bool:
@@ -79,6 +115,24 @@ def _get_line_break_problems(title: str) -> list[str]:
         if line_num > 0 and words[0].lower() in _JOINING_WORDS:
             problems.append(f'line "{line}" starts with "{words[0]}"')
     return problems
+
+
+def _get_split_names(title: str) -> list[str]:
+    """Return the listed names a title breaks across lines.
+
+    Args:
+        title: The title, its lines separated by newlines.
+
+    Returns:
+        Each name in ``_NAMES`` that the title holds, but no single line of it does.
+
+    """
+    lines = title.split("\n")
+    return [
+        name
+        for name in _NAMES
+        if name in " ".join(lines) and not any(name in line for line in lines)
+    ]
 
 
 # The essays and the collections have no title page.
@@ -133,6 +187,30 @@ class TestTheLineBreakRules:
         assert problem in problems[0]
 
 
+class TestNamesStayWhole:
+    @pytest.mark.parametrize(
+        "title",
+        [
+            "Northeaster\non\nCape Quack",
+            "The Many Faces\nof\nMagica De Spell",
+            "Donald Duck's\nAtom Bomb",  # a name with more after it
+            "A Cold\nBargain",  # no name at all
+        ],
+    )
+    def test_a_title_keeping_its_names_whole_passes(self, title: str) -> None:
+        assert _get_split_names(title) == []
+
+    @pytest.mark.parametrize(
+        ("title", "name"),
+        [
+            ("Northeaster on Cape\nQuack", "Cape Quack"),
+            ("The Many Faces\nof Magica\nDe Spell", "Magica De Spell"),
+        ],
+    )
+    def test_a_title_splitting_a_name_is_caught(self, title: str, name: str) -> None:
+        assert _get_split_names(title) == [name]
+
+
 class TestEveryStoryTitle:
     def test_the_titles_are_found(self, comics: list[ComicBook]) -> None:
         # Guards the tests below: with no titles they would pass vacuously.
@@ -146,6 +224,21 @@ class TestEveryStoryTitle:
         ]
 
         assert not problems, "Title lines break the rules:\n" + "\n".join(problems)
+
+    def test_every_title_keeps_its_names_whole(self, comics: list[ComicBook]) -> None:
+        # Only the ini's own title: an issue name like "Uncle / Scrooge" is stacked on
+        # purpose, as on the comic's masthead.
+        titles = {comic.ini_file.name: comic.title for comic in comics if comic.title}
+        named = [name for title in titles.values() for name in _NAMES if name in title]
+        assert named  # else the check below would pass vacuously
+
+        problems = [
+            f'{ini}: "{name}" is split'
+            for ini, title in titles.items()
+            for name in _get_split_names(title)
+        ]
+
+        assert not problems, "Titles split a name across lines:\n" + "\n".join(problems)
 
     def test_every_title_fits_the_page_without_much_shrinking(
         self, comics: list[ComicBook], empty_page: Path
