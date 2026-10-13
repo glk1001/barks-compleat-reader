@@ -13,7 +13,7 @@ on each machine:
 |---|---|---|---|---|
 | The main machine (gregspc2) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh` (with `build-check`: the build tree is here) | 5 h | `journalctl -u nightly-job` |
 | The overnight host (gmktec) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh --skip build-check` | 5 h | `journalctl -u nightly-job` |
-| The Windows laptop (win_lg) | `~\nightly-job\nightly-job.ps1` | `git pull --ff-only`, then `uv run --offline scripts/run_overnight_desktop.py` | 3 h | `~\nightly-job\nightly-job.log` |
+| The Windows laptop (win_lg) | `~\nightly-job\nightly-job.ps1` | `git pull --ff-only`, `uv sync`, then `uv run --offline scripts/run_overnight_desktop.py` | 3 h | `~\nightly-job\nightly-job.log` |
 | The Windows desktop (greg-dell) | `~\nightly-job\nightly-job.ps1` | the same as the laptop's | 5 h | `~\nightly-job\nightly-job.log` |
 
 A run's results are where they always are: `build/overnight/<stamp>/summary.txt`. A
@@ -103,9 +103,12 @@ bash, which eats backslashes.
   the stages' own logs in `build\overnight\<stamp>\` grow as it goes.
 - **Stopping** may leave child processes, the reader app or a test still in progress:
   close the app's window if it stays open.
-- **`--offline`**: `uv run --offline` syncs from uv's cache only, so a pull that adds a
-  package uv has not cached stops the job before the runner starts. `uv run --no-sync`
-  would leave the sync to the runner's `update` stage, which may download.
+- **`uv sync`, then `--offline`**: `uv run --offline` syncs from uv's cache only, so a
+  pull that moves the Python pin or adds or bumps a package would stop the job before the
+  runner starts (greg-dell, 2026-10-14: `.python-version`'s 3.13.12 and pyrefly 1.3.2).
+  The job's online `uv sync` after the pull fetches them first; a sync that fails is
+  logged and the run goes on with what is already synced. `uv run --no-sync` would leave
+  the sync to the runner's `update` stage, which may download.
 - **Execution policy**: the scripts run with `-ExecutionPolicy Bypass` for that one
   process; the laptop's own policy is left at Windows' default.
 - **The wake** on Modern Standby is dark: the screen stays off, so it is easy to miss.
