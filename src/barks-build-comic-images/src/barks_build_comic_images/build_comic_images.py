@@ -62,10 +62,13 @@ INTRO_TITLE_BYLINE_GAP_SHARE = 0.6  # of each inset gap
 # The title is lettered like a splash-page title: the story's title colour inside a black
 # outline, the letters spaced a little apart. Letters the font kerns close still share an
 # outline, as in hand lettering; spacing them all apart would push the longest titles off
-# the page. Both are for the default title font size, and scale with it.
+# the page. Under it, a hard black shadow down and to the right lifts it off the page,
+# as on a comic's logo. All are for the default title font size, and scale with it.
 INTRO_TITLE_OUTLINE_COLOR = (0, 0, 0)
 INTRO_TITLE_OUTLINE_WIDTH = 9
 INTRO_TITLE_TRACKING = 8
+INTRO_TITLE_SHADOW_COLOR = (0, 0, 0)
+INTRO_TITLE_SHADOW_OFFSET = 5
 # This font's space is narrow, and letters like T and Y reach past their own width, so
 # the gap between two words, and between a hyphen and the letters either side of it, is
 # measured from the letters themselves: always this much, whatever the letters.
@@ -772,12 +775,16 @@ class ComicBookImageBuilder:
         )
 
     def _get_intro_text_height(self, text: str, font: FreeTypeFont) -> int:
+        """Return how tall a title's ink is, from its letters' top to their shadow's bottom."""
         lines = text.split("\n")
         fonts = self._get_title_line_fonts(lines, font)
         tops = self._get_title_line_tops(lines, fonts, font, INTRO_TITLE_SPACING)
         bboxes = [f.getbbox(line) for line, f in zip(lines, fonts, strict=True)]
         ink_top = min(top + bbox[1] for top, bbox in zip(tops, bboxes, strict=True))
-        ink_bottom = max(top + bbox[3] for top, bbox in zip(tops, bboxes, strict=True))
+        ink_bottom = max(
+            top + bbox[3] + self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, f)
+            for top, bbox, f in zip(tops, bboxes, fonts, strict=True)
+        )
         return round(ink_bottom - ink_top)
 
     @staticmethod
@@ -888,8 +895,9 @@ class ComicBookImageBuilder:
         """Letter title text in its colour inside a black outline, with spaced letters.
 
         Each line is centred on the widest, and a line of small words is smaller (see
-        `_get_title_line_tops` for how far apart the lines are). All the outlines go
-        down before any colour, so a letter's outline never covers its neighbour's colour.
+        `_get_title_line_tops` for how far apart the lines are). The shadows go down first,
+        then all the outlines, then the colour, so neither a letter's shadow nor its outline
+        ever covers its neighbour's colour.
         """
         lines = text.split("\n")
         fonts = self._get_title_line_fonts(lines, font)
@@ -906,6 +914,17 @@ class ComicBookImageBuilder:
             for letter, offset in zip(line, offsets, strict=True):
                 letters.append(((line_left + offset, top + line_top), letter, line_font))
 
+        for (x, y), letter, letter_font in letters:
+            outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))
+            shadow_offset = self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, letter_font)
+            draw.text(
+                (x + shadow_offset, y + shadow_offset),
+                letter,
+                fill=INTRO_TITLE_SHADOW_COLOR,
+                font=letter_font,
+                stroke_width=max(1, outline_width),
+                stroke_fill=INTRO_TITLE_SHADOW_COLOR,
+            )
         for xy, letter, letter_font in letters:
             outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))
             draw.text(
@@ -948,9 +967,10 @@ class ComicBookImageBuilder:
         return font
 
     def _get_title_ink_width(self, title: str, font: FreeTypeFont) -> float:
-        """Return the width of a title's widest line, its outline included."""
+        """Return the width of a title's widest line, its outline and shadow included."""
         outline_width = self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)
-        return self._get_title_text_width(title, font) + (2 * outline_width)
+        shadow_offset = self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, font)
+        return self._get_title_text_width(title, font) + (2 * outline_width) + shadow_offset
 
     def _get_comics_and_stories_title_and_fonts(
         self,

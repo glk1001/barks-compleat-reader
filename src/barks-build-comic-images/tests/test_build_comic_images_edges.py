@@ -32,6 +32,8 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_MIN_MARGIN,
     INTRO_TITLE_OUTLINE_COLOR,
     INTRO_TITLE_OUTLINE_WIDTH,
+    INTRO_TITLE_SHADOW_COLOR,
+    INTRO_TITLE_SHADOW_OFFSET,
     INTRO_TITLE_SMALL_WORD_SIZE_FRAC,
     INTRO_TITLE_SPACING,
     INTRO_TITLE_TRACKING,
@@ -397,7 +399,7 @@ class TestTheIntroPageLayout:
 
 
 class TestTheIntroTitle:
-    """The title is in its colour inside a black outline, its letters spaced apart."""
+    """The title is in its colour inside a black outline and shadow, its letters spaced apart."""
 
     @staticmethod
     def _font(size: int) -> ImageFont.FreeTypeFont:
@@ -410,7 +412,7 @@ class TestTheIntroTitle:
         off = ImageChops.lighter(ImageChops.lighter(red, green), blue)
         return off.point(lambda v: 255 if v == 0 else 0)
 
-    def test_the_title_colour_sits_inside_a_black_outline(self, tmp_path: Path) -> None:
+    def test_the_title_colour_sits_inside_a_black_outline_and_shadow(self, tmp_path: Path) -> None:
         color = (38, 104, 178)
         image = Image.new("RGB", (900, 300), WHITE)
         builder = _builder(tmp_path, (8, 8))
@@ -421,11 +423,13 @@ class TestTheIntroTitle:
         outlined_box = self._color_mask(image, INTRO_TITLE_OUTLINE_COLOR).getbbox()
         assert colored_box is not None
         assert outlined_box is not None
-        w = INTRO_TITLE_OUTLINE_WIDTH
+        w, shadow = INTRO_TITLE_OUTLINE_WIDTH, INTRO_TITLE_SHADOW_OFFSET
+        assert INTRO_TITLE_SHADOW_COLOR == INTRO_TITLE_OUTLINE_COLOR
+        # The outline all round, and the shadow further out below and to the right.
         assert colored_box[0] - outlined_box[0] == pytest.approx(w, abs=1)
         assert colored_box[1] - outlined_box[1] == pytest.approx(w, abs=1)
-        assert outlined_box[2] - colored_box[2] == pytest.approx(w, abs=1)
-        assert outlined_box[3] - colored_box[3] == pytest.approx(w, abs=1)
+        assert outlined_box[2] - colored_box[2] == pytest.approx(w + shadow, abs=1)
+        assert outlined_box[3] - colored_box[3] == pytest.approx(w + shadow, abs=1)
 
     def test_the_letters_are_spaced_apart(self, tmp_path: Path) -> None:
         font = self._font(155)
