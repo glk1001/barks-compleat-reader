@@ -5,6 +5,18 @@ document; add items as they surface and tick them off as they land.
 
 Last updated: 2026-10-13.
 
+**Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
+
+- `docs/pyrefly-annotation-debt.md` — 15 open: type findings grandfathered in
+  `pyrefly-baseline.json`, fixed when you are in the file.
+- `docs/design-review-2026-07.md`, "Still open" — 4 design leftovers: the wiki's fixed
+  focus colours, colours that are not theme roles, the tree view's caption contrast, the
+  Material glyphs not yet redrawn.
+- `docs/mutation-equivalents.toml`, `[[untriaged]]` — 105 entries: mutation survivors each
+  needing a test or a reason it is harmless (`docs/mutation-testing.md`).
+- `src/barks-fantagraphics/data/fixes-todo.txt` — about 155 page-image fixes (indicia,
+  lettering glitches, colour), made in the image pipeline, not in this app.
+
 ---
 
 ## Search
