@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import io
 import os
 import zipfile
@@ -157,7 +157,7 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType, Pat
 
 
 def make_zip_info(arcname: Path, srce_file: Path) -> zipfile.ZipInfo:
-    mtime = datetime.datetime.fromtimestamp(srce_file.stat().st_mtime)  # noqa: DTZ006
+    mtime = dt.datetime.fromtimestamp(srce_file.stat().st_mtime)  # noqa: DTZ006
     return zipfile.ZipInfo(
         filename=str(arcname),
         date_time=(mtime.year, mtime.month, mtime.day, mtime.hour, mtime.minute, mtime.second),

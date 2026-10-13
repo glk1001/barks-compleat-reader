@@ -19,11 +19,11 @@ from okf_reader.core.search import build_search_index, search_index
 from okf_reader.core.session import save_session_state
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 @contextmanager
-def _unreadable(*names: str) -> Iterator[None]:
+def _unreadable(*names: str) -> Generator[None]:
     """Make the files of these names refuse to be read, as a lost permission does."""
     real = Path.read_text
 

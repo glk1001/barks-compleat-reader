@@ -30,7 +30,7 @@ from .tree_view_nodes import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from kivy.uix.button import Button
@@ -216,7 +216,7 @@ class TreeViewManager:
         self._allow_view_state_change = False
 
     @contextmanager
-    def suppress_view_state_changes(self) -> Iterator[None]:
+    def suppress_view_state_changes(self) -> Generator[None]:
         self.disallow_view_state_change()
         try:
             yield

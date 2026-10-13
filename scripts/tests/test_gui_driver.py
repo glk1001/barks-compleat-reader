@@ -20,7 +20,7 @@ from gui_driver import Driver, DriverError, Pick, boot_app_at, probe
 from okf_reader.core import log_markers as okf_log_markers
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
     KeysPressed = Callable[[MagicMock], list[str]]
@@ -624,7 +624,7 @@ class TestTypeSlowly:
         waited: list[str] = []
 
         @contextmanager
-        def fake_expect(pattern: str, _timeout: float = 15) -> Iterator[None]:
+        def fake_expect(pattern: str, _timeout: float = 15) -> Generator[None]:
             waited.append(pattern)
             yield
 
@@ -653,7 +653,7 @@ class TestTypeSlowlyReady:
 
     @staticmethod
     @contextmanager
-    def _stalls(_pattern: str, _timeout: float = 15) -> Iterator[None]:
+    def _stalls(_pattern: str, _timeout: float = 15) -> Generator[None]:
         yield
         msg = "beat stalled"
         raise gui_driver.DriverError(msg)
@@ -724,7 +724,7 @@ class TestTypeSlowlyLostKey:
 
 
 @contextmanager
-def _answers(_pattern: str, _timeout: float = 15) -> Iterator[None]:
+def _answers(_pattern: str, _timeout: float = 15) -> Generator[None]:
     yield
 
 
@@ -779,7 +779,7 @@ class TestTaps:
         order: list[str] = []
 
         @contextmanager
-        def fake_expect(pattern: str, _timeout: float = 15) -> Iterator[None]:
+        def fake_expect(pattern: str, _timeout: float = 15) -> Generator[None]:
             order.append(f"expect {pattern}")
             yield
             order.append("waited")

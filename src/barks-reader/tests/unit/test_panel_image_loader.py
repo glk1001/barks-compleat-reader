@@ -15,11 +15,11 @@ from barks_reader.core.testing import FakeScheduler
 from PIL import Image
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 @contextmanager
-def _synchronous_worker_thread() -> Iterator[MagicMock]:
+def _synchronous_worker_thread() -> Generator[MagicMock]:
     """Patch the loader's Thread so the worker runs synchronously on start()."""
     with patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls:
         mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(

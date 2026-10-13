@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping, Sequence
+    from collections.abc import Callable, Generator, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # The Linux probe runs the app on a nested X server; on Windows and macOS the
@@ -468,7 +468,7 @@ class Driver:
         raise DriverError(msg)
 
     @contextmanager
-    def expect(self, pattern: str, timeout: float = 15) -> Iterator[None]:
+    def expect(self, pattern: str, timeout: float = 15) -> Generator[None]:
         """Run the block, then block until a NEW occurrence of `pattern` is logged.
 
         The general form of `key_then_wait`: whatever the block does - a key, a

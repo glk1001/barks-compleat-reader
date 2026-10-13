@@ -10,7 +10,7 @@ from barks_reader.core import platform_info as platform_info_module
 from barks_reader.core.platform_info import Platform, _get_platform
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 # The only environment variables `_get_platform` reads. Tests strip exactly these
 # and leave the rest of the environment alone.
@@ -18,7 +18,7 @@ _PLATFORM_ENV_KEYS = ("KIVY_BUILD", "P4A_BOOTSTRAP", "ANDROID_ARGUMENT")
 
 
 @contextmanager
-def platform_env(**overrides: str) -> Iterator[None]:
+def platform_env(**overrides: str) -> Generator[None]:
     """Run with only ``overrides`` of the platform-detection variables set.
 
     Deliberately *not* ``patch.dict(os.environ, ..., clear=True)``: clearing the

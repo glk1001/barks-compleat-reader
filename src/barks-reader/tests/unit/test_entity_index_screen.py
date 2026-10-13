@@ -16,7 +16,7 @@ from barks_reader.ui.index_screen import IndexItem, _IndexNavPanel
 from barks_reader.ui.reader_keyboard_nav import KEY_DOWN, KEY_UP
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator
+    from collections.abc import Generator
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def mock_settings() -> MagicMock:
 
 
 @contextmanager
-def _patched_screen_deps(alpha_split_terms: dict, entity_terms: list[str]) -> Iterator[MagicMock]:
+def _patched_screen_deps(alpha_split_terms: dict, entity_terms: list[str]) -> Generator[MagicMock]:
     """Patch the Kivy and search dependencies needed to construct an EntityIndexScreen.
 
     Yields the mock ComicSearch indexer instance.

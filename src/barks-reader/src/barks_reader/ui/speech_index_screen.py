@@ -802,7 +802,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
     def _get_visible_prefix_buttons(self) -> list[IndexPrefixButton]:
         """Return the currently displayed prefix buttons in left-to-right order."""
         layout = self.ids.alphabet_top_split_layout
-        return cast("list[IndexPrefixButton]", list(reversed(layout.children)))
+        return list(reversed(layout.children))
 
     def _draw_prefix_focus(self) -> None:
         visible = self._get_visible_prefix_buttons()

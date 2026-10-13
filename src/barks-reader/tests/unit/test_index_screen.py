@@ -62,6 +62,12 @@ class ConcreteIndexScreen(IndexScreen):
     def _cancel_index_image_change_events(self) -> None:
         pass
 
+    def _next_background_image(self) -> None:
+        pass
+
+    def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
+        pass
+
     def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         if first_letter == "A":
             return [

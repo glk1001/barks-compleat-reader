@@ -12,7 +12,7 @@ import json
 import os
 import time
 import zipfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from configparser import ConfigParser
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
@@ -1660,7 +1660,7 @@ class _VolumeZips:
 
 
 @contextmanager
-def _open_volume_zips(archive: FantagraphicsArchive) -> Iterator[_VolumeZips]:
+def _open_volume_zips(archive: FantagraphicsArchive) -> Generator[_VolumeZips]:
     """Open a volume's CBZ and, if it has one, its override CBZ; close both on exit.
 
     Nothing is raised for an archive that cannot be opened: its slot is ``None``

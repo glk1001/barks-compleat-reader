@@ -111,7 +111,7 @@ class TestAssertKivyNotYetImported:
 def _bare_config_info(app_dir: Path) -> ConfigInfo:
     """Build a ConfigInfo without running __init__ (which requires real dirs)."""
     instance = object.__new__(ConfigInfo)
-    instance._app_name = "barks-reader"  # noqa: SLF001
+    instance._app_name = "barks-reader"
     instance.app_dir = app_dir
     return instance
 

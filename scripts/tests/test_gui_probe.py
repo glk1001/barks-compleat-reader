@@ -13,7 +13,7 @@ harness parses. The Windows backend's structures are checked on Windows.
 from __future__ import annotations
 
 import ctypes
-import datetime
+import datetime as dt
 import os
 import subprocess
 import sys
@@ -472,8 +472,8 @@ class TestWindowModeSettling:
     """Input on macOS waits out a window-mode switch, and a moment after it."""
 
     @staticmethod
-    def _at(stamp: str) -> datetime.datetime:
-        return datetime.datetime.fromisoformat(f"2026-10-04 {stamp}")
+    def _at(stamp: str) -> dt.datetime:
+        return dt.datetime.fromisoformat(f"2026-10-04 {stamp}")
 
     def test_a_switch_started_and_not_ended_is_under_way(self) -> None:
         log = f"{_ENTERED}\n{_EXITING}"

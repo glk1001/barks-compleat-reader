@@ -118,7 +118,7 @@ import psutil
 import pull_sibling
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping, Sequence
+    from collections.abc import Callable, Generator, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
@@ -589,7 +589,7 @@ _ES_DISPLAY_REQUIRED = 0x00000002
 
 
 @contextmanager
-def kept_awake() -> Iterator[None]:
+def kept_awake() -> Generator[None]:
     """Keep the machine and its display awake while the block runs: Linux's systemd-inhibit.
 
     The display too: injected input needs a screen that is on and unlocked.
@@ -599,7 +599,7 @@ def kept_awake() -> Iterator[None]:
 
 
 @contextmanager
-def _kept_awake_macos() -> Iterator[None]:
+def _kept_awake_macos() -> Generator[None]:
     """Hold sleep off with caffeinate, for as long as this process lives.
 
     ``-w`` ties it to this process, so it lets go even if the run is killed.
@@ -619,7 +619,7 @@ def _kept_awake_macos() -> Iterator[None]:
 
 
 @contextmanager
-def _kept_awake_windows() -> Iterator[None]:
+def _kept_awake_windows() -> Generator[None]:
     """Hold sleep off with SetThreadExecutionState.
 
     Cleared on the way out, however the run ends (and by Windows, should the

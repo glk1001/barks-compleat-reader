@@ -16,7 +16,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from pathlib import Path
 
 
@@ -360,7 +360,7 @@ class _Benchmark:
         return _RecordingPool(max_workers=max_workers)
 
     @contextmanager
-    def patched(self, cpu_count: int) -> Iterator[SimpleNamespace]:
+    def patched(self, cpu_count: int) -> Generator[SimpleNamespace]:
         """Patch out the clock, the pool and the image work for one benchmark run."""
         image = MagicMock()
         # Give each synthetic sample real, identifiable bytes so what gets decoded can

@@ -22,7 +22,8 @@ derived from the type errors** — verify at the call site; some may reveal a re
 
 Checked 2026-10-13 against pyrefly 1.2.0: a baseline entry matches on **path, error kind and
 column**. The line and the message are ignored, and one entry covers every error of that
-kind at that column in that file. Two consequences:
+kind at that column in that file. Since pyrefly 1.3.2 (2026-10-13) the baseline file no
+longer records lines at all. Two consequences:
 
 - **Line drift never fails the gate**, so nothing forces `--update-baseline`, and a fixed
   finding's entry stays until someone runs it. Not run from 2026-07-20 to 2026-10-13, the

@@ -31,7 +31,7 @@ from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 def _stand_in(**attrs: object) -> Any:  # noqa: ANN401
@@ -156,7 +156,7 @@ class TestQuietFileSystem:
 
     @staticmethod
     @contextmanager
-    def _on_windows(stat_result: object) -> Iterator[None]:
+    def _on_windows(stat_result: object) -> Generator[None]:
         def fake_stat() -> object:
             if isinstance(stat_result, Exception):
                 raise stat_result
