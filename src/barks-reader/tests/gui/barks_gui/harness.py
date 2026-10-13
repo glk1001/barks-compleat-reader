@@ -20,6 +20,7 @@ import shutil
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -441,6 +442,36 @@ def log_problems(app_log: str, expected_errors: Sequence[str] = ()) -> list[str]
     if showing > 1:
         problems.append(f"{showing} screens entered and never left - only one can be showing")
     return problems
+
+
+# The app's flag on a folder setting this machine lacks (reader_settings._is_valid_dir).
+_MISSING_SETTING_DIR_RE = re.compile(r"Reader Settings: Required directory not found: ")
+_CONFIG_CHANGE_RE = re.compile(pattern(markers.CONFIG_CHANGE))
+
+
+def missing_dirs_from_setting_changes(app_log: str) -> list[str]:
+    """Return the missing-folder error lines a setting just changed in the app brought on.
+
+    The random walk presses Return wherever it lands, the Settings panel too: on
+    mac_vm on 2026-10-13 it turned on the live wiki, whose folder (set for another
+    machine) was not there, and the app flagged it at error level, as it should for a
+    user who does that. Only a line that comes straight after the app's own "Config
+    change" line counts; the same error anywhere else, such as at boot, is still one.
+
+    Args:
+        app_log: The app log's text.
+
+    Returns:
+        Each such line, stripped, in log order.
+
+    """
+    return [
+        line.strip()
+        for previous, line in pairwise(app_log.splitlines())
+        if _LEVEL_RE.match(line)
+        and _MISSING_SETTING_DIR_RE.search(line)
+        and _CONFIG_CHANGE_RE.search(previous)
+    ]
 
 
 def resize_events(log_text: str) -> list[tuple[int, int]]:

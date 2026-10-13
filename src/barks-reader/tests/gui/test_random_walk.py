@@ -5,7 +5,9 @@ stream of Escape, Return, Up, Down, Left and Right from a few boot nodes, each
 key waited on through the app's own "Key pressed" line, so a main loop that
 stops answering is caught at the key that stopped it. What makes the walk a
 test is the teardown: the log must stay clean, the reads persisted, the frame
-drawn and no key stray, whatever the walk wandered into.
+drawn and no key stray, whatever the walk wandered into. One error is the walk's
+own doing: a folder setting it turned on in the Settings panel that this machine
+has no folder for, which the app flags as it would for a user.
 
 The walk keeps itself alive by never confirming a confirm popup (the quit
 confirmation is one), pressing Escape there instead. It is a soak test, off by
@@ -31,7 +33,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import nodes
+from barks_gui import harness, nodes
 from barks_gui.memory import census
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -122,3 +124,6 @@ def test_a_random_walk_leaves_the_app_answering_and_clean(boot: AppBoot, start: 
             _await_confirm_opened(d, confirms_before)
     d.settle()
     assert d.match_count(KEY_PRESSED) >= STEPS
+    app_log = d.log_path.read_text(encoding="utf-8", errors="replace")
+    for line in harness.missing_dirs_from_setting_changes(app_log):
+        boot.expect_error(re.escape(line))

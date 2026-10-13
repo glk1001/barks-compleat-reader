@@ -10,6 +10,7 @@ conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 import zipfile
@@ -508,6 +509,39 @@ class TestLogProblems:
             ]
         )
         assert harness.log_problems(text) == ["screen 'wiki_reader' entered 0 times, left 1"]
+
+
+class TestMissingDirsFromSettingChanges:
+    STAMP = "2026-10-13 15:31:17.920"
+    CHANGE = (
+        f"{STAMP} | INFO     | app : barks_reader.ui.barks_reader_app:on_config_change:240 - "
+        + markers.CONFIG_CHANGE.format(
+            section="Barks Reader", key="use_live_wiki_bundle", value="1"
+        )
+    )
+    MISSING = (
+        f"{STAMP} | ERROR    | app : barks_reader.core.reader_settings:_is_valid_dir:423 - "
+        'Reader Settings: Required directory not found: "/Users/greg/no/okf".'
+    )
+    OTHER_ERROR = f"{STAMP} | ERROR    | app : barks_reader.ui.wiki:open:10 - Wiki failed."
+
+    def test_one_right_after_a_setting_change_is_the_walks_doing(self) -> None:
+        app_log = f"{self.CHANGE}\n{self.MISSING}\n"
+        assert harness.missing_dirs_from_setting_changes(app_log) == [self.MISSING]
+
+    def test_excused_it_leaves_the_log_clean(self) -> None:
+        app_log = f"{self.CHANGE}\n{self.MISSING}\n"
+        excused = [re.escape(line) for line in harness.missing_dirs_from_setting_changes(app_log)]
+        assert harness.log_problems(app_log, excused) == []
+
+    def test_one_with_no_setting_change_before_it_is_not(self) -> None:
+        """The same error at boot is a machine short of a folder, not the walk."""
+        app_log = f"{self.MISSING}\n{self.CHANGE}\n"
+        assert harness.missing_dirs_from_setting_changes(app_log) == []
+
+    def test_another_error_after_a_setting_change_is_not(self) -> None:
+        app_log = f"{self.CHANGE}\n{self.OTHER_ERROR}\n"
+        assert harness.missing_dirs_from_setting_changes(app_log) == []
 
 
 class TestAssertLogClean:
