@@ -61,6 +61,7 @@ CARL_BARKS_FONT_FILE = FONT_DIR / "Carl Barks Script.ttf"
 INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT_FILE
 INTRO_PUB_TEXT_FONT_FILE = str(FONT_DIR / "OpenSans-Regular.ttf")
 INTRO_PUB_TEXT_BOLD_FONT_FILE = str(FONT_DIR / "OpenSans-SemiBold.ttf")
+INTRO_PUB_TEXT_ITALIC_FONT_FILE = str(FONT_DIR / "OpenSans-Italic.ttf")
 PAGE_NUM_FONT_FILE = str(FONT_DIR / "verdana.ttf")
 
 JSON_METADATA_FILENAME = "comic-metadata.json"

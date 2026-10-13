@@ -26,6 +26,7 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_PUB_CREDITS_LINE_ADVANCE,
     INTRO_PUB_PARAGRAPH_GAP,
     INTRO_PUB_TEXT_COLOR,
+    INTRO_PUB_TEXT_LINE_ADVANCE,
     INTRO_TITLE_BYLINE_GAP_SHARE,
     INTRO_TITLE_BYLINE_MIN_GAP,
     INTRO_TITLE_HYPHEN_GAP,
@@ -49,6 +50,7 @@ from barks_fantagraphics.comics_consts import (
     DEST_TARGET_WIDTH,
     INTRO_PUB_TEXT_BOLD_FONT_FILE,
     INTRO_PUB_TEXT_FONT_FILE,
+    INTRO_PUB_TEXT_ITALIC_FONT_FILE,
     PageType,
 )
 from barks_fantagraphics.page_classes import CleanPage
@@ -266,9 +268,11 @@ class TestThePublicationText:
     """The original publication in ink, its first line bold; this edition's credits in sepia."""
 
     @staticmethod
-    def _lines(tmp_path: Path, text: str) -> list[_PubTextLine]:
+    def _lines(tmp_path: Path, text: str, title: str = "Lost in the Andes!") -> list[_PubTextLine]:
         comic = MagicMock()
         comic.publication_text = text
+        comic.title = title
+        comic.get_ini_title.return_value = "The Hypno-Gun"
         builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), comic=comic)
         return builder._get_publication_text_lines()
 
@@ -292,6 +296,25 @@ class TestThePublicationText:
         # A paragraph break opens a gap; the lines within a paragraph do not.
         assert lines[2].advance == INTRO_PUB_CREDITS_LINE_ADVANCE + INTRO_PUB_PARAGRAPH_GAP
         assert lines[3].advance == INTRO_PUB_CREDITS_LINE_ADVANCE
+
+    def test_a_story_with_no_title_of_its_own_has_its_later_name_first(
+        self, tmp_path: Path
+    ) -> None:
+        lines = self._lines(tmp_path, PUBLICATION_TEXT, title="")
+
+        name, first_published = lines[0], lines[1]
+        assert name.text == "(The Hypno-Gun)"
+        assert Path(str(name.font.path)).name == Path(INTRO_PUB_TEXT_ITALIC_FONT_FILE).name
+        assert name.color == INTRO_PUB_CREDITS_COLOR
+        # The name is a paragraph of its own, above the original publication.
+        assert first_published.text == PUBLICATION_TEXT.split("\n", maxsplit=1)[0]
+        assert first_published.advance == INTRO_PUB_TEXT_LINE_ADVANCE + INTRO_PUB_PARAGRAPH_GAP
+
+    def test_a_story_with_its_own_title_has_no_other_name(self, tmp_path: Path) -> None:
+        lines = self._lines(tmp_path, PUBLICATION_TEXT)
+
+        assert lines[0].text == PUBLICATION_TEXT.split("\n", maxsplit=1)[0]
+        assert not any(line.text.startswith("(") for line in lines)
 
     def test_a_story_with_no_edition_credits_is_all_in_ink(self, tmp_path: Path) -> None:
         lines = self._lines(tmp_path, PUBLICATION_TEXT.split("\n\n", maxsplit=1)[0])

@@ -19,6 +19,7 @@ from barks_fantagraphics.comics_consts import (
     DEST_TARGET_X_MARGIN,
     INTRO_PUB_TEXT_BOLD_FONT_FILE,
     INTRO_PUB_TEXT_FONT_FILE,
+    INTRO_PUB_TEXT_ITALIC_FONT_FILE,
     PAGE_NUM_COLOR,
     PAGE_NUM_FONT_FILE,
     PAGE_NUM_FONT_SIZE,
@@ -105,7 +106,10 @@ INTRO_INSET_BORDER_SHADE = 0.6  # of the title colour's brightness
 INTRO_INSET_BORDER_WIDTH = 4
 # The first paragraph of the publication text (the original publication) is in ink,
 # its first line bold; any later paragraphs (this edition's credits) are smaller and
-# in sepia. Advances are baseline to baseline.
+# in sepia. Above them all, a story Barks gave no title of his own, whose page is
+# lettered with its issue's name, has the name it has since been given, in italic
+# parentheses and sepia: an editor's note, set apart from his lettering. Advances are
+# baseline to baseline.
 INTRO_PUB_TEXT_FONT_SIZE = 40
 INTRO_PUB_TEXT_COLOR = (0, 0, 0)
 INTRO_PUB_TEXT_LINE_ADVANCE = 58
@@ -678,15 +682,26 @@ class ComicBookImageBuilder:
         font = _get_title_page_font(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
         credits_font = _get_title_page_font(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_CREDITS_FONT_SIZE)
 
-        lines = [
-            _PubTextLine(
-                text,
-                bold_font if i == 0 else font,
-                INTRO_PUB_TEXT_COLOR,
-                INTRO_PUB_TEXT_LINE_ADVANCE,
+        lines = []
+        if not self._comic.title:
+            italic_font = _get_title_page_font(
+                INTRO_PUB_TEXT_ITALIC_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE
             )
-            for i, text in enumerate(first_paragraph.split("\n"))
-        ]
+            lines.append(
+                _PubTextLine(
+                    f"({self._comic.get_ini_title()})",
+                    italic_font,
+                    INTRO_PUB_CREDITS_COLOR,
+                    INTRO_PUB_TEXT_LINE_ADVANCE,
+                )
+            )
+        for i, text in enumerate(first_paragraph.split("\n")):
+            advance = INTRO_PUB_TEXT_LINE_ADVANCE
+            if i == 0 and lines:
+                advance += INTRO_PUB_PARAGRAPH_GAP
+            lines.append(
+                _PubTextLine(text, bold_font if i == 0 else font, INTRO_PUB_TEXT_COLOR, advance)
+            )
         for paragraph in credit_paragraphs:
             for i, text in enumerate(paragraph.split("\n")):
                 advance = INTRO_PUB_CREDITS_LINE_ADVANCE
