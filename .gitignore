@@ -10,6 +10,7 @@
 !.claude/settings.json
 !.claude/skills/
 .claude/skills/*
+!.claude/skills/overnight-runs/
 !.claude/skills/verify/
 !.claude/skills/wiki-title-convention/
 

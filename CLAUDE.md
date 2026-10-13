@@ -21,29 +21,15 @@ uv run prek install
 ```
 The hooks run on [prek](https://github.com/j178/prek), as in the two sibling repos; it comes from
 the `dev` dependency group (`uv sync`) and reads `.pre-commit-config.yaml`. The cspell hooks also
-need [bun](https://bun.sh) on the PATH (on Windows, `winget install Oven-sh.Bun`, whose package
-lacks `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. A `bunx.exe`
-link did not do under pre-commit, which ran it as `bunx.EXE` while bun matches its own name
-case-sensitively).
+need [bun](https://bun.sh) on the PATH (on Windows it also needs a `bunx.cmd`: `docs/setup.md`).
 The pre-commit stage also runs [gitleaks](https://github.com/gitleaks/gitleaks) (secrets in what is
 staged), the one hook not from the uv venv: prek builds its pinned release once per machine, about
 30 s on the first commit, fetching Go itself.
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
 hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
 pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
-a red CI. To verify, `.git/hooks/pre-push` should name `--hook-type=pre-push`. (The `bunx` note
-was found under pre-commit; under prek, on the Windows laptop on 2026-10-01, every commit hook
-ran, the cspell one through `bunx.cmd`. The commit-message check calls `bun x` and needs no
-`bunx`.)
-
-The repo used git-lfs until 2026-10-03 (for `cpi.db`, now `comic_utils/cpi_table.py`), and no
-longer needs it. A clone made before then holds `git lfs install`'s four hooks in `.git/hooks`:
-`pre-push.legacy` (which prek runs before each push), `post-checkout`, `post-commit` and
-`post-merge`. Each is harmless while git-lfs is installed and fails its git command once it is not.
-Rename the ones that are only LFS's (`git lfs <hook> "$@"` after a `command -v git-lfs` guard;
-about 350 bytes) to `<name>.lfs-removed`. Where graphify's hook was appended to one (its
-`post-checkout`, `post-commit`), keep the file and delete just those two LFS lines. Done on this
-machine and the three overnight machines on 2026-10-03.
+a red CI. To verify, `.git/hooks/pre-push` should name `--hook-type=pre-push`. A clone made
+while the repo used git-lfs (before 2026-10-03) has LFS hooks to retire: `docs/setup.md`, step 4.
 
 A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
 `uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the
@@ -64,51 +50,13 @@ the app does not create either.
 bash scripts/run_benchmark.sh
 ```
 
-**Run the whole repo overnight** (the data-pack validators, full-lint, the suite with coverage,
-in random order and against upgraded dependencies, the sibling repos' tests, a Nuitka build and
-its smoke test, every GUI stage below against that build, GUI timing drift, unused code that
-nothing ran (`dead_code_report.py`, warns only), mutation testing of all of `core/` and the
-fantagraphics search modules (`BARKS_OVERNIGHT_MUTATION_SCOPE=core` or `fantagraphics` gives a
-machine one share, kept in its gitignored `.env.overnight`); `--list`, `--only`, `--skip`, `--app PATH`; results in
-`build/overnight/<stamp>/summary.txt`, where a warn-only stage shows WARNED):
+**Run the whole repo overnight** (results in `build/overnight/<stamp>/summary.txt`; on Windows
+or macOS, `uv run python scripts/run_overnight_desktop.py`). Setting up another machine, the
+desktop runner, the nightly schedule, macOS permissions and cross-platform coverage: the
+`overnight-runs` skill (`.claude/skills/overnight-runs/SKILL.md`).
 ```bash
 bash scripts/run_overnight.sh
 ```
-To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run] [--no-repos] [--no-data] HOST`
-sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
-not the build tree, so it runs with `--skip build-check`), and
-`bash scripts/check-overnight-host.sh` there says what is still missing.
-On Windows or macOS, `uv run python scripts/run_overnight_desktop.py` (same options and
-summary) runs what only a desktop machine can: the suite with the data pack, the GUI suite
-on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,
-`validate`, the wiki copy's freshness (barks-wiki pulled first, where safe), and the coverage of what only that platform runs; on Windows nightly through
-the wake, run and sleep task in `docs/overnight-schedule.md` (which schedules the Linux
-machines too, and lists the commands to run, watch, stop and pause each one;
-`scripts/windows/register-overnight-task.ps1` is the simpler alternative), and
-`uv run python scripts/check_windows_overnight_host.py` (on a Mac,
-`scripts/check_macos_overnight_host.py`) says what a machine still lacks for it (setup: `docs/setup.md`, Windows and "A macOS overnight machine", a clean Mac's checklist).
-Plan: `docs/plans/windows-overnight.md`. On a Mac, start it
-on the Mac's own desktop, not over ssh, from an app holding the probe's Accessibility and
-Screen Recording permissions (`docs/plans/macos-gui-tests.md`). macOS grants them to the app
-that started the process: Terminal for a run typed in Terminal, but for one Claude Code starts,
-`~/.local/share/claude/ClaudeCode.app` (`com.anthropic.claude-code`), which Claude Code runs
-through since 2.1 as a background process that outlives `/exit`. Check first with
-`uv run python scripts/gui_probe.py doctor`: with either permission missing every GUI stage is
-"not run". To grant them, add the app under System Preferences, Security & Privacy, Privacy,
-Accessibility and Screen Recording (`+`, then Cmd-Shift-G and the path: dragging the app in
-from its hidden folder did not take). On the guest on 2026-10-02, a process in a Claude Code
-shell asking for them (`AXIsProcessTrustedWithOptions` with its prompt option, then a screen
-capture) was what got ClaudeCode.app both, with no restart. Screen Recording can need the
-app restarted, which for ClaudeCode.app means quitting every Claude Code session.
-Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_desktop.py`):
-its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
-runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
-the new coverage stage). The nightly task `register-overnight-task.ps1` registers does
-not pull first; the one in `docs/overnight-schedule.md` does.
-`uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST [MACOS_HOST]`
-combines the machines' coverage of the newest commit all ran overnight (`--commit`), or of
-commits with the same `src/` tree, reported against that source: each platform, all
-together, and what only each desktop platform ran (report only).
 
 **Run every GUI test overnight** (the suite on each comic and panel source, the settings
 matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
@@ -226,43 +174,13 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   assert one sample title each and leave the whole corpus to it.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
 - GUI path tests are in `src/barks-reader/tests/gui/` (outside `testpaths`; run with
-  `bash scripts/run_gui_tests.sh`, or `--headless` on Xvfb with no window or desktop
-  session, which also runs four workers in parallel on displays :2 to :5, about three
-  minutes for the suite; on Windows and macOS, `uv run python scripts/run_gui_tests.py`,
-  one worker on the real desktop, through `scripts/gui_probe.py`'s backend for each,
-  `gui_probe_win32.py` and `gui_probe_darwin.py`; macOS plan:
-  `docs/plans/macos-gui-tests.md`). They boot the real app from a scratch profile and wait
-  only on lines the app logs, so a screen's log markers are part of its contract: when a
+  `bash scripts/run_gui_tests.sh`; runners, options, taps, leak tests and timing budgets:
+  `src/barks-reader/tests/gui/CLAUDE.md`). They boot the real app from a scratch profile and
+  wait only on lines the app logs, so a screen's log markers are part of its contract: when a
   user-visible transition gets no log line, add one (with a `loguru_sink` unit test) rather
-  than a sleep. The marker text is written once, in `barks_reader.core.log_markers`
-  (`okf_reader.core.log_markers` for the wiki viewer): the app logs it with `.format`, a
-  GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
-  `--soak` runs the random walk instead (off by default); `--app PATH` runs the suite
-  against a Nuitka build; `--prebuilt`, `--png-images` and `--ini` move a run to other
-  settings; `--screen WxH` picks another nested screen size; `--keep-logs` saves every
-  passing test's artifacts too (logs, profile, final frame), as a failure's;
-  `bash scripts/run_gui_matrix.sh` runs the suite once per settings variant (themes,
-  double-page, virtual keyboard, ...; `--list`, `--only NAME`). A GUI test presses only the
-  remote's six keys (Escape, Return, Up, Down, Left, Right): `scripts/check_gui_keys.py`
-  (pre-commit, CI, full-lint) fails on any other, unless the call carries
-  `# desktop key: <why>`.
-  `test_taps.py` taps instead, by what a widget shows, never by pixel: the app lists
-  its tappable widgets on request (`barks_gui.taps`, `barks_reader.core.tap_targets`).
-  A tap is a click; `--touch` makes it a real touch too, on a virtual touchscreen, and
-  needs the udev rule in `scripts/udev/` once (select with `-k test_taps`: one worker).
-  The leak tests (`-k leave_no`) ask the app the same way what it holds after a full
-  garbage collection (`barks_gui.memory`, `barks_reader.core.memory_census`): widgets and
-  textures may not climb over repeated round trips. The app's resident size is no leak
-  signal here: garbage waits long for a full collection, and glibc keeps freed memory.
-  Plan: `docs/plans/touch-gui-tests.md`.
-  Every duration the app logs is held to a loose budget at teardown
-  (`tests/gui/barks_gui/timings.py`): this machine's, once `--calibrate` has written
-  `.benchmarks/gui-timings.json`, else the committed ones; skipped when the load exceeds
-  what the cores and the run's workers account for; `BARKS_GUI_NO_BUDGETS=1` turns it off.
-  A new timed line is a marker with an `{elapsed}` field, added to `TIMED` and `BUDGETS`
-  there. Every page the comic reader settles on is held centred across the window at
-  teardown too (`assert_page_centred`, from the `PAGE_PLACED` line the reader logs when a
-  page moves; a placement replaced within a second is a frame on the way and not judged).
+  than a sleep. A GUI test presses only the remote's six keys (Escape, Return, Up, Down,
+  Left, Right): `scripts/check_gui_keys.py` (pre-commit, CI, full-lint) fails on any other,
+  unless the call carries `# desktop key: <why>`.
 
 ## graphify
 
