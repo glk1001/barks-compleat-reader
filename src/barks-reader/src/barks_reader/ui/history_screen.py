@@ -220,10 +220,10 @@ def _add_header_hairline(label: Label) -> None:
 class HistoryViewButton(ToggleButton):
     """A tab button for the history top bar (Journal/Titles)."""
 
-    def _do_press(self) -> None:
+    def _do_press(self, *args: object) -> None:
         """Prevent deselecting the active tab by suppressing press when already down."""
         if self.state == "normal":
-            super()._do_press()
+            super()._do_press(*args)
 
 
 class HistoryScreen(FloatLayout):

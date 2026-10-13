@@ -205,7 +205,7 @@ class _CollapseBar(RelativeLayout):
         label.bind(
             size=lambda inst, _s: setattr(inst, "text_size", (inst.width - text_indent, None)),
         )
-        label.padding_x = text_indent
+        label.padding = [text_indent, 0]
 
         self._overlay.bind(
             parent_name=lambda _inst, val: setattr(label, "text", f"[i]{val}[/i]"),

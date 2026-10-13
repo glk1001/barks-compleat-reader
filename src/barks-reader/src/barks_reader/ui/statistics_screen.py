@@ -73,10 +73,10 @@ def _discover_wordclouds(statistics_dir: Path) -> list[tuple[str, str]]:
 class StatMenuButton(ToggleButton):
     """A tab button for the Statistics action bar."""
 
-    def _do_press(self) -> None:
+    def _do_press(self, *args: object) -> None:
         """Prevent deselecting the active tab by suppressing press when already down."""
         if self.state == "normal":
-            super()._do_press()
+            super()._do_press(*args)
 
 
 class StatisticsScreen(FloatLayout, DropdownNavMixin):

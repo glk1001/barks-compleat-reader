@@ -238,7 +238,7 @@ KV_SETTINGS_OVERRIDE = """
                 multiline: False
                 font_size: '15sp'
                 hint_text: 'Type or select a path'
-                padding_y: [self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 0]
+                padding: [6, self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 6, 0]
                 on_text_validate: root.select_path(self.text)
                 background_color: 0.2, 0.2, 0.2, 1
                 foreground_color: __TEXT_TITLE_RGBA__

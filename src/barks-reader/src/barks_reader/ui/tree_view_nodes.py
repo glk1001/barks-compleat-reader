@@ -117,7 +117,7 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
     def get_name(self) -> str:
         return get_clean_text_without_extra(self.text)
 
-    def on_press(self) -> None:
+    def on_press(self, *_args: object) -> None:
         # Node press will also toggle expand/collapse.
         nodes_treeview = self._get_nodes_treeview(self)
         if not nodes_treeview:

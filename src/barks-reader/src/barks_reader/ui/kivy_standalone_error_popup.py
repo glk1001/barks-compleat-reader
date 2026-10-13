@@ -205,7 +205,7 @@ def _get_error_content(  # noqa: C901
                     color=[0, 0, 0, 1],
                     halign="left",
                     valign="middle",
-                    padding_x=10,
+                    padding=[10, 0],
                 )
                 heading.bind(width=lambda inst, val: setattr(inst, "text_size", (val - 20, None)))
                 with heading.canvas.before:  # ty:ignore[unresolved-attribute]
@@ -225,7 +225,7 @@ def _get_error_content(  # noqa: C901
                 halign="left",
                 valign="top",
                 color=[0, 0, 0, 1],
-                padding_y=10,
+                padding=[0, 10],
             )
             self.label_msg.bind(width=update_text_size)
             scroll_content.add_widget(self.label_msg)
