@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk -->
 
 Each overnight machine wakes itself from sleep at **01:00**, pulls this repo, runs its
 overnight run, and goes back to sleep, but only if it woke up for the run. A machine
@@ -129,7 +129,8 @@ the same run by hand meanwhile. How it differs from the laptop:
   environment variable, for runs started by hand. Remove both when the memory goes up.
 - **`nightly-job-now`** has the same action and account as `nightly-job` but no trigger
   and no wake: Windows will not start a disabled task. It runs on the desktop like the
-  nightly one, and the machine stays awake afterwards.
+  nightly one, and by the same wrapper rule the machine stays awake afterwards, unless it
+  resumed in the 5 minutes before (as `greg-dell run`, below, arranges).
 - **`test.ps1`** turns its copy of the task on, so the wake test works while
   `nightly-job` is disabled. The laptop's copies the task's settings as they are.
 - **Ping goes unanswered**: Windows' firewall drops it. Watch a wake with ssh, or
@@ -139,6 +140,7 @@ the same run by hand meanwhile. How it differs from the laptop:
 
 | To | Run (from the main machine) |
 |---|---|
+| Wake it if need be, run, and sleep again after | `greg-dell run` (below) |
 | Run it now (stays awake afterwards) | `ssh greg-dell Start-ScheduledTask nightly-job-now` |
 | See whether it is running | `ssh greg-dell '(Get-ScheduledTask nightly-job-now).State'` |
 | The newest run's results so far | `ssh greg-dell 'gc ((ls ~\source\repos\barks-compleat-reader\build\overnight -Dir \| sort Name)[-1].FullName + "\summary.txt")'` |
@@ -150,3 +152,38 @@ the same run by hand meanwhile. How it differs from the laptop:
 `summary.txt` is rewritten after each stage; `nightly-job.log` gets the run's output only
 when it ends. As on the laptop, greg must be logged on with the screen unlocked; the
 display may be off.
+
+### Asleep, with no keyboard
+
+greg-dell is meant to sleep between runs with no keyboard attached, woken for the 01:00
+run by its task and for a manual one from the main machine. Set up on 2026-10-13, every
+part tested there (the wake from off included):
+
+- **`~/bin/greg-dell` on the main machine**: `greg-dell status` (awake or not; the run
+  tasks and the newest `summary.txt`), `greg-dell wake` (a Wake-on-LAN magic packet, then
+  waits for ssh), `greg-dell run` (wakes it if asleep or off, then starts
+  `nightly-job-now`: woken for it, the machine sleeps again when the run ends), and
+  `greg-dell sleep` (refused while a run is going; `-f` forces it). It lives outside any
+  repo; its header says what it assumes.
+- **Wake-on-LAN**: the NIC (Intel I219-LM, MAC `54:BF:64:5C:CD:30`) wakes on a magic
+  packet only. "Wake on Pattern Match" is off, or ordinary traffic wakes it. In the BIOS,
+  Wake on LAN is "LAN Only" and Deep Sleep Control is Disabled, so a packet starts it from
+  off as well as from sleep: from off it answered ssh 30 s after the packet.
+- **Asleep by itself**: sleep on AC after 2 h idle (the host check accepts 2 h; a run
+  holds the machine awake). An ssh session is not activity to Windows: wake it again.
+- **Signed in after any restart**: Sysinternals Autologon (`autologon`, from winget;
+  the password is kept as an LSA secret, not in the registry in plain text) signs greg in
+  at boot. The BIOS has AC Recovery On (it starts after a power cut), keyboard errors not
+  reported, Continue on Warnings and no extended POST time, so it boots unattended.
+- **BIOS from Windows**: Dell Command | Configure is installed, so the BIOS can be read
+  and changed over ssh, without a keyboard: `cctk.exe -O <file>` writes every setting,
+  `cctk.exe --DeepSleepCtrl=Disabled` sets one for the next boot (in `C:\Program Files
+  (x86)\Dell\Command Configure\X86_64\`). There is no BIOS password, so any administrator
+  can do the same. Secure Boot is off, as Windows was installed; turning it on needs
+  Legacy Option ROMs off first.
+- **No windows at sign-in**, which would take the focus from a GUI stage: Windows'
+  welcome experience ("Get Started"), tips and "finish setting up" are off for greg, and
+  OneDrive, Edge (startup boost and background mode, by policy) and the Logitech Download
+  Assistant do not start.
+- **Keep the monitor connected** (off is fine): the timing budgets were calibrated at its
+  2560x1440. Without one, use a dummy HDMI plug and calibrate again.
