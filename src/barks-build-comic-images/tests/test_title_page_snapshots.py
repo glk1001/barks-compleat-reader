@@ -32,6 +32,10 @@ _SNAPSHOTS = {
     "Lost in the Andes!": "lost-in-the-andes.png",
     # An issue name for a title: the "Comics and Stories" masthead and a number, in purple.
     "The Hypno-Gun": "the-hypno-gun.png",
+    # A US-censored issue: the masthead's number with its raised footnote mark, in green.
+    "Silent Night": "silent-night.png",
+    # An issue title on two lines, "Uncle / Scrooge #14", in yellow, the faintest colour.
+    "Faulty Fortune": "faulty-fortune.png",
     # A title too wide for the page, lettered smaller to fit.
     "The Great Steamboat Race": "the-great-steamboat-race.png",
     # Three lines, one an article line ("the Farm"), in green.
