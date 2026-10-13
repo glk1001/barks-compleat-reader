@@ -625,8 +625,8 @@ class ComicBookImageBuilder:
         author_font_size = self._comic.author_font_size
         by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
         return (
-            _get_title_font(self._comic.title_font_file, by_font_size),
-            _get_title_font(self._comic.title_font_file, author_font_size),
+            _get_title_page_font(self._comic.title_font_file, by_font_size),
+            _get_title_page_font(self._comic.title_font_file, author_font_size),
         )
 
     def _get_byline_height(self) -> int:
@@ -655,9 +655,9 @@ class ComicBookImageBuilder:
     def _get_publication_text_lines(self) -> list[_PubTextLine]:
         first_paragraph, *credit_paragraphs = self._comic.publication_text.strip("\n").split("\n\n")
 
-        bold_font = ImageFont.truetype(INTRO_PUB_TEXT_BOLD_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
-        font = ImageFont.truetype(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
-        credits_font = ImageFont.truetype(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_CREDITS_FONT_SIZE)
+        bold_font = _get_title_page_font(INTRO_PUB_TEXT_BOLD_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
+        font = _get_title_page_font(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_TEXT_FONT_SIZE)
+        credits_font = _get_title_page_font(INTRO_PUB_TEXT_FONT_FILE, INTRO_PUB_CREDITS_FONT_SIZE)
 
         lines = [
             _PubTextLine(
@@ -921,7 +921,7 @@ class ComicBookImageBuilder:
     def _get_fitted_title_font(self, title: str, font_file: Path, font_size: int) -> FreeTypeFont:
         """Return the title's font, smaller if its widest line would not fit the page."""
         max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
-        font = _get_title_font(font_file, font_size)
+        font = _get_title_page_font(font_file, font_size)
         while font.size > 1 and self._get_title_ink_width(title, font) > max_width:
             font = font.font_variant(size=font.size - 1)
         return font
@@ -946,9 +946,9 @@ class ComicBookImageBuilder:
 
         title_split = ["Comics", "and Stories", comic_num]
         title_fonts = [
-            _get_title_font(font_file, font_size),
-            _get_title_font(font_file, int(0.5 * font_size)),
-            _get_title_font(font_file, font_size),
+            _get_title_page_font(font_file, font_size),
+            _get_title_page_font(font_file, int(0.5 * font_size)),
+            _get_title_page_font(font_file, font_size),
         ]
 
         text_height = self._get_intro_text_height(title, title_fonts[0])
@@ -1041,7 +1041,7 @@ class ComicBookImageBuilder:
         draw: PilImageDraw,
     ) -> None:
         superscript_font_size = int(0.7 * self._comic.title_font_size)
-        superscript_font = _get_title_font(self._comic.title_font_file, superscript_font_size)
+        superscript_font = _get_title_page_font(self._comic.title_font_file, superscript_font_size)
         self._draw_title_text(
             draw,
             left - int(0.75 * superscript_font_size),
@@ -1053,13 +1053,14 @@ class ComicBookImageBuilder:
         )
 
 
-def _get_title_font(font_file: str | Path, size: int) -> FreeTypeFont:
-    """Return the Barks lettering font for the title page, at a size.
+def _get_title_page_font(font_file: str | Path, size: int) -> FreeTypeFont:
+    """Return a font for the title page's text, at a size.
 
-    It always uses Pillow's basic text layout. With the Raqm layout, Pillow applies this
-    font's kerning, which pulls some letters 30px closer; but Raqm is not there on every
-    platform (not on Windows), and the reader letters title pages as it runs. The basic
-    layout letters a title the same everywhere, built page or reader.
+    It always uses Pillow's basic text layout. With the Raqm layout, Pillow applies a
+    font's kerning, which pulls some of the Barks lettering's letters 30px closer; but
+    Raqm is not there on every platform (not on Windows), and the reader letters title
+    pages as it runs. The basic layout letters a title page the same everywhere, built
+    page or reader.
 
     Args:
         font_file: The font file.
