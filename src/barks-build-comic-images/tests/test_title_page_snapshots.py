@@ -33,7 +33,7 @@ _SNAPSHOTS = {
     # An issue name for a title: the "Comics and Stories" masthead and a number, in purple.
     "The Hypno-Gun": "the-hypno-gun.png",
     # A title too wide for the page, lettered smaller to fit.
-    "The Paul Bunyan Machine": "the-paul-bunyan-machine.png",
+    "The Great Steamboat Race": "the-great-steamboat-race.png",
     # Three lines, one an article line ("the Farm"), in green.
     "The Day the Farm Stood Still": "the-day-the-farm-stood-still.png",
 }
