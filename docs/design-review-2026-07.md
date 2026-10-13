@@ -56,8 +56,8 @@ and About on-brand (`a716d422`, `f572cc40`); the story title-page redesign (2026
       on a transparent background (`ui/tree_view_screen.kv`). Visual; not judged.
 - [ ] **The other Material glyphs** — tinted but not redrawn. The live PNGs are in the Reader
       Files bundle, not the repo.
-- [ ] **Stale "Cyan …" comments** in `ui/bottom_title_view_screen.kv` over labels that are no
-      longer cyan.
+- [x] **Stale "Cyan …" comments** in `ui/bottom_title_view_screen.kv` over labels that are no
+      longer cyan: they name the accent colour since 2026-10-13.
 - Contingency, not a task: a `no-background.txt` ban list for the wiki, if a chart ever beats
   the scrim floor (`0d23e32f` chose the floor).
 
