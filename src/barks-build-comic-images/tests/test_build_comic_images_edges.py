@@ -21,6 +21,7 @@ import pytest
 from barks_build_comic_images.build_comic_images import (
     INTRO_INSET_BORDER_SHADE,
     INTRO_INSET_BORDER_WIDTH,
+    INTRO_INSET_MAX_HEIGHT,
     INTRO_INSET_MIN_GAP,
     INTRO_PUB_CREDITS_COLOR,
     INTRO_PUB_CREDITS_LINE_ADVANCE,
@@ -222,6 +223,25 @@ class TestTheIntroInset:
 
         assert inset.size == expected_size
 
+    @pytest.mark.parametrize(
+        ("inset_size", "expected_size"),
+        [
+            pytest.param((400, 300), (300, 225), id="4:3-is-left-at-the-width-cap"),
+            pytest.param((750, 250), (450, 150), id="wide-grows-to-the-minimum-height"),
+            pytest.param((1200, 200), (600, 100), id="wider-stops-at-the-wide-cap"),
+        ],
+    )
+    def test_a_wide_inset_is_widened_towards_the_minimum_height(
+        self, tmp_path: Path, inset_size: tuple[int, int], expected_size: tuple[int, int]
+    ) -> None:
+        inset_file = tmp_path / "inset.png"
+        Image.new("RGB", inset_size, WHITE).save(inset_file)
+        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset_file)
+
+        inset = builder._get_resized_inset(300, 1000, min_height=150, max_wide_width=600)
+
+        assert inset.size == expected_size
+
     def test_no_room_left_for_the_inset_is_refused_by_name(self, tmp_path: Path) -> None:
         inset = self._inset_in_a_zip(tmp_path)
         builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset)
@@ -389,6 +409,11 @@ class TestTheIntroPageLayout:
 
         assert wide[0] == tall[0]
         assert wide[-1] == tall[-1]
+
+    def test_a_tall_inset_is_no_taller_than_4_3_art_at_the_width_cap(self, tmp_path: Path) -> None:
+        inset_top, inset_bottom = self._inset_rows(self._intro_page(tmp_path, (300, 400)))
+
+        assert inset_bottom - inset_top + 1 == INTRO_INSET_MAX_HEIGHT
 
     def test_spare_room_widens_the_byline_gap_by_a_smaller_share(self, tmp_path: Path) -> None:
         page = self._intro_page(tmp_path, (300, 100))

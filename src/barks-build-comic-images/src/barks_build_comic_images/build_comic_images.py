@@ -100,8 +100,15 @@ INTRO_BY_FONT_SIZE_FRAC = 0.6
 INTRO_BY_AUTHOR_GAP = 28
 # The inset is framed like a story panel, but in a dark shade of the title's colour
 # rather than black ink, tying the art to the title. Its width cap lines it up with
-# the widest title lines.
+# the widest title lines. A wide inset would be a thin strip at that width, so it is
+# widened, up to a wider cap, until it is at least the minimum height: art wider than
+# about 2:1 grows, the more the wider it is. And no inset is taller than 4:3 art at the
+# width cap, so square and tall art leaves the page as much room as 4:3 art does,
+# rather than filling all of it.
 INTRO_INSET_MAX_WIDTH = 1450
+INTRO_INSET_MAX_WIDE_WIDTH = 1850
+INTRO_INSET_MIN_HEIGHT = 750
+INTRO_INSET_MAX_HEIGHT = round(INTRO_INSET_MAX_WIDTH * 3 / 4)
 INTRO_INSET_MIN_GAP = 130
 INTRO_INSET_BORDER_SHADE = 0.6  # of the title colour's brightness
 INTRO_INSET_BORDER_WIDTH = 4
@@ -619,7 +626,12 @@ class ComicBookImageBuilder:
         room = pub_top - title_bottom - self._get_byline_height()
         inset = self._get_resized_inset(
             INTRO_INSET_MAX_WIDTH,
-            room - INTRO_TITLE_BYLINE_MIN_GAP - (2 * INTRO_INSET_MIN_GAP),
+            min(
+                INTRO_INSET_MAX_HEIGHT,
+                room - INTRO_TITLE_BYLINE_MIN_GAP - (2 * INTRO_INSET_MIN_GAP),
+            ),
+            min_height=INTRO_INSET_MIN_HEIGHT,
+            max_wide_width=INTRO_INSET_MAX_WIDE_WIDTH,
         )
         spare = room - inset.height
         byline_gap = round(
@@ -759,8 +771,14 @@ class ComicBookImageBuilder:
             width=b,
         )
 
-    def _get_resized_inset(self, max_width: int, max_height: int) -> PilImage:
-        """Return the inset scaled, keeping its shape, to the largest size within the box."""
+    def _get_resized_inset(
+        self, max_width: int, max_height: int, min_height: int = 0, max_wide_width: int = 0
+    ) -> PilImage:
+        """Return the inset scaled, keeping its shape, to the largest size within the box.
+
+        A wide inset, one that would be less than ``min_height`` tall at ``max_width``, may
+        be as wide as ``max_wide_width`` instead, to come nearer that height.
+        """
         if max_height <= 0:
             msg = (
                 f"No room for the intro inset: the title, byline and publication text"
@@ -784,7 +802,8 @@ class ComicBookImageBuilder:
 
         inset_width, inset_height = inset.size
 
-        new_inset_width = max_width
+        wide_width = min(max_wide_width, round(min_height * inset_width / inset_height))
+        new_inset_width = max(max_width, wide_width)
         new_inset_height = round((inset_height / inset_width) * new_inset_width)
         if new_inset_height > max_height:
             new_inset_height = max_height
