@@ -425,6 +425,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             app.close_app()
             return
         logger.info(log_markers.QUIT_ASKING)
+        # Menu mode reopens on the last button used, and the popup starts on Quit: after
+        # a "Stay", focus must not wait on the X, or Escape, Enter, Enter would quit.
+        self._last_used_btn_idx = self._default_btn_idx
         open_confirm_popup(
             title="Quit",
             text="Quit the Barks Reader?",

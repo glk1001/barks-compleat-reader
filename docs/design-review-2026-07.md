@@ -17,7 +17,7 @@ present tense, screenshots and `file:line` references describe the app *before* 
 |---|---|---|
 | Defect 1, the tint roulette | Done: `RandomColorTint` deleted, fixed neutral scrims (`core/reader_palette.py`, `FixedColorSource` in `core/reader_colors.py`) | `e76fe039`, `001f7600` |
 | Defect 2, the programmer palette | Done: every inventoried colour is a `theme()` role; tree and wiki share `accent_selection` | `905775e7`, `e084814b` |
-| Defect 3, Escape+Enter quits | Done, one residual (below): Go Back is the starting focus, the quit X asks first (`confirm_quit`, on by default) | `e76fe039`, `41b114de`, `ecd4f5c3`, `058e587f` |
+| Defect 3, Escape+Enter quits | Done: Go Back is the starting focus (and again after a "Stay"); the quit X asks first (`confirm_quit`, on by default) | `e76fe039`, `41b114de`, `ecd4f5c3`, `058e587f` |
 | Wiki background bleed | Done: continuous reading-pane and sidebar scrims; the Contrast toggle darkens the whole pane | `0d23e32f` |
 | Title-row emphasis | Done: the title is bold, the year is not | `905775e7` |
 | Search screen | Done, then rebuilt again by advanced search (2026-09-29/30, `docs/plans/advanced-search.md`) | `798b8afe`, `e79b5ae5` |
@@ -37,12 +37,11 @@ and About on-brand (`a716d422`, `f572cc40`); the story title-page redesign (2026
 
 ### Still open
 
-- [ ] **Quit is still Escape, Enter, Enter after a "Stay".** Menu mode restores the last
-      button used (`_enter_menu_mode` in `ui/reader_keyboard_nav.py`, from
-      `_activate_focused_button`), and the quit popup focuses "Quit" (`41b114de`). So once
-      the X has been pressed by keyboard and "Stay" chosen, the next Escape lands on the X
-      again. From reading the code; not tried in the app. Resetting `_last_used_btn_idx` to
-      the default after a cancelled quit would close it.
+- [x] **Quit was still Escape, Enter, Enter after a "Stay".** Menu mode restores the last
+      button used (`_enter_menu_mode` in `ui/reader_keyboard_nav.py`), and the quit popup
+      focuses "Quit" (`41b114de`), so after a "Stay" the next Escape landed on the X again.
+      Fixed 2026-10-13: `MainScreen.request_quit` puts the last-used button back to Go Back
+      before asking (`TestQuitFocus` in `tests/unit/test_main_screen.py`).
 - [ ] **The wiki's focus colours are constants, not theme.** `FOCUS_RING_COLOR`
       (`okf_reader/ui/focus_ring.py`) and `LINK_FOCUS_COLOR` (`okf_reader/ui/keynav.py`) are
       a fixed gold close to Masthead's, outside `ViewerThemeSpec`, so Duckburg and Four Color

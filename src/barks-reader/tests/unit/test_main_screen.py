@@ -614,3 +614,22 @@ class TestMainScreenQuietPaths:
             main_screen.on_title_portal_image_pressed()
         main_screen._nav_coord.read_comic.assert_called_once_with()
         no_longer_first_use.assert_not_called()
+
+
+class TestQuitFocus:
+    def test_after_a_stay_the_menu_reopens_on_go_back_not_the_x(
+        self, main_screen: MainScreen
+    ) -> None:
+        """Escape, Enter, Enter must not quit after the quit popup was answered "Stay"."""
+        main_screen._reader_settings.confirm_quit = True
+        quit_idx = main_screen._menu_buttons.index(main_screen.ids.quit_button)
+        main_screen._last_used_btn_idx = quit_idx  # as the X's keyboard activation leaves it
+        with (
+            patch.object(barks_reader.ui.main_screen, "App"),
+            patch.object(barks_reader.ui.main_screen, "open_confirm_popup"),
+        ):
+            main_screen.request_quit()
+        with patch.object(main_screen, "_update_menu_focus"):
+            main_screen._enter_menu_mode()
+        focused = main_screen._menu_buttons[main_screen._focused_btn_idx]
+        assert focused is main_screen.ids.go_back_button
