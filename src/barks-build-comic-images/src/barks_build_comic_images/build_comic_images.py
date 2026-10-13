@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
+from typing import NamedTuple
 
 from barks_fantagraphics.comic_book import INTRO_TITLE_DEFAULT_FONT_SIZE, ComicBook
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
@@ -93,6 +94,12 @@ INTRO_CS_STACK_LINE_GAP_FRAC = 0.18  # of the capitals' height, between AND and 
 INTRO_CS_COMICS = "COMICS"
 INTRO_CS_AND = "AND"
 INTRO_CS_STORIES = "STORIES"
+# A US-censored issue's number carries a raised footnote mark, lettered smaller, a
+# little after its last digit. The gap and the raise are for the default title font
+# size, and scale with it.
+INTRO_CS_FOOTNOTE_SIZE_FRAC = 0.7  # of the title font size
+INTRO_CS_FOOTNOTE_GAP = 24
+INTRO_CS_FOOTNOTE_RAISE = 20
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline; or
 # "art by", "story by" and the like, where the credits name another writer or artist.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
@@ -110,6 +117,10 @@ INTRO_INSET_MAX_WIDE_WIDTH = 1850
 INTRO_INSET_MIN_HEIGHT = 750
 INTRO_INSET_MAX_HEIGHT = round(INTRO_INSET_MAX_WIDTH * 3 / 4)
 INTRO_INSET_MIN_GAP = 130
+# A page whose title, byline and publication text leave the inset less than this, after
+# the gaps around it, is refused rather than built with a sliver of art: the title wants
+# re-breaking, or a smaller title_font_size.
+INTRO_INSET_LEAST_HEIGHT = INTRO_INSET_MIN_HEIGHT // 2
 INTRO_INSET_BORDER_SHADE = 0.6  # of the title colour's brightness
 INTRO_INSET_BORDER_WIDTH = 4
 # The first paragraph of the publication text (the original publication) is in ink,
@@ -231,6 +242,17 @@ class BuildSourceProfile:
 
     page_image_source: PageImageSource
     srce_story_file_resolver: SrceStoryFileResolver
+
+
+class _InkExtent(NamedTuple):
+    """Where lettering's ink lies, relative to the top it is lettered at."""
+
+    top: int
+    bottom: int
+
+    @property
+    def height(self) -> int:
+        return self.bottom - self.top
 
 
 @dataclass(frozen=True)
@@ -605,18 +627,19 @@ class ComicBookImageBuilder:
 
         top = INTRO_TOP
 
-        title, title_fonts, text_height = self._get_title_and_fonts()
+        title, title_fonts, title_ink = self._get_title_and_fonts()
 
+        # Lettered so that the top of its ink, outline included, is at INTRO_TOP.
         self._draw_centered_multiline_title_text(
             title,
             title_fonts,
             self._comic.title_color,
-            top,
+            top - title_ink.top,
             spacing=INTRO_TITLE_SPACING,
             image=dest_page_image,
             draw=draw,
         )
-        title_bottom = top + text_height
+        title_bottom = top + title_ink.height
 
         pub_lines = self._get_publication_text_lines()
         pub_height = self._get_publication_text_height(pub_lines)
@@ -624,12 +647,17 @@ class ComicBookImageBuilder:
 
         # What is left for the inset and the three gaps around the byline and the inset.
         room = pub_top - title_bottom - self._get_byline_height()
+        inset_room = room - INTRO_TITLE_BYLINE_MIN_GAP - (2 * INTRO_INSET_MIN_GAP)
+        if inset_room < INTRO_INSET_LEAST_HEIGHT:
+            msg = (
+                f'No room for the intro inset "{self._comic.intro_inset_file}": the title,'
+                f" byline and publication text leave {room} pixels, {inset_room} after the"
+                f" gaps around the inset, and it needs {INTRO_INSET_LEAST_HEIGHT}."
+            )
+            raise ValueError(msg)
         inset = self._get_resized_inset(
             INTRO_INSET_MAX_WIDTH,
-            min(
-                INTRO_INSET_MAX_HEIGHT,
-                room - INTRO_TITLE_BYLINE_MIN_GAP - (2 * INTRO_INSET_MIN_GAP),
-            ),
+            min(INTRO_INSET_MAX_HEIGHT, inset_room),
             min_height=INTRO_INSET_MIN_HEIGHT,
             max_wide_width=INTRO_INSET_MAX_WIDE_WIDTH,
         )
@@ -779,13 +807,6 @@ class ComicBookImageBuilder:
         A wide inset, one that would be less than ``min_height`` tall at ``max_width``, may
         be as wide as ``max_wide_width`` instead, to come nearer that height.
         """
-        if max_height <= 0:
-            msg = (
-                f"No room for the intro inset: the title, byline and publication text"
-                f' leave {max_height} pixels for "{self._comic.intro_inset_file}".'
-            )
-            raise ValueError(msg)
-
         if isinstance(self._comic.intro_inset_file, Path):
             inset = open_image_for_reading(self._comic.intro_inset_file)
         else:
@@ -814,18 +835,31 @@ class ComicBookImageBuilder:
             resample=Image.Resampling.BICUBIC,
         )
 
-    def _get_intro_text_height(self, text: str, font: FreeTypeFont) -> int:
-        """Return how tall a title's ink is, from its letters' top to their shadow's bottom."""
+    def _get_intro_text_extent(self, text: str, font: FreeTypeFont) -> _InkExtent:
+        """Return where a title's ink lies, relative to the top it is lettered at.
+
+        From the top of its letters' outline to the bottom of their shadow: the outline
+        is drawn around each letter and the shadow below it, so the ink reaches past the
+        letters' own box at both ends.
+        """
         lines = text.split("\n")
         fonts = self._get_title_line_fonts(lines, font)
         tops = self._get_title_line_tops(lines, fonts, font, INTRO_TITLE_SPACING)
         bboxes = [f.getbbox(line) for line, f in zip(lines, fonts, strict=True)]
-        ink_top = min(top + bbox[1] for top, bbox in zip(tops, bboxes, strict=True))
-        ink_bottom = max(
-            top + bbox[3] + self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, f)
-            for top, bbox, f in zip(tops, bboxes, fonts, strict=True)
+        outlines = [self._get_title_outline_width(f) for f in fonts]
+        ink_top = min(
+            top + bbox[1] - outline
+            for top, bbox, outline in zip(tops, bboxes, outlines, strict=True)
         )
-        return round(ink_bottom - ink_top)
+        ink_bottom = max(
+            top + bbox[3] + outline + self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, f)
+            for top, bbox, outline, f in zip(tops, bboxes, outlines, fonts, strict=True)
+        )
+        return _InkExtent(round(ink_top), round(ink_bottom))
+
+    def _get_intro_text_height(self, text: str, font: FreeTypeFont) -> int:
+        """Return how tall a title's ink is, from its outline's top to its shadow's bottom."""
+        return self._get_intro_text_extent(text, font).height
 
     @staticmethod
     def _is_small_word_line(line: str) -> bool:
@@ -871,6 +905,9 @@ class ComicBookImageBuilder:
     @staticmethod
     def _get_title_scaled(size: int, font: FreeTypeFont) -> float:
         return size * font.size / INTRO_TITLE_DEFAULT_FONT_SIZE
+
+    def _get_title_outline_width(self, font: FreeTypeFont) -> int:
+        return max(1, round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font)))
 
     def _get_title_line_width(self, line: str, font: FreeTypeFont) -> float:
         _, width = self._get_title_letter_offsets(line, font)
@@ -955,30 +992,29 @@ class ComicBookImageBuilder:
                 letters.append(((line_left + offset, top + line_top), letter, line_font))
 
         for (x, y), letter, letter_font in letters:
-            outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))
             shadow_offset = self._get_title_scaled(INTRO_TITLE_SHADOW_OFFSET, letter_font)
             draw.text(
                 (x + shadow_offset, y + shadow_offset),
                 letter,
                 fill=INTRO_TITLE_SHADOW_COLOR,
                 font=letter_font,
-                stroke_width=max(1, outline_width),
+                stroke_width=self._get_title_outline_width(letter_font),
                 stroke_fill=INTRO_TITLE_SHADOW_COLOR,
             )
         for xy, letter, letter_font in letters:
-            outline_width = round(self._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, letter_font))
             draw.text(
                 xy,
                 letter,
                 fill=INTRO_TITLE_OUTLINE_COLOR,
                 font=letter_font,
-                stroke_width=max(1, outline_width),
+                stroke_width=self._get_title_outline_width(letter_font),
                 stroke_fill=INTRO_TITLE_OUTLINE_COLOR,
             )
         for xy, letter, letter_font in letters:
             draw.text(xy, letter, fill=color, font=letter_font)
 
-    def _get_title_and_fonts(self) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
+    def _get_title_and_fonts(self) -> tuple[list[str], list[FreeTypeFont], _InkExtent]:
+        """Return the title's lines, their fonts, and where its ink lies below its top."""
         title = self._comic.get_comic_title()
         font_file = self._comic.title_font_file
         font_size = self._comic.title_font_size
@@ -995,8 +1031,7 @@ class ComicBookImageBuilder:
             )
 
         title_font = self._get_fitted_title_font(title, font_file, font_size)
-        text_height = self._get_intro_text_height(title, title_font)
-        return [title], [title_font], text_height
+        return [title], [title_font], self._get_intro_text_extent(title, title_font)
 
     def _get_fitted_title_font(self, title: str, font_file: Path, font_size: int) -> FreeTypeFont:
         """Return the title's font, smaller if its widest line would not fit the page."""
@@ -1018,7 +1053,7 @@ class ComicBookImageBuilder:
         font_file: Path,
         font_size: int,
         add_footnote: bool,
-    ) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
+    ) -> tuple[list[str], list[FreeTypeFont], _InkExtent]:
         """Return the masthead's pieces, "COMICS", "AND", "STORIES" and the issue number.
 
         "AND" and "STORIES" are small enough that, one over the other, they are as tall as
@@ -1033,7 +1068,7 @@ class ComicBookImageBuilder:
         stack_line_cap_height = cap_height * (1 - INTRO_CS_STACK_LINE_GAP_FRAC) / 2
         small_font = font.font_variant(size=round(font_size * stack_line_cap_height / cap_height))
 
-        text_height = self._get_intro_text_height(f"{INTRO_CS_COMICS}\n{comic_num}", font)
+        ink = self._get_intro_text_extent(f"{INTRO_CS_COMICS}\n{comic_num}", font)
 
         if add_footnote:
             comic_num += FOOTNOTE_CHAR
@@ -1041,7 +1076,7 @@ class ComicBookImageBuilder:
         return (
             [INTRO_CS_COMICS, INTRO_CS_AND, INTRO_CS_STORIES, comic_num],
             [font, small_font, small_font, font],
-            text_height,
+            ink,
         )
 
     def _draw_centered_multiline_title_text(
@@ -1109,34 +1144,28 @@ class ComicBookImageBuilder:
         number_top = (
             top + self._get_title_line_tops([comics, digits], [font, font], font, spacing)[1]
         )
-        number_width = self._get_title_text_width(number, font)
-        number_left = (image.width - number_width) / 2
+        digits_width = self._get_title_text_width(digits, font)
+        number_left = (image.width - digits_width) / 2
         self._draw_title_text(draw, number_left, number_top, digits, font, color, spacing)
         if digits != number:
-            self._draw_superscript_title_text(
-                FOOTNOTE_CHAR, color, int(number_left + number_width - 1), number_top, spacing, draw
+            self._draw_footnote_mark(
+                draw, number_left + digits_width, number_top, font, color, spacing
             )
 
-    def _draw_superscript_title_text(
+    def _draw_footnote_mark(
         self,
-        text: str,
-        color: tuple[int, int, int],
-        left: int,
-        top: float,
-        spacing: int,
         draw: PilImageDraw,
+        digits_right: float,
+        number_top: float,
+        font: FreeTypeFont,
+        color: tuple[int, int, int],
+        spacing: int,
     ) -> None:
-        superscript_font_size = int(0.7 * self._comic.title_font_size)
-        superscript_font = _get_title_page_font(self._comic.title_font_file, superscript_font_size)
-        self._draw_title_text(
-            draw,
-            left - int(0.75 * superscript_font_size),
-            top - 20,
-            text,
-            superscript_font,
-            color,
-            spacing,
-        )
+        """Letter the raised footnote mark a little after the number's last digit."""
+        mark_font = font.font_variant(size=round(INTRO_CS_FOOTNOTE_SIZE_FRAC * font.size))
+        left = digits_right + self._get_title_scaled(INTRO_CS_FOOTNOTE_GAP, font)
+        top = number_top - self._get_title_scaled(INTRO_CS_FOOTNOTE_RAISE, font)
+        self._draw_title_text(draw, left, top, FOOTNOTE_CHAR, mark_font, color, spacing)
 
 
 def _get_cap_height(font: FreeTypeFont, text: str) -> float:

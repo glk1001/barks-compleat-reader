@@ -21,6 +21,7 @@ import pytest
 from barks_build_comic_images.build_comic_images import (
     INTRO_INSET_BORDER_SHADE,
     INTRO_INSET_BORDER_WIDTH,
+    INTRO_INSET_LEAST_HEIGHT,
     INTRO_INSET_MAX_HEIGHT,
     INTRO_INSET_MIN_GAP,
     INTRO_PUB_CREDITS_COLOR,
@@ -40,11 +41,13 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_SPACING,
     INTRO_TITLE_TRACKING,
     INTRO_TITLE_WORD_GAP,
+    INTRO_TOP,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
     _get_inset_border_color,
     _PubTextLine,
 )
+from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import (
     CARL_BARKS_FONT_FILE,
     DEST_TARGET_HEIGHT,
@@ -54,6 +57,7 @@ from barks_fantagraphics.comics_consts import (
     INTRO_PUB_TEXT_ITALIC_FONT_FILE,
     PageType,
 )
+from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.panel_geometry import BoundingBox
 from comic_utils.decryption import DecryptionError
@@ -242,13 +246,6 @@ class TestTheIntroInset:
 
         assert inset.size == expected_size
 
-    def test_no_room_left_for_the_inset_is_refused_by_name(self, tmp_path: Path) -> None:
-        inset = self._inset_in_a_zip(tmp_path)
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset)
-
-        with pytest.raises(ValueError, match=r"No room for the intro inset.*Lost in the Andes"):
-            builder._get_resized_inset(INSET_MAX_WIDTH, 0)
-
     def test_the_inset_border_is_drawn_outside_the_art(self) -> None:
         image = Image.new("RGB", (200, 200), WHITE)
         left, top, b = 50, 60, INTRO_INSET_BORDER_WIDTH
@@ -362,22 +359,43 @@ class TestTheIntroPageLayout:
     INSET_COLOR = (0, 120, 255)
     TITLE_COLOR = (38, 104, 178)
 
-    def _intro_page(self, tmp_path: Path, inset_size: tuple[int, int]) -> Image.Image:
+    def _intro_page(
+        self,
+        tmp_path: Path,
+        inset_size: tuple[int, int],
+        title: str = "Lost in the\nAndes!",
+        comic: MagicMock | None = None,
+    ) -> Image.Image:
         inset_file = tmp_path / f"inset-{inset_size[0]}x{inset_size[1]}.png"
         Image.new("RGB", inset_size, self.INSET_COLOR).save(inset_file)
-        comic = MagicMock()
-        comic.get_comic_title.return_value = "Lost in the\nAndes!"
+        comic = comic or self._story_comic(title)
         comic.title_font_file = CARL_BARKS_FONT_FILE
         comic.title_font_size = 155
         comic.title_color = self.TITLE_COLOR
         comic.author_font_size = 90
         comic.byline = "by"
-        comic.fanta_info.comic_book_info.is_barks_title = True
         comic.publication_text = PUBLICATION_TEXT
         builder = _builder(
             tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset_file, comic=comic
         )
         return builder._get_dest_title_page_image(Image.new("RGB", (40, 60), WHITE))
+
+    @staticmethod
+    def _story_comic(title: str) -> MagicMock:
+        comic = MagicMock()
+        comic.get_comic_title.return_value = title
+        comic.fanta_info.comic_book_info.is_barks_title = True
+        return comic
+
+    @staticmethod
+    def _issue_comic(number: str, *, us_censored: bool) -> MagicMock:
+        """Return a comic titled by its "Comics and Stories" issue, lettered as the masthead."""
+        comic = MagicMock()
+        comic.get_comic_title.return_value = f"{ISSUE_NAME[Issues.CS]} {number}"
+        comic.fanta_info.comic_book_info.is_barks_title = False
+        comic.fanta_info.comic_book_info.issue_name = Issues.CS
+        comic.get_ini_title.return_value = US_CENSORED_TITLES[0] if us_censored else "Not it"
+        return comic
 
     @staticmethod
     def _ink_rows(page: Image.Image) -> list[int]:
@@ -409,6 +427,54 @@ class TestTheIntroPageLayout:
 
         assert wide[0] == tall[0]
         assert wide[-1] == tall[-1]
+
+    @pytest.mark.parametrize(
+        "title",
+        ["Lost in the\nAndes!", "of the\nMoaning Hills", "The Paul Bunyan Machine Goes West"],
+    )
+    def test_the_title_ink_starts_at_the_intro_top(self, tmp_path: Path, title: str) -> None:
+        """Outline included, whether the first line is full-size, small, or shrunk to fit."""
+        rows = self._ink_rows(self._intro_page(tmp_path, (300, 200), title))
+
+        assert abs(rows[0] - INTRO_TOP) <= 1
+
+    def test_the_byline_is_the_gap_below_the_title_ink(self, tmp_path: Path) -> None:
+        page = self._intro_page(tmp_path, (300, 400))  # a tall inset: the minimum gaps
+        inset_top, _ = self._inset_rows(page)
+        above_inset = [band for band in self._ink_bands(page) if band[1] < inset_top]
+        (_, title_bottom), (byline_top, _) = above_inset[-2:]
+
+        assert abs((byline_top - title_bottom) - INTRO_TITLE_BYLINE_MIN_GAP) <= GAP_TOLERANCE
+
+    def test_a_title_leaving_too_little_room_for_the_inset_is_refused(self, tmp_path: Path) -> None:
+        title = "Too\nMany\nLines\nMake\nOne\nTitle\nPage\nFail"
+
+        with pytest.raises(ValueError, match=r"No room for the intro inset.*inset-300x200") as e:
+            self._intro_page(tmp_path, (300, 200), title)
+
+        assert f"needs {INTRO_INSET_LEAST_HEIGHT}" in str(e.value)
+
+    def test_a_censored_issues_number_is_centred_and_its_mark_follows(self, tmp_path: Path) -> None:
+        plain = self._intro_page(
+            tmp_path, (300, 200), comic=self._issue_comic("98", us_censored=False)
+        )
+        censored = self._intro_page(
+            tmp_path, (300, 200), comic=self._issue_comic("98", us_censored=True)
+        )
+
+        # The masthead's second ink band is the number's line.
+        number_top, number_bottom = self._ink_bands(plain)[1]
+        number_ink = plain.crop((0, number_top, plain.width, number_bottom + 1)).convert("L")
+        number_bbox = number_ink.point(lambda p: 255 if p < INK_THRESHOLD else 0).getbbox()
+        assert number_bbox is not None
+        number_left, _, number_right, _ = number_bbox
+        assert abs((number_left + number_right) / 2 - plain.width / 2) <= GAP_TOLERANCE
+
+        # The mark is the only difference, and it sits to the right of the digits.
+        changed = ImageChops.difference(plain, censored).getbbox()
+        assert changed is not None
+        assert changed[0] >= number_right
+        assert changed[1] < number_top <= changed[3] <= number_bottom
 
     def test_a_tall_inset_is_no_taller_than_4_3_art_at_the_width_cap(self, tmp_path: Path) -> None:
         inset_top, inset_bottom = self._inset_rows(self._intro_page(tmp_path, (300, 400)))

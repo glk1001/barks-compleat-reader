@@ -161,10 +161,12 @@ def _builder(
 class TestTitleAndFonts:
     def test_a_barks_title_is_one_line_in_one_font(self, tmp_path: Path) -> None:
         builder = _builder(tmp_path, title="Lost in the Andes!", is_barks=True, ini_title="x")
-        texts, fonts, height = builder._get_title_and_fonts()
+        texts, fonts, ink = builder._get_title_and_fonts()
         assert texts == ["Lost in the Andes!"]
         assert [f.size for f in fonts] == [TITLE_FONT_SIZE]
-        assert height > 0
+        # The ink starts above the letters' own box: the outline is drawn around them.
+        assert ink.top < fonts[0].getbbox(texts[0])[1]
+        assert ink.height > 0
 
     def test_a_comics_and_stories_issue_is_lettered_as_its_masthead(self, tmp_path: Path) -> None:
         builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
