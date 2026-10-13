@@ -94,6 +94,10 @@ holds `git lfs install`'s hooks too: `pre-push.legacy`, `post-checkout`, `post-c
 that are only LFS's to `<name>.lfs-removed`; where graphify's hook follows the LFS lines
 in one, delete just the two LFS lines (`CLAUDE.md` has the details).
 
+The secrets hook (gitleaks) is the one hook not from `.venv`: prek builds its pinned
+release on a machine's first commit, fetching Go itself (about 30 seconds), so there is
+nothing to install for it.
+
 ## 5. Secrets and the generated modules
 
 `.env.runtime` (gitignored) holds the key that decrypts the comic archives and where the

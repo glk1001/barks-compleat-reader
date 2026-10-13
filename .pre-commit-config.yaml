@@ -143,3 +143,17 @@ repos:
             entry: bash -c 'cat -- "$1" | bun x cspell --no-progress stdin' --
             language: system
             stages: [commit-msg]
+
+      # Secrets in what is staged: gitleaks's own hook. Not from the uv venv like the
+      # rest, as gitleaks is a Go program with no Python package; prek builds this
+      # pinned release once per machine (about 30s on the first commit, fetching Go
+      # itself) and keeps it in its cache. It finds BARKS_ZIPS_KEY's line from
+      # .env.runtime, the secret that only .gitignore keeps out; the whole history was
+      # clean when it went in (2,143 commits, 2026-10-13). A false finding is
+      # silenced with a `gitleaks:allow` comment on its line, or by adding its
+      # fingerprint to .gitleaksignore.
+      - repo: https://github.com/gitleaks/gitleaks
+        rev: v8.30.1
+        hooks:
+          - id: gitleaks
+            stages: [pre-commit]
