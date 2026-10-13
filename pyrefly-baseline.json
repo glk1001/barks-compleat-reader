@@ -1,54 +1,6 @@
 {
   "errors": [
     {
-      "line": 122,
-      "column": 16,
-      "stop_line": 122,
-      "stop_column": 26,
-      "path": "src/barks-fantagraphics/src/barks_fantagraphics/comics_utils.py",
-      "code": -2,
-      "name": "missing-attribute",
-      "description": "Object of class `Path` has no attribute `lstat`",
-      "concise_description": "Object of class `Path` has no attribute `lstat`",
-      "severity": "error"
-    },
-    {
-      "line": 124,
-      "column": 12,
-      "stop_line": 124,
-      "stop_column": 21,
-      "path": "src/barks-fantagraphics/src/barks_fantagraphics/comics_utils.py",
-      "code": -2,
-      "name": "missing-attribute",
-      "description": "Object of class `Path` has no attribute `stat`",
-      "concise_description": "Object of class `Path` has no attribute `stat`",
-      "severity": "error"
-    },
-    {
-      "line": 154,
-      "column": 33,
-      "stop_line": 154,
-      "stop_column": 72,
-      "path": "src/barks-fantagraphics/src/barks_fantagraphics/title_search.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `TagGroups` is not assignable to parameter `object` with type `Tags` in function `list.append`",
-      "concise_description": "Argument `TagGroups` is not assignable to parameter `object` with type `Tags` in function `list.append`",
-      "severity": "error"
-    },
-    {
-      "line": 156,
-      "column": 16,
-      "stop_line": 156,
-      "stop_column": 24,
-      "path": "src/barks-fantagraphics/src/barks_fantagraphics/title_search.py",
-      "code": -2,
-      "name": "bad-return",
-      "description": "Returned type `list[Tags]` is not assignable to declared return type `list[TagGroups | Tags]`",
-      "concise_description": "Returned type `list[Tags]` is not assignable to declared return type `list[TagGroups | Tags]`",
-      "severity": "error"
-    },
-    {
       "line": 26,
       "column": 17,
       "stop_line": 26,
@@ -61,9 +13,9 @@
       "severity": "error"
     },
     {
-      "line": 217,
+      "line": 290,
       "column": 9,
-      "stop_line": 217,
+      "stop_line": 290,
       "stop_column": 32,
       "path": "src/barks-reader/src/barks_reader/core/comic_book_loader.py",
       "code": -2,
@@ -73,9 +25,9 @@
       "severity": "error"
     },
     {
-      "line": 115,
+      "line": 118,
       "column": 37,
-      "stop_line": 115,
+      "stop_line": 118,
       "stop_column": 41,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -85,9 +37,9 @@
       "severity": "error"
     },
     {
-      "line": 116,
+      "line": 119,
       "column": 38,
-      "stop_line": 116,
+      "stop_line": 119,
       "stop_column": 42,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -97,9 +49,9 @@
       "severity": "error"
     },
     {
-      "line": 117,
+      "line": 120,
       "column": 35,
-      "stop_line": 117,
+      "stop_line": 120,
       "stop_column": 39,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -109,9 +61,9 @@
       "severity": "error"
     },
     {
-      "line": 118,
+      "line": 121,
       "column": 38,
-      "stop_line": 118,
+      "stop_line": 121,
       "stop_column": 42,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -121,9 +73,9 @@
       "severity": "error"
     },
     {
-      "line": 119,
+      "line": 122,
       "column": 35,
-      "stop_line": 119,
+      "stop_line": 122,
       "stop_column": 39,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -133,9 +85,9 @@
       "severity": "error"
     },
     {
-      "line": 120,
+      "line": 123,
       "column": 44,
-      "stop_line": 120,
+      "stop_line": 123,
       "stop_column": 48,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "code": -2,
@@ -253,9 +205,9 @@
       "severity": "error"
     },
     {
-      "line": 150,
+      "line": 157,
       "column": 9,
-      "stop_line": 150,
+      "stop_line": 157,
       "stop_column": 35,
       "path": "src/barks-reader/src/barks_reader/ui/barks_reader_app.py",
       "code": -2,
@@ -265,9 +217,9 @@
       "severity": "error"
     },
     {
-      "line": 211,
+      "line": 227,
       "column": 9,
-      "stop_line": 211,
+      "stop_line": 227,
       "stop_column": 26,
       "path": "src/barks-reader/src/barks_reader/ui/barks_reader_app.py",
       "code": -2,
@@ -277,9 +229,9 @@
       "severity": "error"
     },
     {
-      "line": 314,
+      "line": 330,
       "column": 13,
-      "stop_line": 314,
+      "stop_line": 330,
       "stop_column": 24,
       "path": "src/barks-reader/src/barks_reader/ui/barks_reader_app.py",
       "code": -2,
@@ -289,9 +241,9 @@
       "severity": "error"
     },
     {
-      "line": 236,
+      "line": 551,
       "column": 63,
-      "stop_line": 236,
+      "stop_line": 551,
       "stop_column": 71,
       "path": "src/barks-reader/src/barks_reader/ui/bottom_title_view_screen.py",
       "code": -2,
@@ -325,27 +277,15 @@
       "severity": "error"
     },
     {
-      "line": 362,
+      "line": 441,
       "column": 16,
-      "stop_line": 362,
+      "stop_line": 441,
       "stop_column": 43,
       "path": "src/barks-reader/src/barks_reader/ui/comic_book_reader.py",
       "code": -2,
       "name": "bad-return",
       "description": "Returned type `OrderedDict[str, PageInfo] | None` is not assignable to declared return type `OrderedDict[str, PageInfo]`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check or changing the declared type to `OrderedDict[str, PageInfo] | None`.",
       "concise_description": "Returned type `OrderedDict[str, PageInfo] | None` is not assignable to declared return type `OrderedDict[str, PageInfo]`",
-      "severity": "error"
-    },
-    {
-      "line": 623,
-      "column": 63,
-      "stop_line": 623,
-      "stop_column": 66,
-      "path": "src/barks-reader/src/barks_reader/ui/comic_book_reader.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `object` is not assignable to parameter `page_index` with type `int` in function `barks_reader.core.comic_book_loader.ComicBookLoader.wait_load_event`",
-      "concise_description": "Argument `object` is not assignable to parameter `page_index` with type `int` in function `barks_reader.core.comic_book_loader.ComicBookLoader.wait_load_event`",
       "severity": "error"
     },
     {
@@ -361,9 +301,9 @@
       "severity": "error"
     },
     {
-      "line": 136,
+      "line": 207,
       "column": 10,
-      "stop_line": 136,
+      "stop_line": 207,
       "stop_column": 28,
       "path": "src/barks-reader/src/barks_reader/ui/history_screen.py",
       "code": -2,
@@ -373,9 +313,9 @@
       "severity": "error"
     },
     {
-      "line": 237,
+      "line": 381,
       "column": 25,
-      "stop_line": 237,
+      "stop_line": 381,
       "stop_column": 44,
       "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
       "code": -2,
@@ -385,9 +325,9 @@
       "severity": "error"
     },
     {
-      "line": 252,
+      "line": 397,
       "column": 13,
-      "stop_line": 252,
+      "stop_line": 397,
       "stop_column": 32,
       "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
       "code": -2,
@@ -397,9 +337,9 @@
       "severity": "error"
     },
     {
-      "line": 330,
+      "line": 495,
       "column": 9,
-      "stop_line": 330,
+      "stop_line": 495,
       "stop_column": 42,
       "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
       "code": -2,
@@ -445,9 +385,9 @@
       "severity": "error"
     },
     {
-      "line": 391,
+      "line": 386,
       "column": 17,
-      "stop_line": 391,
+      "stop_line": 386,
       "stop_column": 31,
       "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_error_popup.py",
       "code": -2,
@@ -457,9 +397,9 @@
       "severity": "error"
     },
     {
-      "line": 28,
+      "line": 50,
       "column": 10,
-      "stop_line": 28,
+      "stop_line": 50,
       "stop_column": 25,
       "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
       "code": -2,
@@ -469,9 +409,9 @@
       "severity": "error"
     },
     {
-      "line": 85,
+      "line": 110,
       "column": 14,
-      "stop_line": 85,
+      "stop_line": 110,
       "stop_column": 37,
       "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
       "code": -2,
@@ -481,9 +421,9 @@
       "severity": "error"
     },
     {
-      "line": 140,
+      "line": 165,
       "column": 14,
-      "stop_line": 140,
+      "stop_line": 165,
       "stop_column": 43,
       "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
       "code": -2,
@@ -493,9 +433,9 @@
       "severity": "error"
     },
     {
-      "line": 204,
+      "line": 231,
       "column": 13,
-      "stop_line": 204,
+      "stop_line": 231,
       "stop_column": 25,
       "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
       "code": -2,
@@ -505,33 +445,9 @@
       "severity": "error"
     },
     {
-      "line": 225,
-      "column": 41,
-      "stop_line": 225,
-      "stop_column": 60,
-      "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
-      "line": 225,
-      "column": 62,
-      "stop_line": 225,
-      "stop_column": 70,
-      "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "concise_description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
-      "line": 235,
+      "line": 214,
       "column": 53,
-      "stop_line": 235,
+      "stop_line": 214,
       "stop_column": 66,
       "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
       "code": -2,
@@ -541,9 +457,9 @@
       "severity": "error"
     },
     {
-      "line": 292,
+      "line": 271,
       "column": 37,
-      "stop_line": 292,
+      "stop_line": 271,
       "stop_column": 59,
       "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
       "code": -2,
@@ -553,9 +469,9 @@
       "severity": "error"
     },
     {
-      "line": 305,
+      "line": 289,
       "column": 17,
-      "stop_line": 305,
+      "stop_line": 289,
       "stop_column": 39,
       "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
       "code": -2,
@@ -565,9 +481,9 @@
       "severity": "error"
     },
     {
-      "line": 292,
+      "line": 368,
       "column": 70,
-      "stop_line": 292,
+      "stop_line": 368,
       "stop_column": 79,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -577,9 +493,9 @@
       "severity": "error"
     },
     {
-      "line": 336,
+      "line": 425,
       "column": 13,
-      "stop_line": 336,
+      "stop_line": 425,
       "stop_column": 26,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -589,9 +505,9 @@
       "severity": "error"
     },
     {
-      "line": 343,
+      "line": 433,
       "column": 19,
-      "stop_line": 343,
+      "stop_line": 433,
       "stop_column": 32,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -601,9 +517,9 @@
       "severity": "error"
     },
     {
-      "line": 443,
+      "line": 537,
       "column": 9,
-      "stop_line": 443,
+      "stop_line": 537,
       "stop_column": 45,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -613,9 +529,9 @@
       "severity": "error"
     },
     {
-      "line": 473,
+      "line": 576,
       "column": 13,
-      "stop_line": 473,
+      "stop_line": 576,
       "stop_column": 48,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -625,9 +541,9 @@
       "severity": "error"
     },
     {
-      "line": 231,
+      "line": 286,
       "column": 31,
-      "stop_line": 231,
+      "stop_line": 286,
       "stop_column": 52,
       "path": "src/barks-reader/src/barks_reader/ui/navigation_coordinator.py",
       "code": -2,
@@ -637,21 +553,9 @@
       "severity": "error"
     },
     {
-      "line": 113,
-      "column": 26,
-      "stop_line": 113,
-      "stop_column": 39,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "code": -2,
-      "name": "missing-attribute",
-      "description": "No attribute `windll` in module `ctypes`",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "line": 126,
+      "line": 180,
       "column": 22,
-      "stop_line": 126,
+      "stop_line": 180,
       "stop_column": 35,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -661,9 +565,21 @@
       "severity": "error"
     },
     {
-      "line": 156,
+      "line": 210,
+      "column": 22,
+      "stop_line": 210,
+      "stop_column": 35,
+      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "No attribute `windll` in module `ctypes`",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "line": 219,
       "column": 36,
-      "stop_line": 156,
+      "stop_line": 219,
       "stop_column": 49,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -673,9 +589,9 @@
       "severity": "error"
     },
     {
-      "line": 157,
+      "line": 220,
       "column": 23,
-      "stop_line": 157,
+      "stop_line": 220,
       "stop_column": 36,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -685,9 +601,9 @@
       "severity": "error"
     },
     {
-      "line": 158,
+      "line": 221,
       "column": 27,
-      "stop_line": 158,
+      "stop_line": 221,
       "stop_column": 40,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -697,9 +613,9 @@
       "severity": "error"
     },
     {
-      "line": 159,
+      "line": 222,
       "column": 25,
-      "stop_line": 159,
+      "stop_line": 222,
       "stop_column": 38,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -709,9 +625,9 @@
       "severity": "error"
     },
     {
-      "line": 185,
+      "line": 248,
       "column": 29,
-      "stop_line": 185,
+      "stop_line": 248,
       "stop_column": 47,
       "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
       "code": -2,
@@ -721,9 +637,9 @@
       "severity": "error"
     },
     {
-      "line": 62,
+      "line": 150,
       "column": 20,
-      "stop_line": 62,
+      "stop_line": 150,
       "stop_column": 39,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "code": -2,
@@ -733,9 +649,9 @@
       "severity": "error"
     },
     {
-      "line": 107,
+      "line": 196,
       "column": 5,
-      "stop_line": 107,
+      "stop_line": 196,
       "stop_column": 24,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "code": -2,
@@ -745,9 +661,9 @@
       "severity": "error"
     },
     {
-      "line": 306,
+      "line": 396,
       "column": 16,
-      "stop_line": 306,
+      "stop_line": 396,
       "stop_column": 31,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "code": -2,
@@ -757,9 +673,9 @@
       "severity": "error"
     },
     {
-      "line": 307,
+      "line": 397,
       "column": 17,
-      "stop_line": 307,
+      "stop_line": 397,
       "stop_column": 37,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "code": -2,
@@ -769,9 +685,9 @@
       "severity": "error"
     },
     {
-      "line": 314,
+      "line": 404,
       "column": 16,
-      "stop_line": 314,
+      "stop_line": 404,
       "stop_column": 40,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "code": -2,
@@ -781,9 +697,9 @@
       "severity": "error"
     },
     {
-      "line": 143,
+      "line": 156,
       "column": 13,
-      "stop_line": 143,
+      "stop_line": 156,
       "stop_column": 29,
       "path": "src/barks-reader/src/barks_reader/ui/reader_tree_builder.py",
       "code": -2,
@@ -793,21 +709,9 @@
       "severity": "error"
     },
     {
-      "line": 349,
-      "column": 54,
-      "stop_line": 349,
-      "stop_column": 71,
-      "path": "src/barks-reader/src/barks_reader/ui/search_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `Unknown | None` is not assignable to parameter `tag_group` with type `TagGroups` in function `barks_fantagraphics.comic_search.ComicSearch.get_tag_group_members`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `Unknown | None` is not assignable to parameter `tag_group` with type `TagGroups` in function `barks_fantagraphics.comic_search.ComicSearch.get_tag_group_members`",
-      "severity": "error"
-    },
-    {
-      "line": 224,
+      "line": 226,
       "column": 37,
-      "stop_line": 224,
+      "stop_line": 226,
       "stop_column": 51,
       "path": "src/barks-reader/src/barks_reader/ui/snapshot_applicator.py",
       "code": -2,
@@ -817,9 +721,9 @@
       "severity": "error"
     },
     {
-      "line": 224,
+      "line": 226,
       "column": 53,
-      "stop_line": 224,
+      "stop_line": 226,
       "stop_column": 61,
       "path": "src/barks-reader/src/barks_reader/ui/snapshot_applicator.py",
       "code": -2,
@@ -829,33 +733,9 @@
       "severity": "error"
     },
     {
-      "line": 466,
-      "column": 43,
-      "stop_line": 466,
-      "stop_column": 62,
-      "path": "src/barks-reader/src/barks_reader/ui/speech_index_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
-      "line": 466,
-      "column": 64,
-      "stop_line": 466,
-      "stop_column": 72,
-      "path": "src/barks-reader/src/barks_reader/ui/speech_index_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "concise_description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
-      "line": 502,
+      "line": 357,
       "column": 27,
-      "stop_line": 502,
+      "stop_line": 357,
       "stop_column": 34,
       "path": "src/barks-reader/src/barks_reader/ui/speech_index_screen.py",
       "code": -2,
@@ -865,21 +745,9 @@
       "severity": "error"
     },
     {
-      "line": 134,
-      "column": 9,
-      "stop_line": 134,
-      "stop_column": 38,
-      "path": "src/barks-reader/src/barks_reader/ui/statistics_screen.py",
-      "code": -2,
-      "name": "missing-attribute",
-      "description": "Object of class `NoneType` has no attribute `open`",
-      "concise_description": "Object of class `NoneType` has no attribute `open`",
-      "severity": "error"
-    },
-    {
-      "line": 174,
+      "line": 179,
       "column": 33,
-      "stop_line": 174,
+      "stop_line": 179,
       "stop_column": 67,
       "path": "src/barks-reader/src/barks_reader/ui/statistics_screen.py",
       "code": -2,
@@ -889,9 +757,9 @@
       "severity": "error"
     },
     {
-      "line": 178,
+      "line": 183,
       "column": 9,
-      "stop_line": 178,
+      "stop_line": 183,
       "stop_column": 41,
       "path": "src/barks-reader/src/barks_reader/ui/statistics_screen.py",
       "code": -2,
@@ -901,9 +769,9 @@
       "severity": "error"
     },
     {
-      "line": 254,
+      "line": 283,
       "column": 30,
-      "stop_line": 254,
+      "stop_line": 283,
       "stop_column": 34,
       "path": "src/barks-reader/src/barks_reader/ui/tree_view_manager.py",
       "code": -2,
@@ -913,27 +781,27 @@
       "severity": "error"
     },
     {
-      "line": 191,
+      "line": 286,
+      "column": 30,
+      "stop_line": 286,
+      "stop_column": 34,
+      "path": "src/barks-reader/src/barks_reader/ui/tree_view_manager.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`Literal[True]` is not assignable to attribute `populated` with type `Never`",
+      "concise_description": "`Literal[True]` is not assignable to attribute `populated` with type `Never`",
+      "severity": "error"
+    },
+    {
+      "line": 223,
       "column": 41,
-      "stop_line": 191,
+      "stop_line": 223,
       "stop_column": 75,
       "path": "src/barks-reader/src/barks_reader/ui/tree_view_nodes.py",
       "code": -2,
       "name": "missing-attribute",
       "description": "Object of class `NoneType` has no attribute `font_manager`",
       "concise_description": "Object of class `NoneType` has no attribute `font_manager`",
-      "severity": "error"
-    },
-    {
-      "line": 39,
-      "column": 36,
-      "stop_line": 39,
-      "stop_column": 45,
-      "path": "src/barks-reader/src/barks_reader/ui/ui_helpers.py",
-      "code": -2,
-      "name": "missing-attribute",
-      "description": "Object of class `object` has no attribute `pos`",
-      "concise_description": "Object of class `object` has no attribute `pos`",
       "severity": "error"
     },
     {
@@ -973,9 +841,9 @@
       "severity": "error"
     },
     {
-      "line": 48,
+      "line": 74,
       "column": 9,
-      "stop_line": 48,
+      "stop_line": 74,
       "stop_column": 28,
       "path": "src/okf-reader/src/okf_reader/ui/focus_ring.py",
       "code": -2,
@@ -985,9 +853,9 @@
       "severity": "error"
     },
     {
-      "line": 49,
+      "line": 75,
       "column": 14,
-      "stop_line": 49,
+      "stop_line": 75,
       "stop_column": 33,
       "path": "src/okf-reader/src/okf_reader/ui/focus_ring.py",
       "code": -2,
@@ -997,9 +865,9 @@
       "severity": "error"
     },
     {
-      "line": 68,
+      "line": 95,
       "column": 5,
-      "stop_line": 68,
+      "stop_line": 95,
       "stop_column": 24,
       "path": "src/okf-reader/src/okf_reader/ui/focus_ring.py",
       "code": -2,
@@ -1009,9 +877,9 @@
       "severity": "error"
     },
     {
-      "line": 275,
+      "line": 302,
       "column": 10,
-      "stop_line": 275,
+      "stop_line": 302,
       "stop_column": 26,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1021,9 +889,9 @@
       "severity": "error"
     },
     {
-      "line": 275,
+      "line": 302,
       "column": 10,
-      "stop_line": 275,
+      "stop_line": 302,
       "stop_column": 26,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1033,9 +901,9 @@
       "severity": "error"
     },
     {
-      "line": 477,
+      "line": 622,
       "column": 14,
-      "stop_line": 477,
+      "stop_line": 622,
       "stop_column": 32,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1045,9 +913,9 @@
       "severity": "error"
     },
     {
-      "line": 518,
+      "line": 664,
       "column": 14,
-      "stop_line": 518,
+      "stop_line": 664,
       "stop_column": 49,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1057,9 +925,9 @@
       "severity": "error"
     },
     {
-      "line": 546,
+      "line": 694,
       "column": 14,
-      "stop_line": 546,
+      "stop_line": 694,
       "stop_column": 31,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1069,9 +937,9 @@
       "severity": "error"
     },
     {
-      "line": 618,
+      "line": 767,
       "column": 46,
-      "stop_line": 618,
+      "stop_line": 767,
       "stop_column": 72,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1081,9 +949,9 @@
       "severity": "error"
     },
     {
-      "line": 669,
+      "line": 836,
       "column": 17,
-      "stop_line": 669,
+      "stop_line": 836,
       "stop_column": 31,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1093,9 +961,9 @@
       "severity": "error"
     },
     {
-      "line": 670,
+      "line": 837,
       "column": 17,
-      "stop_line": 670,
+      "stop_line": 837,
       "stop_column": 26,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1105,9 +973,9 @@
       "severity": "error"
     },
     {
-      "line": 671,
+      "line": 838,
       "column": 17,
-      "stop_line": 671,
+      "stop_line": 838,
       "stop_column": 24,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
@@ -1117,9 +985,21 @@
       "severity": "error"
     },
     {
-      "line": 1698,
+      "line": 1372,
+      "column": 17,
+      "stop_line": 1372,
+      "stop_column": 39,
+      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `NoneType` has no attribute `trigger_action`",
+      "concise_description": "Object of class `NoneType` has no attribute `trigger_action`",
+      "severity": "error"
+    },
+    {
+      "line": 2031,
       "column": 14,
-      "stop_line": 1698,
+      "stop_line": 2031,
       "stop_column": 37,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "code": -2,
