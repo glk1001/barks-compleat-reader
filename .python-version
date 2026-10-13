@@ -1,1 +1,4 @@
-3.13
+# 3.13.12, not just 3.13: uv's 3.13.16 build ran plain Python ~11% and comic image
+# loading ~20% slower here (2026-10-13); CI and release builds had moved to it.
+# Re-check a newer 3.13 against the benchmarks before moving on. See docs/setup.md.
+3.13.12
