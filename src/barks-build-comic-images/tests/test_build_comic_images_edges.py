@@ -45,6 +45,7 @@ from barks_build_comic_images.build_comic_images import (
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
     _get_inset_border_color,
+    _get_title_page_font,
     _PubTextLine,
 )
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
@@ -545,7 +546,8 @@ class TestTheIntroTitle:
 
     @staticmethod
     def _font(size: int) -> ImageFont.FreeTypeFont:
-        return ImageFont.truetype(CARL_BARKS_FONT_FILE, size)
+        # The page's own loader: the basic layout, as every title page is lettered.
+        return _get_title_page_font(CARL_BARKS_FONT_FILE, size)
 
     @staticmethod
     def _color_mask(image: Image.Image, color: tuple[int, int, int]) -> Image.Image:
@@ -672,6 +674,36 @@ class TestTheTitleFont:
 
         assert fonts[0].layout_engine == ImageFont.Layout.BASIC
 
+    def test_a_face_is_loaded_once(self) -> None:
+        font = _get_title_page_font(CARL_BARKS_FONT_FILE, 155)
+
+        assert _get_title_page_font(Path(CARL_BARKS_FONT_FILE), 155) is font
+        assert _get_title_page_font(CARL_BARKS_FONT_FILE, 154) is not font
+
+    @pytest.mark.parametrize(
+        "title",
+        [
+            "The Paul Bunyan Machine Goes West",
+            "The Great Steamboat Race",
+            "Northeaster on Cape Quack and the Lonely Lighthouse",
+            "Lost in the\nAndes!",  # fits as it is
+        ],
+    )
+    def test_the_fitted_size_is_the_largest_that_fits(self, tmp_path: Path, title: str) -> None:
+        """What stepping down a point at a time from the title's own size would find."""
+        builder = self._title_builder(tmp_path, title)
+        max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
+        fits = [
+            size
+            for size in range(1, 156)
+            if builder._get_title_ink_width(title, _get_title_page_font(CARL_BARKS_FONT_FILE, size))
+            <= max_width
+        ]
+
+        _, fonts, _ = builder._get_title_and_fonts()
+
+        assert fonts[0].size == max(fits)
+
     def test_a_title_that_fits_keeps_its_size(self, tmp_path: Path) -> None:
         _, fonts, _ = self._title_builder(tmp_path, "Lost\nin the\nAndes!")._get_title_and_fonts()
 
@@ -698,7 +730,7 @@ class TestSmallWordTitleLines:
 
     @staticmethod
     def _font(size: int) -> ImageFont.FreeTypeFont:
-        return ImageFont.truetype(CARL_BARKS_FONT_FILE, size)
+        return _get_title_page_font(CARL_BARKS_FONT_FILE, size)
 
     @pytest.mark.parametrize(
         ("title", "sizes"),

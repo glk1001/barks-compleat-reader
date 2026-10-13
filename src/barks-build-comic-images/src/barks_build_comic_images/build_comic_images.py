@@ -1,6 +1,8 @@
 # ruff: noqa: PLR0911
 # cspell:ignore getbbox getmetrics Raqm
 
+import functools
+import math
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -871,7 +873,9 @@ class ComicBookImageBuilder:
         if all(is_small):
             return [font] * len(lines)
 
-        small_font = font.font_variant(size=round(INTRO_TITLE_SMALL_WORD_SIZE_FRAC * font.size))
+        small_font = _get_title_page_font_sized(
+            font, round(INTRO_TITLE_SMALL_WORD_SIZE_FRAC * font.size)
+        )
         return [small_font if small else font for small in is_small]
 
     @staticmethod
@@ -1034,12 +1038,30 @@ class ComicBookImageBuilder:
         return [title], [title_font], self._get_intro_text_extent(title, title_font)
 
     def _get_fitted_title_font(self, title: str, font_file: Path, font_size: int) -> FreeTypeFont:
-        """Return the title's font, smaller if its widest line would not fit the page."""
+        """Return the title's font, smaller if its widest line would not fit the page.
+
+        The largest size, up to the title's own, at which its widest line fits. The
+        width grows all but in step with the size (the letter gaps and the outline scale
+        with it; only their rounding does not), so one step in proportion lands within a
+        point or two of that size, and single points settle it, rather than measuring
+        every letter at every size down from the title's own.
+        """
         max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
-        font = _get_title_page_font(font_file, font_size)
-        while font.size > 1 and self._get_title_ink_width(title, font) > max_width:
-            font = font.font_variant(size=font.size - 1)
-        return font
+
+        def fits(size: int) -> bool:
+            return self._get_title_ink_width(title, _get_title_page_font(font_file, size)) <= (
+                max_width
+            )
+
+        size = font_size
+        width = self._get_title_ink_width(title, _get_title_page_font(font_file, size))
+        if width > max_width:
+            size = max(1, math.floor(size * max_width / width))
+            while size > 1 and not fits(size):
+                size -= 1
+            while size < font_size and fits(size + 1):
+                size += 1
+        return _get_title_page_font(font_file, size)
 
     def _get_title_ink_width(self, title: str, font: FreeTypeFont) -> float:
         """Return the width of a title's widest line, its outline and shadow included."""
@@ -1066,7 +1088,9 @@ class ComicBookImageBuilder:
         font = _get_title_page_font(font_file, font_size)
         cap_height = _get_cap_height(font, INTRO_CS_COMICS)
         stack_line_cap_height = cap_height * (1 - INTRO_CS_STACK_LINE_GAP_FRAC) / 2
-        small_font = font.font_variant(size=round(font_size * stack_line_cap_height / cap_height))
+        small_font = _get_title_page_font_sized(
+            font, round(font_size * stack_line_cap_height / cap_height)
+        )
 
         ink = self._get_intro_text_extent(f"{INTRO_CS_COMICS}\n{comic_num}", font)
 
@@ -1162,7 +1186,7 @@ class ComicBookImageBuilder:
         spacing: int,
     ) -> None:
         """Letter the raised footnote mark a little after the number's last digit."""
-        mark_font = font.font_variant(size=round(INTRO_CS_FOOTNOTE_SIZE_FRAC * font.size))
+        mark_font = _get_title_page_font_sized(font, round(INTRO_CS_FOOTNOTE_SIZE_FRAC * font.size))
         left = digits_right + self._get_title_scaled(INTRO_CS_FOOTNOTE_GAP, font)
         top = number_top - self._get_title_scaled(INTRO_CS_FOOTNOTE_RAISE, font)
         self._draw_title_text(draw, left, top, FOOTNOTE_CHAR, mark_font, color, spacing)
@@ -1196,6 +1220,9 @@ def _get_title_page_font(font_file: str | Path, size: int) -> FreeTypeFont:
     pages as it runs. The basic layout letters a title page the same everywhere, built
     page or reader.
 
+    Each face is loaded once and kept: laying out one title page asks for the same few
+    faces many times over, and the reader letters a page for every comic it opens.
+
     Args:
         font_file: The font file.
         size: The font size.
@@ -1204,7 +1231,19 @@ def _get_title_page_font(font_file: str | Path, size: int) -> FreeTypeFont:
         The font.
 
     """
-    return ImageFont.truetype(str(font_file), size, layout_engine=ImageFont.Layout.BASIC)
+    return _load_title_page_font(str(font_file), size)
+
+
+def _get_title_page_font_sized(font: FreeTypeFont, size: int) -> FreeTypeFont:
+    """Return a title page font's face at another size, from the same cache."""
+    font_file = font.path
+    assert isinstance(font_file, str)
+    return _load_title_page_font(font_file, size)
+
+
+@functools.cache
+def _load_title_page_font(font_file: str, size: int) -> FreeTypeFont:
+    return ImageFont.truetype(font_file, size, layout_engine=ImageFont.Layout.BASIC)
 
 
 def build_double_page_image(left: PilImage, right: PilImage) -> PilImage:
