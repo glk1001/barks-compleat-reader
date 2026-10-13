@@ -537,7 +537,7 @@ class BottomTitleViewScreen(FloatLayout):
     def _set_title_inset_image(self, inset_image_source: PanelPath) -> None:
         timing = Timing()
 
-        def on_ready(tex: Texture | None, err: Exception) -> None:
+        def on_ready(tex: Texture | None, err: Exception | None) -> None:
             if err:
                 raise RuntimeError(err)
 

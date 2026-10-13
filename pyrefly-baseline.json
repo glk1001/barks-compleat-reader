@@ -13,18 +13,6 @@
       "severity": "error"
     },
     {
-      "line": 290,
-      "column": 9,
-      "stop_line": 290,
-      "stop_column": 32,
-      "path": "src/barks-reader/src/barks_reader/core/comic_book_loader.py",
-      "code": -2,
-      "name": "not-iterable",
-      "description": "Type `None` is not iterable",
-      "concise_description": "Type `None` is not iterable",
-      "severity": "error"
-    },
-    {
       "line": 118,
       "column": 37,
       "stop_line": 118,
@@ -229,30 +217,6 @@
       "severity": "error"
     },
     {
-      "line": 330,
-      "column": 13,
-      "stop_line": 330,
-      "stop_column": 24,
-      "path": "src/barks-reader/src/barks_reader/ui/barks_reader_app.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `Unknown | None` is not assignable to parameter `parser` with type `ConfigParser` in function `barks_reader.core.reader_setup.bootstrap_reader_environment`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `Unknown | None` is not assignable to parameter `parser` with type `ConfigParser` in function `barks_reader.core.reader_setup.bootstrap_reader_environment`",
-      "severity": "error"
-    },
-    {
-      "line": 551,
-      "column": 63,
-      "stop_line": 551,
-      "stop_column": 71,
-      "path": "src/barks-reader/src/barks_reader/ui/bottom_title_view_screen.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "concise_description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
       "line": 137,
       "column": 21,
       "stop_line": 137,
@@ -274,18 +238,6 @@
       "name": "missing-attribute",
       "description": "Object of class `object` has no attribute `pos`",
       "concise_description": "Object of class `object` has no attribute `pos`",
-      "severity": "error"
-    },
-    {
-      "line": 441,
-      "column": 16,
-      "stop_line": 441,
-      "stop_column": 43,
-      "path": "src/barks-reader/src/barks_reader/ui/comic_book_reader.py",
-      "code": -2,
-      "name": "bad-return",
-      "description": "Returned type `OrderedDict[str, PageInfo] | None` is not assignable to declared return type `OrderedDict[str, PageInfo]`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check or changing the declared type to `OrderedDict[str, PageInfo] | None`.",
-      "concise_description": "Returned type `OrderedDict[str, PageInfo] | None` is not assignable to declared return type `OrderedDict[str, PageInfo]`",
       "severity": "error"
     },
     {
@@ -505,9 +457,9 @@
       "severity": "error"
     },
     {
-      "line": 433,
+      "line": 436,
       "column": 19,
-      "stop_line": 433,
+      "stop_line": 436,
       "stop_column": 32,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -517,9 +469,9 @@
       "severity": "error"
     },
     {
-      "line": 537,
+      "line": 540,
       "column": 9,
-      "stop_line": 537,
+      "stop_line": 540,
       "stop_column": 45,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
@@ -529,27 +481,15 @@
       "severity": "error"
     },
     {
-      "line": 576,
+      "line": 579,
       "column": 13,
-      "stop_line": 576,
+      "stop_line": 579,
       "stop_column": 48,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "code": -2,
       "name": "missing-attribute",
       "description": "Object of class `NoneType` has no attribute `open_settings`",
       "concise_description": "Object of class `NoneType` has no attribute `open_settings`",
-      "severity": "error"
-    },
-    {
-      "line": 286,
-      "column": 31,
-      "stop_line": 286,
-      "stop_column": 52,
-      "path": "src/barks-reader/src/barks_reader/ui/navigation_coordinator.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `Titles | None` is not assignable to parameter `article_title` with type `Titles` in function `NavigationCoordinator.read_article`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `Titles | None` is not assignable to parameter `article_title` with type `Titles` in function `NavigationCoordinator.read_article`",
       "severity": "error"
     },
     {
@@ -706,30 +646,6 @@
       "name": "missing-attribute",
       "description": "Object of class `TreeViewNode` has no attribute `saved_state`",
       "concise_description": "Object of class `TreeViewNode` has no attribute `saved_state`",
-      "severity": "error"
-    },
-    {
-      "line": 226,
-      "column": 37,
-      "stop_line": 226,
-      "stop_column": 51,
-      "path": "src/barks-reader/src/barks_reader/ui/snapshot_applicator.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
-      "concise_description": "Argument `zipfile._path.Path | pathlib.Path | None` is not assignable to parameter `panel_path` with type `zipfile._path.Path | pathlib.Path` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "severity": "error"
-    },
-    {
-      "line": 226,
-      "column": 53,
-      "stop_line": 226,
-      "stop_column": 61,
-      "path": "src/barks-reader/src/barks_reader/ui/snapshot_applicator.py",
-      "code": -2,
-      "name": "bad-argument-type",
-      "description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
-      "concise_description": "Argument `(tex: Unknown, err: Exception) -> None` is not assignable to parameter `callback` with type `(Unknown, Exception | None) -> None` in function `barks_reader.ui.panel_texture_loader.PanelTextureLoader.load_texture`",
       "severity": "error"
     },
     {

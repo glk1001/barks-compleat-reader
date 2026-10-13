@@ -208,7 +208,7 @@ class SnapshotApplicator:
 
         timing = Timing()
 
-        def on_ready(tex: Texture, err: Exception) -> None:
+        def on_ready(tex: Texture | None, err: Exception | None) -> None:
             if err:
                 raise RuntimeError(err)
             assert tex is not None
@@ -222,5 +222,5 @@ class SnapshotApplicator:
                 )
             )
 
-        assert image_info.filename is not None
-        texture_loader.load_texture(image_filename, on_ready)  # ty:ignore[invalid-argument-type]
+        assert image_filename is not None
+        texture_loader.load_texture(image_filename, on_ready)

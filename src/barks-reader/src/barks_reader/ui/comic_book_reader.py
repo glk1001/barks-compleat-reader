@@ -438,7 +438,9 @@ class ComicBookReader(FloatLayout):
 
     @property
     def _page_map(self) -> OrderedDict[str, PageInfo]:
-        return self._page_manager.page_map
+        page_map = self._page_manager.page_map
+        assert page_map is not None  # set by set_page_map before any page is shown
+        return page_map
 
     def get_last_read_page(self) -> str:
         return self._current_page_str

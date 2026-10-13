@@ -324,6 +324,8 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self) -> None:
         """Handle the initial setup of settings and the database."""
+        # Kivy's load_config() has set self.config before build() calls this.
+        assert self.config is not None
         bootstrap_reader_environment(
             self.reader_settings,
             self._comics_database,

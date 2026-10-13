@@ -1,7 +1,7 @@
 # pyrefly annotation-debt checklist
 
 The "union-type / nullability" findings pyrefly surfaced that are **grandfathered** in
-`pyrefly-baseline.json` (see `pyrefly.toml`): 24 when this list was written (2026-07-20), 15
+`pyrefly-baseline.json` (see `pyrefly.toml`): 24 when this list was written (2026-07-20), 8
 still open on 2026-10-13 (one of them now fires twice). None block anything — work through
 them **opportunistically** when you're already in the file. After fixing one:
 
@@ -28,7 +28,8 @@ kind at that column in that file. Two consequences:
   finding's entry stays until someone runs it. Not run from 2026-07-20 to 2026-10-13, the
   file had grown 12 entries that matched nothing (9 from this list, `comics_utils.py`'s
   `stat`/`lstat` fixed by `66e6c657`, and a Kivy one in `ui/ui_helpers.py` whose code is
-  gone). Regenerated on 2026-10-13: 84 entries. Run it after any fix here.
+  gone). Regenerated on 2026-10-13: 84 entries, then 77 after the P1 and P2 fixes. Run it
+  after any fix here.
 - **A new finding can hide** behind an entry in the same file at the same column. Two did:
   `okf_reader/ui/viewer.py`'s `trigger_action`, which has had its own entry since the
   regeneration, and the second `populated` site in `ui/tree_view_manager.py`, which shares
@@ -44,34 +45,33 @@ Each is a spot where a possibly-`None` value flows into a parameter/return decla
 If `None` can occur at runtime → real bug, add a guard. If it genuinely can't → tighten the source
 type or `assert x is not None`.
 
-- [ ] `ui/barks_reader_app.py:330` — `Unknown | None` passed as `parser` (ConfigParser) to
-      `bootstrap_reader_environment` (`self.config`). Narrow with `is not None` (or fix the
-      source's type).
-- [ ] `ui/navigation_coordinator.py:286` — `Titles | None` passed as `article_title` (Titles) to
-      `read_article` (`image_info.from_title`, typed `Titles | None` in
-      `core/image_selector.py`). Guard or make the caller's value non-optional.
+- [x] `ui/barks_reader_app.py` — `Unknown | None` passed as `parser` (ConfigParser) to
+      `bootstrap_reader_environment` (`self.config`). Not reachable: Kivy's `load_config()`
+      sets it before `build()`; asserted (2026-10-13).
+- [x] `ui/navigation_coordinator.py` — `Titles | None` passed as `article_title` to
+      `read_article`. Not reachable: `None` is never `in NON_COMIC_TITLES`, but pyrefly does
+      not narrow on `in`; an explicit `is not None` now does (2026-10-13).
 - [x] `ui/search_screen.py` — `Unknown | None` passed as `tag_group` to
       `ComicSearch.get_tag_group_members`. Gone with the call: `5006d5bf` (tag groups open and
       close in place) passes a `TagGroups`.
-- [ ] `ui/comic_book_reader.py:441` — the `_page_map` property returns
-      `OrderedDict[str, PageInfo] | None` (`_ComicPageManager.page_map`) but declares
-      `OrderedDict[...]`. Either narrow before return or widen the return type to `| None`.
-- [ ] `core/comic_book_loader.py:290` — `not-iterable`: iterating a value typed `None`
-      (`self._images: list[tuple[io.BytesIO, str] | None]`). Guard the iteration or fix the
-      source type. Also `# ty: ignore`-ed.
+- [x] `ui/comic_book_reader.py` — the `_page_map` property returned
+      `OrderedDict[str, PageInfo] | None`. Not reachable: only the goto-page dropdown reads
+      it, after `set_page_map`; asserted, as `_ComicPageManager` already does (2026-10-13).
+- [x] `core/comic_book_loader.py` — `get_image_ready_for_reading` unpacked a
+      `self._images` entry that is `None` until its page loads. Callers show a page only once
+      its load event is set; asserted, and the `# ty: ignore` dropped (2026-10-13).
 
-## P2 — `PanelTextureLoader.load_texture`'s callers (3 findings at 2 sites, from 7 at 4)
+## P2 — `PanelTextureLoader.load_texture`'s callers (all 7 fixed)
 
 `570bb9aa` hoisted the index screens' shared machinery into `ui/index_screen.py`, whose call
 guards `filename is None` and takes `err: Exception | None`; that cleared the
-`main_index_screen` and `speech_index_screen` sites. Left:
+`main_index_screen` and `speech_index_screen` sites. The other two, 2026-10-13:
 
-- [ ] **`panel_path` nullability** — `ui/snapshot_applicator.py:226`. It asserts
-      `image_info.filename is not None` but passes the local `image_filename`, which pyrefly
-      does not narrow; asserting the local is likely the whole fix.
-- [ ] **`callback` err param** — `load_texture` calls it with `Exception | None`; widen each
-      callback's `err` to match. Sites: `ui/bottom_title_view_screen.py:551` (callback at
-      `:540`), `ui/snapshot_applicator.py:226` (callback at `:211`).
+- [x] **`panel_path` nullability** — `ui/snapshot_applicator.py` asserted
+      `image_info.filename` but passed the local `image_filename`; it asserts the local now,
+      and its `# ty: ignore` is gone.
+- [x] **`callback` err param** — `load_texture` calls back with `Exception | None`; both
+      callbacks (`ui/bottom_title_view_screen.py`, `ui/snapshot_applicator.py`) take that.
 
 ## P3 — union too wide for a narrower declared type
 
@@ -134,6 +134,6 @@ Found on 2026-10-13: baselined in July but never listed, or new and hidden by th
 
 ---
 
-**Progress (2026-10-13):** of the July list's 24 findings, 9 are gone (ticked above, with
-their commits) and 15 remain; P5 adds 7 items. A proper fix often lets you delete both the
+**Progress (2026-10-13):** of the July list's 24 findings, 16 are gone (ticked above) and 8
+remain; P5 adds 7 items. The baseline holds 77 entries. A proper fix often lets you delete both the
 pyrefly baseline entry and a `# ty: ignore` beside it.

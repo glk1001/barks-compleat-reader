@@ -282,8 +282,9 @@ class NavigationCoordinator:
         ``tagged_pages`` are a tag's pages in the title, for a title listed under a tag:
         the goto-page row steps through them, and the comic marks them.
         """
-        if image_info.from_title in NON_COMIC_TITLES:
-            self.read_article(image_info.from_title, ViewStates.ON_INDEX_NODE)
+        title = image_info.from_title
+        if title is not None and title in NON_COMIC_TITLES:
+            self.read_article(title, ViewStates.ON_INDEX_NODE)
             return
 
         self.navigate_to_chrono_title(image_info)
