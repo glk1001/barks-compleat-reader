@@ -84,7 +84,7 @@ About 65 minutes, in one visible window (the first run's times; the plan guessed
 
 **Left to Linux, CI or the main machine**, since they behave the same on every platform
 or cannot run here: lint, ty, pyrefly, cspell, the wiki checks, random order, dependency
-drift, audit, mutation testing, coverage and graphify; `build-check` and the sibling repos'
+drift, audit, mutation testing and coverage; `build-check` and the sibling repos'
 tests (the main machine's build tree and pipelines); `smoke` (CI's); the GUI timing drift
 (the budgets are still held per test by `--calibrate`, step 2).
 

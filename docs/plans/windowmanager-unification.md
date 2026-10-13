@@ -143,7 +143,7 @@ its geometry store*, not per-screen policy.
    - Comic auto-fullscreen on read (`goto_fullscreen_on_comic_read`) → close →
      returns to the entry mode.
    - App started already fullscreen → exit to windowed (the `is_unsaved` guard).
-4. `graphify update .` after code changes; tick the "two WindowManager instances"
+4. Tick the "two WindowManager instances"
    item in `docs/BACKLOG.md`, noting the seeding coupling is now gone.
 
 ## Out of scope

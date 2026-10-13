@@ -1,6 +1,6 @@
 # Setting up a machine
 
-<!-- cspell:ignore xsel libgl libmtdev graphifyy setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate pmset sleepnow softgl multisampling -->
+<!-- cspell:ignore xsel libgl libmtdev setacvalueindex setactive Mirametrix Winlogon wikitext waketimers schtasks dyld clang Xcode FONTSCALE caffeinate pmset sleepnow softgl multisampling -->
 
 What a clean machine needs, in the order to do it, for either of two jobs:
 
@@ -42,7 +42,6 @@ minimal image, add `libgl1 libmtdev1t64`, as CI does.
 curl -LsSf https://astral.sh/uv/install.sh | sh          # uv: Python, the venv, every dependency
 sudo apt install just                                     # or: the installer in README.md
 curl -fsSL https://bun.sh/install | bash                  # bun: runs cspell (bunx cspell)
-uv tool install graphifyy==0.9.20                         # graphify; the package has two y's
 ```
 
 - **uv** installs Python itself (the version `.python-version` names), so no system Python
@@ -54,8 +53,6 @@ uv tool install graphifyy==0.9.20                         # graphify; the packag
   uv that ignores comments there (0.13 does).
 - **bun** is what the cspell hooks and `full-lint.sh` run cspell with. Without it every
   commit fails its spell-check hook.
-- **graphify** keeps `graphify-out/` current. It is optional: the overnight `graphify`
-  stage skips itself without it, and `check-overnight-host.sh` only advises it.
 
 These go in `~/.local/bin` and `~/.bun/bin`. A shell started by `ssh host 'command'`
 does not read the interactive part of `~/.bashrc`, so if something is to run over ssh
@@ -96,8 +93,9 @@ full suite, commit-msg with cspell). To check, `.git/hooks/pre-push` should name
 `--hook-type=pre-push`. A clone made while the repo used git-lfs (before 2026-10-03)
 holds `git lfs install`'s hooks too: `pre-push.legacy`, `post-checkout`, `post-commit` and
 `post-merge`, each failing its git command once git-lfs is not installed. Rename those
-that are only LFS's to `<name>.lfs-removed`; where graphify's hook follows the LFS lines
-in one, delete just the two LFS lines (`CLAUDE.md` has the details).
+that are only LFS's (`git lfs <hook> "$@"` after a `command -v git-lfs` guard; about 350
+bytes) to `<name>.lfs-removed`; where another tool's hook follows the LFS lines in one,
+delete just those two lines.
 
 The secrets hook (gitleaks) is the one hook not from `.venv`: prek builds its pinned
 release on a machine's first commit, fetching Go itself (about 30 seconds), so there is
@@ -189,7 +187,7 @@ gh auth status
 ```
 
 `check-overnight-host.sh` exits 0 when everything required is there and lists what is
-missing otherwise; what it only advises (graphify, the touch rule, the calibration) never
+missing otherwise; what it only advises (the touch rule, the calibration) never
 fails it. It checks an overnight host's needs, which a development machine shares.
 
 ## Windows and macOS

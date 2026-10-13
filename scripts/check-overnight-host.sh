@@ -13,7 +13,7 @@
 #
 # Usage: scripts/check-overnight-host.sh
 # Exit status: 0 when everything required is there, 1 otherwise. What is only
-# advised (graphify, the touch rule, this machine's GUI timing calibration) never
+# advised (the touch rule, this machine's GUI timing calibration) never
 # fails it.
 set -uo pipefail
 
@@ -118,11 +118,6 @@ else
 fi
 
 echo "== advised =="
-if command -v graphify >/dev/null 2>&1; then
-    ok "graphify"
-else
-    advise "no graphify here: the overnight graphify stage skips itself"
-fi
 if [[ -f .benchmarks/gui-timings.json ]]; then
     ok "this machine's GUI timing calibration"
 else

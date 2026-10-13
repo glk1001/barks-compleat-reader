@@ -325,7 +325,6 @@ just reader
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
   | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
   | `dead-code` | `dead_code_report.py`: vulture's unused functions, methods and classes (at 60%, below the gate's 80) that the `coverage` stage's data never ran and no `.kv` file, script or sibling repo names; warns only |
-  | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |
   | `mutation` | `mutmut.sh` on all of `core/` and on the `barks_fantagraphics` search modules, or on the share `BARKS_OVERNIGHT_MUTATION_SCOPE` (`core`, `fantagraphics`; default `all`) names; warns on a survivor that is neither a known equivalent (`docs/mutation-equivalents.toml`) nor in the backlog (`mutation_survivors.py`) |
 
   `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default

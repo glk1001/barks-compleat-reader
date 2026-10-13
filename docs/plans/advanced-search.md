@@ -279,5 +279,4 @@ Other suites the change affects:
   benchmarks) and `uv run lint-imports`.
 - UI phases: `bash scripts/run_gui_tests.sh --headless -k search` and then the full headless
   suite; `scripts/check_gui_keys.py` (six keys only); screenshots through the `verify` skill.
-- `graphify update .` after code changes.
 - After pushing phases that touch Windows-sensitive code, watch CI's Windows leg.

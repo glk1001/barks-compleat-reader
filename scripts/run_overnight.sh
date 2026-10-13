@@ -63,7 +63,6 @@
 #                  classes (at 60%, below the gate's 80) that the coverage stage's
 #                  data never ran and no .kv file, script or sibling repo names;
 #                  warns when there are any
-#   graphify       graphify update ., the knowledge graph (gitignored)
 #   mutation       mutmut.sh on all of core/ (under eight minutes) and on the
 #                  barks_fantagraphics search modules (under three), or on the share
 #                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns on a survivor neither a
@@ -112,7 +111,7 @@ if [[ -f .env.overnight ]]; then
 fi
 
 STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
-    dep-drift siblings build smoke gui gui-timings coverage dead-code graphify mutation)
+    dep-drift siblings build smoke gui gui-timings coverage dead-code mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
 
@@ -457,13 +456,6 @@ run_stage() {
             status=$WARNED
         fi
         return "$status"
-        ;;
-    graphify)
-        if ! command -v graphify >/dev/null; then
-            echo "graphify: skipped - graphify is not installed"
-            return "$SKIPPED"
-        fi
-        graphify update .
         ;;
     coverage) coverage_stage ;;
     dead-code) dead_code ;;
