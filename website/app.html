@@ -935,7 +935,7 @@
                 </div>
                 <div class="screenshot-item">
                     <h4>Searching Titles</h4>
-                    <img src="screenshot-search-titles.jpg" alt="Settings" width="873" height="1363" loading="lazy">
+                    <img src="screenshot-search-titles.jpg" alt="Searching Titles" width="873" height="1363" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Speech Bubble Index with Links</h4>
@@ -943,7 +943,7 @@
                 </div>
                 <div class="screenshot-item">
                     <h4>Carl Barks Wiki</h4>
-                    <img src="screenshot-carl-barks-wiki.jpg" alt="Full Index" width="873" height="1365" loading="lazy">
+                    <img src="screenshot-carl-barks-wiki.jpg" alt="The Carl Barks Wiki" width="873" height="1365" loading="lazy">
                 </div>
             </div>
 
@@ -1331,8 +1331,9 @@
                     <h4>Step 2: Unzip the App and Move the Files</h4>
                     <p>Safari unzips downloads automatically by default, so look in your Downloads folder
                         first: you will probably already have the app bundle
-                        <strong>"barks-reader-macos.app"</strong>, possibly beside the original zip. If you only
-                        have <strong>"barks-reader-macos.zip"</strong> (other browsers, or Safari with
+                        <strong>"barks-reader-macos.app"</strong> (on an Intel Mac,
+                        <strong>"barks-reader-macos-x64.app"</strong>), possibly beside the original zip. If you only
+                        have the zip (other browsers, or Safari with
                         "Open safe files" turned off), double-click it in Finder to get the app bundle.</p>
                     <p>Leave the two <strong>.barkspack</strong> data packs exactly as they are &mdash; they are
                         zip archives under another name precisely so that Safari won't unpack them, and the
@@ -1357,14 +1358,16 @@
                             Security</strong>, scroll down, and click <strong>"Open Anyway"</strong> (this is the
                             required route on macOS 15 and newer, where right-click → Open no longer works for
                             unsigned apps); or</li>
-                        <li>Remove the quarantine flag in Terminal:
+                        <li>Remove the quarantine flag in Terminal (on an Intel Mac the bundle is
+                            <strong>"barks-reader-macos-x64.app"</strong>):
                             <code>xattr -dr com.apple.quarantine ~/Applications/BarksReader/barks-reader-macos.app</code></li>
                     </ul>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 4: Run the Application</h4>
-                    <p>After granting permissions, double-click <strong>"barks-reader-macos.app"</strong> and the
+                    <p>After granting permissions, double-click <strong>"barks-reader-macos.app"</strong> (or
+                        <strong>"barks-reader-macos-x64.app"</strong>) and the
                         application will launch normally. Future launches can be done by double-clicking.</p>
                 </div>
             </div>
@@ -1490,7 +1493,8 @@
                 </tr>
                 <tr>
                     <td>Operating System</td>
-                    <td>Windows 10/11, macOS 12+ (Apple Silicon or Intel), or Linux (Ubuntu 20.04+, similar)</td>
+                    <td>Windows 10/11, macOS 12+ (Apple Silicon or Intel), or Linux (Ubuntu 24.04 or a
+                        similarly recent distribution; the executable is built on Ubuntu 24.04)</td>
                 </tr>
                 <tr>
                     <td>Memory (RAM)</td>
@@ -1635,7 +1639,8 @@
                             unsigned apps)</li>
                         <li>On older macOS versions, right-clicking the app and selecting "Open" may be enough</li>
                         <li>If still blocked, run in Terminal:
-                            <code>xattr -dr com.apple.quarantine /path/to/barks-reader-macos.app</code></li>
+                            <code>xattr -dr com.apple.quarantine /path/to/barks-reader-macos.app</code>
+                            (on an Intel Mac the bundle is <strong>"barks-reader-macos-x64.app"</strong>)</li>
                     </ul>
                 </div>
             </div>
@@ -1784,7 +1789,7 @@
                     name: 'Linux',
                     icon: '🐧',
                     executable: 'barks-reader-linux',
-                    description: 'Executable file for Linux (Ubuntu 20.04+, similar distributions)',
+                    description: 'Executable file for Linux (Ubuntu 24.04 or a similarly recent distribution)',
                     note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.'
                 }
             ];

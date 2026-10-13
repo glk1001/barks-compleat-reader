@@ -410,7 +410,8 @@ Use 'barks-reader-win.exe'.
 Use 'barks-reader-macos.zip' on Apple Silicon Macs and 'barks-reader-macos-x64.zip' on Intel
 Macs.
 
-1. Get the app bundle `barks-reader-macos.app`. Safari unzips downloads automatically by
+1. Get the app bundle `barks-reader-macos.app` (`barks-reader-macos-x64.app` on an Intel
+   Mac). Safari unzips downloads automatically by
    default, so it is probably already in your Downloads folder beside the zip. If you only
    have the zip (other browsers, or Safari with "Open safe files" turned off), double-click
    it in Finder. (Note: a zip downloaded from a GitHub Actions run's artifacts page is
