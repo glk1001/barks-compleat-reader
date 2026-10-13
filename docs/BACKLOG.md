@@ -98,10 +98,17 @@ in the OCR repo, which is read-only from here:
       pages 110-117), *Donald's Grandma Duck* (vol 9, 096-109), *Letter to
       Santa* page 078, *The Mines of King Solomon* page 035.
 - [ ] **OCR the four gaps above** so they can join the index.
-- [ ] **`FRAGMENTS_TO_SUPPRESS` drift** -- `castoria`, `treatem` and
-      `swelldorf` no longer occur in the corpus (already true of the April
-      index), so barks-ocr's `--do-checks` fails before reaching the newer
-      checks. Prune them from `whoosh_barks_terms.py`.
+- [x] **`FRAGMENTS_TO_SUPPRESS` drift** -- `castoria`, `treatem` and
+      `swelldorf` no longer occurred in the index (only `swelldorf-castoria` does),
+      so barks-ocr's `--do-checks` failed before reaching the newer checks. Pruned
+      2026-10-13. The list lives in this repo (`barks_fantagraphics/whoosh_barks_terms.py`);
+      barks-ocr only imports it. Against the shipped index (2026-09-19) the fragment
+      check now passes, and the run goes on to the next item's failure.
+- [ ] **More term-list drift** -- the same run: `check_all_caps` fails on `u-235`, and
+      `check_barksian_terms` logs `Treatem Nyce` as not found (it logs rather than
+      fails). Neither is in the index as a term; find how the story spells them
+      (a tokenizer split, or OCR text) before choosing between fixing the list and
+      fixing the index. Also in `whoosh_barks_terms.py`.
 - [x] **`vision_schema.py` imports the vocabulary** (barks-ocr `c79f181`) (roster, sentinels,
       `other:` prefix, key names, cap-colour and identified-by options) from
       `barks_fantagraphics.speech_speakers` instead of defining its own copy.

@@ -1716,7 +1716,6 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "b-197",  # B-197 X-NG
         "boer",  # Boer War
         "brookside",  # Brookside Park
-        "castoria",  # Swelldorf-Castoria
         "cattail",  # Cattail Slough
         "chemica",  # Chemica Curiosa
         "chillspine",  # Chillspine Buoy
@@ -1768,10 +1767,8 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "seafoam",  # Seafoam McDuck
         "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
         "suzettes",  # Crepe Suzettes
-        "swelldorf",  # Swelldorf-Castoria
         "tangkor",  # Tangkor Wat
         "thrushwhistle",  # Thrushwhistle Glen
-        "treatem",  # Treatem Nyce
         "tryle",  # Tryle N. Error
         "walt",  # Walt Disney
         "wat",  # Tangkor Wat
