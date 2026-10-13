@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
+    INTRO_CS_STACK_LINE_GAP_FRAC,
     RGB_PROFILE,
     SVG_ADAPTIVE_PROFILE,
     AdaptivePageImageSource,
@@ -26,7 +27,7 @@ from barks_fantagraphics.pages import (
     FinalStoryFileResolver,
     SvgPngStoryFileResolver,
 )
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 
 class TestPageImageSource:
@@ -130,7 +131,7 @@ class TestBuildSourceProfile:
 
 # ---------------------------------------------------------------------------
 # The intro page's title: one font for a Barks title; for a non-Barks "Comics and
-# Stories" issue, three, with a superscript footnote mark on a US-censored one.
+# Stories" issue, its masthead's pieces, with a footnote mark on a US-censored one.
 # ---------------------------------------------------------------------------
 
 # A TrueType font any workspace has: Kivy's, found without importing Kivy.
@@ -165,11 +166,25 @@ class TestTitleAndFonts:
         assert [f.size for f in fonts] == [TITLE_FONT_SIZE]
         assert height > 0
 
-    def test_a_comics_and_stories_issue_splits_over_three_fonts(self, tmp_path: Path) -> None:
+    def test_a_comics_and_stories_issue_is_lettered_as_its_masthead(self, tmp_path: Path) -> None:
         builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
         texts, fonts, _ = builder._get_title_and_fonts()
-        assert texts == ["Comics", "and Stories", "91"]
-        assert [f.size for f in fonts] == [TITLE_FONT_SIZE, TITLE_FONT_SIZE // 2, TITLE_FONT_SIZE]
+        assert texts == ["COMICS", "AND", "STORIES", "91"]
+        comics_font, and_font, stories_font, number_font = fonts
+        assert comics_font.size == number_font.size == TITLE_FONT_SIZE
+        assert and_font.size == stories_font.size < TITLE_FONT_SIZE
+
+    def test_and_over_stories_is_as_tall_as_the_capitals_of_comics(self, tmp_path: Path) -> None:
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
+        _, (comics_font, small_font, _, _), _ = builder._get_title_and_fonts()
+
+        def cap_height(font: ImageFont.FreeTypeFont, text: str) -> float:
+            return -font.getbbox(text, anchor="ls")[1]
+
+        comics_cap = cap_height(comics_font, "COMICS")
+        line_gap = INTRO_CS_STACK_LINE_GAP_FRAC * comics_cap
+        stack = cap_height(small_font, "STORIES") + line_gap + cap_height(small_font, "AND")
+        assert stack == pytest.approx(comics_cap, abs=2)  # the small font's size is whole
 
     def test_a_us_censored_one_gets_the_footnote_mark(self, tmp_path: Path) -> None:
         censored = US_CENSORED_TITLES[0]
@@ -185,7 +200,6 @@ class TestDrawingTheTitle:
         image = Image.new("RGB", (600, 400), "white")
         draw = ImageDraw.Draw(image)
         texts, fonts, _ = builder._get_title_and_fonts()
-        texts[2] = "\n" + texts[2]  # the issue number on a line of its own
         blank = image.copy()
 
         builder._draw_centered_multiline_title_text(texts, fonts, (0, 0, 0), 20, 10, image, draw)

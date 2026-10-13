@@ -30,7 +30,7 @@ _UPDATE_SNAPSHOTS = os.environ.get("UPDATE_TITLE_PAGE_SNAPSHOTS") == "1"
 _SNAPSHOTS = {
     # The default red, a small-words line ("in the") and three lines of credits.
     "Lost in the Andes!": "lost-in-the-andes.png",
-    # An issue name for a title: the "Comics and Stories" pieces and a number, in purple.
+    # An issue name for a title: the "Comics and Stories" masthead and a number, in purple.
     "The Hypno-Gun": "the-hypno-gun.png",
     # A title too wide for the page, lettered smaller to fit.
     "The Paul Bunyan Machine": "the-paul-bunyan-machine.png",

@@ -1,5 +1,5 @@
 # ruff: noqa: PLR0911
-# cspell:ignore getbbox Raqm
+# cspell:ignore getbbox getmetrics Raqm
 
 import re
 from abc import ABC, abstractmethod
@@ -81,6 +81,14 @@ INTRO_TITLE_SMALL_WORD_SIZE_FRAC = 0.55
 # A title whose widest line would come nearer the page's edges than this is lettered
 # smaller, so it fits.
 INTRO_TITLE_MIN_MARGIN = 50
+# A "Comics and Stories" issue's title is lettered like the comic's masthead: "COMICS",
+# with a small "AND" stacked over "STORIES" beside it, the two as tall as its capitals,
+# and the issue number on the line below.
+INTRO_CS_STACK_GAP_FRAC = 0.3  # of the font size, between COMICS and the stack
+INTRO_CS_STACK_LINE_GAP_FRAC = 0.18  # of the capitals' height, between AND and STORIES
+INTRO_CS_COMICS = "COMICS"
+INTRO_CS_AND = "AND"
+INTRO_CS_STORIES = "STORIES"
 # "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
@@ -951,22 +959,30 @@ class ComicBookImageBuilder:
         font_size: int,
         add_footnote: bool,
     ) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
+        """Return the masthead's pieces, "COMICS", "AND", "STORIES" and the issue number.
+
+        "AND" and "STORIES" are small enough that, one over the other, they are as tall as
+        the capitals of "COMICS". The height is the ink's, from "COMICS" to the number.
+        """
         assert title.startswith(ISSUE_NAME[Issues.CS])
 
-        comic_num = title[len(ISSUE_NAME[Issues.CS]) :]
+        comic_num = title[len(ISSUE_NAME[Issues.CS]) :].strip()
+
+        font = _get_title_page_font(font_file, font_size)
+        cap_height = _get_cap_height(font, INTRO_CS_COMICS)
+        stack_line_cap_height = cap_height * (1 - INTRO_CS_STACK_LINE_GAP_FRAC) / 2
+        small_font = font.font_variant(size=round(font_size * stack_line_cap_height / cap_height))
+
+        text_height = self._get_intro_text_height(f"{INTRO_CS_COMICS}\n{comic_num}", font)
+
         if add_footnote:
             comic_num += FOOTNOTE_CHAR
 
-        title_split = ["Comics", "and Stories", comic_num]
-        title_fonts = [
-            _get_title_page_font(font_file, font_size),
-            _get_title_page_font(font_file, int(0.5 * font_size)),
-            _get_title_page_font(font_file, font_size),
-        ]
-
-        text_height = self._get_intro_text_height(title, title_fonts[0])
-
-        return title_split, title_fonts, text_height
+        return (
+            [INTRO_CS_COMICS, INTRO_CS_AND, INTRO_CS_STORIES, comic_num],
+            [font, small_font, small_font, font],
+            text_height,
+        )
 
     def _draw_centered_multiline_title_text(
         self,
@@ -978,78 +994,75 @@ class ComicBookImageBuilder:
         image: PilImage,
         draw: PilImageDraw,
     ) -> None:
-        lines = []
-        line = []
-        for text, font in zip(text_vals, fonts, strict=False):
-            if not text.startswith("\n"):
-                line.append((text, font))
-            else:
-                lines.append(line)
-                line = [(text[1:], font)]
-        lines.append(line)
+        """Letter the title centred on the page: a story's lines, or an issue's masthead."""
+        if len(text_vals) > 1:
+            self._draw_comics_and_stories_title(text_vals, fonts, color, top, spacing, image, draw)
+            return
 
-        line_widths = []
-        text_lines = []
-        for line in lines:
-            line_width = 0
-            text_line = []
-            for text, font in line:
-                text_width = self._get_title_text_width(text, font)
-                line_width += text_width
-                text_line.append((text, font, text_width))
-            line_widths.append(line_width)
-            text_lines.append(text_line)
+        title, font = text_vals[0], fonts[0]
+        left = (image.width - self._get_title_text_width(title, font)) / 2
+        self._draw_title_text(draw, left, top, title, font, color, spacing)
 
-        max_font_height = self._get_intro_text_height(text_vals[0], fonts[0])
-        line_top = top
-        for text_line, line_width in zip(text_lines, line_widths, strict=False):
-            left = (image.width - line_width) / 2
-            line_start = True
-            for txt, font, txt_width in text_line:
-                text = txt
-                text_width = txt_width
+    def _draw_comics_and_stories_title(
+        self,
+        text_vals: list[str],
+        fonts: list[ImageFont.FreeTypeFont],
+        color: tuple[int, int, int],
+        top: int,
+        spacing: int,
+        image: PilImage,
+        draw: PilImageDraw,
+    ) -> None:
+        """Letter "COMICS" with "AND" over "STORIES" beside it, and the number below.
 
-                font_height = self._get_intro_text_height(text, font)
-                assert font_height <= max_font_height
+        The stack sits on the baseline of "COMICS", "AND" centred over "STORIES", and the
+        whole masthead is centred, as is the number, its line as far below as a story
+        title's second line. A US-censored issue's number has a raised footnote mark.
+        """
+        (comics, and_text, stories, number), (font, small_font, _, _) = text_vals, fonts
 
-                if line_start or font_height == max_font_height:
-                    line_top_extra = 0
-                    width_spacing = 0
-                else:
-                    line_top_extra = 10
-                    width_spacing = int(1.1 * ((font_height * spacing) / max_font_height))
-                left += width_spacing
+        comics_width = self._get_title_text_width(comics, font)
+        and_width = self._get_title_text_width(and_text, small_font)
+        stories_width = self._get_title_text_width(stories, small_font)
+        stack_width = max(and_width, stories_width)
+        stack_gap = round(INTRO_CS_STACK_GAP_FRAC * font.size)
+        left = (image.width - (comics_width + stack_gap + stack_width)) / 2
+        self._draw_title_text(draw, left, top, comics, font, color, spacing)
 
-                has_footnote = False
-                if text[-1] == FOOTNOTE_CHAR:
-                    has_footnote = True
-                    text = text[:-1]
-                    text_width -= 1
+        baseline = top + font.getmetrics()[0]
+        small_ascent = small_font.getmetrics()[0]
+        and_baseline = baseline - (
+            _get_cap_height(small_font, stories)
+            + (INTRO_CS_STACK_LINE_GAP_FRAC * _get_cap_height(font, comics))
+        )
+        stack_left = left + comics_width + stack_gap
+        for text, text_width, text_baseline in (
+            (and_text, and_width, and_baseline),
+            (stories, stories_width, baseline),
+        ):
+            text_left = stack_left + ((stack_width - text_width) / 2)
+            self._draw_title_text(
+                draw, text_left, text_baseline - small_ascent, text, small_font, color, spacing
+            )
 
-                self._draw_title_text(
-                    draw, left, line_top + line_top_extra, text, font, color, spacing
-                )
-                left += text_width
-
-                if has_footnote:
-                    self._draw_superscript_title_text(
-                        FOOTNOTE_CHAR,
-                        color,
-                        int(left),
-                        line_top + line_top_extra,
-                        spacing,
-                        draw,
-                    )
-
-                line_start = False
-            line_top += int(1.5 * max_font_height)
+        digits = number.removesuffix(FOOTNOTE_CHAR)
+        number_top = (
+            top + self._get_title_line_tops([comics, digits], [font, font], font, spacing)[1]
+        )
+        number_width = self._get_title_text_width(number, font)
+        number_left = (image.width - number_width) / 2
+        self._draw_title_text(draw, number_left, number_top, digits, font, color, spacing)
+        if digits != number:
+            self._draw_superscript_title_text(
+                FOOTNOTE_CHAR, color, int(number_left + number_width - 1), number_top, spacing, draw
+            )
 
     def _draw_superscript_title_text(
         self,
         text: str,
         color: tuple[int, int, int],
         left: int,
-        top: int,
+        top: float,
         spacing: int,
         draw: PilImageDraw,
     ) -> None:
@@ -1064,6 +1077,11 @@ class ComicBookImageBuilder:
             color,
             spacing,
         )
+
+
+def _get_cap_height(font: FreeTypeFont, text: str) -> float:
+    """Return how far a text's capitals rise above its baseline."""
+    return -font.getbbox(text, anchor="ls")[1]
 
 
 def _get_inset_border_color(title_color: tuple[int, int, int]) -> tuple[int, int, int]:
