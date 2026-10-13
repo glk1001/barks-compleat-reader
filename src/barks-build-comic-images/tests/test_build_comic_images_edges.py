@@ -19,7 +19,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
-    INTRO_INSET_BORDER_COLOR,
+    INTRO_INSET_BORDER_SHADE,
     INTRO_INSET_BORDER_WIDTH,
     INTRO_INSET_MIN_GAP,
     INTRO_PUB_CREDITS_COLOR,
@@ -38,6 +38,7 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_WORD_GAP,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
+    _get_inset_border_color,
     _PubTextLine,
 )
 from barks_fantagraphics.comics_consts import (
@@ -227,14 +228,27 @@ class TestTheIntroInset:
     def test_the_inset_border_is_drawn_outside_the_art(self) -> None:
         image = Image.new("RGB", (200, 200), WHITE)
         left, top, b = 50, 60, INTRO_INSET_BORDER_WIDTH
+        color = (10, 20, 30)
 
-        ComicBookImageBuilder._draw_inset_border(ImageDraw.Draw(image), left, top, 100, 80)
+        ComicBookImageBuilder._draw_inset_border(ImageDraw.Draw(image), left, top, 100, 80, color)
 
-        assert image.getpixel((left - 1, top + 40)) == INTRO_INSET_BORDER_COLOR
-        assert image.getpixel((left - b, top + 40)) == INTRO_INSET_BORDER_COLOR
+        assert image.getpixel((left - 1, top + 40)) == color
+        assert image.getpixel((left - b, top + 40)) == color
         assert image.getpixel((left - b - 1, top + 40)) == WHITE
         assert image.getpixel((left, top + 40)) == WHITE  # the art's own first column
-        assert image.getpixel((left + 50, top + 80 + b - 1)) == INTRO_INSET_BORDER_COLOR
+        assert image.getpixel((left + 50, top + 80 + b - 1)) == color
+
+    def test_the_inset_border_is_a_dark_shade_of_the_title_colour(self) -> None:
+        red, green, blue = 200, 100, 50
+
+        border = _get_inset_border_color((red, green, blue))
+
+        assert border == (
+            round(INTRO_INSET_BORDER_SHADE * red),
+            round(INTRO_INSET_BORDER_SHADE * green),
+            round(INTRO_INSET_BORDER_SHADE * blue),
+        )
+        assert sum(border) < sum((red, green, blue))
 
 
 PUBLICATION_TEXT = (
@@ -378,7 +392,8 @@ class TestTheIntroPageLayout:
         below = text_top - inset_bottom
         assert abs(above - below) <= GAP_TOLERANCE
         assert above >= INTRO_INSET_MIN_GAP
-        assert page.getpixel((page.width // 2, inset_top - 1)) == INTRO_INSET_BORDER_COLOR
+        border_color = _get_inset_border_color(self.TITLE_COLOR)
+        assert page.getpixel((page.width // 2, inset_top - 1)) == border_color
 
 
 class TestTheIntroTitle:

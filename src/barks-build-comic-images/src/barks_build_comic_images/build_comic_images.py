@@ -85,11 +85,12 @@ INTRO_TITLE_MIN_MARGIN = 50
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
 INTRO_BY_AUTHOR_GAP = 28
-# The inset is framed like a story panel, but in sepia rather than black ink. Its
-# width cap lines it up with the widest title lines.
+# The inset is framed like a story panel, but in a dark shade of the title's colour
+# rather than black ink, tying the art to the title. Its width cap lines it up with
+# the widest title lines.
 INTRO_INSET_MAX_WIDTH = 1450
 INTRO_INSET_MIN_GAP = 130
-INTRO_INSET_BORDER_COLOR = (138, 117, 96)
+INTRO_INSET_BORDER_SHADE = 0.6  # of the title colour's brightness
 INTRO_INSET_BORDER_WIDTH = 4
 # The first paragraph of the publication text (the original publication) is in ink,
 # its first line bold; any later paragraphs (this edition's credits) are smaller and
@@ -616,7 +617,14 @@ class ComicBookImageBuilder:
         top += inset_gap
         inset_left = (dest_page_image.width - inset.width) // 2
         dest_page_image.paste(inset, (inset_left, top))
-        self._draw_inset_border(draw, inset_left, top, inset.width, inset.height)
+        self._draw_inset_border(
+            draw,
+            inset_left,
+            top,
+            inset.width,
+            inset.height,
+            _get_inset_border_color(self._comic.title_color),
+        )
 
         self._draw_publication_text(dest_page_image, draw, pub_lines, pub_top)
 
@@ -704,13 +712,18 @@ class ComicBookImageBuilder:
 
     @staticmethod
     def _draw_inset_border(
-        draw: PilImageDraw, left: int, top: int, width: int, height: int
+        draw: PilImageDraw,
+        left: int,
+        top: int,
+        width: int,
+        height: int,
+        color: tuple[int, int, int],
     ) -> None:
         """Frame the inset with a border drawn just outside it, leaving the art untouched."""
         b = INTRO_INSET_BORDER_WIDTH
         draw.rectangle(
             (left - b, top - b, left + width + b - 1, top + height + b - 1),
-            outline=INTRO_INSET_BORDER_COLOR,
+            outline=color,
             width=b,
         )
 
@@ -1051,6 +1064,20 @@ class ComicBookImageBuilder:
             color,
             spacing,
         )
+
+
+def _get_inset_border_color(title_color: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Return the colour of the inset's border: a dark shade of the title's colour.
+
+    Args:
+        title_color: The title's colour.
+
+    Returns:
+        The title's colour at ``INTRO_INSET_BORDER_SHADE`` of its brightness.
+
+    """
+    red, green, blue = (round(INTRO_INSET_BORDER_SHADE * value) for value in title_color)
+    return red, green, blue
 
 
 def _get_title_page_font(font_file: str | Path, size: int) -> FreeTypeFont:
