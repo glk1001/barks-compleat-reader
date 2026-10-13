@@ -113,11 +113,16 @@ repos:
             # the suite on a throwaway Xvfb, as CI does. On macOS it runs through
             # with-soft-gl.sh, so a Mac with no GPU driver (a VirtualBox guest) can open
             # Kivy's window; a Mac with a GPU still draws on it.
+            # In parallel (pytest-xdist): on one core the suite had grown to about 46 s, on
+            # eight about 16 s, and more workers gained nothing (2026-10-14, 16 cores). The
+            # cap keeps an 8 GB machine's memory in hand. CI and the overnight runs stay
+            # serial, for their coverage and random order.
             entry: >-
               bash -c 'if [ "$(uname -s)" = Darwin ];
-              then exec bash scripts/macos/with-soft-gl.sh pytest;
+              then exec bash scripts/macos/with-soft-gl.sh pytest -n auto --maxprocesses=8;
               elif [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null;
-              then exec xvfb-run -a uv run pytest; else exec uv run pytest; fi'
+              then exec xvfb-run -a uv run pytest -n auto --maxprocesses=8;
+              else exec uv run pytest -n auto --maxprocesses=8; fi'
             language: system
             pass_filenames: false
             always_run: true
