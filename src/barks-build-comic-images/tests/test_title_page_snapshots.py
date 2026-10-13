@@ -7,7 +7,8 @@ moves anything on it, by one pixel or on one platform, fails here. A Pillow upgr
 that unnoticed, and so did the Windows text layout, which once lettered titles wider.
 
 Each page is drawn around a made-up inset, as CI has no comic library to take a real one
-from. After an intended change, take new snapshots by running these tests with
+from: most in 3:2, but one wide and one tall, to hold the inset's sizing by shape too.
+After an intended change, take new snapshots by running these tests with
 ``UPDATE_TITLE_PAGE_SNAPSHOTS=1``, and look at each new png before committing it.
 """
 
@@ -26,20 +27,24 @@ from PIL import Image, ImageChops, ImageDraw
 _SNAPSHOT_DIR = Path(__file__).parent / "data" / "title-pages"
 _UPDATE_SNAPSHOTS = os.environ.get("UPDATE_TITLE_PAGE_SNAPSHOTS") == "1"
 
-# Each story's snapshot, and what its page shows that the others don't.
+_INSET_3_2 = (1200, 800)
+_INSET_WIDE = (1500, 500)  # 3:1: widened past the width cap towards the minimum height
+_INSET_TALL = (600, 800)  # 3:4: no taller than 4:3 art at the width cap
+
+# Each story's snapshot and its inset's size, and what its page shows that the others don't.
 _SNAPSHOTS = {
-    # The default red, a small-words line ("in the") and three lines of credits.
-    "Lost in the Andes!": "lost-in-the-andes.png",
+    # The default red, a small-words line ("in the"), three lines of credits; a wide inset.
+    "Lost in the Andes!": ("lost-in-the-andes.png", _INSET_WIDE),
     # An issue name for a title: the "Comics and Stories" masthead and a number, in purple.
-    "The Hypno-Gun": "the-hypno-gun.png",
+    "The Hypno-Gun": ("the-hypno-gun.png", _INSET_3_2),
     # A US-censored issue: the masthead's number with its raised footnote mark, in green.
-    "Silent Night": "silent-night.png",
+    "Silent Night": ("silent-night.png", _INSET_3_2),
     # An issue title on two lines, "Uncle / Scrooge #14", in yellow, the faintest colour.
-    "Faulty Fortune": "faulty-fortune.png",
+    "Faulty Fortune": ("faulty-fortune.png", _INSET_3_2),
     # A title too wide for the page, lettered smaller to fit.
-    "The Great Steamboat Race": "the-great-steamboat-race.png",
-    # Three lines, one an article line ("the Farm"), in green.
-    "The Day the Farm Stood Still": "the-day-the-farm-stood-still.png",
+    "The Great Steamboat Race": ("the-great-steamboat-race.png", _INSET_3_2),
+    # Three lines, one an article line ("the Farm"), in green; a tall inset.
+    "The Day the Farm Stood Still": ("the-day-the-farm-stood-still.png", _INSET_TALL),
 }
 
 
@@ -48,14 +53,13 @@ def db() -> ComicsDatabase:
     return ComicsDatabase(for_building_comics=False)
 
 
-@pytest.fixture(scope="module")
-def inset(tmp_path_factory: pytest.TempPathFactory) -> Path:
+def _make_inset(directory: Path, size: tuple[int, int]) -> Path:
     """Return a made-up inset: a sun on a sky, outlined in black to show the scaling."""
-    path = tmp_path_factory.mktemp("title-page-snapshots") / "inset.png"
-    image = Image.new("RGB", (1200, 800), (90, 160, 220))
-    ImageDraw.Draw(image).ellipse(
-        (300, 150, 900, 650), fill=(240, 200, 40), outline=(0, 0, 0), width=12
-    )
+    width, height = size
+    path = directory / f"inset-{width}x{height}.png"
+    image = Image.new("RGB", size, (90, 160, 220))
+    sun = (width // 4, height * 3 // 16, width * 3 // 4, height * 13 // 16)
+    ImageDraw.Draw(image).ellipse(sun, fill=(240, 200, 40), outline=(0, 0, 0), width=12)
     image.save(path)
     return path
 
@@ -66,10 +70,15 @@ def _get_title_page(db: ComicsDatabase, title: str, inset: Path) -> Image.Image:
     return builder._get_dest_title_page_image(open_image_for_reading(EMPTY_IMAGE_FILEPATH))
 
 
-@pytest.mark.parametrize(("title", "snapshot"), _SNAPSHOTS.items())
+@pytest.mark.parametrize(
+    ("title", "snapshot", "inset_size"),
+    [(title, snapshot, inset_size) for title, (snapshot, inset_size) in _SNAPSHOTS.items()],
+    ids=list(_SNAPSHOTS),
+)
 def test_the_title_page_matches_its_snapshot(
-    db: ComicsDatabase, inset: Path, tmp_path: Path, title: str, snapshot: str
+    db: ComicsDatabase, tmp_path: Path, title: str, snapshot: str, inset_size: tuple[int, int]
 ) -> None:
+    inset = _make_inset(tmp_path, inset_size)
     page = _get_title_page(db, title, inset).convert("RGB")
     snapshot_file = _SNAPSHOT_DIR / snapshot
 
