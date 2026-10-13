@@ -1,20 +1,38 @@
 # pyrefly annotation-debt checklist
 
-The 24 "union-type / nullability" findings pyrefly surfaced that are **grandfathered** in
-`pyrefly-baseline.json` (see `pyrefly.toml`). None block anything — work through them
-**opportunistically** when you're already in the file. After fixing one:
+The "union-type / nullability" findings pyrefly surfaced that are **grandfathered** in
+`pyrefly-baseline.json` (see `pyrefly.toml`): 24 when this list was written (2026-07-20), 15
+still open on 2026-10-13 (one of them now fires twice). None block anything — work through
+them **opportunistically** when you're already in the file. After fixing one:
 
 ```bash
 bash scripts/pyrefly.sh --update-baseline   # regenerates the baseline minus what you fixed
 ```
 
-The baseline shrinks over time. These are *real* type imprecision (unlike the ~60 Kivy-boundary
-items also baselined, which need the stubs work in `reference_kivy_stubs`). Fix notes below are a
-**starting point derived from the type errors** — verify at the call site; some may reveal a real
+These are *real* type imprecision (unlike the 44 Kivy-boundary entries also baselined, and
+7 Win32 `ctypes` ones that exist only because `pyrefly.toml` checks as Linux). Kivy ships
+no stubs; generating them is the only fix for those. Fix notes below are a **starting point
+derived from the type errors** — verify at the call site; some may reveal a real
 `None`/wrong-variant bug, which is the point.
 
-> Cross-repo caution: `title_search.py` lives in `barks-fantagraphics` (consumed by sibling repos);
-> `reader_setup.py:37` involves a `ConfigParser` Protocol. Change public signatures there carefully.
+> Cross-repo caution: `reader_setup.py:37` involves the `ConfigParser` Protocol in
+> `core/reader_settings.py`, which four scripts also work around. Change it carefully.
+
+## How the baseline matches (read before trusting a green gate)
+
+Checked 2026-10-13 against pyrefly 1.2.0: a baseline entry matches on **path, error kind and
+column**. The line and the message are ignored, and one entry covers every error of that
+kind at that column in that file. Two consequences:
+
+- **Line drift never fails the gate**, so nothing forces `--update-baseline`. It has not been
+  run since 2026-07-20: the file still holds 94 entries, 12 of which match nothing any more
+  (9 from this list, `comics_utils.py`'s two `stat`/`lstat` ones fixed by `66e6c657`, and a
+  Kivy one in `ui/ui_helpers.py` whose code is gone). Regenerating it leaves 84.
+- **A new finding can hide** behind an entry in the same file at the same column. Two have:
+  `okf_reader/ui/viewer.py`'s `trigger_action` and the second `populated` site in
+  `ui/tree_view_manager.py` (both below).
+
+Line numbers below are those of 2026-10-13; find an item by its names if they have moved.
 
 ---
 
@@ -24,41 +42,49 @@ Each is a spot where a possibly-`None` value flows into a parameter/return decla
 If `None` can occur at runtime → real bug, add a guard. If it genuinely can't → tighten the source
 type or `assert x is not None`.
 
-- [ ] `ui/barks_reader_app.py:314` — `Unknown | None` passed as `parser` (ConfigParser) to
-      `bootstrap_reader_environment`. Narrow with `is not None` (or fix the source's type).
-- [ ] `ui/navigation_coordinator.py:231` — `Titles | None` passed as `article_title` (Titles) to
-      `read_article`. Guard or make the caller's value non-optional.
-- [ ] `ui/search_screen.py:349` — `Unknown | None` passed as `tag_group` (TagGroups) to
-      `ComicSearch.get_tag_group_members`. Guard.
-- [ ] `ui/comic_book_reader.py:362` — returns `OrderedDict[str, PageInfo] | None` but declared
+- [ ] `ui/barks_reader_app.py:330` — `Unknown | None` passed as `parser` (ConfigParser) to
+      `bootstrap_reader_environment` (`self.config`). Narrow with `is not None` (or fix the
+      source's type).
+- [ ] `ui/navigation_coordinator.py:286` — `Titles | None` passed as `article_title` (Titles) to
+      `read_article` (`image_info.from_title`, typed `Titles | None` in
+      `core/image_selector.py`). Guard or make the caller's value non-optional.
+- [x] `ui/search_screen.py` — `Unknown | None` passed as `tag_group` to
+      `ComicSearch.get_tag_group_members`. Gone with the call: `5006d5bf` (tag groups open and
+      close in place) passes a `TagGroups`.
+- [ ] `ui/comic_book_reader.py:441` — the `_page_map` property returns
+      `OrderedDict[str, PageInfo] | None` (`_ComicPageManager.page_map`) but declares
       `OrderedDict[...]`. Either narrow before return or widen the return type to `| None`.
-- [ ] `core/comic_book_loader.py:217` — `not-iterable`: iterating a value typed `None`. Guard the
-      iteration or fix the source type.
+- [ ] `core/comic_book_loader.py:290` — `not-iterable`: iterating a value typed `None`
+      (`self._images: list[tuple[io.BytesIO, str] | None]`). Guard the iteration or fix the
+      source type. Also `# ty: ignore`-ed.
 
-## P2 — one shared signature, clears 8 findings at 4 call sites
+## P2 — `PanelTextureLoader.load_texture`'s callers (3 findings at 2 sites, from 7 at 4)
 
-All from `PanelTextureLoader.load_texture` (`ui/panel_texture_loader.py`). Two independent fixes:
+`570bb9aa` hoisted the index screens' shared machinery into `ui/index_screen.py`, whose call
+guards `filename is None` and takes `err: Exception | None`; that cleared the
+`main_index_screen` and `speech_index_screen` sites. Left:
 
-- [ ] **`panel_path` nullability** — callers pass `... | None`, param declares no `None`.
-      Decide: does `load_texture` handle `None`? If yes, widen its `panel_path` param to `| None`.
-      If no, guard at each caller. Sites:
-      `ui/main_index_screen.py:225`, `ui/snapshot_applicator.py:224`, `ui/speech_index_screen.py:466`.
-- [ ] **`callback` err param** — callers pass `(tex, err: Exception) -> None`; `load_texture` calls
-      it with `Exception | None`. Widen each callback's `err` annotation to `Exception | None`. Sites:
-      `ui/bottom_title_view_screen.py:236`, `ui/main_index_screen.py:225`,
-      `ui/snapshot_applicator.py:224`, `ui/speech_index_screen.py:466`.
+- [ ] **`panel_path` nullability** — `ui/snapshot_applicator.py:226`. It asserts
+      `image_info.filename is not None` but passes the local `image_filename`, which pyrefly
+      does not narrow; asserting the local is likely the whole fix.
+- [ ] **`callback` err param** — `load_texture` calls it with `Exception | None`; widen each
+      callback's `err` to match. Sites: `ui/bottom_title_view_screen.py:551` (callback at
+      `:540`), `ui/snapshot_applicator.py:226` (callback at `:211`).
 
 ## P3 — union too wide for a narrower declared type
 
 A `TagGroups | Tags | Titles | str` (or similar) value flows into a narrower slot. Narrow with an
 `isinstance`/guard, or widen the declared type to match reality.
 
-- [ ] `ui/main_index_screen.py:235` — `...| str` passed as `item_id` (`TagGroups | Tags | Titles`).
-- [ ] `ui/main_index_screen.py:292` — assigning `...| str` to a `TagGroups | Tags` target.
-- [ ] `ui/speech_index_screen.py:502` — assigning `TagGroups | Tags | Titles | str` to a `str`.
-- [ ] `barks-fantagraphics/.../title_search.py:154` — appending `TagGroups` into a `list[Tags]`.
-- [ ] `barks-fantagraphics/.../title_search.py:156` — returning `list[Tags]` where
-      `list[TagGroups | Tags]` is declared. (154 + 156 are one fix — the list's element type.)
+- [ ] `ui/main_index_screen.py:214` — `...| str` passed as `item_id` (`TagGroups | Tags | Titles`).
+- [ ] `ui/main_index_screen.py:271` — assigning `...| str` to a `TagGroups | Tags` target
+      (`self._open_tag_item.id`).
+- [ ] `ui/speech_index_screen.py:357` — assigning `TagGroups | Tags | Titles | str` to a `str`
+      (`index_term`). Also `# ty: ignore`-ed.
+- [x] `barks-fantagraphics/.../title_search.py` — a `TagGroups` appended to a `list[Tags]`, and
+      that list returned as `list[TagGroups | Tags]` (two findings). Fixed by `1378b2e4`
+      (`list[Tags | TagGroups]`); `0a339ead` then replaced the function with
+      `get_tags_matching`.
 
 ## P4 — Path / value-type edge cases (several already `# ty: ignore`-ed)
 
@@ -66,18 +92,46 @@ A `TagGroups | Tags | Titles | str` (or similar) value flows into a narrower slo
       operand in `Path(...)` before `/`.
 - [ ] `core/reader_setup.py:41` — `zipfile.Path | pathlib.Path` passed as `inset_dir` (`pathlib.Path`)
       to `ComicsDatabase.set_inset_info`. Narrow to `pathlib.Path` (the inset dir is real-FS).
-- [ ] `core/reader_setup.py:37` — `configparser.ConfigParser` vs the local `ConfigParser` Protocol
-      (`.write` signature mismatch). Adjust the Protocol or cast. (Already `# ty: ignore`-ed in scripts.)
-- [ ] `ui/comic_book_reader.py:623` — value typed `object` passed as `page_index` (`int`). Add the
-      right annotation/cast at the source so it's `int`.
+- [ ] `core/reader_setup.py:37` — `configparser.ConfigParser` vs the local `ConfigParser`
+      Protocol (`core/reader_settings.py`; `.write` signature mismatch). Adjust the Protocol
+      or cast. (Already `# ty: ignore`-ed in four scripts: `check_random_title_images`,
+      `find-splash-pages`, `copy-reader-pngs-to-jpgs`, `panels-info`.)
+- [x] `ui/comic_book_reader.py` — a value typed `object` passed as `page_index`. Gone:
+      `70071147` replaced the `filter(None.__ne__, ...)` with the typed `_needed_indices()`.
 - [ ] `core/reader_file_paths_resolver.py:48` + `:55` — getter union return (`PanelPath | list | None`)
       vs `list[tuple[PanelPath, bool]]`. Already `# ty: ignore[not-iterable]`. Real fix = give the
       `FILE_TYPE_FILE_GETTERS` getters precise per-category return types so the COVER/other split
       narrows. Larger refactor; low priority.
-- [ ] `ui/tree_view_manager.py:254` — `Literal[True]` assigned to attribute `populated` inferred as
-      `Never`. `populated` needs an explicit type (likely a bool attr/property mis-inferred). Annotate it.
+- [ ] `ui/tree_view_manager.py:283` + `:286` — `Literal[True]` assigned to attribute
+      `populated` inferred as `Never`. `populated` is already a Kivy `BooleanProperty`
+      (`tree_view_nodes.py`), so this is the Kivy stub gap, not a missing annotation. The
+      `:283` site came with `d895eabd` and hides behind the one baselined entry.
+
+## P5 — not on the July list
+
+Found on 2026-10-13: baselined in July but never listed, or new and hidden by the column match.
+
+- [ ] `okf_reader/ui/viewer.py:1372` — `trigger_action` on a `Widget | None`
+      (`self._bar_focus_widget`), narrowed only by `in buttons`; `Widget` has no
+      `trigger_action` even without the `None`. New with `c5dd09d4`, hidden behind the
+      `bundle_path` entries at the same column.
+- [ ] `core/config_info.py:118`-`:123` — six `Path` attributes set to `None`
+      (`app_config_dir`, `app_config_path`, `app_data_dir`, `kivy_config_dir`,
+      `app_log_path`, `error_background_path`), deferred-init and `# ty: ignore`-ed.
+- [ ] `ui/main_index_screen.py:289` — `.id` read from `self._open_tag_item: IndexItem | None`
+      without narrowing.
+- [ ] `ui/statistics_screen.py:179` + `:183` — `.container` / `.dismiss` on
+      `self._word_stat_dropdown`, deferred-init as `None`.
+- [ ] `ui/kivy_standalone_show_message.py:231` — `close_button` may be unbound (it is bound
+      only under `add_close_button`).
+- [ ] `ui/reader_keyboard_nav.py:396`/`:397`/`:404` — `DropdownNavMixin` reads attributes of
+      its host with no host Protocol (`_menu_mode`, `_exit_menu_mode`, `_handle_menu_key`);
+      `# ty: ignore`-ed.
+- [ ] `comic_utils/cli_setup.py:17`-`:19` — attributes set on a module (`log_level`,
+      `log_filename`, `APP_LOGGING_NAME`).
 
 ---
 
-**Progress:** 24 items. As they're fixed, note that several are *also* `# ty: ignore`-ed — a proper
-fix lets you delete both the pyrefly baseline entry and the ty-ignore.
+**Progress (2026-10-13):** of the July list's 24 findings, 9 are gone (ticked above, with
+their commits) and 15 remain; P5 adds 7 items. A proper fix often lets you delete both the
+pyrefly baseline entry and a `# ty: ignore` beside it.
