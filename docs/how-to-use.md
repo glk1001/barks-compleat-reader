@@ -45,7 +45,8 @@ The bar across the top of the main screen contains:
 
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
-- **Introduction** — introductory articles for the *Compleat Barks Reader* project.
+- **Introduction** — introductory articles for the *Compleat Barks Reader* project, plus
+  *By the Numbers*, a one-page statistical portrait of the whole corpus.
 - **The Stories** — all Barks stories, browsable in three ways:
   - *Chronological* — organised by Barks' submission dates.
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
@@ -54,9 +55,14 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 - **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). Words and
   tags can be combined, narrowed to an era, and a word search to who says it or to a tag's
   stories: see [Searching](#searching) below.
-- **Reading History** — a journal of the comics you've read, grouped by day. The Reader records
-  this automatically (it can be turned off with the *Record Reading History* setting), and the
-  history can be cleared from within the view.
+- **Reading** — three ways to pick something to read:
+  - *Choose for me* — a fresh random handful of stories, re-rolled each time you open the node:
+    *Surprise me*, a decade (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*,
+    *Gladstone*, *Gyro*, *Daisy*, *the Beagle Boys* or *Grandma Duck*.
+  - *Playlists* — hand-picked sets of stories, each introduced by a short note.
+  - *History* — a journal of the comics you've read, grouped by day. The Reader records this
+    automatically (it can be turned off with the *Record Reading History* setting), and the
+    history can be cleared from within the view.
 - **Appendix** — supplementary articles, a censorship-fixes summary, and reading *Statistics*.
 - **Indexes** — the *Main Index* (alphabetic) and the *Speech Bubble Index* (with *Words*, *Names*,
   and *Locations* sub-indexes). If a Carl Barks Wiki bundle is configured, a *Wiki* index appears too.
@@ -81,8 +87,10 @@ publication info, and a favorite panel. Contains:
 
 - A **title portal button** (bottom right) that opens the comic reader directly.
 - A **"Goto page N:" checkbox** (optional) — appears when the Reader has remembered where you left
-  off in this story; tick it to have the portal button reopen the comic at that page instead of the
-  first page.
+  off in this story, or when you reached the story through a tag that marks particular pages; tick
+  it to have the portal button reopen the comic at that page instead of the first page. When a tag
+  marks several pages the label reads *Goto page N (2 of 5):* and two small arrows beside it (or
+  **Left | Right** while the row is focused) step through them.
 - A **"Goto wiki page" link** (optional) — appears when a Carl Barks Wiki bundle is configured and
   the story has a wiki page; opens that story's page in the Wiki Reader.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
@@ -240,7 +248,7 @@ are:
 | *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
 | *Double Page Mode*                            | Opens every comic in two-page view                             |
 | *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
-| *Record Reading History*                      | Logs every comic you read to the *Reading History* view        |
+| *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading* |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
@@ -261,7 +269,8 @@ Settings are saved to `"barks-reader.ini"` and `"barks-reader.json"` in the app'
 
 ## Logging
 
-Log files are written to the `"logs"` subfolder of the app's config directory. The level of detail
+Log files are written to the `"kivy/logs"` subfolder of the app's config directory (the main one
+is `barks-reader.log`). The level of detail
 is controlled by the **Log level** setting (TRACE / DEBUG / INFO / WARNING / ERROR / CRITICAL).
 For normal use, INFO is appropriate. If you are reporting a problem, set it to DEBUG before
 reproducing the issue, then include the log file with your report.

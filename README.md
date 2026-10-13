@@ -35,9 +35,9 @@ navigation and a visually engaging interface.
 
 |                        Main Window                        |                          Reading a Story                          |
 |:---------------------------------------------------------:|:------------------------------------------------------------------:|
-| ![Main Window](website/screenshot-main-window.png)        | ![Reading a Story](website/screenshot-reading-a-story.png)          |
-|                    **Selecting a Title**                   |                             **Settings**                            |
-| ![Selecting a Title](website/screenshot-selecting-a-title.png) | ![Settings](website/screenshot-settings.png)                    |
+| ![Main Window](website/screenshot-main-window.jpg)        | ![Reading a Story](website/screenshot-reading-a-story.jpg)          |
+|                    **Selecting a Title**                   |                           **Search Titles**                         |
+| ![Selecting a Title](website/screenshot-selecting-a-title.jpg) | ![Search Titles](website/screenshot-search-titles.jpg)          |
 
 More screenshots (including the full index and speech bubble index) are on
 [the project website](https://glk1001.github.io/barks-compleat-reader/website/app.html).
@@ -46,7 +46,8 @@ More screenshots (including the full index and speech bubble index) are on
 
 ## Requirements
 
-- **Python**: 3.13 or newer.
+- **Python**: 3.13 (3.14 is not yet supported; `uv` installs the pinned 3.13.x from
+  `.python-version`).
 - **Fantagraphics Comic Archives**: You must have access to the digital versions of the Fantagraphics Carl Barks
   Library, typically as `.zip` or `.cbz` files.
 - **Python Dependencies**: The required Python packages can be installed via `uv.`
@@ -64,6 +65,9 @@ repositories, git hooks, secrets and data.
 git clone https://github.com/glk1001/barks-compleat-reader.git
 cd barks-compleat-reader
 ```
+The `just` recipes import `../barks-comic-building/justfile`, so also clone
+https://github.com/glk1001/barks-comic-building.git beside this repo (without it, every
+`just` command fails on the import). Without `just`, `uv run main.py` runs the reader.
 
 **2. Install Dependencies**
 
@@ -115,12 +119,12 @@ just reader
 
 ## Testing
 
-- **Unit tests** (about 3,700, mocked Kivy, run in CI on Linux, macOS and Windows):
+- **Unit tests** (about 6,000, mocked Kivy, run in CI on Linux, macOS and Windows):
     ```
     uv run pytest
     ```
-- **GUI path tests** (98, Linux only): boot the real app from a scratch profile on a nested
-  X display and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
+- **GUI path tests** (about 130; on Linux through a nested X display, on Windows and macOS
+  on the real desktop, below): boot the real app from a scratch profile and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the
   size it booted at, the log holds no error or stray key, what a read persisted matches what
@@ -130,8 +134,9 @@ just reader
   durations and writes this machine's budgets to `.benchmarks/gui-timings.json` (not
   committed); until then the committed budgets, from the desktop, apply. The check is
   skipped with a warning when the load exceeds what the cores and the run's own workers
-  account for, and turned off by `BARKS_GUI_NO_BUDGETS=1`. Three tests look for
-  leaks: each goes round the same trip (a wiki page, a comic, the main index) six times and
+  account for, and turned off by `BARKS_GUI_NO_BUDGETS=1`. Five tests (six cases) look for
+  leaks: each goes round the same trip (a wiki page, a comic, the main index, the search
+  chips, the speaker list) six times and
   asks the app, after a full garbage collection, how many widgets and textures it holds
   (`barks_reader.core.memory_census`); the count may not climb after the first two rounds.
     ```
@@ -162,7 +167,7 @@ just reader
   The tests may press only the remote's six keys (Escape, Enter and the arrows); a check
   in the lint gates, `scripts/check_gui_keys.py`, reads them and fails on any other key
   unless the call carries `# desktop key: <why>`.
-- **Tap tests** (11, in `test_taps.py`, part of the GUI suite): drive the reader as a
+- **Tap tests** (14, in `test_taps.py`, part of the GUI suite): drive the reader as a
   touchscreen laptop's user does. They tap the page margins, the fullscreen top margin,
   tree nodes, menu buttons and popups, the main and speech-bubble index items, and the
   search box. A test never taps a pixel it worked out itself. It asks the app where its
@@ -250,7 +255,7 @@ just reader
   Preferences, Security & Privacy, Privacy), and the reader runs through
   `scripts/macos/with-soft-gl.sh`, so a guest with no GPU draws on Apple's software
   OpenGL. `uv run python scripts/gui_probe.py doctor` checks the machine; the whole
-  setup is `docs/setup.md`, "A macOS VirtualBox guest".
+  setup is `docs/setup.md`, "A macOS overnight machine" (under "Windows and macOS").
     ```
     uv run python scripts/run_gui_tests.py              # the suite (-k, -x: pytest args)
     uv run python scripts/run_gui_tests.py --calibrate  # once: this machine's timing budgets
@@ -282,7 +287,9 @@ just reader
   `barks-comic-building`. Title search needs no data, so it is a unit test that CI runs
   (`src/barks-fantagraphics/tests/test_title_search.py`).
 - **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
-  or with `--with-gui-test` to include the GUI suite.
+  or with `--with-gui-test` to include the GUI suite. CI also runs a `diff-coverage` job:
+  the lines a push changes must be at least 80% covered (`diff-cover`; `scripts/diff-cover.sh`
+  runs the same check locally).
 - **The whole-repo overnight run** runs everything worth a night that the gates
   (pre-commit, pre-push, CI) leave out, because it is slow or needs local data: the
   checks on the real data pack and the sibling repos, the full lint and test suite from a
@@ -317,12 +324,14 @@ just reader
   | `gui` | `run_gui_overnight.sh`, the built app's stages too (the suite, the matrix, one soak seed), with a longer soak on new seeds each night; the workspace app's coverage is measured (`BARKS_PROBE_COVERAGE`, about 10% slower) |
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
   | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
+  | `dead-code` | `dead_code_report.py`: vulture's unused functions, methods and classes (at 60%, below the gate's 80) that the `coverage` stage's data never ran and no `.kv` file, script or sibling repo names; warns only |
   | `graphify` | `graphify update .`, the knowledge graph; skipped if graphify is not installed |
-  | `mutation` | `mutmut.sh` on one seventh of `core/`, a different slice each weekday; warns when a module has more survivors than the last time it was mutated |
+  | `mutation` | `mutmut.sh` on all of `core/` and on the `barks_fantagraphics` search modules, or on the share `BARKS_OVERNIGHT_MUTATION_SCOPE` (`core`, `fantagraphics`; default `all`) names; warns on a survivor that is neither a known equivalent (`docs/mutation-equivalents.toml`) nor in the backlog (`mutation_survivors.py`) |
 
   `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default
-  three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_DAY` (1-7)
-  picks the mutation slice. Each stage's output goes to
+  three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_SCOPE`
+  picks the mutation share, and a machine keeps its own in the gitignored `.env.overnight`
+  (one `BARKS_OVERNIGHT_*=value` per line; the environment wins). Each stage's output goes to
   `build/overnight/<stamp>/<stage>.log`, and `summary.txt` there, rewritten after every
   stage, holds each one's result (passed, FAILED, WARNED, skipped or stopped) and time.
 
@@ -340,6 +349,7 @@ just reader
     ```
     bash scripts/copy-to-overnight-host.sh --dry-run user@host   # what it would do
     bash scripts/copy-to-overnight-host.sh user@host             # do it (reruns copy only changes)
+    bash scripts/copy-to-overnight-host.sh --no-data user@host   # the repos and .env.runtime only (--no-repos: the data only)
     bash scripts/check-overnight-host.sh                            # on the other machine
     xvfb-run -a bash scripts/record_benchmark_baseline.sh           # once, there
     bash scripts/run_gui_tests.sh --headless --calibrate            # once, there

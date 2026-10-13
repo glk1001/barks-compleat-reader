@@ -25,6 +25,9 @@ need [bun](https://bun.sh) on the PATH (on Windows, `winget install Oven-sh.Bun`
 lacks `bunx`: beside `bun.exe`, add a `bunx.cmd` holding `@"%~dp0bun.exe" x %*`. A `bunx.exe`
 link did not do under pre-commit, which ran it as `bunx.EXE` while bun matches its own name
 case-sensitively).
+The pre-commit stage also runs [gitleaks](https://github.com/gitleaks/gitleaks) (secrets in what is
+staged), the one hook not from the uv venv: prek builds its pinned release once per machine, about
+30 s on the first commit, fetching Go itself.
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
 hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
 pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
@@ -71,7 +74,7 @@ machine one share, kept in its gitignored `.env.overnight`); `--list`, `--only`,
 ```bash
 bash scripts/run_overnight.sh
 ```
-To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run] HOST`
+To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run] [--no-repos] [--no-data] HOST`
 sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
 not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
@@ -137,17 +140,18 @@ bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
 bunx cspell
 ```
 
-**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, relative imports, cspell, benchmark compare; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
+**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, deptry, vulture, relative imports, .kv imports, the GUI-key check, cspell, benchmark compare; `uv audit` and the wiki story-order check warn only; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
 ```bash
 bash scripts/full-lint.sh
 bash scripts/full-lint.sh --with-gui-test
 ```
 
-**Check only uncommitted files (ruff/ty/cspell):**
+**Check only uncommitted files (ruff/ty/cspell/.kv imports):**
 ```bash
 bash scripts/git-ruff.sh
 bash scripts/git-ty.sh
 bash scripts/git-cspell.sh
+bash scripts/git-kv.sh
 ```
 
 **Bump the pinned toolchain (monthly):**
@@ -210,8 +214,12 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
 
 ### Testing
 
-- Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`.
+- Unit tests are in each package's `tests/` (`src/barks-reader/tests/unit/`,
+  `src/barks-fantagraphics/tests/`, `src/barks-build-comic-images/tests/`, `src/okf-reader/tests/`,
+  `src/comic-utils/tests/`) and the scripts' in `scripts/tests/`; see `testpaths` in `pyproject.toml`.
   Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
+  CI's `diff-coverage` job holds the lines a push changes to 80% coverage (`diff-cover`;
+  `scripts/diff-cover.sh` runs it locally).
 - Corpus consistency (every title's panel files, prebuilt comic, layout, panel-segments
   JSONs, wiki joins and splash tags) is `scripts/validate-barks-reader-files.py`, run against the real
   data pack, nightly rather than in a gate; its tests are in `scripts/tests/`. The GUI tests

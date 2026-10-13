@@ -7,9 +7,9 @@ All application-level code resides in the `src/` directory.
 *   Run tests using the command: `uv run pytest`
 *   Use pytest fixtures
 *   Use Mock `patch.object` like:  
-    `patch.object(image_file_getter, TitleImageFileGetter.__name__)`  
+    `patch.object(reader_settings_module, ReaderFilePaths.__name__)`  
     **NOT**  
-    `patch("barks_reader.core.image_file_getter.TitleImageFileGetter")`
+    `patch("barks_reader.core.reader_settings.ReaderFilePaths")`
 
 ## Code Style
 *   Use modern Python 3.13+ syntax.
