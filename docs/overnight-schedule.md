@@ -12,7 +12,7 @@ on each machine:
 | The main machine (gregspc2) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh` (with `build-check`: the build tree is here) | 5 h | `journalctl -u nightly-job` |
 | The overnight host (gmktec) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh --skip build-check` | 5 h | `journalctl -u nightly-job` |
 | The Windows laptop (win_lg) | `~\nightly-job\nightly-job.ps1` | `git pull --ff-only`, then `uv run --offline scripts/run_overnight_desktop.py` | 3 h | `~\nightly-job\nightly-job.log` |
-| The Windows desktop (greg-dell; schedule off for now) | `~\nightly-job\nightly-job.ps1` | the same as the laptop's | 5 h | `~\nightly-job\nightly-job.log` |
+| The Windows desktop (greg-dell) | `~\nightly-job\nightly-job.ps1` | the same as the laptop's | 5 h | `~\nightly-job\nightly-job.log` |
 
 A run's results are where they always are: `build/overnight/<stamp>/summary.txt`. A
 failed pull does not stop the run: it tests the checkout as it is, and on Windows the
@@ -113,9 +113,9 @@ bash, which eats backslashes.
 ## Windows: the desktop (greg-dell)
 
 A Dell OptiPlex 7050 SFF with 8 GB, set up as the laptop is, with the same three
-scripts in `~\nightly-job\` adapted to it. Its `nightly-job` task is installed but
-**disabled** until the machine has more memory; a second task, `nightly-job-now`, starts
-the same run by hand meanwhile. How it differs from the laptop:
+scripts in `~\nightly-job\` adapted to it. Its `nightly-job` task runs nightly (enabled
+2026-10-13, staying on 8 GB); a second task, `nightly-job-now`, starts the same run by
+hand. How it differs from the laptop:
 
 - **Classic S3 sleep, not Modern Standby.** The wake is a full one, fans and all. The
   wrapper decides it woke for the run from Kernel-Power 107 ("resumed from sleep") or
@@ -126,13 +126,15 @@ the same run by hand meanwhile. How it differs from the laptop:
 - **Memory**: about 4 GB of the 8 is free at idle, which is the runner's own floor on a
   machine this size (half its memory), so a GUI stage might not start.
   `nightly-job.ps1` sets `BARKS_OVERNIGHT_MIN_FREE_MB=3072`, and so does a user
-  environment variable, for runs started by hand. Remove both when the memory goes up.
+  environment variable, for runs started by hand. Both stay: the machine keeps its 8 GB.
+  The one failure on it so far was memory pressure's kind: `built-app` (2026-10-13) over
+  a timing budget, three images loaded at once in 7 s against 4.8 s, behind a 9 s start.
 - **`nightly-job-now`** has the same action and account as `nightly-job` but no trigger
-  and no wake: Windows will not start a disabled task. It runs on the desktop like the
+  and no wake, so it never starts by itself. It runs on the desktop like the
   nightly one, and by the same wrapper rule the machine stays awake afterwards, unless it
   resumed in the 5 minutes before (as `greg-dell run`, below, arranges).
-- **`test.ps1`** turns its copy of the task on, so the wake test works while
-  `nightly-job` is disabled. The laptop's copies the task's settings as they are.
+- **`test.ps1`** turns its copy of the task on, so the wake test works whether or not
+  `nightly-job` is. The laptop's copies the task's settings as they are.
 - **Ping goes unanswered**: Windows' firewall drops it. Watch a wake with ssh, or
   afterwards in `powercfg /lastwake`, which names the task.
 - **The ssh shell is PowerShell**, not bash: the commands go without the
@@ -147,7 +149,9 @@ the same run by hand meanwhile. How it differs from the laptop:
 | Stop it | `ssh greg-dell Stop-ScheduledTask nightly-job-now` |
 | Test the wake (the ssh session drops as it sleeps) | `ssh greg-dell 'powershell -ExecutionPolicy Bypass -File $HOME\nightly-job\test.ps1'` |
 | Remove the test's task afterwards | `ssh greg-dell 'Unregister-ScheduledTask nightly-job-test -Confirm:$false'` |
-| Turn the schedule on | `ssh greg-dell Enable-ScheduledTask nightly-job` |
+| See the next scheduled run | `ssh greg-dell '(Get-ScheduledTaskInfo nightly-job).NextRunTime'` |
+| Turn the schedule off | `ssh greg-dell Disable-ScheduledTask nightly-job` |
+| Turn it back on | `ssh greg-dell Enable-ScheduledTask nightly-job` |
 
 `summary.txt` is rewritten after each stage; `nightly-job.log` gets the run's output only
 when it ends. As on the laptop, greg must be logged on with the screen unlocked; the
