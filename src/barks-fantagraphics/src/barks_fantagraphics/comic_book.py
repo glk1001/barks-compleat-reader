@@ -76,6 +76,15 @@ TITLE_COLORS: dict[str, tuple[int, int, int]] = {
     "brown": (181, 101, 29),  # western, frontier and mining stories
 }
 INTRO_TITLE_DEFAULT_COLOR = TITLE_COLORS["red"]
+# What the byline says of Barks's part, as a story's ini names it in "byline": the whole
+# story, by default; or, where the credits name another writer or artist, only his part.
+BYLINES = (
+    "by",  # the default: he wrote and drew it
+    "art by",  # another wrote the script
+    "story by",  # he wrote and laid it out, another drew it
+    "story begun by",  # another finished both story and art
+)
+INTRO_DEFAULT_BYLINE = BYLINES[0]
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
 # (volume, page_num) pairs that are "edited" or "added" fixes special cases.
@@ -153,6 +162,7 @@ class ComicBook:
     title_font_file: Path
     title_font_size: int
     title_color: tuple[int, int, int]
+    byline: str
     # NOTE: Need 'issue_title' to force a series title that has
     #       changed from another title. E.g., FC 495 == Uncle Scrooge #3
     issue_title: str

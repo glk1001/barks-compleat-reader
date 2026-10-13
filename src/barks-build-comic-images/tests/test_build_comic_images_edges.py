@@ -351,6 +351,7 @@ class TestTheIntroPageLayout:
         comic.title_font_size = 155
         comic.title_color = self.TITLE_COLOR
         comic.author_font_size = 90
+        comic.byline = "by"
         comic.fanta_info.comic_book_info.is_barks_title = True
         comic.publication_text = PUBLICATION_TEXT
         builder = _builder(
@@ -419,6 +420,33 @@ class TestTheIntroPageLayout:
         assert above >= INTRO_INSET_MIN_GAP
         border_color = _get_inset_border_color(self.TITLE_COLOR)
         assert page.getpixel((page.width // 2, inset_top - 1)) == border_color
+
+
+class TestTheByline:
+    """The byline: the story's "by", "art by" or the like, then the author's name."""
+
+    @staticmethod
+    def _byline_ink(tmp_path: Path, byline: str) -> tuple[int, int, int, int]:
+        comic = MagicMock()
+        comic.title_font_file = CARL_BARKS_FONT_FILE
+        comic.author_font_size = 90
+        comic.byline = byline
+        builder = _builder(tmp_path, (8, 8), comic=comic)
+        image = Image.new("RGB", (DEST_TARGET_WIDTH, 400), WHITE)
+
+        builder._draw_byline(image, ImageDraw.Draw(image), 100)
+
+        ink = image.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0).getbbox()
+        assert ink is not None
+        return ink
+
+    def test_a_longer_byline_is_lettered_wider_and_still_centred(self, tmp_path: Path) -> None:
+        by = self._byline_ink(tmp_path, "by")
+        art_by = self._byline_ink(tmp_path, "art by")
+
+        assert art_by[2] - art_by[0] > by[2] - by[0]
+        for left, _, right, _ in (by, art_by):
+            assert (left + right) / 2 == pytest.approx(DEST_TARGET_WIDTH / 2, abs=2)
 
 
 class TestTheIntroTitle:

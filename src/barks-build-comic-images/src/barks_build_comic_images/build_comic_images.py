@@ -93,7 +93,8 @@ INTRO_CS_STACK_LINE_GAP_FRAC = 0.18  # of the capitals' height, between AND and 
 INTRO_CS_COMICS = "COMICS"
 INTRO_CS_AND = "AND"
 INTRO_CS_STORIES = "STORIES"
-# "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline.
+# "by Carl Barks" on one line, the smaller "by" sitting on the author's baseline; or
+# "art by", "story by" and the like, where the credits name another writer or artist.
 INTRO_AUTHOR_COLOR = (0, 0, 0)
 INTRO_BY_FONT_SIZE_FRAC = 0.6
 INTRO_BY_AUTHOR_GAP = 28
@@ -644,7 +645,7 @@ class ComicBookImageBuilder:
         self._draw_publication_text(dest_page_image, draw, pub_lines, pub_top)
 
     def _get_byline_fonts(self) -> tuple[FreeTypeFont, FreeTypeFont]:
-        """Return the fonts for the byline's "by" and for the author's name."""
+        """Return the fonts for the byline's "by" (or "art by"...) and for the author's name."""
         author_font_size = self._comic.author_font_size
         by_font_size = int(INTRO_BY_FONT_SIZE_FRAC * author_font_size)
         return (
@@ -658,16 +659,21 @@ class ComicBookImageBuilder:
         return round(ink_bottom - ink_top)
 
     def _draw_byline(self, image: PilImage, draw: PilImageDraw, top: int) -> int:
-        """Draw "by Carl Barks" with the top of its ink at ``top``; return its ink bottom."""
+        """Draw "by Carl Barks" with the top of its ink at ``top``; return its ink bottom.
+
+        The small words before the name are the story's byline: "by", or "art by" and the
+        like, where the credits name another writer or artist.
+        """
+        byline = self._comic.byline
         by_font, author_font = self._get_byline_fonts()
 
         _, ink_top, _, ink_bottom = author_font.getbbox(BARKS, anchor="ls")
         baseline = top - ink_top
 
-        by_width = draw.textlength("by", by_font)
+        by_width = draw.textlength(byline, by_font)
         author_width = draw.textlength(BARKS, author_font)
         left = (image.width - (by_width + INTRO_BY_AUTHOR_GAP + author_width)) / 2
-        draw.text((left, baseline), "by", fill=INTRO_AUTHOR_COLOR, font=by_font, anchor="ls")
+        draw.text((left, baseline), byline, fill=INTRO_AUTHOR_COLOR, font=by_font, anchor="ls")
         author_left = left + by_width + INTRO_BY_AUTHOR_GAP
         draw.text(
             (author_left, baseline), BARKS, fill=INTRO_AUTHOR_COLOR, font=author_font, anchor="ls"

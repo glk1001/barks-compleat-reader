@@ -12,7 +12,9 @@ from loguru import logger
 from .barks_covers import get_cover_collection_pages
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from .comic_book import (
+    BYLINES,
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
+    INTRO_DEFAULT_BYLINE,
     INTRO_TITLE_DEFAULT_COLOR,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
     TITLE_COLORS,
@@ -521,6 +523,31 @@ def _get_title_color(value: str, ini_file: Path) -> tuple[int, int, int]:
     return color
 
 
+def _get_byline(value: str, ini_file: Path) -> str:
+    """Return the byline an ini's ``byline`` names, such as ``art by``.
+
+    Args:
+        value: The ``byline`` value, or "" when the ini has none.
+        ini_file: The ini it came from, named if the value is bad.
+
+    Returns:
+        The byline, or the default byline when there is no value.
+
+    Raises:
+        ValueError: If the value is not one of the ``BYLINES``.
+
+    """
+    if not value:
+        return INTRO_DEFAULT_BYLINE
+
+    byline = " ".join(value.lower().split())
+    if byline not in BYLINES:
+        msg = f'Byline "{value}" in "{get_relpath(ini_file)}" is not one of: {", ".join(BYLINES)}.'
+        raise ValueError(msg)
+
+    return byline
+
+
 def _build_comic_book(
     story_title: str,
     ini_file: Path,
@@ -582,6 +609,7 @@ def _build_comic_book(
         title_font_file=INTRO_TITLE_DEFAULT_FONT_FILE,
         title_font_size=config["info"].getint("title_font_size", INTRO_TITLE_DEFAULT_FONT_SIZE),
         title_color=_get_title_color(config["info"].get("title_color", ""), ini_file),
+        byline=_get_byline(config["info"].get("byline", ""), ini_file),
         issue_title=issue_title,
         author_font_size=config["info"].getint(
             "author_font_size",

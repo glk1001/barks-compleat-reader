@@ -7,12 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics import comics_database as comics_database_module
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book import TITLE_COLORS
+from barks_fantagraphics.comic_book import BYLINES, TITLE_COLORS
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR, IMAGES_SUBDIR
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
     TitleNotFoundError,
+    _get_byline,
     _get_story_titles_dir,
     _get_title_color,
     check_comic_ok_for_building,
@@ -118,6 +119,25 @@ class TestGetTitleColor:
     def test_a_bad_value_names_its_ini_and_the_colours(self, value: str) -> None:
         with pytest.raises(ValueError, match=r"a\.ini.*is not one of: red, orange, .*brown"):
             _get_title_color(value, Path("/ini/a.ini"))
+
+
+class TestGetByline:
+    def test_no_value_is_the_default_by(self) -> None:
+        assert _get_byline("", Path("/ini/a.ini")) == "by"
+
+    @pytest.mark.parametrize("byline", BYLINES)
+    def test_each_byline_is_itself(self, byline: str) -> None:
+        assert _get_byline(byline, Path("/ini/a.ini")) == byline
+
+    @pytest.mark.parametrize("value", ["Art By", "ART BY", " art  by "])
+    def test_a_byline_is_matched_whatever_its_case_and_spaces(self, value: str) -> None:
+        assert _get_byline(value, Path("/ini/a.ini")) == "art by"
+
+    @pytest.mark.parametrize("value", ["drawn by", "art", "script by"])
+    def test_a_bad_value_names_its_ini_and_the_bylines(self, value: str) -> None:
+        bad = r"a\.ini.*is not one of: by, art by, .*story begun by"
+        with pytest.raises(ValueError, match=bad):
+            _get_byline(value, Path("/ini/a.ini"))
 
 
 class TestComicBookIniFiles:

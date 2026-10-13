@@ -147,6 +147,7 @@ def _make_comic(
         title_font_file=Path("/fonts/test.ttf"),
         title_font_size=155,
         title_color=(214, 48, 39),
+        byline="by",
         issue_title=issue_title,
         author_font_size=90,
         srce_dir_num_page_files=len(pages),
