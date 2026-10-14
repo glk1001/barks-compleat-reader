@@ -59,16 +59,19 @@ class WindowModeCallbacks:
 @dataclass(slots=True)
 class WindowState:
     screen: FullscreenEnum = FullscreenEnum.WINDOWED
+    # In Window.system_size units, the ones a ``Window.size =`` restore takes. Window.size
+    # reads in pixels, twice as many on a Retina Mac, so saving it doubled the window
+    # on leaving fullscreen.
     size: tuple[int, int] = (0, 0)
     pos: tuple[int, int] = (-1, -1)
 
     def save_state_now(self) -> None:
         self.screen = FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
-        self.size = Window.size
+        self.size = tuple(Window.system_size)
         self.pos = (Window.left, Window.top)
 
     def is_saved_state_same_as_current(self) -> bool:
-        return Window.size == self.size and (Window.left, Window.top) == self.pos
+        return tuple(Window.system_size) == self.size and (Window.left, Window.top) == self.pos
 
     def is_unsaved(self) -> bool:
         """Return True while no geometry has been captured (still the defaults).

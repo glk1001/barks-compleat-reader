@@ -73,6 +73,28 @@ class _FakeClock:
         callback(0.0)
 
 
+class _RetinaWindow:
+    """Kivy's Window on a Retina Mac: ``size`` reads in pixels, two to each point it takes."""
+
+    def __init__(self, system_size: tuple[int, int]) -> None:
+        self.system_size = system_size
+        self.left = 100
+        self.top = 100
+        self.fullscreen = False
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return self.system_size[0] * 2, self.system_size[1] * 2
+
+    @size.setter
+    def size(self, value: tuple[int, int]) -> None:
+        self.system_size = value
+
+    @property
+    def height(self) -> int:
+        return self.size[1]
+
+
 @pytest.fixture
 def constraints() -> WindowSizeConstraints:
     return WindowSizeConstraints(
@@ -85,6 +107,9 @@ def constraints() -> WindowSizeConstraints:
 @pytest.fixture
 def fake_window() -> MagicMock:
     win = MagicMock()
+    # Window.size in the units a ``Window.size =`` takes: the same as it, as on Linux
+    # and Windows. A Retina Mac's differ (two pixels to a point); see _RetinaWindow.
+    type(win).system_size = property(lambda w: tuple(w.size))
     win.left = 100
     win.top = 100
     win.fullscreen = False
@@ -687,3 +712,64 @@ def test_a_second_drag_step_replaces_the_pending_correction(
     first.cancel.assert_called_once_with()
     assert helper._correction_event is not first  # noqa: SLF001
     assert len(fake_clock.calls) == 2  # noqa: PLR2004
+
+
+# --- A Retina Mac: Window.size reads in pixels, two to each point it is set in ---
+
+
+def _make_retina_helper(
+    monkeypatch: pytest.MonkeyPatch, window: _RetinaWindow, fake_clock: _FakeClock
+) -> AppWindowGeometryHelper:
+    # A 27-inch 5K screen, which macOS gives as 2560 x 1440 points (2026-10-14's log).
+    screen = _make_screen_info(width=2560, height=1440)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    # The action bar is dp(45): 90 pixels there.
+    h = AppWindowGeometryHelper(
+        WindowSizeConstraints(
+            aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
+            chrome_height=2 * CHROME,
+            min_window_width=MIN_WIDTH,
+        )
+    )
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+    return h
+
+
+def test_a_retina_window_booted_in_proportion_is_left_alone(
+    monkeypatch: pytest.MonkeyPatch, fake_clock: _FakeClock
+) -> None:
+    """The boot size main.py sets, in points, reported back in pixels: no correction."""
+    height = 1365
+    width, _ = get_win_dimensions(height - CHROME, 2560)
+    window = _RetinaWindow((width, height))
+    helper = _make_retina_helper(monkeypatch, window, fake_clock)
+
+    helper.on_window_resize(window, *window.size)  # ty: ignore[invalid-argument-type]
+
+    assert fake_clock.calls == []
+    assert window.system_size == (width, height)
+
+
+def test_a_retina_correction_is_set_in_points_and_settles(
+    monkeypatch: pytest.MonkeyPatch, fake_clock: _FakeClock
+) -> None:
+    """Set in pixels, each correction doubled the window, and the next one again."""
+    height = 1365
+    right_width, _ = get_win_dimensions(height - CHROME, 2560)
+    window = _RetinaWindow((right_width + 100, height))
+    helper = _make_retina_helper(monkeypatch, window, fake_clock)
+
+    helper.on_window_resize(window, *window.size)  # ty: ignore[invalid-argument-type]
+    assert len(fake_clock.calls) == 1
+    fake_clock.fire_last()
+    assert window.system_size == (right_width, height)
+
+    helper.on_window_resize(window, *window.size)  # ty: ignore[invalid-argument-type]
+    assert len(fake_clock.calls) == 1, "The corrected window needed another correction."

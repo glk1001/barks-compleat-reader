@@ -78,6 +78,27 @@ class AppWindowGeometryHelper:
         """Mark the window as ready to accept resize corrections."""
         self._window_ready = True
 
+    # --- Window units ---
+    #
+    # Kivy reads ``Window.size`` (and gives resize events) in pixels, but takes a
+    # ``Window.size =`` in ``Window.system_size`` units, the units screeninfo gives the
+    # monitors in. They differ on a Retina Mac, two pixels to a point: a correction
+    # worked out in pixels and set as points doubled the window, again on each
+    # correction after (2026-10-14). So the geometry below is worked out in
+    # ``system_size`` units; elsewhere the factor is 1.
+
+    @staticmethod
+    def _pixels_per_size_unit() -> float:
+        system_width = Window.system_size[0]
+        return Window.size[0] / system_width if system_width > 0 else 1.0
+
+    def _in_size_units(self, width: int, height: int) -> tuple[int, int]:
+        scale = self._pixels_per_size_unit()
+        return round(width / scale), round(height / scale)
+
+    def _chrome_in_size_units(self) -> int:
+        return round(self._constraints.chrome_height / self._pixels_per_size_unit())
+
     # --- Window event handlers (bound by the app) ---
 
     def on_window_pos_change(self, _window: WindowBase) -> None:
@@ -93,7 +114,7 @@ class AppWindowGeometryHelper:
         if monitor.display == self._current_monitor.display:
             return
 
-        old_height = Window.height
+        old_height = Window.system_size[1]
         old_max_height = get_best_window_height_fit(self._current_monitor.height_pixels)
         scale_factor = old_height / old_max_height
         logger.debug(
@@ -108,7 +129,7 @@ class AppWindowGeometryHelper:
         new_height = min(round(scale_factor * new_max_height), new_max_height)
 
         if new_height != old_height:
-            chrome = self._constraints.chrome_height
+            chrome = self._chrome_in_size_units()
             new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
             new_height = content_h + chrome
             self._schedule_guarded_resize(new_width, new_height)
@@ -132,7 +153,7 @@ class AppWindowGeometryHelper:
         # calling _enforce_aspect_ratio during a monitor transition can interfere with the
         # resize sequence and leave widgets at the old monitor's dimensions.
         if self._resize_event:
-            if (width, height) != self._resize_requested_size:
+            if self._in_size_units(width, height) != self._resize_requested_size:
                 assert self._resize_requested_size != (0, 0)
                 Window.size = self._resize_requested_size
                 logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
@@ -193,23 +214,24 @@ class AppWindowGeometryHelper:
         """Enforce a fixed aspect ratio (height drives width) with a minimum width floor.
 
         Args:
-            width: Current window width reported by the resize event.
-            height: Current window height reported by the resize event.
+            width: Current window width reported by the resize event, in pixels.
+            height: Current window height reported by the resize event, in pixels.
 
         """
-        chrome = self._constraints.chrome_height
+        chrome = self._chrome_in_size_units()
         min_width = self._constraints.min_window_width
 
         # Bail out on degenerate transient sizes (e.g. ``(0, 45)`` events that fire during
         # the Windows fullscreen-exit resize storm). Without this guard we would compute
         # a degenerate correction and schedule ``Window.size = (0, 45)``, which Win32 then
         # clamps to its hit-test minimum and the window stays tiny.
-        if width <= 0 or height <= chrome:
+        unit_width, unit_height = self._in_size_units(width, height)
+        if unit_width <= 0 or unit_height <= chrome:
             return
 
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         monitor_w = monitor.width_pixels if monitor else 0
-        correct_width, content_h = get_win_dimensions(height - chrome, monitor_w)
+        correct_width, content_h = get_win_dimensions(unit_height - chrome, monitor_w)
         correct_height = content_h + chrome
         if correct_width < min_width:
             min_height = round(min_width * self._constraints.aspect_ratio) + chrome
@@ -231,7 +253,7 @@ class AppWindowGeometryHelper:
             )
             return
 
-        if (correct_width, correct_height) != (width, height):
+        if (correct_width, correct_height) != (unit_width, unit_height):
             # User resize: debounce so only one correction fires after the drag settles.
             if self._correction_event:
                 self._correction_event.cancel()
@@ -283,7 +305,7 @@ class AppWindowGeometryHelper:
 
         self._current_monitor = monitor
 
-        chrome = self._constraints.chrome_height
+        chrome = self._chrome_in_size_units()
         new_height = calculate_fitted_window_height(
             screen_width=monitor.width_pixels,
             screen_height=monitor.height_pixels,

@@ -89,6 +89,9 @@ class _FakeBackend:
 @pytest.fixture
 def fake_window() -> MagicMock:
     win = MagicMock()
+    # Window.size in the units a ``Window.size =`` takes: the same as it, as on Linux
+    # and Windows. A Retina Mac's differ, two pixels to a point.
+    type(win).system_size = property(lambda w: tuple(w.size))
     win.fullscreen = False
     win.borderless = False
     win.size = (1200, 1800)
@@ -312,6 +315,20 @@ class TestWindowState:
         assert state.screen == FullscreenEnum.WINDOWED
         assert state.size == (800, 600)
         assert state.pos == (10, 20)
+
+    def test_a_retina_window_is_saved_in_the_units_a_restore_takes(
+        self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Window.size reads 2x on a Retina Mac; saved as read, a restore doubled it."""
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        fake_window.size = (1748, 2730)
+        type(fake_window).system_size = property(lambda _w: (874, 1365))
+        state = WindowState()
+
+        state.save_state_now()
+
+        assert state.size == (874, 1365)
+        assert state.is_saved_state_same_as_current() is True
 
     def test_is_saved_state_same_as_current(
         self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
