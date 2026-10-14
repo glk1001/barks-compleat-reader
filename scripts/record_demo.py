@@ -34,7 +34,8 @@ Assumes
     - ``scripts/gui-probe.sh doctor`` passes (Xephyr, xte, the app's data dirs).
     - A graphical session for the nested display to open in, and nothing else
       already on ``BARKS_PROBE_DISPLAY``.
-    - ffmpeg built with libx264 and libfreetype.
+    - ffmpeg built with libx264 and libfreetype, and xdotool (the fullscreen beat
+      resizes the app's X window by hand: see ``fit_app_window_to_screen``).
 
 The keystroke driver and the app boot live in ``gui_driver.py``, shared with the
 GUI test suite; this file is the beats, the camera, and the stitch. It reads the
@@ -67,6 +68,7 @@ Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300) - both ar
 passed straight through to gui-probe.sh.
 """
 
+# cspell:ignore windowmove windowsize
 from __future__ import annotations
 
 import argparse
@@ -193,6 +195,7 @@ SEARCH_MODE_SET = "SearchScreen mode set to '{mode}'"
 WIKI_ACTIVE = "Wiki reader screen is active"
 NODE_SELECTED = 'New selected node: "{name}"'
 LETTER_POPULATED = "Populated index page for letter"
+ENTERED_FULLSCREEN = "Entered fullscreen mode on ComicBookReaderScreen"
 
 
 # Stories the censored_stories beat opens. They must be in TREE order, which is
@@ -241,6 +244,11 @@ SEARCH_WORD_READ = Pick(pages=4, dwell=1.0)
 # open_comic reaches its story by walking, not by name, so this sets only its
 # pacing: four pages means the one it opens on plus three turns.
 OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
+
+# The story fullscreen opens, and how much of it to read before and after the
+# switch. It reads the same story as read_story, from the same cued page.
+FULLSCREEN_PICK = Pick("LOST_IN_THE_ANDES", pages=1, dwell=2.0)
+FULLSCREEN_READ = Pick(pages=2, dwell=2.0)
 
 # The page read_story jumps to through the goto-page dropdown, to show that the
 # reader skips about rather than only turning forward.
@@ -442,6 +450,7 @@ OUTPUTS: dict[str, tuple[str, ...]] = {
         "browse_tree",
         "series_view",
         "read_story",
+        "fullscreen",
         "search_story",
         "search_words",
         "censored_stories",
@@ -479,6 +488,9 @@ class Beat:
     label: str = ""
     body: Callable[[Driver], None] = field(default=lambda _d: None)
     setup: Callable[[Driver], None] | None = None
+    # Film the whole nested screen, cropped and scaled to the other clips' size,
+    # instead of the app window's own region: for a beat that goes fullscreen.
+    whole_screen: bool = False
 
 
 BEATS: list[Beat] = []
@@ -489,6 +501,8 @@ def beat(
     node: Sequence[str],
     label: str = "",
     setup: Callable[[Driver], None] | None = None,
+    *,
+    whole_screen: bool = False,
 ) -> Callable[[Callable[[Driver], None]], Callable[[Driver], None]]:
     """Register the decorated function as a beat.
 
@@ -499,6 +513,8 @@ def beat(
             characters; it is passed to ffmpeg through a file, not the filter
             string.
         setup: Optional off-camera navigation, run before recording starts.
+        whole_screen: Film the whole nested screen rather than the app window,
+            for a beat that goes fullscreen (`Beat.whole_screen`).
 
     Returns:
         The decorator, which returns the function unchanged.
@@ -506,7 +522,16 @@ def beat(
     """
 
     def register(fn: Callable[[Driver], None]) -> Callable[[Driver], None]:
-        BEATS.append(Beat(name=name, node=list(node), label=label, body=fn, setup=setup))
+        BEATS.append(
+            Beat(
+                name=name,
+                node=list(node),
+                label=label,
+                body=fn,
+                setup=setup,
+                whole_screen=whole_screen,
+            )
+        )
         return fn
 
     return register
@@ -791,11 +816,11 @@ def _setup_read_story(d: Driver) -> None:
 @beat(
     "read_story",
     node=["The Stories", "root"],
-    label="Skip to any page, or read two-up as printed",
+    label="Skip to any page",
     setup=_setup_read_story,
 )
 def read_story(d: Driver) -> None:
-    """Read a story, skip to a page through the page list, and go two-up."""
+    """Read a story and skip to a page through the page list."""
     d.hold(1.0)
     # The setup's select_node starts the title view's fade, and a Return during
     # it is lost: focus_portal waits the fade out, then for focus on the portal.
@@ -805,12 +830,51 @@ def read_story(d: Driver) -> None:
     d.read_pages(READ_STORY_PICK)
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
+    d.hold(3.0)
+
+
+def _go_fullscreen(d: Driver) -> None:
+    """Press the reader's fullscreen button, and give the X window the screen.
+
+    With no window manager on the nested display, the app's fullscreen switch
+    changes what it draws but not its X window: the page is laid out for the
+    whole screen and shown through the old window, clipped. The app logs the
+    switch, so this waits for that and then resizes the window by hand; until
+    then, a frame or two of the clipped page goes by.
+    """
+    with d.expect(ENTERED_FULLSCREEN, 20):
+        d.press_menu_button("fullscreen")
+    fit_app_window_to_screen()
+    d.settle()
+
+
+@beat(
+    "fullscreen",
+    node=["The Stories", "root"],
+    label="Fullscreen: one page, or two-up as printed",
+    setup=_setup_read_story,
+    whole_screen=True,
+)
+def fullscreen(d: Driver) -> None:
+    """Open the story, fill the screen with it, and go two-up there.
+
+    Filmed from the whole nested screen rather than the app window, so the
+    window is seen to grow into the frame: it opens at the other clips' scale
+    with the screen's black around it, and the fullscreen page then fills the
+    frame edge to edge. The crop and scale back to the shared clip size are the
+    recorder's (`Beat.whole_screen`).
+    """
     d.hold(1.0)
-    # Fullscreen is deliberately never pressed: with no window manager on the
-    # nested display it resizes the window, and the recorder grabs a fixed region.
+    d.focus_portal()
+    d.hold(0.6)
+    d.key_then_wait(ALL_IMAGES_LOADED, "Return", timeout=30)
+    d.read_pages(FULLSCREEN_PICK)
+    _go_fullscreen(d)
+    d.hold(2.5)
+    d.read_pages(FULLSCREEN_READ)
     d.press_menu_button("double_page")
     d.settle()
-    d.hold(3.5)
+    d.hold(4.0)
 
 
 @beat(
@@ -1002,6 +1066,105 @@ def parse_geometry(xwininfo_output: str, window_name: str) -> tuple[int, int, in
     raise BeatError(msg)
 
 
+def parse_window_id(xwininfo_output: str, window_name: str) -> str:
+    """Pull the app window's X id out of ``xwininfo -root -children`` output.
+
+    Raises:
+        BeatError: If no line names that window.
+
+    """
+    for line in xwininfo_output.splitlines():
+        found = re.match(r"\s*(0x[0-9a-fA-F]+)\s+\"", line)
+        if found and window_name in line:
+            return found.group(1)
+    msg = f"could not find the app window ({window_name}) on {DISPLAY}"
+    raise BeatError(msg)
+
+
+def parse_root_size(xwininfo_root_output: str) -> tuple[int, int]:
+    """Pull the screen size out of ``xwininfo -root`` output.
+
+    Raises:
+        BeatError: If the output names no width and height.
+
+    """
+    width = re.search(r"^\s*Width:\s*(\d+)", xwininfo_root_output, re.MULTILINE)
+    height = re.search(r"^\s*Height:\s*(\d+)", xwininfo_root_output, re.MULTILINE)
+    if not width or not height:
+        msg = f"could not read the screen size on {DISPLAY}"
+        raise BeatError(msg)
+    return int(width.group(1)), int(height.group(1))
+
+
+def crop_to_aspect(
+    root_width: int, root_height: int, width: int, height: int
+) -> tuple[int, int, int, int]:
+    """Return the largest centred crop of the screen with the clips' aspect.
+
+    The fullscreen page is centred on the screen with its margins at the sides
+    (or top and bottom), so trimming the screen to the clips' shape loses only
+    margin; scaling that crop to the clips' size then gives one encode across
+    every beat, which the stitch needs.
+
+    Args:
+        root_width: The screen's width.
+        root_height: The screen's height.
+        width: The other clips' width.
+        height: The other clips' height.
+
+    Returns:
+        ``(crop_width, crop_height, x, y)`` for ffmpeg's crop filter, even-sized.
+
+    """
+    if root_width * height >= root_height * width:
+        # The screen is wider than the clips: keep its height, trim the sides.
+        crop_width, crop_height = even(root_height * width // height), even(root_height)
+    else:
+        crop_width, crop_height = even(root_width), even(root_width * height // width)
+    return crop_width, crop_height, (root_width - crop_width) // 2, (root_height - crop_height) // 2
+
+
+def _xwininfo(*args: str) -> str:
+    return subprocess.run(  # noqa: S603  (fixed argv, absolute path, no shell)
+        ["/usr/bin/xwininfo", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "DISPLAY": DISPLAY},
+    ).stdout
+
+
+def fit_app_window_to_screen() -> None:
+    """Resize the app's X window to the whole nested screen.
+
+    There is no window manager on the nested display, so the app's own
+    fullscreen switch moves nothing: SDL asks the (absent) window manager for
+    the screen and carries on as if it had it, drawing for the screen's size
+    into the old window. Without a window manager any client may place a
+    window directly, so this does what the window manager would have.
+
+    Raises:
+        BeatError: If xdotool is missing, or could not place the window.
+
+    """
+    xdotool = shutil.which("xdotool")
+    if xdotool is None:
+        msg = "xdotool is needed to film fullscreen (apt install xdotool)"
+        raise BeatError(msg)
+    width, height = parse_root_size(_xwininfo("-root"))
+    window = parse_window_id(_xwininfo("-root", "-children"), WINDOW_NAME)
+    placed = subprocess.run(  # noqa: S603  (fixed argv, resolved path, no shell)
+        [xdotool, "windowmove", window, "0", "0", "windowsize", window, str(width), str(height)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "DISPLAY": DISPLAY},
+    )
+    if placed.returncode != 0:
+        msg = f"xdotool could not place the app window: {placed.stderr.strip()}"
+        raise BeatError(msg)
+
+
 def select_beats(
     names: Sequence[str],
     only: str | None,
@@ -1039,10 +1202,28 @@ def missing_clips(beats: Iterable[str], work_dir: Path) -> list[str]:
 # ------------------------------------------------------------- the recorder --
 
 
+# The app window's title on the nested display, as xwininfo lists it.
+WINDOW_NAME = "Compleat Barks Disney Reader"
+
+
+@dataclass(frozen=True)
+class Grab:
+    """What ffmpeg captures for one beat, and how it is fitted to the clip size."""
+
+    width: int
+    height: int
+    x: int
+    y: int
+    # For a whole-screen beat: the crop (width, height, x, y) and the size it is
+    # scaled to, which is the app window's, so the clip matches the others.
+    crop: tuple[int, int, int, int] | None = None
+    out_size: tuple[int, int] | None = None
+
+
 class Recorder:
     """Runs the app, records beats, and puts the user's config back afterwards."""
 
-    WINDOW_NAME = "Compleat Barks Disney Reader"
+    WINDOW_NAME = WINDOW_NAME
 
     FFMPEG_STOP_TIMEOUT = 30
 
@@ -1158,14 +1339,20 @@ class Recorder:
         There is no window manager there, so this is the app's own geometry with
         no decorations - cropping to it drops the Xephyr letterboxing.
         """
-        output = subprocess.run(
-            ["/usr/bin/xwininfo", "-root", "-children"],
-            capture_output=True,
-            text=True,
-            check=False,
-            env={**os.environ, "DISPLAY": DISPLAY},
-        ).stdout
-        return parse_geometry(output, self.WINDOW_NAME)
+        return parse_geometry(_xwininfo("-root", "-children"), self.WINDOW_NAME)
+
+    def root_size(self) -> tuple[int, int]:
+        """Return the nested screen's size."""
+        return parse_root_size(_xwininfo("-root"))
+
+    def grab_for(self, item: Beat) -> Grab:
+        """Work out what to capture for `item`: its window, or the whole screen fitted."""
+        width, height, pos_x, pos_y = self.app_region()
+        if not item.whole_screen:
+            return Grab(width, height, pos_x, pos_y)
+        root_width, root_height = self.root_size()
+        crop = crop_to_aspect(root_width, root_height, width, height)
+        return Grab(root_width, root_height, 0, 0, crop=crop, out_size=(width, height))
 
     def record(self, item: Beat) -> Path:
         """Record one beat to its cached clip and return the path.
@@ -1189,10 +1376,19 @@ class Recorder:
             say(f"record-demo: [{item.name}] setup")
             item.setup(driver)
 
-        width, height, pos_x, pos_y = self.app_region()
-        say(f"record-demo: [{item.name}] recording {width}x{height} at +{pos_x}+{pos_y}")
+        grab = self.grab_for(item)
+        say(
+            f"record-demo: [{item.name}] recording {grab.width}x{grab.height} at +{grab.x}+{grab.y}"
+        )
+        if grab.crop and grab.out_size:
+            crop_w, crop_h, crop_x, crop_y = grab.crop
+            say(
+                f"record-demo: [{item.name}] the whole screen, cropped to"
+                f" {crop_w}x{crop_h} at +{crop_x}+{crop_y} and scaled to"
+                f" {grab.out_size[0]}x{grab.out_size[1]}"
+            )
         with _caption_file(item.label) as caption:
-            self._ffmpeg = self._start_ffmpeg(partial, width, height, pos_x, pos_y, caption)
+            self._ffmpeg = self._start_ffmpeg(partial, grab, caption)
             try:
                 time.sleep(0.5)  # let the first frames land before anything moves
                 self._check_ffmpeg_running()
@@ -1216,27 +1412,28 @@ class Recorder:
     def _start_ffmpeg(
         self,
         clip: Path,
-        width: int,
-        height: int,
-        pos_x: int,
-        pos_y: int,
+        grab: Grab,
         caption: Path | None,
     ) -> subprocess.Popen[bytes]:
         # The caption is burned in at record time, not at stitch time, because the
         # stitch is a stream copy - there is no re-encode later to draw it into.
-        video_filter: list[str] = []
+        # A whole-screen grab is cropped and scaled to the clip size first, so the
+        # caption is drawn at the same size and place as on every other beat.
+        filters: list[str] = []
+        if grab.crop and grab.out_size:
+            crop_w, crop_h, crop_x, crop_y = grab.crop
+            filters.append(f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y}")
+            filters.append(f"scale={grab.out_size[0]}:{grab.out_size[1]}:flags=lanczos")
         if caption is not None:
-            video_filter = [
-                "-vf",
-                (
-                    f"drawtext=fontfile={FONT}:textfile={caption}:"
-                    f"fontcolor={CAPTION_COLOR}:fontsize={CAPTION_SIZE}:"
-                    f"box=1:boxcolor=black@{CAPTION_BOX_ALPHA}:"
-                    f"boxborderw={CAPTION_BOX_PAD}:"
-                    f"shadowcolor=black@0.9:shadowx={CAPTION_SHADOW}:"
-                    f"shadowy={CAPTION_SHADOW}:x=(w-text_w)/2:y=h-th-{CAPTION_BOTTOM}"
-                ),
-            ]
+            filters.append(
+                f"drawtext=fontfile={FONT}:textfile={caption}:"
+                f"fontcolor={CAPTION_COLOR}:fontsize={CAPTION_SIZE}:"
+                f"box=1:boxcolor=black@{CAPTION_BOX_ALPHA}:"
+                f"boxborderw={CAPTION_BOX_PAD}:"
+                f"shadowcolor=black@0.9:shadowx={CAPTION_SHADOW}:"
+                f"shadowy={CAPTION_SHADOW}:x=(w-text_w)/2:y=h-th-{CAPTION_BOTTOM}"
+            )
+        video_filter = ["-vf", ",".join(filters)] if filters else []
         return subprocess.Popen(  # noqa: S603  (fixed argv, absolute path, no shell)
             [
                 "/usr/bin/ffmpeg",
@@ -1251,9 +1448,9 @@ class Recorder:
                 "-draw_mouse",
                 "0",
                 "-video_size",
-                f"{width}x{height}",
+                f"{grab.width}x{grab.height}",
                 "-i",
-                f"{DISPLAY}+{pos_x},{pos_y}",
+                f"{DISPLAY}+{grab.x},{grab.y}",
                 *video_filter,
                 "-c:v",
                 "libx264",
@@ -1553,6 +1750,9 @@ def validate(args: argparse.Namespace) -> None:
         raise BeatError(msg)
     if not PROBE.is_file():
         msg = f"missing {PROBE}"
+        raise BeatError(msg)
+    if shutil.which("xdotool") is None:
+        msg = "xdotool is needed to film the fullscreen beat (apt install xdotool)"
         raise BeatError(msg)
 
 

@@ -5,6 +5,7 @@ recording to check is exercised against a stub driver instead. The driver's own
 logic is covered in test_gui_driver.py.
 """
 
+# cspell:ignore windowmove windowsize
 from __future__ import annotations
 
 import json
@@ -24,14 +25,18 @@ from record_demo import (
     Beat,
     BeatError,
     Driver,
+    Grab,
     Recorder,
     beat_names,
     check_same_encode,
+    crop_to_aspect,
     even,
     find_beat,
     missing_clips,
     parse_args,
     parse_geometry,
+    parse_root_size,
+    parse_window_id,
     select_beats,
     validate,
 )
@@ -69,6 +74,117 @@ class TestParseGeometry:
     def test_raises_when_the_window_is_absent(self) -> None:
         with pytest.raises(BeatError, match="could not find the app window"):
             parse_geometry(XWININFO, "Some Other Window")
+
+
+class TestWholeScreenGrab:
+    """The fullscreen beat films the screen and is fitted to the other clips' size."""
+
+    ROOT = "xwininfo: Window id: 0x2e0 (the root window)\n\n  Width: 900\n  Height: 1300\n"
+
+    def test_reads_the_window_id(self) -> None:
+        assert parse_window_id(XWININFO, "Compleat Barks Disney Reader") == "0x200007"
+
+    def test_raises_without_the_window(self) -> None:
+        with pytest.raises(BeatError, match="could not find the app window"):
+            parse_window_id(XWININFO, "Some Other Window")
+
+    def test_reads_the_screen_size(self) -> None:
+        assert parse_root_size(self.ROOT) == (900, 1300)
+
+    def test_raises_without_a_size(self) -> None:
+        with pytest.raises(BeatError, match="screen size"):
+            parse_root_size("nothing here")
+
+    def test_a_taller_clip_shape_trims_the_sides(self) -> None:
+        """900x1300 to the clips' 782x1224: full height, 35 pixels off each side."""
+        assert crop_to_aspect(900, 1300, 782, 1224) == (830, 1300, 35, 0)
+
+    def test_a_wider_clip_shape_trims_top_and_bottom(self) -> None:
+        assert crop_to_aspect(1000, 1000, 1600, 900) == (1000, 562, 0, 219)
+
+    def test_the_same_shape_keeps_the_whole_screen(self) -> None:
+        assert crop_to_aspect(1564, 2448, 782, 1224) == (1564, 2448, 0, 0)
+
+    def test_the_crop_is_even_sized(self) -> None:
+        width, height, _, _ = crop_to_aspect(901, 1301, 782, 1224)
+        assert width % 2 == 0
+        assert height % 2 == 0
+
+    @staticmethod
+    def _recorder() -> Recorder:
+        recorder = Recorder.__new__(Recorder)
+        recorder._ffmpeg = None  # noqa: SLF001
+        return recorder
+
+    def test_a_window_beat_grabs_the_window(self) -> None:
+        with patch.object(Recorder, "app_region", return_value=(782, 1224, 59, 10)):
+            grab = self._recorder().grab_for(Beat(name="b", node=["root"]))
+        assert grab == Grab(782, 1224, 59, 10)
+
+    def test_a_whole_screen_beat_grabs_the_screen_fitted_to_the_window(self) -> None:
+        with (
+            patch.object(Recorder, "app_region", return_value=(782, 1224, 59, 10)),
+            patch.object(Recorder, "root_size", return_value=(900, 1300)),
+        ):
+            grab = self._recorder().grab_for(Beat(name="b", node=["root"], whole_screen=True))
+        assert grab == Grab(900, 1300, 0, 0, crop=(830, 1300, 35, 0), out_size=(782, 1224))
+
+    @staticmethod
+    def _ffmpeg_argv(grab: Grab) -> list[str]:
+        with patch.object(record_demo.subprocess, "Popen") as popen:
+            TestWholeScreenGrab._recorder()._start_ffmpeg(Path("x.mp4"), grab, Path("cap.txt"))  # noqa: SLF001
+        return popen.call_args.args[0]
+
+    def test_the_screen_is_cropped_and_scaled_before_the_caption(self) -> None:
+        argv = self._ffmpeg_argv(
+            Grab(900, 1300, 0, 0, crop=(830, 1300, 35, 0), out_size=(782, 1224))
+        )
+        assert argv[argv.index("-video_size") + 1] == "900x1300"
+        assert argv[argv.index("-i") + 1].endswith("+0,0")
+        filters = argv[argv.index("-vf") + 1].split(",")
+        assert filters[0] == "crop=830:1300:35:0"
+        assert filters[1].startswith("scale=782:1224")
+        assert filters[2].startswith("drawtext=")
+
+    def test_a_window_grab_has_only_the_caption(self) -> None:
+        argv = self._ffmpeg_argv(Grab(782, 1224, 59, 10))
+        assert argv[argv.index("-video_size") + 1] == "782x1224"
+        assert argv[argv.index("-i") + 1].endswith("+59,10")
+        assert argv[argv.index("-vf") + 1].startswith("drawtext=")
+
+    def test_fitting_the_window_moves_it_to_the_whole_screen(self) -> None:
+        calls: list[list[str]] = []
+
+        def fake_run(argv: list[str], **_kw: object) -> MagicMock:
+            calls.append(list(argv))
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = self.ROOT if argv[1:] == ["-root"] else XWININFO
+            return result
+
+        with (
+            patch.object(record_demo.shutil, "which", return_value="/usr/bin/xdotool"),
+            patch.object(record_demo.subprocess, "run", side_effect=fake_run),
+        ):
+            record_demo.fit_app_window_to_screen()
+        assert calls[-1] == [
+            "/usr/bin/xdotool",
+            "windowmove",
+            "0x200007",
+            "0",
+            "0",
+            "windowsize",
+            "0x200007",
+            "900",
+            "1300",
+        ]
+
+    def test_fitting_the_window_needs_xdotool(self) -> None:
+        with (
+            patch.object(record_demo.shutil, "which", return_value=None),
+            pytest.raises(BeatError, match="xdotool"),
+        ):
+            record_demo.fit_app_window_to_screen()
 
 
 class TestSelectBeats:
@@ -119,10 +235,14 @@ class TestBeatRegistry:
         with pytest.raises(BeatError, match="no such beat: nope"):
             find_beat("nope")
 
-    def test_fullscreen_is_never_pressed_by_a_beat(self) -> None:
-        """It resizes the window, and the recorder grabs a fixed region."""
-        source = Path(record_demo.__file__).read_text()
-        assert 'press_menu_button("fullscreen")' not in source
+    def test_only_the_fullscreen_beat_films_the_whole_screen(self) -> None:
+        """Fullscreen outgrows the window region, so that beat alone grabs the screen."""
+        whole = [b.name for b in record_demo.BEATS if b.whole_screen]
+        assert whole == ["fullscreen"]
+
+    def test_the_fullscreen_beat_follows_read_story_in_the_tour(self) -> None:
+        tour = OUTPUTS["walkthrough.mp4"]
+        assert tour.index("fullscreen") == tour.index("read_story") + 1
 
     def test_every_named_pick_has_a_pinned_cue(self) -> None:
         """A story a beat opens by name must be pinned, or the demo depends on the machine."""
@@ -130,6 +250,7 @@ class TestBeatRegistry:
             record_demo.READ_STORY_PICK.title,
             record_demo.SERIES_PICK.title,
             record_demo.SEARCH_TITLE_PICK.title,
+            record_demo.FULLSCREEN_PICK.title,
             record_demo.WIKI_SIDEBAR_PICK,
             *(p.title for p in record_demo.CENSORED_PICKS),
         ]
@@ -327,6 +448,10 @@ class TestBeatMarkersMatchTheApp:
                 log_markers.SEARCH_MODE_SET.format(mode="Word"),
             ),
             (record_demo.WIKI_ACTIVE, log_markers.WIKI_READER_ACTIVE),
+            (
+                record_demo.ENTERED_FULLSCREEN,
+                log_markers.ENTERED_FULLSCREEN.format(screen="ComicBookReaderScreen"),
+            ),
             (
                 record_demo.NODE_SELECTED.format(name="VOODOO_HOODOO"),
                 log_markers.NEW_SELECTED_NODE.format(name="VOODOO_HOODOO", previous="X"),
