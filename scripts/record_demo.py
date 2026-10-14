@@ -256,16 +256,19 @@ READ_STORY_GOTO_PAGE = 25
 # How many Ups wiki_jump takes from the read portal to reach the wiki button.
 #
 # The title view's nav widgets run title-show, wiki, overrides, goto-page,
-# portal, and the middle three only appear when they have something to show.
-# Entering at the portal and walking up therefore depends on what is between:
-# two Ups is right when the goto-page row is there and the overrides row is not,
-# which is the case for a story that has a cued last-read page.
+# portal, and the middle three only appear when they have something to show
+# (bottom_title_view_screen._focusable_widgets). Entering at the portal and
+# walking up therefore depends on what is between: three Ups is right when both
+# the overrides row and the goto-page row are there, as they are for Lost in the
+# Andes under the censored node - it has an edited inset to offer, and the tag's
+# pages (with the pinned cue a step away) fill the goto row.
 #
-# That makes this beat depend on the user's own config - clear the cue for
-# NODE_wiki_jump's story and the walk lands on the wrong widget. It fails loudly
-# rather than filming the wrong thing, because the Enter that follows is checked
-# against the log.
-WIKI_UPS_FROM_PORTAL = 2
+# That makes this beat depend on the data as much as the config - take away the
+# edited inset, or the cue and the tag's pages, and the walk lands on the wrong
+# widget. It fails loudly rather than filming the wrong thing, because the Enter
+# that follows is checked against the log; the log's "Use overrides checkbox
+# changed" after that Enter is the sign of one Up too few.
+WIKI_UPS_FROM_PORTAL = 3
 # Once in the wiki, how far down its sidebar to move from the story it opened on,
 # and the enum name of the title that lands on. The beat waits on that name, so if
 # the wiki's own ordering shifts underneath it the beat fails rather than quietly
