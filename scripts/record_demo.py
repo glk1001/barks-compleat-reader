@@ -248,7 +248,7 @@ OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 # The story fullscreen opens, and how much of it to read before and after the
 # switch. It reads the same story as read_story, from the same cued page.
 FULLSCREEN_PICK = Pick("LOST_IN_THE_ANDES", pages=1, dwell=2.0)
-FULLSCREEN_READ = Pick(pages=2, dwell=2.0)
+FULLSCREEN_READ = Pick(pages=3, dwell=2.0)
 
 # The page read_story jumps to through the goto-page dropdown, to show that the
 # reader skips about rather than only turning forward.
@@ -816,11 +816,16 @@ def _setup_read_story(d: Driver) -> None:
 @beat(
     "read_story",
     node=["The Stories", "root"],
-    label="Skip to any page",
+    label="Skip to any page, or read two-up as printed",
     setup=_setup_read_story,
 )
 def read_story(d: Driver) -> None:
-    """Read a story and skip to a page through the page list."""
+    """Read a story, skip to a page through the page list, and go two-up.
+
+    The two-up stays in this windowed beat rather than the fullscreen one: the
+    window is as wide as the clip, so a spread shows whole here, where the
+    fullscreen beat's crop of the screen would take a strip off each side of it.
+    """
     d.hold(1.0)
     # The setup's select_node starts the title view's fade, and a Return during
     # it is lost: focus_portal waits the fade out, then for focus on the portal.
@@ -830,7 +835,10 @@ def read_story(d: Driver) -> None:
     d.read_pages(READ_STORY_PICK)
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
-    d.hold(3.0)
+    d.hold(1.0)
+    d.press_menu_button("double_page")
+    d.settle()
+    d.hold(3.5)
 
 
 def _go_fullscreen(d: Driver) -> None:
@@ -851,18 +859,20 @@ def _go_fullscreen(d: Driver) -> None:
 @beat(
     "fullscreen",
     node=["The Stories", "root"],
-    label="Fullscreen: one page, or two-up as printed",
+    label="Or fill the screen",
     setup=_setup_read_story,
     whole_screen=True,
 )
 def fullscreen(d: Driver) -> None:
-    """Open the story, fill the screen with it, and go two-up there.
+    """Open the story and fill the screen with it, a page at a time.
 
     Filmed from the whole nested screen rather than the app window, so the
     window is seen to grow into the frame: it opens at the other clips' scale
     with the screen's black around it, and the fullscreen page then fills the
     frame edge to edge. The crop and scale back to the shared clip size are the
-    recorder's (`Beat.whole_screen`).
+    recorder's (`Beat.whole_screen`). Single page only: the crop takes a strip
+    off each side of a spread, which fills the screen's width, so two-up is
+    read_story's.
     """
     d.hold(1.0)
     d.focus_portal()
@@ -872,9 +882,7 @@ def fullscreen(d: Driver) -> None:
     _go_fullscreen(d)
     d.hold(2.5)
     d.read_pages(FULLSCREEN_READ)
-    d.press_menu_button("double_page")
-    d.settle()
-    d.hold(4.0)
+    d.hold(2.0)
 
 
 @beat(
