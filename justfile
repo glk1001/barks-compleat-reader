@@ -19,6 +19,21 @@ uv_run := "uv run --project " + source_dir()
 _default:
     @just --list --unsorted
 
+# The comic-building lookups used most from here, flat: `just info 23`, not
+# `just comics info 23`. Anything else comic-building stays under `just comics`.
+
+# Get Fanta volume page and status info
+[group('comics')]
+info volume: (comics::info volume)
+
+# Get one-pager build state (all one-pagers, or just one volume's)
+[group('comics')]
+one-pager-info volume="": (comics::one-pager-info volume)
+
+# Get cover configured state (all covers, or just one volume's)
+[group('comics')]
+cover-info volume="": (comics::cover-info volume)
+
 # Fire up the Compleat Barks Reader
 reader win_left="-1" win_height="0":
     {{uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-height {{win_height}}
