@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP -->
 <!-- docs-refs: skip -->
 <!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
@@ -13,6 +13,7 @@ on each machine:
 |---|---|---|---|---|
 | The main machine (gregspc2) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh` (with `build-check`: the build tree is here) | 5 h | `journalctl -u nightly-job` |
 | The overnight host (gmktec) | `~/bin/nightly-job` | `git pull --ff-only`, then `scripts/run_overnight.sh --skip build-check` | 5 h | `journalctl -u nightly-job` |
+| The Linux laptop (hp-notebook) | `~/bin/nightly-job` | the same as gmktec's | 5 h | `journalctl -u nightly-job` |
 | The Windows laptop (win_lg) | `~\nightly-job\nightly-job.ps1` | `git pull --ff-only`, `uv sync`, then `uv run --offline scripts/run_overnight_desktop.py` | 3 h | `~\nightly-job\nightly-job.log` |
 | The Windows desktop (greg-dell) | `~\nightly-job\nightly-job.ps1` | the same as the laptop's | 5 h | `~\nightly-job\nightly-job.log` |
 
@@ -25,7 +26,7 @@ changes the runner itself takes effect the same night.
 On the main machine the run tests the working checkout as it is at 01:00, uncommitted
 work included.
 
-## Linux: the main machine and the overnight host
+## Linux: the main machine and the overnight hosts
 
 A systemd timer with `WakeSystem=true` (`nightly-job.timer`) sets the hardware clock's
 wake alarm and starts `nightly-job.service`, which runs `/usr/local/sbin/nightly-job-run`
@@ -64,6 +65,34 @@ From another machine, prefix with `ssh -t <host> '...'`. Without `--no-block`,
   `~/.local/bin` for uv), no desktop session. The runner's own `systemd-inhibit` fails
   without the polkit rule in `docs/setup.md`, harmlessly: the wrapper's inhibitor already
   holds off sleep.
+
+### The Linux laptop (hp-notebook)
+
+An HP 250 G6 (Core i3-6006U, 2 cores and 4 threads; 3.3 GB, with a 3.7 GB swap file;
+Ubuntu 26.04), set up on 2026-10-14 as gmktec is: the repos, data and tools by
+`scripts/copy-to-overnight-host.sh hp-notebook`, and gmktec's `~/nightly-job-setup/`
+copied and adapted. How it differs:
+
+- **Not timed yet.** Its first run is the 01:00 one of 2026-10-15. gmktec's takes
+  3h17m on 16 threads and 12 GB, `gui` 2h51m of it, so this one may reach the 5 h limit
+  or swap heavily; if it does, trim the job's stages. The wake has not been tested
+  either (`test.sh`): that first night is the test.
+- **Not on battery**: the wrapper checks for the charger first, and on battery skips the
+  job (`on battery; skipping the job` in the journal), suspending again if it woke for
+  it.
+- **The lid**: on the charger, closing it does not suspend the laptop
+  (`/etc/systemd/logind.conf.d/50-lid-on-ac.conf`), so it can run lid shut. Without
+  that, logind suspends it again about 30 s after the wake, inhibitor or not. On battery
+  the lid still suspends it.
+- **Wi-Fi only**, its Ethernet port unused. The connection is saved for all users, so it
+  comes up at boot with nobody signed in; after a wake it has the wrapper's 60 s to
+  reconnect.
+- **GitHub's login is in a file**, `~/.config/gh/hosts.yml` (mode 600), as on gmktec,
+  not in the desktop keyring, which is locked until someone signs in: git reaches the
+  private barks-wiki over ssh and from the timer alike.
+- **`setup-root.sh`**, in `~/nightly-job-setup/`, did the one-off root steps: the apt
+  packages, the lid, the touch tests' udev rule, then `install.sh`. It is safe to run
+  again.
 
 ## Windows: the laptop
 
@@ -179,7 +208,11 @@ part tested there (the wake from off included):
   Wake on LAN is "LAN Only" and Deep Sleep Control is Disabled, so a packet starts it from
   off as well as from sleep: from off it answered ssh 30 s after the packet.
 - **Asleep by itself**: sleep on AC after 2 h idle (the host check accepts 2 h; a run
-  holds the machine awake). An ssh session is not activity to Windows: wake it again.
+  holds the machine awake). An ssh session is not activity to Windows, and after a wake
+  that nobody touched, Windows has its own shorter limit: the hidden "System unattended
+  sleep timeout" (`powercfg` `UNATTENDSLEEP`), 120 s by default, which put it back to
+  sleep 2-3 minutes after each `greg-dell wake`, ssh session and all. It is 2 h on AC
+  (2026-10-14), the same as the idle sleep.
 - **Signed in after any restart**: Sysinternals Autologon (`autologon`, from winget;
   the password is kept as an LSA secret, not in the registry in plain text) signs greg in
   at boot. The BIOS has AC Recovery On (it starts after a power cut), keyboard errors not
