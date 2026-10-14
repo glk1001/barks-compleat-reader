@@ -1,31 +1,41 @@
 set shell := ["bash", "-uc"]
 
-import '../barks-comic-building/justfile'
+# The comic-building recipes, when that repo is cloned beside this one. `mod?` keeps
+# the reader's own recipes working without it.
 
-# `offline` comes from the imported barks-comic-building justfile — do not redefine it
-# here, just errors on a duplicate definition. The imported `uv_run` points at that
-# repo, so this one needs its own project path.
-_reader_uv_run := "uv run " + offline + " --project " + justfile_directory()
+# The barks-comic-building recipes: `just comics` lists them, `just comics build 9`
+mod? comics '../barks-comic-building'
 
-_default2:
-    just --list --unsorted
+# `uv run` re-syncs the project before every command and revalidates over the network
+# any dependency it cannot resolve from disk or its cache, so with no connection every
+# recipe would fail. UV_OFFLINE=1 runs from the installed venv; after adding or
+# changing a dependency, when the sync genuinely has to reach the network:
+#
+#     UV_OFFLINE=0 just reader
+export UV_OFFLINE := env("UV_OFFLINE", "1")
+
+uv_run := "uv run --project " + source_dir()
+
+_default:
+    @just --list --unsorted
 
 # Fire up the Compleat Barks Reader
 reader win_left="-1" win_height="0":
-    {{_reader_uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-height {{win_height}}
+    {{uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-height {{win_height}}
 
 # Fire up the Compleat Barks Reader in 1080p
 reader-1080p win_left="10" win_top="10" win_height="1020":
-    {{_reader_uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-top {{win_top}} --win-height {{win_height}}
+    {{uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-top {{win_top}} --win-height {{win_height}}
 
 # Get panels info for a volume or volumes
 panels-info volume:
-    {{_reader_uv_run}} "{{source_dir()}}/scripts/panels-info.py" --log-level WARNING --volume {{volume}}
+    {{uv_run}} "{{source_dir()}}/scripts/panels-info.py" --log-level WARNING --volume {{volume}}
 
-# Image dimensions utils
+# Width of an inset image at the given height (inset aspect ratio 1.036)
 inset-width height:
     @bash "{{source_dir()}}/scripts/inset_width.sh" {{height}}
 
+# Width of a view image at the given height (view aspect ratio 1.31)
 view-width height:
     @bash "{{source_dir()}}/scripts/view_width.sh" {{height}}
 

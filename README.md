@@ -65,9 +65,10 @@ repositories, git hooks, secrets and data.
 git clone https://github.com/glk1001/barks-compleat-reader.git
 cd barks-compleat-reader
 ```
-The `just` recipes import `../barks-comic-building/justfile`, so also clone
-https://github.com/glk1001/barks-comic-building.git beside this repo (without it, every
-`just` command fails on the import). Without `just`, `uv run main.py` runs the reader.
+The comic-building recipes are reachable from here as `just comics <recipe>` (for
+example `just comics build 9`) once https://github.com/glk1001/barks-comic-building.git
+is cloned beside this repo; the reader's own recipes work without it. Without `just`,
+`uv run main.py` runs the reader.
 
 **2. Install Dependencies**
 
