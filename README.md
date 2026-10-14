@@ -520,7 +520,7 @@ refuses to upload if `VIDEO_TAG` in `website/app.html` names a different tag or 
 manifest has drifted from its video's length (which would put every chapter button out of
 step), and verifies the uploaded byte sizes afterwards.
 
-The posters and chapter manifests *do* stay in git — a few KB each, and the page needs the
+The posters and the walkthrough's chapter manifest *do* stay in git — a few KB each, and the page needs the
 posters immediately for layout. A release asset plays inline despite GitHub serving it as
 `application/octet-stream; Content-Disposition: attachment`: that header governs navigations
 and downloads, not media subresources, and Range requests are honoured so chapter seeking

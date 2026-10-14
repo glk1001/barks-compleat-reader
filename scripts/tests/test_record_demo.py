@@ -7,6 +7,7 @@ logic is covered in test_gui_driver.py.
 
 from __future__ import annotations
 
+import json
 import re
 from contextlib import nullcontext
 from pathlib import Path
@@ -344,3 +345,93 @@ class TestBeatMarkersMatchTheApp:
     def test_a_filled_field_does_not_match_another_title(self) -> None:
         other = log_markers.GOTO_TITLE.format(name="VACATION_MISERY", filename="x.png")
         assert not re.search(record_demo.GOTO_TITLE.format(name="VACATION_TIME"), other)
+
+
+class TestCannedHistory:
+    """The Reading beat films this journal, so it must be one the app reads whole."""
+
+    def test_every_title_is_a_real_display_title(self) -> None:
+        display_titles = set(ENUM_TO_STR_TITLE)
+        for read in record_demo.CANNED_HISTORY:
+            assert read.title in display_titles, read.title
+
+    def test_the_file_reads_back_as_the_app_reads_it(self) -> None:
+        from barks_reader.core.reading_history import ReadEvent  # noqa: PLC0415
+
+        events = [ReadEvent.from_json(e) for e in record_demo.canned_history_events()]
+        assert len(events) == len(record_demo.CANNED_HISTORY)
+        for event in events:
+            assert event.closed_at is not None
+            assert event.closed_at > event.opened_at
+        assert len({e.event_id for e in events}) == len(events), "ids must be unique"
+        assert events == sorted(events, key=lambda e: e.opened_at), (
+            "oldest first, as the app keeps it"
+        )
+
+    def test_the_file_is_the_same_on_every_run(self) -> None:
+        assert record_demo.canned_history_json() == record_demo.canned_history_json()
+
+    @staticmethod
+    def _recorder_for(tmp_path: Path) -> Recorder:
+        config = tmp_path / "barks-reader.json"
+        config.write_text("{}")
+        with patch.object(record_demo, "probe", return_value=str(config)):
+            return Recorder(tmp_path, work_dir=tmp_path)
+
+    def test_a_boot_writes_the_canned_history_and_close_puts_the_users_back(
+        self, tmp_path: Path
+    ) -> None:
+        history = tmp_path / record_demo.HISTORY_FILE_NAME
+        history.write_text('{"version": 1, "events": ["mine"]}')
+        recorder = self._recorder_for(tmp_path)
+        with patch.object(record_demo, "boot_app_at"):
+            recorder.boot_at(["root"])
+        assert "mine" not in history.read_text()
+        assert json.loads(history.read_text()) == record_demo.canned_history_json()
+        with patch.object(record_demo, "probe"):
+            recorder.close()
+        assert history.read_text() == '{"version": 1, "events": ["mine"]}'
+
+    def test_a_profile_with_no_history_gets_none_back(self, tmp_path: Path) -> None:
+        history = tmp_path / record_demo.HISTORY_FILE_NAME
+        recorder = self._recorder_for(tmp_path)
+        with patch.object(record_demo, "boot_app_at"):
+            recorder.boot_at(["root"])
+        assert history.is_file()
+        with patch.object(record_demo, "probe"):
+            recorder.close()
+        assert not history.exists()
+
+
+class TestChapteredOutputs:
+    """A manifest is written for the outputs the page reads chapters from, and no other."""
+
+    WEBSITE = Path(record_demo.__file__).resolve().parent.parent / "website"
+
+    def test_chaptered_outputs_are_outputs(self) -> None:
+        assert set(OUTPUTS) >= record_demo.CHAPTERED_OUTPUTS
+
+    def test_the_page_reads_exactly_the_chaptered_manifests(self) -> None:
+        page = (self.WEBSITE / "app.html").read_text()
+        fetched = set(re.findall(r"fetch\('([\w-]+-chapters\.json)'\)", page))
+        wanted = {f"{Path(name).stem}-chapters.json" for name in record_demo.CHAPTERED_OUTPUTS}
+        assert fetched == wanted
+
+    def test_no_manifest_is_left_for_an_output_without_chapters(self) -> None:
+        for name in set(OUTPUTS) - record_demo.CHAPTERED_OUTPUTS:
+            assert not (self.WEBSITE / f"{Path(name).stem}-chapters.json").exists(), name
+
+    def test_stitch_writes_a_manifest_only_when_chaptered(self, tmp_path: Path) -> None:
+        for beat in ("a", "b"):
+            (tmp_path / f"{beat}.mp4").write_bytes(b"")
+        with (
+            patch.object(record_demo, "check_same_encode"),
+            patch.object(record_demo, "_run_ffmpeg"),
+            patch.object(record_demo, "duration_of", return_value=1.0),
+            patch.object(record_demo, "_human_size", return_value="1K"),
+            patch.object(record_demo, "write_chapters", return_value=tmp_path / "x") as writer,
+            patch.object(record_demo, "CHAPTERED_OUTPUTS", frozenset({"tour.mp4"})),
+        ):
+            record_demo.stitch("tour.mp4", ("a", "b"), tmp_path, tmp_path)
+            record_demo.stitch("hero.mp4", ("a", "b"), tmp_path, tmp_path)
+        assert [c.args[0].name for c in writer.call_args_list] == ["tour.mp4"]

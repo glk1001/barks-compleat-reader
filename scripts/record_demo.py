@@ -37,29 +37,31 @@ Assumes
     - ffmpeg built with libx264 and libfreetype.
 
 The keystroke driver and the app boot live in ``gui_driver.py``, shared with the
-GUI test suite; this file is the beats, the camera, and the stitch. Only the
-standard library is used, so this runs without the workspace venv, the same as
-the gui-probe script it drives.
+GUI test suite; this file is the beats, the camera, and the stitch. It reads the
+series names from ``barks_fantagraphics``, so it runs from the workspace venv
+(``uv run scripts/record_demo.py``).
 
-The app rewrites its config on exit, so this backs up ``barks-reader.json``
-before touching ``last_selected_node`` and restores it on any exit, including a
-failure, a Ctrl-C, and a SIGTERM/SIGHUP (the terminal closing). The backup's path is
+The app rewrites its config on exit and appends to the reading history on every
+read, so this backs up ``barks-reader.json`` and ``barks-reader-history.json``
+before touching either and restores both on any exit, including a failure, a
+Ctrl-C, and a SIGTERM/SIGHUP (the terminal closing). The backups' paths are
 printed at the start of a run in case even that fails. It never writes to
-``barks-reader.ini``. The probe looks after the reading-history file.
+``barks-reader.ini``.
 
-Each boot also pins the last-read-page cues the beats depend on (``PINNED_CUES``), so
-a re-record opens every story on the same page as the clips it replaces, on any
-machine.
+Each boot also pins the last-read-page cues the beats depend on (``PINNED_CUES``)
+and writes the reading history the Reading beat films (``CANNED_HISTORY``), so a
+re-record opens every story on the same page as the clips it replaces and shows
+the same journal, on any machine - and never the user's own reads.
 
 Usage:
-    scripts/record_demo.py                       # every beat, every output
-    scripts/record_demo.py --list
-    scripts/record_demo.py --only browse_tree
-    scripts/record_demo.py --from read_story
-    scripts/record_demo.py --stitch              # rebuild from cached beats
-    scripts/record_demo.py --output demo.mp4     # build just this one
-    scripts/record_demo.py --out /tmp/preview
-    scripts/record_demo.py --clean               # drop cached clips, record everything
+    uv run scripts/record_demo.py                       # every beat, every output
+    uv run scripts/record_demo.py --list
+    uv run scripts/record_demo.py --only browse_tree
+    uv run scripts/record_demo.py --from read_story
+    uv run scripts/record_demo.py --stitch              # rebuild from cached beats
+    uv run scripts/record_demo.py --output demo.mp4     # build just this one
+    uv run scripts/record_demo.py --out /tmp/preview
+    uv run scripts/record_demo.py --clean               # drop cached clips, record everything
 
 Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300) - both are
 passed straight through to gui-probe.sh.
@@ -77,7 +79,9 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -290,6 +294,11 @@ READING_PLAYLIST = "The Bravery Stories"
 # merges these over the config before every boot. None pins "no cue", which is
 # what the sidebar story wiki_jump lands on had when the clips were shot.
 #
+# Under a tag node the tag's first page is offered instead, and the cued page is
+# kept one step away on the row (navigation_coordinator._set_tag_goto_page_checkbox):
+# censored_stories opens The Golden Fleecing on the tag's page 6, not the cued 24,
+# and wiki_jump's row is there for the tag's pages as much as for the cue.
+#
 # To re-pin after deliberately reading a story to a new page, copy its entry out
 # of barks-reader.json (`scripts/gui-probe.sh config` prints the path).
 PINNED_CUES: dict[str, dict[str, int | str] | None] = {
@@ -351,6 +360,76 @@ PINNED_CUES: dict[str, dict[str, int | str] | None] = {
     "Voodoo Hoodoo": None,
 }
 
+
+@dataclass(frozen=True)
+class CannedRead:
+    """One read in the canned history: a story opened on a day, and where it was left."""
+
+    title: str  # the display title, which is the history's key
+    opened_at: str  # ISO date and time to the second, no zone, as the app stamps it
+    minutes: int  # how long it stayed open
+    last_display_page: str  # "0" once finished; the body page it was left on otherwise
+    last_body_page: str
+
+
+# The reading history the Reading beat films, written in place of whatever the
+# machine's own profile holds. The History views show every read, so the user's own
+# journal - or the hundreds of entries a test run leaves - would be on camera.
+# boot_at writes it whole before every boot, in the app's own file format
+# (reading_history.ReadEvent.to_json), and the user's file goes back at the end of
+# the run. Oldest first, as the app keeps the file; the journal shows it newest first.
+# Fixed dates rather than days-before-today, so two recordings show the same journal;
+# the page numbers are the stories' own.
+HISTORY_FILE_NAME = "barks-reader-history.json"
+HISTORY_STORE_VERSION = 1
+CANNED_HISTORY: tuple[CannedRead, ...] = (
+    CannedRead("The Ghost of the Grotto", "2026-09-27T20:05:12", 24, "0", "26"),
+    CannedRead("Wintertime Wager", "2026-09-27T20:31:40", 9, "0", "10"),
+    CannedRead("Lost in the Andes!", "2026-09-28T21:12:03", 19, "18", "32"),
+    CannedRead("Lost in the Andes!", "2026-09-29T19:47:55", 15, "0", "32"),
+    CannedRead("The Mighty Trapper", "2026-09-29T20:04:21", 8, "0", "10"),
+    CannedRead("Vacation Time", "2026-10-01T21:30:08", 31, "0", "33"),
+    CannedRead("Good Deeds", "2026-10-03T10:15:47", 9, "0", "10"),
+    CannedRead("Silent Night", "2026-10-03T10:26:02", 10, "0", "10"),
+    CannedRead("Adventure Down Under", "2026-10-04T16:40:19", 22, "0", "25"),
+    CannedRead("The Golden Fleecing", "2026-10-06T21:02:33", 17, "14", "32"),
+    CannedRead("Chugwagon Derby", "2026-10-08T19:55:10", 8, "0", "10"),
+    CannedRead("The Golden Fleecing", "2026-10-09T20:18:44", 20, "0", "32"),
+    CannedRead("Donald Duck's Atom Bomb", "2026-10-10T11:08:27", 9, "0", "10"),
+    CannedRead("The Bill Collectors", "2026-10-11T15:22:51", 9, "0", "10"),
+    CannedRead("Mastering the Matterhorn", "2026-10-11T15:33:06", 7, "0", "8"),
+    CannedRead("The Librarian", "2026-10-12T21:41:15", 6, "0", "6"),
+)
+
+
+def canned_history_events() -> list[dict[str, str | None]]:
+    """Return the canned reads as the app's history file holds each event.
+
+    Event ids are derived from each read's position, so the file is the same on
+    every run.
+    """
+    events: list[dict[str, str | None]] = []
+    for i, read in enumerate(CANNED_HISTORY):
+        opened = datetime.fromisoformat(read.opened_at)
+        closed = opened + timedelta(minutes=read.minutes)
+        events.append(
+            {
+                "id": uuid.uuid5(uuid.NAMESPACE_URL, f"barks-demo-history/{i}").hex,
+                "title": read.title,
+                "opened_at": opened.isoformat(timespec="seconds"),
+                "closed_at": closed.isoformat(timespec="seconds"),
+                "last_display_page": read.last_display_page,
+                "last_body_page": read.last_body_page,
+            }
+        )
+    return events
+
+
+def canned_history_json() -> dict[str, object]:
+    """Return the whole canned history file, as the app's store writes it."""
+    return {"version": HISTORY_STORE_VERSION, "events": canned_history_events()}
+
+
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is the one that plays
 # by itself at the top of the intro tab; the walkthrough is the linked tour.
@@ -368,6 +447,11 @@ OUTPUTS: dict[str, tuple[str, ...]] = {
         "reading",
     ),
 }
+
+# The outputs that get a chapter manifest (``<video>-chapters.json``) beside them.
+# The page's chapter buttons read the tour's; the hero autoplays with no buttons,
+# so a manifest for it would be a file nothing reads.
+CHAPTERED_OUTPUTS: frozenset[str] = frozenset({"walkthrough.mp4"})
 
 
 def say(message: str = "") -> None:
@@ -967,16 +1051,26 @@ class Recorder:
         if not self._config.is_file():
             msg = f"app config not found: {self._config}"
             raise BeatError(msg)
-        handle, backup = tempfile.mkstemp(prefix="barks-demo-config.", suffix=".json")
-        os.close(handle)
-        self._backup = Path(backup)
-        shutil.copy2(self._config, self._backup)
+        self._history = self._config.with_name(HISTORY_FILE_NAME)
         # Named up front so that if the process is killed outright, the user knows
-        # where the pristine copy is.
-        say(f"record-demo: config backed up to {self._backup}")
+        # where the pristine copies are.
+        self._backup = self._back_up(self._config, "config")
+        # A profile that has never read a comic has no history file: None then,
+        # and close() removes the canned one rather than restoring anything.
+        self._history_backup = (
+            self._back_up(self._history, "history") if self._history.is_file() else None
+        )
+
+    @staticmethod
+    def _back_up(path: Path, what: str) -> Path:
+        handle, backup = tempfile.mkstemp(prefix=f"barks-demo-{what}.", suffix=".json")
+        os.close(handle)
+        shutil.copy2(path, backup)
+        say(f"record-demo: {what} backed up to {backup}")
+        return Path(backup)
 
     def close(self) -> None:
-        """Stop everything and restore the user's config.
+        """Stop everything and restore the user's config and reading history.
 
         Safe to call twice, and must not raise: it is the only thing standing
         between a failed run and a config left pointing at a beat's start node.
@@ -987,12 +1081,17 @@ class Recorder:
             probe("stop")
         except BeatError as exc:
             say(f"record-demo: WARNING {exc}")
-        # gui-probe restores its own backup, which is the file we edited (and
-        # deletes it, so a later manual `gui-probe.sh stop` cannot re-apply it);
-        # put the user's original back on top.
+        # gui-probe restores its own backups, which are the files we edited (and
+        # deletes them, so a later manual `gui-probe.sh stop` cannot re-apply them);
+        # put the user's originals back on top.
         if self._backup.is_file():
             shutil.copy2(self._backup, self._config)
             self._backup.unlink(missing_ok=True)
+        if self._history_backup is None:
+            self._history.unlink(missing_ok=True)
+        elif self._history_backup.is_file():
+            shutil.copy2(self._history_backup, self._history)
+            self._history_backup.unlink(missing_ok=True)
 
     def _check_ffmpeg_running(self) -> None:
         """Fail now if the recorder has already exited, rather than after the beat.
@@ -1039,11 +1138,15 @@ class Recorder:
         return None
 
     def boot_at(self, node: Sequence[str]) -> None:
-        """Start the app with its tree selection set to `node`.
+        """Start the app with its tree selection set to `node` and the canned history.
 
         Each beat opens on a known screen instead of inheriting wherever the
-        previous beat left the selection.
+        previous beat left the selection, and on the same journal, whatever the
+        beats before it read.
         """
+        self._history.write_text(
+            json.dumps(canned_history_json(), indent=2) + "\n", encoding="utf-8"
+        )
         boot_app_at(node, config=self._config, seed=RANDOM_SEED, cues=PINNED_CUES)
 
     def app_region(self) -> tuple[int, int, int, int]:
@@ -1338,7 +1441,8 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
 
     Stream copy: the beats already share an encode, so this rewrites the container
     without re-compressing. ``+faststart`` puts the index first so the browser can start
-    playing before the whole file has arrived.
+    playing before the whole file has arrived. An output in ``CHAPTERED_OUTPUTS`` gets
+    its chapter manifest written beside it.
 
     Raises:
         BeatError: If any of the named beats has no cached clip, or the clips do
@@ -1371,11 +1475,11 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
             str(final),
         ],
     )
-    manifest = write_chapters(final, beats, work_dir)
-    say(
-        f"record-demo: {final}  ({_human_size(final)}, {duration_of(final):.0f}s,"
-        f" {len(beats)} chapters -> {manifest.name})"
-    )
+    chapters = ""
+    if name in CHAPTERED_OUTPUTS:
+        manifest = write_chapters(final, beats, work_dir)
+        chapters = f", {len(beats)} chapters -> {manifest.name}"
+    say(f"record-demo: {final}  ({_human_size(final)}, {duration_of(final):.0f}s{chapters})")
     return final
 
 
