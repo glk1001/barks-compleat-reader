@@ -385,13 +385,25 @@ class TestValidate:
     """Flag combinations that could only fail after the recording had been done."""
 
     @staticmethod
-    def _validate(*argv: str) -> None:
-        validate(parse_args(list(argv)))
+    def _validate(*argv: str, xdotool: str | None = "/usr/bin/xdotool") -> None:
+        with patch.object(record_demo.shutil, "which", return_value=xdotool):
+            validate(parse_args(list(argv)))
 
     def test_plain_runs_pass(self) -> None:
         self._validate()
         self._validate("--clean")
         self._validate("--only", "browse_tree", "--output", "demo.mp4")
+
+    def test_recording_the_fullscreen_beat_needs_xdotool(self) -> None:
+        with pytest.raises(BeatError, match="xdotool"):
+            self._validate(xdotool=None)
+        with pytest.raises(BeatError, match="xdotool"):
+            self._validate("--only", "fullscreen", xdotool=None)
+
+    def test_a_run_without_the_fullscreen_beat_needs_no_xdotool(self) -> None:
+        """CI's runners have no xdotool, and neither does a stitch need one."""
+        self._validate("--stitch", xdotool=None)
+        self._validate("--only", "browse_tree", xdotool=None)
 
     @pytest.mark.parametrize(
         "argv",
@@ -499,7 +511,7 @@ class TestCannedHistory:
     @staticmethod
     def _recorder_for(tmp_path: Path) -> Recorder:
         config = tmp_path / "barks-reader.json"
-        config.write_text("{}")
+        config.write_text("{}", encoding="utf-8")
         with patch.object(record_demo, "probe", return_value=str(config)):
             return Recorder(tmp_path, work_dir=tmp_path)
 
@@ -507,15 +519,15 @@ class TestCannedHistory:
         self, tmp_path: Path
     ) -> None:
         history = tmp_path / record_demo.HISTORY_FILE_NAME
-        history.write_text('{"version": 1, "events": ["mine"]}')
+        history.write_text('{"version": 1, "events": ["mine"]}', encoding="utf-8")
         recorder = self._recorder_for(tmp_path)
         with patch.object(record_demo, "boot_app_at"):
             recorder.boot_at(["root"])
-        assert "mine" not in history.read_text()
-        assert json.loads(history.read_text()) == record_demo.canned_history_json()
+        assert "mine" not in history.read_text(encoding="utf-8")
+        assert json.loads(history.read_text(encoding="utf-8")) == record_demo.canned_history_json()
         with patch.object(record_demo, "probe"):
             recorder.close()
-        assert history.read_text() == '{"version": 1, "events": ["mine"]}'
+        assert history.read_text(encoding="utf-8") == '{"version": 1, "events": ["mine"]}'
 
     def test_a_profile_with_no_history_gets_none_back(self, tmp_path: Path) -> None:
         history = tmp_path / record_demo.HISTORY_FILE_NAME
@@ -537,7 +549,7 @@ class TestChapteredOutputs:
         assert set(OUTPUTS) >= record_demo.CHAPTERED_OUTPUTS
 
     def test_the_page_reads_exactly_the_chaptered_manifests(self) -> None:
-        page = (self.WEBSITE / "app.html").read_text()
+        page = (self.WEBSITE / "app.html").read_text(encoding="utf-8")
         fetched = set(re.findall(r"fetch\('([\w-]+-chapters\.json)'\)", page))
         wanted = {f"{Path(name).stem}-chapters.json" for name in record_demo.CHAPTERED_OUTPUTS}
         assert fetched == wanted

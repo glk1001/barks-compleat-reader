@@ -1735,8 +1735,9 @@ def validate(args: argparse.Namespace) -> None:
 
     Raises:
         BeatError: If an output, a beat, or the probe script is missing; if
-            ``--clean`` is combined with a selector; or if ``--only`` names a
-            beat the requested ``--output`` does not contain.
+            ``--clean`` is combined with a selector; if ``--only`` names a
+            beat the requested ``--output`` does not contain; or if a beat to
+            be recorded films the whole screen and xdotool is not installed.
 
     """
     if args.output and args.output not in OUTPUTS:
@@ -1759,7 +1760,10 @@ def validate(args: argparse.Namespace) -> None:
     if not PROBE.is_file():
         msg = f"missing {PROBE}"
         raise BeatError(msg)
-    if shutil.which("xdotool") is None:
+    # Only a beat filmed from the whole screen places the window by hand, so a
+    # stitch, or a run that records none of them, needs no xdotool.
+    recording = select_beats(beat_names(), args.only, args.start_from, args.stitch)
+    if any(find_beat(b).whole_screen for b in recording) and shutil.which("xdotool") is None:
         msg = "xdotool is needed to film the fullscreen beat (apt install xdotool)"
         raise BeatError(msg)
 
