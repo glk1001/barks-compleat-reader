@@ -268,6 +268,28 @@ collect their logs. They live outside any repo; each one's header says what it a
   finished session by itself, and refuses only while a run is still going;
   `overnight-pair status` tells the two apart (`finished at 20:58:33; its session is
   still open`, against `going`).
+- **`overnight-pair status`** then shows each machine (win-vm, mac-vm, the main machine)
+  with one line for its run. A VM that is off has its newest run read from the copied
+  logs ([below](#the-logs-collected)).
+
+  | Label | The run |
+  |---|---|
+  | `this pair's run:` | started after the pair did, so it is this pair's |
+  | `current run:` | going, with no pair session open (started by hand) |
+  | `last run:` | an earlier one: the machine's turn in the pair has not come yet, or there is no pair |
+  | `last run (not in this pair: --no-pc):` | the main machine's, when the pair skips it |
+  | `last run (no run in this pair):` | a finished pair did not run the machine (a VM that failed to start, say) |
+
+  A run still going is followed by a `last run:` line for the machine's newest earlier run
+  that finished, as a guide to how long this one will take:
+
+  ```
+  win-vm (WinDev2202Eval): running
+    desktop: up
+    run: GOING (task 'Barks Reader overnight now' running)
+    this pair's run: 20261015-225354 (880385c7): 3 of 9 stages done
+    last run: 20261015-172236 (5b3b7a7f): finished in 2h02m
+  ```
 
 ### The logs, collected
 
