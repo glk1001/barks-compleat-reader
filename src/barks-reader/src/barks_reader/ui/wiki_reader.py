@@ -163,7 +163,17 @@ class WikiReaderScreen(ReaderScreen):
         # transient geometry, so a deferred re-apply re-pins it once things settle.
         self._apply_viewer_sizing()
         Clock.schedule_once(self._apply_viewer_sizing)
+        # Start the search index now, not at the search box's first focus: the build
+        # reads every page (over 5 s on the Windows VM), and begun at a tap on the box
+        # it was still going when a query had been typed. A frame on, so the landing
+        # page draws first; the viewer builds it once, so a re-open costs nothing.
+        Clock.schedule_once(self._warm_search)
         logger.info(f'Wiki reader opened (page = "{page}").')
+
+    def _warm_search(self, *_args: object) -> None:
+        """Start the viewer's search index (see open_wiki); built once per viewer."""
+        if self._viewer is not None:
+            self._viewer.warm_search()
 
     def close(self) -> None:
         """Save the reading position and hand control back to the main screen.

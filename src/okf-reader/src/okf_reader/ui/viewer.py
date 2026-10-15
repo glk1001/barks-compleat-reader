@@ -499,8 +499,9 @@ class OKFViewer(RelativeLayout):
         # an embedding app may inject a different backend (e.g. full-text).
         self._searcher: SearchProvider = search_provider or BundleSearcher(bundle)
         # Building the index walks the whole bundle, so it is warmed off the UI
-        # thread on the field's first focus (see _on_search_focus); until it is
-        # ready a query shows a "Searching…" note rather than freezing the field.
+        # thread (see warm_search), by the field's first focus or by the host
+        # sooner; until it is ready a query shows a "Searching…" note rather than
+        # freezing the field.
         # _search_failed is set if the off-thread index build raised: search is
         # "ready" (the field stops waiting) but disabled, showing an error note
         # instead of hanging on "Searching…". It guards every search() call, since
@@ -909,19 +910,30 @@ class OKFViewer(RelativeLayout):
                 self._show(index, push=True)
 
     def _on_search_focus(self, _field, focused: bool) -> None:  # noqa: ANN001
-        """On the field's first focus, warm the search index off the UI thread.
+        """On the field's first focus, warm the search index (`warm_search`).
 
-        Building the index walks the whole bundle; starting it on focus (before
-        the user has typed) keeps the field responsive and usually has results
-        ready by the first keystroke. A provider without a ``warm`` method is
-        assumed to manage its own readiness, so it is marked ready at once.
+        Starting it on focus (before the user has typed) keeps the field
+        responsive and usually has results ready by the first keystroke, where the
+        host has not started it already.
 
         Every focus is logged here, however it came - a key (`focus_search`) or a
         tap - so a test can wait for the field to take the keyboard before typing.
         """
         if focused:
             trace.search_focused()
-        if not focused or self._search_warming:
+            self.warm_search()
+
+    def warm_search(self) -> None:
+        """Start building the search index off the UI thread, once.
+
+        The build walks the whole bundle. The field's first focus starts it; a host
+        that opens the reader for the user can start it then instead, so a query
+        typed soon after finds the index ready (the Barks Reader does, as on a
+        Windows VM the build took over 5 s). A provider without a ``warm`` method
+        is assumed to manage its own readiness, so it is marked ready at once.
+        Later calls do nothing.
+        """
+        if self._search_warming:
             return
         self._search_warming = True
         warm = getattr(self._searcher, "warm", None)

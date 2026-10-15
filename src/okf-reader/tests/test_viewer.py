@@ -330,6 +330,25 @@ class TestSearchIndexFailure:
         viewer._on_search_focus(None, focused=True)
         assert viewer._search_ready is True
 
+    def test_warm_search_starts_one_build_however_often_asked(self, viewer: OKFViewer) -> None:
+        """The host's call at open and the box's first focus share one build."""
+        with patch.object(viewer_module.threading, "Thread") as thread:
+            viewer.warm_search()
+            viewer._on_search_focus(None, focused=True)
+            viewer.warm_search()
+        thread.assert_called_once()
+        thread.return_value.start.assert_called_once_with()
+
+    def test_a_focus_before_any_warming_starts_the_build(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer_module.threading, "Thread") as thread:
+            viewer._on_search_focus(None, focused=True)
+        assert thread.call_args.kwargs["target"] == viewer._warm_search_index
+
+    def test_losing_focus_starts_no_build(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer_module.threading, "Thread") as thread:
+            viewer._on_search_focus(None, focused=False)
+        thread.assert_not_called()
+
 
 class TestStandaloneApp:
     """The standalone reader's own keys: Ctrl+F, Alt+Left, and Escape while typing."""

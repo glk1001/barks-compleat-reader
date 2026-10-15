@@ -378,9 +378,10 @@ class TestWikiReaderScreenKeyBinding:
             wiki_screen.open_wiki(self.BUNDLE)
 
         # Applied immediately (no flash of an unsized viewer), and a deferred
-        # re-apply is scheduled for after the layout settles.
+        # re-apply is scheduled for after the layout settles (test_open_defers_a_re_apply),
+        # beside the search index's start.
         apply_mock.assert_called_once_with(wiki_screen)
-        assert mock_clock.schedule_once.call_count == 1
+        assert mock_clock.schedule_once.call_count == 2
 
     def test_open_defers_a_re_apply(
         self, wiki_screen: WikiReaderScreen, mock_clock: MagicMock
@@ -391,7 +392,23 @@ class TestWikiReaderScreenKeyBinding:
         with patch.object(WikiReaderScreen, "_build_viewer", autospec=True):
             wiki_screen.open_wiki(self.BUNDLE)
 
-        mock_clock.schedule_once.assert_called_once_with(wiki_screen._apply_viewer_sizing)
+        mock_clock.schedule_once.assert_any_call(wiki_screen._apply_viewer_sizing)
+
+    def test_open_starts_the_search_index_a_frame_on(
+        self, wiki_screen: WikiReaderScreen, mock_clock: MagicMock
+    ) -> None:
+        """Begun at a tap on the search box, the build was still going when typed into."""
+        viewer = MagicMock()
+        wiki_screen._viewer = viewer
+        wiki_screen._bundle = self.BUNDLE
+        wiki_screen.open_wiki(self.BUNDLE)
+
+        viewer.warm_search.assert_not_called()  # not before the landing page draws
+        deferred = [call.args[0] for call in mock_clock.schedule_once.call_args_list]
+        for callback in deferred:
+            if callback != wiki_screen._apply_viewer_sizing:
+                callback(0)
+        viewer.warm_search.assert_called_once_with()
 
     def test_close_unbinds_handlers(
         self, wiki_screen: WikiReaderScreen, mock_window: MagicMock
