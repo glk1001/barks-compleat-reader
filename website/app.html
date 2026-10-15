@@ -1403,7 +1403,9 @@
                 <div class="install-step">
                     <h4>Step 3: Run the Application</h4>
                     <p>Run the executable <strong>"barks-reader-linux"</strong> either from a file
-                        explorer or a terminal.</p>
+                        explorer or a terminal. The first time, a terminal is better: if the executable
+                        cannot start at all (see the Troubleshooting tab), the terminal shows why and a file
+                        explorer shows nothing.</p>
                     <p>On launch the app automatically installs a menu entry (a .desktop file in
                         <strong>"~/.local/share/applications/"</strong>), so after the first run you can start it
                         from your desktop's application menu or dock.
@@ -1626,6 +1628,26 @@
                         <li>Look for an install log named
                             <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong> beside the executable
                             &mdash; it says exactly what failed</li>
+                        <li>On Linux, if there is no install log at all, see the glibc item below</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="troubleshooting-item">
+                <h4>🐧 Nothing happens on Linux, or the terminal says "version `GLIBC_2.34' not found"</h4>
+                <div class="solution">
+                    <p>The Linux executable needs <strong>glibc 2.34 or newer</strong> (currently; the
+                        exact version is set by the build). That means Ubuntu 22.04, Debian 12, Fedora 35,
+                        RHEL or Rocky 9, or anything more recent. On an older distribution the system
+                        refuses to start the executable at all, before any of the app runs: from a file
+                        manager nothing visible happens, and no install log is written. To check your
+                        version:</p>
+                    <ul>
+                        <li>In a terminal, run <code>ldd --version</code> &mdash; the first line ends with
+                            the glibc version. 2.34 or higher is fine.</li>
+                        <li>Run <code>./barks-reader-linux</code> from a terminal once, so that any message
+                            is visible.</li>
+                        <li>If your glibc is older, there is no workaround short of a newer distribution
+                            release &mdash; glibc cannot be upgraded on its own.</li>
                     </ul>
                 </div>
             </div>
