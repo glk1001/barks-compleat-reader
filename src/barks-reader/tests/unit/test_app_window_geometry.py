@@ -123,17 +123,23 @@ def fake_clock() -> _FakeClock:
 
 
 @pytest.fixture
+def fake_metrics() -> MagicMock:
+    """Screen metrics with one screen, wherever the window is."""
+    screen = _make_screen_info()
+    metrics = MagicMock()
+    metrics.get_monitor_for_pos.return_value = screen
+    metrics.get_primary_screen_info.return_value = screen
+    return metrics
+
+
+@pytest.fixture
 def helper(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
     fake_clock: _FakeClock,
+    fake_metrics: MagicMock,
 ) -> AppWindowGeometryHelper:
-    screen = _make_screen_info()
-    fake_metrics = MagicMock()
-    fake_metrics.get_monitor_for_pos.return_value = screen
-    fake_metrics.get_primary_screen_info.return_value = screen
-
     monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
     monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
@@ -505,12 +511,13 @@ def test_start_and_stop_rotation_polling(
 
 
 def test_rotation_check_skipped_when_fullscreen(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_metrics: MagicMock
 ) -> None:
     fake_window.fullscreen = True
-    # If _check_for_rotation ran while fullscreen, it would call refresh().
-    # Verify it returns early (no error, no side effect).
+
     helper._check_for_rotation(0.0)  # noqa: SLF001
+
+    fake_metrics.refresh.assert_not_called()
 
 
 def test_rotation_detected_triggers_guarded_resize(

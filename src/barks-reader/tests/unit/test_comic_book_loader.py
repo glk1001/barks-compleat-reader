@@ -431,19 +431,41 @@ def test_close_comic_calls_source_close(
     assert source.closed
 
 
-def test_stop_cancels_inflight_loads(
+class _StopGatedPageImageSource(FakePageImageSource):
+    """A source whose loads finish only once the loader has been told to stop.
+
+    The first load announces itself on ``started``, so a test can stop the loader
+    while that load is in flight and the next page is queued behind the one worker.
+    """
+
+    def __init__(self, loader: ComicBookLoader) -> None:
+        super().__init__()
+        self._loader = loader
+        self.started = threading.Event()
+
+    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+        self.started.set()
+        deadline = time.monotonic() + 5.0
+        while not self._loader._stop and time.monotonic() < deadline:
+            time.sleep(0.001)
+        return super().load_page_image(page_info)
+
+
+def test_stop_cancels_the_loads_not_yet_started(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
 ) -> None:
-    """Test that stop_now prevents loading all pages."""
+    """One worker, two pages: stopped during the first load, the second never loads."""
     page_map, load_order = page_map_and_order
-    source = FakePageImageSource(delay=0.5)
+    source = _StopGatedPageImageSource(loader)
 
     loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")
-    time.sleep(0.1)
+    assert source.started.wait(timeout=5.0)
+
     loader.stop_now()
 
-    assert source.load_count < len(page_map)
+    assert loader._thread is None
+    assert source.load_count == 1
 
 
 def test_get_image_info_str_delegates_to_source(
