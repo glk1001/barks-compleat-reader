@@ -378,6 +378,21 @@ class TestGetTitleFromVolumePage:
 
 
 class TestDrawPanelBoundsOnImage:
+    """Pixel checks on a white page.
+
+    The panel number is drawn as 80px red text from ``(x1 - 80, y0 + 20)``, so the
+    sampled pixels keep clear of that strip: the panel corner sits above it and the
+    page edge to its left.
+    """
+
+    WHITE = (255, 255, 255)
+    GREEN = (0, 128, 0)  # the default bounds colour
+    RED = (255, 0, 0)  # the overall bound's colour
+    PANEL = (40, 20, 90, 80)
+    PANEL_CORNER = (85, 25)  # inside the panel outline (width 10), clear of the text
+    PANEL_INTERIOR = (70, 30)
+    PAGE_EDGE = (0, 100)  # on the overall bound's outline (width 2)
+
     @staticmethod
     def _make_page_panel_boxes(panels: list[PanelBox], overall: PanelBox) -> PagePanelBoxes:
         return PagePanelBoxes(
@@ -388,39 +403,68 @@ class TestDrawPanelBoundsOnImage:
             panel_boxes=panels,
         )
 
-    def test_returns_true(self) -> None:
-        image = Image.new("RGB", (100, 200))
+    def _one_panel_page(self) -> PagePanelBoxes:
+        panel = _make_panel_box(1, *self.PANEL)
         overall = _make_panel_box(0, 0, 0, 100, 200)
-        ppb = self._make_page_panel_boxes([], overall)
+        return self._make_page_panel_boxes([panel], overall)
+
+    @staticmethod
+    def _white_page() -> Image.Image:
+        return Image.new("RGB", (100, 200), "white")
+
+    def test_no_panels_draws_only_the_overall_bound(self) -> None:
+        image = self._white_page()
+        ppb = self._make_page_panel_boxes([], _make_panel_box(0, 0, 0, 100, 200))
 
         assert draw_panel_bounds_on_image(image, ppb) is True
 
-    def test_with_panels_and_overall_bound(self) -> None:
-        image = Image.new("RGB", (100, 200))
-        panel = _make_panel_box(1, 10, 20, 50, 80)
-        overall = _make_panel_box(0, 0, 0, 100, 200)
-        ppb = self._make_page_panel_boxes([panel], overall)
+        assert image.getpixel(self.PAGE_EDGE) == self.RED
+        assert image.getpixel(self.PANEL_INTERIOR) == self.WHITE
 
-        assert draw_panel_bounds_on_image(image, ppb, include_overall_bound=True) is True
+    def test_panel_outline_in_the_default_colour(self) -> None:
+        image = self._white_page()
 
-    def test_include_overall_bound_false(self) -> None:
-        image = Image.new("RGB", (100, 200))
-        panel = _make_panel_box(1, 10, 20, 50, 80)
-        overall = _make_panel_box(0, 0, 0, 100, 200)
-        ppb = self._make_page_panel_boxes([panel], overall)
+        draw_panel_bounds_on_image(image, self._one_panel_page())
 
-        assert draw_panel_bounds_on_image(image, ppb, include_overall_bound=False) is True
+        assert image.getpixel(self.PANEL_CORNER) == self.GREEN
+        assert image.getpixel(self.PANEL_INTERIOR) == self.WHITE
+        assert image.getpixel(self.PAGE_EDGE) == self.RED
 
-    def test_multiple_panels(self) -> None:
-        image = Image.new("RGB", (200, 400))
+    def test_bounds_color_is_used_for_the_panel_outline(self) -> None:
+        image = self._white_page()
+
+        draw_panel_bounds_on_image(image, self._one_panel_page(), bounds_color=(0, 0, 255, 255))
+
+        assert image.getpixel(self.PANEL_CORNER) == (0, 0, 255)
+
+    def test_include_overall_bound_false_leaves_the_page_edge(self) -> None:
+        image = self._white_page()
+
+        draw_panel_bounds_on_image(image, self._one_panel_page(), include_overall_bound=False)
+
+        assert image.getpixel(self.PAGE_EDGE) == self.WHITE
+        assert image.getpixel(self.PANEL_CORNER) == self.GREEN
+
+    def test_every_panel_is_outlined(self) -> None:
+        image = Image.new("RGB", (200, 400), "white")
         panels = [
             _make_panel_box(1, 0, 0, 100, 200),
             _make_panel_box(2, 100, 200, 200, 400),
         ]
         overall = _make_panel_box(0, 0, 0, 200, 400)
-        ppb = self._make_page_panel_boxes(panels, overall)
+        ppb = PagePanelBoxes(
+            page_num="001",
+            page_width=200,
+            page_height=400,
+            overall_bounds=overall,
+            panel_boxes=panels,
+        )
 
-        assert draw_panel_bounds_on_image(image, ppb) is True
+        draw_panel_bounds_on_image(image, ppb)
+
+        assert image.getpixel((95, 5)) == self.GREEN  # panel 1's top-right corner
+        assert image.getpixel((195, 205)) == self.GREEN  # panel 2's top-right corner
+        assert image.getpixel((150, 100)) == self.WHITE  # in no panel
 
 
 # ---------------------------------------------------------------------------

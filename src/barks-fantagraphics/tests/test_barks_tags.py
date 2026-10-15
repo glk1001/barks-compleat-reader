@@ -27,10 +27,7 @@ from barks_fantagraphics.barks_tags import (
 
 def test_initial_validation_passes() -> None:
     """Test that validate_tag_data passes with the default data."""
-    try:
-        barks_tags.validate_tag_data()
-    except AssertionError as e:
-        pytest.fail(f"validate_tag_data failed with presumably invalid data: {e}")
+    barks_tags.validate_tag_data()  # no raise
 
 
 # --- Tests for validate_tag_data failures ---

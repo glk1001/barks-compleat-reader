@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, FBT003
+# ruff: noqa: FBT003
 
 import string
 
@@ -184,16 +184,10 @@ class TestBarksInfo:
             )
 
     def test_story_submitted_order(self) -> None:
-        try:
-            check_story_submitted_order(BARKS_TITLE_INFO)
-        except Exception as e:
-            pytest.fail(f"get_all_comic_book_info raised an unexpected exception: {e}")
+        check_story_submitted_order(BARKS_TITLE_INFO)  # no raise
 
     def test_cover_submitted_order(self) -> None:
-        try:
-            check_cover_submitted_order(BARKS_TITLE_INFO)
-        except Exception as e:
-            pytest.fail(f"check_cover_submitted_order raised an unexpected exception: {e}")
+        check_cover_submitted_order(BARKS_TITLE_INFO)  # no raise
 
 
 class TestCheckStorySubmittedOrder:
@@ -207,12 +201,7 @@ class TestCheckStorySubmittedOrder:
             ComicBookInfo(Titles(3), True, Issues.FC, 4, 4, 1940, 15, 2, 1940),
             ComicBookInfo(Titles(4), True, Issues.FC, 5, 5, 1941, 1, 1, 1941),
         ]
-        try:
-            check_story_submitted_order(valid_data)
-        except Exception as e:
-            pytest.fail(
-                f"check_story_submitted_order raised an unexpected exception for valid data: {e}",
-            )
+        check_story_submitted_order(valid_data)  # no raise
 
     def test_invalid_month(self) -> None:
         """Tests detection of invalid submission month."""
@@ -220,13 +209,13 @@ class TestCheckStorySubmittedOrder:
             ComicBookInfo(Titles(0), True, Issues.FC, 1, 1, 1940, 1, 1, 1940),
             ComicBookInfo(Titles(1), True, Issues.FC, 2, 2, 1940, 1, 13, 1940),  # Invalid month 13
         ]
-        with pytest.raises(Exception, match="Invalid submission month: 13"):
+        with pytest.raises(RuntimeError, match="Invalid submission month: 13"):
             check_story_submitted_order(invalid_data)
 
         invalid_data_zero: list[ComicBookInfo] = [
             ComicBookInfo(Titles(0), True, Issues.FC, 1, 1, 1940, 1, 0, 1940),  # Invalid month 0
         ]
-        with pytest.raises(Exception, match="Invalid submission month: 0"):
+        with pytest.raises(RuntimeError, match="Invalid submission month: 0"):
             check_story_submitted_order(invalid_data_zero)
 
     def test_out_of_order_submission_date(self) -> None:
@@ -236,7 +225,7 @@ class TestCheckStorySubmittedOrder:
             # Submitted earlier than A
             ComicBookInfo(Titles(1), True, Issues.FC, 2, 2, 1940, 1, 2, 1940),
         ]
-        with pytest.raises(Exception, match="Out of order submitted date"):
+        with pytest.raises(RuntimeError, match="Out of order submitted date"):
             check_story_submitted_order(invalid_data)
 
     def test_out_of_order_chronological_number(self) -> None:
@@ -246,7 +235,7 @@ class TestCheckStorySubmittedOrder:
             # Chrono 1 (out of order)
             ComicBookInfo(Titles(1), True, Issues.FC, 2, 2, 1940, 1, 2, 1940),
         ]
-        with pytest.raises(Exception, match="Out of order chronological number"):
+        with pytest.raises(RuntimeError, match="Out of order chronological number"):
             check_story_submitted_order(invalid_data)
 
     def test_handles_day_minus_one(self) -> None:
@@ -258,25 +247,14 @@ class TestCheckStorySubmittedOrder:
             # Later month, day -1
             ComicBookInfo(Titles(2), True, Issues.FC, 3, 3, 1940, -1, 2, 1940),
         ]
-        try:
-            check_story_submitted_order(data)
-        except Exception as e:
-            pytest.fail(
-                f"check_story_submitted_order raised an unexpected exception with day=-1: {e}",
-            )
+        check_story_submitted_order(data)  # no raise
 
         # Check case where -1 makes dates equal (should pass)
         data_equal: list[ComicBookInfo] = [
             ComicBookInfo(Titles(0), True, Issues.FC, 1, 1, 1940, -1, 1, 1940),
             ComicBookInfo(Titles(1), True, Issues.FC, 2, 2, 1940, 1, 1, 1940),
         ]
-        try:
-            check_story_submitted_order(data_equal)
-        except Exception as e:
-            pytest.fail(
-                f"check_story_submitted_order raised an unexpected exception"
-                f" with day=-1 making dates equal: {e}",
-            )
+        check_story_submitted_order(data_equal)  # no raise
 
 
 class TestCheckCoverSubmittedOrder:
@@ -309,12 +287,12 @@ class TestCheckCoverSubmittedOrder:
         check_cover_submitted_order(data)  # no raise
 
     def test_invalid_month(self) -> None:
-        with pytest.raises(Exception, match="Invalid submission month: 13"):
+        with pytest.raises(RuntimeError, match="Invalid submission month: 13"):
             check_cover_submitted_order([self._cover(0, 1, 13, 1948)])
 
     def test_out_of_order_date_raises(self) -> None:
         data = [self._cover(0, 15, 2, 1948), self._cover(1, 1, 2, 1948)]
-        with pytest.raises(Exception, match="Out of order submitted date"):
+        with pytest.raises(RuntimeError, match="Out of order submitted date"):
             check_cover_submitted_order(data)
 
     def test_undated_after_dated_passes(self) -> None:
@@ -332,5 +310,5 @@ class TestCheckCoverSubmittedOrder:
             self._cover(1, -1, -1, -1),  # undated
             self._cover(2, 1, 2, 1948),  # dated cover after undated -> error
         ]
-        with pytest.raises(Exception, match="Dated cover appears after an undated cover"):
+        with pytest.raises(RuntimeError, match="Dated cover appears after an undated cover"):
             check_cover_submitted_order(data)
