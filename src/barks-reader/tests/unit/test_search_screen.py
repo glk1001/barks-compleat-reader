@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 from unittest.mock import MagicMock, patch
@@ -39,7 +40,8 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator, Iterator
+    from contextlib import AbstractContextManager
 
 
 def _make_bare_screen() -> SearchScreen:
@@ -109,6 +111,47 @@ def _live_chip(value: str, label: str) -> MagicMock:
 def _press(chip: MagicMock) -> None:
     """Release a stand-in chip as a click does: run the handler the row bound to it."""
     chip.bind.call_args.kwargs["on_release"](chip)
+
+
+# What adopting the remote's focus leaves on a screen before any key: the nav on, no
+# exit or focus request, every index at its first entry, the word results on their
+# title column, and no result button selected.
+_NAV_ADOPTED: dict[str, object] = {
+    "_nav_active": True,
+    "on_request_nav_focus": None,
+    "_nav_on_exit_request": None,
+    "_nav_focused_chip_idx": 0,
+    "_nav_focused_result_idx": 0,
+    "_nav_word_sub_focus": "title",
+    "_selected_result_button": None,
+}
+
+
+@contextmanager
+def _bare_screen(
+    ids: object | None = None,
+    *patches: AbstractContextManager[object],
+    nav: str | None = None,
+    **state: object,
+) -> Generator[SearchScreen]:
+    """Yield a bare screen with its Kivy ids and image-change timer stubbed at class level.
+
+    A screen made without __init__ has no property storage, so `ids` cannot be
+    assigned on the instance; shadowing the descriptor on the class does, with `ids`
+    or a MagicMock. Any further `patches` are entered too. With `nav`, the screen is
+    as adopting the remote's focus leaves it (`_NAV_ADOPTED`), focused on that area.
+    `state` is set on the screen last, so it overrides.
+    """
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(SearchScreen, "ids", MagicMock() if ids is None else ids))
+        stack.enter_context(patch.object(SearchScreen, "_cancel_image_change_event"))
+        for extra in patches:
+            stack.enter_context(extra)
+        bare = _make_bare_screen()
+        attrs = {**_NAV_ADOPTED, "_nav_focus_area": nav, **state} if nav is not None else state
+        for name, value in attrs.items():
+            setattr(bare, name, value)
+        yield bare
 
 
 class _FakeSpeakerList:
@@ -212,12 +255,9 @@ class TestWordList:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._search = MagicMock()
+        with _bare_screen(
+            _search=MagicMock(),
+        ) as bare:
             yield bare
 
     @staticmethod
@@ -263,19 +303,13 @@ class TestTypedQuery:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._search = MagicMock()
-            bare._selected_word = ""
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_focus_area = "input"
+        with _bare_screen(
+            nav="input",
+            _active_mode="Word",
+            _search=MagicMock(),
+            _selected_word="",
+            _word_search_results=[],
+        ) as bare:
             yield bare
 
     @staticmethod
@@ -510,27 +544,17 @@ class TestWordBasket:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._search = MagicMock()
+        with _bare_screen(
+            nav="tags",
+            _active_mode="Word",
+            _search=MagicMock(),
+            _selected_word="",
+            _word_search_results=[],
+            rows=[_word_row("gold", 0), _word_row("golden", 1)],
+        ) as bare:
             bare._search.run_word_query.return_value = WordQueryResult(
                 title_dict=_found("Story A"), hit_counts={"Story A": 1}
             )
-            bare._selected_word = ""
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "tags"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
-            bare.rows = [_word_row("gold", 0), _word_row("golden", 1)]
             bare.ids.word_chips_layout.children = list(reversed(bare.rows))  # Kivy: last first
             yield bare
 
@@ -721,16 +745,13 @@ class TestTagChips:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._search = MagicMock()
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._current_tag = None
-            bare._tag_chip_counts = {}
+        with _bare_screen(
+            _search=MagicMock(),
+            _selected_tag="",
+            _selected_member="",
+            _current_tag=None,
+            _tag_chip_counts={},
+        ) as bare:
             yield bare
 
     def test_the_search_s_order_is_kept_not_resorted(self, screen: SearchScreen) -> None:
@@ -957,35 +978,25 @@ class TestTagBasket:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Tag"
-            bare._search = MagicMock()
+        with _bare_screen(
+            nav="tags",
+            _active_mode="Tag",
+            _search=MagicMock(),
+            _tag_titles=[],
+            on_search_results_title_changed=None,
+            _selected_tag="",
+            _selected_member="",
+            _current_tag=None,
+            _tag_chip_strings=[],
+            _tag_chip_counts={},
+            stack=_tag_stack("Scrooge", "Gyro"),
+        ) as bare:
             bare._search.titles_for_tag_selection.return_value = [PIRATE_GOLD, HELMET]
             bare._search.get_title_display_strings.return_value = ["Story 1", "Story 2"]
             bare._search.resolve_tag.side_effect = lambda name: (
                 SimpleNamespace(value=name.title()),
                 [],
             )
-            bare._tag_titles = []
-            bare.on_search_results_title_changed = None
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._current_tag = None
-            bare._tag_chip_strings = []
-            bare._tag_chip_counts = {}
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "tags"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
-            bare.stack = _tag_stack("Scrooge", "Gyro")
             bare.ids.tag_chips_layout.children = [bare.stack]
             yield bare
 
@@ -1309,16 +1320,8 @@ class TestSearchMarkers:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        """Return a bare screen with its Kivy ids and image-change timer stubbed at class level.
-
-        A screen made without __init__ has no property storage, so `ids` cannot
-        be assigned on the instance; shadowing the descriptor on the class does.
-        """
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            yield _make_bare_screen()
+        with _bare_screen() as bare:
+            yield bare
 
     def test_title_results_are_counted(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
         screen._search = MagicMock()
@@ -1383,14 +1386,11 @@ class TestNavFocusMarkers:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Title"
-            bare._selected_tag = ""
-            bare._selected_member = ""
+        with _bare_screen(
+            _active_mode="Title",
+            _selected_tag="",
+            _selected_member="",
+        ) as bare:
             yield bare
 
     def test_the_search_box_logs_taking_and_losing_focus(
@@ -1431,15 +1431,12 @@ class TestSpeakerFilter:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._search = MagicMock()
-            bare._selected_word = ""
-            bare._nav_focus_area = "input"
+        with _bare_screen(
+            _active_mode="Word",
+            _search=MagicMock(),
+            _selected_word="",
+            _nav_focus_area="input",
+        ) as bare:
             yield bare
 
     def test_the_offered_speakers_are_the_roster_ones_the_index_has(
@@ -1713,24 +1710,17 @@ class TestSpeakerChipKeys:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
+        with _bare_screen(
+            None,
             patch.object(SearchScreen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS),
             patch.object(SearchScreen, "_rerun_word_results"),
-        ):
-            bare = _make_bare_screen()
+            nav="speakers",
+            _active_mode="Word",
+            _selected_word="money",
+        ) as bare:
             # A chip that Enter presses, as a Kivy button's trigger_action does.
             bare._speaker_row = ChipRow(MagicMock(), _live_chip, bare._on_said_by_chip_pressed)
-            bare._active_mode = "Word"
-            bare._nav_active = True
-            bare._nav_on_exit_request = None
-            bare._selected_word = "money"
-            bare._nav_focused_result_idx = 0
-            bare._nav_focused_chip_idx = 0
-            bare._nav_word_sub_focus = "title"
             _offer_speakers(bare, "Donald")
-            bare._nav_focus_area = "speakers"
             bare._speaker_row.enter_focus()
             yield bare
 
@@ -1871,29 +1861,19 @@ class TestEra:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Tag"
-            bare._search = MagicMock()
+        with _bare_screen(
+            nav="tags",
+            _active_mode="Tag",
+            _search=MagicMock(),
+            _tag_titles=[],
+            on_search_results_title_changed=None,
+            _selected_tag="",
+            _selected_member="",
+            _current_tag=None,
+            _selected_word="",
+            _word_search_results=[],
+        ) as bare:
             bare._search.get_title_display_strings.side_effect = lambda ts: [t.name for t in ts]
-            bare._tag_titles = []
-            bare.on_search_results_title_changed = None
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._current_tag = None
-            bare._selected_word = ""
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "tags"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
             yield bare
 
     @staticmethod
@@ -2014,32 +1994,22 @@ class TestTagScope:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._search = MagicMock()
+        with _bare_screen(
+            nav="era",
+            _active_mode="Word",
+            _search=MagicMock(),
+            # A word listed in two stories, one of them the tag's: the scope would narrow.
+            _selected_word="gold",
+            _word_search_results=[],
+            on_search_results_title_changed=None,
+        ) as bare:
             bare._search.resolve_tag.return_value = (Tags.GYRO_GEARLOOSE, [PIRATE_GOLD, HELMET])
             bare._search.titles_for_tag_selection.return_value = [HELMET]
             bare._search.run_word_query.return_value = WordQueryResult()
-            # A word listed in two stories, one of them the tag's: the scope would narrow.
-            bare._selected_word = "gold"
             bare._search.find_words.return_value = {
                 ENUM_TO_STR_TITLE[HELMET]: TitleInfo(11, {"3": PageInfo("3", [])}),
                 ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]: TitleInfo(7, {"5": PageInfo("5", [])}),
             }
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare.on_search_results_title_changed = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "era"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
             yield bare
 
     @staticmethod
@@ -2260,16 +2230,9 @@ class TestClearButtonKeys:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._nav_active = True
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "input"
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
+        with _bare_screen(
+            nav="input",
+        ) as bare:
             yield bare
 
     @staticmethod
@@ -2390,24 +2353,18 @@ class TestResultsKeys:
                 "tag_chips_layout": MagicMock(children=[]),
             }
         )
-        with (
-            patch.object(SearchScreen, "ids", ids),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._nav_active = True
-            bare._nav_on_exit_request = MagicMock()
-            bare._nav_focus_area = "results"
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
-            bare._nav_focused_chip_idx = 0
-            bare._last_activated_result_idx = None
-            bare._last_activated_word_sub_focus = "title"
-            bare._selected_word = ""
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._tag_titles = []
+        with _bare_screen(
+            ids,
+            nav="results",
+            _active_mode="Word",
+            _nav_on_exit_request=MagicMock(),
+            _last_activated_result_idx=None,
+            _last_activated_word_sub_focus="title",
+            _selected_word="",
+            _selected_tag="",
+            _selected_member="",
+            _tag_titles=[],
+        ) as bare:
             yield bare
 
     @staticmethod
@@ -2543,20 +2500,14 @@ class TestOtherNavKeys:
                 "tag_chips_layout": MagicMock(children=[]),
             }
         )
-        with (
-            patch.object(SearchScreen, "ids", ids),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._nav_active = True
-            bare._nav_on_exit_request = MagicMock()
-            bare._nav_focus_area = "clear"
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
-            bare._nav_focused_chip_idx = 0
-            bare._selected_word = ""
-            bare._tag_titles = []
+        with _bare_screen(
+            ids,
+            nav="clear",
+            _active_mode="Word",
+            _nav_on_exit_request=MagicMock(),
+            _selected_word="",
+            _tag_titles=[],
+        ) as bare:
             yield bare
 
     def test_the_clear_button_s_keys(self, screen: SearchScreen) -> None:
@@ -2770,34 +2721,24 @@ class TestCombinedTagsListingNothing:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Tag"
-            bare._search = MagicMock()
+        with _bare_screen(
+            nav="tags",
+            _active_mode="Tag",
+            _search=MagicMock(),
+            _tag_titles=[],
+            on_search_results_title_changed=None,
+            _selected_tag="",
+            _selected_member="",
+            _current_tag=None,
+            _selected_word="",
+            _word_search_results=[],
+        ) as bare:
             bare._search.titles_for_tag_selection.return_value = []
             bare._search.get_title_display_strings.side_effect = lambda ts: [t.name for t in ts]
             bare._search.resolve_tag.side_effect = lambda name: (
                 SimpleNamespace(value=name.title()),
                 [],
             )
-            bare._tag_titles = []
-            bare.on_search_results_title_changed = None
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._current_tag = None
-            bare._selected_word = ""
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "tags"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
             bare.ids.tag_chips_layout.children = [_tag_stack("Scrooge", "Gyro")]
             yield bare
 
@@ -2870,26 +2811,17 @@ class TestEmptiedBasketWithNoList:
                 "tag_chips_layout": MagicMock(children=[]),
             }
         )
-        with (
-            patch.object(SearchScreen, "ids", ids),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._search = MagicMock()
+        with _bare_screen(
+            ids,
+            nav="basket",
+            _active_mode="Word",
+            _search=MagicMock(),
+            _selected_word="",
+            _word_search_results=[],
+        ) as bare:
             bare._search.run_word_query.return_value = WordQueryResult(
                 title_dict=_found("Story A"), hit_counts={"Story A": 1}
             )
-            bare._selected_word = ""
-            bare._word_search_results = []
-            bare._selected_result_button = None
-            bare._nav_active = True
-            bare.on_request_nav_focus = None
-            bare._nav_on_exit_request = None
-            bare._nav_focus_area = "basket"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
             yield bare
 
     def test_the_keyboard_goes_to_the_search_box(self, screen: SearchScreen) -> None:
@@ -2916,23 +2848,16 @@ class TestSaidByChipEdges:
 
     @pytest.fixture
     def screen(self) -> Iterator[SearchScreen]:
-        with (
-            patch.object(SearchScreen, "ids", MagicMock()),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
+        with _bare_screen(
+            None,
             patch.object(SearchScreen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS),
             patch.object(SearchScreen, "_rerun_word_results"),
-        ):
-            bare = _make_bare_screen()
+            nav="speakers",
+            _active_mode="Word",
+            _selected_word="money",
+        ) as bare:
             bare._speaker_row = ChipRow(MagicMock(), _live_chip, bare._on_said_by_chip_pressed)
-            bare._active_mode = "Word"
-            bare._nav_active = True
-            bare._nav_on_exit_request = None
-            bare._selected_word = "money"
-            bare._nav_focused_result_idx = 0
-            bare._nav_focused_chip_idx = 0
-            bare._nav_word_sub_focus = "title"
             _offer_speakers(bare, "Donald")
-            bare._nav_focus_area = "speakers"
             bare._speaker_row.enter_focus()
             yield bare
 
@@ -2972,20 +2897,14 @@ class TestNavEdges:
                 "tag_chips_layout": MagicMock(children=[]),
             }
         )
-        with (
-            patch.object(SearchScreen, "ids", ids),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Word"
-            bare._nav_active = True
-            bare._nav_on_exit_request = MagicMock()
-            bare._nav_focus_area = "input"
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
-            bare._nav_focused_chip_idx = 0
-            bare._selected_word = ""
-            bare._tag_titles = []
+        with _bare_screen(
+            ids,
+            nav="input",
+            _active_mode="Word",
+            _nav_on_exit_request=MagicMock(),
+            _selected_word="",
+            _tag_titles=[],
+        ) as bare:
             yield bare
 
     @pytest.mark.parametrize("stray", [None, Button()], ids=["no widget", "a widget not listed"])
@@ -3107,29 +3026,23 @@ class TestTagListKeys:
                 "word_chips_layout": MagicMock(children=[]),
             }
         )
-        with (
-            patch.object(SearchScreen, "ids", ids),
-            patch.object(SearchScreen, "_cancel_image_change_event"),
+        with _bare_screen(
+            ids,
             patch.object(SearchScreen, "_show_tag_titles"),
-        ):
-            bare = _make_bare_screen()
-            bare._active_mode = "Tag"
-            bare._search = MagicMock()
+            nav="tags",
+            _active_mode="Tag",
+            _search=MagicMock(),
+            _tag_chip_strings=["chemistry", "Duckburg"],
+            _tag_chip_counts={"chemistry": 24, "Duckburg": 5},
+            _tag_chip_groups={"chemistry"},
+            _selected_tag="",
+            _selected_member="",
+            _current_tag=None,
+            _nav_on_exit_request=MagicMock(),
+        ) as bare:
             bare._search.get_tag_group_members.side_effect = lambda group: self.MEMBERS[group]
             bare._search.get_tag_title_count.return_value = 3
             bare._search.resolve_tag.side_effect = lambda name: (self.ITEMS[name], [])
-            bare._tag_chip_strings = ["chemistry", "Duckburg"]
-            bare._tag_chip_counts = {"chemistry": 24, "Duckburg": 5}
-            bare._tag_chip_groups = {"chemistry"}
-            bare._selected_tag = ""
-            bare._selected_member = ""
-            bare._current_tag = None
-            bare._nav_active = True
-            bare._nav_on_exit_request = MagicMock()
-            bare._nav_focus_area = "tags"
-            bare._nav_focused_chip_idx = 0
-            bare._nav_focused_result_idx = 0
-            bare._nav_word_sub_focus = "title"
             bare._rebuild_tag_chips()
             yield bare
 
