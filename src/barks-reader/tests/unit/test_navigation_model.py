@@ -9,7 +9,6 @@ is establishing.
 from __future__ import annotations
 
 import sys
-from typing import cast
 
 import barks_reader.core.navigation as _nav_pkg  # noqa: F401
 import barks_reader.core.navigation.destinations as _nav_destinations  # noqa: F401
@@ -28,7 +27,6 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
-    FantaComicBookInfo,
 )
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.navigation import (
@@ -69,12 +67,8 @@ from barks_reader.core.navigation import (
     YearRangeKind,
 )
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.testing import fake_fanta_info
 from barks_reader.core.view_request import ViewRequest
-
-
-def _fake_fanta() -> FantaComicBookInfo:
-    """Return a typed placeholder for `fanta_info`. NavigationModel never dereferences it."""
-    return cast("FantaComicBookInfo", object())
 
 
 @pytest.fixture
@@ -121,7 +115,7 @@ def test_view_state_for_simple_destination(
 
 
 def test_view_state_for_title_destination(model: NavigationModel) -> None:
-    request = model.view_state_for(TitleDestination(fanta_info=_fake_fanta()))
+    request = model.view_state_for(TitleDestination(fanta_info=fake_fanta_info()))
     assert request.view_state is ViewStates.ON_TITLE_NODE
     assert request == ViewRequest(view_state=ViewStates.ON_TITLE_NODE)
 
@@ -316,7 +310,7 @@ def test_view_state_for_unknown_destination_raises(model: NavigationModel) -> No
 
 
 def test_auto_select_target_returns_single_title_child(model: NavigationModel) -> None:
-    only_child = TitleDestination(fanta_info=_fake_fanta())
+    only_child = TitleDestination(fanta_info=fake_fanta_info())
     parent = TagDestination(tag=Tags.AIRPLANES)
 
     result = model.auto_select_target(parent, [only_child])
@@ -333,8 +327,8 @@ def test_auto_select_target_none_when_no_title_children(model: NavigationModel) 
 def test_auto_select_target_none_when_multiple_title_children(model: NavigationModel) -> None:
     parent = TagDestination(tag=Tags.AIRPLANES)
     children = [
-        TitleDestination(fanta_info=_fake_fanta()),
-        TitleDestination(fanta_info=_fake_fanta()),
+        TitleDestination(fanta_info=fake_fanta_info()),
+        TitleDestination(fanta_info=fake_fanta_info()),
     ]
 
     assert model.auto_select_target(parent, children) is None
@@ -342,7 +336,7 @@ def test_auto_select_target_none_when_multiple_title_children(model: NavigationM
 
 def test_auto_select_target_ignores_non_title_siblings(model: NavigationModel) -> None:
     """One title + one non-title sibling still counts as a single-title-child parent."""
-    title = TitleDestination(fanta_info=_fake_fanta())
+    title = TitleDestination(fanta_info=fake_fanta_info())
     other = TagDestination(tag=Tags.AIRPLANES)
     parent = CategoryDestination(category="X")
 
@@ -369,7 +363,7 @@ def test_tag_context_extracts_tag_group(model: NavigationModel) -> None:
     "destination",
     [
         IntroDestination(),
-        TitleDestination(fanta_info=_fake_fanta()),
+        TitleDestination(fanta_info=fake_fanta_info()),
         CategoryDestination(category="X"),
         YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO),
     ],

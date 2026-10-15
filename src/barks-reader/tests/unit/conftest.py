@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import fields
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
@@ -21,7 +22,16 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from barks_reader.ui.screen_bundle import ScreenBundle
+
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
+
+# The tests run under ``--import-mode=importlib``, which puts no test directory on
+# ``sys.path``, so a module beside the tests (``view_pipeline_factory``) is reached by
+# putting the directory there, as the barks-fantagraphics tests do.
+_TESTS_DIR = Path(__file__).resolve().parent
+if str(_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TESTS_DIR))
 
 
 @pytest.fixture(autouse=True)
@@ -67,6 +77,22 @@ def loguru_sink() -> Generator[list[str]]:
 @pytest.fixture
 def mock_user_error_handler() -> MagicMock:
     return MagicMock()
+
+
+@pytest.fixture
+def screen_mocks() -> dict[str, MagicMock]:
+    """Make a stand-in for each screen of the main screen, keyed as the ScreenBundle names it."""
+    # Imported here, not at module scope: barks_reader.ui pulls Kivy in.
+    from barks_reader.ui.screen_bundle import ScreenBundle  # noqa: PLC0415
+
+    return {screen.name: MagicMock() for screen in fields(ScreenBundle)}
+
+
+@pytest.fixture
+def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
+    from barks_reader.ui.screen_bundle import ScreenBundle  # noqa: PLC0415
+
+    return ScreenBundle(**screen_mocks)
 
 
 _UI_IMPORT_PREFIXES = ("barks_reader.ui", "kivy.uix", "kivy.core.window")

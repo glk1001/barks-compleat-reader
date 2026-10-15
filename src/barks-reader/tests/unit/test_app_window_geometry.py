@@ -12,7 +12,6 @@ an OpenGL context without a display).
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +19,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
+from barks_reader.core.testing import FakeClock
 from barks_reader.ui import app_window_geometry as geometry_module
 from barks_reader.ui.app_window_geometry import (
     MOVE_SETTLE_DELAY,
@@ -27,9 +27,6 @@ from barks_reader.ui.app_window_geometry import (
     AppWindowGeometryHelper,
     WindowSizeConstraints,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 CHROME = 45
 MIN_WIDTH = 900
@@ -49,29 +46,6 @@ def _make_screen_info(width: int = 2560, height: int = 2400, display: int = 0) -
         dpi=96,
         is_primary=True,
     )
-
-
-class _FakeClock:
-    """Records ``schedule_once`` calls so tests can inspect or invoke them."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[Callable[[float], None], float]] = []
-
-    def schedule_once(self, callback: Callable[[float], None], timeout: float = 0) -> MagicMock:
-        self.calls.append((callback, timeout))
-        # Return a mock with .cancel() so the helper's debounce code works.
-        return MagicMock()
-
-    @staticmethod
-    def schedule_interval(
-        _callback: Callable[[float], None],
-        _interval: float,
-    ) -> MagicMock:
-        return MagicMock()
-
-    def fire_last(self) -> None:
-        callback, _timeout = self.calls[-1]
-        callback(0.0)
 
 
 class _RetinaWindow:
@@ -119,8 +93,8 @@ def fake_window() -> MagicMock:
 
 
 @pytest.fixture
-def fake_clock() -> _FakeClock:
-    return _FakeClock()
+def fake_clock() -> FakeClock:
+    return FakeClock()
 
 
 @pytest.fixture
@@ -138,7 +112,7 @@ def helper(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
     fake_metrics: MagicMock,
 ) -> AppWindowGeometryHelper:
     monkeypatch.setattr(geometry_module, "Window", fake_window)
@@ -167,7 +141,7 @@ def helper(
     ],
 )
 def test_enforce_aspect_ratio_bails_on_degenerate_sizes(
-    helper: AppWindowGeometryHelper, fake_clock: _FakeClock, width: int, height: int
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock, width: int, height: int
 ) -> None:
     helper._enforce_aspect_ratio(width, height)  # noqa: SLF001
     assert fake_clock.calls == []
@@ -189,7 +163,7 @@ def test_every_resize_event_is_logged_as_the_marker(
 def test_an_aspect_ratio_correction_names_the_event_and_the_size_it_applies(
     helper: AppWindowGeometryHelper,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
     loguru_sink: list[str],
 ) -> None:
     """The correction used to resize the window silently; now the log says why."""
@@ -212,7 +186,7 @@ def test_resize_skipped_when_window_not_ready(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     screen = _make_screen_info()
     fake_metrics = MagicMock()
@@ -231,7 +205,7 @@ def test_resize_skipped_when_window_not_ready(
 
 
 def test_resize_skipped_when_fullscreen(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     fake_window.fullscreen = True
     helper.on_window_resize(fake_window, 1500, 2000)
@@ -239,7 +213,7 @@ def test_resize_skipped_when_fullscreen(
 
 
 def test_resize_skipped_when_suppression_active(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     helper.suppress_aspect_ratio_correction(duration=2.0)
     # suppress_aspect_ratio_correction itself schedules a clear callback;
@@ -253,7 +227,7 @@ def test_resize_skipped_when_suppression_active(
 
 
 def test_correction_scheduled_when_width_does_not_match_height(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     # Choose a height large enough that the min-width fallback does not kick in.
     height = 2000
@@ -272,7 +246,7 @@ def test_correction_scheduled_when_width_does_not_match_height(
 def test_a_correction_for_a_size_the_window_has_left_is_dropped(
     helper: AppWindowGeometryHelper,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
     loguru_sink: list[str],
 ) -> None:
     """Leaving fullscreen: a transient size's correction, after the restore had landed."""
@@ -298,12 +272,12 @@ def test_a_resize_already_in_proportion_cancels_a_pending_correction(
     assert pending is not None
     fake_window.size = (right_width, height)
     helper.on_window_resize(fake_window, right_width, height)
-    pending.cancel.assert_called_once_with()
+    assert pending.cancelled
     assert helper._correction_event is None  # noqa: SLF001
 
 
 def test_correction_not_scheduled_when_already_correct(
-    helper: AppWindowGeometryHelper, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock
 ) -> None:
     # Replace the update_fonts callback with a recording mock so we can assert
     # the no-correction path called it.
@@ -320,7 +294,7 @@ def test_correction_not_scheduled_when_already_correct(
 
 
 def test_min_width_fallback_when_height_is_too_small(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     # Pick an input that produces a correct_width below MIN_WIDTH so the
     # fallback branch fires. The fixture monitor is tall enough to accommodate
@@ -358,7 +332,7 @@ def _make_helper_two_monitors(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> tuple[AppWindowGeometryHelper, MagicMock]:
     """Build a helper whose metrics stub returns different monitors based on position."""
     monitor_a = _make_screen_info(width=2560, height=2400)
@@ -398,7 +372,7 @@ def test_on_window_pos_change_triggers_resize_on_monitor_change(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     fake_window.height = 2000
     fake_window.size = (1500, 2000)
@@ -414,7 +388,7 @@ def test_on_window_pos_change_skipped_when_fullscreen(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     fake_window.fullscreen = True
     h, _ = _make_helper_two_monitors(monkeypatch, constraints, fake_window, fake_clock)
@@ -426,7 +400,7 @@ def test_on_window_pos_change_skipped_when_same_monitor(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     # Keep returning monitor_a so display stays the same.
     screen = _make_screen_info()
@@ -449,7 +423,7 @@ def test_on_window_pos_change_skipped_when_monitor_is_none(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     screen = _make_screen_info()
     fake_metrics = MagicMock()
@@ -525,7 +499,7 @@ def test_rotation_detected_triggers_guarded_resize(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     screen = _make_screen_info()
     fake_metrics = MagicMock()
@@ -558,7 +532,7 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     """When monitor lookup returns None mid-resize, the second degenerate guard fires.
 
@@ -593,7 +567,7 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
 
 
 def test_a_guarded_resize_sizes_then_moves_the_window_then_drops_its_guard(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     helper._schedule_guarded_resize(1200, 1800, reposition=(30, 40))  # noqa: SLF001
     (resize, resize_at), (move, move_at), (reset, reset_at) = fake_clock.calls
@@ -613,7 +587,7 @@ def test_a_guarded_resize_sizes_then_moves_the_window_then_drops_its_guard(
 
 
 def test_a_guarded_resize_with_nowhere_to_go_leaves_the_window_where_it_is(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     helper._schedule_guarded_resize(1200, 1800)  # noqa: SLF001
     _, (move, _), _ = fake_clock.calls
@@ -628,7 +602,7 @@ def _helper_with_metrics(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
     fake_metrics: MagicMock,
 ) -> AppWindowGeometryHelper:
     monkeypatch.setattr(geometry_module, "Window", fake_window)
@@ -644,7 +618,7 @@ def test_a_window_starting_off_every_monitor_takes_the_primary(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     """Windows can report an off-screen Window.left/top at startup."""
     primary = _make_screen_info(display=3)
@@ -661,7 +635,7 @@ def test_a_move_to_a_monitor_of_the_same_height_keeps_the_size(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     monitor_a, monitor_b = _make_screen_info(display=0), _make_screen_info(display=1)
     fake_metrics = MagicMock()
@@ -681,7 +655,7 @@ def test_a_rotation_off_every_monitor_fits_the_primary(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
-    fake_clock: _FakeClock,
+    fake_clock: FakeClock,
 ) -> None:
     primary = _make_screen_info(width=1440, height=2560, display=2)
     fake_metrics = MagicMock()
@@ -705,7 +679,7 @@ def test_stopping_polling_that_never_started_does_nothing(
 
 
 def test_a_second_drag_step_replaces_the_pending_correction(
-    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: _FakeClock
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
     """Only one correction fires after a drag: each new step cancels the last one's."""
     height = 2000
@@ -717,7 +691,7 @@ def test_a_second_drag_step_replaces_the_pending_correction(
     fake_window.size = (right_width + 250, height)
     helper._enforce_aspect_ratio(right_width + 250, height)  # noqa: SLF001
 
-    first.cancel.assert_called_once_with()
+    assert first.cancelled
     assert helper._correction_event is not first  # noqa: SLF001
     assert len(fake_clock.calls) == 2  # noqa: PLR2004
 
@@ -726,7 +700,7 @@ def test_a_second_drag_step_replaces_the_pending_correction(
 
 
 def _make_retina_helper(
-    monkeypatch: pytest.MonkeyPatch, window: _RetinaWindow, fake_clock: _FakeClock
+    monkeypatch: pytest.MonkeyPatch, window: _RetinaWindow, fake_clock: FakeClock
 ) -> AppWindowGeometryHelper:
     # A 27-inch 5K screen, which macOS gives as 2560 x 1440 points (2026-10-14's log).
     screen = _make_screen_info(width=2560, height=1440)
@@ -751,7 +725,7 @@ def _make_retina_helper(
 
 
 def test_a_retina_window_booted_in_proportion_is_left_alone(
-    monkeypatch: pytest.MonkeyPatch, fake_clock: _FakeClock
+    monkeypatch: pytest.MonkeyPatch, fake_clock: FakeClock
 ) -> None:
     """The boot size main.py sets, in points, reported back in pixels: no correction."""
     height = 1365
@@ -766,7 +740,7 @@ def test_a_retina_window_booted_in_proportion_is_left_alone(
 
 
 def test_a_retina_correction_is_set_in_points_and_settles(
-    monkeypatch: pytest.MonkeyPatch, fake_clock: _FakeClock
+    monkeypatch: pytest.MonkeyPatch, fake_clock: FakeClock
 ) -> None:
     """Set in pixels, each correction doubled the window, and the next one again."""
     height = 1365

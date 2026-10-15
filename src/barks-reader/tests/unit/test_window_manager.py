@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.core.testing import FakeClock
 from barks_reader.ui import platform_window_utils as window_utils_module
 from barks_reader.ui.platform_window_utils import (
     FullscreenEnum,
@@ -102,17 +103,9 @@ def fake_window() -> MagicMock:
 
 
 @pytest.fixture
-def fake_clock() -> MagicMock:
-    clock = MagicMock()
-
-    # Make schedule_once invoke its callback immediately.
-    # noinspection PyUnusedLocal
-    def immediate_schedule(callback: Callable[..., None], timeout: float = 0) -> MagicMock:  # noqa: ARG001
-        callback(0.0)
-        return MagicMock()
-
-    clock.schedule_once.side_effect = immediate_schedule
-    return clock
+def fake_clock() -> FakeClock:
+    """Make a Clock that runs each scheduled callback as it is scheduled."""
+    return FakeClock(immediate=True)
 
 
 @pytest.fixture
@@ -124,7 +117,7 @@ def backend() -> _FakeBackend:
 def manager(
     monkeypatch: pytest.MonkeyPatch,
     fake_window: MagicMock,
-    fake_clock: MagicMock,
+    fake_clock: FakeClock,
     backend: _FakeBackend,
 ) -> ManagerFixture:
     monkeypatch.setattr(window_utils_module, "Window", fake_window)
@@ -532,7 +525,7 @@ class TestInterleavedTransitions:
         self,
         monkeypatch: pytest.MonkeyPatch,
         fake_window: MagicMock,
-        fake_clock: MagicMock,
+        fake_clock: FakeClock,
         deferred_backend: _DeferredRestoreBackend,
     ) -> WindowManager:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
@@ -640,7 +633,7 @@ class TestInterleavedTransitions:
         # before the windowed chain reaches the backend: restore_saved sees the
         # window heading fullscreen and retires the transition — no backend
         # restore is ever scheduled, and no windowed callbacks fire.
-        clock = _QueuedClock()
+        clock = FakeClock()
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
         monkeypatch.setattr(window_utils_module, "Clock", clock)
         monkeypatch.setattr(
@@ -688,15 +681,7 @@ class TestKivyWindowBackend:
     ) -> None:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
 
-        fake_clock = MagicMock()
-
-        # noinspection PyUnusedLocal
-        def run_callback(callback: Callable[..., None], timeout: float = 0) -> MagicMock:  # noqa: ARG001
-            callback(0.0)
-            return MagicMock()
-
-        fake_clock.schedule_once.side_effect = run_callback
-        monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
+        monkeypatch.setattr(window_utils_module, "Clock", FakeClock(immediate=True))
 
         backend = KivyWindowBackend()
         state = WindowState(size=(1024, 768), pos=(50, 50))
@@ -719,7 +704,7 @@ class TestWindowModeController:
         self,
         monkeypatch: pytest.MonkeyPatch,
         fake_window: MagicMock,
-        fake_clock: MagicMock,
+        fake_clock: FakeClock,
     ) -> tuple[WindowModeController, MagicMock, WindowModeCallbacks]:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
         monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
@@ -787,26 +772,6 @@ class TestWindowModeController:
 # ---------------------------------------------------------------------------
 
 
-class _QueuedClock:
-    """A fake Clock that queues callbacks until drained, FIFO like Kivy's.
-
-    The gap between scheduling and draining models the frame in which
-    ``Window.fullscreen`` has not flipped yet — the double-press race window.
-    """
-
-    def __init__(self) -> None:
-        self._queue: list[Callable[[float], None]] = []
-
-    def schedule_once(self, callback: Callable[[float], None], _timeout: float = 0) -> MagicMock:
-        self._queue.append(callback)
-        return MagicMock()
-
-    def drain(self) -> None:
-        """Run queued callbacks in order, including ones they schedule."""
-        while self._queue:
-            self._queue.pop(0)(0.0)
-
-
 class TestDoublePressToggle:
     """Two rapid presses must resolve as "go, then come back", not twice one way."""
 
@@ -816,8 +781,8 @@ class TestDoublePressToggle:
         monkeypatch: pytest.MonkeyPatch,
         fake_window: MagicMock,
         backend: _FakeBackend,
-    ) -> tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock]:
-        clock = _QueuedClock()
+    ) -> tuple[WindowModeController, WindowManager, FakeClock, MagicMock]:
+        clock = FakeClock()
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
         monkeypatch.setattr(window_utils_module, "Clock", clock)
         monkeypatch.setattr(
@@ -834,7 +799,7 @@ class TestDoublePressToggle:
 
     def test_double_press_from_windowed_ends_windowed(
         self,
-        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+        race_setup: tuple[WindowModeController, WindowManager, FakeClock, MagicMock],
     ) -> None:
         ctrl, wm, clock, fake_window = race_setup
         fake_window.fullscreen = False
@@ -852,7 +817,7 @@ class TestDoublePressToggle:
 
     def test_double_press_from_fullscreen_ends_fullscreen(
         self,
-        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+        race_setup: tuple[WindowModeController, WindowManager, FakeClock, MagicMock],
     ) -> None:
         ctrl, wm, clock, fake_window = race_setup
         fake_window.fullscreen = True
@@ -867,7 +832,7 @@ class TestDoublePressToggle:
 
     def test_target_mirrors_actual_state_when_settled(
         self,
-        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+        race_setup: tuple[WindowModeController, WindowManager, FakeClock, MagicMock],
     ) -> None:
         _ctrl, wm, _clock, fake_window = race_setup
         fake_window.fullscreen = False

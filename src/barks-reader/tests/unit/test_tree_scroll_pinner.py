@@ -11,25 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_reader.core.tap_targets import layout_settling
+from barks_reader.core.testing import FakeClock
 from barks_reader.ui.tree_scroll_pinner import TreeScrollPinner
-
-
-class _FakeClock:
-    """Captures scheduled callbacks so the settle loop can be ticked by hand."""
-
-    def __init__(self) -> None:
-        self.pending: list = []
-
-    def schedule_once(self, callback, _timeout) -> object:  # noqa: ANN001
-        self.pending.append(callback)
-        return object()
-
-    def run_next(self) -> bool:
-        """Run the next scheduled callback. Returns False if nothing was pending."""
-        if not self.pending:
-            return False
-        self.pending.pop(0)(0.0)
-        return True
 
 
 def _make_scroll_view(*, has_children: bool = True, cont_height: float = 500.0) -> MagicMock:
@@ -51,7 +34,7 @@ def _make_parent_node() -> MagicMock:
 
 
 def test_no_children_returns_without_scheduling() -> None:
-    clock = _FakeClock()
+    clock = FakeClock()
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: _make_scroll_view(has_children=False),
         on_settled=MagicMock(),
@@ -66,7 +49,7 @@ def test_no_children_returns_without_scheduling() -> None:
 
 
 def test_populate_runs_and_settle_loop_is_scheduled() -> None:
-    clock = _FakeClock()
+    clock = FakeClock()
     pinner = TreeScrollPinner(
         get_scroll_view=_make_scroll_view,
         on_settled=MagicMock(),
@@ -81,7 +64,7 @@ def test_populate_runs_and_settle_loop_is_scheduled() -> None:
 
 
 def test_populate_none_skips_populate_but_still_schedules() -> None:
-    clock = _FakeClock()
+    clock = FakeClock()
     pinner = TreeScrollPinner(
         get_scroll_view=_make_scroll_view,
         on_settled=MagicMock(),
@@ -94,7 +77,7 @@ def test_populate_none_skips_populate_but_still_schedules() -> None:
 
 
 def test_settle_stops_when_parent_closed() -> None:
-    clock = _FakeClock()
+    clock = FakeClock()
     on_settled = MagicMock()
     pinner = TreeScrollPinner(
         get_scroll_view=_make_scroll_view,
@@ -112,7 +95,7 @@ def test_settle_stops_when_parent_closed() -> None:
 
 
 def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
-    clock = _FakeClock()
+    clock = FakeClock()
     on_settled = MagicMock()
     scroll_view = _make_scroll_view()
     # sv top stays at window-y 0; parent starts 140px below at pin, ends 100px below
@@ -141,7 +124,7 @@ def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
 
 def test_tap_target_answers_wait_until_the_pin_settles() -> None:
     """Between an expand and its scroll correction the tree is not where it will be."""
-    clock = _FakeClock()
+    clock = FakeClock()
     pinner = TreeScrollPinner(
         get_scroll_view=_make_scroll_view,
         on_settled=MagicMock(),
@@ -162,7 +145,7 @@ def test_a_pin_that_never_starts_holds_nothing() -> None:
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: _make_scroll_view(has_children=False),
         on_settled=MagicMock(),
-        schedule_once=_FakeClock().schedule_once,
+        schedule_once=FakeClock().schedule_once,
     )
     pinner.pin_while_populating(_make_parent_node(), populate=None)
     assert not layout_settling()
@@ -170,7 +153,7 @@ def test_a_pin_that_never_starts_holds_nothing() -> None:
 
 def test_a_container_that_goes_missing_is_waited_for_then_given_up_on() -> None:
     """The tree's container can be swapped out mid-settle: wait, but not for ever."""
-    clock = _FakeClock()
+    clock = FakeClock()
     on_settled = MagicMock()
     scroll_view = _make_scroll_view()
     pinner = TreeScrollPinner(

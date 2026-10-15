@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_manager
@@ -20,7 +20,7 @@ from barks_reader.core.navigation import (
     WikiIndexDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.ui.screen_bundle import ScreenBundle
+from barks_reader.core.testing import fake_fanta_info
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
@@ -29,42 +29,16 @@ from barks_reader.ui.tree_view_nodes import (
 )
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-
-
-def _fake_fanta() -> FantaComicBookInfo:
-    """Sentinel fanta_info — identity-comparable, not type-checked at runtime."""
-    return cast("FantaComicBookInfo", object())
+    from barks_reader.ui.screen_bundle import ScreenBundle
 
 
 @pytest.fixture
-def screen_mocks() -> dict[str, MagicMock]:
-    return {
-        "tree_view": MagicMock(),
-        "bottom_title_view": MagicMock(),
-        "fun_image_view": MagicMock(),
-        "main_index": MagicMock(),
-        "speech_index": MagicMock(),
-        "names_index": MagicMock(),
-        "locations_index": MagicMock(),
-        "statistics": MagicMock(),
-        "history": MagicMock(),
-        "search": MagicMock(),
-    }
-
-
-@pytest.fixture
-def mock_screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
-    return ScreenBundle(**screen_mocks)
-
-
-@pytest.fixture
-def mock_dependencies(mock_screens: ScreenBundle) -> dict[str, Any]:
+def mock_dependencies(screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
     nav_coordinator.update_title.return_value = True
     return {
         "renderer": MagicMock(),
-        "screens": mock_screens,
+        "screens": screens,
         "nav_coordinator": nav_coordinator,
     }
 
@@ -92,7 +66,7 @@ class TestTreeViewManager:
         mock_dependencies: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         node = MagicMock(spec=TitleTreeViewNode)
         node.get_name.return_value = "Title Node"
         node.destination = TitleDestination(fanta_info=fanta)
@@ -312,7 +286,7 @@ class TestTreeViewManager:
     def test_on_title_row_button_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         button = MagicMock()
         button.parent.destination = TitleDestination(fanta_info=fanta)
         button.parent.parent_node.destination = None
@@ -326,7 +300,7 @@ class TestTreeViewManager:
     def test_on_title_row_button_pressed_with_tag(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         button = MagicMock()
         button.parent.destination = TitleDestination(fanta_info=fanta)
         button.parent.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
@@ -340,7 +314,7 @@ class TestTreeViewManager:
     ) -> None:
         # A pick under a 'Choose for me' node keeps the themed top view
         # (character/decade backdrop) instead of re-rolling a generic image.
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         button = MagicMock()
         button.parent.destination = TitleDestination(fanta_info=fanta)
         button.parent.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
@@ -353,7 +327,7 @@ class TestTreeViewManager:
     def test_render_title_node_without_scroll(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
     ) -> None:
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         node = MagicMock(spec=TitleTreeViewNode)
         node.destination = TitleDestination(fanta_info=fanta)
 
@@ -370,7 +344,7 @@ class TestTreeViewManager:
         # Arrow-key navigation renders titles through render_title_node: picks
         # under a 'Choose for me' node keep the themed top view there too.
         node = MagicMock(spec=TitleTreeViewNode)
-        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.destination = TitleDestination(fanta_info=fake_fanta_info())
         node.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
 
         tree_view_manager.render_title_node(node)
@@ -384,7 +358,7 @@ class TestTreeViewManager:
         # Arrow keys and the saved-node restore at boot render titles here: one under a
         # tag carries the tag, as a click on its row does, so its goto page is offered.
         node = MagicMock(spec=TitleTreeViewNode)
-        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.destination = TitleDestination(fanta_info=fake_fanta_info())
         node.parent_node.destination = TagDestination(tag=Tags.AWFULTONIANS)
 
         tree_view_manager.render_title_node(node)
@@ -396,7 +370,7 @@ class TestTreeViewManager:
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
-        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.destination = TitleDestination(fanta_info=fake_fanta_info())
         node.parent_node = None
 
         tree_view_manager.render_title_node(node)
@@ -408,7 +382,7 @@ class TestTreeViewManager:
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
-        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.destination = TitleDestination(fanta_info=fake_fanta_info())
 
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.render_title_node(node, scroll_to=True)
@@ -423,7 +397,7 @@ class TestTreeViewManager:
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
-        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.destination = TitleDestination(fanta_info=fake_fanta_info())
 
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.activate_node(node)
@@ -455,7 +429,7 @@ class TestTreeViewManager:
     ) -> None:
         # A tag holding a single title skips the tag's own view and goes straight
         # to the title, keeping the top view (no fun-image flicker in between).
-        fanta = _fake_fanta()
+        fanta = fake_fanta_info()
         only_title = MagicMock(spec=TitleTreeViewNode)
         only_title.destination = TitleDestination(fanta_info=fanta)
 

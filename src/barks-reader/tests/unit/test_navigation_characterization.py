@@ -14,7 +14,7 @@ They target gaps in existing coverage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.navigation_coordinator
@@ -29,8 +29,8 @@ from barks_reader.core.navigation import (
     TitleDestination,
 )
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
+from barks_reader.core.testing import fake_fanta_info
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
-from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
@@ -39,38 +39,18 @@ from barks_reader.ui.tree_view_nodes import (
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from barks_reader.ui.screen_bundle import ScreenBundle
 
 # --- Shared fixtures ------------------------------------------------------
 
 
 @pytest.fixture
-def screen_mocks() -> dict[str, MagicMock]:
-    return {
-        "tree_view": MagicMock(),
-        "bottom_title_view": MagicMock(),
-        "fun_image_view": MagicMock(),
-        "main_index": MagicMock(),
-        "speech_index": MagicMock(),
-        "names_index": MagicMock(),
-        "locations_index": MagicMock(),
-        "statistics": MagicMock(),
-        "history": MagicMock(),
-        "search": MagicMock(),
-    }
-
-
-@pytest.fixture
-def mock_screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
-    return ScreenBundle(**screen_mocks)
-
-
-@pytest.fixture
-def tvm_deps(mock_screens: ScreenBundle) -> dict[str, Any]:
+def tvm_deps(screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
     nav_coordinator.update_title.return_value = True
     return {
         "renderer": MagicMock(),
-        "screens": mock_screens,
+        "screens": screens,
         "nav_coordinator": nav_coordinator,
     }
 
@@ -78,11 +58,6 @@ def tvm_deps(mock_screens: ScreenBundle) -> dict[str, Any]:
 @pytest.fixture
 def tree_view_manager(tvm_deps: dict[str, Any]) -> TreeViewManager:
     return TreeViewManager(**tvm_deps)
-
-
-def _fake_fanta() -> FantaComicBookInfo:
-    """Sentinel fanta_info — identity-comparable, not type-checked at runtime."""
-    return cast("FantaComicBookInfo", object())
 
 
 def _make_title_node(fanta_info: FantaComicBookInfo) -> MagicMock:
@@ -98,7 +73,7 @@ def _make_title_node(fanta_info: FantaComicBookInfo) -> MagicMock:
 def test_title_node_selection_passes_fanta_info_in_title_target(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     node = _make_title_node(fanta)
 
     tree_view_manager._handle_title_node_selection(node)
@@ -117,7 +92,7 @@ def test_title_node_selection_passes_fanta_info_in_title_target(
 def test_title_row_button_pressed_no_tag_when_parent_has_no_tag_destination(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     button = MagicMock()
     button.parent.destination = TitleDestination(fanta_info=fanta)
     button.parent.parent_node.destination = None
@@ -132,7 +107,7 @@ def test_title_row_button_pressed_no_tag_when_parent_has_no_tag_destination(
 def test_title_row_button_pressed_extracts_tag_from_tag_parent(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     button = MagicMock()
     button.parent.destination = TitleDestination(fanta_info=fanta)
     button.parent.parent_node.destination = TagDestination(tag=Tags.AIRPLANES)
@@ -147,7 +122,7 @@ def test_title_row_button_pressed_extracts_tag_from_tag_parent(
 def test_title_row_button_pressed_extracts_tag_from_tag_group_parent(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     button = MagicMock()
     button.parent.destination = TitleDestination(fanta_info=fanta)
     button.parent.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
@@ -166,7 +141,7 @@ def _parent_with_single_title_child(
     parent_destination: Destination | None = None,
 ) -> tuple[MagicMock, MagicMock, FantaComicBookInfo]:
     """Build (parent, only_child_title, fanta_info_sentinel)."""
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     child = _make_title_node(fanta)
     parent = MagicMock(spec=ButtonTreeViewNode)
     parent.nodes = [child]
@@ -223,7 +198,7 @@ def test_auto_select_single_child_ignores_non_title_children(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
     """Only the TitleTreeViewNode child should be picked, not sibling buttons."""
-    fanta = _fake_fanta()
+    fanta = fake_fanta_info()
     title_child = _make_title_node(fanta)
     sibling_button = MagicMock(spec=ButtonTreeViewNode)
     parent = MagicMock(spec=ButtonTreeViewNode)

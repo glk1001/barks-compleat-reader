@@ -13,6 +13,8 @@ from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -24,33 +26,7 @@ from barks_reader.core.view_snapshot import (
     TopViewSnapshot,
     ViewSnapshot,
 )
-from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.snapshot_applicator import SnapshotApplicator
-
-
-def _make_screen_mocks() -> dict[str, MagicMock]:
-    return {
-        "tree_view": MagicMock(),
-        "bottom_title_view": MagicMock(),
-        "fun_image_view": MagicMock(),
-        "main_index": MagicMock(),
-        "speech_index": MagicMock(),
-        "names_index": MagicMock(),
-        "locations_index": MagicMock(),
-        "statistics": MagicMock(),
-        "history": MagicMock(),
-        "search": MagicMock(),
-    }
-
-
-@pytest.fixture
-def screen_mocks() -> dict[str, MagicMock]:
-    return _make_screen_mocks()
-
-
-@pytest.fixture
-def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
-    return ScreenBundle(**screen_mocks)
 
 
 @pytest.fixture

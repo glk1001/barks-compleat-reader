@@ -7,10 +7,12 @@ I/O, and without the global `random` module's state.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
     from barks_reader.core.ports import PaletteId
     from barks_reader.core.reader_colors import Color
@@ -88,6 +90,99 @@ class FakeScheduler:
                 if interval.cancelled:
                     break
                 interval.callback()
+
+
+# ----------------------------------------------------------------------
+# Clock
+# ----------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class _ScheduledOnce:
+    """One ``schedule_once`` call, and the handle Kivy would return for it."""
+
+    callback: Callable[[float], None]
+    timeout: float
+    fired: bool = False
+    cancelled: bool = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+class FakeClock:
+    """A stand-in for Kivy's ``Clock`` whose ``schedule_once`` callbacks fire on demand.
+
+    ``calls`` is every ``schedule_once`` made, oldest first, as (callback, timeout);
+    ``pending`` the callbacks not yet fired or cancelled. ``run_next()`` fires the
+    oldest pending one, ``fire_last()`` the most recently scheduled, ``drain()`` every
+    pending one in order, including those they schedule. With ``immediate=True`` a
+    callback runs as it is scheduled. The handles cancel, as Kivy's do, and a
+    cancelled callback never fires.
+    """
+
+    def __init__(self, *, immediate: bool = False) -> None:
+        self._immediate = immediate
+        self._scheduled: list[_ScheduledOnce] = []
+
+    @property
+    def calls(self) -> list[tuple[Callable[[float], None], float]]:
+        """Return every ``schedule_once`` call so far, oldest first."""
+        return [(s.callback, s.timeout) for s in self._scheduled]
+
+    @property
+    def pending(self) -> list[Callable[[float], None]]:
+        """Return the callbacks scheduled but not yet fired or cancelled, oldest first."""
+        return [s.callback for s in self._scheduled if not s.fired and not s.cancelled]
+
+    def schedule_once(
+        self, callback: Callable[[float], None], timeout: float = 0
+    ) -> _ScheduledOnce:
+        """Record the call, running it at once in immediate mode; return its handle."""
+        scheduled = _ScheduledOnce(callback, timeout)
+        self._scheduled.append(scheduled)
+        if self._immediate:
+            self._fire(scheduled)
+        return scheduled
+
+    @staticmethod
+    def schedule_interval(callback: Callable[[float], None], interval: float) -> _ScheduledOnce:
+        """Return a cancellable handle; the interval never fires."""
+        return _ScheduledOnce(callback, interval)
+
+    @staticmethod
+    def _fire(scheduled: _ScheduledOnce) -> None:
+        scheduled.fired = True
+        scheduled.callback(0.0)
+
+    def run_next(self) -> bool:
+        """Fire the oldest pending callback; False when there is none."""
+        for scheduled in self._scheduled:
+            if not scheduled.fired and not scheduled.cancelled:
+                self._fire(scheduled)
+                return True
+        return False
+
+    def fire_last(self) -> None:
+        """Fire the most recently scheduled callback, unless it was cancelled."""
+        last = self._scheduled[-1]
+        if not last.cancelled:
+            self._fire(last)
+
+    def drain(self) -> None:
+        """Fire every pending callback in order, including the ones they schedule."""
+        while self.run_next():
+            pass
+
+
+# ----------------------------------------------------------------------
+# Navigation payloads
+# ----------------------------------------------------------------------
+
+
+def fake_fanta_info() -> FantaComicBookInfo:
+    """Return a sentinel ``FantaComicBookInfo``: compared by identity, never dereferenced."""
+    return cast("FantaComicBookInfo", object())
 
 
 # ----------------------------------------------------------------------

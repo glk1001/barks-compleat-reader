@@ -8,7 +8,7 @@ python-platform = "linux"
 # tests via sys.path, so it is a first-party root too; likewise the GUI test
 # directory, whose conftest puts its barks_gui helper package on sys.path, and the
 # barks-fantagraphics tests, whose conftest does the same for title_page_allowlists.
-root = [".", "scripts", "src/barks-reader/tests/gui", "src/barks-fantagraphics/tests"]
+root = [".", "scripts", "src/barks-reader/tests/gui", "src/barks-reader/tests/unit", "src/barks-fantagraphics/tests"]
 
 [src]
 exclude = [

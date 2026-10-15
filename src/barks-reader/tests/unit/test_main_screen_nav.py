@@ -18,11 +18,12 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
 )
-from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode, TitleTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
+    from barks_reader.ui.screen_bundle import ScreenBundle
 
 
 class FakeTrigger:
@@ -57,27 +58,6 @@ def fake_trigger() -> FakeTrigger:
 @pytest.fixture
 def fake_time() -> list[float]:
     return [0.0]
-
-
-@pytest.fixture
-def screen_mocks() -> dict[str, MagicMock]:
-    return {
-        "tree_view": MagicMock(),
-        "bottom_title_view": MagicMock(),
-        "fun_image_view": MagicMock(),
-        "main_index": MagicMock(),
-        "speech_index": MagicMock(),
-        "names_index": MagicMock(),
-        "locations_index": MagicMock(),
-        "statistics": MagicMock(),
-        "history": MagicMock(),
-        "search": MagicMock(),
-    }
-
-
-@pytest.fixture
-def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
-    return ScreenBundle(**screen_mocks)
 
 
 @pytest.fixture

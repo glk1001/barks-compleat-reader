@@ -44,6 +44,7 @@ from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ViewPipeline
 from barks_reader.core.view_request import ViewRequest
+from view_pipeline_factory import scheduler_of, selector_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -157,16 +158,6 @@ _EXPECTED_TOP_VIEW_IMAGE: dict[ViewStates, ImageInfo] = {
 }
 
 
-def _selector(pipeline: ViewPipeline) -> MagicMock:
-    """Return the pipeline's image_selector as a MagicMock for assertion access."""
-    return pipeline.__dict__["_image_selector"]
-
-
-def _scheduler(pipeline: ViewPipeline) -> FakeScheduler:
-    """Return the pipeline's scheduler as the concrete fake, for interval assertions."""
-    return pipeline.__dict__["_scheduler"]
-
-
 def _make_dispatch_pipeline() -> ViewPipeline:
     """Create a pipeline whose every top-view image source is separately identifiable."""
     reader_settings = MagicMock()
@@ -261,7 +252,7 @@ class TestTopViewDispatchTable:
 
         dispatch_pipeline._set_next_top_view_image()
 
-        _selector(dispatch_pipeline).get_random_image.assert_called_once_with(
+        selector_of(dispatch_pipeline).get_random_image.assert_called_once_with(
             [f"list:{ALL_LISTS}"],
             file_types=vp_module._TOP_VIEW_IMAGE_TYPES,
             use_only_edited_if_possible=True,
@@ -269,7 +260,7 @@ class TestTopViewDispatchTable:
 
     def test_each_render_rearms_the_rotation_timer(self, dispatch_pipeline: ViewPipeline) -> None:
         """A stale interval must be cancelled, not left firing alongside the new one."""
-        scheduler = _scheduler(dispatch_pipeline)
+        scheduler = scheduler_of(dispatch_pipeline)
         dispatch_pipeline._view_state = ViewStates.ON_THE_STORIES_NODE
 
         dispatch_pipeline._set_next_top_view_image()
@@ -347,6 +338,6 @@ class TestPlaylistContext:
         with patch.object(dispatch_pipeline, "_get_themed_image") as themed:
             dispatch_pipeline._get_next_fun_view_image_info()
         themed.assert_not_called()
-        _selector(dispatch_pipeline).get_random_image.assert_called_once_with(
+        selector_of(dispatch_pipeline).get_random_image.assert_called_once_with(
             ["pool"], file_types=set(), use_adaptive_fit_mode=True
         )
