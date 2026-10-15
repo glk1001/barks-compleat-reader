@@ -243,7 +243,7 @@ collect their logs. They live outside any repo; each one's header says what it a
 | `greg-dell` | greg-dell ([above](#asleep-with-no-keyboard)) | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
 | `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
 | `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill` |
-| `overnight-pair` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
+| `overnight-local` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
 | `overnight-logs` | five machines' run logs ([below](#the-logs-collected)), copied here | `[--wake] [machine...]` |
 
 - **`gmktec run`** wakes it if need be and starts `~/bin/nightly-job` there in the tmux
@@ -257,28 +257,29 @@ collect their logs. They live outside any repo; each one's header says what it a
   the Task Scheduler task "Barks Reader overnight now"; macOS: a Terminal window, which
   holds the permissions the GUI stages need), and `stop` shuts the VM's OS down, refused
   while a run is going.
-- **`overnight-pair`** runs them one at a time, since run together they share the main
+- **`overnight-local`** runs them one at a time, since run together they share the main
   machine's 16 threads and fail each other's timing budgets: win-vm (about 2 h), then
   mac-vm (about 1.5 h), each VM shut down after its run, then the main machine's own run
   (`~/bin/nightly-job`, about 3h50m). `--no-pc` leaves out the main machine's run;
-  `--suspend` suspends the main machine when all are done. It runs in the tmux session
-  `overnight-pair` (`tmux attach -t overnight-pair`) with sleep inhibited, and logs to
-  `~/.local/state/overnight-pair/<stamp>.log`. At the end the session stays open, showing
-  `finished: press Enter`, so the output can still be read. The next start closes a
-  finished session by itself, and refuses only while a run is still going;
-  `overnight-pair status` tells the two apart (`finished at 20:58:33; its session is
+  `--suspend` suspends the main machine when all are done. One start is a round. It runs
+  in the tmux session `overnight-local` (`tmux attach -t overnight-local`) with sleep
+  inhibited, and logs to `~/.local/state/overnight-local/<stamp>.log`. (Until 2026-10-16
+  it was `overnight-pair`, from when it ran the two VMs only.) At the end the session
+  stays open, showing `finished: press Enter`, so the output can still be read. The next
+  start closes a finished session by itself, and refuses only while a run is still going;
+  `overnight-local status` tells the two apart (`finished at 20:58:33; its session is
   still open`, against `going`).
-- **`overnight-pair status`** then shows each machine (win-vm, mac-vm, the main machine)
+- **`overnight-local status`** then shows each machine (win-vm, mac-vm, the main machine)
   with one line for its run. A VM that is off has its newest run read from the copied
   logs ([below](#the-logs-collected)).
 
   | Label | The run |
   |---|---|
-  | `this pair's run:` | started after the pair did, so it is this pair's |
-  | `current run:` | going, with no pair session open (started by hand) |
-  | `last run:` | an earlier one: the machine's turn in the pair has not come yet, or there is no pair |
-  | `last run (not in this pair: --no-pc):` | the main machine's, when the pair skips it |
-  | `last run (no run in this pair):` | a finished pair did not run the machine (a VM that failed to start, say) |
+  | `this round's run:` | started after the round did, so it is this round's |
+  | `current run:` | going, with no round's session open (started by hand) |
+  | `last run:` | an earlier one: the machine's turn in the round has not come yet, or there is no round |
+  | `last run (not in this round: --no-pc):` | the main machine's, when the round skips it |
+  | `last run (no run in this round):` | a finished round did not run the machine (a VM that failed to start, say) |
 
   A run still going is followed by a `last run:` line for the machine's newest earlier run
   that finished, as a guide to how long this one will take:
@@ -287,7 +288,7 @@ collect their logs. They live outside any repo; each one's header says what it a
   win-vm (WinDev2202Eval): running
     desktop: up
     run: GOING (task 'Barks Reader overnight now' running)
-    this pair's run: 20261015-225354 (880385c7): 3 of 9 stages done
+    this round's run: 20261015-225354 (880385c7): 3 of 9 stages done
     last run: 20261015-172236 (5b3b7a7f): finished in 2h02m
   ```
 
@@ -311,11 +312,15 @@ laptops (win_lg, hp-notebook) are not among them: their runs' logs stay on them.
   all five. With `--wake` first, it wakes gmktec or greg-dell if asleep and puts it back
   to sleep after the copy (only one it woke, and never while a run is going); the VMs
   are never started.
-- **When**: `overnight-pair` copies each VM's logs before shutting it down, and the main
+- **When**: `overnight-local` copies each VM's logs before shutting it down, and the main
   machine's after its run. gmktec's and greg-dell's 01:00 runs end while the main machine
   may be asleep, so a user timer on the main machine, `overnight-logs.timer` (in
   `~/.config/systemd/user/`), runs `overnight-logs --wake gmktec greg-dell` at 07:00. It
   does not wake the main machine: a 07:00 missed while it slept runs when it next wakes
-  or boots (`Persistent=true`). Its output: `journalctl --user -u overnight-logs`.
+  or boots (`Persistent=true`). That run starts the moment the main machine resumes,
+  before its network is back, so `--wake` first waits up to 2 minutes for NetworkManager
+  to report `connected`: without it, the magic packets failed with "Network is
+  unreachable" and both machines were skipped (2026-10-16). A machine that does not wake
+  fails the service. Its output: `journalctl --user -u overnight-logs`.
 - **greg-dell**'s ssh shell is PowerShell, which is no pipe for binary output, so its logs
   go through a tar file in its home folder and `scp`; the others stream a tar over ssh.
