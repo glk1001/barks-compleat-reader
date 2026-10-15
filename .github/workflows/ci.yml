@@ -17,7 +17,7 @@ env:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -44,7 +44,7 @@ jobs:
 
   type-check:
     name: Type Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -72,7 +72,7 @@ jobs:
 
   import-layering:
     name: Import Layering
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -96,12 +96,12 @@ jobs:
 
   spell-check:
     name: Spell Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -116,7 +116,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
           - os: macos-latest
           - os: windows-latest
     runs-on: ${{ matrix.os }}
@@ -191,7 +191,7 @@ jobs:
     # rationale). A PR is held to its base branch; a push to main, to the commit main
     # was at before the push - commits go straight to main here, so a PR-only check
     # never ran.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:

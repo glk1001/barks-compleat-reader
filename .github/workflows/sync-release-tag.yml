@@ -27,7 +27,7 @@ jobs:
     # become the app's fallback tag. The shell re-checks with the stricter shape the
     # website itself uses (/^v\d/), which a GitHub expression cannot express.
     if: ${{ startsWith(github.event.release.tag_name, 'v') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
