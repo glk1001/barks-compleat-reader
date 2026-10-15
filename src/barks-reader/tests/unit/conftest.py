@@ -9,6 +9,8 @@ renderer through scripts/macos/with-soft-gl.sh; all three run them.
 
 from __future__ import annotations
 
+import ast
+import functools
 import os
 import sys
 from dataclasses import fields
@@ -95,31 +97,36 @@ def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
     return ScreenBundle(**screen_mocks)
 
 
-_UI_IMPORT_PREFIXES = ("barks_reader.ui", "kivy.uix", "kivy.core.window")
+_UI_IMPORT_PREFIXES = ("barks_reader.ui", "kivy")
+
+
+@functools.cache
+def _module_imports_ui(mod_file: str) -> bool:
+    """Return True if the module at ``mod_file`` imports from ``barks_reader.ui`` or Kivy.
+
+    Read from its import statements, at module scope or inside a test, so a mention
+    in a comment or docstring does not count and a local import does.
+    """
+    try:
+        tree = ast.parse(Path(mod_file).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names = [node.module or ""]
+        elif isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        else:
+            continue
+        if any(name.startswith(_UI_IMPORT_PREFIXES) for name in names):
+            return True
+    return False
 
 
 def _test_imports_ui(item: pytest.Item) -> bool:
     """Return True if the test's module imports Kivy UI code."""
-    module = getattr(item, "module", None)
-    if module is None:
-        return False
-    # Check the module's direct imports (already loaded into sys.modules).
-    for name in list(sys.modules):
-        if any(name.startswith(prefix) for prefix in _UI_IMPORT_PREFIXES):
-            # The module itself might not be the one importing UI code,
-            # but checking the test file's source is more reliable.
-            break
-    else:
-        return False
-
-    # More precise: check the test file's own imports.
-    mod_file = getattr(module, "__file__", "") or ""
-    try:
-        with Path(mod_file).open(encoding="utf-8") as f:
-            source = f.read()
-    except OSError:
-        return False
-    return any(prefix in source for prefix in ("from barks_reader.ui", "from kivy"))
+    mod_file = getattr(getattr(item, "module", None), "__file__", None)
+    return bool(mod_file) and _module_imports_ui(mod_file)
 
 
 # noinspection PyUnusedLocal
