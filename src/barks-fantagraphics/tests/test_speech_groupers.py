@@ -391,99 +391,86 @@ class TestRenumberGroups:
         assert list(json_data["groups"].keys()) == ["0", "1"]
         assert json_data["groups"]["0"]["ai_text"] == "A"
 
-    def test_out_of_order_panel_nums_renumbered(self) -> None:
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(panel_num=2, ai_text="B"),
-                "1": _make_group_entry(panel_num=1, ai_text="A"),
-            }
-        )
+    # Each row: the groups as keyed in the JSON, and the ai_text order the renumber
+    # must leave them in under keys "0", "1", ...
+    @pytest.mark.parametrize(
+        ("entries", "expected_texts"),
+        [
+            pytest.param(
+                {
+                    "0": _make_group_entry(panel_num=2, ai_text="B"),
+                    "1": _make_group_entry(panel_num=1, ai_text="A"),
+                },
+                ["A", "B"],
+                id="by panel",
+            ),
+            pytest.param(
+                {
+                    "0": _make_group_entry(panel_num=-1, ai_text="pg"),
+                    "1": _make_group_entry(panel_num=1, ai_text="real"),
+                },
+                ["real", "pg"],
+                id="panel -1 last",
+            ),
+            pytest.param(
+                {
+                    "0": _make_group_entry(
+                        panel_num=1, ai_text="bottom", text_box=[[50, 300], [150, 400]]
+                    ),
+                    "1": _make_group_entry(
+                        panel_num=1, ai_text="top", text_box=[[50, 0], [150, 100]]
+                    ),
+                },
+                ["top", "bottom"],
+                id="by y bucket within a panel",
+            ),
+            pytest.param(
+                {
+                    "0": _make_group_entry(
+                        panel_num=1, ai_text="right", text_box=[[500, 0], [600, 50]]
+                    ),
+                    "1": _make_group_entry(
+                        panel_num=1, ai_text="left", text_box=[[0, 0], [100, 50]]
+                    ),
+                },
+                ["left", "right"],
+                id="by x within a y bucket",
+            ),
+            pytest.param(
+                # y values 10 and 40 both bucket to 0: the order is by x, not y.
+                {
+                    "0": _make_group_entry(
+                        panel_num=1,
+                        ai_text="right-slightly-higher",
+                        text_box=[[500, 10], [600, 60]],
+                    ),
+                    "1": _make_group_entry(
+                        panel_num=1, ai_text="left-slightly-lower", text_box=[[0, 40], [100, 90]]
+                    ),
+                },
+                ["left-slightly-lower", "right-slightly-higher"],
+                id="a small y difference is one row",
+            ),
+            pytest.param(
+                {
+                    "0": _make_group_entry(panel_num=1, ai_text="A"),
+                    "5": _make_group_entry(panel_num=2, ai_text="B"),
+                },
+                ["A", "B"],
+                id="keys made sequential",
+            ),
+        ],
+    )
+    def test_groups_are_reordered_and_rekeyed(
+        self, entries: dict[str, dict], expected_texts: list[str]
+    ) -> None:
+        json_data = _make_json_content(entries)
         spg = _make_speech_page_group(speech_page_json=json_data)
 
         assert spg.renumber_groups() is True
         groups = json_data["groups"]
-        assert list(groups.keys()) == ["0", "1"]
-        assert groups["0"]["ai_text"] == "A"
-        assert groups["1"]["ai_text"] == "B"
-
-    def test_panel_minus_one_sorts_last(self) -> None:
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(panel_num=-1, ai_text="pg"),
-                "1": _make_group_entry(panel_num=1, ai_text="real"),
-            }
-        )
-        spg = _make_speech_page_group(speech_page_json=json_data)
-
-        assert spg.renumber_groups() is True
-        groups = json_data["groups"]
-        assert groups["0"]["ai_text"] == "real"
-        assert groups["1"]["ai_text"] == "pg"
-
-    def test_sorts_by_y_bucket_within_panel(self) -> None:
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(
-                    panel_num=1, ai_text="bottom", text_box=[[50, 300], [150, 400]]
-                ),
-                "1": _make_group_entry(panel_num=1, ai_text="top", text_box=[[50, 0], [150, 100]]),
-            }
-        )
-        spg = _make_speech_page_group(speech_page_json=json_data)
-
-        assert spg.renumber_groups() is True
-        groups = json_data["groups"]
-        assert groups["0"]["ai_text"] == "top"
-        assert groups["1"]["ai_text"] == "bottom"
-
-    def test_sorts_by_x_within_same_y_bucket(self) -> None:
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(
-                    panel_num=1, ai_text="right", text_box=[[500, 0], [600, 50]]
-                ),
-                "1": _make_group_entry(panel_num=1, ai_text="left", text_box=[[0, 0], [100, 50]]),
-            }
-        )
-        spg = _make_speech_page_group(speech_page_json=json_data)
-
-        assert spg.renumber_groups() is True
-        groups = json_data["groups"]
-        assert groups["0"]["ai_text"] == "left"
-        assert groups["1"]["ai_text"] == "right"
-
-    def test_small_y_difference_treated_as_same_row(self) -> None:
-        # y values 10 and 40 both bucket to 0 — order must be by x, not y
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(
-                    panel_num=1, ai_text="right-slightly-higher", text_box=[[500, 10], [600, 60]]
-                ),
-                "1": _make_group_entry(
-                    panel_num=1, ai_text="left-slightly-lower", text_box=[[0, 40], [100, 90]]
-                ),
-            }
-        )
-        spg = _make_speech_page_group(speech_page_json=json_data)
-
-        assert spg.renumber_groups() is True
-        groups = json_data["groups"]
-        assert groups["0"]["ai_text"] == "left-slightly-lower"
-        assert groups["1"]["ai_text"] == "right-slightly-higher"
-
-    def test_renumbers_non_sequential_keys(self) -> None:
-        json_data = _make_json_content(
-            {
-                "0": _make_group_entry(panel_num=1, ai_text="A"),
-                "5": _make_group_entry(panel_num=2, ai_text="B"),
-            }
-        )
-        spg = _make_speech_page_group(speech_page_json=json_data)
-
-        assert spg.renumber_groups() is True
-        assert list(json_data["groups"].keys()) == ["0", "1"]
-        assert json_data["groups"]["0"]["ai_text"] == "A"
-        assert json_data["groups"]["1"]["ai_text"] == "B"
+        assert list(groups.keys()) == [str(i) for i in range(len(expected_texts))]
+        assert [group["ai_text"] for group in groups.values()] == expected_texts
 
     def test_empty_groups_returns_false(self) -> None:
         json_data = _make_json_content()

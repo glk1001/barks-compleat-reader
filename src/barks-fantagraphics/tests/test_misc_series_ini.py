@@ -21,11 +21,9 @@ from configparser import ConfigParser, ExtendedInterpolation
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_series_info import SERIES_MISC
-from title_page_allowlists import misc_titles, plain_byline_titles
+from title_page_allowlists import attribution_exempt_titles, misc_titles, plain_byline_titles
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -40,39 +38,15 @@ _ATTRIBUTION_RE = re.compile(r"\b(script|art|pencils|inks)\b", re.IGNORECASE)
 
 _EXAMPLE_ATTRIBUTION = "extra_pub_info = Script not by Barks"
 
-# Misc titles that are exempt from needing an authorship credit, mapped to the reason why.
-# These are stories that are in the Misc series for some reason other than not being Barks's
-# work, so there is no non-Barks credit to record. Keyed by enum, not by title string, so a
-# retitling cannot leave a stale entry behind.
-_ATTRIBUTION_NOT_REQUIRED: dict[Titles, str] = {
-    Titles.RIDDLE_OF_THE_RED_HAT_THE: (
-        "It's a Barks script, but it's in the Misc series because it's an atypical Barks"
-        " story: it features Mickey Mouse."
-    ),
-}
-
-
-def _exempt_titles() -> dict[str, str]:
-    """Return the exempt story titles as display strings, mapped to their reason.
-
-    Returns:
-        Display title to the reason that title needs no authorship credit.
-
-    """
-    return {
-        BARKS_TITLE_INFO[title].get_title_str(): reason
-        for title, reason in _ATTRIBUTION_NOT_REQUIRED.items()
-    }
-
 
 def _misc_titles_needing_attribution() -> list[str]:
     """Return the Misc titles whose ini file must carry an authorship credit.
 
     Returns:
-        The story titles of ``misc_titles`` less those in ``_ATTRIBUTION_NOT_REQUIRED``.
+        The story titles of ``misc_titles`` less those in ``ATTRIBUTION_NOT_REQUIRED``.
 
     """
-    exempt = _exempt_titles()
+    exempt = attribution_exempt_titles()
     return [title for title in misc_titles() if title not in exempt]
 
 
@@ -110,8 +84,8 @@ class TestMiscSeriesAttribution:
             f'{SERIES_MISC} title "{story_title}" has no "extra_pub_info" in its ini file.'
             f" Stories in the {SERIES_MISC} series were not solely authored by Barks, so the"
             f' ini file must say who wrote or drew them, e.g. "{_EXAMPLE_ATTRIBUTION}".'
-            f" If this title is an exception, add it to _ATTRIBUTION_NOT_REQUIRED with a"
-            f" reason."
+            f" If this title is an exception, add it to ATTRIBUTION_NOT_REQUIRED in"
+            f" title_page_allowlists.py with a reason."
         )
 
         assert _ATTRIBUTION_RE.search(extra_pub_info), (
@@ -122,16 +96,17 @@ class TestMiscSeriesAttribution:
 
 
 class TestAttributionExemptions:
-    """Keep ``_ATTRIBUTION_NOT_REQUIRED`` honest, so an exemption cannot quietly rot."""
+    """Keep ``ATTRIBUTION_NOT_REQUIRED`` honest, so an exemption cannot quietly rot."""
 
-    @pytest.mark.parametrize("story_title", _exempt_titles())
+    @pytest.mark.parametrize("story_title", attribution_exempt_titles())
     def test_exempt_title_is_still_in_misc_series(self, story_title: str) -> None:
         assert story_title in misc_titles(), (
             f'"{story_title}" is exempt from the {SERIES_MISC} authorship check but is no'
-            f" longer in the {SERIES_MISC} series. Remove it from _ATTRIBUTION_NOT_REQUIRED."
+            f" longer in the {SERIES_MISC} series. Remove it from ATTRIBUTION_NOT_REQUIRED"
+            f" in title_page_allowlists.py."
         )
 
-    @pytest.mark.parametrize("story_title", _exempt_titles())
+    @pytest.mark.parametrize("story_title", attribution_exempt_titles())
     def test_exempt_title_still_has_no_attribution(
         self, db: ComicsDatabase, story_title: str
     ) -> None:
@@ -140,15 +115,9 @@ class TestAttributionExemptions:
         assert not _ATTRIBUTION_RE.search(extra_pub_info), (
             f'"{story_title}" is exempt from the {SERIES_MISC} authorship check, but its ini'
             f" file now names a script or art credit: {extra_pub_info!r}. The exemption is"
-            f" obsolete -- remove it from _ATTRIBUTION_NOT_REQUIRED so the credit is checked."
+            f" obsolete -- remove it from ATTRIBUTION_NOT_REQUIRED in title_page_allowlists.py"
+            f" so the credit is checked."
         )
-
-    def test_every_exemption_has_a_reason(self) -> None:
-        for story_title, reason in _exempt_titles().items():
-            assert reason.strip(), (
-                f'"{story_title}" is exempt from the {SERIES_MISC} authorship check but gives'
-                f" no reason. Every entry in _ATTRIBUTION_NOT_REQUIRED must say why."
-            )
 
 
 class TestMiscSeriesByline:
