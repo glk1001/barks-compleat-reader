@@ -212,15 +212,15 @@ class TestOnePagerCollection:
 
 
 class TestOnePagerCollectionBuild:
-    def test_collection_allows_added_body_pages(self) -> None:
+    def test_collection_allows_added_body_pages(self, db: ComicsDatabase) -> None:
         """The collection's BODY pages may be ADDED fixes (staged FANTA_01 extras).
 
         This lets upscayl/restore build one-pagers not already part of another comic;
         a normal title rejects an ADDED BODY page.
         """
-        comic = ComicsDatabase(for_building_comics=False).get_comic_book("All One-Pagers")
+        comic = db.get_comic_book("All One-Pagers")
         assert comic._is_added_fixes_special_case("500", PageType.BODY) is True  # noqa: SLF001
 
-    def test_regular_comic_disallows_added_body_pages(self) -> None:
-        comic = ComicsDatabase(for_building_comics=False).get_comic_book("Sheriff of Bullet Valley")
+    def test_regular_comic_disallows_added_body_pages(self, db: ComicsDatabase) -> None:
+        comic = db.get_comic_book("Sheriff of Bullet Valley")
         assert comic._is_added_fixes_special_case("999", PageType.BODY) is False  # noqa: SLF001

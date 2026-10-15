@@ -18,14 +18,17 @@ from __future__ import annotations
 
 import re
 from configparser import ConfigParser, ExtendedInterpolation
+from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
-from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_series_info import SERIES_MISC
 from title_page_allowlists import misc_titles, plain_byline_titles
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.comics_database import ComicsDatabase
 
 # An attribution names who did the script and/or the art. The wording varies a lot -- from a
 # bare 'Script not by Barks', through 'Script by Vic Lockman', to the Daan Jippes titles that
@@ -91,12 +94,6 @@ def _get_extra_pub_info(db: ComicsDatabase, story_title: str) -> str:
     config.read(ini_file)
 
     return config["info"].get("extra_pub_info", "")
-
-
-@pytest.fixture(scope="module")
-def db() -> ComicsDatabase:
-    """Real ComicsDatabase (reads story-titles INI files, no filesystem comic dirs needed)."""
-    return ComicsDatabase(for_building_comics=False)
 
 
 class TestMiscSeriesAttribution:

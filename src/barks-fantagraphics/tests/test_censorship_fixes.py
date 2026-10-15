@@ -51,12 +51,6 @@ ONE_PAGER = Titles.DINER_DILEMMA
 ONE_PAGER_STR = ENUM_TO_STR_TITLE[ONE_PAGER]
 
 
-@pytest.fixture(scope="module")
-def db() -> ComicsDatabase:
-    """Real ComicsDatabase (reads story-titles INI files, no comic dirs needed)."""
-    return ComicsDatabase(for_building_comics=False)
-
-
 class TestAOnePagerIsNotADatabaseStory:
     """The premise the rest of this file rests on - stated, so it cannot drift silently."""
 

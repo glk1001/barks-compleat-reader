@@ -10,12 +10,15 @@ catches it wherever the credits say so, Misc or not.
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
 from barks_fantagraphics.comic_book_info import TITLES_WITHOUT_TITLE_PAGE
-from barks_fantagraphics.comics_database import ComicsDatabase
 from title_page_allowlists import misc_titles, plain_byline_titles
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.comics_database import ComicsDatabase
 
 # A credit naming another scriptwriter: "Script not by Barks", "Script by Vic Lockman",
 # "Script: Bob Karp", or "script and finished art by Don Rosa"; but not "Script and layout
@@ -27,9 +30,8 @@ _OTHER_SCRIPT_RE = re.compile(
 
 
 @pytest.fixture(scope="module")
-def other_script_bylines() -> dict[str, str]:
+def other_script_bylines(db: ComicsDatabase) -> dict[str, str]:
     """Each story whose credits name another scriptwriter, mapped to its byline."""
-    db = ComicsDatabase(for_building_comics=False)
     bylines = {}
     for title in db.get_all_story_titles():
         if title in TITLES_WITHOUT_TITLE_PAGE:

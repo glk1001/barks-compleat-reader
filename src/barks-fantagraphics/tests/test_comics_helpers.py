@@ -23,11 +23,13 @@ from barks_fantagraphics.comics_helpers import (
     get_volume_and_page,
     validate_ini_files_against_barks_titles,
 )
-from barks_fantagraphics.panel_boxes import PagePanelBoxes, PanelBox
+from panel_factories import make_page_panel_boxes, make_panel_box
 from PIL import Image
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from barks_fantagraphics.panel_boxes import PagePanelBoxes, PanelBox
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,10 +44,6 @@ def _make_fanta_info(is_barks: bool = True) -> MagicMock:
     info = MagicMock()
     info.comic_book_info.is_barks_title = is_barks
     return info
-
-
-def _make_panel_box(panel_num: int, x0: int, y0: int, x1: int, y1: int) -> PanelBox:
-    return PanelBox(panel_num=panel_num, x0=x0, y0=y0, x1=x1, y1=y1, w=x1 - x0, h=y1 - y0)
 
 
 # ---------------------------------------------------------------------------
@@ -395,17 +393,11 @@ class TestDrawPanelBoundsOnImage:
 
     @staticmethod
     def _make_page_panel_boxes(panels: list[PanelBox], overall: PanelBox) -> PagePanelBoxes:
-        return PagePanelBoxes(
-            page_num="001",
-            page_width=100,
-            page_height=200,
-            overall_bounds=overall,
-            panel_boxes=panels,
-        )
+        return make_page_panel_boxes(panels, overall, page_width=100, page_height=200)
 
     def _one_panel_page(self) -> PagePanelBoxes:
-        panel = _make_panel_box(1, *self.PANEL)
-        overall = _make_panel_box(0, 0, 0, 100, 200)
+        panel = make_panel_box(1, *self.PANEL)
+        overall = make_panel_box(0, 0, 0, 100, 200)
         return self._make_page_panel_boxes([panel], overall)
 
     @staticmethod
@@ -414,7 +406,7 @@ class TestDrawPanelBoundsOnImage:
 
     def test_no_panels_draws_only_the_overall_bound(self) -> None:
         image = self._white_page()
-        ppb = self._make_page_panel_boxes([], _make_panel_box(0, 0, 0, 100, 200))
+        ppb = self._make_page_panel_boxes([], make_panel_box(0, 0, 0, 100, 200))
 
         assert draw_panel_bounds_on_image(image, ppb) is True
 
@@ -448,17 +440,11 @@ class TestDrawPanelBoundsOnImage:
     def test_every_panel_is_outlined(self) -> None:
         image = Image.new("RGB", (200, 400), "white")
         panels = [
-            _make_panel_box(1, 0, 0, 100, 200),
-            _make_panel_box(2, 100, 200, 200, 400),
+            make_panel_box(1, 0, 0, 100, 200),
+            make_panel_box(2, 100, 200, 200, 400),
         ]
-        overall = _make_panel_box(0, 0, 0, 200, 400)
-        ppb = PagePanelBoxes(
-            page_num="001",
-            page_width=200,
-            page_height=400,
-            overall_bounds=overall,
-            panel_boxes=panels,
-        )
+        overall = make_panel_box(0, 0, 0, 200, 400)
+        ppb = make_page_panel_boxes(panels, overall, page_width=200, page_height=400)
 
         draw_panel_bounds_on_image(image, ppb)
 
@@ -472,7 +458,7 @@ class TestDrawPanelBoundsOnImage:
 # ---------------------------------------------------------------------------
 
 
-def _body_page(filename: str) -> MagicMock:
+def _mock_body_page(filename: str) -> MagicMock:
     return MagicMock(page_filenames=filename, page_type=PageType.BODY)
 
 
@@ -486,7 +472,7 @@ class TestGetVolumeAndPage:
         comic = db.get_comic_book.return_value
         comic.get_fanta_volume.return_value = volume
         cover = MagicMock(page_filenames="001", page_type=PageType.FRONT)
-        comic.page_images_in_order = [cover, *(_body_page(p) for p in pages)]
+        comic.page_images_in_order = [cover, *(_mock_body_page(p) for p in pages)]
         return db
 
     def test_no_page_given_is_the_first_body_page(self) -> None:

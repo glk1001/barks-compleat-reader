@@ -15,6 +15,7 @@ from barks_fantagraphics.search_ports import CorpusTextTotals
 from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.speech_groupers import OcrTypes
 from barks_fantagraphics.speech_markup import strip_markup
+from barks_fantagraphics.testing.whoosh_index import build_test_index
 from barks_fantagraphics.whoosh_search_engine import (
     ENTITY_TYPES,
     SearchEngine,
@@ -262,29 +263,18 @@ class TestFindEntities:
     @pytest.fixture
     def index_dir(self, tmp_path: Path) -> Path:
         """Create a temporary Whoosh index with a test document."""
-        from whoosh.index import create_in
-
-        # The production schema, so a field change cannot leave this test
-        # passing against a stale hand-copied duplicate.
-        index = create_in(str(tmp_path), build_index_schema())
-        writer = index.writer()
-        writer.add_document(
-            title="Bongo on the Congo",
-            fanta_vol="26",
-            fanta_page="074",
-            comic_page="6",
-            content_id="16",
-            panel_num="7",
-            unstemmed="qwak qwaks are a terrible voodoo cult of the duk duk tribe",
-            content_raw="QWAK QWAKS ARE A TERRIBLE VOODOO CULT OF THE DUK DUK TRIBE",
-            entities_person="Duk Duk,Qwak Qwaks",
-            entities_location="",
-            entities_org="",
-            entities_work="",
-            entities_misc="",
-        )
-        writer.commit()
-        return tmp_path
+        doc = {
+            "title": "Bongo on the Congo",
+            "fanta_vol": "26",
+            "fanta_page": "074",
+            "comic_page": "6",
+            "content_id": "16",
+            "panel_num": "7",
+            "unstemmed": "qwak qwaks are a terrible voodoo cult of the duk duk tribe",
+            "content_raw": "QWAK QWAKS ARE A TERRIBLE VOODOO CULT OF THE DUK DUK TRIBE",
+            "entities_person": "Duk Duk,Qwak Qwaks",
+        }
+        return build_test_index(tmp_path, [doc])
 
     def test_multi_word_entity_found(self, index_dir: Path) -> None:
         engine = SearchEngine(index_dir)
@@ -425,51 +415,27 @@ class TestCollectAndSortResults:
 
 
 def _build_words_index(tmp_path: Path) -> Path:
-    from whoosh.index import create_in
+    def doc(title: str, vol: str, page: str, group: str, speaker: str, text: str) -> dict[str, str]:
+        return {
+            "title": title,
+            "fanta_vol": vol,
+            "fanta_page": page,
+            "comic_page": "1",
+            "content_id": group,
+            "panel_num": "1",
+            "speaker": speaker,
+            "unstemmed": text,
+            "content_raw": "RAW",
+        }
 
-    # The production schema, so a field change cannot leave this test passing
-    # against a stale hand-copied duplicate.
-    index = create_in(str(tmp_path), build_index_schema())
-    writer = index.writer()
-    common = {
-        "comic_page": "1",
-        "panel_num": "1",
-        "content_raw": "RAW",
-        "entities_person": "",
-        "entities_location": "",
-        "entities_org": "",
-        "entities_work": "",
-        "entities_misc": "",
-    }
-    writer.add_document(
-        title="Alpha",
-        fanta_vol="10",
-        fanta_page="001",
-        content_id="5",
-        speaker="Scrooge",
-        unstemmed="the magic voodoo spell",
-        **common,
+    return build_test_index(
+        tmp_path,
+        [
+            doc("Alpha", "10", "001", "5", "Scrooge", "the magic voodoo spell"),
+            doc("Beta", "20", "003", "8", "Donald", "voodoo strikes again"),
+            doc("Beta", "20", "004", "2", "", "voodoo once more"),  # no speaker call
+        ],
     )
-    writer.add_document(
-        title="Beta",
-        fanta_vol="20",
-        fanta_page="003",
-        content_id="8",
-        speaker="Donald",
-        unstemmed="voodoo strikes again",
-        **common,
-    )
-    writer.add_document(
-        title="Beta",
-        fanta_vol="20",
-        fanta_page="004",
-        content_id="2",
-        speaker="",  # no speaker call on this group
-        unstemmed="voodoo once more",
-        **common,
-    )
-    writer.commit()
-    return tmp_path
 
 
 class TestFindWords:
@@ -610,39 +576,32 @@ class TestGetCorpusTextTotals:
         `_stored_<field>` convention), so a totals pass that forgets to strip
         counts the markup as words.
         """
-        from whoosh.index import create_in
 
-        index = create_in(str(tmp_path), build_index_schema())
-        writer = index.writer()
-        common = {
-            "entities_person": "",
-            "entities_location": "",
-            "entities_org": "",
-            "entities_work": "",
-            "entities_misc": "",
-        }
-
-        def add(title: str, vol: str, page: str, panel: str, raw: str, group: str) -> None:
-            writer.add_document(
-                title=title,
-                fanta_vol=vol,
-                fanta_page=page,
-                comic_page="1",
-                content_id=group,
-                panel_num=panel,
-                unstemmed=strip_markup(raw),
-                content_raw=strip_markup(raw),
-                _stored_content_raw=raw,
-                **common,
-            )
+        def doc(
+            title: str, vol: str, page: str, panel: str, raw: str, group: str
+        ) -> dict[str, str]:
+            return {
+                "title": title,
+                "fanta_vol": vol,
+                "fanta_page": page,
+                "comic_page": "1",
+                "content_id": group,
+                "panel_num": panel,
+                "unstemmed": strip_markup(raw),
+                "content_raw": strip_markup(raw),
+                "_stored_content_raw": raw,
+            }
 
         # Two groups share a page and a panel; the third is a second page.
-        add("Alpha", "10", "001", "1", "[b] ONE TWO [/b]", "1")
-        add("Alpha", "10", "001", "1", "THREE", "2")
-        add("Alpha", "10", "002", "3", "FOUR FIVE", "3")
-        add("Beta", "20", "001", "1", "SIX", "4")
-        writer.commit()
-        return tmp_path
+        return build_test_index(
+            tmp_path,
+            [
+                doc("Alpha", "10", "001", "1", "[b] ONE TWO [/b]", "1"),
+                doc("Alpha", "10", "001", "1", "THREE", "2"),
+                doc("Alpha", "10", "002", "3", "FOUR FIVE", "3"),
+                doc("Beta", "20", "001", "1", "SIX", "4"),
+            ],
+        )
 
     def test_totals_over_the_whole_index(self, index_dir: Path) -> None:
         totals = SearchEngine(index_dir).get_corpus_text_totals()
@@ -657,9 +616,7 @@ class TestGetCorpusTextTotals:
         assert SearchEngine(index_dir).get_corpus_text_totals().num_words == 6
 
     def test_empty_index_totals_are_zero(self, tmp_path: Path) -> None:
-        from whoosh.index import create_in
-
-        create_in(str(tmp_path), build_index_schema())
+        build_test_index(tmp_path)
 
         totals = SearchEngine(tmp_path).get_corpus_text_totals()
 

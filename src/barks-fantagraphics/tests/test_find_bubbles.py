@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_fantagraphics.search_query import AnyTerm, Near, Phrase, SearchLeaf
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
-from barks_fantagraphics.whoosh_search_engine import SearchEngine, build_index_schema
+from barks_fantagraphics.testing.whoosh_index import build_test_index, schema_tokens
+from barks_fantagraphics.whoosh_search_engine import SearchEngine
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -44,42 +45,31 @@ CORPUS = [
 ]
 
 
-def _analyzer_tokens(text: str) -> list[str]:
-    analyzer = build_index_schema()["unstemmed"].analyzer
-    return [token.text for token in analyzer(text)]
-
-
 def _build_index(tmp_path: Path) -> Path:
-    from whoosh.index import create_in  # noqa: PLC0415
-
-    index = create_in(str(tmp_path), build_index_schema())
-    writer = index.writer()
-    for bubble in CORPUS:
-        writer.add_document(
-            title=bubble.title,
-            fanta_vol=str(bubble.fanta_vol),
-            fanta_page=bubble.fanta_page,
-            comic_page=bubble.comic_page,
-            content_id=bubble.group_id,
-            panel_num=str(bubble.panel_num),
-            speaker=bubble.speaker or "",
-            unstemmed=bubble.text,
-            content_raw=bubble.text,
-            entities_person="",
-            entities_location="",
-            entities_org="",
-            entities_work="",
-            entities_misc="",
-        )
-    writer.commit()
-    return tmp_path
+    return build_test_index(
+        tmp_path,
+        [
+            {
+                "title": bubble.title,
+                "fanta_vol": str(bubble.fanta_vol),
+                "fanta_page": bubble.fanta_page,
+                "comic_page": bubble.comic_page,
+                "content_id": bubble.group_id,
+                "panel_num": str(bubble.panel_num),
+                "speaker": bubble.speaker or "",
+                "unstemmed": bubble.text,
+                "content_raw": bubble.text,
+            }
+            for bubble in CORPUS
+        ],
+    )
 
 
 @pytest.fixture(params=["whoosh", "fake"])
 def engine(request: pytest.FixtureRequest, tmp_path: Path) -> FullTextSearchPort:
     if request.param == "whoosh":
         return SearchEngine(_build_index(tmp_path))
-    return InMemoryFullTextSearch(bubbles=list(CORPUS), tokenize=_analyzer_tokens)
+    return InMemoryFullTextSearch(bubbles=list(CORPUS), tokenize=schema_tokens)
 
 
 def _found(title_dict: TitleDict) -> dict[str, tuple[int, dict[str, list[str]]]]:

@@ -24,6 +24,7 @@ from barks_fantagraphics.search_ports import (
 from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
+from barks_fantagraphics.testing.whoosh_index import build_test_index
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
 
 if TYPE_CHECKING:
@@ -412,10 +413,7 @@ class TestFacadePassesItsArgumentsOn:
         assert str(raised.value) == 'No usable search index in "does-not-exist".'
 
     def test_an_index_there_is_opened_from_its_folder(self, tmp_path: Path) -> None:
-        from barks_fantagraphics.whoosh_search_engine import build_index_schema  # noqa: PLC0415
-        from whoosh.index import create_in  # noqa: PLC0415
-
-        create_in(str(tmp_path), build_index_schema())
+        build_test_index(tmp_path)
         assert ComicSearch(tmp_path).get_speakers() == {}  # opened, and empty
 
     def test_three_letters_no_title_starts_fall_back_to_titles_holding_them(self) -> None:

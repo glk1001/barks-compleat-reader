@@ -24,7 +24,8 @@ from barks_fantagraphics.search_query import (
 from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import MAX_WILDCARD_TERMS, TermLexicon
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
-from barks_fantagraphics.whoosh_search_engine import MY_STOP_WORDS, build_index_schema
+from barks_fantagraphics.testing.whoosh_index import schema_tokens
+from barks_fantagraphics.whoosh_search_engine import MY_STOP_WORDS
 
 PIRATE = ENUM_TO_STR_TITLE[Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]  # 1942, volume 1
 BEAR = ENUM_TO_STR_TITLE[Titles.CHRISTMAS_ON_BEAR_MOUNTAIN]  # 1947, volume 5
@@ -43,19 +44,14 @@ CORPUS = [
 ]
 
 
-def _tokens(text: str) -> list[str]:
-    analyzer = build_index_schema()["unstemmed"].analyzer
-    return [token.text for token in analyzer(text)]
-
-
 @pytest.fixture
 def fake() -> InMemoryFullTextSearch:
-    return InMemoryFullTextSearch(bubbles=list(CORPUS), tokenize=_tokens)
+    return InMemoryFullTextSearch(bubbles=list(CORPUS), tokenize=schema_tokens)
 
 
 @pytest.fixture
 def lexicon() -> TermLexicon:
-    return TermLexicon(sorted({t for b in CORPUS for t in _tokens(b.text)}))
+    return TermLexicon(sorted({t for b in CORPUS for t in schema_tokens(b.text)}))
 
 
 def _stories(text: str, fake: InMemoryFullTextSearch, lexicon: TermLexicon) -> list[str]:

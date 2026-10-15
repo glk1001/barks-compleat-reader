@@ -204,12 +204,6 @@ class TestComicsDatabaseStaticMethods:
 
 
 @pytest.fixture(scope="module")
-def db() -> ComicsDatabase:
-    """Real ComicsDatabase (reads story-titles INI files, no filesystem comic dirs needed)."""
-    return ComicsDatabase(for_building_comics=False)
-
-
-@pytest.fixture(scope="module")
 def known_title(db: ComicsDatabase) -> str:
     """Return any title that is confirmed to be in the story-titles database."""
     titles = db.get_all_story_titles()

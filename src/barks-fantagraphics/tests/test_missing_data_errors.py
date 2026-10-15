@@ -15,8 +15,8 @@ from unittest.mock import MagicMock
 import pytest
 from barks_fantagraphics.comics_database import _build_comic_book
 from barks_fantagraphics.ocr_file_paths import OCR_PRELIM_DIR_ENV_VAR, get_ocr_prelim_dir
-from barks_fantagraphics.whoosh_search_engine import SearchEngine, build_index_schema
-from whoosh.index import create_in
+from barks_fantagraphics.testing.whoosh_index import build_test_index
+from barks_fantagraphics.whoosh_search_engine import SearchEngine
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,8 +25,7 @@ if TYPE_CHECKING:
 class TestIndexSidecars:
     @pytest.fixture
     def engine(self, tmp_path: Path) -> SearchEngine:
-        create_in(str(tmp_path), build_index_schema())
-        return SearchEngine(tmp_path)
+        return SearchEngine(build_test_index(tmp_path))
 
     @pytest.mark.parametrize("getter", ["get_cleaned_terms", "get_cleaned_alpha_split_terms"])
     def test_a_missing_sidecar_asks_for_a_rebuild(self, engine: SearchEngine, getter: str) -> None:

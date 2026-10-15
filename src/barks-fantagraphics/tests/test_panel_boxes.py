@@ -19,34 +19,11 @@ from barks_fantagraphics.panel_boxes import (
     TitlePanelBoxes,
     check_page_panel_boxes,
 )
+from panel_factories import make_page_panel_boxes
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_panel_box(
-    panel_num: int = 1,
-    x0: int = 10,
-    y0: int = 20,
-    x1: int = 100,
-    y1: int = 200,
-) -> PanelBox:
-    return PanelBox(panel_num=panel_num, x0=x0, y0=y0, x1=x1, y1=y1, w=x1 - x0, h=y1 - y0)
-
-
-def _make_page_panel_boxes(
-    page_width: int = 800,
-    page_height: int = 600,
-) -> PagePanelBoxes:
-    overall = _make_panel_box(0, 0, 0, page_width - 1, page_height - 1)
-    return PagePanelBoxes(
-        page_num="001",
-        page_width=page_width,
-        page_height=page_height,
-        overall_bounds=overall,
-        panel_boxes=[],
-    )
 
 
 def _make_panel_segments_json(
@@ -374,20 +351,20 @@ class TestGetPagePanelBoxesOnePager:
 
 class TestCheckPagePanelBoxes:
     def test_matching_dimensions_no_error(self) -> None:
-        ppb = _make_page_panel_boxes(page_width=800, page_height=600)
+        ppb = make_page_panel_boxes(page_width=800, page_height=600)
         check_page_panel_boxes((800, 600), ppb)  # should not raise
 
     def test_width_mismatch_raises(self) -> None:
-        ppb = _make_page_panel_boxes(page_width=800, page_height=600)
+        ppb = make_page_panel_boxes(page_width=800, page_height=600)
         with pytest.raises(RuntimeError, match="width"):
             check_page_panel_boxes((900, 600), ppb)
 
     def test_height_mismatch_raises(self) -> None:
-        ppb = _make_page_panel_boxes(page_width=800, page_height=600)
+        ppb = make_page_panel_boxes(page_width=800, page_height=600)
         with pytest.raises(RuntimeError, match="height"):
             check_page_panel_boxes((800, 700), ppb)
 
     def test_both_mismatch_raises_on_width_first(self) -> None:
-        ppb = _make_page_panel_boxes(page_width=800, page_height=600)
+        ppb = make_page_panel_boxes(page_width=800, page_height=600)
         with pytest.raises(RuntimeError, match="width"):
             check_page_panel_boxes((900, 700), ppb)
