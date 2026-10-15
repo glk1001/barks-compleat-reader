@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.ui import platform_window_utils as window_utils_module
 from barks_reader.ui.platform_window_utils import (
     FullscreenEnum,
     KivyWindowBackend,
@@ -126,8 +127,8 @@ def manager(
     fake_clock: MagicMock,
     backend: _FakeBackend,
 ) -> ManagerFixture:
-    monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
+    monkeypatch.setattr(window_utils_module, "Window", fake_window)
+    monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
 
     on_first_resize = MagicMock()
     on_finished_windowed = MagicMock()
@@ -262,7 +263,7 @@ class TestGotoWindowedMode:
         # the sentinel geometry) — it leaves the geometry and finishes the transition.
         wm, callbacks, on_first_resize, on_finished_windowed, _ = manager
         fake_logger = MagicMock()
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+        monkeypatch.setattr(window_utils_module, "logger", fake_logger)
         fake_window.fullscreen = True
         # No save_state_now(): _saved_window_state is still the sentinel default.
 
@@ -303,7 +304,7 @@ class TestStaticHelpers:
 
 class TestWindowState:
     def test_save_state_now(self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
         state = WindowState()
         fake_window.fullscreen = False
         fake_window.size = (800, 600)
@@ -320,7 +321,7 @@ class TestWindowState:
         self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Window.size reads 2x on a Retina Mac; saved as read, a restore doubled it."""
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
         fake_window.size = (1748, 2730)
         type(fake_window).system_size = property(lambda _w: (874, 1365))
         state = WindowState()
@@ -333,7 +334,7 @@ class TestWindowState:
     def test_is_saved_state_same_as_current(
         self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
         state = WindowState()
         state.size = (1200, 1800)
         state.pos = (100, 50)
@@ -346,7 +347,7 @@ class TestWindowState:
     def test_get_current_screen_mode(
         self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
         fake_window.fullscreen = False
         assert WindowState.get_current_screen_mode() == FullscreenEnum.WINDOWED
         fake_window.fullscreen = True
@@ -450,7 +451,7 @@ class TestFinishRestore:
         wm, callbacks, *_ = manager
 
         fake_logger = MagicMock()
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+        monkeypatch.setattr(window_utils_module, "logger", fake_logger)
 
         # Saved state differs from current Window geometry.
         wm._saved_window_state.size = (1200, 1800)
@@ -473,7 +474,7 @@ class TestFinishRestore:
         wm, callbacks, *_ = manager
 
         fake_logger = MagicMock()
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+        monkeypatch.setattr(window_utils_module, "logger", fake_logger)
 
         # Saved state matches current Window geometry.
         wm._saved_window_state.size = (1200, 1800)
@@ -534,8 +535,8 @@ class TestInterleavedTransitions:
         fake_clock: MagicMock,
         deferred_backend: _DeferredRestoreBackend,
     ) -> WindowManager:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
         monkeypatch.setattr(
             "barks_reader.ui.platform_window_utils._create_window_backend",
             lambda: deferred_backend,
@@ -640,8 +641,8 @@ class TestInterleavedTransitions:
         # window heading fullscreen and retires the transition — no backend
         # restore is ever scheduled, and no windowed callbacks fire.
         clock = _QueuedClock()
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", clock)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Clock", clock)
         monkeypatch.setattr(
             "barks_reader.ui.platform_window_utils._create_window_backend",
             lambda: backend,
@@ -667,7 +668,7 @@ class TestInterleavedTransitions:
 
 class TestKivyWindowBackend:
     def test_save_state(self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
         backend = KivyWindowBackend()
         state = WindowState()
         fake_window.fullscreen = False
@@ -685,7 +686,7 @@ class TestKivyWindowBackend:
         fake_window: MagicMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
 
         fake_clock = MagicMock()
 
@@ -695,7 +696,7 @@ class TestKivyWindowBackend:
             return MagicMock()
 
         fake_clock.schedule_once.side_effect = run_callback
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
+        monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
 
         backend = KivyWindowBackend()
         state = WindowState(size=(1024, 768), pos=(50, 50))
@@ -720,8 +721,8 @@ class TestWindowModeController:
         fake_window: MagicMock,
         fake_clock: MagicMock,
     ) -> tuple[WindowModeController, MagicMock, WindowModeCallbacks]:
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Clock", fake_clock)
         window_manager = MagicMock()
         callbacks = WindowModeCallbacks(
             on_windowed_first_resize=MagicMock(),
@@ -817,8 +818,8 @@ class TestDoublePressToggle:
         backend: _FakeBackend,
     ) -> tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock]:
         clock = _QueuedClock()
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
-        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", clock)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "Clock", clock)
         monkeypatch.setattr(
             "barks_reader.ui.platform_window_utils._create_window_backend",
             lambda: backend,

@@ -20,6 +20,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
+from barks_reader.ui import app_window_geometry as geometry_module
 from barks_reader.ui.app_window_geometry import (
     MOVE_SETTLE_DELAY,
     RESIZE_CORRECTION_DELAY,
@@ -140,9 +141,9 @@ def helper(
     fake_clock: _FakeClock,
     fake_metrics: MagicMock,
 ) -> AppWindowGeometryHelper:
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -217,9 +218,9 @@ def test_resize_skipped_when_window_not_ready(
     fake_metrics = MagicMock()
     fake_metrics.get_monitor_for_pos.return_value = screen
     fake_metrics.get_primary_screen_info.return_value = screen
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -380,9 +381,9 @@ def _make_helper_two_monitors(
     fake_metrics.get_monitor_for_pos.return_value = monitor_a
     fake_metrics.get_primary_screen_info.return_value = monitor_a
 
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -432,9 +433,9 @@ def test_on_window_pos_change_skipped_when_same_monitor(
     fake_metrics = MagicMock()
     fake_metrics.get_monitor_for_pos.return_value = screen
     fake_metrics.get_primary_screen_info.return_value = screen
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -455,9 +456,9 @@ def test_on_window_pos_change_skipped_when_monitor_is_none(
     fake_metrics.get_primary_screen_info.return_value = screen
     # First call (constructor) returns a monitor; subsequent calls return None.
     fake_metrics.get_monitor_for_pos.side_effect = [screen, None]
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -534,9 +535,9 @@ def test_rotation_detected_triggers_guarded_resize(
     # rotation check) returns True to indicate rotation was detected.
     fake_metrics.refresh.return_value = True
 
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -572,9 +573,9 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
     # Return a monitor at construction, then None for all subsequent lookups.
     fake_metrics.get_monitor_for_pos.side_effect = [screen, None, None, None]
 
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
@@ -630,9 +631,9 @@ def _helper_with_metrics(
     fake_clock: _FakeClock,
     fake_metrics: MagicMock,
 ) -> AppWindowGeometryHelper:
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
     h = AppWindowGeometryHelper(constraints)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
@@ -732,9 +733,9 @@ def _make_retina_helper(
     fake_metrics = MagicMock()
     fake_metrics.get_monitor_for_pos.return_value = screen
     fake_metrics.get_primary_screen_info.return_value = screen
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", window)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
-    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+    monkeypatch.setattr(geometry_module, "Window", window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
     # The action bar is dp(45): 90 pixels there.
     h = AppWindowGeometryHelper(
