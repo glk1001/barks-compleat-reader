@@ -244,7 +244,7 @@ collect their logs. They live outside any repo; each one's header says what it a
 | `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
 | `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill` |
 | `overnight-pair` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
-| `overnight-logs` | five machines' run logs ([below](#the-logs-collected)), copied here | `[machine...]` |
+| `overnight-logs` | five machines' run logs ([below](#the-logs-collected)), copied here | `[--wake] [machine...]` |
 
 - **`gmktec run`** wakes it if need be and starts `~/bin/nightly-job` there in the tmux
   session `nightly-job-now`, sleep blocked; woken for it, gmktec suspends again when the
@@ -282,10 +282,14 @@ laptops (win_lg, hp-notebook) are not among them: their runs' logs stay on them.
   run finishes.
 - **From where**: only the machines that are up. It wakes and starts nothing, and reports
   the rest as skipped. `overnight-logs gmktec win-vm` names the machines; no names means
-  all five.
+  all five. With `--wake` first, it wakes gmktec or greg-dell if asleep and puts it back
+  to sleep after the copy (only one it woke, and never while a run is going); the VMs
+  are never started.
 - **When**: `overnight-pair` copies each VM's logs before shutting it down, and the main
-  machine's after its run. Nothing copies gmktec's or greg-dell's runs by itself, since
-  their 01:00 runs happen while the main machine may be asleep: `gmktec wake` (or
-  `greg-dell wake`), `overnight-logs`, then `gmktec sleep` (or `greg-dell sleep`).
+  machine's after its run. gmktec's and greg-dell's 01:00 runs end while the main machine
+  may be asleep, so a user timer on the main machine, `overnight-logs.timer` (in
+  `~/.config/systemd/user/`), runs `overnight-logs --wake gmktec greg-dell` at 07:00. It
+  does not wake the main machine: a 07:00 missed while it slept runs when it next wakes
+  or boots (`Persistent=true`). Its output: `journalctl --user -u overnight-logs`.
 - **greg-dell**'s ssh shell is PowerShell, which is no pipe for binary output, so its logs
   go through a tar file in its home folder and `scp`; the others stream a tar over ssh.
