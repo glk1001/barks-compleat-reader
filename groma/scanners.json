@@ -1,0 +1,37 @@
+{
+  "scanners": [
+    {
+      "id": "python",
+      "source": "@groma/scanner-python@0.2.1",
+      "include": [
+        "**/*.py",
+        "**/pyproject.toml",
+        "**/setup.cfg",
+        "**/requirements.txt"
+      ],
+      "exclude": [
+        ".venv/",
+        "venv/",
+        "__pycache__/",
+        "test/",
+        "tests/",
+        "test_*.py",
+        "*_test.py",
+        "conftest.py",
+        "build/",
+        "dist/"
+      ]
+    }
+  ],
+  "exclude": [
+    "/experiments/",
+    "/scripts/",
+    "/scraps/",
+    "/docs/",
+    "/vulture_whitelist.py",
+    "/src/barks-fantagraphics/scraps/",
+    "/src/barks-fantagraphics/scripts/",
+    "**/testing/",
+    "/main_build_stub.py"
+  ]
+}

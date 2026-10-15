@@ -88,6 +88,7 @@ getmouselocation
 getpid
 getpixel
 graphify
+groma
 hardbreak
 headlessly
 hidinput

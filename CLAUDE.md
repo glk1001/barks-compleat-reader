@@ -193,3 +193,14 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   than a sleep. A GUI test presses only the remote's six keys (Escape, Return, Up, Down,
   Left, Right): `scripts/check_gui_keys.py` (pre-commit, CI, full-lint) fails on any other,
   unless the call carries `# desktop key: <why>`.
+
+<!-- groma:start -->
+## Groma
+
+This project uses Groma. Before you scan, inspect, or curate architecture, or change files for a Backlog task, run `groma agent-instructions` and read the guide it names for that job. When it reports a first scan, ask the user whether they want you to curate the architecture. Do not edit Groma-owned architecture files directly.
+<!-- groma:end -->
+
+The map under `groma/` is the maintainer's own aid to understanding the code, written in
+their words: Claude drafts a component's files and the questions its description should
+answer, the maintainer writes the description, Claude checks it. The plan, the structure
+and the stages are `docs/plans/architecture-map.md`. Do not write descriptions unasked.
