@@ -262,8 +262,12 @@ collect their logs. They live outside any repo; each one's header says what it a
   mac-vm (about 1.5 h), each VM shut down after its run, then the main machine's own run
   (`~/bin/nightly-job`, about 3h50m). `--no-pc` leaves out the main machine's run;
   `--suspend` suspends the main machine when all are done. It runs in the tmux session
-  `overnight-pair` (`tmux attach -t overnight-pair`; at the end it waits for Enter) with
-  sleep inhibited, and logs to `~/.local/state/overnight-pair/<stamp>.log`.
+  `overnight-pair` (`tmux attach -t overnight-pair`) with sleep inhibited, and logs to
+  `~/.local/state/overnight-pair/<stamp>.log`. At the end the session stays open, showing
+  `finished: press Enter`, so the output can still be read. The next start closes a
+  finished session by itself, and refuses only while a run is still going;
+  `overnight-pair status` tells the two apart (`finished at 20:58:33; its session is
+  still open`, against `going`).
 
 ### The logs, collected
 
