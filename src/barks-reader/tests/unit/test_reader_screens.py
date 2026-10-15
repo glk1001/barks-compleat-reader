@@ -362,6 +362,19 @@ class TestShaderTransitionsReleaseTheirFrameBuffers:
         assert seen == [buffers], "Kivy's own on_complete runs first, with the buffers"
         assert (transition.fbo_in, transition.fbo_out, transition.render_ctx) == (None, None, None)
 
+    def test_the_shader_is_given_its_progress_as_a_float(self) -> None:
+        """Kivy starts at an int 0, which its uniform upload sent the shader as an int."""
+        transition = barks_reader.ui.reader_screens._FadeTransition()
+        given: list[object] = []
+
+        def kivy_on_progress(_self: ShaderTransition, progress: object) -> None:
+            given.append(progress)
+
+        with patch.object(ShaderTransition, "on_progress", kivy_on_progress):
+            transition.dispatch("on_progress", 0)
+        assert given == [0.0]
+        assert type(given[0]) is float
+
     def test_every_shader_transition_in_the_pools_releases(self) -> None:
         pools = (
             ReaderScreenManager._MAIN_SCREEN_TRANSITIONS,

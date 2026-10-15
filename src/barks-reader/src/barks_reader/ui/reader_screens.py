@@ -47,7 +47,18 @@ class _ReleasesFrameBuffers(ShaderTransition):
     size and keep them, with their render context, until the same transition
     runs again. The transitions here are a fixed pool, used at random, so each
     would hold two window-sized textures (about 66 MB at 4K) for good.
+
+    It also hands the shader its progress as a float (`on_progress`).
     """
+
+    def on_progress(self, progress: float) -> None:
+        # Kivy starts every transition with on_progress(0), an int, and a render
+        # context uploads an int with glUniform1i: to the shader's float uniform `t`,
+        # a GL_INVALID_OPERATION on every transition. It did not spoil the drawing,
+        # but waited in GL until a later shader compile read it, and the clean-log
+        # check failed a Windows VM soak on "Shader: GL error 1282" (2026-10-15;
+        # Kivy's DEBUG_GL named the glUniform1i).
+        super().on_progress(float(progress))
 
     def on_complete(self) -> None:
         super().on_complete()
