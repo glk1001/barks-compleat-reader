@@ -92,8 +92,9 @@
 >    guest can, on software OpenGL, and the whole GUI suite ran clean there on
 >    2026-10-01 through `gui_probe_darwin.py` (`docs/plans/macos-gui-tests.md`). A real
 >    Mac is still untried: its GPU, and a Retina display's points against pixels.
-> 2. On the laptop, once its data pack is current: `uv run python scripts/run_gui_tests.py
->    -k test_one_pagers_ignore_double_page`.
+> 2. DONE in effect. The laptop's data pack was refreshed on 2026-09-30 and the whole
+>    suite has passed there since with nothing deselected (98 passed, none skipped, that
+>    day; nightly since 2026-10-11: `docs/plans/windows-overnight.md`, "First run").
 > 3. On the move to Kivy 3.0 (SDL3, expected January 2027), recheck the fullscreen frame
 >    step on Windows rather than chase its last ~70ms now: run `--keep-logs -k fullscreen` and look at
 >    the first "Main window resize event" after "Exiting fullscreen mode". At the saved

@@ -11,7 +11,8 @@
 >   2026-10-02 `scripts/run_overnight_desktop.py`, which runs on macOS too). First run by
 >   hand, 2026-09-30: every stage ran as meant; the failures were the laptop's, not the
 >   runner's (below, "First run"). Since fixed, each stage has passed on its own (the
->   GUI suite 98/98, `validate`, `fetch-build`); one run of them all, end to end, to come.
+>   GUI suite 98/98, `validate`, `fetch-build`); then runs of them all, end to end, under
+>   "First run" below (a86e8b6c, 6ab6f37f, dfc2a0ca), and nightly since 2026-10-11.
 > - Step 2 keeping the machine awake and fit to run: DONE (the runner holds the display;
 >   the one-off setup is in `docs/setup.md`, Windows)
 > - Step 3 the nightly schedule: DONE another way, 2026-10-11: the laptop runs nightly

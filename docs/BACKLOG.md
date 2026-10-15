@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-10-13.
+Last updated: 2026-10-16.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -456,6 +456,48 @@ in the OCR repo, which is read-only from here:
 > survivors (the memoised value outlives the mutant that produced it), so any
 > test covering a cached entry point needs a `cache_clear()` autouse fixture
 > before its survivor count means anything.
+
+---
+
+## GUI suite on other platforms (open items from `docs/plans/`)
+
+> The plans under `docs/plans/` are done (2026-10-16); these are the items they left
+> open, gathered here so one list holds them. Each names the plan with the detail.
+
+- [ ] **Touch on Windows** (`touch-gui-tests.md`) — the Windows probe's `tap` clicks
+      and refuses `BARKS_PROBE_TOUCH`. Wanted: `InitializeTouchInjection` /
+      `InjectTouchInput` behind it, after the tap tests have run on the Windows
+      touchscreen laptop by click. A Windows touch also reaches Kivy as a touch
+      (`wm_touch`), not only as a pointer press, so it can double a tap there.
+- [ ] **A real Mac** (`macos-gui-tests.md`, "Open questions") — the VirtualBox guest
+      proves the harness on software OpenGL only. Untried: GPU drawing without
+      `with-soft-gl.sh`, and a Retina display's points against pixels in the probe's
+      `client_geometry`. Also not yet: CI's macOS app in `run_overnight_desktop.py`
+      (`fetch-build` and `built-app` skip on the guest, which has no GPU driver).
+- [ ] **The wiki round trip test leans on the wiki copy's layout**
+      (`macos-gui-tests.md`, milestone B) — the sidebar stays on the last page while
+      the home page shows, so each round's two Downs walk to a new page and can open a
+      branch, whose rows then count. Undecided: an `okf-reader` viewer bug (the
+      sidebar should follow the page shown), or the test should go to the same page
+      each round. It passes today because the current copy meets no branch in six
+      rounds.
+- [ ] **The wiki viewer's cost per row of a linked table** (`windows-overnight.md`,
+      "Open") — about 1 GB per 1,000-1,700 rows (`cbl-contents`, `bibliography`);
+      62a3dd08 made tables without links lazy. The linked tables' per-row cost is what
+      is left, and it sets the soak's 6 GB ceiling.
+- [ ] **A free-memory guard mid-run, maybe** (`windows-overnight.md`, "Open") — the
+      desktop runner has a 6 GB free-at-start check and holds the app to a fixed 6 GB
+      ceiling. Whether to also stop the app when the machine's free memory drops below
+      a reserve (2.5-4 GB) is to be decided from the soak's peak on a full run started
+      by hand, outside Claude Code.
+- [ ] **The full settings matrix overnight on Windows** (`windows-overnight.md`,
+      "Later") — beyond the one variant a night the desktop runner takes.
+- [ ] **Kivy 3.0: recheck the fullscreen frame step on Windows**
+      (`cross-platform-gui-tests.md`, "What is left" 3; SDL3, expected January 2027) —
+      run `--keep-logs -k fullscreen` and read the first "Main window resize event"
+      after "Exiting fullscreen mode". At the saved size, delete `move_now` (the Win32
+      backend's, the Kivy backend's no-op and its call in
+      `WindowManager.goto_windowed_mode`); still 16x39 bigger, keep it.
 
 ---
 
