@@ -21,7 +21,8 @@ A run's results are where they always are: `build/overnight/<stamp>/summary.txt`
 failed pull does not stop the run: it tests the checkout as it is, and on Windows the
 runner's `update` stage records the failure in the summary (on Linux it shows only in
 the job output). Pulling first, rather than leaving it to the runner, means a pull that
-changes the runner itself takes effect the same night.
+changes the runner itself takes effect the same night. The main machine collects every
+machine's run logs in `assets/logs-overnight-runs/` ([below](#the-logs-collected)).
 
 On the main machine the run tests the working checkout as it is at 01:00, uncommitted
 work included.
@@ -200,9 +201,10 @@ part tested there (the wake from off included):
 - **`~/bin/greg-dell` on the main machine**: `greg-dell status` (awake or not; the run
   tasks and the newest `summary.txt`), `greg-dell wake` (a Wake-on-LAN magic packet, then
   waits for ssh), `greg-dell run` (wakes it if asleep or off, then starts
-  `nightly-job-now`: woken for it, the machine sleeps again when the run ends), and
-  `greg-dell sleep` (refused while a run is going; `-f` forces it). It lives outside any
-  repo; its header says what it assumes.
+  `nightly-job-now`: woken for it, the machine sleeps again when the run ends),
+  `greg-dell sleep` (refused while a run is going; `-f` forces it), and `greg-dell kill`
+  (stops the run, then what it left running; the machine stays awake). It lives outside
+  any repo; its header says what it assumes.
 - **Wake-on-LAN**: the NIC (Intel I219-LM, MAC `54:BF:64:5C:CD:30`) wakes on a magic
   packet only. "Wake on Pattern Match" is off, or ordinary traffic wakes it. In the BIOS,
   Wake on LAN is "LAN Only" and Deep Sleep Control is Disabled, so a packet starts it from
@@ -229,3 +231,55 @@ part tested there (the wake from off included):
   Assistant do not start.
 - **Keep the monitor connected** (off is fine): the timing budgets were calibrated at its
   2560x1440. Without one, use a dummy HDMI plug and calibrate again.
+
+## From the main machine: running, watching and collecting
+
+Helpers in `~/bin` on the main machine start, watch and stop the runs from one place, and
+collect their logs. They live outside any repo; each one's header says what it assumes.
+
+| Helper | For | Subcommands |
+|---|---|---|
+| `greg-dell` | greg-dell ([above](#asleep-with-no-keyboard)) | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
+| `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
+| `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill` |
+| `overnight-pair` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
+| `overnight-logs` | every machine's run logs, copied here | `[machine...]` |
+
+- **`gmktec run`** wakes it if need be and starts `~/bin/nightly-job` there in the tmux
+  session `nightly-job-now`, sleep blocked; woken for it, gmktec suspends again when the
+  run ends. `gmktec kill` stops a run, on demand or the 01:00 one, and everything under
+  it. gmktec wakes on a magic packet on its wired port (tested from sleep, 2026-10-15).
+- **`win-vm` and `mac-vm`** are one script, `overnight-vm`, under two names. They boot or
+  resume the VM and wait for its desktop; `run` starts the run on that desktop (Windows:
+  the Task Scheduler task "Barks Reader overnight now"; macOS: a Terminal window, which
+  holds the permissions the GUI stages need), and `stop` shuts the VM's OS down, refused
+  while a run is going.
+- **`overnight-pair`** runs them one at a time, since run together they share the main
+  machine's 16 threads and fail each other's timing budgets: win_vm (about 2 h), then
+  mac_vm (about 1.5 h), each VM shut down after its run, then the main machine's own run
+  (`~/bin/nightly-job`, about 3h50m). `--no-pc` leaves out the main machine's run;
+  `--suspend` suspends the main machine when all are done. It runs in the tmux session
+  `overnight-pair` (`tmux attach -t overnight-pair`; at the end it waits for Enter) with
+  sleep inhibited, and logs to `~/.local/state/overnight-pair/<stamp>.log`.
+
+### The logs, collected
+
+`overnight-logs` copies the runs' logs into this repo's
+`assets/logs-overnight-runs/<machine>/<stamp>/` (gitignored), so that every machine's runs
+sit side by side: `gregspc2`, `gmktec`, `greg-dell`, `win-vm` and `mac-vm`.
+
+- **What**: from each run folder, the files at its top level named `*.log`, `*.txt` or
+  `*.jsonl`: `summary.txt`, the stages' logs and `gui-timings.jsonl`, about 1 MB a run.
+  `coverage/` (about 40 MB) and `uv.lock.saved` stay behind.
+- **Which runs**: those not copied yet, and the newest again while its copy is unfinished
+  (no "finished in" in its `summary.txt`), since only the newest can still be going. Run
+  again, it reports `up to date`.
+- **From where**: only the machines that are up. It wakes and starts nothing, and reports
+  the rest as skipped. `overnight-logs gmktec win-vm` names the machines; no names means
+  all five.
+- **When**: `overnight-pair` copies each VM's logs before shutting it down, and the main
+  machine's after its run. Nothing copies gmktec's or greg-dell's runs by itself, since
+  their 01:00 runs happen while the main machine may be asleep: `gmktec wake` (or
+  `greg-dell wake`), `overnight-logs`, then `gmktec sleep`.
+- **greg-dell**'s ssh shell is PowerShell, which is no pipe for binary output, so its logs
+  go through a tar file in its home folder and `scp`; the others stream a tar over ssh.
