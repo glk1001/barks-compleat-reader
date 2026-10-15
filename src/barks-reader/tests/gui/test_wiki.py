@@ -142,6 +142,18 @@ NO_MATCH_QUERY = "qqqqx"  # cspell:disable-line
 SEARCH_CLEARED = pattern(wiki.SEARCH_CLEARED)
 PAGE_REGION = pattern(wiki.FOCUS_REGION, name="PAGE")
 SEARCH_FOCUSED = pattern(wiki.SEARCH_FOCUSED)
+SEARCH_READY = pattern(wiki.SEARCH_READY)
+SEARCH_BUILT = pattern(wiki.SEARCH_READY, state="built")
+# The index is built off the UI thread from the wiki's opening: under a second here,
+# over 5 s on the Windows VM. It gets its own wait, so a slow build is told apart
+# from results that never came (a test that typed at once waited 15 s for both).
+SEARCH_INDEX_TIMEOUT = 60
+
+
+def _wait_for_the_search_index(d: Driver) -> None:
+    """Wait until the wiki's search index is built, so a query shows results at once."""
+    d.wait_for(SEARCH_READY, SEARCH_INDEX_TIMEOUT)
+    assert d.match_count(SEARCH_BUILT), f"the index build failed: {d.last_line(SEARCH_READY)}"
 
 
 def _open_wiki_and_search(d: Driver, query: str) -> int:
@@ -153,9 +165,9 @@ def _open_wiki_and_search(d: Driver, query: str) -> int:
     # then is lost (an overnight 1080p run lost the first letter of its query).
     with d.expect(SEARCH_FOCUSED):
         taps.tap(d, kind="TextInput")
+    _wait_for_the_search_index(d)
     results = pattern(wiki.SEARCH_RESULTS, text=query)
-    # Each keystroke searches; wait only on the full query's results (the index may
-    # still be warming for the first ones, which then show a wait note instead).
+    # Each keystroke searches; wait only on the full query's results.
     d.type_slowly(query, marker=lambda typed: results if typed == query else None)
     return int(last_field(d, wiki.SEARCH_RESULTS, "count", text=query))
 
@@ -209,6 +221,7 @@ def test_wiki_search_by_remote_alone(wiki_boot: AppBoot) -> None:
     with d.expect(WIKI_ACTIVE, 30), d.expect(SHOWED_PAGE, 30), d.expect(WIKI_ENTERED, 30):
         d.key("Return")
     _up_into_the_search_box(d)
+    _wait_for_the_search_index(d)
     results = pattern(wiki.SEARCH_RESULTS, text=SEARCH_QUERY)
     d.type_slowly(SEARCH_QUERY, marker=lambda typed: results if typed == SEARCH_QUERY else None)
     with d.expect(d.WIKI_FOCUS_MOVED):  # the first result, ringed
