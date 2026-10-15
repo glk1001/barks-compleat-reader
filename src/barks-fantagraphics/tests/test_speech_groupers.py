@@ -157,7 +157,7 @@ class TestIsPageNumber:
 
 class TestGetSpeechTextList:
     def test_parses_basic_group(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="Hello world")}))
         )
@@ -172,7 +172,7 @@ class TestGetSpeechTextList:
         assert st.panel_num == 1
 
     def test_skips_page_numbers(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(
                 _make_json_content(
@@ -190,7 +190,7 @@ class TestGetSpeechTextList:
         assert "2" not in speech_groups
 
     def test_ai_text_hyphen_newline_replaced(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="hyph-\nnated")}))
         )
@@ -202,7 +202,7 @@ class TestGetSpeechTextList:
 
     def test_ai_text_strips_emphasis_markup(self, tmp_path: Path) -> None:
         """The default view is plain, so a consumer that ignores emphasis is correct."""
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="A [b]SUCCESS[/b]!")}))
         )
@@ -215,7 +215,7 @@ class TestGetSpeechTextList:
 
     def test_ai_text_unescapes_literal_brackets(self, tmp_path: Path) -> None:
         """Gemini's own bracketed annotations survive the round trip."""
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(
                 _make_json_content({"1": _make_group_entry(ai_text="&bl;Chinese Characters&br;")})
@@ -227,7 +227,7 @@ class TestGetSpeechTextList:
         assert speech_groups["1"].ai_text == "[Chinese Characters]"
 
     def test_soft_hyphen_newline_removed(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="soft\u00ad\nhyph")}))
         )
@@ -237,13 +237,13 @@ class TestGetSpeechTextList:
         assert speech_groups["1"].ai_text == "softhyph"
 
     def test_raises_value_error_on_missing_file(self, tmp_path: Path) -> None:
-        missing = tmp_path / "no-such-file.json"  # type: ignore[operator]
+        missing = tmp_path / "no-such-file.json"
         with pytest.raises(ValueError, match="Error reading ocr_prelim_groups"):
             _get_speech_text_list(missing)
 
     def test_returns_raw_json(self, tmp_path: Path) -> None:
         content = _make_json_content({"1": _make_group_entry()})
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(json.dumps(content))
 
         _, raw_json = _get_speech_text_list(f)
@@ -251,7 +251,7 @@ class TestGetSpeechTextList:
         assert raw_json == content
 
     def test_empty_groups(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(json.dumps(_make_json_content()))
 
         speech_groups, _ = _get_speech_text_list(f)
@@ -259,7 +259,7 @@ class TestGetSpeechTextList:
         assert speech_groups == {}
 
     def test_speaker_call_loaded(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(
             json.dumps(
                 _make_json_content(
@@ -285,7 +285,7 @@ class TestGetSpeechTextList:
 
     def test_group_without_speaker_has_none(self, tmp_path: Path) -> None:
         """Later volumes carry no call at all; that is ordinary, not an error."""
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(json.dumps(_make_json_content({"1": _make_group_entry()})))
 
         speech_groups, _ = _get_speech_text_list(f)
@@ -293,7 +293,7 @@ class TestGetSpeechTextList:
         assert speech_groups["1"].speaker is None
 
     def test_speaker_with_null_evidence(self, tmp_path: Path) -> None:
-        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f = tmp_path / "groups.json"
         f.write_text(json.dumps(_make_json_content({"1": _make_group_entry(speaker="none")})))
 
         speech_groups, _ = _get_speech_text_list(f)
@@ -638,7 +638,7 @@ class TestSaveSpeechPageGroup:
     def test_no_changes_returns_false(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="Same")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Same")})
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
         result = _save_speech_page_group(spg, to_file=f, backup_file=None)
@@ -649,7 +649,7 @@ class TestSaveSpeechPageGroup:
     def test_with_changes_returns_true_and_writes(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="New")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Old")})
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
         result = _save_speech_page_group(spg, to_file=f, backup_file=None)
@@ -662,7 +662,7 @@ class TestSaveSpeechPageGroup:
     def test_updates_json_dict_in_place(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="Updated")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Original")})
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
         _save_speech_page_group(spg, to_file=f, backup_file=None)
@@ -673,7 +673,7 @@ class TestSaveSpeechPageGroup:
         """Saving must stay markup-sensitive, or an emphasis edit is silently lost."""
         groups = {"1": _make_speech_text("1", raw_ai_text="A [b]SUCCESS[/b]!")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="A SUCCESS!")})
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
         assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
@@ -688,7 +688,7 @@ class TestSaveSpeechPageGroup:
         json_data = _make_json_content({"1": entry})
         before = {k: v for k, v in json_data["groups"]["1"].items() if k != "ai_text"}
         groups = {"1": _make_speech_text("1", raw_ai_text="New")}
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
         assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
@@ -725,7 +725,7 @@ class TestGroupsWithTextChanges:
 class TestSaveSpeechPageGroupJson:
     def test_writes_to_explicit_file(self, tmp_path: Path) -> None:
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Hello")})
-        f = tmp_path / "out.json"  # type: ignore[operator]
+        f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
 
         _save_speech_page_group_json(spg, to_file=f, backup_file=None)
@@ -735,7 +735,7 @@ class TestSaveSpeechPageGroupJson:
 
     def test_writes_to_default_file_when_none(self, tmp_path: Path) -> None:
         json_data = _make_json_content({"1": _make_group_entry()})
-        f = tmp_path / "default.json"  # type: ignore[operator]
+        f = tmp_path / "default.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
 
         _save_speech_page_group_json(spg, to_file=None, backup_file=None)
@@ -746,9 +746,9 @@ class TestSaveSpeechPageGroupJson:
 
     def test_backup_file_gets_the_previous_content(self, tmp_path: Path) -> None:
         json_data = _make_json_content()
-        original = tmp_path / "original.json"  # type: ignore[operator]
+        original = tmp_path / "original.json"
         original.write_text(json.dumps({"old": True}))
-        backup = tmp_path / "backup" / "original.json"  # type: ignore[operator]
+        backup = tmp_path / "backup" / "original.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
         _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
@@ -767,9 +767,9 @@ class TestSaveSpeechPageGroupJson:
         rename() there raises OSError(EXDEV) on every save.
         """
         json_data = _make_json_content()
-        original = tmp_path / "original.json"  # type: ignore[operator]
+        original = tmp_path / "original.json"
         original.write_text(json.dumps({"old": True}))
-        backup = tmp_path / "backup" / "original.json"  # type: ignore[operator]
+        backup = tmp_path / "backup" / "original.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
         def _refuse_cross_device(*_args: object, **_kwargs: object) -> None:
@@ -786,8 +786,8 @@ class TestSaveSpeechPageGroupJson:
     def test_missing_original_still_writes(self, tmp_path: Path) -> None:
         """A first save has nothing to back up and must not fail trying."""
         json_data = _make_json_content()
-        original = tmp_path / "brand-new.json"  # type: ignore[operator]
-        backup = tmp_path / "backup" / "brand-new.json"  # type: ignore[operator]
+        original = tmp_path / "brand-new.json"
+        backup = tmp_path / "backup" / "brand-new.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
         _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
@@ -807,7 +807,7 @@ class TestGetSpeechPageGroup:
         db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
 
         json_content = _make_json_content({"1": _make_group_entry(ai_text="Quack!")})
-        json_file = tmp_path / "001-easyocr-gemini-prelim-groups.json"  # type: ignore[operator]
+        json_file = tmp_path / "001-easyocr-gemini-prelim-groups.json"
         json_file.write_text(json.dumps(json_content))
 
         result = get_speech_page_group(
@@ -859,14 +859,14 @@ def _make_comic(fixes_files: dict[str, Path]) -> MagicMock:
 class TestGetSrcePageToDestPageMap:
     def test_symlinked_source_page_is_excluded(self, tmp_path: Path) -> None:
         """A one-pager reprinted from another volume is not this title's OCR work."""
-        target = tmp_path / "other-volume-page.png"  # type: ignore[operator]
+        target = tmp_path / "other-volume-page.png"
         target.write_text("art")
-        symlinked = tmp_path / "500.png"  # type: ignore[operator]
+        symlinked = tmp_path / "500.png"
         try:
             symlinked.symlink_to(target)
         except OSError as e:  # Windows, without Developer Mode or admin rights
             pytest.skip(f"cannot create a symlink here: {e}")
-        real = tmp_path / "001.png"  # type: ignore[operator]
+        real = tmp_path / "001.png"
         real.write_text("art")
 
         comic = _make_comic({"001": real, "500": symlinked})
@@ -880,7 +880,7 @@ class TestGetSrcePageToDestPageMap:
         assert list(result) == ["001"]
 
     def test_non_restorable_page_types_are_excluded(self, tmp_path: Path) -> None:
-        real = tmp_path / "001.png"  # type: ignore[operator]
+        real = tmp_path / "001.png"
         real.write_text("art")
         comic = _make_comic({"001": real, "002": real})
         srce_dest = _make_srce_dest_pages(["001", "002"], [PageType.BODY, PageType.COVER])
@@ -926,7 +926,7 @@ def _make_speech_groups(
 
 
 def _write_prelim(tmp_path: Path, page: str, ocr_type: OcrTypes, text: str = "Quack!") -> Path:
-    json_file = tmp_path / f"{page}-{ocr_type}-gemini-prelim-groups.json"  # type: ignore[operator]
+    json_file = tmp_path / f"{page}-{ocr_type}-gemini-prelim-groups.json"
     json_file.write_text(json.dumps(_make_json_content({"1": _make_group_entry(ai_text=text)})))
     return json_file
 
@@ -977,7 +977,7 @@ class TestGetSpeechPageGroups:
         """skip_missing tolerates an absent file, never an unreadable one."""
         speech_groups = _make_speech_groups(tmp_path, {"001": "1"}, monkeypatch)
         for ocr_type in OcrTypes:
-            bad = tmp_path / f"001-{ocr_type}-gemini-prelim-groups.json"  # type: ignore[operator]
+            bad = tmp_path / f"001-{ocr_type}-gemini-prelim-groups.json"
             bad.write_text("{not json")
 
         with pytest.raises(ValueError, match="Error reading ocr_prelim_groups"):

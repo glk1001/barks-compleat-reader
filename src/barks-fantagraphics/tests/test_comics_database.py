@@ -94,12 +94,12 @@ class TestGetFantaRestoredOcrPrelimVolumeDir:
 class TestGetStoryTitlesDir:
     def test_raises_when_dir_not_found(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="story titles directory"):
-            _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]
+            _get_story_titles_dir(tmp_path)
 
     def test_returns_dir_when_exists(self, tmp_path: Path) -> None:
-        story_titles = tmp_path / "story-titles"  # type: ignore[operator]
+        story_titles = tmp_path / "story-titles"
         story_titles.mkdir()
-        result = _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]
+        result = _get_story_titles_dir(tmp_path)
         assert result == story_titles
 
 

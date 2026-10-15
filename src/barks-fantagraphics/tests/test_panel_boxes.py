@@ -149,14 +149,14 @@ class TestGetPanelBoxes:
 
     def test_raises_when_file_not_found(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
+        missing = tmp_path / "nonexistent.json"
 
         with pytest.raises(FileNotFoundError, match="panel segments file"):
             tpb.get_panel_boxes(missing, "001")
 
     def test_parses_size_correctly(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        f = tmp_path / "panels.json"  # type: ignore[operator]
+        f = tmp_path / "panels.json"
         f.write_text(_make_panel_segments_json(width=1024, height=768))
 
         result = tpb.get_panel_boxes(f, "001")
@@ -167,7 +167,7 @@ class TestGetPanelBoxes:
 
     def test_parses_single_panel(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        f = tmp_path / "panels.json"  # type: ignore[operator]
+        f = tmp_path / "panels.json"
         f.write_text(_make_panel_segments_json(panels=[[5, 10, 80, 160]]))
 
         result = tpb.get_panel_boxes(f, "002")
@@ -184,7 +184,7 @@ class TestGetPanelBoxes:
 
     def test_parses_multiple_panels_in_order(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        f = tmp_path / "panels.json"  # type: ignore[operator]
+        f = tmp_path / "panels.json"
         f.write_text(
             _make_panel_segments_json(panels=[[0, 0, 50, 50], [50, 50, 50, 50], [100, 100, 50, 50]])
         )
@@ -198,7 +198,7 @@ class TestGetPanelBoxes:
 
     def test_parses_overall_bounds(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        f = tmp_path / "panels.json"  # type: ignore[operator]
+        f = tmp_path / "panels.json"
         f.write_text(_make_panel_segments_json(overall_bounds=[5, 10, 795, 590]))
 
         result = tpb.get_panel_boxes(f, "001")
@@ -212,7 +212,7 @@ class TestGetPanelBoxes:
 
     def test_empty_panels_list(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
-        f = tmp_path / "panels.json"  # type: ignore[operator]
+        f = tmp_path / "panels.json"
         f.write_text(_make_panel_segments_json(panels=[]))
 
         result = tpb.get_panel_boxes(f, "001")
@@ -280,7 +280,7 @@ class TestPrivateGetPanelBoxes:
         db = MagicMock()
         tpb = TitlePanelBoxes(_comics_database=db)
 
-        panel_file = tmp_path / "001.json"  # type: ignore[operator]
+        panel_file = tmp_path / "001.json"
         panel_file.write_text(_make_panel_segments_json())
 
         comic = MagicMock()
@@ -303,7 +303,7 @@ class TestGetPagePanelBoxes:
         db = MagicMock()
         db.get_fanta_volume_int_for.return_value = 3
 
-        panel_file = tmp_path / "001.json"  # type: ignore[operator]
+        panel_file = tmp_path / "001.json"
         panel_file.write_text(_make_panel_segments_json())
 
         comic = MagicMock()
@@ -339,7 +339,7 @@ class TestGetPagePanelBoxesOnePager:
             "get_one_pager_fanta_vol_and_page",
             lambda _title: (5, 123),
         )
-        panel_file = tmp_path / "123.json"  # type: ignore[operator]
+        panel_file = tmp_path / "123.json"
         panel_file.write_text(_make_panel_segments_json())
 
         db = MagicMock()

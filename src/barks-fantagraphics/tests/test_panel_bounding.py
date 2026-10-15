@@ -109,10 +109,10 @@ class TestBoundingBox:
 
 class TestGetPanelsBoundingBoxFromFile:
     def test_reads_overall_bounds(self, tmp_path: Path) -> None:
-        f = tmp_path / "segments.json"  # type: ignore[operator]
+        f = tmp_path / "segments.json"
         f.write_text(_make_panel_segments_json([5, 10, 800, 1400]))
 
-        result = get_panels_bounding_box_from_file(f)  # type: ignore[arg-type]
+        result = get_panels_bounding_box_from_file(f)
 
         assert result.x_min == 5
         assert result.y_min == 10
@@ -202,11 +202,11 @@ class TestGetRequiredPanelsBboxWidthHeight:
 
 class TestSetSrcePanelBoundingBoxes:
     def test_sets_bbox_from_file(self, tmp_path: Path) -> None:
-        f = tmp_path / "001.json"  # type: ignore[operator]
+        f = tmp_path / "001.json"
         f.write_text(_make_panel_segments_json([5, 10, 800, 1400]))
 
         page = _body_page()
-        set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)  # type: ignore[list-item]
+        set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)
 
         assert page.panels_bbox.x_min == 5
         assert page.panels_bbox.y_min == 10
@@ -215,19 +215,19 @@ class TestSetSrcePanelBoundingBoxes:
 
     def test_skips_pages_without_panels(self, tmp_path: Path) -> None:
         page = _front_page()
-        missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
+        missing = tmp_path / "nonexistent.json"
         # Should not raise even though file is missing — FRONT pages are skipped
-        set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
+        set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)
 
     def test_raises_when_segment_file_missing(self, tmp_path: Path) -> None:
         page = _body_page()
-        missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
+        missing = tmp_path / "nonexistent.json"
 
         with pytest.raises(FileNotFoundError, match="panels segments info file"):
-            set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
+            set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)
 
     def test_raises_on_stale_timestamp(self, tmp_path: Path) -> None:
-        f = tmp_path / "001.json"  # type: ignore[operator]
+        f = tmp_path / "001.json"
         f.write_text(_make_panel_segments_json())
         page = _body_page()
 
@@ -235,16 +235,16 @@ class TestSetSrcePanelBoundingBoxes:
             patch.object(panel_bounding_module, "dest_file_is_older_than_srce", return_value=True),
             pytest.raises(RuntimeError, match="older than srce"),
         ):
-            set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=True)  # type: ignore[list-item]
+            set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=True)
 
     def test_no_timestamp_check_skips_stale_check(self, tmp_path: Path) -> None:
-        f = tmp_path / "001.json"  # type: ignore[operator]
+        f = tmp_path / "001.json"
         f.write_text(_make_panel_segments_json())
         page = _body_page()
 
         with patch.object(panel_bounding_module, "dest_file_is_older_than_srce", return_value=True):
             # Should not raise because check_srce_page_timestamps=False
-            set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)  # type: ignore[list-item]
+            set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)
 
 
 # ---------------------------------------------------------------------------
