@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import yaml
 from okf_reader.core import render as okf
 
 if TYPE_CHECKING:
@@ -20,6 +21,14 @@ class TestParseFrontmatter:
         fm, body = okf.parse_frontmatter("---\ntitle: X\ntype: concept\n---\nBody here")
         assert fm == {"title": "X", "type": "concept"}
         assert body == "Body here"
+
+    def test_front_matter_is_read_by_libyaml_with_safe_load_s_results(self) -> None:
+        """The C loader where PyYAML has it, giving what safe_load gives."""
+        if yaml.__with_libyaml__:
+            assert okf._YAML_LOADER is yaml.CSafeLoader  # noqa: SLF001
+        block = "title: X\nsources: [a.md, b.md]\nupdated: 2026-10-15\ncount: 3\nok: yes"
+        fm, _ = okf.parse_frontmatter(f"---\n{block}\n---\nBody")
+        assert fm == yaml.safe_load(block)
 
     def test_no_frontmatter(self) -> None:
         """Text without a leading block returns an empty dict and the text unchanged."""

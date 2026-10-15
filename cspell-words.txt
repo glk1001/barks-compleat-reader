@@ -118,6 +118,7 @@ letterboxing
 lfs
 libfreetype
 libx
+libyaml
 licence
 linkify
 lita
