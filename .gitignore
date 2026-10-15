@@ -97,6 +97,8 @@ mutmut-stats.json
 
 # Logs and app config sent from other people's machines, for debugging: local copies only.
 /assets/logs-other-machines/
+# The overnight runs' logs from every machine, copied here by ~/bin/overnight-logs.
+/assets/logs-overnight-runs/
 
 # The website's videos are published to a GitHub release rather than committed:
 # both are re-recorded whenever the app changes, and none of that history is ever
