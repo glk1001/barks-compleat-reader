@@ -309,16 +309,16 @@ class MainIndexScreen(IndexScreen):
                     title,
                     *self._get_tagged_title_with_page_nums(title, item_id),
                 )
-                for title in BARKS_TAGGED_TITLES[item_id]
+                # In the order Barks submitted them: Titles is in that order.
+                for title in sorted(BARKS_TAGGED_TITLES[item_id])
             ]
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
             use_italic = False
-            sub_items_to_display = [
-                (tag, "", tag_heading(tag)) for tag in get_all_tags_in_tag_group(item_id)
-            ]
-
-        sub_items_to_display.sort(key=lambda t: index_sort_key(t[2]))
+            sub_items_to_display = sorted(
+                ((tag, "", tag_heading(tag)) for tag in get_all_tags_in_tag_group(item_id)),
+                key=lambda t: index_sort_key(t[2]),
+            )
 
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)

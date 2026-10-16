@@ -16,7 +16,7 @@ from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy
 from kivy.clock import Clock
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
 
 @pytest.fixture
@@ -237,6 +237,41 @@ class TestTagMarkers:
         ):
             main_index_screen._add_sub_items(0)
         assert f"Index sub-items added under '{group.name}': 3." in loguru_sink
+
+    @staticmethod
+    def _opened_sub_item_ids(
+        screen: MainIndexScreen, item_id: Tags | TagGroups, members: Sequence[Titles | Tags]
+    ) -> list[Titles | Tags]:
+        """Open `item_id`, listing `members`, and return its sub-items' ids, top to bottom."""
+        screen._open_tag_item = IndexItem(item_id, "")
+        screen._open_tag_button = MagicMock(padding=[0, 0, 0, 0])
+        module = barks_reader.ui.main_index_screen
+        with (
+            patch.object(module, "BARKS_TAGGED_TITLES", {item_id: members}),
+            patch.object(module, "get_all_tags_in_tag_group", return_value=set(members)),
+            patch.object(module, "BoxLayout"),
+            patch.object(module, "_MainIndexTitleItemButton"),
+            patch.object(screen, "_get_tagged_title_with_page_nums", return_value=("", "")),
+            patch.object(screen, "_get_tagged_pages", return_value=()),
+            patch.object(module, "IndexItem") as index_item,
+        ):
+            screen._get_sub_item_layout(item_id)
+        return [c.kwargs["id"] for c in index_item.call_args_list]
+
+    def test_a_tags_titles_are_listed_in_the_order_barks_submitted_them(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        titles = [Titles.VICTORY_GARDEN_THE, Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+        listed = self._opened_sub_item_ids(main_index_screen, Tags.AMNESIA_STORIES, titles)
+        assert listed == sorted(titles)
+        assert listed[0] == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD  # 1942, before 1943
+
+    def test_a_tag_groups_tags_are_listed_by_heading(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        tags = [Tags.SOAPY_SLICK, Tags.P_J_MC_BRINE, Tags.MR_MC_SWINE]
+        listed = self._opened_sub_item_ids(main_index_screen, TagGroups.PIG_VILLAINS, tags)
+        assert listed == [Tags.P_J_MC_BRINE, Tags.MR_MC_SWINE, Tags.SOAPY_SLICK]
 
     def test_a_tag_group_with_no_tags_opens_nothing(
         self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
