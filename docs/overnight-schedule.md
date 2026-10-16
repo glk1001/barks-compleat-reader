@@ -292,6 +292,17 @@ collect their logs. They live outside any repo; each one's header says what it a
     last run: 20261015-172236 (5b3b7a7f): finished in 2h02m
   ```
 
+  While the round boots, settles or shuts down a VM, the VM itself has no run going, and
+  its own status would say its newest run finished. A `this round:` line, the round log's
+  latest entry for that VM, takes the place of its `run:` line then:
+
+  ```
+  win-vm (WinDev2202Eval): running
+    desktop: up
+    this round: 23:35:08 desktop up; letting it settle for a minute
+    last run: 20261016-190649 (649c3a16): finished in 2h09m
+  ```
+
 ### The logs, collected
 
 `overnight-logs` copies the runs' logs into this repo's
