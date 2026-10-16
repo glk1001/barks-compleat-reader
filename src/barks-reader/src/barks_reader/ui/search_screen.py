@@ -85,6 +85,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
+    from kivy.input import MotionEvent
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_colors import Color
@@ -521,6 +522,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not value:
             self._cancel_image_change_event()
             self._said_by_dropdown.dismiss()  # the speaker list does not outlive the screen
+
+    def on_touch_down(self, touch: MotionEvent) -> bool:
+        # Hidden, the screen is sized (0, 0) but its fixed-height chip rows are not: at
+        # zero width each chip wraps to its own row, and the column lies over whatever
+        # screen is showing (an era chip took the Main Index's presses).
+        if not self.is_visible:
+            return False
+        return bool(super().on_touch_down(touch))
 
     def set_mode(self, mode: str) -> None:
         """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""

@@ -3247,3 +3247,15 @@ def test_a_new_word_result_list_starts_at_its_first_row() -> None:
     scroll, rows = _scrolled_down_list()
     screen._populate_word_results_layout(rows)
     assert scroll.scroll_y == 1
+
+
+class TestHiddenScreenTouches:
+    """Hidden, the screen's chip rows lie over the showing screen: it takes no presses."""
+
+    @pytest.mark.parametrize(("visible", "handled"), [(False, False), (True, True)])
+    def test_only_a_visible_screen_takes_a_touch(self, visible: bool, handled: bool) -> None:
+        screen = _make_bare_screen()
+        screen.is_visible = visible
+        with patch.object(search_screen.FloatLayout, "on_touch_down", return_value=True) as down:
+            assert screen.on_touch_down(MagicMock()) is handled
+        assert down.called is visible
