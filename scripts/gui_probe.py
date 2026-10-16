@@ -242,12 +242,15 @@ def app_env(base: Mapping[str, str]) -> dict[str, str]:
     its output whenever TERM is set - as Git Bash sets it - even when that output
     is a file, and the colour codes land in the middle of the lines a test parses.
     LOGURU_COLORIZE is loguru's own switch for every handler that does not choose.
+    BARKS_READER_NO_SCREEN_WARNING keeps the too-small-screen popup, which would take a
+    test's first keys, out of a boot on a small screen.
     """
     return dict(
         base,
         PYTHONUTF8="1",
         PYTHONIOENCODING="utf-8",
         LOGURU_COLORIZE="0",
+        BARKS_READER_NO_SCREEN_WARNING="1",
         BARKS_READER_TAP_TARGETS_FILE=str(tap_request()),
         BARKS_READER_MEMORY_CENSUS_FILE=str(census_request()),
         BARKS_READER_FRAME_CAPTURE_FILE=str(frame_request()),

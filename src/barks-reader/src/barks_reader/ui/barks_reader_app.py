@@ -532,6 +532,9 @@ class BarksReaderApp(App):
         # Now make the main window visible.
         def show_the_window(*_args: Any) -> None:  # noqa: ANN401
             _show_main_window(Window, self._window_geometry)
+            monitor = self._window_geometry.current_monitor
+            assert self._main_screen is not None
+            self._main_screen.warn_if_screen_too_small(monitor.width_pixels, monitor.height_pixels)
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
 

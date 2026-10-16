@@ -12,7 +12,7 @@ an OpenGL context without a display).
 from __future__ import annotations
 
 import re
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import log_markers
@@ -755,3 +755,27 @@ def test_a_retina_correction_is_set_in_points_and_settles(
 
     helper.on_window_resize(window, *window.size)  # ty: ignore[invalid-argument-type]
     assert len(fake_clock.calls) == 1, "The corrected window needed another correction."
+
+
+# --- Minimum window size ---
+
+
+@pytest.mark.usefixtures("helper")
+def test_the_window_minimum_is_set_when_the_window_is_ready(fake_window: MagicMock) -> None:
+    """The fixture monitor is 2400 tall: the minimum is a 1080p screen's window."""
+    width, height = geometry_module.minimum_window_size(1080, COMIC_PAGE_ASPECT_RATIO, CHROME)
+    assert (fake_window.minimum_width, fake_window.minimum_height) == (width, height)
+    fake_window._set_minimum_size.assert_called()  # noqa: SLF001
+
+
+def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -> None:
+    """Kivy's handler warns if run with one side still 0: it runs once, after both."""
+    seen: list[tuple[int, int]] = []
+    fake_window._set_minimum_size.side_effect = lambda: seen.append(  # noqa: SLF001
+        (fake_window.minimum_width, fake_window.minimum_height)
+    )
+    with patch.object(geometry_module, "Window", fake_window):
+        geometry_module._set_window_minimum_size(663, 1040)  # noqa: SLF001
+    assert seen == [(663, 1040)]
+    fake_window.unbind.assert_called_once()
+    fake_window.bind.assert_called_once()

@@ -15,6 +15,7 @@ from barks_reader.core.screen_metrics import (
     calculate_fitted_window_height,
     get_best_window_height_fit,
 )
+from barks_reader.core.window_minimum import minimum_window_size
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -75,8 +76,33 @@ class AppWindowGeometryHelper:
         self._update_fonts = update_fonts
 
     def set_window_ready(self) -> None:
-        """Mark the window as ready to accept resize corrections."""
+        """Mark the window as ready to accept resize corrections, and set its minimum size."""
         self._window_ready = True
+        self.apply_minimum_size()
+
+    @property
+    def current_monitor(self) -> ScreenInfo:
+        """The monitor the window is on."""
+        return self._current_monitor
+
+    def apply_minimum_size(self) -> None:
+        """Stop the window being made smaller than the reader is laid out for, on its monitor.
+
+        A 1080p screen's window, or this monitor's largest when it is smaller (see
+        `minimum_window_size`); in ``Window.system_size`` units, as SDL takes them.
+        """
+        monitor = self._current_monitor
+        width, height = minimum_window_size(
+            monitor.height_pixels, self._constraints.aspect_ratio, self._chrome_in_size_units()
+        )
+        _set_window_minimum_size(width, height)
+        logger.info(
+            log_markers.WINDOW_MINIMUM_SET.format(
+                width=width,
+                height=height,
+                screen=f"{monitor.width_pixels}x{monitor.height_pixels}",
+            )
+        )
 
     # --- Window units ---
     #
@@ -124,6 +150,7 @@ class AppWindowGeometryHelper:
         )
 
         self._current_monitor = monitor
+        self.apply_minimum_size()
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
         new_height = min(round(scale_factor * new_max_height), new_max_height)
@@ -366,3 +393,22 @@ class AppWindowGeometryHelper:
         Clock.schedule_once(do_resize, 0)
         Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY)
         self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
+
+
+def _set_window_minimum_size(width: int, height: int) -> None:
+    """Set the window's minimum size, both sides at once.
+
+    Kivy's SDL window applies the minimum whenever either side changes, and warns while
+    the other is still 0, as it is on the first setting. So its handler is held off
+    while both are set, then run once.
+    """
+    apply = getattr(Window, "_set_minimum_size", None)
+    if apply is None:  # a window provider with no minimum size
+        Window.minimum_width, Window.minimum_height = width, height
+        return
+    Window.unbind(minimum_width=apply, minimum_height=apply)
+    try:
+        Window.minimum_width, Window.minimum_height = width, height
+    finally:
+        Window.bind(minimum_width=apply, minimum_height=apply)
+    apply()

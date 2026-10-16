@@ -25,12 +25,18 @@ from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_dimensions,
 )
+from barks_reader.core.window_minimum import (
+    is_screen_too_small,
+    is_screen_warning_suppressed,
+    screen_size_key,
+    screen_warning_text,
+)
 
 from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .main_screen_components import build_main_screen_components
 from .platform_window_utils import WindowManager
-from .popup_widgets import open_confirm_popup
+from .popup_widgets import open_confirm_popup, open_message_popup
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_RIGHT,
@@ -435,6 +441,38 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             cancel_text="Stay",
             on_ok=app.close_app,
             bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
+        )
+
+    def warn_if_screen_too_small(self, screen_width: int, screen_height: int) -> None:
+        """Say, once per screen size, that this screen is smaller than the reader's layout.
+
+        The reader still runs, in the largest window the screen allows; the popup only
+        says what to expect. Never when the environment asks for no popup (the GUI probe).
+
+        Args:
+            screen_width: The width of the screen the window is on.
+            screen_height: Its height.
+
+        """
+        if not is_screen_too_small(screen_width, screen_height):
+            return
+        size_key = screen_size_key(screen_width, screen_height)
+        if is_screen_warning_suppressed():
+            logger.info(f"Screen {size_key} is too small; no popup, as the environment asks.")
+            return
+        if self._json_settings_manager.is_screen_size_warned(size_key):
+            logger.info(log_markers.SCREEN_TOO_SMALL_ALREADY_WARNED.format(screen=size_key))
+            return
+        logger.warning(log_markers.SCREEN_TOO_SMALL_WARNED.format(screen=size_key))
+        self._json_settings_manager.save_screen_size_warned(size_key)
+        open_message_popup(
+            title="Small screen",
+            text=screen_warning_text(screen_width, screen_height),
+            ok_text="",
+            on_ok=None,
+            cancel_text="OK",
+            on_cancel=None,
+            msg_halign="center",
         )
 
     def app_closing(self) -> None:

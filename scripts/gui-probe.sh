@@ -404,11 +404,14 @@ cmd_start() {
     # The touchscreen must exist before the app boots: the app looks for them once.
     [[ -n "$TOUCH" ]] && start_touch
 
+    # BARKS_READER_NO_SCREEN_WARNING: no too-small-screen popup, which on a small
+    # nested screen would take the first keys a test sends.
     # A built executable reads no .env.runtime, so it gets the data dir the
     # workspace run would read from there (the config dir env var, when set, is
     # already in the environment for both).
     if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
         setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" \
+            BARKS_READER_NO_SCREEN_WARNING=1 \
             BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
             BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \
             BARKS_READER_FRAME_CAPTURE_FILE="$FRAME_REQUEST" "$BARKS_PROBE_APP" \
@@ -421,6 +424,7 @@ cmd_start() {
                 --data-file="${BARKS_PROBE_COVERAGE}/.coverage.gui" main.py)
         fi
         setsid env DISPLAY="$DPY" BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
+            BARKS_READER_NO_SCREEN_WARNING=1 \
             BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \
             BARKS_READER_FRAME_CAPTURE_FILE="$FRAME_REQUEST" \
             uv run --directory "$REPO_ROOT" "${run[@]}" \

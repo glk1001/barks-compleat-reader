@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.main_screen
 import pytest
+from barks_reader.core import window_minimum
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
@@ -633,3 +634,55 @@ class TestQuitFocus:
             main_screen._enter_menu_mode()
         focused = main_screen._menu_buttons[main_screen._focused_btn_idx]
         assert focused is main_screen.ids.go_back_button
+
+
+class TestSmallScreenWarning:
+    """A screen smaller than the reader is laid out for is warned about, once per size."""
+
+    @pytest.fixture(autouse=True)
+    def _no_env_suppression(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(window_minimum.NO_SCREEN_WARNING_ENV_VAR, raising=False)
+
+    def test_a_small_screen_is_warned_about_and_remembered(
+        self, main_screen: MainScreen, mock_components: MainScreenComponents
+    ) -> None:
+        settings = cast("MagicMock", mock_components.json_settings_manager)
+        settings.is_screen_size_warned.return_value = False
+        with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
+            main_screen.warn_if_screen_too_small(1366, 768)
+        popup.assert_called_once()
+        assert "1366 x 768" in popup.call_args.kwargs["text"]
+        settings.save_screen_size_warned.assert_called_once_with("1366x768")
+
+    def test_a_screen_size_warned_before_is_not_warned_again(
+        self, main_screen: MainScreen, mock_components: MainScreenComponents
+    ) -> None:
+        settings = cast("MagicMock", mock_components.json_settings_manager)
+        settings.is_screen_size_warned.return_value = True
+        with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
+            main_screen.warn_if_screen_too_small(1366, 768)
+        popup.assert_not_called()
+
+    def test_a_big_enough_screen_is_not_warned_about(
+        self, main_screen: MainScreen, mock_components: MainScreenComponents
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
+            main_screen.warn_if_screen_too_small(1920, 1080)
+        popup.assert_not_called()
+        cast(
+            "MagicMock", mock_components.json_settings_manager
+        ).save_screen_size_warned.assert_not_called()
+
+    def test_the_environment_can_keep_the_popup_away(
+        self,
+        main_screen: MainScreen,
+        mock_components: MainScreenComponents,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv(window_minimum.NO_SCREEN_WARNING_ENV_VAR, "1")
+        cast(
+            "MagicMock", mock_components.json_settings_manager
+        ).is_screen_size_warned.return_value = False
+        with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
+            main_screen.warn_if_screen_too_small(1366, 768)
+        popup.assert_not_called()

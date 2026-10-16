@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _READER_SETTINGS = "AAA_Settings"
+# The screen sizes warned as too small, kept apart: the reader settings are rewritten whole.
+_SCREEN_SIZES_WARNED = "AAA_Screen_Sizes_Warned"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"
 _READER_SETTING_LAST_SELECTED_NODE_STATE = "last_selected_node_state"
 _TITLE_SETTING_LAST_READ_PAGE = "last_read_page"
@@ -89,4 +91,13 @@ class SettingsManager:
     def save_last_read_page(self, title_str: str, page_info: SavedPageInfo) -> None:
         """Save the last read page information for a specific title."""
         self._data[title_str] = {_TITLE_SETTING_LAST_READ_PAGE: page_info.to_json()}
+        self._sync()
+
+    def is_screen_size_warned(self, size_key: str) -> bool:
+        """Return whether a too-small screen of this size has been warned about."""
+        return size_key in self._data.get(_SCREEN_SIZES_WARNED, {})
+
+    def save_screen_size_warned(self, size_key: str) -> None:
+        """Remember that a too-small screen of this size has been warned about."""
+        self._data.setdefault(_SCREEN_SIZES_WARNED, {})[size_key] = True
         self._sync()

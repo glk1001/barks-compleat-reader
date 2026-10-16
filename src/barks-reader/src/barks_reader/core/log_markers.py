@@ -123,6 +123,15 @@ EXITING_FULLSCREEN: Final = "{screen}: Exiting fullscreen mode."
 # fullscreen round trip is a defect whatever the test asserted.
 WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
 MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
+# The window's minimum size, set for the monitor it is on (core.window_minimum).
+WINDOW_MINIMUM_SET: Final = "Window minimum size: {width}x{height}, on a {screen} screen."
+# A screen smaller than the reader is laid out for: warned once per screen size.
+SCREEN_TOO_SMALL_WARNED: Final = (
+    "Screen {screen} is smaller than the reader is laid out for: warned."
+)
+SCREEN_TOO_SMALL_ALREADY_WARNED: Final = (
+    "Screen {screen} is smaller than the reader is laid out for: warned before."
+)
 # The main window's size and position once a change has settled: at boot and on
 # every entry into fullscreen or windowed mode, on either screen. Any run's log
 # then shows a window that shrank or moved, on any platform - not only a run
