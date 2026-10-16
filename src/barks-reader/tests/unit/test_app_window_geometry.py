@@ -12,10 +12,11 @@ an OpenGL context without a display).
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.core import log_markers
+from barks_reader.core import log_markers, screen_metrics
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
@@ -27,6 +28,9 @@ from barks_reader.ui.app_window_geometry import (
     AppWindowGeometryHelper,
     WindowSizeConstraints,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 CHROME = 45
 MIN_WIDTH = 900
@@ -68,6 +72,18 @@ class _RetinaWindow:
     @property
     def height(self) -> int:
         return self.size[1]
+
+
+@pytest.fixture(autouse=True)
+def no_measured_menu_bar_and_dock() -> Iterator[None]:
+    """Size windows by the fixed taskbar allowance, not this Mac's menu bar and Dock.
+
+    On macOS the reserved height is measured, so a test's sizes depended on the Dock of
+    the machine running it: on the macOS VM, whose Dock is tall, a rotation fit was no
+    longer below the minimum window (2026-10-16). Elsewhere this changes nothing.
+    """
+    with patch.object(screen_metrics, "_macos_reserved_height", return_value=None):
+        yield
 
 
 @pytest.fixture
