@@ -6,10 +6,12 @@ import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_reader.core.index_headings import (
     SEE_REFERENCES,
+    TAG_INDEX_HEADING_MARKUP,
     TAG_INDEX_HEADINGS,
     index_sort_key,
     tag_group_heading,
     tag_heading,
+    tag_heading_markup,
 )
 
 
@@ -70,3 +72,18 @@ def test_no_cross_reference_points_to_where_the_reader_already_is() -> None:
 )
 def test_entries_sort_word_by_word_ignoring_case_and_punctuation(before: str, after: str) -> None:
     assert index_sort_key(before) < index_sort_key(after)
+
+
+def test_neighbor_jones_first_real_appearance_has_real_in_italics() -> None:
+    tag = Tags.FIRST_REAL_NEIGHBOR_JONES
+    assert tag_heading(tag) == "Neighbor Jones: first real appearance"  # sorts plain
+    assert tag_heading_markup(tag) == "Neighbor Jones: first [i]real[/i] appearance"
+
+
+def test_a_heading_without_markup_is_escaped() -> None:
+    assert tag_heading_markup(Tags.DAISY) == "Daisy Duck"
+
+
+def test_every_markup_heading_reads_as_its_plain_heading() -> None:
+    for tag, markup in TAG_INDEX_HEADING_MARKUP.items():
+        assert markup.replace("[i]", "").replace("[/i]", "") == tag_heading(tag)

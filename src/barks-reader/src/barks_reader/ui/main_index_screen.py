@@ -35,6 +35,7 @@ from barks_reader.core.index_headings import (
     index_sort_key,
     tag_group_heading,
     tag_heading,
+    tag_heading_markup,
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
@@ -91,10 +92,11 @@ def _layout_pending(*layouts: Widget) -> bool:
 
 def _index_item_markup(item: IndexItem) -> str:
     """Return a top-level row's text as markup: a cross-reference's "See" in italics."""
-    text = escape_markup(item.display_text)
-    if not item.see:
-        return text
-    return f"{text}. [i]See[/i] {escape_markup(item.see)}"
+    if item.see:
+        return f"{escape_markup(item.display_text)}. [i]See[/i] {escape_markup(item.see)}"
+    if isinstance(item.id, Tags):
+        return tag_heading_markup(item.id)
+    return escape_markup(item.display_text)
 
 
 class _MainIndexTitleItemButton(Button):
@@ -403,8 +405,10 @@ class MainIndexScreen(IndexScreen):
             sub_item_text,
         ) in sub_items_to_display:
             logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
+            is_tag = isinstance(sub_item_id, Tags)
             title_button = _MainIndexTitleItemButton(
-                text=sub_item_text,
+                text=tag_heading_markup(sub_item_id) if is_tag else sub_item_text,
+                markup=is_tag,
                 italic=use_italic,
                 bold=not use_italic,  # not a title so must be TagGroup
                 font_name=str(self._font_manager.index_title_item_font_name),

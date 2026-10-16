@@ -19,6 +19,7 @@ Kivy-free, so the headings can be tested without the screen.
 from __future__ import annotations
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
+from barks_fantagraphics.speech_markup import escape_markup
 
 # The tags the index heads otherwise than by their names.
 TAG_INDEX_HEADINGS: dict[Tags, str] = {
@@ -63,7 +64,7 @@ TAG_INDEX_HEADINGS: dict[Tags, str] = {
     Tags.FIRST_NEIGHBOR_JONES: "Jones, Mr.: first appearance",
     Tags.FIRST_NUMBER_ONE_DIME: "number one dime: first appearance",
     Tags.FIRST_PIG_VILLAIN: "pig villains: first",
-    Tags.FIRST_REAL_NEIGHBOR_JONES: "Neighbor Jones: first appearance",
+    Tags.FIRST_REAL_NEIGHBOR_JONES: "Neighbor Jones: first real appearance",
     Tags.FIRST_UNCLE_SCROOGE: "Uncle Scrooge: first appearance",
     Tags.FIRST_WORRY_ROOM: "worry room: first appearance",
     # Case and wording.
@@ -72,6 +73,12 @@ TAG_INDEX_HEADINGS: dict[Tags, str] = {
     Tags.SCROOGE_NOT_IN_US: "Uncle Scrooge: outside the Uncle Scrooge series",
     Tags.GYRO_IN_GG: "Gyro Gearloose: in his own series",
     Tags.GYRO_NOT_IN_GG: "Gyro Gearloose: outside his own series",
+}
+
+# The headings the index shows with Kivy markup; each reads as its plain heading.
+# Mr. Jones first appeared earlier, but only became Neighbor Jones in "Good Neighbors".
+TAG_INDEX_HEADING_MARKUP: dict[Tags, str] = {
+    Tags.FIRST_REAL_NEIGHBOR_JONES: "Neighbor Jones: first [i]real[/i] appearance",
 }
 
 # The tag groups the index heads otherwise than by their names.
@@ -110,6 +117,19 @@ def tag_heading(tag: Tags) -> str:
 
     """
     return TAG_INDEX_HEADINGS.get(tag) or _without_leading_article(tag.value)
+
+
+def tag_heading_markup(tag: Tags) -> str:
+    """Return the Main Index heading for `tag` as Kivy markup.
+
+    Args:
+        tag: The tag.
+
+    Returns:
+        Its markup in `TAG_INDEX_HEADING_MARKUP`, else its heading, escaped.
+
+    """
+    return TAG_INDEX_HEADING_MARKUP.get(tag) or escape_markup(tag_heading(tag))
 
 
 def tag_group_heading(tag_group: TagGroups) -> str:
