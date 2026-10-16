@@ -430,3 +430,72 @@ class TestRevealSubItems:
         sub_items.parent = None
         self._reveal(main_index_screen, view, sub_items)
         assert view.scroll_y == 1.0
+
+
+class TestSeeReferences:
+    """A "See" cross-reference goes to its target's entry, on its letter page, and opens it."""
+
+    @staticmethod
+    def _page_with(screen: MainIndexScreen, entries: dict) -> MagicMock:
+        """Return an on_letter_press stand-in that shows a page holding `entries`."""
+
+        def show_page(_letter_button: object) -> None:
+            screen._tag_entries.clear()
+            screen._tag_entries.update(entries)
+
+        return MagicMock(side_effect=show_page)
+
+    def test_a_cross_reference_opens_its_target_on_its_letter_page(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        target_button = MagicMock()
+        target_item = IndexItem(Tags.BLACK_PETE, "Black Pete")
+        page = self._page_with(main_index_screen, {Tags.BLACK_PETE: (target_button, target_item)})
+        letters = {"B": MagicMock(name="B")}
+        see = IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete")
+        with (
+            patch.object(main_index_screen, "on_letter_press", page),
+            patch.object(main_index_screen, "_alphabet_buttons", letters, create=True),
+            patch.object(main_index_screen, "_hand_focus_to") as hand_focus,
+            patch.object(main_index_screen, "_on_index_item_press") as press,
+        ):
+            assert main_index_screen._handle_terminal_item(MagicMock(), see) is True
+        page.assert_called_once_with(letters["B"])
+        hand_focus.assert_called_once_with(target_button)
+        press.assert_called_once_with(target_button, target_item)
+        assert 'Following "Pete" to "Black Pete".' in loguru_sink
+
+    def test_a_digit_heading_is_on_the_0_page(self, main_index_screen: MainIndexScreen) -> None:
+        page = self._page_with(main_index_screen, {})
+        letters = {"0": MagicMock(name="0")}
+        see = IndexItem(Tags.CAR_313, "car 313", see="313")
+        with (
+            patch.object(main_index_screen, "on_letter_press", page),
+            patch.object(main_index_screen, "_alphabet_buttons", letters, create=True),
+        ):
+            main_index_screen._follow_see_reference(see)
+        page.assert_called_once_with(letters["0"])
+
+    def test_a_target_not_on_the_page_is_reported_and_nothing_opens(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        page = self._page_with(main_index_screen, {})
+        see = IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete")
+        with (
+            patch.object(main_index_screen, "on_letter_press", page),
+            patch.object(main_index_screen, "_alphabet_buttons", {"B": MagicMock()}, create=True),
+            patch.object(main_index_screen, "_on_index_item_press") as press,
+        ):
+            main_index_screen._follow_see_reference(see)
+        press.assert_not_called()
+        assert 'No entry "Black Pete" for the cross-reference "Pete".' in loguru_sink
+
+    def test_every_tag_row_on_a_page_is_remembered_but_no_cross_reference(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        tag_item = IndexItem(Tags.BLACK_PETE, "Black Pete")
+        see_item = IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete")
+        with patch.object(barks_reader.ui.main_index_screen, "IndexItemButton"):
+            tag_button = main_index_screen._create_index_button(tag_item)
+            main_index_screen._create_index_button(see_item)
+        assert main_index_screen._tag_entries == {Tags.BLACK_PETE: (tag_button, tag_item)}

@@ -292,6 +292,48 @@ class TestIndexScreen:
         assert index_screen._nav_focused_item_idx == 1  # the first sub-item
         assert index_screen._pending_focus_resync is None
 
+    def test_an_action_can_hand_the_focus_to_an_item_in_another_column(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """A cross-reference opens its target on another page: the focus follows it there."""
+        pressed = MagicMock(spec=IndexItemButton)
+        target = MagicMock(spec=IndexItemButton)
+        sub_item = MagicMock(spec=IndexItemButton)
+        columns = {0: [pressed], 1: []}
+
+        def go_to_target(**_kw: object) -> None:
+            columns[0] = [MagicMock(spec=IndexItemButton)]
+            columns[1] = [MagicMock(spec=IndexItemButton), target]
+            index_screen._hand_focus_to(target)
+            index_screen._schedule_sub_items(lambda _dt: columns[1].insert(2, sub_item))
+
+        pressed.trigger_action.side_effect = go_to_target
+        index_screen.num_columns = 2
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        index_screen._nav_focused_col = 0
+        index_screen._nav_focused_item_idx = 0
+
+        with (
+            patch.object(index_screen, "_get_col_buttons", side_effect=lambda col: columns[col]),
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            index_screen._activate_focused_item()
+            schedule.call_args.args[0](0.0)  # the target's sub-items go in
+
+        assert index_screen._nav_focused_col == 1
+        assert index_screen._nav_focused_item_idx == 2  # the target's first sub-item
+        assert index_screen._focus_handoff is None
+
+    def test_no_focus_is_handed_on_without_keyboard_nav(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._nav_active = False
+        index_screen._nav_focused_col = 0
+        index_screen._hand_focus_to(MagicMock(spec=IndexItemButton))
+        assert index_screen._nav_focused_col == 0
+        assert index_screen._focus_handoff is None
+
     def test_a_collapse_resyncs_the_focus_at_once(self, index_screen: ConcreteIndexScreen) -> None:
         btn_a = MagicMock(spec=IndexItemButton)
         btn_b = MagicMock(spec=IndexItemButton)

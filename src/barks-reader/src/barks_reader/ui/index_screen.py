@@ -526,6 +526,9 @@ class IndexScreen(FloatLayout):
         self._sub_items_pending: bool = False  # An expansion's sub-items await the next frame.
         # The focus to resync once they are in: the item pressed, and the column's count.
         self._pending_focus_resync: tuple[Button, int] | None = None
+        # The item an action hands the keyboard focus to, in place of the one pressed:
+        # a cross-reference's target, on the letter page it switched to.
+        self._focus_handoff: Button | None = None
 
     def on_goto_background_title(self) -> None:
         assert self.on_goto_background_title_func is not None
@@ -756,7 +759,10 @@ class IndexScreen(FloatLayout):
             return
         btn = col_buttons[self._nav_focused_item_idx]
         self._pending_focus_resync = None
+        self._focus_handoff = None
         btn.trigger_action(duration=0)
+        if self._focus_handoff is not None:
+            btn, self._focus_handoff = self._focus_handoff, None
         # Re-sync focus after items may have been added/removed by the action.
         # duration=0 fires on_release synchronously: a collapse is done by now, and an
         # expansion has scheduled its sub-items (_schedule_sub_items) for the next frame.
@@ -769,6 +775,16 @@ class IndexScreen(FloatLayout):
             self._pending_focus_resync = (btn, post_action_count)
         else:
             self._resync_item_focus(btn, post_action_count)
+
+    def _hand_focus_to(self, btn: Button) -> None:
+        """Have the keyboard focus follow the action being taken to `btn`, in any column."""
+        if not self._nav_active:
+            return
+        for col_idx in range(self.num_columns):
+            if btn in self._get_col_buttons(col_idx):
+                self._nav_focused_col = col_idx
+                self._focus_handoff = btn
+                return
 
     def _schedule_sub_items(self, add_sub_items: Callable[[float], None]) -> None:
         """Add an expansion's sub-items on the next frame, then resync any focus waiting on them.

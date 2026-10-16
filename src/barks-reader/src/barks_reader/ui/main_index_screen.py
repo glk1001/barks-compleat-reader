@@ -82,6 +82,13 @@ def reveal_distance(
     return max(0.0, min(hidden_below, view_top - owner_top))
 
 
+def _index_letter(heading: str) -> str:
+    """Return the letter page `heading` is listed on: its first letter, or "0" for a digit."""
+    first_letter = heading[0].upper()
+    assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
+    return "0" if "0" <= first_letter <= "9" else first_letter
+
+
 def _layout_pending(*layouts: Widget) -> bool:
     """Return whether any of `layouts` has yet to place its children."""
     return any(
@@ -181,6 +188,8 @@ class MainIndexScreen(IndexScreen):
 
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
+        # The shown letter page's tag entries, for a cross-reference to go to.
+        self._tag_entries: dict[Tags, tuple[Button, IndexItem]] = {}
 
         self._build_index()
         self._populate_alphabet_menu()
@@ -190,6 +199,7 @@ class MainIndexScreen(IndexScreen):
         return self._item_index.get(first_letter, [])
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
+        self._tag_entries.clear()
         self._populate_index_grid(first_letter)
 
     def _build_index(self) -> None:
@@ -231,11 +241,7 @@ class MainIndexScreen(IndexScreen):
         )
 
     def add_tag_name(self, tag: Tags, tag_name: str, see: str = "") -> None:
-        first_letter = tag_name[0].upper()
-        assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
-        if "0" <= first_letter <= "9":
-            first_letter = "0"
-        self._item_index[first_letter].append(IndexItem(tag, tag_name, see=see))
+        self._item_index[_index_letter(tag_name)].append(IndexItem(tag, tag_name, see=see))
 
     @override
     def _reset_background_image_caches(self) -> None:
@@ -310,6 +316,8 @@ class MainIndexScreen(IndexScreen):
         button.bind(
             on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)
         )
+        if isinstance(item.id, Tags) and not item.see:
+            self._tag_entries[item.id] = (button, item)
         return button
 
     def _get_no_items_button(self, letter: str) -> IndexItemButton:
@@ -450,7 +458,22 @@ class MainIndexScreen(IndexScreen):
         if type(item.id) is Titles:
             self._handle_title(button, item)
             return True
+        if item.see:
+            self._follow_see_reference(item)
+            return True
         return False
+
+    def _follow_see_reference(self, item: IndexItem) -> None:
+        """Go to a cross-reference's target entry, on its letter page, and open it."""
+        assert isinstance(item.id, Tags)
+        logger.info(log_markers.INDEX_SEE_FOLLOWED.format(name=item.display_text, see=item.see))
+        self.on_letter_press(self._alphabet_buttons[_index_letter(item.see)])
+        if item.id not in self._tag_entries:
+            logger.warning(f'No entry "{item.see}" for the cross-reference "{item.display_text}".')
+            return
+        target_button, target_item = self._tag_entries[item.id]
+        self._hand_focus_to(target_button)
+        self._on_index_item_press(target_button, target_item)
 
     @override
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
