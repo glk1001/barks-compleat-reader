@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import gui_driver as gd
+from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_settings import READER_FILES_DIR, WIKI_BUNDLE_SUBDIR
@@ -581,6 +582,34 @@ def reader_on_screen(log_text: str) -> list[tuple[datetime, datetime | None]]:
     return spans
 
 
+_PAGE_IMAGE_SHOWN_RE = re.compile(
+    pattern(
+        markers.PAGE_IMAGE_SHOWN,
+        page_type=re.compile(r"(?P<page_type>\w+)"),
+        image=re.compile(r"(?P<image>.*)"),
+    )
+)
+
+
+def reader_shows_a_blank_page(log_text: str) -> bool:
+    """Return whether the log ends with the comic reader on screen, showing a blank page.
+
+    A blank page - the reader's empty page for a volume's title or blank page, or a
+    prebuilt comic's blank page - is one plain colour, as a render that failed is. The
+    last page shown counts: a reader opened again shows its page before it comes on.
+    """
+    spans = reader_on_screen(log_text)
+    if not spans or spans[-1][1] is not None:
+        return False
+    shown = list(_PAGE_IMAGE_SHOWN_RE.finditer(log_text))
+    if not shown:
+        return False
+    last = shown[-1]
+    return (
+        last["page_type"] == PageType.BLANK_PAGE.name or markers.EMPTY_PAGE_IMAGE in last["image"]
+    )
+
+
 def _held_secs(start: datetime, end: datetime, holds: list[tuple[datetime, datetime]]) -> float:
     """Return how much of `start` to `end` the holds cover, in seconds."""
     return sum(
@@ -825,6 +854,8 @@ class AppBoot:
         except gd.DriverError:
             return
         capture = self.scratch / "final-frame.png"
+        log_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
+        blank_page = reader_shows_a_blank_page(log_text)
         # The app's own frame, drawn again off screen: a capture of the screen read
         # black on Windows for a fullscreen reader showing a page (the soak, 2026-10-03
         # and 2026-10-06). The screen, as before, when the app does not answer.
@@ -835,9 +866,9 @@ class AppBoot:
                 self.driver.shot(capture)
             except gd.DriverError:
                 return
-            self._assert_drawn(capture, "the final frame")
+            self._assert_drawn(capture, "the final frame", blank_page=blank_page)
             return
-        self._assert_drawn(capture, "the final frame", whole_image=True)
+        self._assert_drawn(capture, "the final frame", whole_image=True, blank_page=blank_page)
 
     def assert_page_centred(self) -> None:
         """Fail the test if a page the reader drew stood off the window's centre.
@@ -914,8 +945,13 @@ class AppBoot:
         msg = f"the app took longer than its budget ({source}):\n{shown}\nartifacts:\n{listing}"
         raise AssertionError(msg)
 
-    def _assert_drawn(self, capture: Path, what: str, *, whole_image: bool = False) -> None:
-        """Fail if `capture` looks not drawn: the window's part of it, or all of it."""
+    def _assert_drawn(
+        self, capture: Path, what: str, *, whole_image: bool = False, blank_page: bool = False
+    ) -> None:
+        """Fail if `capture` looks not drawn: the window's part of it, or all of it.
+
+        With `blank_page` (the reader showing one), only too few colours fail it.
+        """
         # Imported here: shots pulls in Pillow, which nothing else in the harness needs.
         from barks_gui.shots import image_size, looks_blank, render_stats  # noqa: PLC0415
 
@@ -928,7 +964,7 @@ class AppBoot:
             except gd.DriverError:
                 return
         stats = render_stats(capture, window)
-        if not looks_blank(stats):
+        if not looks_blank(stats, blank_page=blank_page):
             return
         listing = "\n".join(str(p) for p in self.save_failure_artifacts())
         msg = (

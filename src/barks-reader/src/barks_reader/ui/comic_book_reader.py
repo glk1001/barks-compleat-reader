@@ -662,8 +662,11 @@ class ComicBookReader(FloatLayout):
 
         page_str = self._current_page_str
         logger.debug(
-            f"Displaying image {self._current_page_index}:"
-            f" {self._comic_book_loader.get_image_info_str(page_str)}."
+            log_markers.PAGE_IMAGE_SHOWN.format(
+                index=self._current_page_index,
+                page_type=self._page_map[page_str].page_type.name,
+                image=self._comic_book_loader.get_image_info_str(page_str),
+            )
         )
 
         if self._is_one_pager_collection:

@@ -21,6 +21,7 @@ from .image_pipeline import (
     load_pil,
     resize_contain,
 )
+from .log_markers import EMPTY_PAGE_IMAGE
 from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
@@ -142,7 +143,7 @@ class ArchivePageImageSource:
         if is_title_page(page_info.srce_page) or is_blank_page(
             page_info.srce_page.page_filename, page_info.page_type
         ):
-            return Path("__empty_page__"), False
+            return Path(EMPTY_PAGE_IMAGE), False
 
         page_str = Path(page_info.srce_page.page_filename).stem
 
@@ -170,7 +171,7 @@ class ArchivePageImageSource:
             )
 
         if page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
-            ext = Path(image_path).suffix if image_path != "__empty_page__" else ".jpg"
+            ext = Path(image_path).suffix if image_path != EMPTY_PAGE_IMAGE else ".jpg"
             return decode_pil(self._empty_page_image, ext=ext)
 
         assert self._fanta_volume_archive is not None

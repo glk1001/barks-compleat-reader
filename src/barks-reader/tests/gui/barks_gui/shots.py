@@ -77,8 +77,15 @@ def render_stats(capture: Path, window: tuple[int, int, int, int]) -> RenderStat
     )
 
 
-def looks_blank(stats: RenderStats) -> bool:
-    """Return whether a window with these statistics was not really drawn."""
+def looks_blank(stats: RenderStats, *, blank_page: bool = False) -> bool:
+    """Return whether a window with these statistics was not really drawn.
+
+    With `blank_page`, the reader shows a blank page, which covers most of the window
+    in its one colour: the window is drawn if its bar and controls give it colours
+    (a soak on the Windows VM ended on one on 2026-10-16, its colour 92% of the window).
+    """
+    if blank_page:
+        return stats.distinct_colours < BLANK_MIN_COLOURS
     return (
         stats.dominant_fraction > BLANK_DOMINANT_FRACTION
         or stats.distinct_colours < BLANK_MIN_COLOURS

@@ -1366,6 +1366,17 @@ def _reader_line(stamp: str, *, entered: bool = True) -> str:
     return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.ui.reader_screens - {message}"
 
 
+def _page_shown_line(
+    stamp: str, *, page_type: str = "BODY", image: str = '"12.jpg" (from archive)'
+) -> str:
+    """Return the line the comic reader logs as it shows a page, at `stamp` (HH:MM:SS.mmm)."""
+    message = markers.PAGE_IMAGE_SHOWN.format(index=35, page_type=page_type, image=image)
+    return f"2026-10-02 {stamp} | DEBUG    | app : barks_reader.ui.comic_book_reader - {message}"
+
+
+EMPTY_PAGE_SHOWN = f'"{markers.EMPTY_PAGE_IMAGE}" (from override)'
+
+
 def _on_screen(*lines: str) -> str:
     """Return `lines` as a log in which the reader's screen came on show first."""
     return "\n".join([_reader_line("12:00:00.000"), *lines])
@@ -1492,14 +1503,76 @@ def _png(path: Path, size: tuple[int, int], *, drawn: bool) -> Path:
     return path
 
 
+def _blank_page_png(path: Path) -> Path:
+    """Write a plain page with a bar of many colours across its top, as a blank page shows."""
+    size = (200, 200)
+    image = Image.new("RGB", size, (246, 238, 226))
+    for x in range(size[0]):
+        for y in range(8):
+            image.putpixel((x, y), ((x * 5) % 256, (y * 40) % 256, 90))
+    image.save(path)
+    return path
+
+
+class TestReaderShowsABlankPage:
+    """Whether a final frame of one plain colour may be a blank page, drawn as it should be."""
+
+    def test_the_readers_empty_page_on_show(self) -> None:
+        """The Windows VM soak, 2026-10-16: Goto End onto the empty page, then a dropdown."""
+        log = _on_screen(_page_shown_line("12:00:01.000", page_type="BODY", image=EMPTY_PAGE_SHOWN))
+        assert harness.reader_shows_a_blank_page(log)
+
+    def test_a_prebuilt_comics_blank_page_on_show(self) -> None:
+        log = _on_screen(_page_shown_line("12:00:01.000", page_type="BLANK_PAGE"))
+        assert harness.reader_shows_a_blank_page(log)
+
+    def test_a_page_of_the_story_is_not(self) -> None:
+        log = _on_screen(_page_shown_line("12:00:01.000"))
+        assert not harness.reader_shows_a_blank_page(log)
+
+    def test_only_the_last_page_shown_counts(self) -> None:
+        log = _on_screen(
+            _page_shown_line("12:00:01.000", image=EMPTY_PAGE_SHOWN),
+            _page_shown_line("12:00:02.000"),
+        )
+        assert not harness.reader_shows_a_blank_page(log)
+
+    def test_a_reader_that_has_left_the_screen_shows_nothing(self) -> None:
+        log = _on_screen(
+            _page_shown_line("12:00:01.000", image=EMPTY_PAGE_SHOWN),
+            _reader_line("12:00:02.000", entered=False),
+        )
+        assert not harness.reader_shows_a_blank_page(log)
+
+    def test_with_no_reader_there_is_no_blank_page(self) -> None:
+        assert not harness.reader_shows_a_blank_page("")
+
+
+class TestLooksBlankOnABlankPage:
+    def test_a_blank_page_with_its_bar_drawn_is_drawn(self, tmp_path: Path) -> None:
+        capture = _blank_page_png(tmp_path / "page.png")
+        stats = shots.render_stats(capture, (*shots.image_size(capture), 0, 0))
+        assert stats.dominant_fraction > shots.BLANK_DOMINANT_FRACTION  # mostly one colour
+        assert shots.looks_blank(stats), "without the blank page, this reads as not drawn"
+        assert not shots.looks_blank(stats, blank_page=True)
+
+    def test_a_flat_window_is_blank_whatever_the_reader_shows(self, tmp_path: Path) -> None:
+        capture = _png(tmp_path / "flat.png", (40, 30), drawn=False)
+        stats = shots.render_stats(capture, (40, 30, 0, 0))
+        assert shots.looks_blank(stats, blank_page=True)
+
+
 class TestFinalFrame:
     """The final frame is the app's own, drawn again off screen; the screen's if it cannot."""
 
     class _Driver:
-        def __init__(self, *, frame: Path | None, screen: Path | None) -> None:
+        def __init__(self, *, frame: Path | None, screen: Path | None, log: str = "") -> None:
             self.frame = frame
             self.screen = screen
             self.shots: list[Path] = []
+            folder = next(path for path in (frame, screen) if path is not None).parent
+            self.log_path = folder / "app.log"
+            self.log_path.write_text(log, encoding="utf-8")
 
         def window_geometry(self) -> tuple[int, int, int, int]:
             return (40, 30, 500, 600)
@@ -1569,6 +1642,27 @@ class TestFinalFrame:
             app_boot.assert_render_not_blank()
 
         assert driver.shots == [app_boot.scratch / "final-frame.png"]
+
+    def test_a_blank_page_on_show_with_its_bar_drawn_passes(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        app_boot.driver = self._Driver(  # ty: ignore[invalid-assignment]
+            frame=_blank_page_png(tmp_path / "frame.png"),
+            screen=None,
+            log=_on_screen(_page_shown_line("12:00:01.000", image=EMPTY_PAGE_SHOWN)),
+        )
+        app_boot.assert_render_not_blank()
+
+    def test_the_same_frame_with_a_story_page_on_show_fails(
+        self, app_boot: harness.AppBoot, tmp_path: Path
+    ) -> None:
+        app_boot.driver = self._Driver(  # ty: ignore[invalid-assignment]
+            frame=_blank_page_png(tmp_path / "frame.png"),
+            screen=None,
+            log=_on_screen(_page_shown_line("12:00:01.000")),
+        )
+        with pytest.raises(AssertionError, match="the final frame looks blank"):
+            app_boot.assert_render_not_blank()
 
     def test_the_apps_frame_is_kept_with_a_failures_artifacts(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

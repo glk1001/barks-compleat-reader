@@ -384,6 +384,22 @@ class TestComicBookReader:
         mock_render.assert_called_once_with(3, None)
         reader._comic_book_loader.cursor.set_busy.assert_not_called()
 
+    def test_show_page_logs_the_page_its_type_and_its_image(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        """The GUI harness reads it to tell a blank page from a render that failed."""
+        self._stub_current_page(reader, 3)
+        reader._all_loaded = True
+        reader._page_manager.page_map = {"3": MagicMock(page_type=PageType.BLANK_PAGE)}
+        image = f'"{log_markers.EMPTY_PAGE_IMAGE}" (from override)'
+        reader._comic_book_loader.get_image_info_str.return_value = image
+
+        with patch.object(reader, "_render_page"):
+            reader._show_page(None, None)
+
+        expected = log_markers.PAGE_IMAGE_SHOWN.format(index=3, page_type="BLANK_PAGE", image=image)
+        assert any(expected in line for line in loguru_sink)
+
     def test_show_page_keeps_current_page_and_polls_when_not_loaded(
         self, reader: ComicBookReader, loguru_sink: list[str]
     ) -> None:

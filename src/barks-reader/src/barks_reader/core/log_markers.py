@@ -142,6 +142,13 @@ WINDOW_GEOMETRY: Final = "Main window geometry ({reason}): {width}x{height}+{lef
 # after fullscreen switches, which no other line showed) is then in the log, and the
 # GUI harness holds every settled one centred in its window (assert_page_centred).
 PAGE_PLACED: Final = "Page placed: {width}x{height}+{x}+{y} in a {win_width}x{win_height} window."
+# The page the comic reader shows next: its index, its type and the image drawn for it.
+# A blank page (the reader's own empty page for a volume's title or blank page, or a
+# prebuilt comic's blank page) is one plain colour, as a render that failed is: the GUI
+# harness reads this to tell the two apart in a final frame (reader_shows_a_blank_page).
+PAGE_IMAGE_SHOWN: Final = "Displaying image {index} ({page_type}): {image}."
+# The image named for a volume's title page and blank pages: the reader's empty page.
+EMPTY_PAGE_IMAGE: Final = "__empty_page__"
 # The reader's size as its closing animation starts, which draws the screen as it
 # stands then: closed from a window, the reader goes full screen first, and a reader
 # not yet laid out for it fell out with its page at the old size, at the left edge.
