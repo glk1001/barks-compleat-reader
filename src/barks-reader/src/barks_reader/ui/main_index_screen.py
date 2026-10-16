@@ -119,6 +119,9 @@ class _MainIndexTitleItemButton(Button):
         self.size_hint = (0.90, None)
         self.halign = "left"
         self.valign = "middle"
+        # A title too long for the row ends in an ellipsis: wrapped, it ran onto the next.
+        self.shorten = True
+        self.shorten_from = "right"
 
         self.bind(size=self.setter("text_size"))
         self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)

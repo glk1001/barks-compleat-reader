@@ -41,6 +41,9 @@
     height: app.index_theme.ROW_HEIGHT
     padding: app.index_theme.INDEX_ITEM_LEFT_PAD, 0, 0, 0
     text_size: self.size
+    # Too long for the row, an entry ends in an ellipsis: wrapped, it ran onto the next.
+    shorten: True
+    shorten_from: 'right'
     halign: 'left'
     valign: 'middle'
 
