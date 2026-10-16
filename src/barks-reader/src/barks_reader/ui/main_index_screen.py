@@ -8,7 +8,6 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
     BARKS_TAGGED_PAGES,
     BARKS_TAGGED_TITLES,
-    BARKS_TAGS_ALIAS_LISTS,
     TagGroups,
     Tags,
     get_all_tags_in_tag_group,
@@ -17,6 +16,7 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
+from barks_fantagraphics.speech_markup import escape_markup
 from comic_utils.timing import Timing
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
@@ -29,7 +29,12 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageSelector
-from barks_reader.core.index_text import alias_index_name
+from barks_reader.core.index_headings import (
+    SEE_REFERENCES,
+    index_sort_key,
+    tag_group_heading,
+    tag_heading,
+)
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
 
@@ -44,6 +49,14 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
+
+
+def _index_item_markup(item: IndexItem) -> str:
+    """Return a top-level row's text as markup: a cross-reference's "See" in italics."""
+    text = escape_markup(item.display_text)
+    if not item.see:
+        return text
+    return f"{text}. [i]See[/i] {escape_markup(item.see)}"
 
 
 class _MainIndexTitleItemButton(Button):
@@ -155,35 +168,34 @@ class MainIndexScreen(IndexScreen):
             assert "A" <= first_letter <= "Z"
             self._item_index[first_letter].append(IndexItem(title, title_str))
 
-        # Add all tags
+        # Add all tags, headed as an index heads them (see core.index_headings), and the
+        # other names a reader may look them up by, as "See" cross-references.
         for tag in Tags:
-            tag_name = self._get_sortable_string(tag.value)
-            self.add_tag_name(tag, tag_name)
-            for alias in BARKS_TAGS_ALIAS_LISTS.get(tag, []):
-                if (alias_name := alias_index_name(alias, tag.value)) is not None:
-                    self.add_tag_name(tag, alias_name)
+            self.add_tag_name(tag, tag_heading(tag))
+        for name, tag in SEE_REFERENCES.items():
+            self.add_tag_name(tag, name, see=tag_heading(tag))
 
         # Add all tag groups
         for tag_group in TagGroups:
-            tag_group_name = tag_group.value
+            tag_group_name = tag_group_heading(tag_group)
             first_letter = tag_group_name[0].upper()
             assert "A" <= first_letter <= "Z"
             self._item_index[first_letter].append(IndexItem(tag_group, tag_group_name))
 
         # Sort items within each letter group
         for letter in self._item_index:
-            self._item_index[letter].sort(key=lambda item: item.display_text.lower())
+            self._item_index[letter].sort(key=lambda item: index_sort_key(item.display_text))
 
         logger.debug(
             log_markers.INDEX_BUILD_COMPLETE.format(elapsed=timing.get_elapsed_time_with_unit())
         )
 
-    def add_tag_name(self, tag: Tags, tag_name: str) -> None:
+    def add_tag_name(self, tag: Tags, tag_name: str, see: str = "") -> None:
         first_letter = tag_name[0].upper()
         assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
         if "0" <= first_letter <= "9":
             first_letter = "0"
-        self._item_index[first_letter].append(IndexItem(tag, tag_name))
+        self._item_index[first_letter].append(IndexItem(tag, tag_name, see=see))
 
     @override
     def _reset_background_image_caches(self) -> None:
@@ -247,7 +259,8 @@ class MainIndexScreen(IndexScreen):
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
-            text=item.display_text,
+            text=_index_item_markup(item),
+            markup=True,
             font_name=self._font_manager.main_index_item_font_name,
             font_size=self._font_manager.main_index_item_font_size,
             bold=type(item.id) is not Titles,
@@ -302,10 +315,10 @@ class MainIndexScreen(IndexScreen):
             assert isinstance(item_id, TagGroups)
             use_italic = False
             sub_items_to_display = [
-                (tag, "", tag.value) for tag in get_all_tags_in_tag_group(item_id)
+                (tag, "", tag_heading(tag)) for tag in get_all_tags_in_tag_group(item_id)
             ]
 
-        sub_items_to_display.sort(key=lambda t: t[2])
+        sub_items_to_display.sort(key=lambda t: index_sort_key(t[2]))
 
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)

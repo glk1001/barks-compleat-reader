@@ -143,6 +143,8 @@ class IndexItem:
     # A tag's pages in the title, for a title listed under a tag (see page_to_goto).
     tagged_pages: tuple[str, ...] = ()
     entity_type: EntityType | None = None  # None = plain word search; set for entity index items
+    # A cross-reference's target heading: the row reads "<display_text>. See <see>".
+    see: str = ""
 
 
 class TextBoxWithTitleAndBorder(BoxLayout):

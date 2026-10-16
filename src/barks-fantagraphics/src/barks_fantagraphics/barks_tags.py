@@ -92,10 +92,6 @@ BARKS_TAG_EXTRA_ALIASES = {
 }
 
 BARKS_TAG_ALIASES = {str(t.value).lower(): t for t in Tags} | BARKS_TAG_EXTRA_ALIASES
-BARKS_TAGS_ALIAS_LISTS: dict[Tags, list[str]] = {
-    t: [alias for alias in BARKS_TAG_EXTRA_ALIASES if BARKS_TAG_EXTRA_ALIASES[alias] == t]
-    for t in BARKS_TAG_EXTRA_ALIASES.values()
-}
 
 BARKS_FIRSTS_MAP: dict[Tags, Tags] = {
     Tags.FIRST_BEAGLE_BOYS: Tags.BEAGLE_BOYS,

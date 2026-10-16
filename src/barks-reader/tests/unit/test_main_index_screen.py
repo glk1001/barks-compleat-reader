@@ -102,9 +102,7 @@ class TestMainIndexScreen:
         assert items_b[0].display_text == "Banana"
 
     def test_create_index_button(self, main_index_screen: MainIndexScreen) -> None:
-        # Mock item
-        item = MagicMock()
-        item.display_text = "My Title"
+        item = IndexItem(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, "My Title")
 
         with patch.object(barks_reader.ui.main_index_screen, "IndexItemButton") as mock_btn_cls:
             btn = main_index_screen._create_index_button(item)
@@ -114,6 +112,41 @@ class TestMainIndexScreen:
             _, kwargs = mock_btn_cls.call_args
             assert kwargs["text"] == "My Title"
             assert btn is mock_btn_cls.return_value
+
+    def test_a_cross_reference_row_reads_see_in_italics(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        item = IndexItem(Tags.GOLDIE_OGILT, "Glittering Goldie", see="O'Gilt, Goldie")
+        with patch.object(barks_reader.ui.main_index_screen, "IndexItemButton") as mock_btn_cls:
+            main_index_screen._create_index_button(item)
+        _, kwargs = mock_btn_cls.call_args
+        assert kwargs["text"] == "Glittering Goldie. [i]See[/i] O'Gilt, Goldie"
+        assert kwargs["markup"] is True
+
+    def test_tags_are_listed_by_their_index_headings(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        texts = {
+            (item.id, item.display_text, item.see)
+            for items in main_index_screen._item_index.values()
+            for item in items
+        }
+        assert (Tags.FLINTHEART_GLOMGOLD, "Glomgold, Flintheart", "") in texts
+        assert (Tags.DAISY, "Daisy Duck", "") in texts
+        assert (Tags.FIRST_DAISY, "Daisy Duck: first appearance", "") in texts
+        assert (Tags.GOLDIE_OGILT, "Glittering Goldie", "O'Gilt, Goldie") in texts
+        assert (TagGroups.PIG_VILLAINS, "pig villains", "") in texts
+        # Search shorthands are no longer index entries.
+        assert not any(text == "Amnesia" for _, text, _ in texts)
+
+    def test_a_letter_sorts_word_by_word_ignoring_punctuation(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        o_texts = [item.display_text for item in main_index_screen._item_index["O"]]
+        assert o_texts.index("Officer of the Day") < o_texts.index("O'Gilt, Goldie")
+        assert o_texts.index("O'Gilt, Goldie") < o_texts.index("Ohio")
+        d_texts = [item.display_text for item in main_index_screen._item_index["D"]]
+        assert d_texts.index("Daisy Duck") + 1 == d_texts.index("Daisy Duck: first appearance")
 
     def test_on_index_item_press(self, main_index_screen: MainIndexScreen) -> None:
         # MainIndexScreen._on_index_item_press usually navigates to the title.
