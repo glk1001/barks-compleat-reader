@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
 
-ITEMS_DOWN = 2
+# Down from the first item to a title on the A page ("Adventure Down Under"): above it
+# is only "abduction stories", a tag, which would open rather than go to a title.
+ITEMS_DOWN = 1
 INDEX_LETTERS = 3
 LETTERS = 26
 EMPTY_LETTER = pattern(markers.INDEX_LETTER_EMPTY)
