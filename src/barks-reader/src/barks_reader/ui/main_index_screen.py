@@ -39,6 +39,7 @@ from barks_reader.core.index_headings import (
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
+from barks_reader.core.scroll_reveal import REVEAL_PADDING, reveal_distance
 
 from .index_screen import IndexItem, IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
@@ -53,33 +54,6 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
-
-
-# The space left under opened sub-items scrolled into view.
-REVEAL_PADDING = 10
-
-
-def reveal_distance(
-    *, view_bottom: float, view_top: float, items_bottom: float, owner_top: float, padding: float
-) -> float:
-    """Return how far to move the index content up to show sub-items opened below a row.
-
-    Enough to bring the sub-items' bottom (and `padding`) into view, but never so far that
-    their row leaves it: sub-items taller than the view end with the row at its top.
-
-    Args:
-        view_bottom: The scroll view's bottom.
-        view_top: The scroll view's top.
-        items_bottom: The opened sub-items' bottom.
-        owner_top: The top of the row they opened under.
-        padding: The space to leave under the sub-items.
-
-    Returns:
-        The distance, in pixels, or 0 when the sub-items already show.
-
-    """
-    hidden_below = view_bottom - items_bottom + padding
-    return max(0.0, min(hidden_below, view_top - owner_top))
 
 
 def _index_letter(heading: str) -> str:

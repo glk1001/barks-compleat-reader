@@ -12,8 +12,9 @@ import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
+from barks_reader.core.scroll_reveal import reveal_distance
 from barks_reader.ui.index_screen import IndexItem
-from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy, reveal_distance
+from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy
 from kivy.clock import Clock
 
 if TYPE_CHECKING:

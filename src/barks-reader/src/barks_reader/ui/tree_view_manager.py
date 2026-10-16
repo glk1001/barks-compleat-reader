@@ -118,6 +118,8 @@ class TreeViewManager:
             self._handle_title_node_selection(node)
         elif isinstance(node, ButtonTreeViewNode):
             self._handle_button_node_selection(node)
+        # The tree shows the node as it was put: no expanding on the way scrolls it.
+        self._scroll_pinner.cancel_pending_reveals()
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
         self.render_title_node(node, scroll_to=True)
@@ -177,6 +179,7 @@ class TreeViewManager:
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             self._tree_view_screen.open_node_and_all_parent_nodes(node)
+        self._scroll_pinner.cancel_pending_reveals()
 
     def go_back_to_previous_node(self) -> None:
         prev_node = self._tree_view_screen.ids.reader_tree_view.previous_selected_node
@@ -199,6 +202,8 @@ class TreeViewManager:
         self.setup_and_select_node(prev_node)
 
     def goto_node(self, node: BaseTreeViewNode, scroll_to: bool = False) -> None:
+        self._scroll_pinner.cancel_pending_reveals()
+
         def show_node(n: BaseTreeViewNode) -> None:
             self._tree_view_screen.select_node(n)
             if scroll_to:
@@ -207,6 +212,7 @@ class TreeViewManager:
         Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
 
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
+        self._scroll_pinner.cancel_pending_reveals()
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def allow_view_state_change(self) -> None:

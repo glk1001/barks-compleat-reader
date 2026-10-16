@@ -7,12 +7,18 @@ Kivy's `Clock`, so the previously-untested pixel math is exercised directly.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.core.scroll_reveal import REVEAL_PADDING
 from barks_reader.core.tap_targets import layout_settling
 from barks_reader.core.testing import FakeClock
 from barks_reader.ui.tree_scroll_pinner import TreeScrollPinner
+from kivy.metrics import dp
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _make_scroll_view(*, has_children: bool = True, cont_height: float = 500.0) -> MagicMock:
@@ -30,6 +36,7 @@ def _make_parent_node() -> MagicMock:
     node = MagicMock()
     node.text = "Parent Node"
     node.is_open = True
+    node.nodes = []
     return node
 
 
@@ -171,3 +178,108 @@ def test_a_container_that_goes_missing_is_waited_for_then_given_up_on() -> None:
     assert frames == TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001
     on_settled.assert_called_once()
     assert not layout_settling()
+
+
+def _make_node_at(y: float, *, is_open: bool = False, nodes: list | None = None) -> MagicMock:
+    node = MagicMock(y=y, is_open=is_open, nodes=nodes or [])
+    node.to_window = lambda x, y: (x, y)
+    return node
+
+
+def _settle_expanded(parent: MagicMock) -> MagicMock:
+    """Expand `parent` in a view over window y 0-100 of 500px of content; return the view."""
+    clock = FakeClock()
+    scroll_view = _make_scroll_view()
+    scroll_view.y, scroll_view.top = 0.0, 100.0
+    scroll_view.to_window = lambda x, y: (x, y)
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=MagicMock(),
+        schedule_once=clock.schedule_once,
+    )
+    pinner.pin_while_populating(parent, populate=None)
+    while clock.run_next():
+        pass
+    return scroll_view
+
+
+def _parent_at_top(top: float, nodes: list) -> MagicMock:
+    parent = _make_parent_node()
+    parent.top = top
+    parent.to_window = lambda x, y: (x, y)
+    parent.nodes = nodes
+    return parent
+
+
+def test_children_opened_below_the_view_are_scrolled_into_it() -> None:
+    # The parent's top at 30: its last child's bottom at -40, 40 below the view.
+    parent = _parent_at_top(30.0, [_make_node_at(10.0), _make_node_at(-40.0)])
+
+    scroll_view = _settle_expanded(parent)
+
+    # Up by 40 and the padding, over the 400px the content can scroll.
+    assert scroll_view.scroll_y == pytest.approx(0.5 - ((40 + dp(REVEAL_PADDING)) / 400))
+
+
+def test_children_taller_than_the_view_stop_with_the_parent_at_its_top() -> None:
+    parent = _parent_at_top(70.0, [_make_node_at(-500.0)])
+
+    scroll_view = _settle_expanded(parent)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5 - (30 / 400))
+
+
+def test_children_already_in_view_scroll_nothing() -> None:
+    parent = _parent_at_top(70.0, [_make_node_at(40.0)])
+
+    scroll_view = _settle_expanded(parent)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)
+
+
+def test_the_children_of_an_open_child_are_shown_too() -> None:
+    open_child = _make_node_at(10.0, is_open=True, nodes=[_make_node_at(-20.0)])
+    parent = _parent_at_top(30.0, [open_child])
+
+    scroll_view = _settle_expanded(parent)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5 - ((20 + dp(REVEAL_PADDING)) / 400))
+
+
+def _settle_with(parent: MagicMock, between_pins: Callable[[TreeScrollPinner], None]) -> MagicMock:
+    """Pin `parent`, call `between_pins(pinner)`, then let the layout settle."""
+    clock = FakeClock()
+    scroll_view = _make_scroll_view()
+    scroll_view.y, scroll_view.top = 0.0, 100.0
+    scroll_view.to_window = lambda x, y: (x, y)
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=MagicMock(),
+        schedule_once=clock.schedule_once,
+    )
+    pinner.pin_while_populating(parent, populate=None)
+    between_pins(pinner)
+    while clock.run_next():
+        pass
+    return scroll_view
+
+
+def test_a_cancelled_reveal_leaves_the_tree_where_the_app_put_it() -> None:
+    parent = _parent_at_top(30.0, [_make_node_at(-40.0)])
+
+    scroll_view = _settle_with(parent, TreeScrollPinner.cancel_pending_reveals)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)
+
+
+def test_only_the_latest_pin_reveals() -> None:
+    """A chain opened at once (a saved node and its parents) reveals only the last."""
+    first = _parent_at_top(30.0, [_make_node_at(-40.0)])
+    last = _parent_at_top(30.0, [_make_node_at(10.0)])
+
+    def pin_another(pinner: TreeScrollPinner) -> None:
+        pinner.pin_while_populating(last, populate=None)
+
+    scroll_view = _settle_with(first, pin_another)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)
