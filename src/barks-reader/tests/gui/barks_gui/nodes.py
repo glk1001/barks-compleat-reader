@@ -18,6 +18,8 @@ YEAR_RANGE_NODE = re.compile(r"19\d\d-19\d\d")
 THE_STORIES = ["The Stories", "root"]
 SERIES = ["Series", "The Stories", "root"]
 CHRONO_RANGE = ["1947-1950", "Chronological", "The Stories", "root"]
+# Booted onto, Themes heads the tree's view, its theme rows running past the bottom.
+THEMES = ["Themes", "Categories", "The Stories", "root"]
 SPEECH_INDEX = ["Speech Bubble Index", "Indexes", "root"]
 MAIN_INDEX = ["Main Index", "Indexes", "root"]
 NAMES_INDEX = ["Names", "Speech Bubble Index", "Indexes", "root"]

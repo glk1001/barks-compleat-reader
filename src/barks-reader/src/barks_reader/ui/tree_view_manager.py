@@ -86,6 +86,8 @@ class TreeViewManager:
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
+        # Off only while a collapse should move its row: the overlay's brings it back.
+        self._pin_collapses = True
         self._scroll_pinner = TreeScrollPinner(
             get_scroll_view=lambda: self._tree_view_screen.ids.scroll_view,
             on_settled=self._collapse_overlay.end_suppression,
@@ -171,7 +173,12 @@ class TreeViewManager:
     def _on_collapse_overlay_pressed(self, node: ButtonTreeViewNode) -> None:
         """Handle a tap on the collapse-parent overlay bar."""
         if node.is_open:
-            self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
+            # The node is scrolled off the top: it is brought back, not pinned there.
+            self._pin_collapses = False
+            try:
+                self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
+            finally:
+                self._pin_collapses = True
         self._tree_view_screen.select_node(node)
         self._tree_view_screen.scroll_to_node(node)
 
@@ -240,6 +247,8 @@ class TreeViewManager:
 
         logger.info(log_markers.NODE_COLLAPSED.format(name=node.get_name()))
 
+        if self._pin_collapses:
+            self._scroll_pinner.pin_while_collapsing(node)
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:

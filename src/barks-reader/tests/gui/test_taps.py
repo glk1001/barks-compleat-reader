@@ -12,6 +12,7 @@ choose the virtual keyboard for the search box.
 from __future__ import annotations
 
 import re
+from itertools import takewhile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from barks_gui.harness import AppBoot
+    from barks_reader.core.tap_targets import TapTarget
     from gui_driver import Driver
 
 SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
@@ -44,6 +46,11 @@ GOTO_TITLES = frozenset(
     indexable_title(title) for title in Titles if get_fanta_info(title) is not None
 )
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
+ANY_REVEAL = pattern(markers.TREE_CHILDREN_REVEALED)
+# Long enough for an expansion's scroll correction, a few frames, to have been logged.
+NO_REVEAL_SECS = 1.0
+# How many of a branch's rows an expansion at the tree's bottom glides into view.
+REVEALED_ROWS = 3
 
 
 def _boot(
@@ -92,6 +99,66 @@ def test_tapping_tree_nodes_opens_a_branch_and_selects_a_title(boot: AppBoot) ->
     with d.expect(pattern(markers.NEW_SELECTED_NODE, name=title.text)):
         taps.tap(d, kind="TitleTreeViewNode", text=title.text)
     assert d.current_node() == title.text
+
+
+def _tree_rows(d: Driver) -> list[TapTarget]:
+    """Return the tree's rows on screen, top to bottom, cut ones too."""
+    _, shown = taps.targets(d)
+    return sorted((t for t in shown if t.kind.endswith("TreeViewNode")), key=lambda t: t.top)
+
+
+def _row_named(rows: list[TapTarget], name: str) -> int:
+    return next(i for i, row in enumerate(rows) if row.text == name)
+
+
+def test_a_branch_tapped_at_the_bottom_glides_up_to_show_its_first_rows(boot: AppBoot) -> None:
+    """A branch whose first child would open out of sight glides up to show three.
+
+    The branch is the lowest row wholly on screen, above one the tree's edge cuts:
+    its first child would open where that one is. It stays on screen itself.
+    """
+    d = _boot(boot, nodes.THEMES, cues=nodes.NO_CUES)
+    rows = _tree_rows(d)
+    edge = next(
+        (i for i in reversed(range(len(rows) - 1)) if rows[i].whole and not rows[i + 1].whole),
+        None,
+    )
+    assert edge is not None, "the tree fits the window: no row at its bottom edge"
+    branch = rows[edge].text
+
+    with d.expect(pattern(markers.TREE_CHILDREN_REVEALED, name=branch)):
+        taps.tap(d, text=branch)
+
+    rows = _tree_rows(d)
+    i = _row_named(rows, branch)
+    assert rows[i].whole, f"{rows[i].describe()} glided off the screen"
+    children = list(takewhile(lambda row: row.left > rows[i].left, rows[i + 1 :]))
+    assert children, f"no row of {branch} shows"
+    cut = [row.describe() for row in children[:REVEALED_ROWS] if not row.whole]
+    assert not cut, f"the first rows of {branch} are cut: {cut}"
+
+
+def test_a_branch_whose_first_row_shows_stays_put_opened_and_shut(boot: AppBoot) -> None:
+    """A branch with room under it for a row neither moves to open nor to shut.
+
+    Shutting one was what moved it: Kivy keeps the scroll as a share of the tree's
+    height, so a shorter tree shifted every row until the collapse was pinned too.
+    """
+    d = _boot(boot, nodes.THEMES, cues=nodes.NO_CUES)
+    rows = _tree_rows(d)
+    themes = _row_named(rows, "Themes")
+    # The first theme: its first child opens on the row below, in plain view.
+    branch, below = rows[themes + 1], rows[themes + 2]
+    assert below.whole, f"no room shows under {branch.describe()}"
+
+    taps.tap_then_wait(d, pattern(markers.NODE_EXPANDED, name=branch.text), text=branch.text)
+    d.expect_no_new(ANY_REVEAL, NO_REVEAL_SECS)
+    rows = _tree_rows(d)
+    assert rows[_row_named(rows, branch.text)].top == branch.top, "opening it moved it"
+
+    taps.tap_then_wait(d, pattern(markers.NODE_COLLAPSED, name=branch.text), text=branch.text)
+    rows = _tree_rows(d)
+    assert rows[_row_named(rows, branch.text)].top == branch.top, "shutting it moved it"
 
 
 # ------------------------------------------------------ the comic reader --
