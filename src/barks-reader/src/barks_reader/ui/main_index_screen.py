@@ -29,6 +29,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageSelector
+from barks_reader.core.index_text import alias_index_name
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
 
@@ -159,7 +160,8 @@ class MainIndexScreen(IndexScreen):
             tag_name = self._get_sortable_string(tag.value)
             self.add_tag_name(tag, tag_name)
             for alias in BARKS_TAGS_ALIAS_LISTS.get(tag, []):
-                self.add_tag_name(tag, alias.title())
+                if (alias_name := alias_index_name(alias, tag.value)) is not None:
+                    self.add_tag_name(tag, alias_name)
 
         # Add all tag groups
         for tag_group in TagGroups:
