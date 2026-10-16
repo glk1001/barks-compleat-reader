@@ -249,6 +249,8 @@ INDEX_ITEM_PRESSED: Final = "Index item pressed: {item}"
 INDEX_HANDLING_TAG: Final = 'Handling tag: "{name}".'
 INDEX_HANDLING_TAG_GROUP: Final = 'Handling tag group: "{name}".'
 INDEX_SUB_ITEMS_ADDED: Final = "Index sub-items added under '{name}': {count}."
+# The index scrolling, after a tag opens, so its sub-items show below its row.
+INDEX_SUB_ITEMS_REVEALED: Final = "Index scrolled to show the sub-items under '{name}'."
 INDEX_TERM_HANDLED: Final = 'Handling index term: "{term}".'
 INDEX_PREFIX_PRESSED: Final = "Pressed prefix button: '{prefix}."
 SHOW_BUBBLES_FOR_INDEX_TERMS: Final = (

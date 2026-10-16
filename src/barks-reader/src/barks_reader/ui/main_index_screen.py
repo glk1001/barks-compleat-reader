@@ -18,6 +18,7 @@ from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from barks_fantagraphics.speech_markup import escape_markup
 from comic_utils.timing import Timing
+from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -42,6 +43,8 @@ from .index_screen import IndexItem, IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
+    from kivy.uix.widget import Widget
+
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -49,6 +52,41 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
+
+
+# The space left under opened sub-items scrolled into view.
+REVEAL_PADDING = 10
+
+
+def reveal_distance(
+    *, view_bottom: float, view_top: float, items_bottom: float, owner_top: float, padding: float
+) -> float:
+    """Return how far to move the index content up to show sub-items opened below a row.
+
+    Enough to bring the sub-items' bottom (and `padding`) into view, but never so far that
+    their row leaves it: sub-items taller than the view end with the row at its top.
+
+    Args:
+        view_bottom: The scroll view's bottom.
+        view_top: The scroll view's top.
+        items_bottom: The opened sub-items' bottom.
+        owner_top: The top of the row they opened under.
+        padding: The space to leave under the sub-items.
+
+    Returns:
+        The distance, in pixels, or 0 when the sub-items already show.
+
+    """
+    hidden_below = view_bottom - items_bottom + padding
+    return max(0.0, min(hidden_below, view_top - owner_top))
+
+
+def _layout_pending(*layouts: Widget) -> bool:
+    """Return whether any of `layouts` has yet to place its children."""
+    return any(
+        (trigger := getattr(layout, "_trigger_layout", None)) is not None and trigger.is_triggered
+        for layout in layouts
+    )
 
 
 def _index_item_markup(item: IndexItem) -> str:
@@ -293,6 +331,42 @@ class MainIndexScreen(IndexScreen):
                 name=item_id.name, count=len(sub_items_layout.children)
             )
         )
+        assert self._open_tag_button is not None
+        self._reveal_sub_items(item_id, self._open_tag_button, sub_items_layout)
+
+    def _reveal_sub_items(
+        self, item_id: Tags | TagGroups, button: Button, sub_items_layout: BoxLayout
+    ) -> None:
+        """Scroll the index so `button`'s opened sub-items show, `button` kept in view.
+
+        Opened near the bottom of the view, they went in below it, and a click seemed to
+        do nothing. Waits, as ScrollView.scroll_to does, until the layouts have placed them.
+        """
+        if sub_items_layout.parent is None:  # closed again meanwhile
+            return
+        scroll_view = self.ids.index_scroll_view
+        content = scroll_view.children[0]
+        if _layout_pending(sub_items_layout, sub_items_layout.parent, content):
+            Clock.schedule_once(
+                lambda _dt: self._reveal_sub_items(item_id, button, sub_items_layout)
+            )
+            return
+
+        def window_y(widget: Widget, y: float) -> float:
+            return scroll_view.parent.to_widget(*widget.to_window(widget.x, y))[1]
+
+        distance = reveal_distance(
+            view_bottom=scroll_view.y,
+            view_top=scroll_view.top,
+            items_bottom=window_y(sub_items_layout, sub_items_layout.y),
+            owner_top=window_y(button, button.top),
+            padding=dp(REVEAL_PADDING),
+        )
+        if distance <= 0:
+            return
+        _, scroll_distance = scroll_view.convert_distance_to_scroll(0, distance)
+        scroll_view.scroll_y = max(0.0, scroll_view.scroll_y - scroll_distance)
+        logger.debug(log_markers.INDEX_SUB_ITEMS_REVEALED.format(name=item_id.name))
 
     def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
         # The new padding is the parent button's padding plus an indent step.
