@@ -56,6 +56,7 @@ def main_index_screen(
             screen._random_title_images = mock_random_images_cls.return_value
             screen._texture_loader = mock_loader_cls.return_value
             screen._alphabet_buttons = {}
+            screen._open_tag_widgets = []
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
 
@@ -136,6 +137,9 @@ class TestMainIndexScreen:
         assert (Tags.DAISY, "Daisy Duck", "") in texts
         assert (Tags.FIRST_DAISY, "Daisy Duck: first appearance", "") in texts
         assert (Tags.GOLDIE_OGILT, "Glittering Goldie", "O'Gilt, Goldie") in texts
+        # The names a reader looks the leads up by stay findable, as cross-references.
+        scrooge = "Uncle Scrooge: outside the Uncle Scrooge series"
+        assert (Tags.SCROOGE_NOT_IN_US, "Scrooge", scrooge) in texts
         assert (TagGroups.PIG_VILLAINS, "pig villains", "") in texts
         # Search shorthands are no longer index entries.
         assert not any(text == "Amnesia" for _, text, _ in texts)
@@ -489,6 +493,84 @@ class TestSeeReferences:
             main_index_screen._follow_see_reference(see)
         press.assert_not_called()
         assert 'No entry "Black Pete" for the cross-reference "Pete".' in loguru_sink
+
+    @staticmethod
+    def _letter_buttons(*letters: str) -> dict[str, MagicMock]:
+        buttons = {}
+        for letter in letters:
+            buttons[letter] = MagicMock(name=letter)
+            buttons[letter].text = letter
+        return buttons
+
+    def test_a_target_on_another_page_is_found_through_the_real_letter_press(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        """The letter press rebuilds the page's entries; the target is one of the new ones."""
+        screen = main_index_screen
+        letters = self._letter_buttons("B", "P")
+        screen._selected_letter_button = letters["P"]
+        screen._nav_active = False
+        screen._tag_entries[Tags.BLACK_PETE] = (
+            MagicMock(name="stale"),
+            IndexItem(Tags.BLACK_PETE, "?"),
+        )
+
+        def populate(letter: str) -> None:
+            for item in screen._get_items_for_letter(letter):
+                screen._create_index_button(item)
+
+        with (
+            patch.object(screen, "_alphabet_buttons", letters, create=True),
+            patch.object(screen, "_populate_index_grid", side_effect=populate),
+            patch.object(barks_reader.ui.main_index_screen, "IndexItemButton"),
+            patch.object(screen, "_handle_tag") as handle_tag,
+        ):
+            screen._follow_see_reference(IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete"))
+
+        assert screen._selected_letter_button is letters["B"]
+        target_button, target_item = screen._tag_entries[Tags.BLACK_PETE]
+        assert target_item == IndexItem(Tags.BLACK_PETE, "Black Pete")
+        handle_tag.assert_called_once_with(target_button, target_item)
+
+    def test_a_target_on_the_shown_page_is_opened_in_place(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        """No letter press: it would close every open tag and scroll back to the top."""
+        screen = main_index_screen
+        screen._selected_letter_button = self._letter_buttons("G")["G"]
+        target_button, target_item = MagicMock(), IndexItem(Tags.GYRO_GEARLOOSE, "Gyro Gearloose")
+        screen._tag_entries[Tags.GYRO_GEARLOOSE] = (target_button, target_item)
+        with (
+            patch.object(screen, "on_letter_press") as letter_press,
+            patch.object(screen, "_hand_focus_to") as hand_focus,
+            patch.object(screen, "_on_index_item_press") as press,
+        ):
+            screen._follow_see_reference(
+                IndexItem(Tags.GYRO_GEARLOOSE, "Gearloose", see="Gyro Gearloose")
+            )
+        letter_press.assert_not_called()
+        hand_focus.assert_called_once_with(target_button)
+        press.assert_called_once_with(target_button, target_item)
+
+    def test_a_target_already_open_stays_open(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """A press on an open entry closes it: the cross-reference must not."""
+        screen = main_index_screen
+        screen._selected_letter_button = self._letter_buttons("G")["G"]
+        target_button, target_item = MagicMock(), IndexItem(Tags.GYRO_GEARLOOSE, "Gyro Gearloose")
+        screen._tag_entries[Tags.GYRO_GEARLOOSE] = (target_button, target_item)
+        screen._open_tag_widgets = [MagicMock(owner_button=target_button)]
+        with (
+            patch.object(screen, "_hand_focus_to") as hand_focus,
+            patch.object(screen, "_on_index_item_press") as press,
+        ):
+            screen._follow_see_reference(
+                IndexItem(Tags.GYRO_GEARLOOSE, "Gearloose", see="Gyro Gearloose")
+            )
+        hand_focus.assert_called_once_with(target_button)
+        press.assert_not_called()
+        assert '"Gyro Gearloose" is open already.' in loguru_sink
 
     def test_every_tag_row_on_a_page_is_remembered_but_no_cross_reference(
         self, main_index_screen: MainIndexScreen

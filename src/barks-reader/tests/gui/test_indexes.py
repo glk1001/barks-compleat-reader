@@ -6,6 +6,7 @@ import re
 import string
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.barks_tags import Tags
 from barks_gui import expected, memory, nodes
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
@@ -175,6 +176,26 @@ def test_a_tag_group_opens_its_tags_a_tag_its_titles_and_a_title_goes_there(
     with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
         d.key_then_wait(ITEM_PRESSED, "Return")
     assert expected.is_title(d.current_node())
+
+
+# A cross-reference on the D page whose target entry is on the M page.
+SEE_ROW = "De Spell. [i]See[/i] Magica De Spell"
+
+
+def test_a_cross_reference_shows_its_targets_page_and_opens_it(boot: AppBoot) -> None:
+    """Return on "De Spell. See Magica De Spell" shows M, with Magica's titles opened."""
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    for letter in "BCD":
+        d.key_then_wait(_letter(letter), "Down")
+    d.move_focus("Right")  # alphabet panel -> items
+    _down_to_item(d, SEE_ROW)
+    followed = pattern(markers.INDEX_SEE_FOLLOWED, name="De Spell", see="Magica De Spell")
+    opened = pattern(markers.INDEX_SUB_ITEMS_ADDED, name=Tags.MAGICA_DE_SPELL.name)
+    with d.expect(followed), d.expect(_letter("M")):
+        d.key_then_wait(opened, "Return")
+    assert int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count")) >= 1
 
 
 def _focused(d: Driver) -> str:

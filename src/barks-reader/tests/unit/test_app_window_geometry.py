@@ -763,9 +763,100 @@ def test_a_retina_correction_is_set_in_points_and_settles(
 @pytest.mark.usefixtures("helper")
 def test_the_window_minimum_is_set_when_the_window_is_ready(fake_window: MagicMock) -> None:
     """The fixture monitor is 2400 tall: the minimum is a 1080p screen's window."""
-    width, height = geometry_module.minimum_window_size(1080, COMIC_PAGE_ASPECT_RATIO, CHROME)
+    width, height = geometry_module.minimum_window_size(2560, 1080, CHROME)
     assert (fake_window.minimum_width, fake_window.minimum_height) == (width, height)
     fake_window._set_minimum_size.assert_called()  # noqa: SLF001
+
+
+def _minimum_on(width: int, height: int) -> tuple[int, int]:
+    return geometry_module.minimum_window_size(width, height, CHROME)
+
+
+def _set_minimum(fake_window: MagicMock) -> tuple[int, int]:
+    return fake_window.minimum_width, fake_window.minimum_height
+
+
+def test_a_move_scaled_below_the_new_monitors_minimum_asks_for_the_minimum(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """SDL would hold the window at the minimum; asking for less set the guard against it."""
+    fake_window.size = (700, 1100)  # well down from the 2400-tall monitor's largest
+    h, _ = _make_helper_two_monitors(monkeypatch, constraints, fake_window, fake_clock)
+
+    h.on_window_pos_change(fake_window)
+
+    minimum = _minimum_on(1920, 1080)
+    assert h._resize_requested_size == minimum  # noqa: SLF001
+    assert _set_minimum(fake_window) == minimum
+
+
+def test_a_move_sets_the_new_monitors_minimum_once_the_guard_is_armed(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """The resize event a raised minimum brings must meet the guard, not the correction."""
+    fake_window.size = (700, 1100)
+    h, _ = _make_helper_two_monitors(monkeypatch, constraints, fake_window, fake_clock)
+    guarded_when_set: list[bool] = []
+    monkeypatch.setattr(
+        geometry_module,
+        "_set_window_minimum_size",
+        lambda _w, _h: guarded_when_set.append(h._resize_event is not None),  # noqa: SLF001
+    )
+
+    h.on_window_pos_change(fake_window)
+
+    assert guarded_when_set == [True]
+
+
+def test_a_rotation_sets_the_rotated_monitors_minimum(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """Rotated to landscape, the portrait minimum (a 1080p window) no longer fits."""
+    portrait, landscape = _make_screen_info(768, 1366), _make_screen_info(1366, 768)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = portrait
+    fake_metrics.get_primary_screen_info.return_value = portrait
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    assert _set_minimum(fake_window) == _minimum_on(768, 1366)
+    fake_metrics.get_monitor_for_pos.return_value = landscape
+
+    h._handle_rotation()  # noqa: SLF001
+
+    assert _set_minimum(fake_window) == _minimum_on(1366, 768)
+
+
+def test_a_rotation_fit_below_the_minimum_asks_for_the_minimum_and_centres_it(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """On a 1080p screen, 0.9 of the height is below the 1080p window: the minimum goes."""
+    screen = _make_screen_info(1920, 1080)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    h._handle_rotation()  # noqa: SLF001
+
+    min_width, min_height = _minimum_on(1920, 1080)
+    assert h._resize_requested_size == (min_width, min_height)  # noqa: SLF001
+    _, (move, _), _ = fake_clock.calls
+    move(0.0)
+    assert (fake_window.left, fake_window.top) == (
+        (1920 - min_width) // 2,
+        (1080 - min_height) // 2,
+    )
 
 
 def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -> None:

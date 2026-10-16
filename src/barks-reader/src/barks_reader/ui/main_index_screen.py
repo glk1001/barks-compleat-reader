@@ -217,9 +217,7 @@ class MainIndexScreen(IndexScreen):
             if title in COVERS_SET:
                 continue
             title_str = self._get_indexable_title(title)
-            first_letter = title_str[0].upper()
-            assert "A" <= first_letter <= "Z"
-            self._item_index[first_letter].append(IndexItem(title, title_str))
+            self._item_index[_index_letter(title_str)].append(IndexItem(title, title_str))
 
         # Add all tags, headed as an index heads them (see core.index_headings), and the
         # other names a reader may look them up by, as "See" cross-references.
@@ -231,9 +229,9 @@ class MainIndexScreen(IndexScreen):
         # Add all tag groups
         for tag_group in TagGroups:
             tag_group_name = tag_group_heading(tag_group)
-            first_letter = tag_group_name[0].upper()
-            assert "A" <= first_letter <= "Z"
-            self._item_index[first_letter].append(IndexItem(tag_group, tag_group_name))
+            self._item_index[_index_letter(tag_group_name)].append(
+                IndexItem(tag_group, tag_group_name)
+            )
 
         # Sort items within each letter group
         for letter in self._item_index:
@@ -467,15 +465,26 @@ class MainIndexScreen(IndexScreen):
         return False
 
     def _follow_see_reference(self, item: IndexItem) -> None:
-        """Go to a cross-reference's target entry, on its letter page, and open it."""
+        """Go to a cross-reference's target entry, on its letter page, and open it.
+
+        A target on the page already shown is opened in place: the page is not rebuilt
+        (which would close every open tag and scroll to the top), and a target already
+        open stays open.
+        """
         assert isinstance(item.id, Tags)
         logger.info(log_markers.INDEX_SEE_FOLLOWED.format(name=item.display_text, see=item.see))
-        self.on_letter_press(self._alphabet_buttons[_index_letter(item.see)])
+        letter = _index_letter(item.see)
+        if self._selected_letter_button is None or self._selected_letter_button.text != letter:
+            self.on_letter_press(self._alphabet_buttons[letter])
         if item.id not in self._tag_entries:
             logger.warning(f'No entry "{item.see}" for the cross-reference "{item.display_text}".')
             return
         target_button, target_item = self._tag_entries[item.id]
         self._hand_focus_to(target_button)
+        is_open, _ = self._get_level_of_click_for_collapse(target_button)
+        if is_open:
+            logger.debug(f'"{item.see}" is open already.')
+            return
         self._on_index_item_press(target_button, target_item)
 
     @override

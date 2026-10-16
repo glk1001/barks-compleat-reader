@@ -8,9 +8,14 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from .platform_info import IS_MACOS, PLATFORM, Platform
+from .reader_utils import get_win_dimensions
 
 _WINDOWS_TASKBAR_HEIGHT = 60
 _OTHER_TASKBAR_HEIGHT = 55
+
+# What the largest window leaves of the screen's height besides the taskbar: a sliver of
+# desktop above and below it (half each).
+WINDOW_HEIGHT_MARGIN = 20
 
 
 def get_approximate_taskbar_height() -> int:
@@ -50,6 +55,28 @@ def _macos_reserved_height() -> int | None:
 
 def get_best_window_height_fit(screen_height: int) -> int:
     return screen_height - get_approximate_taskbar_height()
+
+
+def largest_window_size(
+    screen_width: int, screen_height: int, chrome_height: int
+) -> tuple[int, int]:
+    """Return the largest window a screen gets: the one the reader opens in, by default.
+
+    The screen's height less the taskbar and `WINDOW_HEIGHT_MARGIN`, and the width the
+    comic page's shape gives that (or the screen's width, when that is less).
+
+    Args:
+        screen_width: The screen's width.
+        screen_height: The screen's height.
+        chrome_height: The window's height besides its content (the action bar).
+
+    Returns:
+        The window's (width, height).
+
+    """
+    height = get_best_window_height_fit(screen_height) - WINDOW_HEIGHT_MARGIN
+    width, content_height = get_win_dimensions(height - chrome_height, screen_width)
+    return width, content_height + chrome_height
 
 
 @dataclass(frozen=True, slots=True)

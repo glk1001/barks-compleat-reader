@@ -36,7 +36,11 @@ from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_mini
 from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
-from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
+from barks_reader.core.screen_metrics import (
+    SCREEN_METRICS,
+    WINDOW_HEIGHT_MARGIN,
+    largest_window_size,
+)
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -218,14 +222,13 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
 
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
 
-    win_height_margin = 20
-    max_height = get_best_window_height_fit(primary_screen_info.height_pixels) - win_height_margin
-    win_width, content_h = get_win_dimensions(
-        max_height - RAW_ACTION_BAR_SIZE_Y, primary_screen_info.width_pixels
+    # The window's minimum size on a 1080p screen (core.window_minimum): the same rule,
+    # so the window opens no smaller than it may be made.
+    win_width, win_height = largest_window_size(
+        primary_screen_info.width_pixels, primary_screen_info.height_pixels, RAW_ACTION_BAR_SIZE_Y
     )
-    win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     win_left = win_centre - round(win_width / 2)
-    win_top = primary_screen_info.monitor_y + win_height_margin // 2
+    win_top = primary_screen_info.monitor_y + WINDOW_HEIGHT_MARGIN // 2
 
     logger.debug(f"Best fit main win dimensions: {win_height}, ({win_left}, {win_top}).")
 

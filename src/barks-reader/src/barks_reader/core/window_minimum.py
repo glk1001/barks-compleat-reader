@@ -1,10 +1,11 @@
 """The smallest window the reader allows, and the screens too small for it.
 
 The reader is laid out for a 1920x1080 screen: its window, locked to the comic page's
-shape, is then the screen's height less the taskbar, and about 660 wide. That is the
-smallest window the layouts are tested at (the overnight run's screen-1080p stage), so
-it is the window's minimum size. A smaller screen gets its own largest window instead,
-and a warning, once, that some text may be cut short.
+shape, is then the screen's height less the taskbar and a margin (about 1020 tall and
+650 wide), the window main.py opens by default there. That is the smallest window the
+layouts are tested at (the overnight run's screen-1080p stage), so it is the window's
+minimum size. A smaller screen gets its own largest window instead, and a warning,
+once, that some text may be cut short.
 
 Sizes are in the units screeninfo gives the monitors in (``Window.system_size``'s).
 Kivy-free, so the sizes can be tested without a window.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 import os
 
-from .screen_metrics import get_best_window_height_fit
+from .screen_metrics import largest_window_size
 
 SUPPORTED_SCREEN_WIDTH = 1920
 SUPPORTED_SCREEN_HEIGHT = 1080
@@ -25,23 +26,23 @@ NO_SCREEN_WARNING_ENV_VAR = "BARKS_READER_NO_SCREEN_WARNING"
 
 
 def minimum_window_size(
-    screen_height: int, aspect_ratio: float, chrome_height: int
+    screen_width: int, screen_height: int, chrome_height: int
 ) -> tuple[int, int]:
-    """Return the smallest window the reader allows on a screen `screen_height` tall.
+    """Return the smallest window the reader allows on a screen.
 
     Args:
+        screen_width: The screen's width.
         screen_height: The screen's height.
-        aspect_ratio: The window content's height over its width.
         chrome_height: The window's height besides its content (the action bar).
 
     Returns:
-        The window (width, height) a 1080-tall screen gives, or this screen's own
-        largest window when it is shorter.
+        The window (width, height) a 1080-tall screen opens in by default
+        (`largest_window_size`), or this screen's own largest window when it is shorter.
 
     """
-    height = get_best_window_height_fit(min(screen_height, SUPPORTED_SCREEN_HEIGHT))
-    width = round((height - chrome_height) / aspect_ratio)
-    return width, height
+    return largest_window_size(
+        screen_width, min(screen_height, SUPPORTED_SCREEN_HEIGHT), chrome_height
+    )
 
 
 def is_screen_too_small(screen_width: int, screen_height: int) -> bool:

@@ -92,9 +92,7 @@ class AppWindowGeometryHelper:
         `minimum_window_size`); in ``Window.system_size`` units, as SDL takes them.
         """
         monitor = self._current_monitor
-        width, height = minimum_window_size(
-            monitor.height_pixels, self._constraints.aspect_ratio, self._chrome_in_size_units()
-        )
+        width, height = self._minimum_size()
         _set_window_minimum_size(width, height)
         logger.info(
             log_markers.WINDOW_MINIMUM_SET.format(
@@ -125,6 +123,26 @@ class AppWindowGeometryHelper:
     def _chrome_in_size_units(self) -> int:
         return round(self._constraints.chrome_height / self._pixels_per_size_unit())
 
+    def _minimum_size(self) -> tuple[int, int]:
+        monitor = self._current_monitor
+        return minimum_window_size(
+            monitor.width_pixels, monitor.height_pixels, self._chrome_in_size_units()
+        )
+
+    def _no_smaller_than_minimum(self, width: int, height: int) -> tuple[int, int]:
+        """Return a size to ask for, raised to the minimum when it is below it.
+
+        SDL would hold the window at the minimum anyway, and the resize guard then
+        fought it, forcing the smaller size back on every resize event until it expired.
+        """
+        min_width, min_height = self._minimum_size()
+        if width >= min_width and height >= min_height:
+            return width, height
+        logger.debug(
+            f"Window size ({width}, {height}) raised to the minimum ({min_width}, {min_height})."
+        )
+        return min_width, min_height
+
     # --- Window event handlers (bound by the app) ---
 
     def on_window_pos_change(self, _window: WindowBase) -> None:
@@ -150,16 +168,18 @@ class AppWindowGeometryHelper:
         )
 
         self._current_monitor = monitor
-        self.apply_minimum_size()
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
         new_height = min(round(scale_factor * new_max_height), new_max_height)
+        chrome = self._chrome_in_size_units()
+        new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
+        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
 
         if new_height != old_height:
-            chrome = self._chrome_in_size_units()
-            new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
-            new_height = content_h + chrome
             self._schedule_guarded_resize(new_width, new_height)
+        # After the guard is armed: a window the new minimum enlarges gets a resize
+        # event, which the guard answers, not the aspect-ratio correction.
+        self.apply_minimum_size()
 
     def on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         """Handle window resize events — enforce aspect ratio and guard against OS overrides."""
@@ -341,7 +361,7 @@ class AppWindowGeometryHelper:
             fit_fraction=ROTATION_FIT_FRACTION,
         )
         new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
-        new_height = content_h + chrome
+        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
 
         center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
         center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2
@@ -354,6 +374,7 @@ class AppWindowGeometryHelper:
         )
 
         self._schedule_guarded_resize(new_width, new_height, reposition=(center_x, center_y))
+        self.apply_minimum_size()  # the rotated monitor's; after the guard, as on a move
 
     def _schedule_guarded_resize(
         self,

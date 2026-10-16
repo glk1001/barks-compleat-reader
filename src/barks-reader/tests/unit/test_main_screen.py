@@ -644,7 +644,10 @@ class TestSmallScreenWarning:
         monkeypatch.delenv(window_minimum.NO_SCREEN_WARNING_ENV_VAR, raising=False)
 
     def test_a_small_screen_is_warned_about_and_remembered(
-        self, main_screen: MainScreen, mock_components: MainScreenComponents
+        self,
+        main_screen: MainScreen,
+        mock_components: MainScreenComponents,
+        loguru_sink: list[str],
     ) -> None:
         settings = cast("MagicMock", mock_components.json_settings_manager)
         settings.is_screen_size_warned.return_value = False
@@ -653,15 +656,23 @@ class TestSmallScreenWarning:
         popup.assert_called_once()
         assert "1366 x 768" in popup.call_args.kwargs["text"]
         settings.save_screen_size_warned.assert_called_once_with("1366x768")
+        assert "Screen 1366x768 is smaller than the reader is laid out for: warned." in loguru_sink
 
     def test_a_screen_size_warned_before_is_not_warned_again(
-        self, main_screen: MainScreen, mock_components: MainScreenComponents
+        self,
+        main_screen: MainScreen,
+        mock_components: MainScreenComponents,
+        loguru_sink: list[str],
     ) -> None:
         settings = cast("MagicMock", mock_components.json_settings_manager)
         settings.is_screen_size_warned.return_value = True
         with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
             main_screen.warn_if_screen_too_small(1366, 768)
         popup.assert_not_called()
+        assert (
+            "Screen 1366x768 is smaller than the reader is laid out for: warned before."
+            in loguru_sink
+        )
 
     def test_a_big_enough_screen_is_not_warned_about(
         self, main_screen: MainScreen, mock_components: MainScreenComponents

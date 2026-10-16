@@ -5,7 +5,8 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from barks_reader.core import window_minimum
+from barks_reader.core import screen_metrics
+from barks_reader.core.screen_metrics import largest_window_size
 from barks_reader.core.window_minimum import (
     NO_SCREEN_WARNING_ENV_VAR,
     is_screen_too_small,
@@ -16,7 +17,6 @@ from barks_reader.core.window_minimum import (
 )
 
 TASKBAR = 40
-ASPECT = 1.5
 CHROME = 45
 
 
@@ -24,19 +24,29 @@ def _fit(screen_height: int) -> int:
     return screen_height - TASKBAR
 
 
+# The window's height is the screen's less the taskbar and the 20 margin; its width
+# follows from the comic page's shape (3200 / 2120), unless the screen is narrower.
 @pytest.mark.parametrize(
-    ("screen_height", "size"),
+    ("screen_width", "screen_height", "size"),
     [
-        (1080, (663, 1040)),  # a 1080p screen's window
-        (1600, (663, 1040)),  # a bigger screen: still the 1080p window
-        (768, (455, 728)),  # a smaller screen: its own largest window
+        (1920, 1080, (646, 1020)),  # a 1080p screen's window
+        (2560, 1600, (646, 1020)),  # a bigger screen: still the 1080p window
+        (1366, 768, (439, 708)),  # a smaller screen: its own largest window
+        (400, 1080, (400, 649)),  # a screen narrower than the window: as wide as it
     ],
 )
 def test_the_minimum_window_is_a_1080p_screens_or_a_smaller_screens_own(
-    screen_height: int, size: tuple[int, int]
+    screen_width: int, screen_height: int, size: tuple[int, int]
 ) -> None:
-    with patch.object(window_minimum, "get_best_window_height_fit", side_effect=_fit):
-        assert minimum_window_size(screen_height, ASPECT, CHROME) == size
+    with patch.object(screen_metrics, "get_best_window_height_fit", side_effect=_fit):
+        assert minimum_window_size(screen_width, screen_height, CHROME) == size
+
+
+def test_the_minimum_is_the_window_the_reader_opens_on_a_1080p_screen() -> None:
+    """main.py opens the largest window; it must not then be grown to the minimum."""
+    with patch.object(screen_metrics, "get_best_window_height_fit", side_effect=_fit):
+        assert minimum_window_size(1920, 1080, CHROME) == largest_window_size(1920, 1080, CHROME)
+        assert largest_window_size(1366, 768, CHROME) == (439, 708)
 
 
 @pytest.mark.parametrize(

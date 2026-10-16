@@ -54,6 +54,12 @@ def test_no_heading_override_repeats_the_tag_name() -> None:
     assert all(heading != tag.value for tag, heading in TAG_INDEX_HEADINGS.items())
 
 
+@pytest.mark.parametrize("name", ["Scrooge", "Goldie", "Helper", "Zombie", "Gearloose", "Pete"])
+def test_the_names_the_cast_is_known_by_are_cross_referenced(name: str) -> None:
+    """Once alias rows, these left the index with them; a reader looks for "Scrooge" at S."""
+    assert name in SEE_REFERENCES
+
+
 def test_no_cross_reference_points_to_where_the_reader_already_is() -> None:
     """A "See" whose name is its target's heading, or starts it, would sit beside it."""
     for name, tag in SEE_REFERENCES.items():

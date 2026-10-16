@@ -91,18 +91,24 @@ TAG_GROUP_INDEX_HEADINGS: dict[TagGroups, str] = {
 }
 
 # A reader's other names for a tag, each listed as "<name>. See <the tag's heading>".
+# Not a name that would sit beside its entry ("Bombie", "Utopia"), nor a first name a
+# reader would not look up alone ("Argus"); the search knows those (BARKS_TAG_ALIASES).
 SEE_REFERENCES: dict[str, Tags] = {
     "car 313": Tags.CAR_313,
     "De Spell": Tags.MAGICA_DE_SPELL,
     "driving car": Tags.HDL_DRIVING_CAR,
     "Gearloose": Tags.GYRO_GEARLOOSE,
     "Glittering Goldie": Tags.GOLDIE_OGILT,
+    "Goldie": Tags.GOLDIE_OGILT,
+    "Helper": Tags.LITTLE_HELPER,
     "Jones": Tags.NEIGHBOR_JONES,
     "Mount Demon Tooth": Tags.OLD_DEMON_TOOTH,
     "Pete": Tags.BLACK_PETE,
+    "Scrooge": Tags.SCROOGE_NOT_IN_US,
     "Snozzie": Tags.GENERAL_SNOZZIE,
     "South Pole": Tags.ANTARCTICA,
     "Woodchucks": Tags.JUNIOR_WOODCHUCKS,
+    "Zombie": Tags.BOMBIE_THE_ZOMBIE,
 }
 
 
