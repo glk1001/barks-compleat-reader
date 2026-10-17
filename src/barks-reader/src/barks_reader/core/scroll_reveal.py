@@ -1,9 +1,10 @@
 """How far to scroll a list so the rows opened under a row show, the row kept in view.
 
-Shared by the tree view and the Main Index: a row opened near the bottom of the view
-put its new rows below it, out of sight, and the press seemed to do nothing. Also the
-scroll that keeps a row where it is while the rows under it open or shut.
-Kivy-free, so the distance can be tested without a window.
+The reveal distance is shared by the tree view and the Main Index: a row opened near
+the bottom of the view put its new rows below it, out of sight, and the press seemed
+to do nothing. The scroll that keeps a row where it is while the rows under it open
+or shut is the tree view's alone, so far: the Main Index still jumps.
+Kivy-free, so both can be tested without a window.
 """
 
 from __future__ import annotations

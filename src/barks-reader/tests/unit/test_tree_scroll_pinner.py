@@ -28,6 +28,7 @@ def _make_scroll_view(*, has_children: bool = True, cont_height: float = 500.0) 
     scroll_view.children = [MagicMock()] if has_children else []
     if has_children:
         scroll_view.children[0].height = cont_height
+        scroll_view.children[0].y = 0.0
     scroll_view.height = 100.0
     scroll_view.scroll_y = 0.5
     scroll_view.top = 0.0
@@ -103,15 +104,23 @@ def test_settle_stops_when_parent_closed() -> None:
     assert clock.pending == []  # loop did not reschedule
 
 
+def _drifted_view_and_row() -> tuple[MagicMock, MagicMock]:
+    """Return a view scrolled 200 down a 500 tree, and a row the layout moved up 40.
+
+    Pinned 140 below the view's top, the row was laid out 300 down the tree: 100 below.
+    """
+    scroll_view = _make_scroll_view()
+    scroll_view.to_window.return_value = (0, 0)
+    parent = _make_parent_node()
+    parent.to_window.return_value = (0, -140)
+    parent.top = 200.0
+    return scroll_view, parent
+
+
 def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
     clock = FakeClock()
     on_settled = MagicMock()
-    scroll_view = _make_scroll_view()
-    # sv top stays at window-y 0; parent starts 140px below at pin, ends 100px below
-    # after layout -> a 40px upward drift that must be cancelled.
-    scroll_view.to_window.return_value = (0, 0)
-    parent = _make_parent_node()
-    parent.to_window.side_effect = [(0, 140), (0, 100)]
+    scroll_view, parent = _drifted_view_and_row()
 
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: scroll_view,
@@ -119,14 +128,14 @@ def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
         schedule_once=clock.schedule_once,
     )
 
-    pinner.pin_while_populating(parent, populate=None)  # captures target_offset = 140
+    pinner.pin_while_populating(parent, populate=None)  # captures the 140
     # Container height must read stable for two consecutive frames before adjusting.
     clock.run_next()  # frame 1: last_h initialized, stable=0 -> reschedule
     clock.run_next()  # frame 2: height stable=1 -> reschedule
     clock.run_next()  # frame 3: stable=2 -> compute drift and adjust
 
-    # delta_px = 100 - 140 = -40; denominator = 500 - 100 = 400; delta_norm = -0.1.
-    assert scroll_view.scroll_y == pytest.approx(0.4)
+    # Scrolled 160 down, of 400: the row 140 below the view's top again.
+    assert scroll_view.scroll_y == pytest.approx(0.6)
     on_settled.assert_called_once()
     assert clock.pending == []
 
@@ -219,6 +228,18 @@ class _Glides:
             on_done(True)  # noqa: FBT003
 
 
+def _make_bottom_view() -> MagicMock:
+    """Return a view over window y 0-100, scrolled halfway down 500px of content.
+
+    Its rows' positions are window coordinates: the content's top is at 300.
+    """
+    scroll_view = _make_scroll_view()
+    scroll_view.y, scroll_view.top = 0.0, 100.0
+    scroll_view.to_window = lambda x, y: (x, y)
+    scroll_view.children[0].y = -200.0
+    return scroll_view
+
+
 def _settle_with(
     parent: MagicMock, between_pins: Callable[[TreeScrollPinner], None] | None = None
 ) -> MagicMock:
@@ -227,9 +248,7 @@ def _settle_with(
     `between_pins(pinner)`, if given, runs after the pin and before the layout settles.
     """
     clock = FakeClock()
-    scroll_view = _make_scroll_view()
-    scroll_view.y, scroll_view.top = 0.0, 100.0
-    scroll_view.to_window = lambda x, y: (x, y)
+    scroll_view = _make_bottom_view()
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: scroll_view,
         on_settled=MagicMock(),
@@ -292,9 +311,7 @@ def test_the_rows_of_an_open_child_count_among_the_three() -> None:
 
 def test_a_reveal_glides() -> None:
     clock = FakeClock()
-    scroll_view = _make_scroll_view()
-    scroll_view.y, scroll_view.top = 0.0, 100.0
-    scroll_view.to_window = lambda x, y: (x, y)
+    scroll_view = _make_bottom_view()
     glide = MagicMock()
     on_settled = MagicMock()
     pinner = TreeScrollPinner(
@@ -316,13 +333,6 @@ def test_a_reveal_glides() -> None:
     glide.call_args.args[2](True)  # noqa: FBT003
     on_settled.assert_called_once()
     assert not layout_settling()
-
-
-def _make_bottom_view() -> MagicMock:
-    scroll_view = _make_scroll_view()
-    scroll_view.y, scroll_view.top = 0.0, 100.0
-    scroll_view.to_window = lambda x, y: (x, y)
-    return scroll_view
 
 
 def _hidden_rows_parent() -> MagicMock:
@@ -489,22 +499,16 @@ def _collapse(parent: MagicMock, scroll_view: MagicMock) -> tuple[MagicMock, int
 
 
 def test_a_collapsed_parent_stays_where_it_was() -> None:
-    scroll_view = _make_scroll_view()
-    scroll_view.to_window.return_value = (0, 0)
-    parent = _make_parent_node()
-    # 140 below the view's top before, 100 after: the shorter tree moved it up 40.
-    parent.to_window.side_effect = [(0, 140), (0, 100)]
+    scroll_view, parent = _drifted_view_and_row()
 
     on_settled, _ = _collapse(parent, scroll_view)
 
-    assert scroll_view.scroll_y == pytest.approx(0.4)
+    assert scroll_view.scroll_y == pytest.approx(0.6)
     on_settled.assert_called_once()
 
 
 def test_a_collapse_reveals_nothing() -> None:
-    scroll_view = _make_scroll_view()
-    scroll_view.y, scroll_view.top = 0.0, 100.0
-    scroll_view.to_window = lambda x, y: (x, y)
+    scroll_view = _make_bottom_view()
     parent = _parent_at_top(25.0, [_make_node_at(y) for y in _HIDDEN_ROWS])
 
     _collapse(parent, scroll_view)

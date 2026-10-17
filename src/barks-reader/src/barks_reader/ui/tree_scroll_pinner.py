@@ -294,32 +294,33 @@ class TreeScrollPinner:
         checks: dict[str, float],
     ) -> None:
         """Move the settled tree's parent row back to its pinned offset, then reveal."""
+        cont = scroll_view.children[0]
         viewport_h = scroll_view.height
-        cont_h = scroll_view.children[0].height
+        cont_h = cont.height
         expanding = bool(checks["expanding"])
 
+        # Where the parent's row is now, before any correction moves the tree.
+        sv_top = scroll_view.to_window(0, scroll_view.top)[1]
+        new_parent_top = parent_node.to_window(0, parent_node.top)[1]
+
+        # The tree has settled: its rows are laid out down from its top as it is. Read
+        # from the tree, not the window: a correction this frame has moved scroll_y,
+        # not yet the rows, so pins settling together each place the tree afresh.
+        scroll_y = scroll_y_keeping_row(
+            row_from_content_top=cont.y + cont_h - parent_node.top,
+            row_from_view_top=-target_offset_px,
+            content_height=cont_h,
+            view_height=viewport_h,
+        )
         # A tree no taller than the viewport does not scroll: nothing to pin.
-        if cont_h <= viewport_h:
+        if scroll_y is None:
             self._settled(checks)
             return
 
-        # Current offset (parent top relative to SV top) *after* the change
-        sv_top = scroll_view.to_window(0, scroll_view.top)[1]
-        new_parent_top = parent_node.to_window(0, parent_node.top)[1]
-        current_offset_px = new_parent_top - sv_top
-
-        # How far did the parent drift? Positive means it moved UP on screen.
-        delta_px = current_offset_px - target_offset_px
-
-        # Convert pixel delta to normalized scroll_y delta:
-        #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
-        #  - Raising scroll_y moves the content down.
-        # The content is taller than the viewport here (checked above), so this divides
-        # by a positive height.
         scrollable_px = cont_h - viewport_h
-        if abs(delta_px) >= 0.5:  # noqa: PLR2004
+        if abs(scroll_y - scroll_view.scroll_y) * scrollable_px >= 0.5:  # noqa: PLR2004
             # Apply in one shot: the drift is the layout's, not the reader's to see.
-            scroll_view.scroll_y = self._clamp01(scroll_view.scroll_y + delta_px / scrollable_px)
+            scroll_view.scroll_y = scroll_y
 
         # Then, the parent pinned back, how far up to show the first children.
         reveal_px = (

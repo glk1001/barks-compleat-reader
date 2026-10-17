@@ -117,17 +117,17 @@ def _row_named(rows: list[TapTarget], name: str) -> int:
 def test_a_branch_tapped_at_the_bottom_glides_up_to_show_its_first_rows(boot: AppBoot) -> None:
     """A branch whose first child would open out of sight glides up to show three.
 
-    The branch is the lowest row wholly on screen, above one the tree's edge cuts:
-    its first child would open where that one is. It stays on screen itself.
+    The branch is the lowest row wholly on screen: its first child would open under
+    the tree's edge, where a cut row shows or, the edge at the branch's very bottom,
+    nothing does. It stays on screen itself. Rows always follow a theme's, so a theme
+    as the lowest whole row means the tree goes on below the edge.
     """
     d = _boot(boot, nodes.THEMES, cues=nodes.NO_CUES)
     rows = _tree_rows(d)
-    edge = next(
-        (i for i in reversed(range(len(rows) - 1)) if rows[i].whole and not rows[i + 1].whole),
-        None,
-    )
-    assert edge is not None, "the tree fits the window: no row at its bottom edge"
-    branch = rows[edge].text
+    themes = rows[_row_named(rows, "Themes")]
+    lowest = next(row for row in reversed(rows) if row.whole)
+    assert lowest.left > themes.left, f"the themes fit the window: {lowest.describe()} is lowest"
+    branch = lowest.text
 
     with d.expect(pattern(markers.TREE_CHILDREN_REVEALED, name=branch)):
         taps.tap(d, text=branch)
