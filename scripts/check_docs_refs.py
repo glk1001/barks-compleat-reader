@@ -100,7 +100,11 @@ _LINE_REF = re.compile(
 )
 _MODULE = re.compile(r"^(?P<pkg>[a-z_]+)(?:\.[A-Za-z_][A-Za-z0-9_]*)+$")
 _FLAG = re.compile(r"(?<![\w-])(--[a-z][\w-]*)")
-_MD_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+# A target is bare, or in angle brackets as CommonMark allows (groma writes its index so),
+# where it may hold spaces and the brackets are no part of the path.
+_MD_LINK = re.compile(
+    r"!?\[[^\]]*\]\((?:<(?P<angled>[^<>\n]+)>|(?P<bare>[^)\s]+))(?:\s+\"[^\"]*\")?\)"
+)
 _IMG_SRC = re.compile(r"<img[^>]*\ssrc=\"([^\"]+)\"")
 _ENV_VAR = re.compile(r"\bBARKS_[A-Z][A-Z0-9_]*\b")
 _WORD = re.compile(r"[^\s`'\"(),;|&<>]+")
@@ -433,7 +437,9 @@ class DocChecker:
             self._add("flag", line, f"`{script}` has no `{flag}`")
 
     def _check_links(self, line: Line) -> None:
-        targets = _MD_LINK.findall(line.text) + _IMG_SRC.findall(line.text)
+        targets = [
+            found["angled"] or found["bare"] for found in _MD_LINK.finditer(line.text)
+        ] + _IMG_SRC.findall(line.text)
         for target in targets:
             if target.startswith(("http://", "https://", "mailto:", "#")) or "://" in target:
                 continue

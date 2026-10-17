@@ -231,6 +231,17 @@ class TestLinks:
             "link: link target `docs/x.md#there` is missing",
         ]
 
+    def test_an_angle_bracketed_target_is_the_path_inside_the_brackets(self, repo: Repo) -> None:
+        """CommonMark's `[a](<b>)`, as groma writes its index: the brackets are no part of it."""
+        doc = _doc(
+            repo.root,
+            "README.md",
+            "[a](<website/shot.jpg>) [b](<website/>) [c](<website/no such.png>)\n",
+        )
+        assert _messages(repo, doc, ("link",)) == [
+            "link: link target `website/no such.png` is missing"
+        ]
+
     def test_an_img_tag_resolves_against_the_doc_folder(self, repo: Repo) -> None:
         doc = _doc(repo.root, "docs/how.md", '<img src="icon.png" width="15"> <img src="no.png">\n')
         assert _messages(repo, doc, ("link",)) == ["link: link target `no.png` is missing"]
