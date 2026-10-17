@@ -361,8 +361,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     on_goto_title: Callable[[str, Sequence[Tags]], bool] | None = ObjectProperty(
         None, allownone=True
     )
-    on_goto_title_with_page: Callable[[ImageInfo, str], None] | None = ObjectProperty(
-        None, allownone=True
+    # The story, the page to open at, and every page its row lists, to step through.
+    on_goto_title_with_page: Callable[[ImageInfo, str, Sequence[str]], None] | None = (
+        ObjectProperty(None, allownone=True)
     )
 
     # Per-mode widget ID mapping: mode -> (input, clear_button, scroll_view, results_layout)
@@ -1721,9 +1722,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 shorten=True,
                 shorten_from="center",
             )
+            # Every page the row lists, so the title view steps through them all.
+            pages = tuple(page.comic_page for page in title_speech_info.fanta_pages.values())
             title_btn.bind(
-                on_release=lambda b, ct=comic_title, fp=first_page_num: (
-                    self._on_word_result_row_released(b, ct, fp)
+                on_release=lambda b, ct=comic_title, fp=first_page_num, pg=pages: (
+                    self._on_word_result_row_released(b, ct, fp, pg)
                 ),
             )
             row.add_widget(title_btn)
@@ -1740,14 +1743,20 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         _show_from_the_top(results_layout)
 
     def _on_word_result_row_released(
-        self, button: _SearchResultButton, title_str: str, page_to_goto: str
+        self,
+        button: _SearchResultButton,
+        title_str: str,
+        page_to_goto: str,
+        pages: Sequence[str] = (),
     ) -> None:
         self._mark_result_selected(button)
-        self._on_word_title_selected(title_str, page_to_goto)
+        self._on_word_title_selected(title_str, page_to_goto, pages)
 
-    def _on_word_title_selected(self, title_str: str, page_to_goto: str) -> None:
+    def _on_word_title_selected(
+        self, title_str: str, page_to_goto: str, pages: Sequence[str] = ()
+    ) -> None:
         logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
-        self._goto_title_with_page(title_str, page_to_goto)
+        self._goto_title_with_page(title_str, page_to_goto, pages)
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
         search_text = self._word_query or self._selected_word
@@ -1774,13 +1783,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._speech_bubble_popup.dismiss()
         Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
 
-    def _goto_title_with_page(self, title_str: str, page_to_goto: str) -> None:
+    def _goto_title_with_page(
+        self, title_str: str, page_to_goto: str, pages: Sequence[str] = ()
+    ) -> None:
         if title_str not in STR_TITLE_TO_ENUM:
             return
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         if self.on_goto_title_with_page:
-            self.on_goto_title_with_page(image_info, page_to_goto)
+            self.on_goto_title_with_page(image_info, page_to_goto, tuple(pages))
 
     def on_word_clear(self) -> None:
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="word"))

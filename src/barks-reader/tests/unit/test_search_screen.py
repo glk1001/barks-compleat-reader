@@ -2671,10 +2671,29 @@ class TestBackgroundAndGoto:
 
     def test_a_word_result_goes_to_its_story_at_its_page(self, screen: SearchScreen) -> None:
         goto = cast("MagicMock", screen.on_goto_title_with_page)
-        row = _SearchResultButton(text="The Golden Helmet, 3")
-        screen._on_word_result_row_released(row, ENUM_TO_STR_TITLE[HELMET], "3")
+        row = _SearchResultButton(text="The Golden Helmet, 3-5,12")
+        screen._on_word_result_row_released(
+            row, ENUM_TO_STR_TITLE[HELMET], "3", ["3", "4", "5", "12"]
+        )
         assert row.selected
-        goto.assert_called_once_with(ImageInfo(from_title=HELMET, filename=None), "3")
+        # Every page the row lists goes too, for the title view to step through.
+        goto.assert_called_once_with(
+            ImageInfo(from_title=HELMET, filename=None), "3", ("3", "4", "5", "12")
+        )
+
+    def test_a_word_results_rows_hand_on_every_page_they_list(self, screen: SearchScreen) -> None:
+        pages = {f"fanta-{p}": MagicMock(comic_page=p) for p in ("3", "4", "12")}
+        title = ENUM_TO_STR_TITLE[HELMET]
+        screen._word_search_results = [
+            (title, "3", f"{title}, 3-4,12", MagicMock(fanta_pages=pages))
+        ]
+        layout = BoxLayout()
+        with patch.object(screen, "_on_word_result_row_released") as released:
+            screen._populate_word_results_layout(layout)
+            (row,) = layout.children
+            title_btn = next(c for c in row.children if isinstance(c, _SearchResultButton))
+            title_btn.dispatch("on_release")
+        released.assert_called_once_with(title_btn, title, "3", ("3", "4", "12"))
 
     def test_a_title_result_with_no_listener_is_only_logged(
         self, screen: SearchScreen, loguru_sink: list[str]
