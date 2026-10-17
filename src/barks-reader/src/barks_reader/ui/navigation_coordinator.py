@@ -279,8 +279,9 @@ class NavigationCoordinator:
         """Navigate to a title and set a specific page (from index screens).
 
         Delegates to navigate_to_chrono_title, then sets the goto-page checkbox.
-        ``tagged_pages`` are a tag's pages in the title, for a title listed under a tag:
-        the goto-page row steps through them, and the comic marks them.
+        ``tagged_pages`` are the pages the entry lists: a tag's, for a title under a tag,
+        or a speech index term's or a word search's. The goto-page row steps through
+        them, and the comic marks them.
         """
         title = image_info.from_title
         if title is not None and title in NON_COMIC_TITLES:

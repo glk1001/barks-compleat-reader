@@ -140,7 +140,8 @@ class IndexItem:
     id: str | Titles | Tags | TagGroups
     display_text: str
     page_to_goto: str = ""
-    # A tag's pages in the title, for a title listed under a tag (see page_to_goto).
+    # The pages a title's row is about, which the title view steps through: a tag's, for
+    # a title listed under a tag, or a speech index term's (see page_to_goto).
     tagged_pages: tuple[str, ...] = ()
     entity_type: EntityType | None = None  # None = plain word search; set for entity index items
     # A cross-reference's target heading: the row reads "<display_text>. See <see>".

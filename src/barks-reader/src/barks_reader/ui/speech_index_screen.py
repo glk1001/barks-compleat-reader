@@ -380,10 +380,8 @@ class SpeechSubItemsIndexScreen(IndexScreen):
                 font_name=self._font_manager.index_title_item_font_name,
                 font_size=self._font_manager.index_title_item_font_size,
             )
-            sub_item = IndexItem(
-                id=STR_TITLE_TO_ENUM[title_str],
-                display_text=title_str_with_pages,
-                page_to_goto=first_page_to_goto,
+            sub_item = _title_row_item(
+                title_str, first_page_to_goto, title_str_with_pages, title_speech_info
             )
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
@@ -614,6 +612,22 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         title_str = self._get_sortable_string(title_str)
 
         return first_page_num, title_str
+
+
+def _title_row_item(
+    title_str: str, first_page: str, display_text: str, title_speech_info: TitleInfo
+) -> IndexItem:
+    """Return the index item a term's title row opens: at its first page, with all of them.
+
+    Every page the row lists goes with it, so the title view steps through them all
+    (as a tag's), not just the first.
+    """
+    return IndexItem(
+        id=STR_TITLE_TO_ENUM[title_str],
+        display_text=display_text,
+        page_to_goto=first_page,
+        tagged_pages=tuple(page.comic_page for page in title_speech_info.fanta_pages.values()),
+    )
 
 
 class SpeechIndexScreen(SpeechSubItemsIndexScreen):
