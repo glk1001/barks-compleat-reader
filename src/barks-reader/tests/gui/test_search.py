@@ -102,6 +102,34 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     d.go_back_then_wait(pattern(markers.SEARCH_MODE_SET, mode="Word"))
 
 
+# The first story the word "ghost" lists, on pages 9, 10 and 54: a run, then a lone page.
+GHOST_QUERY = "ghost"
+GHOST_RESULT = "DONALD_DUCK_FINDS_PIRATE_GOLD"
+GHOST_RESULT_NAME = "Donald Duck Finds Pirate Gold"
+GHOST_PAGES = ("9", "10", "54")
+
+
+def test_a_word_result_offers_every_page_its_row_lists(boot: AppBoot) -> None:
+    """Picked by its row, a story steps through all its pages, a run as one stop.
+
+    Not just the first page: the row's pages go with it, as a tag's do.
+    """
+    assert expected.word_story_pages(GHOST_QUERY, GHOST_RESULT_NAME) == GHOST_PAGES
+    d = boot(nodes.WORD_SEARCH, cues={GHOST_RESULT_NAME: None})
+    search.type_query(d, GHOST_QUERY)
+    with d.expect(pattern(markers.SEARCH_WORD_RESULTS)):
+        d.key_then_wait(pattern(markers.WORD_SELECTED_CHIP, word=GHOST_QUERY), "Return")
+
+    first = pattern(markers.GOTO_PAGE_OFFERED, page="9", text="Goto pages 9-10 (1 of 2):")
+    with d.expect(first):
+        search.pick_title_result(d, 1, GHOST_RESULT)
+    d.move_focus("Up")  # from the portal to the goto-page row
+    second = pattern(
+        markers.GOTO_PAGE_STEPPED, page="54", index=2, count=2, text="Goto page 54 (2 of 2):"
+    )
+    d.key_then_wait(second, "Right")
+
+
 # Inside words only: no word starts with it (airline, airliner, airlines).
 INSIDE_QUERY = "irline"  # cspell:disable-line
 

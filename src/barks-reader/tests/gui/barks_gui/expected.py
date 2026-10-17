@@ -197,6 +197,15 @@ def word_stories(word: str, speaker: str | None = None) -> int:
 
 
 @cache
+def word_story_pages(word: str, title: str) -> tuple[str, ...]:
+    """Return the pages a word picked from the list is on in one story, as its row lists them."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    found = search.find_words(word)
+    assert title in found, f"{word!r} is not in {title!r}"
+    return tuple(page.comic_page for page in found[title].fanta_pages.values())
+
+
+@cache
 def speaker_list(word: str) -> tuple[str, ...]:
     """Return the speakers the speaker filter's list offers for a picked word, as it names them.
 
