@@ -308,7 +308,9 @@ class BottomTitleViewScreen(FloatLayout):
         self._set_goto_page_position()
         if self.goto_page_num:
             logger.debug(
-                log_markers.GOTO_PAGE_OFFERED.format(page=self.goto_page_num, active=active)
+                log_markers.GOTO_PAGE_OFFERED.format(
+                    page=self.goto_page_num, active=active, text=self.goto_page_text
+                )
             )
 
     @property
@@ -336,7 +338,10 @@ class BottomTitleViewScreen(FloatLayout):
         self._set_goto_page_position()
         logger.debug(
             log_markers.GOTO_PAGE_STEPPED.format(
-                page=self.goto_page_num, index=index + 1, count=len(self.goto_pages)
+                page=self.goto_page_num,
+                index=index + 1,
+                count=len(self.goto_pages),
+                text=self.goto_page_text,
             )
         )
 

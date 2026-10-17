@@ -190,7 +190,9 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
 
     def test_an_offered_goto_page_is_logged_and_none_is_not(self, loguru_sink: list[str]) -> None:
         self.screen.set_goto_page_state("2", active=True)
-        assert loguru_sink[-1] == 'Goto page "2" offered: active = True.'
+        assert loguru_sink[-1] == (
+            'Goto page "2" offered: active = True; the row reads "Goto page 2:".'
+        )
         loguru_sink.clear()
         self.screen.set_goto_page_state(active=False)
         self.screen.set_goto_page_state(COMIC_BEGIN_PAGE, active=True)  # the front: no box
@@ -588,7 +590,9 @@ class TestGotoPageSteps(ScreenFixtureBase):
             re.search(log_markers.pattern(log_markers.GOTO_PAGE_STEPPED), line)
             for line in loguru_sink
         )
-        assert 'Goto page stepped to "13" (2 of 3).' in loguru_sink
+        assert (
+            'Goto page stepped to "13" (2 of 3); the row reads "Goto page 13 (2 of 3):".'
+        ) in loguru_sink
 
     @pytest.mark.parametrize(("key", "page"), [(KEY_RIGHT, "13"), (KEY_LEFT, "16")])
     def test_left_and_right_step_on_the_goto_row(self, key: int, page: str) -> None:

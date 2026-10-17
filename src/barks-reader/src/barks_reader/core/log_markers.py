@@ -210,9 +210,12 @@ TITLE_FADE_STARTED: Final = "Title view fade started: {duration}s."
 TITLE_FADE_FINISHED: Final = "Title view fade finished."
 USE_OVERRIDES_CHANGED: Final = "Use overrides checkbox changed: use_overrides = {value}."
 GOTO_PAGE_CHECKBOX_TOGGLED: Final = "Goto page checkbox toggled: active = {value}."
-# The title view offers its "Goto page n" box: a last-read page, or a tag's page.
-GOTO_PAGE_OFFERED: Final = 'Goto page "{page}" offered: active = {active}.'
-GOTO_PAGE_STEPPED: Final = 'Goto page stepped to "{page}" ({index} of {count}).'
+# The title view offers its "Goto page n" box: a last-read page, or a tag's page. The row
+# reads as the label shows it: "Goto pages 19-24 (1 of 3):" for a run of pages.
+GOTO_PAGE_OFFERED: Final = 'Goto page "{page}" offered: active = {active}; the row reads "{text}".'
+GOTO_PAGE_STEPPED: Final = (
+    'Goto page stepped to "{page}" ({index} of {count}); the row reads "{text}".'
+)
 
 # -------------------------------------------------------- the comic sources --
 # Which source the pages come from, logged once at boot (use_prebuilt_comics).
