@@ -234,6 +234,25 @@ def test_barks_character_tag_groups() -> None:
                 assert tag not in BARKS_TAG_GROUPS[excl_group]
 
 
+def test_a_whole_tag_offers_its_parts_pages() -> None:
+    """Gyro on page 4 of a "Gyro not in GG" story is on a Gyro Gearloose story's page 4."""
+    pages = barks_tags.BARKS_TAGGED_PAGES
+    assert pages[(Tags.GYRO_GEARLOOSE, Titles.GLADSTONES_TERRIBLE_SECRET)] == ["4"]
+    for whole, parts in barks_tags.BARKS_TAG_PARTS.items():
+        for (tag, title), part_pages in list(pages.items()):
+            if tag in parts:
+                assert pages[(whole, title)] == part_pages, (whole, tag, title)
+
+
+def test_a_whole_tag_keeps_the_pages_it_tags_itself() -> None:
+    whole, part = Tags.GYRO_GEARLOOSE, Tags.GYRO_NOT_IN_GG
+    title = Titles.GLADSTONES_TERRIBLE_SECRET
+    own = {(whole, title): ["5"], (part, title): ["4"]}
+    with patch.dict(barks_tags.BARKS_TAGGED_PAGES, own, clear=True):
+        barks_tags._set_whole_tag_pages()  # noqa: SLF001
+        assert barks_tags.BARKS_TAGGED_PAGES[(whole, title)] == ["5"]
+
+
 def test_barks_tag_aliases() -> None:
     assert BARKS_TAG_ALIASES["fire"] == Tags.FIRE
     assert BARKS_TAG_ALIASES["arabia"] == Tags.ARABIAN_PENINSULA

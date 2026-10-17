@@ -314,6 +314,27 @@ def _set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
 
 _set_tag_alias(Tags.CAMERAS, Tags.PHOTOGRAPHY)
 
+# A tag split into parts: every story of the whole is in one of them (_validate_gyro_tags).
+BARKS_TAG_PARTS: dict[Tags, tuple[Tags, ...]] = {
+    Tags.GYRO_GEARLOOSE: (Tags.GYRO_IN_GG, Tags.GYRO_NOT_IN_GG),
+}
+
+
+def _set_whole_tag_pages() -> None:
+    """Give a tag split into parts its parts' pages, unless it tags its own.
+
+    A part's page shows the whole's subject: Gyro, on page 4 of a story tagged
+    "Gyro not in GG", is on page 4 of a Gyro Gearloose story too, so the story offers
+    that page under either node.
+    """
+    for whole, parts in BARKS_TAG_PARTS.items():
+        for (tag, title), pages in list(BARKS_TAGGED_PAGES.items()):
+            if tag in parts and (whole, title) not in BARKS_TAGGED_PAGES:
+                BARKS_TAGGED_PAGES[(whole, title)] = pages
+
+
+_set_whole_tag_pages()
+
 
 def validate_tag_data() -> None:
     """Perform various assertions to ensure the integrity of the tag data.
