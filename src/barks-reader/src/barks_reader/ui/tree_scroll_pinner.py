@@ -1,9 +1,11 @@
 """Keep an expanding or collapsing tree row visually pinned.
 
-`TreeScrollPinner` hides the per-frame layout-stabilization loop — the pixel
-math that cancels the scroll "jump" when a tree node lazily creates its children
-or collapses them, then glides the first children into view when they opened
-below the window's edge — behind a single call. `TreeViewManager` owns *which*
+`TreeScrollPinner` hides the pixel math that cancels the scroll "jump" when a tree
+node lazily creates its children or collapses them — a hold that moves ``scroll_y``
+in the very layout pass that changes the tree's height, then a per-frame
+stabilization loop that checks the row settled where it was — and then glides the
+first children into view when they opened below the window's edge, behind a single
+call. `TreeViewManager` owns *which*
 node to expand and *when*; this module owns *how* the viewport stays put while it
 happens.
 
@@ -31,7 +33,11 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.core.scroll_reveal import REVEAL_PADDING, reveal_distance
+from barks_reader.core.scroll_reveal import (
+    REVEAL_PADDING,
+    reveal_distance,
+    scroll_y_keeping_row,
+)
 from barks_reader.core.tap_targets import settling_began, settling_ended
 
 if TYPE_CHECKING:
@@ -77,6 +83,8 @@ class TreeScrollPinner:
         self._pin_generation = 0
         # Counts the pins: only the latest one's settling has `on_settled` to say.
         self._pin_serial = 0
+        # The latest pin's hold on the tree's height: the container and its callback.
+        self._hold: tuple[Widget, Callable[[Widget, float], None]] | None = None
 
     def cancel_pending_reveals(self) -> None:
         """Keep the pins under way from scrolling their children into view.
@@ -96,6 +104,7 @@ class TreeScrollPinner:
         """
         self._pin_generation += 1
         self._reveal_generation += 1
+        self._release_hold()
         self._stop_glides(self._get_scroll_view())
 
     def pin_while_populating(
@@ -147,6 +156,7 @@ class TreeScrollPinner:
             sv_top_win_y = scroll_view.to_window(0, scroll_view.top)[1]
             parent_top_win_y = parent_node.to_window(0, parent_node.top)[1]
             target_offset_px = parent_top_win_y - sv_top_win_y  # keep this constant
+            self._hold_row(parent_node, scroll_view, -target_offset_px)
 
             # Optionally populate children now (lazy load for first expand).
             if populate is not None:
@@ -178,6 +188,44 @@ class TreeScrollPinner:
                     f"Populated node '{get_clean_text_without_extra(parent_node.text)}'"
                     f" in {timing.get_elapsed_time_with_unit()}."
                 )
+
+    def _hold_row(
+        self, parent_node: ButtonTreeViewNode, scroll_view: ScrollView, row_from_view_top: float
+    ) -> None:
+        """Keep *parent_node*'s row `row_from_view_top` below the view's top as the tree resizes.
+
+        Kivy keeps ``scroll_y`` as a share of the content's height, so a taller or shorter
+        tree moves every row for the frames until a correction lands: a jump, and back.
+        Moved in the tree's height change instead, ``scroll_y`` reaches the screen with
+        the layout that changed it: the tree lays its rows out, then sets its height, and
+        the scroll view places it after, all before the frame is drawn.
+        """
+        self._release_hold()
+        cont = scroll_view.children[0]
+        heights = [cont.height]
+
+        def on_height(_cont: Widget, height: float) -> None:
+            old_height, heights[0] = heights[0], height
+            if parent_node.parent is None:  # gone from the tree, repopulated
+                return
+            # The rows were just laid out down from the tree's old top.
+            scroll_y = scroll_y_keeping_row(
+                row_from_content_top=cont.y + old_height - parent_node.top,
+                row_from_view_top=row_from_view_top,
+                content_height=height,
+                view_height=scroll_view.height,
+            )
+            if scroll_y is not None:
+                scroll_view.scroll_y = scroll_y
+
+        cont.bind(height=on_height)
+        self._hold = (cont, on_height)
+
+    def _release_hold(self) -> None:
+        if self._hold is not None:
+            cont, on_height = self._hold
+            cont.unbind(height=on_height)
+            self._hold = None
 
     def _stabilize_after_layout(
         self,
@@ -330,6 +378,7 @@ class TreeScrollPinner:
         # A pin a newer one has stopped leaves the overlay's suppression to that one:
         # lifted now, the overlay would check the tree before its layout has settled.
         if checks["serial"] == self._pin_serial:
+            self._release_hold()
             self._on_settled()
 
     @staticmethod

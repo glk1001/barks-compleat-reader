@@ -1,7 +1,8 @@
 """How far to scroll a list so the rows opened under a row show, the row kept in view.
 
 Shared by the tree view and the Main Index: a row opened near the bottom of the view
-put its new rows below it, out of sight, and the press seemed to do nothing.
+put its new rows below it, out of sight, and the press seemed to do nothing. Also the
+scroll that keeps a row where it is while the rows under it open or shut.
 Kivy-free, so the distance can be tested without a window.
 """
 
@@ -32,3 +33,34 @@ def reveal_distance(
     """
     hidden_below = view_bottom - items_bottom + padding
     return max(0.0, min(hidden_below, view_top - owner_top))
+
+
+def scroll_y_keeping_row(
+    *,
+    row_from_content_top: float,
+    row_from_view_top: float,
+    content_height: float,
+    view_height: float,
+) -> float | None:
+    """Return the ``scroll_y`` that shows a row its same distance below the view's top.
+
+    Kivy keeps ``scroll_y`` as a share of the scrollable height, so content that grows or
+    shrinks under a row moves every row on screen, the row too, unless ``scroll_y`` moves
+    with it. Clamped: too near the content's end, the row can only move.
+
+    Args:
+        row_from_content_top: The row's top, measured down from the content's top.
+        row_from_view_top: Where the row's top is to be, measured down from the view's top.
+        content_height: The content's height.
+        view_height: The view's height.
+
+    Returns:
+        The ``scroll_y``, 0 to 1, or None when content no taller than the view does not
+        scroll (Kivy shows it from its top, whatever the ``scroll_y``).
+
+    """
+    scrollable = content_height - view_height
+    if scrollable <= 0:
+        return None
+    scrolled = row_from_content_top - row_from_view_top
+    return min(1.0, max(0.0, 1.0 - scrolled / scrollable))
