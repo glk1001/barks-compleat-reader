@@ -80,6 +80,11 @@ def test_entries_sort_word_by_word_ignoring_case_and_punctuation(before: str, af
     assert index_sort_key(before) < index_sort_key(after)
 
 
+def test_the_sort_key_is_the_letters_digits_and_spaces_lower_cased() -> None:
+    """Its words kept apart, so "Daisy Duck" sorts before "Daisy's Dazed Days"."""
+    assert index_sort_key("Donald's Gold-Mine, 1952!") == "donalds goldmine 1952"
+
+
 def test_neighbor_jones_first_real_appearance_has_real_in_italics() -> None:
     tag = Tags.FIRST_REAL_NEIGHBOR_JONES
     assert tag_heading(tag) == "Neighbor Jones: first real appearance"  # sorts plain

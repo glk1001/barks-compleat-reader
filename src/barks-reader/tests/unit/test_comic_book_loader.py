@@ -8,7 +8,7 @@ import threading
 import time
 import zipfile
 from collections import OrderedDict
-from concurrent.futures import CancelledError
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -1604,6 +1604,20 @@ class TestPrefetchLoop:
         assert source.load_count == 4  # noqa: PLR2004
         mock_callbacks["on_all_images_loaded"].assert_called_once()
         mock_callbacks["on_load_error"].assert_not_called()
+
+    def test_the_pool_holds_the_worker_count_for_the_comic(self, loader: ComicBookLoader) -> None:
+        """Python's default pool (up to 32 threads) would ignore the auto-tuned count."""
+        sizes: list[int | None] = []
+
+        class _RecordingPool(ThreadPoolExecutor):
+            def __init__(self, max_workers: int | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+                sizes.append(max_workers)
+                super().__init__(max_workers=max_workers, **kwargs)
+
+        with patch.object(loader_module, "ThreadPoolExecutor", _RecordingPool):
+            _run_load(loader, _make_indexed_page_map(3), FakePageImageSource())
+
+        assert sizes == [loader.get_worker_count_for_pages(3)]
 
     def test_a_page_cancelled_without_a_stop_fails_the_load(
         self,

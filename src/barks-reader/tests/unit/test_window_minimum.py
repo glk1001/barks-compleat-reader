@@ -74,6 +74,9 @@ def test_the_warning_names_the_screen_and_the_size_the_reader_is_laid_out_for() 
     text = screen_warning_text(1366, 768)
     assert "1366 x 768" in text
     assert "1920 x 1080" in text
+    assert text.endswith(
+        "\n\nThe reader will run, but some titles may be cut short and some screens crowded."
+    )
 
 
 def test_the_environment_can_ask_for_no_warning(monkeypatch: pytest.MonkeyPatch) -> None:
