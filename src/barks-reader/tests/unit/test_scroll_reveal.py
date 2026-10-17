@@ -34,7 +34,7 @@ def test_too_near_the_end_to_stay_the_list_shows_its_end() -> None:
     assert _keeping(440.0, 300.0) == pytest.approx(0.0)
 
 
-def test_a_row_lower_than_the_list_at_its_top_puts_it_shows_the_top() -> None:
+def test_a_row_nearer_the_list_top_than_it_is_to_sit_shows_the_list_top() -> None:
     assert _keeping(20.0, 500.0) == pytest.approx(1.0)
 
 

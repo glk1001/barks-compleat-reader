@@ -16,6 +16,7 @@ defaultvalue
 dirselect
 dmg
 etype
+fbind
 filechooser
 floatlayout
 gridlayout

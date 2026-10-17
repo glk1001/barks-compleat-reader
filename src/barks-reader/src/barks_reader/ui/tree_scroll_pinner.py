@@ -83,8 +83,8 @@ class TreeScrollPinner:
         self._pin_generation = 0
         # Counts the pins: only the latest one's settling has `on_settled` to say.
         self._pin_serial = 0
-        # The latest pin's hold on the tree's height: the container and its callback.
-        self._hold: tuple[Widget, Callable[[Widget, float], None]] | None = None
+        # The latest pin's hold on the tree's height: the container and the binding's uid.
+        self._hold: tuple[Widget, int] | None = None
 
     def cancel_pending_reveals(self) -> None:
         """Keep the pins under way from scrolling their children into view.
@@ -112,10 +112,11 @@ class TreeScrollPinner:
     ) -> None:
         """Keep *parent_node*'s row visually pinned while its children are created.
 
-        Records the parent row's current offset from the top of the viewport,
+        Records the parent row's current offset from the top of the viewport, holds
+        the row at that offset through the tree's height change (see `_hold_row`),
         optionally runs *populate* to lazily create the children, then schedules a
-        settle loop that nudges ``scroll_y`` so the row stays at that same offset
-        (making expansion behave like a dropdown rather than jumping the list).
+        settle loop that checks the row stayed there and corrects any drift (making
+        expansion behave like a dropdown rather than jumping the list).
         Should even the first child open below the viewport, the tree then glides up
         to show the first `REVEAL_ROWS` rows, as far as the row's staying in view
         allows, unless a later pin or `cancel_pending_reveals` has come first.
@@ -160,7 +161,13 @@ class TreeScrollPinner:
 
             # Optionally populate children now (lazy load for first expand).
             if populate is not None:
-                populate()
+                try:
+                    populate()
+                except BaseException:
+                    # No settle loop will let the hold go: left, it would put the row
+                    # back at this offset on the tree's next change of height.
+                    self._release_hold()
+                    raise
 
             self._reveal_generation += 1
             checks: dict[str, float] = {
@@ -202,10 +209,11 @@ class TreeScrollPinner:
         """
         self._release_hold()
         cont = scroll_view.children[0]
-        heights = [cont.height]
+        last_height = cont.height
 
         def on_height(_cont: Widget, height: float) -> None:
-            old_height, heights[0] = heights[0], height
+            nonlocal last_height
+            old_height, last_height = last_height, height
             if parent_node.parent is None:  # gone from the tree, repopulated
                 return
             # The rows were just laid out down from the tree's old top.
@@ -218,13 +226,12 @@ class TreeScrollPinner:
             if scroll_y is not None:
                 scroll_view.scroll_y = scroll_y
 
-        cont.bind(height=on_height)
-        self._hold = (cont, on_height)
+        self._hold = (cont, cont.fbind("height", on_height))
 
     def _release_hold(self) -> None:
         if self._hold is not None:
-            cont, on_height = self._hold
-            cont.unbind(height=on_height)
+            cont, uid = self._hold
+            cont.unbind_uid("height", uid)
             self._hold = None
 
     def _stabilize_after_layout(

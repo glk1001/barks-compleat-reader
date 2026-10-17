@@ -600,6 +600,20 @@ def test_a_tree_shortened_to_fit_the_view_leaves_the_scroll_alone() -> None:
     assert scroll_view.scroll_y == pytest.approx(0.75)
 
 
+def test_a_second_change_of_height_is_held_from_the_tree_s_new_top() -> None:
+    """A tree lays its rows out from its top: the top it had when the height last changed."""
+    scroll_view, tree = _holding_view()
+    parent = _row_40_below_the_view_top()
+    _holding_pinner(scroll_view).pin_while_populating(parent, populate=None)
+    tree.height = 900.0
+
+    parent.top = 740.0  # laid out from the top at 900, 160 down: a row above it grew by 20
+    tree.height = 940.0
+
+    # Scrolled 120 down, of 840, to keep it 40 below the view's top.
+    assert scroll_view.scroll_y == pytest.approx(1 - 120 / 840)
+
+
 def test_a_row_gone_from_the_tree_is_not_held() -> None:
     scroll_view, tree = _holding_view()
     parent = _row_40_below_the_view_top()
@@ -621,6 +635,40 @@ def test_a_settled_pin_lets_go_of_the_tree() -> None:
         pass
 
     tree.height = 300.0
+
+    assert scroll_view.scroll_y == pytest.approx(0.75)
+
+
+def test_a_revealed_pin_lets_go_of_the_tree() -> None:
+    """The hold is let go when the reveal glide, not the correction, settles the pin."""
+    clock = FakeClock()
+    scroll_view, tree = _holding_view()
+    parent = _row_40_below_the_view_top()
+    child = MagicMock(is_open=False, nodes=[])
+    child.to_window.return_value = (0, -200)  # opened well below the view's bottom
+    parent.nodes = [child]
+    _holding_pinner(scroll_view, clock).pin_while_populating(parent, populate=None)
+    while clock.run_next():
+        pass
+    assert scroll_view.scroll_y != pytest.approx(0.75)  # the glide (a jump here) revealed
+
+    revealed_scroll_y = scroll_view.scroll_y
+    tree.height = 300.0
+
+    assert scroll_view.scroll_y == pytest.approx(revealed_scroll_y)
+
+
+def test_a_populate_that_fails_lets_go_of_the_tree() -> None:
+    scroll_view, tree = _holding_view()
+
+    def populate() -> None:
+        raise RuntimeError
+
+    with pytest.raises(RuntimeError):
+        _holding_pinner(scroll_view).pin_while_populating(
+            _row_40_below_the_view_top(), populate=populate
+        )
+    tree.height = 900.0
 
     assert scroll_view.scroll_y == pytest.approx(0.75)
 
@@ -651,3 +699,21 @@ def test_a_new_pin_holds_its_own_row_alone() -> None:
     # Scrolled 40 down, of 800: the first pin's hold would have put it at 0.875.
     assert scroll_view.scroll_y == pytest.approx(0.95)
     assert len(tree.get_property_observers("height")) == observers + 1
+
+
+def test_an_older_pin_s_settling_leaves_the_new_pin_s_hold() -> None:
+    clock = FakeClock()
+    scroll_view, tree = _holding_view()
+    pinner = _holding_pinner(scroll_view, clock)
+    first = _row_40_below_the_view_top()
+    pinner.pin_while_populating(first, populate=None)
+    second = _row_40_below_the_view_top()
+    second.top = 440.0  # 60 down the tree, 20 above the first
+    second.to_window.return_value = (0, 80)  # 20 below the view's top
+    pinner.pin_while_populating(second, populate=None)
+
+    first.is_open = False  # toggled back: the first pin's loop settles on its next tick
+    clock.run_next()
+    tree.height = 900.0
+
+    assert scroll_view.scroll_y == pytest.approx(0.95)
