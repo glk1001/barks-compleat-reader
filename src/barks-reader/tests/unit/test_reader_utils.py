@@ -20,6 +20,7 @@ from barks_reader.core.reader_utils import (
     get_all_files_in_dir,
     get_centred_position_on_primary_monitor,
     get_concat_page_nums_str,
+    get_page_run_end,
     get_page_run_starts,
     get_page_sort_key,
     get_paths_from_directory,
@@ -312,6 +313,22 @@ class TestReaderUtils:
     )
     def test_get_page_run_starts(self, pages: list[str], starts: list[str]) -> None:
         assert get_page_run_starts(pages) == starts
+
+    @pytest.mark.parametrize(
+        ("page", "pages", "end"),
+        [
+            ("1", ["1", "2", "3"], "3"),
+            ("16", ["7", "13", "16", "17", "18", "19", "20", "21", "22", "23"], "23"),
+            ("13", ["7", "13", "16", "17"], ""),  # a lone page
+            ("17", ["16", "17", "18"], ""),  # inside a run, not its start
+            ("5", ["1", "2", "3"], ""),  # not among them
+            ("19", ["24", "19", "20", "31", "21"], "21"),  # any order
+            ("ii", ["i", "ii", "iii"], ""),  # front matter has no runs
+            ("", ["1", "2"], ""),
+        ],
+    )
+    def test_get_page_run_end(self, page: str, pages: list[str], end: str) -> None:
+        assert get_page_run_end(page, pages) == end
 
     def test_get_page_run_starts_puts_each_front_matter_page_first_in_page_order(self) -> None:
         # Sorted as strings, "ix" would come before "v", and "iv" before both.

@@ -248,7 +248,8 @@
                         Widget:
                         Label:
                             id: goto_page_label
-                            text: "Goto page " + root.goto_page_num + root.goto_page_position + ":"
+                            # "Goto page 7 (1 of 3):", or "Goto pages 1-3:" for a run.
+                            text: root.goto_page_text
                             color: reader_palette.theme().search_heading
                             # Dark halo so the accent colour stays legible over bright title pages.
                             bold: True

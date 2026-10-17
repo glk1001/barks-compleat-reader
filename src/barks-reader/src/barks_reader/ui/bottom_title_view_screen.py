@@ -28,6 +28,7 @@ from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import (
+    get_page_run_end,
     get_page_run_starts,
     get_page_sort_key,
     title_needs_footnote,
@@ -158,6 +159,12 @@ class BottomTitleViewScreen(FloatLayout):
     goto_pages = ListProperty()
     # " (2 of 3)" while stepping through several goto pages, else empty.
     goto_page_position = StringProperty()
+    # The last page of the run of tagged pages the offered page starts ("3" for 1-3),
+    # else empty.
+    goto_page_run_end = StringProperty()
+    # The row's label: "Goto page 7 (1 of 3):", or "Goto pages 16-23 (3 of 3):" for a
+    # run, so a run shows as one.
+    goto_page_text = StringProperty()
     use_overrides_active = BooleanProperty(default=True)
     use_overrides_description = StringProperty()
 
@@ -279,9 +286,9 @@ class BottomTitleViewScreen(FloatLayout):
             active: Whether the offer starts ticked.
             tagged_pages: A tag's pages in the title, when the offer comes from a tag:
                 the goto-page row then steps through the start of each run of them,
-                and through the page offered, when that is none of them (the page the
-                comic was closed on). Any other offer clears them, so they never follow
-                another title.
+                naming the run ("Goto pages 1-3"), and through the page offered, when
+                that is none of them (the page the comic was closed on). Any other offer
+                clears them, so they never follow another title.
             kept_page: Another page to step through with a tag's pages, though not the
                 one offered: the page the comic was closed on, when a tag offers its own.
 
@@ -334,11 +341,18 @@ class BottomTitleViewScreen(FloatLayout):
         )
 
     def _set_goto_page_position(self) -> None:
+        self.goto_page_run_end = get_page_run_end(self.goto_page_num, self.tagged_pages)
         self.goto_page_position = (
             f" ({self.goto_pages.index(self.goto_page_num) + 1} of {len(self.goto_pages)})"
             if self.can_step_goto_page and self.goto_page_num in self.goto_pages
             else ""
         )
+        pages = (
+            f"pages {self.goto_page_num}-{self.goto_page_run_end}"
+            if self.goto_page_run_end
+            else f"page {self.goto_page_num}"
+        )
+        self.goto_page_text = f"Goto {pages}{self.goto_page_position}:"
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
         self.use_overrides_active = active

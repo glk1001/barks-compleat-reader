@@ -252,6 +252,27 @@ def get_page_run_starts(page_nums_str: Sequence[str]) -> list[str]:
     return roman_pages + [str(first) for first, _last in intspan(int_pages).ranges()]
 
 
+def get_page_run_end(page_num_str: str, page_nums_str: Sequence[str]) -> str:
+    """Return the last page of the run of consecutive pages `page_num_str` starts.
+
+    Args:
+        page_num_str: A page, as the reader numbers it.
+        page_nums_str: Page numbers, as the reader numbers them, in any order.
+
+    Returns:
+        The run's last page: "23" for 16 among 16 to 23. "" when the page starts no
+        run longer than itself: a lone page, one inside a run, a front-matter page,
+        or one not among them.
+
+    """
+    if page_num_str in ROMAN_NUMERALS_SET or not page_num_str.isdigit():
+        return ""
+    int_pages = [int(p) for p in page_nums_str if p not in ROMAN_NUMERALS_SET]
+    first = int(page_num_str)
+    last = next((end for start, end in intspan(int_pages).ranges() if start == first), first)
+    return str(last) if last > first else ""
+
+
 def get_page_sort_key(page_num_str: str) -> tuple[int, int]:
     """Return a page's place in the comic, for sorting page numbers.
 

@@ -611,6 +611,29 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.goto_page_num == "4"
         assert self.screen.goto_page_position == ""
 
+    def test_a_run_reads_as_its_pages_and_a_lone_page_as_one(self) -> None:
+        self._offer()
+        assert self.screen.goto_page_run_end == ""
+        assert self.screen.goto_page_text == "Goto page 7 (1 of 3):"
+        self.screen.step_goto_page(-1)
+        assert self.screen.goto_page_run_end == "23"
+        assert self.screen.goto_page_text == "Goto pages 16-23 (3 of 3):"
+
+    def test_one_run_reads_as_its_pages(self) -> None:
+        # Herbert in Ten Cents' Worth of Trouble: one stop, but three pages.
+        self.screen.set_goto_page_state("1", active=True, tagged_pages=["1", "2", "3"])
+        assert self.screen.goto_page_text == "Goto pages 1-3:"
+
+    def test_a_page_inside_a_run_names_no_run(self) -> None:
+        self.screen.set_goto_page_state("18", active=True, tagged_pages=_TAGGED_PAGES)
+        assert self.screen.goto_page_run_end == ""
+
+    def test_an_offer_with_no_tag_names_no_run(self) -> None:
+        self._offer()
+        self.screen.set_goto_page_state("16", active=True)
+        assert self.screen.goto_page_run_end == ""
+        assert self.screen.goto_page_text == "Goto page 16:"
+
     def test_a_page_among_none_of_the_runs_is_a_stop_of_its_own(self) -> None:
         # E.g. the page the comic was closed on, read under the tag.
         self.screen.set_goto_page_state("9", active=True, tagged_pages=_TAGGED_PAGES)
