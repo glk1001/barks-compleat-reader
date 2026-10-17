@@ -89,6 +89,20 @@ LOST_IN_THE_ANDES_UNDER_SPLASH = [
 ]
 LOST_IN_THE_ANDES_SPLASH_PAGE = "17"
 
+# Under Gyro Gearloose, a tag with no pages of its own: its part "Gyro not in GG" tags
+# this story's page 4, which the whole offers too (barks_tags.BARKS_TAG_PARTS).
+GLADSTONES_STORY_UNDER_GYRO = [
+    "GLADSTONES_TERRIBLE_SECRET",
+    "Gyro Gearloose",
+    "Primary Characters",
+    "Characters",
+    "Categories",
+    "The Stories",
+    "root",
+]
+GLADSTONES_STORY_TITLE = "Gladstone's Terrible Secret"
+GLADSTONES_STORY_GYRO_PAGE = "4"
+
 # A censored-but-fixed story with an overrides row (the GLK alternate ending).
 THE_FIREBUG = [
     "FIREBUG_THE",
@@ -105,4 +119,5 @@ NO_CUES: dict[str, Cue] = {
     GHOST_OF_THE_GROTTO_TITLE: None,
     LOST_IN_THE_ANDES_TITLE: None,
     THE_FIREBUG_TITLE: None,
+    GLADSTONES_STORY_TITLE: None,
 }

@@ -75,6 +75,33 @@ def test_a_story_restored_under_a_tag_steps_through_the_tags_pages(boot: AppBoot
     d.key_then_wait(pattern(markers.GOTO_PAGE_STEPPED, page="26", index=2, count=3), "Right")
 
 
+def test_a_run_of_a_tags_pages_reads_as_one_on_the_goto_page_row(boot: AppBoot) -> None:
+    """Each run of the tag's pages is one stop, and the row names the whole run.
+
+    Awfultonians tags Lost in the Andes on 19-24, 26-29 and 31: the row reads
+    "Goto pages 19-24", steps to "Goto pages 26-29", then to the lone page 31.
+    """
+    d = boot(nodes.LOST_IN_THE_ANDES_UNDER_AWFULTONIANS, cues=nodes.NO_CUES)
+    offered = pattern(markers.GOTO_PAGE_OFFERED, page="19", text="Goto pages 19-24 (1 of 3):")
+    assert d.match_count(offered) >= 1
+    d.focus_portal()
+    d.move_focus("Up")  # the goto-page row sits right above the portal
+    for page, index, text in (
+        ("26", 2, "Goto pages 26-29 (2 of 3):"),
+        ("31", 3, "Goto page 31 (3 of 3):"),
+    ):
+        stepped = pattern(markers.GOTO_PAGE_STEPPED, page=page, index=index, count=3, text=text)
+        d.key_then_wait(stepped, "Right")
+
+
+def test_a_story_under_a_tag_split_into_parts_offers_the_parts_page(boot: AppBoot) -> None:
+    """Gyro Gearloose tags no page itself; its part "Gyro not in GG" does, and it shows."""
+    d = boot(nodes.GLADSTONES_STORY_UNDER_GYRO, cues=nodes.NO_CUES)
+    page = nodes.GLADSTONES_STORY_GYRO_PAGE
+    offered = pattern(markers.GOTO_PAGE_OFFERED, page=page, text=f"Goto page {page}:")
+    assert d.match_count(offered) >= 1
+
+
 def test_a_story_restored_under_a_tags_year_group_offers_the_tags_page(boot: AppBoot) -> None:
     """A tag split into year groups still hands its page to a story in one of them."""
     d = boot(nodes.LOST_IN_THE_ANDES_UNDER_SPLASH, cues=nodes.NO_CUES)
