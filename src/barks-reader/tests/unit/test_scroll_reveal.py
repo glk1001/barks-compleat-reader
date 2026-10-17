@@ -38,6 +38,11 @@ def test_a_row_nearer_the_list_top_than_it_is_to_sit_shows_the_list_top() -> Non
     assert _keeping(20.0, 500.0) == pytest.approx(1.0)
 
 
+def test_a_list_one_pixel_taller_than_the_view_scrolls() -> None:
+    # Half a pixel scrolled of the one there is.
+    assert _keeping(40.5, 101.0) == pytest.approx(0.5)
+
+
 @pytest.mark.parametrize("content_height", [100.0, 80.0])
 def test_a_list_no_taller_than_the_view_does_not_scroll(content_height: float) -> None:
     assert _keeping(40.0, content_height) is None

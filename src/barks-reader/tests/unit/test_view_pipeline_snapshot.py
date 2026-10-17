@@ -10,11 +10,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.ports import PaletteId
 from barks_reader.core.reader_file_paths import ALL_TYPES
+from barks_reader.core.reader_formatter import get_formatted_color
 from barks_reader.core.testing import ScriptedColorSource
 from barks_reader.core.view_request import ImageThemes, ViewRequest
 from barks_reader.core.view_snapshot import (
@@ -401,6 +403,39 @@ class TestRenderFlags:
         assert any(re.search(top, line) for line in loguru_sink)
         assert any(re.search(fun, line) for line in loguru_sink)
 
+    def test_each_image_line_names_the_image_its_fit_its_color_and_opacity(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """Every field of the line is the image's own, none left blank."""
+        pipeline = make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE))
+        p = pipeline.__dict__
+        views = (
+            (
+                log_markers.TOP_VIEW_IMAGE_PICKED,
+                p["_top_view_image_info"],
+                p["_top_view_image_color"],
+                p["_top_view_image_opacity"],
+            ),
+            (
+                log_markers.FUN_VIEW_IMAGE_PICKED,
+                p["_bottom_view_fun_image_info"],
+                p["_bottom_view_fun_image_color"],
+                p["_bottom_view_fun_image_opacity"],
+            ),
+        )
+        for marker, info, color, opacity in views:
+            # Set, so a field logged blank cannot match by chance.
+            assert None not in (info.filename, info.fit_mode, color, opacity)
+            line = marker.format(
+                state="ON_THE_STORIES_NODE",
+                image=get_abbrev_path(info.filename),
+                fit_mode=info.fit_mode,
+                color=get_formatted_color(color),
+                opacity=opacity,
+            )
+            assert line in loguru_sink
+
     def test_preserve_fun_view_still_picks_a_first_fun_image(self) -> None:
         pipeline = make_pipeline()
         pipeline.render(ViewRequest(view_state=ViewStates.ON_TITLE_NODE, title_str="A Title"))
@@ -410,6 +445,16 @@ class TestRenderFlags:
         )
 
         assert snap.fun_view.image_info is not None
+
+    def test_update_views_picks_a_new_fun_image_by_default(self) -> None:
+        """The `preserve_fun_view` default is off — a plain refresh re-rolls the fun image."""
+        pipeline = make_pipeline()
+        pipeline._view_state = ViewStates.ON_THE_STORIES_NODE  # noqa: SLF001
+        pipeline._bottom_view_fun_image_info = ImageInfo(filename=Path("old.png"))  # noqa: SLF001
+
+        pipeline._update_views()  # noqa: SLF001
+
+        assert pipeline._bottom_view_fun_image_info.filename == Path("random.png")  # noqa: SLF001
 
     def test_update_views_picks_a_new_top_image_by_default(self) -> None:
         """The `preserve_top_view` default is off — a plain refresh re-rolls the top."""

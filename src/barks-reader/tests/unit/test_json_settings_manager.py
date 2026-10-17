@@ -200,6 +200,16 @@ class TestScreenSizesWarned:
         assert reopened.is_screen_size_warned("1366x768")
         assert not reopened.is_screen_size_warned("1600x900")
 
+    def test_a_second_warned_size_keeps_the_first(self, tmp_path: Path) -> None:
+        store = tmp_path / "store.json"
+        manager = SettingsManager(store)
+        manager.save_screen_size_warned("1366x768")
+        manager.save_screen_size_warned("1600x900")
+
+        reopened = SettingsManager(store)
+        assert reopened.is_screen_size_warned("1366x768")
+        assert reopened.is_screen_size_warned("1600x900")
+
     def test_warned_sizes_of_another_shape_count_as_none(self, tmp_path: Path) -> None:
         """A hand-edited file may hold a list here: nothing is warned, and saving mends it."""
         store = tmp_path / "store.json"
