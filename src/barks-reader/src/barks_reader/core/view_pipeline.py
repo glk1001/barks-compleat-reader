@@ -287,7 +287,10 @@ class ViewPipeline:
             log_markers.UPDATING_BACKGROUND_VIEW_STATE.format(state=request.view_state.name)
         )
         self._view_state = request.view_state
-        self._update_views(preserve_top_view=request.preserve_top_view)
+        self._update_views(
+            preserve_top_view=request.preserve_top_view,
+            preserve_fun_view=request.preserve_fun_view,
+        )
 
         snapshot = self._compute_snapshot()
         # The provided title image file is one-shot - clear it now it's been used.
@@ -382,7 +385,9 @@ class ViewPipeline:
             ),
         )
 
-    def _update_views(self, *, preserve_top_view: bool = False) -> None:
+    def _update_views(
+        self, *, preserve_top_view: bool = False, preserve_fun_view: bool = False
+    ) -> None:
         if self._view_state == ViewStates.PRE_INIT:
             self._top_view_image_opacity = 0.5
             self._set_next_top_view_image()
@@ -400,7 +405,9 @@ class ViewPipeline:
 
         if not preserve_top_view:
             self._set_next_top_view_image()
-        self._set_next_bottom_view_fun_image()
+        # A fun image to keep needs one picked already: the first is always picked.
+        if not (preserve_fun_view and self._bottom_view_fun_image_info is not None):
+            self._set_next_bottom_view_fun_image()
         self._set_next_search_screen_image()
         self._set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
@@ -494,12 +501,13 @@ class ViewPipeline:
         assert self._top_view_image_info.filename
 
         logger.debug(
-            f"Top view image:"
-            f" State: {self._view_state.name},"
-            f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
-            f" FitMode: '{self._top_view_image_info.fit_mode}',"
-            f" Color: {get_formatted_color(self._top_view_image_color)},"
-            f" Opacity: {self._top_view_image_opacity}."
+            log_markers.TOP_VIEW_IMAGE_PICKED.format(
+                state=self._view_state.name,
+                image=get_abbrev_path(self._top_view_image_info.filename),
+                fit_mode=self._top_view_image_info.fit_mode,
+                color=get_formatted_color(self._top_view_image_color),
+                opacity=self._top_view_image_opacity,
+            )
         )
 
     def _set_top_view_image_for_series(self) -> None:
@@ -651,12 +659,13 @@ class ViewPipeline:
         assert self._bottom_view_fun_image_info.filename
 
         logger.debug(
-            f"Bottom view fun image:"
-            f" State: {self._view_state.name},"
-            f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
-            f" FitMode: '{self._bottom_view_fun_image_info.fit_mode}',"
-            f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
-            f" Opacity: {self._bottom_view_fun_image_opacity}."
+            log_markers.FUN_VIEW_IMAGE_PICKED.format(
+                state=self._view_state.name,
+                image=get_abbrev_path(self._bottom_view_fun_image_info.filename),
+                fit_mode=self._bottom_view_fun_image_info.fit_mode,
+                color=get_formatted_color(self._bottom_view_fun_image_color),
+                opacity=self._bottom_view_fun_image_opacity,
+            )
         )
 
     def set_search_screen_image_for_title(self, title: Titles) -> None:

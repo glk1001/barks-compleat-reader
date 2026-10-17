@@ -18,6 +18,10 @@ DOWNS_INTO_THE_RANGE = 3
 # confirm_quit) - and the go-back line would never be logged.
 WRAP_STEPS = 3
 ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
+ANY_TOP_IMAGE = pattern(markers.TOP_VIEW_IMAGE_PICKED)
+ANY_FUN_IMAGE = pattern(markers.FUN_VIEW_IMAGE_PICKED)
+# Long enough for a collapse's render, which picks images at once if at all, to be logged.
+NO_NEW_IMAGE_SECS = 1.0
 
 
 def test_collapse_and_expand_a_top_level_node(boot: AppBoot) -> None:
@@ -25,6 +29,20 @@ def test_collapse_and_expand_a_top_level_node(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="The Stories"), "Left")
     d.key_then_wait(pattern(markers.NODE_EXPANDED, name="The Stories"), "Return")
+
+
+def test_a_collapse_keeps_the_images_and_an_expand_picks_new_ones(boot: AppBoot) -> None:
+    """Shutting a node is going back: its view shows under the images already on show."""
+    d = boot(nodes.THEMES)
+    top_picks, fun_picks = d.match_count(ANY_TOP_IMAGE), d.match_count(ANY_FUN_IMAGE)
+
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED_IMAGES_KEPT, name="Themes"), "Left")
+    d.expect_no_new(ANY_TOP_IMAGE, NO_NEW_IMAGE_SECS)
+    assert d.match_count(ANY_TOP_IMAGE) == top_picks, "the collapse picked a new top image"
+    assert d.match_count(ANY_FUN_IMAGE) == fun_picks, "the collapse picked a new fun image"
+
+    with d.expect(ANY_FUN_IMAGE):
+        d.key_then_wait(ANY_TOP_IMAGE, "Return")
 
 
 def test_left_on_a_title_selects_its_parent(boot: AppBoot) -> None:

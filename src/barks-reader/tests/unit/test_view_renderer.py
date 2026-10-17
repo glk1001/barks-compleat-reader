@@ -144,6 +144,14 @@ class TestRender:
 
         assert _rendered_request(deps).preserve_top_view is True
 
+    def test_render_preserve_fun_view_propagates(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        view_renderer, deps = renderer
+        view_renderer.render(IntroDestination(), preserve_fun_view=True)
+
+        assert _rendered_request(deps).preserve_fun_view is True
+
 
 class TestRenderTitle:
     def test_render_title_fades_in_and_applies_title_state(

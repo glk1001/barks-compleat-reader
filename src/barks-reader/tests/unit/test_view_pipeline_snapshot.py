@@ -367,6 +367,37 @@ class TestRenderFlags:
         assert first.top_view.image_info == ImageInfo(filename=Path("top1.png"))
         assert second.top_view.image_info == ImageInfo(filename=Path("top1.png"))
 
+    def test_preserve_fun_view_keeps_the_current_fun_image(self) -> None:
+        """A collapse keeps both images; the next plain render picks a new fun image."""
+        pipeline = make_pipeline()
+        picks = iter([ImageInfo(filename=Path(f"pick{n}.png")) for n in range(1, 9)])
+        selector_of(pipeline).get_random_image.side_effect = lambda *_args, **_kw: next(picks)
+
+        first = pipeline.render(ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE))
+        kept = pipeline.render(
+            ViewRequest(
+                view_state=ViewStates.ON_THE_STORIES_NODE,
+                preserve_top_view=True,
+                preserve_fun_view=True,
+            )
+        )
+        fresh = pipeline.render(ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE))
+
+        assert first.fun_view.image_info is not None
+        assert kept.fun_view.image_info == first.fun_view.image_info
+        assert kept.top_view.image_info == first.top_view.image_info
+        assert fresh.fun_view.image_info != first.fun_view.image_info
+
+    def test_preserve_fun_view_still_picks_a_first_fun_image(self) -> None:
+        pipeline = make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_TITLE_NODE, title_str="A Title"))
+
+        snap = pipeline.render(
+            ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE, preserve_fun_view=True)
+        )
+
+        assert snap.fun_view.image_info is not None
+
     def test_update_views_picks_a_new_top_image_by_default(self) -> None:
         """The `preserve_top_view` default is off — a plain refresh re-rolls the top."""
         pipeline = make_pipeline()

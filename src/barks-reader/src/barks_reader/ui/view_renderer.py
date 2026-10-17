@@ -124,10 +124,26 @@ class ViewRenderer:
     # ------------------------------------------------------------------
     # Primary render paths
     # ------------------------------------------------------------------
-    def render(self, destination: Destination, *, preserve_top_view: bool = False) -> None:
-        """Resolve *destination* via `NavigationModel` and render the resulting view state."""
+    def render(
+        self,
+        destination: Destination,
+        *,
+        preserve_top_view: bool = False,
+        preserve_fun_view: bool = False,
+    ) -> None:
+        """Resolve *destination* via `NavigationModel` and render the resulting view state.
+
+        `preserve_top_view` and `preserve_fun_view` keep the top and bottom (fun) images
+        on show rather than picking new ones.
+        """
         request = self._nav_model.view_state_for(destination)
-        self._dispatch(replace(request, preserve_top_view=preserve_top_view))
+        self._dispatch(
+            replace(
+                request,
+                preserve_top_view=preserve_top_view,
+                preserve_fun_view=preserve_fun_view,
+            )
+        )
 
     def render_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
         """Render *view_state* without any destination context (for boot / return paths)."""

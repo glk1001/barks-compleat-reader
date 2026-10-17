@@ -249,22 +249,29 @@ class TreeViewManager:
 
         if self._pin_collapses:
             self._scroll_pinner.pin_while_collapsing(node)
-        self.set_view_state_for_node(node)
+        # Going back up the tree: what shows is the node's view, under the same images.
+        self.set_view_state_for_node(node, keep_images=True)
 
-    def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
+    def set_view_state_for_node(
+        self, node: ButtonTreeViewNode, *, keep_images: bool = False
+    ) -> None:
         """Render the view for *node*'s destination.
 
         The single generic handler for nodes whose only behavior is "show my
         view": bound as the ``on_press`` handler for the simple index, search,
         and statistics nodes, and also called from the expand/collapse paths.
         Nodes with extra behavior (e.g. the speech index/words nodes) keep their
-        own handlers.
+        own handlers. `keep_images` keeps the top and fun images on show (a collapse).
         """
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
         logger.info(f"Rendering view for node '{node.get_name()}'.")
-        self._renderer.render(node.destination)
+        if keep_images:
+            logger.info(log_markers.NODE_COLLAPSED_IMAGES_KEPT.format(name=node.get_name()))
+        self._renderer.render(
+            node.destination, preserve_top_view=keep_images, preserve_fun_view=keep_images
+        )
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(log_markers.NODE_EXPANDED.format(name=node.get_name()))

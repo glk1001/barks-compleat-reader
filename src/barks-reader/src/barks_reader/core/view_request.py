@@ -63,3 +63,4 @@ class ViewRequest:
     fun_image_themes: set[ImageThemes] | None = None
     title_image_file: PanelPath | None = None
     preserve_top_view: bool = False
+    preserve_fun_view: bool = False

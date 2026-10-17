@@ -113,7 +113,9 @@ class TestTreeViewManager:
 
         tree_view_manager.set_view_state_for_node(node)
 
-        mock_dependencies["renderer"].render.assert_called_with(MainIndexDestination())
+        mock_dependencies["renderer"].render.assert_called_with(
+            MainIndexDestination(), preserve_top_view=False, preserve_fun_view=False
+        )
 
     def test_set_view_state_for_node_without_destination_raises(
         self, tree_view_manager: TreeViewManager
@@ -190,7 +192,10 @@ class TestTreeViewManager:
 
         tree_view_manager.on_node_collapsed(MagicMock(), node)
 
-        mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
+        # A collapse renders the node's view under the images already on show.
+        mock_dependencies["renderer"].render.assert_called_with(
+            IntroDestination(), preserve_top_view=True, preserve_fun_view=True
+        )
 
     def test_on_node_expanded(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -209,7 +214,9 @@ class TestTreeViewManager:
 
             mock_pin.assert_called_with(node, populate=node.populate_callback)
             assert node.populated is True
-            mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
+            mock_dependencies["renderer"].render.assert_called_with(
+                IntroDestination(), preserve_top_view=False, preserve_fun_view=False
+            )
 
     def test_on_node_expanded_repopulates_flagged_node(
         self,

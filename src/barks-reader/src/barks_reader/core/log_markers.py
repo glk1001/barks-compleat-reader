@@ -36,6 +36,17 @@ GOING_BACK_TO_NODE: Final = 'Going back to previous node "{name}".'
 REPOPULATED_NODE: Final = "Repopulated '{name}' with {count} children."
 ARTICLE_NODE_PRESSED: Final = "Article node pressed: Reading '{name}'."
 UPDATING_BACKGROUND_VIEW_STATE: Final = "Updating background view state to {state}."
+# A view's top and bottom (fun) images, each logged when one is picked for it.
+TOP_VIEW_IMAGE_PICKED: Final = (
+    "Top view image: State: {state}, Image: '{image}', FitMode: '{fit_mode}',"
+    " Color: {color}, Opacity: {opacity}."
+)
+FUN_VIEW_IMAGE_PICKED: Final = (
+    "Bottom view fun image: State: {state}, Image: '{image}', FitMode: '{fit_mode}',"
+    " Color: {color}, Opacity: {opacity}."
+)
+# A reader's collapse renders its node's view but keeps the images on show.
+NODE_COLLAPSED_IMAGES_KEPT: Final = "Node collapsed: keeping the top and fun images: '{name}'."
 
 # ------------------------------------------------------------------ keys --
 # Every key press the window receives, before any handler can consume it. The
