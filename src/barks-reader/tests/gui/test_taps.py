@@ -119,14 +119,16 @@ def test_a_branch_tapped_at_the_bottom_glides_up_to_show_its_first_rows(boot: Ap
 
     The branch is the lowest row wholly on screen: its first child would open under
     the tree's edge, where a cut row shows or, the edge at the branch's very bottom,
-    nothing does. It stays on screen itself. Rows always follow a theme's, so a theme
-    as the lowest whole row means the tree goes on below the edge.
+    nothing does. It stays on screen itself. Rows always follow a place's, so a place
+    as the lowest whole row means the tree goes on below the edge. Places, not Themes:
+    the 17 themes fit a 1360 px window, and the lowest row was then Search, a top-level
+    node whose opening has nothing to glide to (greg-dell, 2026-10-17).
     """
-    d = _boot(boot, nodes.THEMES, cues=nodes.NO_CUES)
+    d = _boot(boot, nodes.PLACES, cues=nodes.NO_CUES)
     rows = _tree_rows(d)
-    themes = rows[_row_named(rows, "Themes")]
+    places = rows[_row_named(rows, "Places")]
     lowest = next(row for row in reversed(rows) if row.whole)
-    assert lowest.left > themes.left, f"the themes fit the window: {lowest.describe()} is lowest"
+    assert lowest.left > places.left, f"the places fit the window: {lowest.describe()} is lowest"
     branch = lowest.text
 
     with d.expect(pattern(markers.TREE_CHILDREN_REVEALED, name=branch)):
