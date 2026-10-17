@@ -225,8 +225,8 @@ BARKS_EXTRA_INFO = {
     " by me. I believe I recall looking at the panel of Uncle Scrooge's money ramp and"
     ' deciding it looked too impossible to be real..."[/i]',
     Titles.MENEHUNE_MYSTERY_THE: "[i]\"The Menehune Mystery had become Garé's story; we see"
-    " that in every leaf and flower she inked. She was the authority for all that moolamoola,"
-    " chuckled Carl, I still don't believe that those damned Menehunes ever existed.\"[/i]",
+    ' that in every leaf and flower she inked. She was the authority for all that moolamoola,"'
+    ' chuckled Carl, "I still don\'t believe that those damned Menehunes ever existed."[/i]',
     Titles.GOLDEN_FLEECING_THE: 'In a letter to Ronald O. Burnett, Barks wrote: [i]"If you read'
     " Uncle Scrooge comics, you may have noticed the story in which I had Uncle Scrooge and the"
     " ducks go to the site of ancient Colchis to find the golden fleece. A plot based on the old"
