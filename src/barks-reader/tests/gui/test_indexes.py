@@ -7,6 +7,7 @@ import string
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import Tags
+from barks_fantagraphics.entity_types import EntityType
 from barks_gui import expected, memory, nodes
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
@@ -176,6 +177,44 @@ def test_a_tag_group_opens_its_tags_a_tag_its_titles_and_a_title_goes_there(
     with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.NEW_SELECTED_NODE)):
         d.key_then_wait(ITEM_PRESSED, "Return")
     assert expected.is_title(d.current_node())
+
+
+# The first name on the Names index's D page, in one story, on pages 1, 5, 10 and 32.
+NAME_TERM = "Dagga"
+NAME_STORY = "Donald Duck and the Mummy's Ring"
+NAME_STORY_PAGES = ("1", "5", "10", "32")
+
+
+def test_a_names_index_title_offers_every_page_its_row_lists(boot: AppBoot) -> None:
+    """A term's title row hands on all its pages, not just the first: Right steps to the next."""
+    assert expected.entity_story_pages(EntityType.PERSON, NAME_TERM, NAME_STORY) == (
+        NAME_STORY_PAGES
+    )
+    d = boot(nodes.NAMES_INDEX, cues={NAME_STORY: None})
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    for letter in "BCD":
+        d.key_then_wait(_letter(letter), "Down")
+    d.move_focus("Right")  # the letters -> the first item, the term
+    # Return lists the term's titles beneath it and lands the focus on the first.
+    with d.expect(pattern(markers.INDEX_TERM_HANDLED, term=NAME_TERM)), d.expect(d.FOCUS_MOVED):
+        d.key("Return")
+    assert f'"{NAME_STORY},' in d.last_line(d.FOCUS_MOVED), "the focus is not on the story"
+
+    count = len(NAME_STORY_PAGES)
+    first = pattern(
+        markers.GOTO_PAGE_OFFERED, page="1", active=True, text=f"Goto page 1 (1 of {count}):"
+    )
+    with d.expect(first), d.expect(d.ENTERED_AT_PORTAL):
+        d.key("Return")
+    d.move_focus("Up")  # from the portal to the goto-page row
+    second = pattern(
+        markers.GOTO_PAGE_STEPPED,
+        page="5",
+        index=2,
+        count=count,
+        text=f"Goto page 5 (2 of {count}):",
+    )
+    d.key_then_wait(second, "Right")
 
 
 # A cross-reference on the D page whose target entry is on the M page.

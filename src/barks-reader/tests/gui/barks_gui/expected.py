@@ -35,6 +35,7 @@ from barks_reader.core.wiki_integration import wiki_page_for_title
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.search_evaluate import WordQueryResult
     from barks_fantagraphics.tag_query import TagMatch
     from barks_reader.core.comic_book_page_info import ComicLayout
@@ -202,6 +203,15 @@ def word_story_pages(word: str, title: str) -> tuple[str, ...]:
     search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
     found = search.find_words(word)
     assert title in found, f"{word!r} is not in {title!r}"
+    return tuple(page.comic_page for page in found[title].fanta_pages.values())
+
+
+@cache
+def entity_story_pages(entity_type: EntityType, term: str, title: str) -> tuple[str, ...]:
+    """Return the pages an entity index term is on in one story, as its title row lists them."""
+    search = ComicSearch(system_paths().get_barks_reader_indexes_dir())
+    found = search.find_entities(entity_type, term)
+    assert title in found, f"{term!r} is not in {title!r}"
     return tuple(page.comic_page for page in found[title].fanta_pages.values())
 
 
