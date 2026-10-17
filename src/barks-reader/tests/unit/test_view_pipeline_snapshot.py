@@ -7,8 +7,10 @@ the global `random` module.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.ports import PaletteId
@@ -387,6 +389,17 @@ class TestRenderFlags:
         assert kept.fun_view.image_info == first.fun_view.image_info
         assert kept.top_view.image_info == first.top_view.image_info
         assert fresh.fun_view.image_info != first.fun_view.image_info
+
+    def test_each_image_picked_is_logged(self, loguru_sink: list[str]) -> None:
+        """The GUI tests wait on these lines: a picked top or fun image logs its marker."""
+        pipeline = make_pipeline()
+
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE))
+
+        top = log_markers.pattern(log_markers.TOP_VIEW_IMAGE_PICKED, state="ON_THE_STORIES_NODE")
+        fun = log_markers.pattern(log_markers.FUN_VIEW_IMAGE_PICKED, state="ON_THE_STORIES_NODE")
+        assert any(re.search(top, line) for line in loguru_sink)
+        assert any(re.search(fun, line) for line in loguru_sink)
 
     def test_preserve_fun_view_still_picks_a_first_fun_image(self) -> None:
         pipeline = make_pipeline()

@@ -351,7 +351,7 @@ class MainScreenNavigation:
 
         node = visible[idx]
         self._tree_view_screen.select_node(node)
-        self._tree_view_screen.scroll_to_node(node)
+        self._tree_view_manager.scroll_to_node(node)
         if isinstance(node, TitleTreeViewNode):
             if rapid or self._pending_title_node is not None:
                 # Rapid scrolling (held key): defer the expensive title-view render
@@ -543,9 +543,11 @@ class MainScreenNavigation:
             return
         if parent.is_open:
             self._tree_view_manager.activate_node(parent)  # selects + collapses
+            if self._tree_view_screen.is_node_shown(parent):
+                return  # The collapse is pinned: the row stays where it is.
         else:
             self._tree_view_screen.select_node(parent)
-        self._tree_view_screen.scroll_to_node(parent)
+        self._tree_view_manager.scroll_to_node(parent)
 
     def enter_bottom_focus_if_index_visible(self, keyboard_initiated: bool = True) -> None:
         logger.debug(f"Current focus region: {self._focus_region}.")

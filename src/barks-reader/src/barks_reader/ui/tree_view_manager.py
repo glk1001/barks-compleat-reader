@@ -86,8 +86,6 @@ class TreeViewManager:
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
-        # Off only while a collapse should move its row: the overlay's brings it back.
-        self._pin_collapses = True
         self._scroll_pinner = TreeScrollPinner(
             get_scroll_view=lambda: self._tree_view_screen.ids.scroll_view,
             on_settled=self._collapse_overlay.end_suppression,
@@ -173,14 +171,10 @@ class TreeViewManager:
     def _on_collapse_overlay_pressed(self, node: ButtonTreeViewNode) -> None:
         """Handle a tap on the collapse-parent overlay bar."""
         if node.is_open:
-            # The node is scrolled off the top: it is brought back, not pinned there.
-            self._pin_collapses = False
-            try:
-                self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
-            finally:
-                self._pin_collapses = True
+            self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
         self._tree_view_screen.select_node(node)
-        self._tree_view_screen.scroll_to_node(node)
+        # The node is scrolled off the top: it is brought back, not pinned there.
+        self.scroll_to_node(node)
 
     def open_node_and_parent_nodes(self, node: ButtonTreeViewNode) -> None:
         # noinspection PyArgumentList
@@ -219,7 +213,12 @@ class TreeViewManager:
         Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
 
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
-        self._scroll_pinner.cancel_pending_reveals()
+        """Scroll the tree to show `node`, letting go of any pin under way.
+
+        Every scroll to a node comes through here: the scroll places the tree, and a
+        pin's correction would only fight its animation.
+        """
+        self._scroll_pinner.cancel_pending_pins()
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def allow_view_state_change(self) -> None:
@@ -247,8 +246,7 @@ class TreeViewManager:
 
         logger.info(log_markers.NODE_COLLAPSED.format(name=node.get_name()))
 
-        if self._pin_collapses:
-            self._scroll_pinner.pin_while_collapsing(node)
+        self._scroll_pinner.pin_while_collapsing(node)
         # Going back up the tree: what shows is the node's view, under the same images.
         self.set_view_state_for_node(node, keep_images=True)
 

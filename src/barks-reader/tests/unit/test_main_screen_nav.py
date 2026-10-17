@@ -403,7 +403,8 @@ class TestTreeNavMove:
         nav._tree_nav_move(1)
 
         nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.scroll_to_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
+        # Through the manager: a scroll to a node lets go of any pin under way.
+        nav._tree_view_manager.scroll_to_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
 
     def test_clamps_at_end(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock()]
@@ -424,7 +425,7 @@ class TestTreeNavMove:
         nav._tree_nav_move(1)
 
         nav._tree_view_screen.select_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.scroll_to_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
         nav._tree_view_manager.render_title_node.assert_called_once_with(title_node)  # ty: ignore[unresolved-attribute]
         assert not fake_trigger.scheduled
 
@@ -695,17 +696,37 @@ class TestTreeNavCollapseToParent:
 
         nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
 
-    def test_child_node_selects_parent(self, nav: MainScreenNavigation) -> None:
+    def test_child_node_collapses_a_shown_parent_where_it_is(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """The collapse is pinned: a scroll to the parent would only let the pin go."""
         parent = MagicMock(spec=ButtonTreeViewNode)
         parent.is_open = True
         selected = MagicMock()
         selected.parent_node = parent
         nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_node_shown.return_value = True  # ty: ignore[unresolved-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
         nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_child_node_collapses_a_parent_off_the_screen_and_scrolls_to_it(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        parent = MagicMock(spec=ButtonTreeViewNode)
+        parent.is_open = True
+        selected = MagicMock()
+        selected.parent_node = parent
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_node_shown.return_value = False  # ty: ignore[unresolved-attribute]
+
+        nav._tree_nav_collapse_to_parent()
+
+        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
 
     def test_child_with_closed_parent_selects_without_activating(
         self, nav: MainScreenNavigation
@@ -719,7 +740,7 @@ class TestTreeNavCollapseToParent:
         nav._tree_nav_collapse_to_parent()
 
         nav._tree_view_screen.select_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
 
 
 class TestFocusSaveRestore:

@@ -95,9 +95,14 @@ class SettingsManager:
 
     def is_screen_size_warned(self, size_key: str) -> bool:
         """Return whether a too-small screen of this size has been warned about."""
-        return self._data.get(_SCREEN_SIZES_WARNED, {}).get(size_key) is True
+        warned = self._data.get(_SCREEN_SIZES_WARNED)
+        # A hand-edited file may hold anything here: then nothing has been warned about.
+        return isinstance(warned, dict) and warned.get(size_key) is True
 
     def save_screen_size_warned(self, size_key: str) -> None:
         """Remember that a too-small screen of this size has been warned about."""
-        self._data.setdefault(_SCREEN_SIZES_WARNED, {})[size_key] = True
+        warned = self._data.get(_SCREEN_SIZES_WARNED)
+        if not isinstance(warned, dict):
+            warned = self._data[_SCREEN_SIZES_WARNED] = {}
+        warned[size_key] = True
         self._sync()

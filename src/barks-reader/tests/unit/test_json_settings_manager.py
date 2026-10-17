@@ -200,6 +200,17 @@ class TestScreenSizesWarned:
         assert reopened.is_screen_size_warned("1366x768")
         assert not reopened.is_screen_size_warned("1600x900")
 
+    def test_warned_sizes_of_another_shape_count_as_none(self, tmp_path: Path) -> None:
+        """A hand-edited file may hold a list here: nothing is warned, and saving mends it."""
+        store = tmp_path / "store.json"
+        store.write_text(json.dumps({"AAA_Screen_Sizes_Warned": ["1366x768"]}))
+        manager = SettingsManager(store)
+        assert not manager.is_screen_size_warned("1366x768")
+
+        manager.save_screen_size_warned("1366x768")
+
+        assert SettingsManager(store).is_screen_size_warned("1366x768")
+
     def test_saving_the_selected_node_keeps_the_warned_sizes(self, tmp_path: Path) -> None:
         """The reader settings are rewritten whole; the warned sizes are kept apart."""
         manager = SettingsManager(tmp_path / "store.json")

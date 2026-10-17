@@ -13,8 +13,10 @@ in tests:
 - `on_settled` is invoked once the row has stabilized (or the attempt gives up);
   `TreeViewManager` wires it to the collapse overlay's `end_suppression`.
 - `schedule_once` defaults to Kivy's `Clock.schedule_once`; tests inject a fake.
-- `glide` animates ``scroll_y`` to a value, then calls back; tests inject one that
-  jumps there.
+- `glide` animates ``scroll_y`` to a value, then calls back with whether it got
+  there; tests inject one that jumps there.
+- `stop_glides` stops every ``scroll_y`` animation on the view (a glide of ours
+  then calls back that it did not get there); tests inject a fake.
 """
 
 from __future__ import annotations
@@ -45,6 +47,8 @@ if TYPE_CHECKING:
 # and how long that scroll takes: a glide shows where the rows went, a jump would not.
 REVEAL_ROWS = 3
 REVEAL_GLIDE_SECONDS = 0.2
+# How near its target a glide's last `scroll_y` must come to count as having got there.
+_REACHED_TOL = 1e-6
 
 
 class TreeScrollPinner:
@@ -59,22 +63,40 @@ class TreeScrollPinner:
         on_settled: Callable[[], None],
         *,
         schedule_once: Callable[[Callable[[float], None], float], object] = Clock.schedule_once,
-        glide: Callable[[ScrollView, float, Callable[[], None]], None] | None = None,
+        glide: Callable[[ScrollView, float, Callable[[bool], None]], None] | None = None,
+        stop_glides: Callable[[ScrollView], None] | None = None,
     ) -> None:
         self._get_scroll_view = get_scroll_view
         self._on_settled = on_settled
         self._schedule_once = schedule_once
         self._glide = glide or _glide_scroll_y
+        self._stop_glides = stop_glides or _stop_scroll_y_animations
         # Bumped by each pin and each cancel: only the latest pin, uncancelled, reveals.
         self._reveal_generation = 0
+        # Bumped by `cancel_pending_pins`: a pin from before it neither corrects nor reveals.
+        self._pin_generation = 0
+        # Counts the pins: only the latest one's settling has `on_settled` to say.
+        self._pin_serial = 0
 
     def cancel_pending_reveals(self) -> None:
         """Keep the pins under way from scrolling their children into view.
 
         For when the tree is placed otherwise: the app opening a saved or wanted node
-        and its parents, or scrolling to one, places the tree as it wants it.
+        and its parents places the tree as it wants it. The pins still keep their
+        rows where they were.
         """
         self._reveal_generation += 1
+
+    def cancel_pending_pins(self) -> None:
+        """Let the pins under way go: they neither keep their rows put nor reveal.
+
+        For a scroll to a node, which places the tree itself: a pin's one-shot
+        correction would land in the middle of the scroll, and the scroll's animation
+        would write over it. A glide of ours still in flight stops where it is.
+        """
+        self._pin_generation += 1
+        self._reveal_generation += 1
+        self._stop_glides(self._get_scroll_view())
 
     def pin_while_populating(
         self, parent_node: ButtonTreeViewNode, *, populate: Callable[[], None] | None
@@ -114,6 +136,11 @@ class TreeScrollPinner:
         if not scroll_view.children:
             return
 
+        self._pin_serial += 1
+        # A glide or scroll still in flight would write over this pin's correction,
+        # frame by frame: the row stays where the stop leaves it.
+        self._stop_glides(scroll_view)
+
         timing = Timing()
         try:
             # Offset of the parent row's *top* relative to the ScrollView's top.
@@ -132,6 +159,8 @@ class TreeScrollPinner:
                 "stable": 0,
                 "expanding": expanding,
                 "reveal_generation": self._reveal_generation,
+                "pin_generation": self._pin_generation,
+                "serial": self._pin_serial,
             }
             # Until the correction lands the tree is not where it will be: a GUI
             # test's tap-targets request waits (barks_reader.core.tap_targets).
@@ -159,8 +188,8 @@ class TreeScrollPinner:
         checks: dict[str, float],
     ) -> None:
         expanding = bool(checks["expanding"])
-        # If the user toggled it back or navigated away, stop.
-        if parent_node.is_open != expanding:
+        # Let go (the tree is being placed otherwise), or toggled back: stop.
+        if checks["pin_generation"] != self._pin_generation or parent_node.is_open != expanding:
             self._settled(checks)
             return
 
@@ -251,8 +280,10 @@ class TreeScrollPinner:
 
         name = get_clean_text_without_extra(parent_node.text)
 
-        def _revealed() -> None:
-            logger.debug(log_markers.TREE_CHILDREN_REVEALED.format(name=name))
+        def _revealed(reached: bool) -> None:
+            # A glide stopped short (a scroll to a node, a new pin) showed nothing.
+            if reached:
+                logger.debug(log_markers.TREE_CHILDREN_REVEALED.format(name=name))
             self._settled(checks)
 
         self._glide(
@@ -296,20 +327,38 @@ class TreeScrollPinner:
 
     def _settled(self, checks: dict[str, float]) -> None:
         settling_ended(checks)
-        self._on_settled()
+        # A pin a newer one has stopped leaves the overlay's suppression to that one:
+        # lifted now, the overlay would check the tree before its layout has settled.
+        if checks["serial"] == self._pin_serial:
+            self._on_settled()
 
     @staticmethod
     def _clamp01(v: float) -> float:
         return 0.0 if v < 0.0 else (min(v, 1.0))
 
 
-def _glide_scroll_y(scroll_view: ScrollView, scroll_y: float, on_done: Callable[[], None]) -> None:
-    """Scroll `scroll_view` to `scroll_y` over `REVEAL_GLIDE_SECONDS`, then call `on_done`."""
-    # Stopped, not cancelled, an earlier glide still completes, and settles its pin.
-    Animation.stop_all(scroll_view, "scroll_y")
+def _glide_scroll_y(
+    scroll_view: ScrollView, scroll_y: float, on_done: Callable[[bool], None]
+) -> None:
+    """Scroll `scroll_view` to `scroll_y` over `REVEAL_GLIDE_SECONDS`, then call `on_done`.
+
+    `on_done` gets whether the glide reached `scroll_y`: Kivy completes a stopped
+    animation too (its own `scroll_to` stops every one on the view), short of its end.
+    """
+    _stop_scroll_y_animations(scroll_view)
     glide = Animation(scroll_y=scroll_y, duration=REVEAL_GLIDE_SECONDS, transition="out_quad")
-    glide.bind(on_complete=lambda *_args: on_done())
+    glide.bind(
+        on_complete=lambda *_args: on_done(abs(scroll_view.scroll_y - scroll_y) < _REACHED_TOL)
+    )
     glide.start(scroll_view)
+
+
+def _stop_scroll_y_animations(scroll_view: ScrollView) -> None:
+    """Stop every ``scroll_y`` animation on `scroll_view` where it is.
+
+    Stopped, not cancelled: a glide of ours still completes, and settles its pin.
+    """
+    Animation.stop_all(scroll_view, "scroll_y")
 
 
 def _get_first_shown_rows(parent_node: ButtonTreeViewNode, count: int) -> list[Widget]:

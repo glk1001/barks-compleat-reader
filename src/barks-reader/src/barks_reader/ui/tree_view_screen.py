@@ -19,7 +19,7 @@ from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_pat
 from barks_reader.core.settings_notifier import settings_notifier
 
 from .reader_keyboard_nav import clear_focus_highlight, draw_focus_highlight
-from .tree_view_nodes import BaseTreeViewNode
+from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -117,6 +117,15 @@ class TreeViewScreen(BoxLayout):
 
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
         self.ids.scroll_view.scroll_to(node, padding=50)
+
+    def is_node_shown(self, node: ButtonTreeViewNode) -> bool:
+        """Return whether `node`'s row lies wholly within the tree's viewport."""
+        scroll_view = self.ids.scroll_view
+        view_bottom = scroll_view.to_window(0, scroll_view.y)[1]
+        view_top = scroll_view.to_window(0, scroll_view.top)[1]
+        row_bottom = node.to_window(0, node.y)[1]
+        row_top = node.to_window(0, node.top)[1]
+        return view_bottom <= row_bottom and row_top <= view_top
 
     def open_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
         # Get all the parent nodes first, then open from top parent down to last parent.

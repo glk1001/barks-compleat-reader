@@ -47,6 +47,9 @@ GOTO_TITLES = frozenset(
 )
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 ANY_REVEAL = pattern(markers.TREE_CHILDREN_REVEALED)
+# The pinner leaves a drift under half a pixel alone, which a row's rounded top can
+# show as one.
+ROW_DRIFT_PX = 1
 # Long enough for an expansion's scroll correction, a few frames, to have been logged.
 NO_REVEAL_SECS = 1.0
 # How many of a branch's rows an expansion at the tree's bottom glides into view.
@@ -154,11 +157,13 @@ def test_a_branch_whose_first_row_shows_stays_put_opened_and_shut(boot: AppBoot)
     taps.tap_then_wait(d, pattern(markers.NODE_EXPANDED, name=branch.text), text=branch.text)
     d.expect_no_new(ANY_REVEAL, NO_REVEAL_SECS)
     rows = _tree_rows(d)
-    assert rows[_row_named(rows, branch.text)].top == branch.top, "opening it moved it"
+    opened = rows[_row_named(rows, branch.text)]
+    assert abs(opened.top - branch.top) <= ROW_DRIFT_PX, "opening it moved it"
 
     taps.tap_then_wait(d, pattern(markers.NODE_COLLAPSED, name=branch.text), text=branch.text)
     rows = _tree_rows(d)
-    assert rows[_row_named(rows, branch.text)].top == branch.top, "shutting it moved it"
+    shut = rows[_row_named(rows, branch.text)]
+    assert abs(shut.top - branch.top) <= ROW_DRIFT_PX, "shutting it moved it"
 
 
 # ------------------------------------------------------ the comic reader --

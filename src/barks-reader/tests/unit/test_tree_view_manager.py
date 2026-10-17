@@ -9,6 +9,7 @@ import barks_reader.ui.tree_view_manager
 import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
     IntroDestination,
@@ -185,17 +186,53 @@ class TestTreeViewManager:
         mock_setup.assert_not_called()
 
     def test_on_node_collapsed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.destination = IntroDestination()
+        node.get_name.return_value = "Themes"
 
-        tree_view_manager.on_node_collapsed(MagicMock(), node)
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_collapsing") as pin:
+            tree_view_manager.on_node_collapsed(MagicMock(), node)
 
+        # The row stays put as its children go.
+        pin.assert_called_once_with(node)
         # A collapse renders the node's view under the images already on show.
         mock_dependencies["renderer"].render.assert_called_with(
             IntroDestination(), preserve_top_view=True, preserve_fun_view=True
         )
+        assert log_markers.NODE_COLLAPSED_IMAGES_KEPT.format(name="Themes") in loguru_sink
+
+    def test_a_collapse_with_state_changes_suppressed_is_not_pinned(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = IntroDestination()
+
+        with (
+            patch.object(tree_view_manager._scroll_pinner, "pin_while_collapsing") as pin,
+            tree_view_manager.suppress_view_state_changes(),
+        ):
+            tree_view_manager.on_node_collapsed(MagicMock(), node)
+
+        pin.assert_not_called()
+
+    def test_scrolling_to_a_node_lets_the_pins_under_way_go(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock()
+        with (
+            patch.object(tree_view_manager._scroll_pinner, "cancel_pending_pins") as let_go,
+            patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock,
+        ):
+            tree_view_manager.scroll_to_node(node)
+            mock_clock.call_args.args[0](0)
+
+        let_go.assert_called_once_with()
+        screen_mocks["tree_view"].scroll_to_node.assert_called_once_with(node)
 
     def test_on_node_expanded(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -479,11 +516,44 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.is_open = True
 
-        on_pressed(node)
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            on_pressed(node)
+            mock_clock.call_args.args[0](0)
 
         tree_view.ids.reader_tree_view.toggle_node.assert_called_once_with(node)
         tree_view.select_node.assert_called_once_with(node)
         tree_view.scroll_to_node.assert_called_once_with(node)
+
+    def test_collapse_overlay_press_pins_the_collapse_then_lets_it_go(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """The node is scrolled off the top: the scroll brings it back, no pin holds it."""
+        tree_view = screen_mocks["tree_view"]
+        on_pressed = tree_view.setup_collapse_overlay.call_args.args[0]
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.is_open = True
+        node.destination = IntroDestination()
+        events: list[str] = []
+        tree_view.ids.reader_tree_view.toggle_node.side_effect = lambda n: (
+            tree_view_manager.on_node_collapsed(MagicMock(), n)
+        )
+
+        with (
+            patch.object(
+                tree_view_manager._scroll_pinner,
+                "pin_while_collapsing",
+                side_effect=lambda _n: events.append("pinned"),
+            ),
+            patch.object(
+                tree_view_manager._scroll_pinner,
+                "cancel_pending_pins",
+                side_effect=lambda: events.append("let go"),
+            ),
+            patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once"),
+        ):
+            on_pressed(node)
+
+        assert events == ["pinned", "let go"]
 
     @pytest.mark.usefixtures("tree_view_manager")
     def test_collapse_overlay_press_on_closed_node_only_selects_and_scrolls(
@@ -494,7 +564,9 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.is_open = False
 
-        on_pressed(node)
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            on_pressed(node)
+            mock_clock.call_args.args[0](0)
 
         tree_view.ids.reader_tree_view.toggle_node.assert_not_called()
         tree_view.select_node.assert_called_once_with(node)

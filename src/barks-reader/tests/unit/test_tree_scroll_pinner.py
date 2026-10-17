@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from barks_reader.core import log_markers
 from barks_reader.core.scroll_reveal import REVEAL_PADDING
 from barks_reader.core.tap_targets import layout_settling
 from barks_reader.core.testing import FakeClock
@@ -187,9 +188,34 @@ def _make_node_at(y: float, *, is_open: bool = False, nodes: list | None = None)
     return node
 
 
-def _jump(scroll_view: MagicMock, scroll_y: float, on_done: Callable[[], None]) -> None:
+def _jump(scroll_view: MagicMock, scroll_y: float, on_done: Callable[[bool], None]) -> None:
     scroll_view.scroll_y = scroll_y
-    on_done()
+    on_done(True)  # noqa: FBT003
+
+
+class _Glides:
+    """A fake glide that waits to be finished or stopped, as Kivy's animation does."""
+
+    def __init__(self) -> None:
+        self.in_flight: list[tuple[MagicMock, float, Callable[[bool], None]]] = []
+        self.stops = 0
+
+    def glide(
+        self, scroll_view: MagicMock, scroll_y: float, on_done: Callable[[bool], None]
+    ) -> None:
+        self.in_flight.append((scroll_view, scroll_y, on_done))
+
+    def stop(self, _scroll_view: MagicMock) -> None:
+        self.stops += 1
+        in_flight, self.in_flight = self.in_flight, []
+        for _scroll_view, _scroll_y, on_done in in_flight:
+            on_done(False)  # noqa: FBT003  # Kivy completes a stopped one too, short of its end
+
+    def finish(self) -> None:
+        in_flight, self.in_flight = self.in_flight, []
+        for scroll_view, scroll_y, on_done in in_flight:
+            scroll_view.scroll_y = scroll_y
+            on_done(True)  # noqa: FBT003
 
 
 def _settle_with(
@@ -286,7 +312,135 @@ def test_a_reveal_glides() -> None:
     assert scroll_view.scroll_y == pytest.approx(0.5)  # not yet: the glide moves it
     on_settled.assert_not_called()  # settled only once the glide is done
     assert layout_settling()
-    glide.call_args.args[2]()
+    glide.call_args.args[2](True)  # noqa: FBT003
+    on_settled.assert_called_once()
+    assert not layout_settling()
+
+
+def _make_bottom_view() -> MagicMock:
+    scroll_view = _make_scroll_view()
+    scroll_view.y, scroll_view.top = 0.0, 100.0
+    scroll_view.to_window = lambda x, y: (x, y)
+    return scroll_view
+
+
+def _hidden_rows_parent() -> MagicMock:
+    return _parent_at_top(25.0, [_make_node_at(y) for y in _HIDDEN_ROWS])
+
+
+def test_a_reveal_that_gets_there_says_so(loguru_sink: list[str]) -> None:
+    clock = FakeClock()
+    glides = _Glides()
+    pinner = TreeScrollPinner(
+        get_scroll_view=_make_bottom_view,
+        on_settled=MagicMock(),
+        schedule_once=clock.schedule_once,
+        glide=glides.glide,
+        stop_glides=glides.stop,
+    )
+    pinner.pin_while_populating(_hidden_rows_parent(), populate=None)
+    while clock.run_next():
+        pass
+
+    glides.finish()
+
+    assert log_markers.TREE_CHILDREN_REVEALED.format(name="Parent Node") in loguru_sink
+
+
+def test_a_reveal_stopped_short_does_not_say_it_got_there(loguru_sink: list[str]) -> None:
+    """Kivy completes a stopped animation too: the log must not claim the rows show."""
+    clock = FakeClock()
+    glides = _Glides()
+    on_settled = MagicMock()
+    pinner = TreeScrollPinner(
+        get_scroll_view=_make_bottom_view,
+        on_settled=on_settled,
+        schedule_once=clock.schedule_once,
+        glide=glides.glide,
+        stop_glides=glides.stop,
+    )
+    pinner.pin_while_populating(_hidden_rows_parent(), populate=None)
+    while clock.run_next():
+        pass
+
+    pinner.cancel_pending_pins()  # as a scroll to a node does
+
+    assert not glides.in_flight
+    assert log_markers.TREE_CHILDREN_REVEALED.format(name="Parent Node") not in loguru_sink
+    on_settled.assert_called_once()  # the pin still settles
+    assert not layout_settling()
+
+
+def test_a_pin_let_go_leaves_its_row_where_the_scroll_puts_it() -> None:
+    """A scroll to a node places the tree: a correction would land mid-scroll."""
+    clock = FakeClock()
+    scroll_view = _make_scroll_view()
+    scroll_view.to_window.return_value = (0, 0)
+    parent = _make_parent_node()
+    parent.to_window.side_effect = [(0, 140), (0, 100)]
+    on_settled = MagicMock()
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=on_settled,
+        schedule_once=clock.schedule_once,
+        stop_glides=MagicMock(),
+    )
+    pinner.pin_while_populating(parent, populate=None)
+    clock.run_next()
+
+    pinner.cancel_pending_pins()
+    while clock.run_next():
+        pass
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)  # not corrected
+    on_settled.assert_called_once()
+    assert not layout_settling()
+
+
+def test_letting_the_pins_go_stops_a_glide_in_flight() -> None:
+    glides = _Glides()
+    scroll_view = _make_bottom_view()
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=MagicMock(),
+        schedule_once=FakeClock().schedule_once,
+        glide=glides.glide,
+        stop_glides=glides.stop,
+    )
+
+    pinner.cancel_pending_pins()
+
+    assert glides.stops == 1
+
+
+def test_a_new_pin_stops_a_glide_in_flight_and_settles_for_it() -> None:
+    """Tapped again mid-glide, the row stays where the glide got to; one settle for both."""
+    clock = FakeClock()
+    glides = _Glides()
+    on_settled = MagicMock()
+    scroll_view = _make_bottom_view()
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=on_settled,
+        schedule_once=clock.schedule_once,
+        glide=glides.glide,
+        stop_glides=glides.stop,
+    )
+    first = _hidden_rows_parent()
+    pinner.pin_while_populating(first, populate=None)
+    while clock.run_next():
+        pass
+    assert len(glides.in_flight) == 1
+
+    first.is_open = False
+    pinner.pin_while_collapsing(first)
+
+    assert glides.stops == 2  # noqa: PLR2004  # as the glide began, and as the new pin did
+    assert not glides.in_flight
+    # The stopped glide's pin does not lift the overlay's suppression: the new pin will.
+    on_settled.assert_not_called()
+    while clock.run_next():
+        pass
     on_settled.assert_called_once()
     assert not layout_settling()
 

@@ -9,7 +9,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.ui import tree_view_screen as tree_view_screen_module
-from barks_reader.ui.tree_view_nodes import BaseTreeViewNode
+from barks_reader.ui.tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 from barks_reader.ui.tree_view_screen import TreeViewScreen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
@@ -120,6 +120,29 @@ class TestTreeViewScreen:
         node = MagicMock()
         tree_view_screen.select_node(node)
         tree_view_screen.ids.reader_tree_view.select_node.assert_called_with(node)
+
+    @pytest.mark.parametrize(
+        ("row_y", "row_top", "shown"),
+        [
+            (50.0, 70.0, True),  # within the view
+            (0.0, 20.0, True),  # on its bottom edge
+            (-5.0, 15.0, False),  # cut by the bottom
+            (90.0, 110.0, False),  # cut by the top
+            (120.0, 140.0, False),  # off the top
+        ],
+    )
+    def test_is_node_shown(
+        self, tree_view_screen: TreeViewScreen, row_y: float, row_top: float, shown: bool
+    ) -> None:
+        """A row is shown when it lies whole within the scroll view's window height."""
+        scroll_view = tree_view_screen.ids.scroll_view
+        scroll_view.y, scroll_view.top = 0.0, 100.0
+        scroll_view.to_window = lambda x, y: (x, y)
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.y, node.top = row_y, row_top
+        node.to_window = lambda x, y: (x, y)
+
+        assert tree_view_screen.is_node_shown(node) is shown
 
     def test_scroll_to_node(self, tree_view_screen: TreeViewScreen) -> None:
         node = MagicMock()
