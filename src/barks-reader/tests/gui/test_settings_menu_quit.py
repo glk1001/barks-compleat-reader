@@ -185,7 +185,7 @@ def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> Non
 # The options and key-capture settings, by their place in the panel (reader_settings order).
 DOWNS_TO_COLOR_THEME = 4
 DOWNS_TO_ALT_ESCAPE = 13
-KEY_LEFT_CODE = 276
+KEY_TAB_CODE = 9
 
 
 def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None:
@@ -210,8 +210,21 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
 
 
+def test_the_settings_list_stops_at_its_top(boot: AppBoot) -> None:
+    """The panel opens on its first item; Up there stays, as the app's lists do."""
+    d = boot(nodes.THE_STORIES)
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.key("Up")
+    d.expect_no_new(d.FOCUS_MOVED)
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+
+
 def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> None:
-    """Escape cancels the capture; Left is captured, and then Left closes the settings."""
+    """Escape cancels the capture; Tab is captured, and then Tab closes the settings.
+
+    The remote's own keys are not captured: Left focuses Clear and Return clears the key.
+    """
     ini = boot.scratch / "barks-reader.ini"
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=0)
@@ -221,9 +234,20 @@ def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> N
     d.key_then_wait(capture_opened, "Return")
     d.key_then_wait(markers.ALT_ESCAPE_CAPTURE_CANCELLED, "Escape")
     d.key_then_wait(capture_opened, "Return")
-    d.key_then_wait(pattern(markers.ALT_ESCAPE_CAPTURED, keycode=KEY_LEFT_CODE), "Left")
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Left")  # the new Escape
-    assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_LEFT_CODE)
+    d.key_then_wait(
+        pattern(markers.ALT_ESCAPE_CAPTURED, keycode=KEY_TAB_CODE),
+        "Tab",  # desktop key: the key captured; the remote's six each have work of their own
+    )
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Tab")  # desktop key: the new Escape, just captured
+    assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_TAB_CODE)
+
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_ALT_ESCAPE)
+    d.key_then_wait(capture_opened, "Return")
+    d.move_focus("Left")  # Cancel is focused to start; Clear is a Left away
+    d.key_then_wait(markers.ALT_ESCAPE_CLEARED, "Return")
+    assert harness.read_ini_value(ini, "alt_escape_key").strip() == "0"
 
 
 MAX_CHOOSER_STEPS = 8

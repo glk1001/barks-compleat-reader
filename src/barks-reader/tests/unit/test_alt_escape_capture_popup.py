@@ -8,7 +8,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.ui import alt_escape_capture_popup as capture_module
 from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
+    KEY_TAB,
+    KEY_UP,
+)
 
 
 @pytest.fixture
@@ -38,11 +46,38 @@ def test_any_other_key_is_captured_once(
     popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
 ) -> None:
     made, on_capture, _ = popup
-    assert _press(made, KEY_LEFT) is True
-    on_capture.assert_called_once_with(KEY_LEFT)
-    assert f"Alternate Escape captured: {keycode_to_name(KEY_LEFT)} ({KEY_LEFT})." in loguru_sink
-    assert _press(made, KEY_LEFT) is False  # once captured, keys pass on
+    assert _press(made, KEY_TAB) is True
+    on_capture.assert_called_once_with(KEY_TAB)
+    assert f"Alternate Escape captured: {keycode_to_name(KEY_TAB)} ({KEY_TAB})." in loguru_sink
+    assert _press(made, KEY_TAB) is False  # once captured, keys pass on
     on_capture.assert_called_once()
+
+
+@pytest.mark.parametrize("key", [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER])
+def test_the_remotes_own_keys_are_not_captured(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], key: int
+) -> None:
+    """Each has work of its own, in the popup and in the app: none can be bound as Escape."""
+    made, on_capture, _ = popup
+    with patch.object(capture_module, "update_focus_in_list"):
+        assert _press(made, key) is True
+    on_capture.assert_not_called()
+
+
+def test_enter_presses_cancel_to_start_and_clear_after_a_left(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
+) -> None:
+    """A slip of the hand must not clear the key: Cancel is focused first, Clear is a Left away."""
+    made, _, on_clear = popup
+    with patch.object(capture_module, "update_focus_in_list") as focus:
+        assert _press(made, KEY_ENTER) is True
+        assert "Alternate Escape capture cancelled." in loguru_sink
+        on_clear.assert_not_called()
+        assert _press(made, KEY_LEFT) is True
+        assert focus.call_args.args[1] == 0  # the Clear button
+        assert _press(made, KEY_ENTER) is True
+    on_clear.assert_called_once()
+    assert "Alternate Escape cleared." in loguru_sink
 
 
 def test_clear_empties_it(
