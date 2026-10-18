@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, call, patch
 import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_tags import Tags
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
@@ -511,11 +511,17 @@ class TestNavigateToSearchResult:
         nav_coord: NavigationCoordinator,
         mock_deps: dict[str, MagicMock],
         tags: tuple[Tags, ...],
+        *,
+        title: str = TRAPPER,
+        offers: bool = True,
     ) -> None:
         mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
-            assert nav_coord.navigate_to_search_result(self.TRAPPER, tags)
-        chrono.assert_called_once_with(ImageInfo(from_title=Titles.MIGHTY_TRAPPER_THE))
+            assert nav_coord.navigate_to_search_result(title, tags)
+        # With pages to offer, this offer is the one: the chrono path makes none.
+        chrono.assert_called_once_with(
+            ImageInfo(from_title=STR_TITLE_TO_ENUM[title]), offer_page=not offers
+        )
 
     def test_a_tag_with_a_page_in_the_title_sets_goto_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
@@ -525,12 +531,27 @@ class TestNavigateToSearchResult:
             "2", active=True, tagged_pages=["2"], kept_page=""
         )
 
-    def test_the_first_tag_with_a_page_in_the_title_is_used(
+    def test_a_tag_with_no_page_in_the_title_adds_none(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         self._navigate(nav_coord, mock_deps, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
             "2", active=True, tagged_pages=["2"], kept_page=""
+        )
+
+    def test_a_basket_of_tags_offers_every_tags_pages_together(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """Only the first tag's pages were offered: the others' were dropped."""
+        andes = Titles.LOST_IN_THE_ANDES
+        with patch.object(
+            barks_reader.ui.navigation_coordinator,
+            "BARKS_TAGGED_PAGES",
+            {(Tags.AWFULTONIANS, andes): ["19", "26"], (Tags.SPLASH, andes): ["17", "26"]},
+        ):
+            self._navigate(nav_coord, mock_deps, (Tags.AWFULTONIANS, Tags.SPLASH), title=ANDES)
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "17", active=True, tagged_pages=["17", "19", "26"], kept_page=""
         )
 
     @pytest.mark.parametrize("tags", [(), (Tags.GYRO_GEARLOOSE,)], ids=["no-tags", "no-page"])
@@ -540,7 +561,7 @@ class TestNavigateToSearchResult:
         mock_deps: dict[str, MagicMock],
         tags: tuple[Tags, ...],
     ) -> None:
-        self._navigate(nav_coord, mock_deps, tags)
+        self._navigate(nav_coord, mock_deps, tags, offers=False)
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
 
     def test_an_unknown_title_is_not_navigated_to(self, nav_coord: NavigationCoordinator) -> None:
@@ -654,7 +675,7 @@ class TestNavigateToTitleWithPage:
         mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
             nav_coord.navigate_to_title_with_page(image_info, "12")
-        navigated.assert_called_once_with(image_info)
+        navigated.assert_called_once_with(image_info, offer_page=False)  # this offer is the one
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
             "12", active=True, tagged_pages=(), kept_page=""
         )

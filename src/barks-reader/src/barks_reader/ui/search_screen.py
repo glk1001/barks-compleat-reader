@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self, cast
 
-from barks_fantagraphics.barks_tags import TagGroups, Tags
+from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ComicBookInfo
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
@@ -39,6 +39,7 @@ from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
+from barks_reader.core.reader_utils import get_concat_page_nums_str, get_page_sort_key
 from barks_reader.core.search_state import (
     ALL_YEARS,
     VOLUMES_KEY,
@@ -578,16 +579,33 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._last_activated_word_sub_focus = "title"
 
     def _populate_title_results(
-        self, layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
+        self,
+        layout: BoxLayout,
+        title_strings: list[str],
+        on_select: Callable[[str], None],
+        pages_of: Callable[[str], str] | None = None,
     ) -> None:
+        """Fill `layout` with a row per listed story.
+
+        Args:
+            layout: The results list.
+            title_strings: The stories listed, as displayed.
+            on_select: Called with a row's title when the row is pressed.
+            pages_of: Returns the pages a row's story lists ("3-4,7"), or "" for none:
+                a tag's pages in it, shown after the story's issue and year.
+
+        """
         layout.clear_widgets()
         self._selected_result_button = None
         for i, title_str in enumerate(title_strings):
             is_cover = _listed_title(title_str) in COVERS_SET
+            detail = _title_detail(title_str)
+            if pages_of is not None and (pages := pages_of(title_str)):
+                detail = f"{detail}, p {pages}" if detail else f"p {pages}"
             btn = _SearchResultButton(
                 text=COVER_ROW_TEXT if is_cover else title_str,
                 row_index=i,
-                detail=_title_detail(title_str),
+                detail=detail,
                 is_cover=is_cover,
             )
             btn.bind(
@@ -609,6 +627,18 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _on_tag_result_goto_title(self, title_str: str) -> None:
         self._on_result_goto_title(title_str, self._listed_tags())
+
+    def _listed_tags_pages_text(self, title_str: str) -> str:
+        """Return the listed tags' pages in a story, "3-4,7", as the Main Index rows show them."""
+        title = _listed_title(title_str)
+        if title is None:
+            return ""
+        pages = {
+            page for tag in self._listed_tags() for page in BARKS_TAGGED_PAGES.get((tag, title), ())
+        }
+        if not pages:
+            return ""
+        return get_concat_page_nums_str(sorted(pages, key=get_page_sort_key))
 
     def _listed_tags(self) -> list[Tags]:
         """Return the tags the listed stories were found by: the one listed, or those picked.
@@ -825,7 +855,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.debug(log_markers.TAG_TITLES_LISTED.format(tag=tag_str, count=len(titles)))
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
-            title_results_layout, self._tag_titles, self._on_tag_result_goto_title
+            title_results_layout,
+            self._tag_titles,
+            self._on_tag_result_goto_title,
+            pages_of=self._listed_tags_pages_text,
         )
         self._add_none_in_era_row(title_results_layout, titles)
         self._update_background_from_results(titles)
@@ -1024,7 +1057,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             log_markers.TAG_COMBINED_RESULTS.format(tags=selection.describe(), count=len(titles))
         )
         layout: BoxLayout = self.ids.tag_title_results_layout
-        self._populate_title_results(layout, self._tag_titles, self._on_tag_result_goto_title)
+        self._populate_title_results(
+            layout,
+            self._tag_titles,
+            self._on_tag_result_goto_title,
+            pages_of=self._listed_tags_pages_text,
+        )
         if not selection.included:
             layout.add_widget(
                 _SearchResultButton(text="Include a tag to list stories", disabled=True)

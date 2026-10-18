@@ -42,6 +42,7 @@ from barks_reader.core.reader_consts_and_types import (
     ONE_PAGER_YEAR_RANGES,
 )
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
+from barks_reader.core.reader_utils import get_page_sort_key
 from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
@@ -175,24 +176,30 @@ class NavigationCoordinator:
             title_image_file=target.title_image_file,
             preserve_top_view=preserve_top_view,
         )
-        self._set_goto_page_checkbox()
+        title = target.fanta_info.comic_book_info.title
+        offered_by_tag = target.tag is not None and self._tag_offers_pages(target.tag, title)
+        if not offered_by_tag:  # else the tag's offer is the one, and the one logged
+            self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 
         if target.tag is not None:
-            assert self._current_fanta_info is not None
             self._set_tag_goto_page_checkbox(
-                target.tag,
-                self._current_fanta_info.comic_book_info.get_title_str(),
+                target.tag, target.fanta_info.comic_book_info.get_title_str()
             )
+
+    @staticmethod
+    def _tag_offers_pages(tag: Tags | TagGroups, title: Titles) -> bool:
+        return type(tag) is Tags and (tag, title) in BARKS_TAGGED_PAGES
 
     # === Navigation paths ===
 
-    def navigate_to_chrono_title(self, image_info: ImageInfo) -> None:
+    def navigate_to_chrono_title(self, image_info: ImageInfo, *, offer_page: bool = True) -> None:
         """Navigate to a title's position in the tree from a background image.
 
         Resolves the parent node (year-range node, or the One Pagers series node
         for one-pagers), opens the tree to the correct position, then updates the
-        title view.
+        title view. `offer_page` False leaves the page to goto to the caller, which
+        has a page of its own to offer: one offer, and one offer logged.
         """
         assert image_info.from_title is not None
 
@@ -225,7 +232,7 @@ class NavigationCoordinator:
         )
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
-        self._title_row_selected(title_fanta_info, image_info.filename)
+        self._title_row_selected(title_fanta_info, image_info.filename, offer_page=offer_page)
 
     def _get_title_parent_node(
         self, title: Titles, title_fanta_info: FantaComicBookInfo
@@ -288,11 +295,13 @@ class NavigationCoordinator:
             self.read_article(title, ViewStates.ON_INDEX_NODE)
             return
 
-        self.navigate_to_chrono_title(image_info)
-
         # One-pagers ignore the index page (reading deep-links to the gag's page in
         # the collection), so don't set a misleading goto-page checkbox for them.
-        if page_to_goto and title is not None and title not in ONE_PAGERS:
+        offers = bool(page_to_goto) and title is not None and title not in ONE_PAGERS
+        self.navigate_to_chrono_title(image_info, offer_page=not offers)
+
+        if offers:
+            assert title is not None
             logger.debug(f"Setting page to goto: {page_to_goto}.")
             # The entry's page is offered, but the page last read stays a step away,
             # as under a tag in the tree: the same story steps the same by every route.
@@ -322,11 +331,17 @@ class NavigationCoordinator:
             return False
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
-        self.navigate_to_chrono_title(image_info)
-
-        tag = next((t for t in tags if (t, title) in BARKS_TAGGED_PAGES), None)
-        if tag is not None:
-            self._set_tag_goto_page_checkbox(tag, title_str)
+        # Every listed tag's pages in the story, together: a basket of tags found it.
+        pages = sorted(
+            {page for tag in tags for page in BARKS_TAGGED_PAGES.get((tag, title), ())},
+            key=get_page_sort_key,
+        )
+        self.navigate_to_chrono_title(image_info, offer_page=not pages)
+        if pages:
+            logger.debug(f'Setting tags goto page for ({[t.value for t in tags]}, "{title_str}").')
+            self._bottom_title_view_screen.set_goto_page_state(
+                pages[0], active=True, tagged_pages=pages, kept_page=self._page_last_read(title)
+            )
         return True
 
     def update_title(self, title_str: str) -> bool:
@@ -544,11 +559,14 @@ class NavigationCoordinator:
         self,
         new_fanta_info: FantaComicBookInfo,
         title_image_file: PanelPath | None,
+        *,
+        offer_page: bool = True,
     ) -> None:
         self._current_fanta_info = new_fanta_info
         assert self._current_fanta_info is not None
         self._renderer.render_title(new_fanta_info, title_image_file=title_image_file)
-        self._set_goto_page_checkbox()
+        if offer_page:
+            self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 
     def _set_title(self, title_image_file: PanelPath | None = None) -> None:
