@@ -31,6 +31,7 @@ from barks_reader.ui.index_screen import (
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
+from kivy.uix.gridlayout import GridLayout
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -1278,6 +1279,19 @@ class TestPinnedPress:
         wrapper.children = [self._owner_layout(None, *rows)]
         index_screen._open_tag_widgets = [wrapper]
         assert index_screen._first_sub_item_rows(button, 3) == rows
+
+    def test_a_grid_of_several_columns_holds_a_row_per_column(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The speech indexes' grid pairs each title with its speech button."""
+        button = MagicMock()
+        cells = [MagicMock(name=f"cell{i}") for i in range(8)]
+        grid = MagicMock(spec=GridLayout)
+        grid.cols = 2
+        grid.owner_button = button
+        grid.children = list(reversed(cells))
+        index_screen._open_tag_widgets = [grid]
+        assert index_screen._first_sub_item_rows(button, 3) == cells[:6]
 
     def test_without_a_scroll_view_the_press_acts_unpinned(
         self, index_screen: ConcreteIndexScreen

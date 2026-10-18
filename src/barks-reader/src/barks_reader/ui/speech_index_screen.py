@@ -211,6 +211,14 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         super()._enter_items_panel()
 
     @override
+    def _place_focus_on(self, btn: Button) -> bool:
+        # The focus follows a mouse press onto the title row itself, off a speech button.
+        if not super()._place_focus_on(btn):
+            return False
+        self._nav_on_speech_btn = False
+        return True
+
+    @override
     def _get_col_buttons(self, col_idx: int) -> list[Button]:
         """Return navigable buttons (title/index only, no speech buttons) for Up/Down."""
         all_btns = super()._get_col_buttons(col_idx)
@@ -754,6 +762,14 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
     def exit_nav_focus(self) -> None:
         self._clear_prefix_focus()
         super().exit_nav_focus()
+
+    @override
+    def _place_focus_on(self, btn: Button) -> bool:
+        # A mouse press on a term takes the ring off the prefix bar, as Down from it does.
+        if not super()._place_focus_on(btn):
+            return False
+        self._clear_prefix_focus()
+        return True
 
     @override
     def _on_right_from_alphabet(self) -> None:

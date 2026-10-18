@@ -331,6 +331,35 @@ class TestSpeechButtonKeyboardNav:
         assert consumed is True
         assert speech_index_screen._nav_on_speech_btn is True
 
+    def test_a_title_row_pressed_by_mouse_takes_the_ring_off_the_speech_button(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """The focus follows the press onto the row itself, and off the prefix bar."""
+        speech_index_screen._nav_on_speech_btn = True
+        with (
+            patch.object(
+                barks_reader.ui.index_screen.IndexScreen, "_place_focus_on", return_value=True
+            ),
+            patch.object(speech_index_screen, "_clear_prefix_focus") as clear_prefix,
+        ):
+            assert speech_index_screen._place_focus_on(MagicMock()) is True
+        assert speech_index_screen._nav_on_speech_btn is False
+        clear_prefix.assert_called_once_with()
+
+    def test_a_press_on_no_row_of_the_columns_leaves_the_focus_as_it_was(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        speech_index_screen._nav_on_speech_btn = True
+        with (
+            patch.object(
+                barks_reader.ui.index_screen.IndexScreen, "_place_focus_on", return_value=False
+            ),
+            patch.object(speech_index_screen, "_clear_prefix_focus") as clear_prefix,
+        ):
+            assert speech_index_screen._place_focus_on(MagicMock()) is False
+        assert speech_index_screen._nav_on_speech_btn is True
+        clear_prefix.assert_not_called()
+
     @pytest.mark.parametrize("key", [KEY_UP, KEY_DOWN, KEY_LEFT])
     def test_leaving_the_speech_button_returns_focus_to_its_title_row(
         self, speech_index_screen: SpeechIndexScreen, key: int

@@ -1251,7 +1251,8 @@ class IndexScreen(FloatLayout):
         """Return the first `count` rows open under `button`, as the index shows them.
 
         The sub-items sit in a layout tagged with its owner (the speech indexes wrap
-        theirs once more); its children are kept last-added-first.
+        theirs once more); its children are kept last-added-first. A grid of several
+        columns (the speech indexes' title and speech button) holds a row per column.
         """
         layout = next(
             (w for w in self._open_tag_widgets if getattr(w, "owner_button", None) is button),
@@ -1261,7 +1262,8 @@ class IndexScreen(FloatLayout):
             return []
         while len(layout.children) == 1 and layout.children[0].children:
             layout = layout.children[0]
-        return list(reversed(layout.children))[:count]
+        per_row = layout.cols if isinstance(layout, GridLayout) and layout.cols else 1
+        return list(reversed(layout.children))[: count * per_row]
 
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
         """Handle an item that has no sub-items. Return True if it was handled."""
