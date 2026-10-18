@@ -455,7 +455,7 @@ class TestTitleRenderDebounce:
 
         nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
         assert fake_trigger.scheduled
-        assert nav._pending_title_node is nodes[1]
+        assert nav._pending_view_node is nodes[1]
 
     def test_each_rapid_press_restarts_trigger(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
@@ -480,7 +480,7 @@ class TestTitleRenderDebounce:
         fake_trigger.fire()
 
         nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
-        assert nav._pending_title_node is None
+        assert nav._pending_view_node is None
 
     def test_trigger_fire_skips_stale_selection(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
@@ -495,7 +495,7 @@ class TestTitleRenderDebounce:
         fake_trigger.fire()
 
         nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
-        assert nav._pending_title_node is None
+        assert nav._pending_view_node is None
 
     def test_enter_cancels_pending_render(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
@@ -507,7 +507,7 @@ class TestTitleRenderDebounce:
         nav._tree_nav_move(1)
         nav._tree_nav_activate()
 
-        assert nav._pending_title_node is None
+        assert nav._pending_view_node is None
         assert not fake_trigger.scheduled
         # The bottom view was behind (a debounced render was pending), so Enter
         # renders the pending node synchronously rather than leaving it stale.
@@ -1509,3 +1509,45 @@ class TestOpenGroupNodeArrival:
         manager = self._move_onto(nav, title)
         manager.set_view_state_for_node.assert_not_called()
         manager.render_title_node.assert_called_once_with(title)
+
+    def test_a_held_key_renders_the_group_node_only_once_the_presses_settle(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        """A held key through open tags renders none of them on the way, as with titles."""
+        title = MagicMock(spec=TitleTreeViewNode)
+        node = self._group(is_open=True)
+        tree = cast("MagicMock", nav._tree_view_screen)
+        manager = cast("MagicMock", nav._tree_view_manager)
+        tree.get_visible_nodes.return_value = [title, node]
+        tree.get_selected_node.return_value = None
+
+        nav._tree_nav_move(1)  # the leading edge: the title renders at once
+        tree.get_selected_node.return_value = title
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)  # rapid: onto the group, its render deferred
+        tree.get_selected_node.return_value = node
+
+        manager.set_view_state_for_node.assert_not_called()
+        assert fake_trigger.scheduled
+        fake_trigger.fire()
+        manager.set_view_state_for_node.assert_called_once_with(node)
+        assert nav._pending_view_node is None
+
+    def test_a_deferred_group_render_is_skipped_once_the_selection_has_moved_on(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        title = MagicMock(spec=TitleTreeViewNode)
+        node = self._group(is_open=True)
+        tree = cast("MagicMock", nav._tree_view_screen)
+        manager = cast("MagicMock", nav._tree_view_manager)
+        tree.get_visible_nodes.return_value = [title, node]
+        tree.get_selected_node.return_value = None
+
+        nav._tree_nav_move(1)
+        tree.get_selected_node.return_value = title
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        tree.get_selected_node.return_value = MagicMock()  # a click elsewhere meanwhile
+        fake_trigger.fire()
+
+        manager.set_view_state_for_node.assert_not_called()

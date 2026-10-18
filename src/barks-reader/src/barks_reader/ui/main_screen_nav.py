@@ -105,7 +105,7 @@ class MainScreenNavigation:
         )
         self._now = now_fn
         self._last_tree_move_time = float("-inf")
-        self._pending_title_node: TitleTreeViewNode | None = None
+        self._pending_view_node: BaseTreeViewNode | None = None
 
     @property
     def is_in_bottom_focus(self) -> bool:
@@ -352,21 +352,30 @@ class MainScreenNavigation:
         node = visible[idx]
         self._tree_view_screen.select_node(node)
         self._tree_view_manager.scroll_to_node(node)
-        if (group := self._open_group(node)) is not None:
+        if not self._has_view_of_its_own(node):
+            return  # a closed node passed on the way changes nothing
+        if rapid or self._pending_view_node is not None:
+            # Rapid scrolling (held key): defer the expensive view render until the key
+            # presses settle.
+            self._pending_view_node = node
+            self._title_render_trigger.cancel()
+            self._title_render_trigger()
+        else:
+            self._render_view_of(node)
+
+    def _has_view_of_its_own(self, node: BaseTreeViewNode) -> bool:
+        return isinstance(node, TitleTreeViewNode) or self._open_group(node) is not None
+
+    def _render_view_of(self, node: BaseTreeViewNode) -> None:
+        """Show the view of `node`, a title or an open group, arrived on by the keys."""
+        if isinstance(node, TitleTreeViewNode):
+            self._tree_view_manager.render_title_node(node)
+        elif (group := self._open_group(node)) is not None:
             # The view follows what is opened, and a click opens; the keys only move.
             # Arriving on an open group node (the tag over the titles just walked, say)
             # shows its view all the same, as booting on it does: it stayed on the last
-            # title's otherwise. Closed nodes passed on the way change nothing.
+            # title's otherwise.
             self._tree_view_manager.set_view_state_for_node(group)
-        elif isinstance(node, TitleTreeViewNode):
-            if rapid or self._pending_title_node is not None:
-                # Rapid scrolling (held key): defer the expensive title-view render
-                # until the key presses settle.
-                self._pending_title_node = node
-                self._title_render_trigger.cancel()
-                self._title_render_trigger()
-            else:
-                self._tree_view_manager.render_title_node(node)
 
     @staticmethod
     def _open_group(node: BaseTreeViewNode) -> ButtonTreeViewNode | None:
@@ -382,13 +391,13 @@ class MainScreenNavigation:
         return None
 
     def _on_title_render_timeout(self, _dt: float) -> None:
-        node, self._pending_title_node = self._pending_title_node, None
+        node, self._pending_view_node = self._pending_view_node, None
         if node is not None and self._tree_view_screen.get_selected_node() is node:
-            self._tree_view_manager.render_title_node(node)
+            self._render_view_of(node)
 
     def _cancel_pending_title_render(self) -> None:
         self._title_render_trigger.cancel()
-        self._pending_title_node = None
+        self._pending_view_node = None
 
     def _enter_nav_screen_bottom_focus(
         self,
@@ -405,7 +414,7 @@ class MainScreenNavigation:
         # A still-pending debounced render means the bottom title view has not yet
         # caught up to the selected node. Capture that before cancelling, so the title
         # branch below knows whether the bottom view actually needs a (re-)render.
-        title_render_pending = self._pending_title_node is not None
+        title_render_pending = self._pending_view_node is not None
         self._cancel_pending_title_render()
 
         selected = self._tree_view_screen.get_selected_node()
