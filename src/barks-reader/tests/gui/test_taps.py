@@ -567,7 +567,13 @@ def test_an_item_tapped_with_the_keys_active_is_pressed_once(boot: AppBoot) -> N
         None,
     )
     assert item is not None, "no title's entry wholly on screen under 'B'"
-    with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.INDEX_ITEM_PRESSED)):
+    # The tree selects the title only once its animated expand ends, a second or more after
+    # the goto, so wait for that rather than a settle.
+    with (
+        d.expect(pattern(markers.GOTO_TITLE)),
+        d.expect(pattern(markers.NEW_SELECTED_NODE)),
+        d.expect(pattern(markers.INDEX_ITEM_PRESSED)),
+    ):
         taps.tap(d, kind="IndexItemButton", text=item.text)
     d.settle()
     pressed = fields_of(d, markers.INDEX_ITEM_PRESSED, "item")
