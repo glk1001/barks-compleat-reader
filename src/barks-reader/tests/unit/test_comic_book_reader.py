@@ -1027,6 +1027,85 @@ class TestComicBookReaderScreen:
             for line in loguru_sink
         )
 
+    # --- the goto-page dropdown opened from its bar button ---
+
+    @staticmethod
+    def _ids_with(screen: ComicBookReaderScreen) -> MagicMock:
+        """Return the bar ids as the nav list knows them: the goto button is its last entry."""
+        ids = MagicMock()
+        ids.goto_page_button = screen._menu_buttons[-1]
+        return ids
+
+    def test_opened_from_the_bar_the_dropdown_is_in_keyboard_nav(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """A press on the bar button is no keyboard path, yet the arrows must work in it."""
+        screen._menu_mode = False
+        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = 3
+        with (
+            patch.object(
+                ComicBookReaderScreen,
+                "ids",
+                new_callable=PropertyMock,
+                return_value=self._ids_with(screen),
+            ),
+            patch.object(screen, "_enter_menu_mode") as enter_menu,
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+            patch.object(screen, "_clear_menu_focus"),
+            patch.object(
+                screen,
+                "_enter_dropdown_nav",
+                side_effect=lambda **_kw: setattr(screen, "_dropdown_nav_mode", True),
+            ) as enter_dropdown,
+        ):
+            screen.open_goto_page_from_bar()
+        enter_menu.assert_called_once_with()
+        enter_dropdown.assert_called_once_with(initial_idx=3)
+        exit_menu.assert_not_called()
+        assert screen._last_used_btn_idx == len(screen._menu_buttons) - 1
+
+    def test_a_dropdown_that_does_not_open_from_the_bar_leaves_no_focus_on_it(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen._menu_mode = False
+        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        with (
+            patch.object(
+                ComicBookReaderScreen,
+                "ids",
+                new_callable=PropertyMock,
+                return_value=self._ids_with(screen),
+            ),
+            patch.object(screen, "_enter_menu_mode") as enter_menu,
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+            patch.object(screen, "_clear_menu_focus"),
+            patch.object(screen, "_update_menu_focus"),
+        ):
+            screen.open_goto_page_from_bar()
+        enter_menu.assert_called_once_with()
+        exit_menu.assert_called_once_with()
+
+    def test_pressed_from_the_bar_in_menu_mode_the_menu_is_kept(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen._menu_mode = True
+        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        with (
+            patch.object(
+                ComicBookReaderScreen,
+                "ids",
+                new_callable=PropertyMock,
+                return_value=self._ids_with(screen),
+            ),
+            patch.object(screen, "_enter_menu_mode") as enter_menu,
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+            patch.object(screen, "_clear_menu_focus"),
+            patch.object(screen, "_update_menu_focus"),
+        ):
+            screen.open_goto_page_from_bar()
+        enter_menu.assert_not_called()
+        exit_menu.assert_not_called()
+
 
 def test_an_image_in_a_zip_is_read_from_its_bytes(tmp_path: Path) -> None:
     """A panel in the panels zip is a zipfile.Path: its bytes decode to the texture."""

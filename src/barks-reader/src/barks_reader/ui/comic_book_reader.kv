@@ -59,7 +59,7 @@
                     text: "Goto Page"
                     icon: str(sys_paths.get_barks_reader_goto_icon_file())
                     important: True
-                    on_release: root.comic_book_reader.goto_page()
+                    on_release: root.open_goto_page_from_bar()
 
                 # Close sits alone in the window corner behind the fence, so an
                 # overshoot on the working buttons can't close the comic.
