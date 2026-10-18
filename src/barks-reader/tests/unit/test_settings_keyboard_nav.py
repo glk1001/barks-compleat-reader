@@ -405,6 +405,24 @@ class TestFocusFirst:
             nav.handle_key(KEY_DOWN)
             assert draw.call_args.args[0] is items[1]
 
+    def test_the_panel_opens_from_its_top_title_row_and_all(self) -> None:
+        """The panel keeps its scroll between openings.
+
+        A scroll to the first item alone left the title row above the view, and the
+        close X over the first item.
+        """
+        items = [_make_item(), _make_item()]
+        scroll = MagicMock(spec=nav_module.ScrollView)
+        scroll.scroll_y = 0.3
+        panel = MagicMock()  # the item's layout, inside the scroll view
+        panel.parent = scroll  # (not Mock's `parent=` kwarg, which is its mock parent)
+        items[0].parent = panel
+        nav = _make_nav(items)
+        with _patch_settingitem(items), patch.object(nav_module, "draw_focus_highlight"):
+            nav.focus_first()
+        assert scroll.scroll_y == 1.0
+        scroll.scroll_to.assert_not_called()  # its animation would write over the top
+
     def test_an_empty_panel_has_nothing_to_focus(self) -> None:
         nav = _make_nav([])
         with patch.object(nav_module, "draw_focus_highlight") as draw:

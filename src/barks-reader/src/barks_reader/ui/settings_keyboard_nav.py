@@ -78,7 +78,12 @@ class SettingsKeyboardNav:
         if not items:
             return
         self._focused_idx = 0
-        self._apply_focus(items)
+        # From its top, title row and all: the panel keeps its scroll between openings,
+        # and a scroll to the first item alone left the title row above the view and
+        # the close X, fixed at the window's top, over the first item. No scroll to the
+        # item: its animation would write over the jump to the top, frame by frame.
+        self._apply_focus(items, scroll=False)
+        self._scroll_to_top(items[0])
 
     def reset(self) -> None:
         """Clear focus highlight and reset internal state."""
@@ -100,14 +105,15 @@ class SettingsKeyboardNav:
     def _clear_popup_nav(self) -> None:
         self._popup_nav = None
 
-    def _apply_focus(self, items: list[SettingItem]) -> None:
+    def _apply_focus(self, items: list[SettingItem], *, scroll: bool = True) -> None:
         idx = min(self._focused_idx, len(items) - 1)
         item = items[idx]
         if self._last_focused_item is not None and self._last_focused_item is not item:
             clear_focus_highlight(self._last_focused_item, MENU_FOCUS_HIGHLIGHT_GROUP)
         draw_focus_highlight(item, MENU_FOCUS_HIGHLIGHT_GROUP)
         self._last_focused_item = item
-        self._scroll_to_item(item)
+        if scroll:
+            self._scroll_to_item(item)
 
     def _get_current_panel_items(self) -> list[SettingItem]:
         panel = self._find_current_panel()
@@ -133,11 +139,23 @@ class SettingsKeyboardNav:
 
     @staticmethod
     def _scroll_to_item(item: Widget) -> None:
-        parent = item.parent
-        while parent is not None and not isinstance(parent, ScrollView):
-            parent = parent.parent
-        if parent is not None:
-            parent.scroll_to(item)
+        scroll_view = _scroll_view_of(item)
+        if scroll_view is not None:
+            scroll_view.scroll_to(item)
+
+    @staticmethod
+    def _scroll_to_top(item: Widget) -> None:
+        scroll_view = _scroll_view_of(item)
+        if scroll_view is not None:
+            scroll_view.scroll_y = 1.0
+
+
+def _scroll_view_of(item: Widget) -> ScrollView | None:
+    """Return the scroll view `item` sits in, or None."""
+    parent = item.parent
+    while parent is not None and not isinstance(parent, ScrollView):
+        parent = parent.parent
+    return parent
 
 
 def _toggle_boolean(item: SettingItem) -> None:
