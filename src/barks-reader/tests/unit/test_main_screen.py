@@ -7,7 +7,9 @@ from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.main_screen
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import window_minimum
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
@@ -709,3 +711,21 @@ def test_settings_open_with_their_first_item_focused(main_screen: MainScreen) ->
     ):
         assert main_screen.display_settings(app_window, settings) is True
     first.assert_called_once_with()
+
+
+class TestHistoryGoto:
+    """A journal row names a page: the title view offers it, the page last read a step away."""
+
+    def test_a_row_with_a_page_goes_to_that_page(self, main_screen: MainScreen) -> None:
+        main_screen._on_goto_history_title(Titles.LOST_IN_THE_ANDES, "7")
+        main_screen._nav_coord.navigate_to_title_with_page.assert_called_once_with(
+            ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=None), "7"
+        )
+        main_screen._nav_coord.navigate_to_chrono_title.assert_not_called()
+
+    @pytest.mark.parametrize("page", ["", "0"])
+    def test_a_row_with_no_page_goes_to_the_title(self, main_screen: MainScreen, page: str) -> None:
+        main_screen._on_goto_history_title(Titles.LOST_IN_THE_ANDES, page)
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
+            ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=None)
+        )

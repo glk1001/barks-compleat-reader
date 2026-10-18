@@ -243,7 +243,8 @@ class HistoryScreen(FloatLayout):
         self._history_store: ReadingHistoryStore | None = None
         self._current_view = _JOURNAL_VIEW
         self._texture_loader = PanelTextureLoader()
-        self.on_goto_title: Callable[[Titles], None] | None = None
+        # Called with the row's title and the page it names ("" for none).
+        self.on_goto_title: Callable[[Titles, str], None] | None = None
         self.get_background_image: Callable[[list[Titles]], ImageInfo] | None = None
 
         # Built-view cache and the state of an in-progress chunked build.
@@ -464,7 +465,7 @@ class HistoryScreen(FloatLayout):
             row_index=row_index,
             group=heading,
             key=event.event_id,
-            on_press=lambda: self._on_row_pressed(event.title_str),
+            on_press=lambda: self._on_row_pressed(event.title_str, event.last_display_page),
             on_delete=lambda: self._on_delete_event(event.event_id),
         )
 
@@ -482,7 +483,7 @@ class HistoryScreen(FloatLayout):
             row_index=row_index,
             group="",
             key=summary.title_str,
-            on_press=lambda: self._on_row_pressed(summary.title_str),
+            on_press=lambda: self._on_row_pressed(summary.title_str, summary.last_display_page),
             on_delete=lambda: self._on_delete_title(summary.title_str),
         )
 
@@ -545,13 +546,14 @@ class HistoryScreen(FloatLayout):
         )
         return row
 
-    def _on_row_pressed(self, title_str: str) -> None:
+    def _on_row_pressed(self, title_str: str, page: str | None = None) -> None:
+        """Go to the row's title, and the page the row names: the title view offers it."""
         title = STR_TITLE_TO_ENUM.get(title_str)
         if title is None:
             logger.warning(f'History: No title enum for "{title_str}".')
             return
         if self.on_goto_title is not None:
-            self.on_goto_title(title)
+            self.on_goto_title(title, page or "")
 
     def _on_delete_event(self, event_id: str) -> None:
         assert self._history_store is not None

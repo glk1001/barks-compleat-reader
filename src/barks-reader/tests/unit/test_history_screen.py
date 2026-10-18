@@ -697,9 +697,17 @@ class TestRowEdges:
         on_goto_title = MagicMock()
         screen.on_goto_title = on_goto_title
 
-        screen._on_row_pressed("Omelet")
+        screen._on_row_pressed("Omelet", "7")
 
-        on_goto_title.assert_called_once_with(history_screen_module.STR_TITLE_TO_ENUM["Omelet"])
+        on_goto_title.assert_called_once_with(
+            history_screen_module.STR_TITLE_TO_ENUM["Omelet"], "7"
+        )
+
+    def test_a_row_naming_no_page_passes_none_as_empty(self, screen: HistoryScreen) -> None:
+        on_goto_title = MagicMock()
+        screen.on_goto_title = on_goto_title
+        screen._on_row_pressed("Omelet", None)
+        assert on_goto_title.call_args.args[1] == ""
 
     def test_leaving_nav_focus_when_not_in_it_changes_nothing(
         self, nav_screen: HistoryScreen

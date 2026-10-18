@@ -19,7 +19,7 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.reader_consts_and_types import APP_TITLE
+from barks_reader.core.reader_consts_and_types import APP_TITLE, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
@@ -761,9 +761,17 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
         self._nav.focus_title_view_portal_after_wiki_goto()
 
-    def _on_goto_history_title(self, title: Titles) -> None:
-        """Select ``title`` in the tree and title view, from a history row."""
-        self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
+    def _on_goto_history_title(self, title: Titles, page: str = "") -> None:
+        """Select ``title`` in the tree and title view, from a history row.
+
+        The row's page is offered, the page last read a step away: a journal row
+        named a page the title view then did not offer.
+        """
+        image_info = ImageInfo(from_title=title, filename=None)
+        if page and page != COMIC_BEGIN_PAGE:
+            self._nav_coord.navigate_to_title_with_page(image_info, page)
+        else:
+            self._nav_coord.navigate_to_chrono_title(image_info)
 
     def _get_history_background_image(self, titles: list[Titles]) -> ImageInfo:
         """Pick a random panel image from the history's titles for the backdrop."""

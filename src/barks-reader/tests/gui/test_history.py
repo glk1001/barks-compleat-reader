@@ -55,12 +55,14 @@ def test_journal_builds_at_boot_and_the_titles_tab_rebuilds(boot: AppBoot) -> No
 def test_return_on_a_row_goes_to_its_title(boot: AppBoot) -> None:
     """The first row is the newest event; Return goes to its title and selects it."""
     d = _enter(boot)
+    newest = next(e for e in _events(boot) if e["id"] == NEWEST_EVENT_ID)
     with (
         d.expect(pattern(markers.GOTO_TITLE)),
         d.expect(markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL),
+        # The row names the page that reading reached: the title view offers it.
+        d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=newest["last_display_page"])),
     ):
         d.key("Return")
-    newest = next(e for e in _events(boot) if e["id"] == NEWEST_EVENT_ID)
     assert newest["title"] == nodes.GHOST_OF_THE_GROTTO_TITLE, "the canned history moved"
     assert last_field(d, markers.GOTO_TITLE, "name") == nodes.GHOST_OF_THE_GROTTO[0]
     assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0]
