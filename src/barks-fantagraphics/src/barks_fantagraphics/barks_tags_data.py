@@ -1964,6 +1964,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.GYRO_NOT_IN_GG, Titles.GLADSTONES_TERRIBLE_SECRET): ["4"],
     (Tags.GYRO_NOT_IN_GG, Titles.SEVEN_CITIES_OF_CIBOLA_THE): ["2"],
     (Tags.GYRO_NOT_IN_GG, Titles.KNIGHTS_OF_THE_FLYING_SLEDS): ["3"],
+    (Tags.GYRO_NOT_IN_GG, Titles.MISSILE_FIZZLE): ["7", "8"],
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.HERBERT, Titles.THREE_DIRTY_LITTLE_DUCKS): ["1"],
