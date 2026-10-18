@@ -423,6 +423,23 @@ class TestFocusFirst:
         assert scroll.scroll_y == 1.0
         scroll.scroll_to.assert_not_called()  # its animation would write over the top
 
+    def test_up_back_onto_the_first_item_shows_the_panel_s_top_too(self) -> None:
+        """Walked to the bottom and back, the title row was left above the view."""
+        items = [_make_item(), _make_item()]
+        scroll = MagicMock(spec=nav_module.ScrollView)
+        for item in items:
+            panel = MagicMock()
+            panel.parent = scroll
+            item.parent = panel
+        nav = _make_nav(items)
+        with _patch_settingitem(items), patch.object(nav_module, "draw_focus_highlight"):
+            nav.handle_key(KEY_DOWN)
+            scroll.scroll_to.assert_called_once_with(items[1])
+            scroll.scroll_y = 0.3
+            nav.handle_key(KEY_UP)
+        assert scroll.scroll_y == 1.0
+        scroll.scroll_to.assert_called_once()  # no scroll to the first item
+
     def test_an_empty_panel_has_nothing_to_focus(self) -> None:
         nav = _make_nav([])
         with patch.object(nav_module, "draw_focus_highlight") as draw:

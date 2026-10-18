@@ -78,12 +78,7 @@ class SettingsKeyboardNav:
         if not items:
             return
         self._focused_idx = 0
-        # From its top, title row and all: the panel keeps its scroll between openings,
-        # and a scroll to the first item alone left the title row above the view and
-        # the close X, fixed at the window's top, over the first item. No scroll to the
-        # item: its animation would write over the jump to the top, frame by frame.
-        self._apply_focus(items, scroll=False)
-        self._scroll_to_top(items[0])
+        self._apply_focus(items)
 
     def reset(self) -> None:
         """Clear focus highlight and reset internal state."""
@@ -105,14 +100,21 @@ class SettingsKeyboardNav:
     def _clear_popup_nav(self) -> None:
         self._popup_nav = None
 
-    def _apply_focus(self, items: list[SettingItem], *, scroll: bool = True) -> None:
+    def _apply_focus(self, items: list[SettingItem]) -> None:
         idx = min(self._focused_idx, len(items) - 1)
         item = items[idx]
         if self._last_focused_item is not None and self._last_focused_item is not item:
             clear_focus_highlight(self._last_focused_item, MENU_FOCUS_HIGHLIGHT_GROUP)
         draw_focus_highlight(item, MENU_FOCUS_HIGHLIGHT_GROUP)
         self._last_focused_item = item
-        if scroll:
+        if idx == 0:
+            # The first item means the panel's top, title row and section heading too:
+            # a scroll to the item alone left them above the view (the panel keeps its
+            # scroll between openings, and Up walks back to the first item) and the
+            # close X, fixed at the window's top, over the item. A jump, not a scroll
+            # to the item: that animation would write over it frame by frame.
+            self._scroll_to_top(item)
+        else:
             self._scroll_to_item(item)
 
     def _get_current_panel_items(self) -> list[SettingItem]:
