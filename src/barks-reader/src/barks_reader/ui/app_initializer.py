@@ -158,6 +158,20 @@ class AppInitializer:
             assert isinstance(saved_node, BaseTreeViewNode)
             saved_node.saved_state = saved_node_state
             self._tree_view_manager.setup_and_select_node(saved_node)
+            return
+
+        # The saved node is gone (a title moved to another tag, say). Land on its nearest
+        # surviving ancestor, so the keys start from a selection and not from nothing. The
+        # path runs leaf to root; the state saved was the leaf's and is not applied.
+        for first in range(1, len(saved_node_path) - 1):
+            ancestor = self._tree_view_screen.find_node_by_path(saved_node_path[first:])
+            if ancestor:
+                assert isinstance(ancestor, BaseTreeViewNode)
+                logger.info(
+                    log_markers.SAVED_NODE_ANCESTOR_SELECTED.format(name=saved_node_path[first])
+                )
+                self._tree_view_manager.setup_and_select_node(ancestor)
+                return
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:
         if self._fanta_volumes_state not in _BAD_FANTA_VOLUMES_STATE:

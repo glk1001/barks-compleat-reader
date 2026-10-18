@@ -307,15 +307,41 @@ class TestSavedNodeOnStart:
         mock_dependencies["tree_view_screen"].find_node_by_path.assert_not_called()
         mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
 
-    def test_a_saved_node_no_longer_in_the_tree_is_not_selected(
+    def test_a_saved_node_with_no_surviving_ancestor_is_not_selected(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         mock_dependencies["tree_view_screen"].find_node_by_path.return_value = None
-        self._setup(app_initializer, mock_dependencies, (["root", "gone"], {"state": "x"}))
+        self._setup(app_initializer, mock_dependencies, (["gone", "root"], {"state": "x"}))
         mock_dependencies["tree_view_screen"].find_node_by_path.assert_called_once_with(
-            ["root", "gone"]
+            ["gone", "root"]
         )
         mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
+
+    def test_a_saved_node_that_is_gone_lands_on_its_nearest_ancestor(
+        self,
+        app_initializer: AppInitializer,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """A title moved to another tag lands on the tag it was under.
+
+        Without the leaf's saved state, so the keys start from a selection, not from nothing.
+        """
+        parent = MagicMock(spec=BaseTreeViewNode)
+        paths: list[list[str]] = []
+
+        def find(path: list[str]) -> MagicMock | None:
+            paths.append(list(path))
+            return parent if path == ["Tag", "Tags", "root"] else None
+
+        mock_dependencies["tree_view_screen"].find_node_by_path.side_effect = find
+        self._setup(
+            app_initializer, mock_dependencies, (["Title", "Tag", "Tags", "root"], {"state": "x"})
+        )
+        assert paths == [["Title", "Tag", "Tags", "root"], ["Tag", "Tags", "root"]]
+        mock_dependencies["tree_view_manager"].setup_and_select_node.assert_called_once_with(parent)
+        assert not hasattr(parent, "saved_state") or not isinstance(parent.saved_state, dict)
+        assert log_markers.SAVED_NODE_ANCESTOR_SELECTED.format(name="Tag") in loguru_sink
 
 
 def test_a_ready_library_state_has_no_reason_to_be_bad(app_initializer: AppInitializer) -> None:
