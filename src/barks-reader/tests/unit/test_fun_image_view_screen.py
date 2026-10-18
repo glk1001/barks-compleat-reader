@@ -440,13 +440,10 @@ class TestTapsAndClicks:
         assert screen.tap_target_regions() == {}
         nav.tap_regions.assert_not_called()
 
-    @pytest.mark.parametrize(("visible", "menu_open"), [(False, False), (True, True)])
-    def test_hidden_or_under_the_menu_a_press_goes_to_the_widgets(
-        self, screen_setup: _Setup, visible: bool, menu_open: bool
-    ) -> None:
+    def test_under_the_menu_a_press_goes_to_the_widgets(self, screen_setup: _Setup) -> None:
         screen, nav, _ = screen_setup
-        screen.is_visible = visible
-        screen.fun_options_enabled = menu_open
+        screen.is_visible = True
+        screen.fun_options_enabled = True
         nav.is_in_left_margin.return_value = True
         with (
             patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
@@ -454,6 +451,22 @@ class TestTapsAndClicks:
         ):
             assert screen.on_touch_down(MagicMock(x=5, y=5)) is True
         widgets_press.assert_called_once()
+        previous.assert_not_called()
+
+    @pytest.mark.parametrize("menu_open", [False, True])
+    def test_hidden_the_screen_takes_no_press(self, screen_setup: _Setup, menu_open: bool) -> None:
+        # The hidden screen lies full-size under the showing one: its options button
+        # took the title view's top-left presses and opened the menu out of sight.
+        screen, nav, _ = screen_setup
+        screen.is_visible = False
+        screen.fun_options_enabled = menu_open
+        nav.is_in_left_margin.return_value = True
+        with (
+            patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
+            patch.object(screen, "_goto_previous_image") as previous,
+        ):
+            assert screen.on_touch_down(MagicMock(x=5, y=5)) is False
+        widgets_press.assert_not_called()
         previous.assert_not_called()
 
     def test_the_goto_arrow_wins_over_the_margin_under_it(self, screen_setup: _Setup) -> None:

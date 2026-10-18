@@ -144,7 +144,11 @@ class FunImageViewScreen(BoxLayout):
 
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
-        if not self.is_visible or self.fun_options_enabled:
+        # Hidden, the screen keeps its full size under the showing one, faded to nothing:
+        # its options button took the title view's top-left presses. It takes no touch.
+        if not self.is_visible:
+            return False
+        if self.fun_options_enabled:
             return bool(super().on_touch_down(touch))
 
         x_rel = round(touch.x - self.x)
