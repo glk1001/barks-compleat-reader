@@ -225,7 +225,7 @@ class _ComicPageManager(EventDispatcher):
                 logger.debug(f"Prev unit: left_page_index = {prev_unit.left_page_index}.")
                 self._current_page_index = prev_unit.left_page_index
         elif self._current_page_index <= self._first_page_index:
-            logger.debug(log_markers.ALREADY_ON_FIRST_PAGE.format(index=0))
+            logger.debug(log_markers.ALREADY_ON_FIRST_PAGE.format(index=self._current_page_index))
         else:
             logger.debug(f"Prev page: requested index = {self._current_page_index - 1}")
             self._current_page_index -= 1

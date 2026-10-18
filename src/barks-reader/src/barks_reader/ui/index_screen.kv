@@ -88,7 +88,8 @@
 
     canvas.before:
         Color:
-            rgba: reader_palette.theme().focus_ring  # Gold keyline (was programmer-red)
+            # A quiet keyline: in the focus ring's gold, the focused entry's ring was lost.
+            rgba: (*reader_palette.theme().text_secondary[:3], 0.5)
         Line:
             width: 2
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(10))
