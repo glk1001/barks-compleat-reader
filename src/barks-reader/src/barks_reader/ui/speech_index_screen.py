@@ -163,6 +163,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         self._populate_alphabet_menu()
 
+        # The pages of the story whose bubbles the popup shows: a bubble pressed offers
+        # them all, as the story's row does, not the one page pressed.
+        self._bubble_title_pages: tuple[str, ...] = ()
         self._speech_bubble_browser_popup, self._popup_nav = create_speech_bubble_popup(
             self._font_manager.speech_bubble_popup_title_font_name,
         )
@@ -575,6 +578,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         logger.info(
             log_markers.SHOW_BUBBLES_FOR_INDEX_TERMS.format(title=title_str, terms=index_terms)
         )
+        self._bubble_title_pages = tuple(
+            page.comic_page for page in title_speech_info.fanta_pages.values()
+        )
         show_speech_bubbles_popup(
             self._speech_bubble_browser_popup,
             title_str,
@@ -592,10 +598,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         self._speech_bubble_browser_popup.dismiss()
 
         image_info = ImageInfo(from_title=STR_TITLE_TO_ENUM[title_str], filename=None)
+        pages = self._bubble_title_pages
 
         def goto_title() -> None:
             assert self.on_goto_title is not None
-            self.on_goto_title(image_info, page_to_goto, ())
+            self.on_goto_title(image_info, page_to_goto, pages)
             # The popup owned the keyboard, so this goto skipped the main screen's normal
             # key hand-off; land focus on the title portal (the read action) explicitly.
             if self.on_after_popup_goto_title is not None:

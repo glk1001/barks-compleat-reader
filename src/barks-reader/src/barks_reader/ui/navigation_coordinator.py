@@ -292,10 +292,15 @@ class NavigationCoordinator:
 
         # One-pagers ignore the index page (reading deep-links to the gag's page in
         # the collection), so don't set a misleading goto-page checkbox for them.
-        if page_to_goto and image_info.from_title not in ONE_PAGERS:
+        if page_to_goto and title is not None and title not in ONE_PAGERS:
             logger.debug(f"Setting page to goto: {page_to_goto}.")
+            # The entry's page is offered, but the page last read stays a step away,
+            # as under a tag in the tree: the same story steps the same by every route.
             self._bottom_title_view_screen.set_goto_page_state(
-                page_to_goto, active=True, tagged_pages=tagged_pages
+                page_to_goto,
+                active=True,
+                tagged_pages=tagged_pages,
+                kept_page=self._page_last_read(title),
             )
 
     def navigate_to_search_result(self, title_str: str, tags: Sequence[Tags] = ()) -> bool:
@@ -565,15 +570,17 @@ class NavigationCoordinator:
                 page_to_goto = tagged_pages[0]
                 logger.debug(f"Setting page to goto: {page_to_goto}.")
                 # The tag's page is offered, but the page last read stays a step away.
-                last_read_page = self._comic_reader_manager.get_last_read_page(
-                    ENUM_TO_STR_TITLE[title]
-                )
                 self._bottom_title_view_screen.set_goto_page_state(
                     page_to_goto,
                     active=True,
                     tagged_pages=tagged_pages,
-                    kept_page=last_read_page.display_page_num if last_read_page else "",
+                    kept_page=self._page_last_read(title),
                 )
+
+    def _page_last_read(self, title: Titles) -> str:
+        """Return the page `title` was last read to, or "" with nothing read."""
+        last_read_page = self._comic_reader_manager.get_last_read_page(ENUM_TO_STR_TITLE[title])
+        return last_read_page.display_page_num if last_read_page else ""
 
     def _set_goto_page_checkbox(
         self, last_read_page: SavedPageInfo | None = None, tagged_pages: Sequence[str] = ()

@@ -651,21 +651,43 @@ class TestNavigateToTitleWithPage:
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES)
+        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
             nav_coord.navigate_to_title_with_page(image_info, "12")
         navigated.assert_called_once_with(image_info)
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "12", active=True, tagged_pages=()
+            "12", active=True, tagged_pages=(), kept_page=""
         )
 
     def test_a_title_under_a_tag_offers_all_its_tagged_pages(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
+        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13", "16", "17"))
         mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "7", active=True, tagged_pages=("7", "13", "16", "17")
+            "7", active=True, tagged_pages=("7", "13", "16", "17"), kept_page=""
+        )
+
+    def test_the_page_last_read_stays_a_step_away_as_under_a_tag(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """The tree and tag search kept it; the index routes dropped it.
+
+        So the same story stepped differently by route.
+        """
+        image_info = ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
+        last_page = MagicMock()
+        last_page.display_page_num = "9"
+        mock_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
+        with patch.object(nav_coord, "navigate_to_chrono_title"):
+            nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13"))
+        mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
+            "Adventure Down Under"
+        )
+        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
+            "7", active=True, tagged_pages=("7", "13"), kept_page="9"
         )
 
     def test_a_one_pager_sets_no_page(

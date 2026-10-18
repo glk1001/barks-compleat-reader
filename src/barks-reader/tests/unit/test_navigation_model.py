@@ -359,6 +359,16 @@ def test_tag_context_extracts_tag_group(model: NavigationModel) -> None:
     assert model.tag_context(TagGroupDestination(tag_group=TagGroups.AFRICA)) is TagGroups.AFRICA
 
 
+def test_tag_context_extracts_the_tag_of_a_with_character_node(model: NavigationModel) -> None:
+    """A 'With the Beagle Boys' title has the tag's pages to offer, as under the tag itself."""
+    assert model.tag_context(RandomTitlesDestination(tag=Tags.BEAGLE_BOYS)) is Tags.BEAGLE_BOYS
+
+
+def test_the_other_choose_for_me_nodes_are_no_tag_context(model: NavigationModel) -> None:
+    assert model.tag_context(RandomTitlesDestination(year_range=(1950, 1959))) is None
+    assert model.tag_context(RandomTitlesDestination(category=TagCategories.CHARACTERS)) is None
+
+
 @pytest.mark.parametrize(
     "destination",
     [

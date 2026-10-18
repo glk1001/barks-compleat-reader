@@ -2716,6 +2716,7 @@ class TestBackgroundAndGoto:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._speech_bubble_popup = MagicMock()
+        screen._bubble_title_pages = ("3", "7", "8")  # the row's pages, the popup's title's
         title = ENUM_TO_STR_TITLE[HELMET]
         with (
             patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
@@ -2723,7 +2724,7 @@ class TestBackgroundAndGoto:
         ):
             screen._handle_bubble_title_press(title, "3")
         screen._speech_bubble_popup.dismiss.assert_called_once_with()
-        goto.assert_called_once_with(title, "3")
+        goto.assert_called_once_with(title, "3", ("3", "7", "8"))  # every page, not just the one
         assert log_markers.WORD_BUBBLE_PRESS.format(title=title, page="3") in loguru_sink
 
     def test_the_title_info_setting_shows_or_hides_the_title(self, screen: SearchScreen) -> None:

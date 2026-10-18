@@ -248,6 +248,7 @@ class TestSpeechIndexScreen:
         mock_after_goto = MagicMock()
         speech_index_screen.on_goto_title = mock_callback
         speech_index_screen.on_after_popup_goto_title = mock_after_goto
+        speech_index_screen._bubble_title_pages = ("2", "5")  # the row's pages, the popup's title's
 
         with patch.object(Clock, "schedule_once") as mock_schedule:
             speech_index_screen._handle_title_from_bubble_press(
@@ -261,6 +262,8 @@ class TestSpeechIndexScreen:
             args[0](0)
 
             mock_callback.assert_called()
+            # Every page the row lists steps in the title view, not just the one pressed.
+            assert mock_callback.call_args.args[1:] == ("5", ("2", "5"))
             # The popup goto must also request the title-portal focus hand-off.
             mock_after_goto.assert_called_once()
 

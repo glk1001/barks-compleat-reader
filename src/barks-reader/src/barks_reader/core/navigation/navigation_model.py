@@ -241,4 +241,6 @@ class NavigationModel:
             return dest.tag
         if isinstance(dest, TagGroupDestination):
             return dest.tag_group
+        if isinstance(dest, RandomTitlesDestination):
+            return dest.tag  # the 'With <character>' nodes; None for the decades and favourites
         return None

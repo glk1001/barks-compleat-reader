@@ -473,6 +473,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._speech_bubble_popup, self._popup_nav = create_speech_bubble_popup(
             self._font_manager.speech_bubble_popup_title_font_name,
         )
+        # The pages of the story whose bubbles the popup shows: a bubble pressed offers
+        # them all, as the story's row does, not the one page pressed.
+        self._bubble_title_pages: tuple[str, ...] = ()
 
     def _init_picks_and_filters(self) -> None:
         """Set up what the searches hold between keystrokes, and the chip rows that show it."""
@@ -1766,6 +1769,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             result.highlight_terms if result and not result.used_literal_fallback else None
         )
         logger.info(log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title=title_str, text=search_text))
+        self._bubble_title_pages = tuple(
+            page.comic_page for page in title_speech_info.fanta_pages.values()
+        )
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
             title_str,
@@ -1781,7 +1787,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
         logger.info(log_markers.WORD_BUBBLE_PRESS.format(title=title_str, page=page_to_goto))
         self._speech_bubble_popup.dismiss()
-        Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
+        pages = self._bubble_title_pages
+        Clock.schedule_once(
+            lambda _dt: self._goto_title_with_page(title_str, page_to_goto, pages), 0.01
+        )
 
     def _goto_title_with_page(
         self, title_str: str, page_to_goto: str, pages: Sequence[str] = ()
