@@ -247,6 +247,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _activate_focused_button(self) -> None:
         if self._menu_buttons[self._focused_btn_idx] is self.ids.menu_button:
             self._last_used_btn_idx = self._focused_btn_idx
+            # Keyboard intent, as the base records it for the other buttons: what the
+            # dots menu opens (the About box) reads it to put the keys back after.
+            self._menu_action_by_keyboard = True
             self._open_menu_dots_for_keyboard()
         else:
             super()._activate_focused_button()
@@ -633,9 +636,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader")
 
     def open_about(self) -> None:
+        # Opened by the keys, the box closed puts them back on the Menu button that
+        # opened it, as the settings do; opened by mouse, it leaves mouse mode alone.
+        by_keyboard = self._menu_action_by_keyboard
         show_about_box(
             self._font_manager,
             self._reader_settings.sys_file_paths.get_app_identity_image_file(),
+            on_dismiss=self._enter_menu_mode if by_keyboard else None,
         )
 
     def _update_action_bar_visibility(self) -> None:

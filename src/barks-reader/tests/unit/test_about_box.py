@@ -21,3 +21,20 @@ def test_the_about_box_logs_opening_and_dismissal(loguru_sink: list[str]) -> Non
     on_dismiss = show.call_args.kwargs["on_dismiss"]
     on_dismiss()
     assert loguru_sink[-1] == "About box dismissed."
+
+
+def test_a_dismiss_callback_runs_after_the_dismissal_is_logged(loguru_sink: list[str]) -> None:
+    seen: list[str] = []
+    with (
+        patch.object(about_box, "BoxLayout"),
+        patch.object(about_box, "Label"),
+        patch.object(about_box, "theme"),
+        patch.object(about_box, "show_standalone_popup") as show,
+    ):
+        about_box.show_about_box(
+            MagicMock(),
+            Path("/art/about.png"),
+            on_dismiss=lambda: seen.append(loguru_sink[-1]),
+        )
+        show.call_args.kwargs["on_dismiss"]()
+    assert seen == ["About box dismissed."]

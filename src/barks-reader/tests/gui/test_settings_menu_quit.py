@@ -94,11 +94,14 @@ def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
     d.key_then_wait(pattern(markers.MAIN_SCREEN_ACTIVE), "Return")
 
 
-def test_dots_menu_about_opens_and_escape_dismisses(boot: AppBoot) -> None:
+def test_dots_menu_about_opens_and_escape_returns_to_the_menu_button(boot: AppBoot) -> None:
+    """Escape closes the About box and puts the keys back on the Menu button, as Settings does."""
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=ABOUT_DOWNS)
     _pick(d, markers.ABOUT_BOX_OPENED)
-    d.key_then_wait(markers.ABOUT_BOX_DISMISSED, "Escape")
+    with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
+        d.key_then_wait(markers.ABOUT_BOX_DISMISSED, "Escape")
+    d.key_then_wait(d.MENU_EXITED, "Escape")
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # and the tree answers again
 
 

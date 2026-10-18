@@ -755,3 +755,31 @@ class TestSettingsEscape:
             assert main_screen._handle_settings_key(KEY_DOWN) is True
         close.assert_not_called()
         menu.assert_not_called()
+
+
+class TestAboutBoxFocus:
+    """The About box closed puts the keys back on the Menu button, when the keys opened it."""
+
+    @pytest.mark.parametrize("by_keyboard", [True, False])
+    def test_opened_by_the_keys_its_closing_enters_the_menu(
+        self, main_screen: MainScreen, by_keyboard: bool
+    ) -> None:
+        main_screen._menu_action_by_keyboard = by_keyboard
+        with patch.object(barks_reader.ui.main_screen, "show_about_box") as show:
+            main_screen.open_about()
+        on_dismiss = show.call_args.kwargs["on_dismiss"]
+        if by_keyboard:
+            assert on_dismiss == main_screen._enter_menu_mode
+        else:
+            assert on_dismiss is None
+
+    def test_enter_on_the_menu_button_records_keyboard_intent(
+        self, main_screen: MainScreen
+    ) -> None:
+        """The dots menu's own path skipped the base's record, so About saw a mouse opening."""
+        main_screen._menu_action_by_keyboard = False
+        main_screen._focused_btn_idx = main_screen._menu_buttons.index(main_screen.ids.menu_button)
+        with patch.object(main_screen, "_open_menu_dots_for_keyboard") as open_dots:
+            main_screen._activate_focused_button()
+        open_dots.assert_called_once_with()
+        assert main_screen._menu_action_by_keyboard is True

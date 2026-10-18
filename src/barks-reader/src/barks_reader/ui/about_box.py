@@ -1,4 +1,5 @@
 import textwrap
+from collections.abc import Callable
 from pathlib import Path
 
 from kivy.uix.boxlayout import BoxLayout
@@ -21,7 +22,19 @@ ABOUT_POPUP_TITLE = "About the Barks Reader"
 ABOUT_WRAPPER_SCRIM = (0.14, 0.12, 0.10, 0.38)
 
 
-def show_about_box(font_manager: FontManager, about_background_path: Path) -> None:
+def show_about_box(
+    font_manager: FontManager,
+    about_background_path: Path,
+    on_dismiss: Callable[[], None] | None = None,
+) -> None:
+    """Show the About box.
+
+    Args:
+        font_manager: The fonts for its text.
+        about_background_path: Its background picture.
+        on_dismiss: Called once the box has closed, after its dismissal is logged.
+
+    """
     title_text_color = list(theme().text_display)  # bright cover-yellow hero
     version_text_color = list(theme().app_title)  # coin gold
     other_text_color = list(theme().text_secondary)  # newsprint cream
@@ -119,5 +132,11 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
         add_close_button=True,
         background_image_file=about_background_path,
         wrapper_scrim=ABOUT_WRAPPER_SCRIM,
-        on_dismiss=lambda: logger.debug(log_markers.ABOUT_BOX_DISMISSED),
+        on_dismiss=lambda: _dismissed(on_dismiss),
     )
+
+
+def _dismissed(on_dismiss: Callable[[], None] | None) -> None:
+    logger.debug(log_markers.ABOUT_BOX_DISMISSED)
+    if on_dismiss is not None:
+        on_dismiss()
