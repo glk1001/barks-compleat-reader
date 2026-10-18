@@ -248,7 +248,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP)
             self._set_item_fill(speech_btn)
             if scroll:
-                self.ids.index_scroll_view.scroll_to(speech_btn)
+                self.ids.index_scroll_view.scroll_into_view(speech_btn)
             self._nav_saved_grid_version = self._grid_version
 
     def _handle_speech_btn_key(self, key: int) -> bool:

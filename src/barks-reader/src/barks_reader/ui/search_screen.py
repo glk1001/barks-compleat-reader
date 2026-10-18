@@ -2360,7 +2360,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 self._nav_list_sub = "word"
             widgets = self._word_list_focus_widgets(chips)
             update_focus_in_list(widgets, widgets.index(target), _SEARCH_NAV_FOCUS_GROUP)
-            self.ids.word_chips_scroll.scroll_to(target)
+            self.ids.word_chips_scroll.scroll_into_view(target)
         else:
             self._draw_tag_chip_focus(chips)
 
@@ -2373,13 +2373,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             update_focus_in_list(
                 pluses, pluses.index(chip.parent.plus_button), _SEARCH_NAV_FOCUS_GROUP
             )
-            self.ids.tag_chips_scroll.scroll_to(chip.parent.plus_button)
+            self.ids.tag_chips_scroll.scroll_into_view(chip.parent.plus_button)
             return
         self._nav_list_sub = "word"
         clear_focus_in_list(pluses, _SEARCH_NAV_FOCUS_GROUP)
         self._update_tag_chip_colors(chips, self._nav_focused_chip_idx)
         # The list outruns its window: the focus follows the keys off its edge otherwise.
-        self.ids.tag_chips_scroll.scroll_to(chip)
+        self.ids.tag_chips_scroll.scroll_into_view(chip)
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
@@ -2465,7 +2465,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         update_focus_in_list(all_widgets, focus_idx, _SEARCH_NAV_FOCUS_GROUP)
         scroll_view = self._get_active_results_scroll_view()
         scroll_target = rows[self._nav_focused_result_idx]
-        scroll_view.scroll_to(scroll_target)
+        scroll_view.scroll_into_view(scroll_target)
 
     def _clear_result_focus(self) -> None:
         rows = self._get_active_result_rows()

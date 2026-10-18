@@ -62,12 +62,47 @@ class _ReaderScrollDefaults:
     bar_inactive_color = ColorProperty((0.7, 0.7, 0.7, 0.4))
 
 
+def scroll_widget_into_view(
+    scroll_view: ScrollView, widget: Widget, *, padding: float = 10
+) -> None:
+    """Scroll `scroll_view` so `widget` shows, when its content is taller than the view.
+
+    Kivy's ``scroll_to`` on content no taller than the view converts the distance over
+    no scrollable height and leaves ``scroll_y`` at 0: nothing moves, the content
+    staying at the top, until the content grows past the view and shows from its
+    bottom (a keyboard focus on a short tag list, then a group opened under it).
+    Content that fits is kept at its top instead.
+
+    Args:
+        scroll_view: The scroll view.
+        widget: A widget in its content.
+        padding: The space to leave between the widget and the view's edge, in dp
+            (``scroll_to`` applies ``dp()`` itself).
+
+    """
+    content = scroll_view.children[0] if scroll_view.children else None
+    if content is None:
+        return
+    if content.height > scroll_view.height:
+        scroll_view.scroll_to(widget, padding=padding)
+    else:
+        scroll_view.scroll_y = 1.0
+
+
 class ReaderScrollView(_ReaderScrollDefaults, ScrollView):
     """A ScrollView wearing the shared Barks Reader scroll-pane look."""
+
+    def scroll_into_view(self, widget: Widget, *, padding: float = 10) -> None:
+        """Scroll so `widget` shows; content that fits stays at its top."""
+        scroll_widget_into_view(self, widget, padding=padding)
 
 
 class ReaderDropDown(_ReaderScrollDefaults, DropDown):
     """A DropDown (itself a ScrollView) wearing the shared scroll-pane look."""
+
+    def scroll_into_view(self, widget: Widget, *, padding: float = 10) -> None:
+        """Scroll so `widget` shows; content that fits stays at its top."""
+        scroll_widget_into_view(self, widget, padding=padding)
 
     def open_if_shown(self, widget: Widget) -> bool:
         """Open on ``widget`` if it is in a window, else leave the dropdown closed.

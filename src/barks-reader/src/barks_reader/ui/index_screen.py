@@ -862,7 +862,7 @@ class IndexScreen(FloatLayout):
         draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
         self._set_item_fill(btn)
         if scroll:
-            self.ids.index_scroll_view.scroll_to(btn)
+            self.ids.index_scroll_view.scroll_into_view(btn)
         self._nav_saved_grid_version = self._grid_version
 
     def _set_item_fill(self, btn: Button) -> None:

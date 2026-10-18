@@ -3075,7 +3075,7 @@ class TestTagListKeys:
         chips = screen._get_tag_chip_buttons()
         screen._nav_focused_chip_idx = 1
         screen._draw_chip_focus()
-        screen.ids.tag_chips_scroll.scroll_to.assert_called_once_with(chips[1])
+        screen.ids.tag_chips_scroll.scroll_into_view.assert_called_once_with(chips[1])
 
     def test_the_open_group_s_members_sit_between_it_and_the_chips_after(
         self, screen: SearchScreen

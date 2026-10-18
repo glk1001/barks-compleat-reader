@@ -966,7 +966,7 @@ class TestItemsPanelKeys:
         only_item.trigger_action.assert_called_once_with(duration=0)
         assert screen._nav_focused_item_idx == 0
         assert screen._nav_focused_btn is None
-        screen.ids.index_scroll_view.scroll_to.assert_not_called()
+        screen.ids.index_scroll_view.scroll_into_view.assert_not_called()
 
     def test_a_saved_item_focus_whose_button_has_gone_falls_back_to_the_letters(
         self, items_nav: tuple[ConcreteIndexScreen, dict], loguru_sink: list[str]
