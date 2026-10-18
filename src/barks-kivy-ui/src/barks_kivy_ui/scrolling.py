@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -71,7 +72,9 @@ def scroll_widget_into_view(
     no scrollable height and leaves ``scroll_y`` at 0: nothing moves, the content
     staying at the top, until the content grows past the view and shows from its
     bottom (a keyboard focus on a short tag list, then a group opened under it).
-    Content that fits is kept at its top instead.
+    Content that fits is kept at its top instead. The fit is judged once a layout the
+    content has pending has run, as ``scroll_to`` waits for one: judged before, a list
+    that just grew still measures as it was.
 
     Args:
         scroll_view: The scroll view.
@@ -82,6 +85,12 @@ def scroll_widget_into_view(
     """
     content = scroll_view.children[0] if scroll_view.children else None
     if content is None:
+        return
+    layout_trigger = getattr(content, "_trigger_layout", None)  # a Layout's, if one
+    if layout_trigger is not None and layout_trigger.is_triggered:
+        Clock.schedule_once(
+            lambda _dt: scroll_widget_into_view(scroll_view, widget, padding=padding)
+        )
         return
     if content.height > scroll_view.height:
         scroll_view.scroll_to(widget, padding=padding)
