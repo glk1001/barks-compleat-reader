@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
+import barks_reader.core.reader_utils
 import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_tags import Tags
@@ -545,7 +546,7 @@ class TestNavigateToSearchResult:
         """Only the first tag's pages were offered: the others' were dropped."""
         andes = Titles.LOST_IN_THE_ANDES
         with patch.object(
-            barks_reader.ui.navigation_coordinator,
+            barks_reader.core.reader_utils,
             "BARKS_TAGGED_PAGES",
             {(Tags.AWFULTONIANS, andes): ["19", "26"], (Tags.SPLASH, andes): ["17", "26"]},
         ):
@@ -746,7 +747,7 @@ class TestTitleSelectedUnderATag:
             last_page.display_page_num = last_read
         mock_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
         with patch.object(
-            barks_reader.ui.navigation_coordinator,
+            barks_reader.core.reader_utils,
             "BARKS_TAGGED_PAGES",
             {(Tags.AWFULTONIANS, Titles.LOST_IN_THE_ANDES): ["19", "26", "31"]},
         ):
@@ -776,7 +777,7 @@ class TestTitleSelectedUnderATag:
 def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
     nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], loguru_sink: list[str]
 ) -> None:
-    with patch.object(barks_reader.ui.navigation_coordinator, "BARKS_TAGGED_PAGES", {}):
+    with patch.object(barks_reader.core.reader_utils, "BARKS_TAGGED_PAGES", {}):
         nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, "Back to the Klondike")
     mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
     assert 'No pages for (Alaska, "Back to the Klondike").' in loguru_sink

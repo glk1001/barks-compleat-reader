@@ -16,7 +16,7 @@ from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.search_terms import TermMatches
 from barks_fantagraphics.tag_query import ParsedTagQuery, TagMatch, TagSelection
-from barks_reader.core import log_markers
+from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.search_state import EraChoice, TagBasket, WordBasket
 from barks_reader.ui import search_screen
@@ -3330,7 +3330,7 @@ class TestTagRowPages:
                 SearchScreen, "_listed_tags", return_value=[Tags.AWFULTONIANS, Tags.SPLASH]
             ),
             patch.object(
-                search_screen,
+                reader_utils,
                 "BARKS_TAGGED_PAGES",
                 {
                     (Tags.AWFULTONIANS, Titles.LOST_IN_THE_ANDES): ["19", "20", "26"],

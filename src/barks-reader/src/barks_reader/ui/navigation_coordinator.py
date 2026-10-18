@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from barks_fantagraphics.barks_covers import get_cover_collection_page_num
-from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import (
     COVERS_SET,
@@ -42,7 +42,7 @@ from barks_reader.core.reader_consts_and_types import (
     ONE_PAGER_YEAR_RANGES,
 )
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
-from barks_reader.core.reader_utils import get_page_sort_key
+from barks_reader.core.reader_utils import get_tagged_pages
 from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
@@ -189,7 +189,7 @@ class NavigationCoordinator:
 
     @staticmethod
     def _tag_offers_pages(tag: Tags | TagGroups, title: Titles) -> bool:
-        return type(tag) is Tags and (tag, title) in BARKS_TAGGED_PAGES
+        return type(tag) is Tags and bool(get_tagged_pages((tag,), title))
 
     # === Navigation paths ===
 
@@ -302,15 +302,7 @@ class NavigationCoordinator:
 
         if offers:
             assert title is not None
-            logger.debug(f"Setting page to goto: {page_to_goto}.")
-            # The entry's page is offered, but the page last read stays a step away,
-            # as under a tag in the tree: the same story steps the same by every route.
-            self._bottom_title_view_screen.set_goto_page_state(
-                page_to_goto,
-                active=True,
-                tagged_pages=tagged_pages,
-                kept_page=self._page_last_read(title),
-            )
+            self._offer_tagged_pages(title, page_to_goto, tagged_pages)
 
     def navigate_to_search_result(self, title_str: str, tags: Sequence[Tags] = ()) -> bool:
         """Navigate to a title from search results.
@@ -332,16 +324,11 @@ class NavigationCoordinator:
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         # Every listed tag's pages in the story, together: a basket of tags found it.
-        pages = sorted(
-            {page for tag in tags for page in BARKS_TAGGED_PAGES.get((tag, title), ())},
-            key=get_page_sort_key,
-        )
+        pages = get_tagged_pages(tags, title)
         self.navigate_to_chrono_title(image_info, offer_page=not pages)
         if pages:
             logger.debug(f'Setting tags goto page for ({[t.value for t in tags]}, "{title_str}").')
-            self._bottom_title_view_screen.set_goto_page_state(
-                pages[0], active=True, tagged_pages=pages, kept_page=self._page_last_read(title)
-            )
+            self._offer_tagged_pages(title, pages[0], pages)
         return True
 
     def update_title(self, title_str: str) -> bool:
@@ -581,19 +568,23 @@ class NavigationCoordinator:
 
         if type(tag) is Tags:
             title = STR_TITLE_TO_ENUM[ComicBookInfo.get_title_str_from_display_title(title_str)]
-            if (tag, title) not in BARKS_TAGGED_PAGES:
+            tagged_pages = get_tagged_pages((tag,), title)
+            if not tagged_pages:
                 logger.debug(f'No pages for ({tag.value}, "{title_str}").')
             else:
-                tagged_pages = BARKS_TAGGED_PAGES[(tag, title)]
-                page_to_goto = tagged_pages[0]
-                logger.debug(f"Setting page to goto: {page_to_goto}.")
-                # The tag's page is offered, but the page last read stays a step away.
-                self._bottom_title_view_screen.set_goto_page_state(
-                    page_to_goto,
-                    active=True,
-                    tagged_pages=tagged_pages,
-                    kept_page=self._page_last_read(title),
-                )
+                self._offer_tagged_pages(title, tagged_pages[0], tagged_pages)
+
+    def _offer_tagged_pages(self, title: Titles, page: str, tagged_pages: Sequence[str]) -> None:
+        """Offer `page` among `tagged_pages` on the goto-page row, the page last read kept.
+
+        The entry's page is offered, but the page last read stays a step away, whether
+        the title came from a tag in the tree, an index or a search: the same story
+        steps the same by every route.
+        """
+        logger.debug(f"Setting page to goto: {page}.")
+        self._bottom_title_view_screen.set_goto_page_state(
+            page, active=True, tagged_pages=tagged_pages, kept_page=self._page_last_read(title)
+        )
 
     def _page_last_read(self, title: Titles) -> str:
         """Return the page `title` was last read to, or "" with nothing read."""

@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 from random import randrange
 from typing import TYPE_CHECKING, Any
 
+from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
@@ -23,9 +24,10 @@ from intspan import intspan
 from .config_info import IS_COMPILED
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
     from os import PathLike
 
+    from barks_fantagraphics.barks_tags import Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.pages import CleanPage
     from comic_utils.comic_consts import PanelPath
@@ -271,6 +273,21 @@ def get_page_run_end(page_num_str: str, page_nums_str: Sequence[str]) -> str:
     first = int(page_num_str)
     last = next((end for start, end in intspan(int_pages).ranges() if start == first), first)
     return str(last) if last > first else ""
+
+
+def get_tagged_pages(tags: Iterable[Tags], title: Titles) -> list[str]:
+    """Return the pages of `title` tagged with any of `tags`, together, in the comic's order.
+
+    Args:
+        tags: The tags, as listed by a search or picked in a basket.
+        title: The story.
+
+    Returns:
+        The pages, each once, front matter first; empty when no tag has a page in it.
+
+    """
+    pages = {page for tag in tags for page in BARKS_TAGGED_PAGES.get((tag, title), ())}
+    return sorted(pages, key=get_page_sort_key)
 
 
 def get_page_sort_key(page_num_str: str) -> tuple[int, int]:

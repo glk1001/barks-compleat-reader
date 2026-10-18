@@ -8,6 +8,7 @@ from random import randrange
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
@@ -27,6 +28,7 @@ from barks_reader.core.reader_utils import (
     get_paths_from_zip,
     get_quoted_items,
     get_rand_int,
+    get_tagged_pages,
     get_title_str_from_reader_icon_file,
     get_win_dimensions,
     get_win_width_from_height,
@@ -334,6 +336,22 @@ class TestReaderUtils:
         # Sorted as strings, "ix" would come before "v", and "iv" before both.
         pages = ["2", "v", "1", "ix", "5", "iv"]
         assert get_page_run_starts(pages) == ["iv", "v", "ix", "1", "5"]
+
+    def test_tagged_pages_are_joined_across_the_tags_and_sorted(self) -> None:
+        andes = Titles.LOST_IN_THE_ANDES
+        with patch.object(
+            utils_module,
+            "BARKS_TAGGED_PAGES",
+            {(Tags.AWFULTONIANS, andes): ["19", "26"], (Tags.SPLASH, andes): ["iv", "17", "26"]},
+        ):
+            assert get_tagged_pages((Tags.AWFULTONIANS, Tags.SPLASH), andes) == [
+                "iv",
+                "17",
+                "19",
+                "26",
+            ]
+            assert get_tagged_pages((Tags.AWFULTONIANS,), Titles.BACK_TO_THE_KLONDIKE) == []
+            assert get_tagged_pages((), andes) == []
 
     def test_get_page_sort_key_puts_front_matter_first_then_numbers(self) -> None:
         pages = ["9", "x", "14", "1", "iv", "ii"]

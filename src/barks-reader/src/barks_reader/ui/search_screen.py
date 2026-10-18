@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self, cast
 
-from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ComicBookInfo
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
@@ -39,7 +39,7 @@ from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
-from barks_reader.core.reader_utils import get_concat_page_nums_str, get_page_sort_key
+from barks_reader.core.reader_utils import get_concat_page_nums_str, get_tagged_pages
 from barks_reader.core.search_state import (
     ALL_YEARS,
     VOLUMES_KEY,
@@ -633,12 +633,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         title = _listed_title(title_str)
         if title is None:
             return ""
-        pages = {
-            page for tag in self._listed_tags() for page in BARKS_TAGGED_PAGES.get((tag, title), ())
-        }
-        if not pages:
-            return ""
-        return get_concat_page_nums_str(sorted(pages, key=get_page_sort_key))
+        pages = get_tagged_pages(self._listed_tags(), title)
+        return get_concat_page_nums_str(pages) if pages else ""
 
     def _listed_tags(self) -> list[Tags]:
         """Return the tags the listed stories were found by: the one listed, or those picked.
