@@ -299,6 +299,26 @@ def test_a_menu_opened_by_tap_closes_on_escape(boot: AppBoot) -> None:
     d.key_then_wait(markers.MENU_ENTERED, "Escape")  # the keys are the tree's again
 
 
+def test_a_word_statistics_list_opened_by_tap_is_taken_by_the_keys(boot: AppBoot) -> None:
+    """The first key lands the ring on the list's first row; Escape there closes it."""
+    d = _boot(boot, nodes.STATISTICS)
+    taps.tap(d, kind="StatMenuButton", text="Word Statistics")
+    d.settle()
+    with d.expect(markers.STATISTICS_ENTERED_DROPDOWN), d.expect(markers.OPEN_LIST_ADOPTED):
+        d.key_then_wait(f'{d.FOCUS_MOVED} Button "Most Frequent"', "Down")
+    with d.expect(markers.STATISTICS_EXITED_DROPDOWN):
+        d.key_then_wait(d.DROPDOWN_DISMISSED, "Escape")
+    d.key_then_wait(f"{d.FOCUS_MOVED} StatMenuButton", "Left")  # the keys stay on the tabs
+
+
+def test_a_word_statistics_list_opened_by_tap_closes_on_escape(boot: AppBoot) -> None:
+    d = _boot(boot, nodes.STATISTICS)
+    taps.tap(d, kind="StatMenuButton", text="Word Statistics")
+    d.settle()
+    d.key_then_wait(d.DROPDOWN_DISMISSED, "Escape")
+    d.key_then_wait(markers.MENU_ENTERED, "Escape")  # the keys are the tree's again
+
+
 def test_quit_by_tap_asks_first_and_cancel_stays(boot: AppBoot) -> None:
     d = _boot(boot, nodes.THE_STORIES)
     with (
@@ -426,6 +446,33 @@ def test_a_tapped_word_stays_marked_and_its_speaker_list_is_picked_by_tap(boot: 
 
 NESTING_GROUP = "chemistry"
 SUBGROUP = "chemical names"
+
+
+def test_a_speaker_list_opened_by_tap_is_taken_by_the_keys(boot: AppBoot) -> None:
+    """The first key lands the ring on the speaker picked now; Escape there closes the list."""
+    words = expected.words_matching(SAID_BY_QUERY)
+    word = words[0]
+    speakers = expected.speaker_list(word)
+    d = _boot(boot, nodes.WORD_SEARCH)
+    search.type_query(d, SAID_BY_QUERY)
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # out of the box
+    d.settle()
+    taps.tap_then_wait(
+        d, pattern(markers.WORD_SELECTED_CHIP, word=word), kind="_SearchResultButton", text=word
+    )
+    d.settle()
+    taps.tap_then_wait(
+        d,
+        pattern(markers.SPEAKER_LIST_OPENED, count=len(speakers)),
+        kind="_SaidByChipButton",
+        text="Said by: anyone",
+    )
+    d.settle()
+    with d.expect(markers.OPEN_LIST_ADOPTED):
+        d.key_then_wait(f'{d.FOCUS_MOVED} _SaidByItem "anyone"', "Down")
+    d.key_then_wait(f'{d.FOCUS_MOVED} _SaidByItem "(?!anyone")', "Down")  # the first speaker
+    with d.expect(d.DROPDOWN_DISMISSED):
+        d.key_then_wait(f'{d.FOCUS_MOVED} _SaidByChipButton "Said by: anyone"', "Escape")
 
 
 def test_an_open_tag_group_closes_and_opens_by_tap(boot: AppBoot) -> None:

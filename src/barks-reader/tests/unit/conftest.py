@@ -99,7 +99,10 @@ def screen_mocks() -> dict[str, MagicMock]:
     # Imported here, not at module scope: barks_reader.ui pulls Kivy in.
     from barks_reader.ui.screen_bundle import ScreenBundle  # noqa: PLC0415
 
-    return {screen.name: MagicMock() for screen in fields(ScreenBundle)}
+    mocks = {screen.name: MagicMock() for screen in fields(ScreenBundle)}
+    for mock in mocks.values():
+        mock.has_list_open_without_the_keys.return_value = False  # no list open by mouse
+    return mocks
 
 
 @pytest.fixture

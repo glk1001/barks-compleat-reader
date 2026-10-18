@@ -223,6 +223,34 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
             return self._handle_dropdown_key(key)
         return self._handle_tab_key(key)
 
+    def has_list_open_without_the_keys(self) -> bool:
+        """Return whether the word statistics list is open on screen and not the keys'."""
+        dropdown = self._word_stat_dropdown
+        return dropdown is not None and dropdown.parent is not None and not self._dropdown_nav_mode
+
+    def close_open_list(self) -> None:
+        """Close the word statistics list."""
+        assert self._word_stat_dropdown is not None
+        self._word_stat_dropdown.dismiss()
+
+    def take_keys_onto_open_list(self, on_exit_request: Callable) -> None:
+        """Take the keys onto the open word statistics list, the ring on its first row.
+
+        The tab row's ring sits on the list's own tab under it, where the keys land
+        when the list closes.
+
+        Args:
+            on_exit_request: Called when the keys ask to leave the screen.
+
+        """
+        assert self._word_stat_button is not None
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        self._nav_focused_idx = self._stat_buttons.index(self._word_stat_button)
+        update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
+        logger.debug(log_markers.STATISTICS_ENTERED_NAV)
+        self._enter_dropdown_nav()
+
     def _handle_tab_key(self, key: int) -> bool:
         if key == KEY_RIGHT:
             self._move_tab_focus(1)

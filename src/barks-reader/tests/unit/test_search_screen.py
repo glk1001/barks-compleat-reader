@@ -187,6 +187,11 @@ class _FakeSpeakerList:
         self.is_open = False
         self._screen._on_said_by_dismissed(cast("Any", self))
 
+    @property
+    def parent(self) -> object | None:
+        """The window while open, as Kivy's dropdown has; None closed."""
+        return self if self.is_open else None
+
 
 # What the speaker list counts in `_pick_speaker`: anyone, then Donald and Scrooge.
 _SPEAKER_COUNTS = [("", 3), ("Donald", 2), ("Scrooge", 1)]
@@ -1559,6 +1564,32 @@ class TestSpeakerFilter:
         assert screen._speaker_row.selected == search_screen._SAID_BY  # still filled
         assert log_markers.SPEAKER_LIST_OPENED.format(count=2) in loguru_sink
         assert screen._nav_focus_area == "input"  # a click: the keyboard stays where it was
+
+    def test_a_list_the_mouse_opened_is_open_without_the_keys(self, screen: SearchScreen) -> None:
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+            _press(_said_by_chip(screen))
+        assert screen.has_list_open_without_the_keys() is True
+        screen.close_open_list()
+        assert screen.has_list_open_without_the_keys() is False
+
+    def test_the_keys_taken_onto_the_list_land_on_the_speaker_picked_now(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+            _press(_said_by_chip(screen))
+        on_exit = MagicMock()
+        with patch.object(screen, "_update_dropdown_focus"):
+            screen.take_keys_onto_open_list(on_exit)
+        assert screen._nav_active is True
+        assert screen._nav_on_exit_request is on_exit
+        assert screen._nav_focus_area == "said_by_list"
+        assert screen._dropdown_nav_mode is True
+        assert screen._dropdown_focused_idx == 1  # Donald, the one picked now
+        assert screen.has_list_open_without_the_keys() is False
 
     def test_picking_a_speaker_reruns_the_search_filtered(
         self, screen: SearchScreen, loguru_sink: list[str]

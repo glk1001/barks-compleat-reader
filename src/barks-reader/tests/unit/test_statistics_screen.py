@@ -294,6 +294,40 @@ class TestStatisticsScreen:
             assert screen._dropdown_nav_mode is False
 
 
+class TestWordListOpenedByMouse:
+    """The keys take over the word statistics list the mouse opened."""
+
+    def test_an_open_list_not_the_keys_says_so(self, screen: StatisticsScreen) -> None:
+        screen._word_stat_dropdown.parent = MagicMock(name="window")
+        screen._dropdown_nav_mode = False
+        assert screen.has_list_open_without_the_keys() is True
+        screen._dropdown_nav_mode = True
+        assert screen.has_list_open_without_the_keys() is False
+        screen._dropdown_nav_mode = False
+        screen._word_stat_dropdown.parent = None
+        assert screen.has_list_open_without_the_keys() is False
+
+    def test_closing_it_dismisses_the_list(self, screen: StatisticsScreen) -> None:
+        screen.close_open_list()
+        screen._word_stat_dropdown.dismiss.assert_called_once_with()
+
+    def test_the_keys_land_on_its_first_row_with_the_ring_on_its_tab(
+        self, screen: StatisticsScreen, loguru_sink: list[str]
+    ) -> None:
+        on_exit = MagicMock()
+        with (
+            patch.object(statistics_screen_module, "update_focus_in_list") as focus_tab,
+            patch.object(screen, "_enter_dropdown_nav") as enter_list,
+        ):
+            screen.take_keys_onto_open_list(on_exit)
+        assert screen._nav_active is True
+        assert screen._nav_on_exit_request is on_exit
+        assert screen._stat_buttons[screen._nav_focused_idx] is screen._word_stat_button
+        focus_tab.assert_called_once()
+        enter_list.assert_called_once_with()
+        assert "StatisticsScreen: entered nav focus." in loguru_sink
+
+
 class TestStatMenuButton:
     @pytest.mark.parametrize(("state", "pressed"), [("normal", True), ("down", False)])
     def test_the_selected_tab_cannot_be_pressed_off(self, state: str, pressed: bool) -> None:

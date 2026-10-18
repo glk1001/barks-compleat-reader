@@ -1534,6 +1534,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _on_said_by_dismissed(self, _dropdown: Widget) -> None:
         """Give the keyboard back to the speaker chip when the list closes under it."""
+        logger.debug(log_markers.DROPDOWN_DISMISSED)  # as every dropdown logs its closing
         if not self._dropdown_nav_mode:
             return
         self._exit_dropdown_nav()
@@ -1544,6 +1545,30 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """Keys while the speaker list is open: Up, Down, Enter, Escape; the rest wait."""
         self._handle_dropdown_key(key)
         return True
+
+    def has_list_open_without_the_keys(self) -> bool:
+        """Return whether the speaker list is open on screen and not the keys'."""
+        return self._said_by_dropdown.parent is not None and not self._dropdown_nav_mode
+
+    def close_open_list(self) -> None:
+        """Close the speaker list."""
+        self._said_by_dropdown.dismiss()
+
+    def take_keys_onto_open_list(self, on_exit_request: Callable) -> None:
+        """Take the keys onto the open speaker list, the ring on the speaker picked now.
+
+        Args:
+            on_exit_request: Called when the keys ask to leave the screen.
+
+        """
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        self._blur_all_inputs()
+        self._speaker_row.clear_focus()
+        self._nav_focus_area = "said_by_list"
+        rows = self._get_dropdown_buttons()
+        here = next((i for i, row in enumerate(rows) if row.value == self._speaker), 0)
+        self._enter_dropdown_nav(here)
 
     # --- DropdownNavMixin hooks ---
 

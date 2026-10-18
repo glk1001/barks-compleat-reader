@@ -150,6 +150,8 @@ class MainScreenNavigation:
     def handle_key(self, key: int) -> bool:
         if self._is_in_menu_mode():
             return self._handle_menu_key(key)
+        if self._take_key_onto_an_open_list(key):
+            return True
         if self._focus_region == _FocusRegion.BOTTOM:
             return self._handle_bottom_key(key)
         return self._handle_tree_key(key)
@@ -313,11 +315,36 @@ class MainScreenNavigation:
         """
         if not self._search_screen.is_visible:
             return
+        self._claim_bottom_focus()
+        self._search_screen.adopt_nav_focus(self.exit_bottom_focus)
+        logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_FOR_SEARCH)
+
+    def _claim_bottom_focus(self) -> None:
+        """Make the bottom screen the keys' region, its own focus state left to it."""
         self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
-        self._search_screen.adopt_nav_focus(self.exit_bottom_focus)
-        logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_FOR_SEARCH)
+
+    def _take_key_onto_an_open_list(self, key: int) -> bool:
+        """Take the keys onto a list a mouse opened on a bottom screen; Escape closes it.
+
+        The word statistics list and the speaker list open on a mouse press with the
+        keys none the wiser: left alone, the keys moved on behind the open list, and
+        Enter on its button opened it again (which Kivy refused, before the shared
+        dropdown learnt to count one open as opened). The first key only lands the
+        ring on the list, as the dots menu does.
+        """
+        for screen in (self._statistics_screen, self._search_screen):
+            if not (screen.is_visible and screen.has_list_open_without_the_keys()):
+                continue
+            if is_escape_key(key):
+                screen.close_open_list()
+            else:
+                self._claim_bottom_focus()
+                screen.take_keys_onto_open_list(self.exit_bottom_focus)
+                logger.debug(log_markers.OPEN_LIST_ADOPTED)
+            return True
+        return False
 
     def exit_bottom_focus(self) -> None:
         nav_screen = self._get_active_nav_screen()

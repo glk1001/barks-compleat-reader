@@ -1476,6 +1476,55 @@ class TestFunViewBottomFocus:
         assert not nav.is_in_bottom_focus
 
 
+class TestAListOpenedByMouse:
+    """The keys take over a list the mouse opened on a bottom screen; Escape closes it."""
+
+    @staticmethod
+    def _open_on(nav: MainScreenNavigation, name: str) -> MagicMock:
+        screen = cast("MagicMock", getattr(nav, f"_{name}_screen"))
+        screen.is_visible = True
+        screen.has_list_open_without_the_keys.return_value = True
+        return screen
+
+    @pytest.mark.parametrize("name", ["statistics", "search"])
+    def test_escape_closes_it_and_the_keys_stay_where_they_were(
+        self, nav: MainScreenNavigation, name: str
+    ) -> None:
+        screen = self._open_on(nav, name)
+        assert nav.handle_key(KEY_ESCAPE) is True
+        screen.close_open_list.assert_called_once_with()
+        screen.take_keys_onto_open_list.assert_not_called()
+        assert not nav.is_in_bottom_focus
+
+    @pytest.mark.parametrize("name", ["statistics", "search"])
+    def test_another_key_takes_the_keys_onto_it(
+        self, nav: MainScreenNavigation, name: str, loguru_sink: list[str]
+    ) -> None:
+        screen = self._open_on(nav, name)
+        assert nav.handle_key(KEY_DOWN) is True
+        screen.take_keys_onto_open_list.assert_called_once_with(nav.exit_bottom_focus)
+        screen.close_open_list.assert_not_called()
+        assert nav.is_in_bottom_focus
+        assert "Keys taken onto the open list." in loguru_sink
+
+    def test_a_list_the_keys_have_is_left_to_the_screen(self, nav: MainScreenNavigation) -> None:
+        screen = self._open_on(nav, "statistics")
+        screen.has_list_open_without_the_keys.return_value = False
+        for name in ("main_index", "speech_index", "names_index", "locations_index"):
+            getattr(nav, f"_{name}_screen").is_visible = False  # the statistics screen shows
+        nav.enter_bottom_focus()
+        screen.handle_key.return_value = True
+        assert nav.handle_key(KEY_DOWN) is True
+        screen.handle_key.assert_called_once_with(KEY_DOWN)
+        screen.take_keys_onto_open_list.assert_not_called()
+
+    def test_a_hidden_screens_list_is_not_taken(self, nav: MainScreenNavigation) -> None:
+        screen = self._open_on(nav, "search")
+        screen.is_visible = False
+        nav.handle_key(KEY_DOWN)
+        screen.take_keys_onto_open_list.assert_not_called()
+
+
 class TestOpenGroupNodeArrival:
     """Arriving on an open group node by the keys shows its view, as booting on it does."""
 

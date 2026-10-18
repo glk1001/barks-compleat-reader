@@ -88,6 +88,9 @@ NAV_FOCUS: Final = f"{NAV_FOCUS_PREFIX} {{widget}}."
 DROPDOWN_DISMISSED: Final = "Dropdown dismissed."
 # The dots menu opened by mouse, the next key takes the keys onto it.
 MENU_DOTS_ADOPTED: Final = "Keys taken onto the open menu."
+# A bottom screen's list opened by mouse (the word statistics, the speakers), the
+# next key takes the keys onto it.
+OPEN_LIST_ADOPTED: Final = "Keys taken onto the open list."
 # A dropdown asked for while its button is off screen (mid-fade): nothing opens.
 DROPDOWN_NOT_SHOWN: Final = "Dropdown not opened: {widget} is not on screen."
 ENTERED_BOTTOM_FOCUS: Final = "Entered bottom focus region."
