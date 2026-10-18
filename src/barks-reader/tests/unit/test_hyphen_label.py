@@ -193,3 +193,38 @@ class TestHyphenatingLabel:
             "Hyphenation did not stabilize for 'hyphen'...: 1 word(s) wrapped without a hyphen:"
             " ['hyphen']" in loguru_sink
         )
+
+
+_SHOWN_LINES = 3
+_FEWER_LINES = 2
+
+
+class TestShownLines:
+    """The lines shown are cut only after the breaks are refined."""
+
+    def test_the_refinement_renders_every_line_and_the_cut_comes_after(self) -> None:
+        label = _make_label(f"hy{SHY}phen")
+        label.shown_lines = _SHOWN_LINES
+        label.max_lines = _SHOWN_LINES
+        seen: list[int] = []
+
+        def fake_texture_update(instance: HyphenatingLabel) -> None:
+            seen.append(instance.max_lines)  # a dropped line renders no refs to read
+            instance.refs = _refs_from_markup(instance.text, {f"{REF_PREFIX}1": 1})
+
+        with patch.object(
+            HyphenatingLabel, "texture_update", autospec=True, side_effect=fake_texture_update
+        ):
+            label._refine()
+
+        assert seen
+        assert set(seen) == {0}
+        assert label.max_lines == _SHOWN_LINES
+        assert label.text == f"[ref={REF_PREFIX}0]hy-[/ref][ref={REF_PREFIX}1]phen[/ref]"
+
+    def test_the_lines_shown_change_at_rest(self) -> None:
+        label = _make_label("plain")
+        label.shown_lines = _FEWER_LINES
+        assert label.max_lines == _FEWER_LINES
+        label.shown_lines = 0
+        assert label.max_lines == 0

@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
-from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.label import Label
 from loguru import logger
 
@@ -33,6 +33,10 @@ class HyphenatingLabel(Label):
     """
 
     source_text = StringProperty("")
+    # The lines to show, 0 for all: Kivy's ``max_lines``, applied once the breaks are
+    # refined. Set during the refinement, the lines it drops render no refs, and the
+    # refinement fails over to showing every word unhyphenated.
+    shown_lines = NumericProperty(0)
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -45,6 +49,7 @@ class HyphenatingLabel(Label):
             source_text=self._request_refine,
             width=self._request_refine,
             font_size=self._request_refine,
+            shown_lines=self._apply_shown_lines,
         )
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
@@ -55,6 +60,10 @@ class HyphenatingLabel(Label):
     def _request_refine(self, *_args: object) -> None:
         self._refine_trigger()
 
+    def _apply_shown_lines(self, *_args: object) -> None:
+        if not self._refining:
+            self.max_lines = int(self.shown_lines)
+
     def _refine(self, *_args: object) -> None:
         if self._refining:
             return
@@ -63,20 +72,22 @@ class HyphenatingLabel(Label):
         if key == self._applied_key:
             return
 
-        if not self.source_text or self.width < _MIN_USABLE_WIDTH:
-            # No usable layout width yet: show the text unhyphenated for now.
-            self.text = self.source_text.replace(SOFT_HYPHEN, "")
-            self._applied_key = None
-            return
-
         self._refining = True
         try:
-            self._run_refinement(key)
-        except Exception:  # noqa: BLE001 - text layout must never take down the UI
-            logger.exception("Hyphen refinement error; showing text without break points.")
-            self.text = self.source_text.replace(SOFT_HYPHEN, "")
-            self._applied_key = key
+            self.max_lines = 0  # every line renders, so every fragment has a ref to read
+            if not self.source_text or self.width < _MIN_USABLE_WIDTH:
+                # No usable layout width yet: show the text unhyphenated for now.
+                self.text = self.source_text.replace(SOFT_HYPHEN, "")
+                self._applied_key = None
+                return
+            try:
+                self._run_refinement(key)
+            except Exception:  # noqa: BLE001 - text layout must never take down the UI
+                logger.exception("Hyphen refinement error; showing text without break points.")
+                self.text = self.source_text.replace(SOFT_HYPHEN, "")
+                self._applied_key = key
         finally:
+            self.max_lines = int(self.shown_lines)
             self._refining = False
 
     def _run_refinement(self, key: tuple[str, int, float]) -> None:

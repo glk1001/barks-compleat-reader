@@ -125,7 +125,9 @@
                 BoxLayout:
                     id: title_info_box
                     orientation: 'vertical'
-                    size_hint: 0.56, 1.0
+                    # As tall as the space under its top: a taller box ran on below the
+                    # panel, and a long extra-info text was cut at the panel's edge.
+                    size_hint: 0.56, 0.92
                     pos_hint: {'x': 0, 'top': 0.92}
                     padding: [bottom_title_view.title_box_padding, 0, 0, 0]
                     spacing: bottom_title_view.title_box_spacing
@@ -171,6 +173,9 @@
                         text_size: self.width, None
                         halign: 'justify'
                         padding: [dp(1), 0, 0, 0]
+                        # Only the lines that fit under the title info: the text ends at a
+                        # line, not cut through one at the panel's edge.
+                        shown_lines: max(1, int((title_info_box.height - title_info_label.height - title_info_box.spacing) / (max(self.font_size, 1) * 1.3)))
 
                     # IMPORTANT: This filler widget pushes the labels above it to the top.
                     Widget:
