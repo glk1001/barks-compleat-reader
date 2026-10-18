@@ -846,3 +846,34 @@ class TestDriverMarkersMatchTheApp:
         assert node.group(1) == "FROZEN_GOLD"
         assert page is not None
         assert page.group(1) == "34"
+
+
+class TestInMenuMode:
+    """The driver reads whether the app is in a menu from its log, and walks accordingly."""
+
+    @staticmethod
+    def _log(driver: Driver, *lines: str) -> None:
+        driver.log_path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+    def test_more_entries_than_exits_means_in_a_menu(self, stub_driver: Driver) -> None:
+        assert not stub_driver.in_menu_mode()
+        self._log(stub_driver, Driver.MENU_ENTERED)
+        assert stub_driver.in_menu_mode()
+        self._log(stub_driver, Driver.MENU_ENTERED, Driver.MENU_EXITED)
+        assert not stub_driver.in_menu_mode()
+
+    def test_already_in_the_menu_the_walk_presses_no_escape(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        """The settings closed by Escape leave the keys on the bar: an Escape would leave it."""
+        self._log(stub_driver, Driver.MENU_ENTERED)
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait") as key_then_wait,
+            patch.object(Driver, "move_focus") as move,
+            patch.object(Driver, "_pace"),
+        ):
+            stub_driver.main_menu_button("menu")
+        key_then_wait.assert_not_called()
+        assert keys_pressed(key) == ["Return"]
+        assert move.call_count >= 1

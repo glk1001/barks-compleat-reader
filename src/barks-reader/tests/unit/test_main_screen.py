@@ -729,3 +729,29 @@ class TestHistoryGoto:
         main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
             ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=None)
         )
+
+
+class TestSettingsEscape:
+    """Escape out of the settings puts the keys back on the action bar."""
+
+    def test_escape_closes_the_settings_and_enters_menu_mode(self, main_screen: MainScreen) -> None:
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_nav.handle_key.return_value = False
+        with (
+            patch.object(main_screen, "_close_settings") as close,
+            patch.object(main_screen, "_enter_menu_mode") as menu,
+        ):
+            assert main_screen._handle_settings_key(KEY_ESCAPE) is True
+        close.assert_called_once_with()
+        menu.assert_called_once_with()
+
+    def test_a_key_the_settings_take_leaves_them_open(self, main_screen: MainScreen) -> None:
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_nav.handle_key.return_value = True
+        with (
+            patch.object(main_screen, "_close_settings") as close,
+            patch.object(main_screen, "_enter_menu_mode") as menu,
+        ):
+            assert main_screen._handle_settings_key(KEY_DOWN) is True
+        close.assert_not_called()
+        menu.assert_not_called()

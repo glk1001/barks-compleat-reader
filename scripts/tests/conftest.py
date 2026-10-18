@@ -25,17 +25,22 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def new_stub_driver() -> Callable[[], Driver]:
+def new_stub_driver(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], Driver]:
     """Make a Driver with no probe attached, for exercising its own logic against.
 
     A factory, for a helper that needs a fresh driver per call: menu focus is
     sticky on a driver, so two runs on one would see each other's moves. The
-    class-level defaults stand in for what ``__init__`` would set.
+    class-level defaults stand in for what ``__init__`` would set, and an empty
+    app log for the one ``start`` would record: a test writes the lines it needs.
     """
 
     def _make() -> Driver:
         with patch.object(Driver, "__init__", lambda _self, *_a, **_kw: None):
-            return Driver()
+            driver = Driver()
+        log = tmp_path_factory.mktemp("stub") / "app.log"
+        log.write_text("", encoding="utf-8")
+        driver._log = log  # noqa: SLF001
+        return driver
 
     return _make
 

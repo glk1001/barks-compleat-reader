@@ -42,11 +42,13 @@ def _pick(d: Driver, marker: str) -> None:
         d.key("Return")
 
 
-def test_dots_menu_opens_settings(boot: AppBoot) -> None:
+def test_dots_menu_opens_settings_and_escape_returns_to_the_menu_button(boot: AppBoot) -> None:
+    """Escape closes the settings and puts the keys back on the Menu button that opened them."""
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
+        d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
 
 
 # The settings panel lists its fields in reader_settings._FIELDS order, and its

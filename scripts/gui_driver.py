@@ -191,6 +191,7 @@ class Driver:
     WIKI_FOCUS_MOVED = r"OKFViewer: (Focus ring on|Sidebar focus on)"
     DROPDOWN_DISMISSED = "Dropdown dismissed."
     MENU_ENTERED = "Entered menu mode."
+    MENU_EXITED = "Exited menu mode."
 
     def __init__(
         self,
@@ -683,12 +684,23 @@ class Driver:
         forward = (there - here) % count
         backward = (here - there) % count
 
-        self.key_then_wait(self.MENU_ENTERED, "Escape")
+        # Escape enters the menu, unless the app is in it already (the settings closed
+        # by Escape put the keys back on the bar): there it would leave the menu.
+        if not self.in_menu_mode():
+            self.key_then_wait(self.MENU_ENTERED, "Escape")
         self._pace(MENU_OPEN_PAUSE)
         step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
         for _ in range(presses):
             self.move_focus(step)
             self._pace(MENU_STEP_PAUSE)
+
+    def in_menu_mode(self) -> bool:
+        """Return whether the app's keys are in an action-bar menu, as its log says.
+
+        Every entry into a menu logs `MENU_ENTERED` and every exit `MENU_EXITED`, so
+        more entries than exits means the app is in one now.
+        """
+        return self.match_count(self.MENU_ENTERED) > self.match_count(self.MENU_EXITED)
 
     def main_menu_button(self, name: str) -> None:
         """Open the main screen's action-bar menu and activate one button by name.

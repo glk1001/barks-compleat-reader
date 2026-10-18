@@ -418,6 +418,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         assert self._settings_nav is not None
         if not self._settings_nav.handle_key(key) and is_escape_key(key):
             self._close_settings()
+            # Back where the keys came from: the action bar, on the Menu button that
+            # opened the settings (the last button used). Closed, the settings left no
+            # focus anywhere, and the next key went to the tree.
+            self._enter_menu_mode()
         return True
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
