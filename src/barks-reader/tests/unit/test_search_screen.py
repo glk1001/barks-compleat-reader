@@ -3071,6 +3071,36 @@ class TestTagListKeys:
     def _texts(chips: list[Any]) -> list[str]:
         return [chip.text for chip in chips]
 
+    def test_a_chip_pressed_by_mouse_takes_the_focus_once_the_list_settles(
+        self, screen: SearchScreen
+    ) -> None:
+        """Left where it was, the ring sat on a stale chip and the next key went on from it."""
+        screen._nav_active = True
+        screen._nav_focus_area = "tags"
+        screen._nav_focused_chip_idx = 0
+        with patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)):
+            screen._on_tag_chip_pressed("Duckburg")
+        chips = screen._get_tag_chip_buttons()
+        assert chips[screen._nav_focused_chip_idx].text == "Duckburg"
+
+    def test_a_chip_pressed_by_the_keys_places_its_own_focus(self, screen: SearchScreen) -> None:
+        """The follow is for the mouse: flagged as the keys' own, a press is not followed."""
+        screen._nav_active = True
+        screen._nav_focus_area = "tags"
+        flagged: list[bool] = []
+        with patch.object(
+            screen,
+            "_handle_tags_enter_by_key",
+            side_effect=lambda _chips: flagged.append(screen._pressing_chip_by_key),
+        ):
+            screen._handle_tags_enter(screen._get_tag_chip_buttons())
+        assert flagged == [True]
+        assert screen._pressing_chip_by_key is False  # cleared after
+        screen._pressing_chip_by_key = True
+        with patch.object(search_screen.Clock, "schedule_once") as schedule:
+            screen._follow_chip_press()
+        schedule.assert_not_called()
+
     def test_the_focused_chip_is_scrolled_into_view(self, screen: SearchScreen) -> None:
         """The list outruns its window: the focus followed the keys off its edge."""
         chips = screen._get_tag_chip_buttons()

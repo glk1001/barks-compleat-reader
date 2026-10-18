@@ -469,3 +469,29 @@ def test_search_chips_are_picked_by_tap(boot: AppBoot) -> None:
         kind="_BasketChipButton",
         text=f"{word} \u00d7",  # as listed: spaces run together
     )
+
+
+def test_the_keyboard_focus_follows_a_tap_in_the_index(boot: AppBoot) -> None:
+    """A letter tapped takes the keyboard focus: the next Down goes on from it."""
+    d = _boot(boot, nodes.MAIN_INDEX)
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")  # the ring sits on "A"
+    taps.tap_then_wait(d, pattern(markers.INDEX_LETTER_POPULATED, letter="C"), text="C")
+    d.settle()
+    d.key_then_wait(pattern(markers.INDEX_LETTER_POPULATED, letter="D"), "Down")
+
+
+def test_the_keyboard_focus_follows_a_tap_on_a_tag_chip(boot: AppBoot) -> None:
+    """A member chip tapped takes the keyboard focus: the next Down goes on from it."""
+    members = expected.group_members(NESTING_GROUP)
+    d = _boot(boot, nodes.TAG_SEARCH)
+    with d.expect(pattern(markers.TAG_SELECTED_TAG, tag=NESTING_GROUP)):
+        search.type_query(d, NESTING_GROUP)
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # out of the box, onto the group chip
+    taps.tap_then_wait(
+        d,
+        pattern(markers.TAG_SELECTED_MEMBER, member=members[0]),
+        kind="_TagChipButton",
+        text=members[0],
+    )
+    d.settle()
+    d.key_then_wait(f'{d.FOCUS_MOVED} _TagChipButton "{members[1]}"', "Down")

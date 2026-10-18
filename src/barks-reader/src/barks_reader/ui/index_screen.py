@@ -468,6 +468,12 @@ class Theme:
 
 # noinspection PyAbstractClass
 class IndexScreen(FloatLayout):
+    # A press made by the keys, from `_activate_focused_item`: a press made otherwise (the
+    # mouse) moves the keyboard focus to the item pressed first. A class default: a screen
+    # built bare, without __init__, presses items too.
+    _pressing_focused_item: bool = False
+    _nav_active: bool = False  # the keyboard focus state a bare screen starts from
+
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
     num_columns = NumericProperty(2)
@@ -768,7 +774,11 @@ class IndexScreen(FloatLayout):
         btn = col_buttons[self._nav_focused_item_idx]
         self._pending_focus_resync = None
         self._focus_handoff = None
-        btn.trigger_action(duration=0)
+        self._pressing_focused_item = True
+        try:
+            btn.trigger_action(duration=0)
+        finally:
+            self._pressing_focused_item = False
         if self._focus_handoff is not None:
             btn, self._focus_handoff = self._focus_handoff, None
         # Re-sync focus after items may have been added/removed by the action.
@@ -783,6 +793,19 @@ class IndexScreen(FloatLayout):
             self._pending_focus_resync = (btn, post_action_count)
         else:
             self._resync_item_focus(btn, post_action_count)
+
+    def _place_focus_on(self, btn: Button) -> bool:
+        """Put the keyboard focus on `btn`, an item in one of the columns; False if in none."""
+        for col_idx in range(self.num_columns):
+            col_buttons = self._get_col_buttons(col_idx)
+            if btn in col_buttons:
+                self._clear_letter_focus()
+                self._clear_all_item_focus()
+                self._nav_panel = _IndexNavPanel.ITEMS
+                self._nav_focused_col = col_idx
+                self._nav_focused_item_idx = col_buttons.index(btn)
+                return True
+        return False
 
     def _hand_focus_to(self, btn: Button) -> None:
         """Have the keyboard focus follow the action being taken to `btn`, in any column."""
@@ -1054,6 +1077,17 @@ class IndexScreen(FloatLayout):
         self._selected_letter_button = button
 
         self._populate_index_for_letter(first_letter)
+        if (
+            self._nav_active
+            and not self._pressing_focused_item
+            and first_letter in self._letter_order
+        ):
+            # The focus follows a mouse press on a letter: the next key goes on from it.
+            self._clear_all_item_focus()
+            self._clear_letter_focus()
+            self._nav_panel = _IndexNavPanel.ALPHABET
+            self._nav_focused_letter_idx = self._letter_order.index(first_letter)
+            self._draw_letter_focus()
 
     def _populate_index_grid(self, letter: str) -> None:
         """Handle a letter button press and display the corresponding index items."""
@@ -1148,6 +1182,12 @@ class IndexScreen(FloatLayout):
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
+        if self._nav_active and not self._pressing_focused_item and self._place_focus_on(button):
+            # The focus follows a mouse press: pressed again as the keys press, the
+            # focus is brought back in step after the item opens or closes, and the next key
+            # goes on from the item pressed, not from where the ring was left.
+            self._activate_focused_item()
+            return
         logger.info(log_markers.INDEX_ITEM_PRESSED.format(item=item))
 
         if self._handle_terminal_item(button, item):

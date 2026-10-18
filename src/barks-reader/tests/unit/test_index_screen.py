@@ -1305,3 +1305,61 @@ class TestPinnedPress:
             with patch.object(ConcreteIndexScreen, "_get_col_buttons", return_value=[MagicMock()]):
                 index_screen._resync_item_focus(MagicMock(), 0)
         draw.assert_called_once_with(scroll=False)
+
+
+class TestFocusFollowsAPress:
+    """A press by mouse moves the keyboard focus to what was pressed; the keys press as before."""
+
+    def test_an_item_pressed_by_mouse_takes_the_focus_and_is_pressed_as_the_keys_press(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ALPHABET
+        with (
+            patch.object(
+                ConcreteIndexScreen, "_get_col_buttons", return_value=[MagicMock(), button]
+            ),
+            patch.object(ConcreteIndexScreen, "_activate_focused_item") as activate,
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+        ):
+            index_screen._on_index_item_press(button, item)
+        assert index_screen._nav_panel == barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        assert (index_screen._nav_focused_col, index_screen._nav_focused_item_idx) == (0, 1)
+        activate.assert_called_once_with()
+        expand.assert_not_called()  # the press by the keys does the pressing
+
+    def test_a_press_by_the_keys_is_not_placed_again(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        index_screen._nav_active = True
+        index_screen._pressing_focused_item = True  # inside _activate_focused_item
+        with (
+            patch.object(ConcreteIndexScreen, "_place_focus_on") as place,
+            patch.object(ConcreteIndexScreen, "ids", new={}),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion"),
+        ):
+            index_screen._on_index_item_press(button, item)
+        place.assert_not_called()
+        expand.assert_called_once_with(button)
+
+    def test_a_letter_pressed_by_mouse_takes_the_letter_focus(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        index_screen.treeview_index_node = MagicMock()
+        index_screen.treeview_index_node.saved_state = {}
+        button = MagicMock(text="C")
+        with (
+            patch.object(ConcreteIndexScreen, "_populate_index_for_letter"),
+            patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw,
+        ):
+            index_screen.on_letter_press(button)
+        assert index_screen._nav_panel == barks_reader.ui.index_screen._IndexNavPanel.ALPHABET
+        assert index_screen._letter_order[index_screen._nav_focused_letter_idx] == "C"
+        draw.assert_called_once_with()

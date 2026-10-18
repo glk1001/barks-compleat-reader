@@ -352,6 +352,13 @@ def _speaker_label(speaker: str) -> str:
 
 
 class SearchScreen(DropdownNavMixin, FloatLayout):
+    # A chip pressed by the keys places the focus itself; pressed otherwise (the mouse),
+    # the focus follows the press once the list has been rebuilt. A class default: a
+    # screen built bare, without __init__, presses chips too.
+    _pressing_chip_by_key: bool = False
+    # The keyboard focus state a bare screen starts from (see above).
+    _nav_active: bool = False
+    _nav_focus_area: str = "input"
     """Bottom view screen for search. Mode is set externally via set_mode()."""
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -853,6 +860,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._current_tag, _ = self._search.resolve_tag(tag_str.lower())
         self._rebuild_tag_chips()
         self._show_tag_titles(tag_str)
+        self._follow_chip_press()
 
     def _close_tag_group(self) -> None:
         """Close the picked group: its members go, and its own stories are listed."""
@@ -862,6 +870,19 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._current_tag = None
         self._rebuild_tag_chips()
         self._show_tag_titles(self._selected_tag)
+        self._follow_chip_press()
+
+    def _follow_chip_press(self) -> None:
+        """Move the keyboard focus to the chip just pressed by mouse, once the list settles.
+
+        Left where it was, the ring sat on a stale chip and the next key went on from it.
+        A press by the keys places the focus itself.
+        """
+        if self._pressing_chip_by_key or not self._nav_active or self._nav_focus_area != "tags":
+            return
+        Clock.schedule_once(
+            lambda _dt: Clock.schedule_once(lambda _dt2: self._focus_selected_or_first_chip())
+        )
 
     def _on_member_chip_pressed(self, member: Tags | TagGroups) -> None:
         """Pick a member and list its stories; a subgroup opens its members, or closes them."""
@@ -882,6 +903,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             for chip in self._get_member_chip_buttons():
                 chip.chip_bg_color = chip_bg_active() if chip.text == label else _chip_bg_member()
         self._show_tag_titles(label)
+        self._follow_chip_press()
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -2246,6 +2268,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         return True
 
     def _handle_tags_enter(self, chips: list[Button]) -> None:
+        self._pressing_chip_by_key = True
+        try:
+            self._handle_tags_enter_by_key(chips)
+        finally:
+            self._pressing_chip_by_key = False
+
+    def _handle_tags_enter_by_key(self, chips: list[Button]) -> None:
         if not chips or self._nav_focused_chip_idx >= len(chips):
             return
         focused_chip = chips[self._nav_focused_chip_idx]
