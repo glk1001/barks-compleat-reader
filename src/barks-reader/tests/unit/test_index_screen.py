@@ -10,6 +10,7 @@ import barks_reader.ui.index_screen
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
+from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
@@ -1191,3 +1192,116 @@ class TestExpansionStateMachineEdges:
         index_screen._open_tag_widgets = [_FakeWidget(), _FakeWidget()]
         level = index_screen._get_level_of_click_for_expand_or_switch(cast("Button", looped))
         assert level == -1
+
+
+class TestPinnedPress:
+    """A press holds its row still through the rows opening or closing under it."""
+
+    @staticmethod
+    def _owner_layout(button: MagicMock | None, *rows: MagicMock) -> MagicMock:
+        layout = MagicMock()
+        layout.owner_button = button
+        layout.children = list(reversed(rows))  # Kivy keeps children last-added-first
+        return layout
+
+    def test_an_expansion_is_pinned_with_the_expansion_as_its_populate(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        pinner = MagicMock()
+        index_screen._row_pinner = pinner
+        with (
+            patch.object(ConcreteIndexScreen, "ids", new={"index_scroll_view": MagicMock()}),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(button, item)
+            expand.assert_not_called()  # the expansion runs under the pin's hold
+            pin = pinner.pin_row.call_args
+            assert pin.args == (button,)
+            assert pin.kwargs["expanding"] is True
+            assert pin.kwargs["name"] == "Apple"
+            assert pin.kwargs["revealed_marker"] == log_markers.INDEX_SUB_ITEMS_REVEALED
+            pin.kwargs["populate"]()
+        expand.assert_called_once_with(button)
+        expansion.assert_called_once_with(button, item)
+
+    def test_a_collapse_is_pinned_too(self, index_screen: ConcreteIndexScreen) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        pinner = MagicMock()
+        index_screen._row_pinner = pinner
+        index_screen._open_tag_widgets = [self._owner_layout(button)]
+        with (
+            patch.object(ConcreteIndexScreen, "ids", new={"index_scroll_view": MagicMock()}),
+            patch.object(ConcreteIndexScreen, "_handle_collapse") as collapse,
+        ):
+            index_screen._on_index_item_press(button, item)
+            pin = pinner.pin_row.call_args
+            assert pin.kwargs["expanding"] is False
+            pin.kwargs["populate"]()
+        collapse.assert_called_once_with(0)
+
+    def test_the_pin_reads_whether_the_row_is_open_and_its_first_rows(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        rows = [MagicMock(name=f"row{i}") for i in range(5)]
+        pinner = MagicMock()
+        index_screen._row_pinner = pinner
+        with (
+            patch.object(ConcreteIndexScreen, "ids", new={"index_scroll_view": MagicMock()}),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch"),
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion"),
+        ):
+            index_screen._on_index_item_press(button, item)
+        pin = pinner.pin_row.call_args
+        assert pin.kwargs["is_open"]() is False
+        assert pin.kwargs["first_rows"]() == []
+        index_screen._sub_items_pending = True  # the sub-items await the next frame
+        assert pin.kwargs["is_open"]() is True
+        index_screen._sub_items_pending = False
+        index_screen._open_tag_widgets = [self._owner_layout(button, *rows)]
+        assert pin.kwargs["is_open"]() is True
+        assert pin.kwargs["first_rows"]() == rows[:3]
+
+    def test_the_first_rows_are_found_through_a_wrapper(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The speech indexes wrap their sub-items layout once more."""
+        button = MagicMock()
+        rows = [MagicMock(name=f"row{i}") for i in range(2)]
+        wrapper = MagicMock()
+        wrapper.owner_button = button
+        wrapper.children = [self._owner_layout(None, *rows)]
+        index_screen._open_tag_widgets = [wrapper]
+        assert index_screen._first_sub_item_rows(button, 3) == rows
+
+    def test_without_a_scroll_view_the_press_acts_unpinned(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """A screen built without its kv (these tests') has no scroll view to hold."""
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        with (
+            patch.object(ConcreteIndexScreen, "ids", new={}),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(button, item)
+        expand.assert_called_once_with(button)
+        expansion.assert_called_once_with(button, item)
+        assert index_screen._row_pinner is None
+
+    def test_the_focus_resync_after_an_expansion_does_not_scroll(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The pin glides the first rows in; a scroll's animation would write over it."""
+        with patch.object(ConcreteIndexScreen, "_draw_item_focus") as draw:
+            index_screen._nav_active = True
+            index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+            with patch.object(ConcreteIndexScreen, "_get_col_buttons", return_value=[MagicMock()]):
+                index_screen._resync_item_focus(MagicMock(), 0)
+        draw.assert_called_once_with(scroll=False)

@@ -1,13 +1,13 @@
-"""Keep an expanding or collapsing tree row visually pinned.
+"""Keep an expanding or collapsing row of a scrolled list visually pinned.
 
-`TreeScrollPinner` hides the pixel math that cancels the scroll "jump" when a tree
-node lazily creates its children or collapses them — a hold that moves ``scroll_y``
-in the very layout pass that changes the tree's height, then a per-frame
+`RowScrollPinner` hides the pixel math that cancels the scroll "jump" when a row
+lazily creates the rows under it or takes them away — a hold that moves ``scroll_y``
+in the very layout pass that changes the list's height, then a per-frame
 stabilization loop that checks the row settled where it was — and then glides the
-first children into view when they opened below the window's edge, behind a single
-call. `TreeViewManager` owns *which*
-node to expand and *when*; this module owns *how* the viewport stays put while it
-happens.
+first rows opened into view when they opened below the window's edge, behind a single
+call. The list's owner (`TreeViewManager`, an index screen) owns *which* row to open
+and *when*; this module owns *how* the viewport stays put while it happens.
+`TreeScrollPinner` is the tree view's, reading a node's open state and rows.
 
 The collaborators arrive as callables so the loop can be driven deterministically
 in tests:
@@ -23,6 +23,7 @@ in tests:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from comic_utils.timing import Timing
@@ -57,8 +58,19 @@ REVEAL_GLIDE_SECONDS = 0.2
 _REACHED_TOL = 1e-6
 
 
-class TreeScrollPinner:
-    """Pin an expanding or collapsing parent row's on-screen position."""
+@dataclass(frozen=True)
+class _PinSpec:
+    """A pinned row, and how to read the list it opens into."""
+
+    row: Widget
+    is_open: Callable[[], bool]  # whether the row's rows under it are (still) open
+    first_rows: Callable[[], list[Widget]]  # the first rows under it, as the list shows them
+    name: str  # the row's, for the log
+    revealed_marker: str  # the log marker for a reveal, with a `name` field
+
+
+class RowScrollPinner:
+    """Pin an expanding or collapsing row's on-screen position."""
 
     # ~3 seconds worst-case @ 60fps before giving up on stabilization.
     _MAX_SETTLE_FRAMES = 180
@@ -107,35 +119,51 @@ class TreeScrollPinner:
         self._release_hold()
         self._stop_glides(self._get_scroll_view())
 
-    def pin_while_populating(
-        self, parent_node: ButtonTreeViewNode, *, populate: Callable[[], None] | None
+    def pin_row(
+        self,
+        row: Widget,
+        *,
+        populate: Callable[[], None] | None,
+        expanding: bool,
+        is_open: Callable[[], bool],
+        first_rows: Callable[[], list[Widget]],
+        name: str,
+        revealed_marker: str,
     ) -> None:
-        """Keep *parent_node*'s row visually pinned while its children are created.
+        """Keep `row` visually pinned while the rows under it are created or taken away.
 
-        Records the parent row's current offset from the top of the viewport, holds
-        the row at that offset through the tree's height change (see `_hold_row`),
-        optionally runs *populate* to lazily create the children, then schedules a
-        settle loop that checks the row stayed there and corrects any drift (making
-        expansion behave like a dropdown rather than jumping the list).
-        Should even the first child open below the viewport, the tree then glides up
-        to show the first `REVEAL_ROWS` rows, as far as the row's staying in view
-        allows, unless a later pin or `cancel_pending_reveals` has come first.
-        `on_settled` runs when the row has stabilized or the attempt gives up.
+        Records the row's current offset from the top of the viewport, holds the row
+        at that offset through the list's height change (see `_hold_row`), optionally
+        runs `populate` to create or remove the rows under it, then schedules a settle
+        loop that checks the row stayed there and corrects any drift (making expansion
+        behave like a dropdown rather than jumping the list). Kivy keeps the scroll
+        position as a share of the content's height, so a shorter list would otherwise
+        move every row, the collapsed one too.
+        Opening (`expanding`), should even the first row under it open below the
+        viewport, the list then glides up to show the first `REVEAL_ROWS` of them, as
+        far as the row's staying in view allows, unless a later pin or
+        `cancel_pending_reveals` has come first; `revealed_marker` is logged with
+        `name` when the glide gets there. `on_settled` runs when the row has
+        stabilized or the attempt gives up.
+
+        Args:
+            row: The row to keep where it is.
+            populate: Creates or removes the rows under it, under the hold; or None when
+                the list's height is already changing.
+            expanding: Whether rows are opening under it (and may want revealing).
+            is_open: Returns whether its rows are open; the loop stops once that is not
+                `expanding` any more (the row was toggled back).
+            first_rows: Returns the first rows under it, as the list shows them.
+            name: The row's name, for the log.
+            revealed_marker: The log marker for a reveal, with a `name` field.
+
         """
-        self._pin(parent_node, populate=populate, expanding=True)
-
-    def pin_while_collapsing(self, parent_node: ButtonTreeViewNode) -> None:
-        """Keep *parent_node*'s row where it is on screen as its children go.
-
-        Kivy keeps the scroll position as a share of the content's height, so a
-        shorter tree would otherwise move every row, the collapsed one too. Only the
-        end of the tree, when there is no longer enough below it, moves it down.
-        """
-        self._pin(parent_node, populate=None, expanding=False)
+        spec = _PinSpec(row, is_open, first_rows, name, revealed_marker)
+        self._pin(spec, populate=populate, expanding=expanding)
 
     def _pin(
         self,
-        parent_node: ButtonTreeViewNode,
+        spec: _PinSpec,
         *,
         populate: Callable[[], None] | None,
         expanding: bool,
@@ -155,9 +183,9 @@ class TreeScrollPinner:
         try:
             # Offset of the parent row's *top* relative to the ScrollView's top.
             sv_top_win_y = scroll_view.to_window(0, scroll_view.top)[1]
-            parent_top_win_y = parent_node.to_window(0, parent_node.top)[1]
+            parent_top_win_y = spec.row.to_window(0, spec.row.top)[1]
             target_offset_px = parent_top_win_y - sv_top_win_y  # keep this constant
-            self._hold_row(parent_node, scroll_view, -target_offset_px)
+            self._hold_row(spec.row, scroll_view, -target_offset_px)
 
             # Optionally populate children now (lazy load for first expand).
             if populate is not None:
@@ -185,21 +213,18 @@ class TreeScrollPinner:
 
             self._schedule_once(
                 lambda dt: self._stabilize_after_layout(
-                    dt, parent_node, scroll_view, target_offset_px, checks
+                    dt, spec, scroll_view, target_offset_px, checks
                 ),
                 0,
             )
         finally:
             if expanding:
                 logger.debug(
-                    f"Populated node '{get_clean_text_without_extra(parent_node.text)}'"
-                    f" in {timing.get_elapsed_time_with_unit()}."
+                    f"Populated node '{spec.name}' in {timing.get_elapsed_time_with_unit()}."
                 )
 
-    def _hold_row(
-        self, parent_node: ButtonTreeViewNode, scroll_view: ScrollView, row_from_view_top: float
-    ) -> None:
-        """Keep *parent_node*'s row `row_from_view_top` below the view's top as the tree resizes.
+    def _hold_row(self, row: Widget, scroll_view: ScrollView, row_from_view_top: float) -> None:
+        """Keep `row` `row_from_view_top` below the view's top as the list resizes.
 
         Kivy keeps ``scroll_y`` as a share of the content's height, so a taller or shorter
         tree moves every row for the frames until a correction lands: a jump, and back.
@@ -214,11 +239,11 @@ class TreeScrollPinner:
         def on_height(_cont: Widget, height: float) -> None:
             nonlocal last_height
             old_height, last_height = last_height, height
-            if parent_node.parent is None:  # gone from the tree, repopulated
+            if row.parent is None:  # gone from the list, repopulated
                 return
-            # The rows were just laid out down from the tree's old top.
+            # The rows were just laid out down from the list's old top.
             scroll_y = scroll_y_keeping_row(
-                row_from_content_top=cont.y + old_height - parent_node.top,
+                row_from_content_top=cont.y + old_height - row.top,
                 row_from_view_top=row_from_view_top,
                 content_height=height,
                 view_height=scroll_view.height,
@@ -237,14 +262,14 @@ class TreeScrollPinner:
     def _stabilize_after_layout(
         self,
         _dt: float,
-        parent_node: ButtonTreeViewNode,
+        spec: _PinSpec,
         scroll_view: ScrollView,
         target_offset_px: float,
         checks: dict[str, float],
     ) -> None:
         expanding = bool(checks["expanding"])
-        # Let go (the tree is being placed otherwise), or toggled back: stop.
-        if checks["pin_generation"] != self._pin_generation or parent_node.is_open != expanding:
+        # Let go (the list is being placed otherwise), or toggled back: stop.
+        if checks["pin_generation"] != self._pin_generation or spec.is_open() != expanding:
             self._settled(checks)
             return
 
@@ -253,7 +278,7 @@ class TreeScrollPinner:
             if checks["count"] < self._MAX_SETTLE_FRAMES:
                 self._schedule_once(
                     lambda dt: self._stabilize_after_layout(
-                        dt, parent_node, scroll_view, target_offset_px, checks
+                        dt, spec, scroll_view, target_offset_px, checks
                     ),
                     0,
                 )
@@ -284,16 +309,16 @@ class TreeScrollPinner:
             _resched()
             return
 
-        self._correct_and_reveal(parent_node, scroll_view, target_offset_px, checks)
+        self._correct_and_reveal(spec, scroll_view, target_offset_px, checks)
 
     def _correct_and_reveal(
         self,
-        parent_node: ButtonTreeViewNode,
+        spec: _PinSpec,
         scroll_view: ScrollView,
         target_offset_px: float,
         checks: dict[str, float],
     ) -> None:
-        """Move the settled tree's parent row back to its pinned offset, then reveal."""
+        """Move the settled list's pinned row back to its offset, then reveal."""
         cont = scroll_view.children[0]
         viewport_h = scroll_view.height
         cont_h = cont.height
@@ -301,18 +326,18 @@ class TreeScrollPinner:
 
         # Where the parent's row is now, before any correction moves the tree.
         sv_top = scroll_view.to_window(0, scroll_view.top)[1]
-        new_parent_top = parent_node.to_window(0, parent_node.top)[1]
+        new_parent_top = spec.row.to_window(0, spec.row.top)[1]
 
-        # The tree has settled: its rows are laid out down from its top as it is. Read
-        # from the tree, not the window: a correction this frame has moved scroll_y,
-        # not yet the rows, so pins settling together each place the tree afresh.
+        # The list has settled: its rows are laid out down from its top as it is. Read
+        # from the list, not the window: a correction this frame has moved scroll_y,
+        # not yet the rows, so pins settling together each place the list afresh.
         scroll_y = scroll_y_keeping_row(
-            row_from_content_top=cont.y + cont_h - parent_node.top,
+            row_from_content_top=cont.y + cont_h - spec.row.top,
             row_from_view_top=-target_offset_px,
             content_height=cont_h,
             view_height=viewport_h,
         )
-        # A tree no taller than the viewport does not scroll: nothing to pin.
+        # A list no taller than the viewport does not scroll: nothing to pin.
         if scroll_y is None:
             self._settled(checks)
             return
@@ -325,7 +350,7 @@ class TreeScrollPinner:
         # Then, the parent pinned back, how far up to show the first children.
         reveal_px = (
             self._get_reveal_px(
-                parent_node, scroll_view, sv_top, new_parent_top, sv_top + target_offset_px
+                spec.first_rows(), scroll_view, sv_top, new_parent_top, sv_top + target_offset_px
             )
             if expanding and checks["reveal_generation"] == self._reveal_generation
             else 0.0
@@ -334,12 +359,10 @@ class TreeScrollPinner:
             self._settled(checks)
             return
 
-        name = get_clean_text_without_extra(parent_node.text)
-
         def _revealed(reached: bool) -> None:
             # A glide stopped short (a scroll to a node, a new pin) showed nothing.
             if reached:
-                logger.debug(log_markers.TREE_CHILDREN_REVEALED.format(name=name))
+                logger.debug(spec.revealed_marker.format(name=spec.name))
             self._settled(checks)
 
         self._glide(
@@ -350,20 +373,19 @@ class TreeScrollPinner:
 
     @staticmethod
     def _get_reveal_px(
-        parent_node: ButtonTreeViewNode,
+        rows: list[Widget],
         scroll_view: ScrollView,
         sv_top: float,
         parent_top: float,
         pinned_parent_top: float,
     ) -> float:
-        """Return how far up to scroll so the parent's first shown rows are in the viewport.
+        """Return how far up to scroll so `rows`, the first under the pinned row, show.
 
-        Nothing while its first row shows whole: the parent then need not move. Else
-        enough for the first `REVEAL_ROWS` rows (its children, and theirs where open),
-        measured with the parent back at its pinned top, `pinned_parent_top`, its rows
-        the same distance below it as they are now.
+        Nothing while the first shows whole: the pinned row then need not move. Else
+        enough for all of them (the first `REVEAL_ROWS`), measured with the pinned row
+        back at its pinned top, `pinned_parent_top`, its rows the same distance below it
+        as they are now.
         """
-        rows = _get_first_shown_rows(parent_node, REVEAL_ROWS)
         if not rows:
             return 0.0
         view_bottom = scroll_view.to_window(0, scroll_view.y)[1]
@@ -392,6 +414,38 @@ class TreeScrollPinner:
     @staticmethod
     def _clamp01(v: float) -> float:
         return 0.0 if v < 0.0 else (min(v, 1.0))
+
+
+class TreeScrollPinner(RowScrollPinner):
+    """Pin an expanding or collapsing tree node's row: its open state and rows are the node's."""
+
+    def pin_while_populating(
+        self, parent_node: ButtonTreeViewNode, *, populate: Callable[[], None] | None
+    ) -> None:
+        """Keep *parent_node*'s row visually pinned while its children are created.
+
+        Optionally runs *populate* to lazily create the children. Should even the first
+        child open below the viewport, the tree then glides up to show the first
+        `REVEAL_ROWS` rows (its children, and theirs where open): see `pin_row`.
+        """
+        self._pin_node(parent_node, populate=populate, expanding=True)
+
+    def pin_while_collapsing(self, parent_node: ButtonTreeViewNode) -> None:
+        """Keep *parent_node*'s row where it is on screen as its children go."""
+        self._pin_node(parent_node, populate=None, expanding=False)
+
+    def _pin_node(
+        self, node: ButtonTreeViewNode, *, populate: Callable[[], None] | None, expanding: bool
+    ) -> None:
+        self.pin_row(
+            node,
+            populate=populate,
+            expanding=expanding,
+            is_open=lambda: bool(node.is_open),
+            first_rows=lambda: _get_first_shown_rows(node, REVEAL_ROWS),
+            name=get_clean_text_without_extra(node.text),
+            revealed_marker=log_markers.TREE_CHILDREN_REVEALED,
+        )
 
 
 def _glide_scroll_y(

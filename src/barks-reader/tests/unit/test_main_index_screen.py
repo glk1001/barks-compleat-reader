@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +11,6 @@ import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
-from barks_reader.core.scroll_reveal import reveal_distance
 from barks_reader.ui.index_screen import IndexItem
 from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy
 from kivy.clock import Clock
@@ -241,11 +239,9 @@ class TestTagMarkers:
         with (
             patch.object(main_index_screen, "_get_sub_item_layout", return_value=layout),
             patch.object(main_index_screen, "_insert_tag_sub_items_layout"),
-            patch.object(main_index_screen, "_reveal_sub_items") as reveal,
         ):
             main_index_screen._add_sub_items(0)
         assert f"Index sub-items added under '{group.name}': 3." in loguru_sink
-        reveal.assert_called_once_with(group, main_index_screen._open_tag_button, layout)
 
     @staticmethod
     def _opened_sub_item_ids(
@@ -352,89 +348,6 @@ class TestTitleHierarchy:
     def test_a_title_under_a_top_level_tag_names_the_tag(self) -> None:
         hierarchy = TitleHierarchy(None, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
         assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike (Alaska) "
-
-
-class TestRevealSubItems:
-    """Opened near the bottom of the view, a tag's sub-items are scrolled into it."""
-
-    @pytest.mark.parametrize(
-        ("items_bottom", "owner_top", "distance"),
-        [
-            (500, 900, 0),  # already in view: no scroll
-            (-200, 400, 210),  # hidden below: up by that much, and the padding
-            (-2000, 400, 600),  # taller than the view: the row goes to its top
-        ],
-    )
-    def test_the_distance_shows_the_sub_items_but_keeps_their_row(
-        self, items_bottom: float, owner_top: float, distance: float
-    ) -> None:
-        assert (
-            reveal_distance(
-                view_bottom=0,
-                view_top=1000,
-                items_bottom=items_bottom,
-                owner_top=owner_top,
-                padding=10,
-            )
-            == distance
-        )
-
-    @staticmethod
-    def _scroll_view(*, pending: bool = False) -> MagicMock:
-        """Return a scroll view over 0-1000 of 2000px of content, at its top."""
-        content = MagicMock()
-        content._trigger_layout.is_triggered = pending
-        view = MagicMock(y=0, top=1000, scroll_y=1.0, children=[content])
-        view.parent.to_widget = lambda x, y: (x, y)
-        view.convert_distance_to_scroll = lambda dx, dy: (dx / 1000, dy / 1000)
-        return view
-
-    @staticmethod
-    def _widget(y: float, top: float) -> MagicMock:
-        widget = MagicMock(x=0, y=y, top=top)
-        widget.to_window = lambda x, y: (x, y)
-        widget._trigger_layout.is_triggered = False
-        widget.parent._trigger_layout.is_triggered = False  # its column, laid out
-        return widget
-
-    def _reveal(self, screen: MainIndexScreen, view: MagicMock, sub_items: MagicMock) -> None:
-        button = self._widget(y=30, top=55)
-        with patch.object(MainIndexScreen, "ids", SimpleNamespace(index_scroll_view=view)):
-            screen._reveal_sub_items(Tags.FLINTHEART_GLOMGOLD, button, sub_items)
-
-    def test_sub_items_opened_below_the_view_are_scrolled_into_it(
-        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
-    ) -> None:
-        view = self._scroll_view()
-        self._reveal(main_index_screen, view, self._widget(y=-300, top=30))
-        assert view.scroll_y == pytest.approx(1.0 - 0.31)  # 300px, and 10 of padding
-        assert "Index scrolled to show the sub-items under 'FLINTHEART_GLOMGOLD'." in loguru_sink
-
-    def test_sub_items_already_in_view_move_nothing(
-        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
-    ) -> None:
-        view = self._scroll_view()
-        self._reveal(main_index_screen, view, self._widget(y=200, top=500))
-        assert view.scroll_y == 1.0
-        assert not any("Index scrolled" in line for line in loguru_sink)
-
-    def test_the_scroll_waits_until_the_layouts_have_placed_the_sub_items(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        view = self._scroll_view(pending=True)
-        with patch.object(Clock, "schedule_once") as schedule:
-            self._reveal(main_index_screen, view, self._widget(y=-300, top=30))
-        schedule.assert_called_once()
-        assert view.scroll_y == 1.0
-
-    def test_sub_items_closed_again_meanwhile_move_nothing(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        view = self._scroll_view()
-        sub_items = self._widget(y=-300, top=30)
-        sub_items.parent = None
-        self._reveal(main_index_screen, view, sub_items)
-        assert view.scroll_y == 1.0
 
 
 class TestSeeReferences:

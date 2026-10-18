@@ -1,10 +1,10 @@
 """How far to scroll a list so the rows opened under a row show, the row kept in view.
 
-The reveal distance is shared by the tree view and the Main Index: a row opened near
-the bottom of the view put its new rows below it, out of sight, and the press seemed
-to do nothing. The scroll that keeps a row where it is while the rows under it open
-or shut is the tree view's alone, so far: the Main Index still jumps.
-Kivy-free, so both can be tested without a window.
+Shared by the tree view and the index screens through `ui/tree_scroll_pinner.py`: a
+row opened near the bottom of the view put its new rows below it, out of sight, and
+the press seemed to do nothing; and Kivy keeps the scroll position as a share of the
+content's height, so the rows opening or shutting under a row moved it.
+Kivy-free, so the arithmetic can be tested without a window.
 """
 
 from __future__ import annotations

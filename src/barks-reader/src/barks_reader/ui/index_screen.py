@@ -61,6 +61,7 @@ from .reader_keyboard_nav import (
     is_escape_key,
     log_nav_focus,
 )
+from .tree_scroll_pinner import REVEAL_ROWS, RowScrollPinner
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -512,6 +513,7 @@ class IndexScreen(FloatLayout):
         self._alphabet_buttons: dict[str, Button] = {}
         self._open_tag_button: Button | None = None
         self._open_tag_widgets: list[Widget] = []
+        self._row_pinner: RowScrollPinner | None = None  # made on the first press
 
         # Keyboard navigation state
         self._nav_active: bool = False
@@ -824,7 +826,9 @@ class IndexScreen(FloatLayout):
             # Collapsed or unchanged — stay on (or near) the parent button.
             self._nav_focused_item_idx = btn_idx
         self._clear_all_item_focus()
-        self._draw_item_focus()
+        # No scroll of its own: the pin holds the pressed row, and glides the first rows
+        # opened under it into view; a scroll's animation would write over both.
+        self._draw_item_focus(scroll=False)
 
     def _scroll_page(self, direction: int) -> None:
         scroll_view = self.ids.index_scroll_view
@@ -848,7 +852,7 @@ class IndexScreen(FloatLayout):
     def _clear_letter_focus(self) -> None:
         clear_focus_in_list(self._alphabet_buttons.values(), INDEX_NAV_FOCUS_GROUP)
 
-    def _draw_item_focus(self) -> None:
+    def _draw_item_focus(self, *, scroll: bool = True) -> None:
         col_buttons = self._get_col_buttons(self._nav_focused_col)
         if not col_buttons:
             return
@@ -857,7 +861,8 @@ class IndexScreen(FloatLayout):
         self._nav_focused_btn = btn
         draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
         self._set_item_fill(btn)
-        self.ids.index_scroll_view.scroll_to(btn)
+        if scroll:
+            self.ids.index_scroll_view.scroll_to(btn)
         self._nav_saved_grid_version = self._grid_version
 
     def _set_item_fill(self, btn: Button) -> None:
@@ -1147,14 +1152,71 @@ class IndexScreen(FloatLayout):
         is_collapse, level_of_click = self._get_level_of_click_for_collapse(button)
         if is_collapse:
             logger.debug("Action: Collapse")
-            self._handle_collapse(level_of_click)
+            self._pin_row(
+                button,
+                item,
+                expanding=False,
+                action=lambda: self._handle_collapse(level_of_click),
+            )
             return
 
         # --- This is an Expand action (top-level, drill-down, or lateral) ---
         logger.debug("Action: Expand/Switch")
-        self._handle_expand_or_switch(button)
 
-        self._handle_item_expansion(button, item)
+        def expand() -> None:
+            self._handle_expand_or_switch(button)
+            self._handle_item_expansion(button, item)
+
+        self._pin_row(button, item, expanding=True, action=expand)
+
+    def _pin_row(
+        self, button: Button, item: IndexItem, *, expanding: bool, action: Callable[[], None]
+    ) -> None:
+        """Run `action`, which opens or closes the rows under `button`, with its row held still.
+
+        The rows open or close under the row on the frames after the press (the
+        sub-items go in on the next frame, the speech indexes' spacers after), and Kivy
+        keeps the scroll position as a share of the content's height: without the hold,
+        every row moved, the pressed one too. Opened near the bottom of the view, the
+        first rows then glide into it, the pressed row kept in view, as the tree view's do.
+        """
+        scroll_view = self.ids.get("index_scroll_view") if hasattr(self.ids, "get") else None
+        if scroll_view is None:  # no scroll view to hold (a screen built without its kv)
+            action()
+            return
+        if self._row_pinner is None:
+            self._row_pinner = RowScrollPinner(
+                get_scroll_view=lambda: self.ids.index_scroll_view, on_settled=lambda: None
+            )
+        self._row_pinner.pin_row(
+            button,
+            populate=action,
+            expanding=expanding,
+            is_open=lambda: self._sub_items_pending or self._is_open_owner(button),
+            first_rows=lambda: self._first_sub_item_rows(button, REVEAL_ROWS),
+            name=item.display_text,
+            revealed_marker=log_markers.INDEX_SUB_ITEMS_REVEALED,
+        )
+
+    def _is_open_owner(self, button: Button) -> bool:
+        """Return whether `button` has sub-items open under it."""
+        return any(getattr(w, "owner_button", None) is button for w in self._open_tag_widgets)
+
+    def _first_sub_item_rows(self, button: Button, count: int) -> list[Widget]:
+        """Return the first `count` rows open under `button`, as the index shows them.
+
+        The sub-items sit in a layout tagged with its owner (the speech indexes wrap
+        theirs once more); its children are kept last-added-first.
+        """
+        layout = next(
+            (w for w in self._open_tag_widgets if getattr(w, "owner_button", None) is button),
+            None,
+        )
+        if layout is None:
+            return []
+        while len(layout.children) == 1 and layout.children[0].children:
+            layout = layout.children[0]
+        return list(reversed(layout.children))[:count]
 
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
         """Handle an item that has no sub-items. Return True if it was handled."""

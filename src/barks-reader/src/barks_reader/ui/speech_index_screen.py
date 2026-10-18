@@ -234,9 +234,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         return None
 
     @override
-    def _draw_item_focus(self) -> None:
+    def _draw_item_focus(self, *, scroll: bool = True) -> None:
         if not self._nav_on_speech_btn:
-            super()._draw_item_focus()
+            super()._draw_item_focus(scroll=scroll)
             return
         col_buttons = self._get_col_buttons(self._nav_focused_col)
         if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
@@ -247,7 +247,8 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             self._nav_focused_btn = title_btn
             draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP)
             self._set_item_fill(speech_btn)
-            self.ids.index_scroll_view.scroll_to(speech_btn)
+            if scroll:
+                self.ids.index_scroll_view.scroll_to(speech_btn)
             self._nav_saved_grid_version = self._grid_version
 
     def _handle_speech_btn_key(self, key: int) -> bool:
