@@ -671,6 +671,8 @@ class HistoryScreen(FloatLayout):
             self._activate_focused_row()
         elif key == KEY_DELETE:
             self._delete_focused_row()
+        elif key == KEY_LEFT:
+            self._ask_to_delete_focused_row()
         elif is_escape_key(key):
             self._request_nav_exit()
         else:
@@ -747,6 +749,27 @@ class HistoryScreen(FloatLayout):
         if self._nav_rows:
             self._nav_rows[self._nav_focused_idx].activate()
 
+    def _ask_to_delete_focused_row(self) -> None:
+        """Offer the focused row's deletion: a row's x button and the Delete key are no remote's.
+
+        Left is the one free key on a row (Enter reads, Up and Down move, Escape leaves),
+        and a slip of it must not delete, so the keyboard-operable confirm asks first.
+        """
+        if not self._nav_rows:
+            return
+        row = self._nav_rows[self._nav_focused_idx]
+        if self._current_view == _JOURNAL_VIEW:
+            text = "Delete this reading from the history?"
+        else:
+            text = f'Delete every reading of "{row.key}" from the history?'
+        open_confirm_popup(
+            title="Delete From History",
+            text=text,
+            ok_text="Delete",
+            cancel_text="Keep",
+            on_ok=self._delete_focused_row,
+        )
+
     def _delete_focused_row(self) -> None:
         # The delete action drops the row, which re-clamps the focus index.
         if self._nav_rows:
@@ -771,7 +794,7 @@ class HistoryScreen(FloatLayout):
         """
         scroll = self.ids.history_scroll
         if self.ids.history_rows.height > scroll.height:
-            scroll.scroll_to(widget, padding=dp(30))
+            scroll.scroll_to(widget, padding=30)  # scroll_to applies dp() itself
         else:
             scroll.scroll_y = 1.0
 

@@ -152,13 +152,26 @@ class TestHistoryScreenNav:
         assert nav_screen._nav_zone == _ZONE_BAR
         assert nav_screen._bar_focused_idx == _BAR_JOURNAL  # lands on the active tab
 
-    def test_list_left_right_are_not_consumed(self, nav_screen: HistoryScreen) -> None:
+    def test_list_right_is_not_consumed(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 2)
         nav_screen.enter_nav_focus(MagicMock())
 
-        # In the list zone Left/Right no longer switch tabs (bar-only now).
-        assert nav_screen.handle_key(KEY_LEFT) is False
+        # In the list zone Right does not switch tabs (bar-only now).
         assert nav_screen.handle_key(KEY_RIGHT) is False
+        assert nav_screen._nav_zone == _ZONE_LIST
+
+    def test_list_left_asks_before_deleting_the_focused_row(
+        self, nav_screen: HistoryScreen
+    ) -> None:
+        """Left offers to delete the focused row, asking first: its x and Delete are no remote's."""
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())
+        with patch.object(history_screen_module, "open_confirm_popup") as ask:
+            assert nav_screen.handle_key(KEY_LEFT) is True
+        nav_screen._nav_rows[0].delete.assert_not_called()
+        assert ask.call_args.kwargs["ok_text"] == "Delete"
+        ask.call_args.kwargs["on_ok"]()
+        nav_screen._nav_rows[0].delete.assert_called_once_with()
         assert nav_screen._nav_zone == _ZONE_LIST
 
     def test_bar_left_right_move_focus_and_clamp(self, nav_screen: HistoryScreen) -> None:

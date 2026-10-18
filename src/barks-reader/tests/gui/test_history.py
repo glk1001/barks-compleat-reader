@@ -103,3 +103,12 @@ def test_clear_asks_first_and_then_empties_the_history(boot: AppBoot) -> None:
         d.key("Return")
     d.settle()
     assert _events(boot) == []
+
+
+def test_left_on_a_row_asks_and_return_deletes_it(boot: AppBoot) -> None:
+    """A row's delete by remote: Left asks, with Delete focused, and Return removes the event."""
+    d = _enter(boot)
+    d.key_then_wait(pattern(markers.CONFIRM_POPUP_OPENED), "Left")
+    d.key_then_wait(pattern(markers.HISTORY_DELETED_EVENT, event_id=NEWEST_EVENT_ID), "Return")
+    d.settle()
+    assert len(_events(boot)) == CANNED_EVENTS - 1
