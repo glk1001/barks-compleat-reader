@@ -386,3 +386,23 @@ class TestPopupKeyboardNavEdges:
 
         assert popup_nav._textinput is textinput
         assert textinput.focus is True
+
+
+class TestFocusFirst:
+    def test_the_first_item_is_shown_focused_and_down_reaches_the_second(self) -> None:
+        items = [_make_item(), _make_item(), _make_item()]
+        nav = _make_nav(items)
+        with (
+            _patch_settingitem(items),
+            patch.object(nav_module, "draw_focus_highlight") as draw,
+        ):
+            nav.focus_first()
+            assert draw.call_args.args[0] is items[0]
+            nav.handle_key(KEY_DOWN)
+            assert draw.call_args.args[0] is items[1]
+
+    def test_an_empty_panel_has_nothing_to_focus(self) -> None:
+        nav = _make_nav([])
+        with patch.object(nav_module, "draw_focus_highlight") as draw:
+            nav.focus_first()
+        draw.assert_not_called()

@@ -697,3 +697,15 @@ class TestSmallScreenWarning:
         with patch.object(barks_reader.ui.main_screen, "open_message_popup") as popup:
             main_screen.warn_if_screen_too_small(1366, 768)
         popup.assert_not_called()
+
+
+def test_settings_open_with_their_first_item_focused(main_screen: MainScreen) -> None:
+    """Otherwise the first item is focused invisibly and the first Down lands on the second."""
+    settings = MagicMock()
+    app_window = MagicMock(children=[])
+    with (
+        patch.object(barks_reader.ui.main_screen.SettingsKeyboardNav, "focus_first") as first,
+        patch.object(main_screen, "_add_settings_close_button"),
+    ):
+        assert main_screen.display_settings(app_window, settings) is True
+    first.assert_called_once_with()

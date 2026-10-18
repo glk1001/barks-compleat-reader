@@ -525,6 +525,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
         self._settings_nav = SettingsKeyboardNav(settings)
+        self._settings_nav.focus_first()
         settings.bind(on_close=self._on_settings_closed)
         self._add_settings_close_button(app_window, settings)
 

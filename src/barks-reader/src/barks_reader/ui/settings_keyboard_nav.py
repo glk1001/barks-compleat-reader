@@ -65,6 +65,18 @@ class SettingsKeyboardNav:
             return True
         return False
 
+    def focus_first(self) -> None:
+        """Show the focus on the first item, where the keys start from.
+
+        Without it the first item is focused invisibly: Enter would act on it unseen, and
+        the first Down would land on the second item.
+        """
+        items = self._get_current_panel_items()
+        if not items:
+            return
+        self._focused_idx = 0
+        self._apply_focus(items)
+
     def reset(self) -> None:
         """Clear focus highlight and reset internal state."""
         if self._last_focused_item is not None:
