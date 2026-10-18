@@ -909,9 +909,18 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """
         if self._pressing_chip_by_key or not self._nav_active or self._nav_focus_area != "tags":
             return
-        Clock.schedule_once(
-            lambda _dt: Clock.schedule_once(lambda _dt2: self._focus_selected_or_first_chip())
-        )
+        self._once_the_list_settles(self._focus_selected_or_first_chip)
+
+    @staticmethod
+    def _once_the_list_settles(callback: Callable[[], None]) -> None:
+        """Run `callback` two frames on, once a rebuilt chip or result list has settled.
+
+        A press rebuilds a list; its new rows are laid out before the next frame, and
+        a focus drawn or scrolled to before then lands on where the rows were. Two
+        frames is empirical, from the first of these waits, and has not been seen short;
+        one frame should do by Kivy's ordering, and has not been tried.
+        """
+        Clock.schedule_once(lambda _dt: Clock.schedule_once(lambda _dt2: callback()))
 
     def _on_member_chip_pressed(self, member: Tags | TagGroups) -> None:
         """Pick a member and list its stories; a subgroup opens its members, or closes them."""
@@ -1235,9 +1244,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             return
         if self._word_search_results:
             self._nav_enter_results()
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-            )
+            self._once_the_list_settles(self._draw_result_focus)
             return
         rows = self._get_word_chip_buttons()
         first = next((i for i, r in enumerate(rows) if isinstance(r, _SuggestionButton)), None)
@@ -1248,7 +1255,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._nav_focus_area = "tags"
         self._nav_focused_chip_idx = first
         self._nav_list_sub = "word"
-        Clock.schedule_once(lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_chip_focus()))
+        self._once_the_list_settles(self._draw_chip_focus)
 
     def _on_word_chip_selected(self, word: str) -> None:
         logger.info(log_markers.WORD_SELECTED_CHIP.format(word=word))
@@ -1933,9 +1940,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._nav_focus_area = "results"
             self._nav_focused_result_idx = min(self._last_activated_result_idx, len(rows) - 1)
             self._nav_word_sub_focus = self._last_activated_word_sub_focus
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-            )
+            self._once_the_list_settles(self._draw_result_focus)
         else:
             self._nav_focus_area = "input"
             self._focus_active_input()
@@ -1997,17 +2002,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._nav_focus_area = "tags"
         # Chips may have been rebuilt by the pick (e.g. a tag group inserting its
         # members) — resolve the focused index once the new widgets have settled.
-        Clock.schedule_once(
-            lambda _dt: Clock.schedule_once(lambda _dt2: self._focus_selected_or_first_chip())
-        )
+        self._once_the_list_settles(self._focus_selected_or_first_chip)
 
     def _focus_after_tag_query(self) -> None:
         """From combined tags: their first story, else the picked-tags row, else the box."""
         if self._tag_titles:
             self._nav_enter_results()
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-            )
+            self._once_the_list_settles(self._draw_result_focus)
         elif self._tag_basket:
             self._nav_enter_basket()
         elif self._tag_box_query:  # it could not be combined: the notice is under its chip
@@ -2351,14 +2352,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             )
             self._nav_focused_chip_idx = selected_idx + 1
             member_chips[0].trigger_action(duration=0)
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_chip_focus())
-            )
+            self._once_the_list_settles(self._draw_chip_focus)
         else:
             self._nav_enter_results()
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-            )
+            self._once_the_list_settles(self._draw_result_focus)
 
     def _get_main_tag_chip_buttons(self) -> list[_TagChipButton]:
         if not hasattr(self.ids, "tag_chips_layout"):
