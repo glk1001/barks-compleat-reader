@@ -586,8 +586,15 @@ class NavigationCoordinator:
                 last read; with nothing read, the first of them is offered, as on arrival.
 
         """
+        assert self._current_fanta_info is not None
+        title = self._current_fanta_info.comic_book_info.title
+        if title in ONE_PAGERS or title in COVERS_SET:
+            # Read as a page of their collection, which ignores any page to goto: the
+            # collection's page last read is no page of theirs to offer.
+            self._bottom_title_view_screen.set_goto_page_state(active=False)
+            return
+
         if not last_read_page:
-            assert self._current_fanta_info is not None
             title_str = self._current_fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 

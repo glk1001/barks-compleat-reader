@@ -745,3 +745,24 @@ def test_a_title_with_no_fanta_info_is_refused() -> None:
         pytest.raises(TitleNotInFantaInfoError),
     ):
         NavigationCoordinator._get_fanta_info(Titles.BACK_TO_THE_KLONDIKE)
+
+
+@pytest.mark.parametrize("title", [Titles.IF_THE_HAT_FITS, Titles.COMICS_AND_STORIES_104_COVER])
+def test_a_one_pager_or_cover_closed_offers_no_page_of_its_collection(
+    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], title: Titles
+) -> None:
+    """A one-pager reads as a page of "All One-Pagers", a cover of "All Covers".
+
+    The page it closes at is the collection's, and reading it again ignores any page to
+    goto, so none is offered.
+    """
+    nav_coord._current_fanta_info = MagicMock()
+    nav_coord._current_fanta_info.comic_book_info.title = title
+    last_page = MagicMock()
+    last_page.display_page_num = "2"
+    mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+
+    nav_coord.on_comic_closed()
+
+    mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(active=False)
+    mock_deps["comic_reader_manager"].get_last_read_page.assert_not_called()
