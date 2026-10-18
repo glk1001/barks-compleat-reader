@@ -1517,7 +1517,7 @@ class OKFViewer(RelativeLayout):
         lbl._orig_markup = lbl.text  # noqa: SLF001
         lbl.text = highlight_ref_occurrence(lbl.text, occurrence, LINK_COLOR, LINK_FOCUS_COLOR)
         if self.body.height > self.body_scroll.height:
-            self.body_scroll.scroll_to(lbl, padding=dp(24))
+            self.body_scroll.scroll_to(lbl, padding=24)  # scroll_to applies dp() itself
         trace.link_focus(ref)
 
     def _restore_focused_link_markup(self) -> None:
@@ -1694,7 +1694,7 @@ class OKFViewer(RelativeLayout):
         draw_focus_ring(btn)
         scroll = self._results_scroll
         if scroll is not None and scroll.children and scroll.children[0].height > scroll.height:
-            scroll.scroll_to(btn, padding=dp(8))
+            scroll.scroll_to(btn, padding=8)  # scroll_to applies dp() itself
 
     def _clear_result_focus(self) -> None:
         if self._sidebar_index is not None and self._sidebar_index < len(self._result_rows):

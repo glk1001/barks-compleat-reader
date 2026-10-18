@@ -66,7 +66,8 @@ if TYPE_CHECKING:
 
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
-TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS = 4
+# A short random fade: at up to 4s a clicked title took its time to arrive.
+TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS = 1
 
 _NAV_FOCUS_GROUP = "title_view_nav_focus"
 # Matches the `bottom_view_box.opacity > 0.9` threshold the kv rules use for the peek toggle.

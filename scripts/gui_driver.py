@@ -539,7 +539,7 @@ class Driver:
     def wait_title_fade(self, timeout: float = 10) -> None:
         """Block until the most recently started title-view fade has finished.
 
-        The panel fades in over a random 0-4s and the app logs both ends, so
+        The panel fades in over a random 0-1s and the app logs both ends, so
         this waits on the log rather than the worst case. Only the latest fade
         counts: walking the tree starts a fade per title and each is superseded
         by the next, and a superseded fade never logs a finish. Returns at
