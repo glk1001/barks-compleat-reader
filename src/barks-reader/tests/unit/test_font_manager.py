@@ -184,7 +184,7 @@ def test_each_speech_font_style_draws_the_letterings_glyphs(style: int) -> None:
 
 
 def test_the_speech_font_draws_what_open_sans_did() -> None:
-    open_sans = _drawn_characters(FONT_DIR / "OpenSans-Medium.ttf")
+    open_sans = _drawn_characters(FONT_DIR / "OpenSans-Regular.ttf")  # one set, all styles
     speech = _drawn_characters(LabelBase._fonts[SPEECH_FONT][0])
 
     printable = {cp for cp in open_sans if cp >= 0x20 and cp != 0xFEFF}
