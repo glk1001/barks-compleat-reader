@@ -116,3 +116,11 @@ def test_the_fade_is_logged_from_start_to_finish(boot: AppBoot) -> None:
     d.wait_title_fade()
     assert d.match_count(pattern(markers.TITLE_FADE_STARTED, duration=re.compile(r"\d+"))) >= 1
     assert d.match_count(markers.TITLE_FADE_FINISHED) >= 1
+
+
+def test_up_from_a_title_onto_its_open_tag_shows_the_tags_view(boot: AppBoot) -> None:
+    """The keys only move, yet an open tag arrived on shows its view, as booting on it does."""
+    d = boot(nodes.GLADSTONES_STORY_UNDER_GYRO, cues=nodes.NO_CUES)
+    tag = nodes.GLADSTONES_STORY_UNDER_GYRO[1]
+    with d.expect(pattern(markers.UPDATING_BACKGROUND_VIEW_STATE, state="ON_TAG_NODE")):
+        d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=tag), "Up")

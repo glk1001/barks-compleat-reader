@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1474,3 +1474,38 @@ class TestFunViewBottomFocus:
 
         assert nav._handle_bottom_key(KEY_ESCAPE) is True
         assert not nav.is_in_bottom_focus
+
+
+class TestOpenGroupNodeArrival:
+    """Arriving on an open group node by the keys shows its view, as booting on it does."""
+
+    @staticmethod
+    def _group(*, is_open: bool, destination: object = "dest") -> MagicMock:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.is_open = is_open
+        node.nodes = [MagicMock()]
+        node.destination = destination
+        return node
+
+    @staticmethod
+    def _move_onto(nav: MainScreenNavigation, node: MagicMock) -> MagicMock:
+        tree = cast("MagicMock", nav._tree_view_screen)
+        tree.get_visible_nodes.return_value = [MagicMock(), node]
+        tree.get_selected_node.return_value = None
+        nav._tree_nav_move(-1)  # from nothing, Up lands on the last visible node
+        return cast("MagicMock", nav._tree_view_manager)
+
+    def test_an_open_group_node_shows_its_view(self, nav: MainScreenNavigation) -> None:
+        node = self._group(is_open=True)
+        manager = self._move_onto(nav, node)
+        manager.set_view_state_for_node.assert_called_once_with(node)
+
+    def test_a_closed_group_node_passed_changes_nothing(self, nav: MainScreenNavigation) -> None:
+        manager = self._move_onto(nav, self._group(is_open=False))
+        manager.set_view_state_for_node.assert_not_called()
+
+    def test_a_title_renders_as_a_title(self, nav: MainScreenNavigation) -> None:
+        title = MagicMock(spec=TitleTreeViewNode)
+        manager = self._move_onto(nav, title)
+        manager.set_view_state_for_node.assert_not_called()
+        manager.render_title_node.assert_called_once_with(title)

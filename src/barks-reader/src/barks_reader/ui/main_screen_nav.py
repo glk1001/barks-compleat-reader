@@ -352,7 +352,13 @@ class MainScreenNavigation:
         node = visible[idx]
         self._tree_view_screen.select_node(node)
         self._tree_view_manager.scroll_to_node(node)
-        if isinstance(node, TitleTreeViewNode):
+        if (group := self._open_group(node)) is not None:
+            # The view follows what is opened, and a click opens; the keys only move.
+            # Arriving on an open group node (the tag over the titles just walked, say)
+            # shows its view all the same, as booting on it does: it stayed on the last
+            # title's otherwise. Closed nodes passed on the way change nothing.
+            self._tree_view_manager.set_view_state_for_node(group)
+        elif isinstance(node, TitleTreeViewNode):
             if rapid or self._pending_title_node is not None:
                 # Rapid scrolling (held key): defer the expensive title-view render
                 # until the key presses settle.
@@ -361,6 +367,19 @@ class MainScreenNavigation:
                 self._title_render_trigger()
             else:
                 self._tree_view_manager.render_title_node(node)
+
+    @staticmethod
+    def _open_group(node: BaseTreeViewNode) -> ButtonTreeViewNode | None:
+        """Return `node` as an open group node with a view of its own, else None."""
+        if (
+            isinstance(node, ButtonTreeViewNode)
+            and not isinstance(node, TitleTreeViewNode)
+            and node.is_open
+            and node.nodes
+            and node.destination is not None
+        ):
+            return node
+        return None
 
     def _on_title_render_timeout(self, _dt: float) -> None:
         node, self._pending_title_node = self._pending_title_node, None
