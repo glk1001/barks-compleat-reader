@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.comics_consts import FONT_DIR, SPEECH_FONT
 from barks_reader.ui.font_manager import (
     HI_RES_FONTS,
     HI_RES_WINDOW_HEIGHT_CUTOFF,
@@ -12,6 +14,11 @@ from barks_reader.ui.font_manager import (
     FontManager,
     _FontGroup,
 )
+from fontTools.ttLib import TTFont
+from kivy.core.text import LabelBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -153,3 +160,32 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.search_label_font_size == 34
     assert font_manager.search_clear_button_font_size == 35
     assert font_manager.search_button_font_size == 36
+
+
+# Drawn glyphs the OCR'd lettering keeps (barks-ocr, 2026-10-18): music notes, a sharp, a
+# diamond, circled digits, a care-of sign, a star, a heart, a telephone, and a cube root.
+_LETTERING_GLYPHS = "\u266a\u266b\u266c\u266f\u25c7\u2460\u2461\u2104\u2606\u2764\u260e\u221b"
+# OpenSans letters the speech font lacks: Latin chi and beta, which no comic letters.
+_NOT_IN_SPEECH_FONT = {0xA7B3, 0xA7B4, 0xA7B5, 0xAB53}
+
+
+def _drawn_characters(font_file: str | Path) -> set[int]:
+    best_cmap = TTFont(font_file).getBestCmap()
+    assert best_cmap is not None
+    return set(best_cmap)
+
+
+@pytest.mark.parametrize("style", range(4))
+def test_each_speech_font_style_draws_the_letterings_glyphs(style: int) -> None:
+    # Kivy has no per-glyph fallback: a character the registered file lacks is blank.
+    drawn = _drawn_characters(LabelBase._fonts[SPEECH_FONT][style])
+
+    assert [ch for ch in _LETTERING_GLYPHS if ord(ch) not in drawn] == []
+
+
+def test_the_speech_font_draws_what_open_sans_did() -> None:
+    open_sans = _drawn_characters(FONT_DIR / "OpenSans-Medium.ttf")
+    speech = _drawn_characters(LabelBase._fonts[SPEECH_FONT][0])
+
+    printable = {cp for cp in open_sans if cp >= 0x20 and cp != 0xFEFF}
+    assert printable - speech == _NOT_IN_SPEECH_FONT

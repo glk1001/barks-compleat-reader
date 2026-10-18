@@ -22,6 +22,7 @@ baselined
 bboxes
 behaviour
 bijective
+Bitstream
 blit
 blockquotes
 boxborderw
@@ -36,6 +37,7 @@ cbzs
 chrono
 ciphertext
 clickthrough
+cmap
 codepoint
 colorfmt
 Comixology

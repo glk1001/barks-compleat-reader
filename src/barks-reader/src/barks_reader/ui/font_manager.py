@@ -4,8 +4,8 @@ from enum import Enum, auto
 from barks_fantagraphics.comics_consts import (
     CARL_BARKS_FONT_FILE,
     FONT_DIR,
-    OPEN_SANS_FONT,
     ROBOTO_FONT,
+    SPEECH_FONT,
 )
 from kivy.core.text import LabelBase
 from kivy.event import EventDispatcher
@@ -17,11 +17,11 @@ HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
 
 # Set up custom fonts.
 LabelBase.register(
-    name=OPEN_SANS_FONT,
-    fn_regular=str(FONT_DIR / "OpenSans-Medium.ttf"),
-    fn_bold=str(FONT_DIR / "OpenSans-Bold.ttf"),
-    fn_italic=str(FONT_DIR / "OpenSans-MediumItalic.ttf"),
-    fn_bolditalic=str(FONT_DIR / "OpenSans-BoldItalic.ttf"),
+    name=SPEECH_FONT,
+    fn_regular=str(FONT_DIR / "DejaVuSansCondensed.ttf"),
+    fn_bold=str(FONT_DIR / "DejaVuSansCondensed-Bold.ttf"),
+    fn_italic=str(FONT_DIR / "DejaVuSansCondensed-Oblique.ttf"),
+    fn_bolditalic=str(FONT_DIR / "DejaVuSansCondensed-BoldOblique.ttf"),
 )
 
 
@@ -174,9 +174,9 @@ class FontManager(EventDispatcher):
     main_title_font_name = str(CARL_BARKS_FONT_FILE)
     message_title_font_name = main_title_font_name
     main_index_item_font_name = ROBOTO_FONT
-    speech_index_item_font_name = OPEN_SANS_FONT  # Allows for words like H2O
-    speech_bubble_text_font_name = OPEN_SANS_FONT  # Allows for words like H2O
-    speech_bubble_popup_title_font_name = OPEN_SANS_FONT  # Allows for words like H2O
+    speech_index_item_font_name = SPEECH_FONT  # Allows for words like H2O and music notes
+    speech_bubble_text_font_name = SPEECH_FONT
+    speech_bubble_popup_title_font_name = SPEECH_FONT
     index_title_item_font_name = ROBOTO_FONT
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003

@@ -68,6 +68,11 @@ JSON_METADATA_FILENAME = "comic-metadata.json"
 
 ROBOTO_FONT = "Roboto"  # Kivy's default font
 OPEN_SANS_FONT = "OpenSans"
+# The comics' speech text: OpenSans lacks drawn glyphs the lettering has (music notes, circled
+# digits, a telephone, a heart), and Kivy has no per-glyph fallback, so they would be blank.
+# DejaVu Sans Condensed has them all, every character OpenSans has (H₂O's subscripts, Greek) but
+# four rare Latin letters, and about OpenSans's width.
+SPEECH_FONT = "DejaVuSansCondensed"
 
 
 class PageType(Enum):
