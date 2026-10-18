@@ -417,10 +417,11 @@ class TestSeeReferences:
         return buttons
 
     def test_a_target_on_another_page_is_found_through_the_real_letter_press(
-        self, main_index_screen: MainIndexScreen
+        self, main_index_screen: MainIndexScreen, row_pinner_stub: MagicMock
     ) -> None:
         """The letter press rebuilds the page's entries; the target is one of the new ones."""
         screen = main_index_screen
+        screen._row_pinner = row_pinner_stub
         letters = self._letter_buttons("B", "P")
         screen._selected_letter_button = letters["P"]
         screen._nav_active = False

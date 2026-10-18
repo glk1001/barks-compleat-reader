@@ -1225,10 +1225,6 @@ class IndexScreen(FloatLayout):
         every row moved, the pressed one too. Opened near the bottom of the view, the
         first rows then glide into it, the pressed row kept in view, as the tree view's do.
         """
-        scroll_view = self.ids.get("index_scroll_view") if hasattr(self.ids, "get") else None
-        if scroll_view is None:  # no scroll view to hold (a screen built without its kv)
-            action()
-            return
         if self._row_pinner is None:
             self._row_pinner = RowScrollPinner(
                 get_scroll_view=lambda: self.ids.index_scroll_view, on_settled=lambda: None

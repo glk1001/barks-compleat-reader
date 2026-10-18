@@ -52,6 +52,18 @@ def _no_layout_settling() -> Generator[None]:
 
 
 @pytest.fixture
+def row_pinner_stub() -> MagicMock:
+    """Return an index screen's row pinner stand-in that runs a press's action at once.
+
+    The real one does too, holding the pressed row still over the frames after; a
+    screen built without its kv has no scroll view for it to hold.
+    """
+    pinner = MagicMock()
+    pinner.pin_row.side_effect = lambda _row, *, populate, **_kw: populate()
+    return pinner
+
+
+@pytest.fixture
 def mock_font_manager() -> MagicMock:
     return MagicMock()
 

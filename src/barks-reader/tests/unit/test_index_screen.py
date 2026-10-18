@@ -1293,22 +1293,6 @@ class TestPinnedPress:
         index_screen._open_tag_widgets = [grid]
         assert index_screen._first_sub_item_rows(button, 3) == cells[:6]
 
-    def test_without_a_scroll_view_the_press_acts_unpinned(
-        self, index_screen: ConcreteIndexScreen
-    ) -> None:
-        """A screen built without its kv (these tests') has no scroll view to hold."""
-        item = IndexItem(id="Apple", display_text="Apple")
-        button = MagicMock()
-        with (
-            patch.object(ConcreteIndexScreen, "ids", new={}),
-            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
-            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
-        ):
-            index_screen._on_index_item_press(button, item)
-        expand.assert_called_once_with(button)
-        expansion.assert_called_once_with(button, item)
-        assert index_screen._row_pinner is None
-
     def test_the_focus_resync_after_an_expansion_does_not_scroll(
         self, index_screen: ConcreteIndexScreen
     ) -> None:
@@ -1345,7 +1329,7 @@ class TestFocusFollowsAPress:
         expand.assert_not_called()  # the press by the keys does the pressing
 
     def test_the_press_by_the_keys_presses_the_item_once(
-        self, index_screen: ConcreteIndexScreen
+        self, index_screen: ConcreteIndexScreen, row_pinner_stub: MagicMock
     ) -> None:
         """The keys' press comes back through the mouse press, which lets it by unplaced."""
         item = IndexItem(id="Apple", display_text="Apple")
@@ -1354,12 +1338,12 @@ class TestFocusFollowsAPress:
             button, item
         )
         index_screen._nav_active = True
+        index_screen._row_pinner = row_pinner_stub
         with (
             patch.object(ConcreteIndexScreen, "_get_col_buttons", return_value=[button]),
             patch.object(ConcreteIndexScreen, "_clear_letter_focus"),
             patch.object(ConcreteIndexScreen, "_clear_all_item_focus"),
             patch.object(ConcreteIndexScreen, "_draw_item_focus"),
-            patch.object(ConcreteIndexScreen, "ids", new={}),
             patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
             patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
         ):
@@ -1370,15 +1354,15 @@ class TestFocusFollowsAPress:
         assert index_screen._pressing_focused_item is False
 
     def test_a_press_by_the_keys_is_not_placed_again(
-        self, index_screen: ConcreteIndexScreen
+        self, index_screen: ConcreteIndexScreen, row_pinner_stub: MagicMock
     ) -> None:
         item = IndexItem(id="Apple", display_text="Apple")
         button = MagicMock()
         index_screen._nav_active = True
+        index_screen._row_pinner = row_pinner_stub
         index_screen._pressing_focused_item = True  # inside _activate_focused_item
         with (
             patch.object(ConcreteIndexScreen, "_place_focus_on") as place,
-            patch.object(ConcreteIndexScreen, "ids", new={}),
             patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
             patch.object(ConcreteIndexScreen, "_handle_item_expansion"),
         ):
