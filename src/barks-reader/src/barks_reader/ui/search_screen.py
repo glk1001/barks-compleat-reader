@@ -2373,10 +2373,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             update_focus_in_list(
                 pluses, pluses.index(chip.parent.plus_button), _SEARCH_NAV_FOCUS_GROUP
             )
+            self.ids.tag_chips_scroll.scroll_to(chip.parent.plus_button)
             return
         self._nav_list_sub = "word"
         clear_focus_in_list(pluses, _SEARCH_NAV_FOCUS_GROUP)
         self._update_tag_chip_colors(chips, self._nav_focused_chip_idx)
+        # The list outruns its window: the focus follows the keys off its edge otherwise.
+        self.ids.tag_chips_scroll.scroll_to(chip)
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()

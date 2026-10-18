@@ -3039,6 +3039,7 @@ class TestTagListKeys:
             | {f"{mode}_results_scroll": MagicMock() for mode in ("title", "tag", "word")}
             | {
                 "tag_chips_layout": BoxLayout(orientation="vertical"),
+                "tag_chips_scroll": MagicMock(),
                 "tag_title_results_layout": results,
                 "word_results_layout": BoxLayout(),
                 "title_results_layout": BoxLayout(),
@@ -3068,6 +3069,13 @@ class TestTagListKeys:
     @staticmethod
     def _texts(chips: list[Any]) -> list[str]:
         return [chip.text for chip in chips]
+
+    def test_the_focused_chip_is_scrolled_into_view(self, screen: SearchScreen) -> None:
+        """The list outruns its window: the focus followed the keys off its edge."""
+        chips = screen._get_tag_chip_buttons()
+        screen._nav_focused_chip_idx = 1
+        screen._draw_chip_focus()
+        screen.ids.tag_chips_scroll.scroll_to.assert_called_once_with(chips[1])
 
     def test_the_open_group_s_members_sit_between_it_and_the_chips_after(
         self, screen: SearchScreen
