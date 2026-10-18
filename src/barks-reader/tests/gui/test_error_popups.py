@@ -96,7 +96,8 @@ def test_a_missing_library_offers_settings_and_enter_opens_them(
         d.key_then_wait(
             pattern(markers.MESSAGE_POPUP_OK, title=DIR_NOT_FOUND, button="Settings"), "Return"
         )
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    d.key_then_wait("Nav focus on SettingsCloseButton", "Escape")  # Escape lands on the X
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Return")
 
 
 def test_a_doubled_volume_is_fatal_and_its_close_takes_enter(boot: AppBoot, tmp_path: Path) -> None:

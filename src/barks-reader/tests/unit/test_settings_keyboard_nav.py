@@ -392,6 +392,25 @@ class TestPopupKeyboardNavEdges:
         assert textinput.focus is True
 
 
+class TestBlurAndRefocus:
+    """The X takes the ring and gives it back; the item focused stays the same."""
+
+    def test_blur_clears_the_ring_and_refocus_redraws_the_same_item(self) -> None:
+        items = [_make_item(), _make_item()]
+        nav = _make_nav(items)
+        with (
+            _patch_settingitem(items),
+            patch.object(nav_module, "draw_focus_highlight") as draw,
+            patch.object(nav_module, "clear_focus_highlight") as clear,
+        ):
+            nav.handle_key(KEY_DOWN)  # the second item
+            nav.blur()
+            clear.assert_called_with(items[1], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+            nav.refocus()
+            assert draw.call_args.args[0] is items[1]
+            assert nav._focused_idx == 1
+
+
 class TestFocusFirst:
     def test_the_first_item_is_shown_focused_and_down_reaches_the_second(self) -> None:
         items = [_make_item(), _make_item(), _make_item()]

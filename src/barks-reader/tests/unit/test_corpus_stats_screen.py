@@ -314,11 +314,14 @@ class TestScaling:
 
 
 class TestKeyboard:
-    def test_escape_closes_the_page(self, screen: CorpusStatsScreen) -> None:
-        # Not the mixin's default, which would open the action-bar menu instead.
-        with patch.object(corpus_stats_screen_module, "Window"):
+    def test_escape_reaches_the_action_bar_as_in_the_readers(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        """Escape lands on the Close button; Return there closes."""
+        with patch.object(screen, "_enter_menu_mode") as mock_menu:
             assert screen._handle_reading_key(KEY_ESCAPE)
-        screen._on_close_screen.assert_called_once()
+        mock_menu.assert_called_once()
+        screen._on_close_screen.assert_not_called()
 
     def test_left_closes_the_page(self, screen: CorpusStatsScreen) -> None:
         with patch.object(corpus_stats_screen_module, "Window"):

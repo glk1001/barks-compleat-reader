@@ -11,7 +11,14 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.reader_palette import theme
 
-from .reader_keyboard_nav import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
+from .reader_keyboard_nav import (
+    KEY_ENTER,
+    KEY_NUMPAD_ENTER,
+    MENU_FOCUS_HIGHLIGHT_GROUP,
+    clear_focus_highlight,
+    draw_focus_highlight,
+    is_escape_key,
+)
 
 _SAME_SIZE_CUTOFF_PX = 10
 
@@ -66,6 +73,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     background_image_file: Path | None = None,
     wrapper_scrim: tuple[float, float, float, float] | None = None,
     on_dismiss: Callable[[], None] | None = None,
+    escape_focuses_close: bool = False,
 ) -> None:
     """Show a popup even if no Kivy app or event loop is running.
 
@@ -82,6 +90,9 @@ def show_standalone_popup(  # noqa: C901, PLR0915
             dark scrim for popups that render light, on-brand text.
         on_dismiss: Called once the popup has closed and left the window, however
             it was closed.
+        escape_focuses_close: Whether Escape lands the keys on the close button
+            first, as in the readers, Return then closing; pressed there again, it
+            gives the focus back. Else Escape closes at once.
 
     """
     scrim = wrapper_scrim if wrapper_scrim is not None else _LIGHT_WRAPPER_SCRIM
@@ -254,7 +265,18 @@ def show_standalone_popup(  # noqa: C901, PLR0915
 
         popup.bind(on_open=lambda *_: log_popup_opened(title))
 
+        x_focused = False
+
         def _on_key_down(_win: object, key: int, *_args: object) -> bool:
+            nonlocal x_focused
+            if escape_focuses_close and add_close_button and is_escape_key(key):
+                # noinspection PyUnboundLocalVariable
+                if x_focused:
+                    clear_focus_highlight(close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+                else:
+                    draw_focus_highlight(close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+                x_focused = not x_focused
+                return True
             if closes_popup(key):
                 popup.dismiss()
                 return True

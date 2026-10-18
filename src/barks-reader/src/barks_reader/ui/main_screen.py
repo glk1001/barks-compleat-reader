@@ -39,9 +39,14 @@ from .platform_window_utils import WindowManager
 from .popup_widgets import open_confirm_popup, open_message_popup
 from .reader_keyboard_nav import (
     KEY_DOWN,
+    KEY_ENTER,
+    KEY_NUMPAD_ENTER,
     KEY_RIGHT,
+    MENU_FOCUS_HIGHLIGHT_GROUP,
     ActionBarNavMixin,
     DropdownNavMixin,
+    clear_focus_highlight,
+    draw_focus_highlight,
     is_escape_key,
     is_escape_key_for_text_input,
     open_dropdown,
@@ -217,6 +222,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         _install_keyboard_request_hook(Window, self._put_key_handler_first)
 
         self._settings_nav: SettingsKeyboardNav | None = None
+        self._settings_x_focused: bool = False  # Escape put the keys on the settings' X
         self._settings_close_button: Widget | None = None
         self._active = True
 
@@ -417,15 +423,35 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return self._nav.handle_key(key)
 
     def _handle_settings_key(self, key: int) -> bool:
-        """Handle a key press while the settings panel is open (always consumed)."""
+        """Handle a key press while the settings panel is open (always consumed).
+
+        As in the readers, Escape lands the keys on the close X, Enter there closes,
+        and Escape there goes back to the list. Closed by the keys, the settings put
+        them back on the Menu button that opened them.
+        """
         assert self._settings_nav is not None
+        if self._settings_x_focused:
+            if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+                self._close_settings()
+                self._enter_menu_mode()
+            elif is_escape_key(key):
+                self._focus_settings_x(focused=False)
+            return True
         if not self._settings_nav.handle_key(key) and is_escape_key(key):
-            self._close_settings()
-            # Back where the keys came from: the action bar, on the Menu button that
-            # opened the settings (the last button used). Closed, the settings left no
-            # focus anywhere, and the next key went to the tree.
-            self._enter_menu_mode()
+            self._focus_settings_x(focused=True)
         return True
+
+    def _focus_settings_x(self, *, focused: bool) -> None:
+        assert self._settings_nav is not None
+        self._settings_x_focused = focused
+        if self._settings_close_button is None:
+            return
+        if focused:
+            self._settings_nav.blur()
+            draw_focus_highlight(self._settings_close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+        else:
+            clear_focus_highlight(self._settings_close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+            self._settings_nav.refocus()
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
@@ -589,6 +615,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Both ways out of the settings panel (its close button, or Escape) funnel
         # here; Kivy's close_settings() itself announces nothing.
         self._remove_settings_close_button()
+        self._settings_x_focused = False
         if self._settings_nav is not None:
             self._settings_nav.reset()
             self._settings_nav = None

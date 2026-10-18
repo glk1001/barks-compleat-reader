@@ -38,3 +38,4 @@ def test_a_dismiss_callback_runs_after_the_dismissal_is_logged(loguru_sink: list
         )
         show.call_args.kwargs["on_dismiss"]()
     assert seen == ["About box dismissed."]
+    assert show.call_args.kwargs["escape_focuses_close"] is True  # Escape to the X first

@@ -133,6 +133,7 @@ def show_about_box(
         background_image_file=about_background_path,
         wrapper_scrim=ABOUT_WRAPPER_SCRIM,
         on_dismiss=lambda: _dismissed(on_dismiss),
+        escape_focuses_close=True,  # as in the readers: Escape to the X, Return closes
     )
 
 

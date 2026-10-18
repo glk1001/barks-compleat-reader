@@ -483,14 +483,13 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
     def _handle_reading_key(self, key: int) -> bool:
         """Handle a key while not in the action bar.
 
-        Deliberately different from the readers this screen otherwise copies: they
-        map Escape to the action-bar menu because they have pages to turn, but this
-        page has neither, and Escape that did not leave would be a regression on the
-        bottom-panel version. Up still reaches the Close button for a remote.
+        As in the readers this screen copies, Escape (or Up) lands the keys on the
+        bar's Close button, and Return there closes: one rule for every screen with
+        an X. Left still closes at once, the page metaphor's way back.
         """
-        if is_escape_key(key) or key == KEY_LEFT:
+        if key == KEY_LEFT:
             self.close()
-        elif key == KEY_UP:
+        elif key == KEY_UP or is_escape_key(key):
             self._enter_menu_mode()
         else:
             return False

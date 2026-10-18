@@ -15,6 +15,7 @@ from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
+    KEY_ENTER,
     KEY_ESCAPE,
     KEY_LEFT,
     KEY_RIGHT,
@@ -164,10 +165,10 @@ class TestMainScreen:
         main_screen._settings_nav.handle_key.return_value = False
         with (
             patch.object(barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True),
-            patch.object(main_screen, "_close_settings") as mock_close,
+            patch.object(main_screen, "_focus_settings_x") as to_the_x,
         ):
             assert main_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is True
-        mock_close.assert_called_once()
+        to_the_x.assert_called_once_with(focused=True)
 
     def test_alt_escape_letter_reaches_a_focused_text_input(self, main_screen: MainScreen) -> None:
         """The alternate Escape is an ordinary letter on a keyboard.
@@ -204,7 +205,7 @@ class TestMainScreen:
                 patch.object(
                     barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True
                 ),
-                patch.object(main_screen, "_close_settings") as mock_close,
+                patch.object(main_screen, "_focus_settings_x") as mock_close,
             ):
                 assert main_screen._on_key_down(None, ord("r"), 0, "", []) is True
         finally:
@@ -732,18 +733,41 @@ class TestHistoryGoto:
 
 
 class TestSettingsEscape:
-    """Escape out of the settings puts the keys back on the action bar."""
+    """Escape lands on the settings' X, Enter there closes and returns to the action bar."""
 
-    def test_escape_closes_the_settings_and_enters_menu_mode(self, main_screen: MainScreen) -> None:
+    def test_escape_lands_on_the_x_and_enter_there_closes_into_menu_mode(
+        self, main_screen: MainScreen
+    ) -> None:
         main_screen._settings_nav = MagicMock()
         main_screen._settings_nav.handle_key.return_value = False
+        main_screen._settings_close_button = MagicMock()
         with (
+            patch.object(barks_reader.ui.main_screen, "draw_focus_highlight") as draw,
             patch.object(main_screen, "_close_settings") as close,
             patch.object(main_screen, "_enter_menu_mode") as menu,
         ):
             assert main_screen._handle_settings_key(KEY_ESCAPE) is True
+            close.assert_not_called()
+            draw.assert_called_once()
+            main_screen._settings_nav.blur.assert_called_once_with()
+            assert main_screen._settings_x_focused is True
+            assert main_screen._handle_settings_key(KEY_ENTER) is True
         close.assert_called_once_with()
         menu.assert_called_once_with()
+
+    def test_escape_on_the_x_gives_the_list_its_focus_back(self, main_screen: MainScreen) -> None:
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_close_button = MagicMock()
+        main_screen._settings_x_focused = True
+        with (
+            patch.object(barks_reader.ui.main_screen, "clear_focus_highlight") as clear,
+            patch.object(main_screen, "_close_settings") as close,
+        ):
+            assert main_screen._handle_settings_key(KEY_ESCAPE) is True
+        close.assert_not_called()
+        clear.assert_called_once()
+        main_screen._settings_nav.refocus.assert_called_once_with()
+        assert main_screen._settings_x_focused is False
 
     def test_a_key_the_settings_take_leaves_them_open(self, main_screen: MainScreen) -> None:
         main_screen._settings_nav = MagicMock()

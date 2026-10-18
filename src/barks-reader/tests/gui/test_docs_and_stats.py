@@ -130,7 +130,7 @@ def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
 
 
 def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
-    """Escape closes the page outright; so does its menu's Close button."""
+    """Escape lands on the bar's Close and Return closes, as in the readers; so does Left."""
     d = boot(nodes.INTRODUCTION)
     d.select_node(nodes.BY_THE_NUMBERS)
     with (
@@ -142,15 +142,15 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
     # MAIN_FROM_NUMBERS is logged as the transition starts; the main screen's
     # entered line, once it ends. That line is already in the log from boot, so
     # only a NEW one counts - the plain wait_for would return at once.
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
     with (
         d.expect(markers.CORPUS_STATS_CLOSING),
         d.expect(MAIN_FROM_NUMBERS),
         d.expect(MAIN_ENTERED),
     ):
-        d.key("Escape")
+        d.key("Return")
 
     with d.expect(markers.CORPUS_STATS_OPENED), d.expect(NUMBERS_ENTERED):
         d.key("Return")  # the node is still selected
-    d.key_then_wait(d.MENU_ENTERED, "Up")
     with d.expect(markers.CORPUS_STATS_CLOSING), d.expect(MAIN_FROM_NUMBERS):
-        d.key("Return")
+        d.key("Left")

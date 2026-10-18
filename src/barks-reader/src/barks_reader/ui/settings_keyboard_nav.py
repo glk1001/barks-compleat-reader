@@ -80,6 +80,18 @@ class SettingsKeyboardNav:
         self._focused_idx = 0
         self._apply_focus(items)
 
+    def blur(self) -> None:
+        """Take the ring off the focused item, keeping which one it is (the X has it)."""
+        if self._last_focused_item is not None:
+            clear_focus_highlight(self._last_focused_item, MENU_FOCUS_HIGHLIGHT_GROUP)
+            self._last_focused_item = None
+
+    def refocus(self) -> None:
+        """Put the ring back on the focused item (the X gave it back)."""
+        items = self._get_current_panel_items()
+        if items:
+            self._apply_focus(items)
+
     def reset(self) -> None:
         """Clear focus highlight and reset internal state."""
         if self._last_focused_item is not None:

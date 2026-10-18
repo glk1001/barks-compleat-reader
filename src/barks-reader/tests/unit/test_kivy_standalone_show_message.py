@@ -22,7 +22,7 @@ from barks_reader.ui.kivy_standalone_show_message import (
     divider_line,
     show_standalone_popup,
 )
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
+from barks_reader.ui.reader_keyboard_nav import KEY_ENTER, KEY_ESCAPE
 from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle, RoundedRectangle
@@ -141,6 +141,22 @@ class TestWithoutAnApp:
         assert closed in loguru_sink
         on_dismiss.assert_called_once_with()
         no_app.stop.assert_called_once_with()
+
+    def test_escape_can_land_on_the_close_button_first(
+        self, no_app: _Loop, loguru_sink: list[str]
+    ) -> None:
+        """As in the readers: Escape to the X, Return closes; Escape there gives it back."""
+        popup = _open(no_app, escape_focuses_close=True)
+        with patch.object(popup, "dismiss", wraps=popup.dismiss) as dismiss:
+            assert Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])
+            dismiss.assert_not_called()
+            assert any("Nav focus on Button" in line for line in loguru_sink)
+            assert Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])  # back again
+            dismiss.assert_not_called()
+            assert Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])  # to the X
+            assert Window.dispatch("on_key_down", KEY_ENTER, 0, None, [])
+            dismiss.assert_called_once()
+        no_app.finish_closing()
 
     def test_once_closed_it_takes_no_more_keys(self, no_app: _Loop) -> None:
         """Its key handler leaves the window with it.

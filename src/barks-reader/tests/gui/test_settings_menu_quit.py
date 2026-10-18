@@ -42,13 +42,31 @@ def _pick(d: Driver, marker: str) -> None:
         d.key("Return")
 
 
-def test_dots_menu_opens_settings_and_escape_returns_to_the_menu_button(boot: AppBoot) -> None:
-    """Escape closes the settings and puts the keys back on the Menu button that opened them."""
+SETTINGS_X_FOCUSED = "Nav focus on SettingsCloseButton"
+
+
+def _close_settings(d: Driver) -> None:
+    """Escape lands on the settings' X, as in the readers; Return there closes."""
+    d.key_then_wait(SETTINGS_X_FOCUSED, "Escape")
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Return")
+
+
+def test_dots_menu_opens_settings_and_their_close_returns_to_the_menu_button(
+    boot: AppBoot,
+) -> None:
+    """Escape lands on the X, and Return there closes.
+
+    Escape on the X goes back to the list; the close puts the keys back on the Menu
+    button that opened the settings.
+    """
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
+    d.key_then_wait(SETTINGS_X_FOCUSED, "Escape")
+    d.key_then_wait(f"{d.FOCUS_MOVED} Setting", "Escape")  # back on the list's item
+    d.key_then_wait(SETTINGS_X_FOCUSED, "Escape")
     with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
-        d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+        d.key_then_wait(markers.SETTINGS_CLOSED, "Return")
 
 
 # The settings panel lists its fields in reader_settings._FIELDS order, and its
@@ -68,7 +86,7 @@ def _toggle_fun_view_title(d: Driver, value: str) -> None:
     d.key_then_wait(
         pattern(markers.CONFIG_CHANGE, key=FUN_VIEW_TITLE_SETTING, value=value), "Return"
     )
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
 
 
 def test_a_settings_toggle_round_trips_through_the_ini(boot: AppBoot) -> None:
@@ -94,13 +112,17 @@ def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
     d.key_then_wait(pattern(markers.MAIN_SCREEN_ACTIVE), "Return")
 
 
-def test_dots_menu_about_opens_and_escape_returns_to_the_menu_button(boot: AppBoot) -> None:
-    """Escape closes the About box and puts the keys back on the Menu button, as Settings does."""
+def test_dots_menu_about_opens_and_its_close_returns_to_the_menu_button(boot: AppBoot) -> None:
+    """Escape lands on the About box's X, and Return there closes it.
+
+    The close puts the keys back on the Menu button, as the settings' does.
+    """
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=ABOUT_DOWNS)
     _pick(d, markers.ABOUT_BOX_OPENED)
+    d.key_then_wait(f'{d.FOCUS_MOVED} Button "X"', "Escape")  # on the box's X first
     with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
-        d.key_then_wait(markers.ABOUT_BOX_DISMISSED, "Escape")
+        d.key_then_wait(markers.ABOUT_BOX_DISMISSED, "Return")
     d.key_then_wait(d.MENU_EXITED, "Escape")
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # and the tree answers again
 
@@ -170,7 +192,7 @@ def test_a_folder_setting_opens_its_chooser_and_escape_closes_it(boot: AppBoot) 
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
     d.key_then_wait(FOLDER_CHOOSER_CLOSED, "Escape")
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
 
 
 def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> None:
@@ -183,7 +205,7 @@ def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> Non
     d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
     with d.expect(FOLDER_CHOOSER_CLOSED):
         d.key_then_wait(pattern(markers.FOLDER_CHOOSER_SELECTED), "Return")
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
     assert harness.read_ini_value(ini, "fanta_dir").strip() == before
 
 
@@ -211,7 +233,7 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     d.move_focus(step)
     set_to = pattern(markers.SETTING_OPTION_SET, key="color_theme", value=THEME_NAMES[picked])
     d.key_then_wait(set_to, "Return")
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
     assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
 
 
@@ -222,7 +244,7 @@ def test_the_settings_list_stops_at_its_top(boot: AppBoot) -> None:
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key("Up")
     d.expect_no_new(d.FOCUS_MOVED)
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
 
 
 def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> None:
@@ -243,7 +265,8 @@ def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> N
         pattern(markers.ALT_ESCAPE_CAPTURED, keycode=KEY_TAB_CODE),
         "Tab",  # desktop key: the key captured; the remote's six each have work of their own
     )
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Tab")  # desktop key: the new Escape, just captured
+    d.key_then_wait(SETTINGS_X_FOCUSED, "Tab")  # desktop key: the new Escape, just captured
+    d.key_then_wait(markers.SETTINGS_CLOSED, "Return")
     assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_TAB_CODE)
 
     _open_dots_menu(d, downs=0)
@@ -297,7 +320,7 @@ def test_a_folder_chooser_is_browsed_by_remote(boot: AppBoot, tmp_path: Path) ->
             break
     with d.expect(FOLDER_CHOOSER_CLOSED):
         d.key_then_wait(pattern(markers.FOLDER_CHOOSER_SELECTED, path=str(library)), "Return")
-    d.key_then_wait(markers.SETTINGS_CLOSED, "Escape")
+    _close_settings(d)
     assert harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir").strip() == str(
         library
     )
