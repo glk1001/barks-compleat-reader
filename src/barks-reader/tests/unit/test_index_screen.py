@@ -1330,6 +1330,31 @@ class TestFocusFollowsAPress:
         activate.assert_called_once_with()
         expand.assert_not_called()  # the press by the keys does the pressing
 
+    def test_the_press_by_the_keys_presses_the_item_once(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The keys' press comes back through the mouse press, which lets it by unplaced."""
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        button.trigger_action.side_effect = lambda **_: index_screen._on_index_item_press(
+            button, item
+        )
+        index_screen._nav_active = True
+        with (
+            patch.object(ConcreteIndexScreen, "_get_col_buttons", return_value=[button]),
+            patch.object(ConcreteIndexScreen, "_clear_letter_focus"),
+            patch.object(ConcreteIndexScreen, "_clear_all_item_focus"),
+            patch.object(ConcreteIndexScreen, "_draw_item_focus"),
+            patch.object(ConcreteIndexScreen, "ids", new={}),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(button, item)
+        button.trigger_action.assert_called_once_with(duration=0)
+        expand.assert_called_once_with(button)
+        expansion.assert_called_once_with(button, item)
+        assert index_screen._pressing_focused_item is False
+
     def test_a_press_by_the_keys_is_not_placed_again(
         self, index_screen: ConcreteIndexScreen
     ) -> None:

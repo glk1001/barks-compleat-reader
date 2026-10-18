@@ -480,6 +480,31 @@ def test_the_keyboard_focus_follows_a_tap_in_the_index(boot: AppBoot) -> None:
     d.key_then_wait(pattern(markers.INDEX_LETTER_POPULATED, letter="D"), "Down")
 
 
+def test_an_item_tapped_with_the_keys_active_is_pressed_once(boot: AppBoot) -> None:
+    """A title's entry tapped while the ring is in the index goes to the title, pressed once.
+
+    The keys press the tapped item again on the focus's behalf; the second press must
+    let itself by rather than take the focus a second time.
+    """
+    d = _boot(boot, nodes.MAIN_INDEX)
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")  # the ring sits on "A"
+    taps.tap_then_wait(d, pattern(markers.INDEX_LETTER_POPULATED, letter="B"), text="B")
+    d.settle()
+    _, shown = taps.targets(d)
+    item = next(
+        (t for t in shown if t.kind == "IndexItemButton" and t.whole and t.text in GOTO_TITLES),
+        None,
+    )
+    assert item is not None, "no title's entry wholly on screen under 'B'"
+    with d.expect(pattern(markers.GOTO_TITLE)), d.expect(pattern(markers.INDEX_ITEM_PRESSED)):
+        taps.tap(d, kind="IndexItemButton", text=item.text)
+    d.settle()
+    pressed = fields_of(d, markers.INDEX_ITEM_PRESSED, "item")
+    assert len(pressed) == 1, pressed
+    assert f"display_text='{item.text}'" in pressed[0], (pressed[0], item.text)
+    assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
+
+
 def test_the_keyboard_focus_follows_a_tap_on_a_tag_chip(boot: AppBoot) -> None:
     """A member chip tapped takes the keyboard focus: the next Down goes on from it."""
     members = expected.group_members(NESTING_GROUP)
