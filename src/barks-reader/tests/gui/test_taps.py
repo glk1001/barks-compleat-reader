@@ -275,6 +275,30 @@ def test_the_menu_opens_about_and_its_button_closes_it(boot: AppBoot) -> None:
     taps.tap_then_wait(d, markers.ABOUT_BOX_DISMISSED, text="X")
 
 
+def test_a_menu_opened_by_tap_is_taken_by_the_keys(boot: AppBoot) -> None:
+    """The first key lands the ring on the menu's first item; Escape there closes it.
+
+    Before, Escape entered menu mode behind the open menu, and Enter on the Menu
+    button there opened it a second time, which Kivy refused.
+    """
+    d = _boot(boot, nodes.THE_STORIES)
+    taps.tap(d, kv_id="menu_button")
+    d.settle()
+    d.key_then_wait(f'{d.FOCUS_MOVED} Button "Settings"', "Down")
+    d.key_then_wait(f'{d.FOCUS_MOVED} Button "How To"', "Down")
+    d.key_then_wait(markers.MENU_EXITED, "Escape")  # the menu closes, and menu mode with it
+    assert not d.in_menu_mode()
+
+
+def test_a_menu_opened_by_tap_closes_on_escape(boot: AppBoot) -> None:
+    d = _boot(boot, nodes.THE_STORIES)
+    taps.tap(d, kv_id="menu_button")
+    d.settle()
+    d.key_then_wait(markers.DROPDOWN_DISMISSED, "Escape")
+    assert not d.in_menu_mode()
+    d.key_then_wait(markers.MENU_ENTERED, "Escape")  # the keys are the tree's again
+
+
 def test_quit_by_tap_asks_first_and_cancel_stays(boot: AppBoot) -> None:
     d = _boot(boot, nodes.THE_STORIES)
     with (

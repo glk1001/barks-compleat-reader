@@ -420,7 +420,33 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # yield for the popup's later-bound key handler to ever see the key.
         if _modal_popup_is_open():
             return False
+        if self._menu_dots_open_without_the_keys():
+            return self._adopt_open_menu_dots(key)
         return self._nav.handle_key(key)
+
+    def _menu_dots_open_without_the_keys(self) -> bool:
+        """Return whether the dots menu is open on screen with the keys not yet on it."""
+        return self.menu_dots_dropdown.parent is not None and not self._dropdown_nav_mode
+
+    def _adopt_open_menu_dots(self, key: int) -> bool:
+        """Take the keys onto the dots menu a mouse opened; Escape closes it instead.
+
+        Left to the tree, Escape entered menu mode behind the open menu, and Enter on
+        the Menu button there opened it a second time, which Kivy refuses (a crash).
+        The first key only lands the ring on the menu's first item.
+        """
+        if is_escape_key(key):
+            self.menu_dots_dropdown.dismiss()
+            return True
+        self._menu_action_by_keyboard = True
+        if not self._menu_mode:
+            self._enter_menu_mode()
+        self._focused_btn_idx = self._menu_buttons.index(self.ids.menu_button)
+        self._last_used_btn_idx = self._focused_btn_idx
+        self._clear_menu_focus()
+        self._enter_dropdown_nav(initial_idx=0)
+        logger.debug(log_markers.MENU_DOTS_ADOPTED)
+        return True
 
     def _handle_settings_key(self, key: int) -> bool:
         """Handle a key press while the settings panel is open (always consumed).

@@ -71,3 +71,11 @@ class TestOpenIfShown:
         with patch.object(ReaderDropDown, "open") as open_:
             assert ReaderDropDown().open_if_shown(widget) is True
         open_.assert_called_once_with(widget)
+
+    def test_one_already_open_is_left_open_and_counted_as_opened(self) -> None:
+        """Opened by mouse, then asked for by the keys: Kivy raises on a second open."""
+        drop_down = ReaderDropDown()
+        drop_down.parent = MagicMock(name="window")
+        with patch.object(ReaderDropDown, "open") as open_:
+            assert drop_down.open_if_shown(MagicMock()) is True
+        open_.assert_not_called()

@@ -118,15 +118,19 @@ class ReaderDropDown(_ReaderScrollDefaults, DropDown):
 
         Kivy's ``open`` raises on a widget with no window, and every widget of a
         screen has none while a fade between screens draws them offscreen. A key
-        pressed in that moment must do nothing, not end the app.
+        pressed in that moment must do nothing, not end the app. A dropdown already
+        open (by mouse, say, the keys now asking) is left open and counted as opened:
+        Kivy raises on adding it to the window a second time.
 
         Args:
             widget: The widget to open the dropdown on.
 
         Returns:
-            Whether the dropdown opened.
+            Whether the dropdown is open.
 
         """
+        if self.parent is not None:
+            return True
         if widget.get_parent_window() is None:
             return False
         self.open(widget)

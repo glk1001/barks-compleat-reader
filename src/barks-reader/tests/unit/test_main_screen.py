@@ -115,6 +115,7 @@ def main_screen(
             ),
         ):
             screen = MainScreen(**mock_dependencies)
+            screen.menu_dots_dropdown.parent = None  # closed, as the app starts
             yield screen
 
 
@@ -386,6 +387,61 @@ class TestMenuDotsOffScreen:
             main_screen._open_menu_dots_for_keyboard()
         enter_dropdown_nav.assert_not_called()
         update_menu_focus.assert_called_once()
+
+
+class TestMenuDotsOpenedByMouse:
+    """The keys take over a dots menu the mouse opened, instead of opening it again."""
+
+    @staticmethod
+    def _open_by_mouse(main_screen: MainScreen) -> None:
+        main_screen.manager = MagicMock()
+        main_screen.manager.current = main_screen.name
+        main_screen.menu_dots_dropdown.parent = MagicMock(name="window")
+        main_screen._dropdown_nav_mode = False
+
+    def test_escape_closes_it(self, main_screen: MainScreen) -> None:
+        self._open_by_mouse(main_screen)
+        with patch.object(main_screen, "_enter_menu_mode") as enter_menu:
+            assert main_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is True
+        main_screen.menu_dots_dropdown.dismiss.assert_called_once_with()
+        enter_menu.assert_not_called()
+
+    def test_another_key_lands_the_ring_on_its_first_item(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        self._open_by_mouse(main_screen)
+        with (
+            patch.object(main_screen, "_update_menu_focus"),
+            patch.object(main_screen, "_clear_menu_focus"),
+            patch.object(main_screen, "_enter_dropdown_nav") as enter_dropdown,
+            patch.object(main_screen, "_handle_menu_key") as handle_menu,
+        ):
+            assert main_screen._on_key_down(None, KEY_DOWN, 0, "", []) is True
+        assert main_screen._menu_mode is True
+        assert main_screen._menu_action_by_keyboard is True
+        assert (
+            main_screen._menu_buttons[main_screen._focused_btn_idx]
+            is main_screen.ids["menu_button"]
+        )
+        enter_dropdown.assert_called_once_with(initial_idx=0)
+        handle_menu.assert_not_called()  # the first key only lands the ring
+        main_screen.menu_dots_dropdown.dismiss.assert_not_called()
+        assert "Keys taken onto the open menu." in loguru_sink
+
+    def test_a_closed_menu_leaves_the_keys_to_the_screen(self, main_screen: MainScreen) -> None:
+        self._open_by_mouse(main_screen)
+        main_screen.menu_dots_dropdown.parent = None
+        with patch.object(main_screen._nav, "handle_key", return_value=True) as handle:
+            main_screen._on_key_down(None, KEY_DOWN, 0, "", [])
+        handle.assert_called_once_with(KEY_DOWN)
+        main_screen.menu_dots_dropdown.dismiss.assert_not_called()
+
+    def test_a_menu_the_keys_opened_is_theirs_already(self, main_screen: MainScreen) -> None:
+        self._open_by_mouse(main_screen)
+        main_screen._dropdown_nav_mode = True
+        with patch.object(main_screen._nav, "handle_key", return_value=True) as handle:
+            main_screen._on_key_down(None, KEY_DOWN, 0, "", [])
+        handle.assert_called_once_with(KEY_DOWN)
 
 
 class TestMainScreenMarkers:
