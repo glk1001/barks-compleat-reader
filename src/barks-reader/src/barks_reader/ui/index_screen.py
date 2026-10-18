@@ -679,7 +679,12 @@ class IndexScreen(FloatLayout):
         self._enter_alphabet_panel()
 
     def _on_up_from_first_item(self) -> None:
-        pass  # Default: stop at the top item.
+        """Up from the top row goes to what sits above the items: the A-Z menu.
+
+        The Words index puts its prefix bar in between and lands there instead.
+        """
+        self._clear_all_item_focus()
+        self._enter_alphabet_panel()
 
     # --- Items panel navigation ---
 

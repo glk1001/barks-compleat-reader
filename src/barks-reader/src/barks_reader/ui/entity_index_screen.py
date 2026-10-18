@@ -58,10 +58,3 @@ class EntityIndexScreen(SpeechSubItemsIndexScreen):
     @override
     def _find_words(self, index_terms: str) -> TitleDict:
         return self._search.find_entities(self._entity_type, index_terms)
-
-    @override
-    def _on_up_from_first_item(self) -> None:
-        # Unlike the main index, which stays put, Up from the top row goes back to
-        # the A-Z menu -- there is no prefix bar in between to land on.
-        self._clear_all_item_focus()
-        self._enter_alphabet_panel()

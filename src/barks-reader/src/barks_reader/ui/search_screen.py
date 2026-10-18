@@ -1484,6 +1484,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     # --- DropdownNavMixin hooks ---
 
+    _dropdown_wraps: bool = False  # a list: it stops at its ends
+
     def _get_dropdown_buttons(self) -> list[Button]:
         """Return the speaker list's rows, top to bottom."""
         return list(reversed(self._said_by_dropdown.container.children))

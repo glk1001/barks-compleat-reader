@@ -299,3 +299,11 @@ def test_main_index_round_trips_leave_no_items_behind(boot: AppBoot) -> None:
         d.key_then_wait(_letter("A"), "Up")
 
     memory.assert_round_trips_leave_nothing(d, round_trip)
+
+
+def test_up_from_the_first_item_goes_to_its_letter(boot: AppBoot) -> None:
+    """Up on a page's top item lands on the letter column, in every index alike."""
+    d = boot(nodes.MAIN_INDEX)
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    d.key_then_wait(f"{d.FOCUS_MOVED} IndexItemButton", "Right")
+    d.key_then_wait(f'{d.FOCUS_MOVED} IndexMenuButton "A"', "Up")

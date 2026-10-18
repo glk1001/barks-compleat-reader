@@ -48,7 +48,8 @@ def _patch_settingitem(items: list[MagicMock]):  # noqa: ANN202
 
 
 class TestHandleKey:
-    def test_down_moves_focus_forward_and_wraps(self) -> None:
+    def test_down_moves_focus_forward_and_stops_at_the_last_item(self) -> None:
+        """A list stops at its ends: wrapped, Down past the last item lost the place."""
         items = [_make_item(), _make_item(), _make_item()]
         nav = _make_nav(items)
 
@@ -58,17 +59,20 @@ class TestHandleKey:
             assert nav.handle_key(KEY_DOWN) is True
             assert nav._focused_idx == _IDX_2
             assert nav.handle_key(KEY_DOWN) is True
+            assert nav._focused_idx == _IDX_2
+
+    def test_up_moves_focus_backward_and_stops_at_the_first_item(self) -> None:
+        items = [_make_item(), _make_item(), _make_item()]
+        nav = _make_nav(items)
+        nav._focused_idx = _IDX_2
+
+        with _patch_settingitem(items), patch.object(nav_module, "draw_focus_highlight"):
+            assert nav.handle_key(KEY_UP) is True
+            assert nav._focused_idx == 1
+            assert nav.handle_key(KEY_UP) is True
             assert nav._focused_idx == 0
-
-    def test_up_moves_focus_backward_and_wraps(self) -> None:
-        items = [_make_item(), _make_item(), _make_item()]
-        nav = _make_nav(items)
-
-        with _patch_settingitem(items), patch.object(nav_module, "draw_focus_highlight"):
             assert nav.handle_key(KEY_UP) is True
-            assert nav._focused_idx == _IDX_2
-            assert nav.handle_key(KEY_UP) is True
-            assert nav._focused_idx == 1
+            assert nav._focused_idx == 0
 
     def test_enter_dispatches_on_release(self) -> None:
         items = [_make_item(), _make_item()]

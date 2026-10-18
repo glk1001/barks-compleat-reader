@@ -173,6 +173,8 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     # --- DropdownNavMixin hooks ---
 
+    _dropdown_wraps: bool = False  # a list: it stops at its ends
+
     def _get_dropdown_buttons(self) -> list[Button]:
         """Return dropdown buttons in visual top-to-bottom order."""
         # Kivy stores children in reverse order; reverse to get visual top-to-bottom.

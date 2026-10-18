@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 class SettingsKeyboardNav:
     """Keyboard navigation for the Kivy Settings widget.
 
-    Up/Down cycles focus through SettingItems in the currently visible panel.
+    Up/Down move focus through the SettingItems in the currently visible panel, and
+    stop at its ends.
     Enter activates the focused item: toggles bool switches, otherwise opens
     its popup and attaches a popup-keyboard navigator. Escape is not handled
     here at the panel level — the caller closes the settings screen.
@@ -51,12 +52,14 @@ class SettingsKeyboardNav:
         if not items:
             return False
 
+        # A list stops at its ends, as the app's other lists do: wrapped, Down past the
+        # last item lost the reader's place at the top.
         if key == KEY_UP:
-            self._focused_idx = (self._focused_idx - 1) % len(items)
+            self._focused_idx = max(0, self._focused_idx - 1)
             self._apply_focus(items)
             return True
         if key == KEY_DOWN:
-            self._focused_idx = (self._focused_idx + 1) % len(items)
+            self._focused_idx = min(len(items) - 1, self._focused_idx + 1)
             self._apply_focus(items)
             return True
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
