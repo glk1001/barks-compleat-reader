@@ -123,6 +123,19 @@ class TestCompare:
             "Various: MISSING here (expected 1 files, 0.0 MB)",
         ]
 
+    def test_no_png_panels_here_is_no_difference(self) -> None:
+        manifest = self._manifest({data_manifest.PNG_PANELS_ENTRY: Fingerprint(3675, 9, "p")})
+        assert compare(manifest, {data_manifest.PNG_PANELS_ENTRY: None}) == []
+
+    def test_png_panels_here_must_match(self) -> None:
+        manifest = self._manifest({data_manifest.PNG_PANELS_ENTRY: Fingerprint(3675, 9, "p")})
+        found: dict[str, Fingerprint | None] = {
+            data_manifest.PNG_PANELS_ENTRY: Fingerprint(3600, 9, "q")
+        }
+        assert compare(manifest, found) == [
+            "PNG panels: DIFFERS - here 3,600 files, 0.0 MB, expected 3,675 files, 0.0 MB"
+        ]
+
 
 class TestMain:
     @pytest.fixture

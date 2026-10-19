@@ -23,7 +23,9 @@ the main PC a difference means the data changed and ``--write`` was not run.
 Each folder is found through this machine's own settings, so the layouts of Linux,
 Windows and macOS all work: the Reader Files folders under BARKS_READER_DATA_DIR
 (``.env.runtime``), the prebuilt comics and PNG panels where its barks-reader.ini
-says (``prebuilt_dir``, ``png_barks_panels_dir``). Backup folders beside them
+says (``prebuilt_dir``, ``png_barks_panels_dir``). The PNG panels are optional, as they
+are to validate: a machine without them reads the panels zip, and only one that has
+them is held to the manifest's. Backup folders beside them
 (``Indexes-2026-03-25`` and the like) are not data and are not read. Neither are the
 files a desktop leaves (``.DS_Store``, ``Thumbs.db``, ``desktop.ini``, ``._*``).
 
@@ -64,6 +66,9 @@ READER_FILES_ENTRIES = (
 )
 PREBUILT_ENTRY = "prebuilt comics"
 PNG_PANELS_ENTRY = "PNG panels"
+# Read where a machine has them (validate and the GUI tests then use them too), and not
+# missed where it does not: the Windows and macOS machines read the panels zip only.
+OPTIONAL_ENTRIES = frozenset({PNG_PANELS_ENTRY})
 _DESKTOP_LITTER = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
 _CHUNK = 1 << 20
 
@@ -195,7 +200,8 @@ def compare(manifest: dict, found: dict[str, Fingerprint | None]) -> list[str]:
 
     Returns:
         One line per entry that differs: missing here, not in the manifest, or
-        holding other files. Empty when all match.
+        holding other files. Empty when all match. An optional entry this machine
+        does not have is no difference.
 
     """
     expected: dict[str, dict | None] = manifest["entries"]
@@ -205,7 +211,7 @@ def compare(manifest: dict, found: dict[str, Fingerprint | None]) -> list[str]:
         have = found.get(name)
         if name not in expected:
             lines.append(f"{name}: here, but not in the manifest")
-        elif have is None and want is not None:
+        elif have is None and want is not None and name not in OPTIONAL_ENTRIES:
             lines.append(f"{name}: MISSING here (expected {_describe(want)})")
         elif have is not None and want is None:
             source = manifest["written_on"]
