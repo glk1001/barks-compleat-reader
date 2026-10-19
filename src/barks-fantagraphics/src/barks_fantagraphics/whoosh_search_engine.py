@@ -117,6 +117,61 @@ def _is_valid_entity_term(term: str) -> bool:
     return not any(w == w.upper() and len(w) > max_caps_len for w in term.split())
 
 
+class StaleEntitiesError(ValueError):
+    """An entity sidecar names something the bubble it tags does not say."""
+
+
+def entity_names_absent_from_text(
+    entities: dict[EntityType, set[str]], text: str
+) -> list[tuple[EntityType, str]]:
+    """Return the entity names, with their types, that ``text`` does not contain.
+
+    The tagger only ever copies a name out of the group's own text, and a hand
+    correction can only remove one, so a name the text lacks was tagged on a
+    different group: the sidecar was made from an earlier grouping of the page and
+    the ids have since moved. Case and runs of whitespace (a name across a line
+    break) are ignored, as the tagger ignores them. The index build applies this
+    to what it is about to write; the reader-files validator applies it to the
+    index that was shipped.
+
+    Args:
+        entities: The group's curated entities, by type.
+        text: The group's plain text (``SpeechText.ai_text``), as the tagger saw it.
+
+    Returns:
+        The absent names in entity-type order, each name sorted within its type.
+
+    """
+    haystack = " ".join(text.lower().split())
+    return [
+        (entity_type, name)
+        for entity_type in ENTITY_TYPES
+        for name in sorted(entities.get(entity_type, set()))
+        if " ".join(name.lower().split()) not in haystack
+    ]
+
+
+_STALE_EXAMPLES_SHOWN = 5
+
+
+def _stale_entities_message(stale: list[tuple[str, str, str, EntityType, str]]) -> str:
+    examples = "; ".join(
+        f'"{title}" page {page} group {group} {entity_type} "{name}"'
+        for title, page, group, entity_type, name in stale[:_STALE_EXAMPLES_SHOWN]
+    )
+    more = (
+        f" (and {len(stale) - _STALE_EXAMPLES_SHOWN} more)"
+        if len(stale) > _STALE_EXAMPLES_SHOWN
+        else ""
+    )
+    return (
+        f"{len(stale)} entity names are not in the text of the bubble they tag, so the"
+        " entity sidecars (entities-vol-NN.json) come from an earlier grouping of the"
+        " pages. Re-tag the volumes from the current groups, then build again."
+        f" Stale: {examples}{more}."
+    )
+
+
 def build_index_schema() -> Schema:
     """Return the Whoosh schema for the speech index.
 
@@ -582,6 +637,8 @@ class SearchEngineCreator(SearchEngine):
     ) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
         curated_sets = _build_curated_entity_sets()
+        # Every (title, page, group, type, name) whose name the group's text lacks.
+        stale: list[tuple[str, str, str, EntityType, str]] = []
 
         writer = self._index.writer()
 
@@ -607,6 +664,12 @@ class SearchEngineCreator(SearchEngine):
                     if entities is not None:
                         entities = _filter_entities_to_curated(
                             cast("dict[EntityType, set[str]]", entities), curated_sets
+                        )
+                        stale.extend(
+                            (title_str, speech_page.fanta_page, group_id, entity_type, name)
+                            for entity_type, name in entity_names_absent_from_text(
+                                entities, speech_text.ai_text
+                            )
                         )
                         entity_kwargs = {
                             f"entities_{et}": ",".join(sorted(entities.get(et, set())))
@@ -634,6 +697,12 @@ class SearchEngineCreator(SearchEngine):
                         _stored_content_raw=speech_text.raw_ai_text,
                         **entity_kwargs,
                     )
+
+        if stale:
+            # Nothing of this build is kept: an index tagging the wrong bubbles is
+            # worse than none, and the message says how to make a right one.
+            writer.cancel()
+            raise StaleEntitiesError(_stale_entities_message(stale))
 
         writer.commit()
 

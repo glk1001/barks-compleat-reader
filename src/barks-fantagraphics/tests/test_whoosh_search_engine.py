@@ -20,11 +20,13 @@ from barks_fantagraphics.whoosh_search_engine import (
     ENTITY_TYPES,
     SearchEngine,
     SearchEngineCreator,
+    StaleEntitiesError,
     _build_curated_entity_sets,
     _filter_entities_to_curated,
     _is_valid_entity_term,
     _normalize_entity_names,
     build_index_schema,
+    entity_names_absent_from_text,
 )
 
 if TYPE_CHECKING:
@@ -649,7 +651,7 @@ PAGES = {
             OcrTypes.EASYOCR,
             "041",
             {
-                "0": _speech("[b]SQUARE[/b] eggs in the Andes!", speaker="Donald Duck"),
+                "0": _speech("[b]SQUARE[/b] eggs in the Andes, Abie!", speaker="Donald Duck"),
                 "1": _speech("Square chickens, square eggs, square eggs!", panel=2),
             },
         ),
@@ -657,7 +659,13 @@ PAGES = {
         _page(OcrTypes.PADDLEOCR, "041", {"0": _speech("paddleocr only words")}),
     ],
     Titles.GOOD_DEEDS: [
-        _page(OcrTypes.EASYOCR, "007", {"0": _speech("A good deed in Acapulco.", speaker="Huey")}),
+        _page(
+            OcrTypes.EASYOCR,
+            "007",
+            # Names every entity the tests below tag it with: the builder refuses a
+            # name the bubble does not say.
+            {"0": _speech("A good deed in Acapulco for Abie, Adam and Duk Duk.", speaker="Huey")},
+        ),
     ],
 }
 
@@ -701,7 +709,7 @@ class TestSearchEngineCreator:
     def test_markup_is_stored_for_the_reader_but_not_indexed(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path)
         stored = [f["content_raw"] for f in engine.iter_all_stored_fields()]
-        assert "[b]SQUARE[/b] eggs in the Andes!" in stored
+        assert "[b]SQUARE[/b] eggs in the Andes, Abie!" in stored
         assert "b" not in engine.get_cleaned_terms()
 
     def test_the_sidecars_the_reader_reads_are_written(self, tmp_path: Path) -> None:
@@ -758,9 +766,11 @@ class TestSearchEngineCreator:
         }
 
     def test_a_tagger_is_used_when_there_is_no_provider(self, tmp_path: Path) -> None:
-        tagger = MagicMock(return_value={"location": {"Acapulco"}})
+        tagger = MagicMock(
+            side_effect=lambda text: {"location": {"Acapulco"}} if "acapulco" in text else {}
+        )
         engine, _ = self._build(tmp_path, entity_tagger=tagger)
-        tagger.assert_any_call("a good deed in acapulco.")
+        tagger.assert_any_call("a good deed in acapulco for abie, adam and duk duk.")
         assert engine.get_entity_terms("location") == ["Acapulco"]
 
     def test_skipping_missing_pages_is_passed_to_the_speech_groups(self, tmp_path: Path) -> None:
@@ -768,6 +778,87 @@ class TestSearchEngineCreator:
         calls = speech_groups.return_value.get_speech_page_groups.call_args_list
         assert calls
         assert all(call.kwargs == {"skip_missing": True} for call in calls)
+
+
+# ---------------------------------------------------------------------------
+# A stale entity sidecar: names tagged on a group whose id has since moved
+# ---------------------------------------------------------------------------
+
+
+class TestEntityNamesAbsentFromText:
+    def test_a_name_the_text_says_is_not_absent(self) -> None:
+        entities = {EntityType.PERSON: {"Pulpbugle"}}
+        assert entity_names_absent_from_text(entities, "the great pulpbugle is through") == []
+
+    def test_a_name_the_text_lacks_is_absent_with_its_type(self) -> None:
+        entities = {EntityType.PERSON: {"Pulpbugle"}, EntityType.LOCATION: {"Duckburg"}}
+        text = "at last i get to do something light and easy!"
+        assert entity_names_absent_from_text(entities, text) == [
+            (EntityType.PERSON, "Pulpbugle"),
+            (EntityType.LOCATION, "Duckburg"),
+        ]
+
+    def test_case_and_a_line_break_inside_a_name_are_ignored(self) -> None:
+        """The tagger lowercases and joins lines before matching, so the guard does too."""
+        entities = {EntityType.PERSON: {"Fulldrip Pulpbugle"}}
+        assert entity_names_absent_from_text(entities, "FULLDRIP\nPULPBUGLE THROWS!") == []
+
+    def test_absent_names_come_in_type_order_then_sorted(self) -> None:
+        entities = {EntityType.LOCATION: {"Zanzibar", "Acapulco"}, EntityType.PERSON: {"Abie"}}
+        assert entity_names_absent_from_text(entities, "") == [
+            (EntityType.PERSON, "Abie"),
+            (EntityType.LOCATION, "Acapulco"),
+            (EntityType.LOCATION, "Zanzibar"),
+        ]
+
+
+class TestStaleEntitySidecar:
+    _build = staticmethod(TestSearchEngineCreator._build)
+
+    @staticmethod
+    def _andes_tagged_with(names: set[str]) -> Callable[[str, str, str], dict[str, set[str]]]:
+        def provider(title: str, page: str, group: str) -> dict[str, set[str]]:
+            if (title, page, group) == (_ANDES, "041", "1"):  # says nothing of Duk Duk
+                return {"person": names}
+            return {}
+
+        return provider
+
+    def test_a_name_its_bubble_does_not_say_fails_the_build(self, tmp_path: Path) -> None:
+        with pytest.raises(StaleEntitiesError) as excinfo:
+            self._build(tmp_path, entity_provider=self._andes_tagged_with({"duk duk"}))
+        message = str(excinfo.value)
+        assert "1 entity names are not in the text of the bubble they tag" in message
+        assert f'"{_ANDES}" page 041 group 1 person "Duk Duk"' in message
+        assert "Re-tag the volumes" in message
+
+    def test_a_failed_build_keeps_none_of_its_bubbles(self, tmp_path: Path) -> None:
+        with pytest.raises(StaleEntitiesError):
+            self._build(tmp_path, entity_provider=self._andes_tagged_with({"duk duk"}))
+        assert SearchEngine(tmp_path / "index").get_all_titles() == set()
+
+    def test_a_name_not_curated_is_dropped_not_judged(self, tmp_path: Path) -> None:
+        """Only a curated name reaches the index, so only a curated name can be stale."""
+        engine, _ = self._build(tmp_path, entity_provider=self._andes_tagged_with({"Nobody"}))
+        assert engine.get_entity_terms("person") == []
+
+    def test_every_stale_name_is_counted_and_the_first_few_shown(self, tmp_path: Path) -> None:
+        def provider(_title: str, _page: str, _group: str) -> dict[str, set[str]]:
+            return {"person": {"duk duk"}, "location": {"zanzibar"}}
+
+        pages = {
+            Titles.LOST_IN_THE_ANDES: [
+                _page(OcrTypes.EASYOCR, "041", {"0": _speech("Eggs!"), "1": _speech("Square!")})
+            ],
+            Titles.GOOD_DEEDS: [_page(OcrTypes.EASYOCR, "007", {"0": _speech("A deed.")})],
+        }
+        with pytest.raises(StaleEntitiesError) as excinfo:
+            self._build(tmp_path, pages, entity_provider=provider)
+        message = str(excinfo.value)
+        # Three bubbles, two names each, none said.
+        assert message.startswith("6 entity names")
+        assert message.count(" group ") == 5
+        assert message.endswith("(and 1 more).")
 
 
 # ---------------------------------------------------------------------------
@@ -838,8 +929,15 @@ class TestTheBuilderMore:
         assert cleaned.index("chickens") < cleaned.index("Chickie Biddy")
 
     def test_entity_names_join_the_cleaned_terms(self, tmp_path: Path) -> None:
-        engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
-        assert {"abie", "adam"} <= set(engine.get_cleaned_terms())
+        """A multi-word name is no word of the text, so only the entity list can add it."""
+
+        def provider(title: str, page: str, group: str) -> dict[str, set[str]]:
+            if (title, page, group) == (_GOOD_DEEDS, "007", "0"):
+                return {"person": {"duk duk"}}
+            return {}
+
+        engine, _ = self._build(tmp_path, entity_provider=provider)
+        assert "Duk Duk" in set(engine.get_cleaned_terms())
 
     def test_each_of_a_bubbles_entities_is_found_by_its_own_name(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
@@ -888,7 +986,7 @@ class TestWhatAFoundBubbleCarries:
     def test_its_text_with_its_markup(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path)
         speech = engine.find_words("eggs")[_ANDES].fanta_pages["041"].speech_info_list[0]
-        assert speech.speech_text_markup == "[b]SQUARE[/b] eggs in the Andes!"
+        assert speech.speech_text_markup == "[b]SQUARE[/b] eggs in the Andes, Abie!"
 
     def test_the_entity_types_whose_names_hold_a_word_searched(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)
