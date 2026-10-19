@@ -1,5 +1,6 @@
 import heapq
 import json
+import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -126,13 +127,14 @@ def entity_names_absent_from_text(
 ) -> list[tuple[EntityType, str]]:
     """Return the entity names, with their types, that ``text`` does not contain.
 
-    The tagger only ever copies a name out of the group's own text, and a hand
-    correction can only remove one, so a name the text lacks was tagged on a
-    different group: the sidecar was made from an earlier grouping of the page and
-    the ids have since moved. Case and runs of whitespace (a name across a line
-    break) are ignored, as the tagger ignores them. The index build applies this
-    to what it is about to write; the reader-files validator applies it to the
-    index that was shipped.
+    The tagger copies a name out of the group's own text, or makes one of a word
+    of it by ``CAPITALIZATION_MAP`` (the logo's "$CROOGE" is Scrooge), and a hand
+    correction can only remove one, so a name the text lacks either way was tagged
+    on a different group: the sidecar was made from an earlier grouping of the
+    page and the ids have since moved. Case and runs of whitespace (a name across
+    a line break) are ignored, as the tagger ignores them. The index build applies
+    this to what it is about to write; the reader-files validator applies it to
+    the index that was shipped.
 
     Args:
         entities: The group's curated entities, by type.
@@ -143,11 +145,28 @@ def entity_names_absent_from_text(
 
     """
     haystack = " ".join(text.lower().split())
+    haystack = " ".join([haystack, *_names_made_of_words(haystack)])
     return [
         (entity_type, name)
         for entity_type in ENTITY_TYPES
         for name in sorted(entities.get(entity_type, set()))
         if " ".join(name.lower().split()) not in haystack
+    ]
+
+
+_WORD_RENAMES = {key.lower(): value.lower() for key, value in CAPITALIZATION_MAP.items()}
+
+
+def _names_made_of_words(haystack: str) -> list[str]:
+    """Return what ``CAPITALIZATION_MAP`` makes of the whole words in ``haystack``.
+
+    The tagger looks its tokens up in the map, and a token ends at punctuation, so
+    "$crooge" offers the word "crooge" and the map answers "scrooge".
+    """
+    return [
+        renamed
+        for word, renamed in _WORD_RENAMES.items()
+        if word in haystack and re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", haystack)
     ]
 
 

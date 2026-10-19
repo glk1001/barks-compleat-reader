@@ -1,4 +1,5 @@
 # ruff: noqa: PLR2004, SLF001, ERA001, PLC0415
+# cspell:ignore CROOGES
 
 from __future__ import annotations
 
@@ -802,6 +803,15 @@ class TestEntityNamesAbsentFromText:
         """The tagger lowercases and joins lines before matching, so the guard does too."""
         entities = {EntityType.PERSON: {"Fulldrip Pulpbugle"}}
         assert entity_names_absent_from_text(entities, "FULLDRIP\nPULPBUGLE THROWS!") == []
+
+    def test_a_name_the_map_makes_of_a_word_is_not_absent(self) -> None:
+        """The logo letters Scrooge "$CROOGE"; CAPITALIZATION_MAP has the tagger call it Scrooge."""
+        entities = {EntityType.PERSON: {"Scrooge"}}
+        assert entity_names_absent_from_text(entities, "WALT DISNEY'S\nUNCLE\n$CROOGE") == []
+        # Only a whole word is looked up, as the tagger's tokens are.
+        assert entity_names_absent_from_text(entities, "UNCLE $CROOGES\u2019 TOWN") == [
+            (EntityType.PERSON, "Scrooge")
+        ]
 
     def test_absent_names_come_in_type_order_then_sorted(self) -> None:
         entities = {EntityType.LOCATION: {"Zanzibar", "Acapulco"}, EntityType.PERSON: {"Abie"}}
