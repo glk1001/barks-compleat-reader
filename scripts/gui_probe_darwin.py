@@ -70,8 +70,10 @@ _CF_NUMBER_SINT64 = 4
 _NS_ACTIVATE_IGNORING_OTHER_APPS = 1 << 1
 # A process signalled to stop gets this long before it is killed outright.
 _TERM_GRACE_SECS = 3
-# How long the app gets to come to the front, asked again this often.
-_FRONT_WAIT_SECS = 5
+# How long the app gets to come to the front, asked again this often. At 5 s, mac_vm's
+# runs on 2026-10-19 each lost one test, about an hour into the GUI stage, to something
+# that held the front that long and then let go (every test after passed).
+_FRONT_WAIT_SECS = 15
 _FRONT_ASK_EVERY_SECS = 1
 # The window levels the app's window is at: normal, and the shielding level above
 # everything, where SDL puts a window fullscreen without a Space of its own
@@ -212,11 +214,22 @@ def click_blocker(windows: Iterable[WindowInfo], x: int, y: int, app_pid: int) -
         return f"no window is at ({x}, {y})"
     if window.owner_pid == app_pid:
         return None
+    return f"{describe_window(window)} is over ({x}, {y})"
+
+
+def describe_window(window: WindowInfo) -> str:
+    """Name a window for a failure message: its app, its title, its layer and its bounds."""
     width, height, left, top = window.bounds
     return (
         f"a {window.owner_name} window {window.title!r} (layer {window.layer},"
-        f" {width}x{height}+{left}+{top}) is over ({x}, {y})"
+        f" {width}x{height}+{left}+{top})"
     )
+
+
+def front_holder(windows: Iterable[WindowInfo]) -> str:
+    """Name what is in front: the frontmost ordinary window, for a failure to come forward."""
+    front = frontmost_normal_window(windows)
+    return "no ordinary window" if front is None else describe_window(front)
 
 
 class _CGPoint(ctypes.Structure):
@@ -516,6 +529,10 @@ class DarwinBackend:
                 _activate(owner)
                 asked = time.monotonic()
             time.sleep(0.1)
+        # The probe's failure says only that it did not come forward; this says what did not
+        # let it, on stderr, which the GUI driver shows with that failure.
+        holder = front_holder(window_list())
+        print(f"gui-probe: in front instead: {holder}", file=sys.stderr)  # noqa: T201
         return False
 
     def move_pointer(self, x: int, y: int) -> None:

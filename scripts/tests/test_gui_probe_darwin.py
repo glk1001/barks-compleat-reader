@@ -103,6 +103,30 @@ class TestWindowPicking:
         activate.assert_called_once_with(42)
         assert backend._app_pid == 42  # noqa: SLF001
 
+    def test_an_app_that_never_comes_forward_says_what_held_the_front(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The probe's failure says only that it did not come forward: this says why."""
+        app = _window(9, "python", APP_TITLE, pid=42)
+        dialog = _window(4, "Software Update", "Updates Available", pid=7)
+        backend = gui_probe_darwin.DarwinBackend.__new__(gui_probe_darwin.DarwinBackend)
+        backend._title = APP_TITLE  # noqa: SLF001
+        backend._app_pid = None  # noqa: SLF001
+        with (
+            patch.object(gui_probe_darwin, "window_list", return_value=[dialog, app]),
+            patch.object(gui_probe_darwin, "_activate", return_value=True),
+            patch.object(gui_probe_darwin, "_FRONT_WAIT_SECS", 0),
+        ):
+            assert not backend.bring_to_front(9)
+        assert capsys.readouterr().err == (
+            "gui-probe: in front instead: a Software Update window 'Updates Available'"
+            " (layer 0, 874x1365+843+25)\n"
+        )
+
+    def test_with_no_ordinary_window_in_front_it_says_so(self) -> None:
+        menu_bar = _window(1, "Window Server", "Menubar", layer=24)
+        assert gui_probe_darwin.front_holder([menu_bar]) == "no ordinary window"
+
     def test_the_frontmost_of_the_apps_windows_is_picked(self) -> None:
         windows = [
             _window(1, "Terminal", "Compleat Barks Disney Reader"),
