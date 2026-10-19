@@ -2230,6 +2230,7 @@ SPLASH_EXCEPTIONS: dict[Titles, list[str]] = {
     Titles.ALL_AT_SEA: ["1"],
     Titles.BALLOONATICS: ["1"],
     Titles.TURKEY_TROUBLE: ["1"],
+    Titles.THATS_NO_FABLE: ["1"],
     Titles.STICKY_SITUATION_A: ["1"],
     Titles.BILLIONS_IN_THE_HOLE: ["1"],
     Titles.STRANGER_THAN_FICTION: ["1"],
