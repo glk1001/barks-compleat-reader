@@ -28,6 +28,28 @@ class OcrTypes(StrEnum):
 OCR_TYPE_DICT = {0: OcrTypes.EASYOCR, 1: OcrTypes.PADDLEOCR}
 
 
+def join_line_breaks(stored_text: str) -> str:
+    """Join the line breaks a lettered word was split across, as ``ai_text`` does.
+
+    A hyphen keeps its line's hyphen; a soft hyphen or a zero-width space marked a
+    break the word never had, so both go. Markup is left alone: this is the one
+    step between the stored text and ``SpeechText.ai_text_markup``, and
+    ``strip_markup`` of the result is ``ai_text``, the text the entity tagger reads.
+
+    Args:
+        stored_text: A group's ``ai_text`` value as read from disk.
+
+    Returns:
+        The text with its lettering breaks joined.
+
+    """
+    return (
+        stored_text.replace("-\n", "-")
+        .replace("\u00ad\n", "")  # soft hyphen
+        .replace("\u200b\n", "")  # zero-width space
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SpeechText:
     """One OCR speech group's text and geometry.
@@ -91,11 +113,7 @@ class SpeechText:
             A ``SpeechText`` with all three text views consistent.
 
         """
-        joined = (
-            stored_text.replace("-\n", "-")
-            .replace("\u00ad\n", "")  # soft hyphen
-            .replace("\u200b\n", "")  # zero-width space
-        )
+        joined = join_line_breaks(stored_text)
         return cls(
             group_id=group_id,
             panel_num=panel_num,

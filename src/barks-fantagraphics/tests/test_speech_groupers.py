@@ -23,6 +23,7 @@ from barks_fantagraphics.speech_groupers import (
     _save_speech_page_group,
     _save_speech_page_group_json,
     get_speech_page_group,
+    join_line_breaks,
 )
 from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.speech_speakers import SpeakerCall
@@ -235,6 +236,13 @@ class TestGetSpeechTextList:
         speech_groups, _ = _get_speech_text_list(f)
 
         assert speech_groups["1"].ai_text == "softhyph"
+
+    def test_join_line_breaks_is_the_join_from_stored_applies(self) -> None:
+        """A consumer joining stored text itself (the validator) gets ai_text's joins."""
+        stored = "re-\nenter, under\u00ad\nstand, some\u200b\nthing and a plain\nbreak"
+        joined = join_line_breaks(stored)
+        assert joined == "re-enter, understand, something and a plain\nbreak"
+        assert SpeechText.from_stored("1", 1, stored, "speech", []).ai_text_markup == joined
 
     def test_raises_value_error_on_missing_file(self, tmp_path: Path) -> None:
         missing = tmp_path / "no-such-file.json"
