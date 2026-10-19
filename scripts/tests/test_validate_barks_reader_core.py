@@ -1,4 +1,4 @@
-"""Tests for the reader-files validator's layout (10), wiki-join (11) and splash (12) phases.
+"""Tests for the validator's layout (10), wiki-join (11), splash (12) and index (13) phases.
 
 Phase 10 runs the reader's own layout builder, so these tests stub only what
 reads the data pack (the comics database, the panel-segments adapter and the
@@ -31,6 +31,8 @@ from barks_fantagraphics.comic_book_info import (
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.page_classes import CleanPage, SrceAndDestPages
+from barks_fantagraphics.speech_markup import strip_markup
+from barks_fantagraphics.testing.whoosh_index import build_test_index
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
@@ -735,3 +737,191 @@ class TestGetSplashStoryTitles:
         assert not titles & set(NON_COMIC_TITLES)
         assert not titles & set(ONE_PAGERS)
         assert not any(is_one_pager_collection(t) or is_covers_collection(t) for t in titles)
+
+
+# ---------------------------------------------------------------------------
+# Phase 13
+# ---------------------------------------------------------------------------
+
+_OTHER = ENUM_TO_STR_TITLE[_OTHER_STORY]
+_ANDES_VOLUME = 7
+_STORIES = [(ANDES, _ANDES_VOLUME), (_OTHER, 8)]
+_DUK_DUK = "QWAK QWAKS ARE A VOODOO CULT OF THE [b]DUK DUK[/b] TRIBE"
+
+
+def _bubble(
+    title: str, page: str, group: str, text: str, speaker: str = "", **entities: str
+) -> dict[str, str]:
+    """Return a stored bubble, its entities given by type: ``person="Duk Duk,Qwak Qwaks"``."""
+    doc = {
+        "title": title,
+        "fanta_vol": "7",
+        "fanta_page": page,
+        "comic_page": "1",
+        "content_id": group,
+        "panel_num": "1",
+        "speaker": speaker,
+        "unstemmed": strip_markup(text).lower(),
+        "content_raw": text,
+    }
+    doc.update({f"entities_{entity_type}": names for entity_type, names in entities.items()})
+    return doc
+
+
+def _index(
+    tmp_path: Path,
+    docs: list[dict[str, str]],
+    volumes: str = "[7]",
+    terms: dict[str, list[str]] | None = None,
+    speakers: dict[str, int] | None = None,
+) -> MagicMock:
+    """Write an index and its sidecars under ``tmp_path`` and return the sys paths to it.
+
+    Unless given, the term and speaker sidecars say what the bubbles store, as a
+    build's do; ``volumes`` is the raw text of the volumes file, "" for none.
+    """
+    folder = tmp_path / "Indexes"
+    folder.mkdir(parents=True)
+    build_test_index(folder, docs)
+    if volumes:
+        (folder / core.INDEX_VOLUMES_FILE).write_text(volumes)
+    if terms is None:
+        terms = {}
+        for doc in docs:
+            for key, names in doc.items():
+                if key.startswith("entities_") and names:
+                    terms.setdefault(key.removeprefix("entities_"), []).extend(names.split(","))
+    for entity_type, names in terms.items():
+        (folder / f"entities-{entity_type}-terms.json").write_text(json.dumps(sorted(set(names))))
+    if speakers is None:
+        speakers = {}
+        for doc in docs:
+            if doc["speaker"]:
+                speakers[doc["speaker"]] = speakers.get(doc["speaker"], 0) + 1
+    (folder / "speakers.json").write_text(json.dumps(speakers))
+    sys_paths = MagicMock()
+    sys_paths.get_barks_reader_indexes_dir.return_value = folder
+    return sys_paths
+
+
+def _run_index_phase(
+    sys_paths: MagicMock,
+    stories: list[tuple[str, int]] | None = None,
+    titles_filter: list[str] | None = None,
+) -> core.PhaseResult:
+    def story_titles(titles_filter: list[str] | None = None) -> list[tuple[str, int]]:
+        return [
+            (title, volume)
+            for title, volume in (stories or _STORIES)
+            if titles_filter is None or title in titles_filter
+        ]
+
+    collector = core.ErrorCollector()
+    with patch.object(core, "get_index_story_titles", side_effect=story_titles):
+        core.phase13_search_index(collector, sys_paths, titles_filter)
+    return _only_phase(collector)
+
+
+class TestPhase13SearchIndex:
+    def test_a_sound_index_passes(self, tmp_path: Path) -> None:
+        docs = [
+            _bubble(ANDES, "041", "0", _DUK_DUK, "Donald", person="Duk Duk,Qwak Qwaks"),
+            _bubble(ANDES, "041", "1", "SQUARE EGGS!", "Donald"),
+        ]
+        phase = _run_index_phase(_index(tmp_path, docs))
+        assert phase.errors == []
+        assert phase.items_checked == len(docs)
+        assert phase.summary_extra == "(1 volumes, 1 titles, 0 titles with a name no bubble says)"
+
+    def test_a_name_its_bubble_does_not_say(self, tmp_path: Path) -> None:
+        """One error per title, counting its bubbles and naming the first."""
+        docs = [
+            _bubble(ANDES, "041", "0", _DUK_DUK, person="Duk Duk"),
+            _bubble(ANDES, "041", "1", "AT LAST, SOMETHING EASY!", person="Pulpbugle"),
+            _bubble(ANDES, "042", "3", "SQUARE EGGS!", location="Duckburg"),
+        ]
+        phase = _run_index_phase(_index(tmp_path, docs))
+        assert _kinds(phase) == ["kind=index_entity_not_in_bubble"]
+        assert phase.errors[0].startswith(f"Title:{ANDES} ")
+        assert 'bubbles=2 first=page 041 group 1 person "Pulpbugle"' in phase.errors[0]
+        assert "1 titles with a name no bubble says" in phase.summary_extra
+
+    def test_a_name_read_through_markup_and_a_lettering_break(self, tmp_path: Path) -> None:
+        """The tagger saw ai_text: breaks joined, markup gone, so the check reads the same."""
+        docs = [
+            _bubble(
+                ANDES,
+                "041",
+                "0",
+                "GO TO [b]DUCK[/b]\u00ad\nBURG, DUK\nDUK!",
+                location="Duckburg",
+                person="Duk Duk",
+            )
+        ]
+        assert _run_index_phase(_index(tmp_path, docs)).errors == []
+
+    def test_a_story_of_an_indexed_volume_with_no_bubble_is_missing(self, tmp_path: Path) -> None:
+        docs = [_bubble(ANDES, "041", "0", "SQUARE EGGS!")]
+        phase = _run_index_phase(_index(tmp_path, docs), stories=[(ANDES, 7), (_OTHER, 7)])
+        assert _kinds(phase) == ["kind=index_title_missing"]
+        assert phase.errors[0] == f"Title:{_OTHER} kind=index_title_missing volume=7"
+
+    def test_a_story_of_a_volume_not_yet_indexed_is_not_required(self, tmp_path: Path) -> None:
+        docs = [_bubble(ANDES, "041", "0", "SQUARE EGGS!")]
+        assert _run_index_phase(_index(tmp_path, docs), stories=_STORIES).errors == []
+
+    def test_an_indexed_title_that_is_no_story(self, tmp_path: Path) -> None:
+        docs = [_bubble(ANDES, "041", "0", "EGGS!"), _bubble("Not a Story", "001", "0", "HI!")]
+        phase = _run_index_phase(_index(tmp_path, docs))
+        assert phase.errors == ["Title:Not a Story kind=index_title_not_a_story"]
+        # A subset of titles cannot say what else the index should hold.
+        assert _run_index_phase(_index(tmp_path / "f", docs), titles_filter=[ANDES]).errors == []
+
+    def test_the_volumes_file(self, tmp_path: Path) -> None:
+        docs = [_bubble(ANDES, "041", "0", "EGGS!")]
+        missing = _run_index_phase(_index(tmp_path / "a", docs, volumes=""))
+        assert _kinds(missing) == ["kind=index_volumes_missing"]
+        unreadable = _run_index_phase(_index(tmp_path / "b", docs, volumes="nonsense"))
+        assert _kinds(unreadable) == ["kind=index_volumes_unreadable"]
+        for i, bad in enumerate(("[]", "[0]", '["7"]', "7")):
+            phase = _run_index_phase(_index(tmp_path / f"bad{i}", docs, volumes=bad))
+            assert _kinds(phase) == ["kind=index_volumes_bad"], bad
+        # Without a volume list no story is required, so only the list is reported.
+        assert len(missing.errors) == 1
+
+    def test_sidecars_that_disagree_with_the_bubbles(self, tmp_path: Path) -> None:
+        docs = [_bubble(ANDES, "041", "0", _DUK_DUK, "Donald", person="Duk Duk,Qwak Qwaks")]
+        sys_paths = _index(
+            tmp_path, docs, terms={"person": ["Duk Duk", "Gyro"]}, speakers={"Donald": 2}
+        )
+        phase = _run_index_phase(sys_paths)
+        assert _kinds(phase) == ["kind=index_entity_terms_differ", "kind=index_speakers_differ"]
+        assert "type=person unlisted=['Qwak Qwaks'] extra=['Gyro']" in phase.errors[0]
+        assert "speakers=['Donald'] count=1" in phase.errors[1]
+        # Whole-index data: a subset of titles cannot judge it.
+        assert _run_index_phase(sys_paths, titles_filter=[ANDES]).errors == []
+
+    def test_a_title_filter_judges_only_its_titles_bubbles(self, tmp_path: Path) -> None:
+        docs = [
+            _bubble(ANDES, "041", "0", "EGGS!"),
+            _bubble(_OTHER, "090", "0", "VOODOO!", person="Pulpbugle"),
+        ]
+        phase = _run_index_phase(_index(tmp_path, docs), titles_filter=[ANDES])
+        assert phase.errors == []
+        assert phase.items_checked == 1
+
+    def test_without_a_usable_index_nothing_is_checked(self, tmp_path: Path) -> None:
+        sys_paths = MagicMock()
+        sys_paths.get_barks_reader_indexes_dir.return_value = tmp_path
+        phase = _run_index_phase(sys_paths)
+        assert len(phase.errors) == 1
+        assert phase.errors[0].startswith(f'unchecked: no usable search index in "{tmp_path}"')
+        assert phase.items_checked == 0
+
+
+class TestGetIndexStoryTitles:
+    def test_the_splash_stories_with_their_volumes(self) -> None:
+        stories = core.get_index_story_titles()
+        assert [title for title, _volume in stories] == core.get_splash_story_titles()
+        assert all(isinstance(volume, int) for _title, volume in stories)
+        assert dict(stories)[ANDES] == _ANDES_VOLUME

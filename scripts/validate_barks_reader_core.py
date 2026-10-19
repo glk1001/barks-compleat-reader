@@ -3,8 +3,8 @@
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
 prebuilt comics, per-title panel files, per-title layouts (with their
-panel-segments JSONs), the wiki story-page joins and the splash tags into a
-single report.
+panel-segments JSONs), the wiki story-page joins, the splash tags and the search
+index into a single report.
 Exits non-zero on any failure.
 """
 
@@ -37,6 +37,7 @@ from barks_fantagraphics.comics_utils import (
     get_dest_comic_zip_file_stem,
     get_timestamp_as_str,
 )
+from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     FIRST_VOLUME_NUMBER,
@@ -46,7 +47,14 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
+from barks_fantagraphics.speech_groupers import join_line_breaks
+from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.splash_pages import get_panel_area_fractions, get_splash_pages
+from barks_fantagraphics.whoosh_search_engine import (
+    ENTITY_TYPES,
+    SearchEngine,
+    entity_names_absent_from_text,
+)
 from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
@@ -82,6 +90,7 @@ from comic_utils.decryption import DecryptionError
 from dotenv import load_dotenv
 from loguru import logger
 from okf_reader.core.render import parse_frontmatter
+from whoosh.index import EmptyIndexError
 
 # Load env vars (BARKS_READER_CONFIG_DIR, BARKS_READER_DATA_DIR, ...) before
 # importing barks_reader.core.config_info, which constructs nothing at module
@@ -2528,3 +2537,206 @@ def _check_title_splash_tags(
             f"Title:{title_str} kind=splash_pages_differ"
             f" found={','.join(found)} tagged={','.join(tagged)}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 - Search index
+# ---------------------------------------------------------------------------
+
+INDEX_VOLUMES_FILE = "volumes.json"
+
+
+@dataclass(slots=True)
+class _IndexContents:
+    """What one pass over the index's stored bubbles found."""
+
+    bubbles_checked: int = 0
+    # Per title, the (page, group, entity type, name) of every name its bubble lacks.
+    stale_by_title: dict[str, list[tuple[str, str, EntityType, str]]] = field(default_factory=dict)
+    entity_names: dict[EntityType, set[str]] = field(
+        default_factory=lambda: {entity_type: set() for entity_type in ENTITY_TYPES}
+    )
+    speaker_counts: dict[str, int] = field(default_factory=dict)
+
+
+def get_index_story_titles(titles_filter: list[str] | None = None) -> list[tuple[str, int]]:
+    """Return the stories the search index should hold bubbles for, with their volumes.
+
+    Args:
+        titles_filter: Optional subset of titles. ``None`` returns every story.
+
+    Returns:
+        ``(title, volume)`` pairs for the titles the reader opens as comics of
+        their own, less articles and the one-pager and cover collections.
+
+    """
+    return [
+        (
+            title_str,
+            get_fanta_volume_from_str(
+                ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]].fantagraphics_volume
+            ),
+        )
+        for title_str in get_splash_story_titles(titles_filter)
+    ]
+
+
+def phase13_search_index(
+    collector: ErrorCollector,
+    sys_paths: SystemFilePaths,
+    titles_filter: list[str] | None = None,
+) -> None:
+    """Phase 13: check the shipped search index against the stories and itself.
+
+    The index is built elsewhere from the OCR groups and their entity sidecars, and
+    only a copy of it reaches the data pack, so this reads what was shipped: the
+    volumes it claims, that every story of those volumes has a bubble in it, that
+    every entity a bubble is tagged with is said in that bubble (a sidecar built
+    from an earlier grouping of the page tags the bubbles beside it), and that the term
+    and speaker sidecars the reader's indexes list agree with the bubbles stored.
+
+    Args:
+        collector: Aggregator for phase results.
+        sys_paths: System file paths, for the Indexes directory.
+        titles_filter: Optional subset of titles. ``None`` checks every story and
+            the whole-index sidecars, which a subset cannot judge.
+
+    """
+    phase = collector.start_phase("Search Index", "13")
+    indexes_dir = sys_paths.get_barks_reader_indexes_dir()
+
+    try:
+        engine = SearchEngine(indexes_dir)
+    except (EmptyIndexError, OSError) as exc:
+        phase.add(f'unchecked: no usable search index in "{indexes_dir}" ({exc})')
+        collector.finalize_phase(phase)
+        return
+
+    volumes = _check_index_volumes(phase, indexes_dir)
+    stories = get_index_story_titles(titles_filter)
+    indexed_titles = engine.get_all_titles()
+    _check_index_titles(phase, stories, volumes, indexed_titles, titles_filter)
+
+    story_titles = {title_str for title_str, _volume in stories}
+    contents = _read_index_bubbles(engine, story_titles if titles_filter is not None else None)
+    phase.items_checked = contents.bubbles_checked
+    for title_str, stale in sorted(contents.stale_by_title.items()):
+        page, group, entity_type, name = stale[0]
+        phase.add(
+            f"Title:{title_str} kind=index_entity_not_in_bubble bubbles={len(stale)}"
+            f' first=page {page} group {group} {entity_type} "{name}"'
+        )
+
+    if titles_filter is None:
+        _check_index_sidecars(phase, engine, contents)
+
+    phase.summary_extra = (
+        f"({len(volumes)} volumes, {len(indexed_titles)} titles,"
+        f" {len(contents.stale_by_title)} titles with a name no bubble says)"
+    )
+    collector.finalize_phase(phase)
+
+
+def _check_index_volumes(phase: PhaseResult, indexes_dir: Path) -> set[int]:
+    """Return the volumes the index says it holds; a bad or missing list is an error."""
+    path = indexes_dir / INDEX_VOLUMES_FILE
+    if not path.is_file():
+        phase.add(f'kind=index_volumes_missing path="{path}"')
+        return set()
+    try:
+        volumes = json.loads(path.read_text())
+    except ValueError as exc:
+        phase.add(f'kind=index_volumes_unreadable path="{path}" reason={exc}')
+        return set()
+    if (
+        not isinstance(volumes, list)
+        or not volumes
+        or any(
+            not isinstance(v, int) or not (FIRST_VOLUME_NUMBER <= v <= LAST_VOLUME_NUMBER)
+            for v in volumes
+        )
+    ):
+        phase.add(f"kind=index_volumes_bad volumes={volumes!r}")
+        return set()
+    return set(volumes)
+
+
+def _check_index_titles(
+    phase: PhaseResult,
+    stories: list[tuple[str, int]],
+    volumes: set[int],
+    indexed_titles: set[str],
+    titles_filter: list[str] | None,
+) -> None:
+    """Check every story of an indexed volume has a bubble and nothing else is indexed."""
+    for title_str, volume in stories:
+        if volume in volumes and title_str not in indexed_titles:
+            phase.add(f"Title:{title_str} kind=index_title_missing volume={volume}")
+    if titles_filter is None:
+        story_titles = {title_str for title_str, _volume in stories}
+        for title_str in sorted(indexed_titles - story_titles):
+            phase.add(f"Title:{title_str} kind=index_title_not_a_story")
+
+
+def _read_index_bubbles(engine: SearchEngine, only_titles: set[str] | None) -> _IndexContents:
+    """Walk every stored bubble once, judging its entities and tallying the sidecars' sources.
+
+    Args:
+        engine: The index.
+        only_titles: Judge only these titles' bubbles, or None for all of them. The
+            tallies always cover the whole index: a sidecar is whole-index data.
+
+    Returns:
+        What the pass found.
+
+    """
+    contents = _IndexContents()
+    for fields in engine.iter_all_stored_fields():
+        entities = {
+            entity_type: {
+                name.strip()
+                for name in (fields.get(f"entities_{entity_type}") or "").split(",")
+                if name.strip()
+            }
+            for entity_type in ENTITY_TYPES
+        }
+        for entity_type, names in entities.items():
+            contents.entity_names[entity_type].update(names)
+        speaker = fields.get("speaker")
+        if speaker:
+            contents.speaker_counts[speaker] = contents.speaker_counts.get(speaker, 0) + 1
+
+        title_str = fields["title"]
+        if only_titles is not None and title_str not in only_titles:
+            continue
+        contents.bubbles_checked += 1
+        # The tagger read ai_text: the stored text with its lettering breaks joined
+        # and its markup stripped.
+        text = strip_markup(join_line_breaks(fields.get("content_raw") or ""))
+        for entity_type, name in entity_names_absent_from_text(entities, text):
+            contents.stale_by_title.setdefault(title_str, []).append(
+                (fields["fanta_page"], fields["content_id"], entity_type, name)
+            )
+    return contents
+
+
+def _check_index_sidecars(
+    phase: PhaseResult, engine: SearchEngine, contents: _IndexContents
+) -> None:
+    """Check the entity term lists and the speakers file say what the bubbles store."""
+    for entity_type in ENTITY_TYPES:
+        listed = set(engine.get_entity_terms(entity_type))
+        stored = contents.entity_names[entity_type]
+        if listed != stored:
+            phase.add(
+                f"kind=index_entity_terms_differ type={entity_type}"
+                f" unlisted={sorted(stored - listed)[:3]} extra={sorted(listed - stored)[:3]}"
+            )
+    speakers = engine.get_speakers()
+    if speakers != contents.speaker_counts:
+        differing = sorted(
+            speaker
+            for speaker in speakers.keys() | contents.speaker_counts.keys()
+            if speakers.get(speaker) != contents.speaker_counts.get(speaker)
+        )
+        phase.add(f"kind=index_speakers_differ speakers={differing[:3]} count={len(differing)}")

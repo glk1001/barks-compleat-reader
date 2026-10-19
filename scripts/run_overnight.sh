@@ -13,7 +13,7 @@
 #
 # Stages (name: what it runs):
 #   validate       validate-barks-reader-files.py: every title's panels, prebuilt
-#                  comic, layout, panel segments and wiki joins, on the real data;
+#                  comic, layout, panel segments, wiki joins and the search index, on the real data;
 #                  --full-load-check decodes every source page, --strict-wiki fails
 #                  a story with no wiki page
 #   panel-sources  check-barks-panel-sources.py: every PNG panel belongs to a title

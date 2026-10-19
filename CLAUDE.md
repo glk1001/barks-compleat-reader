@@ -175,7 +175,7 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   CI's `diff-coverage` job holds the lines a push changes to 80% coverage (`diff-cover`;
   `scripts/diff-cover.sh` runs it locally).
 - Corpus consistency (every title's panel files, prebuilt comic, layout, panel-segments
-  JSONs, wiki joins and splash tags) is `scripts/validate-barks-reader-files.py`, run against the real
+  JSONs, wiki joins, splash tags and the search index) is `scripts/validate-barks-reader-files.py`, run against the real
   data pack, nightly rather than in a gate; its tests are in `scripts/tests/`. The GUI tests
   assert one sample title each and leave the whole corpus to it.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`. <!-- docs-refs: ok -->

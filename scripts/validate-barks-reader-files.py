@@ -3,8 +3,8 @@
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
 prebuilt comics, per-title panel files, per-title layouts (with their
-panel-segments JSONs), the wiki story-page joins and the splash tags into a
-single report.
+panel-segments JSONs), the wiki story-page joins, the splash tags and the search
+index into a single report.
 Exits non-zero on any failure.
 
 Run via ``uv run scripts/validate-barks-reader-files.py``. The script never
@@ -46,6 +46,7 @@ from validate_barks_reader_core import (
     phase10_layout,
     phase11_wiki,
     phase12_splash_tags,
+    phase13_search_index,
     resolve_wiki_bundle_dir,
 )
 
@@ -195,7 +196,7 @@ def main(
 
     # Resolve the optional title filter early so a bad --volume / --title
     # combination fails before any phase work is done. The same filter is
-    # applied to every per-title phase (8 to 12).
+    # applied to every per-title phase (8 to 13).
     titles_filter = resolve_title_filter(volume, title)
 
     collector = ErrorCollector()
@@ -242,6 +243,7 @@ def main(
         strict=strict_wiki,
     )
     phase12_splash_tags(collector, built_layouts, titles_filter)
+    phase13_search_index(collector, sys_paths, titles_filter)
 
     _print_final_report(collector, time.time() - started, titles_filter)
     if collector.any_failed:
