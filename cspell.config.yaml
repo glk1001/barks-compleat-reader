@@ -30,6 +30,8 @@ ignorePaths:
   - "**/barks_bibliography.py"
   # Vulture whitelist: bare identifiers, not prose.
   - "**/vulture_whitelist.py"
+  # Written by data_manifest.py --write: a host name and md5s, not prose.
+  - "scripts/data-manifest.json"
 
 # GitHub Security Advisory IDs (GHSA-xxxx-xxxx-xxxx). The three segments are random
 # hash fragments, never prose, and a new one arrives with every advisory - so match

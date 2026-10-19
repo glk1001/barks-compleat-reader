@@ -19,6 +19,12 @@ To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run
 sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
 not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
+Each machine's data pack is a copy that nothing re-syncs, and a stale one passes every other
+stage. So both runners start with `data`: `scripts/data_manifest.py` compares the Reader Files
+folders, prebuilt comics and PNG panels there with `scripts/data-manifest.json`, and warns
+naming each folder that differs. After changing data on the main PC, run
+`uv run scripts/data_manifest.py --write` and commit the manifest (its own `data` stage
+warns until then), then copy the changed folders to every machine.
 On Windows or macOS, `uv run python scripts/run_overnight_desktop.py` (same options and
 summary) runs what only a desktop machine can: the suite with the data pack, the GUI suite
 on the workspace app and (Windows only, so far) on CI's build of this commit, a soak,

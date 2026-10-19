@@ -13,6 +13,10 @@ Stages (name: what it runs):
   update         git pull --ff-only, then uv sync --locked: the run tests what is
                  on main tonight (pull before starting too: a pull that changes
                  this runner takes effect only on the next run)
+  data           data_manifest.py: this machine's data pack (the Reader Files
+                 folders, prebuilt comics, PNG panels) against the manifest the
+                 main PC wrote, as pulled; warns, naming each folder that differs -
+                 a stale copy otherwise passes, as the tests read the same data
   wiki-copy      the sibling barks-wiki pulled to its upstream where that is safe
                  (pull_sibling.py), then check_wiki_copy.py: the wiki copy in Reader
                  Files, which the GUI stages show - a broken join fails, a copy
@@ -134,6 +138,7 @@ ON_MACOS = sys.platform == "darwin"
 # with every stage behind it idle; after validate and gui the build is done.
 STAGES = (
     "update",
+    "data",
     "wiki-copy",
     "pytest",
     "validate",
@@ -155,6 +160,8 @@ DEFAULT_GH_REPO = "glk1001/barks-compleat-reader"
 WIKI_REPO = REPO_ROOT.parent / "barks-wiki"
 # check_wiki_copy.py's exit for a stale copy whose joins hold.
 WIKI_COPY_STALE = 3
+# data_manifest.py's exit for a data folder that differs from the manifest.
+DATA_DIFFERS = 3
 # Windows' own OpenGL 1.1, all a machine without a driver has; ANGLE draws instead.
 SOFTWARE_OPENGL = "GDI Generic"
 ANGLE_BACKEND = "angle_sdl2"
@@ -976,6 +983,11 @@ class Run:
             env = {"BARKS_GUI_WALK_SEED": seed, "BARKS_GUI_WALK_STEPS": steps}
             status = self.gui_tests(log, "--soak", **env) or status
         return status
+
+    @staticmethod
+    def stage_data(log: StageLog) -> int:
+        status = log.run(venv_command("python", str(SCRIPTS / "data_manifest.py")))
+        return WARNED if status == DATA_DIFFERS else status
 
     @staticmethod
     def stage_wiki_copy(log: StageLog) -> int:

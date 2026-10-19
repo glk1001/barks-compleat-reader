@@ -12,6 +12,10 @@
 # first: when the data is broken, what fails later is only a symptom.
 #
 # Stages (name: what it runs):
+#   data           data_manifest.py: this machine's data pack (the Reader Files
+#                  folders, prebuilt comics, PNG panels) against the manifest the
+#                  main PC wrote; warns, naming each folder that differs - a stale
+#                  copy otherwise passes, as the tests read the same data the app does
 #   validate       validate-barks-reader-files.py: every title's panels, prebuilt
 #                  comic, layout, panel segments, wiki joins and the search index, on the real data;
 #                  --full-load-check decodes every source page, --strict-wiki fails
@@ -113,7 +117,7 @@ if [[ -f .env.overnight ]]; then
     done <.env.overnight
 fi
 
-STAGES=(validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
+STAGES=(data validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
     dep-drift siblings build smoke gui gui-timings coverage dead-code docs-refs mutation)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
@@ -389,6 +393,12 @@ mutation() {
 run_stage() {
     local status=0
     case "$1" in
+    data)
+        uv run scripts/data_manifest.py || status=$?
+        # Its 3 is a folder that differs from the manifest: a warning, not a failure.
+        ((status == 3)) && return "$WARNED"
+        return "$status"
+        ;;
     validate) uv run scripts/validate-barks-reader-files.py --full-load-check --strict-wiki ;;
     panel-sources) uv run scripts/check-barks-panel-sources.py ;;
     build-check)

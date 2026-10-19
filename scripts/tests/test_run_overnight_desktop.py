@@ -50,9 +50,12 @@ class TestStageTable:
         assert stages.index("fetch-build") == stages.index("built-app") - 1
         assert stages.index("fetch-build") > stages.index("gui")
 
+    def test_the_data_is_checked_against_the_manifest_just_pulled(self) -> None:
+        assert rw.STAGES[1] == "data"
+
     def test_the_wiki_is_pulled_before_anything_reads_it(self) -> None:
         stages = list(rw.STAGES)
-        assert stages.index("wiki-copy") == 1
+        assert stages.index("wiki-copy") == 2
         assert stages.index("wiki-copy") < stages.index("validate") < stages.index("gui")
 
     def test_the_statuses_are_the_linux_runs(self) -> None:
@@ -70,7 +73,16 @@ class TestSelectStages:
 
     def test_skip(self) -> None:
         chosen = rw.select_stages([], ["fetch-build", "built-app"])
-        assert chosen == ["update", "wiki-copy", "pytest", "validate", "gui", "soak", "coverage"]
+        assert chosen == [
+            "update",
+            "data",
+            "wiki-copy",
+            "pytest",
+            "validate",
+            "gui",
+            "soak",
+            "coverage",
+        ]
 
     def test_an_unknown_name(self) -> None:
         with pytest.raises(ValueError, match="no stage called nope"):
@@ -429,6 +441,27 @@ class TestPruneOldRuns:
         assert (old[2] / "build").is_dir()
         said = [c.args[0] for c in say.call_args_list]
         assert any("freed 0 MB: build and coverage of 2 run(s)" in line for line in said)
+
+
+class TestData:
+    @staticmethod
+    def _stage(status: int) -> None:
+        """Run the data stage with data_manifest.py faked to exit with `status`."""
+        with patch.object(rw.StageLog, "run", return_value=status):
+            rw.Run(["data"], None).run()
+
+    @pytest.mark.parametrize(
+        ("status", "result"),
+        [(0, "passed"), (rw.DATA_DIFFERS, "WARNED"), (1, "FAILED")],
+    )
+    def test_its_exit_is_the_stages_result(self, repo: Path, status: int, result: str) -> None:
+        """A folder that differs warns; a manifest or settings it cannot read fails."""
+        self._stage(status)
+        assert _results(repo) == {"data": result}
+
+    def test_the_differs_status_matches_data_manifest(self) -> None:
+        source = (Path(rw.__file__).parent / "data_manifest.py").read_text(encoding="utf-8")
+        assert f"DIFFER_EXIT = {rw.DATA_DIFFERS}" in source
 
 
 class TestWikiCopy:
