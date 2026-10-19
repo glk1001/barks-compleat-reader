@@ -109,6 +109,18 @@ class TestFinalizeWindowSetup:
         self._finalize(app, monitors=1)
         app._main_screen.force_fullscreen.assert_not_called()
 
+    def test_once_shown_a_too_small_screen_is_warned_of(self, app: Any) -> None:  # noqa: ANN401
+        app._window_geometry.current_monitor.width_pixels = 1366
+        app._window_geometry.current_monitor.height_pixels = 768
+        _, clock = self._finalize(app, monitors=1)
+        show_the_window = clock.schedule_once.call_args.args[0]
+
+        with patch.object(app_module, "_show_main_window") as show:
+            show_the_window(0.0)
+
+        show.assert_called_once_with(app_module.Window, app._window_geometry)
+        app._main_screen.warn_if_screen_too_small.assert_called_once_with(1366, 768)
+
 
 class TestAltEscapeDismissesTheTopPopup:
     ALT_KEY = 113

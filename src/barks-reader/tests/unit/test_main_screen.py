@@ -825,6 +825,18 @@ class TestSettingsEscape:
         main_screen._settings_nav.refocus.assert_called_once_with()
         assert main_screen._settings_x_focused is False
 
+    def test_escape_with_no_x_on_the_window_marks_it_and_draws_nothing(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_nav.handle_key.return_value = False
+        main_screen._settings_close_button = None
+        with patch.object(barks_reader.ui.main_screen, "draw_focus_highlight") as draw:
+            assert main_screen._handle_settings_key(KEY_ESCAPE) is True
+        assert main_screen._settings_x_focused is True
+        draw.assert_not_called()
+        main_screen._settings_nav.blur.assert_not_called()
+
     def test_a_key_the_settings_take_leaves_them_open(self, main_screen: MainScreen) -> None:
         main_screen._settings_nav = MagicMock()
         main_screen._settings_nav.handle_key.return_value = True

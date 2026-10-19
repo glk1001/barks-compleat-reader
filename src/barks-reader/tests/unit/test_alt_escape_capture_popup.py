@@ -32,6 +32,16 @@ def _press(popup: AltEscapeCapturePopup, key: int) -> bool:
     return popup._on_key_down(None, key, 0, "", [])  # noqa: SLF001
 
 
+def test_opening_logs_the_current_key_and_focuses_cancel(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
+) -> None:
+    made, _, _ = popup
+    with patch.object(capture_module, "update_focus_in_list") as focus:
+        made.dispatch("on_open")
+    assert f"Alternate Escape capture opened (current {keycode_to_name(0)})." in loguru_sink
+    assert focus.call_args.args[1] == 1  # the Cancel button: a slip must not clear the key
+
+
 def test_real_escape_cancels(
     popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
 ) -> None:

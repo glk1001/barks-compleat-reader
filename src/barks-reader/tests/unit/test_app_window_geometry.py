@@ -644,7 +644,7 @@ def test_a_window_starting_off_every_monitor_takes_the_primary(
 
     h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
 
-    assert h._current_monitor is primary  # noqa: SLF001
+    assert h.current_monitor is primary
 
 
 def test_a_move_to_a_monitor_of_the_same_height_keeps_the_size(

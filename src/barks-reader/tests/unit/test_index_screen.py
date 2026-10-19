@@ -1328,6 +1328,25 @@ class TestFocusFollowsAPress:
         activate.assert_called_once_with()
         expand.assert_not_called()  # the press by the keys does the pressing
 
+    def test_an_item_in_no_column_is_pressed_without_moving_the_focus(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """A press on a row outside the columns (an opened title's) leaves the ring where it is."""
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ALPHABET
+        with (
+            patch.object(ConcreteIndexScreen, "_get_col_buttons", return_value=[MagicMock()]),
+            patch.object(ConcreteIndexScreen, "_activate_focused_item") as activate,
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion"),
+        ):
+            index_screen._on_index_item_press(button, item)
+        assert index_screen._nav_panel == barks_reader.ui.index_screen._IndexNavPanel.ALPHABET
+        activate.assert_not_called()
+        expand.assert_called_once_with(button)
+
     def test_the_press_by_the_keys_presses_the_item_once(
         self, index_screen: ConcreteIndexScreen, row_pinner_stub: MagicMock
     ) -> None:

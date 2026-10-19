@@ -174,6 +174,22 @@ class TestHistoryScreenNav:
         nav_screen._nav_rows[0].delete.assert_called_once_with()
         assert nav_screen._nav_zone == _ZONE_LIST
 
+    def test_left_on_a_titles_row_asks_to_delete_every_reading_of_it(
+        self, nav_screen: HistoryScreen
+    ) -> None:
+        nav_screen._current_view = _TITLES_VIEW
+        row = _NavRow(widget=MagicMock(), activate=MagicMock(), delete=MagicMock(), key="Omelet")
+        nav_screen._nav_rows.append(row)
+        nav_screen.enter_nav_focus(MagicMock())
+        with patch.object(history_screen_module, "open_confirm_popup") as ask:
+            assert nav_screen.handle_key(KEY_LEFT) is True
+        assert ask.call_args.kwargs["text"] == 'Delete every reading of "Omelet" from the history?'
+
+    def test_asking_to_delete_with_no_rows_asks_nothing(self, nav_screen: HistoryScreen) -> None:
+        with patch.object(history_screen_module, "open_confirm_popup") as ask:
+            nav_screen._ask_to_delete_focused_row()
+        ask.assert_not_called()
+
     def test_bar_left_right_move_focus_and_clamp(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 2)
         nav_screen.enter_nav_focus(MagicMock())

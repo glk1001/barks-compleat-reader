@@ -331,6 +331,12 @@ class TestTaggedTitleRows:
     def test_a_tag_under_a_group_carries_no_pages(self) -> None:
         assert MainIndexScreen._get_tagged_pages(TagGroups.AFRICA, Tags.ALASKA) == ()
 
+    def test_a_title_row_too_long_for_itself_ends_in_an_ellipsis(self) -> None:
+        """Wrapped, a long title ran onto the next row."""
+        button = barks_reader.ui.main_index_screen._MainIndexTitleItemButton(text="A long title")
+        assert button.shorten is True
+        assert button.shorten_from == "right"
+
 
 class TestTitleHierarchy:
     """A title found under a tag says where: "Title (group/tag) "."""
