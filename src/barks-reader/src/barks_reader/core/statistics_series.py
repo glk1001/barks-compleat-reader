@@ -16,6 +16,7 @@ or charted. This module is Kivy-free and imports no plotting library.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
@@ -29,6 +30,7 @@ from .corpus_stats import PART_TAGS, get_paid_records, get_stories
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
     from barks_fantagraphics.comic_book_info import ComicBookInfo
 
@@ -51,6 +53,42 @@ CHART_FILES: Final[dict[str, str]] = {
 # ``scripts/generate_tfidf_wordcloud.py``.
 MOST_FREQUENT_FILE: Final = "most_frequent.png"
 WORDCLOUD_GLOB: Final = "tfidf_wordcloud_*.png"
+_WORDCLOUD_PERIOD: Final = re.compile(r"^tfidf_wordcloud_(.+)\.png$")
+
+# The Statistics screen's menu: each chart's label and file, in menu order.
+CHART_ITEMS: Final[list[tuple[str, str]]] = [
+    ("Stories per Year", CHART_FILES["stories_per_year"]),
+    ("Pages per Year", CHART_FILES["pages_per_year"]),
+    ("Payments per Year", CHART_FILES["payments_per_year"]),
+    ("Payment Rate ($/page)", CHART_FILES["payment_rate"]),
+    ("Stories per Series", CHART_FILES["stories_per_series"]),
+    ("Top Characters", CHART_FILES["top_characters"]),
+    ("Top Locations", CHART_FILES["top_locations"]),
+]
+# The Word Statistics menu's first item; the word clouds found follow it.
+MOST_FREQUENT_ITEM: Final = ("Most Frequent", MOST_FREQUENT_FILE)
+
+
+def wordcloud_items(statistics_dir: Path) -> list[tuple[str, str]]:
+    """Return the era word clouds in `statistics_dir`, each labelled by its era.
+
+    ``tfidf_wordcloud_1943-46.png`` is listed as ``"Word Cloud 1943-46"``; a file the
+    glob matches but with no era in its name is left out.
+
+    Args:
+        statistics_dir: The folder the charts are in.
+
+    Returns:
+        ``(label, filename)`` pairs, in file-name order.
+
+    """
+    results: list[tuple[str, str]] = []
+    for path in sorted(statistics_dir.glob(WORDCLOUD_GLOB)):
+        m = _WORDCLOUD_PERIOD.match(path.name)
+        if m and m.group(1):
+            results.append((f"Word Cloud {m.group(1)}", path.name))
+    return results
+
 
 TOP_N: Final = 20
 _CENTS: Final = 2

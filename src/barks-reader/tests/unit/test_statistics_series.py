@@ -9,6 +9,8 @@ pinned here are the corpus's as of that date, the way ``test_corpus_stats`` pins
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_tags_enums import Tags
@@ -22,7 +24,11 @@ from barks_reader.core.corpus_stats import (
 )
 from barks_reader.core.statistics_series import (
     CHART_FILES,
+    CHART_ITEMS,
+    MOST_FREQUENT_FILE,
+    MOST_FREQUENT_ITEM,
     TOP_N,
+    WORDCLOUD_GLOB,
     Series,
     all_series,
     dump_series,
@@ -35,7 +41,11 @@ from barks_reader.core.statistics_series import (
     stories_submitted_in,
     top_characters,
     top_locations,
+    wordcloud_items,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 FIRST_YEAR = 1942
 LAST_YEAR = 1973  # The last script Barks submitted (1973); 1982's entries are collections.
@@ -167,3 +177,54 @@ class TestSidecar:
         series = stories_per_year()
         changed = Series(series.name, series.labels, (*series.values[:-1], 0))
         assert changed != series
+
+
+class TestWordcloudItems:
+    def test_discovers_and_sorts_wordclouds(self, tmp_path: Path) -> None:
+        """Test that wordcloud files are discovered with correct labels."""
+        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
+        (tmp_path / "tfidf_wordcloud_1947-50.png").touch()
+        (tmp_path / "tfidf_wordcloud_1951-54.png").touch()
+        # Non-matching file should be ignored
+        (tmp_path / "other_image.png").touch()
+
+        result = wordcloud_items(tmp_path)
+
+        assert result == [
+            ("Word Cloud 1943-46", "tfidf_wordcloud_1943-46.png"),
+            ("Word Cloud 1947-50", "tfidf_wordcloud_1947-50.png"),
+            ("Word Cloud 1951-54", "tfidf_wordcloud_1951-54.png"),
+        ]
+
+    def test_empty_directory(self, tmp_path: Path) -> None:
+        """Test that an empty directory returns no wordclouds."""
+        assert wordcloud_items(tmp_path) == []
+
+    def test_a_wordcloud_with_no_period_in_its_name_is_left_out(self, tmp_path: Path) -> None:
+        """The glob matches an empty period, but there is nothing to label it with."""
+        (tmp_path / "tfidf_wordcloud_.png").touch()
+        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
+
+        assert wordcloud_items(tmp_path) == [("Word Cloud 1943-46", "tfidf_wordcloud_1943-46.png")]
+
+    def test_no_matching_files(self, tmp_path: Path) -> None:
+        """Test that non-matching files are excluded."""
+        (tmp_path / "stories_per_year.png").touch()
+        (tmp_path / "most_frequent.png").touch()
+
+        assert wordcloud_items(tmp_path) == []
+
+
+class TestTheScreenAndTheGeneratorAgree:
+    """The screen's menu and the generator's chart list are the same set of files."""
+
+    def test_chart_files(self) -> None:
+        assert [filename for _label, filename in CHART_ITEMS] == list(CHART_FILES.values())
+
+    def test_most_frequent_and_wordcloud_files(self, tmp_path: Path) -> None:
+        # The generator once wrote word_statistics.png while the menu showed
+        # most_frequent.png, and the table on screen fell a year behind the index.
+        assert MOST_FREQUENT_ITEM[1] == MOST_FREQUENT_FILE
+        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
+        assert [p.name for p in tmp_path.glob(WORDCLOUD_GLOB)] == ["tfidf_wordcloud_1943-46.png"]
+        assert wordcloud_items(tmp_path)

@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from enum import Enum, auto
+from dataclasses import fields, replace
 
 from barks_fantagraphics.comics_consts import (
     CARL_BARKS_FONT_FILE,
@@ -13,7 +12,13 @@ from kivy.metrics import sp
 from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 
-HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
+from barks_reader.core.font_sizes import (
+    HI_RES_FONT_SIZES,
+    LOW_RES_FONT_SIZES,
+    FontGroup,
+    FontTheme,
+    font_group_for_height,
+)
 
 # Set up custom fonts.
 LabelBase.register(
@@ -25,109 +30,13 @@ LabelBase.register(
 )
 
 
-class _FontGroup(Enum):
-    NOT_SET = auto()
-    LOW_RES = auto()
-    HI_RES = auto()
+def _scaled(sizes: FontTheme) -> FontTheme:
+    """Return `sizes` in Kivy's scaled pixels, as the display takes them."""
+    return replace(sizes, **{f.name: sp(getattr(sizes, f.name)) for f in fields(sizes)})
 
 
-@dataclass(frozen=True, slots=True)
-class FontTheme:
-    """A data class to hold all font sizes for a given theme."""
-
-    main_title: float
-    main_title_footnote: float
-    title_info: float
-    title_extra_info: float
-    index_menu: float
-    index_prefix: float
-    main_index_item: float
-    speech_index_item: float
-    index_title_item: float
-    speech_bubble_popup_title: float
-    speech_bubble_text: float
-    year_range: float
-    message_title: float
-    checkbox: float
-    default: float
-    error_main_view: float
-    error_popup: float
-    error_popup_button: float
-    text_block_heading: float
-    app_title: float
-    about_box_title: float
-    about_box_version: float
-    about_box_fine_print: float
-    search_result: float
-    search_input: float
-    search_tag_chip: float
-    search_label: float
-    search_clear_button: float
-    search_button: float
-
-
-LOW_RES_FONTS = FontTheme(
-    main_title=sp(30),
-    main_title_footnote=sp(9),
-    title_info=sp(16),
-    title_extra_info=sp(14),
-    index_menu=sp(13),
-    index_prefix=sp(12),
-    main_index_item=sp(12),
-    speech_index_item=sp(11),
-    index_title_item=sp(12),
-    speech_bubble_popup_title=sp(17),
-    speech_bubble_text=sp(13),
-    year_range=sp(14),
-    message_title=sp(16),
-    checkbox=sp(14),
-    default=sp(15),
-    error_main_view=sp(40),
-    error_popup=sp(16),
-    error_popup_button=sp(13),
-    text_block_heading=sp(20),
-    app_title=sp(12),
-    about_box_title=sp(20),
-    about_box_version=sp(17),
-    about_box_fine_print=sp(14),
-    search_result=sp(14),
-    search_input=sp(17),
-    search_tag_chip=sp(13),
-    search_label=sp(14),
-    search_clear_button=sp(16),
-    search_button=sp(14),
-)
-HI_RES_FONTS = FontTheme(
-    main_title=sp(40),
-    main_title_footnote=sp(10),
-    title_info=sp(20),
-    title_extra_info=sp(18),
-    index_menu=sp(17),
-    index_prefix=sp(15),
-    main_index_item=sp(16),
-    speech_index_item=sp(15),
-    index_title_item=sp(16),
-    speech_bubble_popup_title=sp(20),
-    speech_bubble_text=sp(15),
-    year_range=sp(18),
-    message_title=sp(20),
-    checkbox=sp(19),
-    default=sp(19),
-    error_main_view=sp(40),
-    error_popup=sp(23),
-    error_popup_button=sp(18),
-    text_block_heading=sp(25),
-    app_title=sp(17),
-    about_box_title=sp(26),
-    about_box_version=sp(23),
-    about_box_fine_print=sp(16),
-    search_result=sp(18),
-    search_input=sp(22),
-    search_tag_chip=sp(17),
-    search_label=sp(18),
-    search_clear_button=sp(20),
-    search_button=sp(18),
-)
+LOW_RES_FONTS = _scaled(LOW_RES_FONT_SIZES)
+HI_RES_FONTS = _scaled(HI_RES_FONT_SIZES)
 
 
 class FontManager(EventDispatcher):
@@ -188,15 +97,11 @@ class FontManager(EventDispatcher):
         self.about_box_version_font_size = 0.0
         self.about_box_fine_print_font_size = 0.0
 
-        self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
+        self._previous_font_group = FontGroup.NOT_SET
 
     def update_font_sizes(self, window_height: int) -> None:
         """Calculate and set all font sizes based on window height."""
-        required_font_group = (
-            _FontGroup.LOW_RES
-            if window_height <= HI_RES_WINDOW_HEIGHT_CUTOFF
-            else _FontGroup.HI_RES
-        )
+        required_font_group = font_group_for_height(window_height)
 
         if required_font_group == self._previous_font_group:
             logger.debug(
@@ -211,7 +116,7 @@ class FontManager(EventDispatcher):
             f" Required font group is {required_font_group.name}."
         )
 
-        theme = LOW_RES_FONTS if required_font_group == _FontGroup.LOW_RES else HI_RES_FONTS
+        theme = LOW_RES_FONTS if required_font_group == FontGroup.LOW_RES else HI_RES_FONTS
         self._apply_font_theme(theme)
 
         self._previous_font_group = required_font_group

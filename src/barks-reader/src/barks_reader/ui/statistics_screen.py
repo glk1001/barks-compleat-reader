@@ -8,7 +8,6 @@ if TYPE_CHECKING:
 
     from kivy.uix.widget import Widget
 
-import re
 
 from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
@@ -21,6 +20,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
+from barks_reader.core.statistics_series import CHART_ITEMS, MOST_FREQUENT_ITEM, wordcloud_items
 
 from .reader_keyboard_nav import (
     DROPDOWN_DISMISSED_LOG,
@@ -32,38 +32,6 @@ from .reader_keyboard_nav import (
 )
 
 STATISTICS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
-
-_STAT_ITEMS: list[tuple[str, str]] = [
-    ("Stories per Year", "stories_per_year.png"),
-    ("Pages per Year", "pages_per_year.png"),
-    ("Payments per Year", "payments_per_year.png"),
-    ("Payment Rate ($/page)", "payment_rate.png"),
-    ("Stories per Series", "stories_per_series.png"),
-    ("Top Characters", "top_characters.png"),
-    ("Top Locations", "top_locations.png"),
-]
-
-
-def _discover_wordclouds(statistics_dir: Path) -> list[tuple[str, str]]:
-    """Discover TF-IDF wordcloud images in the statistics directory.
-
-    Globs for ``tfidf_wordcloud_*.png`` files and derives human-readable labels
-    from the filenames (e.g. ``tfidf_wordcloud_1943-46.png`` → ``"Word Cloud 1943-46"``).
-
-    Args:
-        statistics_dir: Directory to search for wordcloud PNGs.
-
-    Returns:
-        Sorted list of ``(label, filename)`` tuples.
-
-    """
-    pattern = re.compile(r"^tfidf_wordcloud_(.+)\.png$")
-    results: list[tuple[str, str]] = []
-    for path in sorted(statistics_dir.glob("tfidf_wordcloud_*.png")):
-        m = pattern.match(path.name)
-        if m:
-            results.append((f"Word Cloud {m.group(1)}", path.name))
-    return results
 
 
 class StatMenuButton(ToggleButton):
@@ -101,7 +69,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def _build_menu(self) -> None:
         menu_layout = self.ids.stat_menu_layout
-        for label, filename in _STAT_ITEMS:
+        for label, filename in CHART_ITEMS:
             btn = StatMenuButton(text=label, group="stats")
             btn.bind(on_press=lambda _b, f=filename: self.show_stat(self._statistics_dir / f))
             menu_layout.add_widget(btn)
@@ -114,10 +82,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._word_stat_button = word_stat_btn
 
         self._word_stat_dropdown = ReaderDropDown(auto_width=False, width=dp(160))
-        items = [
-            ("Most Frequent", "most_frequent.png"),
-            *_discover_wordclouds(self._statistics_dir),
-        ]
+        items = [MOST_FREQUENT_ITEM, *wordcloud_items(self._statistics_dir)]
         for label, filename in items:
             btn = Button(
                 text=label,
@@ -148,7 +113,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         if not self._stat_buttons:
             return
         self._stat_buttons[0].state = "down"
-        _, filename = _STAT_ITEMS[0]
+        _, filename = CHART_ITEMS[0]
         self.show_stat(self._statistics_dir / filename)
 
     def show_stat(self, png_path: Path) -> None:

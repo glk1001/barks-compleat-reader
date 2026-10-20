@@ -7,13 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.comics_consts import FONT_DIR, SPEECH_FONT
-from barks_reader.ui.font_manager import (
-    HI_RES_FONTS,
-    HI_RES_WINDOW_HEIGHT_CUTOFF,
-    LOW_RES_FONTS,
-    FontManager,
-    _FontGroup,
-)
+from barks_reader.core.font_sizes import HI_RES_WINDOW_HEIGHT_CUTOFF, FontGroup
+from barks_reader.ui.font_manager import HI_RES_FONTS, LOW_RES_FONTS, FontManager
 from fontTools.ttLib import TTFont
 from kivy.core.text import LabelBase
 
@@ -30,7 +25,7 @@ def test_initialization(font_manager: FontManager) -> None:
     # Check initial state
     assert font_manager.app_title_font_size == 0
     # Check internal state
-    assert font_manager._previous_font_group == _FontGroup.NOT_SET
+    assert font_manager._previous_font_group == FontGroup.NOT_SET
 
 
 def test_update_font_sizes_low_res(font_manager: FontManager) -> None:
@@ -45,7 +40,7 @@ def test_update_font_sizes_low_res(font_manager: FontManager) -> None:
     assert font_manager.app_title_font_size == LOW_RES_FONTS.app_title
 
     # Check internal state
-    assert font_manager._previous_font_group == _FontGroup.LOW_RES
+    assert font_manager._previous_font_group == FontGroup.LOW_RES
 
 
 def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
@@ -60,13 +55,13 @@ def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
     assert font_manager.app_title_font_size == HI_RES_FONTS.app_title
 
     # Check internal state
-    assert font_manager._previous_font_group == _FontGroup.HI_RES
+    assert font_manager._previous_font_group == FontGroup.HI_RES
 
 
 def test_update_font_sizes_optimization(font_manager: FontManager) -> None:
     # 1. Set to Low Res
     font_manager.update_font_sizes(1000)
-    assert font_manager._previous_font_group == _FontGroup.LOW_RES
+    assert font_manager._previous_font_group == FontGroup.LOW_RES
 
     # Mock _apply_font_theme to verify it's not called again
     with patch.object(font_manager, "_apply_font_theme") as mock_apply:
@@ -79,7 +74,7 @@ def test_update_font_sizes_optimization(font_manager: FontManager) -> None:
         font_manager.update_font_sizes(2000)
 
         mock_apply.assert_called_once()
-        assert font_manager._previous_font_group == _FontGroup.HI_RES
+        assert font_manager._previous_font_group == FontGroup.HI_RES
 
 
 def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: PLR0915

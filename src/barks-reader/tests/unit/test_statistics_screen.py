@@ -12,7 +12,6 @@ from barks_reader.ui import statistics_screen as statistics_screen_module
 from barks_reader.ui.statistics_screen import (
     StatisticsScreen,
     StatMenuButton,
-    _discover_wordclouds,
 )
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
@@ -65,44 +64,6 @@ def screen(statistics_dir: Path) -> Generator[StatisticsScreen]:
 
         screen_instance = StatisticsScreen(statistics_dir=statistics_dir)
         yield screen_instance
-
-
-class TestDiscoverWordclouds:
-    def test_discovers_and_sorts_wordclouds(self, tmp_path: Path) -> None:
-        """Test that wordcloud files are discovered with correct labels."""
-        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
-        (tmp_path / "tfidf_wordcloud_1947-50.png").touch()
-        (tmp_path / "tfidf_wordcloud_1951-54.png").touch()
-        # Non-matching file should be ignored
-        (tmp_path / "other_image.png").touch()
-
-        result = _discover_wordclouds(tmp_path)
-
-        assert result == [
-            ("Word Cloud 1943-46", "tfidf_wordcloud_1943-46.png"),
-            ("Word Cloud 1947-50", "tfidf_wordcloud_1947-50.png"),
-            ("Word Cloud 1951-54", "tfidf_wordcloud_1951-54.png"),
-        ]
-
-    def test_empty_directory(self, tmp_path: Path) -> None:
-        """Test that an empty directory returns no wordclouds."""
-        assert _discover_wordclouds(tmp_path) == []
-
-    def test_a_wordcloud_with_no_period_in_its_name_is_left_out(self, tmp_path: Path) -> None:
-        """The glob matches an empty period, but there is nothing to label it with."""
-        (tmp_path / "tfidf_wordcloud_.png").touch()
-        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
-
-        assert _discover_wordclouds(tmp_path) == [
-            ("Word Cloud 1943-46", "tfidf_wordcloud_1943-46.png")
-        ]
-
-    def test_no_matching_files(self, tmp_path: Path) -> None:
-        """Test that non-matching files are excluded."""
-        (tmp_path / "stories_per_year.png").touch()
-        (tmp_path / "most_frequent.png").touch()
-
-        assert _discover_wordclouds(tmp_path) == []
 
 
 class TestStatisticsScreen:
@@ -398,29 +359,3 @@ class TestStatisticsScreenEdges:
         with patch.object(statistics_screen_module, "update_focus_in_list"):
             screen.enter_nav_focus(MagicMock())
         assert screen.handle_key(KEY_DOWN) is False
-
-
-class TestTheScreenAndTheGeneratorAgree:
-    """The screen's menu and the generator's chart list are the same set of files."""
-
-    def test_chart_files(self) -> None:
-        from barks_reader.core.statistics_series import CHART_FILES  # noqa: PLC0415
-
-        menu = [filename for _label, filename in statistics_screen_module._STAT_ITEMS]
-        assert menu == list(CHART_FILES.values())
-
-    def test_most_frequent_and_wordcloud_files(self, tmp_path: Path) -> None:
-        from pathlib import Path  # noqa: PLC0415
-
-        from barks_reader.core.statistics_series import (  # noqa: PLC0415
-            MOST_FREQUENT_FILE,
-            WORDCLOUD_GLOB,
-        )
-
-        # The generator once wrote word_statistics.png while the menu showed
-        # most_frequent.png, and the table on screen fell a year behind the index.
-        text = Path(statistics_screen_module.__file__).read_text(encoding="utf-8")
-        assert f'"{MOST_FREQUENT_FILE}"' in text
-        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
-        assert [p.name for p in tmp_path.glob(WORDCLOUD_GLOB)] == ["tfidf_wordcloud_1943-46.png"]
-        assert statistics_screen_module._discover_wordclouds(tmp_path)
