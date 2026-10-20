@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
@@ -65,7 +64,7 @@ def test_every_bad_or_no_library_state_has_a_reason() -> None:
 class TestCheckLibraryError:
     def test_too_many_archives_block_reading_with_their_popup(self) -> None:
         check = check_library_error(
-            TooManyArchiveFilesError(10, 12, Path("/root")), library_notice_shown=False
+            TooManyArchiveFilesError(14, 12, Path("/root")), library_notice_shown=False
         )
         assert (check.state, check.notice, check.readable) == (
             FantaVolumesState.VOLUMES_TOO_MANY,
@@ -76,12 +75,13 @@ class TestCheckLibraryError:
         assert check.state in BAD_STATES
 
     def test_duplicate_archives_block_reading_with_their_popup(self) -> None:
-        error = MagicMock(spec=DuplicateArchiveFilesError, archive_root=Path("/root"))
-        error.duplicates = {3: ["a", "b"]}
-        check = check_library_error(error, library_notice_shown=False)
+        check = check_library_error(
+            DuplicateArchiveFilesError([3], Path("/root")), library_notice_shown=False
+        )
         assert check.state is FantaVolumesState.DUPLICATE_VOLUMES
         assert check.error_type is ErrorTypes.DuplicateVolumeArchiveFiles
         assert check.readable is False
+        assert (check.error_info.file, check.error_info.duplicate_volumes) == ("/root", [3])
 
     def test_a_partial_library_reads_on_after_the_per_volume_popup(self) -> None:
         check = check_library_error(
@@ -101,7 +101,7 @@ class TestCheckLibraryError:
         )
         assert (check.notice, check.error_type, check.readable) == (
             LibraryNotice.NO_LIBRARY,
-            None,
+            ErrorTypes.FantagraphicsVolumeRootNotFound,
             True,
         )
 

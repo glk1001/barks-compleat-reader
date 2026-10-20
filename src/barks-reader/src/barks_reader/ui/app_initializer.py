@@ -98,7 +98,7 @@ class AppInitializer:
             # load and the whole app stays browsable.
             no_library = self._fanta_volumes_state in NO_LIBRARY_STATES
             if no_library:
-                self._show_no_library_notice(self._fanta_volumes_state)
+                self._show_no_library_notice(no_library_error_type(self._fanta_volumes_state))
 
             if not self._init_comic_book_data(library_notice_shown=no_library):
                 return
@@ -157,15 +157,13 @@ class AppInitializer:
         msg = f'Unexpected fanta volumes state: "{self._fanta_volumes_state}".'
         raise RuntimeError(msg)
 
-    def _show_no_library_notice(self, state: FantaVolumesState) -> None:
+    def _show_no_library_notice(self, error_type: ErrorTypes) -> None:
         """Show a single notice that the Fantagraphics library isn't available.
 
         The app stays fully browsable, so this deliberately does not set the persistent
-        'files not loaded' tree overlay, and fires once. ``state`` selects the wording:
-        VOLUMES_NOT_SET points at the unset setting, anything else at a directory that
-        holds no readable volumes.
+        'files not loaded' tree overlay, and fires once. ``error_type`` selects the
+        wording: the unset setting, or a directory that holds no readable volumes.
         """
-        error_type = no_library_error_type(state)
         # A no-op close callback: the notice is informational and must not set the
         # persistent overlay (unlike `_handle_error_ui`).
         self._user_error_handler.handle_error(error_type, None, lambda _msg: None)
@@ -187,11 +185,12 @@ class AppInitializer:
             check = check_library_error(e, library_notice_shown=library_notice_shown)
             self._fanta_volumes_state = check.state
             self._fanta_volumes_error_info = check.error_info
-            if check.notice is LibraryNotice.NO_LIBRARY:
-                self._show_no_library_notice(FantaVolumesState.ALL_VOLUMES_MISSING)
-            elif check.notice is LibraryNotice.ERROR:
+            if check.notice is not LibraryNotice.NONE:
                 assert check.error_type is not None
-                self._handle_error_ui(check.error_type, check.error_info)
+                if check.notice is LibraryNotice.NO_LIBRARY:
+                    self._show_no_library_notice(check.error_type)
+                else:
+                    self._handle_error_ui(check.error_type, check.error_info)
             return check.readable
 
         return True

@@ -96,9 +96,7 @@ def post_build_state(*, use_prebuilt_archives: bool, volumes_dir: Path) -> Fanta
 
 def no_library_error_type(state: FantaVolumesState) -> ErrorTypes:
     """Return the notice for a missing library: the unset setting, or a folder with no volumes."""
-    if state is FantaVolumesState.VOLUMES_NOT_SET:
-        return ErrorTypes.FantagraphicsVolumeRootNotSet
-    return ErrorTypes.FantagraphicsVolumeRootNotFound
+    return STATE_ERRORS[state][1]
 
 
 class LibraryNotice(Enum):
@@ -117,7 +115,7 @@ class LibraryCheck:
         state: What was found.
         error_info: The error's details for its popup.
         notice: What to tell the user.
-        error_type: The error for an `ERROR` notice.
+        error_type: The error the notice is about; None when there is no notice.
         readable: Whether the app goes on to read: a partial library does, a
             misconfigured one does not.
 
@@ -168,7 +166,7 @@ def check_library_error(
     if library_notice_shown:
         notice, error_type = LibraryNotice.NONE, None
     elif len(error.missing_file_vols) >= NUM_VOLUMES:
-        notice, error_type = LibraryNotice.NO_LIBRARY, None
+        notice, error_type = LibraryNotice.NO_LIBRARY, ErrorTypes.FantagraphicsVolumeRootNotFound
     else:
         notice, error_type = LibraryNotice.ERROR, ErrorTypes.MissingArchiveVolumes
     return LibraryCheck(
