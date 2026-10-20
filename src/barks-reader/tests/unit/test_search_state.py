@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import (
     And,
@@ -14,13 +15,21 @@ from barks_fantagraphics.search_query import (
 )
 from barks_fantagraphics.tag_query import TagSelection
 from barks_reader.core.search_state import (
+    ALL_SPEAKERS,
     ALL_YEARS,
+    BASKET_MODE_VALUE,
+    EVERYWHERE,
+    MAX_SCOPE_LABEL,
+    ONLY_IN_TAGS,
     VOLUMES_KEY,
     YEARS_KEY,
     EraChoice,
     TagBasket,
+    TagScope,
     TagState,
     WordBasket,
+    offered_speakers,
+    speaker_story_counts,
 )
 
 
@@ -169,3 +178,93 @@ def test_a_typed_years_and_volumes_range_are_chips_of_the_tag_basket() -> None:
     basket.fill(TagSelection(("gyro",), years=(1950, 1955)))
     basket.clear()
     assert (basket.years, len(basket)) == (None, 0)
+
+
+_TIMES = chr(0xD7)  # the multiplication sign on a picked word's chip
+
+
+def test_the_picked_words_row_is_the_mode_then_each_word_with_its_x() -> None:
+    basket = WordBasket()
+    assert basket.chip_options() == []
+    basket.toggle("gold")
+    basket.toggle("mine")
+    basket.flip()
+    assert basket.chip_options() == [
+        (BASKET_MODE_VALUE, "ANY"),
+        ("gold", f"gold  {_TIMES}"),
+        ("mine", f"mine  {_TIMES}"),
+    ]
+
+
+def test_the_picked_tags_row_names_a_left_out_tag_and_the_typed_ranges() -> None:
+    basket = TagBasket()
+    assert basket.chip_options() == []
+    basket.toggle("Gold")
+    basket.toggle("Pete")
+    basket.cycle("Pete")
+    basket.years, basket.volumes = (1950, 1955), (7, 7)
+    assert basket.chip_options() == [
+        (BASKET_MODE_VALUE, "ALL"),
+        ("Gold", "Gold"),
+        ("Pete", "not Pete"),
+        (YEARS_KEY, "years 1950-55"),
+        (VOLUMES_KEY, "vol 7"),
+    ]
+    basket.volumes = (7, 9)
+    assert basket.chip_options()[-1] == (VOLUMES_KEY, "vols 7-9")
+
+
+def test_the_era_keeps_the_stories_submitted_in_it_in_order() -> None:
+    era = EraChoice(ranges=((1942, 1946), (1947, 1950)))
+    titles = [Titles.LOST_IN_THE_ANDES, Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]  # 1949, 1942
+    assert era.in_era(titles) == titles
+    era.select("1942-1946")
+    assert era.in_era(titles) == [Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+
+
+def test_the_speakers_offered_are_the_roster_s_the_index_has_in_roster_order() -> None:
+    assert offered_speakers({"narrator", "Scrooge", "Donald", "other:Witch Hazel"}) == [
+        "Donald",
+        "Scrooge",
+        "narrator",
+    ]
+    assert offered_speakers(set()) == []
+
+
+def test_the_speaker_counts_list_anyone_then_speakers_by_count_the_picked_one_kept() -> None:
+    stories = {None: 3, "Donald": 1, "Scrooge": 2, "Gyro": 0}
+    counts = speaker_story_counts(lambda s: stories[s], ["Donald", "Scrooge", "Gyro"], "Gyro")
+    assert counts == [(ALL_SPEAKERS, 3), ("Scrooge", 2), ("Donald", 1), ("Gyro", 0)]
+    counts = speaker_story_counts(lambda s: stories[s], ["Donald", "Scrooge", "Gyro"], "")
+    assert counts == [(ALL_SPEAKERS, 3), ("Scrooge", 2), ("Donald", 1)]
+
+
+class TestTagScope:
+    def test_a_scope_narrows_a_list_it_holds_some_of_but_not_all(self) -> None:
+        scope = TagScope("Gold", frozenset({"A", "B"}))
+        assert scope.count_in(["A", "B", "C"]) == 2  # noqa: PLR2004
+        assert scope.narrows(2, 3) is True
+        assert scope.narrows(0, 3) is False
+        assert scope.narrows(3, 3) is False
+
+    def test_the_chips_are_everywhere_and_only_in_the_tags_cut_to_fit(self) -> None:
+        scope = TagScope("Gold + Pete + " + "Uncle Scrooge and the money bin " * 3)
+        everywhere, only = scope.options()
+        assert everywhere == (EVERYWHERE, "Everywhere")
+        assert only[0] == ONLY_IN_TAGS
+        assert only[1].startswith("Only in: Gold + Pete")
+        assert only[1].endswith("…")
+        assert len(only[1]) <= MAX_SCOPE_LABEL
+
+    def test_the_filter_is_the_era_s_years_and_the_scope_s_stories_in_force(self) -> None:
+        era = EraChoice(ranges=((1951, 1954),))
+        scope = TagScope("Gold", frozenset({"A"}))
+        assert scope.search_filter(era, in_force=False) is None
+        assert scope.search_filter(era, in_force=True) == SearchFilter(tag_titles=frozenset({"A"}))
+        era.select("1951-1954")
+        assert scope.search_filter(era, in_force=True) == SearchFilter(
+            years=(1951, 1954), tag_titles=frozenset({"A"})
+        )
+        scope.clear()
+        assert scope.tags == ""
+        assert scope.titles == frozenset()

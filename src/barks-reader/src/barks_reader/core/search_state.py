@@ -15,12 +15,24 @@ stories from.
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+from typing import TYPE_CHECKING
 
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import Combine
+from barks_fantagraphics.speech_speakers import CHARACTER_SPEAKER_OPTIONS, NARRATOR
 from barks_fantagraphics.tag_query import TagSelection, range_text
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Iterable, Sequence
+
+    from barks_fantagraphics.barks_titles import Titles
+
+# The ALL/ANY chip's value in a picked row: never a word or a tag.
+BASKET_MODE_VALUE = ""
 
 
 @dataclass
@@ -78,6 +90,13 @@ class WordBasket:
         """
         separator = " " if self.combine is Combine.ALL else " | "
         return separator.join(f'"{word}"' for word in self.words)
+
+    def chip_options(self) -> list[tuple[str, str]]:
+        """Return the picked-words row's chips: ALL/ANY, then each word with its x."""
+        options = [(w, f"{w}  \u00d7") for w in self.words]
+        if options:
+            options.insert(0, (BASKET_MODE_VALUE, self.combine.upper()))
+        return options
 
 
 # The picked-tags row's chips for a typed years or volumes range: never a tag's name.
@@ -183,6 +202,21 @@ class TagBasket:
             volumes=self.volumes,
         )
 
+    def chip_options(self) -> list[tuple[str, str]]:
+        """Return the picked-tags row's chips: ALL/ANY, each tag ("not" one left out), a range."""
+        options = [
+            (tag, tag if state is TagState.INCLUDED else f"not {tag}")
+            for tag, state in self.tags.items()
+        ]
+        if self.years is not None:
+            options.append((YEARS_KEY, f"years {range_text(self.years, years=True)}"))
+        if self.volumes is not None:
+            vols = range_text(self.volumes, years=False)
+            options.append((VOLUMES_KEY, f"vol {vols}" if "-" not in vols else f"vols {vols}"))
+        if options:
+            options.insert(0, (BASKET_MODE_VALUE, self.combine.upper()))
+        return options
+
 
 # The era chip that lifts the filter.
 ALL_YEARS = ""
@@ -236,6 +270,96 @@ class EraChoice:
         """Return whether a story submitted in `year` is listed."""
         return self.years is None or self.years[0] <= year <= self.years[1]
 
+    def in_era(self, titles: Iterable[Titles]) -> list[Titles]:
+        """Return the stories of `titles` submitted in the era, in the same order."""
+        return [t for t in titles if self.allows(BARKS_TITLE_INFO[t].submitted_year)]
+
     def search_filter(self) -> SearchFilter | None:
         """Return the word search's story filter for the era, or None for all years."""
         return None if self.years is None else SearchFilter(years=self.years)
+
+
+# The speaker value for anyone: no filter.
+ALL_SPEAKERS = ""
+
+
+def offered_speakers(indexed: Collection[str]) -> list[str]:
+    """Return the speakers the filter offers: the roster's that the index has, in roster order.
+
+    The roster's named characters and the narrator; ``other:`` speakers are a long tail
+    and are not offered. An index without speakers offers none.
+    """
+    return [s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed]
+
+
+def speaker_story_counts(
+    count_for: Callable[[str | None], int], offered: Sequence[str], picked: str
+) -> list[tuple[str, int]]:
+    """Return anyone's stories, then each speaker's who says what was searched, most first.
+
+    Args:
+        count_for: Counts the stories the search finds under a speaker (None: anyone).
+        offered: The speakers offered, in roster order, which ties keep.
+        picked: The speaker picked now, listed even at none so the filter can be lifted.
+
+    Returns:
+        ``(speaker, count)`` pairs: `ALL_SPEAKERS` first, then the rest by count.
+
+    """
+    total = count_for(None)
+    counts = [(s, count_for(s)) for s in offered]
+    listed = [(s, n) for s, n in counts if n or s == picked]
+    listed.sort(key=lambda speaker_count: -speaker_count[1])  # stable: roster order on ties
+    return [(ALL_SPEAKERS, total), *listed]
+
+
+# The tag scope row's chips: the word search everywhere, or only in the tags' stories.
+EVERYWHERE, ONLY_IN_TAGS = "", "tags"
+MAX_SCOPE_LABEL = 40
+
+
+@dataclass
+class TagScope:
+    """The tags the tag search has selected, which the word search may list only within.
+
+    Attributes:
+        tags: The selection as typed or described, named on the chip; "" for none.
+        titles: The selected tags' stories.
+
+    """
+
+    tags: str = ""
+    titles: frozenset[str] = frozenset()
+
+    def clear(self) -> None:
+        """Forget the selection: no scope to offer."""
+        self.tags, self.titles = "", frozenset()
+
+    def count_in(self, titles: Iterable[str]) -> int:
+        """Return how many of `titles` the scope holds."""
+        return sum(1 for title in titles if title in self.titles)
+
+    @staticmethod
+    def narrows(in_tags: int, everywhere: int) -> bool:
+        """Return whether the scope would narrow a list: it holds some of it, not all."""
+        return 0 < in_tags < everywhere
+
+    def label(self) -> str:
+        """Return the scope chip's text, "Only in: <tags>", cut to fit its row."""
+        return textwrap.shorten(f"Only in: {self.tags}", MAX_SCOPE_LABEL, placeholder="\u2026")
+
+    def options(self) -> list[tuple[str, str]]:
+        """Return the scope row's two chips: everywhere, and only in the tags' stories."""
+        return [(EVERYWHERE, "Everywhere"), (ONLY_IN_TAGS, self.label())]
+
+    def search_filter(self, era: EraChoice, *, in_force: bool) -> SearchFilter | None:
+        """Return the word search's story filter: the era's years, and the scope's stories in force.
+
+        Returns:
+            The filter, or None when neither narrows the search.
+
+        """
+        tag_titles = self.titles if in_force else None
+        if era.years is None and tag_titles is None:
+            return None
+        return SearchFilter(years=era.years, tag_titles=tag_titles)

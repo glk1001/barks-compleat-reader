@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self, cast
 
@@ -12,11 +11,9 @@ from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from barks_fantagraphics.search_filters import SearchFilter, apply_filter
 from barks_fantagraphics.search_query import has_query_syntax, replace_word
 from barks_fantagraphics.speech_speakers import (
-    CHARACTER_SPEAKER_OPTIONS,
-    NARRATOR,
     speaker_display_name,
 )
-from barks_fantagraphics.tag_query import has_tag_syntax, range_text
+from barks_fantagraphics.tag_query import has_tag_syntax
 from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -47,7 +44,6 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
-from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.reader_utils import get_concat_page_nums_str, get_tagged_pages
@@ -60,15 +56,27 @@ from barks_reader.core.search_chip_row import (
     chip_border_focused,
 )
 from barks_reader.core.search_state import (
+    ALL_SPEAKERS,
     ALL_YEARS,
+    BASKET_MODE_VALUE,
+    EVERYWHERE,
+    ONLY_IN_TAGS,
     VOLUMES_KEY,
     YEARS_KEY,
     EraChoice,
     TagBasket,
-    TagState,
+    TagScope,
     WordBasket,
+    offered_speakers,
+    speaker_story_counts,
 )
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.speech_hits import (
+    MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN,
+    SpeechHitRow,
+    comic_pages,
+    speech_hit_rows,
+)
 
 from .index_screen import (
     TitleShowSpeechButton,
@@ -100,7 +108,6 @@ if TYPE_CHECKING:
 SEARCH_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 SEARCH_IMAGE_CHANGE_SECONDS = 10
-MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN = 50
 
 _SEARCH_NAV_FOCUS_GROUP = "search_nav_focus"
 
@@ -321,11 +328,6 @@ class _ScopeChipButton(_SpeakerChipButton):
     """A chip of the word search's tag scope row: everywhere, or only the tags' stories."""
 
 
-# The tag scope row's chips: the word search everywhere, or only in the tags' stories.
-_EVERYWHERE, _ONLY_IN_TAGS = "", "tags"
-_MAX_SCOPE_LABEL = 40
-
-
 class _TagQueryChip(_TagChipButton):
     """The tag list's first chip while the box holds typed tags: pressing it combines them."""
 
@@ -338,12 +340,6 @@ def _make_basket_chip(value: str, label: str) -> _BasketChipButton:
     return _BasketChipButton(text=label, value=value)
 
 
-# The ALL/ANY chip's value in the picked-words row: never a word.
-_BASKET_MODE_VALUE = ""
-
-
-# The speaker value for anyone: no filter.
-_ALL_SPEAKERS = ""
 # The speaker filter's one chip, by its value in its row: picked (filled) while a
 # speaker is.
 _SAID_BY = "said by"
@@ -351,7 +347,7 @@ _SAID_BY = "said by"
 
 def _speaker_label(speaker: str) -> str:
     """Return how the speaker filter names a stored speaker; anyone, for none."""
-    return "anyone" if speaker == _ALL_SPEAKERS else speaker_display_name(speaker) or speaker
+    return "anyone" if speaker == ALL_SPEAKERS else speaker_display_name(speaker) or speaker
 
 
 class SearchScreen(DropdownNavMixin, FloatLayout):
@@ -446,7 +442,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._tag_titles: list[str] = []
 
         # Word search state
-        self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
+        self._word_search_results: list[SpeechHitRow] = []
         # Read the index's word list now, not on the first keystroke (an empty
         # query matches nothing, but builds the cached list it matches against).
         self._search.get_words_matching("")
@@ -457,10 +453,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._word_query_result: WordQueryResult | None = None
         # The box's text while it is a query to run (Return runs it), else "".
         self._box_query: str = ""
-        # The speaker the word results are narrowed to; `_ALL_SPEAKERS` for anyone. Shown
+        # The speaker the word results are narrowed to; `ALL_SPEAKERS` for anyone. Shown
         # as one chip, filled while a speaker is picked, which opens the list of the
         # speakers who say what was searched.
-        self._speaker: str = _ALL_SPEAKERS
+        self._speaker: str = ALL_SPEAKERS
         self._speaker_row = ChipRow(
             self.ids.speaker_chips_layout, _make_said_by_chip, self._on_said_by_chip_pressed
         )
@@ -495,7 +491,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self.ids.word_basket_layout,
             _make_basket_chip,
             self._on_basket_chip_picked,
-            selected=_BASKET_MODE_VALUE,
+            selected=BASKET_MODE_VALUE,
         )
         # Whether the results are the basket's, which typing in the box leaves in place.
         self._basket_results: bool = False
@@ -507,7 +503,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self.ids.tag_basket_layout,
             _make_basket_chip,
             self._on_tag_basket_chip_picked,
-            selected=_BASKET_MODE_VALUE,
+            selected=BASKET_MODE_VALUE,
         )
         self._tag_basket_results: bool = False
         # The tag box's text while it combines tags (Return combines them), else "".
@@ -528,8 +524,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._scope_row = ChipRow(
             self.ids.word_scope_layout, self._make_scope_chip, self._on_scope_selected
         )
-        self._scope_tags = ""
-        self._scope_titles: frozenset[str] = frozenset()
+        self._scope = TagScope()
         self._scope_counts: dict[str, int] = {}
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
@@ -847,7 +842,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _show_tag_titles(self, tag_str: str) -> None:
         """Look up a tag's stories in the era and populate the results list."""
         _, titles = self._search.resolve_tag(tag_str.lower())
-        titles = self._in_era(titles or [])
+        titles = self._era.in_era(titles or [])
         self._listed_tag = tag_str
         self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
         logger.debug(log_markers.TAG_TITLES_LISTED.format(tag=tag_str, count=len(titles)))
@@ -860,10 +855,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         )
         self._add_none_in_era_row(title_results_layout, titles)
         self._update_background_from_results(titles)
-
-    def _in_era(self, titles: list[Titles]) -> list[Titles]:
-        """Return the stories of `titles` submitted in the era, in the same order."""
-        return [t for t in titles if self._era.allows(BARKS_TITLE_INFO[t].submitted_year)]
 
     def _add_none_in_era_row(self, layout: BoxLayout, titles: list[Titles]) -> None:
         """Say so when the era leaves nothing of a list, so an empty list is not a mystery."""
@@ -1003,7 +994,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _on_tag_basket_chip_picked(self, value: str) -> None:
         """Flip ALL/ANY, or step a tag on (included, left out, put back): its chip was pressed."""
         focused = self._tag_basket_row.focused
-        if value == _BASKET_MODE_VALUE:
+        if value == BASKET_MODE_VALUE:
             mode = self._tag_basket.flip()
             logger.info(log_markers.TAG_BASKET_MODE.format(mode=mode.upper()))
             self._show_tag_basket()
@@ -1030,20 +1021,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _show_tag_basket(self) -> None:
         """Rebuild the picked-tags row: ALL/ANY, then each tag ("not" one left out)."""
-        basket = self._tag_basket
-        options = [
-            (tag, tag if state is TagState.INCLUDED else f"not {tag}")
-            for tag, state in basket.tags.items()
-        ]
-        if basket.years is not None:
-            options.append((YEARS_KEY, f"years {range_text(basket.years, years=True)}"))
-        if basket.volumes is not None:
-            vols = range_text(basket.volumes, years=False)
-            options.append((VOLUMES_KEY, f"vol {vols}" if "-" not in vols else f"vols {vols}"))
-        if options:
-            options.insert(0, (_BASKET_MODE_VALUE, basket.combine.upper()))
-        self._tag_basket_row.set_options(options)
-        self._tag_basket_row.set_selected(_BASKET_MODE_VALUE)
+        self._tag_basket_row.set_options(self._tag_basket.chip_options())
+        self._tag_basket_row.set_selected(BASKET_MODE_VALUE)
 
     def _mark_tag_rows(self) -> None:
         for row in self._tag_rows():
@@ -1057,7 +1036,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             return
         self._tag_basket_results = True
         selection = self._tag_basket.selection()
-        titles = self._in_era(self._search.titles_for_tag_selection(selection))
+        titles = self._era.in_era(self._search.titles_for_tag_selection(selection))
         self._listed_tag = ""
         self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
         logger.info(
@@ -1286,7 +1265,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _on_basket_chip_picked(self, value: str) -> None:
         """Flip ALL/ANY, or take a word out: its chip in the picked-words row was pressed."""
         focused = self._basket_row.focused
-        if value == _BASKET_MODE_VALUE:
+        if value == BASKET_MODE_VALUE:
             mode = self._word_basket.flip()
             logger.info(log_markers.WORD_BASKET_MODE.format(mode=mode.upper()))
             self._show_basket()
@@ -1310,12 +1289,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _show_basket(self) -> None:
         """Rebuild the picked-words row: ALL/ANY, then each word with its x; none if empty."""
-        basket = self._word_basket
-        options = [(w, f"{w}  \u00d7") for w in basket.words]
-        if options:
-            options.insert(0, (_BASKET_MODE_VALUE, basket.combine.upper()))
-        self._basket_row.set_options(options)
-        self._basket_row.set_selected(_BASKET_MODE_VALUE)
+        self._basket_row.set_options(self._word_basket.chip_options())
+        self._basket_row.set_selected(BASKET_MODE_VALUE)
 
     def _run_basket(self) -> None:
         """Search for the picked words together; with none picked, the results empty."""
@@ -1405,7 +1380,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _lift_speaker(self, searched: str) -> None:
         """Go back to anyone: the picked speaker says none of a new search, which others say."""
         logger.info(log_markers.SPEAKER_FILTER_LIFTED.format(speaker=self._speaker, text=searched))
-        self._speaker = _ALL_SPEAKERS
+        self._speaker = ALL_SPEAKERS
 
     def _find_word_stories(
         self, speaker: str | None, *, scoped: bool = True
@@ -1464,9 +1439,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """
         if self._offered_speakers is None:
             indexed = self._search.get_speakers()
-            self._offered_speakers = [
-                s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed
-            ]
+            self._offered_speakers = offered_speakers(indexed)
             if not self._offered_speakers:
                 logger.debug("Word search: index has no speakers; no speaker filter.")
         return self._offered_speakers
@@ -1521,11 +1494,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         bubbles could give too many. The picked speaker stays listed at none, so
         the filter can be lifted from the list.
         """
-        total = len(self._find_word_stories(None))
-        counts = [(s, len(self._find_word_stories(s))) for s in self._get_offered_speakers()]
-        listed = [(s, n) for s, n in counts if n or s == self._speaker]
-        listed.sort(key=lambda speaker_count: -speaker_count[1])  # stable: roster order on ties
-        return [(_ALL_SPEAKERS, total), *listed]
+        return speaker_story_counts(
+            lambda speaker: len(self._find_word_stories(speaker)),
+            self._get_offered_speakers(),
+            self._speaker,
+        )
 
     def _on_said_by_item_selected(self, _dropdown: Widget, speaker: str) -> None:
         """Narrow the word results to the speaker picked from the list, or lift the filter."""
@@ -1709,21 +1682,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         listed again under it.
         """
         selected = self._selected_tags()
-        was_on = self._scope_row.selected == _ONLY_IN_TAGS
-        old_titles = self._scope_titles
+        was_on = self._scope_row.selected == ONLY_IN_TAGS
+        old_titles = self._scope.titles
         if selected is None:
-            self._scope_tags, self._scope_titles = "", frozenset()
+            self._scope.clear()
             self._scope_counts = {}
             self._scope_row.set_options([])
-            self._scope_row.set_selected(_EVERYWHERE)
+            self._scope_row.set_selected(EVERYWHERE)
             if was_on:
                 logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere"))
                 self._rerun_word_results()
             return
-        self._scope_tags, self._scope_titles = selected
+        self._scope.tags, self._scope.titles = selected
         self._show_scope_row()
-        if was_on and self._scope_titles != old_titles:
-            logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags=self._scope_tags))
+        if was_on and self._scope.titles != old_titles:
+            logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags=self._scope.tags))
             self._rerun_word_results()
 
     def _show_scope_row(self) -> None:
@@ -1733,19 +1706,18 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         not all, counted in the era and under the speaker; and while the scope is in
         force, so it can be lifted. Not while nothing is searched.
         """
-        in_force = self._scope_row.selected == _ONLY_IN_TAGS
-        if not self._scope_tags or not (self._word_query or self._selected_word):
+        in_force = self._scope_row.selected == ONLY_IN_TAGS
+        if not self._scope.tags or not (self._word_query or self._selected_word):
             self._scope_row.set_options([])
             return
         everywhere = self._find_word_stories(self._speaker or None, scoped=False)
-        in_tags = sum(1 for title in everywhere if title in self._scope_titles)
-        if not in_force and not 0 < in_tags < len(everywhere):
+        in_tags = self._scope.count_in(everywhere)
+        if not in_force and not self._scope.narrows(in_tags, len(everywhere)):
             self._scope_row.set_options([])
             return
-        self._scope_counts = {_EVERYWHERE: len(everywhere), _ONLY_IN_TAGS: in_tags}
+        self._scope_counts = {EVERYWHERE: len(everywhere), ONLY_IN_TAGS: in_tags}
         focused = self._scope_row.focused
-        label = textwrap.shorten(f"Only in: {self._scope_tags}", _MAX_SCOPE_LABEL, placeholder="…")
-        self._scope_row.set_options([(_EVERYWHERE, "Everywhere"), (_ONLY_IN_TAGS, label)])
+        self._scope_row.set_options(self._scope.options())
         if focused is not None:
             self._scope_row.enter_focus(focused)
 
@@ -1757,7 +1729,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _on_scope_selected(self, value: str) -> None:
         """List the word search's stories again, everywhere or only in the tags' stories."""
-        tags = self._scope_tags if value == _ONLY_IN_TAGS else "Everywhere"
+        tags = self._scope.tags if value == ONLY_IN_TAGS else "Everywhere"
         logger.info(log_markers.WORD_TAG_FILTER_SET.format(tags=tags))
         self._rerun_word_results()
 
@@ -1766,33 +1738,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
         Without the tag scope's when not `scoped`: the scope row counts what it narrows.
         """
-        in_force = scoped and self._scope_row.selected == _ONLY_IN_TAGS
-        tag_titles = self._scope_titles if in_force else None
-        if self._era.years is None and tag_titles is None:
-            return None
-        return SearchFilter(years=self._era.years, tag_titles=tag_titles)
+        in_force = scoped and self._scope_row.selected == ONLY_IN_TAGS
+        return self._scope.search_filter(self._era, in_force=in_force)
 
     @staticmethod
     def _build_word_results(
         found: dict[str, TitleInfo], hit_counts: dict[str, int] | None = None
-    ) -> list[tuple[str, str, str, TitleInfo]]:
+    ) -> list[SpeechHitRow]:
         """Return each story's row: title, first page, row text and its matches.
 
         With `hit_counts` (a typed query's), each row ends in its story's count of
         matching bubbles: "Lost in the Andes!, 3,5 (4)".
         """
-        results: list[tuple[str, str, str, TitleInfo]] = []
-        for comic_title, title_speech_info in found.items():
-            page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
-            count = "" if hit_counts is None else f" ({hit_counts.get(comic_title, 0)})"
-            first_page_num, title_with_pages = get_fitted_title_with_page_nums(
-                comic_title, page_num_list, MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN - len(count)
-            )
-            results.append(
-                (comic_title, first_page_num, title_with_pages + count, title_speech_info)
-            )
-        results.sort(key=lambda t: t[2])
-        return results
+        return speech_hit_rows(
+            found, max_len=MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN, hit_counts=hit_counts
+        )
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
         logger.debug(log_markers.SEARCH_WORD_RESULTS.format(count=len(self._word_search_results)))
@@ -1818,7 +1778,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 shorten_from="center",
             )
             # Every page the row lists, so the title view steps through them all.
-            pages = tuple(page.comic_page for page in title_speech_info.fanta_pages.values())
+            pages = comic_pages(title_speech_info)
             title_btn.bind(
                 on_release=lambda b, ct=comic_title, fp=first_page_num, pg=pages: (
                     self._on_word_result_row_released(b, ct, fp, pg)
@@ -1861,9 +1821,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             result.highlight_terms if result and not result.used_literal_fallback else None
         )
         logger.info(log_markers.SHOW_BUBBLES_FOR_SEARCH.format(title=title_str, text=search_text))
-        self._bubble_title_pages = tuple(
-            page.comic_page for page in title_speech_info.fanta_pages.values()
-        )
+        self._bubble_title_pages = comic_pages(title_speech_info)
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
             title_str,
@@ -1907,7 +1865,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._word_basket.clear()
         self._show_basket()
         self._basket_results = False
-        self._speaker = _ALL_SPEAKERS
+        self._speaker = ALL_SPEAKERS
         self._show_result_filters()
         self._set_era(ALL_YEARS)
         self.ids.word_search_input.focus = True

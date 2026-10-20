@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 
+from .speech_hits import comic_pages
+
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
@@ -49,5 +51,5 @@ def title_row_item(
         id=STR_TITLE_TO_ENUM[title_str],
         display_text=display_text,
         page_to_goto=first_page,
-        tagged_pages=tuple(page.comic_page for page in title_speech_info.fanta_pages.values()),
+        tagged_pages=comic_pages(title_speech_info),
     )

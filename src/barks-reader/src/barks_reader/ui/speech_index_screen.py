@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
@@ -42,7 +42,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
-from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
+from barks_reader.core.speech_hits import SpeechHitRow, comic_pages, speech_hit_rows
 
 from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
@@ -455,28 +455,14 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         return sub_items_layout
 
-    def _get_sub_items_data(self, item: IndexItem) -> list[tuple[Any, ...]]:
-        """Retrieve and prepare the list of items to display in the sub-layout."""
+    def _get_sub_items_data(self, item: IndexItem) -> list[SpeechHitRow]:
+        """Return the term's title rows, found once and cached, listed as an index lists."""
         found_words = self._found_words_cache.get(item)
         if found_words is None:
             found_words = self._find_words_for_item(item)
             _store_bounded(self._found_words_cache, item, found_words)
 
-        sub_items_to_display = []
-        for comic_title, title_speech_info in found_words.items():
-            page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
-
-            sub_items_to_display.append(
-                (
-                    comic_title,
-                    *self._get_speech_title_with_page_nums(comic_title, page_num_list),
-                    title_speech_info,
-                )
-            )
-
-        sub_items_to_display.sort(key=lambda t: t[2])
-
-        return sub_items_to_display
+        return speech_hit_rows(found_words, max_len=MAX_TITLE_AND_PAGES_LEN, sortable=True)
 
     def _insert_title_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
@@ -587,9 +573,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         logger.info(
             log_markers.SHOW_BUBBLES_FOR_INDEX_TERMS.format(title=title_str, terms=index_terms)
         )
-        self._bubble_title_pages = tuple(
-            page.comic_page for page in title_speech_info.fanta_pages.values()
-        )
+        self._bubble_title_pages = comic_pages(title_speech_info)
         show_speech_bubbles_popup(
             self._speech_bubble_browser_popup,
             title_str,
@@ -618,17 +602,6 @@ class SpeechSubItemsIndexScreen(IndexScreen):
                 self.on_after_popup_goto_title()
 
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
-
-    def _get_speech_title_with_page_nums(
-        self, title_str: str, page_nums: list[str]
-    ) -> tuple[str, str]:
-        first_page_num, title_str = get_fitted_title_with_page_nums(
-            title_str, page_nums, MAX_TITLE_AND_PAGES_LEN
-        )
-
-        title_str = self._get_sortable_string(title_str)
-
-        return first_page_num, title_str
 
 
 class SpeechIndexScreen(SpeechSubItemsIndexScreen):

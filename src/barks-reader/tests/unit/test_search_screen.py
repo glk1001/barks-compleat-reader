@@ -20,7 +20,7 @@ from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
-from barks_reader.core.search_state import EraChoice, TagBasket, WordBasket
+from barks_reader.core.search_state import EraChoice, TagBasket, TagScope, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import (
     SearchScreen,
@@ -83,8 +83,7 @@ def _make_bare_screen() -> SearchScreen:
         row.set_options(screen._era.options())
     # The word search's tag scope: none offered.
     screen._scope_row = ChipRow(MagicMock(), _live_chip, screen._on_scope_selected)
-    screen._scope_tags = ""
-    screen._scope_titles = frozenset()
+    screen._scope = TagScope()
     screen._scope_counts = {}
     return screen
 
@@ -2059,7 +2058,7 @@ class TestTagScope:
             ("", "Everywhere"),
             ("tags", "Only in: Gyro Gearloose"),
         ]
-        assert screen._scope_titles == frozenset(
+        assert screen._scope.titles == frozenset(
             ENUM_TO_STR_TITLE[t] for t in (PIRATE_GOLD, HELMET)
         )
         assert screen._scope_row.selected == ""  # offered, not in force
@@ -2071,7 +2070,7 @@ class TestTagScope:
         screen._tag_basket.cycle("Christmas")
         screen._refresh_tag_scope()
         assert self._scope_chips(screen)[1].text == "Only in: Scrooge -Christmas"
-        assert screen._scope_titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
+        assert screen._scope.titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
 
     def test_a_long_selection_is_shortened_on_its_chip(self, screen: SearchScreen) -> None:
         for tag in ("Scrooge", "Gyro Gearloose", "The Beagle Boys", "Gladstone"):
@@ -2110,7 +2109,7 @@ class TestTagScope:
         _press(self._scope_chips(screen)[1])
         screen._era.select("1951-1954")
         assert screen._word_search_filter() == SearchFilter(
-            years=(1951, 1954), tag_titles=screen._scope_titles
+            years=(1951, 1954), tag_titles=screen._scope.titles
         )
 
     def test_everywhere_lifts_the_limit(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
@@ -2131,7 +2130,7 @@ class TestTagScope:
         with patch.object(screen, "_rerun_word_results") as again:
             screen._refresh_tag_scope()
         again.assert_called_once_with()
-        assert screen._scope_titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
+        assert screen._scope.titles == frozenset({ENUM_TO_STR_TITLE[HELMET]})
 
         screen._tag_basket.clear()
         screen._listed_tag = ""

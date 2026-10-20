@@ -213,11 +213,6 @@ class TestIndexScreen:
             index_screen.on_is_visible(index_screen, value=False)
             mock_cancel.assert_called_once()
 
-    def test_get_sortable_string(self, index_screen: ConcreteIndexScreen) -> None:
-        assert index_screen._get_sortable_string("The Apple") == "Apple, The"
-        assert index_screen._get_sortable_string("A Banana") == "Banana, A"
-        assert index_screen._get_sortable_string("Carrot") == "Carrot"
-
     def test_resync_item_focus_first_expand(self, index_screen: ConcreteIndexScreen) -> None:
         """First expansion: no prior sub-items, count increases, focus moves to first sub-item."""
         parent_btn = MagicMock(spec=IndexItemButton)

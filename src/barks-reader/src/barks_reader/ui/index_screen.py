@@ -35,7 +35,6 @@ from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_text import (
     indexable_title,
-    sortable_string,
 )
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -1045,10 +1044,6 @@ class IndexScreen(FloatLayout):
 
     def _get_indexable_title(self, title: Titles) -> str:
         return indexable_title(title)
-
-    @staticmethod
-    def _get_sortable_string(text: str) -> str:
-        return sortable_string(text)
 
     def _handle_collapse(self, level_of_click: int) -> None:
         # When collapsing a parent, close it and all its children.
