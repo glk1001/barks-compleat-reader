@@ -1951,6 +1951,33 @@ change = """
 """
 reason = "After update_regions the left margin is round(max_window_width / 4) >= 0, so the + 1 is already >= 1; before it the band's right edge is 0 and there is no region either way."
 
+[[equivalent]]
+module = "barks_reader.core.main_index"
+function = "index_letter"
+change = """
+- return "0" if "0" <= first_letter <= "9" else first_letter
++ return "0" if "0" < first_letter <= "9" else first_letter
+"""
+reason = "The one letter the mutant moves to the else branch is \"0\", which that branch returns as it is: \"0\"."
+
+[[equivalent]]
+module = "barks_reader.core.main_index"
+function = "_collect_titles"
+change = """
+- if type(tag) is TagGroups:
++ if type(None) is TagGroups:
+"""
+reason = "The else branch passes a nested group its parent too, but a group's call reads parent_tag_group only for a tag, and gives its own tags itself."
+
+[[equivalent]]
+module = "barks_reader.core.main_index"
+function = "tagged_pages"
+change = """
+- if not isinstance(item_id, Tags) or not isinstance(sub_item_id, Titles):
++ if not isinstance(item_id, Tags) and not isinstance(sub_item_id, Titles):
+"""
+reason = "BARKS_TAGGED_PAGES is keyed by (tag, title) only, so a lookup of any other pair finds nothing: () either way."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"

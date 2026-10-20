@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from typing import Literal
 from unittest.mock import patch
 
 import barks_reader.core.main_index
@@ -23,7 +25,16 @@ from barks_reader.core.main_index import (
 )
 
 
-@pytest.fixture(scope="module")
+def _index_scope(fixture_name: str, config: pytest.Config) -> Literal["module", "function"]:  # noqa: ARG001
+    """Once per module normally; once per test under mutmut (docs/mutation-testing.md, trap 4).
+
+    A module-scoped index credits all of build_main_index to the first test, and mutmut
+    runs only that one against its mutants.
+    """
+    return "function" if os.environ.get("MUTANT_UNDER_TEST") else "module"
+
+
+@pytest.fixture(scope=_index_scope)
 def index() -> dict[str, list[IndexItem]]:
     return build_main_index()
 
@@ -65,11 +76,22 @@ class TestBuildMainIndex:
 
     def test_a_digit_heading_lists_on_the_0_page(self) -> None:
         assert (index_letter("313"), index_letter("alaska")) == ("0", "A")
+        assert (index_letter("0 to 60"), index_letter("9 lives")) == ("0", "0")
+        assert (index_letter("zinc"), index_letter("Zinc")) == ("Z", "Z")
+
+    @pytest.mark.parametrize("heading", ["@home", ":x", "[x]", "_x"])
+    def test_a_heading_must_start_with_a_letter_or_digit(self, heading: str) -> None:
+        with pytest.raises(AssertionError):
+            index_letter(heading)
 
     def test_a_cross_reference_row_reads_see_in_italics(self) -> None:
         item = IndexItem(Tags.GOLDIE_OGILT, "Glittering Goldie", see="O'Gilt, Goldie")
         assert index_item_markup(item) == "Glittering Goldie. [i]See[/i] O'Gilt, Goldie"
         assert index_item_markup(IndexItem("Donald & co", "Donald & co")) == "Donald &amp; co"
+
+    def test_a_tag_row_is_its_heading_markup(self) -> None:
+        item = IndexItem(Tags.FIRST_REAL_NEIGHBOR_JONES, "Neighbor Jones: first real appearance")
+        assert index_item_markup(item) == "Neighbor Jones: first [i]real[/i] appearance"
 
 
 class TestTitleHierarchy:
@@ -112,6 +134,18 @@ class TestTitlesForLetter:
         assert hierarchies
         assert all(h.tag_group is TagGroups.PIG_VILLAINS for h in hierarchies.values())
 
+    def test_a_group_in_a_group_is_followed_and_names_itself(self) -> None:
+        """Chemistry holds the chemical names group: forbidium is under that, not chemistry."""
+        infos, hierarchies = titles_for_letter([IndexItem(TagGroups.CHEMISTRY, "chemistry")])
+        titles = {info.comic_book_info.title for info in infos}
+        assert {Titles.FORBIDIUM_MONEY_BIN_THE, Titles.MIXED_UP_MIXER} <= titles
+        assert hierarchies[Titles.FORBIDIUM_MONEY_BIN_THE] == TitleHierarchy(
+            TagGroups.CHEMICAL_NAMES, Tags.FORBIDIUM, Titles.FORBIDIUM_MONEY_BIN_THE
+        )
+        assert hierarchies[Titles.MIXED_UP_MIXER] == TitleHierarchy(
+            TagGroups.CHEMISTRY, Tags.CHEMICAL_FORMULA, Titles.MIXED_UP_MIXER
+        )
+
 
 class TestSubItems:
     def test_a_tags_titles_are_listed_in_the_order_barks_submitted_them(self) -> None:
@@ -123,13 +157,31 @@ class TestSubItems:
         assert listed == sorted(titles)
         assert listed[0] == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD  # 1942, before 1943
 
+    def test_a_tags_titles_carry_its_pages(self) -> None:
+        titles = [Titles.BACK_TO_THE_KLONDIKE]
+        pages = {(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7", "8"]}
+        with (
+            patch.object(
+                barks_reader.core.main_index, "BARKS_TAGGED_TITLES", {Tags.ALASKA: titles}
+            ),
+            patch.object(barks_reader.core.main_index, "BARKS_TAGGED_PAGES", pages),
+        ):
+            rows = tag_sub_items(Tags.ALASKA)
+        assert rows == [(Titles.BACK_TO_THE_KLONDIKE, "7", "Back to the Klondike, 7-8")]
+
     def test_a_tag_groups_tags_are_listed_by_heading(self) -> None:
         tags = [Tags.SOAPY_SLICK, Tags.P_J_MC_BRINE, Tags.MR_MC_SWINE]
         with patch.object(
             barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value=set(tags)
-        ):
-            listed = [t for t, _page, _text in tag_group_sub_items(TagGroups.PIG_VILLAINS)]
-        assert listed == [Tags.P_J_MC_BRINE, Tags.MR_MC_SWINE, Tags.SOAPY_SLICK]
+        ) as group_tags:
+            rows = tag_group_sub_items(TagGroups.PIG_VILLAINS)
+        group_tags.assert_called_once_with(TagGroups.PIG_VILLAINS)
+        assert [t for t, _page, _text in rows] == [
+            Tags.P_J_MC_BRINE,
+            Tags.MR_MC_SWINE,
+            Tags.SOAPY_SLICK,
+        ]
+        assert {page for _t, page, _text in rows} == {""}  # a tag opens at no page
 
 
 class TestTaggedTitleRows:
