@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.win32_window import RECT, find_hwnd_by_enum_windows
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import FullscreenEnum, WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
@@ -51,7 +52,7 @@ _RECT_B = (60, 40, 500, 400)
 def _user32() -> Any:  # noqa: ANN401
     """Return user32 with the signatures these tests call through, 64-bit handles intact."""
     user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
-    user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(win32_module._RECT)]
+    user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
     user32.GetWindowRect.restype = wintypes.BOOL
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
@@ -69,7 +70,7 @@ def _user32() -> Any:  # noqa: ANN401
 
 def _window_rect(hwnd: int) -> tuple[int, int, int, int]:
     """Return the window's outer rectangle as (left, top, width, height)."""
-    rect = win32_module._RECT()
+    rect = RECT()
     assert _user32().GetWindowRect(hwnd, ctypes.byref(rect))
     return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
 
@@ -187,7 +188,7 @@ def kivy_window() -> Iterator[MagicMock]:
 
 
 def test_the_lookup_finds_an_sdl_window_of_this_process(live_window: int) -> None:
-    found = Win32WindowBackend._find_hwnd_by_enum_windows()
+    found = find_hwnd_by_enum_windows()
     assert found
 
     user32 = _user32()

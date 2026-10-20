@@ -9,14 +9,13 @@ with an ``SDL_SetWindowSize``-based recovery path for the cases where
 
 from __future__ import annotations
 
-import ctypes
-import os
-from ctypes import c_long, wintypes
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
+
+from barks_reader.core.win32_window import RECT, Win32Window, find_app_hwnd
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -30,15 +29,6 @@ _RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
 
 # Frames move_now retries its MoveWindow for: the first is lost, the second holds.
 _MOVE_NOW_ATTEMPTS = 5
-
-
-class _RECT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, type[c_long]]]] = [
-        ("left", wintypes.LONG),
-        ("top", wintypes.LONG),
-        ("right", wintypes.LONG),
-        ("bottom", wintypes.LONG),
-    ]
 
 
 # noinspection PyCallingNonCallable
@@ -70,8 +60,8 @@ class Win32WindowBackend:
         from .platform_window_utils import FullscreenEnum  # noqa: PLC0415
 
         try:
-            window_rect = _RECT()
-            client_rect = _RECT()
+            window_rect = RECT()
+            client_rect = RECT()
             self._get_window_rect(self._hwnd, window_rect)
             self._get_client_rect(self._hwnd, client_rect)
 
@@ -121,7 +111,7 @@ class Win32WindowBackend:
             if Window.fullscreen or not self._hwnd:
                 return  # a fullscreen transition has taken over
             self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-            rect = _RECT()
+            rect = RECT()
             self._get_window_rect(self._hwnd, rect)
             if (rect.left, rect.top, rect.right, rect.bottom) == wanted:
                 logger.debug(f"Win32: Window at {state.size}, {state.pos} after fullscreen exit.")
@@ -168,7 +158,7 @@ class Win32WindowBackend:
     def _init(self, hwnd: int | None) -> None:
         """Initialize Win32 handles for direct window manipulation."""
         try:
-            found_hwnd = hwnd or self._find_app_hwnd()
+            found_hwnd = hwnd or find_app_hwnd()
 
             if not found_hwnd:
                 logger.warning("Could not get Win32 handle for Kivy window.")
@@ -176,83 +166,17 @@ class Win32WindowBackend:
 
             self._hwnd = found_hwnd
 
-            # Load a fresh instance of user32.dll to avoid conflicts with Kivy's Win32 calls.
-            user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
-
-            # Set up Win32 functions with proper type signatures.
-            self._move_window = user32.MoveWindow
-            self._move_window.argtypes = [
-                wintypes.HWND,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                wintypes.BOOL,
-            ]
-            self._move_window.restype = wintypes.BOOL
-
-            self._get_window_rect = user32.GetWindowRect
-            self._get_window_rect.argtypes = [wintypes.HWND, ctypes.POINTER(_RECT)]
-            self._get_window_rect.restype = wintypes.BOOL
-
-            self._get_client_rect = user32.GetClientRect
-            self._get_client_rect.argtypes = [wintypes.HWND, ctypes.POINTER(_RECT)]
-            self._get_client_rect.restype = wintypes.BOOL
+            # A fresh user32, typed for 64-bit handles (core.win32_window); the calls
+            # are held here so a test can stand one of them in.
+            window = Win32Window(found_hwnd)
+            self._move_window = window.move_window
+            self._get_window_rect = window.get_window_rect
+            self._get_client_rect = window.get_client_rect
 
             logger.info(f"Win32 window handle initialized: {hex(self._hwnd)}.")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._hwnd = None
-
-    @staticmethod
-    def _find_app_hwnd() -> Any:  # noqa: ANN401
-        """Return the app's window: the active one, else the first SDL window of this process."""
-        found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
-        if found_hwnd:
-            logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
-            return found_hwnd
-        return Win32WindowBackend._find_hwnd_by_enum_windows()
-
-    @staticmethod
-    def _find_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
-        """Find our SDL window by enumerating all top-level windows and matching PID."""
-        GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806  # ty: ignore[unresolved-attribute]
-        EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806  # ty: ignore[unresolved-attribute]
-        IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806  # ty: ignore[unresolved-attribute]
-        GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806  # ty: ignore[unresolved-attribute]
-
-        current_pid = os.getpid()
-        found_hwnd = 0
-
-        def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
-            nonlocal found_hwnd
-            if IsWindowVisible(hwnd_candidate):
-                pid = wintypes.DWORD()
-                GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
-
-                if pid.value == current_pid:
-                    # Check if it's an SDL window (Kivy uses SDL2).
-                    class_name = ctypes.create_unicode_buffer(256)
-                    GetClassNameW(hwnd_candidate, class_name, 256)
-
-                    if class_name.value.startswith("SDL"):
-                        found_hwnd = hwnd_candidate
-                        logger.info(
-                            f"Found SDL window:"
-                            f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
-                        )
-                        return False  # Stop enumeration
-            return True  # Continue enumeration
-
-        # Create callback and enumerate windows.
-        ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806  # ty: ignore[unresolved-attribute]
-        callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
-        EnumWindows(callback_ptr, 0)
-
-        if found_hwnd:
-            logger.info(f"Found window via EnumWindows: {hex(found_hwnd)}.")
-
-        return found_hwnd
 
     def _set_window_rect(self, x: int, y: int, width: int, height: int) -> None:
         """Set window position and size using the Win32 ``MoveWindow`` API.
@@ -277,7 +201,7 @@ class Win32WindowBackend:
             result = self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
 
             # Verify the operation succeeded.
-            actual_rect = _RECT()
+            actual_rect = RECT()
             self._get_window_rect(self._hwnd, actual_rect)
             actual_w = actual_rect.right - actual_rect.left
             actual_h = actual_rect.bottom - actual_rect.top
@@ -319,7 +243,7 @@ class Win32WindowBackend:
             if not self._hwnd:
                 return
             self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-            actual_rect = _RECT()
+            actual_rect = RECT()
             self._get_window_rect(self._hwnd, actual_rect)
             logger.info(
                 f"Win32 retry: Requested size = ({width}, {height}); "

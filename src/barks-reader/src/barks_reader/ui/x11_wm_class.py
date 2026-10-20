@@ -1,18 +1,9 @@
 from __future__ import annotations
 
-import ctypes
-
 from kivy.core.window import Window
-from loguru import logger
 
 from barks_reader.core.platform_info import PLATFORM, Platform
-
-
-class _XClassHint(ctypes.Structure):
-    _fields_ = (
-        ("res_name", ctypes.c_char_p),
-        ("res_class", ctypes.c_char_p),
-    )
+from barks_reader.core.x11_window import set_x11_wm_class
 
 
 def force_x11_wm_class(name: str) -> None:
@@ -39,24 +30,4 @@ def force_x11_wm_class(name: str) -> None:
     if type(info).__name__ != "WindowInfoX11":
         return
 
-    try:
-        libx11 = ctypes.CDLL("libX11.so.6")
-    except OSError as exc:
-        logger.warning(f"Could not load libX11: {exc}")
-        return
-
-    libx11.XSetClassHint.argtypes = (
-        ctypes.c_void_p,
-        ctypes.c_ulong,
-        ctypes.POINTER(_XClassHint),
-    )
-    libx11.XSetClassHint.restype = ctypes.c_int
-    libx11.XFlush.argtypes = (ctypes.c_void_p,)
-    libx11.XFlush.restype = ctypes.c_int
-
-    encoded = name.encode("utf-8")
-    hint = _XClassHint(res_name=encoded, res_class=encoded)
-    libx11.XSetClassHint(info.display, info.window, ctypes.byref(hint))
-    libx11.XFlush(info.display)
-
-    logger.info(f"Forced X11 WM_CLASS to '{name}'.")
+    set_x11_wm_class(info.display, info.window, name)

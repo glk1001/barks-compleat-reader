@@ -86,6 +86,55 @@
     },
     {
       "column": 18,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 32,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 23,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 21,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `windll` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `WINFUNCTYPE` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 18,
+      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
+      "name": "missing-attribute",
+      "concise_description": "No attribute `WinDLL` in module `ctypes`",
+      "severity": "error"
+    },
+    {
+      "column": 18,
       "path": "src/barks-reader/src/barks_reader/first_run_installer_show_message.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `before`",
@@ -285,55 +334,6 @@
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `open_settings`",
-      "severity": "error"
-    },
-    {
-      "column": 22,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `WinDLL` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 22,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 36,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 23,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 27,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 25,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 29,
-      "path": "src/barks-reader/src/barks_reader/ui/platform_window_win32.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `WINFUNCTYPE` in module `ctypes`",
       "severity": "error"
     },
     {
