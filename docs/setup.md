@@ -370,7 +370,11 @@ Both run the app, the unit tests and the build, and the GUI tests
      no desktop to draw on): no screen saver with a password, and display sleep longer
      than a run (Energy Saver; the runner holds the Mac awake with `caffeinate` while it
      runs). Leave the desktop alone during a run: keys go to the reader alone, but clicks
-     land on its window by position.
+     land on its window by position. Keep the desktop's windows few, and have Terminal not
+     reopen them at login (`defaults write com.apple.Terminal NSQuitAlwaysKeepsWindows -bool
+     false`): a guest with no GPU draws every window in software, and the app's frames wait
+     on it. Fifteen old runs' Terminal windows held them up to 13 s on 2026-10-20, so keys
+     arrived late and GUI tests failed; `mac-vm run` now closes the earlier runs' windows.
   10. **Memory**: 8 GB. A GUI stage starts only with half the machine's memory free, and
       the app is held to three quarters of it (6 GB at most); the soak's walk through the
       wiki's big tables has taken the app past 4 GB on Windows, and peaked at 1.8 GB here.
