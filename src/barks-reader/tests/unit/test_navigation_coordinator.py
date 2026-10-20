@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
+from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -379,30 +380,34 @@ class TestNavigationCoordinator:
         last_page = MagicMock()
         last_page.display_page_num = last_read
         mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
-        bottom.set_goto_page_state.reset_mock()
+        bottom.show_goto_page.reset_mock()
         nav_coord.on_comic_closed()
-        return bottom.set_goto_page_state
+        return bottom.show_goto_page
 
     def test_a_comic_closed_under_a_tag_offers_the_last_page_among_the_tags(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
-        offered.assert_called_once_with("9", active=True, tagged_pages=("1", "14"))
+        offered.assert_called_once_with(
+            GotoPageOffer.make("9", active=True, tagged_pages=("1", "14"))
+        )
 
     def test_a_comic_closed_at_its_beginning_under_a_tag_offers_the_tags_first_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, COMIC_BEGIN_PAGE)
-        offered.assert_called_once_with("1", active=True, tagged_pages=("1", "14"))
+        offered.assert_called_once_with(
+            GotoPageOffer.make("1", active=True, tagged_pages=("1", "14"))
+        )
 
     def test_the_tags_pages_last_only_until_the_comic_closes(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
-        offered = mock_deps["bottom_title_view_screen"].set_goto_page_state
+        offered = mock_deps["bottom_title_view_screen"].show_goto_page
         offered.reset_mock()
         nav_coord.on_comic_closed()  # a comic opened some other way, e.g. a collection
-        offered.assert_called_once_with("9", active=True, tagged_pages=())
+        offered.assert_called_once_with(GotoPageOffer.make("9", active=True))
 
     @pytest.mark.parametrize("opener", ["collection", "article"])
     def test_a_comic_opened_another_way_drops_the_tags_pages_of_one_never_closed(
@@ -421,11 +426,11 @@ class TestNavigationCoordinator:
         last_page = MagicMock()
         last_page.display_page_num = "9"
         mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
-        bottom.set_goto_page_state.reset_mock()
+        bottom.show_goto_page.reset_mock()
 
         nav_coord.on_comic_closed()
 
-        bottom.set_goto_page_state.assert_called_once_with("9", active=True, tagged_pages=())
+        bottom.show_goto_page.assert_called_once_with(GotoPageOffer.make("9", active=True))
 
     def test_a_comic_closed_at_its_beginning_with_no_tag_offers_no_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
@@ -437,8 +442,8 @@ class TestNavigationCoordinator:
 
         nav_coord.on_comic_closed()
 
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            active=False
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer()
         )
 
     def test_on_document_closed_restores_view_state(
@@ -808,5 +813,5 @@ def test_a_one_pager_or_cover_closed_offers_no_page_of_its_collection(
 
     nav_coord.on_comic_closed()
 
-    mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(active=False)
+    mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(GotoPageOffer())
     mock_deps["comic_reader_manager"].get_last_read_page.assert_not_called()

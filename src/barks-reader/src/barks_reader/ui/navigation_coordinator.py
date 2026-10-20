@@ -33,6 +33,7 @@ from barks_reader.core.collection_page_groups import (
     get_collection_group_page_range,
     year_range_group,
 )
+from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
@@ -607,24 +608,17 @@ class NavigationCoordinator:
         if title in ONE_PAGERS or title in COVERS_SET:
             # Read as a page of their collection, which ignores any page to goto: the
             # collection's page last read is no page of theirs to offer.
-            self._bottom_title_view_screen.set_goto_page_state(active=False)
+            self._bottom_title_view_screen.show_goto_page(GotoPageOffer())
             return
 
         if not last_read_page:
             title_str = self._current_fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 
-        if not last_read_page or (last_read_page.display_page_num == COMIC_BEGIN_PAGE):
-            if tagged_pages:
-                self._bottom_title_view_screen.set_goto_page_state(
-                    tagged_pages[0], active=True, tagged_pages=tagged_pages
-                )
-            else:
-                self._bottom_title_view_screen.set_goto_page_state(active=False)
-        else:
-            self._bottom_title_view_screen.set_goto_page_state(
-                last_read_page.display_page_num, active=True, tagged_pages=tagged_pages
-            )
+        last_read = last_read_page.display_page_num if last_read_page else ""
+        self._bottom_title_view_screen.show_goto_page(
+            goto_page_after_reading(last_read, tagged_pages)
+        )
 
     def _set_use_overrides_checkbox(self) -> None:
         assert self._current_fanta_info is not None

@@ -24,6 +24,7 @@ from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -34,12 +35,8 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
-from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import (
-    get_page_run_end,
-    get_page_run_starts,
-    get_page_sort_key,
     title_needs_footnote,
 )
 from barks_reader.core.wiki_integration import wiki_page_for_title
@@ -177,6 +174,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._formatter = ReaderFormatter(font_manager)
         self._special_fanta_overrides: SpecialFantaOverrides | None = None
         self._fanta_info: FantaComicBookInfo | None = None
+        self._goto_offer = GotoPageOffer()
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
         self.on_title_portal_image_pressed_func = None
         self.on_wiki_page_button_pressed_func: Callable[[], None] | None = None
@@ -279,37 +277,25 @@ class BottomTitleViewScreen(FloatLayout):
         tagged_pages: Sequence[str] = (),
         kept_page: str = "",
     ) -> None:
-        """Offer a page to open the comic at, or none.
+        """Offer a page to open the comic at, or none: see `GotoPageOffer.make`."""
+        self.show_goto_page(
+            GotoPageOffer.make(
+                page_to_goto, active=active, tagged_pages=tagged_pages, kept_page=kept_page
+            )
+        )
 
-        Args:
-            page_to_goto: The page offered; none for "", or for the comic's beginning.
-            active: Whether the offer starts ticked.
-            tagged_pages: A tag's pages in the title, when the offer comes from a tag:
-                the goto-page row then steps through the start of each run of them,
-                naming the run ("Goto pages 1-3"), and through the page offered, when
-                that is none of them (the page the comic was closed on). Any other offer
-                clears them, so they never follow another title.
-            kept_page: Another page to step through with a tag's pages, though not the
-                one offered: the page the comic was closed on, when a tag offers its own.
-
-        """
-        self.tagged_pages = list(tagged_pages)
-        self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
-        self.goto_pages = get_page_run_starts(tagged_pages)
-        if self.goto_pages:
-            extra_pages = {
-                page
-                for page in (self.goto_page_num, kept_page)
-                if page and page != COMIC_BEGIN_PAGE and page not in self.goto_pages
-            }
-            if extra_pages:
-                self.goto_pages = sorted([*self.goto_pages, *extra_pages], key=get_page_sort_key)
-        self.goto_page_active = active
+    def show_goto_page(self, offer: GotoPageOffer) -> None:
+        """Show `offer` on the goto-page row: its page, ticked or not, and the pages to step."""
+        self._goto_offer = offer
+        self.tagged_pages = list(offer.tagged_pages)
+        self.goto_page_num = offer.page
+        self.goto_pages = list(offer.pages)
+        self.goto_page_active = offer.active
         self._set_goto_page_position()
-        if self.goto_page_num:
+        if offer.page:
             logger.debug(
                 log_markers.GOTO_PAGE_OFFERED.format(
-                    page=self.goto_page_num, active=active, text=self.goto_page_text
+                    page=offer.page, active=offer.active, text=self.goto_page_text
                 )
             )
 
@@ -327,37 +313,26 @@ class BottomTitleViewScreen(FloatLayout):
         """
         if not self.can_step_goto_page:
             return
-        index = (
-            self.goto_pages.index(self.goto_page_num)
-            if self.goto_page_num in self.goto_pages
-            else 0
-        )
-        index = (index + delta) % len(self.goto_pages)
-        self.goto_page_num = self.goto_pages[index]
+        offer = self._goto_offer.stepped(delta)
+        self._goto_offer = offer
+        self.goto_page_num = offer.page
         self.goto_page_active = True  # Choosing a page means wanting to go there.
         self._set_goto_page_position()
+        assert offer.index is not None
         logger.debug(
             log_markers.GOTO_PAGE_STEPPED.format(
-                page=self.goto_page_num,
-                index=index + 1,
-                count=len(self.goto_pages),
+                page=offer.page,
+                index=offer.index + 1,
+                count=len(offer.pages),
                 text=self.goto_page_text,
             )
         )
 
     def _set_goto_page_position(self) -> None:
-        self.goto_page_run_end = get_page_run_end(self.goto_page_num, self.tagged_pages)
-        self.goto_page_position = (
-            f" ({self.goto_pages.index(self.goto_page_num) + 1} of {len(self.goto_pages)})"
-            if self.can_step_goto_page and self.goto_page_num in self.goto_pages
-            else ""
-        )
-        pages = (
-            f"pages {self.goto_page_num}-{self.goto_page_run_end}"
-            if self.goto_page_run_end
-            else f"page {self.goto_page_num}"
-        )
-        self.goto_page_text = f"Goto {pages}{self.goto_page_position}:"
+        offer = self._goto_offer
+        self.goto_page_run_end = offer.run_end
+        self.goto_page_position = offer.position
+        self.goto_page_text = offer.text
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
         self.use_overrides_active = active
