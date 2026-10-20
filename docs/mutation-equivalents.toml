@@ -2041,14 +2041,6 @@ change = """
 
 [[untriaged]]
 module = "barks_reader.core.corpus_stats"
-function = "_paid_records"
-change = """
-- if payment.payment > 0 and payment.accepted_year != _UNKNOWN
-+ if payment.payment > 1 and payment.accepted_year != _UNKNOWN
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
 function = "_adjusted_payment_total"
 change = """
 - latest_year = get_latest_year()
