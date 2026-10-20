@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import string
-from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
-from barks_reader.core.index_items import IndexItem
-from barks_reader.core.index_text import shorten_if_necessary
+from barks_reader.core.index_items import entity_index
 
 from .speech_index_screen import SpeechSubItemsIndexScreen
 
@@ -37,20 +35,9 @@ class EntityIndexScreen(SpeechSubItemsIndexScreen):
         self._entity_type = entity_type
         super().__init__(reader_settings, font_manager, user_error_handler, **kwargs)
 
-        # Build a flat {letter: [IndexItem, ...]} from entity terms, bypassing
-        # the nested alpha-split structure that SpeechIndexScreen uses.
-        self._item_index = defaultdict(list)
-        terms = self._search.get_entity_terms(self._entity_type)
-        for t in terms:
-            if not t:
-                continue
-            ch = t[0].lower()
-            if not "a" <= ch <= "z":
-                msg = f'Entity term has non-alpha prefix: "{t}".'
-                raise RuntimeError(msg)
-
-            letter = ch.upper()
-            self._item_index[letter].append(IndexItem(t, shorten_if_necessary(t)))
+        # A flat {letter: [IndexItem, ...]}, not the nested alpha-split structure
+        # SpeechIndexScreen uses.
+        self._item_index = entity_index(self._search.get_entity_terms(self._entity_type))
 
     @override
     def _get_alphabet_letters(self) -> str:

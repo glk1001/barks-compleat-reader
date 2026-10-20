@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 
+from .index_text import shorten_if_necessary
 from .speech_hits import comic_pages
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.entity_types import EntityType
@@ -53,3 +57,32 @@ def title_row_item(
         page_to_goto=first_page,
         tagged_pages=comic_pages(title_speech_info),
     )
+
+
+def entity_index(terms: Iterable[str]) -> dict[str, list[IndexItem]]:
+    """Return an entity index's rows, grouped under the letter each term starts with.
+
+    There are few enough names or places per letter to list them directly, so the
+    index is flat: no prefix level between the letter and the rows.
+
+    Args:
+        terms: The entity terms, in the order their rows are listed.
+
+    Returns:
+        The rows under each letter (``"A"`` to ``"Z"``), in the terms' order. An empty
+        term is left out.
+
+    Raises:
+        RuntimeError: A term starts with something other than a letter.
+
+    """
+    index: dict[str, list[IndexItem]] = defaultdict(list)
+    for term in terms:
+        if not term:
+            continue
+        ch = term[0].lower()
+        if not "a" <= ch <= "z":
+            msg = f'Entity term has non-alpha prefix: "{term}".'
+            raise RuntimeError(msg)
+        index[ch.upper()].append(IndexItem(term, shorten_if_necessary(term)))
+    return index
