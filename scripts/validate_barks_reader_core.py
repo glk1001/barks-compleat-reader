@@ -70,6 +70,14 @@ from barks_reader.core.fantagraphics_volumes import (
 from barks_reader.core.image_pipeline import load_pil as reader_load_pil
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_utils import is_blank_page, is_title_page
+from barks_reader.core.statistics_series import (
+    CHART_DATA_FILE,
+    CHART_FILES,
+    MOST_FREQUENT_FILE,
+    WORDCLOUD_GLOB,
+    all_series,
+    load_series,
+)
 from barks_reader.core.system_file_paths import SystemFilePaths
 from barks_reader.core.wiki_integration import (
     SERIES_TO_STORY_DIRS,
@@ -277,16 +285,38 @@ def _check_dir_has_pages(phase: PhaseResult, label: str, path: Path) -> bool:
     return True
 
 
-def _check_dir_has_pngs(phase: PhaseResult, label: str, path: Path) -> bool:
-    """Verify ``path`` is a directory containing >=1 ``*.png`` file."""
-    if not _check_dir(phase, label, path):
-        return False
+def _check_statistics_dir(phase: PhaseResult, path: Path) -> None:
+    """Check the Statistics screen's images are all there and its charts are current.
+
+    Every chart PNG the screen lists, the most-frequent-words table and at least
+    one era word cloud must exist. Then the charts' numbers are recomputed
+    from the corpus and compared with the ``chart-data.json`` sidecar that
+    ``scripts/generate_stats_images.py`` wrote beside the PNGs: a ledger or tag edit
+    made since the last run shows up here as a stale chart.
+    """
+    if not _check_dir(phase, "statistics_dir", path):
+        return
+    for filename in [*CHART_FILES.values(), MOST_FREQUENT_FILE]:
+        phase.items_checked += 1
+        if not (path / filename).is_file():
+            phase.add(f"statistics_dir: missing {path / filename}")
     phase.items_checked += 1
-    pngs = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() == PNG_FILE_EXT]
-    if not pngs:
-        phase.add(f"{label}: no PNG files in {path}")
-        return False
-    return True
+    if not any(path.glob(WORDCLOUD_GLOB)):
+        phase.add(f"statistics_dir: no {WORDCLOUD_GLOB} in {path}")
+
+    sidecar = path / CHART_DATA_FILE
+    phase.items_checked += 1
+    if not sidecar.is_file():
+        phase.add(f"statistics_dir: missing {sidecar} (run scripts/generate_stats_images.py)")
+        return
+    written = {series.name: series for series in load_series(sidecar.read_text(encoding="utf-8"))}
+    for current in all_series():
+        phase.items_checked += 1
+        if written.get(current.name) != current:
+            phase.add(
+                f"statistics_dir: {CHART_FILES[current.name]} is stale: {current.name} in"
+                f" {sidecar.name} differs from the corpus (rerun scripts/generate_stats_images.py)"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -414,7 +444,7 @@ def phase2_system_file_paths(
         "fantagraphics_panel_segments_root_dir",
         sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir(),
     )
-    _check_dir_has_pngs(phase, "statistics_dir", sys_paths.get_statistics_dir())
+    _check_statistics_dir(phase, sys_paths.get_statistics_dir())
 
     collector.finalize_phase(phase)
 

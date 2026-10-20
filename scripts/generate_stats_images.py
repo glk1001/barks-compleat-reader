@@ -8,21 +8,25 @@ Usage:
 
 Optional:
     --indexes-dir <path>   Path to the Barks Reader indexes directory, required
-                           only for the Word Statistics chart.
+                           only for the most-frequent-words table.
 
 The script writes eight PNG files to the output directory:
     stories_per_year.png, pages_per_year.png, payments_per_year.png,
     payment_rate.png, stories_per_series.png, top_characters.png,
-    top_locations.png, word_statistics.png
+    top_locations.png, most_frequent.png (the Word Statistics menu's table)
+
+and ``chart-data.json`` beside them: the numbers each chart was drawn from. The
+numbers come from ``barks_reader.core.statistics_series``, where the unit tests
+check them; the corpus validator recomputes them against the JSON, so a data edit
+without a rerun of this script is reported as a stale chart. This file only draws.
 """
 
 from __future__ import annotations
 
 import json
-from collections import defaultdict
 from itertools import zip_longest
 from pathlib import Path  # noqa: TC003  (typer resolves annotations at runtime)
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 # -- matplotlib must be imported before any barks_fantagraphics module that
 # might trigger a Kivy import (there are none, but be safe). ----------------
@@ -30,21 +34,23 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import typer
-from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
+from comic_utils.cpi_calculator import get_latest_year
 from matplotlib import ticker
 from matplotlib.transforms import Bbox
 
 mpl.use("Agg")  # headless backend - no display required
 
-# -- barks_fantagraphics imports ---------------------------------------------
-from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
-from barks_fantagraphics.barks_tags import (
-    BARKS_TAGGED_TITLES,
-    TagCategories,
-    get_all_tags_in_tag_category,
+from barks_reader.core.statistics_series import (
+    CHART_DATA_FILE,
+    CHART_FILES,
+    MOST_FREQUENT_FILE,
+    Series,
+    all_series,
+    dump_series,
 )
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # -- Constants ---------------------------------------------------------------
 FIG_WIDTH = 14
@@ -95,196 +101,125 @@ def _style_ax(ax: plt.Axes, title: str, x_label: str = "", y_label: str = "") ->
     ax.spines["right"].set_visible(False)
 
 
-# -- Chart generators --------------------------------------------------------
-
-
-def gen_stories_per_year(output_dir: Path) -> None:
-    """Bar chart: number of stories accepted per year."""
-    counts: dict[int, int] = defaultdict(int)
-    for info in BARKS_TITLE_INFO:
-        if info.is_barks_title:
-            counts[info.submitted_year] += 1
-
-    years = sorted(counts)
-    values = [counts[y] for y in years]
-
+def _year_axes(series: Series, title: str, y_label: str) -> tuple[plt.Figure, plt.Axes]:
+    """Make a figure with the per-year styling: a year tick per label, rotated."""
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    ax.bar(years, values, color=BAR_COLOR, zorder=3)
-    _style_ax(ax, "Barks Stories Submitted per Year", "Year", "Number of Stories")
-    ax.set_xticks(years)
+    _style_ax(ax, title, "Year", y_label)
+    ax.set_xticks(series.labels)
     ax.tick_params(axis="x", rotation=45)
+    return fig, ax
+
+
+# -- Chart plotters: each draws one Series into its PNG --------------------
+
+
+def plot_stories_per_year(series: Series, output_dir: Path) -> None:
+    """Bar chart: number of stories submitted per year."""
+    fig, ax = _year_axes(series, "Barks Stories Submitted per Year", "Number of Stories")
+    ax.bar(series.labels, series.values, color=BAR_COLOR, zorder=3)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
-    _save(fig, output_dir, "stories_per_year.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def gen_pages_per_year(output_dir: Path) -> None:
-    """Bar chart: total pages per year from payment records."""
-    totals: dict[int, int] = defaultdict(int)
-    for info in BARKS_PAYMENTS.values():
-        totals[info.accepted_year] += info.num_pages
-
-    years = sorted(totals)
-    values = [totals[y] for y in years]
-
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    ax.bar(years, values, color=BAR_COLOR, zorder=3)
-    _style_ax(ax, "Total Pages per Year (from Payment Records)", "Year", "Total Pages")
-    ax.set_xticks(years)
-    ax.tick_params(axis="x", rotation=45)
+def plot_pages_per_year(series: Series, output_dir: Path) -> None:
+    """Bar chart: the stories' pages per year, from the payment ledger."""
+    fig, ax = _year_axes(series, "Total Pages per Year (from Payment Records)", "Total Pages")
+    ax.bar(series.labels, series.values, color=BAR_COLOR, zorder=3)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
-    _save(fig, output_dir, "pages_per_year.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def gen_payments_per_year(output_dir: Path) -> None:
+def plot_payments_per_year(series: Series, output_dir: Path) -> None:
     """Bar chart: total payment (USD) per year."""
-    totals: dict[int, float] = defaultdict(float)
-    for info in BARKS_PAYMENTS.values():
-        totals[info.accepted_year] += info.payment
-
-    adjust_for_cpi(totals)
-
-    years = sorted(totals)
-    values = [totals[y] for y in years]
-
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    ax.bar(years, values, color=BAR_COLOR, zorder=3)
-    _style_ax(
-        ax,
+    fig, ax = _year_axes(
+        series,
         f"Total Payments per Year ({get_latest_year()} USD)",
-        "Year",
         f"Payments ({get_latest_year()} USD)",
     )
-    ax.set_xticks(years)
-    ax.tick_params(axis="x", rotation=45)
+    ax.bar(series.labels, series.values, color=BAR_COLOR, zorder=3)
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
     fig.tight_layout()
-    _save(fig, output_dir, "payments_per_year.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def gen_payment_rate(output_dir: Path) -> None:
+def plot_payment_rate(series: Series, output_dir: Path) -> None:
     """Line chart: average payment rate ($/page) per year."""
-    pages: dict[int, int] = defaultdict(int)
-    payments: dict[int, float] = defaultdict(float)
-    for info in BARKS_PAYMENTS.values():
-        pages[info.accepted_year] += info.num_pages
-        payments[info.accepted_year] += info.payment
-
-    adjust_for_cpi(payments)
-
-    years = sorted(pages)
-    rates = [payments[y] / pages[y] if pages[y] else 0.0 for y in years]
-
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    ax.plot(years, rates, color=ACCENT_COLOR, linewidth=2, marker="o", markersize=5, zorder=3)
-    _style_ax(
-        ax,
+    fig, ax = _year_axes(
+        series,
         f"Per Page Payment Rate ({get_latest_year()} USD per Page) per Year",
-        "Year",
         f"{get_latest_year()} USD / Page",
     )
-    ax.set_xticks(years)
-    ax.tick_params(axis="x", rotation=45)
+    ax.plot(
+        series.labels,
+        series.values,
+        color=ACCENT_COLOR,
+        linewidth=2,
+        marker="o",
+        markersize=5,
+        zorder=3,
+    )
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:.0f}"))
     fig.tight_layout()
-    _save(fig, output_dir, "payment_rate.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def adjust_for_cpi(totals: dict[int, float]) -> None:
-    for year, payment in totals.items():
-        totals[year] = get_adjusted_usd(payment, year)
-
-
-def gen_stories_per_series(output_dir: Path) -> None:
+def plot_stories_per_series(series: Series, output_dir: Path) -> None:
     """Horizontal bar chart: story count per Fantagraphics series."""
-    counts: dict[str, int] = defaultdict(int)
-    for info in ALL_FANTA_COMIC_BOOK_INFO.values():
-        series = info.series_name or "Unknown"
-        counts[series] += 1
-
-    # Sort by count descending
-    sorted_items = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
-    series_names = [kv[0] for kv in sorted_items]
-    values = [kv[1] for kv in sorted_items]
-
     fig, ax = plt.subplots(
         figsize=(
             FIG_WIDTH,
-            max(5, round(len(series_names) * STORIES_PER_SERIES_FIG_HEIGHT_MULTIPLIER)),
+            max(5, round(len(series.labels) * STORIES_PER_SERIES_FIG_HEIGHT_MULTIPLIER)),
         )
     )
-    y_pos = np.arange(len(series_names))
-    ax.barh(y_pos, values, color=BAR_COLOR, zorder=3)
+    y_pos = np.arange(len(series.labels))
+    ax.barh(y_pos, series.values, color=BAR_COLOR, zorder=3)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(series_names, fontsize=9)
+    ax.set_yticklabels([str(label) for label in series.labels], fontsize=9)
     ax.invert_yaxis()
     _style_ax(ax, "Stories per Fantagraphics Series", x_label="Number of Stories")
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     ax.xaxis.grid(visible=True, color=GRID_COLOR, linewidth=0.8, zorder=0)
     ax.yaxis.grid(visible=False)
     fig.tight_layout()
-    _save(fig, output_dir, "stories_per_series.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def gen_top_characters(output_dir: Path, top_n: int = 20) -> None:
-    """Bar chart: top N characters by story appearance count."""
-    char_tags = get_all_tags_in_tag_category(TagCategories.CHARACTERS)
-    counts: dict[str, int] = {}
-    for tag in char_tags:
-        titles = BARKS_TAGGED_TITLES.get(tag, [])
-        if titles:
-            counts[tag.value] = len(titles)
-
-    # Tag categories arrive as unordered sets, so ties must break on the name to keep
-    # the generated image identical from run to run.
-    sorted_items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
-    if not sorted_items:
-        print("  No character data found; skipping top_characters.png")
-        return
-
-    names = [kv[0] for kv in sorted_items]
-    values = [kv[1] for kv in sorted_items]
-
+def _plot_top_tags(series: Series, output_dir: Path, title: str, color: str) -> None:
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    x_pos = np.arange(len(names))
-    ax.bar(x_pos, values, color=BAR_COLOR, zorder=3)
+    x_pos = np.arange(len(series.labels))
+    ax.bar(x_pos, series.values, color=color, zorder=3)
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
-    _style_ax(ax, f"Top {top_n} Characters by Story Appearances", y_label="Number of Stories")
+    ax.set_xticklabels([str(label) for label in series.labels], rotation=45, ha="right", fontsize=9)
+    _style_ax(ax, title, y_label="Number of Stories")
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
-    _save(fig, output_dir, "top_characters.png")
+    _save(fig, output_dir, CHART_FILES[series.name])
 
 
-def gen_top_locations(output_dir: Path, top_n: int = 20) -> None:
-    """Bar chart: top N locations by story appearance count."""
-    place_tags = get_all_tags_in_tag_category(TagCategories.PLACES)
-    counts: dict[str, int] = {}
-    for tag in place_tags:
-        titles = BARKS_TAGGED_TITLES.get(tag, [])
-        if titles:
-            counts[tag.value] = len(titles)
+def plot_top_characters(series: Series, output_dir: Path) -> None:
+    """Bar chart: the characters tagged in the most stories."""
+    title = f"Top {len(series.labels)} Characters by Story Appearances"
+    _plot_top_tags(series, output_dir, title, BAR_COLOR)
 
-    # Tag categories arrive as unordered sets, so ties must break on the name to keep
-    # the generated image identical from run to run.
-    sorted_items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
-    if not sorted_items:
-        print("  No location data found; skipping top_locations.png")
-        return
 
-    names = [kv[0] for kv in sorted_items]
-    values = [kv[1] for kv in sorted_items]
+def plot_top_locations(series: Series, output_dir: Path) -> None:
+    """Bar chart: the places tagged in the most stories."""
+    title = f"Top {len(series.labels)} Locations by Story Appearances"
+    _plot_top_tags(series, output_dir, title, ACCENT_COLOR)
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    x_pos = np.arange(len(names))
-    ax.bar(x_pos, values, color=ACCENT_COLOR, zorder=3)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
-    _style_ax(ax, f"Top {top_n} Locations by Story Appearances", y_label="Number of Stories")
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-    fig.tight_layout()
-    _save(fig, output_dir, "top_locations.png")
+
+PLOTTERS: dict[str, Callable[[Series, Path], None]] = {
+    "stories_per_year": plot_stories_per_year,
+    "pages_per_year": plot_pages_per_year,
+    "payments_per_year": plot_payments_per_year,
+    "payment_rate": plot_payment_rate,
+    "stories_per_series": plot_stories_per_series,
+    "top_characters": plot_top_characters,
+    "top_locations": plot_top_locations,
+}
+assert PLOTTERS.keys() == CHART_FILES.keys()
 
 
 def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:  # noqa: PLR0915
@@ -435,7 +370,7 @@ def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:  # 
         ]
     )
 
-    path = output_dir / "word_statistics.png"
+    path = output_dir / MOST_FREQUENT_FILE
     fig.savefig(path, dpi=DPI, bbox_inches=bbox_inch, facecolor="white")
     plt.close(fig)
     print(f"  Wrote {path}")
@@ -464,13 +399,13 @@ def main(
 
     print(f"Generating statistics PNGs in: {output_dir}")
 
-    gen_stories_per_year(output_dir)
-    gen_pages_per_year(output_dir)
-    gen_payments_per_year(output_dir)
-    gen_payment_rate(output_dir)
-    gen_stories_per_series(output_dir)
-    gen_top_characters(output_dir)
-    gen_top_locations(output_dir)
+    series = all_series()
+    for chart in series:
+        PLOTTERS[chart.name](chart, output_dir)
+    sidecar = output_dir / CHART_DATA_FILE
+    sidecar.write_text(dump_series(series) + "\n", encoding="utf-8")
+    print(f"  Wrote {sidecar}")
+
     gen_word_statistics(output_dir, indexes_dir)
 
     print("Done.")

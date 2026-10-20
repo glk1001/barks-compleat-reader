@@ -30,8 +30,8 @@ from wordcloud import WordCloud
 
 mpl.use("Agg")
 
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine
+from barks_reader.core.statistics_series import stories_submitted_in
 
 # -- Constants ---------------------------------------------------------------
 WORDCLOUD_WIDTH = 1668
@@ -45,12 +45,13 @@ FIG_DPI = 100
 
 
 def _get_titles_in_year_range(start_year: int, end_year: int) -> set[str]:
-    """Return title strings for Barks titles whose submitted_year is in range."""
-    return {
-        info.get_title_str()
-        for info in BARKS_TITLE_INFO
-        if info.is_barks_title and start_year <= info.submitted_year <= end_year
-    }
+    """Return title strings for the Barks stories whose submitted_year is in range.
+
+    The stories are the By the Numbers page's: every comic story, without the
+    covers, articles and synthetic collections. ``is_barks_title`` is not the
+    test: it means Barks named the story himself, not that it is his.
+    """
+    return {info.get_title_str() for info in stories_submitted_in(start_year, end_year)}
 
 
 def _collect_title_texts(engine: SearchEngine, allowed_titles: set[str]) -> dict[str, str]:

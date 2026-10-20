@@ -27,9 +27,9 @@ from barks_reader.core.corpus_stats import (
     StatSection,
     _adjusted_payment_total,
     _length_section,
-    _paid_records,
     compute_static_stats,
     compute_text_stats,
+    get_paid_records,
     get_stories,
 )
 from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
@@ -221,22 +221,22 @@ class TestPaymentSection:
     """The ledger's -1 sentinel must never be summed as a real amount."""
 
     def test_sentinel_records_are_excluded(self) -> None:
-        assert len(_paid_records()) == 564
-        assert len(_paid_records()) < len(BARKS_PAYMENTS)
+        assert len(get_paid_records()) == 564
+        assert len(get_paid_records()) < len(BARKS_PAYMENTS)
 
     def test_every_kept_record_has_a_real_amount_and_year(self) -> None:
-        assert all(p.payment > 0 and p.accepted_year > 0 for p in _paid_records())
+        assert all(p.payment > 0 and p.accepted_year > 0 for p in get_paid_records())
 
     def test_nominal_total_exceeds_a_blind_sum(self, stats: CorpusStats) -> None:
         # Blindly summing the column subtracts a dollar for each of the 383
         # sentinel rows, so the correct total is the larger of the two.
         blind = sum(p.payment for p in BARKS_PAYMENTS.values())
-        correct = sum(p.payment for p in _paid_records())
+        correct = sum(p.payment for p in get_paid_records())
         assert correct > blind
         assert _value(stats, "Payment", "Total paid") == f"${correct:,.0f}"
 
     def test_inflation_adjustment_is_a_large_multiple(self) -> None:
-        paid = _paid_records()
+        paid = get_paid_records()
         nominal = sum(p.payment for p in paid)
         assert _adjusted_payment_total(paid) > nominal * 10
 
@@ -256,7 +256,7 @@ class TestPaymentSection:
         # years that ended in 1966 would overstate the average.
         from barks_reader.core.corpus_stats import _RETIREMENT_YEAR  # noqa: PLC0415
 
-        working = [p for p in _paid_records() if p.accepted_year <= _RETIREMENT_YEAR]
+        working = [p for p in get_paid_records() if p.accepted_year <= _RETIREMENT_YEAR]
         first_year = min(p.accepted_year for p in working)
         expected = _adjusted_payment_total(working) / (_RETIREMENT_YEAR - first_year + 1)
 
@@ -267,7 +267,7 @@ class TestPaymentSection:
         # the numerator the figure would rise, so pin the direction.
         from barks_reader.core.corpus_stats import _RETIREMENT_YEAR  # noqa: PLC0415
 
-        paid = _paid_records()
+        paid = get_paid_records()
         first_year = min(p.accepted_year for p in paid)
         naive = _adjusted_payment_total(paid) / (_RETIREMENT_YEAR - first_year + 1)
 
@@ -301,7 +301,7 @@ class TestAgainstTheShippedCpiTable:
     """
 
     def test_every_paid_year_is_in_the_shipped_table(self) -> None:
-        for year in sorted({p.accepted_year for p in _paid_records()}):
+        for year in sorted({p.accepted_year for p in get_paid_records()}):
             assert get_adjusted_usd(1.0, year) > 1.0
 
 

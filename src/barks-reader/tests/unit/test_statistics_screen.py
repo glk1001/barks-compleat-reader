@@ -398,3 +398,29 @@ class TestStatisticsScreenEdges:
         with patch.object(statistics_screen_module, "update_focus_in_list"):
             screen.enter_nav_focus(MagicMock())
         assert screen.handle_key(KEY_DOWN) is False
+
+
+class TestTheScreenAndTheGeneratorAgree:
+    """The screen's menu and the generator's chart list are the same set of files."""
+
+    def test_chart_files(self) -> None:
+        from barks_reader.core.statistics_series import CHART_FILES  # noqa: PLC0415
+
+        menu = [filename for _label, filename in statistics_screen_module._STAT_ITEMS]
+        assert menu == list(CHART_FILES.values())
+
+    def test_most_frequent_and_wordcloud_files(self, tmp_path: Path) -> None:
+        from pathlib import Path  # noqa: PLC0415
+
+        from barks_reader.core.statistics_series import (  # noqa: PLC0415
+            MOST_FREQUENT_FILE,
+            WORDCLOUD_GLOB,
+        )
+
+        # The generator once wrote word_statistics.png while the menu showed
+        # most_frequent.png, and the table on screen fell a year behind the index.
+        text = Path(statistics_screen_module.__file__).read_text(encoding="utf-8")
+        assert f'"{MOST_FREQUENT_FILE}"' in text
+        (tmp_path / "tfidf_wordcloud_1943-46.png").touch()
+        assert [p.name for p in tmp_path.glob(WORDCLOUD_GLOB)] == ["tfidf_wordcloud_1943-46.png"]
+        assert statistics_screen_module._discover_wordclouds(tmp_path)

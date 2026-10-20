@@ -41,6 +41,14 @@ from barks_reader.core.reader_settings import (
     WIKI_BUNDLE_DIR,
     WIKI_BUNDLE_SUBDIR,
 )
+from barks_reader.core.statistics_series import (
+    CHART_DATA_FILE,
+    CHART_FILES,
+    MOST_FREQUENT_FILE,
+    Series,
+    all_series,
+    dump_series,
+)
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -925,3 +933,69 @@ class TestGetIndexStoryTitles:
         assert [title for title, _volume in stories] == core.get_splash_story_titles()
         assert all(isinstance(volume, int) for _title, volume in stories)
         assert dict(stories)[ANDES] == _ANDES_VOLUME
+
+
+class TestStatisticsDir:
+    """Phase 2's Statistics check: every image present, every chart current."""
+
+    @staticmethod
+    def _complete(path: Path) -> Path:
+        for filename in [*CHART_FILES.values(), MOST_FREQUENT_FILE]:
+            (path / filename).write_bytes(b"png")
+        (path / "tfidf_wordcloud_1943-46.png").write_bytes(b"png")
+        (path / CHART_DATA_FILE).write_text(dump_series(all_series()), encoding="utf-8")
+        return path
+
+    @staticmethod
+    def _run(path: Path) -> core.PhaseResult:
+        phase = core.PhaseResult(name="test")
+        core._check_statistics_dir(phase, path)  # noqa: SLF001
+        return phase
+
+    def test_a_complete_current_folder_passes(self, tmp_path: Path) -> None:
+        phase = self._run(self._complete(tmp_path))
+        assert phase.errors == []
+        assert phase.items_checked > len(CHART_FILES)
+
+    def test_a_missing_chart_is_named(self, tmp_path: Path) -> None:
+        self._complete(tmp_path)
+        (tmp_path / "pages_per_year.png").unlink()
+        phase = self._run(tmp_path)
+        assert [e for e in phase.errors if "missing" in e and "pages_per_year.png" in e]
+
+    def test_no_word_cloud_is_an_error(self, tmp_path: Path) -> None:
+        self._complete(tmp_path)
+        (tmp_path / "tfidf_wordcloud_1943-46.png").unlink()
+        phase = self._run(tmp_path)
+        assert [e for e in phase.errors if "tfidf_wordcloud_*.png" in e]
+
+    def test_a_missing_sidecar_says_to_run_the_generator(self, tmp_path: Path) -> None:
+        self._complete(tmp_path)
+        (tmp_path / CHART_DATA_FILE).unlink()
+        phase = self._run(tmp_path)
+        assert len(phase.errors) == 1
+        assert "generate_stats_images" in phase.errors[0]
+
+    def test_a_chart_drawn_from_old_numbers_is_stale(self, tmp_path: Path) -> None:
+        self._complete(tmp_path)
+        stale = [
+            Series(s.name, s.labels, (*s.values[:-1], s.values[-1] + 1))
+            if s.name == "stories_per_year"
+            else s
+            for s in all_series()
+        ]
+        (tmp_path / CHART_DATA_FILE).write_text(dump_series(stale), encoding="utf-8")
+        phase = self._run(tmp_path)
+        assert len(phase.errors) == 1
+        assert "stories_per_year.png is stale" in phase.errors[0]
+
+    def test_a_sidecar_missing_a_chart_is_stale(self, tmp_path: Path) -> None:
+        self._complete(tmp_path)
+        fewer = [s for s in all_series() if s.name != "top_locations"]
+        (tmp_path / CHART_DATA_FILE).write_text(dump_series(fewer), encoding="utf-8")
+        phase = self._run(tmp_path)
+        assert [e for e in phase.errors if "top_locations.png is stale" in e]
+
+    def test_a_missing_folder_is_one_error(self, tmp_path: Path) -> None:
+        phase = self._run(tmp_path / "gone")
+        assert len(phase.errors) == 1

@@ -764,7 +764,14 @@ overshoot can't hit it).
   convention. "Goto Title" closes the wiki and calls `MainScreen.goto_title_from_wiki`.
 - **Statistics** (`ui/statistics_screen.py`) — pure display: a tab bar over
   pre-rendered PNG charts plus a word-cloud dropdown discovered by globbing. No
-  live querying.
+  live querying. The charts are drawn by `scripts/generate_stats_images.py` from
+  the series in `core/statistics_series.py` (Kivy-free, built on the same story
+  list and paid-records filter as By the Numbers), which the script also writes
+  beside the PNGs as `chart-data.json`; the corpus validator recomputes the series
+  against that sidecar, so a data edit without a rerun is reported as a stale
+  chart. The Word Statistics menu's table is the same script's `most_frequent.png`
+  (from the search index); the era word clouds come from
+  `scripts/generate_tfidf_wordcloud.py`.
 
 ### 7.5 Reading History
 

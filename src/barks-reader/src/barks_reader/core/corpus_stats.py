@@ -168,7 +168,7 @@ def compute_static_stats() -> CorpusStats:
     stories = get_stories()
     story_pages = _story_page_counts(stories)
     total_pages = sum(story_pages.values())
-    paid_records = _paid_records()
+    paid_records = get_paid_records()
     adjusted_total = _adjusted_payment_total(paid_records)
     paid_pages = sum(payment.num_pages for payment in paid_records)
     script_and_art = _script_and_art_titles(stories)
@@ -443,14 +443,14 @@ def _cast_section() -> StatSection:
 
 # Tags that hold part of another tag's stories, not a character, place or thing of
 # their own: counting them would count Gyro three times and Scrooge twice.
-_PART_TAGS: Final = frozenset({Tags.GYRO_IN_GG, Tags.GYRO_NOT_IN_GG, Tags.SCROOGE_NOT_IN_US})
+PART_TAGS: Final = frozenset({Tags.GYRO_IN_GG, Tags.GYRO_NOT_IN_GG, Tags.SCROOGE_NOT_IN_US})
 
 
 def _num_tags_with_stories(category: TagCategories) -> int:
     """Count the tags in a category that are attached to at least one story."""
     return sum(
         1
-        for tag in get_all_tags_in_tag_category(category) - _PART_TAGS
+        for tag in get_all_tags_in_tag_category(category) - PART_TAGS
         if BARKS_TAGGED_TITLES.get(tag)
     )
 
@@ -468,8 +468,11 @@ def _story_page_counts(stories: list[ComicBookInfo]) -> dict[Titles, int]:
     }
 
 
-def _paid_records() -> list[PaymentInfo]:
+def get_paid_records() -> list[PaymentInfo]:
     """Return the payment records that carry a real amount and a real date.
+
+    The Statistics charts (``statistics_series``) draw their payment figures from
+    this same list, so the Appendix and the Introduction cannot disagree.
 
     Returns:
         Every ``PaymentInfo`` whose amount and accepted year are both known.
