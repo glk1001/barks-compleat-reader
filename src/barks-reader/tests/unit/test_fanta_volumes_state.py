@@ -75,13 +75,14 @@ class TestCheckLibraryError:
         assert check.state in BAD_STATES
 
     def test_duplicate_archives_block_reading_with_their_popup(self) -> None:
+        root = Path("/root")
         check = check_library_error(
-            DuplicateArchiveFilesError([3], Path("/root")), library_notice_shown=False
+            DuplicateArchiveFilesError([3], root), library_notice_shown=False
         )
         assert check.state is FantaVolumesState.DUPLICATE_VOLUMES
         assert check.error_type is ErrorTypes.DuplicateVolumeArchiveFiles
         assert check.readable is False
-        assert (check.error_info.file, check.error_info.duplicate_volumes) == ("/root", [3])
+        assert (check.error_info.file, check.error_info.duplicate_volumes) == (str(root), [3])
 
     def test_a_partial_library_reads_on_after_the_per_volume_popup(self) -> None:
         check = check_library_error(
