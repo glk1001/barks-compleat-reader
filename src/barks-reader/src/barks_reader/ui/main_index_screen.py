@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
-    BARKS_TAGGED_PAGES,
     BARKS_TAGGED_TITLES,
     TagGroups,
     Tags,
-    get_all_tags_in_tag_group,
-    get_tag_titles,
 )
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.comic_book_info import COVERS_SET
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
-from barks_fantagraphics.speech_markup import escape_markup
+from barks_fantagraphics.barks_titles import Titles
 from comic_utils.timing import Timing
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
@@ -30,20 +23,27 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.index_headings import (
-    SEE_REFERENCES,
-    index_sort_key,
-    tag_group_heading,
-    tag_heading,
     tag_heading_markup,
 )
 from barks_reader.core.index_items import IndexItem
+from barks_reader.core.main_index import (
+    TitleHierarchy,
+    build_main_index,
+    index_item_markup,
+    index_letter,
+    tag_group_sub_items,
+    tag_sub_items,
+    tagged_pages,
+    titles_for_letter,
+)
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
-from barks_reader.core.reader_utils import get_concat_page_nums_str
 
 from .index_screen import IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -51,22 +51,6 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
-
-
-def _index_letter(heading: str) -> str:
-    """Return the letter page `heading` is listed on: its first letter, or "0" for a digit."""
-    first_letter = heading[0].upper()
-    assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
-    return "0" if "0" <= first_letter <= "9" else first_letter
-
-
-def _index_item_markup(item: IndexItem) -> str:
-    """Return a top-level row's text as markup: a cross-reference's "See" in italics."""
-    if item.see:
-        return f"{escape_markup(item.display_text)}. [i]See[/i] {escape_markup(item.see)}"
-    if isinstance(item.id, Tags):
-        return tag_heading_markup(item.id)
-    return escape_markup(item.display_text)
 
 
 class _MainIndexTitleItemButton(Button):
@@ -106,29 +90,6 @@ class _MainIndexTitleItemButton(Button):
             Rectangle(pos=(self.x + pad, self.y), size=(self.width - pad, self.height))
 
 
-@dataclass(frozen=True, slots=True)
-class TitleHierarchy:
-    tag_group: TagGroups | None
-    tag: Tags | None
-    title: Titles | None
-
-    def get_title_with_hierarchy(self) -> str:
-        assert self.title is not None
-        title_str = ENUM_TO_STR_TITLE[self.title]
-
-        if not self.tag_group and not self.tag:
-            return title_str
-
-        title_str += " ("
-        if self.tag_group:
-            title_str += self.tag_group.value + "/"
-        if self.tag:
-            title_str += self.tag.value
-        title_str += ") "
-
-        return title_str
-
-
 class MainIndexScreen(IndexScreen):
     """A widget that displays an A-Z index of comic titles and tags."""
 
@@ -157,7 +118,7 @@ class MainIndexScreen(IndexScreen):
         # The shown letter page's tag entries, for a cross-reference to go to.
         self._tag_entries: dict[Tags, tuple[Button, IndexItem]] = {}
 
-        self._build_index()
+        self._item_index = self._build_index()
         self._populate_alphabet_menu()
 
     @override
@@ -168,44 +129,16 @@ class MainIndexScreen(IndexScreen):
         self._tag_entries.clear()
         self._populate_index_grid(first_letter)
 
-    def _build_index(self) -> None:
-        """Build the index from Barks titles and tags."""
+    @staticmethod
+    def _build_index() -> dict[str, list[IndexItem]]:
+        """Build the index from Barks titles and tags, timed for the log."""
         timing = Timing()
         logger.info("Building index...")
-
-        # Add all comic titles. Individual covers ("Four Color #189 Cover", ...) are
-        # noise in an A-Z index - they are all reachable through the "All Covers"
-        # collection, which is not in COVERS_SET and so is still indexed.
-        for title in Titles:
-            if title in COVERS_SET:
-                continue
-            title_str = self._get_indexable_title(title)
-            self._item_index[_index_letter(title_str)].append(IndexItem(title, title_str))
-
-        # Add all tags, headed as an index heads them (see core.index_headings), and the
-        # other names a reader may look them up by, as "See" cross-references.
-        for tag in Tags:
-            self.add_tag_name(tag, tag_heading(tag))
-        for name, tag in SEE_REFERENCES.items():
-            self.add_tag_name(tag, name, see=tag_heading(tag))
-
-        # Add all tag groups
-        for tag_group in TagGroups:
-            tag_group_name = tag_group_heading(tag_group)
-            self._item_index[_index_letter(tag_group_name)].append(
-                IndexItem(tag_group, tag_group_name)
-            )
-
-        # Sort items within each letter group
-        for letter in self._item_index:
-            self._item_index[letter].sort(key=lambda item: index_sort_key(item.display_text))
-
+        index = build_main_index()
         logger.debug(
             log_markers.INDEX_BUILD_COMPLETE.format(elapsed=timing.get_elapsed_time_with_unit())
         )
-
-    def add_tag_name(self, tag: Tags, tag_name: str, see: str = "") -> None:
-        self._item_index[_index_letter(tag_name)].append(IndexItem(tag, tag_name, see=see))
+        return index
 
     @override
     def _reset_background_image_caches(self) -> None:
@@ -216,8 +149,8 @@ class MainIndexScreen(IndexScreen):
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text
-            self._cached_all_titles_for_letter, self._cached_hierarchies = (
-                self._get_all_titles_for_letter(letter)
+            self._cached_all_titles_for_letter, self._cached_hierarchies = titles_for_letter(
+                self._item_index[letter]
             )
 
         image_info = self._random_title_images.get_random_image(self._cached_all_titles_for_letter)
@@ -227,49 +160,11 @@ class MainIndexScreen(IndexScreen):
     def _get_background_title_str(self, title: Titles) -> str:
         return self._cached_hierarchies[title].get_title_with_hierarchy()
 
-    def _get_all_titles_for_letter(
-        self, letter: str
-    ) -> tuple[list[FantaComicBookInfo], dict[Titles, TitleHierarchy]]:
-        """Get all unique titles for a given letter, from direct titles and from tags."""
-        hierarchies: dict[Titles, TitleHierarchy] = {}
-        all_titles: set[Titles] = set()
-
-        for index_item in self._item_index[letter]:
-            self._update_all_titles_and_hierarchies(index_item.id, all_titles, hierarchies)
-
-        return [
-            ALL_FANTA_COMIC_BOOK_INFO[title]
-            for title in all_titles
-            if title in ALL_FANTA_COMIC_BOOK_INFO
-        ], hierarchies
-
-    def _update_all_titles_and_hierarchies(
-        self,
-        item_id: Titles | Tags | TagGroups,
-        all_titles: set[Titles],
-        hierarchies: dict[Titles, TitleHierarchy],
-        parent_tag_group: TagGroups | None = None,
-    ) -> None:
-        if type(item_id) is Titles:
-            all_titles.add(item_id)
-            hierarchies[item_id] = TitleHierarchy(None, None, item_id)
-        elif type(item_id) is Tags:
-            tag_titles = get_tag_titles(item_id)
-            for title in tag_titles:
-                hierarchies[title] = TitleHierarchy(parent_tag_group, item_id, title)
-            all_titles.update(tag_titles)
-        elif type(item_id) is TagGroups:
-            for tag in BARKS_TAG_GROUPS[item_id]:
-                if type(tag) is TagGroups:
-                    self._update_all_titles_and_hierarchies(tag, all_titles, hierarchies)
-                else:
-                    self._update_all_titles_and_hierarchies(tag, all_titles, hierarchies, item_id)
-
     @override
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
-            text=_index_item_markup(item),
+            text=index_item_markup(item),
             markup=True,
             font_name=self._font_manager.main_index_item_font_name,
             font_size=self._font_manager.main_index_item_font_size,
@@ -316,21 +211,13 @@ class MainIndexScreen(IndexScreen):
         if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
             use_italic = True
-            sub_items_to_display = [
-                (
-                    title,
-                    *self._get_tagged_title_with_page_nums(title, item_id),
-                )
-                # In the order Barks submitted them: Titles is in that order.
-                for title in sorted(BARKS_TAGGED_TITLES[item_id])
-            ]
+            sub_items_to_display: list[tuple[Titles | Tags, str, str]] = list(
+                tag_sub_items(item_id)
+            )
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
             use_italic = False
-            sub_items_to_display = sorted(
-                ((tag, "", tag_heading(tag)) for tag in get_all_tags_in_tag_group(item_id)),
-                key=lambda t: index_sort_key(t[2]),
-            )
+            sub_items_to_display = list(tag_group_sub_items(item_id))
 
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
@@ -359,7 +246,7 @@ class MainIndexScreen(IndexScreen):
                 id=sub_item_id,
                 display_text=sub_item_text,
                 page_to_goto=sub_item_page_to_goto,
-                tagged_pages=self._get_tagged_pages(item_id, sub_item_id),
+                tagged_pages=tagged_pages(item_id, sub_item_id),
             )
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
@@ -400,7 +287,7 @@ class MainIndexScreen(IndexScreen):
         """
         assert isinstance(item.id, Tags)
         logger.info(log_markers.INDEX_SEE_FOLLOWED.format(name=item.display_text, see=item.see))
-        letter = _index_letter(item.see)
+        letter = index_letter(item.see)
         if self._selected_letter_button is None or self._selected_letter_button.text != letter:
             self.on_letter_press(self._alphabet_buttons[letter])
         if item.id not in self._tag_entries:
@@ -448,22 +335,3 @@ class MainIndexScreen(IndexScreen):
         self._open_tag_button = button
         self._open_tag_item = item
         self._schedule_sub_items(self._add_sub_items)
-
-    @staticmethod
-    def _get_tagged_pages(item_id: Tags | TagGroups, sub_item_id: Titles | Tags) -> tuple[str, ...]:
-        """Return a tag's pages in a title listed under it; none for a tag group's tags."""
-        if not isinstance(item_id, Tags) or not isinstance(sub_item_id, Titles):
-            return ()
-        return tuple(BARKS_TAGGED_PAGES.get((item_id, sub_item_id), ()))
-
-    def _get_tagged_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
-        """Return the first page to goto, and the sortable title with page numbers."""
-        if (tag, title) not in BARKS_TAGGED_PAGES:
-            return "", self._get_indexable_title(title)
-
-        page_nums = BARKS_TAGGED_PAGES[(tag, title)]
-
-        title_str = self._get_indexable_title(title)
-        page_nums_str = get_concat_page_nums_str(page_nums)
-
-        return page_nums[0], title_str + ", " + page_nums_str

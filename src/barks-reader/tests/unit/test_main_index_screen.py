@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.core.main_index
 import barks_reader.ui.index_screen
 import barks_reader.ui.main_index_screen
 import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_reader.core.index_items import IndexItem
-from barks_reader.ui.main_index_screen import MainIndexScreen, TitleHierarchy
+from barks_reader.ui.main_index_screen import MainIndexScreen
 from kivy.clock import Clock
 
 if TYPE_CHECKING:
@@ -68,16 +68,6 @@ class TestMainIndexScreen:
         assert main_index_screen._random_title_images is not None
         assert main_index_screen._texture_loader is not None
 
-    def test_build_index_excludes_individual_covers(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        indexed_ids = {
-            item.id for items in main_index_screen._item_index.values() for item in items
-        }
-        assert not (indexed_ids & COVERS_SET)
-        assert Titles.ALL_COVERS in indexed_ids
-        assert Titles.DONALD_DUCK_FINDS_PIRATE_GOLD in indexed_ids
-
     def test_get_items_for_letter(self, main_index_screen: MainIndexScreen) -> None:
         # Clear the index built during init so we can test with controlled data
         main_index_screen._item_index.clear()
@@ -123,34 +113,6 @@ class TestMainIndexScreen:
         _, kwargs = mock_btn_cls.call_args
         assert kwargs["text"] == "Glittering Goldie. [i]See[/i] O'Gilt, Goldie"
         assert kwargs["markup"] is True
-
-    def test_tags_are_listed_by_their_index_headings(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        texts = {
-            (item.id, item.display_text, item.see)
-            for items in main_index_screen._item_index.values()
-            for item in items
-        }
-        assert (Tags.FLINTHEART_GLOMGOLD, "Glomgold, Flintheart", "") in texts
-        assert (Tags.DAISY, "Daisy Duck", "") in texts
-        assert (Tags.FIRST_DAISY, "Daisy Duck: first appearance", "") in texts
-        assert (Tags.GOLDIE_OGILT, "Glittering Goldie", "O'Gilt, Goldie") in texts
-        # The names a reader looks the leads up by stay findable, as cross-references.
-        scrooge = "Uncle Scrooge: outside the Uncle Scrooge series"
-        assert (Tags.SCROOGE_NOT_IN_US, "Scrooge", scrooge) in texts
-        assert (TagGroups.PIG_VILLAINS, "pig villains", "") in texts
-        # Search shorthands are no longer index entries.
-        assert not any(text == "Amnesia" for _, text, _ in texts)
-
-    def test_a_letter_sorts_word_by_word_ignoring_punctuation(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        o_texts = [item.display_text for item in main_index_screen._item_index["O"]]
-        assert o_texts.index("Officer of the Day") < o_texts.index("O'Gilt, Goldie")
-        assert o_texts.index("O'Gilt, Goldie") < o_texts.index("Ohio")
-        d_texts = [item.display_text for item in main_index_screen._item_index["D"]]
-        assert d_texts.index("Daisy Duck") + 1 == d_texts.index("Daisy Duck: first appearance")
 
     def test_on_index_item_press(self, main_index_screen: MainIndexScreen) -> None:
         # MainIndexScreen._on_index_item_press usually navigates to the title.
@@ -252,12 +214,12 @@ class TestTagMarkers:
         screen._open_tag_button = MagicMock(padding=[0, 0, 0, 0])
         module = barks_reader.ui.main_index_screen
         with (
-            patch.object(module, "BARKS_TAGGED_TITLES", {item_id: members}),
-            patch.object(module, "get_all_tags_in_tag_group", return_value=set(members)),
+            patch.object(barks_reader.core.main_index, "BARKS_TAGGED_TITLES", {item_id: members}),
+            patch.object(
+                barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value=set(members)
+            ),
             patch.object(module, "BoxLayout"),
             patch.object(module, "_MainIndexTitleItemButton"),
-            patch.object(screen, "_get_tagged_title_with_page_nums", return_value=("", "")),
-            patch.object(screen, "_get_tagged_pages", return_value=()),
             patch.object(module, "IndexItem") as index_item,
         ):
             screen._get_sub_item_layout(item_id)
@@ -295,65 +257,12 @@ class TestTagMarkers:
         assert f"No tags found for tag group: {group.name}" in loguru_sink
 
 
-class TestTaggedTitleRows:
-    """A title under a tag shows the pages the tag is on, and opens at the first."""
-
-    def test_a_title_tagged_on_pages_shows_them_and_opens_at_the_first(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        pages = {(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7", "8", "9", "12"]}
-        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", pages):
-            row = main_index_screen._get_tagged_title_with_page_nums(
-                Titles.BACK_TO_THE_KLONDIKE, Tags.ALASKA
-            )
-        assert row == ("7", "Back to the Klondike, 7-9,12")
-
-    def test_a_title_tagged_as_a_whole_opens_at_its_start(
-        self, main_index_screen: MainIndexScreen
-    ) -> None:
-        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", {}):
-            row = main_index_screen._get_tagged_title_with_page_nums(
-                Titles.BACK_TO_THE_KLONDIKE, Tags.ALASKA
-            )
-        assert row == ("", "Back to the Klondike")
-
-    def test_a_title_under_a_tag_carries_all_the_tags_pages(self) -> None:
-        pages = {(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7", "8", "9", "12"]}
-        with patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_PAGES", pages):
-            assert MainIndexScreen._get_tagged_pages(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE) == (
-                "7",
-                "8",
-                "9",
-                "12",
-            )
-            assert MainIndexScreen._get_tagged_pages(Tags.ALASKA, Titles.TRICK_OR_TREAT) == ()
-
-    def test_a_tag_under_a_group_carries_no_pages(self) -> None:
-        assert MainIndexScreen._get_tagged_pages(TagGroups.AFRICA, Tags.ALASKA) == ()
-
+class TestTitleRowButton:
     def test_a_title_row_too_long_for_itself_ends_in_an_ellipsis(self) -> None:
         """Wrapped, a long title ran onto the next row."""
         button = barks_reader.ui.main_index_screen._MainIndexTitleItemButton(text="A long title")
         assert button.shorten is True
         assert button.shorten_from == "right"
-
-
-class TestTitleHierarchy:
-    """A title found under a tag says where: "Title (group/tag) "."""
-
-    def test_a_title_found_directly_is_just_its_title(self) -> None:
-        hierarchy = TitleHierarchy(None, None, Titles.BACK_TO_THE_KLONDIKE)
-        assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike"
-
-    def test_a_title_under_a_tag_in_a_group_names_both(self) -> None:
-        hierarchy = TitleHierarchy(TagGroups.AFRICA, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
-        assert hierarchy.get_title_with_hierarchy() == (
-            f"Back to the Klondike ({TagGroups.AFRICA.value}/{Tags.ALASKA.value}) "
-        )
-
-    def test_a_title_under_a_top_level_tag_names_the_tag(self) -> None:
-        hierarchy = TitleHierarchy(None, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
-        assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike (Alaska) "
 
 
 class TestSeeReferences:
