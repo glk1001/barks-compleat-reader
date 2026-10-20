@@ -188,3 +188,137 @@ class TestTapRegions:
         regions = nav.tap_regions(self.WIDTH, self.HEIGHT)
         assert "left margin" not in regions
         assert "right margin" not in regions
+
+
+class TestEdges:
+    """A press on a margin's own edge, and the margins before the sizes are known."""
+
+    @pytest.fixture
+    def mode(self) -> _Mode:
+        return _Mode()
+
+    @pytest.fixture
+    def nav(self, mode: _Mode) -> ReaderNavigation:
+        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=mode)
+        nav.update_regions(1000, 1000, 0, 0)  # x_mid 500, bottom 100, top 900
+        return nav
+
+    def test_the_middle_is_the_right_pages_and_the_top_line_turns_too(
+        self, nav: ReaderNavigation
+    ) -> None:
+        assert not nav.is_in_left_margin(500, 500)
+        assert nav.is_in_right_margin(500, 500)
+        assert nav.is_in_left_margin(400, 900)
+        assert nav.is_in_right_margin(600, 900)
+
+    def test_in_fullscreen_the_bars_band_takes_its_right_edge_not_its_left(
+        self, mode: _Mode, nav: ReaderNavigation
+    ) -> None:
+        mode.fullscreen = True  # the band is (500, 1500]
+        assert nav.is_in_top_margin(1500, 950)
+        assert not nav.is_in_top_margin(500, 950)
+        assert nav.is_in_bottom_margin(1500, 50)
+        assert not nav.is_in_bottom_margin(500, 50)
+
+    def test_no_bottom_margin_by_default(self) -> None:
+        nav = ReaderNavigation(2000, 0.1, is_fullscreen=lambda: False)
+        nav.update_regions(1000, 1000, 0, 0)
+        assert nav.y_bottom_margin == 0
+
+    def test_every_margin_is_unknown_until_the_sizes_are(self) -> None:
+        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=lambda: True)
+        assert (nav.x_mid, nav.y_bottom_margin, nav.y_top_margin) == (-1, -1, -1)
+        assert nav.tap_regions(1000, 1000) == {}
+
+
+_L, _R, _T = "left margin", "right margin", "top margin"
+
+
+@pytest.mark.parametrize(
+    ("top_frac", "bottom_frac", "win", "fullscreen", "expected"),
+    [
+        pytest.param(
+            0.1,
+            0.9,
+            (1000, 1000, 0, 0),
+            False,
+            {_L: (0, 100, 500, 800), _R: (500, 100, 500, 800), _T: (0, 900, 1000, 100)},
+            id="windowed",
+        ),
+        pytest.param(
+            0.1,
+            1.0,
+            (1000, 1000, 0, 0),
+            False,
+            {_L: (0, 0, 500, 900), _R: (500, 0, 500, 900), _T: (0, 900, 1000, 100)},
+            id="no-bottom-margin",
+        ),
+        pytest.param(
+            0.0,
+            0.9,
+            (1000, 1000, 0, 0),
+            False,
+            {_L: (0, 100, 500, 899), _R: (500, 100, 500, 899)},
+            id="no-top-margin",  # the turns stop a pixel short of the widget's top
+        ),
+        pytest.param(
+            1.0,
+            1.0,
+            (1000, 1000, 0, 0),
+            False,
+            {_T: (0, 0, 1000, 1000)},
+            id="all-top-margin",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (1000, 1000, 600, 0),
+            False,
+            {_R: (0, 100, 1000, 800), _T: (0, 900, 1000, 100)},
+            id="middle-left-of-the-widget",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (1000, 1000, 499, 0),
+            False,
+            {_L: (0, 100, 1, 800), _R: (1, 100, 999, 800), _T: (0, 900, 1000, 100)},
+            id="middle-at-its-first-pixel",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (1000, 1000, -500, 0),
+            False,
+            {_L: (0, 100, 1000, 800), _T: (0, 900, 1000, 100)},
+            id="middle-at-its-right-edge",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (2000, 1000, 0, 0),
+            True,
+            {_L: (0, 100, 1000, 800), _R: (1000, 100, 1000, 800), _T: (501, 900, 1000, 100)},
+            id="fullscreen-band",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (400, 1000, 0, 0),
+            True,
+            {_L: (0, 100, 200, 800), _R: (200, 100, 200, 800)},
+            id="fullscreen-band-off-the-widget",
+        ),
+    ],
+)
+def test_the_tap_regions_are_exactly_the_margins(
+    top_frac: float,
+    bottom_frac: float,
+    win: tuple[int, int, int, int],
+    expected: dict[str, tuple[int, int, int, int]],
+    *,
+    fullscreen: bool,
+) -> None:
+    nav = ReaderNavigation(2000, top_frac, bottom_frac, is_fullscreen=lambda: fullscreen)
+    nav.update_regions(*win)
+    assert nav.tap_regions(win[0], win[1]) == expected

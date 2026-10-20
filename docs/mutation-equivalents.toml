@@ -1915,6 +1915,42 @@ change = """
 """
 reason = "The default only marks a page no unit holds; -1 and -2 are both at most 0, the one test made of it."
 
+[[equivalent]]
+module = "barks_reader.core.reader_navigation"
+function = "ReaderNavigation.__init__"
+change = """
+- self._fullscreen_left_margin = -1
++ self._fullscreen_left_margin = +1
+"""
+reason = "Before update_regions the fullscreen band is empty either way: its right edge, -1, is left of every point of the widget."
+
+[[equivalent]]
+module = "barks_reader.core.reader_navigation"
+function = "ReaderNavigation.__init__"
+change = """
+- self._fullscreen_left_margin = -1
++ self._fullscreen_left_margin = -2
+"""
+reason = "Before update_regions the fullscreen band is (-2, -1] instead of empty: neither holds a point of the widget, x >= 0."
+
+[[equivalent]]
+module = "barks_reader.core.reader_navigation"
+function = "ReaderNavigation.__init__"
+change = """
+- self._fullscreen_right_margin = -1
++ self._fullscreen_right_margin = -2
+"""
+reason = "Before update_regions the fullscreen band is empty either way, and tap_regions finds no top margin in it."
+
+[[equivalent]]
+module = "barks_reader.core.reader_navigation"
+function = "ReaderNavigation.tap_regions"
+change = """
+- left = min(width, max(0, self._fullscreen_left_margin + 1))
++ left = min(width, max(1, self._fullscreen_left_margin + 1))
+"""
+reason = "After update_regions the left margin is round(max_window_width / 4) >= 0, so the + 1 is already >= 1; before it the band's right edge is 0 and there is no region either way."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
