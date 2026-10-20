@@ -6,7 +6,7 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,

@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_ESCAPE,
     get_alt_escape_key,
     is_escape_key,
+    is_escape_key_for_text_input,
     set_alt_escape_key,
 )
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 _BACKSPACE = 8
+_KEY_R = ord("r")
 
 
 @pytest.fixture(autouse=True)
@@ -51,3 +53,24 @@ def test_clearing_alt_escape_key() -> None:
 def test_alt_escape_accepts_non_int_truthy() -> None:
     set_alt_escape_key(42)
     assert is_escape_key(42) is True
+
+
+class TestEscapeForTextInput:
+    """A text field keeps a letter that doubles as the alternate Escape."""
+
+    def test_real_escape_leaves_the_field(self) -> None:
+        assert is_escape_key_for_text_input(KEY_ESCAPE, None) is True
+        assert is_escape_key_for_text_input(KEY_ESCAPE, "\x1b") is True
+
+    def test_alt_escape_with_no_character_leaves_the_field(self) -> None:
+        set_alt_escape_key(_KEY_R)
+        assert is_escape_key_for_text_input(_KEY_R, None) is True
+        assert is_escape_key_for_text_input(_KEY_R, "") is True
+
+    def test_alt_escape_typed_as_a_letter_is_text(self) -> None:
+        set_alt_escape_key(_KEY_R)
+        assert is_escape_key_for_text_input(_KEY_R, "r") is False
+
+    def test_other_keys_are_text(self) -> None:
+        set_alt_escape_key(_KEY_R)
+        assert is_escape_key_for_text_input(_BACKSPACE, None) is False

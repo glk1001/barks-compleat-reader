@@ -48,6 +48,7 @@ from barks_reader.core.corpus_stats import (
     compute_static_stats,
     compute_text_stats,
 )
+from barks_reader.core.keys import KEY_LEFT, KEY_UP, is_escape_key
 from barks_reader.core.reader_consts_and_types import INTRO_BY_THE_NUMBERS_TEXT
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_palette import theme
@@ -55,7 +56,7 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .font_manager import FontManager
-from .reader_keyboard_nav import KEY_LEFT, KEY_UP, ActionBarNavMixin, is_escape_key
+from .reader_keyboard_nav import ActionBarNavMixin
 from .reader_screens import ReaderScreen
 
 if TYPE_CHECKING:

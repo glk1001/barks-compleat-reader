@@ -12,12 +12,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.entity_types import EntityType
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.ui.index_screen import (
-    IndexItem,
-    TitleShowSpeechButton,
-    _IndexNavPanel,
-)
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -25,6 +20,11 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_PAGE_DOWN,
     KEY_RIGHT,
     KEY_UP,
+)
+from barks_reader.ui.index_screen import (
+    IndexItem,
+    TitleShowSpeechButton,
+    _IndexNavPanel,
 )
 from barks_reader.ui.speech_index_screen import (
     _SEARCH_CACHE_MAX_ENTRIES,

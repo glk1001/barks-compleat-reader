@@ -18,9 +18,9 @@ from barks_reader.core.corpus_stats import (
     StatRow,
     StatSection,
 )
+from barks_reader.core.keys import KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.ui.reader_screens import ReaderScreen
 
 if TYPE_CHECKING:

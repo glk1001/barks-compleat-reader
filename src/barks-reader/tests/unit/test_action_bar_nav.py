@@ -5,13 +5,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.keys import KEY_LEFT, KEY_PAGE_DOWN, KEY_PAGE_UP, KEY_RIGHT
 from barks_reader.ui import reader_keyboard_nav as nav_module
 from barks_reader.ui.reader_keyboard_nav import (
     _FOCUS_BINDING_ATTR,
-    KEY_LEFT,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    KEY_RIGHT,
     ActionBarNavMixin,
     DropdownNavMixin,
     clear_focus_highlight,

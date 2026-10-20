@@ -15,15 +15,9 @@ from kivy.uix.popup import Popup
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
 
-from .reader_keyboard_nav import (
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_RIGHT,
-    is_escape_key,
-    update_focus_in_list,
-)
+from .reader_keyboard_nav import update_focus_in_list
 
 if TYPE_CHECKING:
     from collections.abc import Callable

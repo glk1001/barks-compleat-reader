@@ -28,6 +28,15 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
 from barks_reader.core.index_text import MAX_TITLE_AND_PAGES_LEN
+from barks_reader.core.keys import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    KEY_UP,
+    is_escape_key,
+)
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 
@@ -43,17 +52,7 @@ from .index_screen import (
     show_speech_bubbles_popup,
 )
 from .panel_texture_loader import PanelTextureLoader
-from .reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_RIGHT,
-    KEY_UP,
-    clear_focus_in_list,
-    draw_focus_highlight,
-    is_escape_key,
-)
+from .reader_keyboard_nav import clear_focus_in_list, draw_focus_highlight
 
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType

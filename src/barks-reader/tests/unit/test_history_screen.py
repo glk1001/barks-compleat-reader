@@ -8,6 +8,17 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.keys import (
+    KEY_DELETE,
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_UP,
+)
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reading_history import ReadEvent
 from barks_reader.ui import history_screen as history_screen_module
@@ -23,17 +34,6 @@ from barks_reader.ui.history_screen import (
     HistoryScreen,
     _BuiltView,
     _NavRow,
-)
-from barks_reader.ui.reader_keyboard_nav import (
-    KEY_DELETE,
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_ESCAPE,
-    KEY_LEFT,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    KEY_RIGHT,
-    KEY_UP,
 )
 from kivy.uix.floatlayout import FloatLayout
 

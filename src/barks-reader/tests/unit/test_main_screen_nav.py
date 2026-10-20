@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.ui import main_screen_nav as nav_module
-from barks_reader.ui.main_screen_nav import MainScreenNavigation
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -18,6 +16,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
 )
+from barks_reader.ui import main_screen_nav as nav_module
+from barks_reader.ui.main_screen_nav import MainScreenNavigation
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode, TitleTreeViewNode
 
 if TYPE_CHECKING:
@@ -128,7 +128,7 @@ class TestHandleTreeKey:
         nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_alt_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
-        from barks_reader.ui.reader_keyboard_nav import set_alt_escape_key  # noqa: PLC0415
+        from barks_reader.core.keys import set_alt_escape_key  # noqa: PLC0415
 
         backspace = 8
         set_alt_escape_key(backspace)

@@ -9,15 +9,13 @@ from typing import Any
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 from barks_reader.core.reader_palette import theme
 
 from .reader_keyboard_nav import (
-    KEY_ENTER,
-    KEY_NUMPAD_ENTER,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,
     draw_focus_highlight,
-    is_escape_key,
 )
 
 _SAME_SIZE_CUTOFF_PX = 10

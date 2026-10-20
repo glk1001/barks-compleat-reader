@@ -22,6 +22,7 @@ from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
 
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
@@ -34,7 +35,6 @@ from barks_reader.core.wiki_integration import (
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .platform_window_utils import WindowManager
-from .reader_keyboard_nav import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
 from .reader_screens import ReaderScreen
 
 if TYPE_CHECKING:

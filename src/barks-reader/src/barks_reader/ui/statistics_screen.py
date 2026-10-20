@@ -20,17 +20,13 @@ from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
 
 from .reader_keyboard_nav import (
     DROPDOWN_DISMISSED_LOG,
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_RIGHT,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     DropdownNavMixin,
     clear_focus_in_list,
-    is_escape_key,
     open_dropdown,
     update_focus_in_list,
 )

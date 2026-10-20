@@ -6,9 +6,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.ui import alt_escape_capture_popup as capture_module
-from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -17,6 +15,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
 )
+from barks_reader.ui import alt_escape_capture_popup as capture_module
+from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
 
 
 @pytest.fixture

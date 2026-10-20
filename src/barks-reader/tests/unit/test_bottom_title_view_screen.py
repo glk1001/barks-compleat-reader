@@ -10,18 +10,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-from barks_reader.ui.reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_ESCAPE,
-    KEY_LEFT,
-    KEY_RIGHT,
-    KEY_UP,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Generator

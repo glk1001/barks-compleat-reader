@@ -26,11 +26,7 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.reader_palette import Color, theme
-
-from .action_bar_helpers import ACTION_BAR_SIZE_Y
-from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_LEFT,
@@ -40,6 +36,10 @@ from .reader_keyboard_nav import (
     is_escape_key,
     set_alt_escape_key,
 )
+from barks_reader.core.reader_palette import Color, theme
+
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
+from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
 
 
 def _rgba(color: Color, alpha: float | None = None) -> str:

@@ -13,9 +13,7 @@ from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
-from .reader_keyboard_nav import (
-    ActionBarNavMixin,
-)
+from .reader_keyboard_nav import ActionBarNavMixin
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
 

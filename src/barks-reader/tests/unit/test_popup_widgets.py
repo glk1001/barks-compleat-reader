@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_RIGHT
 from barks_reader.ui import popup_widgets
 from barks_reader.ui.popup_widgets import _ConfirmPopupNav
-from barks_reader.ui.reader_keyboard_nav import KEY_ENTER, KEY_ESCAPE, KEY_RIGHT
 
 
 def _nav(on_ok: MagicMock, title: str = "Quit") -> tuple[_ConfirmPopupNav, MagicMock]:

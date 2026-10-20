@@ -17,9 +17,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Protocol, cast
 
-from barks_reader.core.reader_palette import theme
-
-from .reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_LEFT,
@@ -28,8 +26,10 @@ from .reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
     is_escape_key,
-    log_nav_focus,
 )
+from barks_reader.core.reader_palette import theme
+
+from .reader_keyboard_nav import log_nav_focus
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

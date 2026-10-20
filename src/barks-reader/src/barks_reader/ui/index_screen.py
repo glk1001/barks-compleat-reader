@@ -38,6 +38,17 @@ from barks_reader.core.index_text import (
     indexable_title,
     sortable_string,
 )
+from barks_reader.core.keys import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_UP,
+    is_escape_key,
+)
 from barks_reader.core.reader_formatter import mark_terms_in_text
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import (
@@ -47,18 +58,9 @@ from barks_reader.core.user_error_types import (
 )
 
 from .reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    KEY_RIGHT,
-    KEY_UP,
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
-    is_escape_key,
     log_nav_focus,
 )
 from .tree_scroll_pinner import REVEAL_ROWS, RowScrollPinner

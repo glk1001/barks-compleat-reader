@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.whoosh_search_engine import PageInfo, SpeechInfo
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.index_screen import (
@@ -28,7 +29,6 @@ from barks_reader.ui.index_screen import (
     format_page_speech_bubbles,
     show_speech_bubbles_popup,
 )
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
 from kivy.uix.gridlayout import GridLayout

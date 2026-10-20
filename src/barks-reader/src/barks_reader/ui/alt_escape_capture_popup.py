@@ -10,8 +10,7 @@ from kivy.uix.popup import Popup
 from loguru import logger
 
 from barks_reader.core import log_markers
-
-from .reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -19,8 +18,9 @@ from .reader_keyboard_nav import (
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
     KEY_UP,
-    update_focus_in_list,
 )
+
+from .reader_keyboard_nav import update_focus_in_list
 
 _FOCUS_GROUP = "alt_escape_capture_focus"
 _CLEAR, _CANCEL = 0, 1

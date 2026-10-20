@@ -6,14 +6,8 @@ from types import SimpleNamespace
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
+from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_NUMPAD_ENTER, KEY_UP
 from barks_reader.ui import settings_keyboard_nav as nav_module
-from barks_reader.ui.reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_ESCAPE,
-    KEY_NUMPAD_ENTER,
-    KEY_UP,
-)
 from barks_reader.ui.settings_keyboard_nav import SettingsKeyboardNav
 
 _IDX_2 = 2

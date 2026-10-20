@@ -20,6 +20,7 @@ from screeninfo import get_monitors
 from barks_reader.core import log_markers
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.keys import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import (
@@ -60,7 +61,6 @@ from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM W
 from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
 from .popup_widgets import READER_POPUPS_KV_FILE
-from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     CORPUS_STATS_SCREEN,

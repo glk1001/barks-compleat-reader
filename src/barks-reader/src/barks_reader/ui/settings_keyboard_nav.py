@@ -7,15 +7,12 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.settings import SettingBoolean, SettingItem
 from kivy.uix.textinput import TextInput
 
+from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_NUMPAD_ENTER, KEY_UP, is_escape_key
+
 from .reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_NUMPAD_ENTER,
-    KEY_UP,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,
     draw_focus_highlight,
-    is_escape_key,
 )
 
 if TYPE_CHECKING:

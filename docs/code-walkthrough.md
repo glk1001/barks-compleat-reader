@@ -895,8 +895,10 @@ only draws. The tree node is a `CorpusStatsDestination` whose `PressAction` is
 The whole app is driven from six keys, Escape, Return, Up, Down, Left and Right,
 because the reference device is a TV remote; the GUI tests may press nothing
 else (`scripts/check_gui_keys.py`, with `REMOTE_KEYS`), and the other `KEY_*`
-constants in `ui/reader_keyboard_nav.py` (Tab, Space, F, Page Up/Down, Delete)
-are desktop extras. That module holds the shared machinery: the key codes, the
+constants in `core/keys.py` (Tab, Space, F, Page Up/Down, Delete)
+are desktop extras. `core/keys.py` holds the key codes and the user's alternate
+Escape key (`is_escape_key`), Kivy-free, so any module may test a key without
+importing Kivy; `ui/reader_keyboard_nav.py` holds the shared Kivy machinery: the
 focus-highlight group, and two mixins, `ActionBarNavMixin` (Up into the action
 bar, Left/Right along it, Return to press, the menu-mode entered by
 `_enter_menu_mode`) and `DropdownNavMixin` (Up/Down in a dropdown, Escape to

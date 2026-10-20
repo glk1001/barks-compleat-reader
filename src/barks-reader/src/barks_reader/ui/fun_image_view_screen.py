@@ -18,13 +18,7 @@ from screeninfo import get_monitors
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
-from barks_reader.core.reader_settings import (
-    BARKS_READER_SECTION,
-    SHOW_FUN_VIEW_TITLE_INFO,
-)
-from barks_reader.core.settings_notifier import settings_notifier
-
-from .reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_LEFT,
@@ -32,10 +26,18 @@ from .reader_keyboard_nav import (
     KEY_RIGHT,
     KEY_SPACE,
     KEY_UP,
+    is_escape_key,
+)
+from barks_reader.core.reader_settings import (
+    BARKS_READER_SECTION,
+    SHOW_FUN_VIEW_TITLE_INFO,
+)
+from barks_reader.core.settings_notifier import settings_notifier
+
+from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
-    is_escape_key,
     update_focus_in_list,
 )
 from .reader_navigation import ReaderNavigation

@@ -39,6 +39,18 @@ from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.keys import (
+    KEY_DELETE,
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_UP,
+    is_escape_key,
+)
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reading_history import (
     ReadEvent,
@@ -54,20 +66,10 @@ from barks_reader.core.reading_history import (
 from .panel_texture_loader import PanelTextureLoader
 from .popup_widgets import open_confirm_popup
 from .reader_keyboard_nav import (
-    KEY_DELETE,
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    KEY_RIGHT,
-    KEY_UP,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
-    is_escape_key,
     update_focus_in_list,
 )
 

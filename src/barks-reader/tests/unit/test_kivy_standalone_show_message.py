@@ -17,12 +17,12 @@ import kivy.base
 import kivy.clock
 import pytest
 from barks_reader.core import log_markers
+from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE
 from barks_reader.ui.kivy_standalone_show_message import (
     _get_background_image_pos_and_size,
     divider_line,
     show_standalone_popup,
 )
-from barks_reader.ui.reader_keyboard_nav import KEY_ENTER, KEY_ESCAPE
 from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle, RoundedRectangle

@@ -10,10 +10,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import window_minimum
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.ui.main_screen import MainScreen
-from barks_reader.ui.main_screen_components import MainScreenComponents
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -22,6 +19,9 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_UP,
     set_alt_escape_key,
 )
+from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.ui.main_screen import MainScreen
+from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import ImageThemesChange
 from kivy.uix.screenmanager import Screen

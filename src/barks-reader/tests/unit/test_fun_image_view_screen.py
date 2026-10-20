@@ -10,8 +10,7 @@ import barks_reader.ui.fun_image_view_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
-from barks_reader.ui.fun_image_view_screen import FunImageViewScreen, _FunFocus
-from barks_reader.ui.reader_keyboard_nav import (
+from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -20,6 +19,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_SPACE,
     KEY_UP,
 )
+from barks_reader.ui.fun_image_view_screen import FunImageViewScreen, _FunFocus
 from kivy.uix.boxlayout import BoxLayout
 
 if TYPE_CHECKING:

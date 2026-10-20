@@ -8,14 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.keys import KEY_DOWN, KEY_ESCAPE, KEY_F, KEY_LEFT, set_alt_escape_key
 from barks_reader.ui import wiki_reader
-from barks_reader.ui.reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ESCAPE,
-    KEY_F,
-    KEY_LEFT,
-    set_alt_escape_key,
-)
 from barks_reader.ui.wiki_reader import WikiReaderScreen
 from kivy.uix.screenmanager import Screen
 

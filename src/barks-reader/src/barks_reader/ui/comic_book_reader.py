@@ -55,11 +55,7 @@ from .platform_window_utils import (
     WindowModeController,
     log_window_geometry,
 )
-from .reader_keyboard_nav import (
-    ActionBarNavMixin,
-    DropdownNavMixin,
-    open_dropdown,
-)
+from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect

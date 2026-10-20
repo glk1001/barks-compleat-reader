@@ -11,15 +11,8 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.ui import settings_fix
-from barks_reader.ui.reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_ESCAPE,
-    KEY_LEFT,
-    KEY_RIGHT,
-    KEY_UP,
-)
 from barks_reader.ui.settings_fix import (
     QuietFileSystem,
     SettingLongPathPopup,

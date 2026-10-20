@@ -35,6 +35,16 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.keys import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    KEY_TAB,
+    KEY_UP,
+    is_escape_key,
+)
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
@@ -57,16 +67,8 @@ from .index_screen import (
     show_speech_bubbles_popup,
 )
 from .reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_RIGHT,
-    KEY_TAB,
-    KEY_UP,
     DropdownNavMixin,
     clear_focus_in_list,
-    is_escape_key,
     log_nav_focus,
     open_dropdown,
     update_focus_in_list,
