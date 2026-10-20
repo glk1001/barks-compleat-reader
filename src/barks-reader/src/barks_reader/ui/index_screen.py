@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import string
 from abc import abstractmethod
 from enum import Enum, auto
@@ -32,6 +31,7 @@ from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import GridCursor, deal_into_columns, wrapped
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_text import (
     indexable_title,
@@ -555,8 +555,9 @@ class IndexScreen(FloatLayout):
 
     def _move_letter_focus(self, delta: int) -> None:
         self._clear_letter_focus()
-        letter_order = self._letter_order
-        self._nav_focused_letter_idx = (self._nav_focused_letter_idx + delta) % len(letter_order)
+        self._nav_focused_letter_idx = wrapped(
+            self._nav_focused_letter_idx, delta, len(self._letter_order)
+        )
         self._select_focused_letter()
         self._draw_letter_focus()
 
@@ -596,7 +597,7 @@ class IndexScreen(FloatLayout):
         if key == KEY_UP:
             self._handle_items_up()
         elif key == KEY_DOWN:
-            self._move_item_focus(1)
+            self._handle_items_down()
         elif key == KEY_RIGHT:
             self._move_col_focus(1)
         elif key == KEY_LEFT:
@@ -617,52 +618,34 @@ class IndexScreen(FloatLayout):
         return True
 
     def _handle_items_up(self) -> None:
-        if self._nav_focused_item_idx == 0:
-            # Try moving to the bottom of the previous column.
-            if self._nav_focused_col > 0:
-                prev_col_buttons = self._get_col_buttons(self._nav_focused_col - 1)
-                if prev_col_buttons:
-                    self._clear_all_item_focus()
-                    self._nav_focused_col -= 1
-                    self._nav_focused_item_idx = len(prev_col_buttons) - 1
-                    self._draw_item_focus()
-                    return
+        cursor = self._grid_cursor().up(self._col_len)
+        if cursor is None:
             self._on_up_from_first_item()
-        else:
-            self._move_item_focus(-1)
+            return
+        self._focus_cursor(cursor)
 
-    def _move_item_focus(self, delta: int) -> None:
-        col_buttons = self._get_col_buttons(self._nav_focused_col)
-        if not col_buttons:
-            return
-        new_idx = self._nav_focused_item_idx + delta
-        # Wrap to the top of the next column when moving past the bottom.
-        if new_idx >= len(col_buttons):
-            next_col = self._nav_focused_col + 1
-            if next_col < self.num_columns:
-                next_col_buttons = self._get_col_buttons(next_col)
-                if next_col_buttons:
-                    self._clear_all_item_focus()
-                    self._nav_focused_col = next_col
-                    self._nav_focused_item_idx = 0
-                    self._draw_item_focus()
-            return
-        # Up reaches here only from below the column's first item (_handle_items_up), so
-        # new_idx is never negative and never the current one.
-        self._clear_all_item_focus()
-        self._nav_focused_item_idx = new_idx
-        self._draw_item_focus()
+    def _handle_items_down(self) -> None:
+        cursor = self._grid_cursor().down(self.num_columns, self._col_len)
+        if cursor is not None:
+            self._focus_cursor(cursor)
 
     def _move_col_focus(self, delta: int) -> None:
-        new_col = self._nav_focused_col + delta
-        if new_col < 0 or new_col >= self.num_columns:
-            return
-        new_col_buttons = self._get_col_buttons(new_col)
-        if not new_col_buttons:
+        cursor = self._grid_cursor().sideways(delta, self.num_columns, self._col_len)
+        if cursor is not None:
+            self._focus_cursor(cursor)
+
+    def _grid_cursor(self) -> GridCursor:
+        return GridCursor(self._nav_focused_col, self._nav_focused_item_idx)
+
+    def _col_len(self, col_idx: int) -> int:
+        return len(self._get_col_buttons(col_idx))
+
+    def _focus_cursor(self, cursor: GridCursor) -> None:
+        """Move the focus ring to `cursor`; nothing to do when it is there already."""
+        if cursor == self._grid_cursor():
             return
         self._clear_all_item_focus()
-        self._nav_focused_col = new_col
-        self._nav_focused_item_idx = min(self._nav_focused_item_idx, len(new_col_buttons) - 1)
+        self._nav_focused_col, self._nav_focused_item_idx = cursor.col, cursor.idx
         self._draw_item_focus()
 
     def _activate_focused_item(self) -> None:
@@ -738,19 +721,11 @@ class IndexScreen(FloatLayout):
         if not self._nav_active or self._nav_panel != _IndexNavPanel.ITEMS:
             return
         col_buttons = self._get_col_buttons(self._nav_focused_col)
-        new_count = len(col_buttons)
-        # Always locate btn's current position first (it may have shifted due to
-        # synchronous removal of earlier sub-items).
-        try:
-            btn_idx = col_buttons.index(btn)
-        except ValueError:
-            btn_idx = min(self._nav_focused_item_idx, max(0, new_count - 1))
-        if new_count > old_count:
-            # Sub-items were expanded — move focus to the first one after btn.
-            self._nav_focused_item_idx = min(btn_idx + 1, new_count - 1)
-        else:
-            # Collapsed or unchanged — stay on (or near) the parent button.
-            self._nav_focused_item_idx = btn_idx
+        # Where btn is now (it may have shifted with the synchronous removal of earlier
+        # sub-items), or None once it is gone.
+        btn_idx = col_buttons.index(btn) if btn in col_buttons else None
+        cursor = self._grid_cursor().resync(btn_idx, old_count, len(col_buttons))
+        self._nav_focused_item_idx = cursor.idx
         self._clear_all_item_focus()
         # No scroll of its own: the pin holds the pressed row, and glides the first rows
         # opened under it into view; a scroll's animation would write over both.
@@ -827,14 +802,7 @@ class IndexScreen(FloatLayout):
         Taking ``ceil(remaining / columns_left)`` each time reproduces the original
         per-column-count formulas exactly, without branching on the column count.
         """
-        columns: list[list[IndexItem]] = []
-        start = 0
-        for col_idx in range(self.num_columns):
-            columns_left = self.num_columns - col_idx
-            take = math.ceil((len(items) - start) / columns_left)
-            columns.append(items[start : start + take])
-            start += take
-        return columns
+        return deal_into_columns(items, self.num_columns)
 
     def _get_col_layouts(self) -> list[Widget]:
         """Return the item columns, left to right.

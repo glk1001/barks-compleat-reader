@@ -98,8 +98,8 @@ class TestFunImageViewScreen:
         assert screen.is_visible is False
         assert screen.image_fit_mode == FIT_MODE_CONTAIN
         assert screen.fun_options_enabled is False
-        assert screen._current_history_index == -1
-        assert len(screen._image_history) == 0
+        assert screen._history.index == -1
+        assert len(screen._history.images) == 0
 
     def test_set_load_image_func(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
@@ -123,9 +123,9 @@ class TestFunImageViewScreen:
 
         screen.set_last_loaded_image_info(image_info)
 
-        assert len(screen._image_history) == 1
-        assert screen._image_history[0] == image_info
-        assert screen._current_history_index == 0
+        assert len(screen._history.images) == 1
+        assert screen._history.images[0] == image_info
+        assert screen._history.index == 0
         assert screen.current_title_str != ""
 
     def test_navigation_previous_next(
@@ -144,25 +144,25 @@ class TestFunImageViewScreen:
         screen.set_last_loaded_image_info(info2)
 
         # Current index should be 1 (pointing to info2)
-        assert screen._current_history_index == 1
+        assert screen._history.index == 1
 
         # Go back
         screen._goto_previous_image()
-        assert screen._current_history_index == 0
+        assert screen._history.index == 0
         mock_load_func.assert_called_with(info1)
 
         # Go back again (should stay at 0)
         screen._goto_previous_image()
-        assert screen._current_history_index == 0
+        assert screen._history.index == 0
 
         # Go forward
         screen._goto_next_image()
-        assert screen._current_history_index == 1
+        assert screen._history.index == 1
         mock_load_func.assert_called_with(info2)
 
         # Go forward again (should stay at 1)
         screen._goto_next_image()
-        assert screen._current_history_index == 1
+        assert screen._history.index == 1
 
     def test_on_touch_down_navigation(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]

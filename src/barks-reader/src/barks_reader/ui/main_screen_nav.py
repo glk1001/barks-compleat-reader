@@ -8,6 +8,8 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import next_index_toward
+from barks_reader.core.key_repeat import KeyRepeatDetector
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -102,8 +104,7 @@ class MainScreenNavigation:
         self._title_render_trigger = factory(
             self._on_title_render_timeout, _TITLE_RENDER_DEBOUNCE_SECS
         )
-        self._now = now_fn
-        self._last_tree_move_time = float("-inf")
+        self._tree_key_repeat = KeyRepeatDetector(now_fn, _TITLE_RENDER_DEBOUNCE_SECS)
         self._pending_view_node: BaseTreeViewNode | None = None
 
     @property
@@ -367,13 +368,9 @@ class MainScreenNavigation:
         if not visible:
             return
         selected = self._tree_view_screen.get_selected_node()
-        if selected is None or selected not in visible:
-            idx = 0 if delta > 0 else len(visible) - 1
-        else:
-            idx = max(0, min(len(visible) - 1, visible.index(selected) + delta))
-        now = self._now()
-        rapid = (now - self._last_tree_move_time) < _TITLE_RENDER_DEBOUNCE_SECS
-        self._last_tree_move_time = now
+        selected_idx = visible.index(selected) if selected in visible else None
+        idx = next_index_toward(len(visible), selected_idx, delta)
+        rapid = self._tree_key_repeat.is_rapid()
 
         node = visible[idx]
         self._tree_view_screen.select_node(node)

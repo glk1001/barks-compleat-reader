@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import deque
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -17,6 +16,7 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.core import log_markers
+from barks_reader.core.image_history import ImageHistory
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -98,8 +98,7 @@ class FunImageViewScreen(BoxLayout):
         super().__init__(**kwargs)
 
         self._load_image: Callable[[ImageInfo], None] | None = None
-        self._image_history: deque[ImageInfo] = deque(maxlen=_MAX_IMAGES_HISTORY)
-        self._current_history_index = -1
+        self._history = ImageHistory(_MAX_IMAGES_HISTORY)
         self._navigation = ReaderNavigation(
             self.MAX_WINDOW_WIDTH, 0.54, 0.98, is_fullscreen=WindowManager.is_fullscreen_now
         )
@@ -194,21 +193,16 @@ class FunImageViewScreen(BoxLayout):
         self._goto_next_image()
 
     def _goto_previous_image(self) -> None:
-        if self._current_history_index <= 0:
-            return
-
-        self._current_history_index -= 1
-        self._load_current_history_image()
+        image_info = self._history.back()
+        if image_info is not None:
+            self._load_history_image(image_info)
 
     def _goto_next_image(self) -> None:
-        if self._current_history_index >= (len(self._image_history) - 1):
-            return
+        image_info = self._history.forward()
+        if image_info is not None:
+            self._load_history_image(image_info)
 
-        self._current_history_index += 1
-        self._load_current_history_image()
-
-    def _load_current_history_image(self) -> None:
-        image_info = self._image_history[self._current_history_index]
+    def _load_history_image(self, image_info: ImageInfo) -> None:
         assert self._load_image is not None
         self._load_image(image_info)
         self._set_title(image_info.from_title)
@@ -226,8 +220,7 @@ class FunImageViewScreen(BoxLayout):
     def set_last_loaded_image_info(self, image_info: ImageInfo) -> None:
         self._set_title(image_info.from_title)
 
-        self._image_history.append(image_info)
-        self._current_history_index = len(self._image_history) - 1
+        self._history.add(image_info)
         assert image_info.filename
         logger.debug(
             log_markers.FUN_IMAGE_LOADED.format(

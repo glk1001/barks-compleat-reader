@@ -39,6 +39,7 @@ from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import clamped, stripe_indexes
 from barks_reader.core.keys import (
     KEY_DELETE,
     KEY_DOWN,
@@ -617,13 +618,9 @@ class HistoryScreen(FloatLayout):
         The stripe index restarts at each group boundary, matching the journal's
         per-day numbering; the titles view is one unnamed group, so it runs on.
         """
-        group: str | None = None
-        row_index = 0
-        for nav_row in nav_rows:
-            if nav_row.group != group:
-                group, row_index = nav_row.group, 0
+        stripes = stripe_indexes(nav_row.group for nav_row in nav_rows)
+        for nav_row, row_index in zip(nav_rows, stripes, strict=True):
             nav_row.widget.set_stripe(row_index)
-            row_index += 1
 
     # --- Keyboard navigation ---
 
@@ -654,7 +651,7 @@ class HistoryScreen(FloatLayout):
         if self._nav_zone == _ZONE_BAR:
             self._update_bar_focus()
         else:
-            self._nav_focused_idx = min(self._nav_focused_idx, max(0, len(self._nav_rows) - 1))
+            self._nav_focused_idx = clamped(self._nav_focused_idx, len(self._nav_rows))
             self._update_nav_focus()
 
     def handle_key(self, key: int) -> bool:
@@ -721,7 +718,7 @@ class HistoryScreen(FloatLayout):
         self._update_nav_focus()
 
     def _move_bar_focus(self, delta: int) -> None:
-        new_idx = max(_BAR_JOURNAL, min(_BAR_CLEAR, self._bar_focused_idx + delta))
+        new_idx = clamped(self._bar_focused_idx + delta, _BAR_CLEAR + 1)
         if new_idx != self._bar_focused_idx:
             self._bar_focused_idx = new_idx
             self._update_bar_focus()
@@ -744,7 +741,7 @@ class HistoryScreen(FloatLayout):
     def _move_nav_focus(self, delta: int) -> None:
         if not self._nav_rows:
             return
-        new_idx = max(0, min(len(self._nav_rows) - 1, self._nav_focused_idx + delta))
+        new_idx = clamped(self._nav_focused_idx + delta, len(self._nav_rows))
         if new_idx != self._nav_focused_idx:
             self._nav_focused_idx = new_idx
             self._update_nav_focus()
