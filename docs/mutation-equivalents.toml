@@ -1879,6 +1879,42 @@ change = """
 """
 reason = "begin() sets it with _current_title; end() before begin() fails the other's assert first either way."
 
+[[equivalent]]
+module = "barks_reader.core.comic_page_manager"
+function = "ComicPageManager.__init__"
+change = """
+- self._display_units: list[DisplayUnit] = []
++ self._display_units: list[DisplayUnit] = None
+"""
+reason = "Read only behind a truth test (an empty list and None are both false) until set_page_map builds the units."
+
+[[equivalent]]
+module = "barks_reader.core.comic_page_manager"
+function = "ComicPageManager.__init__"
+change = """
+- self._page_index_to_unit_idx: dict[int, int] = {}
++ self._page_index_to_unit_idx: dict[int, int] = None
+"""
+reason = "Read only once the display units are non-empty, and set_page_map rebuilds both together."
+
+[[equivalent]]
+module = "barks_reader.core.comic_page_manager"
+function = "ComicPageManager.next_page"
+change = """
+- unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
++ unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -2)
+"""
+reason = "The default only marks a page no unit holds; -1 and -2 are both below 0, the one test made of it."
+
+[[equivalent]]
+module = "barks_reader.core.comic_page_manager"
+function = "ComicPageManager.prev_page"
+change = """
+- unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
++ unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -2)
+"""
+reason = "The default only marks a page no unit holds; -1 and -2 are both at most 0, the one test made of it."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
