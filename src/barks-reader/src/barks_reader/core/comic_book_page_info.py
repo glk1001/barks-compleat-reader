@@ -9,7 +9,7 @@ from barks_fantagraphics.comic_book_info import is_covers_collection
 from barks_fantagraphics.comics_consts import SOLO_PAGE_TYPES, PageType
 from barks_fantagraphics.pages import FRONT_MATTER_PAGES, ROMAN_NUMERALS
 
-from .display_unit import DisplayUnit
+from .display_unit import DisplayUnit, build_display_units
 from .reader_consts_and_types import FIRST_BODY_PAGE
 from .saved_page_info import SavedPageInfo
 
@@ -84,7 +84,7 @@ class ComicLayout:
         self._page_map = page_map
         self._last_body_page = last_body_page
         self._index_to_page: dict[int, PageInfo] = {p.page_index: p for p in page_map.values()}
-        self._display_units, self._unit_idx_for_index = _build_display_units(page_map)
+        self._display_units, self._unit_idx_for_index = build_display_units(page_map)
 
     @property
     def page_map(self) -> OrderedDict[str, PageInfo]:
@@ -235,27 +235,3 @@ def _build_page_map(
         orig_page_num += 1
 
     return page_map, last_body_page
-
-
-def _build_display_units(
-    page_map: OrderedDict[str, PageInfo],
-) -> tuple[list[DisplayUnit], dict[int, int]]:
-    pages = list(page_map.values())
-    units: list[DisplayUnit] = []
-    unit_idx_for_index: dict[int, int] = {}
-
-    i = 0
-    while i < len(pages):
-        if pages[i].is_solo or (i + 1 >= len(pages)) or pages[i + 1].is_solo:
-            unit_idx = len(units)
-            units.append(DisplayUnit(i, None))
-            unit_idx_for_index[i] = unit_idx
-            i += 1
-        else:
-            unit_idx = len(units)
-            units.append(DisplayUnit(i, i + 1))
-            unit_idx_for_index[i] = unit_idx
-            unit_idx_for_index[i + 1] = unit_idx
-            i += 2
-
-    return units, unit_idx_for_index

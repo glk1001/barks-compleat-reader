@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from . import log_markers
-from .display_unit import DisplayUnit
+from .display_unit import DisplayUnit, build_display_units
 from .reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
@@ -186,27 +186,7 @@ class ComicPageManager:
         assert self._first_page_index == 0
         assert (self._last_page_index + 1) == len(self.page_map)
 
-        self._build_display_units(page_map)
-
-    def _build_display_units(self, page_map: OrderedDict[str, PageInfo]) -> None:
-        """Pre-compute display units for double-page mode from the page map."""
-        pages = list(page_map.values())
-        self._display_units = []
-        self._page_index_to_unit_idx = {}
-
-        i = 0
-        while i < len(pages):
-            if pages[i].is_solo or (i + 1 >= len(pages)) or pages[i + 1].is_solo:
-                unit_idx = len(self._display_units)
-                self._display_units.append(DisplayUnit(i, None))
-                self._page_index_to_unit_idx[i] = unit_idx
-                i += 1
-            else:
-                unit_idx = len(self._display_units)
-                self._display_units.append(DisplayUnit(i, i + 1))
-                self._page_index_to_unit_idx[i] = unit_idx
-                self._page_index_to_unit_idx[i + 1] = unit_idx
-                i += 2
+        self._display_units, self._page_index_to_unit_idx = build_display_units(page_map)
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience."""
