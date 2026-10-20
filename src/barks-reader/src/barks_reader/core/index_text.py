@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import textwrap
 
+from barks_fantagraphics.alpha_split import bucket_label_parts
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 
 # The longest title an index row shows with its pages, before it is shortened.
@@ -42,3 +43,49 @@ def indexable_title_from_str(title_str: str) -> str:
 def indexable_title(title: Titles) -> str:
     """Return `title` as an index row shows it."""
     return indexable_title_from_str(ENUM_TO_STR_TITLE[title])
+
+
+# The longest text a word or entity index item shows, before it is shortened.
+INDEX_ITEM_MAX_TEXT_WIDTH = 30
+
+
+def shorten_if_necessary(text: str) -> str:
+    """Return an index item's text, shortened at a word to fit its row.
+
+    Args:
+        text: A term the index lists.
+
+    Returns:
+        The text, cut with an ellipsis when it is too long for a row; the one
+        77-zero number said in a story is written out in words instead.
+
+    """
+    if not text.startswith("500,000"):
+        if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
+            return text
+        return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
+
+    assert text.count("0") == (69 + 8)
+    return "500,000,—plus sixty-nine more zeroes—,000.16"
+
+
+def stacked_prefix_label(prefix: str, terms: list[str]) -> str:
+    """Return the prefix button's display text, with the range stacked over two lines.
+
+    Twenty buttons share the bar's width, so "sho-shy" on one line only fits at a size
+    that is hard to read. Stacked, each line is at most three characters and the label
+    can render at nearly the A-Z menu's size.
+
+    Args:
+        prefix: The bucket's canonical label, as used everywhere else as its key.
+        terms: The bucket's terms, in display order.
+
+    Returns:
+        The two ends of the range separated by a newline, or ``prefix`` unchanged when
+        the bucket has a single-prefix label or its ends no longer rejoin to ``prefix``.
+
+    """
+    start, end = bucket_label_parts(terms)
+    if start == end or f"{start}-{end}" != prefix:
+        return prefix
+    return f"{start}\n{end}"

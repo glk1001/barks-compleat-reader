@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import random
-import textwrap
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, cast, override
 
-from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER, bucket_label_parts
+from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -27,7 +26,12 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
-from barks_reader.core.index_text import MAX_TITLE_AND_PAGES_LEN
+from barks_reader.core.index_items import IndexItem, title_row_item
+from barks_reader.core.index_text import (
+    MAX_TITLE_AND_PAGES_LEN,
+    shorten_if_necessary,
+    stacked_prefix_label,
+)
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -42,7 +46,6 @@ from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 
 from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
-    IndexItem,
     IndexItemButton,
     IndexPrefixButton,
     IndexScreen,
@@ -64,7 +67,6 @@ if TYPE_CHECKING:
     from .user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
-INDEX_ITEM_MAX_TEXT_WIDTH = 30
 INDEX_IMAGE_CHANGE_SECONDS = 15
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
@@ -391,7 +393,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
                 font_name=self._font_manager.index_title_item_font_name,
                 font_size=self._font_manager.index_title_item_font_size,
             )
-            sub_item = _title_row_item(
+            sub_item = title_row_item(
                 title_str, first_page_to_goto, title_str_with_pages, title_speech_info
             )
             title_button.bind(
@@ -629,22 +631,6 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         return first_page_num, title_str
 
 
-def _title_row_item(
-    title_str: str, first_page: str, display_text: str, title_speech_info: TitleInfo
-) -> IndexItem:
-    """Return the index item a term's title row opens: at its first page, with all of them.
-
-    Every page the row lists goes with it, so the title view steps through them all
-    (as a tag's), not just the first.
-    """
-    return IndexItem(
-        id=STR_TITLE_TO_ENUM[title_str],
-        display_text=display_text,
-        page_to_goto=first_page,
-        tagged_pages=tuple(page.comic_page for page in title_speech_info.fanta_pages.values()),
-    )
-
-
 class SpeechIndexScreen(SpeechSubItemsIndexScreen):
     """The Words index: an A-Z index of every word spoken in the comics.
 
@@ -850,35 +836,3 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
     def _clear_prefix_focus(self) -> None:
         clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
-
-
-def stacked_prefix_label(prefix: str, terms: list[str]) -> str:
-    """Return the prefix button's display text, with the range stacked over two lines.
-
-    Twenty buttons share the bar's width, so "sho-shy" on one line only fits at a size
-    that is hard to read. Stacked, each line is at most three characters and the label
-    can render at nearly the A-Z menu's size.
-
-    Args:
-        prefix: The bucket's canonical label, as used everywhere else as its key.
-        terms: The bucket's terms, in display order.
-
-    Returns:
-        The two ends of the range separated by a newline, or ``prefix`` unchanged when
-        the bucket has a single-prefix label or its ends no longer rejoin to ``prefix``.
-
-    """
-    start, end = bucket_label_parts(terms)
-    if start == end or f"{start}-{end}" != prefix:
-        return prefix
-    return f"{start}\n{end}"
-
-
-def shorten_if_necessary(text: str) -> str:
-    if not text.startswith("500,000"):
-        if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
-            return text
-        return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
-
-    assert text.count("0") == (69 + 8)
-    return "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"

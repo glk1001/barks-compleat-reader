@@ -4,8 +4,10 @@ import string
 from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
-from .index_screen import IndexItem
-from .speech_index_screen import SpeechSubItemsIndexScreen, shorten_if_necessary
+from barks_reader.core.index_items import IndexItem
+from barks_reader.core.index_text import shorten_if_necessary
+
+from .speech_index_screen import SpeechSubItemsIndexScreen
 
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType

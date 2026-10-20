@@ -11,9 +11,10 @@ import barks_reader.ui.index_screen
 import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.entity_types import EntityType
+from barks_reader.core.index_items import IndexItem
 from barks_reader.core.keys import KEY_DOWN, KEY_UP
 from barks_reader.ui.entity_index_screen import EntityIndexScreen
-from barks_reader.ui.index_screen import IndexItem, _IndexNavPanel
+from barks_reader.ui.index_screen import _IndexNavPanel
 
 if TYPE_CHECKING:
     from collections.abc import Generator

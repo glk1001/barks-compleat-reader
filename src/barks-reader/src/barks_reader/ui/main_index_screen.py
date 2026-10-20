@@ -36,10 +36,11 @@ from barks_reader.core.index_headings import (
     tag_heading,
     tag_heading_markup,
 )
+from barks_reader.core.index_items import IndexItem
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
 
-from .index_screen import IndexItem, IndexItemButton, IndexScreen
+from .index_screen import IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:

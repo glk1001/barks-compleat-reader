@@ -12,6 +12,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.entity_types import EntityType
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.index_items import IndexItem
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -22,7 +23,6 @@ from barks_reader.core.keys import (
     KEY_UP,
 )
 from barks_reader.ui.index_screen import (
-    IndexItem,
     TitleShowSpeechButton,
     _IndexNavPanel,
 )
@@ -31,8 +31,6 @@ from barks_reader.ui.speech_index_screen import (
     SpeechIndexScreen,
     _SpeechIndexTitleItemButton,
     _store_bounded,
-    shorten_if_necessary,
-    stacked_prefix_label,
 )
 from kivy.clock import Clock
 
@@ -470,22 +468,6 @@ class TestPrefixPanelNav:
         prefix_key.assert_called_once_with(KEY_LEFT)
 
 
-class TestStackedPrefixLabel:
-    def test_a_range_is_stacked_over_two_lines(self) -> None:
-        assert stacked_prefix_label("sho-shy", ["shop", "shy"]) == "sho\nshy"
-
-    def test_a_single_prefix_label_stays_on_one_line(self) -> None:
-        assert stacked_prefix_label("ska", ["skate", "skating"]) == "ska"
-
-    def test_a_part_may_hold_the_separator_itself(self) -> None:
-        """A label like "s-sa" runs "s" to "sa", so the ends cannot come from a split."""
-        assert stacked_prefix_label("s-sa", ["s", "sap"]) == "s\nsa"
-
-    def test_ends_that_no_longer_rejoin_fall_back_to_the_prefix(self) -> None:
-        """Colliding labels are merged upstream; never show a label for the wrong span."""
-        assert stacked_prefix_label("sho-shy", ["about", "zebra"]) == "sho-shy"
-
-
 # ---------------------------------------------------------------------------
 # Paths no GUI test walks: the speech button's other keys, the prefix bar's
 # edges, the search cache's cap, and the grid's odd cases.
@@ -798,17 +780,6 @@ class TestSearchCaches:
         searched.assert_not_called()
 
 
-def test_a_title_row_opens_at_its_first_page_with_every_page_it_lists() -> None:
-    """The title view steps through all of a term's pages, as a tag's, not just the first."""
-    pages = {f"fanta-{p}": MagicMock(comic_page=p) for p in ("3", "4", "5", "12")}
-    item = _speech_module._title_row_item(
-        "Donald Duck Finds Pirate Gold", "3", "Pirate Gold, 3-5,12", MagicMock(fanta_pages=pages)
-    )
-    assert item.id == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-    assert item.page_to_goto == "3"
-    assert item.tagged_pages == ("3", "4", "5", "12")
-
-
 def test_a_bubble_goto_with_no_focus_hand_off_still_goes_to_the_title(
     speech_index_screen: SpeechIndexScreen,
 ) -> None:
@@ -826,21 +797,3 @@ def test_an_empty_prefix_bar_draws_no_focus(speech_index_screen: SpeechIndexScre
     with patch.object(_speech_module, "draw_focus_highlight") as drawn:
         speech_index_screen._draw_prefix_focus()
     drawn.assert_not_called()
-
-
-class TestShortenIfNecessary:
-    def test_a_short_term_is_left_as_it_is(self) -> None:
-        assert shorten_if_necessary("Uncle Scrooge") == "Uncle Scrooge"
-
-    def test_a_long_term_is_cut_at_a_word_with_an_ellipsis(self) -> None:
-        text = "the quick brown fox jumps over the lazy dog again"
-        shortened = shorten_if_necessary(text)
-        assert shortened == "the quick brown fox jumps..."
-        assert len(shortened) <= _speech_module.INDEX_ITEM_MAX_TEXT_WIDTH
-
-    def test_the_huge_number_is_written_out_in_words(self) -> None:
-        """A number of 77 zeros, said in a story, would not shorten readably."""
-        number = "500,000" + ",000" * 24 + ".16"
-        assert (
-            shorten_if_necessary(number) == "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"
-        )

@@ -752,7 +752,7 @@ overshoot can't hit it).
   drill-down + heavy keyboard nav. `MainIndexScreen` builds its index purely from
   the in-memory bibliography (`Titles`/`Tags`/`TagGroups`); `SpeechIndexScreen`
   and `EntityIndexScreen` query `ComicSearch` for words/entities and show
-  speech-bubble popups. `format_page_speech_bubbles` (`ui/index_screen.py`) puts
+  speech-bubble popups. `format_page_speech_bubbles` (`core/speech_bubble_markup.py`) puts
   each bubble under an italic speaker line in the theme's `speech_speaker`
   colour, from `SpeechInfo.speaker` via
   `barks_fantagraphics.speech_speakers.speaker_display_name`.
