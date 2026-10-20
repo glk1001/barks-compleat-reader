@@ -1,4 +1,4 @@
-"""A row of chips of which one is picked: a search filter a remote can walk.
+"""A row of chips of which one is picked: a search filter a remote can walk. Kivy-free.
 
 The word search's speaker filter now, and the era and "only in tagged stories"
 filters to come (docs/plans/advanced-search.md). The row owns its chips, the one
@@ -15,9 +15,9 @@ names are in the focus lines the app logs (``Nav focus on _SpeakerChipButton
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
-from barks_reader.core.keys import (
+from .keys import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_LEFT,
@@ -27,17 +27,13 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
-from barks_reader.core.reader_palette import theme
-
-from .reader_keyboard_nav import log_nav_focus
+from .nav_focus import log_nav_focus
+from .reader_palette import theme
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from kivy.uix.layout import Layout
-    from kivy.uix.widget import Widget
-
-    from barks_reader.core.reader_colors import Color
+    from .reader_colors import Color
 
 CHIP_BORDER_NONE: Color = (0, 0, 0, 0)
 
@@ -76,6 +72,18 @@ class RowChip(Protocol):
         ...
 
 
+class RowLayout(Protocol):
+    """What the row needs of the widget its chips go in (a Kivy layout)."""
+
+    def clear_widgets(self) -> None:
+        """Take every chip out."""
+        ...
+
+    def add_widget(self, widget: RowChip) -> None:
+        """Put a chip in, after the others."""
+        ...
+
+
 class RowKey(Enum):
     """What a key did on the row: handled there, not the row's, or a way out of it."""
 
@@ -92,7 +100,7 @@ class ChipRow:
 
     def __init__(
         self,
-        layout: Layout,
+        layout: RowLayout,
         make_chip: Callable[[str, str], RowChip],
         on_select: Callable[[str], None],
         selected: str = "",
@@ -212,8 +220,7 @@ class ChipRow:
             return
         self._focused = min(self._focused or 0, len(self._chips) - 1)
         self._recolor()
-        # The chips are the screen's widgets; RowChip names only what the row uses of them.
-        log_nav_focus(cast("Widget", self._chips[self._focused]))
+        log_nav_focus(self._chips[self._focused])
 
     def _recolor(self) -> None:
         """Fill the picked chip; border the focused one."""

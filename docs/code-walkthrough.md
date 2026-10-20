@@ -744,7 +744,7 @@ overshoot can't hit it).
     it shows no row), the era (`EraChoice` over `CHRONO_YEAR_RANGES`, shared by both
     modes) and the tag scope ("Only in: …") join in one `SearchFilter` for the word search
     (`_word_search_filter`, `search_screen.py`).
-  - Every chip row (speakers, era, scope, the picked rows) is a `ui/search_chip_row.ChipRow`,
+  - Every chip row (speakers, era, scope, the picked rows) is a `core/search_chip_row.ChipRow`,
     which owns its chips, the pick and Left/Right/Enter, and hands every other key back as a
     `RowKey`; the results panel's rows are one ordered list (`_panel_rows`,
     `search_screen.py`) with one key handler.

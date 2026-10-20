@@ -12,7 +12,6 @@ from barks_reader.ui.reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
     clear_focus_highlight,
-    describe_widget,
     draw_focus_highlight,
     open_dropdown,
 )
@@ -192,19 +191,6 @@ class TestNavFocusLog:
             draw_focus_highlight(widget, "test_group")
         assert "Nav focus on MagicMock." in loguru_sink
 
-    def test_long_text_is_cut_and_whitespace_collapsed(self) -> None:
-        widget = _make_widget()
-        widget.text = "a  very\nlong " * 10
-        described = describe_widget(widget)
-        assert described.startswith('MagicMock "a very long a very long')
-        assert described.endswith('…"')
-        assert "\n" not in described
-
-    def test_blank_text_counts_as_none(self) -> None:
-        widget = _make_widget()
-        widget.text = "   "
-        assert describe_widget(widget) == "MagicMock"
-
 
 class _StubDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
     def __init__(self) -> None:
@@ -231,18 +217,6 @@ class TestDropdownDismissedLog:
             screen._on_dropdown_dismissed(MagicMock())
         assert "Dropdown dismissed." in loguru_sink
         assert screen._dropdown_nav_mode is False
-
-    def test_a_kivy_weak_proxy_is_named_for_what_it_wraps(self) -> None:
-        """Widgets reached through `ids` are WeakProxy objects; the log names the real class."""
-
-        class _RealButton:
-            text = "Goto wiki page"
-
-        real = _RealButton()
-        proxy = MagicMock()
-        proxy.__ref__ = lambda: real
-        proxy.text = real.text
-        assert describe_widget(proxy) == '_RealButton "Goto wiki page"'
 
 
 class TestOpenDropdown:

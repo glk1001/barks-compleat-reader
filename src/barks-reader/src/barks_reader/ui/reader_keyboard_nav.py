@@ -17,6 +17,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.nav_focus import describe_widget, log_nav_focus
 from barks_reader.core.reader_palette import theme
 
 if TYPE_CHECKING:
@@ -34,44 +35,9 @@ MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 # reach `log_nav_focus`, and every dropdown must reach `_on_dropdown_dismissed`.
 NAV_FOCUS_LOG_PREFIX = log_markers.NAV_FOCUS_PREFIX
 DROPDOWN_DISMISSED_LOG = log_markers.DROPDOWN_DISMISSED
-_MAX_LOGGED_TEXT = 40
 
 
 _FOCUS_BINDING_ATTR = "_focus_highlight_cb"
-
-
-def describe_widget(widget: Widget) -> str:
-    """Name a widget for the log: its class, plus its text when it has some.
-
-    Args:
-        widget: The widget keyboard focus has landed on.
-
-    Returns:
-        ``Button "Titles"`` for a labelled widget, ``BoxLayout`` for one with no
-        text; long text is cut so a log line stays one line.
-
-    """
-    # Widgets reached through `ids` arrive as Kivy WeakProxy objects; name what
-    # they stand for.
-    ref = getattr(widget, "__ref__", None)
-    target = ref() if callable(ref) else None
-    name = type(widget if target is None else target).__name__
-    text = getattr(widget, "text", None)
-    if not isinstance(text, str) or not text.strip():
-        return name
-    text = " ".join(text.split())
-    if len(text) > _MAX_LOGGED_TEXT:
-        text = text[: _MAX_LOGGED_TEXT - 1] + "\u2026"
-    return f'{name} "{text}"'
-
-
-def log_nav_focus(widget: Widget) -> None:
-    """Log that keyboard focus now sits on `widget`.
-
-    Called by `draw_focus_highlight`, so every ring drawn logs itself; a focus
-    shown some other way (a colour change, say) calls this directly.
-    """
-    logger.debug(log_markers.NAV_FOCUS.format(widget=describe_widget(widget)))
 
 
 def open_dropdown(dropdown: ReaderDropDown, widget: Widget) -> bool:

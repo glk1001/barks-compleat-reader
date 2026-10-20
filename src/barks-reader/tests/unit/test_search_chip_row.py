@@ -15,7 +15,7 @@ from barks_reader.core.keys import (
     KEY_TAB,
     KEY_UP,
 )
-from barks_reader.ui.search_chip_row import (
+from barks_reader.core.search_chip_row import (
     CHIP_BORDER_NONE,
     ChipRow,
     RowKey,

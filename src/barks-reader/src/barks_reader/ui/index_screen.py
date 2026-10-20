@@ -48,6 +48,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.speech_bubble_markup import (
     SPEAKER_LABEL_SCALE,
@@ -63,7 +64,6 @@ from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
-    log_nav_focus,
 )
 from .tree_scroll_pinner import REVEAL_ROWS, RowScrollPinner
 

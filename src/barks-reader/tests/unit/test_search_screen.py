@@ -19,9 +19,9 @@ from barks_fantagraphics.tag_query import ParsedTagQuery, TagMatch, TagSelection
 from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
+from barks_reader.core.search_chip_row import ChipRow
 from barks_reader.core.search_state import EraChoice, TagBasket, WordBasket
 from barks_reader.ui import search_screen
-from barks_reader.ui.search_chip_row import ChipRow
 from barks_reader.ui.search_screen import (
     SearchScreen,
     _NoticeLabel,

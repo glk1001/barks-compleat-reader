@@ -45,11 +45,20 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.reader_utils import get_concat_page_nums_str, get_tagged_pages
+from barks_reader.core.search_chip_row import (
+    CHIP_BORDER_NONE,
+    ChipRow,
+    RowKey,
+    chip_bg_active,
+    chip_bg_normal,
+    chip_border_focused,
+)
 from barks_reader.core.search_state import (
     ALL_YEARS,
     VOLUMES_KEY,
@@ -69,17 +78,8 @@ from .index_screen import (
 from .reader_keyboard_nav import (
     DropdownNavMixin,
     clear_focus_in_list,
-    log_nav_focus,
     open_dropdown,
     update_focus_in_list,
-)
-from .search_chip_row import (
-    CHIP_BORDER_NONE,
-    ChipRow,
-    RowKey,
-    chip_bg_active,
-    chip_bg_normal,
-    chip_border_focused,
 )
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
 
