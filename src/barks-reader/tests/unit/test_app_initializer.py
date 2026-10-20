@@ -8,13 +8,14 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from barks_reader.core import log_markers
+from barks_reader.core.fanta_volumes_state import FantaVolumesState
 from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.core.user_error_types import ErrorTypes
 from barks_reader.ui import app_initializer as app_initializer_module
-from barks_reader.ui.app_initializer import AppInitializer, _FantaVolumesState
+from barks_reader.ui.app_initializer import AppInitializer
 from barks_reader.ui.tree_view_nodes import BaseTreeViewNode
 
 
@@ -83,7 +84,7 @@ class TestAppInitializer:
             assert any(re.search(pattern(log_markers.POST_TREE_SETUP), m) for m in loguru_sink)
 
             # Check state
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_NEEDED
+            assert app_initializer._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_NEEDED
 
             # Check view state set to INITIAL
             mock_dependencies["renderer"].render_state.assert_called_with(ViewStates.INITIAL)
@@ -103,7 +104,7 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-        assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
+        assert app_initializer._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
 
         # No library: a single browsable notice is shown, not the blocking overlay path.
         mock_dependencies["user_error_handler"].handle_error.assert_called_once()
@@ -126,7 +127,7 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-        assert app_initializer._fanta_volumes_state == _FantaVolumesState.ALL_VOLUMES_MISSING
+        assert app_initializer._fanta_volumes_state == FantaVolumesState.ALL_VOLUMES_MISSING
 
         # No library: a single browsable notice is shown, not the blocking overlay path.
         mock_dependencies["user_error_handler"].handle_error.assert_called_once()
@@ -189,7 +190,7 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-        assert app_initializer._fanta_volumes_state == _FantaVolumesState.SOME_VOLUMES_MISSING
+        assert app_initializer._fanta_volumes_state == FantaVolumesState.SOME_VOLUMES_MISSING
         # A single browsable notice (RootNotFound), not the per-volume popup or overlay.
         mock_dependencies["user_error_handler"].handle_error.assert_called_once()
         notice_args, _ = mock_dependencies["user_error_handler"].handle_error.call_args
@@ -220,7 +221,7 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-        assert app_initializer._fanta_volumes_state == _FantaVolumesState.SOME_VOLUMES_MISSING
+        assert app_initializer._fanta_volumes_state == FantaVolumesState.SOME_VOLUMES_MISSING
         mock_handle_error.assert_called_once_with(ErrorTypes.MissingArchiveVolumes, ANY)
         mock_dependencies["user_error_handler"].handle_error.assert_not_called()
 
@@ -241,21 +242,21 @@ class TestAppInitializer:
         ) as mock_handle_error:
             assert app_initializer._init_comic_book_data() is False
 
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_TOO_MANY
+            assert app_initializer._fanta_volumes_state == FantaVolumesState.VOLUMES_TOO_MANY
 
             mock_handle_error.assert_called_with(ErrorTypes.TooManyVolumeArchiveFiles, ANY)
 
     def test_is_fanta_volumes_state_ok(self, app_initializer: AppInitializer) -> None:
         # Case OK
-        app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_EXIST
+        app_initializer._fanta_volumes_state = FantaVolumesState.VOLUMES_EXIST
         assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
 
         # No library is browsable, so reading is not blocked at the per-open gate.
-        app_initializer._fanta_volumes_state = _FantaVolumesState.ALL_VOLUMES_MISSING
+        app_initializer._fanta_volumes_state = FantaVolumesState.ALL_VOLUMES_MISSING
         assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
 
         # Case Bad (misconfiguration that must be fixed + restart): blocks with a popup.
-        app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
+        app_initializer._fanta_volumes_state = FantaVolumesState.VOLUMES_TOO_MANY
 
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
@@ -346,6 +347,6 @@ class TestSavedNodeOnStart:
 
 def test_a_ready_library_state_has_no_reason_to_be_bad(app_initializer: AppInitializer) -> None:
     """Only the error states have a reason; asking for a ready one's is a programming error."""
-    app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_EXIST
+    app_initializer._fanta_volumes_state = FantaVolumesState.VOLUMES_EXIST
     with pytest.raises(RuntimeError, match="Unexpected fanta volumes state"):
         app_initializer.get_bad_fanta_volumes_reason()

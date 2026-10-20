@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Protocol, cast
 from loguru import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from barks_fantagraphics.barks_titles import Titles
 
 
@@ -104,3 +106,14 @@ def find_tree_view_title_node(
         nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
 
     return None
+
+
+def ancestor_paths(node_path: list[str]) -> Iterator[list[str]]:
+    """Yield the paths of a node's ancestors, nearest first, stopping short of the root.
+
+    Args:
+        node_path: A node's path, leaf to root, as `get_tree_view_node_path` gives it.
+
+    """
+    for first in range(1, len(node_path) - 1):
+        yield node_path[first:]

@@ -1,22 +1,29 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
-from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.fanta_volumes_state import (
+    BAD_STATES,
+    NO_LIBRARY_STATES,
+    STATE_ERRORS,
+    FantaVolumesState,
+    LibraryNotice,
+    check_library_error,
+    no_library_error_type,
+    post_build_state,
+)
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     MissingArchiveFilesError,
     TooManyArchiveFilesError,
 )
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
-from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
+from barks_reader.core.reader_tree_view_utils import ancestor_paths
 
 from .tree_view_nodes import BaseTreeViewNode
 
@@ -28,6 +35,7 @@ if TYPE_CHECKING:
     from barks_reader.core.comic_reader_manager import ComicReaderManager
     from barks_reader.core.json_settings_manager import SettingsManager
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
     from .reader_tree_builder import ReaderTreeBuilder
     from .tree_view_manager import TreeViewManager
@@ -36,51 +44,8 @@ if TYPE_CHECKING:
     from .view_renderer import ViewRenderer
 
 
-class _FantaVolumesState(Enum):
-    VOLUMES_EXIST = auto()
-    ALL_VOLUMES_MISSING = auto()
-    SOME_VOLUMES_MISSING = auto()
-    VOLUMES_NOT_SET = auto()
-    VOLUMES_TOO_MANY = auto()
-    DUPLICATE_VOLUMES = auto()
-    VOLUMES_NOT_NEEDED = auto()
-
-
-# No usable library, but the app stays fully browsable: show a single startup notice and
-# still build the bundled override/extra pages, so the restored censored stories read.
-# (VOLUMES_EXIST / SOME_VOLUMES_MISSING / VOLUMES_NOT_NEEDED are the ordinary ready states.)
-_NO_LIBRARY_FANTA_VOLUMES_STATE = {
-    _FantaVolumesState.VOLUMES_NOT_SET,
-    _FantaVolumesState.ALL_VOLUMES_MISSING,
-}
-# Misconfiguration the user must fix and restart; reading is blocked with a popup.
-_BAD_FANTA_VOLUMES_STATE = {
-    _FantaVolumesState.VOLUMES_TOO_MANY,
-    _FantaVolumesState.DUPLICATE_VOLUMES,
-}
-
-
 class AppInitializer:
     """Handles the application's startup sequence."""
-
-    _FANTA_STATE_ERROR_MAP: ClassVar[dict[_FantaVolumesState, tuple[str, ErrorTypes]]] = {
-        _FantaVolumesState.VOLUMES_NOT_SET: (
-            "Fantagraphics Directory Not Set",
-            ErrorTypes.FantagraphicsVolumeRootNotSet,
-        ),
-        _FantaVolumesState.ALL_VOLUMES_MISSING: (
-            "Fantagraphics Directory Not Found",
-            ErrorTypes.FantagraphicsVolumeRootNotFound,
-        ),
-        _FantaVolumesState.VOLUMES_TOO_MANY: (
-            "Too Many Archive Files in Fantagraphics Directory",
-            ErrorTypes.TooManyVolumeArchiveFiles,
-        ),
-        _FantaVolumesState.DUPLICATE_VOLUMES: (
-            "Duplicate Archive Files in Fantagraphics Directory",
-            ErrorTypes.DuplicateVolumeArchiveFiles,
-        ),
-    }
 
     def __init__(
         self,
@@ -100,7 +65,7 @@ class AppInitializer:
         self._tree_view_manager = tree_view_manager
         self._renderer = renderer
 
-        self._fanta_volumes_state: _FantaVolumesState = _FantaVolumesState.VOLUMES_NOT_SET
+        self._fanta_volumes_state = FantaVolumesState.VOLUMES_NOT_SET
         self._fanta_volumes_error_info: ErrorInfo | None = None
         self._on_tree_build_finished: Callable[[], None] | None = None
 
@@ -131,7 +96,7 @@ class AppInitializer:
             # No usable library: show one dismissible notice, but keep going so the
             # bundled override/extra pages (e.g. the restored censored stories) still
             # load and the whole app stays browsable.
-            no_library = self._fanta_volumes_state in _NO_LIBRARY_FANTA_VOLUMES_STATE
+            no_library = self._fanta_volumes_state in NO_LIBRARY_STATES
             if no_library:
                 self._show_no_library_notice(self._fanta_volumes_state)
 
@@ -163,18 +128,16 @@ class AppInitializer:
         # The saved node is gone (a title moved to another tag, say). Land on its nearest
         # surviving ancestor, so the keys start from a selection and not from nothing. The
         # path runs leaf to root; the state saved was the leaf's and is not applied.
-        for first in range(1, len(saved_node_path) - 1):
-            ancestor = self._tree_view_screen.find_node_by_path(saved_node_path[first:])
+        for ancestor_path in ancestor_paths(saved_node_path):
+            ancestor = self._tree_view_screen.find_node_by_path(ancestor_path)
             if ancestor:
                 assert isinstance(ancestor, BaseTreeViewNode)
-                logger.info(
-                    log_markers.SAVED_NODE_ANCESTOR_SELECTED.format(name=saved_node_path[first])
-                )
+                logger.info(log_markers.SAVED_NODE_ANCESTOR_SELECTED.format(name=ancestor_path[0]))
                 self._tree_view_manager.setup_and_select_node(ancestor)
                 return
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:
-        if self._fanta_volumes_state not in _BAD_FANTA_VOLUMES_STATE:
+        if self._fanta_volumes_state not in BAD_STATES:
             return True, ""
 
         reason, error_type = self.get_bad_fanta_volumes_reason()
@@ -188,13 +151,13 @@ class AppInitializer:
         return False, reason
 
     def get_bad_fanta_volumes_reason(self) -> tuple[str, ErrorTypes]:
-        if self._fanta_volumes_state in self._FANTA_STATE_ERROR_MAP:
-            return self._FANTA_STATE_ERROR_MAP[self._fanta_volumes_state]
+        if self._fanta_volumes_state in STATE_ERRORS:
+            return STATE_ERRORS[self._fanta_volumes_state]
 
         msg = f'Unexpected fanta volumes state: "{self._fanta_volumes_state}".'
         raise RuntimeError(msg)
 
-    def _show_no_library_notice(self, state: _FantaVolumesState) -> None:
+    def _show_no_library_notice(self, state: FantaVolumesState) -> None:
         """Show a single notice that the Fantagraphics library isn't available.
 
         The app stays fully browsable, so this deliberately does not set the persistent
@@ -202,62 +165,34 @@ class AppInitializer:
         VOLUMES_NOT_SET points at the unset setting, anything else at a directory that
         holds no readable volumes.
         """
-        error_type = (
-            ErrorTypes.FantagraphicsVolumeRootNotSet
-            if state is _FantaVolumesState.VOLUMES_NOT_SET
-            else ErrorTypes.FantagraphicsVolumeRootNotFound
-        )
+        error_type = no_library_error_type(state)
         # A no-op close callback: the notice is informational and must not set the
         # persistent overlay (unlike `_handle_error_ui`).
         self._user_error_handler.handle_error(error_type, None, lambda _msg: None)
 
-    def _get_post_build_fanta_volumes_state(self) -> _FantaVolumesState:
-        if self._reader_settings.use_prebuilt_archives:
-            return _FantaVolumesState.VOLUMES_NOT_NEEDED
-        if str(self._reader_settings.fantagraphics_volumes_dir) == UNSET_FANTA_DIR_MARKER:
-            return _FantaVolumesState.VOLUMES_NOT_SET
-        if not self._reader_settings.fantagraphics_volumes_dir.is_dir():
-            return _FantaVolumesState.ALL_VOLUMES_MISSING
-        return _FantaVolumesState.VOLUMES_EXIST
+    def _get_post_build_fanta_volumes_state(self) -> FantaVolumesState:
+        return post_build_state(
+            use_prebuilt_archives=self._reader_settings.use_prebuilt_archives,
+            volumes_dir=self._reader_settings.fantagraphics_volumes_dir,
+        )
 
     def _init_comic_book_data(self, *, library_notice_shown: bool = False) -> bool:
         try:
             self._comic_reader_manager.init_comic_book_data()
-        except TooManyArchiveFilesError as e:
-            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
-            self._fanta_volumes_error_info = ErrorInfo(
-                num_volumes=e.num_volumes, num_archive_files=e.num_archive_files
-            )
-            self._handle_error_ui(
-                ErrorTypes.TooManyVolumeArchiveFiles, self._fanta_volumes_error_info
-            )
-            return False
-        except DuplicateArchiveFilesError as e:
-            self._fanta_volumes_state = _FantaVolumesState.DUPLICATE_VOLUMES
-            self._fanta_volumes_error_info = ErrorInfo(
-                file=str(e.archive_root), duplicate_volumes=e.duplicates
-            )
-            self._handle_error_ui(
-                ErrorTypes.DuplicateVolumeArchiveFiles, self._fanta_volumes_error_info
-            )
-            return False
-        except MissingArchiveFilesError as e:
-            self._fanta_volumes_state = _FantaVolumesState.SOME_VOLUMES_MISSING
-            self._fanta_volumes_error_info = ErrorInfo(missing_volumes=e.missing_file_vols)
-            if library_notice_shown:
-                # The one-time no-library notice was already shown up front (unset or
-                # non-existent dir); stay quiet and don't set the persistent overlay.
-                pass
-            elif len(e.missing_file_vols) >= NUM_VOLUMES:
-                # The dir exists but holds no volumes at all: same "no library"
-                # experience - one browsable notice, no per-volume list, no overlay.
-                self._show_no_library_notice(_FantaVolumesState.ALL_VOLUMES_MISSING)
-            else:
-                # A genuinely partial library: keep the informational per-volume popup.
-                self._handle_error_ui(
-                    ErrorTypes.MissingArchiveVolumes, self._fanta_volumes_error_info
-                )
-            return True
+        except (
+            TooManyArchiveFilesError,
+            DuplicateArchiveFilesError,
+            MissingArchiveFilesError,
+        ) as e:
+            check = check_library_error(e, library_notice_shown=library_notice_shown)
+            self._fanta_volumes_state = check.state
+            self._fanta_volumes_error_info = check.error_info
+            if check.notice is LibraryNotice.NO_LIBRARY:
+                self._show_no_library_notice(FantaVolumesState.ALL_VOLUMES_MISSING)
+            elif check.notice is LibraryNotice.ERROR:
+                assert check.error_type is not None
+                self._handle_error_ui(check.error_type, check.error_info)
+            return check.readable
 
         return True
 
