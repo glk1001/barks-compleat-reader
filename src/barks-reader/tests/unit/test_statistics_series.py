@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import barks_reader.core.statistics_series
 import pytest
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_tags_enums import Tags
@@ -45,6 +46,7 @@ from barks_reader.core.statistics_series import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 FIRST_YEAR = 1942
@@ -133,10 +135,13 @@ class TestRankedCharts:
         series = stories_per_series()
         assert series.total == len(ALL_FANTA_COMIC_BOOK_INFO)
         assert "Unknown" not in series.labels
+        assert set(series.labels) == {i.series_name for i in ALL_FANTA_COMIC_BOOK_INFO.values()}
         assert _is_descending(series)
 
-    @pytest.mark.parametrize("series", [top_characters(), top_locations()])
-    def test_top_n_descending(self, series: Series) -> None:
+    # Called in the test, not at collection, so mutmut sees the test run them.
+    @pytest.mark.parametrize("make_series", [top_characters, top_locations])
+    def test_top_n_descending(self, make_series: Callable[[], Series]) -> None:
+        series = make_series()
         assert len(series.labels) == TOP_N
         assert _is_descending(series)
         assert len(set(series.labels)) == TOP_N
@@ -147,6 +152,12 @@ class TestRankedCharts:
         # character between him and Daisy.
         for tag in (Tags.GYRO_IN_GG, Tags.GYRO_NOT_IN_GG, Tags.SCROOGE_NOT_IN_US):
             assert tag.value not in top_characters().labels
+
+    def test_equal_counts_rank_by_name(self) -> None:
+        ranked = barks_reader.core.statistics_series._ranked(  # noqa: SLF001
+            "ranked", {"b": 1, "c": 2, "a": 1}, 3
+        )
+        assert ranked == Series("ranked", ("c", "a", "b"), (2, 1, 1))
 
 
 class TestWordcloudEras:
@@ -165,6 +176,14 @@ class TestWordcloudEras:
 class TestSidecar:
     def test_every_chart_has_a_series_and_a_file(self) -> None:
         assert [series.name for series in all_series()] == list(CHART_FILES)
+
+    def test_is_indented_json(self) -> None:
+        # The sidecar's bytes are fingerprinted in scripts/data-manifest.json: a change of
+        # layout is a change of the data pack every machine holds.
+        assert dump_series([Series("s", (1942,), (2,))]) == (
+            '[\n  {\n    "name": "s",\n    "labels": [\n      1942\n    ],\n'
+            '    "values": [\n      2\n    ]\n  }\n]'
+        )
 
     def test_round_trips_through_json(self) -> None:
         series = all_series()

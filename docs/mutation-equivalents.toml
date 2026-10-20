@@ -1978,6 +1978,123 @@ change = """
 """
 reason = "BARKS_TAGGED_PAGES is keyed by (tag, title) only, so a lookup of any other pair finds nothing: () either way."
 
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payments_per_year"
+change = """
+- for year, amount in zip(nominal.labels, nominal.values, strict=True)
++ for year, amount in zip(nominal.labels, nominal.values, strict=None)
+"""
+reason = "Labels and values come from one _per_year series, so they are always the same length: strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payments_per_year"
+change = """
+- for year, amount in zip(nominal.labels, nominal.values, strict=True)
++ for year, amount in zip(nominal.labels, nominal.values, )
+"""
+reason = "Labels and values come from one _per_year series, so they are always the same length: strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payments_per_year"
+change = """
+- for year, amount in zip(nominal.labels, nominal.values, strict=True)
++ for year, amount in zip(nominal.labels, nominal.values, strict=False)
+"""
+reason = "Labels and values come from one _per_year series, so they are always the same length: strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- "pages", ((record.accepted_year, record.num_pages) for record in get_paid_records())
++ None, ((record.accepted_year, record.num_pages) for record in get_paid_records())
+"""
+reason = "The pages series is an intermediate: its name is never read."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- "pages", ((record.accepted_year, record.num_pages) for record in get_paid_records())
++ "XXpagesXX", ((record.accepted_year, record.num_pages) for record in get_paid_records())
+"""
+reason = "The pages series is an intermediate: its name is never read."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- "pages", ((record.accepted_year, record.num_pages) for record in get_paid_records())
++ "PAGES", ((record.accepted_year, record.num_pages) for record in get_paid_records())
+"""
+reason = "The pages series is an intermediate: its name is never read."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- for amount, num_pages in zip(paid.values, pages.values, strict=True)
++ for amount, num_pages in zip(paid.values, pages.values, strict=None)
+"""
+reason = "Both series come from _per_year over the same records, asserted to have the same labels: the same length, so strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- for amount, num_pages in zip(paid.values, pages.values, strict=True)
++ for amount, num_pages in zip(paid.values, pages.values, )
+"""
+reason = "Both series come from _per_year over the same records, asserted to have the same labels: the same length, so strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "payment_rate"
+change = """
+- for amount, num_pages in zip(paid.values, pages.values, strict=True)
++ for amount, num_pages in zip(paid.values, pages.values, strict=False)
+"""
+reason = "Both series come from _per_year over the same records, asserted to have the same labels: the same length, so strict never fires."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "stories_per_series"
+change = """
+- series = info.series_name or "Unknown"
++ series = info.series_name or "XXUnknownXX"
+"""
+reason = "Every Fantagraphics entry has a series name (test_series_counts_every_fantagraphics_entry), so the fallback label is never used."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "stories_per_series"
+change = """
+- series = info.series_name or "Unknown"
++ series = info.series_name or "unknown"
+"""
+reason = "Every Fantagraphics entry has a series name (test_series_counts_every_fantagraphics_entry), so the fallback label is never used."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "stories_per_series"
+change = """
+- series = info.series_name or "Unknown"
++ series = info.series_name or "UNKNOWN"
+"""
+reason = "Every Fantagraphics entry has a series name (test_series_counts_every_fantagraphics_entry), so the fallback label is never used."
+
+[[equivalent]]
+module = "barks_reader.core.statistics_series"
+function = "stories_per_series"
+change = """
+- return _ranked("stories_per_series", counts, len(counts))
++ return _ranked("stories_per_series", counts, None)
+"""
+reason = "A slice to None keeps every entry, as one to len(counts) does."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
