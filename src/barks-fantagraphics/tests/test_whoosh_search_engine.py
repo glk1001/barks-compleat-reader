@@ -870,6 +870,27 @@ class TestStaleEntitySidecar:
         assert message.count(" group ") == 5
         assert message.endswith("(and 1 more).")
 
+    def test_the_message_says_what_is_stale_and_what_to_do(self) -> None:
+        stale = [
+            (_ANDES, "041", "1", EntityType.PERSON, "Duk Duk"),
+            (_GOOD_DEEDS, "007", "0", EntityType.LOCATION, "Zanzibar"),
+        ]
+        assert whoosh_search_engine_module._stale_entities_message(stale) == (
+            "2 entity names are not in the text of the bubble they tag, so the entity sidecars"
+            " (entities-vol-NN.json) come from an earlier grouping of the pages. Re-tag the"
+            " volumes from the current groups, then build again. Stale:"
+            f' "{_ANDES}" page 041 group 1 person "Duk Duk";'
+            f' "{_GOOD_DEEDS}" page 007 group 0 location "Zanzibar".'
+        )
+
+    def test_only_names_past_the_shown_few_are_counted_as_more(self) -> None:
+        def stale(count: int) -> list[tuple[str, str, str, EntityType, str]]:
+            return [(_ANDES, "041", str(i), EntityType.PERSON, f"N{i}") for i in range(count)]
+
+        message = whoosh_search_engine_module._stale_entities_message
+        assert message(stale(5)).endswith('group 4 person "N4".')
+        assert message(stale(6)).endswith('group 4 person "N4" (and 1 more).')
+
 
 # ---------------------------------------------------------------------------
 # What mutation testing found unchecked: the builder's calls and sidecars, the
@@ -948,6 +969,24 @@ class TestTheBuilderMore:
 
         engine, _ = self._build(tmp_path, entity_provider=provider)
         assert "Duk Duk" in set(engine.get_cleaned_terms())
+
+    def test_a_curated_name_no_extra_term_has_joins_the_cleaned_terms(self, tmp_path: Path) -> None:
+        """Duk Duk is a Barksian extra term too, so it joins even with no entity list."""
+        name = "czech republic"
+        curated = whoosh_search_engine_module._build_curated_entity_sets()
+        assert name in curated[EntityType.LOCATION]
+        assert name not in whoosh_search_engine_module._CURATED_NAME_LOOKUP
+
+        def provider(title: str, page: str, group: str) -> dict[str, set[str]]:
+            if (title, page, group) == (_GOOD_DEEDS, "007", "0"):
+                return {"location": {name}}
+            return {}
+
+        pages = {
+            Titles.GOOD_DEEDS: [_page(OcrTypes.EASYOCR, "007", {"0": _speech("Czech Republic!")})]
+        }
+        engine, _ = self._build(tmp_path, pages, entity_provider=provider)
+        assert name in {t.lower() for t in engine.get_cleaned_terms()}
 
     def test_each_of_a_bubbles_entities_is_found_by_its_own_name(self, tmp_path: Path) -> None:
         engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)

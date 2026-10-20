@@ -723,6 +723,15 @@ reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
+function = "entity_names_absent_from_text"
+change = """
+- haystack = " ".join([haystack, *_names_made_of_words(haystack)])
++ haystack = "XX XX".join([haystack, *_names_made_of_words(haystack)])
+"""
+reason = "The join only keeps the made names apart from the text and each other; the upper-case XX is in no lower-cased name, so only a name across the text's last word and a made name (\"uncle\" + \"scrooge\"), a match the guard does not mean to make, tells them apart."
+
+[[equivalent]]
+module = "barks_fantagraphics.whoosh_search_engine"
 function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(volumes, f, indent=4)
