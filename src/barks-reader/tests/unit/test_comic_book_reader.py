@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import gc
 import io
+import sys
+import types
+import weakref
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
@@ -24,6 +28,22 @@ from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
 
 _reader_module = barks_reader.ui.comic_book_reader
+
+
+def _strongly_reaches(start: object, target: object) -> bool:
+    """Whether `target` is reachable from `start` by strong references, modules left out."""
+    module_dicts = {id(vars(m)) for m in list(sys.modules.values()) if m is not None}
+    seen: set[int] = set()
+    to_visit = [start]
+    while to_visit:
+        obj = to_visit.pop()
+        if obj is target:
+            return True
+        if id(obj) in seen or isinstance(obj, (type, types.ModuleType)) or id(obj) in module_dicts:
+            continue
+        seen.add(id(obj))
+        to_visit.extend(gc.get_referents(obj))
+    return False
 
 
 class TestComicBookReader:
@@ -104,6 +124,32 @@ class TestComicBookReader:
         reader._log_page_placement_trigger = MagicMock()
         reader._on_page_layout_changed(reader._comic_image, (1, 2))
         reader._log_page_placement_trigger.assert_called_once_with()
+
+    def test_the_page_manager_does_not_keep_the_reader_alive(self, reader: ComicBookReader) -> None:
+        """The Kivy bind it replaced held the reader weakly: no cycle, no wait for a full gc."""
+        page_manager = reader._page_manager
+        page_info = PageInfo(0, "1", PageType.BODY, srce_page=MagicMock(), dest_page=MagicMock())
+        page_manager.set_page_map(OrderedDict([("1", page_info)]), COMIC_BEGIN_PAGE)
+        with patch.object(reader, "_render_page") as render_page:
+            page_manager.set_to_first_page_to_read()
+        render_page.assert_called_once()  # a page change reaches the reader
+
+        assert not _strongly_reaches(page_manager, reader)
+
+    def test_a_page_change_after_the_reader_is_gone_shows_nothing(self) -> None:
+        shown: list[int] = []
+
+        class Owner:
+            def show(self) -> None:
+                shown.append(1)
+
+        owner = Owner()
+        weak_show = weakref.WeakMethod(owner.show)
+        barks_reader.ui.comic_book_reader._call_if_alive(weak_show)
+        assert shown == [1]
+        del owner
+        barks_reader.ui.comic_book_reader._call_if_alive(weak_show)
+        assert shown == [1]
 
     def test_read_comic(self, reader: ComicBookReader) -> None:
         fanta_info = MagicMock()

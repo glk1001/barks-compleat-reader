@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -101,6 +102,13 @@ GOTO_PAGE_BUTTON_TAGGED_COLOR = (1, 0.55, 0, 1)
 COMIC_BOOK_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
+def _call_if_alive[T: Callable[[], None]](method: weakref.WeakMethod[T]) -> None:
+    """Call the bound method `method` refers to, or do nothing once its object is gone."""
+    bound = method()
+    if bound is not None:
+        bound()
+
+
 class ComicBookReader(FloatLayout):
     """Main layout for the comic reader."""
 
@@ -166,8 +174,11 @@ class ComicBookReader(FloatLayout):
         self._goto_page_buttons: list[Button] = []
         self._tagged_pages: frozenset[str] = frozenset()
 
-        # Every change of the current page index shows that page.
-        self._page_manager = ComicPageManager(self._show_page)
+        # Every change of the current page index shows that page. The manager holds
+        # the reader weakly, as the Kivy bind it replaced did: the reader owns the
+        # manager, and a strong callback would be a cycle only a full gc frees.
+        show_page = weakref.WeakMethod(self._show_page)
+        self._page_manager = ComicPageManager(lambda: _call_if_alive(show_page))
 
         self._navigation = ReaderNavigation(
             self.MAX_WINDOW_WIDTH, 0.09, is_fullscreen=WindowManager.is_fullscreen_now
