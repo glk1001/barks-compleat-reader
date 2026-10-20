@@ -1,4 +1,4 @@
-# ruff: noqa: SLF001, PLR2004
+# ruff: noqa: SLF001
 
 from __future__ import annotations
 
@@ -19,173 +19,11 @@ from barks_reader.ui.comic_book_reader import (
     FIRST_PAGE_REVEAL_TIMEOUT_SECS,
     ComicBookReader,
     ComicBookReaderScreen,
-    _ComicPageManager,
 )
 from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
 
 _reader_module = barks_reader.ui.comic_book_reader
-
-
-class TestComicPageManager:
-    @pytest.fixture
-    def page_manager(self) -> tuple[_ComicPageManager, MagicMock]:
-        callback = MagicMock()
-        pm = _ComicPageManager(callback)
-        return pm, callback
-
-    def test_set_page_map(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
-        pm, _ = page_manager
-
-        # Create a dummy page map
-        page_map = OrderedDict()
-        page_map["1"] = PageInfo(
-            page_index=0,
-            page_type=PageType.BODY,
-            display_page_num="1",
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-        )
-        page_map["2"] = PageInfo(
-            page_index=1,
-            page_type=PageType.BODY,
-            display_page_num="2",
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-        )
-        page_map["3"] = PageInfo(
-            page_index=2,
-            page_type=PageType.BODY,
-            display_page_num="3",
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-        )
-
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
-
-        assert pm._first_page_index == 0
-        assert pm._last_page_index == 2
-        assert (
-            pm._current_page_index == -1
-        )  # It doesn't set current page index, just first_page_to_read_index
-        assert pm._first_page_to_read_index == 0
-
-        pm.set_to_first_page_to_read()
-        assert pm._current_page_index == 0
-
-    def test_navigation(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
-        pm, _ = page_manager
-        page_map = OrderedDict()
-        for i in range(5):
-            page_map[str(i)] = PageInfo(
-                page_index=i,
-                page_type=PageType.BODY,
-                display_page_num=str(i),
-                srce_page=MagicMock(),
-                dest_page=MagicMock(),
-            )
-
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
-        pm.set_to_first_page_to_read()  # index 0
-
-        pm.next_page()
-        assert pm._current_page_index == 1
-
-        pm.prev_page()
-        assert pm._current_page_index == 0
-
-        pm.prev_page()  # Should stay at 0
-        assert pm._current_page_index == 0
-
-        pm.goto_last_page()
-        assert pm._current_page_index == 4
-
-        pm.next_page()  # Should stay at 4
-        assert pm._current_page_index == 4
-
-        pm.goto_start_page()
-        assert pm._current_page_index == 0
-
-    def test_the_page_edges_log_the_same_markers_in_double_page_mode(
-        self, page_manager: tuple[_ComicPageManager, MagicMock], loguru_sink: list[str]
-    ) -> None:
-        """A GUI test waits on the edge lines whichever mode the reader booted in."""
-        pm, _ = page_manager
-        page_map = OrderedDict()
-        for i in range(5):  # units (0, 1), (2, 3), (4)
-            page_map[str(i)] = PageInfo(
-                page_index=i,
-                page_type=PageType.BODY,
-                display_page_num=str(i),
-                srce_page=MagicMock(),
-                dest_page=MagicMock(),
-            )
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
-        pm.double_page_mode = True
-        pm.set_to_first_page_to_read()
-
-        pm.prev_page()
-        assert pm._current_page_index == 0
-        assert "Already on the first page: current index = 0." in loguru_sink
-
-        pm.goto_last_page()
-        assert pm._current_page_index == 4
-        pm.next_page()
-        assert pm._current_page_index == 4
-        assert "Already on the last page: current index = 4." in loguru_sink
-
-    def test_get_image_load_order(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
-        pm, _ = page_manager
-        page_map = OrderedDict()
-        for i in range(5):
-            page_map[str(i)] = PageInfo(
-                page_index=i,
-                page_type=PageType.BODY,
-                display_page_num=str(i),
-                srce_page=MagicMock(),
-                dest_page=MagicMock(),
-            )
-
-        # Case 1: Start at beginning
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
-        order = pm.get_image_load_order()
-        assert order == ["0", "1", "2", "3", "4"]
-
-        # Case 2: Start in middle (index 2)
-        pm.set_page_map(page_map, "2")
-        order = pm.get_image_load_order()
-        # Expected: Current(2), Prev(1), Next...(3,4), Prev...(0)
-        # 2, 1, 3, 4, 0
-        assert order == ["2", "1", "3", "4", "0"]
-
-    def test_no_display_unit_before_the_page_map_or_off_it(
-        self, page_manager: tuple[_ComicPageManager, MagicMock]
-    ) -> None:
-        """Before a comic has pages, and on a page no unit holds, there is no unit."""
-        pm, _ = page_manager
-        assert pm.get_current_display_unit() is None
-
-        page_map = OrderedDict(
-            (
-                str(i),
-                PageInfo(
-                    page_index=i,
-                    page_type=PageType.BODY,
-                    display_page_num=str(i),
-                    srce_page=MagicMock(),
-                    dest_page=MagicMock(),
-                ),
-            )
-            for i in range(4)
-        )
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
-        assert pm.get_current_page_index() == -1  # no page chosen yet
-        assert pm.get_current_display_unit() is None
-
-        pm.set_to_first_page_to_read()
-        unit = pm.get_current_display_unit()
-        assert unit is not None
-        assert unit.left_page_index == 0
 
 
 class TestComicBookReader:
@@ -379,7 +217,7 @@ class TestComicBookReader:
         reader._all_loaded = True  # ready fast-path
 
         with patch.object(reader, "_render_page") as mock_render:
-            reader._show_page(None, None)
+            reader._show_page()
 
         mock_render.assert_called_once_with(3, None)
         reader._comic_book_loader.cursor.set_busy.assert_not_called()
@@ -395,7 +233,7 @@ class TestComicBookReader:
         reader._comic_book_loader.get_image_info_str.return_value = image
 
         with patch.object(reader, "_render_page"):
-            reader._show_page(None, None)
+            reader._show_page()
 
         expected = log_markers.PAGE_IMAGE_SHOWN.format(index=3, page_type="BLANK_PAGE", image=image)
         assert any(expected in line for line in loguru_sink)
@@ -414,7 +252,7 @@ class TestComicBookReader:
                 barks_reader.ui.comic_book_reader.Clock, "schedule_interval", return_value=handle
             ) as mock_sched,
         ):
-            reader._show_page(None, None)
+            reader._show_page()
 
         # The current page stays on screen (no blank loading-page flash); the busy
         # cursor + poll signal the wait instead.
@@ -655,7 +493,7 @@ class TestComicBookReader:
             patch.object(reader, "_pages_ready", return_value=True),
             patch.object(reader, "_render_page"),
         ):
-            reader._show_page(None, None)
+            reader._show_page()
         assert reader.action_bar_title == get_cover_display_title(covers[1])
 
     @pytest.mark.parametrize("page_str", ["4", "0x"])

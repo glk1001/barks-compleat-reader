@@ -555,7 +555,7 @@ they talk through `core/ports/comic_reader.py`.
    in `core/comic_book_loader.py`, returning the archive path and the volume's
    metadata) and constructs an `ArchivePageImageSource`.
 7. **Start loading** — `comic_book_loader.set_comic(image_source, load_order, page_map, …)`
-  . The **load order** (`_ComicPageManager.get_image_load_order`)
+  . The **load order** (`core/comic_page_manager.py`, `ComicPageManager.get_image_load_order`)
    is deliberate: the page you're jumping to first, then its neighbor, then
    forward, then the rest backward — so the opening page appears fastest.
 8. **First page** — when the loader thread finishes the target page it schedules
@@ -620,13 +620,15 @@ via injected `Scheduler` + `Cursor` ports:
 
 ### 6.4 The reader widget, page manager, and resume
 
-`ui/comic_book_reader.py` holds three cooperating classes:
+Three cooperating classes, one of them Kivy-free in core:
 
-- **`_ComicPageManager`** — pure page-navigation state (page map, index
-  maps, double-page display units, `next_page`/`prev_page`/`goto_*`). It knows
-  nothing about images; moving its `_current_page_index` is what drives redisplay.
+- **`ComicPageManager`** (`core/comic_page_manager.py`) — pure page-navigation
+  state (page map, index maps, double-page display units,
+  `next_page`/`prev_page`/`goto_*`). It knows nothing about images; every change
+  of its current page index calls the reader's `_show_page`, which is what
+  drives redisplay.
 - **`ComicBookReader`** — owns the `ComicBookLoader` and the single Kivy
-  `Image` widget, binds page-index → `_show_page`, handles margin-click page
+  `Image` widget, draws the page in `_show_page`, handles margin-click page
   turns and the goto-page dropdown.
 - **`ComicBookReaderScreen`** — the host screen; owns the action bar
   (fullscreen, double-page toggle, goto start/end, close), the window-mode
