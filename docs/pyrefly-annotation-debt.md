@@ -57,7 +57,7 @@ type or `assert x is not None`.
       close in place) passes a `TagGroups`.
 - [x] `ui/comic_book_reader.py` — the `_page_map` property returned
       `OrderedDict[str, PageInfo] | None`. Not reachable: only the goto-page dropdown reads
-      it, after `set_page_map`; asserted, as `_ComicPageManager` already does (2026-10-13).
+      it, after `set_page_map`; asserted, as `ComicPageManager` already does (2026-10-13).
 - [x] `core/comic_book_loader.py` — `get_image_ready_for_reading` unpacked a
       `self._images` entry that is `None` until its page loads. Callers show a page only once
       its load event is set; asserted, and the `# ty: ignore` dropped (2026-10-13).

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_tree_view_utils import (
+    ancestor_paths,
     find_and_expand_node_by_path,
     find_tree_view_node,
     find_tree_view_title_node,
@@ -112,3 +113,13 @@ class TestReaderTreeViewUtils:
 
         # Test finding a non-existent title
         assert find_tree_view_title_node(nodes, Titles.LAND_OF_THE_TOTEM_POLES) is None
+
+
+class TestAncestorPaths:
+    def test_the_ancestors_come_nearest_first_and_stop_short_of_the_root(self) -> None:
+        path = ["leaf", "mid", "upper", "root"]
+        assert list(ancestor_paths(path)) == [["mid", "upper", "root"], ["upper", "root"]]
+
+    @pytest.mark.parametrize("path", [[], ["root"], ["leaf", "root"]])
+    def test_a_node_under_the_root_has_no_ancestor_to_expand(self, path: list[str]) -> None:
+        assert list(ancestor_paths(path)) == []

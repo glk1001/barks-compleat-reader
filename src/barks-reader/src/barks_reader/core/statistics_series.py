@@ -85,7 +85,7 @@ def wordcloud_items(statistics_dir: Path) -> list[tuple[str, str]]:
     results: list[tuple[str, str]] = []
     for path in sorted(statistics_dir.glob(WORDCLOUD_GLOB)):
         m = _WORDCLOUD_PERIOD.match(path.name)
-        if m and m.group(1):
+        if m:
             results.append((f"Word Cloud {m.group(1)}", path.name))
     return results
 

@@ -22,14 +22,24 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class IndexItem:
+    """One row of an index: what it stands for, its text, and the page it opens at.
+
+    Attributes:
+        id: What the row stands for: a title, a tag, a tag group, or a term's string.
+        display_text: The row's text.
+        page_to_goto: The page a title's row opens the comic at, or "" for the front.
+        tagged_pages: The pages a title's row is about, which the title view steps
+            through: a tag's, for a title listed under a tag, or a speech index term's.
+        entity_type: The entity index the row belongs to; None for a plain word search.
+        see: A cross-reference's target heading: the row reads "<display_text>. See <see>".
+
+    """
+
     id: str | Titles | Tags | TagGroups
     display_text: str
     page_to_goto: str = ""
-    # The pages a title's row is about, which the title view steps through: a tag's, for
-    # a title listed under a tag, or a speech index term's (see page_to_goto).
     tagged_pages: tuple[str, ...] = ()
-    entity_type: EntityType | None = None  # None = plain word search; set for entity index items
-    # A cross-reference's target heading: the row reads "<display_text>. See <see>".
+    entity_type: EntityType | None = None
     see: str = ""
 
 

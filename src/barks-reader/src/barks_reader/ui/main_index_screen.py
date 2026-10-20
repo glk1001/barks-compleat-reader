@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_tags import (
@@ -114,11 +113,10 @@ class MainIndexScreen(IndexScreen):
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
         self._open_tag_item: IndexItem | None = None
-        self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
         # The shown letter page's tag entries, for a cross-reference to go to.
         self._tag_entries: dict[Tags, tuple[Button, IndexItem]] = {}
 
-        self._item_index = self._build_index()
+        self._item_index: dict[str, list[IndexItem]] = self._build_index()
         self._populate_alphabet_menu()
 
     @override

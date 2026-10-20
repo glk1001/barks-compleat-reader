@@ -27,6 +27,12 @@ class ComicPageManager:
     """
 
     def __init__(self, on_page_change: Callable[[], None]) -> None:
+        """Start with no comic: no page map, and no page current.
+
+        Args:
+            on_page_change: Called after every change of the current page index.
+
+        """
         self._on_page_change = on_page_change
         self._current_page_index_value = -1
 
@@ -42,12 +48,15 @@ class ComicPageManager:
         self.double_page_mode: bool = False
 
     def get_current_page_index(self) -> int:
+        """Return the current page's index, or -1 with no page current."""
         return self._current_page_index
 
     def reset_current_page_index(self) -> None:
+        """Make no page current, as before a comic is opened or after it is closed."""
         self._current_page_index = -1
 
     def get_current_page_str(self) -> str:
+        """Return the current page's name ("5", "3b"), or "" with no page current."""
         return self._index_to_page_map.get(self._current_page_index, "")
 
     def get_current_display_unit(self) -> DisplayUnit | None:
@@ -62,6 +71,12 @@ class ComicPageManager:
         return self._display_units[unit_idx]
 
     def set_current_page_index_from_str(self, page_str: str) -> None:
+        """Make the page named `page_str` current: in double-page mode, its pair's left page.
+
+        Args:
+            page_str: The page's name in the page map.
+
+        """
         assert self.page_map is not None
         page_index = self.page_map[page_str].page_index
 
@@ -74,6 +89,7 @@ class ComicPageManager:
         self._current_page_index = page_index
 
     def set_to_first_page_to_read(self) -> None:
+        """Make the page the comic opens at current (its pair's left page in double-page mode)."""
         if self.double_page_mode and self._display_units:
             unit_idx = self._page_index_to_unit_idx.get(self._first_page_to_read_index)
             if unit_idx is not None:
@@ -83,6 +99,7 @@ class ComicPageManager:
         self._current_page_index = self._first_page_to_read_index
 
     def goto_start_page(self) -> None:
+        """Make the first page current, logging when it already is."""
         first_idx = (
             self._display_units[0].left_page_index
             if self.double_page_mode and self._display_units
@@ -95,6 +112,7 @@ class ComicPageManager:
             self._current_page_index = first_idx
 
     def goto_last_page(self) -> None:
+        """Make the last page (or page pair) current, logging when it already is."""
         last_idx = (
             self._display_units[-1].left_page_index
             if self.double_page_mode and self._display_units
@@ -107,6 +125,7 @@ class ComicPageManager:
             self._current_page_index = last_idx
 
     def next_page(self) -> None:
+        """Make the next page (or page pair) current, logging when there is none."""
         if self.double_page_mode and self._display_units:
             unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
             if unit_idx < 0 or unit_idx >= len(self._display_units) - 1:
@@ -124,6 +143,7 @@ class ComicPageManager:
             self._current_page_index += 1
 
     def prev_page(self) -> None:
+        """Make the previous page (or page pair) current, logging when there is none."""
         if self.double_page_mode and self._display_units:
             unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
             if unit_idx <= 0:
@@ -141,6 +161,13 @@ class ComicPageManager:
             self._current_page_index -= 1
 
     def set_page_map(self, page_map: OrderedDict[str, PageInfo], page_to_first_goto: str) -> None:
+        """Take a comic's pages, and the page to open it at.
+
+        Args:
+            page_map: The comic's pages by name, in reading order, indexed from 0.
+            page_to_first_goto: The name of the page to open at, or the comic's beginning.
+
+        """
         self.page_map = page_map
         assert self.page_map is not None
         self._index_to_page_map: dict[int, str] = {

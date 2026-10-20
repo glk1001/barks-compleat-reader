@@ -33,9 +33,6 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.focus_cursors import GridCursor, deal_into_columns, wrapped
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.core.index_text import (
-    indexable_title,
-)
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -1009,9 +1006,6 @@ class IndexScreen(FloatLayout):
                 ]
 
             self.on_letter_press(self._alphabet_buttons[first_letter])
-
-    def _get_indexable_title(self, title: Titles) -> str:
-        return indexable_title(title)
 
     def _handle_collapse(self, level_of_click: int) -> None:
         # When collapsing a parent, close it and all its children.
