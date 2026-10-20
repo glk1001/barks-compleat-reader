@@ -32,6 +32,7 @@ def test_real_escape_always_matches() -> None:
 def test_alt_escape_defaults_to_unset() -> None:
     assert get_alt_escape_key() == 0
     assert is_escape_key(_BACKSPACE) is False
+    assert is_escape_key(0) is False  # unset is no key, not key code 0
 
 
 def test_set_alt_escape_key_enables_match() -> None:

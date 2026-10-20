@@ -2095,6 +2095,105 @@ change = """
 """
 reason = "A slice to None keeps every entry, as one to len(counts) does."
 
+[[equivalent]]
+module = "barks_reader.core.search_chip_row"
+function = "ChipRow.handle_key"
+change = """
+- if self._chips and self._focused is not None and self._focused < len(self._chips):
++ if self._chips and self._focused is not None and self._focused <= len(self._chips):
+"""
+reason = "The focus is never past the last chip while there are chips: enter_focus clamps it in _draw_focus, and set_options resets it to None."
+
+[[equivalent]]
+module = "barks_reader.core.search_chip_row"
+function = "ChipRow._move"
+change = """
+- return RowKey.EXIT_LEFT if target < 0 else RowKey.HANDLED
++ return RowKey.EXIT_LEFT if target <= 0 else RowKey.HANDLED
+"""
+reason = "Reached only with the target off the row; it is 0 only on an empty row focused at index 1, which no screen does (each enters an empty row's focus with None or 0)."
+
+[[equivalent]]
+module = "barks_reader.core.search_chip_row"
+function = "ChipRow._move"
+change = """
+- return RowKey.EXIT_LEFT if target < 0 else RowKey.HANDLED
++ return RowKey.EXIT_LEFT if target < 1 else RowKey.HANDLED
+"""
+reason = "Reached only with the target off the row; it is 0 only on an empty row focused at index 1, which no screen does (each enters an empty row's focus with None or 0)."
+
+[[equivalent]]
+module = "barks_reader.core.focus_cursors"
+function = "next_index_toward"
+change = """
+- return 0 if delta > 0 else count - 1
++ return 0 if delta >= 0 else count - 1
+"""
+reason = "Its one caller, the tree's Up and Down, steps by -1 or 1: a step of 0, the one value the mutant moves, never comes."
+
+[[equivalent]]
+module = "barks_reader.core.focus_cursors"
+function = "stripe_indexes"
+change = """
+- group: object = None
++ group: object = ""
+"""
+reason = "The first row always restarts the stripe (the 'not indexes' clause), so the starting group is never compared with anything that matters."
+
+[[equivalent]]
+module = "barks_reader.core.focus_cursors"
+function = "stripe_indexes"
+change = """
+- row_index = 0
++ row_index = None
+"""
+reason = "The first row always restarts the stripe at 0 (the 'not indexes' clause), so the starting index is never used."
+
+[[equivalent]]
+module = "barks_reader.core.focus_cursors"
+function = "stripe_indexes"
+change = """
+- row_index = 0
++ row_index = 1
+"""
+reason = "The first row always restarts the stripe at 0 (the 'not indexes' clause), so the starting index is never used."
+
+[[equivalent]]
+module = "barks_reader.core.index_text"
+function = "shorten_if_necessary"
+change = """
+- if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
++ if len(text) < INDEX_ITEM_MAX_TEXT_WIDTH:
+"""
+reason = "textwrap.shorten returns a text that fits its width as it is, but for runs of whitespace, which no index term has: a term of exactly the width comes out the same either way."
+
+[[equivalent]]
+module = "barks_reader.core.key_repeat"
+function = "KeyRepeatDetector.__init__"
+change = """
+- self._last_time = float("-inf")
++ self._last_time = float("-INF")
+"""
+reason = "float() reads \"inf\" in any case."
+
+[[equivalent]]
+module = "barks_reader.core.x11_window"
+function = "set_x11_wm_class"
+change = """
+- encoded = name.encode("utf-8")
++ encoded = name.encode("UTF-8")
+"""
+reason = "Codec names are not case-sensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.crash_report"
+function = "crash_report"
+change = """
+- stack = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
++ stack = "".join(traceback.format_exception(None, exc_value, exc_traceback))
+"""
+reason = "Since Python 3.10, format_exception ignores its first argument when the value and traceback are given."
+
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"

@@ -73,3 +73,20 @@ def test_a_long_page_list_is_cut_to_the_length_less_the_count() -> None:
     rows = speech_hit_rows({"A Title": _info(*pages)}, max_len=30, hit_counts={"A Title": 12})
     assert len(rows[0].text) <= 30  # noqa: PLR2004
     assert rows[0].text.endswith(" (12)")
+
+
+def test_the_count_comes_out_of_the_title_and_pages_room() -> None:
+    rows = speech_hit_rows(
+        {"A Title": _info("1", "3", "5", "7", "9", "11")}, max_len=24, hit_counts={"A Title": 4}
+    )
+    # "A Title, 1,3,5,7,9,11" fits 24 alone, but with " (4)" the title is cut to make room.
+    assert rows[0].text == "Title, 1,3,5,7,9,11 (4)"
+
+
+def test_rows_sort_by_their_text_not_their_title() -> None:
+    rows = speech_hit_rows(
+        {"Lost in the Andes!": _info("3"), "The Apple Tree": _info("1")},
+        max_len=MAX_TITLE_AND_PAGES_LEN,
+        sortable=True,
+    )
+    assert [row.text for row in rows] == ["Apple Tree, 1, The", "Lost in the Andes!, 3"]

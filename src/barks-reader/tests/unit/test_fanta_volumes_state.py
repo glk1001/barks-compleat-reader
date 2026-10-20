@@ -73,6 +73,8 @@ class TestCheckLibraryError:
         )
         assert check.error_type is ErrorTypes.TooManyVolumeArchiveFiles
         assert check.state in BAD_STATES
+        # The popup says how many archives there are and how many there should be.
+        assert (check.error_info.num_archive_files, check.error_info.num_volumes) == (14, 12)
 
     def test_duplicate_archives_block_reading_with_their_popup(self) -> None:
         root = Path("/root")
@@ -80,6 +82,7 @@ class TestCheckLibraryError:
             DuplicateArchiveFilesError([3], root), library_notice_shown=False
         )
         assert check.state is FantaVolumesState.DUPLICATE_VOLUMES
+        assert check.notice is LibraryNotice.ERROR
         assert check.error_type is ErrorTypes.DuplicateVolumeArchiveFiles
         assert check.readable is False
         assert (check.error_info.file, check.error_info.duplicate_volumes) == (str(root), [3])
@@ -94,6 +97,7 @@ class TestCheckLibraryError:
             ErrorTypes.MissingArchiveVolumes,
         )
         assert check.readable is True
+        assert check.error_info.missing_volumes == [2, 5]  # the popup lists them
 
     def test_a_folder_with_no_volume_at_all_gets_the_one_no_library_notice(self) -> None:
         check = check_library_error(

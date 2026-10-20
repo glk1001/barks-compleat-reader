@@ -38,6 +38,16 @@ class TestDescribeWidget:
     def test_a_widget_without_text_is_its_class_alone(self) -> None:
         assert describe_widget(MagicMock()) == "MagicMock"  # its .text is no str
 
+    def test_an_object_with_no_text_attribute_is_its_class_alone(self) -> None:
+        assert describe_widget(object()) == "object"
+
+    def test_forty_characters_are_kept_and_more_cut_to_forty_with_the_ellipsis(self) -> None:
+        widget = MagicMock()
+        widget.text = "x" * 40
+        assert describe_widget(widget) == f'MagicMock "{"x" * 40}"'
+        widget.text = "x" * 41
+        assert describe_widget(widget) == f'MagicMock "{"x" * 39}…"'
+
 
 def test_log_nav_focus_writes_the_focus_line(loguru_sink: list[str]) -> None:
     widget = MagicMock()

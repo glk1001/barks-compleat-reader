@@ -103,6 +103,14 @@ def test_set_selected_does_not_tell_the_screen(row: ChipRow, on_select: MagicMoc
     on_select.assert_not_called()
 
 
+def test_a_row_starts_with_the_empty_value_picked_and_no_focus(on_select: MagicMock) -> None:
+    row = ChipRow(MagicMock(), _chip, on_select)
+    assert row.focused is None
+    row.set_options(OPTIONS)
+    assert row.selected == ""
+    assert _chips(row)[0].chip_bg_color == chip_bg_active()
+
+
 def test_focus_starts_on_the_picked_chip_and_is_logged(
     row: ChipRow, loguru_sink: list[str]
 ) -> None:
@@ -130,6 +138,7 @@ def test_an_empty_row_takes_focus_without_a_chip_to_show_it(
 ) -> None:
     row = ChipRow(MagicMock(), _chip, on_select)
     row.enter_focus()
+    assert row.focused == 0  # it has the keyboard, on the chip that will be first
     assert row.handle_key(KEY_ENTER) is RowKey.HANDLED
     assert not any("Nav focus" in line for line in loguru_sink)
 
@@ -141,10 +150,25 @@ def test_left_and_right_walk_and_the_ends_behave(row: ChipRow) -> None:
     assert row.handle_key(KEY_RIGHT) is RowKey.HANDLED  # the last chip: stays
     assert row.focused == 2  # noqa: PLR2004
     row.handle_key(KEY_LEFT)
+    assert row.focused == 1
     row.handle_key(KEY_LEFT)
     assert row.focused == 0
     assert row.handle_key(KEY_LEFT) is RowKey.EXIT_LEFT  # off the first: a way out
     assert row.focused == 0  # the screen decides whether it is taken
+
+
+def test_right_off_the_last_chip_does_not_refocus_it(row: ChipRow, loguru_sink: list[str]) -> None:
+    row.enter_focus(2)
+    loguru_sink.clear()
+    assert row.handle_key(KEY_RIGHT) is RowKey.HANDLED
+    assert row.focused == 2  # noqa: PLR2004
+    assert loguru_sink == []
+
+
+def test_enter_without_the_keyboard_presses_nothing(row: ChipRow) -> None:
+    assert row.handle_key(KEY_ENTER) is RowKey.HANDLED
+    for chip in _chips(row):
+        chip.trigger_action.assert_not_called()
 
 
 def test_enter_picks_the_focused_chip_and_keeps_the_focus(

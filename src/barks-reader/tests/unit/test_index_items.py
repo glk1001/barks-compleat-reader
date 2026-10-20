@@ -16,6 +16,7 @@ def test_a_title_row_opens_at_its_first_page_with_every_page_it_lists() -> None:
         "Donald Duck Finds Pirate Gold", "3", "Pirate Gold, 3-5,12", MagicMock(fanta_pages=pages)
     )
     assert item.id == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+    assert item.display_text == "Pirate Gold, 3-5,12"
     assert item.page_to_goto == "3"
     assert item.tagged_pages == ("3", "4", "5", "12")
 
@@ -49,3 +50,11 @@ class TestEntityIndex:
     def test_a_term_not_starting_with_a_letter_is_an_error(self) -> None:
         with pytest.raises(RuntimeError, match="non-alpha prefix"):
             entity_index(["Alice", "-ER-"])
+
+    @pytest.mark.parametrize("term", ["_Underscore", "[Bracket]", "`Tick"])
+    def test_the_signs_between_the_two_alphabets_are_no_letters(self, term: str) -> None:
+        with pytest.raises(RuntimeError, match="non-alpha prefix"):
+            entity_index([term])
+
+    def test_z_is_a_letter(self) -> None:
+        assert [i.id for i in entity_index(["Zinc"])["Z"]] == ["Zinc"]

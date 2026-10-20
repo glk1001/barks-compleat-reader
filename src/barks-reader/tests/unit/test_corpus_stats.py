@@ -11,6 +11,7 @@ No Kivy, no ``barks_reader.ui`` - this module is core and must stay that way.
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Literal
 from unittest.mock import patch
 
@@ -226,6 +227,17 @@ class TestPaymentSection:
 
     def test_every_kept_record_has_a_real_amount_and_year(self) -> None:
         assert all(p.payment > 0 and p.accepted_year > 0 for p in get_paid_records())
+
+    def test_a_dollar_is_a_real_amount(self) -> None:
+        """Only the sentinels are left out: the smallest real payment is kept."""
+        dollar = SimpleNamespace(payment=1, accepted_year=1950)
+        ledger = {
+            "a dollar": dollar,
+            "no amount": SimpleNamespace(payment=-1, accepted_year=1950),
+            "no date": SimpleNamespace(payment=5, accepted_year=-1),
+        }
+        with patch.object(corpus_stats_module, "BARKS_PAYMENTS", ledger):
+            assert get_paid_records() == [dollar]
 
     def test_nominal_total_exceeds_a_blind_sum(self, stats: CorpusStats) -> None:
         # Blindly summing the column subtracts a dollar for each of the 383

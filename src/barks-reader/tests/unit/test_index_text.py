@@ -42,6 +42,11 @@ class TestShortenIfNecessary:
     def test_a_short_term_is_left_as_it_is(self) -> None:
         assert shorten_if_necessary("Uncle Scrooge") == "Uncle Scrooge"
 
+    def test_a_term_as_long_as_a_row_is_left_as_it_is(self) -> None:
+        text = "Uncle Scrooge and Donald Duck!"
+        assert len(text) == INDEX_ITEM_MAX_TEXT_WIDTH
+        assert shorten_if_necessary(text) == text
+
     def test_a_long_term_is_cut_at_a_word_with_an_ellipsis(self) -> None:
         text = "the quick brown fox jumps over the lazy dog again"
         shortened = shorten_if_necessary(text)
