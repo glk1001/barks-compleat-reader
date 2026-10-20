@@ -28,19 +28,20 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     SHOW_FUN_VIEW_TITLE_INFO,
 )
 from barks_reader.core.settings_notifier import settings_notifier
 
+from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
     update_focus_in_list,
 )
-from .reader_navigation import ReaderNavigation
 from .tap_targets import Rect, window_rect
 
 if TYPE_CHECKING:
@@ -99,7 +100,9 @@ class FunImageViewScreen(BoxLayout):
         self._load_image: Callable[[ImageInfo], None] | None = None
         self._image_history: deque[ImageInfo] = deque(maxlen=_MAX_IMAGES_HISTORY)
         self._current_history_index = -1
-        self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH, 0.54, 0.98)
+        self._navigation = ReaderNavigation(
+            self.MAX_WINDOW_WIDTH, 0.54, 0.98, is_fullscreen=WindowManager.is_fullscreen_now
+        )
 
         # Takes a ``from_keyboard`` keyword so the handler can tell an Enter on the
         # focused arrow from a mouse click on it. See on_goto_title.

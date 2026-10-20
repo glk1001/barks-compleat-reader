@@ -38,6 +38,7 @@ from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
 
 from .action_bar_helpers import (
@@ -55,7 +56,6 @@ from .platform_window_utils import (
     log_window_geometry,
 )
 from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
-from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
 
@@ -169,7 +169,9 @@ class ComicBookReader(FloatLayout):
         # Every change of the current page index shows that page.
         self._page_manager = ComicPageManager(self._show_page)
 
-        self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH, 0.09)
+        self._navigation = ReaderNavigation(
+            self.MAX_WINDOW_WIDTH, 0.09, is_fullscreen=WindowManager.is_fullscreen_now
+        )
 
         self._time_to_load_comic = Timing()
 
