@@ -583,8 +583,10 @@ class NavigationCoordinator:
         steps the same by every route.
         """
         logger.debug(f"Setting page to goto: {page}.")
-        self._bottom_title_view_screen.set_goto_page_state(
-            page, active=True, tagged_pages=tagged_pages, kept_page=self._page_last_read(title)
+        self._bottom_title_view_screen.show_goto_page(
+            GotoPageOffer.make(
+                page, active=True, tagged_pages=tagged_pages, kept_page=self._page_last_read(title)
+            )
         )
 
     def _page_last_read(self, title: Titles) -> str:

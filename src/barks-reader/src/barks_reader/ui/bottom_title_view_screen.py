@@ -48,7 +48,7 @@ from .panel_texture_loader import PanelTextureLoader
 from .reader_keyboard_nav import clear_focus_in_list, update_focus_in_list
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -269,20 +269,6 @@ class BottomTitleViewScreen(FloatLayout):
     @staticmethod
     def _get_title_portal_opening_animation_duration_secs() -> int:
         return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
-
-    def set_goto_page_state(
-        self,
-        page_to_goto: str = "",
-        active: bool = False,
-        tagged_pages: Sequence[str] = (),
-        kept_page: str = "",
-    ) -> None:
-        """Offer a page to open the comic at, or none: see `GotoPageOffer.make`."""
-        self.show_goto_page(
-            GotoPageOffer.make(
-                page_to_goto, active=active, tagged_pages=tagged_pages, kept_page=kept_page
-            )
-        )
 
     def show_goto_page(self, offer: GotoPageOffer) -> None:
         """Show `offer` on the goto-page row: its page, ticked or not, and the pages to step."""

@@ -533,16 +533,16 @@ class TestNavigateToSearchResult:
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         self._navigate(nav_coord, mock_deps, (Tags.FIRST_DAISY,))
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True, tagged_pages=["2"], kept_page=""
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("2", active=True, tagged_pages=["2"], kept_page="")
         )
 
     def test_a_tag_with_no_page_in_the_title_adds_none(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         self._navigate(nav_coord, mock_deps, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "2", active=True, tagged_pages=["2"], kept_page=""
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("2", active=True, tagged_pages=["2"], kept_page="")
         )
 
     def test_a_basket_of_tags_offers_every_tags_pages_together(
@@ -556,8 +556,8 @@ class TestNavigateToSearchResult:
             {(Tags.AWFULTONIANS, andes): ["19", "26"], (Tags.SPLASH, andes): ["17", "26"]},
         ):
             self._navigate(nav_coord, mock_deps, (Tags.AWFULTONIANS, Tags.SPLASH), title=ANDES)
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "17", active=True, tagged_pages=["17", "19", "26"], kept_page=""
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("17", active=True, tagged_pages=["17", "19", "26"], kept_page="")
         )
 
     @pytest.mark.parametrize("tags", [(), (Tags.GYRO_GEARLOOSE,)], ids=["no-tags", "no-page"])
@@ -568,7 +568,7 @@ class TestNavigateToSearchResult:
         tags: tuple[Tags, ...],
     ) -> None:
         self._navigate(nav_coord, mock_deps, tags, offers=False)
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
     def test_an_unknown_title_is_not_navigated_to(self, nav_coord: NavigationCoordinator) -> None:
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
@@ -682,8 +682,8 @@ class TestNavigateToTitleWithPage:
         with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
             nav_coord.navigate_to_title_with_page(image_info, "12")
         navigated.assert_called_once_with(image_info, offer_page=False)  # this offer is the one
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "12", active=True, tagged_pages=(), kept_page=""
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("12", active=True, tagged_pages=(), kept_page="")
         )
 
     def test_a_title_under_a_tag_offers_all_its_tagged_pages(
@@ -693,8 +693,8 @@ class TestNavigateToTitleWithPage:
         mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13", "16", "17"))
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "7", active=True, tagged_pages=("7", "13", "16", "17"), kept_page=""
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("7", active=True, tagged_pages=("7", "13", "16", "17"), kept_page="")
         )
 
     def test_the_page_last_read_stays_a_step_away_as_under_a_tag(
@@ -713,8 +713,8 @@ class TestNavigateToTitleWithPage:
         mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
             "Adventure Down Under"
         )
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_called_once_with(
-            "7", active=True, tagged_pages=("7", "13"), kept_page="9"
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            GotoPageOffer.make("7", active=True, tagged_pages=("7", "13"), kept_page="9")
         )
 
     def test_a_one_pager_sets_no_page(
@@ -723,7 +723,7 @@ class TestNavigateToTitleWithPage:
         """Reading one deep-links to its page in the collection; the index's page would mislead."""
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(ImageInfo(from_title=Titles.IF_THE_HAT_FITS), "1")
-        mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
 
 def test_the_wiki_without_a_bundle_opens_nothing(
@@ -760,14 +760,14 @@ class TestTitleSelectedUnderATag:
         mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
             "Lost in the Andes!"
         )
-        return mock_deps["bottom_title_view_screen"].set_goto_page_state
+        return mock_deps["bottom_title_view_screen"].show_goto_page
 
     def test_the_tags_first_page_is_offered_and_the_page_last_read_kept(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
         offered = self._select(nav_coord, mock_deps, "25")
         assert offered.call_args_list[-1] == call(
-            "19", active=True, tagged_pages=["19", "26", "31"], kept_page="25"
+            GotoPageOffer.make("19", active=True, tagged_pages=["19", "26", "31"], kept_page="25")
         )
 
     def test_with_nothing_read_only_the_tags_pages_are_offered(
@@ -775,7 +775,7 @@ class TestTitleSelectedUnderATag:
     ) -> None:
         offered = self._select(nav_coord, mock_deps, None)
         assert offered.call_args_list[-1] == call(
-            "19", active=True, tagged_pages=["19", "26", "31"], kept_page=""
+            GotoPageOffer.make("19", active=True, tagged_pages=["19", "26", "31"], kept_page="")
         )
 
 
@@ -784,7 +784,7 @@ def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
 ) -> None:
     with patch.object(barks_reader.core.reader_utils, "BARKS_TAGGED_PAGES", {}):
         nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, "Back to the Klondike")
-    mock_deps["bottom_title_view_screen"].set_goto_page_state.assert_not_called()
+    mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
     assert 'No pages for (Alaska, "Back to the Klondike").' in loguru_sink
 
 

@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
+from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -20,6 +21,22 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from kivy.uix.widget import Widget
+
+
+def _show(
+    screen: BottomTitleViewScreen,
+    page_to_goto: str = "",
+    *,
+    active: bool = False,
+    tagged_pages: list[str] | None = None,
+    kept_page: str = "",
+) -> None:
+    """Show the offer of `page_to_goto` on the goto-page row, as the coordinator does."""
+    screen.show_goto_page(
+        GotoPageOffer.make(
+            page_to_goto, active=active, tagged_pages=tagged_pages or (), kept_page=kept_page
+        )
+    )
 
 
 class ScreenFixtureBase:
@@ -167,28 +184,28 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.screen._on_panel_fade_finished(self.screen._panel_fade_anim, MagicMock())
         assert "Title view fade finished." in loguru_sink
 
-    def test_set_goto_page_state(self) -> None:
+    def test_show_goto_page(self) -> None:
         # Active with page
-        self.screen.set_goto_page_state("5", active=True)
+        _show(self.screen, "5", active=True)
         assert self.screen.goto_page_num == "5"
         assert self.screen.goto_page_active
 
         # Inactive
-        self.screen.set_goto_page_state(active=False)
+        _show(self.screen, active=False)
         assert not self.screen.goto_page_active
 
         # Comic begin page
-        self.screen.set_goto_page_state(COMIC_BEGIN_PAGE, active=True)
+        _show(self.screen, COMIC_BEGIN_PAGE, active=True)
         assert self.screen.goto_page_num == ""
 
     def test_an_offered_goto_page_is_logged_and_none_is_not(self, loguru_sink: list[str]) -> None:
-        self.screen.set_goto_page_state("2", active=True)
+        _show(self.screen, "2", active=True)
         assert loguru_sink[-1] == (
             'Goto page "2" offered: active = True; the row reads "Goto page 2:".'
         )
         loguru_sink.clear()
-        self.screen.set_goto_page_state(active=False)
-        self.screen.set_goto_page_state(COMIC_BEGIN_PAGE, active=True)  # the front: no box
+        _show(self.screen, active=False)
+        _show(self.screen, COMIC_BEGIN_PAGE, active=True)  # the front: no box
         assert not [line for line in loguru_sink if "offered" in line]
 
     def test_set_overrides_state(self) -> None:
@@ -552,7 +569,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
     """A tag's pages in the title: the goto-page row steps through each run's start."""
 
     def _offer(self, active: bool = True) -> None:
-        self.screen.set_goto_page_state("7", active=active, tagged_pages=_TAGGED_PAGES)
+        _show(self.screen, "7", active=active, tagged_pages=_TAGGED_PAGES)
 
     def _focus_goto_row(self) -> None:
         self.screen.enter_nav_focus(MagicMock())
@@ -601,7 +618,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.goto_page_num == "7"
 
     def test_one_run_has_nothing_to_step_through(self) -> None:
-        self.screen.set_goto_page_state("4", active=True, tagged_pages=["4", "5", "6"])
+        _show(self.screen, "4", active=True, tagged_pages=["4", "5", "6"])
         self._focus_goto_row()
         assert self.screen.handle_key(KEY_RIGHT) is False
         self.screen.step_goto_page(1)
@@ -618,22 +635,22 @@ class TestGotoPageSteps(ScreenFixtureBase):
 
     def test_one_run_reads_as_its_pages(self) -> None:
         # Herbert in Ten Cents' Worth of Trouble: one stop, but three pages.
-        self.screen.set_goto_page_state("1", active=True, tagged_pages=["1", "2", "3"])
+        _show(self.screen, "1", active=True, tagged_pages=["1", "2", "3"])
         assert self.screen.goto_page_text == "Goto pages 1-3:"
 
     def test_a_page_inside_a_run_names_no_run(self) -> None:
-        self.screen.set_goto_page_state("18", active=True, tagged_pages=_TAGGED_PAGES)
+        _show(self.screen, "18", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_page_run_end == ""
 
     def test_an_offer_with_no_tag_names_no_run(self) -> None:
         self._offer()
-        self.screen.set_goto_page_state("16", active=True)
+        _show(self.screen, "16", active=True)
         assert self.screen.goto_page_run_end == ""
         assert self.screen.goto_page_text == "Goto page 16:"
 
     def test_a_page_among_none_of_the_runs_is_a_stop_of_its_own(self) -> None:
         # E.g. the page the comic was closed on, read under the tag.
-        self.screen.set_goto_page_state("9", active=True, tagged_pages=_TAGGED_PAGES)
+        _show(self.screen, "9", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_pages == ["7", "9", "13", "16"]
         assert self.screen.tagged_pages == _TAGGED_PAGES
         assert self.screen.goto_page_position == " (2 of 4)"
@@ -641,17 +658,17 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.goto_page_num == "13"
 
     def test_a_page_inside_a_run_is_a_stop_too(self) -> None:
-        self.screen.set_goto_page_state("18", active=True, tagged_pages=_TAGGED_PAGES)
+        _show(self.screen, "18", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_pages == ["7", "13", "16", "18"]
 
     def test_a_runs_first_page_is_no_extra_stop(self) -> None:
-        self.screen.set_goto_page_state("13", active=True, tagged_pages=_TAGGED_PAGES)
+        _show(self.screen, "13", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_pages == ["7", "13", "16"]
         assert self.screen.goto_page_position == " (2 of 3)"
 
     def test_a_kept_page_is_a_stop_though_the_tags_page_is_offered(self) -> None:
         # E.g. the page last read, when the title is reached under the tag.
-        self.screen.set_goto_page_state("7", active=True, tagged_pages=_TAGGED_PAGES, kept_page="9")
+        _show(self.screen, "7", active=True, tagged_pages=_TAGGED_PAGES, kept_page="9")
         assert self.screen.goto_page_num == "7"
         assert self.screen.goto_pages == ["7", "9", "13", "16"]
         assert self.screen.goto_page_position == " (1 of 4)"
@@ -660,18 +677,16 @@ class TestGotoPageSteps(ScreenFixtureBase):
 
     @pytest.mark.parametrize("kept_page", ["", COMIC_BEGIN_PAGE, "13"])
     def test_no_kept_page_or_one_already_a_stop_adds_none(self, kept_page: str) -> None:
-        self.screen.set_goto_page_state(
-            "7", active=True, tagged_pages=_TAGGED_PAGES, kept_page=kept_page
-        )
+        _show(self.screen, "7", active=True, tagged_pages=_TAGGED_PAGES, kept_page=kept_page)
         assert self.screen.goto_pages == ["7", "13", "16"]
 
     def test_a_kept_page_without_a_tag_is_no_stop(self) -> None:
-        self.screen.set_goto_page_state("12", active=True, kept_page="9")
+        _show(self.screen, "12", active=True, kept_page="9")
         assert self.screen.goto_pages == []
 
     def test_any_other_offer_forgets_the_tag(self) -> None:
         self._offer()
-        self.screen.set_goto_page_state("12", active=True)  # E.g. the last page read.
+        _show(self.screen, "12", active=True)  # E.g. the last page read.
         assert self.screen.goto_pages == []
         assert self.screen.tagged_pages == []
         assert self.screen.goto_page_position == ""
