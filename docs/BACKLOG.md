@@ -339,10 +339,12 @@ in the OCR repo, which is read-only from here:
       to round-trip against; nothing is left here.
 - [ ] **Stateful testing pilot** — a Hypothesis `RuleBasedStateMachine` that
       generates *sequences* of operations and checks invariants after each.
-      `image_history` has one as a generated operation list (2026-10-21), kept
-      module-level: a `RuleBasedStateMachine.TestCase` is class-scoped, the mutmut
-      trap below. Next `reading_history` / `last_read_page_tracker` ("current page
-      always in bounds", "no visited entry lost"), then `NavigationModel`
+      Done for `reading_history` (2026-10-21): `test_reading_history_stateful.py`, a
+      `RuleBasedStateMachine` over the tracker, the store and its file, run from a
+      module-level function by `run_state_machine_as_test` (the generated `TestCase`
+      is class-scoped, the mutmut trap below; three `pytest.main` runs in one process
+      pass). `image_history` has a generated operation list in `test_properties.py`.
+      Next `last_read_page_tracker` ("current page always in bounds"), then `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
 - [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
