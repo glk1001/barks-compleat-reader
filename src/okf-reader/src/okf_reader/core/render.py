@@ -128,9 +128,21 @@ class Page:
 # --------------------------------------------------------------------------- render
 
 
-# One parser for every page and index.md: MarkdownIt keeps its per-parse state in the
-# StateCore it creates on each ``parse`` call, so a shared instance is safe to reuse.
+# One parser for every page and index.md, on the UI thread and the search-warm thread
+# (whose bundle walk reads each index.md): MarkdownIt keeps its per-parse state in the
+# StateCore it creates on each ``parse`` call. Its one shared mutable state is each
+# rule chain's cache, compiled lazily and without a lock on first use, so a parse
+# racing the first could run with part of a chain. Compiled here, at import, the
+# caches are only read after.
 _MARKDOWN = MarkdownIt("commonmark").use(footnote_plugin).enable("table")
+for _ruler in (
+    _MARKDOWN.core.ruler,
+    _MARKDOWN.block.ruler,
+    _MARKDOWN.inline.ruler,
+    _MARKDOWN.inline.ruler2,
+):
+    _ruler.getRules("")  # Compiles every chain of the ruler, not only this one.
+del _ruler
 
 
 def parse_markdown(body: str) -> list[Token]:

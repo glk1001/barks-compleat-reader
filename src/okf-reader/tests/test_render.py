@@ -6,6 +6,8 @@ Kivy-markup rendering, blocks, tables and wrapping.
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 import yaml
@@ -71,6 +73,34 @@ class TestParseFrontmatter:
 def _text_blocks(page: okf.Page) -> list[okf.Block]:
     """Return the page's plain text blocks, type-narrowed past ``TableBlock`` for ty."""
     return [b for b in page.blocks if isinstance(b, okf.Block)]
+
+
+class TestParseMarkdown:
+    def test_the_shared_parser_s_rule_chains_are_compiled_at_import(self) -> None:
+        """Compiled lazily, a chain could be read half-built by a parse on a second thread.
+
+        Checked in a fresh interpreter: in this one, any earlier test's parse has
+        already compiled them.
+        """
+        check = (
+            "from okf_reader.core import render\n"
+            "p = render._MARKDOWN\n"
+            "rulers = (p.core.ruler, p.block.ruler, p.inline.ruler, p.inline.ruler2)\n"
+            "assert all(r.__cache__ and r.__cache__[''] for r in rulers)\n"
+        )
+        result = subprocess.run(  # noqa: S603 — this interpreter, a fixed script
+            [sys.executable, "-c", check], capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_a_table_and_a_footnote_are_parsed(self) -> None:
+        """The extensions are enabled on the shared parser."""
+        types = {
+            token.type
+            for token in okf.parse_markdown("| a |\n| - |\n| b |\n\nNote.[^1]\n\n[^1]: Text.")
+        }
+        assert "table_open" in types
+        assert "footnote_block_open" in types
 
 
 class TestRenderPage:
