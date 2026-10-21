@@ -96,7 +96,7 @@ packages).
 
 | ID | Component | Files |
 | --- | --- | --- |
-| `okf-core` | Bundle model, rendering, search and session | `core/render.py`, `core/search.py`, `core/session.py`, `core/backgrounds.py`, `core/actions.py`, `core/theme.py`, `core/top_bar.py`, `core/log_markers.py` |
+| `okf-core` | Bundle model, rendering, search and session | `core/render.py`, `core/bundle.py`, `core/search.py`, `core/session.py`, `core/backgrounds.py`, `core/actions.py`, `core/theme.py`, `core/top_bar.py`, `core/log_markers.py` |
 | `okf-viewer` | Kivy viewer and keyboard navigation | `ui/viewer.py`, `ui/keynav.py`, `ui/focus_ring.py`, `ui/trace.py` |
 
 **Container `shared-kivy-widgets`** (`barks_kivy_ui`): one component,

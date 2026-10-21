@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from okf_reader.core import render as okf
+from okf_reader.core import bundle as okf
 from okf_reader.core.search import build_search_index, search_index
 from okf_reader.core.session import save_session_state
 

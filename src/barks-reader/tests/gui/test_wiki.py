@@ -21,7 +21,7 @@ from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from okf_reader.core import log_markers as wiki
-from okf_reader.core.render import BundleDir, ConceptNode, list_children
+from okf_reader.core.bundle import BundleDir, ConceptNode, list_children
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot

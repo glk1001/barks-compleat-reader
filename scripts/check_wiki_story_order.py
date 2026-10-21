@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report story pages listed out of chronological order in the wiki bundle.
 
-The reader's wiki sidebar is not sorted by the reader: `okf_reader.core.render`'s
+The reader's wiki sidebar is not sorted by the reader: `okf_reader.core.bundle`'s
 ``list_children`` lays each directory out in its ``index.md`` link order (what its
 docstring calls "curated order") and falls back to filename order. So the sidebar
 shows whatever the bundle says, and a story in the wrong place there is a fact

@@ -23,6 +23,7 @@ from barks_fantagraphics.comics_utils import (
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from barks_fantagraphics.speech_markup import transform_lettering_only
 from comic_utils.cpi_calculator import get_adjusted_usd
+from okf_reader.core.render import escape_markup
 
 from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
 from .reader_consts_and_types import CLOSE_TO_ZERO
@@ -39,10 +40,10 @@ if TYPE_CHECKING:
 def escape_kivy_markup(text: str) -> str:
     """Escape `&`, `[`, `]` for Kivy markup. Matches `kivy.utils.escape_markup`.
 
-    Also byte-identical to ``okf_reader.core.render._esc`` — consumers matching
-    okf-escaped text (e.g. the wiki table rewriter) rely on that parity.
+    The OKF renderer's own `escape_markup`, so text matched against okf-rendered
+    cells (the wiki table rewriter) is escaped exactly as the cells were.
     """
-    return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+    return escape_markup(text)
 
 
 LONG_TITLE_SPLITS = {

@@ -7,7 +7,7 @@ results list. Pure and deterministic — same bundle + query in, same hits out �
 so it is unit-testable in isolation.
 
 Scope is deliberately tier 1: titles and headings, not body prose. It reuses the
-bundle walk (`render.load_bundle_tree`) and extracts headings with a cheap ATX
+bundle walk (`bundle.load_bundle_tree`) and extracts headings with a cheap ATX
 line scan, and follows the tolerant-consumption spirit (SPEC §9) — an unreadable
 page is skipped, never fatal.
 """
@@ -18,11 +18,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from okf_reader.core.render import (
-    BundleDir,
-    load_bundle_tree,
-    parse_frontmatter,
-)
+from okf_reader.core.bundle import BundleDir, load_bundle_tree
+from okf_reader.core.render import parse_frontmatter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,7 +88,7 @@ def _extract_headings(text: str) -> list[str]:
     A line scan (not a full markdown-it parse) for speed — the whole bundle is
     indexed at once. Frontmatter is stripped first (a ``#`` there is a YAML
     comment), and fenced code blocks are skipped so a ``#`` comment inside one is
-    not mistaken for a heading — the same guard `render.dir_title` uses.
+    not mistaken for a heading — the same guard `bundle.dir_title` uses.
     """
     _, body = parse_frontmatter(text)
     headings: list[str] = []

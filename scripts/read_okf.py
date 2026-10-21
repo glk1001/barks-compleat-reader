@@ -59,7 +59,7 @@ from comic_utils.common_typer_options import LogLevelArg
 from dotenv import load_dotenv
 from loguru import logger
 from okf_reader.core.actions import PageAction
-from okf_reader.core.render import resolve_link
+from okf_reader.core.bundle import resolve_link
 from okf_reader.core.top_bar import TopBarSpec
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")

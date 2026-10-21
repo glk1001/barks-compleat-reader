@@ -16,7 +16,7 @@ submitted four months earlier.
 
 ## Where the order actually comes from
 
-Not from the reader. `okf_reader.core.render.list_children` lays each directory out
+Not from the reader. `okf_reader.core.bundle.list_children` lays each directory out
 in its `index.md` **link order** — what its own docstring calls "curated order" —
 falling back to filename order for anything the index does not list. The sidebar is
 therefore a faithful rendering of the bundle, and the reader needs no change.

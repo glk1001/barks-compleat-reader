@@ -52,7 +52,7 @@ from barks_reader.core.search_state import TagBasket, TagState, WordBasket
 from barks_reader.core.statistics_series import Series, dump_series, load_series
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from okf_reader.core.render import _esc as okf_escape
+from okf_reader.core.render import escape_markup as okf_escape
 from strategies import page_maps
 
 if TYPE_CHECKING:

@@ -1,6 +1,6 @@
 """Kivy viewer for an OKF bundle — the UI layer of okf_reader.
 
-Binds the Kivy-free core (okf_reader.core.render) to native widgets: a lazily
+Binds the Kivy-free core (okf_reader.core.render and .bundle) to native widgets: a lazily
 populated tree of the bundle's tiers on the left, the rendered page on the right.
 Links resolve via the core's ``resolve_link``; tapping a footnote marker shows its
 definition (keyed by the page `Block`'s anchor) in a dismiss-on-tap popup.
@@ -42,16 +42,13 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
+from okf_reader.core.bundle import BundleDir, has_children, list_children, resolve_link
 from okf_reader.core.render import (
     LINK_COLOR,
     Block,
-    BundleDir,
     TableBlock,
     TableRewriter,
-    has_children,
-    list_children,
     render_page,
-    resolve_link,
     visible_len,
 )
 from okf_reader.core.search import BundleSearcher

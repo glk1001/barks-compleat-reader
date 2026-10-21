@@ -358,7 +358,7 @@ class BarksTableRewriter:
             if not cbi.is_barks_title:
                 title = cbi.get_title_str()
                 self._non_barks_titles.add(title)
-                # Cells arrive Kivy-markup-escaped (okf_reader.core.render._esc);
+                # Cells arrive Kivy-markup-escaped (okf_reader.core.render.escape_markup);
                 # match that form of a title too — escape_kivy_markup mirrors it.
                 self._non_barks_titles.add(escape_kivy_markup(title))
 
