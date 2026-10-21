@@ -164,7 +164,7 @@ def escape_markup(text: str) -> str:
 
     The same escaping as ``kivy.utils.escape_markup``, without the Kivy import. An
     embedding app that matches text against rendered cells (the Barks table
-    rewriter does) must escape with this same function.
+    rewriter does) must escape byte for byte the same way.
 
     Args:
         text: Plain text.

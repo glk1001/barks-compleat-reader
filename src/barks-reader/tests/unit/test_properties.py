@@ -41,7 +41,6 @@ from barks_reader.core.log_markers import capture, pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BODY_PAGE
 from barks_reader.core.reader_formatter import (
     escape_editorial_brackets,
-    escape_kivy_markup,
     get_text_with_markup_stripped,
 )
 from barks_reader.core.reader_utils import get_page_run_starts, get_page_sort_key
@@ -291,11 +290,14 @@ def test_a_marker_line_matches_its_pattern_and_gives_back_its_fields(
 
 
 @given(st.text(max_size=60))
-def test_the_three_kivy_escapers_agree_byte_for_byte(text: str) -> None:
-    """The wiki table rewriter matches okf-escaped text against ours; both match the OCR's."""
-    escaped = escape_kivy_markup(text)
+def test_the_two_kivy_escapers_agree_byte_for_byte(text: str) -> None:
+    """The wiki table rewriter matches okf-escaped text against ours (`escape_kivy_markup`).
+
+    The app escapes with barks_fantagraphics' `escape_markup` and okf_reader with its
+    own: two implementations, so the one place they can drift apart.
+    """
+    escaped = escape_markup(text)
     assert escaped == okf_escape(text)
-    assert escaped == escape_markup(text)
     assert "[" not in escaped
     assert "]" not in escaped
     assert get_text_with_markup_stripped(escaped) == escaped

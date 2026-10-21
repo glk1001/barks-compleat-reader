@@ -21,9 +21,8 @@ from barks_fantagraphics.comics_utils import (
     get_short_submitted_day_and_month,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
-from barks_fantagraphics.speech_markup import transform_lettering_only
+from barks_fantagraphics.speech_markup import escape_markup, transform_lettering_only
 from comic_utils.cpi_calculator import get_adjusted_usd
-from okf_reader.core.render import escape_markup
 
 from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
 from .reader_consts_and_types import CLOSE_TO_ZERO
@@ -40,8 +39,9 @@ if TYPE_CHECKING:
 def escape_kivy_markup(text: str) -> str:
     """Escape `&`, `[`, `]` for Kivy markup. Matches `kivy.utils.escape_markup`.
 
-    The OKF renderer's own `escape_markup`, so text matched against okf-rendered
-    cells (the wiki table rewriter) is escaped exactly as the cells were.
+    The comic text's `escape_markup`, which escapes byte for byte as the OKF renderer
+    does (a property test holds the two together), so text matched against
+    okf-rendered cells (the wiki table rewriter) is escaped exactly as the cells were.
     """
     return escape_markup(text)
 
