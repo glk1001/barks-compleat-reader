@@ -136,6 +136,21 @@ class TestComicBookReader:
 
         assert not _strongly_reaches(page_manager, reader)
 
+    def test_a_page_change_calls_show_page_as_patched_on_the_reader(
+        self, reader: ComicBookReader
+    ) -> None:
+        """The benchmark stubs `_show_page` on the instance; the page change must find it."""
+        page_manager = reader._page_manager
+        page_info = PageInfo(0, "1", PageType.BODY, srce_page=MagicMock(), dest_page=MagicMock())
+        page_manager.set_page_map(OrderedDict([("1", page_info)]), COMIC_BEGIN_PAGE)
+        with (
+            patch.object(reader, "_show_page") as show_page,
+            patch.object(reader, "_render_page") as render_page,
+        ):
+            page_manager.set_to_first_page_to_read()
+        show_page.assert_called_once_with()
+        render_page.assert_not_called()
+
     def test_a_page_change_after_the_reader_is_gone_shows_nothing(self) -> None:
         shown: list[int] = []
 
@@ -144,11 +159,11 @@ class TestComicBookReader:
                 shown.append(1)
 
         owner = Owner()
-        weak_show = weakref.WeakMethod(owner.show)
-        barks_reader.ui.comic_book_reader._call_if_alive(weak_show)
+        weak_owner = weakref.ref(owner)
+        barks_reader.ui.comic_book_reader._call_if_alive(weak_owner, "show")
         assert shown == [1]
         del owner
-        barks_reader.ui.comic_book_reader._call_if_alive(weak_show)
+        barks_reader.ui.comic_book_reader._call_if_alive(weak_owner, "show")
         assert shown == [1]
 
     def test_read_comic(self, reader: ComicBookReader) -> None:
