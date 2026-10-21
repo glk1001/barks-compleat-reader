@@ -309,8 +309,8 @@ in the OCR repo, which is read-only from here:
 > 2026-10-21, plus `test_wiki_integration.py` (`story_slug`) and
 > `test_search_query.py`, and mutmut mutation testing (`scripts/mutmut.sh`,
 > backlog in `docs/mutation-testing.md`).
-> Remaining is broadening property-based coverage and burning down the mutmut
-> survivors — the two reinforce each other: properties assert *behaviour*, so
+> Every item below is done (2026-10-21); what remains is keeping the properties
+> and the mutmut survivors moving together: properties assert *behaviour*, so
 > they kill far more mutants than example tests.
 
 - [x] **GUI and window coverage on Windows and macOS** — the GUI suite was X11-only and
@@ -355,7 +355,12 @@ in the OCR repo, which is read-only from here:
       properties instead (2026-10-21): `test_navigation_properties.py`, every
       destination resolving to a view state, the tag context the request carries, a
       year range in the one field its kind uses, auto-select and the kept top view.
-      Left: `reader_settings` / `json_settings_manager` (save→load round-trip).
+      `reader_settings` / `json_settings_manager` (2026-10-21):
+      `test_settings_properties.py`, a value of every field's kind written as the
+      panel writes it reading back typed, here and through the ini file, the three
+      setters too; and the JSON store as a machine, pages per title, the selected
+      node with its state (the History path migrating), the sizes warned about, a
+      manager loaded from the file answering as the live one. Nothing is left here.
 - [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
       363 survivors across all 37 modules, every remainder triaged as not worth
       killing (log/message wording, recorded equivalents, dead code, and
