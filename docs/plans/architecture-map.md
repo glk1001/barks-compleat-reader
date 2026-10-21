@@ -79,11 +79,11 @@ Groups: *core* (Kivy-free) and *ui* (Kivy). Walkthrough section numbers are
 | `gui-test-hooks` | GUI test hooks | `core/log_markers.py`, `core/tap_targets.py`, `core/memory_census.py`, `ui/tap_targets.py`, `ui/memory_census.py`, `ui/frame_capture.py` | §8.4 |
 | `app-shell` | App shell and screen manager | `ui/barks_reader_app.py`, `ui/app_initializer.py`, `ui/reader_screens.py`, `ui/screen_bundle.py`, `ui/main_screen.py`, `ui/main_screen_components.py`, `ui/main_screen_nav.py` | §2.2, §7.1-7.3, §7.8 |
 | `tree-view` | Tree view | `ui/reader_tree_builder.py`, `ui/tree_view_nodes.py`, `ui/tree_view_manager.py`, `ui/tree_view_screen.py`, `ui/tree_scroll_pinner.py` | §4.2-4.3 |
-| `view-rendering` | Navigation coordinator and view rendering | `ui/navigation_coordinator.py`, `ui/view_renderer.py`, `ui/snapshot_applicator.py`, `ui/reader_navigation.py` | §4.3, §5.5-5.6 |
+| `view-rendering` | Navigation coordinator and view rendering | `ui/navigation_coordinator.py`, `ui/view_renderer.py`, `ui/snapshot_applicator.py`, `core/reader_navigation.py` | §4.3, §5.5-5.6 |
 | `comic-reader-screen` | Comic reader screen | `ui/comic_book_reader.py` | §6.4 |
 | `bottom-pane` | Bottom pane: title view and fun view | `ui/bottom_title_view_screen.py`, `ui/fun_image_view_screen.py`, `ui/goto_title_overlay.py`, `ui/collapse_parent_overlay.py` | §7.2 |
 | `index-screens` | Index screens | `ui/index_screen.py`, `ui/main_index_screen.py`, `ui/speech_index_screen.py`, `ui/entity_index_screen.py`, `core/index_text.py` | §7.4 |
-| `search-screen` | Search screen | `ui/search_screen.py`, `ui/search_chip_row.py`, `core/search_state.py`, `core/search_help.py` | §7.4 |
+| `search-screen` | Search screen | `ui/search_screen.py`, `core/search_chip_row.py`, `core/search_state.py`, `core/search_help.py` | §7.4 |
 | `statistics-and-history` | Statistics and history screens | `ui/statistics_screen.py`, `ui/history_screen.py` | §7.4-7.5 |
 | `document-reader` | Document reader | `ui/document_reader.py` | §7.1 |
 | `action-bar-and-keys` | Action bar, popups and keyboard navigation | `ui/action_bar.py`, `ui/action_bar_helpers.py`, `ui/reader_keyboard_nav.py`, `ui/popup_widgets.py`, `ui/about_box.py`, `ui/alt_escape_capture_popup.py`, `ui/touch_keyboard.py`, `ui/ui_helpers.py` | §7.3, §7.8 |

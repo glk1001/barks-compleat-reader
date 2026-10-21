@@ -13,6 +13,6 @@ groma:
     - scanner: python
       file: src/barks-reader/src/barks_reader/ui/snapshot_applicator.py
     - scanner: python
-      file: src/barks-reader/src/barks_reader/ui/reader_navigation.py
+      file: src/barks-reader/src/barks_reader/core/reader_navigation.py
   group: ui
 ---

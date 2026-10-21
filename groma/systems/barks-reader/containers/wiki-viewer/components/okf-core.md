@@ -28,4 +28,6 @@ groma:
       file: src/okf-reader/src/okf_reader/__init__.py
     - scanner: python
       file: src/okf-reader/src/okf_reader/core/__init__.py
+    - scanner: python
+      file: src/okf-reader/src/okf_reader/core/bundle.py
 ---

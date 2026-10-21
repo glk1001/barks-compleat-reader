@@ -9,10 +9,10 @@ groma:
     - scanner: python
       file: src/barks-reader/src/barks_reader/ui/search_screen.py
     - scanner: python
-      file: src/barks-reader/src/barks_reader/ui/search_chip_row.py
-    - scanner: python
       file: src/barks-reader/src/barks_reader/core/search_state.py
     - scanner: python
       file: src/barks-reader/src/barks_reader/core/search_help.py
+    - scanner: python
+      file: src/barks-reader/src/barks_reader/core/search_chip_row.py
   group: ui
 ---
