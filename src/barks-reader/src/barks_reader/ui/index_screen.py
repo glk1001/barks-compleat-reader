@@ -794,11 +794,7 @@ class IndexScreen(FloatLayout):
         return result
 
     def _split_items(self, items: list[IndexItem]) -> list[list[IndexItem]]:
-        """Deal items into the columns, filling each with its share of what is left.
-
-        Taking ``ceil(remaining / columns_left)`` each time reproduces the original
-        per-column-count formulas exactly, without branching on the column count.
-        """
+        """Deal items into this screen's columns (`deal_into_columns`)."""
         return deal_into_columns(items, self.num_columns)
 
     def _get_col_layouts(self) -> list[Widget]:
