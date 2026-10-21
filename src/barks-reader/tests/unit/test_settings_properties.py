@@ -79,10 +79,15 @@ def _reloaded(config: _IniConfig) -> _IniConfig:
 
 # A value as the panel's text would carry it, with the value reading it gives.
 _BOOL_TEXTS = st.sampled_from(["0", "1", "True", "False", "yes", "no", "on", "off"])
-_PATH_TEXTS = (
+_PLAIN_PATH_TEXTS = (
     st.text(alphabet=string.ascii_letters + string.digits + "/._- ", min_size=1, max_size=40)
     .map(str.strip)
     .filter(bool)
+)
+# Some under ${HOME} or $HOME, as the shipped defaults are: expanded by the fields that
+# expand variables, and kept as written by the fields that do not.
+_PATH_TEXTS = _PLAIN_PATH_TEXTS | st.builds(
+    lambda var, rest: f"{var}/{rest}", st.sampled_from(["${HOME}", "$HOME"]), _PLAIN_PATH_TEXTS
 )
 
 
