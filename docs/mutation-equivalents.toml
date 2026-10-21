@@ -2619,14 +2619,6 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.reading_history"
-function = "ReadingHistoryStore._sync"
-change = """
-- self._revision += 1
-+ self._revision += 2
-"""
-
-[[untriaged]]
 module = "barks_reader.core.fantagraphics_volumes"
 function = "EmptyArchiveError.__init__"
 change = """

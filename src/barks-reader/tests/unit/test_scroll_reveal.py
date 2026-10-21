@@ -1,9 +1,9 @@
-"""Tests for `scroll_y_keeping_row`, the scroll that keeps a row put as its list resizes."""
+"""Tests for how far a list scrolls to reveal its opened items, and to keep a row put."""
 
 from __future__ import annotations
 
 import pytest
-from barks_reader.core.scroll_reveal import scroll_y_keeping_row
+from barks_reader.core.scroll_reveal import reveal_distance, scroll_y_keeping_row
 
 
 def _keeping(row_from_content_top: float, content_height: float) -> float | None:
@@ -46,3 +46,11 @@ def test_a_list_one_pixel_taller_than_the_view_scrolls() -> None:
 @pytest.mark.parametrize("content_height", [100.0, 80.0])
 def test_a_list_no_taller_than_the_view_does_not_scroll(content_height: float) -> None:
     assert _keeping(40.0, content_height) is None
+
+
+def test_a_reveal_brings_the_padding_under_the_items_into_view() -> None:
+    # The items end 50 below the view, so the padding makes it 60; the row has 400 to spare.
+    distance = reveal_distance(
+        view_bottom=0.0, view_top=500.0, items_bottom=-50.0, owner_top=100.0, padding=10.0
+    )
+    assert distance == pytest.approx(60.0)
