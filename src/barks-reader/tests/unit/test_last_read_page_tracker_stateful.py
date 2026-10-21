@@ -44,8 +44,12 @@ if TYPE_CHECKING:
 _TITLES = ["Lost in the Andes!", "Vacation Time", "Trick or Treat"]
 
 
-def _inside_body(page: PageInfo, last_body_page: str) -> bool:
-    """Say whether a page is inside the body: a body page, neither the first nor the last."""
+def _inside_body(page: PageInfo | SavedPageInfo, last_body_page: str) -> bool:
+    """Say whether a page is inside the body: a body page, neither the first nor the last.
+
+    The model's own rule, not `SavedPageInfo.is_inside_body`: an oracle shared with the
+    code under test would change with it and let its bugs through.
+    """
     return page.page_type == PageType.BODY and page.display_page_num not in (
         FIRST_BODY_PAGE,
         last_body_page,
@@ -54,7 +58,7 @@ def _inside_body(page: PageInfo, last_body_page: str) -> bool:
 
 def _normalised(saved: SavedPageInfo) -> SavedPageInfo:
     """Return the page as the tracker hands it out: a finished comic goes back to the beginning."""
-    if saved.is_inside_body():
+    if _inside_body(saved, saved.last_body_page):
         return replace(saved)
     return replace(saved, display_page_num=COMIC_BEGIN_PAGE)
 
@@ -150,7 +154,9 @@ class LastReadPageMachine(RuleBasedStateMachine):
                 assert offered is None
             else:
                 assert offered == _normalised(self.saved[title])
-                assert offered.display_page_num == COMIC_BEGIN_PAGE or offered.is_inside_body()
+                assert offered.display_page_num == COMIC_BEGIN_PAGE or _inside_body(
+                    offered, offered.last_body_page
+                )
 
     @invariant()
     def the_settings_file_reads_back_as_the_page_saved_not_normalised(self) -> None:
