@@ -323,12 +323,15 @@ in the OCR repo, which is read-only from here:
       backend, run on the VirtualBox guest with software OpenGL; whole suite clean
       2026-10-01, a real Mac untried): `docs/plans/macos-gui-tests.md`.
 
-- [ ] **Shared Hypothesis strategies** (`tests/strategies.py`) — reusable
-      `@st.composite` builders for the domain types so property tests can reach
-      past plain strings: `titles()` (`st.sampled_from(list(Titles))`),
-      `year_ranges()` (ordered pairs in the Barks span), `fanta_info()` /
-      `comic_book_info()` via `st.builds(...)`, page/panel specs, `intspan`
-      page ranges. This is the main investment; everything below draws on it.
+- [x] **Shared Hypothesis strategies** — **DONE (2026-10-21)**:
+      `src/barks-reader/tests/unit/strategies.py`, reached through the unit tests'
+      `conftest.py` putting their directory on `sys.path`: `titles()`,
+      `comic_titles()`, `article_titles()`, `fanta_infos()` (the real table), `tags()`,
+      `tag_groups()`, `tag_categories()`, `year_ranges()` (ordered pairs in the Barks
+      span), `page_maps()` (the one copy; `test_properties.py` and the tracker machine
+      draw on it) and `destinations()`, one of every `Destination` kind.
+      `test_navigation_properties.py` fails when a kind is added and not built there.
+      Not done, nothing needs them yet: `comic_book_info()` and `intspan` page ranges.
 - [ ] **Round-trip property tests** — the easy, high-value wins after strategies
       exist. Done in `test_properties.py`: `hyphen_break_engine` (markup with no
       hyphens unchanged; gaps are exactly the breaks), comic-layout math and the
@@ -348,9 +351,11 @@ in the OCR repo, which is read-only from here:
       closed on drawn pages in either page mode, the page saved always one of the
       layout's and in the pair shown, offered back normalised, on disk as saved.
       `image_history` has a generated operation list in `test_properties.py`.
-      Next `NavigationModel`
-      ("every reachable destination resolves to a valid ViewState") and
-      `reader_settings` / `json_settings_manager` (save→load round-trip).
+      `NavigationModel` turned out stateless (four static methods), so it got
+      properties instead (2026-10-21): `test_navigation_properties.py`, every
+      destination resolving to a view state, the tag context the request carries, a
+      year range in the one field its kind uses, auto-select and the kept top view.
+      Left: `reader_settings` / `json_settings_manager` (save→load round-trip).
 - [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
       363 survivors across all 37 modules, every remainder triaged as not worth
       killing (log/message wording, recorded equivalents, dead code, and

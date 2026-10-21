@@ -16,9 +16,9 @@ generates: mutmut runs pytest many times in one process (docs/mutation-testing.m
 from __future__ import annotations
 
 import tempfile
-from collections import OrderedDict
 from dataclasses import replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from barks_fantagraphics.comics_consts import PageType
@@ -36,28 +36,12 @@ from hypothesis.stateful import (
     rule,
     run_state_machine_as_test,
 )
+from strategies import page_maps
+
+if TYPE_CHECKING:
+    from collections import OrderedDict
 
 _TITLES = ["Lost in the Andes!", "Vacation Time", "Trick or Treat"]
-_PAGE_TYPES = st.sampled_from([PageType.FRONT, PageType.TITLE, PageType.BODY, PageType.BACK_MATTER])
-
-
-@st.composite
-def page_maps(draw: st.DrawFn) -> OrderedDict[str, PageInfo]:
-    """Draw a page map as the layout builder makes them: indexes 0..n-1, display numbers 1..n."""
-    count = draw(st.integers(min_value=1, max_value=12))
-    types = draw(st.lists(_PAGE_TYPES, min_size=count, max_size=count))
-    solos = draw(st.lists(st.booleans(), min_size=count, max_size=count))
-    page_map: OrderedDict[str, PageInfo] = OrderedDict()
-    for index in range(count):
-        page_map[str(index + 1)] = PageInfo(
-            page_index=index,
-            display_page_num=str(index + 1),
-            page_type=types[index],
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-            is_solo=solos[index],
-        )
-    return page_map
 
 
 def _inside_body(page: PageInfo, last_body_page: str) -> bool:
@@ -93,7 +77,9 @@ class LastReadPageMachine(RuleBasedStateMachine):
 
     # --- rules ---
 
-    @rule(title=st.sampled_from(_TITLES), page_map=page_maps(), save_enabled=st.booleans())
+    @rule(
+        title=st.sampled_from(_TITLES), page_map=page_maps(max_pages=12), save_enabled=st.booleans()
+    )
     def begin(self, title: str, page_map: OrderedDict[str, PageInfo], save_enabled: bool) -> None:
         layout = ComicLayout(page_map, last_body_page=next(reversed(page_map)))
         self.tracker.begin(title, layout, save_enabled=save_enabled)

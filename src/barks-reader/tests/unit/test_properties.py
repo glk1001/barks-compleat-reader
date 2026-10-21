@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import re
 import string
-from collections import OrderedDict
 from datetime import datetime
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.alpha_split import bucket_label
 from barks_fantagraphics.comics_consts import PageType
@@ -54,29 +53,12 @@ from barks_reader.core.statistics_series import Series, dump_series, load_series
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from okf_reader.core.render import _esc as okf_escape
+from strategies import page_maps
+
+if TYPE_CHECKING:
+    from collections import OrderedDict
 
 # --- page maps and layouts ----------------------------------------------------
-
-_PAGE_TYPES = st.sampled_from([PageType.FRONT, PageType.TITLE, PageType.BODY, PageType.BACK_MATTER])
-
-
-@st.composite
-def page_maps(draw: st.DrawFn) -> OrderedDict[str, PageInfo]:
-    """Draw a page map as the layout builder makes them: indexes 0..n-1, display numbers 1..n."""
-    count = draw(st.integers(min_value=1, max_value=40))
-    types = draw(st.lists(_PAGE_TYPES, min_size=count, max_size=count))
-    solos = draw(st.lists(st.booleans(), min_size=count, max_size=count))
-    page_map: OrderedDict[str, PageInfo] = OrderedDict()
-    for index in range(count):
-        page_map[str(index + 1)] = PageInfo(
-            page_index=index,
-            display_page_num=str(index + 1),
-            page_type=types[index],
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-            is_solo=solos[index],
-        )
-    return page_map
 
 
 @given(page_maps(), st.data())
