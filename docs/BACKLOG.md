@@ -343,8 +343,12 @@ in the OCR repo, which is read-only from here:
       `RuleBasedStateMachine` over the tracker, the store and its file, run from a
       module-level function by `run_state_machine_as_test` (the generated `TestCase`
       is class-scoped, the mutmut trap below; three `pytest.main` runs in one process
-      pass). `image_history` has a generated operation list in `test_properties.py`.
-      Next `last_read_page_tracker` ("current page always in bounds"), then `NavigationModel`
+      pass). The same for `last_read_page_tracker` (2026-10-21):
+      `test_last_read_page_tracker_stateful.py`, comics opened on drawn layouts and
+      closed on drawn pages in either page mode, the page saved always one of the
+      layout's and in the pair shown, offered back normalised, on disk as saved.
+      `image_history` has a generated operation list in `test_properties.py`.
+      Next `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
 - [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
