@@ -300,9 +300,13 @@ in the OCR repo, which is read-only from here:
 
 ## Testing (property-based & mutation)
 
-> Infra landed: Hypothesis dev/ci settings profiles (root `conftest.py`), property
-> tests in `test_properties.py` (comic layout, saved page, year ranges, hyphen
-> engine, log markers), `test_wiki_integration.py` (`story_slug`) and
+> Infra landed: Hypothesis dev/ci settings profiles (root `conftest.py`), a
+> `test_properties.py` in each of the reader (comic layout, saved page, year ranges,
+> hyphen engine, log markers, the Kivy escapers, the Statistics and history JSON,
+> the goto offer, image history, the search baskets, scroll reveal, index text),
+> barks-fantagraphics (speech markup, tag queries, alpha split, panel geometry, the
+> tokenizer) and comic-utils (panel reading order, inflation) packages, as of
+> 2026-10-21, plus `test_wiki_integration.py` (`story_slug`) and
 > `test_search_query.py`, and mutmut mutation testing (`scripts/mutmut.sh`,
 > backlog in `docs/mutation-testing.md`).
 > Remaining is broadening property-based coverage and burning down the mutmut
@@ -328,11 +332,16 @@ in the OCR repo, which is read-only from here:
 - [ ] **Round-trip property tests** — the easy, high-value wins after strategies
       exist. Done in `test_properties.py`: `hyphen_break_engine` (markup with no
       hyphens unchanged; gaps are exactly the breaks), comic-layout math and the
-      saved page's JSON. Still open: the year-range `get_range_str` format/parse
-      round-trip, `reader_formatter`, `cpi_calculator` (monotonic/bounded inflation).
+      saved page's JSON; and since 2026-10-21 `reader_formatter` (the three escapers
+      agree), `cpi_calculator` (there and back, monotonic), `statistics_series` and
+      `reading_history` (their JSON), `tag_query` (described then parsed) and
+      `speech_markup` (escape, spans). The year-range `get_range_str` has no parser
+      to round-trip against; nothing is left here.
 - [ ] **Stateful testing pilot** — a Hypothesis `RuleBasedStateMachine` that
       generates *sequences* of operations and checks invariants after each.
-      Start with `reading_history` / `last_read_page_tracker` ("current page
+      `image_history` has one as a generated operation list (2026-10-21), kept
+      module-level: a `RuleBasedStateMachine.TestCase` is class-scoped, the mutmut
+      trap below. Next `reading_history` / `last_read_page_tracker` ("current page
       always in bounds", "no visited entry lost"), then `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
