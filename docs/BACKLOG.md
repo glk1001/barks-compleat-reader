@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-10-16.
+Last updated: 2026-10-21.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -274,7 +274,61 @@ in the OCR repo, which is read-only from here:
 
 - [ ] **Architecture deep-dive** — run the `improve-codebase-architecture`
       exploration to find shallow modules to deepen and untested seams to
-      surface across the codebase.
+      surface across the codebase. A first survey (2026-10-21: file size, radon
+      complexity, distinct `self` attributes per class, `noqa` and pyrefly-baseline
+      density, 12-month churn) produced the five items below and the `render.py`
+      round in Done. The generated data modules (`barks_bibliography.py`,
+      `barks_tags_data.py`, `whoosh_barks_terms.py`, the title tables) are big but
+      are tables, not logic, and were left out. The `python-architecture` skill's
+      proposal step (issues, then a strategy table, then confirmation) is the way
+      to start each one; a golden dump of real output before and after, as the
+      `render.py` round used, is the proof where the code is pure.
+- [ ] **`okf_reader/ui/viewer.py` — split `OKFViewer`** — one class of about 1,750
+      lines: 125 methods, 164 distinct `self` attributes, a 125-line constructor with
+      10 positional parameters, 44 `noqa` (24 of them ANN001) and 11 of the pyrefly
+      baseline's entries, the most of any file. It holds the tree panel, the search
+      panel, the top bar, the page rendering, four keyboard focus regions, history,
+      footnote popups, link hover and the background. Split along the focus regions,
+      which is how `handle_key` already dispatches (`_handle_tree_key`,
+      `_handle_results_key`, `_handle_bar_key`, `_handle_page_key`); the barks_reader
+      side shows the shape (`main_screen.py` with `main_screen_nav.py`,
+      `navigation_coordinator.py` and `tree_view_manager.py`). `test_viewer.py` and
+      the wiki GUI tests are the net. Pairs with the keyword-only item above
+      (`OKFViewer` is one of its 10-parameter constructors). The biggest payoff of
+      the five.
+- [ ] **`barks_reader/ui/search_screen.py` — a controller per search pane** — 2,529
+      lines, 19 classes, 179 defs; `SearchScreen` alone has 204 distinct `self`
+      attributes and the repo's most complex method (`_handle_tags_enter_by_key`,
+      radon 19). Title, tag, word, said-by, era and scope searches share one class,
+      the mode visible in the method prefixes (`_tag_*`, `_word_*`, `_said_by_*`).
+      The Kivy-free state already went to `core/search_state.py` (the word and tag
+      baskets, era, scope); the UI half never followed. Two moves: a controller per
+      pane (tag, word) owning its chips, rows and key handling, and the twelve small
+      chip and button classes at the top of the file into a widgets module of their
+      own. The 621-line `search_screen.kv` shrinks with them. Nets:
+      `test_search_screen.py`, `test_search_state.py`, the search GUI tests.
+- [ ] **`scripts/validate_barks_reader_core.py` — a package of phases** — 2,772
+      lines, 13 phases, 78 top-level defs, one 172-line title-files check
+      (`_validate_title_files`), 64 `noqa` of which 43 are SLF001 reaching into
+      `SystemFilePaths`' private path attributes. One module per phase in a package
+      under `scripts/`, sharing a context object; the SLF001 count says
+      `SystemFilePaths` wants a public iterator over its files so the validator stops
+      reaching in. `scripts/tests/` covers it, and it runs nightly rather than as a
+      gate, so it is the lowest-risk of the five.
+- [ ] **`barks_reader/ui/comic_book_reader.py` — lift the page-ready state
+      machine** — `ComicBookReader` (64 distinct attributes) and
+      `ComicBookReaderScreen` (66) mix page loading, the pending-page poll
+      (`_start_pending_poll`, `_poll_pending_page`, `_arm_reveal`,
+      `_reveal_on_timeout`) and the fullscreen and windowed choreography
+      (`_goto_fullscreen_on_comic_read`, `_exit_fullscreen`,
+      `_finish_closing_once_laid_out`). The poll-and-reveal state machine is a core
+      module with a `loguru_sink` test; the window transitions can join
+      `app_window_geometry.py`.
+- [ ] **Smaller, mechanical** — `core/filtered_title_lists.py` `get_title_lists`
+      (radon 23) is 100 lines of near-identical lambdas: one series-and-year filter
+      helper with a fold-years parameter collapses it. `core/view_pipeline.py`'s 52
+      methods are two concerns, the top-view image and the bottom fun image, and
+      could be two classes behind the one facade.
 - [ ] **Make wide signatures keyword-only** — 62 functions take more than 5
       positional params (PLR0917, surfaced when ruff 0.16.0 stabilized the rule;
       now ignored in `.ruff.toml` alongside PLR0913). The rule's implied fix —
@@ -528,6 +582,17 @@ in the OCR repo, which is read-only from here:
 
 ## Done (recent)
 
+- [x] **`okf_reader/core/render.py` deep refactor** (2026-10-21) — the page renderer
+      as `_PageBuilder` (a handler per token type, dispatched from a dict), the table
+      in six pure phases, `_inline`'s fixed tags as data, one MarkdownIt parser built
+      once (`parse_markdown`), and the file-level complexity `noqa` gone. The bundle
+      tree and link resolution moved to `core/bundle.py` (with `test_bundle.py`);
+      `escape_markup` is public and `escape_kivy_markup` delegates to it. Proven by
+      a golden dump of every barks-wiki page rendered before and after (1,689 pages,
+      byte-identical) plus the full GUI suite. Left: the "Footnotes" section heading
+      uses the standalone `HEADING_COLOR`, not the themed one `render_page` is passed
+      (pre-existing, kept as is); the Groma `okf-core` component does not list
+      `core/bundle.py` yet (groma is not installed on this PC).
 - [x] **Strengthen weak generic type annotations** (2026-07-08, commit 430e04c) —
       all 37 bare `dict`/`list`/`tuple` annotations parameterized; also fixed 3
       latent type issues the stronger types exposed.
