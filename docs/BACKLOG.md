@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-10-21.
+Last updated: 2026-10-24.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -386,35 +386,6 @@ in the OCR repo, which is read-only from here:
       draw on it) and `destinations()`, one of every `Destination` kind.
       `test_navigation_properties.py` fails when a kind is added and not built there.
       Not done, nothing needs them yet: `comic_book_info()` and `intspan` page ranges.
-- [ ] **Round-trip property tests** — the easy, high-value wins after strategies
-      exist. Done in `test_properties.py`: `hyphen_break_engine` (markup with no
-      hyphens unchanged; gaps are exactly the breaks), comic-layout math and the
-      saved page's JSON; and since 2026-10-21 `reader_formatter` (the three escapers
-      agree), `cpi_calculator` (there and back, monotonic), `statistics_series` and
-      `reading_history` (their JSON), `tag_query` (described then parsed) and
-      `speech_markup` (escape, spans). The year-range `get_range_str` has no parser
-      to round-trip against; nothing is left here.
-- [ ] **Stateful testing pilot** — a Hypothesis `RuleBasedStateMachine` that
-      generates *sequences* of operations and checks invariants after each.
-      Done for `reading_history` (2026-10-21): `test_reading_history_stateful.py`, a
-      `RuleBasedStateMachine` over the tracker, the store and its file, run from a
-      module-level function by `run_state_machine_as_test` (the generated `TestCase`
-      is class-scoped, the mutmut trap below; three `pytest.main` runs in one process
-      pass). The same for `last_read_page_tracker` (2026-10-21):
-      `test_last_read_page_tracker_stateful.py`, comics opened on drawn layouts and
-      closed on drawn pages in either page mode, the page saved always one of the
-      layout's and in the pair shown, offered back normalised, on disk as saved.
-      `image_history` has a generated operation list in `test_properties.py`.
-      `NavigationModel` turned out stateless (four static methods), so it got
-      properties instead (2026-10-21): `test_navigation_properties.py`, every
-      destination resolving to a view state, the tag context the request carries, a
-      year range in the one field its kind uses, auto-select and the kept top view.
-      `reader_settings` / `json_settings_manager` (2026-10-21):
-      `test_settings_properties.py`, a value of every field's kind written as the
-      panel writes it reading back typed, here and through the ini file, the three
-      setters too; and the JSON store as a machine, pages per title, the selected
-      node with its state (the History path migrating), the sizes warned about, a
-      manager loaded from the file answering as the live one. Nothing is left here.
 - [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
       363 survivors across all 37 modules, every remainder triaged as not worth
       killing (log/message wording, recorded equivalents, dead code, and
@@ -582,6 +553,35 @@ in the OCR repo, which is read-only from here:
 
 ## Done (recent)
 
+- [x] **Round-trip property tests** (2026-10-21) — the easy, high-value wins after strategies
+      exist. Done in `test_properties.py`: `hyphen_break_engine` (markup with no
+      hyphens unchanged; gaps are exactly the breaks), comic-layout math and the
+      saved page's JSON; and since 2026-10-21 `reader_formatter` (the three escapers
+      agree), `cpi_calculator` (there and back, monotonic), `statistics_series` and
+      `reading_history` (their JSON), `tag_query` (described then parsed) and
+      `speech_markup` (escape, spans). The year-range `get_range_str` has no parser
+      to round-trip against; nothing is left here.
+- [x] **Stateful testing pilot** (2026-10-21) — a Hypothesis `RuleBasedStateMachine` that
+      generates *sequences* of operations and checks invariants after each.
+      Done for `reading_history` (2026-10-21): `test_reading_history_stateful.py`, a
+      `RuleBasedStateMachine` over the tracker, the store and its file, run from a
+      module-level function by `run_state_machine_as_test` (the generated `TestCase`
+      is class-scoped, the mutmut trap below; three `pytest.main` runs in one process
+      pass). The same for `last_read_page_tracker` (2026-10-21):
+      `test_last_read_page_tracker_stateful.py`, comics opened on drawn layouts and
+      closed on drawn pages in either page mode, the page saved always one of the
+      layout's and in the pair shown, offered back normalised, on disk as saved.
+      `image_history` has a generated operation list in `test_properties.py`.
+      `NavigationModel` turned out stateless (four static methods), so it got
+      properties instead (2026-10-21): `test_navigation_properties.py`, every
+      destination resolving to a view state, the tag context the request carries, a
+      year range in the one field its kind uses, auto-select and the kept top view.
+      `reader_settings` / `json_settings_manager` (2026-10-21):
+      `test_settings_properties.py`, a value of every field's kind written as the
+      panel writes it reading back typed, here and through the ini file, the three
+      setters too; and the JSON store as a machine, pages per title, the selected
+      node with its state (the History path migrating), the sizes warned about, a
+      manager loaded from the file answering as the live one. Nothing is left here.
 - [x] **`okf_reader/core/render.py` deep refactor** (2026-10-21) — the page renderer
       as `_PageBuilder` (a handler per token type, dispatched from a dict), the table
       in six pure phases, `_inline`'s fixed tags as data, one MarkdownIt parser built
