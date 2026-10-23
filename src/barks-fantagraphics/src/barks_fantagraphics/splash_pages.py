@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 # splash: half, less the gutters, which bring a half-page panel to about 0.49.
 # Measured over every story (2026-10-23): off page 1 each splash covers at least 0.493
 # and no other panel more than 0.353. On page 1 the title panels fall in two groups,
-# 0.40 to 0.459 (left out) and half-page ones from 0.472 up; the one of those left out
-# by hand is in SPLASH_EXCEPTIONS. Phase 12 of validate-barks-reader-files.py fails on
-# any page that crosses the line either way.
+# 0.40 to 0.459 (left out) and half-page ones from 0.472 up; those of them judged by eye
+# not to be splashes are left out by hand in SPLASH_EXCEPTIONS. Phase 12 of
+# validate-barks-reader-files.py fails on any page that crosses the line either way.
 SPLASH_MIN_FRACTION: Final = 0.47
 
 
