@@ -1,10 +1,9 @@
 # ruff: noqa: T201
 """Find every story's splash pages from its panel boxes, and print them as tag data.
 
-A splash panel takes the space of four of the story's normal panels
-(barks_fantagraphics.splash_pages), page 1 included. The pages are read from the
-reader data pack's Fantagraphics panel-segments JSONs, the ones Phase 12 checks, and
-numbered as the reader numbers them.
+A splash panel covers half the page or more (barks_fantagraphics.splash_pages),
+page 1 included. The pages are read from the reader data pack's Fantagraphics
+panel-segments JSONs, the ones Phase 12 checks, and numbered as the reader numbers them.
 
 Prints the Tags.SPLASH list for BARKS_TAGGED_TITLES and its BARKS_TAGGED_PAGES
 entries, ready to paste into barks_tags_data.py, less the pages its SPLASH_EXCEPTIONS

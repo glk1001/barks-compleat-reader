@@ -1,25 +1,23 @@
 """Find a story's splash pages from its panel bounding boxes.
 
-A splash panel takes the space of four of the story's normal panels: half a page in a
-story laid out eight panels to a page, two-thirds of one laid out six to a page.
+A splash panel covers half the page or more, whatever the story's layout.
 """
 
 from __future__ import annotations
 
-from statistics import median
 from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-# How many normal panels' space a page's largest panel must cover to be a splash.
-# Measured over every Fantagraphics story (2026-10-11): off page 1 it divides cleanly,
-# each splash covering at least 3.9 and no other panel more than 3.1. Page 1 has no
-# such gap: dozens of title panels cover 3.45 to 3.56 (one 3.95), among page-1
-# splashes from 3.53 up. The 35 title panels over the line are left out by hand
-# (SPLASH_EXCEPTIONS), and Phase 12 of validate-barks-reader-files.py fails on any
-# page that crosses it either way.
-SPLASH_PANEL_UNITS: Final = 3.5
+# How much of the area a page's panels span its largest panel must cover to be a
+# splash: half, less the gutters, which bring a half-page panel to about 0.49.
+# Measured over every story (2026-10-23): off page 1 each splash covers at least 0.493
+# and no other panel more than 0.353. On page 1 the title panels fall in two groups,
+# 0.40 to 0.459 (left out) and half-page ones from 0.472 up; the one of those left out
+# by hand is in SPLASH_EXCEPTIONS. Phase 12 of validate-barks-reader-files.py fails on
+# any page that crosses the line either way.
+SPLASH_MIN_FRACTION: Final = 0.47
 
 
 def get_panel_area_fractions(segments: Mapping[str, Any]) -> list[float]:
@@ -43,9 +41,6 @@ def get_panel_area_fractions(segments: Mapping[str, Any]) -> list[float]:
 def get_splash_pages(pages: Mapping[str, Sequence[float]]) -> list[str]:
     """Return the pages whose largest panel is a splash.
 
-    A normal panel is the median panel of the whole story, so the same rule finds a
-    half-page splash among eight panels to a page and a two-thirds one among six.
-
     Args:
         pages: Each page's number and its panels' area fractions (see
             `get_panel_area_fractions`), in page order.
@@ -54,12 +49,6 @@ def get_splash_pages(pages: Mapping[str, Sequence[float]]) -> list[str]:
         The splash pages' numbers, in page order.
 
     """
-    areas = [area for panels in pages.values() for area in panels]
-    if not areas:
-        return []
-    normal_panel = median(areas)
     return [
-        page
-        for page, panels in pages.items()
-        if panels and max(panels) >= SPLASH_PANEL_UNITS * normal_panel
+        page for page, panels in pages.items() if max(panels, default=0.0) >= SPLASH_MIN_FRACTION
     ]

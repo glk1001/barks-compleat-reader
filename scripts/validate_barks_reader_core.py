@@ -2401,9 +2401,9 @@ def _story_dirs(title_enum: Titles) -> str:
 #
 # Tags.SPLASH and its pages in BARKS_TAGGED_PAGES are written by hand (from
 # scripts/find-splash-pages.py); the panel-segments JSONs say which pages are
-# splashes. Page 1 is judged too, but its title panel is often near a splash's size,
-# so SPLASH_EXCEPTIONS leaves out by hand each page the panel boxes call a splash
-# that is not one. The pages are numbered by the layouts Phase 10 built.
+# splashes. Page 1 is judged too, but its title panel can come within a few percent of
+# half the page, so SPLASH_EXCEPTIONS leaves out by hand each page the panel boxes call
+# a splash that is not one. The pages are numbered by the layouts Phase 10 built.
 
 
 def get_splash_story_titles(titles_filter: list[str] | None = None) -> list[str]:
