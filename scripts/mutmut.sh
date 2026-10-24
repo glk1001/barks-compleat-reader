@@ -45,6 +45,12 @@
 
 set -euo pipefail
 
+# No core dumps. mutmut kills a mutant that runs too long with SIGXCPU, and each kill
+# would otherwise dump the test process's memory: hundreds of MB once compressed, and
+# many GB on / while it is written. Three at once nearly filled gregspc2's root on
+# 2026-10-25. A timed-out mutant is an expected result, so nothing ever reads them.
+ulimit -c 0
+
 repo_root=$(git rev-parse --show-toplevel)
 
 package="reader"
