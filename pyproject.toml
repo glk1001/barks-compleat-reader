@@ -67,7 +67,7 @@ dev = [
     "nuitka>=2.5",
     # Build-time only: Nuitka imports setuptools.build_meta and
     # setuptools.command.egg_info at module scope. Never shipped in the bundle.
-    "setuptools>=83.0.0",
+    "setuptools>=84.1.0",
     "patchelf>=0.17 ; sys_platform == 'linux'",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
