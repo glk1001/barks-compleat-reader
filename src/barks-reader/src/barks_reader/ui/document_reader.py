@@ -247,6 +247,9 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _on_story_list_dismissed(self, instance: Widget) -> None:
         self._story_dropdown = None
+        # A selection has read the flag by now; a list left without one must not
+        # leave it set for the next pick by mouse.
+        self._story_picked_by_keyboard = False
         self._on_dropdown_dismissed(instance)
 
     def _goto_story(self, link: StoryLink, *, keyboard_initiated: bool) -> None:

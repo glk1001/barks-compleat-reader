@@ -185,6 +185,18 @@ class TestGotoStory:
         )
         assert screen._story_picked_by_keyboard is False
 
+    def test_a_list_left_without_a_pick_forgets_the_keyboard(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        """Else the next pick by mouse would be passed on as a keyboard one."""
+        screen._story_buttons = [MagicMock(), MagicMock()]
+        screen._dropdown_buttons_cache = screen._story_buttons
+        screen._dropdown_focused_idx = 0
+        screen._activate_dropdown_item()  # Return, but the press never reached the list
+        assert screen._story_picked_by_keyboard is True
+        screen._on_story_list_dismissed(MagicMock())
+        assert screen._story_picked_by_keyboard is False
+
     # --- Go to Story pressed on the bar ---
 
     @staticmethod
