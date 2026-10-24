@@ -135,8 +135,12 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
         return None
 
     def ensure_populated(self) -> None:
+        # Marked here too, not only on expansion: a goto populates the node and then
+        # opens it without the expansion path, and every later goto or expansion
+        # would add its children again.
         if self.populate_callback and not self.populated:
             self.populate_callback()
+            self.populated = True
 
 
 class MainTreeViewNode(ButtonTreeViewNode):

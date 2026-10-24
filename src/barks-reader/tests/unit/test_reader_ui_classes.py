@@ -96,6 +96,22 @@ class TestButtonTreeViewNode:
         assert ButtonTreeViewNode._get_nodes_treeview(node) is None
         node.on_press()  # nothing to toggle, and no error
 
+    def test_ensure_populated_populates_once(self) -> None:
+        """A second goto into a year range must not add its titles again."""
+        node = ButtonTreeViewNode()
+        node.populate_callback = MagicMock()
+
+        node.ensure_populated()
+        node.ensure_populated()
+
+        node.populate_callback.assert_called_once_with()
+        assert node.populated is True
+
+    def test_ensure_populated_without_a_callback_does_nothing(self) -> None:
+        node = ButtonTreeViewNode()
+        node.ensure_populated()
+        assert node.populated is False
+
 
 class TestNodeNames:
     """The names the selection log line gives the rows that are not titles."""
