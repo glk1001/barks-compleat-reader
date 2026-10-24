@@ -249,6 +249,35 @@ class TestDeferredPopulation:
         )
         mock_dependencies["reader_tree_view"].add_node.assert_called_with(title_node, parent=node)
 
+    def test_populating_logs_the_node_and_its_children_count(
+        self,
+        tree_builder: ReaderTreeBuilder,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        # A GUI test counts these lines: one per node, however often a goto reaches it.
+        lazy_rows = tuple(
+            NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=MagicMock()) for _ in range(3)
+        )
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Tag",
+            destination=TagDestination(tag=Tags.AIRPLANES),
+            lazy_children=lambda: lazy_rows,
+        )
+        _build_with_spec(tree_builder, spec)
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=MagicMock()):
+            node.populate_callback()
+
+        populated = [
+            m
+            for m in loguru_sink
+            if re.search(pattern(log_markers.POPULATED_NODE, name="Tag", count=3), m)
+        ]
+        assert len(populated) == 1
+
     def test_repopulate_on_expand_flag_defaults_to_false(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:

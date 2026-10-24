@@ -208,8 +208,12 @@ class ReaderTreeBuilder:
         """Defer creating *node*'s title children until the node is first expanded."""
 
         def _populate() -> None:
-            for child_spec in make_children_specs():
+            children_specs = make_children_specs()
+            for child_spec in children_specs:
                 self._add_node(child_spec, parent=node)
+            logger.debug(
+                log_markers.POPULATED_NODE.format(name=node.get_name(), count=len(children_specs))
+            )
 
         node.populate_callback = _populate
         node.populated = False

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import expected, harness, memory, nodes, search
-from barks_gui.logs import last_field, messages
+from barks_gui.logs import fields_of, last_field, messages
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -290,6 +290,38 @@ def test_two_words_are_combined_by_keyboard(boot: AppBoot) -> None:
 
 NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
+
+
+RANGE_QUERY = "some"
+RANGE_RESULT = "SOMETHIN_FISHY_HERE"
+RANGE_RESULT_NAME = "Somethin' Fishy Here"
+RANGE_YEARS = (1951, 1954)
+RANGE_NODE = "1951-1954"
+
+
+def test_a_goto_then_reopening_its_year_range_lists_the_titles_once(boot: AppBoot) -> None:
+    """Pick a story into its year range, then close the range and open it again.
+
+    The goto makes the range's title rows; reopening must not make them a second
+    time, which listed 1951-1954 as 136 to 209 and then 136 to 209 again.
+    """
+    d = boot(nodes.TITLE_SEARCH, cues={RANGE_RESULT_NAME: None})
+    search.type_query(d, RANGE_QUERY)
+    assert expected.title_search_titles(RANGE_QUERY)[0] == RANGE_RESULT
+    assert RANGE_RESULT in expected.chrono_range_titles(*RANGE_YEARS)
+    with d.expect(pattern(markers.SEARCH_SELECTED_TITLE, title=RANGE_RESULT_NAME)):
+        search.pick_title_result(d, 1, RANGE_RESULT)
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # focus back to the tree
+
+    # Left from a title selects its range and closes it; Return opens it again.
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name=RANGE_NODE), "Left")
+    d.key_then_wait(pattern(markers.NODE_EXPANDED, name=RANGE_NODE), "Return")
+    # Its first title, a key later: the rows are made by then.
+    first = expected.chrono_range_titles(*RANGE_YEARS)[0]
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=first), "Down")
+
+    counts = fields_of(d, markers.POPULATED_NODE, "count", name=RANGE_NODE)
+    assert counts == [str(len(expected.chrono_range_titles(*RANGE_YEARS)))]
 
 
 def test_a_query_with_no_matches_reports_zero_results(boot: AppBoot) -> None:
