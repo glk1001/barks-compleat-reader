@@ -306,6 +306,28 @@ def test_view_state_for_unknown_destination_raises(model: NavigationModel) -> No
         model.view_state_for(UnregisteredDestination())
 
 
+# --- child_to_open_on ---------------------------------------------------
+
+
+def test_search_opens_on_its_title_search(model: NavigationModel) -> None:
+    assert model.child_to_open_on(SearchDestination()) is TitleSearchDestination
+
+
+@pytest.mark.parametrize(
+    "parent",
+    [
+        TitleSearchDestination(),
+        TagSearchDestination(),
+        WordSearchDestination(),
+        SpeechIndexDestination(),
+        ReadingDestination(),
+        IntroDestination(),
+    ],
+)
+def test_other_nodes_open_on_themselves(model: NavigationModel, parent: Destination) -> None:
+    assert model.child_to_open_on(parent) is None
+
+
 # --- auto_select_target -----------------------------------------------
 
 

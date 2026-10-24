@@ -223,6 +223,17 @@ class NavigationModel:
         return None
 
     @staticmethod
+    def child_to_open_on(parent: Destination) -> type[Destination] | None:
+        """Return the kind of child a parent goes straight to when the user opens it.
+
+        Search opens on its title search, the one most used: its own view is only a
+        backdrop, and the tag and word searches are one key down from it.
+        """
+        if isinstance(parent, SearchDestination):
+            return TitleSearchDestination
+        return None
+
+    @staticmethod
     def keep_top_view_for_title_under(parent: Destination | None) -> bool:
         """Whether selecting a title under *parent* should keep the current top view.
 

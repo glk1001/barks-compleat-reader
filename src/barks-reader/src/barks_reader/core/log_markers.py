@@ -28,6 +28,7 @@ APP_STARTING: Final = "*** Starting barks reader ***"
 # ---------------------------------------------------------------- the tree --
 NEW_SELECTED_NODE: Final = 'New selected node: "{name}". Previous node: "{previous}".'
 NODE_EXPANDED: Final = "Node expanded: '{name}'."
+NODE_OPENED_ON_CHILD: Final = "Node '{name}' opened on its child '{child}'."
 SAVED_NODE_ANCESTOR_SELECTED: Final = "Saved node gone: selected its ancestor '{name}'."
 NODE_COLLAPSED: Final = "Node collapsed: '{name}'."
 # The tree scrolling, after a node expands, so its children show below its row.

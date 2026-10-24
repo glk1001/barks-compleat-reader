@@ -292,6 +292,24 @@ NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
 
 
+def test_opening_search_lands_in_the_title_search_box(boot: AppBoot) -> None:
+    """Return on Search opens it on Titles, the search most used, ready to type.
+
+    As Return on Titles itself does. Only opening it jumps: moving onto Search
+    leaves it selected.
+    """
+    d = boot(nodes.READING)
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Search"), "Up")
+    assert d.current_node() == "Search"
+    with (
+        d.expect(pattern(markers.NODE_OPENED_ON_CHILD, name="Search", child="Titles")),
+        d.expect(pattern(markers.SEARCH_MODE_SET, mode="Title")),
+    ):
+        d.key_then_wait(pattern(markers.SEARCH_BOX_FOCUS, mode="Title", state="focused"), "Return")
+    assert d.current_node() == "Titles"
+    search.type_into_box(d, CLEAR_QUERY)
+
+
 RANGE_QUERY = "some"
 RANGE_RESULT = "SOMETHIN_FISHY_HERE"
 RANGE_RESULT_NAME = "Somethin' Fishy Here"

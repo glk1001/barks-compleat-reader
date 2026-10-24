@@ -328,6 +328,11 @@ class TreeViewManager:
             # fun-image briefly appears before the title view replaces it.
             logger.info(f"Single-child node '{node.get_name()}': auto-selecting only title.")
             self._auto_select_single_child(node)
+        elif (child := self._child_to_open_on(node)) is not None:
+            opened_on = log_markers.NODE_OPENED_ON_CHILD
+            logger.info(opened_on.format(name=node.get_name(), child=child.get_name()))
+            self._tree_view_screen.select_node(child)
+            self.set_view_state_for_node(child)
         else:
             self.set_view_state_for_node(node)
 
@@ -356,6 +361,22 @@ class TreeViewManager:
         """Return True if the node has exactly one TitleTreeViewNode child."""
         title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
         return len(title_children) == 1
+
+    def _child_to_open_on(self, node: ButtonTreeViewNode) -> ButtonTreeViewNode | None:
+        """Return the child the navigation model says `node` opens on, if it has one."""
+        if node.destination is None:
+            return None
+        child_type = self._nav_model.child_to_open_on(node.destination)
+        if child_type is None:
+            return None
+        return next(
+            (
+                c
+                for c in node.nodes
+                if isinstance(c, ButtonTreeViewNode) and isinstance(c.destination, child_type)
+            ),
+            None,
+        )
 
     def _auto_select_single_child(self, node: ButtonTreeViewNode) -> None:
         """Auto-select the only TitleTreeViewNode child synchronously.

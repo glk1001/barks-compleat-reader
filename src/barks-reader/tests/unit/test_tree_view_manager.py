@@ -17,9 +17,12 @@ from barks_reader.core.navigation import (
     IntroDestination,
     MainIndexDestination,
     RandomTitlesDestination,
+    SearchDestination,
     TagDestination,
     TagGroupDestination,
+    TagSearchDestination,
     TitleDestination,
+    TitleSearchDestination,
     WikiIndexDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
@@ -285,6 +288,40 @@ class TestTreeViewManager:
             mock_dependencies["renderer"].render.assert_called_with(
                 IntroDestination(), preserve_top_view=False, preserve_fun_view=False
             )
+
+    def test_opening_search_selects_and_shows_its_title_search(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        children = []
+        for name, destination in (
+            ("Tags", TagSearchDestination()),
+            ("Titles", TitleSearchDestination()),
+        ):
+            child = MagicMock(spec=ButtonTreeViewNode)
+            child.destination = destination
+            child.get_name.return_value = name
+            children.append(child)
+        tags, titles = children
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.populate_callback = None
+        node.destination = SearchDestination()
+        node.get_name.return_value = "Search"
+        node.nodes = [tags, titles]  # found by its destination, not its place
+        node.parent_node = MagicMock()
+        node.parent_node.nodes = [node]
+
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
+            tree_view_manager.on_node_expanded(MagicMock(), node)
+
+        screen_mocks["tree_view"].select_node.assert_called_once_with(titles)
+        mock_dependencies["renderer"].render.assert_called_once_with(
+            TitleSearchDestination(), preserve_top_view=False, preserve_fun_view=False
+        )
+        assert log_markers.NODE_OPENED_ON_CHILD.format(name="Search", child="Titles") in loguru_sink
 
     def test_on_node_expanded_repopulates_flagged_node(
         self,
