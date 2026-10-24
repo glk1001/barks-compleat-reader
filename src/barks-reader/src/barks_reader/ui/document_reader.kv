@@ -1,8 +1,8 @@
 <DocumentReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    # Shared skeleton (ui/action_bar.kv). Close is the only button, so no
-    # QuitFence — the skeleton's built-in separator suffices.
+    # Shared skeleton (ui/action_bar.kv). Close sits alone behind the fence, as in the
+    # comic reader, so an overshoot on Go to Story can't close the document.
     ReaderActionBar:
         id: doc_action_bar
         pos_hint: {"center_x": 0.5, 'top': 1}
@@ -11,6 +11,17 @@
         width: doc_page.width
         icon_source: root.app_icon_filepath
         title_text: root.action_bar_title
+
+        ChromeBarButton:
+            id: goto_story_button
+            text: "Go to Story"
+            icon: str(sys_paths.get_barks_reader_goto_icon_file())
+            important: True
+            # Greyed, not disabled: Kivy's disabled state drops an icon button's icon.
+            opacity: 1.0 if root.has_story_links else root.GREYED_BUTTON_OPACITY
+            on_release: root.open_goto_story_from_bar()
+
+        QuitFence:
 
         ChromeBarButton:
             id: close_button

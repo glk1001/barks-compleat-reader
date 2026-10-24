@@ -205,6 +205,9 @@ WIKI_READER_ACTIVE: Final = "Wiki reader screen is active."
 DOCUMENT_OPENED: Final = 'Document reader opened "{title}" with {pages} pages.'
 DOCUMENT_PAGE: Final = 'Document page {page}/{pages}: "{filename}".'
 DOCUMENT_CLOSING: Final = "Document reader closing."
+DOCUMENT_LINKS_UNREADABLE: Final = 'Document story links "{path}" unreadable: {error}.'
+DOCUMENT_LINK_SKIPPED: Final = 'Document story links "{path}": skipped {entry}.'
+DOCUMENT_GOTO_STORY: Final = 'Document goto story: "{name}", page {page}.'
 CORPUS_STATS_OPENED: Final = "CorpusStats: opened."
 CORPUS_STATS_CLOSING: Final = "CorpusStats: closing."
 

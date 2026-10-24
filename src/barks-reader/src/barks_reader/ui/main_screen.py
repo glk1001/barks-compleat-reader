@@ -827,6 +827,20 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
         self._nav.focus_title_view_portal_after_wiki_goto()
 
+    def goto_title_from_document(
+        self, title: Titles, page: str, *, keyboard_initiated: bool
+    ) -> None:
+        """Select ``title`` with ``page`` offered, on behalf of the document reader.
+
+        The document reader's "Go to Story" closes the document first (restoring the view
+        it was opened from), so the user lands here with the title's reading controls up
+        and the figure's page offered, the page last read a step away, as from a history
+        row. Focus goes to the title portal for a keyboard pick; a mouse pick stays in
+        mouse mode.
+        """
+        self._on_goto_history_title(title, page)
+        self._nav.focus_title_portal_after_goto(keyboard_initiated=keyboard_initiated)
+
     def _on_goto_history_title(self, title: Titles, page: str = "") -> None:
         """Select ``title`` in the tree and title view, from a history row.
 

@@ -788,6 +788,24 @@ class TestHistoryGoto:
         )
 
 
+class TestDocumentGoto:
+    """A document figure names a story page: offered as a history row's page is."""
+
+    @pytest.mark.parametrize("keyboard_initiated", [True, False])
+    def test_a_figure_goes_to_its_page(
+        self, main_screen: MainScreen, keyboard_initiated: bool
+    ) -> None:
+        main_screen.goto_title_from_document(
+            Titles.LOST_IN_THE_ANDES, "7", keyboard_initiated=keyboard_initiated
+        )
+        main_screen._nav_coord.navigate_to_title_with_page.assert_called_once_with(
+            ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=None), "7"
+        )
+        main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
+            keyboard_initiated=keyboard_initiated
+        )
+
+
 class TestSettingsEscape:
     """Escape lands on the settings' X, Enter there closes and returns to the action bar."""
 
