@@ -789,6 +789,8 @@ class TestSearchAppendixIndex:
         history = specs[0].children[intro_texts.index(INTRO_ILLUSTRATED_HISTORY_TEXT)]
         assert history.destination == IllustratedHistoryDestination()
         assert history.start_closed
+        assert history.kind is NodeKind.MAIN
+        assert all(c.kind is NodeKind.MAIN for c in history.children)
         assert [(c.text, c.press_action, c.start_closed) for c in history.children] == [
             ("Introduction", PressAction.OPEN_DOCUMENT, True),
             ("Learning the Medium", PressAction.OPEN_DOCUMENT, True),

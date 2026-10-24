@@ -379,6 +379,15 @@ change = """
 reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
 
 [[equivalent]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths.__init__"
+change = """
+- self._illustrated_history_doc_dir: Path | None = None
++ self._illustrated_history_doc_dir: Path | None = ""
+"""
+reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
+
+[[equivalent]]
 module = "barks_reader.core.json_settings_manager"
 function = "SettingsManager.__init__"
 change = """
@@ -2193,6 +2202,42 @@ change = """
 + stack = "".join(traceback.format_exception(None, exc_value, exc_traceback))
 """
 reason = "Since Python 3.10, format_exception ignores its first argument when the value and traceback are given."
+
+[[equivalent]]
+module = "barks_reader.core.document_links"
+function = "load_story_links"
+change = """
+- figures = json.loads(links_path.read_text(encoding="utf-8"))["figures"]
++ figures = json.loads(links_path.read_text(encoding=None))["figures"]
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.document_links"
+function = "load_story_links"
+change = """
+- figures = json.loads(links_path.read_text(encoding="utf-8"))["figures"]
++ figures = json.loads(links_path.read_text(encoding="UTF-8"))["figures"]
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.document_chapters"
+function = "_chapter_title"
+change = """
+- title = json.loads(info_path.read_text(encoding="utf-8"))["title"]
++ title = json.loads(info_path.read_text(encoding=None))["title"]
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.document_chapters"
+function = "_chapter_title"
+change = """
+- title = json.loads(info_path.read_text(encoding="utf-8"))["title"]
++ title = json.loads(info_path.read_text(encoding="UTF-8"))["title"]
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[untriaged]]
 module = "barks_reader.core.hyphen_break_engine"
