@@ -761,14 +761,13 @@ class TestSearchAppendixIndex:
     def test_appendix_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[4], _APPENDIX_SNAPSHOT)
 
-    def test_intro_shows_no_history_without_chapters(self, tmp_path: Path) -> None:
-        settings = MagicMock()
-        settings.wiki_bundle_dir = None
-        _without_history(settings, tmp_path)
-        specs = _build_specs(settings)
+    def test_intro_shows_no_history_without_chapters(self, reader_settings: MagicMock) -> None:
+        specs = _build_specs(reader_settings)
         assert INTRO_ILLUSTRATED_HISTORY_TEXT not in [c.text for c in specs[0].children]
 
-    def test_intro_lists_the_history_chapters_found_on_disk(self, tmp_path: Path) -> None:
+    def test_intro_lists_the_history_chapters_found_on_disk(
+        self, reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
         root = tmp_path / "illustrated-history"
         for name, title in (("03-learning", "Learning the Medium"), ("00-intro", "Introduction")):
             (root / name).mkdir(parents=True)
@@ -777,10 +776,8 @@ class TestSearchAppendixIndex:
                 json.dumps({"title": title}), encoding="utf-8"
             )
         (root / "05-empty").mkdir()  # no pages yet: left out
-        settings = MagicMock()
-        settings.wiki_bundle_dir = None
-        settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = root
-        specs = _build_specs(settings)
+        reader_settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = root
+        specs = _build_specs(reader_settings)
         intro_texts = [c.text for c in specs[0].children]
         assert (
             intro_texts.index(INTRO_ILLUSTRATED_HISTORY_TEXT)
@@ -930,16 +927,13 @@ def test_random_titles_sample_from_the_whole_chronological_span(
     assert len(pool) == expected_pool
 
 
-def test_chrono_includes_one_pagers_when_asked(tmp_path: Path) -> None:
+def test_chrono_includes_one_pagers_when_asked(reader_settings: MagicMock) -> None:
     """The other half of the `include_one_pagers_in_chrono` switch.
 
     The flag has to reach `get_num_comic_book_titles` for the chronological node's
     row-count assert to agree with title lists built the same way — and the resulting
     year ranges genuinely hold more titles than the default build does.
     """
-    settings = MagicMock()
-    settings.wiki_bundle_dir = None
-    _without_history(settings, tmp_path)
     with_one_pagers = FilteredTitleLists(include_one_pagers_in_chrono=True).get_title_lists()
 
     with (
@@ -949,7 +943,9 @@ def test_chrono_includes_one_pagers_when_asked(tmp_path: Path) -> None:
             "special_case_personal_favourites_tag_update",
         ),
     ):
-        specs = build_reader_tree_spec(settings, with_one_pagers, include_one_pagers_in_chrono=True)
+        specs = build_reader_tree_spec(
+            reader_settings, with_one_pagers, include_one_pagers_in_chrono=True
+        )
 
     chrono = specs[1].children[0]
     for year_range, spec in zip(CHRONO_YEAR_RANGES, chrono.children, strict=True):
