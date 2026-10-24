@@ -35,8 +35,6 @@ if TYPE_CHECKING:
 
 DOCUMENT_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
-IMAGE_EXTENSIONS = PAGE_IMAGE_EXTENSIONS
-
 STORY_BUTTON_HEIGHT = dp(30)
 STORY_DROPDOWN_WIDTH = dp(420)
 
@@ -107,7 +105,7 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._doc_dir = doc_dir
         self._page_paths = sorted(
-            p for p in doc_dir.iterdir() if p.suffix.lower() in IMAGE_EXTENSIONS
+            p for p in doc_dir.iterdir() if p.suffix.lower() in PAGE_IMAGE_EXTENSIONS
         )
         last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
         self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))
