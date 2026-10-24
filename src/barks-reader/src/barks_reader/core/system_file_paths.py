@@ -339,6 +339,11 @@ class SystemFilePaths:
         return self._how_to_doc_dir
 
     def get_illustrated_history_doc_dir(self) -> Path:
+        """Return the illustrated history's folder of chapters, which may not exist.
+
+        Unlike the other document folders it is optional: the Introduction shows its
+        node only when the folder holds chapters.
+        """
         assert self._illustrated_history_doc_dir
         return self._illustrated_history_doc_dir
 
