@@ -91,6 +91,10 @@ class TreeViewManager:
         self._nav_model = nav_model or NavigationModel()
 
         self._allow_view_state_change = True
+        # True while setup_and_select_node re-opens a node on the caller's behalf
+        # (Go Back, the saved-node restore at boot): the node is the destination,
+        # so its open-on-child rule (Search opening on Titles) does not apply.
+        self._opening_for_caller = False
         self._search_node: MainTreeViewNode | None = None
         self._speech_words_node: ButtonTreeViewNode | None = None
 
@@ -123,7 +127,11 @@ class TreeViewManager:
             self._tree_view_screen.deselect_and_close_open_nodes()
             self._tree_view_screen.open_all_parent_nodes(node)
 
-        self._tree_view_screen.open_node(node)
+        self._opening_for_caller = True
+        try:
+            self._tree_view_screen.open_node(node)
+        finally:
+            self._opening_for_caller = False
         self._tree_view_screen.select_node(node)
 
         if isinstance(node, TitleTreeViewNode):
@@ -328,7 +336,7 @@ class TreeViewManager:
             # fun-image briefly appears before the title view replaces it.
             logger.info(f"Single-child node '{node.get_name()}': auto-selecting only title.")
             self._auto_select_single_child(node)
-        elif (child := self._child_to_open_on(node)) is not None:
+        elif not self._opening_for_caller and (child := self._child_to_open_on(node)) is not None:
             opened_on = log_markers.NODE_OPENED_ON_CHILD
             logger.info(opened_on.format(name=node.get_name(), child=child.get_name()))
             self._tree_view_screen.select_node(child)

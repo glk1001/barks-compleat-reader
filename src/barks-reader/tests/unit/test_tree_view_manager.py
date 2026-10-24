@@ -323,6 +323,45 @@ class TestTreeViewManager:
         )
         assert log_markers.NODE_OPENED_ON_CHILD.format(name="Search", child="Titles") in loguru_sink
 
+    def test_setup_and_select_search_keeps_search_selected(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """Go Back (and the saved-node restore) land on Search itself, not its Titles.
+
+        The open-on-child rule is for the user's own press on Search: a re-open on
+        the caller's behalf would select Titles and then Search, leaving Titles as
+        the previous node and rendering two views.
+        """
+        titles = MagicMock(spec=ButtonTreeViewNode)
+        titles.destination = TitleSearchDestination()
+        titles.get_name.return_value = "Titles"
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.populate_callback = None
+        node.destination = SearchDestination()
+        node.get_name.return_value = "Search"
+        node.saved_state = {"open": False}
+        node.nodes = [titles]
+        node.parent_node = MagicMock()
+        node.parent_node.nodes = [node]
+        tree_view = screen_mocks["tree_view"]
+        # The real tree fires on_node_expand from open_node.
+        tree_view.open_node.side_effect = lambda n: tree_view_manager.on_node_expanded(
+            MagicMock(), n
+        )
+
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
+            tree_view_manager.setup_and_select_node(node)
+
+        tree_view.select_node.assert_called_once_with(node)
+        rendered = [call.args[0] for call in mock_dependencies["renderer"].render.call_args_list]
+        assert SearchDestination() in rendered
+        assert TitleSearchDestination() not in rendered
+        assert not any("opened on its child" in line for line in loguru_sink)
+
     def test_on_node_expanded_repopulates_flagged_node(
         self,
         tree_view_manager: TreeViewManager,
