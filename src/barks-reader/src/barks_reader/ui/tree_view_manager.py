@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from functools import partial
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
@@ -50,9 +49,7 @@ if TYPE_CHECKING:
 def _open_chapter(nav: NavigationCoordinator, destination: Destination | None) -> None:
     """Open an illustrated-history chapter at the page it was last left on."""
     assert isinstance(destination, DocumentDestination)
-    nav.open_document(
-        Path(destination.doc_dir), destination.title, destination.view_state, resume=True
-    )
+    nav.open_document(destination.doc_dir, destination.title, destination.view_state, resume=True)
 
 
 # Destinations whose node opens a full-window screen. Back onto one of these means

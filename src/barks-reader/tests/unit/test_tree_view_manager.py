@@ -202,7 +202,7 @@ class TestTreeViewManager:
         chapter_node = MagicMock(spec=ButtonTreeViewNode)
         chapter_node.destination = DocumentDestination(
             view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
-            doc_dir="/docs/illustrated-history/04-becoming-himself",
+            doc_dir=Path("/docs/illustrated-history/04-becoming-himself"),
             title="Becoming Himself",
         )
         mock_tree.previous_selected_node = chapter_node
@@ -577,7 +577,7 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.destination = DocumentDestination(
             view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
-            doc_dir="/docs/illustrated-history/04-becoming-himself",
+            doc_dir=Path("/docs/illustrated-history/04-becoming-himself"),
             title="Becoming Himself",
         )
 

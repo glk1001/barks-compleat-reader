@@ -483,7 +483,7 @@ class _SpecBuilder:
                         text=chapter.title,
                         destination=DocumentDestination(
                             view_state=view_state,
-                            doc_dir=str(chapter.doc_dir),
+                            doc_dir=chapter.doc_dir,
                             title=chapter.title,
                         ),
                         press_action=PressAction.OPEN_DOCUMENT,

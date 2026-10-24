@@ -21,6 +21,8 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -271,11 +273,10 @@ class ArticleDestination(Destination):
 class DocumentDestination(Destination):
     """A folder of page images opened in the document reader (an illustrated-history chapter).
 
-    Carries the folder as a string, as `PlaylistDestination` carries an id, so that
-    `ViewRequest` stays a bag of plain values; `view_state` is the view the node shows, and
-    the one the main screen returns to when the document closes.
+    `view_state` is the view the node shows, and the one the main screen returns to when
+    the document closes. (`ViewRequest` never carries the folder, so it is a `Path`.)
     """
 
     view_state: ViewStates
-    doc_dir: str
+    doc_dir: Path
     title: str

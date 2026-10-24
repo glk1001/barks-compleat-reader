@@ -797,7 +797,7 @@ class TestSearchAppendixIndex:
         ]
         assert history.children[1].destination == DocumentDestination(
             view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
-            doc_dir=str(root / "03-learning"),
+            doc_dir=root / "03-learning",
             title="Learning the Medium",
         )
 
