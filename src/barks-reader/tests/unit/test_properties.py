@@ -41,6 +41,7 @@ from barks_reader.core.log_markers import capture, pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BODY_PAGE
 from barks_reader.core.reader_formatter import (
     escape_editorial_brackets,
+    escape_kivy_markup,
     get_text_with_markup_stripped,
 )
 from barks_reader.core.reader_utils import get_page_run_starts, get_page_sort_key
@@ -298,6 +299,7 @@ def test_the_two_kivy_escapers_agree_byte_for_byte(text: str) -> None:
     """
     escaped = escape_markup(text)
     assert escaped == okf_escape(text)
+    assert escape_kivy_markup(text) == escaped  # the wrapper the rewriter calls
     assert "[" not in escaped
     assert "]" not in escaped
     assert get_text_with_markup_stripped(escaped) == escaped
