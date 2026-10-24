@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +13,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
+    DocumentDestination,
     IntroDestination,
     MainIndexDestination,
     RandomTitlesDestination,
@@ -462,6 +464,23 @@ class TestTreeViewManager:
         tree_view_manager.on_article_node_pressed(node)
         mock_dependencies["nav_coordinator"].read_article.assert_called_with(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, ViewStates.ON_INTRO_NODE
+        )
+
+    def test_on_document_node_pressed(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = DocumentDestination(
+            view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            doc_dir="/docs/illustrated-history/04-becoming-himself",
+            title="Becoming Himself",
+        )
+
+        tree_view_manager.on_document_node_pressed(node)
+        mock_dependencies["nav_coordinator"].open_document.assert_called_with(
+            Path("/docs/illustrated-history/04-becoming-himself"),
+            "Becoming Himself",
+            ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
         )
 
     def test_on_node_expanded_with_one_title_child_selects_that_title(

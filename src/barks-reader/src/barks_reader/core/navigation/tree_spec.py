@@ -41,6 +41,7 @@ from barks_fantagraphics.fanta_comics_info import (
     get_num_comic_book_titles,
 )
 
+from barks_reader.core.document_chapters import find_document_chapters
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.playlists import PLAYLISTS, Playlist, get_playlist_title_infos
 from barks_reader.core.reader_consts_and_types import (
@@ -72,6 +73,7 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_BY_THE_NUMBERS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
+    INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
     ONE_PAGER_YEAR_RANGES,
     PLAYLISTS_NODE_TEXT,
@@ -111,7 +113,9 @@ from .destinations import (
     ChooseForMeDestination,
     ChronologicalDestination,
     CorpusStatsDestination,
+    DocumentDestination,
     HistoryDestination,
+    IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
     IntroDocDestination,
@@ -177,6 +181,7 @@ class PressAction(Enum):
     OPEN_SPEECH_WORDS = auto()
     OPEN_WIKI_INDEX = auto()
     OPEN_CORPUS_STATS = auto()
+    OPEN_DOCUMENT = auto()
 
 
 class NodeRegistration(Enum):
@@ -444,6 +449,7 @@ class _SpecBuilder:
                     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
                     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
                 ),
+                *self._illustrated_history_specs(),
                 NodeSpec(
                     kind=NodeKind.MAIN,
                     text=INTRO_BY_THE_NUMBERS_TEXT,
@@ -454,6 +460,38 @@ class _SpecBuilder:
                     # destination's view state instead of replaying the press, so
                     # the full-window page does not spring open at start-up.
                     start_closed=True,
+                ),
+            ),
+        )
+
+    def _illustrated_history_specs(self) -> tuple[NodeSpec, ...]:
+        """Return the history's node with a child per chapter on disk; none without chapters."""
+        root = self._reader_settings.sys_file_paths.get_illustrated_history_doc_dir()
+        chapters = find_document_chapters(root)
+        if not chapters:
+            return ()
+        view_state = ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE
+        return (
+            NodeSpec(
+                kind=NodeKind.MAIN,
+                text=INTRO_ILLUSTRATED_HISTORY_TEXT,
+                destination=IllustratedHistoryDestination(),
+                start_closed=True,
+                children=tuple(
+                    NodeSpec(
+                        kind=NodeKind.MAIN,
+                        text=chapter.title,
+                        destination=DocumentDestination(
+                            view_state=view_state,
+                            doc_dir=str(chapter.doc_dir),
+                            title=chapter.title,
+                        ),
+                        press_action=PressAction.OPEN_DOCUMENT,
+                        # Closed, as the other document nodes are: a saved-node restore
+                        # then shows the node's view rather than reopening the document.
+                        start_closed=True,
+                    )
+                    for chapter in chapters
                 ),
             ),
         )

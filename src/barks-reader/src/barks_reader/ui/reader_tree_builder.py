@@ -95,6 +95,7 @@ class ReaderTreeBuilder:
             PressAction.OPEN_SPEECH_WORDS: tree_view_manager.on_speech_words_node_pressed,
             PressAction.OPEN_WIKI_INDEX: tree_view_manager.on_wiki_index_node_pressed,
             PressAction.OPEN_CORPUS_STATS: tree_view_manager.on_corpus_stats_node_pressed,
+            PressAction.OPEN_DOCUMENT: tree_view_manager.on_document_node_pressed,
         }
         assert set(self._press_handlers) == set(PressAction), (
             "every PressAction needs a press-handler entry (TOGGLE_ONLY maps to None)"

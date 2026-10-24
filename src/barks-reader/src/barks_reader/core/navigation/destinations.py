@@ -52,6 +52,11 @@ class CorpusStatsDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class IllustratedHistoryDestination(Destination):
+    """The Introduction's 'An Illustrated History' node, parent of its chapters."""
+
+
+@dataclass(frozen=True, slots=True)
 class StoriesDestination(Destination):
     """The 'The Stories' parent node."""
 
@@ -260,3 +265,17 @@ class ArticleDestination(Destination):
 
     view_state: ViewStates
     article_title: Titles
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentDestination(Destination):
+    """A folder of page images opened in the document reader (an illustrated-history chapter).
+
+    Carries the folder as a string, as `PlaylistDestination` carries an id, so that
+    `ViewRequest` stays a bag of plain values; `view_state` is the view the node shows, and
+    the one the main screen returns to when the document closes.
+    """
+
+    view_state: ViewStates
+    doc_dir: str
+    title: str

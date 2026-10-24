@@ -13,6 +13,7 @@ from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.document_chapters import PAGE_IMAGE_EXTENSIONS
 from barks_reader.core.document_links import StoryLink, load_story_links
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
 
 DOCUMENT_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+IMAGE_EXTENSIONS = PAGE_IMAGE_EXTENSIONS
 
 STORY_BUTTON_HEIGHT = dp(30)
 STORY_DROPDOWN_WIDTH = dp(420)

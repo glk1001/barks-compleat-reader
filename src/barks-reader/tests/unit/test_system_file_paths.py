@@ -30,6 +30,7 @@ _EXPECTED_PATHS: tuple[tuple[str, str], ...] = (
     ("get_intro_doc_dir", "Various/documents/intro-to-barks-reader"),
     ("get_censorship_fixes_doc_dir", "Various/documents/censorship-fixes"),
     ("get_how_to_doc_dir", "Various/documents/how-to"),
+    ("get_illustrated_history_doc_dir", "Various/documents/illustrated-history"),
     # 'Various' files.
     ("get_barks_reader_app_window_icon_path", "Various/app-icon.png"),
     ("get_error_background_path", "Various/error-background.png"),

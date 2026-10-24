@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 from enum import Enum
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -38,7 +39,9 @@ from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
 from barks_reader.core.navigation import (
     CategoryDestination,
     ChooseForMeDestination,
+    DocumentDestination,
     HistoryDestination,
+    IllustratedHistoryDestination,
     NodeKind,
     NodeRegistration,
     NodeSpec,
@@ -61,6 +64,7 @@ from barks_reader.core.navigation.tree_spec import (
     _get_us_year_range_extra_text,
     _tag_year_range_specs,
 )
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
@@ -74,6 +78,7 @@ from barks_reader.core.reader_consts_and_types import (
     FROM_THE_1960S_NODE_TEXT,
     HISTORY_NODE_TEXT,
     INDEX_NODE_TEXT,
+    INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
     ONE_PAGER_YEAR_RANGES,
     PLAYLISTS_NODE_TEXT,
@@ -92,6 +97,8 @@ from barks_reader.core.reader_consts_and_types import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
 
@@ -101,10 +108,32 @@ def title_lists() -> dict[str, list[FantaComicBookInfo]]:
 
 
 @pytest.fixture
-def reader_settings() -> MagicMock:
+def reader_settings(tmp_path: Path) -> MagicMock:
     settings = MagicMock()
     settings.wiki_bundle_dir = None
+    _without_history(settings, tmp_path)
     return settings
+
+
+def _without_history(settings: MagicMock, tmp_path: Path) -> None:
+    """Give `settings` no illustrated-history chapters, so the tree has no history node."""
+    settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = tmp_path / "none"
+
+
+def _build_specs(settings: MagicMock) -> tuple[NodeSpec, ...]:
+    """Build the tree from `settings`, with no favourites (as the `specs` fixture does)."""
+    with (
+        patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
+        patch.object(
+            barks_reader.core.navigation.tree_spec,
+            "special_case_personal_favourites_tag_update",
+        ),
+    ):
+        return build_reader_tree_spec(
+            settings,
+            FilteredTitleLists(include_one_pagers_in_chrono=False).get_title_lists(),
+            include_one_pagers_in_chrono=False,
+        )
 
 
 @pytest.fixture
@@ -732,12 +761,53 @@ class TestSearchAppendixIndex:
     def test_appendix_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[4], _APPENDIX_SNAPSHOT)
 
+    def test_intro_shows_no_history_without_chapters(self, tmp_path: Path) -> None:
+        settings = MagicMock()
+        settings.wiki_bundle_dir = None
+        _without_history(settings, tmp_path)
+        specs = _build_specs(settings)
+        assert INTRO_ILLUSTRATED_HISTORY_TEXT not in [c.text for c in specs[0].children]
+
+    def test_intro_lists_the_history_chapters_found_on_disk(self, tmp_path: Path) -> None:
+        root = tmp_path / "illustrated-history"
+        for name, title in (("03-learning", "Learning the Medium"), ("00-intro", "Introduction")):
+            (root / name).mkdir(parents=True)
+            (root / name / "page-001.png").write_bytes(b"")
+            (root / name / "document.json").write_text(
+                json.dumps({"title": title}), encoding="utf-8"
+            )
+        (root / "05-empty").mkdir()  # no pages yet: left out
+        settings = MagicMock()
+        settings.wiki_bundle_dir = None
+        settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = root
+        specs = _build_specs(settings)
+        intro_texts = [c.text for c in specs[0].children]
+        assert (
+            intro_texts.index(INTRO_ILLUSTRATED_HISTORY_TEXT)
+            == intro_texts.index("By the Numbers") - 1
+        )
+        history = specs[0].children[intro_texts.index(INTRO_ILLUSTRATED_HISTORY_TEXT)]
+        assert history.destination == IllustratedHistoryDestination()
+        assert history.start_closed
+        assert [(c.text, c.press_action, c.start_closed) for c in history.children] == [
+            ("Introduction", PressAction.OPEN_DOCUMENT, True),
+            ("Learning the Medium", PressAction.OPEN_DOCUMENT, True),
+        ]
+        assert history.children[1].destination == DocumentDestination(
+            view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            doc_dir=str(root / "03-learning"),
+            title="Learning the Medium",
+        )
+
     def test_index_without_wiki_bundle(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[5], _INDEX_SNAPSHOT)
 
-    def test_index_with_wiki_bundle(self, title_lists: dict[str, list[FantaComicBookInfo]]) -> None:
+    def test_index_with_wiki_bundle(
+        self, title_lists: dict[str, list[FantaComicBookInfo]], tmp_path: Path
+    ) -> None:
         settings = MagicMock()
         settings.wiki_bundle_dir = "/a/wiki/bundle"
+        _without_history(settings, tmp_path)
 
         with (
             patch.object(
@@ -858,7 +928,7 @@ def test_random_titles_sample_from_the_whole_chronological_span(
     assert len(pool) == expected_pool
 
 
-def test_chrono_includes_one_pagers_when_asked() -> None:
+def test_chrono_includes_one_pagers_when_asked(tmp_path: Path) -> None:
     """The other half of the `include_one_pagers_in_chrono` switch.
 
     The flag has to reach `get_num_comic_book_titles` for the chronological node's
@@ -867,6 +937,7 @@ def test_chrono_includes_one_pagers_when_asked() -> None:
     """
     settings = MagicMock()
     settings.wiki_bundle_dir = None
+    _without_history(settings, tmp_path)
     with_one_pagers = FilteredTitleLists(include_one_pagers_in_chrono=True).get_title_lists()
 
     with (

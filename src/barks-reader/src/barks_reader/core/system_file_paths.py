@@ -52,6 +52,7 @@ class SystemFilePaths:
         self._intro_doc_dir: Path | None = None
         self._censorship_fixes_doc_dir: Path | None = None
         self._how_to_doc_dir: Path | None = None
+        self._illustrated_history_doc_dir: Path | None = None
 
         self._fantagraphics_overrides_root_dir: Path | None = None
         self._fantagraphics_panel_segments_root_dir: Path | None = None
@@ -106,6 +107,9 @@ class SystemFilePaths:
         self._intro_doc_dir = documents_dir / "intro-to-barks-reader"
         self._censorship_fixes_doc_dir = documents_dir / "censorship-fixes"
         self._how_to_doc_dir = documents_dir / "how-to"
+        # Optional, so not among the required directories checked below: the
+        # Introduction shows its node only when it holds chapters.
+        self._illustrated_history_doc_dir = documents_dir / "illustrated-history"
 
         self._fantagraphics_overrides_root_dir = (
             reader_files_dir / "Fantagraphics Volumes Overrides"
@@ -333,6 +337,10 @@ class SystemFilePaths:
     def get_how_to_doc_dir(self) -> Path:
         assert self._how_to_doc_dir
         return self._how_to_doc_dir
+
+    def get_illustrated_history_doc_dir(self) -> Path:
+        assert self._illustrated_history_doc_dir
+        return self._illustrated_history_doc_dir
 
     def get_favourite_titles_path(self) -> Path:
         assert self._favourite_titles_path

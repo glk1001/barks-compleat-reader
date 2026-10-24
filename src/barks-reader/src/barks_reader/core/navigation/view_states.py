@@ -16,6 +16,7 @@ class ViewStates(IntEnum):
     ON_INTRO_NODE = auto()
     ON_INTRO_COMPLEAT_BARKS_READER_NODE = auto()
     ON_INTRO_DON_AULT_FANTA_INTRO_NODE = auto()
+    ON_INTRO_ILLUSTRATED_HISTORY_NODE = auto()
     ON_THE_STORIES_NODE = auto()
     ON_SEARCH_NODE = auto()
     ON_TITLE_SEARCH_NODE = auto()

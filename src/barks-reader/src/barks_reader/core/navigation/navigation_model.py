@@ -39,7 +39,9 @@ from .destinations import (
     ChronologicalDestination,
     CorpusStatsDestination,
     Destination,
+    DocumentDestination,
     HistoryDestination,
+    IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
     IntroDocDestination,
@@ -104,6 +106,7 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     ChooseForMeDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
     PlaylistsDestination: ViewStates.ON_PLAYLISTS_NODE,
     CorpusStatsDestination: ViewStates.ON_INTRO_BY_THE_NUMBERS_NODE,
+    IllustratedHistoryDestination: ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
     AppendixDestination: ViewStates.ON_APPENDIX_NODE,
     StatisticsDestination: ViewStates.ON_APPENDIX_STATISTICS_NODE,
     CensorshipFixesDocDestination: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
@@ -183,7 +186,7 @@ class NavigationModel:
         if isinstance(dest, PlaylistDestination):
             return ViewRequest(view_state=ViewStates.ON_PLAYLIST_NODE, playlist_id=dest.playlist_id)
 
-        if isinstance(dest, ArticleDestination):
+        if isinstance(dest, ArticleDestination | DocumentDestination):
             return ViewRequest(view_state=dest.view_state)
 
         msg = f"No view state mapping for destination: {type(dest).__name__}"

@@ -208,6 +208,10 @@ DOCUMENT_CLOSING: Final = "Document reader closing."
 DOCUMENT_LINKS_UNREADABLE: Final = 'Document story links "{path}" unreadable: {error}.'
 DOCUMENT_LINK_SKIPPED: Final = 'Document story links "{path}": skipped {entry}.'
 DOCUMENT_GOTO_STORY: Final = 'Document goto story: "{name}", page {page}.'
+DOCUMENT_CHAPTER_NO_PAGES: Final = 'Document chapter "{path}" has no pages: left out.'
+DOCUMENT_CHAPTER_UNTITLED: Final = (
+    'Document chapter info "{path}" unreadable ({error}): titled by its folder.'
+)
 CORPUS_STATS_OPENED: Final = "CorpusStats: opened."
 CORPUS_STATS_CLOSING: Final = "CorpusStats: closing."
 

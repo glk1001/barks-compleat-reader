@@ -161,6 +161,7 @@ class ViewPipeline:
         ViewStates.ON_INTRO_NODE,
         ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
         ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
+        ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
         ViewStates.ON_INTRO_BY_THE_NUMBERS_NODE,
     }
 

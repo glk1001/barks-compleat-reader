@@ -45,7 +45,9 @@ from barks_reader.core.navigation.destinations import (
     ChronologicalDestination,
     CorpusStatsDestination,
     Destination,
+    DocumentDestination,
     HistoryDestination,
+    IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
     IntroDocDestination,
@@ -109,6 +111,7 @@ NO_PAYLOAD_DESTINATION_TYPES: tuple[type[Destination], ...] = (
     IntroDestination,
     IntroDocDestination,
     CorpusStatsDestination,
+    IllustratedHistoryDestination,
     StoriesDestination,
     ChronologicalDestination,
     AllSeriesDestination,
@@ -253,6 +256,12 @@ def payload_destinations() -> st.SearchStrategy[Destination]:
         st.builds(PlaylistDestination, st.sampled_from(sorted(PLAYLISTS_BY_ID))),
         st.builds(TitleDestination, fanta_infos()),
         st.builds(ArticleDestination, st.sampled_from(ARTICLE_VIEW_STATES), article_titles()),
+        st.builds(
+            DocumentDestination,
+            st.just(ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE),
+            st.text(min_size=1),
+            st.text(min_size=1),
+        ),
     )
 
 
@@ -276,5 +285,6 @@ DESTINATION_TYPES_BUILT: frozenset[type[Destination]] = frozenset(
         PlaylistDestination,
         TitleDestination,
         ArticleDestination,
+        DocumentDestination,
     )
 )

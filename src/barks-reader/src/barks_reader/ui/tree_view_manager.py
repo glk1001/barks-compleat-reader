@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
@@ -11,6 +12,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
     CorpusStatsDestination,
+    DocumentDestination,
     NavigationModel,
     TitleDestination,
     WikiIndexDestination,
@@ -404,6 +406,14 @@ class TreeViewManager:
             self._sys_file_paths.get_censorship_fixes_doc_dir(),
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+        )
+
+    def on_document_node_pressed(self, node: ButtonTreeViewNode) -> None:
+        """Open a document node's folder of pages (an illustrated-history chapter)."""
+        assert isinstance(node.destination, DocumentDestination)
+        destination = node.destination
+        self._nav.open_document(
+            Path(destination.doc_dir), destination.title, destination.view_state
         )
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
