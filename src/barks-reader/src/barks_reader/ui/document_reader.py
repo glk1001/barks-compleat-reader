@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, override
 
@@ -186,18 +187,12 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def open_goto_story_from_bar(self) -> None:
         """Go to the page's story, or list its stories, from the bar button (a mouse press).
 
-        A list opens as the keyboard opens it, in menu mode with the arrow keys live in it,
-        so Left and Right do not turn pages under it (as the comic reader's Goto Page).
+        A list opens as the keyboard opens it, with the arrow keys live in it, so Left and
+        Right do not turn pages under it (as the comic reader's Goto Page).
         """
-        goto_idx = self._menu_buttons.index(self.ids.goto_story_button)
-        entered_menu = not self._menu_mode
-        if entered_menu:
-            self._last_used_btn_idx = goto_idx
-            self._enter_menu_mode()
-        self._focused_btn_idx = goto_idx
-        self._open_goto_story(keyboard_initiated=False)
-        if entered_menu and self._menu_mode and not self._dropdown_nav_mode:
-            self._exit_menu_mode()
+        self._open_list_from_bar(
+            self.ids.goto_story_button, partial(self._open_goto_story, keyboard_initiated=False)
+        )
 
     @override
     def _activate_focused_button(self) -> None:

@@ -975,7 +975,11 @@ class TestComicBookReaderScreen:
                 new_callable=PropertyMock,
                 return_value=self._ids_with(screen),
             ),
-            patch.object(screen, "_enter_menu_mode") as enter_menu,
+            patch.object(
+                screen,
+                "_enter_menu_mode",
+                side_effect=lambda: setattr(screen, "_menu_mode", True),
+            ) as enter_menu,
             patch.object(screen, "_exit_menu_mode") as exit_menu,
             patch.object(screen, "_clear_menu_focus"),
             patch.object(screen, "_update_menu_focus"),

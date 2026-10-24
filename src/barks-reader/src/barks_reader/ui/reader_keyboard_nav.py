@@ -21,7 +21,7 @@ from barks_reader.core.nav_focus import describe_widget, log_nav_focus
 from barks_reader.core.reader_palette import theme
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from barks_kivy_ui.scrolling import ReaderDropDown
     from kivy.uix.button import Button
@@ -259,6 +259,34 @@ class ActionBarNavMixin:
         self._menu_buttons[self._focused_btn_idx].trigger_action()
         self._exit_menu_mode()
 
+    def _open_list_from_bar(self, button: Button, open_list: Callable[[], None]) -> None:
+        """Open a button's list from the bar (a mouse press) as the keyboard opens it.
+
+        A press on the button is a mouse path, so it is not in menu mode: opened that
+        way the list took no keys, and Left and Right turned pages under it. The menu is
+        entered on the button pressed, `open_list` runs as its keyboard activation would,
+        and when that leaves no list open (nothing to list, or the one choice taken and
+        the screen closed) the menu is left again: there is no focus to leave on the bar.
+
+        Args:
+            button: The bar button pressed, one of the menu buttons.
+            open_list: What its keyboard activation does.
+
+        """
+        button_idx = self._menu_buttons.index(button)
+        entered_menu = not self._menu_mode
+        if entered_menu:
+            self._last_used_btn_idx = button_idx  # the menu opens on the button pressed
+            self._enter_menu_mode()
+        self._focused_btn_idx = button_idx
+        open_list()
+        if entered_menu and self._menu_mode and not self._has_list_open():
+            self._exit_menu_mode()
+
+    def _has_list_open(self) -> bool:
+        """Return whether a list opened from the bar is up, taking the keys."""
+        return False
+
 
 class DropdownNavMixin:
     """Mixin for keyboard navigation within an open Kivy DropDown.
@@ -308,6 +336,9 @@ class DropdownNavMixin:
         self._clear_dropdown_focus()
         self._dropdown_buttons_cache = []
         self._dropdown_nav_mode = False
+
+    def _has_list_open(self) -> bool:
+        return self._dropdown_nav_mode
 
     def _on_dropdown_dismissed(self, _dropdown: Widget) -> None:
         logger.debug(DROPDOWN_DISMISSED_LOG)

@@ -911,19 +911,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def open_goto_page_from_bar(self) -> None:
         """Open the goto-page dropdown from its bar button, with the arrow keys live in it.
 
-        A press on the button is a mouse path, so it is not in menu mode: opened that way
-        the dropdown took no keys, and Left and Right turned pages under it. It now opens as
-        the keyboard does, focused on the current page; its dismissal leaves menu mode again.
+        It opens as the keyboard opens it, focused on the current page; its dismissal
+        leaves menu mode again.
         """
-        goto_idx = self._menu_buttons.index(self.ids.goto_page_button)
-        entered_menu = not self._menu_mode
-        if entered_menu:
-            self._last_used_btn_idx = goto_idx  # the menu opens on the button pressed
-            self._enter_menu_mode()
-        self._focused_btn_idx = goto_idx
-        self._activate_focused_button()
-        if entered_menu and not self._dropdown_nav_mode:
-            self._exit_menu_mode()  # it did not open: no focus to leave on the bar
+        self._open_list_from_bar(self.ids.goto_page_button, self._activate_focused_button)
 
     def _open_goto_page_for_keyboard(self) -> None:
         self._clear_menu_focus()

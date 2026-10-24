@@ -185,6 +185,74 @@ class TestGotoStory:
         )
         assert screen._story_picked_by_keyboard is False
 
+    # --- Go to Story pressed on the bar ---
+
+    @staticmethod
+    def _on_the_bar(screen: DocumentReaderScreen) -> None:
+        """Give the screen the bar the fixture's mocked nav setup left out."""
+        screen._menu_buttons = [screen.ids.goto_story_button, screen.ids.close_button]
+        screen._focused_btn_idx = screen._last_used_btn_idx = 1
+
+    def test_from_the_bar_a_list_opens_in_keyboard_nav_in_the_menu(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        self._on_the_bar(screen)
+        screen._story_links = list(TWO_LINKS)
+        with (
+            patch.object(
+                screen, "_enter_menu_mode", side_effect=lambda: setattr(screen, "_menu_mode", True)
+            ) as enter_menu,
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+            patch.object(screen, "_clear_menu_focus"),
+            patch.object(screen, "_open_story_dropdown", return_value=True),
+            patch.object(
+                screen,
+                "_enter_dropdown_nav",
+                side_effect=lambda **_kw: setattr(screen, "_dropdown_nav_mode", True),
+            ) as enter_nav,
+        ):
+            screen.open_goto_story_from_bar()
+        enter_menu.assert_called_once_with()
+        enter_nav.assert_called_once_with(initial_idx=0)
+        exit_menu.assert_not_called()
+        assert (screen._focused_btn_idx, screen._last_used_btn_idx) == (0, 0)
+
+    def test_from_the_bar_the_one_story_is_a_mouse_pick_and_leaves_the_menu_once(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _write_links(tmp_path / "page-001.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
+        _open(screen, tmp_path)
+        self._on_the_bar(screen)
+        with (
+            patch.object(document_reader_module, "Window"),
+            patch.object(
+                screen, "_enter_menu_mode", side_effect=lambda: setattr(screen, "_menu_mode", True)
+            ),
+            patch.object(
+                screen, "_exit_menu_mode", side_effect=lambda: setattr(screen, "_menu_mode", False)
+            ) as exit_menu,
+        ):
+            screen.open_goto_story_from_bar()
+        screen._on_goto_story.assert_called_once_with(
+            Titles.LOST_IN_THE_ANDES, "7", keyboard_initiated=False
+        )
+        exit_menu.assert_called_once_with()  # closing the document left it; not again after
+
+    def test_from_the_bar_with_no_story_the_menu_is_left_again(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        self._on_the_bar(screen)
+        screen._story_links = []
+        with (
+            patch.object(
+                screen, "_enter_menu_mode", side_effect=lambda: setattr(screen, "_menu_mode", True)
+            ),
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+        ):
+            screen.open_goto_story_from_bar()
+        exit_menu.assert_called_once_with()
+
 
 def _pages(doc_dir: Path, count: int) -> None:
     doc_dir.mkdir(parents=True, exist_ok=True)
