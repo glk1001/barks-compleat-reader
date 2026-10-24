@@ -9,6 +9,7 @@ real data on this machine, which a GUI test needs to boot the app at all.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,12 @@ from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_gui import harness
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
+from barks_reader.core.document_chapters import (
+    PAGE_IMAGE_EXTENSIONS,
+    DocumentChapter,
+    find_document_chapters,
+)
+from barks_reader.core.document_links import StoryLink, load_story_links
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.system_file_paths import SystemFilePaths
@@ -40,9 +47,8 @@ if TYPE_CHECKING:
     from barks_fantagraphics.tag_query import TagMatch
     from barks_reader.core.comic_book_page_info import ComicLayout
 
-# The page image types the document reader shows (document_reader.IMAGE_EXTENSIONS,
-# which is Kivy-side and so not importable here).
-DOCUMENT_IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png"})
+# The page image types the document reader shows.
+DOCUMENT_IMAGE_SUFFIXES = PAGE_IMAGE_EXTENSIONS
 
 
 def is_title(name: str) -> bool:
@@ -137,6 +143,42 @@ def intro_document_dir() -> Path:
 def censorship_document_dir() -> Path:
     """Return the directory of the censorship fixes document."""
     return system_paths().get_censorship_fixes_doc_dir()
+
+
+def illustrated_history_dir() -> Path:
+    """Return the folder of the illustrated history's chapters."""
+    return system_paths().get_illustrated_history_doc_dir()
+
+
+def illustrated_history_chapters() -> list[DocumentChapter]:
+    """Return the history's chapters, in the order and with the titles the tree shows."""
+    return find_document_chapters(illustrated_history_dir())
+
+
+@dataclass(frozen=True, slots=True)
+class LinkedPage:
+    """A chapter page whose figures link to stories."""
+
+    chapter: DocumentChapter
+    page: int  # as the document reader logs it, from 1
+    links: list[StoryLink]
+
+
+def first_linked_page(*, several: bool) -> LinkedPage | None:
+    """Return the first chapter page with one story link, or with `several`, two or more.
+
+    Pages come in the order the document reader turns them (sorted by name), and the
+    links in the order its Go to Story list shows them.
+    """
+    for chapter in illustrated_history_chapters():
+        pages = sorted(
+            p for p in chapter.doc_dir.iterdir() if p.suffix.lower() in DOCUMENT_IMAGE_SUFFIXES
+        )
+        for number, page in enumerate(pages, start=1):
+            links = load_story_links(page)
+            if (len(links) > 1) if several else (len(links) == 1):
+                return LinkedPage(chapter, number, links)
+    return None
 
 
 @cache

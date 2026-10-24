@@ -42,6 +42,8 @@ APPENDIX = ["Appendix", "root"]
 INTRO_DOCUMENT = "The Compleat Barks Disney Reader"
 CENSORSHIP_DOCUMENT = "Censorship Fixes and Other Changes"
 BY_THE_NUMBERS = "By the Numbers"
+# Under Introduction, before By the Numbers; there only when Reader Files holds chapters.
+ILLUSTRATED_HISTORY = "An Illustrated History"
 WIKI_NODE = "Carl Barks Wiki"
 INDEXES = ["Indexes", "root"]
 # An article under Introduction. Not a boot node: restoring a saved article node

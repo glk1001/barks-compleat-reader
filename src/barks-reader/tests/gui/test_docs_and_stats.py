@@ -1,4 +1,8 @@
-"""The statistics screen and the articles that open in the comic reader."""
+"""The statistics screen, the documents and the articles.
+
+The documents include the illustrated history's chapters; the articles open in the comic
+reader.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +10,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
@@ -13,6 +18,7 @@ from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
+    from barks_reader.core.document_links import StoryLink
     from gui_driver import Driver
 
 LOADING_IMAGE = pattern(markers.STATISTICS_LOADING_IMAGE)
@@ -154,3 +160,110 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
         d.key("Return")  # the node is still selected
     with d.expect(markers.CORPUS_STATS_CLOSING), d.expect(MAIN_FROM_NUMBERS):
         d.key("Left")
+
+
+# --- the illustrated history: chapters, and their figures' stories -----------------------
+#
+# The chapters move as the history grows, so every name, page and story here is read from
+# the data (`expected.illustrated_history_chapters`, `expected.first_linked_page`), and a
+# machine without them skips.
+
+GOTO_STORY = pattern(markers.DOCUMENT_GOTO_STORY)
+
+
+def _linked_page(*, several: bool) -> expected.LinkedPage:
+    """Return the first chapter page with one story link (or several), else skip."""
+    if not expected.illustrated_history_chapters():
+        pytest.skip(f"no illustrated-history chapters here: {expected.illustrated_history_dir()}")
+    linked = expected.first_linked_page(several=several)
+    if linked is None:
+        pytest.skip(f"no chapter page links {'several stories' if several else 'one story'}")
+    return linked
+
+
+def _open_chapter_at(d: Driver, linked: expected.LinkedPage) -> None:
+    """Open the history, then the page's chapter, and turn to the page."""
+    d.open_branch(nodes.ILLUSTRATED_HISTORY)
+    _open_document(d, linked.chapter.title)
+    for page in range(2, linked.page + 1):
+        d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=page), "Right")
+
+
+def _focus_go_to_story(d: Driver) -> None:
+    """Escape opens the bar on Close, its default; Go to Story is the button before it."""
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
+    d.move_focus("Left")
+
+
+def _went_to(d: Driver, link: StoryLink) -> None:
+    """Check the jump named `link`'s story and page, and selected the story."""
+    assert last_field(d, markers.DOCUMENT_GOTO_STORY, "name") == link.title.name
+    assert last_field(d, markers.DOCUMENT_GOTO_STORY, "page") == link.page
+    assert d.current_node() == link.title.name
+
+
+def test_the_history_node_lists_the_chapters_on_disk(boot: AppBoot) -> None:
+    """Under Introduction, the history's children are its chapter folders, in order."""
+    chapters = expected.illustrated_history_chapters()
+    if not chapters:
+        pytest.skip(f"no illustrated-history chapters here: {expected.illustrated_history_dir()}")
+    d = boot(nodes.INTRODUCTION)
+    d.open_branch(nodes.ILLUSTRATED_HISTORY)
+    for chapter in chapters:
+        d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=chapter.title), "Down")
+    # Nothing follows them: the next node down is the Introduction's next one.
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.BY_THE_NUMBERS), "Down")
+
+
+def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
+    """A page's one story is gone to at once; Go Back reopens the chapter at that page."""
+    linked = _linked_page(several=False)
+    (link,) = linked.links
+    d = boot(nodes.INTRODUCTION)
+    _open_chapter_at(d, linked)
+    _focus_go_to_story(d)
+    with (
+        d.expect(GOTO_STORY),
+        d.expect(markers.DOCUMENT_CLOSING),
+        d.expect(MAIN_FROM_DOCUMENT),
+        d.expect(pattern(markers.GOTO_PAGE_OFFERED, page=link.page)),
+        d.expect(pattern(markers.NEW_SELECTED_NODE, name=link.title.name)),
+    ):
+        d.key("Return")
+    _went_to(d, link)
+
+    # A keyboard jump leaves the keys on the title view; Escape hands them back to the tree.
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
+    with (
+        d.expect(pattern(markers.GOING_BACK_TO_NODE, name=linked.chapter.title)),
+        d.expect(pattern(markers.DOCUMENT_OPENED, title=linked.chapter.title)),
+        d.expect(pattern(markers.DOCUMENT_PAGE, page=linked.page)),
+        d.expect(DOCUMENT_ENTERED),
+    ):
+        d.go_back()
+    assert fields_of(d, markers.DOCUMENT_PAGE, "page")[-1] == str(linked.page)
+
+    # The bar comes back on Go to Story, the button pressed last: Close is the next one.
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
+    d.move_focus("Right")
+    with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
+        d.key("Return")
+
+
+def test_several_stories_on_a_page_are_picked_from_a_list(boot: AppBoot) -> None:
+    """Go to Story on a page with several stories lists them; Down then Return picks the second."""
+    linked = _linked_page(several=True)
+    second = linked.links[1]
+    d = boot(nodes.INTRODUCTION)
+    _open_chapter_at(d, linked)
+    _focus_go_to_story(d)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the list opens, its first story focused
+    d.move_focus("Down")
+    with (
+        d.expect(GOTO_STORY),
+        d.expect(d.DROPDOWN_DISMISSED),
+        d.expect(MAIN_FROM_DOCUMENT),
+        d.expect(pattern(markers.NEW_SELECTED_NODE, name=second.title.name)),
+    ):
+        d.key("Return")
+    _went_to(d, second)
