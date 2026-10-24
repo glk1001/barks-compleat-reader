@@ -211,7 +211,7 @@ class TestReaderScreenManager:
         reader_screen_manager.add_screens(mock_reader_screens)
 
         doc_dir = Path("/test-doc")
-        reader_screen_manager._switch_to_document_reader(doc_dir, "Test Title")
+        reader_screen_manager._switch_to_document_reader(doc_dir, "Test Title", resume=True)
 
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == DOCUMENT_READER_SCREEN
@@ -219,7 +219,7 @@ class TestReaderScreenManager:
         open_document_mock = cast(
             "MagicMock", mock_reader_screens.document_reader_screen.open_document
         )
-        open_document_mock.assert_called_with(doc_dir, "Test Title")
+        open_document_mock.assert_called_with(doc_dir, "Test Title", resume=True)
 
     def test_close_document_reader(
         self,

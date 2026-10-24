@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Protocol
 
 from kivy.app import App
 from kivy.uix.screenmanager import (
@@ -38,6 +38,12 @@ COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 DOCUMENT_READER_SCREEN = "document_reader"
 WIKI_READER_SCREEN = "wiki_reader"
 CORPUS_STATS_SCREEN = "corpus_stats"
+
+
+class SwitchToDocumentReader(Protocol):
+    """Open a folder of page images in the document reader, with `resume` at its last page."""
+
+    def __call__(self, doc_dir: Path, title: str, *, resume: bool = False) -> None: ...
 
 
 class _ReleasesFrameBuffers(ShaderTransition):
@@ -131,7 +137,7 @@ class ScreenSwitchers:
     switch_to_comic_book_reader: Callable[[], None]
     close_comic_book_reader: Callable[[], None]
 
-    switch_to_document_reader: Callable[[Path, str], None]
+    switch_to_document_reader: SwitchToDocumentReader
     close_document_reader: Callable[[], None]
 
     switch_to_wiki_reader: Callable[[Path, Path | None], None]
@@ -280,13 +286,15 @@ class ReaderScreenManager:
 
         logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_COMIC_READER))
 
-    def _switch_to_document_reader(self, doc_dir: Path, title: str) -> None:
+    def _switch_to_document_reader(
+        self, doc_dir: Path, title: str, *, resume: bool = False
+    ) -> None:
         logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
         self._reader_screens.document_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
-        self._reader_screens.document_reader_screen.open_document(doc_dir, title)
+        self._reader_screens.document_reader_screen.open_document(doc_dir, title, resume=resume)
         self._finish_running_transition("document reader")
         self._screen_manager.current = DOCUMENT_READER_SCREEN
         logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))

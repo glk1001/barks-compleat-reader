@@ -52,6 +52,10 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     A page may name the stories its figures come from (``core.document_links``). "Go to
     Story" then closes the document and selects the story with the figure's page offered: at
     once for one story, from a list for several. The button is greyed on a page with none.
+
+    Each document's last page is kept until the app quits, so one opened to resume (an
+    illustrated-history chapter, from its node or from Go Back after a story) comes back at
+    the page it was left on.
     """
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
@@ -74,8 +78,10 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._font_manager = font_manager
         self._on_close_screen = on_close_screen
         self._on_goto_story = on_goto_story
+        self._doc_dir: Path | None = None
         self._page_paths: list[Path] = []
         self._current_page_index = 0
+        self._last_page_indexes: dict[Path, int] = {}
         self._story_links: list[StoryLink] = []
         self._story_dropdown: ReaderDropDown | None = None
         self._story_buttons: list[Button] = []
@@ -87,13 +93,23 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         self._setup_dropdown_nav()
 
-    def open_document(self, doc_dir: Path, title: str) -> None:
+    def open_document(self, doc_dir: Path, title: str, *, resume: bool = False) -> None:
+        """Open a folder of page images at its first page, or with `resume` at its last one.
+
+        Args:
+            doc_dir: The folder of page images.
+            title: The title shown in the action bar.
+            resume: Open at the page the document was last left on in this session.
+
+        """
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
 
+        self._doc_dir = doc_dir
         self._page_paths = sorted(
             p for p in doc_dir.iterdir() if p.suffix.lower() in IMAGE_EXTENSIONS
         )
-        self._current_page_index = 0
+        last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
+        self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))
         logger.info(log_markers.DOCUMENT_OPENED.format(title=title, pages=len(self._page_paths)))
         self._update_page_source()
 
@@ -104,6 +120,8 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             page = self._page_paths[self._current_page_index]
             self.page_source = str(page)
             self._story_links = load_story_links(page)
+            if self._doc_dir is not None:
+                self._last_page_indexes[self._doc_dir] = self._current_page_index
             logger.debug(
                 log_markers.DOCUMENT_PAGE.format(
                     page=self._current_page_index + 1,

@@ -470,12 +470,17 @@ class NavigationCoordinator:
         self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
 
     def open_document(
-        self, doc_dir: Path, title: str, return_view_state: ViewStates | None = None
+        self,
+        doc_dir: Path,
+        title: str,
+        return_view_state: ViewStates | None = None,
+        *,
+        resume: bool = False,
     ) -> None:
-        """Open a document in the document reader."""
+        """Open a document in the document reader, with `resume` at the page last left on."""
         self._on_active_changed(False)  # noqa: FBT003
         self._doc_reader_close_view_state = return_view_state
-        self._screen_switchers.switch_to_document_reader(doc_dir, title)
+        self._screen_switchers.switch_to_document_reader(doc_dir, title, resume=resume)
 
     def open_wiki(self) -> None:
         """Open the Carl Barks Wiki screen on the configured bundle.

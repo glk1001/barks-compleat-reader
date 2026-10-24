@@ -187,6 +187,35 @@ class TestTreeViewManager:
         mock_dependencies["nav_coordinator"].open_wiki.assert_called_once_with()
         mock_setup.assert_not_called()
 
+    def test_go_back_to_a_chapter_reopens_it_where_it_was_left(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        # Back after a chapter's Go to Story opens the chapter again, at the page the
+        # story was picked from, not the chapter node's static view.
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        chapter_node = MagicMock(spec=ButtonTreeViewNode)
+        chapter_node.destination = DocumentDestination(
+            view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            doc_dir="/docs/illustrated-history/04-becoming-himself",
+            title="Becoming Himself",
+        )
+        mock_tree.previous_selected_node = chapter_node
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        screen_mocks["tree_view"].select_node.assert_called_with(chapter_node)
+        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+            Path("/docs/illustrated-history/04-becoming-himself"),
+            "Becoming Himself",
+            ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            resume=True,
+        )
+        mock_setup.assert_not_called()
+
     def test_on_node_collapsed(
         self,
         tree_view_manager: TreeViewManager,
@@ -481,6 +510,7 @@ class TestTreeViewManager:
             Path("/docs/illustrated-history/04-becoming-himself"),
             "Becoming Himself",
             ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            resume=True,
         )
 
     def test_on_node_expanded_with_one_title_child_selects_that_title(

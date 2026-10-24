@@ -47,12 +47,14 @@ def _write_links(page: Path, *figures: dict[str, object]) -> None:
     page.with_suffix(".json").write_text(json.dumps({"figures": list(figures)}), encoding="utf-8")
 
 
-def _open(screen: DocumentReaderScreen, doc_dir: Path, title: str = "How To") -> None:
+def _open(
+    screen: DocumentReaderScreen, doc_dir: Path, title: str = "How To", *, resume: bool = False
+) -> None:
     with (
         patch.object(document_reader_module, "Window"),
         patch.object(document_reader_module, "get_action_bar_title", return_value=title),
     ):
-        screen.open_document(doc_dir, title)
+        screen.open_document(doc_dir, title, resume=resume)
 
 
 class TestDocumentReaderMarkers:
@@ -182,3 +184,56 @@ class TestGotoStory:
             Titles.VOODOO_HOODOO, "2", keyboard_initiated=True
         )
         assert screen._story_picked_by_keyboard is False
+
+
+def _pages(doc_dir: Path, count: int) -> None:
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    for number in range(1, count + 1):
+        (doc_dir / f"page-{number:03d}.png").write_bytes(b"")
+
+
+class TestResume:
+    """A document opened to resume comes back at the page it was left on, this session."""
+
+    def test_a_resumed_document_opens_at_the_page_it_was_left_on(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _pages(tmp_path, 4)
+        _open(screen, tmp_path, resume=True)
+        screen.next_page()
+        screen.next_page()
+        _open(screen, tmp_path, resume=True)
+        assert screen.page_source.endswith("page-003.png")
+
+    def test_a_document_not_resumed_opens_at_its_first_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _pages(tmp_path, 4)
+        _open(screen, tmp_path)
+        screen.next_page()
+        _open(screen, tmp_path)
+        assert screen.page_source.endswith("page-001.png")
+
+    def test_each_document_keeps_its_own_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        first, second = tmp_path / "first", tmp_path / "second"
+        _pages(first, 3)
+        _pages(second, 3)
+        _open(screen, first, resume=True)
+        screen.next_page()
+        _open(screen, second, resume=True)
+        assert screen.page_source.endswith("page-001.png")
+        _open(screen, first, resume=True)
+        assert screen.page_source == str(first / "page-002.png")
+
+    def test_a_document_that_lost_pages_resumes_at_its_last_one(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _pages(tmp_path, 3)
+        _open(screen, tmp_path, resume=True)
+        screen.next_page()
+        screen.next_page()
+        (tmp_path / "page-003.png").unlink()
+        _open(screen, tmp_path, resume=True)
+        assert screen.page_source.endswith("page-002.png")

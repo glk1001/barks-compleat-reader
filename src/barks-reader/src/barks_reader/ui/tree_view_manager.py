@@ -47,11 +47,21 @@ if TYPE_CHECKING:
     from .view_renderer import ViewRenderer
 
 
+def _open_chapter(nav: NavigationCoordinator, destination: Destination | None) -> None:
+    """Open an illustrated-history chapter at the page it was last left on."""
+    assert isinstance(destination, DocumentDestination)
+    nav.open_document(
+        Path(destination.doc_dir), destination.title, destination.view_state, resume=True
+    )
+
+
 # Destinations whose node opens a full-window screen. Back onto one of these means
-# "take me back in", not "show me the static view the node falls back to".
-_REOPEN_ON_BACK: dict[type, Callable[[NavigationCoordinator], None]] = {
-    WikiIndexDestination: lambda nav: nav.open_wiki(),
-    CorpusStatsDestination: lambda nav: nav.open_corpus_stats(),
+# "take me back in", not "show me the static view the node falls back to": a chapter
+# left for one of its stories comes back at the page it was left on.
+_REOPEN_ON_BACK: dict[type, Callable[[NavigationCoordinator, Destination | None], None]] = {
+    WikiIndexDestination: lambda nav, _destination: nav.open_wiki(),
+    CorpusStatsDestination: lambda nav, _destination: nav.open_corpus_stats(),
+    DocumentDestination: _open_chapter,
 }
 
 
@@ -199,7 +209,7 @@ class TreeViewManager:
         reopen = _REOPEN_ON_BACK.get(type(prev_node.destination))
         if reopen is not None:
             self._tree_view_screen.select_node(prev_node)
-            reopen(self._nav)
+            reopen(self._nav, prev_node.destination)
             return
 
         self.setup_and_select_node(prev_node)
@@ -410,11 +420,7 @@ class TreeViewManager:
 
     def on_document_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Open a document node's folder of pages (an illustrated-history chapter)."""
-        assert isinstance(node.destination, DocumentDestination)
-        destination = node.destination
-        self._nav.open_document(
-            Path(destination.doc_dir), destination.title, destination.view_state
-        )
+        _open_chapter(self._nav, node.destination)
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""
