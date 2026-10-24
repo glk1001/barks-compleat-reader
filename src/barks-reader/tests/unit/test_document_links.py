@@ -79,3 +79,19 @@ def test_an_unreadable_file_gives_no_links_and_a_warning(
         )
         in loguru_sink
     )
+
+
+@pytest.mark.parametrize(("figures", "kind"), [(None, "NoneType"), (5, "int"), ("abc", "str")])
+def test_figures_that_are_not_a_list_give_no_links_and_one_warning(
+    tmp_path: Path, loguru_sink: list[str], figures: object, kind: str
+) -> None:
+    page = _page(tmp_path, figures)
+    assert load_story_links(page) == []
+    assert (
+        log_markers.DOCUMENT_LINKS_UNREADABLE.format(
+            path=page.with_suffix(".json"), error=f"'figures' is {kind}, not a list"
+        )
+        in loguru_sink
+    )
+    # Not one skipped-entry warning per character of a string.
+    assert not any("skipped" in line for line in loguru_sink)

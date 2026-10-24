@@ -60,6 +60,11 @@ def load_story_links(page_path: Path) -> list[StoryLink]:
     except (OSError, ValueError, KeyError, TypeError) as e:
         logger.warning(log_markers.DOCUMENT_LINKS_UNREADABLE.format(path=links_path, error=e))
         return []
+    if not isinstance(figures, list):
+        # A string would be walked a character at a time, anything else would raise.
+        error = f"'figures' is {type(figures).__name__}, not a list"
+        logger.warning(log_markers.DOCUMENT_LINKS_UNREADABLE.format(path=links_path, error=error))
+        return []
 
     links = []
     for figure in figures:
