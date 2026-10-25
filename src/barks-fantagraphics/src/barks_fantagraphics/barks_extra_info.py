@@ -103,14 +103,13 @@ BARKS_EXTRA_INFO = {
     ' so I just copied that old caricature."[/i]',
     Titles.LOST_IN_THE_ANDES: 'In a 1962 interview, Barks agreed that [i]"my best story,'
     ' technically, is probably the square egg one."[/i]\n\n'
-    "From 'www.seriesam.com:' [i]\"Western Publishing objected to the accent Barks had given the"
-    " Plain Awful people and so they (for example) replaced incorrect use of 'd' with 'th'"
-    ' in their dialogue."[/i] (Based on research by David Gerstein where he noticed things like'
-    " inconsistent letter slanting and cramped balloon relettering—from an e-mail"
-    " by David Gerstein, sent to the Disney Comics Mailing List on 9th July 1997.)"
-    " Accordingly, in this digital edition, the Southern accents have been"
-    " restored to what Barks originally intended, using [i]Dis, Dat, Dey, D', De,[/i] and"
-    " [i]Dere.[/i] (Pages 20-24, 26-29, and 31, reconstructed by GLK, April 2025)",
+    "David Gerstein noted in the Disney Comics Mailing List (9th July 1997 and 7 May 2012) that"
+    " Western Publishing likely replaced some of the Awfultonians' dialect; for example, 'deah'"
+    " replaced with 'theah'. Gerstein based this on things like inconsistent letter slanting and"
+    " cramped balloon relettering. It also fits in with dialect changes in Four Color Brer Rabbit"
+    " stories of the same era. So, in this digital edition, the Southern accents have been restored"
+    " to what Barks (likely) intended, using [i]Dis, Dat, Dey, D', De,[/i] and [i]Deah.[/i] (Pages"
+    " 20-24, 26-29, and 31, reconstructed by GLK, October 2026)",
     Titles.VOODOO_HOODOO: "From 'www.seriesam.com:' [i]\"Barks originally drew 'Bombie the"
     " Zombie' with blank eyeballs. The editors at Western Publishing feared that the vacant eyes"
     ' might frighten children and so they added pupils and half-closed lids."[/i] In this digital'
