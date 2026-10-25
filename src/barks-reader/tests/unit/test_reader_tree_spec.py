@@ -61,6 +61,8 @@ from barks_reader.core.navigation import (
     build_reader_tree_spec,
 )
 from barks_reader.core.navigation.tree_spec import (
+    _CHARACTER_RANDOM_NODES,
+    MIN_CHARACTER_TITLES,
     NUM_RANDOM_TITLES,
     TAG_YEAR_RANGES,
     _get_count_extra_text,
@@ -615,6 +617,28 @@ def test_from_favourites_draws_on_the_reader_s_own_picks(
     assert isinstance(from_favourites.lazy_children, partial)
     pool = from_favourites.lazy_children.args[0]
     assert pick in {info.comic_book_info.title for info in pool}
+
+
+class TestCharacterRandomNodes:
+    def test_every_character_node_has_titles_enough_for_fresh_re_rolls(self) -> None:
+        for _text, tag in _CHARACTER_RANDOM_NODES:
+            in_collection = [t for t in get_sorted_tagged_titles(tag) if get_fanta_info(t)]
+            assert len(in_collection) >= MIN_CHARACTER_TITLES, tag
+
+    def test_a_character_with_too_few_titles_fails_at_startup(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        thin_tag = min(Tags, key=lambda t: len(get_sorted_tagged_titles(t)))
+        assert len(get_sorted_tagged_titles(thin_tag)) < MIN_CHARACTER_TITLES
+        with (
+            patch.object(
+                barks_reader.core.navigation.tree_spec,
+                "_CHARACTER_RANDOM_NODES",
+                (("With Nobody", thin_tag),),
+            ),
+            pytest.raises(AssertionError, match="too few titles for a random node"),
+        ):
+            _build_specs(reader_settings, title_lists)
 
 
 class TestReadingSubtree:

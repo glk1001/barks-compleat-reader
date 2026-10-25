@@ -260,9 +260,13 @@ def _title_rows(title_infos: Iterable[FantaComicBookInfo]) -> tuple[NodeSpec, ..
 
 NUM_RANDOM_TITLES = 5
 
+# A 'With <character>' node needs this many of the character's titles in the Fanta
+# collection: five re-rolls of NUM_RANDOM_TITLES before a title must come round again.
+# The spec builder asserts it (the Beagle Boys and Grandma Duck have 29).
+MIN_CHARACTER_TITLES = NUM_RANDOM_TITLES * 5
+
 # The 'With <character>' filter nodes under 'Choose for me': node text and the
-# character's tag. Only characters with enough tagged titles (30+) to keep a
-# random 5 fresh across re-rolls.
+# character's tag.
 _CHARACTER_RANDOM_NODES: tuple[tuple[str, Tags], ...] = (
     (WITH_SCROOGE_NODE_TEXT, Tags.SCROOGE_NOT_IN_US),
     (WITH_GLADSTONE_NODE_TEXT, Tags.GLADSTONE_GANDER),
@@ -641,6 +645,10 @@ class _SpecBuilder:
             for title in get_sorted_tagged_titles(tag)
             if (info := get_fanta_info(title)) is not None
         ]
+        assert len(title_list) >= MIN_CHARACTER_TITLES, (
+            f'"{tag.value}" has too few titles for a random node:'
+            f" {len(title_list)} < {MIN_CHARACTER_TITLES}"
+        )
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
             text=text,
