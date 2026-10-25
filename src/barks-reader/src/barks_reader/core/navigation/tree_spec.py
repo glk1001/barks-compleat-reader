@@ -974,15 +974,21 @@ class _SpecBuilder:
         # Tag lists can hold titles outside the Fanta collection; the rows skip
         # them, so the count in the label must too.
         titles = [t for t in self._get_tagged_titles(tag) if get_fanta_info(t) is not None]
+        if tag in TAG_YEAR_RANGES:
+            # The year groups are made now, so a title outside every range fails at
+            # startup (as the series' year groups do) rather than on the node's first
+            # expansion; each group's title rows are still deferred.
+            return NodeSpec(
+                kind=NodeKind.STORY_GROUP,
+                text=get_markup_text_with_num_titles(tag.value, len(titles)),
+                destination=TagDestination(tag=tag),
+                children=_tag_year_range_specs(tag, titles),
+            )
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
             text=get_markup_text_with_num_titles(tag.value, len(titles)),
             destination=TagDestination(tag=tag),
-            lazy_children=(
-                partial(_tag_year_range_specs, tag, titles)
-                if tag in TAG_YEAR_RANGES
-                else partial(_tagged_title_rows, titles)
-            ),
+            lazy_children=partial(_tagged_title_rows, titles),
         )
 
     def _get_tagged_titles(self, tag: Tags) -> list[Titles]:

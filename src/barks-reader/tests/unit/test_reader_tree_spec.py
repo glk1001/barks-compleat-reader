@@ -503,7 +503,12 @@ class TestStoriesSubtree:
                     )
                 )
                 assert spec.text == f"[b]{destination.tag.value}[/b] [i]({num_titles})[/i]"
-                assert spec.lazy_children is not None
+                if destination.tag in TAG_YEAR_RANGES:
+                    assert spec.lazy_children is None
+                    assert all(child.kind is NodeKind.YEAR_RANGE for child in spec.children)
+                else:
+                    assert spec.lazy_children is not None
+                return  # the rows (or year groups) under a tag are not category nodes
             else:
                 pytest.fail(f"unexpected destination in Categories subtree: {destination!r}")
 
@@ -554,8 +559,9 @@ class TestTagYearRanges:
         self, specs: tuple[NodeSpec, ...], tag: Tags
     ) -> None:
         tag_spec = _find_tag_spec(specs, tag)
-        assert tag_spec.lazy_children is not None
-        groups = tag_spec.lazy_children()
+        # The groups are made at startup, so a title outside them fails there.
+        assert tag_spec.lazy_children is None
+        groups = tag_spec.children
         assert [group.destination for group in groups] == [
             TagYearRangeDestination(tag=tag, start=start, end=end)
             for start, end in TAG_YEAR_RANGES[tag]
