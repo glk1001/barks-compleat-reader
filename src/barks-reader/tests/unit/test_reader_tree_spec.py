@@ -5,13 +5,16 @@ from __future__ import annotations
 import dataclasses
 import json
 from enum import Enum
+from functools import partial
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import barks_reader.core.navigation.tree_spec
 import pytest
+from barks_fantagraphics import barks_tags
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,
+    BARKS_TAG_CATEGORIES_TITLES,
     BARKS_TAG_GROUPS,
     TagCategories,
     TagGroups,
@@ -32,6 +35,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDA,
     SERIES_ONE_PAGERS,
     SERIES_USA,
+    get_fanta_info,
     get_num_comic_book_titles,
 )
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
@@ -585,6 +589,34 @@ class TestTagYearRanges:
         tag_spec = _find_tag_spec(specs, Tags.AWFULTONIANS)
         assert tag_spec.lazy_children is not None
         assert all(row.kind is NodeKind.TITLE_ROW for row in tag_spec.lazy_children())
+
+
+def test_from_favourites_draws_on_the_reader_s_own_picks(
+    reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> None:
+    """The category's title list is an import-time snapshot: the picks must reach it."""
+    at_import = BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES]
+    pick = next(t for t in Titles if t not in at_import and get_fanta_info(t) is not None)
+    with (
+        patch.object(
+            barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[pick]
+        ),
+        patch.dict(barks_tags.BARKS_TAGGED_TITLES),
+        patch.dict(barks_tags.BARKS_TAG_CATEGORIES_TITLES),
+        patch.dict(barks_tags.BARKS_TAG_GROUPS_TITLES),
+    ):
+        specs = build_reader_tree_spec(
+            reader_settings, title_lists, include_one_pagers_in_chrono=False
+        )
+    choose_for_me = specs[3].children[0]
+    from_favourites = next(
+        c
+        for c in choose_for_me.children
+        if c.destination == RandomTitlesDestination(category=TagCategories.FAVOURITES)
+    )
+    assert isinstance(from_favourites.lazy_children, partial)
+    pool = from_favourites.lazy_children.args[0]
+    assert pick in {info.comic_book_info.title for info in pool}
 
 
 class TestReadingSubtree:

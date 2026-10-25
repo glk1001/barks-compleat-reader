@@ -21,6 +21,7 @@ from barks_fantagraphics.barks_tags import (
     TagCategories,
     TagGroups,
     Tags,
+    get_all_tags_in_tag_category,
     get_sorted_tagged_titles,
     special_case_personal_favourites_tag_update,
 )
@@ -416,6 +417,7 @@ class _SpecBuilder:
         self._reader_settings = reader_settings
         self._title_lists = title_lists
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
+        self._favourite_titles: list[Titles] | None = None  # read once, on first need
 
         self._series_names = [
             SERIES_CS,
@@ -649,8 +651,12 @@ class _SpecBuilder:
 
     def _category_random_titles_spec(self, text: str, category: TagCategories) -> NodeSpec:
         # A category aggregates every tag/group it contains (e.g. FAVOURITES spans
-        # Barks', EveryGeek, personal, and Peter Schilling picks). As with the
-        # character nodes, skip titles outside the Fanta collection.
+        # Barks', EveryGeek, personal, and Peter Schilling picks). The category's title
+        # list is built at import, when the personal picks are still unread: reading
+        # them puts them in it. As with the character nodes, skip titles outside the
+        # Fanta collection.
+        if Tags.PERSONAL_FAVOURITES in get_all_tags_in_tag_category(category):
+            self._get_favourite_titles()
         title_list = [
             info
             for title in BARKS_TAG_CATEGORIES_TITLES[category]
@@ -984,11 +990,11 @@ class _SpecBuilder:
         return self._get_favourite_titles()
 
     def _get_favourite_titles(self) -> list[Titles]:
-        titles = read_title_list(self._reader_settings.sys_file_paths.get_favourite_titles_path())
-
-        special_case_personal_favourites_tag_update(titles)
-
-        return titles
+        if self._favourite_titles is None:
+            path = self._reader_settings.sys_file_paths.get_favourite_titles_path()
+            self._favourite_titles = read_title_list(path)
+            special_case_personal_favourites_tag_update(self._favourite_titles)
+        return self._favourite_titles
 
     # --- Shared leaf helpers ---
 

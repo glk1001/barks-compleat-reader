@@ -315,6 +315,32 @@ class TestTitleLookups:
             barks_tags.special_case_personal_favourites_tag_update(picks)
             assert barks_tags.get_tag_titles(Tags.PERSONAL_FAVOURITES) == set(picks)
 
+    def test_the_personal_favourites_join_their_category_and_only_it(self) -> None:
+        """The category title lists are import-time snapshots; the update refreshes them."""
+        favourites_before = list(BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES])
+        pick = next(t for t in Titles if t not in favourites_before)
+        others_before = {
+            c: list(titles)
+            for c, titles in BARKS_TAG_CATEGORIES_TITLES.items()
+            if c is not TagCategories.FAVOURITES
+        }
+        with (
+            patch.dict(barks_tags.BARKS_TAGGED_TITLES),
+            patch.dict(barks_tags.BARKS_TAG_CATEGORIES_TITLES),
+            patch.dict(barks_tags.BARKS_TAG_GROUPS_TITLES),
+        ):
+            barks_tags.special_case_personal_favourites_tag_update([pick])
+            favourites = BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES]
+            assert pick in favourites
+            assert favourites == sorted(favourites)
+            assert set(favourites) == {*favourites_before, pick}
+            assert {
+                c: list(titles)
+                for c, titles in BARKS_TAG_CATEGORIES_TITLES.items()
+                if c is not TagCategories.FAVOURITES
+            } == others_before
+        assert BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES] == favourites_before
+
 
 # --- The Gyro tags: every Gyro story, split by first issue ---
 

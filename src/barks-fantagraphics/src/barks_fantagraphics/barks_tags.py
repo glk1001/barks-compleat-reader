@@ -299,7 +299,23 @@ def _validate_uncle_scrooge_tags() -> None:
 
 
 def special_case_personal_favourites_tag_update(my_title_picks: list[Titles]) -> None:
+    """Make `my_title_picks` the reader's own favourites.
+
+    The per-category and per-group title lists are built at import, when this tag
+    is still empty, so the ones holding it are rebuilt here: else a category view
+    of the favourites would never show a personal pick.
+
+    Args:
+        my_title_picks: The reader's picks, in their own order.
+
+    """
     BARKS_TAGGED_TITLES[Tags.PERSONAL_FAVOURITES] = my_title_picks
+    for category, items in BARKS_TAG_CATEGORIES.items():
+        if Tags.PERSONAL_FAVOURITES in get_all_tags_in_tag_category(category):
+            BARKS_TAG_CATEGORIES_TITLES[category] = sorted(_get_titles_for_tags_or_groups(items))
+    for tag_group, items in BARKS_TAG_GROUPS.items():
+        if Tags.PERSONAL_FAVOURITES in get_all_tags_in_tag_group(tag_group):
+            BARKS_TAG_GROUPS_TITLES[tag_group] = sorted(_get_titles_for_tags_or_groups(items))
 
 
 def _set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
