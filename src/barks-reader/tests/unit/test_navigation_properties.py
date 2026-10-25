@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import fields
 
+import pytest
 from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.navigation.destinations import (
     Destination,
@@ -124,9 +125,11 @@ def test_a_year_range_names_its_years_in_the_one_field_its_kind_uses(
         case YearRangeKind.ONE_PAGER | YearRangeKind.COVER:
             # These reuse their series' top view, with no range of their own.
             assert set_fields == set()
-        case _:
+        case YearRangeKind.CHRONO:
             assert set_fields == {"year_range"}
             assert request.year_range == expected
+        case _:
+            pytest.fail(f"the strategy drew a {dest.kind} year range")
 
 
 @given(destinations(), st.lists(destinations(), max_size=6))

@@ -306,6 +306,12 @@ def test_view_state_for_unknown_destination_raises(model: NavigationModel) -> No
         model.view_state_for(UnregisteredDestination())
 
 
+def test_a_tag_kind_year_range_destination_is_a_mistake(model: NavigationModel) -> None:
+    """A tag's year group is a TagYearRangeDestination; the kind is only a width hint."""
+    with pytest.raises(RuntimeError, match="tag year range is not a YearRangeDestination"):
+        model.view_state_for(YearRangeDestination(start=1947, end=1952, kind=YearRangeKind.TAG))
+
+
 # --- child_to_open_on ---------------------------------------------------
 
 

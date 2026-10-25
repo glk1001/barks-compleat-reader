@@ -221,11 +221,11 @@ def no_payload_destinations() -> st.SearchStrategy[Destination]:
 
 
 def year_range_destinations() -> st.SearchStrategy[YearRangeDestination]:
-    """Draw a year-range node of any kind."""
+    """Draw a year-range node of any kind but TAG, which is a TagYearRangeDestination."""
     return st.builds(
         lambda first_last, kind: YearRangeDestination(first_last[0], first_last[1], kind),
         year_ranges(),
-        st.sampled_from(list(YearRangeKind)),
+        st.sampled_from([kind for kind in YearRangeKind if kind is not YearRangeKind.TAG]),
     )
 
 

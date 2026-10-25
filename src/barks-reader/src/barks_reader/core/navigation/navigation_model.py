@@ -206,7 +206,12 @@ class NavigationModel:
             return ViewRequest(view_state=ViewStates.ON_ONE_PAGERS_NODE)
         if dest.kind is YearRangeKind.COVER:
             return ViewRequest(view_state=ViewStates.ON_COVERS_NODE)
-        return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
+        if dest.kind is YearRangeKind.CHRONO:
+            return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
+        # TAG: a tag's year group is a TagYearRangeDestination, which keeps the tag's
+        # view; as a YearRangeDestination it would silently get the chronological one.
+        msg = f"A {dest.kind.value} year range is not a YearRangeDestination: {dest}"
+        raise RuntimeError(msg)
 
     @staticmethod
     def auto_select_target(
