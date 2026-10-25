@@ -41,7 +41,7 @@ VARIANTS=(
     "double-page|double_page_mode=1"
     "virtual-keyboard|use_virtual_keyboard=1"
     "no-title-info|show_tree_view_title_info=0;show_fun_view_title_info=0"
-    "censorship-fixes|use_harpies=1;use_dere=1;use_blank_eyeballs=1;use_glk_firebug_ending=1"
+    "censorship-fixes|use_harpies=1;use_deah=1;use_blank_eyeballs=1;use_glk_firebug_ending=1"
 )
 
 only=""

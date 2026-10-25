@@ -56,7 +56,7 @@ FANTA_INTRO_ARTICLE = "Don Ault: Fantagraphics Introduction"
 GHOST_OF_THE_GROTTO = ["GHOST_OF_THE_GROTTO_THE", *CHRONO_RANGE]
 GHOST_OF_THE_GROTTO_TITLE = "The Ghost of the Grotto"
 
-# Reached through the series tree; has an overrides row ("dere"/"theah").
+# Reached through the series tree; has an overrides row ("deah"/"theah").
 LOST_IN_THE_ANDES = ["LOST_IN_THE_ANDES", "Donald Duck Adventures", *SERIES]
 LOST_IN_THE_ANDES_TITLE = "Lost in the Andes!"
 # A body-page cue for it, so the title view shows a ticked goto-page row and the

@@ -25,8 +25,8 @@ class SpecialFantaOverrides:
                 reader_settings.get_use_glk_firebug_ending,
             ),
             Titles.LOST_IN_THE_ANDES: (
-                "Use 'dere' instead of 'theah'",
-                reader_settings.get_use_dere_instead_of_theah,
+                "Use 'deah' instead of 'theah'",
+                reader_settings.get_use_deah_instead_of_theah,
             ),
             Titles.VOODOO_HOODOO: (
                 "Use blank eyeballs for Bombie",

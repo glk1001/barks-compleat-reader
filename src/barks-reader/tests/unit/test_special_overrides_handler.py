@@ -59,7 +59,7 @@ class TestGetDescription:
         settings = MagicMock()
         handler = SpecialFantaOverrides(settings)
         assert handler.get_description(Titles.FIREBUG_THE) == "Use GLK alternate ending"
-        assert handler.get_description(Titles.LOST_IN_THE_ANDES) == "Use 'dere' instead of 'theah'"
+        assert handler.get_description(Titles.LOST_IN_THE_ANDES) == "Use 'deah' instead of 'theah'"
         assert handler.get_description(Titles.VOODOO_HOODOO) == "Use blank eyeballs for Bombie"
         assert handler.get_description(Titles.GOLDEN_FLEECING_THE) == "Use 'Harpies' not 'Larkies'"
 

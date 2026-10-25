@@ -40,7 +40,7 @@ COLOR_THEME = "color_theme"
 GOTO_FULLSCREEN_ON_APP_START = "goto_fullscreen_on_app_start"
 GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
-USE_DERE_INSTEAD_OF_THEAH = "use_dere"
+USE_DEAH_INSTEAD_OF_THEAH = "use_deah"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
@@ -313,8 +313,8 @@ class ReaderSettings:
     def get_use_harpies_instead_of_larkies(self) -> bool:
         return self._read(USE_HARPIES_INSTEAD_OF_LARKIES)
 
-    def get_use_dere_instead_of_theah(self) -> bool:
-        return self._read(USE_DERE_INSTEAD_OF_THEAH)
+    def get_use_deah_instead_of_theah(self) -> bool:
+        return self._read(USE_DEAH_INSTEAD_OF_THEAH)
 
     def get_use_blank_eyeballs_for_bombie(self) -> bool:
         return self._read(USE_BLANK_EYEBALLS_FOR_BOMBIE)
@@ -562,9 +562,9 @@ _FIELDS: tuple[FieldSpec, ...] = (
         config_default=1,
     ),
     FieldSpec(
-        key=USE_DERE_INSTEAD_OF_THEAH,
-        title="Use 'Dere' Instead of 'Theah'",
-        desc="When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
+        key=USE_DEAH_INSTEAD_OF_THEAH,
+        title="Use 'Deah' Instead of 'Theah'",
+        desc="When reading 'Lost in the Andes!', use 'Deah' instead of 'Theah'.",
         kind=FieldKind.BOOL,
         config_default=1,
     ),
