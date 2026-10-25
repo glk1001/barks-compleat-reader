@@ -1,18 +1,15 @@
 """`NavigationModel` — answers navigation-policy questions from destinations alone.
 
 Consumers pass `Destination` descriptors and get back view-state resolutions,
-auto-select decisions, and tag context. Pure — no Kivy or UI imports.
-
-This replaces the isinstance ladders and text-based lookups currently scattered
-across `ui/tree_view_manager.py`, `ui/navigation_coordinator.py`, and
-`ui/view_states.py`.
+auto-select decisions, the child a node opens on, and tag context. Pure — no Kivy
+or UI imports. The widgets and coordinators in `ui/` route through it rather than
+switching on widget subclass or node text.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -119,17 +116,6 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     WikiIndexDestination: ViewStates.ON_INDEX_WIKI_NODE,
     TitleDestination: ViewStates.ON_TITLE_NODE,
 }
-
-
-_ARTICLE_VIEW_STATE_TO_TITLE_MAP_KEYS: set[ViewStates] = {
-    ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
-    ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
-    ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
-    ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
-    ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,
-}
-# Invariant: the article view states correspond 1:1 with NON_COMIC_TITLES.
-assert len(_ARTICLE_VIEW_STATE_TO_TITLE_MAP_KEYS) == len(NON_COMIC_TITLES)
 
 
 class NavigationModel:

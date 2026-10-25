@@ -1,8 +1,8 @@
 """The `ViewStates` enum — Kivy-free, shared between core navigation and UI.
 
-The enum identifies every top-level reader view. Domain-driven lookup tables
-(article → title, etc.) live alongside `NavigationModel` in
-`navigation_model.py`.
+The enum identifies every top-level reader view. Which view a destination
+shows is `NavigationModel.view_state_for` in `navigation_model.py`; an article
+or document node carries its own view state on its destination.
 """
 
 from __future__ import annotations
