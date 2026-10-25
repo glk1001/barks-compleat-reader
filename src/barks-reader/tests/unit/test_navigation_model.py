@@ -8,12 +8,11 @@ is establishing.
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 import sys
 
-import barks_reader.core.navigation as _nav_pkg  # noqa: F401
-import barks_reader.core.navigation.destinations as _nav_destinations  # noqa: F401
-import barks_reader.core.navigation.navigation_model as _nav_model_mod  # noqa: F401
-import barks_reader.core.navigation.view_states as _nav_view_states  # noqa: F401
+import barks_reader.core.navigation
 import pytest
 from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
@@ -415,20 +414,20 @@ def test_tag_context_returns_none_for_non_tag_destinations(
 # --- purity check ----------------------------------------------------
 
 
-def test_navigation_module_does_not_import_kivy() -> None:
-    """Assert NavigationModel never imports kivy — the whole point of the refactor."""
+def test_navigation_package_does_not_import_kivy() -> None:
+    """Assert no module of core.navigation imports kivy — the point of the package."""
     offenders = {name for name in sys.modules if name == "kivy" or name.startswith("kivy.")}
     # A previous test in the suite may have imported kivy; we can't assert absolute
-    # purity once the process has loaded it. Instead, assert that the core.navigation
-    # package itself does not reference the kivy namespace in any of its module
-    # globals.
-    for mod_name in (
-        "barks_reader.core.navigation",
-        "barks_reader.core.navigation.destinations",
-        "barks_reader.core.navigation.navigation_model",
-        "barks_reader.core.navigation.view_states",
-    ):
-        mod = sys.modules[mod_name]
+    # purity once the process has loaded it. Instead, assert that no module of the
+    # core.navigation package references the kivy namespace in its globals. Every
+    # submodule is walked, so a new one (or tree_spec, the largest) is not left out.
+    package = barks_reader.core.navigation
+    mod_names = [package.__name__] + [
+        f"{package.__name__}.{m.name}" for m in pkgutil.iter_modules(package.__path__)
+    ]
+    assert "barks_reader.core.navigation.tree_spec" in mod_names
+    for mod_name in mod_names:
+        mod = importlib.import_module(mod_name)
         for attr_value in vars(mod).values():
             mod_attr = getattr(attr_value, "__module__", "")
             if isinstance(mod_attr, str):

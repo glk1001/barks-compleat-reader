@@ -125,8 +125,14 @@ def _without_history(settings: MagicMock, tmp_path: Path) -> None:
     settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = tmp_path / "none"
 
 
-def _build_specs(settings: MagicMock) -> tuple[NodeSpec, ...]:
-    """Build the tree from `settings`, with no favourites (as the `specs` fixture does)."""
+def _build_specs(
+    settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> tuple[NodeSpec, ...]:
+    """Build the tree from `settings` with no favourites.
+
+    Favourites are read from a user file and mutate global tag data; this keeps the
+    spec build hermetic.
+    """
     with (
         patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
         patch.object(
@@ -134,29 +140,14 @@ def _build_specs(settings: MagicMock) -> tuple[NodeSpec, ...]:
             "special_case_personal_favourites_tag_update",
         ),
     ):
-        return build_reader_tree_spec(
-            settings,
-            FilteredTitleLists(include_one_pagers_in_chrono=False).get_title_lists(),
-            include_one_pagers_in_chrono=False,
-        )
+        return build_reader_tree_spec(settings, title_lists, include_one_pagers_in_chrono=False)
 
 
 @pytest.fixture
 def specs(
     reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
 ) -> tuple[NodeSpec, ...]:
-    # Favourites are read from a user file and mutate global tag data; keep the
-    # spec build hermetic.
-    with (
-        patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
-        patch.object(
-            barks_reader.core.navigation.tree_spec,
-            "special_case_personal_favourites_tag_update",
-        ),
-    ):
-        return build_reader_tree_spec(
-            reader_settings, title_lists, include_one_pagers_in_chrono=False
-        )
+    return _build_specs(reader_settings, title_lists)
 
 
 # --- Structural snapshots -------------------------------------------------------
@@ -800,12 +791,17 @@ class TestSearchAppendixIndex:
     def test_appendix_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[4], _APPENDIX_SNAPSHOT)
 
-    def test_intro_shows_no_history_without_chapters(self, reader_settings: MagicMock) -> None:
-        specs = _build_specs(reader_settings)
+    def test_intro_shows_no_history_without_chapters(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        specs = _build_specs(reader_settings, title_lists)
         assert INTRO_ILLUSTRATED_HISTORY_TEXT not in [c.text for c in specs[0].children]
 
     def test_intro_lists_the_history_chapters_found_on_disk(
-        self, reader_settings: MagicMock, tmp_path: Path
+        self,
+        reader_settings: MagicMock,
+        title_lists: dict[str, list[FantaComicBookInfo]],
+        tmp_path: Path,
     ) -> None:
         root = tmp_path / "illustrated-history"
         for name, title in (("03-learning", "Learning the Medium"), ("00-intro", "Introduction")):
@@ -816,7 +812,7 @@ class TestSearchAppendixIndex:
             )
         (root / "05-empty").mkdir()  # no pages yet: left out
         reader_settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = root
-        specs = _build_specs(reader_settings)
+        specs = _build_specs(reader_settings, title_lists)
         intro_texts = [c.text for c in specs[0].children]
         assert (
             intro_texts.index(INTRO_ILLUSTRATED_HISTORY_TEXT)
