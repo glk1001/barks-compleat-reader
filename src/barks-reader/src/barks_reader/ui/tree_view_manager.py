@@ -327,12 +327,12 @@ class TreeViewManager:
             self._scroll_pinner.pin_while_populating(node, populate=None)
 
         # 3) View-state logic.
-        if self._has_single_title_child(node):
+        if (only_title := self._auto_select_target_node(node)) is not None:
             # Single-child node: skip the intermediate tag view state and go straight
             # to selecting the title.  This avoids a visible flicker where the tag's
             # fun-image briefly appears before the title view replaces it.
             logger.info(f"Single-child node '{node.get_name()}': auto-selecting only title.")
-            self._auto_select_single_child(node)
+            self._auto_select_single_child(node, only_title)
         elif not self._opening_for_caller and (child := self._child_to_open_on(node)) is not None:
             opened_on = log_markers.NODE_OPENED_ON_CHILD
             logger.info(opened_on.format(name=node.get_name(), child=child.get_name()))
@@ -361,11 +361,19 @@ class TreeViewManager:
             log_markers.REPOPULATED_NODE.format(name=node.get_name(), count=len(node.nodes))
         )
 
-    @staticmethod
-    def _has_single_title_child(node: ButtonTreeViewNode) -> bool:
-        """Return True if the node has exactly one TitleTreeViewNode child."""
-        title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
-        return len(title_children) == 1
+    def _auto_select_target_node(self, node: ButtonTreeViewNode) -> TitleTreeViewNode | None:
+        """Return the title child the navigation model says to select when `node` opens."""
+        if node.destination is None:
+            return None
+        children = [c for c in node.nodes if isinstance(c, BaseTreeViewNode)]
+        target = self._nav_model.auto_select_target(
+            node.destination, [c.destination for c in children if c.destination is not None]
+        )
+        if target is None:
+            return None
+        return next(
+            c for c in children if isinstance(c, TitleTreeViewNode) and c.destination is target
+        )
 
     def _child_to_open_on(self, node: ButtonTreeViewNode) -> ButtonTreeViewNode | None:
         """Return the child the navigation model says `node` opens on, if it has one."""
@@ -383,16 +391,16 @@ class TreeViewManager:
             None,
         )
 
-    def _auto_select_single_child(self, node: ButtonTreeViewNode) -> None:
-        """Auto-select the only TitleTreeViewNode child synchronously.
+    def _auto_select_single_child(
+        self, node: ButtonTreeViewNode, only_child: TitleTreeViewNode
+    ) -> None:
+        """Select `node`'s only title child synchronously.
 
-        Caller must have already verified that the node has exactly one title child.
         Skips the intermediate tag view state and goes directly to the title,
         preserving the top background image.
         """
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        only_child = next(c for c in node.nodes if isinstance(c, TitleTreeViewNode))
         self._tree_view_screen.select_node(only_child)
         assert isinstance(only_child.destination, TitleDestination)
         fanta_info = only_child.destination.fanta_info

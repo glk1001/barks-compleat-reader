@@ -156,7 +156,7 @@ def test_auto_select_single_child_selects_child_and_calls_nav_with_preserve_top_
 ) -> None:
     parent, child, fanta = _parent_with_single_title_child()
 
-    tree_view_manager._auto_select_single_child(parent)
+    tree_view_manager._auto_select_single_child(parent, child)
 
     screen_mocks["tree_view"].select_node.assert_called_with(child)
     nav = tvm_deps["nav_coordinator"]
@@ -169,9 +169,9 @@ def test_auto_select_single_child_selects_child_and_calls_nav_with_preserve_top_
 def test_auto_select_single_child_extracts_tag_from_tag_parent(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    parent, _child, fanta = _parent_with_single_title_child(TagDestination(tag=Tags.ALASKA))
+    parent, child, fanta = _parent_with_single_title_child(TagDestination(tag=Tags.ALASKA))
 
-    tree_view_manager._auto_select_single_child(parent)
+    tree_view_manager._auto_select_single_child(parent, child)
 
     (target,), kwargs = tvm_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
@@ -182,11 +182,11 @@ def test_auto_select_single_child_extracts_tag_from_tag_parent(
 def test_auto_select_single_child_extracts_tag_from_tag_group_parent(
     tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
 ) -> None:
-    parent, _child, fanta = _parent_with_single_title_child(
+    parent, child, fanta = _parent_with_single_title_child(
         TagGroupDestination(tag_group=TagGroups.AFRICA)
     )
 
-    tree_view_manager._auto_select_single_child(parent)
+    tree_view_manager._auto_select_single_child(parent, child)
 
     (target,), kwargs = tvm_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
@@ -194,21 +194,26 @@ def test_auto_select_single_child_extracts_tag_from_tag_group_parent(
     assert kwargs == {"preserve_top_view": True}
 
 
-def test_auto_select_single_child_ignores_non_title_children(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+def test_auto_select_target_ignores_non_title_children(
+    tree_view_manager: TreeViewManager,
 ) -> None:
-    """Only the TitleTreeViewNode child should be picked, not sibling buttons."""
-    fanta = fake_fanta_info()
-    title_child = _make_title_node(fanta)
+    """Only the title child is picked, not a sibling button: the model's rule."""
+    title_child = _make_title_node(fake_fanta_info())
     sibling_button = MagicMock(spec=ButtonTreeViewNode)
+    sibling_button.destination = TagDestination(tag=Tags.ALASKA)
     parent = MagicMock(spec=ButtonTreeViewNode)
     parent.nodes = [sibling_button, title_child]
-    parent.destination = None
+    parent.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
 
-    tree_view_manager._auto_select_single_child(parent)
+    assert tree_view_manager._auto_select_target_node(parent) is title_child
 
-    (target,), _ = tvm_deps["nav_coordinator"].select_title.call_args
-    assert target.fanta_info is fanta
+
+def test_auto_select_target_is_none_for_a_node_without_a_destination(
+    tree_view_manager: TreeViewManager,
+) -> None:
+    parent, _child, _fanta = _parent_with_single_title_child(None)
+
+    assert tree_view_manager._auto_select_target_node(parent) is None
 
 
 # --- NavigationCoordinator.navigate_to_chrono_title: year-range boundaries

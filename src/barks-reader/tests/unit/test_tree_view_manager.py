@@ -372,6 +372,8 @@ class TestTreeViewManager:
         # children on every expansion, even when already populated.
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         old_children = [MagicMock(spec=TitleTreeViewNode) for _ in range(2)]
+        for child in old_children:
+            child.destination = TitleDestination(fanta_info=fake_fanta_info())
         mock_tree.selected_node = None
         mock_tree.previous_selected_node = None
 
