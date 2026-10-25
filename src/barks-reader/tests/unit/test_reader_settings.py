@@ -181,6 +181,8 @@ class TestReaderSettings:
         mock_config.getboolean.return_value = True
         assert reader_settings.get_use_harpies_instead_of_larkies() is True
         assert reader_settings.get_use_blank_eyeballs_for_bombie() is True
+        assert reader_settings.get_use_deah_instead_of_theah() is True
+        assert reader_settings.get_use_glk_firebug_ending() is True
 
     def test_the_base_class_saves_nothing(self, reader_settings: ReaderSettings) -> None:
         """Only the app's subclass writes the ini; the core one has nowhere to."""
