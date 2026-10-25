@@ -227,6 +227,11 @@ class TagYearRangeDestination(Destination):
     start: int
     end: int
 
+    @property
+    def kind(self) -> YearRangeKind:
+        """The kind every year-range node has, for the tree builder's node widths."""
+        return YearRangeKind.TAG
+
 
 @dataclass(frozen=True, slots=True)
 class RandomTitlesDestination(Destination):

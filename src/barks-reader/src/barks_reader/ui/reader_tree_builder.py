@@ -20,6 +20,7 @@ from barks_reader.core.navigation import (
     NodeRegistration,
     PressAction,
     SeriesDestination,
+    TagYearRangeDestination,
     YearRangeDestination,
     YearRangeKind,
     build_reader_tree_spec,
@@ -172,11 +173,11 @@ class ReaderTreeBuilder:
     @staticmethod
     def _make_button_node(spec: NodeSpec) -> ButtonTreeViewNode:
         if spec.kind is NodeKind.YEAR_RANGE:
-            assert spec.year_range_kind is not None
+            assert isinstance(spec.destination, YearRangeDestination | TagYearRangeDestination)
             return YearRangeTreeViewNode(
                 text=spec.text,
                 destination=spec.destination,
-                NODE_WIDTH=_YEAR_RANGE_KIND_TO_WIDTH[spec.year_range_kind],
+                NODE_WIDTH=_YEAR_RANGE_KIND_TO_WIDTH[spec.destination.kind],
             )
 
         return _NODE_CLASSES[spec.kind](text=spec.text, destination=spec.destination)

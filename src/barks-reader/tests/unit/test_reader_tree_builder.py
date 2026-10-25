@@ -16,11 +16,12 @@ from barks_reader.core.navigation import (
     PressAction,
     SeriesDestination,
     TagDestination,
+    TagYearRangeDestination,
     YearRangeDestination,
     YearRangeKind,
 )
 from barks_reader.core.reader_formatter import hyphenate_text
-from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
+from barks_reader.ui.reader_tree_builder import _YEAR_RANGE_KIND_TO_WIDTH, ReaderTreeBuilder
 from barks_reader.ui.tree_view_nodes import (
     IntroTextTreeViewNode,
     MainTreeViewNode,
@@ -71,7 +72,6 @@ class TestWalking:
                     destination=YearRangeDestination(
                         start=1942, end=1946, kind=YearRangeKind.CHRONO
                     ),
-                    year_range_kind=YearRangeKind.CHRONO,
                 ),
             ),
         )
@@ -151,13 +151,36 @@ class TestTiming:
         assert any(re.search(pattern(log_markers.TREE_NODES_LOADED), m) for m in loguru_sink)
 
 
+class TestYearRangeNodeWidth:
+    @pytest.mark.parametrize(
+        ("destination", "kind"),
+        [
+            (YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS), YearRangeKind.CS),
+            (TagYearRangeDestination(tag=Tags.SPLASH, start=1947, end=1952), YearRangeKind.TAG),
+        ],
+    )
+    def test_a_year_range_node_is_as_wide_as_its_destination_s_kind_says(
+        self,
+        tree_builder: ReaderTreeBuilder,
+        mock_dependencies: dict[str, MagicMock],
+        destination: YearRangeDestination | TagYearRangeDestination,
+        kind: YearRangeKind,
+    ) -> None:
+        spec = NodeSpec(kind=NodeKind.YEAR_RANGE, text="1942-1946", destination=destination)
+
+        _build_with_spec(tree_builder, spec)
+
+        added = [c.args[0] for c in mock_dependencies["reader_tree_view"].add_node.call_args_list]
+        node = next(n for n in added if isinstance(n, YearRangeTreeViewNode))
+        assert _YEAR_RANGE_KIND_TO_WIDTH[kind] == node.NODE_WIDTH
+
+
 class TestLookupNodeCollection:
     def test_chrono_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
         spec = NodeSpec(
             kind=NodeKind.YEAR_RANGE,
             text="1942-1946",
             destination=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO),
-            year_range_kind=YearRangeKind.CHRONO,
         )
 
         _build_with_spec(tree_builder, spec)
@@ -171,7 +194,6 @@ class TestLookupNodeCollection:
             kind=NodeKind.YEAR_RANGE,
             text="1942-1946",
             destination=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS),
-            year_range_kind=YearRangeKind.CS,
         )
 
         _build_with_spec(tree_builder, spec)
@@ -183,7 +205,6 @@ class TestLookupNodeCollection:
             kind=NodeKind.YEAR_RANGE,
             text="1946-1952",
             destination=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER),
-            year_range_kind=YearRangeKind.ONE_PAGER,
         )
 
         _build_with_spec(tree_builder, spec)
@@ -196,7 +217,6 @@ class TestLookupNodeCollection:
             kind=NodeKind.YEAR_RANGE,
             text="1960-1965",
             destination=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER),
-            year_range_kind=YearRangeKind.COVER,
         )
 
         _build_with_spec(tree_builder, spec)

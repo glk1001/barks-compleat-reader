@@ -199,7 +199,6 @@ def _summarise(spec: NodeSpec, depth: int = 0, max_depth: int | None = None) -> 
                 f"press={spec.press_action.name}",
                 f"register={spec.register_as.name if spec.register_as else None}",
                 f"closed={spec.start_closed}",
-                f"yrk={spec.year_range_kind.name if spec.year_range_kind else None}",
                 f"lazy={spec.lazy_children is not None}",
                 f"repopulate={spec.repopulate_on_expand}",
             ]
@@ -216,98 +215,98 @@ def _assert_snapshot(spec: NodeSpec, expected: str, max_depth: int | None = None
 
 
 _INTRO_SNAPSHOT = """
-MAIN text='Introduction' dest=IntroDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  MAIN text='The Compleat Barks Disney Reader' dest=IntroDocDestination() press=OPEN_INTRO_DOC register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='Don Ault: Fantagraphics Introduction' dest=ArticleDestination(view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE, article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='By the Numbers' dest=CorpusStatsDestination() press=OPEN_CORPUS_STATS register=None closed=True yrk=None lazy=False repopulate=False
+MAIN text='Introduction' dest=IntroDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  MAIN text='The Compleat Barks Disney Reader' dest=IntroDocDestination() press=OPEN_INTRO_DOC register=None closed=True lazy=False repopulate=False
+  MAIN text='Don Ault: Fantagraphics Introduction' dest=ArticleDestination(view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE, article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION) press=OPEN_ARTICLE register=None closed=True lazy=False repopulate=False
+  MAIN text='By the Numbers' dest=CorpusStatsDestination() press=OPEN_CORPUS_STATS register=None closed=True lazy=False repopulate=False
 """  # noqa: E501
 
 # Depth-limited: the three group headers are hand-written, everything below them is
 # generated and covered by `TestStoriesSubtree`.
 _STORIES_SNAPSHOT = """
-MAIN text='The Stories' dest=StoriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='[b]Categories[/b]' dest=CategoriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+MAIN text='The Stories' dest=StoriesDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='[b]Categories[/b]' dest=CategoriesDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
 """  # noqa: E501
 
 _SEARCH_SNAPSHOT = """
-MAIN text='Search' dest=SearchDestination() press=TOGGLE_ONLY register=SEARCH closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='Titles' dest=TitleSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='Tags' dest=TagSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='Words' dest=WordSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
+MAIN text='Search' dest=SearchDestination() press=TOGGLE_ONLY register=SEARCH closed=False lazy=False repopulate=False
+  STORY_GROUP text='Titles' dest=TitleSearchDestination() press=SET_VIEW_STATE register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='Tags' dest=TagSearchDestination() press=SET_VIEW_STATE register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='Words' dest=WordSearchDestination() press=SET_VIEW_STATE register=None closed=False lazy=False repopulate=False
 """  # noqa: E501
 
 _APPENDIX_SNAPSHOT = """
-MAIN text='Appendix' dest=AppendixDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  MAIN text='Rich Tommaso: On Coloring Barks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE, article_title=Titles.RICH_TOMMASO___ON_COLORING_BARKS) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='Don Ault: Life Among the Ducks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE, article_title=Titles.DON_AULT___LIFE_AMONG_THE_DUCKS) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='Maggie Thompson: Comics Readers Find...' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE, article_title=Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='George Lucas: An Appreciation' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE, article_title=Titles.GEORGE_LUCAS___AN_APPRECIATION) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='Censorship Fixes and Other Changes' dest=CensorshipFixesDocDestination() press=OPEN_CENSORSHIP_FIXES_DOC register=None closed=True yrk=None lazy=False repopulate=False
-  MAIN text='Statistics' dest=StatisticsDestination() press=SET_VIEW_STATE register=STATISTICS closed=True yrk=None lazy=False repopulate=False
+MAIN text='Appendix' dest=AppendixDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  MAIN text='Rich Tommaso: On Coloring Barks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE, article_title=Titles.RICH_TOMMASO___ON_COLORING_BARKS) press=OPEN_ARTICLE register=None closed=True lazy=False repopulate=False
+  MAIN text='Don Ault: Life Among the Ducks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE, article_title=Titles.DON_AULT___LIFE_AMONG_THE_DUCKS) press=OPEN_ARTICLE register=None closed=True lazy=False repopulate=False
+  MAIN text='Maggie Thompson: Comics Readers Find...' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE, article_title=Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD) press=OPEN_ARTICLE register=None closed=True lazy=False repopulate=False
+  MAIN text='George Lucas: An Appreciation' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE, article_title=Titles.GEORGE_LUCAS___AN_APPRECIATION) press=OPEN_ARTICLE register=None closed=True lazy=False repopulate=False
+  MAIN text='Censorship Fixes and Other Changes' dest=CensorshipFixesDocDestination() press=OPEN_CENSORSHIP_FIXES_DOC register=None closed=True lazy=False repopulate=False
+  MAIN text='Statistics' dest=StatisticsDestination() press=SET_VIEW_STATE register=STATISTICS closed=True lazy=False repopulate=False
 """  # noqa: E501
 
 _INDEX_SNAPSHOT = """
-MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  MAIN text='Main Index' dest=MainIndexDestination() press=SET_VIEW_STATE register=MAIN_INDEX closed=False yrk=None lazy=False repopulate=False
-  MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=OPEN_SPEECH_INDEX register=SPEECH_INDEX closed=False yrk=None lazy=False repopulate=False
-    MAIN text='Words' dest=SpeechWordsDestination() press=OPEN_SPEECH_WORDS register=SPEECH_WORDS closed=False yrk=None lazy=False repopulate=False
-    MAIN text='Names' dest=NamesIndexDestination() press=SET_VIEW_STATE register=NAMES_INDEX closed=False yrk=None lazy=False repopulate=False
-    MAIN text='Locations' dest=LocationsIndexDestination() press=SET_VIEW_STATE register=LOCATIONS_INDEX closed=False yrk=None lazy=False repopulate=False
+MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  MAIN text='Main Index' dest=MainIndexDestination() press=SET_VIEW_STATE register=MAIN_INDEX closed=False lazy=False repopulate=False
+  MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=OPEN_SPEECH_INDEX register=SPEECH_INDEX closed=False lazy=False repopulate=False
+    MAIN text='Words' dest=SpeechWordsDestination() press=OPEN_SPEECH_WORDS register=SPEECH_WORDS closed=False lazy=False repopulate=False
+    MAIN text='Names' dest=NamesIndexDestination() press=SET_VIEW_STATE register=NAMES_INDEX closed=False lazy=False repopulate=False
+    MAIN text='Locations' dest=LocationsIndexDestination() press=SET_VIEW_STATE register=LOCATIONS_INDEX closed=False lazy=False repopulate=False
 """  # noqa: E501
 
 # The generated year-range subtrees. Their labels are assembled from the range string,
 # a per-kind "extra text" (issue span for CS/US, plain count for one-pagers/covers/
 # chrono) and the markup helpers — none of which a count-only assertion can see.
 _CHRONO_SNAPSHOT = """
-STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  YEAR_RANGE text='[b]1942-1946[/b] [i](65)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1947-1950[/b] [i](70)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1951-1954[/b] [i](74)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1955-1957[/b] [i](76)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1958-1961[/b] [i](138)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1962-1971[/b] [i](35)[/i]' dest=YearRangeDestination(start=1962, end=1971, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  YEAR_RANGE text='[b]1942-1946[/b] [i](65)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  YEAR_RANGE text='[b]1947-1950[/b] [i](70)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  YEAR_RANGE text='[b]1951-1954[/b] [i](74)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  YEAR_RANGE text='[b]1955-1957[/b] [i](76)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  YEAR_RANGE text='[b]1958-1961[/b] [i](138)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  YEAR_RANGE text='[b]1962-1971[/b] [i](35)[/i]' dest=YearRangeDestination(start=1962, end=1971, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
 """  # noqa: E501
 
 _SERIES_SNAPSHOT = """
-STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text='[b]Comics and Stories[/b] [i](227)[/i]' dest=SeriesDestination(series_name='Comics and Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-    YEAR_RANGE text='[b]1942-1946[/b] [i](WDCS 31-79)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-    YEAR_RANGE text='[b]1947-1950[/b] [i](WDCS 80-130)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-    YEAR_RANGE text='[b]1951-1954[/b] [i](WDCS 131-179)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-    YEAR_RANGE text='[b]1955-1957[/b] [i](WDCS 180-217)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-    YEAR_RANGE text='[b]1958-1961[/b] [i](WDCS 218-263)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-    YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-265)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
-  STORY_GROUP text='[b]Donald Duck Adventures[/b] [i](39)[/i]' dest=SeriesDestination(series_name='Donald Duck Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-    YEAR_RANGE text='[b]1951-1954[/b] [i](US 1-10)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
-    YEAR_RANGE text='[b]1955-1957[/b] [i](US 11-23)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
-    YEAR_RANGE text='[b]1958-1961[/b] [i](US 24-38)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
-    YEAR_RANGE text='[b]1962-1966[/b] [i](US 39-48)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
-  STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](29)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Gyro Gearloose[/b] [i](45)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]One Pagers[/b] [i](133)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-    YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1957-1962[/b] [i](41)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
-  STORY_GROUP text='[b]Covers[/b] [i](192)[/i]' dest=SeriesDestination(series_name='Covers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-    YEAR_RANGE text='[b]1948-1952[/b] [i](56)[/i]' dest=YearRangeDestination(start=1948, end=1952, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1953-1955[/b] [i](40)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1956-1959[/b] [i](55)[/i]' dest=YearRangeDestination(start=1956, end=1959, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1960-1965[/b] [i](41)[/i]' dest=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='[b]Comics and Stories[/b] [i](227)[/i]' dest=SeriesDestination(series_name='Comics and Stories') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+    YEAR_RANGE text='[b]1942-1946[/b] [i](WDCS 31-79)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1947-1950[/b] [i](WDCS 80-130)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1951-1954[/b] [i](WDCS 131-179)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1955-1957[/b] [i](WDCS 180-217)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1958-1961[/b] [i](WDCS 218-263)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-265)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Donald Duck Adventures[/b] [i](39)[/i]' dest=SeriesDestination(series_name='Donald Duck Adventures') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+    YEAR_RANGE text='[b]1951-1954[/b] [i](US 1-10)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1955-1957[/b] [i](US 11-23)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1958-1961[/b] [i](US 24-38)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1962-1966[/b] [i](US 39-48)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](29)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Gyro Gearloose[/b] [i](45)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]One Pagers[/b] [i](133)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+    YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1957-1962[/b] [i](41)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Covers[/b] [i](192)[/i]' dest=SeriesDestination(series_name='Covers') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+    YEAR_RANGE text='[b]1948-1952[/b] [i](56)[/i]' dest=YearRangeDestination(start=1948, end=1952, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1953-1955[/b] [i](40)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1956-1959[/b] [i](55)[/i]' dest=YearRangeDestination(start=1956, end=1959, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1960-1965[/b] [i](41)[/i]' dest=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
 """  # noqa: E501
 
 _FAVOURITES_CATEGORY_SNAPSHOT = """
-STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourites') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text="[b]Barks' Picks[/b] [i](14)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]everygeek.net[/b] [i](7)[/i]' dest=TagDestination(tag=Tags.EVERY_GEEK_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]My Picks[/b] [i](0)[/i]' dest=TagDestination(tag=Tags.PERSONAL_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Peter Schilling[/b] [i](12)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](21)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]The Classics[/b] [i](16)[/i]' dest=TagDestination(tag=Tags.CLASSICS) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourites') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text="[b]Barks' Picks[/b] [i](14)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]everygeek.net[/b] [i](7)[/i]' dest=TagDestination(tag=Tags.EVERY_GEEK_FAVOURITES) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]My Picks[/b] [i](0)[/i]' dest=TagDestination(tag=Tags.PERSONAL_FAVOURITES) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Peter Schilling[/b] [i](12)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](21)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+  STORY_GROUP text='[b]The Classics[/b] [i](16)[/i]' dest=TagDestination(tag=Tags.CLASSICS) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
 """  # noqa: E501
 
 # The wiki entry is appended only when the bundle setting resolves; it must start
@@ -315,7 +314,7 @@ STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourit
 # press (which would auto-open the wiki screen at startup).
 _WIKI_INDEX_ENTRY = (
     "  MAIN text='Carl Barks Wiki' dest=WikiIndexDestination() press=OPEN_WIKI_INDEX"
-    " register=None closed=True yrk=None lazy=False repopulate=False"
+    " register=None closed=True lazy=False repopulate=False"
 )
 
 
@@ -570,7 +569,8 @@ class TestTagYearRanges:
         titles: list[Titles] = []
         for group, (start, end) in zip(groups, TAG_YEAR_RANGES[tag], strict=True):
             assert group.kind is NodeKind.YEAR_RANGE
-            assert group.year_range_kind is YearRangeKind.TAG
+            assert isinstance(group.destination, TagYearRangeDestination)
+            assert group.destination.kind is YearRangeKind.TAG
             assert group.lazy_children is not None
             rows = group.lazy_children()
             infos = [row.fanta_info for row in rows if row.fanta_info is not None]

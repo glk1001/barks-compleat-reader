@@ -215,7 +215,6 @@ class NodeSpec:
     press_action: PressAction = PressAction.TOGGLE_ONLY
     register_as: NodeRegistration | None = None
     start_closed: bool = False
-    year_range_kind: YearRangeKind | None = None
     fanta_info: FantaComicBookInfo | None = None
     children: tuple[NodeSpec, ...] = field(default=())
     lazy_children: Callable[[], tuple[NodeSpec, ...]] | None = None
@@ -296,15 +295,13 @@ def _year_range_node(
     year_range_titles: list[FantaComicBookInfo],
     *,
     extra_text: str,
-    destination: Destination,
-    kind: YearRangeKind,
+    destination: YearRangeDestination | TagYearRangeDestination,
 ) -> NodeSpec:
     """Make a year-range group node, deferring its title rows until it opens."""
     return NodeSpec(
         kind=NodeKind.YEAR_RANGE,
         text=get_markup_text_with_extra(FilteredTitleLists.get_range_str(year_range), extra_text),
         destination=destination,
-        year_range_kind=kind,
         lazy_children=partial(_title_rows, year_range_titles),
     )
 
@@ -338,7 +335,6 @@ def _tag_year_range_specs(tag: Tags, titles: Iterable[Titles]) -> tuple[NodeSpec
                 year_range_titles,
                 extra_text=_get_count_extra_text(year_range_titles),
                 destination=TagYearRangeDestination(tag=tag, start=start, end=end),
-                kind=YearRangeKind.TAG,
             )
         )
     assert grouped_count == len(title_infos), (
@@ -926,7 +922,6 @@ class _SpecBuilder:
             year_range_titles,
             extra_text=extra_text,
             destination=YearRangeDestination(start=year_range[0], end=year_range[1], kind=kind),
-            kind=kind,
         )
 
     def _year_range_titles(
