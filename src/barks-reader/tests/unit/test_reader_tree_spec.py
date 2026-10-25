@@ -99,6 +99,7 @@ from barks_reader.core.reader_consts_and_types import (
     WITH_GYRO_NODE_TEXT,
     WITH_SCROOGE_NODE_TEXT,
 )
+from barks_reader.core.reader_formatter import get_markup_text_with_num_titles
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -301,11 +302,11 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
 
 _FAVOURITES_CATEGORY_SNAPSHOT = """
 STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourites') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
-  STORY_GROUP text="[b]Barks' Picks[/b] [i](15)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text="[b]Barks' Picks[/b] [i](14)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]everygeek.net[/b] [i](7)[/i]' dest=TagDestination(tag=Tags.EVERY_GEEK_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]My Picks[/b] [i](0)[/i]' dest=TagDestination(tag=Tags.PERSONAL_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Peter Schilling[/b] [i](13)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](22)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Peter Schilling[/b] [i](12)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](21)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]The Classics[/b] [i](16)[/i]' dest=TagDestination(tag=Tags.CLASSICS) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
 """  # noqa: E501
 
@@ -491,11 +492,15 @@ class TestStoriesSubtree:
                 assert len(spec.children) == len(BARKS_TAG_GROUPS[destination.tag_group])
             elif isinstance(destination, TagDestination):
                 seen["tag"] += 1
-                # Favourites are patched to an empty list by the `specs` fixture.
+                # Favourites are patched to an empty list by the `specs` fixture. The
+                # count is of the titles in the Fanta collection, as the rows are.
                 num_titles = (
                     0
                     if destination.tag is Tags.PERSONAL_FAVOURITES
-                    else len(get_sorted_tagged_titles(destination.tag))
+                    else sum(
+                        get_fanta_info(t) is not None
+                        for t in get_sorted_tagged_titles(destination.tag)
+                    )
                 )
                 assert spec.text == f"[b]{destination.tag.value}[/b] [i]({num_titles})[/i]"
                 assert spec.lazy_children is not None
@@ -512,26 +517,22 @@ class TestStoriesSubtree:
         assert all(count > 0 for count in seen.values()), seen
 
     def test_tag_specs_have_destinations_and_lazy_rows(self, specs: tuple[NodeSpec, ...]) -> None:
-        categories = specs[1].children[2]
-
-        def find_tag_spec(spec: NodeSpec) -> NodeSpec | None:
-            if isinstance(spec.destination, TagDestination):
-                return spec
-            for child in spec.children:
-                found = find_tag_spec(child)
-                if found is not None:
-                    return found
-            return None
-
-        tag_spec = next(found for found in (find_tag_spec(c) for c in categories.children) if found)
-
+        tag_spec = _find_tag_spec(specs, Tags.AIRPLANES)
         assert tag_spec.lazy_children is not None
         title_rows = tag_spec.lazy_children()
-        assert isinstance(tag_spec.destination, TagDestination)
-        tagged_titles = get_sorted_tagged_titles(tag_spec.destination.tag)
-        # Rows are the tagged titles minus any not (yet) in the Fanta info.
-        assert 0 < len(title_rows) <= len(tagged_titles)
+        assert 0 < len(title_rows) <= len(get_sorted_tagged_titles(Tags.AIRPLANES))
         assert all(row.fanta_info is not None for row in title_rows)
+
+    def test_a_tag_label_counts_the_titles_its_rows_show(self, specs: tuple[NodeSpec, ...]) -> None:
+        """Daisy is tagged on titles outside the Fanta collection: the rows skip them."""
+        tagged = get_sorted_tagged_titles(Tags.DAISY)
+        in_collection = [t for t in tagged if get_fanta_info(t) is not None]
+        assert len(in_collection) < len(tagged)
+        tag_spec = _find_tag_spec(specs, Tags.DAISY)
+        assert tag_spec.lazy_children is not None
+        rows = tag_spec.lazy_children()
+        assert len(rows) == len(in_collection)
+        assert tag_spec.text == get_markup_text_with_num_titles(Tags.DAISY.value, len(rows))
 
 
 def _find_tag_spec(specs: tuple[NodeSpec, ...], tag: Tags) -> NodeSpec:

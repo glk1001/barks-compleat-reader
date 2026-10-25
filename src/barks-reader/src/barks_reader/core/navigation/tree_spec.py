@@ -971,7 +971,9 @@ class _SpecBuilder:
         )
 
     def _tag_spec(self, tag: Tags) -> NodeSpec:
-        titles = self._get_tagged_titles(tag)
+        # Tag lists can hold titles outside the Fanta collection; the rows skip
+        # them, so the count in the label must too.
+        titles = [t for t in self._get_tagged_titles(tag) if get_fanta_info(t) is not None]
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
             text=get_markup_text_with_num_titles(tag.value, len(titles)),
