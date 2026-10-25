@@ -1,5 +1,8 @@
 """Tests for the one-pager integration (ONE_PAGER_LOCATIONS and the collection)."""
 
+from collections.abc import Callable
+from pathlib import Path
+
 import pytest
 from barks_fantagraphics import comic_book_info as cbi
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
@@ -11,6 +14,7 @@ from barks_fantagraphics.comic_book_info import (
     get_one_pager_collection_page_num,
     get_one_pager_collection_pages,
     get_one_pager_display_title,
+    get_one_pager_file,
     get_one_pager_issue_page,
     is_one_pager_collection,
     is_one_pager_located,
@@ -209,6 +213,53 @@ class TestOnePagerCollection:
     def test_collection_present_in_all_fanta_info(self) -> None:
         """The collection is registered in ALL_FANTA_COMIC_BOOK_INFO at import time."""
         assert Titles.ALL_ONE_PAGERS in ALL_FANTA_COMIC_BOOK_INFO
+
+
+class TestOnePagerFile:
+    """A one-pager's files are in its home volume, or - if no story owns it - the collection.
+
+    FASHION_IN_FLIGHT is located second, so it is collection page ``base + 1``.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _locations(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake = {Titles.IF_THE_HAT_FITS: (10, 123, 0), Titles.FASHION_IN_FLIGHT: (20, 36, 0)}
+        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", fake)
+
+    @staticmethod
+    def _tree(tmp_path: Path) -> Callable[[int], Path]:
+        return lambda volume: tmp_path / f"volume-{volume:02d}"
+
+    @staticmethod
+    def _write(path: Path) -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        return path
+
+    def test_the_home_file_is_found_first(self, tmp_path: Path) -> None:
+        tree = self._tree(tmp_path)
+        home = self._write(tree(20) / "036.svg.png")
+        collection_page = cbi.ONE_PAGER_COLLECTION_PAGE_BASE + 1
+        self._write(tree(cbi.ONE_PAGER_COLLECTION_VOLUME) / f"{collection_page:03d}.svg.png")
+
+        assert get_one_pager_file(Titles.FASHION_IN_FLIGHT, tree, ".svg.png") == home
+
+    def test_a_one_pager_with_no_home_file_is_found_in_the_collection(self, tmp_path: Path) -> None:
+        """The Vol 20 page 036 case: it belongs to no story, so only the collection has it."""
+        tree = self._tree(tmp_path)
+        collection_page = cbi.ONE_PAGER_COLLECTION_PAGE_BASE + 1
+        staged = self._write(tree(cbi.ONE_PAGER_COLLECTION_VOLUME) / f"{collection_page:03d}.png")
+
+        assert get_one_pager_file(Titles.FASHION_IN_FLIGHT, tree, ".png") == staged
+
+    def test_a_file_in_neither_place_is_named_at_home(self, tmp_path: Path) -> None:
+        tree = self._tree(tmp_path)
+
+        assert get_one_pager_file(Titles.FASHION_IN_FLIGHT, tree, ".png") == tree(20) / "036.png"
+
+    def test_an_unlocated_one_pager_is_refused(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="no location"):
+            get_one_pager_file(Titles.TOASTY_TOYS, self._tree(tmp_path), ".png")
 
 
 class TestOnePagerCollectionBuild:

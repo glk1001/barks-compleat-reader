@@ -308,26 +308,31 @@ class TestGetPagePanelBoxes:
 class TestGetPagePanelBoxesOnePager:
     """A one-pager has no `.ini`, so it must resolve without a ComicBook."""
 
-    def test_uses_the_host_volume_segments_dir(
+    def test_reads_the_segments_file_the_one_pager_resolver_finds(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Keyed by the home volume and page, wherever the segments file is found."""
         monkeypatch.setattr(
             panel_boxes_module,
             "get_one_pager_fanta_vol_and_page",
             lambda _title: (5, 123),
         )
-        panel_file = tmp_path / "123.json"
+        # A collection page's file, as for a one-pager that belongs to no story.
+        panel_file = tmp_path / "595.json"
         panel_file.write_text(_make_panel_segments_json())
+        resolver = MagicMock(return_value=panel_file)
+        monkeypatch.setattr(panel_boxes_module, "get_one_pager_file", resolver)
 
         db = MagicMock()
-        db.get_fantagraphics_panel_segments_volume_dir.return_value = tmp_path
         tpb = TitlePanelBoxes(_comics_database=db)
 
         result = tpb.get_page_panel_boxes(Titles.IF_THE_HAT_FITS)
 
         assert result.volume == 5
         assert list(result.pages) == ["123"]
-        db.get_fantagraphics_panel_segments_volume_dir.assert_called_once_with(5)
+        resolver.assert_called_once_with(
+            Titles.IF_THE_HAT_FITS, db.get_fantagraphics_panel_segments_volume_dir, ".json"
+        )
         db.get_comic_book_for.assert_not_called()
 
     def test_ordinary_title_is_left_to_the_comic_book_route(

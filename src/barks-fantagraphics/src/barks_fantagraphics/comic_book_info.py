@@ -1,5 +1,6 @@
 # ruff: noqa: E501, FBT003
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -1605,6 +1606,49 @@ def get_one_pager_collection_page_num(title: Titles) -> int | None:
 # read-only original dirs, so offline staging needs no permission changes.
 ONE_PAGER_COLLECTION_VOLUME = 1
 COVER_COLLECTION_VOLUME = 2
+
+
+def get_one_pager_file(title: Titles, get_volume_dir: Callable[[int], Path], suffix: str) -> Path:
+    """Return a located one-pager's file in one of the per-volume trees, wherever it lives.
+
+    A one-pager that belongs to a story in its home volume is processed with that story,
+    so its files are in the home volume under its own page number. One that belongs to
+    no story is processed only as part of "All One-Pagers", so its files are real files
+    in the collection's volume under its collection page, and its home volume never has
+    them - Vol 20 page 036, "The Big Bobber", is collection page 595. The home file is
+    tried first, so an owned one-pager is found whether or not the collection is staged.
+
+    Args:
+        title: The one-pager title.
+        get_volume_dir: The tree's per-volume directory, e.g.
+            `ComicsDatabase.get_fantagraphics_restored_volume_image_dir`.
+        suffix: What follows the page number in the file name, e.g. ".png" or ".svg.png".
+
+    Returns:
+        The home file if it exists, else the collection file if that exists, else the
+        home file's path - so a report of a missing file names the home volume.
+
+    Raises:
+        ValueError: If the one-pager has no location in `ONE_PAGER_LOCATIONS`.
+
+    """
+    volume, page = get_one_pager_fanta_vol_and_page(title)
+    collection_page_num = get_one_pager_collection_page_num(title)
+    if volume is None or page is None or collection_page_num is None:
+        msg = f'One-pager "{title.name}" has no location in ONE_PAGER_LOCATIONS.'
+        raise ValueError(msg)
+
+    home_file = Path(get_volume_dir(volume)) / f"{page:03d}{suffix}"
+    if home_file.exists():
+        return home_file
+
+    # Numbered as `get_one_pager_collection_pages` numbers the collection's pages.
+    collection_page = ONE_PAGER_COLLECTION_PAGE_BASE + collection_page_num - 1
+    collection_file = (
+        Path(get_volume_dir(ONE_PAGER_COLLECTION_VOLUME)) / f"{collection_page:03d}{suffix}"
+    )
+
+    return collection_file if collection_file.exists() else home_file
 
 
 def get_collection_page_nums(volume: int) -> frozenset[int]:

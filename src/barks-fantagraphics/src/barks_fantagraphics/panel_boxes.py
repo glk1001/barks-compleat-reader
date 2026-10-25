@@ -6,7 +6,7 @@ from comic_utils.comic_consts import JSON_FILE_EXT
 
 from .barks_titles import Titles
 from .comic_book import ComicBook, get_page_str
-from .comic_book_info import get_one_pager_fanta_vol_and_page
+from .comic_book_info import get_one_pager_fanta_vol_and_page, get_one_pager_file
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .pages import get_sorted_srce_and_dest_pages
@@ -50,8 +50,15 @@ class TitlePanelBoxes:
     def get_page_panel_boxes(self, title: Titles) -> TitlePagesPanelBoxes:
         located = self._one_pager_volume_and_page(title)
         if located is not None:
+            # Keyed by the home volume and page whichever tree the segments are read
+            # from - a one-pager that belongs to no story has them only in the collection.
             volume, page_num = located
-            page_boxes = self.get_panel_boxes(self._segments_file(volume, page_num), page_num)
+            segments_file = get_one_pager_file(
+                title,
+                self._comics_database.get_fantagraphics_panel_segments_volume_dir,
+                JSON_FILE_EXT,
+            )
+            page_boxes = self.get_panel_boxes(segments_file, page_num)
             return TitlePagesPanelBoxes(title, volume, {page_num: page_boxes})
 
         volume = self._comics_database.get_fanta_volume_int_for(title)
@@ -70,20 +77,13 @@ class TitlePanelBoxes:
 
         One-pagers have no ``.ini``, so ``get_comic_book_for`` cannot resolve them --
         which is what stopped them being prepped at all. Nothing here needs a
-        ``ComicBook``: the segments file sits in the host volume's segments
-        directory under the page's own name, and ``ONE_PAGER_LOCATIONS`` holds
-        both the volume and the page.
+        ``ComicBook``: ``ONE_PAGER_LOCATIONS`` holds both the volume and the page,
+        and ``get_one_pager_file`` finds the segments file.
         """
         volume, fanta_page = get_one_pager_fanta_vol_and_page(title)
         if volume is None or fanta_page is None:
             return None
         return volume, get_page_str(fanta_page)
-
-    def _segments_file(self, volume: int, page_num: str) -> Path:
-        """Return one page's panel-segments file from its volume's segments dir."""
-        db = self._comics_database
-        segments_dir = db.get_fantagraphics_panel_segments_volume_dir(volume)
-        return segments_dir / (page_num + JSON_FILE_EXT)
 
     def get_panel_boxes(self, panel_segments_file: Path, page_num: str) -> PagePanelBoxes:
         if not panel_segments_file.is_file():
