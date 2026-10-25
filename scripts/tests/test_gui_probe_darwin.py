@@ -410,3 +410,11 @@ class TestLive:
         backend.kill_tree(process.pid, max_secs=5)
         assert not backend.process_alive(process.pid)
         assert not backend.process_alive(int(child[0]))
+
+    def test_killing_the_tree_of_a_finished_app_is_quiet(self) -> None:
+        # An app that died at boot, not yet collected: its group refused the signal.
+        process = subprocess.Popen(["true"], start_new_session=True)  # noqa: S607
+        backend = gui_probe_darwin.DarwinBackend()
+        time.sleep(0.3)
+        backend.kill_tree(process.pid, max_secs=5)
+        assert not backend.process_alive(process.pid)

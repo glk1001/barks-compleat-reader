@@ -142,13 +142,20 @@ def build_template(live_dir: Path, template: Path) -> Path:
         FileNotFoundError: If the live ini is missing.
 
     """
+    # Plain copies, not copy2: a file keeping its source's old times looks days
+    # unused, and macOS's daily temp cleaner deletes it mid-run (mac_vm, 2026-10-26).
     for name in COPIED_FILES:
         source = live_dir / name
         if source.is_file():
-            shutil.copy2(source, template / name)
+            shutil.copy(source, template / name)
     kivy_dir = live_dir / COPIED_KIVY_DIR
     if kivy_dir.is_dir():
-        shutil.copytree(kivy_dir, template / COPIED_KIVY_DIR, ignore=shutil.ignore_patterns("logs"))
+        shutil.copytree(
+            kivy_dir,
+            template / COPIED_KIVY_DIR,
+            ignore=shutil.ignore_patterns("logs"),
+            copy_function=shutil.copy,
+        )
 
     ini = template / "barks-reader.ini"
     if not ini.is_file():
@@ -159,6 +166,25 @@ def build_template(live_dir: Path, template: Path) -> Path:
     if run_overrides:
         apply_ini_overrides(ini, run_overrides)
     return template
+
+
+def make_scratch(template: Path, scratch: Path) -> Path:
+    """Copy `template` to `scratch`, with the canned saved node and history, all fresh.
+
+    Every file gets new times (plain copies), for the reason build_template does.
+
+    Args:
+        template: The run's template, from build_template.
+        scratch: A directory not yet there, for one test's profile.
+
+    Returns:
+        `scratch`.
+
+    """
+    shutil.copytree(template, scratch, copy_function=shutil.copy)
+    for name in ("barks-reader.json", "barks-reader-history.json"):
+        shutil.copy(FIXTURES_DIR / name, scratch / name)
+    return scratch
 
 
 def apply_ini_overrides(ini: Path, overrides: Mapping[str, str]) -> None:

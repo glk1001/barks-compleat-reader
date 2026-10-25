@@ -10,6 +10,7 @@ conftest does. ``gui_driver`` is stdlib-only, so nothing here touches Kivy.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import sys
@@ -46,6 +47,9 @@ goto_fullscreen_on_app_start = 1
 [kivy]
 log_level = info
 """
+# A file's times, years before any run: what copy2 would have carried over.
+OLD_TIME = 1_000_000_000.0
+DAY_SECS = 24 * 60 * 60
 
 
 class TestDisplayForWorker:
@@ -122,12 +126,41 @@ class TestBuildTemplate:
         for key, value in harness.INI_DEFAULTS.items():
             assert harness.read_ini_value(template / "barks-reader.ini", key) == value
 
+    def test_the_copies_are_fresh_not_dated_like_the_live_files(
+        self, live: Path, tmp_path: Path
+    ) -> None:
+        # macOS's temp cleaner deletes what looks days unused, mid-run (mac_vm, 2026-10-26).
+        for path in (live / "log-config.yaml", live / "kivy" / "config.ini"):
+            os.utime(path, (OLD_TIME, OLD_TIME))
+        (tmp_path / "template").mkdir()
+        template = harness.build_template(live, tmp_path / "template")
+        for path in (template / "log-config.yaml", template / "kivy" / "config.ini"):
+            assert path.stat().st_mtime > OLD_TIME + DAY_SECS
+
     def test_refuses_a_profile_with_no_ini(self, tmp_path: Path) -> None:
         live = tmp_path / "live"
         live.mkdir()
         (tmp_path / "template").mkdir()
         with pytest.raises(FileNotFoundError, match=r"no barks-reader\.ini"):
             harness.build_template(live, tmp_path / "template")
+
+
+class TestMakeScratch:
+    def test_copies_the_template_and_the_canned_files_all_fresh(self, tmp_path: Path) -> None:
+        template = tmp_path / "template"
+        (template / "kivy").mkdir(parents=True)
+        for path in (template / "log-config.yaml", template / "kivy" / "config.ini"):
+            path.write_text("x")
+            os.utime(path, (OLD_TIME, OLD_TIME))
+
+        scratch = harness.make_scratch(template, tmp_path / "config")
+
+        names = ("log-config.yaml", "kivy/config.ini", "barks-reader.json")
+        copied = [scratch / name for name in (*names, "barks-reader-history.json")]
+        assert all(path.is_file() for path in copied)
+        assert all(path.stat().st_mtime > OLD_TIME + DAY_SECS for path in copied)
+        canned = harness.FIXTURES_DIR / "barks-reader-history.json"
+        assert (scratch / "barks-reader-history.json").read_bytes() == canned.read_bytes()
 
 
 class TestArtifactsDir:

@@ -622,6 +622,9 @@ class DarwinBackend:
             (signal.SIGTERM, min(_TERM_GRACE_SECS, max_secs)),
             (signal.SIGKILL, max_secs),
         ):
+            # Collected first: macOS refuses a signal (EPERM) to a group whose only
+            # process is a finished child of ours, as the app is when it dies at boot.
+            _reap(pid)
             try:
                 os.killpg(pid, sig)
             except ProcessLookupError:

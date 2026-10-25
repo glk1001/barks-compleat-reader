@@ -30,7 +30,6 @@ frame is a drawn screen rather than a blank one.
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -139,10 +138,7 @@ def boot(
             # after the teardown, boot.scratch holds what the app persisted
 
     """
-    scratch = tmp_path / "config"
-    shutil.copytree(scratch_template, scratch)
-    for name in ("barks-reader.json", "barks-reader-history.json"):
-        shutil.copy2(harness.FIXTURES_DIR / name, scratch / name)
+    scratch = harness.make_scratch(scratch_template, tmp_path / "config")
     app_boot = harness.AppBoot(scratch=scratch, nodeid=request.node.nodeid)
     try:
         yield app_boot
