@@ -51,6 +51,14 @@ set -euo pipefail
 # 2026-10-25. A timed-out mutant is an expected result, so nothing ever reads them.
 ulimit -c 0
 
+# At most 6 GiB of address space per process. mutmut limits a mutant's CPU time but not its
+# memory, and a mutant that breaks a loop's step (build_display_units' `i += 1` made
+# `i = 1`) appends forever: with a worker per CPU, three of them took 43 GB and the kernel
+# killed the whole overnight round on 2026-10-26. Capped, such a mutant gets a MemoryError
+# (about a minute in, for those), its test fails, and it counts as killed. The Kivy-free
+# unit tests mutmut runs need well under 1 GiB.
+ulimit -v $((6 * 1024 * 1024))
+
 repo_root=$(git rev-parse --show-toplevel)
 
 package="reader"
