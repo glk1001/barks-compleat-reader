@@ -354,14 +354,21 @@ def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
         for info in title_list
         if info.comic_book_info.issue_name is Issues.CS
     ]
+    return _issue_span_text(Issues.CS, issue_numbers)
+
+
+def _issue_span_text(issue: Issues, issue_numbers: list[int]) -> str:
+    """Extra label text for a CS/US year range: the span of issues it covers, or none."""
     if not issue_numbers:
         return ""
-
-    return f"{SHORT_ISSUE_NAME[Issues.CS]} {min(issue_numbers)}-{max(issue_numbers)}"
+    return f"{SHORT_ISSUE_NAME[issue]} {min(issue_numbers)}-{max(issue_numbers)}"
 
 
 def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
-    """Extra label text for one-pager/cover year ranges: just the title count."""
+    """Extra label text for a year range labelled by its title count.
+
+    The chronological, one-pager and cover ranges, and a tag's year groups.
+    """
     return str(len(title_list))
 
 
@@ -397,10 +404,7 @@ def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
         for issue_number in (_get_us_issue_number(info) for info in title_list)
         if issue_number is not None
     ]
-    if not issue_numbers:
-        return ""
-
-    return f"{SHORT_ISSUE_NAME[Issues.US]} {min(issue_numbers)}-{max(issue_numbers)}"
+    return _issue_span_text(Issues.US, issue_numbers)
 
 
 class _SpecBuilder:
@@ -785,7 +789,7 @@ class _SpecBuilder:
         return self._year_range_spec(
             year_range,
             year_range_titles,
-            extra_text=str(len(year_range_titles)),
+            extra_text=_get_count_extra_text(year_range_titles),
             kind=YearRangeKind.CHRONO,
         )
 
