@@ -1021,6 +1021,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.TOO_SAFE_SAFE,
         Titles.HEIRLOOM_WATCH,
         Titles.TRAPPED_LIGHTNING,
+        Titles.SMOKE_WRITER_IN_THE_SKY,
         Titles.INVENTOR_OF_ANYTHING,
         Titles.CAT_BOX_THE,
         Titles.GRANDMAS_PRESENT,
@@ -1131,6 +1132,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.TOO_SAFE_SAFE,
         Titles.HEIRLOOM_WATCH,
         Titles.TRAPPED_LIGHTNING,
+        Titles.SMOKE_WRITER_IN_THE_SKY,
         Titles.INVENTOR_OF_ANYTHING,
         Titles.CAT_BOX_THE,
         Titles.GRANDMAS_PRESENT,
@@ -1908,6 +1910,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.FORBIDIUM, Titles.FORBIDIUM_MONEY_BIN_THE): ["1", "4", "10", "11"],
     (Tags.GYRO_NOT_IN_GG, Titles.GLADSTONES_TERRIBLE_SECRET): ["4"],
     (Tags.GYRO_NOT_IN_GG, Titles.SEVEN_CITIES_OF_CIBOLA_THE): ["2"],
+    (Tags.GYRO_NOT_IN_GG, Titles.SMOKE_WRITER_IN_THE_SKY): ["2"],  # cameo in panel 3
     (Tags.GYRO_NOT_IN_GG, Titles.KNIGHTS_OF_THE_FLYING_SLEDS): ["3"],
     (Tags.GYRO_NOT_IN_GG, Titles.MISSILE_FIZZLE): ["7", "8"],
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
