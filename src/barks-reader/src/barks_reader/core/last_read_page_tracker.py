@@ -12,7 +12,7 @@ from .reader_consts_and_types import COMIC_BEGIN_PAGE
 if TYPE_CHECKING:
     from .comic_book_page_info import ComicLayout
     from .json_settings_manager import SettingsManager
-    from .ports.comic_reader import ComicBookReaderPort
+    from .ports import ComicBookReaderPort
     from .saved_page_info import SavedPageInfo
 
 
