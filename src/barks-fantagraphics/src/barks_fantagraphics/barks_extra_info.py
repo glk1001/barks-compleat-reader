@@ -199,20 +199,12 @@ BARKS_EXTRA_INFO = {
     " water. You can't dive into a pile of money like you would into a snowdrift. So he had to"
     " have a trick by which he did it, and I don't explain that trick because I don't understand"
     ' it myself."[/i]',
-    Titles.FINANCIAL_FABLE_A: "In a letter from October 14, 1969, to Klas Reimers, Barks wrote:"
-    " [i]\"...I have no favorite 10-pager anymore. The issue of March 1951 I've always"
-    " considered technically well done. It had a rhythm that could have almost been set to"
-    ' music..."[/i]',
-    Titles.SOMETHIN_FISHY_HERE: "The first story inked by Garé Barks. Barks had this to say "
-    " about how it happened: \n"
-    '\n[i]"I persuaded her to try out on the lettering. She had been working at an aircraft'
-    " office during the war, doing drafting of these big bombers and so on, so she had gotten"
-    " to have a wonderful lettering style. Garé started doing lettering and inking in all the"
-    " background details in about October of 1952. She'd ink in all those things. And she would"
-    " put in the solid blacks in the ducks' jackets, and the eyeballs, and so on. She kept doing"
-    " more and more of it, and I was paying her more and more, and finally we decided, hell,"
-    " what's the use of going on like this? We might as well get married and pool the money all"
-    ' in one bundle."[/i]',
+    Titles.FINANCIAL_FABLE_A: "In a letter from October 14, 1969, Barks wrote:"
+    " [i]\"...I have no favorite 10-pager anymore. The issue of March 1951 I've always considered"
+    ' technically well done. It had a rhythm that could almost have been set to music."[/i]',
+    Titles.SOMETHIN_FISHY_HERE: 'With five pages censored from the original publication of "Back'
+    ' to the Klondike," Barks had to write a replacement filler. A strange story about a new type'
+    " of coinage.",
     Titles.WORM_WEARY: 'Garé Barks said this about inking the story: [i]"For quite a while I just'
     " did some of the blacking. I remember one of the first stories I worked on was a Gyro"
     " Gearloose in which he caught some mammoth fish. Carl left all the scales for me to put on! I"
