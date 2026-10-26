@@ -6,6 +6,7 @@ I/O, and without the global `random` module's state.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
@@ -29,6 +30,13 @@ class _ScheduledInterval:
     callback: Callable[[], None]
     period_secs: float
     cancelled: bool = False
+    # Virtual time since the last tick, so a period can straddle two `advance()` calls.
+    elapsed_secs: float = 0.0
+
+
+# Binary floating point makes `1.0 / 0.1` a hair under 10; rounding the quotient to
+# this many places before flooring gives the whole periods a reader would count.
+_PERIOD_QUOTIENT_PLACES = 9
 
 
 @dataclass(slots=True)
@@ -90,7 +98,16 @@ class FakeScheduler:
     def schedule_interval(
         self, callback: Callable[[], None], period_secs: float
     ) -> _RecordedHandle:
-        """Record the interval and return a cancellable handle."""
+        """Record the interval and return a cancellable handle.
+
+        Raises:
+            ValueError: For a period of zero or less. Kivy reads a zero period as
+                "every frame", which virtual time cannot count.
+
+        """
+        if period_secs <= 0:
+            msg = f"A FakeScheduler interval needs a positive period, not {period_secs!r}"
+            raise ValueError(msg)
         scheduled = _ScheduledInterval(callback=callback, period_secs=period_secs)
         self._intervals.append(scheduled)
         return _RecordedHandle(scheduled)
@@ -113,18 +130,23 @@ class FakeScheduler:
     def advance(self, secs: float) -> None:
         """Advance virtual time by *secs* seconds, firing scheduled callbacks.
 
-        Each interval active at the *start* of the call fires ``floor(secs /
-        period)`` times, then every delayed one-shot whose time has come fires,
-        oldest first. Callbacks scheduled by callbacks during this advance do not
-        fire — they wait for the next `advance()` call. This avoids runaway
-        recursion when a callback reschedules itself.
+        Each interval active at the *start* of the call fires once per whole
+        period of virtual time it has accumulated, so ``advance(0.5)`` twice ticks a
+        one-second interval once, as Kivy would; then every delayed one-shot whose
+        time has come fires, oldest first. Callbacks scheduled by callbacks during
+        this advance do not fire — they wait for the next `advance()` call. This
+        avoids runaway recursion when a callback reschedules itself.
         """
         self._now += secs
         snapshot = list(self._intervals)
         for interval in snapshot:
             if interval.cancelled:
                 continue
-            ticks = int(secs // interval.period_secs)
+            interval.elapsed_secs += secs
+            ticks = math.floor(
+                round(interval.elapsed_secs / interval.period_secs, _PERIOD_QUOTIENT_PLACES)
+            )
+            interval.elapsed_secs -= ticks * interval.period_secs
             for _ in range(ticks):
                 if interval.cancelled:
                     break

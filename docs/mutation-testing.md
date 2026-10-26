@@ -542,6 +542,10 @@ it means deciding the fake's rounding contract rather than adding an assertion, 
 left alone deliberately — **not** because it cannot be killed. Worth revisiting if a test
 ever needs a sub-second interval.
 
+*Resolved 2026-10-26:* `advance()` now rounds the quotient before flooring and carries the
+time left over between calls, and `test_fakes.py` pins both, so the `//` is gone with its
+mutant.
+
 ## `view_pipeline` pass (2026-07-26) — one of the two plumbing leftovers
 
 The larger of the two modules the plumbing pass left unfinished, swept on its own:

@@ -9,6 +9,7 @@ implementation iterated the live list and recursed forever.
 
 from __future__ import annotations
 
+import pytest
 from barks_reader.core.testing import FakeScheduler
 
 
@@ -102,6 +103,60 @@ class TestFakeSchedulerAdvance:
 
         assert fire_count[0] == 2  # noqa: PLR2004
         assert scheduler.scheduled_once_count == 2  # noqa: PLR2004
+
+
+class TestFakeSchedulerTickArithmetic:
+    """The fake counts whole periods the way a reader would, not the way floats do."""
+
+    def test_a_fractional_period_fires_once_per_period(self) -> None:
+        scheduler = FakeScheduler()
+        fire_count = [0]
+
+        scheduler.schedule_interval(lambda: fire_count.__setitem__(0, fire_count[0] + 1), 0.1)
+        scheduler.advance(0.3)  # 0.3 // 0.1 is 2.0 in binary floating point
+
+        assert fire_count[0] == 3  # noqa: PLR2004
+
+    def test_ten_tenths_make_one_second(self) -> None:
+        scheduler = FakeScheduler()
+        fire_count = [0]
+
+        scheduler.schedule_interval(lambda: fire_count.__setitem__(0, fire_count[0] + 1), 0.1)
+        scheduler.advance(1.0)  # 1.0 // 0.1 is 9.0
+
+        assert fire_count[0] == 10  # noqa: PLR2004
+
+    def test_a_period_can_straddle_two_advances(self) -> None:
+        scheduler = FakeScheduler()
+        fire_count = [0]
+
+        scheduler.schedule_interval(lambda: fire_count.__setitem__(0, fire_count[0] + 1), 1.0)
+        scheduler.advance(0.5)
+        assert fire_count[0] == 0
+        scheduler.advance(0.5)
+        assert fire_count[0] == 1
+        scheduler.advance(0.9)
+        assert fire_count[0] == 1
+        scheduler.advance(0.1)
+        assert fire_count[0] == 2  # noqa: PLR2004
+
+    def test_a_tick_does_not_count_twice(self) -> None:
+        """The residue after a tick is the time past the period, not the whole advance."""
+        scheduler = FakeScheduler()
+        fire_count = [0]
+
+        scheduler.schedule_interval(lambda: fire_count.__setitem__(0, fire_count[0] + 1), 1.0)
+        scheduler.advance(1.5)
+        scheduler.advance(0.4)
+
+        assert fire_count[0] == 1
+
+    @pytest.mark.parametrize("period", [0, 0.0, -1.0])
+    def test_a_period_of_zero_or_less_is_refused(self, period: float) -> None:
+        scheduler = FakeScheduler()
+
+        with pytest.raises(ValueError, match="positive period"):
+            scheduler.schedule_interval(lambda: None, period)
 
 
 class TestFakeSchedulerOneShots:
