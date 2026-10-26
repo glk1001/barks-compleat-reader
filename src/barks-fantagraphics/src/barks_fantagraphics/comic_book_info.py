@@ -1374,35 +1374,27 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.ALL_CHOKED_UP: (22, 28, 0),
     Titles.BIRD_CAMERA_THE: (24, 87, 35),
     Titles.ODD_ORDER_THE: (24, 97, 36),
-    Titles.DAISYS_DAZED_DAYS: _TODO,
-    Titles.TIGHT_SHOES: _TODO,
-    Titles.FRAMED_MIRROR_THE: _TODO,
-    Titles.NEW_GIRL_THE: _TODO,
+    Titles.DAISYS_DAZED_DAYS: (23, 150, 0),
+    Titles.TIGHT_SHOES: (23, 70, 0),
+    Titles.FRAMED_MIRROR_THE: (23, 128, 0),
+    Titles.NEW_GIRL_THE: (23, 142, 0),
     Titles.MONEY_HAT_THE: (24, 27, 0),
-    Titles.MOPPING_UP: _TODO,
+    Titles.MOPPING_UP: (23, 175, 0),
     Titles.CALL_OF_THE_WILD_THE: (26, 156, 2),
     Titles.TALE_OF_THE_TAPE: (26, 164, 35),
     Titles.HIS_SHINING_HOUR: (26, 124, 36),
-    # The five FC 1150 Daisy's Diary gags (Barks art). Friendly Enemy, Undercover
-    # Girl and The Inventive Gentleman are printed in FANTA_27 pages 118-120; flip
-    # them to (27, 118, 0) / (27, 119, 0) / (27, 120, 0) once the pre-baked
-    # All One-Pagers collection archive is re-baked to include them (locating them
-    # without re-baking breaks the FANTA_01 override page sequence). INDUCKS also
-    # lists Small Fryers at FANTA_27 page 36 and False Flattery at page 66 - flip
-    # to (27, 36, 0) / (27, 66, 0) at the same re-bake if verified in the volume.
-    Titles.SMALL_FRYERS: _TODO,
-    Titles.FALSE_FLATTERY: _TODO,
-    Titles.FRIENDLY_ENEMY: _TODO,
-    Titles.UNDERCOVER_GIRL: _TODO,
-    Titles.INVENTIVE_GENTLEMAN_THE: _TODO,
+    # The five FC 1150 Daisy's Diary gags (Barks art).
+    Titles.SMALL_FRYERS: (27, 36, 0),
+    Titles.FALSE_FLATTERY: (27, 66, 0),
+    Titles.FRIENDLY_ENEMY: (27, 118, 0),
+    Titles.UNDERCOVER_GIRL: (27, 119, 0),
+    Titles.INVENTIVE_GENTLEMAN_THE: (27, 120, 0),
     Titles.THRIFT_GIFT_A: (26, 26, 0),
-    # The two FC 1184 Gyro cover gags (Barks art). INDUCKS lists them at FANTA_28
-    # pages 137 and 145 - flip to (28, 137, 0) / (28, 145, 0) at the next re-bake
-    # if verified in the volume.
-    Titles.NOSE_KNOWS_THE: _TODO,
-    Titles.OLD_TIMER_THE: _TODO,
-    Titles.MECHANIZED_MESS: _TODO,
-    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: _TODO,
+    # The FC 1184 Gyro gags (Barks art).
+    Titles.NOSE_KNOWS_THE: (28, 129, 0),
+    Titles.OLD_TIMER_THE: (28, 137, 0),
+    Titles.MECHANIZED_MESS: (28, 145, 0),
+    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: (28, 24, 0),
     Titles.COLLECTION_DAY: (28, 25, 0),
     Titles.SEEING_IS_BELIEVING: (28, 35, 0),
     Titles.PLAYMATES: (28, 55, 0),

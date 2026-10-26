@@ -84,7 +84,7 @@ class TestGroupRanges:
 
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
-        assert ranges == [(1, 43), (44, 92), (93, 133)]
+        assert ranges == [(1, 43), (44, 92), (93, 147)]
 
 
 class TestGroupRangesOnSyntheticData:
@@ -187,7 +187,7 @@ class TestGetCollectionGroupPageRange:
         assert get_collection_group_page_range(Titles.ALL_COVERS, 192) == (152, 192)
 
     def test_one_pager_group(self) -> None:
-        assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 133)
+        assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 147)
 
     def test_unsupported_collection_raises(self) -> None:
         with pytest.raises(ValueError, match="Not a grouped collection"):

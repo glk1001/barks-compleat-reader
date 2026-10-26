@@ -281,10 +281,10 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
   STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](29)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
   STORY_GROUP text='[b]Gyro Gearloose[/b] [i](45)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
   STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
-  STORY_GROUP text='[b]One Pagers[/b] [i](133)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
+  STORY_GROUP text='[b]One Pagers[/b] [i](147)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
     YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
     YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
-    YEAR_RANGE text='[b]1957-1962[/b] [i](41)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
+    YEAR_RANGE text='[b]1957-1962[/b] [i](55)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
   STORY_GROUP text='[b]Covers[/b] [i](192)[/i]' dest=SeriesDestination(series_name='Covers') press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
     YEAR_RANGE text='[b]1948-1952[/b] [i](56)[/i]' dest=YearRangeDestination(start=1948, end=1952, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
     YEAR_RANGE text='[b]1953-1955[/b] [i](40)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False lazy=True repopulate=False
