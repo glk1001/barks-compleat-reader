@@ -923,10 +923,10 @@ adapters, and the shared concerns (settings, colors, fonts, errors, paths).
 ### 8.1 The ports and their adapters
 
 Every place `core` needs a host capability, it depends on a Protocol in
-`core/ports/` (the four host-capability ports are `@runtime_checkable`; the two
-comic-reader ports are plain Protocols); `ui` satisfies it structurally. The fakes in
-`core/testing/fakes.py` satisfy the same Protocols with no Kivy — that's the
-whole point.
+`core/ports/`; `ui` satisfies it structurally. Every port is `@runtime_checkable`
+so `tests/unit/test_kivy_adapters.py` can check the adapters the app wires in still
+satisfy them. The fakes in `core/testing/fakes.py` satisfy the same Protocols with
+no Kivy — that's the whole point.
 
 | Port | Abstracts | Production adapter | Test fake |
 |---|---|---|---|

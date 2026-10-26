@@ -7,17 +7,29 @@ adapters the app wires in still satisfy them.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+import ast
+import inspect
+import textwrap
+from typing import TYPE_CHECKING, cast, get_protocol_members
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.core.ports import CancelHandle, ColorSource, Cursor, Scheduler, SnapshotSink
+from barks_reader.core.ports import (
+    CancelHandle,
+    ColorSource,
+    ComicBookReaderPort,
+    ComicBookReaderScreenPort,
+    Cursor,
+    Scheduler,
+    SnapshotSink,
+)
 from barks_reader.core.reader_colors import FixedColorSource
 from barks_reader.core.reader_palette import FIXED_SCRIMS
 from barks_reader.core.testing import FakeClock
 from barks_reader.ui import snapshot_applicator as snapshot_applicator_module
 from barks_reader.ui import ui_helpers
 from barks_reader.ui.adapters import KivyClockScheduler, KivyCursor, kivy_scheduler
+from barks_reader.ui.comic_book_reader import ComicBookReader, ComicBookReaderScreen
 from barks_reader.ui.snapshot_applicator import SnapshotApplicator
 
 if TYPE_CHECKING:
@@ -143,3 +155,38 @@ class TestTheAdaptersSatisfyTheirPorts:
     def test_the_snapshot_sink(self, screens: ScreenBundle) -> None:
         with patch.object(snapshot_applicator_module, "PanelTextureLoader"):
             assert isinstance(SnapshotApplicator(screens), SnapshotSink)
+
+    @pytest.mark.parametrize(
+        ("port", "widget"),
+        [
+            (ComicBookReaderPort, ComicBookReader),
+            (ComicBookReaderScreenPort, ComicBookReaderScreen),
+        ],
+    )
+    def test_the_reader_widgets_have_every_member_their_port_names(
+        self, port: type, widget: type
+    ) -> None:
+        """The widgets need a running app to build, so the check is on the class.
+
+        A member the widget sets on `self` in `__init__` counts as present.
+        """
+        set_in_init = _attributes_set_on_self_in_init(widget)
+        missing = [
+            member
+            for member in sorted(get_protocol_members(port))
+            if not hasattr(widget, member) and member not in set_in_init
+        ]
+        assert missing == []
+
+
+def _attributes_set_on_self_in_init(cls: type) -> set[str]:
+    """Return the names `cls.__init__` assigns on `self`."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
+    return {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.ctx, ast.Store)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    }

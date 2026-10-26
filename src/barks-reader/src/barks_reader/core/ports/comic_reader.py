@@ -3,11 +3,13 @@
 `core.comic_reader_manager` and `core.last_read_page_tracker` drive the reader
 through these narrow surfaces; the production implementations are the Kivy
 `ComicBookReader` widget and `ComicBookReaderScreen` in `ui.comic_book_reader`.
+Like the other ports they are ``runtime_checkable``, so a contract test can ask
+whether the widgets still have every member the ports name.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
     from barks_reader.core.display_unit import DisplayUnit
 
 
+@runtime_checkable
 class ComicBookReaderPort(Protocol):
     """The comic-reading widget: load a comic and report the reading position."""
 
@@ -56,6 +59,7 @@ class ComicBookReaderPort(Protocol):
         ...
 
 
+@runtime_checkable
 class ComicBookReaderScreenPort(Protocol):
     """The screen hosting the reader widget: fullscreen policy and close flow."""
 
