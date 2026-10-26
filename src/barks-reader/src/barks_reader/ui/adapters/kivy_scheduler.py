@@ -12,22 +12,25 @@ if TYPE_CHECKING:
     from barks_reader.core.ports import CancelHandle
 
 
-class _ClockEventHandle:
-    """Wraps a Kivy `ClockEvent` to satisfy the `CancelHandle` protocol."""
+def _drop_dt(callback: Callable[[], None]) -> Callable[[float], None]:
+    """Adapt the port's zero-argument callback to the `dt` Kivy's Clock passes.
 
-    def __init__(self, event: object) -> None:
-        self._event = event
+    The tick returns `None` whatever *callback* returns: Kivy stops an interval
+    whose callback returns `False`, and the port's callbacks are not asked to
+    know that.
+    """
 
-    def cancel(self) -> None:
-        """Cancel the underlying Kivy clock event."""
-        self._event.cancel()  # ty: ignore[unresolved-attribute]
+    def tick(_dt: float) -> None:
+        callback()
+
+    return tick
 
 
 class KivyClockScheduler:
     """A `Scheduler` that delegates to `kivy.clock.Clock`.
 
-    Kivy's clock callbacks receive a `dt: float` argument; this adapter drops it
-    so the port's zero-argument callback signature is preserved.
+    Kivy's `ClockEvent` has the idempotent no-argument `cancel()` the port's
+    `CancelHandle` asks for, so the events are returned as they are.
     """
 
     @staticmethod
@@ -39,11 +42,10 @@ class KivyClockScheduler:
             period_secs: Interval between callback invocations, in seconds.
 
         Returns:
-            A cancellable handle wrapping the underlying Kivy `ClockEvent`.
+            The Kivy `ClockEvent`, whose `cancel()` stops the ticks.
 
         """
-        event = Clock.schedule_interval(lambda _dt: callback(), period_secs)
-        return _ClockEventHandle(event)
+        return Clock.schedule_interval(_drop_dt(callback), period_secs)
 
     @staticmethod
     def schedule_once(callback: Callable[[], None], timeout_secs: float = 0) -> CancelHandle:
@@ -52,8 +54,7 @@ class KivyClockScheduler:
         Worker threads use this to marshal results onto the UI thread.
 
         Returns:
-            A cancellable handle wrapping the underlying Kivy `ClockEvent`.
+            The Kivy `ClockEvent`, whose `cancel()` stops the callback firing.
 
         """
-        event = Clock.schedule_once(lambda _dt: callback(), timeout_secs)
-        return _ClockEventHandle(event)
+        return Clock.schedule_once(_drop_dt(callback), timeout_secs)
