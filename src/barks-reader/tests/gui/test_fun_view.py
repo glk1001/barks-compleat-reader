@@ -65,6 +65,9 @@ def test_left_and_right_step_through_shown_images(boot: AppBoot) -> None:
 def test_options_menu_opens_and_escape_closes_it(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
+    # Up reaches the filter button from either button: Right lands on the goto arrow
+    # when the seeded image is from a story, and that changes as the corpus grows.
+    d.move_focus("Up")
     # Opening the menu moves the focus ring into it; only then can it take a key.
     with (
         d.expect(pattern(markers.FUN_OPTIONS_PRESSED, state=True)),
