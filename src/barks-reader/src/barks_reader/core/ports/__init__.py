@@ -12,6 +12,11 @@ production implementation lives where it is built:
 
 The in-memory adapters for tests live in `core.testing.fakes`. Core modules import
 the ports from this package, not from its submodules.
+
+The ports are for `core`, which must stay Kivy-free. A `ui` module that wants the
+`dt` Kivy passes a callback, or Kivy's own event ordering (`ui.app_window_geometry`,
+`ui.tree_scroll_pinner`), uses `kivy.clock.Clock` directly and is tested with
+`core.testing.fakes.FakeClock`; that is by design, not a port waiting to be used.
 """
 
 from .color_source import ColorSource, PaletteId
