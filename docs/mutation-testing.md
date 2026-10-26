@@ -528,7 +528,7 @@ fallback took it to 0.
 | `__init__` `None` → `""` (`page_info_adapters` ×2, `last_read_page_tracker` ×2) and `False` → `None` ×1 | 5 | All five are read only through a falsy test or an identity comparison against a real object, and every one is overwritten before any code path can distinguish them. `_cached is None` is unreachable on its own: `_cached_for` and `_cached` are assigned together, so the first disjunct always decides. |
 | `cast("list[TitleTreeViewNodeProtocol]", …)` → `None` / case-changed / `XX…XX` | 4 | `typing.cast` returns its second argument untouched; the type string is inert at runtime. No test can observe it — it is not even read. |
 | `zip(..., strict=False)` → `strict=None` / dropped | 2 | Both are falsy, and `False` is `zip`'s own default. Only `strict=True` differs, and that mutant dies. |
-| `FakeScheduler.schedule_once`'s `timeout_secs: float = 0` → `1` | 1 | The parameter is unused (`# noqa: ARG002`) — the fake runs the callback inline. |
+| `FakeScheduler.schedule_once`'s `timeout_secs: float = 0` → `1` | 1 | The parameter is unused (`# noqa: ARG002`) — the fake runs the callback inline. Since 2026-10-26 the fake records the delay and holds a delayed one-shot for `advance()`, so this mutant dies. |
 
 ### Killable but deferred: `FakeScheduler.advance`'s `//` (1)
 

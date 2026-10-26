@@ -46,9 +46,14 @@ class KivyClockScheduler:
         return _ClockEventHandle(event)
 
     @staticmethod
-    def schedule_once(callback: Callable[[], None], timeout_secs: float = 0) -> None:
+    def schedule_once(callback: Callable[[], None], timeout_secs: float = 0) -> CancelHandle:
         """Schedule *callback* to fire once on the UI thread after *timeout_secs*.
 
         Worker threads use this to marshal results onto the UI thread.
+
+        Returns:
+            A cancellable handle wrapping the underlying Kivy `ClockEvent`.
+
         """
-        Clock.schedule_once(lambda _dt: callback(), timeout_secs)
+        event = Clock.schedule_once(lambda _dt: callback(), timeout_secs)
+        return _ClockEventHandle(event)

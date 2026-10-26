@@ -31,10 +31,19 @@ class _ScheduledInterval:
     cancelled: bool = False
 
 
-class _RecordedHandle:
-    """Cancel handle for a `FakeScheduler` interval."""
+@dataclass(slots=True)
+class _ScheduledOneShot:
+    callback: Callable[[], None]
+    timeout_secs: float
+    due_at: float
+    fired: bool = False
+    cancelled: bool = False
 
-    def __init__(self, scheduled: _ScheduledInterval) -> None:
+
+class _RecordedHandle:
+    """Cancel handle for a `FakeScheduler` interval or one-shot."""
+
+    def __init__(self, scheduled: _ScheduledInterval | _ScheduledOneShot) -> None:
         self._scheduled = scheduled
 
     def cancel(self) -> None:
@@ -42,23 +51,41 @@ class _RecordedHandle:
 
 
 class FakeScheduler:
-    """A `Scheduler` that records intervals and runs one-shot callbacks inline.
+    """A `Scheduler` that records what is scheduled and fires it on `advance(secs)`.
 
     Tests use `advance(secs)` to deterministically fire interval callbacks the
-    correct number of times. One-shot callbacks (`schedule_once`) run inline on
-    the calling thread immediately — matching the synchronous-null behavior
-    needed by worker-thread → UI-thread bridges in `comic_book_loader` and
-    `panel_image_loader`.
+    correct number of times, and the one-shots whose delay has elapsed. A one-shot
+    with no delay (`schedule_once(cb)`) runs inline on the calling thread at once —
+    matching the synchronous-null behavior needed by worker-thread → UI-thread
+    bridges in `comic_book_loader` and `panel_image_loader`. ``one_shots`` lists
+    every `schedule_once` call as (callback, timeout_secs), oldest first, so a test
+    can assert the delay a caller asked for.
     """
 
     def __init__(self) -> None:
         self._intervals: list[_ScheduledInterval] = []
-        self.scheduled_once_count: int = 0
+        self._one_shots: list[_ScheduledOneShot] = []
+        self._now = 0.0
 
     @property
     def active_intervals(self) -> list[_ScheduledInterval]:
         """Return all non-cancelled intervals currently scheduled."""
         return [i for i in self._intervals if not i.cancelled]
+
+    @property
+    def one_shots(self) -> list[tuple[Callable[[], None], float]]:
+        """Return every `schedule_once` call so far as (callback, timeout_secs), oldest first."""
+        return [(s.callback, s.timeout_secs) for s in self._one_shots]
+
+    @property
+    def scheduled_once_count(self) -> int:
+        """Return how many times `schedule_once` has been called."""
+        return len(self._one_shots)
+
+    @property
+    def pending_one_shots(self) -> list[Callable[[], None]]:
+        """Return the delayed one-shots not yet fired or cancelled, oldest first."""
+        return [s.callback for s in self._one_shots if not s.fired and not s.cancelled]
 
     def schedule_interval(
         self, callback: Callable[[], None], period_secs: float
@@ -68,19 +95,31 @@ class FakeScheduler:
         self._intervals.append(scheduled)
         return _RecordedHandle(scheduled)
 
-    def schedule_once(self, callback: Callable[[], None], timeout_secs: float = 0) -> None:  # noqa: ARG002
-        """Run *callback* inline on the calling thread; count for assertions."""
-        self.scheduled_once_count += 1
-        callback()
+    def schedule_once(
+        self, callback: Callable[[], None], timeout_secs: float = 0
+    ) -> _RecordedHandle:
+        """Record the one-shot; run it inline when it has no delay, else on `advance()`."""
+        scheduled = _ScheduledOneShot(callback, timeout_secs, due_at=self._now + timeout_secs)
+        self._one_shots.append(scheduled)
+        if timeout_secs <= 0:
+            self._fire_one_shot(scheduled)
+        return _RecordedHandle(scheduled)
+
+    @staticmethod
+    def _fire_one_shot(scheduled: _ScheduledOneShot) -> None:
+        scheduled.fired = True
+        scheduled.callback()
 
     def advance(self, secs: float) -> None:
         """Advance virtual time by *secs* seconds, firing scheduled callbacks.
 
         Each interval active at the *start* of the call fires ``floor(secs /
-        period)`` times. Intervals scheduled by callbacks during this advance
-        do not fire — they wait for the next `advance()` call. This avoids
-        runaway recursion when a callback reschedules itself.
+        period)`` times, then every delayed one-shot whose time has come fires,
+        oldest first. Callbacks scheduled by callbacks during this advance do not
+        fire — they wait for the next `advance()` call. This avoids runaway
+        recursion when a callback reschedules itself.
         """
+        self._now += secs
         snapshot = list(self._intervals)
         for interval in snapshot:
             if interval.cancelled:
@@ -90,6 +129,10 @@ class FakeScheduler:
                 if interval.cancelled:
                     break
                 interval.callback()
+        for one_shot in list(self._one_shots):
+            if one_shot.fired or one_shot.cancelled or one_shot.due_at > self._now:
+                continue
+            self._fire_one_shot(one_shot)
 
 
 # ----------------------------------------------------------------------

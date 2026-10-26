@@ -102,3 +102,66 @@ class TestFakeSchedulerAdvance:
 
         assert fire_count[0] == 2  # noqa: PLR2004
         assert scheduler.scheduled_once_count == 2  # noqa: PLR2004
+
+
+class TestFakeSchedulerOneShots:
+    def test_a_delayed_one_shot_waits_for_its_delay(self) -> None:
+        scheduler = FakeScheduler()
+        fired: list[str] = []
+
+        scheduler.schedule_once(lambda: fired.append("late"), 1.0)
+
+        assert fired == []
+        assert scheduler.one_shots == [(scheduler.one_shots[0][0], 1.0)]
+        scheduler.advance(0.5)
+        assert fired == []
+        scheduler.advance(0.5)
+        assert fired == ["late"]
+        assert scheduler.pending_one_shots == []
+
+    def test_a_delayed_one_shot_fires_once_only(self) -> None:
+        scheduler = FakeScheduler()
+        fired: list[str] = []
+
+        scheduler.schedule_once(lambda: fired.append("once"), 1.0)
+        scheduler.advance(5.0)
+        scheduler.advance(5.0)
+
+        assert fired == ["once"]
+
+    def test_a_cancelled_one_shot_never_fires(self) -> None:
+        scheduler = FakeScheduler()
+        fired: list[str] = []
+
+        handle = scheduler.schedule_once(lambda: fired.append("never"), 1.0)
+        handle.cancel()
+        handle.cancel()  # idempotent, as the port promises
+        scheduler.advance(2.0)
+
+        assert fired == []
+        assert scheduler.pending_one_shots == []
+
+    def test_one_shots_fire_after_the_intervals_oldest_first(self) -> None:
+        scheduler = FakeScheduler()
+        order: list[str] = []
+
+        scheduler.schedule_once(lambda: order.append("first one-shot"), 1.0)
+        scheduler.schedule_once(lambda: order.append("second one-shot"), 1.0)
+        scheduler.schedule_interval(lambda: order.append("tick"), 1.0)
+        scheduler.advance(1.0)
+
+        assert order == ["tick", "first one-shot", "second one-shot"]
+
+    def test_a_one_shot_scheduled_by_a_callback_waits_for_the_next_advance(self) -> None:
+        scheduler = FakeScheduler()
+        order: list[str] = []
+
+        def outer() -> None:
+            order.append("outer")
+            scheduler.schedule_once(lambda: order.append("inner"), 0.5)
+
+        scheduler.schedule_once(outer, 1.0)
+        scheduler.advance(1.0)
+        assert order == ["outer"]
+        scheduler.advance(0.5)
+        assert order == ["outer", "inner"]

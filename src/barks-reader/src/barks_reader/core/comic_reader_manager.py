@@ -21,11 +21,7 @@ if TYPE_CHECKING:
 
     from .comic_book_page_info import ComicLayout, ComicLayoutBuilder
     from .last_read_page_tracker import LastReadPageTracker
-    from .ports import Scheduler
-    from .ports.comic_reader import (
-        ComicBookReaderPort,
-        ComicBookReaderScreenPort,
-    )
+    from .ports import CancelHandle, ComicBookReaderPort, ComicBookReaderScreenPort, Scheduler
     from .reader_settings import ReaderSettings
     from .reading_history import ReadingHistoryTracker
     from .saved_page_info import SavedPageInfo
@@ -78,11 +74,14 @@ class ComicReaderManager:
         self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
         self._comic_book_reader: ComicBookReaderPort | None = None
         self._fanta_info: FantaComicBookInfo | None = None
+        # The close a missing-volume error deferred, until it fires or no longer applies.
+        self._pending_error_close: CancelHandle | None = None
 
     def set_comic_book_reader_screen(
         self, comic_book_reader_screen: ComicBookReaderScreenPort
     ) -> None:
         """Set the comic book reader screen instance."""
+        self._cancel_pending_error_close()
         self._comic_book_reader_screen = comic_book_reader_screen
         assert self._comic_book_reader_screen is not None
         self._comic_book_reader = self._comic_book_reader_screen.comic_book_reader
@@ -200,12 +199,24 @@ class ComicReaderManager:
             )
             assert self._comic_book_reader_screen is not None
             reader_screen = self._comic_book_reader_screen
-            self._scheduler.schedule_once(
+            self._pending_error_close = self._scheduler.schedule_once(
                 reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS
             )
 
+    def _cancel_pending_error_close(self) -> None:
+        """Drop a deferred error close: the reader it was for is closed or gone."""
+        if self._pending_error_close is not None:
+            self._pending_error_close.cancel()
+            self._pending_error_close = None
+
     def comic_closed(self) -> SavedPageInfo | None:
-        """Persist the last-read page when the reader closes."""
+        """Persist the last-read page when the reader closes.
+
+        A close still pending from a missing-volume error is cancelled here, so the
+        user closing the reader first, then opening another title within the delay,
+        does not have the stale close shut the new comic.
+        """
+        self._cancel_pending_error_close()
         assert self._comic_book_reader
         last_read_page = self._last_read_page_tracker.end(self._comic_book_reader)
         self._reading_history_tracker.end(last_read_page)
