@@ -16,6 +16,7 @@ from barks_reader.core.reader_colors import FixedColorSource
 from barks_reader.core.reader_palette import FIXED_SCRIMS
 from barks_reader.core.testing import FakeClock
 from barks_reader.ui import snapshot_applicator as snapshot_applicator_module
+from barks_reader.ui import ui_helpers
 from barks_reader.ui.adapters import KivyClockScheduler, KivyCursor, kivy_scheduler
 from barks_reader.ui.snapshot_applicator import SnapshotApplicator
 
@@ -94,6 +95,34 @@ class TestKivyClockScheduler:
             fake_clock.drain()
 
         callback.assert_not_called()
+
+
+class TestKivyCursor:
+    """The loader calls `set_normal` from its worker thread: the change must be marshalled.
+
+    The port promises either method is safe from any thread, so the adapter has to
+    schedule the SDL cursor call onto the UI thread rather than make it in place.
+    """
+
+    @pytest.mark.parametrize(
+        ("change", "cursor_name"),
+        [(KivyCursor.set_busy, "wait"), (KivyCursor.set_normal, "arrow")],
+    )
+    def test_the_cursor_changes_on_the_ui_thread_not_in_place(
+        self, change: Callable[[], None], cursor_name: str
+    ) -> None:
+        fake_clock = FakeClock()
+        window = MagicMock(name="Window")
+        with (
+            patch.object(ui_helpers, "Clock", fake_clock),
+            patch.object(ui_helpers, "Window", window),
+        ):
+            change()
+            window.set_system_cursor.assert_not_called()
+            assert [timeout for _, timeout in fake_clock.calls] == [0]
+            fake_clock.run_next()
+
+        window.set_system_cursor.assert_called_once_with(cursor_name)
 
 
 class TestTheAdaptersSatisfyTheirPorts:
