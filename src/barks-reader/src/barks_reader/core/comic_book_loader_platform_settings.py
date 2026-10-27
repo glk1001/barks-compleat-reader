@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ctypes
 import os
+import sys
 from dataclasses import dataclass
 
 import psutil
@@ -43,6 +45,24 @@ def process_rss_mib() -> float:
 def available_memory_mib() -> float:
     """Return the memory the machine can still give out without swapping, in MiB."""
     return psutil.virtual_memory().available / (1024 * 1024)
+
+
+def release_freed_memory() -> None:
+    """Hand the allocator's freed memory back to the system, where the allocator can.
+
+    glibc keeps what a thread frees in that thread's arena, so a load's page decode
+    buffers - some 45 MiB per worker, freed as each page is encoded - stay in the
+    process's resident set long after, hundreds of MiB counted against the app for
+    nothing. ``malloc_trim`` returns what is returnable in a millisecond or two. A
+    no-op where there is no glibc (Windows, macOS, musl).
+    """
+    if sys.platform != "linux":
+        return
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        # Not glibc: nothing to trim, and nothing lost.
+        return
 
 
 class PrefetchTuning:

@@ -119,6 +119,7 @@ letterbox
 letterboxed
 letterboxing
 lfs
+libc
 libfreetype
 libx
 libyaml

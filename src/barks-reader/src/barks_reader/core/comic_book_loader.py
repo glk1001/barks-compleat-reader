@@ -32,6 +32,7 @@ from .comic_book_loader_platform_settings import (
     get_max_worker_count,
     get_prefetch_tuning,
     process_rss_mib,
+    release_freed_memory,
 )
 from .fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
@@ -399,6 +400,9 @@ class ComicBookLoader:
         self._image_loaded_events.clear()
         self._current_comic_desc = ""
         self._load_generation += 1
+        # The pages just dropped, and whatever the load's workers freed, go back to
+        # the system now rather than sitting in the allocator's arenas.
+        release_freed_memory()
 
     def stop_now(self) -> None:
         """Signal the background thread to stop and wait for it to terminate.
@@ -544,6 +548,9 @@ class ComicBookLoader:
                         count=num_loaded, comic=self._current_comic_desc
                     )
                 )
+                # The workers' decode buffers are all freed now: return them, so the
+                # resident set holds the comic's pages and not the work of making them.
+                release_freed_memory()
                 self._log_retained_image_memory(rss_before_mib)
 
                 self._scheduler.schedule_once(self._on_all_images_loaded)

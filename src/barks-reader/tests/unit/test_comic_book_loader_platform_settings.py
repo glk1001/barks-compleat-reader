@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     get_max_worker_count,
     get_prefetch_tuning,
     process_rss_mib,
+    release_freed_memory,
 )
 
 
@@ -270,6 +272,45 @@ class TestMemoryWatch:
             platform_settings_module.psutil, "virtual_memory", return_value=_available(2048.0)
         ):
             assert available_memory_mib() == 2048.0  # noqa: PLR2004
+
+
+class TestReleaseFreedMemory:
+    """glibc's arenas keep what the workers freed; `malloc_trim` gives it back."""
+
+    def test_on_linux_the_allocator_is_trimmed(self) -> None:
+        libc = MagicMock()
+        with (
+            patch.object(platform_settings_module.sys, "platform", "linux"),
+            patch.object(ctypes, "CDLL", return_value=libc) as cdll,
+        ):
+            release_freed_memory()
+
+        cdll.assert_called_once_with("libc.so.6")
+        libc.malloc_trim.assert_called_once_with(0)
+
+    @pytest.mark.parametrize("platform", ["win32", "darwin"])
+    def test_elsewhere_nothing_is_attempted(self, platform: str) -> None:
+        with (
+            patch.object(platform_settings_module.sys, "platform", platform),
+            patch.object(ctypes, "CDLL") as cdll,
+        ):
+            release_freed_memory()
+
+        cdll.assert_not_called()
+
+    def test_a_libc_without_the_call_is_left_alone(self) -> None:
+        """A Linux without glibc (musl has no malloc_trim) must not take the app down."""
+        with (
+            patch.object(platform_settings_module.sys, "platform", "linux"),
+            patch.object(ctypes, "CDLL", side_effect=OSError("no libc.so.6")),
+        ):
+            release_freed_memory()
+        libc = MagicMock(spec=[])  # no malloc_trim attribute
+        with (
+            patch.object(platform_settings_module.sys, "platform", "linux"),
+            patch.object(ctypes, "CDLL", return_value=libc),
+        ):
+            release_freed_memory()
 
 
 # ---------------------------------------------------------------------------

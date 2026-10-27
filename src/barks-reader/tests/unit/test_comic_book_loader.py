@@ -1179,6 +1179,29 @@ class TestLoadErrorReporting:
         mock_callbacks["on_load_error"].assert_not_called()
         mock_callbacks["on_all_images_loaded"].assert_called_once()
 
+    def test_a_finished_load_returns_the_workers_freed_memory(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    ) -> None:
+        """The decode buffers are freed by then; glibc keeps them unless trimmed."""
+        with patch.object(loader_module, "release_freed_memory") as release:
+            _run_load(loader, page_map_and_order)
+
+        release.assert_called_once_with()
+
+    def test_closing_the_comic_returns_the_dropped_pages_memory(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    ) -> None:
+        _run_load(loader, page_map_and_order)
+
+        with patch.object(loader_module, "release_freed_memory") as release:
+            loader.close_comic()
+
+        release.assert_called_once_with()
+
     def test_a_stopped_load_reports_neither_completion_nor_error(
         self,
         loader: ComicBookLoader,
