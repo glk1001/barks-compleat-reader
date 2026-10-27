@@ -218,3 +218,43 @@ def test_cover_registry_keys_are_consistent() -> None:
         assert BARKS_COVER_BY_KEY[cover.key] is cover
         if cover.illustrates is not None:
             assert isinstance(cover.illustrates, Titles)
+
+
+# A submission date, or Barrier's "(Not listed.)", left behind in a description.
+_DATE_IN_TEXT_RE = re.compile(r"\((?:<em>)?(?:Not listed|[A-Z][a-z]+\.? [\d?]+\??, 19\d\d)")
+
+
+def test_matched_entries_are_dated_or_say_why_not() -> None:
+    """A matched entry has a date, both of Barrier's alternatives, or no date given."""
+    for title, entry in TITLE_TO_BIB_ENTRY.items():
+        assert entry.submitted_year != -1 or entry.date_unavailable or entry.raw_date, title
+        assert not _DATE_IN_TEXT_RE.search(entry.description), title
+
+
+def test_a_heading_alone_takes_its_date_from_the_next_paragraph() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.HOUND_OF_THE_WHISKERVILLES]
+    assert (entry.submitted_year, entry.submitted_month, entry.submitted_day) == (1959, 7, 11)
+    assert entry.description.startswith("Scrooge returns to Scotland")
+
+
+def test_a_date_with_no_day_keeps_its_month() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.FISHING_MYSTERY]
+    assert (entry.submitted_year, entry.submitted_month, entry.submitted_day) == (1956, 8, -1)
+    assert entry.raw_date == "August ?, 1956"
+
+
+def test_two_alternative_dates_stay_in_the_raw_date() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.COMICS_AND_STORIES_140_COVER]
+    assert entry.raw_date == "May 10, 1951, or Sept. 27, 1951"
+    assert (entry.submitted_year, entry.date_unavailable) == (-1, False)
+
+
+def test_not_listed_entries_have_no_date() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.UNCLE_SCROOGE_6_COVER]
+    assert (entry.raw_date, entry.date_unavailable) == ("Not listed.", True)
+    assert entry.description == "Scrooge scrubs bills on a washboard"
+
+
+def test_entries_barrier_leaves_undated_say_so() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.TREEING_OFF]
+    assert (entry.raw_date, entry.date_unavailable) == ("", True)

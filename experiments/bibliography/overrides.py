@@ -157,3 +157,15 @@ ILLUSTRATES_OVERRIDES: dict[str, Titles | None] = {
     "The Giant of Duckburg": None,          # DD 111 interior story not by Barks
     "Timber Tycoon": None,                  # CS 295 interior story not by Barks
 }
+
+# Matched entries Barrier prints with no date at all, checked against the printed
+# book (Treeing Off against its page scan): date_unavailable, so they read as
+# "Barrier gives no date" rather than a date the parser missed. ("Not listed." and
+# "Date not available." entries say so in the text and need no listing here.)
+NO_DATE_GIVEN: dict[Titles, str] = {
+    # FC 367 inside front cover; the (May 24, 1951) above it is the front cover's.
+    Titles.TREEING_OFF: "printed with a reprint note and no date",
+    Titles.DONALD_DUCK_ALBUM_1_BACK_COVER: "the top half of the front cover, enlarged",
+    Titles.UNCLE_SCROOGE_40_BACK_COVER: "the front cover's illustration again",
+    Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER: "redrawn by another artist",
+}

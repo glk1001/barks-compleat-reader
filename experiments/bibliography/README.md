@@ -82,7 +82,9 @@ works.
 
 1. Edit `source.xhtml` (this copy — not anything under `/tmp`).
 2. Re-run without `--emit` and read the report to confirm the change took.
-3. Re-run with `--emit` to rewrite the module.
+3. Re-run with `--emit` to rewrite the module. While `--emit` is blocked (above),
+   change only the affected entries in the module by hand, and compare every
+   entry's data fields with a fresh `parse_tree()` before committing.
 
 What an edit does — and doesn't:
 
@@ -97,7 +99,12 @@ COVERAGE / UNMATCHED sections are the safety net — a broken line shows up ther
 
 - Submission date = a plain parenthetical at the end of the paragraph, e.g.
   `… <em>(Mar. 14, 1957)</em>`. Month abbreviated or full; `?` for an unknown day
-  is fine; `(Date not available)` is recognised.
+  is fine (`(May 14?, 1959)`, or `(August ?, 1956)` with day -1);
+  `(Date not available)` and `(Not listed.)` set `date_unavailable`; two
+  alternatives, `(May 10, 1951, or Sept. 27, 1951)`, stay in `raw_date` only. A
+  heading alone in its paragraph takes its description and date from the next.
+  A matched entry Barrier prints with no date at all goes in `NO_DATE_GIVEN` in
+  `overrides.py`.
 - Issue headers must end in `- <N> pages`.
 - Story lines keep the `TITLE - <pages> - description` shape.
 

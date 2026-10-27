@@ -26,7 +26,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
 
-from overrides import ENTRY_EXCLUSIONS, ILLUSTRATES_OVERRIDES, OVERRIDES
+from overrides import ENTRY_EXCLUSIONS, ILLUSTRATES_OVERRIDES, NO_DATE_GIVEN, OVERRIDES
 
 HERE = Path(__file__).parent
 SOURCE = HERE / "source.xhtml"
@@ -100,8 +100,9 @@ WRAP_CLOSE_RE = re.compile(rf"\.?\s*</(?:{_KEEP})\s*>", re.IGNORECASE)
 
 # Trailing parenthetical at the very end of a paragraph (the candidate date).
 TAIL_PAREN_RE = re.compile(r"\(([^()]*)\)\.?\s*$")
-# A strict Barks submission date: "Dec. 3, 1947" / "May 14?, 1959" / "April 18, 1957".
-DATE_RE = re.compile(r"^([A-Za-z]{3,9})\.?\s+(\d{1,2})(\?)?,\s*(\d{4})$")
+# A strict Barks submission date: "Dec. 3, 1947" / "May 14?, 1959" / "April 18, 1957",
+# or one whose day Barks did not know: "August ?, 1956" (day -1).
+DATE_RE = re.compile(r"^([A-Za-z]{3,9})\.?\s+(\d{1,2}|\?)(\?)?,\s*(\d{4})$")
 # A submission date with no day: "(December 1942)".
 DATE_NO_DAY_RE = re.compile(r"^([A-Za-z]{3,9})\.?\s+(\d{4})$")
 # A date anywhere (for date-list tails like "June 17, 1954, and July 8, 1954").
@@ -267,14 +268,24 @@ def parse_submission_date(paren_text: str) -> tuple[int, int, int, bool] | None:
     # A hedged date is still a date: "(Probably May 24, 1956)" - US 33 Tree
     # Trick and the DD FC at source line ~1565.
     t = re.sub(r"^Probably\s+", "", t, flags=re.IGNORECASE)
-    if t.rstrip(".").lower() == "date not available":
+    # Barrier gives no date: "Date not available." or "(Not listed.)", an item
+    # absent from Barks's own list.
+    if t.rstrip(".").lower() in ("date not available", "not listed"):
         return (-1, -1, -1, True)
     m = DATE_RE.match(t)
     if m:
         month = parse_month_token(m.group(1))
         if month == -1:
             return None
-        return (int(m.group(2)), month, int(m.group(4)), False)
+        day = -1 if m.group(2) == "?" else int(m.group(2))
+        return (day, month, int(m.group(4)), False)
+    # Two alternatives, "May 10, 1951, or Sept. 27, 1951" (the WDCS 140 cover):
+    # dated, but not to one day, so the raw text alone carries both.
+    alternatives = re.fullmatch(r"(.+),? or (.+)", t)
+    if alternatives and all(
+        parse_submission_date(alt.strip(" ,")) is not None for alt in alternatives.groups()
+    ):
+        return (-1, -1, -1, False)
     m = DATE_NO_DAY_RE.match(t)
     if m:
         month = parse_month_token(m.group(1))
@@ -361,6 +372,9 @@ def parse_tree() -> list[BibSeries]:
     cur_issue: BibIssue | None = None
     cur_entry: BibEntry | None = None
     pending_official_title: str | None = None
+    # An entry heading alone in its paragraph, "Hound of the Whiskervilles - 7 3/4 -",
+    # with its description and date in the next one: (entry, heading text).
+    headless: tuple[BibEntry, str] | None = None
 
     for m in BLOCK_RE.finditer(body):
         tag = m.group(1)
@@ -454,22 +468,27 @@ def parse_tree() -> list[BibSeries]:
                 cur_series.notes.append(text)
 
         for unit in units:
+            prev_headless, headless = headless, None
             # An entry runs up to its submission date; text after the date is a
             # trailing note. Undated gags/covers are detected structurally.
             if looks_like_entry(strip_tags(unit)):
-                date_hit = find_submission_date(unit)
-                if date_hit is not None:
-                    (day, month, year, unavail), raw_date, dstart, dend = date_hit
-                    add_entry(
-                        build_entry(
-                            unit[:dstart].rstrip(" .,"), day, month, year, unavail, raw_date
-                        )
-                    )
-                    remainder = unit[dend:].strip(" .,")
-                    if remainder:
-                        cur_entry.notes.append(remainder)
-                else:
-                    add_entry(build_entry(unit, -1, -1, -1, False, ""))
+                entry, remainder = entry_from_unit(unit)
+                add_entry(entry)
+                if remainder:
+                    entry.notes.append(remainder)
+                if not entry.description and not entry.raw_date and not entry.is_cover:
+                    headless = (entry, unit)
+            elif (
+                prev_headless is not None
+                and prev_headless[0] is cur_entry
+                and cur_issue is not None
+                and find_submission_date(unit) is not None
+            ):
+                entry, remainder = entry_from_unit(f"{prev_headless[1]} {unit}")
+                cur_issue.entries[-1] = entry
+                cur_entry = entry
+                if remainder:
+                    entry.notes.append(remainder)
             else:
                 add_note(unit)
 
@@ -486,6 +505,16 @@ PAGECOUNT_SIG = re.compile(
 )
 # A line that merely ends in "- N pages" is an issue/reprint note, not an entry.
 ENDS_IN_PAGES_RE = re.compile(r"[-–—]\s*\d+\s+[Pp]ages?\.?$")
+
+
+def entry_from_unit(unit: str) -> tuple[BibEntry, str]:
+    """Build the entry a paragraph unit opens, and return any note after its date."""
+    date_hit = find_submission_date(unit)
+    if date_hit is None:
+        return build_entry(unit, -1, -1, -1, False, ""), ""
+    (day, month, year, unavail), raw_date, dstart, dend = date_hit
+    entry = build_entry(unit[:dstart].rstrip(" .,"), day, month, year, unavail, raw_date)
+    return entry, unit[dend:].strip(" .,")
 
 
 def find_submission_date(full: str) -> tuple[tuple[int, int, int, bool], str, int, int] | None:
@@ -1444,12 +1473,37 @@ class BibSeries:
     print(f"\nWROTE {OUT_MODULE}")
 
 
+def entry_title(entry: BibEntry) -> Titles | None:
+    """Return the title an entry is emitted under (a cover's, from the cover registry)."""
+    if entry.cover_key is not None:
+        return get_cover_title(BARKS_COVER_BY_KEY[entry.cover_key])
+    return entry.title
+
+
+def apply_entry_overrides(series_list: list[BibSeries]) -> None:
+    """Mark the matched entries Barrier leaves undated (``NO_DATE_GIVEN``)."""
+    by_title = {
+        title: e
+        for s in series_list
+        for i in s.issues
+        for e in i.entries
+        if (title := entry_title(e)) is not None
+    }
+    for title in NO_DATE_GIVEN:
+        entry = by_title.get(title)
+        if entry is None or entry.raw_date:
+            msg = f"NO_DATE_GIVEN: {title.name} is not an undated matched entry"
+            raise ValueError(msg)
+        entry.date_unavailable = True
+
+
 # --------------------------------------------------------------------------- #
 def main() -> None:
     series_list = parse_tree()
     results = match_all(series_list)
     disposition_warnings = assign_dispositions(series_list)
     cover_recs = collect_covers(series_list, disposition_warnings)
+    apply_entry_overrides(series_list)
     if "--emit-covers" in sys.argv:
         emit_covers_module(cover_recs)
     verify_covers(cover_recs, disposition_warnings)

@@ -270,7 +270,11 @@ def main() -> None:
                     bad += 1
                     print(f"  NO SUCH ISSUE {key}: "
                           f"{rec.day}/{rec.month}/{rec.year} | {item.raw}")
-                elif not any(dates_match(rec, e) for _, e in pairs):
+                # An entry Barrier leaves undated confirms nothing while the
+                # issue has dated ones (Treeing Off beside FC 367's Shacktown).
+                elif not any(dates_match(rec, e) for e in (
+                        [e for _, e in pairs if not e.date_unavailable]
+                        or [e for _, e in pairs])):
                     bad += 1
                     have = sorted({
                         f"{e.submitted_day}/{e.submitted_month}/{e.submitted_year}"
