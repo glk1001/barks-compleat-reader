@@ -579,7 +579,10 @@ The `PageImageSource` protocol (`core/page_image_source.py`) hides all of this
 PageImage`. The production implementation `ArchivePageImageSource`
  does: resolve path → read → (for Fanta volumes) assemble/transform the
 page via `ComicBookImageBuilder.get_dest_page_image` → `resize_contain` (LANCZOS)
-→ the pixels as they are (`core/page_image.py`). There is no encode: the
+→ the pixels as they are (`core/page_image.py`). A prebuilt page, which goes
+straight from the decode to the resize, is decoded at the largest of libjpeg's
+reduced scales that still covers the window (`fit_within`); a volume page is
+decoded whole, since the builder's geometry is the scan's own. There is no encode: the
 level-0 PNG the loader used to make was the same bytes with headers, and a
 decode on the UI thread to undo it.
 

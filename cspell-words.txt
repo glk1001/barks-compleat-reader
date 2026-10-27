@@ -122,6 +122,7 @@ letterboxing
 lfs
 libc
 libfreetype
+libjpeg
 libx
 libyaml
 licence

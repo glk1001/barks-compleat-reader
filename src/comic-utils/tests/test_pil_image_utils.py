@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 from comic_utils import get_panel_bytes, pil_image_utils
 from comic_utils.decryption import DecryptionError
-from PIL import Image
+from PIL import Image, ImageOps
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -160,3 +160,52 @@ class TestFiles:
         pil_image_utils.add_png_metadata(png, {"title": "Lost in the Andes!"})
         with Image.open(png) as image:
             assert image.info["BARKS:title"] == "Lost in the Andes!"
+
+
+def _jpg_bytes(size: tuple[int, int]) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, (90, 60, 30)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+class TestContainSize:
+    def test_a_wide_image_is_bounded_by_the_width(self) -> None:
+        assert pil_image_utils.contain_size((400, 200), (100, 100)) == (100, 50)
+
+    def test_a_tall_image_is_bounded_by_the_height(self) -> None:
+        assert pil_image_utils.contain_size((200, 400), (100, 100)) == (50, 100)
+
+    def test_the_same_shape_fills_the_box(self) -> None:
+        assert pil_image_utils.contain_size((30, 20), (300, 200)) == (300, 200)
+
+    def test_it_agrees_with_pil(self) -> None:
+        """The arithmetic is ImageOps.contain's, so the resize finds the size it expects."""
+        for size, box in (
+            ((2120, 3200), (1920, 1080)),
+            ((1000, 333), (640, 480)),
+            ((7, 5), (3, 3)),
+        ):
+            expected = ImageOps.contain(Image.new("L", size), box).size
+            assert pil_image_utils.contain_size(size, box) == expected
+
+
+class TestDecodingWithinABox:
+    def test_a_jpeg_is_decoded_at_the_largest_scale_that_covers_the_box(self) -> None:
+        """400x200 into 150x150 is 150x75: the half scale (200x100) covers it, the quarter not."""
+        image = pil_image_utils.load_pil_image_from_bytes(
+            _jpg_bytes((400, 200)), ".jpg", fit_within=(150, 150)
+        )
+
+        assert image.size == (200, 100)
+
+    def test_a_box_the_image_already_fits_decodes_it_whole(self) -> None:
+        image = pil_image_utils.load_pil_image_from_bytes(
+            _jpg_bytes((400, 200)), ".jpg", fit_within=(800, 800)
+        )
+
+        assert image.size == (400, 200)
+
+    def test_a_png_ignores_the_box(self) -> None:
+        image = pil_image_utils.load_pil_image_from_bytes(_png_bytes(), ".png", fit_within=(4, 4))
+
+        assert image.size == (40, 20)

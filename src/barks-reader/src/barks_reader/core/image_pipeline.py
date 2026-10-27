@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from comic_utils.pil_image_utils import (
+    contain_size,
     get_pil_image_as_png_bytes,
     load_pil_image_from_bytes,
     load_pil_image_from_zip,
@@ -57,7 +58,9 @@ def read_raw_bytes(panel_path: PanelPath) -> bytes:
     raise TypeError(msg)
 
 
-def decode_pil(raw: bytes, *, ext: str | None = None) -> Image:
+def decode_pil(
+    raw: bytes, *, ext: str | None = None, fit_within: tuple[int, int] | None = None
+) -> Image:
     """Decode raw bytes to a fully-loaded PIL image.
 
     Args:
@@ -66,14 +69,19 @@ def decode_pil(raw: bytes, *, ext: str | None = None) -> Image:
             restricted to the matching format (enforced by
             ``load_pil_image_from_bytes``). When ``None``, PIL auto-detects
             the format.
+        fit_within: The box the image is about to be shrunk into, if it is: a JPEG
+            is then decoded at the largest libjpeg scale that still covers it
+            (see ``load_pil_image_from_bytes``); anything else is decoded whole.
 
     Returns:
         A PIL image with pixel data loaded into memory.
 
     """
     if ext is not None:
-        return load_pil_image_from_bytes(raw, ext)
+        return load_pil_image_from_bytes(raw, ext, fit_within=fit_within)
     image = PilImage.open(io.BytesIO(raw))
+    if fit_within is not None:
+        image.draft(None, contain_size(image.size, fit_within))
     image.load()
     return image
 
@@ -83,6 +91,7 @@ def load_pil(
     *,
     encrypted_zip: bool = False,
     use_ext_hint: bool = False,
+    fit_within: tuple[int, int] | None = None,
 ) -> Image:
     """Read-and-decode shortcut: ``panel_path → PIL image``.
 
@@ -94,6 +103,9 @@ def load_pil(
         use_ext_hint: When ``True``, pass the path's suffix to
             :func:`decode_pil` so PIL validates the format. (The encrypted-zip
             path always validates by extension.)
+        fit_within: The box the image is about to be shrunk into, if it is, so a
+            JPEG is decoded no larger than needed (see :func:`decode_pil`). Not
+            applied on the encrypted-zip path.
 
     Returns:
         A loaded PIL image.
@@ -108,7 +120,7 @@ def load_pil(
 
     raw = read_raw_bytes(panel_path)
     ext = panel_path.suffix if use_ext_hint else None
-    return decode_pil(raw, ext=ext)
+    return decode_pil(raw, ext=ext, fit_within=fit_within)
 
 
 def convert_mode(pil_image: Image, mode: str) -> Image:

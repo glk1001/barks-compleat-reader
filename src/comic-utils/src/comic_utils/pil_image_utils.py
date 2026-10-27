@@ -63,15 +63,55 @@ def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage
         logging.getLogger().setLevel(current_log_level)
 
 
-def load_pil_image_from_bytes(file_bytes: bytes, ext: str) -> PilImage:
+def load_pil_image_from_bytes(
+    file_bytes: bytes, ext: str, *, fit_within: tuple[int, int] | None = None
+) -> PilImage:
+    """Decode *file_bytes* as the format *ext* names.
+
+    Args:
+        file_bytes: The image file's bytes.
+        ext: Its extension, which fixes the format PIL may read it as.
+        fit_within: The box the image is about to be shrunk into, if it is. A JPEG
+            is then decoded at the largest of libjpeg's half, quarter and eighth
+            scales that still covers the box, which costs a fraction of a full
+            decode and leaves less for the resize to do. Any other format, and a
+            JPEG no scale covers, is decoded whole.
+
+    Returns:
+        The decoded image.
+
+    """
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
         image = Image.open(io.BytesIO(file_bytes), "r", formats=[_get_pil_format_from_ext(ext)])
+        if fit_within is not None:
+            image.draft(None, contain_size(image.size, fit_within))
         image.load()
         return image
     finally:
         logging.getLogger().setLevel(current_log_level)
+
+
+def contain_size(size: tuple[int, int], box: tuple[int, int]) -> tuple[int, int]:
+    """Return the size an image of *size* takes inside *box*, its aspect ratio kept.
+
+    ``ImageOps.contain``'s arithmetic, available before the image is decoded, so a
+    JPEG can be decoded no larger than it needs to be.
+
+    Args:
+        size: The image's width and height.
+        box: The width and height to fit within.
+
+    Returns:
+        The contained width and height.
+
+    """
+    width, height = size
+    box_width, box_height = box
+    if width / height > box_width / box_height:
+        return box_width, max(1, round(height / width * box_width))
+    return max(1, round(width / height * box_height)), box_height
 
 
 def _get_pil_format_from_ext(ext: str) -> str:

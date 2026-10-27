@@ -127,6 +127,14 @@ class ArchivePageImageSource:
     # Internals
     # ------------------------------------------------------------------
 
+    def _decode_box(self) -> tuple[int, int] | None:
+        # A prebuilt page goes straight from the decode to the resize, so a JPEG can
+        # be decoded at a scale no larger than the window needs. A volume page is first
+        # laid out by the builder, whose geometry is the scan's own: it is decoded whole.
+        if self._fanta_volume_archive is not None:
+            return None
+        return self._max_width, self._max_height
+
     def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
         if not self._fanta_volume_archive:
             raw = Path(IMAGES_SUBDIR) / page_info.dest_page.page_filename, True
@@ -165,6 +173,7 @@ class ArchivePageImageSource:
                 zipfile.Path(self._archive, at=str(image_path)),
                 encrypted_zip=False,
                 use_ext_hint=True,
+                fit_within=self._decode_box(),
             )
 
         if image_path == EMPTY_PAGE_IMAGE:

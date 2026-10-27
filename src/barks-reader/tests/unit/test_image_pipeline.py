@@ -92,6 +92,26 @@ class TestDecodePil:
         with pytest.raises(Exception):  # noqa: B017, PT011
             decode_pil(b"not an image")
 
+    @pytest.mark.parametrize("ext", [None, ".jpg"])
+    def test_a_jpeg_bound_for_a_small_box_is_decoded_at_a_reduced_scale(
+        self, ext: str | None
+    ) -> None:
+        """400x200 into 100x100 is 100x50: a quarter in each direction, so libjpeg's 1/4."""
+        pil = decode_pil(_make_jpg_bytes((400, 200)), ext=ext, fit_within=(100, 100))
+
+        assert pil.size == (100, 50)
+
+    def test_a_jpeg_no_scale_covers_is_decoded_whole(self) -> None:
+        """400x200 into 300x300 is 300x150: even the half scale falls short of it."""
+        pil = decode_pil(_make_jpg_bytes((400, 200)), ext=".jpg", fit_within=(300, 300))
+
+        assert pil.size == (400, 200)
+
+    def test_a_png_is_decoded_whole_whatever_the_box(self) -> None:
+        pil = decode_pil(_make_png_bytes((400, 200)), ext=".png", fit_within=(10, 10))
+
+        assert pil.size == (400, 200)
+
 
 class TestLoadPil:
     def test_load_pil_from_filesystem_path(self, tmp_path: Path) -> None:
@@ -101,6 +121,14 @@ class TestLoadPil:
         pil = load_pil(target)
 
         assert pil.size == (40, 20)
+
+    def test_load_pil_passes_the_box_on_to_the_decode(self, tmp_path: Path) -> None:
+        target = tmp_path / "pic.jpg"
+        target.write_bytes(_make_jpg_bytes((400, 200)))
+
+        pil = load_pil(target, use_ext_hint=True, fit_within=(200, 200))
+
+        assert pil.size == (200, 100)
 
     def test_load_pil_from_unencrypted_zip(self, tmp_path: Path) -> None:
         zip_path = tmp_path / "a.zip"
@@ -157,7 +185,7 @@ class TestLoadPil:
             result = load_pil(zipfile.Path(zf, at="q.png"))
 
         mock_zip_loader.assert_not_called()
-        mock_decode.assert_called_once_with(data, ext=None)
+        mock_decode.assert_called_once_with(data, ext=None, fit_within=None)
         assert result is sentinel
 
     def test_ext_hint_passes_the_path_suffix_to_the_decoder(self, tmp_path: Path) -> None:
@@ -169,7 +197,7 @@ class TestLoadPil:
         with patch.object(image_pipeline, "decode_pil", return_value=sentinel) as mock_decode:
             result = load_pil(target, use_ext_hint=True)
 
-        mock_decode.assert_called_once_with(data, ext=".png")
+        mock_decode.assert_called_once_with(data, ext=".png", fit_within=None)
         assert result is sentinel
 
 

@@ -352,12 +352,39 @@ class TestReadImageDelegation:
 
         zip_path = mock_load.call_args.args[0]
         assert zip_path.at == "images/p01.png"
-        assert mock_load.call_args.kwargs == {"encrypted_zip": False, "use_ext_hint": True}
+        # A prebuilt page is decoded no larger than the window it is resized for.
+        assert mock_load.call_args.kwargs == {
+            "encrypted_zip": False,
+            "use_ext_hint": True,
+            "fit_within": (64, 64),
+        }
 
         # The decoded image goes straight to resize, and its pixels straight out.
         mock_resize.assert_called_once_with(mock_load.return_value, 64, 64)
         page_cls.from_pil.assert_called_once_with(mock_resize.return_value)
         assert page is page_cls.from_pil.return_value
+
+    def test_a_volume_page_is_decoded_whole_for_the_builder(self, prebuilt_cbz: Path) -> None:
+        """The builder lays a volume page out at the scan's own size: no reduced decode."""
+        fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
+        source = _fanta_source(fanta, use_overrides=False)
+        source._comic_book_image_builder = MagicMock()  # noqa: SLF001
+
+        with (
+            zipfile.ZipFile(prebuilt_cbz, "r") as archive,
+            patch.object(apis_module, "load_pil") as mock_load,
+            patch.object(apis_module, "resize_contain"),
+            patch.object(apis_module, "PageImage"),
+        ):
+            source._archive = archive  # noqa: SLF001
+            source.load_page_image(_make_page_info("101.jpg"))
+
+        assert mock_load.call_args.args[0].at == "arch/101.jpg"
+        assert mock_load.call_args.kwargs == {
+            "encrypted_zip": False,
+            "use_ext_hint": True,
+            "fit_within": None,
+        }
 
     def test_override_pages_are_read_from_the_encrypted_override_zip(self, tmp_path: Path) -> None:
         override_zip_path = tmp_path / "overrides.zip"
