@@ -9,24 +9,16 @@ catches it wherever the credits say so, Misc or not.
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
 from barks_fantagraphics.comic_book_info import TITLES_WITHOUT_TITLE_PAGE
+from story_credits import read_credits
 from title_page_allowlists import misc_titles, plain_byline_titles
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
-
-# A credit naming another scriptwriter: "Script not by Barks", "Script by Vic Lockman",
-# "Script: Bob Karp", or "script and finished art by Don Rosa"; but not "Script and layout
-# by Carl Barks", nor "script by Carl Barks".
-_OTHER_SCRIPT_RE = re.compile(
-    r"\bscript not by barks\b|\bscript(?: and [a-z ]+?)?(?: by|:)\s+(?!(?:carl\s+)?barks\b)",
-    re.IGNORECASE,
-)
 
 
 @pytest.fixture(scope="module")
@@ -37,7 +29,7 @@ def other_script_bylines(db: ComicsDatabase) -> dict[str, str]:
         if title in TITLES_WITHOUT_TITLE_PAGE:
             continue
         comic = db.get_comic_book(title)
-        if _OTHER_SCRIPT_RE.search(comic.extra_pub_info):
+        if read_credits(comic.extra_pub_info).other_script:
             bylines[title] = comic.byline
     return bylines
 
@@ -54,7 +46,7 @@ class TestTheCreditPattern:
         ],
     )
     def test_a_credit_naming_another_scriptwriter_is_found(self, credit: str) -> None:
-        assert _OTHER_SCRIPT_RE.search(credit)
+        assert read_credits(credit).other_script
 
     @pytest.mark.parametrize(
         "credit",
@@ -66,7 +58,7 @@ class TestTheCreditPattern:
         ],
     )
     def test_a_credit_naming_no_other_scriptwriter_is_not(self, credit: str) -> None:
-        assert not _OTHER_SCRIPT_RE.search(credit)
+        assert not read_credits(credit).other_script
 
 
 class TestEveryStoryByline:

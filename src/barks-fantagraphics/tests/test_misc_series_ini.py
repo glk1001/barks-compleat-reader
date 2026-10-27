@@ -16,26 +16,23 @@ ini must name his part in ``byline`` ("art by", "story by" and the like).
 
 from __future__ import annotations
 
-import re
 from configparser import ConfigParser, ExtendedInterpolation
 from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics.comic_book import INTRO_DEFAULT_BYLINE
 from barks_fantagraphics.fanta_series_info import SERIES_MISC
+from story_credits import read_credits
 from title_page_allowlists import attribution_exempt_titles, misc_titles, plain_byline_titles
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
 
-# An attribution names who did the script and/or the art. The wording varies a lot -- from a
-# bare 'Script not by Barks', through 'Script by Vic Lockman', to the Daan Jippes titles that
-# credit Barks with the script and layout but Jippes with the pencils and inks, and the
-# per-page breakdowns used for Pirate Gold and The Pied Piper of Duckburg. Every form names
-# at least one of these roles, so match on the roles rather than on any fixed phrase. A
-# restoration-only note (dialogue restored by GLK, and so on) is deliberately not enough.
-_ATTRIBUTION_RE = re.compile(r"\b(script|art|pencils|inks)\b", re.IGNORECASE)
-
+# An attribution names who did the script and/or the art, in any of the wordings
+# story_credits.py reads: from a bare 'Script not by Barks', through 'Script by Vic
+# Lockman', to the Daan Jippes titles' script-and-layout and pencils-and-inks credits and
+# the per-page breakdowns of Pirate Gold and The Pied Piper of Duckburg. A restoration-only
+# note (dialogue restored by GLK, and so on) is deliberately not enough.
 _EXAMPLE_ATTRIBUTION = "extra_pub_info = Script not by Barks"
 
 
@@ -88,7 +85,7 @@ class TestMiscSeriesAttribution:
             f" title_page_allowlists.py with a reason."
         )
 
-        assert _ATTRIBUTION_RE.search(extra_pub_info), (
+        assert read_credits(extra_pub_info).any, (
             f'{SERIES_MISC} title "{story_title}" has an "extra_pub_info" that names no script'
             f" or art credit: {extra_pub_info!r}. Add the actual credit, or failing that a"
             f' line like "{_EXAMPLE_ATTRIBUTION}".'
@@ -112,7 +109,7 @@ class TestAttributionExemptions:
     ) -> None:
         extra_pub_info = _get_extra_pub_info(db, story_title)
 
-        assert not _ATTRIBUTION_RE.search(extra_pub_info), (
+        assert not read_credits(extra_pub_info).any, (
             f'"{story_title}" is exempt from the {SERIES_MISC} authorship check, but its ini'
             f" file now names a script or art credit: {extra_pub_info!r}. The exemption is"
             f" obsolete -- remove it from ATTRIBUTION_NOT_REQUIRED in title_page_allowlists.py"
