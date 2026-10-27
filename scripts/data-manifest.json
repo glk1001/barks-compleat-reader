@@ -6,19 +6,19 @@
       "md5": "d8e1aa5067f0dcaa4a6211871b44ca08"
     },
     "Carl Barks Wiki": {
-      "bytes": 8957533,
-      "files": 1101,
-      "md5": "d85fd3d71f5fcf2b1588b952888641fe"
+      "bytes": 9013475,
+      "files": 1107,
+      "md5": "40109142b04eb267a330a7c9ab1f2c55"
     },
     "Fantagraphics Volumes Overrides": {
-      "bytes": 1327921814,
+      "bytes": 1349303714,
       "files": 30,
-      "md5": "727aa389e7223a9caec2e05f80f6943c"
+      "md5": "c262bce7389de4e02e58b7ed6cc4e215"
     },
     "Fantagraphics-panel-segments": {
-      "bytes": 5453207,
-      "files": 5738,
-      "md5": "7df0c7abbbb13025e98f17d229ac8c4e"
+      "bytes": 5463089,
+      "files": 5751,
+      "md5": "5f02856d94200602918e7ac03db0795b"
     },
     "Indexes": {
       "bytes": 45545676,
@@ -36,21 +36,21 @@
       "md5": "62b12b200542a7f75c27ceca21f6a3e0"
     },
     "Statistics": {
-      "bytes": 4063985,
+      "bytes": 4065039,
       "files": 17,
-      "md5": "d9efe3ef6c0a7e0d9113700664483d74"
+      "md5": "8bd48948f034d206d60c3da81736a5c5"
     },
     "Various": {
-      "bytes": 38030652,
-      "files": 39,
-      "md5": "906d9cebedcb7cc693e5edd99f0ea4d7"
+      "bytes": 105911624,
+      "files": 124,
+      "md5": "9f8145b82166ec23b64926c31c74065c"
     },
     "prebuilt comics": {
-      "bytes": 9577241604,
+      "bytes": 9596273030,
       "files": 465,
-      "md5": "f67a9c2340e0682141cff7b7336f696c"
+      "md5": "cb249e47a90e34ceaa94623b7ccb99d2"
     }
   },
-  "written_at": "2026-10-20T03:41:35+00:00",
+  "written_at": "2026-10-27T00:25:25+00:00",
   "written_on": "gregspc2"
 }
