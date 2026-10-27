@@ -37,17 +37,15 @@ uv run python parse_bibliography.py --emit
 uv run python parse_bibliography.py --emit-covers
 ```
 
-**Do not run `--emit` until the matcher knows cover titles.** Since covers became
-`Titles` members (2a7ec0f0, 2026-07-23) the report shows UNMATCHED 261 /
-UNDISPOSED 8 / 11 disposition warnings against the live data; the committed
-module (2026-08-24) is the last good emit and its tests pass. `--emit` has no
-guard.
+Cover titles (`Titles` members since 2a7ec0f0, 2026-07-23) are left out of the
+story matcher: they link to their entries through the cover registry, and
+matched by keyword they would claim story and gag entries. `--emit` refuses to
+write while any entry is undisposed.
 
 The report sections: **COVERAGE** (match counts), **ISSUE HEADERS NOT IN
 &lt;h2&gt;** (headers the EPUB tagged `<strong>`/`<h3>`/`<p>` instead of `<h2>` —
 worth fixing in source), **NOT IN BARRIER** / **NO BARRIER ENTRY** (titles with
-no counterpart — expected), **UNMATCHED** (needs an override — 0 before covers
-became titles; 261 cover records today, see the warning above),
+no counterpart — expected), **UNMATCHED** (needs an override; normally 0),
 **MATCHED BY KEYWORD / ORDER ALIGNMENT** (heuristic matches to spot-check),
 **DATE DISCREPANCIES** (`cbi=` is the reader's date, `bib=` is Barrier's), and
 **DISPOSITIONS / UNDISPOSED** (see below).
@@ -68,8 +66,9 @@ listed under **UNDISPOSED** — the outstanding work queue; the end state is
 `COVER` dispositions are earned by verification against `barks_covers.py`: each
 in-scope cover entry is keyed by `(series, issue_number, issue_year, kind, seq)`
 and must match exactly one `BarksCover` record (date, qualifier, description and
-`illustrates` are compared; mismatches and orphans land in **DISPOSITION
-WARNINGS**). `(Illustrating "X.")` parentheticals resolve X to a `Titles` member,
+`illustrates` are compared; the registry's date stands where Barrier gives no
+single one, "(Not listed.)" or two alternatives; mismatches and orphans land in
+**DISPOSITION WARNINGS**). `(Illustrating "X.")` parentheticals resolve X to a `Titles` member,
 with `ILLUSTRATES_OVERRIDES` in `overrides.py` covering the covers Barks drew for
 other artists' interior stories (resolved to `None`).
 
@@ -88,9 +87,8 @@ works.
 
 1. Edit `source.xhtml` (this copy — not anything under `/tmp`).
 2. Re-run without `--emit` and read the report to confirm the change took.
-3. Re-run with `--emit` to rewrite the module. While `--emit` is blocked (above),
-   change only the affected entries in the module by hand, and compare every
-   entry's data fields with a fresh `parse_tree()` before committing.
+3. Re-run with `--emit` to rewrite the module, and check `git diff` changes only
+   what you meant to.
 
 What an edit does — and doesn't:
 

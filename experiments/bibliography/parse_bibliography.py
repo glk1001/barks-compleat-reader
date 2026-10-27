@@ -23,7 +23,7 @@ from pathlib import Path
 
 from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, get_cover_title
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
 
 from overrides import (
@@ -686,7 +686,9 @@ def match_all(series_list: list[BibSeries]) -> list[MatchResult]:
     idx = IssueIndex(series_list)
     linked: set[int] = set()  # id() of already-claimed entries
     done: dict[Titles, tuple[BibEntry | None, str]] = {}
-    cbis = list(BARKS_TITLE_INFO)
+    # Cover titles are linked through the cover registry (``verify_covers``), never
+    # here: matched by keyword, they claim story and gag entries.
+    cbis = [cbi for cbi in BARKS_TITLE_INFO if cbi.title not in COVERS_SET]
 
     def candidates(cbi: ComicBookInfo) -> list[BibEntry]:
         # Front covers are never ComicBookInfo records, so exclude them.
@@ -1038,7 +1040,16 @@ def verify_covers(cover_recs: list[CoverRec], warnings: list[str]) -> None:
             continue
         claimed.add(rec.key)
         mismatches = []
-        if (cover.submitted_day, cover.submitted_month, cover.submitted_year) != (
+        # Where Barrier gives no one date ("Not listed.", or two alternatives), the
+        # registry's date is the library's own choice and is not his to contradict.
+        bib_undated = rec.entry.submitted_year == -1 and (
+            rec.entry.date_unavailable or bool(rec.entry.raw_date)
+        )
+        if not bib_undated and (
+            cover.submitted_day,
+            cover.submitted_month,
+            cover.submitted_year,
+        ) != (
             rec.entry.submitted_day,
             rec.entry.submitted_month,
             rec.entry.submitted_year,

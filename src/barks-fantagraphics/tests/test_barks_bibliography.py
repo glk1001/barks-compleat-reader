@@ -212,6 +212,22 @@ def test_cover_registry_and_bibliography_covers_are_bijective() -> None:
     )
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def test_cover_registry_agrees_with_its_bibliography_entry() -> None:
+    """A registry record keeps its entry's description, and its date where Barrier gives one."""
+    for entry in _all_entries():
+        if entry.cover_key is None:
+            continue
+        cover = BARKS_COVER_BY_KEY[entry.cover_key]
+        assert _TAG_RE.sub("", cover.description) == _TAG_RE.sub("", entry.description), cover.key
+        if entry.submitted_year != -1:
+            entry_date = (entry.submitted_year, entry.submitted_month, entry.submitted_day)
+            cover_date = (cover.submitted_year, cover.submitted_month, cover.submitted_day)
+            assert cover_date == entry_date, cover.key
+
+
 def test_cover_registry_keys_are_consistent() -> None:
     """Each registry record's key property round-trips through BARKS_COVER_BY_KEY."""
     assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS)

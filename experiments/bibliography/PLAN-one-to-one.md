@@ -2,12 +2,12 @@
 
 > **Status (2026-06-11): implemented.** All four phases are done; the report
 > showed `UNDISPOSED: 0` at the time and the invariant is enforced by tests in
-> `src/barks-fantagraphics/tests/test_barks_bibliography.py`. Since covers became
-> titles (2a7ec0f0, 2026-07-23) the live report shows 8 undisposed and 261
-> unmatched cover records, so the matcher needs a cover-title step before any
-> re-emit (see README).
+> `src/barks-fantagraphics/tests/test_barks_bibliography.py`. Covers becoming
+> titles (2a7ec0f0, 2026-07-23) broke the re-emit until 2026-10-27, when cover
+> titles were left out of the story matcher; `UNDISPOSED: 0` again.
 > Outstanding (user input needed):
-> 1. the 14 DATE DISCREPANCIES (27 when this was written; per-case review: fix
+> 1. the 2 DATE DISCREPANCIES (27 when this was written; 13 of the later 15 were
+>    covers keyword-matched to gag entries; per-case review: fix
 >    `comic_book_info.py` or `source.xhtml`);
 > 2. real payment amounts for the 14 script-only additions (placeholder
 >    `payment=-1.0` rows in `barks_payments.py`, marked `TODO(glk)`);
