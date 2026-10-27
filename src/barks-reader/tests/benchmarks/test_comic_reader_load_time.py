@@ -158,6 +158,8 @@ class TestComicReaderLoadTime:
 
         settings = MagicMock()
         settings.use_prebuilt_archives = True
+        # A bare mock reads as true, which would decode every page whole.
+        settings.decode_pages_whole = False
         settings.prebuilt_comics_dir = str(comics_dir)
         settings.sys_file_paths.get_empty_page_file.return_value = "empty.png"
 
