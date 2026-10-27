@@ -365,6 +365,32 @@ def test_prioritize_page_loads_navigated_page_before_later_pages(
     assert order.index(4) < order.index(3)
 
 
+def test_the_first_page_loads_alone_before_the_window_opens(loader: ComicBookLoader) -> None:
+    """Nothing else is submitted while the page the reader waits for is in flight.
+
+    Four workers and a window of two: primed all at once, page 1 would load beside
+    page 0 and compete with it for the cores. It must wait until page 0 has landed.
+    """
+    page_map, load_order = _make_indexed_page_map(5)
+    started = threading.Event()
+    release = threading.Event()
+    source = OrderRecordingSource(block_index=0, started=started, release=release)
+    loader._max_worker_count = 4
+
+    loader.set_comic(source, load_order, page_map, archive_desc="first.cbz")
+
+    assert started.wait(2.0)  # page 0 is in flight
+    time.sleep(0.2)  # time enough for any companion to have loaded
+    assert source.load_order == []
+
+    release.set()
+    assert loader._thread is not None
+    loader._thread.join(timeout=2.0)
+
+    assert source.load_order[0] == 0
+    assert set(source.load_order) == {0, 1, 2, 3, 4}
+
+
 def test_prioritize_page_is_noop_when_page_already_loaded(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],

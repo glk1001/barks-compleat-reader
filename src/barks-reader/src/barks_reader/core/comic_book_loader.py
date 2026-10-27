@@ -580,7 +580,7 @@ class ComicBookLoader:
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
-    def _load_pages(self) -> int:  # noqa: C901, PLR0912, PLR0915
+    def _load_pages(self) -> int:  # noqa: C901, PLR0915
         """Platform-aware dynamic prefetch window implementation.
 
         Uses system profile (CPU, RAM) to pick prefetch and memory thresholds.
@@ -651,13 +651,19 @@ class ComicBookLoader:
                 return key
             return None
 
+        # The page the reader is waiting for goes alone: primed all at once, the
+        # window set a worker's worth of other pages competing with it for the
+        # cores. The window opens once that page has landed.
+        first_page_delivered = False
+
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
 
             def submit_next() -> bool:
                 """Submit the next page if window not full."""
                 nonlocal dynamic_window
-                if len(futures) >= dynamic_window:
+                window = dynamic_window if first_page_delivered else 1
+                if len(futures) >= window:
                     return False
                 load_key = next_load_key()
                 if load_key is None:
@@ -670,10 +676,8 @@ class ComicBookLoader:
 
                 return True
 
-            # Prime initial window.
-            for _ in range(dynamic_window):
-                if not submit_next():
-                    break
+            # Prime the window with the first page alone.
+            submit_next()
 
             try:
                 # Process futures as they complete, maintaining the prefetch window.
@@ -729,6 +733,10 @@ class ComicBookLoader:
                             # for the rest of the background prefetch. (Scheduled
                             # after the first-page display callback above.)
                             self._cursor.set_normal()
+                            # Now the rest of the comic, a window at a time.
+                            first_page_delivered = True
+                            while not self._stop and submit_next():
+                                pass
 
                         # Refill window if possible.
                         if not self._stop:
