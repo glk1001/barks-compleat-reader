@@ -423,6 +423,61 @@ def test_the_awaited_pair_loads_together_and_alone(
     mock_callbacks["on_all_images_loaded"].assert_called_once()
 
 
+def test_a_comic_of_just_the_awaited_pair_loads(
+    loader: ComicBookLoader, mock_callbacks: dict[str, MagicMock]
+) -> None:
+    page_map, load_order = _make_indexed_page_map(2)
+    source = FakePageImageSource()
+
+    loader.set_comic(source, load_order, page_map, archive_desc="pair.cbz", num_pages_awaited=2)
+    assert loader._thread is not None
+    loader._thread.join(timeout=2.0)
+
+    assert source.load_count == 2  # noqa: PLR2004
+    mock_callbacks["on_all_images_loaded"].assert_called_once()
+
+
+class _HoldingSource(FakePageImageSource):
+    """Holds every page after the first until released, counting those held at once."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.release = threading.Event()
+        self._held = 0
+        self._changed = threading.Condition()
+
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
+        if page_info.page_index != 0:
+            with self._changed:
+                self._held += 1
+                self._changed.notify_all()
+            self.release.wait(timeout=2.0)
+        return super().load_page_image(page_info)
+
+    def wait_until_held(self, count: int) -> bool:
+        with self._changed:
+            return self._changed.wait_for(lambda: self._held >= count, timeout=1.0)
+
+
+def test_the_whole_window_opens_once_the_awaited_page_lands(
+    loader: ComicBookLoader, mock_callbacks: dict[str, MagicMock]
+) -> None:
+    """Page 0 landed: the window of two fills at once, not one page per page landed."""
+    page_map, load_order = _make_indexed_page_map(5)
+    source = _HoldingSource()
+    loader._max_worker_count = 4
+
+    loader.set_comic(source, load_order, page_map, archive_desc="window.cbz")
+    try:
+        assert source.wait_until_held(2)
+    finally:
+        source.release.set()
+    assert loader._thread is not None
+    loader._thread.join(timeout=2.0)
+
+    mock_callbacks["on_all_images_loaded"].assert_called_once()
+
+
 def test_prioritize_page_is_noop_when_page_already_loaded(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
@@ -1407,6 +1462,32 @@ class TestLoadErrorClose:
         assert loader._current_comic_desc == "next.cbz"
         mock_callbacks["on_load_error"].assert_not_called()
         assert "Dropped the load error of a comic since superseded or closed." in loguru_sink
+
+    def test_the_error_of_a_comic_closed_then_replaced_is_dropped(
+        self,
+        deferring_loader: tuple[ComicBookLoader, _DeferringScheduler],
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+    ) -> None:
+        """A close and an open between the error and its report are two new comics.
+
+        Counted the other way, the close would undo the open's count and the stale
+        report would close the comic now open.
+        """
+        loader, scheduler = deferring_loader
+        self._fail_a_load(loader, page_map_and_order)
+
+        loader.close_comic()
+        next_source = FakePageImageSource()
+        page_map, load_order = page_map_and_order
+        loader.set_comic(next_source, load_order, page_map, archive_desc="next.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+        scheduler.run_pending()
+
+        assert not next_source.closed
+        assert loader._current_comic_desc == "next.cbz"
+        mock_callbacks["on_load_error"].assert_not_called()
 
     def test_the_error_of_a_comic_since_closed_is_dropped(
         self,

@@ -104,6 +104,7 @@ from barks_reader.core.reader_consts_and_types import (
 from barks_reader.core.reader_formatter import get_markup_text_with_num_titles
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -591,8 +592,29 @@ class TestTagYearRanges:
         assert all(row.kind is NodeKind.TITLE_ROW for row in tag_spec.lazy_children())
 
 
-def test_from_favourites_draws_on_the_reader_s_own_picks(
+def _reading_in_the_whole_tree(
     reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> NodeSpec:
+    return build_reader_tree_spec(reader_settings, title_lists, include_one_pagers_in_chrono=False)[
+        3
+    ]
+
+
+def _reading_alone(
+    reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> NodeSpec:
+    # Built first, with no My Picks node before it to have read the picks.
+    builder = barks_reader.core.navigation.tree_spec._SpecBuilder(  # noqa: SLF001
+        reader_settings, title_lists, include_one_pagers_in_chrono=False
+    )
+    return builder.reading_spec()
+
+
+@pytest.mark.parametrize("build_reading", [_reading_in_the_whole_tree, _reading_alone])
+def test_from_favourites_draws_on_the_reader_s_own_picks(
+    reader_settings: MagicMock,
+    title_lists: dict[str, list[FantaComicBookInfo]],
+    build_reading: Callable[[MagicMock, dict[str, list[FantaComicBookInfo]]], NodeSpec],
 ) -> None:
     """The category's title list is an import-time snapshot: the picks must reach it."""
     at_import = BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES]
@@ -605,10 +627,8 @@ def test_from_favourites_draws_on_the_reader_s_own_picks(
         patch.dict(barks_tags.BARKS_TAG_CATEGORIES_TITLES),
         patch.dict(barks_tags.BARKS_TAG_GROUPS_TITLES),
     ):
-        specs = build_reader_tree_spec(
-            reader_settings, title_lists, include_one_pagers_in_chrono=False
-        )
-    choose_for_me = specs[3].children[0]
+        reading = build_reading(reader_settings, title_lists)
+    choose_for_me = reading.children[0]
     from_favourites = next(
         c
         for c in choose_for_me.children
@@ -624,6 +644,17 @@ class TestCharacterRandomNodes:
         for _text, tag in _CHARACTER_RANDOM_NODES:
             in_collection = [t for t in get_sorted_tagged_titles(tag) if get_fanta_info(t)]
             assert len(in_collection) >= MIN_CHARACTER_TITLES, tag
+
+    def test_a_character_with_just_enough_titles_is_built(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        """The minimum is inclusive: the thinnest character, at exactly the minimum, builds."""
+        thinnest = min(
+            len([t for t in get_sorted_tagged_titles(tag) if get_fanta_info(t)])
+            for _text, tag in _CHARACTER_RANDOM_NODES
+        )
+        with patch.object(barks_reader.core.navigation.tree_spec, "MIN_CHARACTER_TITLES", thinnest):
+            _build_specs(reader_settings, title_lists)
 
     def test_a_character_with_too_few_titles_fails_at_startup(
         self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]

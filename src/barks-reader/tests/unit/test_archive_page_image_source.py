@@ -476,7 +476,8 @@ class TestReadImageDelegation:
             archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
         )
         source = _fanta_source(fanta, use_overrides=True)
-        source._comic_book_image_builder = MagicMock()  # noqa: SLF001
+        builder = MagicMock()
+        source._comic_book_image_builder = builder  # noqa: SLF001
 
         with (
             zipfile.ZipFile(override_zip_path, "r") as override_archive,
@@ -492,11 +493,14 @@ class TestReadImageDelegation:
         assert zip_path.at == "over/101.png"
         # Bundled override zips are encrypted; the library archive is not.
         assert mock_load.call_args.kwargs == {"encrypted_zip": True, "use_ext_hint": True}
+        # Decoded whole, so the builder is told the image is at its full scale.
+        assert builder.get_dest_page_image.call_args.kwargs["srce_scale"] == 1.0
 
     def test_the_placeholder_page_is_decoded_as_a_jpeg(self) -> None:
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
         source = _fanta_source(fanta, use_overrides=False)
-        source._comic_book_image_builder = MagicMock()  # noqa: SLF001
+        builder = MagicMock()
+        source._comic_book_image_builder = builder  # noqa: SLF001
         source._empty_page_image = b"placeholder-bytes"  # noqa: SLF001
 
         with (
@@ -508,6 +512,7 @@ class TestReadImageDelegation:
 
         # There is no real file behind `__empty_page__`, so the extension is assumed.
         mock_decode.assert_called_once_with(b"placeholder-bytes", ext=".jpg")
+        assert builder.get_dest_page_image.call_args.kwargs["srce_scale"] == 1.0
 
     def test_a_blank_page_is_decoded_from_the_placeholder_too(self) -> None:
         """BLANK_PAGE is the other page type that resolves to `__empty_page__`.

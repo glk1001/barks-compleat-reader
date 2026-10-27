@@ -596,6 +596,60 @@ change = """
 reason = "ZipFile's mode defaults to \"r\"."
 
 [[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.__init__"
+change = """
+- self._num_pages_awaited = 1
++ self._num_pages_awaited = None
+"""
+reason = "Assigned before any read: set_comic sets it before it starts the loader thread, its only reader."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.__init__"
+change = """
+- self._num_pages_awaited = 1
++ self._num_pages_awaited = 2
+"""
+reason = "Assigned before any read: set_comic sets it before it starts the loader thread, its only reader."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.__init__"
+change = """
+- self._load_generation = 0
++ self._load_generation = 1
+"""
+reason = "Only ever compared with a copy of itself, so the count's starting value does not matter."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.set_comic"
+change = """
+- self._load_generation += 1
++ self._load_generation += 2
+"""
+reason = "The count need only change at each set and close for a stale error to be told apart; any step up does."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.close_comic"
+change = """
+- self._load_generation += 1
++ self._load_generation += 2
+"""
+reason = "The count need only change at each set and close for a stale error to be told apart; any step up does."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- window_open = False
++ window_open = None
+"""
+reason = "Only ever tested for truth, where None and False are alike."
+
+[[equivalent]]
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """
@@ -711,6 +765,15 @@ change = """
 + self._archive = zipfile.ZipFile(self._archive_path, )
 """
 reason = "ZipFile's mode defaults to \"r\"."
+
+[[equivalent]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._read_image"
+change = """
+- return decode_pil(raw, ext=ext, fit_within=self._window_box()), 1.0
++ return decode_pil(raw, ext=ext, fit_within=self._window_box()), 2.0
+"""
+reason = "The scale goes only to the volume page builder: a prebuilt page, with no volume archive, never reads it."
 
 [[equivalent]]
 module = "barks_reader.core.reader_tree_view_utils"
@@ -1523,6 +1586,15 @@ change = """
 reason = "Reached only when cpu_count() is None; 1 and 2 both take the <= 2 branch after it, which returns 1."
 
 [[equivalent]]
+module = "barks_reader.core.comic_book_loader_platform_settings"
+function = "PrefetchTuning.__init__"
+change = """
+- self._rss_at_start_mib = 0.0
++ self._rss_at_start_mib = 1.0
+"""
+reason = "The loader takes the baseline (start_memory_watch) before it reads any growth, so the starting value is never read."
+
+[[equivalent]]
 module = "barks_reader.core.image_selector"
 function = "ImageSelector._get_fallback_image_info"
 change = """
@@ -1871,6 +1943,51 @@ change = """
 reason = "set_comic_book_reader_screen sets it with the reader, and every path that reads it needs the reader first."
 
 [[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._pending_tracking: _PendingTracking | None = None
++ self._pending_tracking: _PendingTracking | None = ""
+"""
+reason = "Read only by _begin_tracking, which asserts it is not None and then reads its fields: a stray call fails on either value (an AssertionError, or an AttributeError on \"\")."
+
+[[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager._begin_tracking"
+change = """
+- self._pending_tracking = None
++ self._pending_tracking = ""
+"""
+reason = "Read only by _begin_tracking, which asserts it is not None and then reads its fields: a stray call fails on either value (an AssertionError, or an AttributeError on \"\")."
+
+[[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.comic_closed"
+change = """
+- self._pending_tracking = None
++ self._pending_tracking = ""
+"""
+reason = "Read only by _begin_tracking, which asserts it is not None and then reads its fields: a stray call fails on either value (an AssertionError, or an AttributeError on \"\")."
+
+[[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.__init__"
+change = """
+- self._tracking = False
++ self._tracking = None
+"""
+reason = "Only ever tested for truth, where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.comic_reader_manager"
+function = "ComicReaderManager.comic_closed"
+change = """
+- self._tracking = False
++ self._tracking = None
+"""
+reason = "Only ever tested for truth, where None and False are alike."
+
+[[equivalent]]
 module = "barks_reader.core.last_read_page_tracker"
 function = "LastReadPageTracker.__init__"
 change = """
@@ -1887,42 +2004,6 @@ change = """
 + self._current_layout: ComicLayout | None = ""
 """
 reason = "begin() sets it with _current_title; end() before begin() fails the other's assert first either way."
-
-[[equivalent]]
-module = "barks_reader.core.comic_page_manager"
-function = "ComicPageManager.__init__"
-change = """
-- self._display_units: list[DisplayUnit] = []
-+ self._display_units: list[DisplayUnit] = None
-"""
-reason = "Read only behind a truth test (an empty list and None are both false) until set_page_map builds the units."
-
-[[equivalent]]
-module = "barks_reader.core.comic_page_manager"
-function = "ComicPageManager.__init__"
-change = """
-- self._page_index_to_unit_idx: dict[int, int] = {}
-+ self._page_index_to_unit_idx: dict[int, int] = None
-"""
-reason = "Read only once the display units are non-empty, and set_page_map rebuilds both together."
-
-[[equivalent]]
-module = "barks_reader.core.comic_page_manager"
-function = "ComicPageManager.next_page"
-change = """
-- unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
-+ unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -2)
-"""
-reason = "The default only marks a page no unit holds; -1 and -2 are both below 0, the one test made of it."
-
-[[equivalent]]
-module = "barks_reader.core.comic_page_manager"
-function = "ComicPageManager.prev_page"
-change = """
-- unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
-+ unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -2)
-"""
-reason = "The default only marks a page no unit holds; -1 and -2 are both at most 0, the one test made of it."
 
 [[equivalent]]
 module = "barks_reader.core.reader_navigation"
@@ -2299,30 +2380,6 @@ change = """
 module = "barks_reader.core.corpus_stats"
 function = "_attribution_section"
 change = """
-- _row("Script and art", counts.get(None, 0)),
-+ _row("Script and art", counts.get(None, None)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Script and art", counts.get(None, 0)),
-+ _row("Script and art", counts.get(None, )),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Script and art", counts.get(None, 0)),
-+ _row("Script and art", counts.get(None, 1)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
 - _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
 + _row("Art only", counts.get(Qualifier.ART_ONLY, None)),
 """
@@ -2348,39 +2405,7 @@ module = "barks_reader.core.corpus_stats"
 function = "_attribution_section"
 change = """
 - _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
-+ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, None)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
-+ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, )),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
 + _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 1)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
-+ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, None)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
-+ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, )),
 """
 
 [[untriaged]]
@@ -2692,22 +2717,6 @@ module = "barks_reader.core.comic_book_loader"
 function = "ComicBookLoader.wait_load_event"
 change = """
 - assert 0 <= page_index < len(self._images)
-+ assert 1 <= page_index < len(self._images)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.wait_load_event"
-change = """
-- assert 0 <= page_index < len(self._images)
-+ assert 0 < page_index < len(self._images)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.wait_load_event"
-change = """
-- assert 0 <= page_index < len(self._images)
 + assert 0 <= page_index <= len(self._images)
 """
 
@@ -2803,32 +2812,8 @@ change = """
 module = "barks_reader.core.comic_book_loader"
 function = "ComicBookLoader._load_pages"
 change = """
-- if len(futures) >= dynamic_window:
-+ if len(futures) > dynamic_window:
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- return False
-+ return True
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
 - return True
 + return False
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- if not submit_next():
-+ if submit_next():
 """
 
 [[untriaged]]
@@ -2986,14 +2971,6 @@ function = "ArchivePageImageSource.__init__"
 change = """
 - self._empty_page_image = empty_page_image
 + self._empty_page_image = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.close"
-change = """
-- self._fanta_volume_archive.override_archive = None
-+ self._fanta_volume_archive.override_archive = ""
 """
 
 [[untriaged]]

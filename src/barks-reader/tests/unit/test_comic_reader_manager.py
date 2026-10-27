@@ -704,6 +704,19 @@ class TestErrorCloseDelay:
 
         old_screen.close_comic_book_reader.assert_not_called()
 
+    def test_a_cancelled_close_is_not_cancelled_again(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """Closing the reader twice within the delay cancels the pending close once."""
+        scheduler = FakeScheduler()
+        manager, mock_screen = _read_a_missing_volume(mock_dependencies, scheduler)
+
+        manager.comic_closed()
+        assert manager.comic_closed() is None
+        scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
+
+        mock_screen.close_comic_book_reader.assert_not_called()
+
     def test_a_fired_close_is_not_cancelled_twice(
         self, mock_dependencies: dict[str, MagicMock]
     ) -> None:
