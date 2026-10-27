@@ -128,16 +128,18 @@ class FantagraphicsArchive:
     def has_overrides(self) -> bool:
         return (len(self.extra_images_page_map) > 0) or (len(self.override_images_page_map) > 0)
 
-    def needs_real_archive_for(self, page_str: str) -> bool:
+    def needs_real_archive_for(self, page_str: str, *, use_overrides: bool) -> bool:
         """Return whether the given page can only come from the (library) archive.
 
-        A page backed by a bundled override or extra image can be shown without the
-        user's Fantagraphics library; any other page requires the real volume archive.
+        A page backed by a bundled extra image can be shown without the user's
+        Fantagraphics library, and so can one backed by a bundled override image while
+        *use_overrides* is on; any other page requires the real volume archive. This
+        is the resolution the image source makes for the page, so the two must agree.
         """
-        return (
-            page_str not in self.extra_images_page_map
-            and page_str not in self.override_images_page_map
+        bundled = page_str in self.extra_images_page_map or (
+            use_overrides and page_str in self.override_images_page_map
         )
+        return not bundled
 
 
 class FantagraphicsVolumeArchives:

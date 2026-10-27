@@ -724,8 +724,8 @@ class TestLoadEndToEnd:
         vol1 = archives.get_fantagraphics_archive(1)
         assert vol1.is_missing is True
         assert set(vol1.extra_images_page_map) == {"258", "259", "267"}
-        assert vol1.needs_real_archive_for("258") is False
-        assert vol1.needs_real_archive_for("999") is True
+        assert vol1.needs_real_archive_for("258", use_overrides=True) is False
+        assert vol1.needs_real_archive_for("999", use_overrides=True) is True
 
         vol3 = archives.get_fantagraphics_archive(3)
         assert set(vol3.extra_images_page_map) == {"250", "260"}
@@ -733,7 +733,34 @@ class TestLoadEndToEnd:
         # A missing volume with no bundled override has no extra pages.
         vol2 = archives.get_fantagraphics_archive(2)
         assert vol2.extra_images_page_map == {}
-        assert vol2.needs_real_archive_for("258") is True
+        assert vol2.needs_real_archive_for("258", use_overrides=True) is True
+
+    def test_an_override_page_needs_the_archive_once_overrides_are_off(self) -> None:
+        """What the image source does: extras always bundled, overrides only when in use.
+
+        With overrides off the user asked for the original page, which only the
+        library archive has; saying "bundled" here let a missing volume through to a
+        KeyError in the loader thread instead of the missing-volume dialog.
+        """
+        archive = FantagraphicsArchive(
+            fanta_volume=7,
+            archive_filename=Path("07-MISSING.cbz"),
+            archive_image_subdir=None,
+            image_ext=".png",
+            first_page=1,
+            last_page=2,
+            archive_images_page_map={},
+            override_images_page_map={"258": Path("258.png")},
+            extra_images_page_map={"300": Path("300.png")},
+            override_archive_filename=None,
+            is_missing=True,
+        )
+
+        assert archive.needs_real_archive_for("258", use_overrides=True) is False
+        assert archive.needs_real_archive_for("258", use_overrides=False) is True
+        # An extra page is bundled whatever the overrides setting.
+        assert archive.needs_real_archive_for("300", use_overrides=False) is False
+        assert archive.needs_real_archive_for("999", use_overrides=True) is True
 
     def test_raises_page_ext_error_for_uppercase_extension(self, tmp_path: Path) -> None:
         """`_get_archive_contents` accepts case-insensitively; `load()` then rejects non-canonical exts."""  # noqa: E501

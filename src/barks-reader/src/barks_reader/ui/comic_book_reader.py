@@ -359,7 +359,7 @@ class ComicBookReader(FloatLayout):
         self._time_to_load_comic.restart()
 
         archive_path, fanta_volume_archive = self._comic_book_loader.resolve_archive_for_comic(
-            fanta_info, page_map
+            fanta_info, page_map, use_fantagraphics_overrides=use_fantagraphics_overrides
         )
         image_source = ArchivePageImageSource(
             archive_path=archive_path,

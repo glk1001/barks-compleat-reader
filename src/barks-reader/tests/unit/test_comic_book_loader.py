@@ -532,7 +532,9 @@ def test_resolve_archive_for_comic_returns_prebuilt_when_setting_enabled(
     expected_path = comics_dir / f"{expected_stem}.cbz"
     expected_path.write_bytes(b"PK\x03\x04")  # minimal cbz placeholder
 
-    archive_path, archive = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+    archive_path, archive = loader.resolve_archive_for_comic(
+        fanta_info, _make_page_map(), use_fantagraphics_overrides=True
+    )
     assert archive_path == expected_path
     assert archive is None
 
@@ -554,7 +556,9 @@ def test_resolve_archive_for_comic_returns_fanta_volume_when_not_prebuilt(
 
     fanta_info = _make_fanta_info(volume="FANTA_07")
 
-    archive_path, returned = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+    archive_path, returned = loader.resolve_archive_for_comic(
+        fanta_info, _make_page_map(), use_fantagraphics_overrides=True
+    )
     fanta_volume_archives.get_fantagraphics_archive.assert_called_once_with(7)
     assert archive_path == "/fake/path/07.cbz"
     assert returned is fake_archive
@@ -581,7 +585,33 @@ def test_resolve_archive_for_comic_raises_when_missing_volume_page_needs_archive
     fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
 
     with pytest.raises(MissingVolumeError):
-        loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+        loader.resolve_archive_for_comic(
+            fanta_info, _make_page_map(), use_fantagraphics_overrides=True
+        )
+
+
+def test_resolve_archive_for_comic_judges_the_pages_by_the_overrides_setting(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+) -> None:
+    """The setting the image source will read the pages with decides what is bundled."""
+    mock_reader_settings.use_prebuilt_archives = False
+    fake_archive = MagicMock()
+    fake_archive.is_missing = True
+    fake_archive.needs_real_archive_for.return_value = False
+    fake_archive.has_overrides.return_value = False
+    fake_archive.archive_filename = "/fake/path/12-MISSING.cbz"
+    fanta_volume_archives = MagicMock()
+    fanta_volume_archives.get_fantagraphics_archive.return_value = fake_archive
+    loader._fanta_volume_archives = fanta_volume_archives
+
+    loader.resolve_archive_for_comic(
+        _make_fanta_info(volume="FANTA_12"), _make_page_map(), use_fantagraphics_overrides=False
+    )
+
+    for page_check in fake_archive.needs_real_archive_for.call_args_list:
+        assert page_check.kwargs == {"use_overrides": False}
+    assert fake_archive.needs_real_archive_for.call_count == len(_make_page_map())
 
 
 def test_resolve_archive_for_comic_allows_missing_volume_when_all_pages_bundled(
@@ -602,7 +632,9 @@ def test_resolve_archive_for_comic_allows_missing_volume_when_all_pages_bundled(
 
     fanta_info = _make_fanta_info(volume="FANTA_12")
 
-    archive_path, returned = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+    archive_path, returned = loader.resolve_archive_for_comic(
+        fanta_info, _make_page_map(), use_fantagraphics_overrides=True
+    )
     assert archive_path == "/fake/path/12-MISSING.cbz"
     assert returned is fake_archive
 
@@ -635,7 +667,9 @@ def test_resolve_archive_for_comic_reads_the_volumes_first_when_not_yet_read(
         loader._fanta_volume_archives = volumes
 
     with patch.object(loader, "init_data", side_effect=read_volumes) as init_data:
-        _, returned = loader.resolve_archive_for_comic(_make_fanta_info(), _make_page_map())
+        _, returned = loader.resolve_archive_for_comic(
+            _make_fanta_info(), _make_page_map(), use_fantagraphics_overrides=True
+        )
     init_data.assert_called_once_with()
     assert returned is fake_archive
 
@@ -732,7 +766,9 @@ class TestPageNeedsRealArchive:
         archive.needs_real_archive_for.return_value = True
 
         assert (
-            loader_module._page_needs_real_archive(_page("empty_page.jpg", PageType.TITLE), archive)
+            loader_module._page_needs_real_archive(
+                _page("empty_page.jpg", PageType.TITLE), archive, use_fantagraphics_overrides=True
+            )
             is False
         )
         archive.needs_real_archive_for.assert_not_called()
@@ -743,7 +779,9 @@ class TestPageNeedsRealArchive:
         archive.needs_real_archive_for.return_value = True
 
         assert (
-            loader_module._page_needs_real_archive(_page("empty_page.jpg", PageType.BODY), archive)
+            loader_module._page_needs_real_archive(
+                _page("empty_page.jpg", PageType.BODY), archive, use_fantagraphics_overrides=True
+            )
             is False
         )
         archive.needs_real_archive_for.assert_not_called()
@@ -753,16 +791,40 @@ class TestPageNeedsRealArchive:
         archive = MagicMock()
         archive.needs_real_archive_for.return_value = True
 
-        result = loader_module._page_needs_real_archive(_page("258.jpg"), archive)
+        result = loader_module._page_needs_real_archive(
+            _page("258.jpg"), archive, use_fantagraphics_overrides=True
+        )
 
-        archive.needs_real_archive_for.assert_called_once_with("258")
+        archive.needs_real_archive_for.assert_called_once_with("258", use_overrides=True)
         assert result is True
 
     def test_a_bundled_override_page_does_not_need_the_archive(self) -> None:
         archive = MagicMock()
         archive.needs_real_archive_for.return_value = False
 
-        assert loader_module._page_needs_real_archive(_page("258.jpg"), archive) is False
+        assert (
+            loader_module._page_needs_real_archive(
+                _page("258.jpg"), archive, use_fantagraphics_overrides=True
+            )
+            is False
+        )
+
+    def test_the_overrides_setting_reaches_the_archive_s_verdict(self) -> None:
+        """Regression: the gate ignored the setting the image source honours.
+
+        With overrides off, an overridden page is read from the library archive; a
+        gate that called every overridden page bundled let a missing volume through
+        to a KeyError in the loader thread instead of the missing-volume dialog.
+        """
+        archive = MagicMock()
+        archive.needs_real_archive_for.return_value = True
+
+        result = loader_module._page_needs_real_archive(
+            _page("258.jpg"), archive, use_fantagraphics_overrides=False
+        )
+
+        archive.needs_real_archive_for.assert_called_once_with("258", use_overrides=False)
+        assert result is True
 
 
 class TestOverrideArchiveOpening:
@@ -785,7 +847,9 @@ class TestOverrideArchiveOpening:
         archives.get_fantagraphics_archive.return_value = fake_archive
         loader._fanta_volume_archives = archives
 
-        loader.resolve_archive_for_comic(_make_fanta_info(volume="FANTA_07"), _make_page_map())
+        loader.resolve_archive_for_comic(
+            _make_fanta_info(volume="FANTA_07"), _make_page_map(), use_fantagraphics_overrides=True
+        )
 
         opened = fake_archive.override_archive
         assert isinstance(opened, zipfile.ZipFile)
@@ -807,7 +871,9 @@ class TestOverrideArchiveOpening:
         archives.get_fantagraphics_archive.return_value = fake_archive
         loader._fanta_volume_archives = archives
 
-        loader.resolve_archive_for_comic(_make_fanta_info(volume="FANTA_07"), _make_page_map())
+        loader.resolve_archive_for_comic(
+            _make_fanta_info(volume="FANTA_07"), _make_page_map(), use_fantagraphics_overrides=True
+        )
 
         assert fake_archive.override_archive is None
 
@@ -1521,7 +1587,9 @@ class TestMissingVolumeErrorContents:
         fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
 
         with pytest.raises(MissingVolumeError) as excinfo:
-            loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+            loader.resolve_archive_for_comic(
+                fanta_info, _make_page_map(), use_fantagraphics_overrides=True
+            )
 
         assert excinfo.value.missing_vol == get_fanta_volume_from_str("FANTA_12")
         assert excinfo.value.title == Titles.LOST_IN_THE_ANDES
@@ -1565,8 +1633,11 @@ class TestBlankPageDetectionUsesPageType:
         page = _page("empty_page.jpg", PageType.TITLE)
         page.srce_page.page_type = PageType.BODY
 
-        assert loader_module._page_needs_real_archive(page, archive) is True
-        archive.needs_real_archive_for.assert_called_once_with("empty_page")
+        assert (
+            loader_module._page_needs_real_archive(page, archive, use_fantagraphics_overrides=True)
+            is True
+        )
+        archive.needs_real_archive_for.assert_called_once_with("empty_page", use_overrides=True)
 
 
 class PageCancellingSource(FakePageImageSource):

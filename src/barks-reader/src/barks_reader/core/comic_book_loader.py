@@ -67,21 +67,27 @@ class RetainedImageStats:
 
 
 def _page_needs_real_archive(
-    page_info: PageInfo, fanta_volume_archive: FantagraphicsArchive
+    page_info: PageInfo,
+    fanta_volume_archive: FantagraphicsArchive,
+    *,
+    use_fantagraphics_overrides: bool,
 ) -> bool:
     """Return whether a page can only be shown from the (library) volume archive.
 
     Mirrors the source resolution in
     :meth:`ArchivePageImageSource._get_fanta_volume_image_path`: title/blank pages and
-    override/extra images are bundled with the app, so only a page absent from both
-    override maps requires the real Fantagraphics archive.
+    extra images are bundled with the app, and so are override images while
+    *use_fantagraphics_overrides* is on. Only a page none of those back requires the
+    real Fantagraphics archive - which, with overrides off, an overridden page does.
     """
     if is_title_page(page_info.srce_page) or is_blank_page(
         page_info.srce_page.page_filename, page_info.page_type
     ):
         return False
     page_str = Path(page_info.srce_page.page_filename).stem
-    return fanta_volume_archive.needs_real_archive_for(page_str)
+    return fanta_volume_archive.needs_real_archive_for(
+        page_str, use_overrides=use_fantagraphics_overrides
+    )
 
 
 class ComicBookLoader:
@@ -193,6 +199,8 @@ class ComicBookLoader:
         self,
         fanta_info: FantaComicBookInfo,
         page_map: Mapping[str, PageInfo],
+        *,
+        use_fantagraphics_overrides: bool,
     ) -> tuple[Path, FantagraphicsArchive | None]:
         """Look up the archive path and volume metadata for a comic.
 
@@ -200,6 +208,9 @@ class ComicBookLoader:
             fanta_info: The comic to resolve.
             page_map: The comic's pages, used to decide whether a missing volume can
                 still be read purely from bundled override/extra pages.
+            use_fantagraphics_overrides: Whether the pages will be read with the
+                bundled override images, as the image source will be told. Off, an
+                overridden page comes from the library archive, so it needs it.
 
         Returns:
             A tuple of (*archive_path*, *fanta_volume_archive*).
@@ -224,7 +235,11 @@ class ComicBookLoader:
         # page, or an override/extra image) - e.g. the fully hand-restored censored
         # stories. Only block when a page genuinely needs the absent library archive.
         if fanta_volume_archive.is_missing and any(
-            _page_needs_real_archive(page_info, fanta_volume_archive)
+            _page_needs_real_archive(
+                page_info,
+                fanta_volume_archive,
+                use_fantagraphics_overrides=use_fantagraphics_overrides,
+            )
             for page_info in page_map.values()
         ):
             raise MissingVolumeError(
