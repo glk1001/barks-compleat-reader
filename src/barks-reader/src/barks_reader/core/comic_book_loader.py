@@ -392,10 +392,11 @@ class ComicBookLoader:
     def stop_now(self) -> None:
         """Signal the background thread to stop and wait for it to terminate.
 
-        A no-op once stopped with no thread left to wait for. A thread still alive
-        after an earlier stop (the loader thread stops itself on a load error) is
-        joined all the same: left running, the next comic's load would be refused as
-        already in progress.
+        UI thread only, like the close it is part of. A no-op once stopped with no
+        thread left to wait for. A thread still alive after an earlier stop (a load
+        error raises the flag on the loader thread, then hands its close to the UI
+        thread) is joined all the same: left running, the next comic's load would be
+        refused as already in progress.
         """
         if self._stop and self._thread is None:
             return
@@ -404,12 +405,6 @@ class ComicBookLoader:
         self._stop = True
 
         thread = self._thread
-        if thread is threading.current_thread():
-            # The loader thread stopping itself: it cannot join itself, and the
-            # handle is the UI thread's to clear once it has seen the thread out.
-            self._cursor.set_normal()
-            return
-
         if thread is not None and thread.is_alive():
             logger.debug("Waiting for image loading thread to terminate...")
             thread.join(timeout=2.0)

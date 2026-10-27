@@ -422,22 +422,6 @@ def test_prioritize_page_ignores_a_page_not_in_the_comic(
     assert loader._priority_keys.empty()
 
 
-def test_load_error_file_not_found(
-    loader: ComicBookLoader,
-    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
-    mock_callbacks: dict[str, MagicMock],
-) -> None:
-    """Test handling of a source that raises FileNotFoundError."""
-    page_map, load_order = page_map_and_order
-    source = FakePageImageSource(fail=True)
-
-    loader.set_comic(source, load_order, page_map, archive_desc="missing_comic.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
-
-    mock_callbacks["on_load_error"].assert_called_once()
-
-
 def test_stop_now(loader: ComicBookLoader) -> None:
     """Test stopping the loader thread."""
     stop_event = threading.Event()
@@ -1078,17 +1062,42 @@ class TestRetainedImageStats:
 # ---------------------------------------------------------------------------
 
 
+class _DeferringScheduler:
+    """A scheduler that holds its one-shots for the test to run, as the Kivy Clock would."""
+
+    def __init__(self) -> None:
+        self.pending: list[Callable[[], None]] = []
+
+    def schedule_once(self, callback: Callable[[], None], timeout_secs: float = 0) -> MagicMock:  # noqa: ARG002
+        self.pending.append(callback)
+        return MagicMock()
+
+    def schedule_interval(self, callback: Callable[[], None], period_secs: float) -> MagicMock:  # noqa: ARG002
+        return MagicMock()
+
+    def run_pending(self) -> None:
+        pending, self.pending = self.pending, []
+        for callback in pending:
+            callback()
+
+
 def _run_load(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
     source: Any = None,  # noqa: ANN401
 ) -> None:
-    """Drive one full `set_comic` load to completion."""
+    """Drive one full `set_comic` load to completion.
+
+    With a deferring scheduler, the one-shots the loader thread handed over (a failed
+    load's close and report) then run here, on the UI thread's behalf.
+    """
     page_map, load_order = page_map_and_order
     loader.set_comic(source or FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
     assert loader._thread is not None
     loader._thread.join(timeout=3.0)
     assert not loader._thread.is_alive()
+    if isinstance(loader._scheduler, _DeferringScheduler):
+        loader._scheduler.run_pending()
 
 
 # `on_load_error`'s only argument is a severity flag; name it at the call sites.
@@ -1113,6 +1122,21 @@ class TestLoadErrorReporting:
     The second argument is *warning-only*: True means "expected during a stop",
     which the UI reports more quietly than a genuine failure.
     """
+
+    @pytest.fixture
+    def fake_scheduler(self) -> _DeferringScheduler:
+        """Hold the one-shots: a failed load closes and reports on the UI thread, not its own."""
+        return _DeferringScheduler()
+
+    def test_a_page_that_cannot_be_read_is_reported(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+    ) -> None:
+        _run_load(loader, page_map_and_order, FakePageImageSource(fail=True))
+
+        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
 
     @pytest.mark.parametrize(
         "error",
@@ -1257,25 +1281,6 @@ class TestLoadErrorReporting:
         assert loader._stop is True
         assert loader._current_comic_desc == ""
         mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
-
-
-class _DeferringScheduler:
-    """A scheduler that holds its one-shots for the test to run, as the Kivy Clock would."""
-
-    def __init__(self) -> None:
-        self.pending: list[Callable[[], None]] = []
-
-    def schedule_once(self, callback: Callable[[], None], timeout_secs: float = 0) -> MagicMock:  # noqa: ARG002
-        self.pending.append(callback)
-        return MagicMock()
-
-    def schedule_interval(self, callback: Callable[[], None], period_secs: float) -> MagicMock:  # noqa: ARG002
-        return MagicMock()
-
-    def run_pending(self) -> None:
-        pending, self.pending = self.pending, []
-        for callback in pending:
-            callback()
 
 
 class TestLoadErrorClose:
@@ -1683,28 +1688,6 @@ class TestLoaderLifecycle:
         thread.join.assert_called_once_with(timeout=2.0)
         assert loader._thread is None
 
-    def test_the_loader_thread_stopping_itself_leaves_its_handle_to_the_ui_thread(
-        self, loader: ComicBookLoader, recording_cursor: RecordingCursor
-    ) -> None:
-        """It cannot join itself; the UI thread's next stop or load sees it out."""
-        seen: list[threading.Thread | None] = []
-
-        def stop_from_inside() -> None:
-            loader.stop_now()
-            seen.append(loader._thread)
-
-        thread = threading.Thread(target=stop_from_inside)
-        loader._thread = thread
-        thread.start()
-        thread.join(timeout=2.0)
-
-        assert seen == [thread]
-        assert loader._stop is True
-        assert recording_cursor.states[-1] == "normal"
-
-        loader.stop_now()  # the UI thread's turn: the finished thread is let go
-        assert loader._thread is None
-
     def test_set_comic_defaults_to_an_empty_archive_description(
         self, loader: ComicBookLoader, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]
     ) -> None:
@@ -1944,6 +1927,8 @@ class TestPrefetchLoop:
         mock_callbacks: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
+        # The failed load's close and report are the UI thread's to run, as in the app.
+        loader._scheduler = _DeferringScheduler()
         _run_load(loader, page_map_and_order, PageCancellingSource(cancelled_index=1))
 
         assert "Page 1 cancelled." in loguru_sink
