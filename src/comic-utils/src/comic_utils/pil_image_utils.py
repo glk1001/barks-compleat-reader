@@ -81,10 +81,48 @@ def load_pil_image_from_bytes(
         The decoded image.
 
     """
+    return load_opened_pil_image(open_pil_image_from_bytes(file_bytes, ext), fit_within=fit_within)
+
+
+def open_pil_image_from_bytes(file_bytes: bytes, ext: str) -> PilImage:
+    """Open *file_bytes* as the format *ext* names, reading the header but no pixels.
+
+    The size is known from here; :func:`load_opened_pil_image` decodes the pixels, so
+    a caller that must see the size before it knows how small a decode will do parses
+    the header once, not twice.
+
+    Args:
+        file_bytes: The image file's bytes.
+        ext: Its extension, which fixes the format PIL may read it as.
+
+    Returns:
+        The opened, not yet decoded, image.
+
+    """
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
-        image = Image.open(io.BytesIO(file_bytes), "r", formats=[_get_pil_format_from_ext(ext)])
+        return Image.open(io.BytesIO(file_bytes), "r", formats=[_get_pil_format_from_ext(ext)])
+    finally:
+        logging.getLogger().setLevel(current_log_level)
+
+
+def load_opened_pil_image(
+    image: PilImage, *, fit_within: tuple[int, int] | None = None
+) -> PilImage:
+    """Decode an opened image's pixels, a JPEG no larger than *fit_within* needs.
+
+    Args:
+        image: The image :func:`open_pil_image_from_bytes` opened.
+        fit_within: As for :func:`load_pil_image_from_bytes`.
+
+    Returns:
+        The same image, decoded; reduced, when a JPEG scale covers the box.
+
+    """
+    current_log_level = logging.getLogger().level
+    try:
+        logging.getLogger().setLevel(logging.INFO)
         if fit_within is not None:
             image.draft(None, contain_size(image.size, fit_within))
         image.load()

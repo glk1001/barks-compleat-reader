@@ -581,7 +581,7 @@ class TestReadImageDelegation:
 
         try:
             with (
-                patch.object(apis_module, "decode_pil", return_value=decoded),
+                patch.object(apis_module, "decode_pil_for", return_value=(decoded, 1.0)),
                 patch.object(apis_module, "resize_contain") as mock_resize,
                 patch.object(apis_module, "PageImage"),
             ):

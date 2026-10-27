@@ -17,8 +17,7 @@ from loguru import logger
 
 from .image_pipeline import (
     decode_pil,
-    decoded_scale,
-    image_size,
+    decode_pil_for,
     load_pil,
     read_raw_bytes,
     resize_contain,
@@ -196,13 +195,15 @@ class ArchivePageImageSource:
                 return decode_pil(raw, ext=ext), 1.0
             if self._fanta_volume_archive is None:
                 return decode_pil(raw, ext=ext, fit_within=self._window_box()), 1.0
-            assert self._comic_book_image_builder
-            srce_size = image_size(raw)
-            needed = self._comic_book_image_builder.get_source_size_needed(
-                page_info.srce_page, page_info.dest_page, srce_size, self._window_box()
+            builder = self._comic_book_image_builder
+            assert builder
+            return decode_pil_for(
+                raw,
+                ext=ext,
+                size_needed=lambda srce_size: builder.get_source_size_needed(
+                    page_info.srce_page, page_info.dest_page, srce_size, self._window_box()
+                ),
             )
-            image = decode_pil(raw, ext=ext, fit_within=needed)
-            return image, decoded_scale(srce_size, image.size)
 
         if image_path == EMPTY_PAGE_IMAGE:
             # The resolver's verdict decides, not the page type: a TITLE-typed page that

@@ -16,9 +16,9 @@ from barks_reader.core import image_pipeline
 from barks_reader.core.image_pipeline import (
     convert_mode,
     decode_pil,
+    decode_pil_for,
     decoded_scale,
     encode_png_stream,
-    image_size,
     load_pil,
     read_raw_bytes,
     resize_contain,
@@ -74,10 +74,35 @@ class TestReadRawBytes:
             read_raw_bytes("not a path")  # ty:ignore[invalid-argument-type]
 
 
-class TestImageSize:
-    def test_the_header_gives_the_size(self) -> None:
-        assert image_size(_make_jpg_bytes((400, 200))) == (400, 200)
-        assert image_size(_make_png_bytes((30, 15))) == (30, 15)
+class TestDecodePilFor:
+    def test_the_caller_sees_the_whole_size_and_names_the_box(self) -> None:
+        """400x200 asked to cover 100x50: the quarter scale does, and is reported."""
+        sizes_seen: list[tuple[int, int]] = []
+
+        def size_needed(whole: tuple[int, int]) -> tuple[int, int]:
+            sizes_seen.append(whole)
+            return (100, 50)
+
+        image, scale = decode_pil_for(
+            _make_jpg_bytes((400, 200)), ext=".jpg", size_needed=size_needed
+        )
+
+        assert sizes_seen == [(400, 200)]
+        assert (image.size, scale) == ((100, 50), 0.25)
+
+    def test_no_box_decodes_the_image_whole(self) -> None:
+        image, scale = decode_pil_for(
+            _make_jpg_bytes((400, 200)), ext=".jpg", size_needed=lambda _whole: None
+        )
+
+        assert (image.size, scale) == ((400, 200), 1.0)
+
+    def test_a_png_is_decoded_whole_whatever_the_box(self) -> None:
+        image, scale = decode_pil_for(
+            _make_png_bytes((30, 15)), ext=".png", size_needed=lambda _whole: (4, 4)
+        )
+
+        assert (image.size, scale) == ((30, 15), 1.0)
 
 
 class TestDecodedScale:

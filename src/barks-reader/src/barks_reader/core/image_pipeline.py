@@ -18,13 +18,17 @@ from typing import TYPE_CHECKING
 from comic_utils.pil_image_utils import (
     contain_size,
     get_pil_image_as_png_bytes,
+    load_opened_pil_image,
     load_pil_image_from_bytes,
     load_pil_image_from_zip,
+    open_pil_image_from_bytes,
 )
 from PIL import Image as PilImage
 from PIL import ImageOps
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from comic_utils.comic_consts import PanelPath
     from PIL.Image import Image
 
@@ -57,11 +61,6 @@ def read_raw_bytes(panel_path: PanelPath) -> bytes:
 
     msg = f"Unsupported PanelPath type: {type(panel_path)}"
     raise TypeError(msg)
-
-
-def image_size(raw: bytes) -> tuple[int, int]:
-    """Return the width and height an image file's header declares, without decoding it."""
-    return PilImage.open(io.BytesIO(raw)).size
 
 
 def decoded_scale(whole_size: tuple[int, int], decoded_size: tuple[int, int]) -> float:
@@ -116,6 +115,31 @@ def decode_pil(
         image.draft(None, contain_size(image.size, fit_within))
     image.load()
     return image
+
+
+def decode_pil_for(
+    raw: bytes, *, ext: str, size_needed: Callable[[tuple[int, int]], tuple[int, int] | None]
+) -> tuple[Image, float]:
+    """Decode raw bytes no larger than the caller needs, once it has seen their size.
+
+    The header is parsed once: *size_needed* is given the whole size it declares and
+    answers with the box the decode must cover, or ``None`` for a whole decode; the
+    same open then decodes the pixels (see :func:`decode_pil`'s ``fit_within``).
+
+    Args:
+        raw: Raw image bytes.
+        ext: The extension, which fixes the format PIL may read them as.
+        size_needed: Given the whole size, the box the decode must cover, or ``None``.
+
+    Returns:
+        The decoded image, and the scale of itself it was decoded at (see
+        :func:`decoded_scale`).
+
+    """
+    opened = open_pil_image_from_bytes(raw, ext)
+    whole_size = opened.size
+    image = load_opened_pil_image(opened, fit_within=size_needed(whole_size))
+    return image, decoded_scale(whole_size, image.size)
 
 
 def load_pil(

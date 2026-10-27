@@ -209,3 +209,22 @@ class TestDecodingWithinABox:
         image = pil_image_utils.load_pil_image_from_bytes(_png_bytes(), ".png", fit_within=(4, 4))
 
         assert image.size == (40, 20)
+
+
+class TestOpeningBeforeLoading:
+    def test_an_opened_image_knows_its_size_before_it_is_decoded(self) -> None:
+        opened = pil_image_utils.open_pil_image_from_bytes(_jpg_bytes((400, 200)), ".jpg")
+
+        assert opened.size == (400, 200)
+
+    def test_the_opened_image_is_then_decoded_within_the_box(self) -> None:
+        opened = pil_image_utils.open_pil_image_from_bytes(_jpg_bytes((400, 200)), ".jpg")
+
+        image = pil_image_utils.load_opened_pil_image(opened, fit_within=(100, 50))
+
+        assert image is opened
+        assert image.size == (100, 50)  # the quarter scale: a draft taken before the load
+
+    def test_an_unknown_extension_is_refused_at_the_open(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported image extension"):
+            pil_image_utils.open_pil_image_from_bytes(_png_bytes(), ".gif")
