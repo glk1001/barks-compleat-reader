@@ -9,7 +9,8 @@ Kivy-free and does no widget work - the screen in
 Two figures here are easy to get wrong, so they are computed deliberately:
 
 * Attribution (art vs. script) comes from Barrier's bibliography
-  (``barks_bibliography.Qualifier``), never from ``ComicBookInfo.is_barks_title``
+  (``BibEntry.effective_qualifier``: his mark, or its correction where he left one
+  out or other evidence overrules it), never from ``ComicBookInfo.is_barks_title``
   - that flag means "Barks himself titled it", not "Barks made it".
 * The payment ledger uses ``-1`` as an "unknown" sentinel for both the amount
   and the accepted date - and 383 of its 947 records carry it, most of them
@@ -268,7 +269,8 @@ def _script_and_art_titles(stories: list[ComicBookInfo]) -> frozenset[Titles]:
     """Return the stories Barks both wrote and drew.
 
     An unqualified entry in Barrier's bibliography means the whole story is his;
-    every other entry carries a `Qualifier` saying which half was not.
+    every other entry carries a `Qualifier` saying which half was not. A
+    correction to Barrier's mark counts over the mark itself.
 
     Args:
         stories: The corpus stories to filter.
@@ -280,7 +282,8 @@ def _script_and_art_titles(stories: list[ComicBookInfo]) -> frozenset[Titles]:
     return frozenset(
         info.title
         for info in stories
-        if (entry := TITLE_TO_BIB_ENTRY.get(info.title)) is not None and entry.qualifier is None
+        if (entry := TITLE_TO_BIB_ENTRY.get(info.title)) is not None
+        and entry.effective_qualifier is None
     )
 
 
@@ -288,12 +291,14 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
     """Build the "how much of this is Barks" section from Barrier's bibliography."""
     counts: dict[Qualifier | None, int] = {}
     num_with_entry = 0
+    num_corrected = 0
     for info in stories:
         entry = TITLE_TO_BIB_ENTRY.get(info.title)
         if entry is None:
             continue
         num_with_entry += 1
-        counts[entry.qualifier] = counts.get(entry.qualifier, 0) + 1
+        num_corrected += entry.correction_note is not None
+        counts[entry.effective_qualifier] = counts.get(entry.effective_qualifier, 0) + 1
 
     # Every story falls into exactly one of these five buckets, so each one is a
     # slice of the same whole and carries a share.
@@ -309,7 +314,10 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
             _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
             _row("Not in the bibliography", len(stories) - num_with_entry),
         ),
-        footnote="Attribution as stated in Michael Barrier's bibliography.",
+        footnote=(
+            f"Attribution as stated in Michael Barrier's bibliography,"
+            f" with {num_corrected} roles corrected."
+        ),
     )
 
 

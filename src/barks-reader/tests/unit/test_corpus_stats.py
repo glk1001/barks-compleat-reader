@@ -27,7 +27,9 @@ from barks_reader.core.corpus_stats import (
     CorpusStats,
     StatSection,
     _adjusted_payment_total,
+    _attribution_section,
     _length_section,
+    _script_and_art_titles,
     compute_static_stats,
     compute_text_stats,
     get_paid_records,
@@ -126,10 +128,10 @@ class TestAttributionSection:
     @pytest.mark.parametrize(
         ("label", "expected"),
         [
-            ("Script and art", "561"),
-            ("Art only", "80"),
-            ("Script only", "27"),
-            ("Art, script rewritten", "8"),
+            ("Script and art", "558"),
+            ("Art only", "79"),
+            ("Script only", "28"),
+            ("Art, script rewritten", "11"),
             ("Not in the bibliography", "7"),
         ],
     )
@@ -143,12 +145,21 @@ class TestAttributionSection:
     def test_the_footnote_credits_the_bibliography(self, stats: CorpusStats) -> None:
         assert (
             _section(stats, "Barks's hand").footnote
-            == "Attribution as stated in Michael Barrier's bibliography."
+            == "Attribution as stated in Michael Barrier's bibliography, with 5 roles corrected."
         )
+
+    def test_a_correction_counts_over_barriers_mark(self) -> None:
+        # Barrier left The Day the Farm Stood Still unmarked; Vic Lockman wrote it.
+        stories = [
+            info for info in get_stories() if info.title is Titles.DAY_THE_FARM_STOOD_STILL_THE
+        ]
+        assert _script_and_art_titles(stories) == frozenset()
+        rows = {row.label: row.value for row in _attribution_section(stories).rows}
+        assert (rows["Script and art"], rows["Art only"]) == ("0", "1")
 
     def test_is_barks_title_would_have_given_a_different_answer(self) -> None:
         # Guards the trap the module docstring warns about: is_barks_title means
-        # "Barks titled it", not "Barks made it", and is nowhere near 561.
+        # "Barks titled it", not "Barks made it", and is nowhere near 558.
         assert sum(1 for info in get_stories() if info.is_barks_title) == 326
 
 
@@ -201,7 +212,7 @@ class TestLongestScriptAndArtStory:
         from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY  # noqa: PLC0415
         from barks_fantagraphics.barks_titles import Titles  # noqa: PLC0415
 
-        assert TITLE_TO_BIB_ENTRY[Titles.VACATION_TIME].qualifier is None
+        assert TITLE_TO_BIB_ENTRY[Titles.VACATION_TIME].effective_qualifier is None
 
     def test_no_longer_script_and_art_story_was_passed_over(self, stats: CorpusStats) -> None:
         from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY  # noqa: PLC0415
@@ -213,7 +224,7 @@ class TestLongestScriptAndArtStory:
             for info in get_stories()
             if info.title in BARKS_PAYMENTS
             and (entry := TITLE_TO_BIB_ENTRY.get(info.title)) is not None
-            and entry.qualifier is None
+            and entry.effective_qualifier is None
         )
         assert _value(stats, "Length", "Longest (script and art)").endswith(f"{longest} pages")
 
