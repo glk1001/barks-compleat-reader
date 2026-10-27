@@ -27,6 +27,12 @@ def _make_png_bytes(size: tuple[int, int], color: tuple[int, int, int] = (40, 80
     return buf.getvalue()
 
 
+def _make_jpg_bytes(size: tuple[int, int]) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, (40, 80, 120)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 def _write_cbz(zip_path: Path, entries: dict[str, bytes]) -> None:
     with zipfile.ZipFile(zip_path, "w") as zf:
         for name, data in entries.items():
@@ -342,7 +348,7 @@ class TestReadImageDelegation:
         source.open()
         try:
             with (
-                patch.object(apis_module, "load_pil") as mock_load,
+                patch.object(apis_module, "decode_pil") as mock_decode,
                 patch.object(apis_module, "resize_contain") as mock_resize,
                 patch.object(apis_module, "PageImage") as page_cls,
             ):
@@ -350,41 +356,118 @@ class TestReadImageDelegation:
         finally:
             source.close()
 
-        zip_path = mock_load.call_args.args[0]
-        assert zip_path.at == "images/p01.png"
-        # A prebuilt page is decoded no larger than the window it is resized for.
-        assert mock_load.call_args.kwargs == {
-            "encrypted_zip": False,
-            "use_ext_hint": True,
-            "fit_within": (64, 64),
-        }
+        # The member's own bytes, under its own extension, decoded no larger than the
+        # window the page is resized for.
+        mock_decode.assert_called_once_with(
+            _make_png_bytes((1000, 500)), ext=".png", fit_within=(64, 64)
+        )
 
         # The decoded image goes straight to resize, and its pixels straight out.
-        mock_resize.assert_called_once_with(mock_load.return_value, 64, 64)
+        mock_resize.assert_called_once_with(mock_decode.return_value, 64, 64)
         page_cls.from_pil.assert_called_once_with(mock_resize.return_value)
         assert page is page_cls.from_pil.return_value
 
-    def test_a_volume_page_is_decoded_whole_for_the_builder(self, prebuilt_cbz: Path) -> None:
-        """The builder lays a volume page out at the scan's own size: no reduced decode."""
+    def test_a_prebuilt_page_is_decoded_whole_when_the_reader_says_so(
+        self, prebuilt_cbz: Path
+    ) -> None:
+        source = ArchivePageImageSource(
+            archive_path=prebuilt_cbz,
+            fanta_volume_archive=None,
+            comic_book_image_builder=None,
+            empty_page_image=b"",
+            use_fantagraphics_overrides=False,
+            max_width=64,
+            max_height=64,
+            decode_whole=True,
+        )
+        source.open()
+        try:
+            with (
+                patch.object(apis_module, "decode_pil") as mock_decode,
+                patch.object(apis_module, "resize_contain"),
+                patch.object(apis_module, "PageImage"),
+            ):
+                source.load_page_image(_make_page_info("p01.png"))
+        finally:
+            source.close()
+
+        mock_decode.assert_called_once_with(_make_png_bytes((1000, 500)), ext=".png")
+
+    def _volume_source_with_a_jpeg_scan(
+        self, tmp_path: Path
+    ) -> tuple[ArchivePageImageSource, MagicMock]:
+        """Return a volume whose page 101 is a 400x200 JPEG scan, and its stand-in builder."""
+        volume_zip = tmp_path / "vol1.zip"
+        _write_cbz(volume_zip, {"arch/101.jpg": _make_jpg_bytes((400, 200))})
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
         source = _fanta_source(fanta, use_overrides=False)
-        source._comic_book_image_builder = MagicMock()  # noqa: SLF001
+        source._archive_path = volume_zip  # noqa: SLF001
+        builder = MagicMock()
+        source._comic_book_image_builder = builder  # noqa: SLF001
+        return source, builder
 
-        with (
-            zipfile.ZipFile(prebuilt_cbz, "r") as archive,
-            patch.object(apis_module, "load_pil") as mock_load,
-            patch.object(apis_module, "resize_contain"),
-            patch.object(apis_module, "PageImage"),
-        ):
-            source._archive = archive  # noqa: SLF001
-            source.load_page_image(_make_page_info("101.jpg"))
+    def test_a_volume_scan_is_decoded_as_small_as_the_builder_allows(self, tmp_path: Path) -> None:
+        """The builder names the least size; the decode meets it, and learns the scale."""
+        source, builder = self._volume_source_with_a_jpeg_scan(tmp_path)
+        builder.get_source_size_needed.return_value = (100, 50)
+        page_info = _make_page_info("101.jpg")
+        source.open()
 
-        assert mock_load.call_args.args[0].at == "arch/101.jpg"
-        assert mock_load.call_args.kwargs == {
-            "encrypted_zip": False,
-            "use_ext_hint": True,
-            "fit_within": None,
+        try:
+            with (
+                patch.object(apis_module, "resize_contain"),
+                patch.object(apis_module, "PageImage"),
+            ):
+                source.load_page_image(page_info)
+        finally:
+            source.close()
+
+        builder.get_source_size_needed.assert_called_once_with(
+            page_info.srce_page, page_info.dest_page, (400, 200), (100, 100)
+        )
+        decoded = builder.get_dest_page_image.call_args.args[0]
+        assert decoded.size == (100, 50)  # libjpeg's quarter scale covers 100x50
+        assert builder.get_dest_page_image.call_args.kwargs == {
+            "fit_within": (100, 100),
+            "srce_scale": 0.25,
         }
+
+    def test_a_volume_scan_is_decoded_whole_when_the_reader_says_so(self, tmp_path: Path) -> None:
+        """The builder is not even asked: the whole scan goes to it at scale one."""
+        source, builder = self._volume_source_with_a_jpeg_scan(tmp_path)
+        source._decode_whole = True  # noqa: SLF001
+        source.open()
+
+        try:
+            with (
+                patch.object(apis_module, "resize_contain"),
+                patch.object(apis_module, "PageImage"),
+            ):
+                source.load_page_image(_make_page_info("101.jpg"))
+        finally:
+            source.close()
+
+        builder.get_source_size_needed.assert_not_called()
+        assert builder.get_dest_page_image.call_args.args[0].size == (400, 200)
+        assert builder.get_dest_page_image.call_args.kwargs["srce_scale"] == 1.0
+
+    def test_a_volume_scan_the_builder_wants_whole_is_decoded_whole(self, tmp_path: Path) -> None:
+        source, builder = self._volume_source_with_a_jpeg_scan(tmp_path)
+        builder.get_source_size_needed.return_value = None
+        source.open()
+
+        try:
+            with (
+                patch.object(apis_module, "resize_contain"),
+                patch.object(apis_module, "PageImage"),
+            ):
+                source.load_page_image(_make_page_info("101.jpg"))
+        finally:
+            source.close()
+
+        decoded = builder.get_dest_page_image.call_args.args[0]
+        assert decoded.size == (400, 200)
+        assert builder.get_dest_page_image.call_args.kwargs["srce_scale"] == 1.0
 
     def test_override_pages_are_read_from_the_encrypted_override_zip(self, tmp_path: Path) -> None:
         override_zip_path = tmp_path / "overrides.zip"
@@ -493,9 +576,12 @@ class TestReadImageDelegation:
         source.open()
         page_info = _make_page_info("101.jpg")
 
+        builder.get_source_size_needed.return_value = None
+        decoded = Image.new("RGB", (4, 4))
+
         try:
             with (
-                patch.object(apis_module, "load_pil") as mock_load,
+                patch.object(apis_module, "decode_pil", return_value=decoded),
                 patch.object(apis_module, "resize_contain") as mock_resize,
                 patch.object(apis_module, "PageImage"),
             ):
@@ -506,10 +592,11 @@ class TestReadImageDelegation:
         # The raw page is transformed before resizing, using *this* page's geometry,
         # and built at the scale that fits the window.
         builder.get_dest_page_image.assert_called_once_with(
-            mock_load.return_value,
+            decoded,
             page_info.srce_page,
             page_info.dest_page,
             fit_within=(100, 100),
+            srce_scale=1.0,
         )
         mock_resize.assert_called_once_with(builder.get_dest_page_image.return_value, 100, 100)
 

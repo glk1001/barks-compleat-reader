@@ -308,6 +308,13 @@ class BuildScale:
 
 FULL_SCALE = BuildScale(1.0, DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT)
 
+# The pages whose build measures something in the scan's own pixels: a splash's
+# margin, a painting's border, a title page's lettering. Every other page is only
+# resized from the scan, so a scan decoded smaller serves it as well.
+SOURCE_MEASURED_PAGES = frozenset(
+    {PageType.TITLE, PageType.SPLASH, PageType.PAINTING, PageType.BACK_PAINTING}
+)
+
 
 def get_build_scale(page_type: PageType, fit_within: tuple[int, int] | None) -> BuildScale:
     """Return the scale to build a page of *page_type* at so that it fits *fit_within*.
@@ -329,6 +336,11 @@ def get_build_scale(page_type: PageType, fit_within: tuple[int, int] | None) -> 
     if width >= DEST_TARGET_WIDTH or height >= DEST_TARGET_HEIGHT:
         return FULL_SCALE
     return BuildScale(min(width / DEST_TARGET_WIDTH, height / DEST_TARGET_HEIGHT), width, height)
+
+
+def source_may_be_reduced(page_type: PageType) -> bool:
+    """Whether a page of *page_type* builds as well from a scan decoded at a reduced scale."""
+    return page_type not in SOURCE_MEASURED_PAGES
 
 
 class ComicBookImageBuilder:
@@ -368,16 +380,21 @@ class ComicBookImageBuilder:
         dest_page: CleanPage,
         *,
         fit_within: tuple[int, int] | None = None,
+        srce_scale: float = 1.0,
     ) -> PilImage:
         """Build the destination page from its source page image.
 
         Args:
             srce_page_image: The source page, decoded.
-            srce_page: The source page's geometry: its panels box in the image.
+            srce_page: The source page's geometry: its panels box in the scan.
             dest_page: The destination page's type and geometry, at the book's size.
             fit_within: The width and height the page is to fit inside, when it is
                 for a window rather than the book. Every page but a title page is
                 then built at that scale (see :func:`get_build_scale`).
+            srce_scale: The scale *srce_page_image* was decoded at, when the scan was
+                decoded smaller than it is (see :meth:`get_source_size_needed`): the
+                source panels box is scaled by it. Only for a page
+                :func:`source_may_be_reduced` allows.
 
         Returns:
             The page, in RGB, at the book's size or the scale that fits the box.
@@ -385,6 +402,7 @@ class ComicBookImageBuilder:
         """
         self._log_page_info(f"{srce_page.page_num}-Srce", srce_page_image, srce_page)
         self._log_page_info(f"{srce_page.page_num}-Dest", None, dest_page)
+        assert srce_scale == 1.0 or source_may_be_reduced(dest_page.page_type)
 
         scale = get_build_scale(dest_page.page_type, fit_within)
         if dest_page.page_type in PAGES_WITHOUT_PANELS:
@@ -393,7 +411,7 @@ class ComicBookImageBuilder:
             )
         else:
             dest_page_image = self._get_main_page_dest_image(
-                srce_page_image, srce_page, dest_page, scale
+                srce_page_image, srce_page, dest_page, scale, srce_scale
             )
 
         rgb_dest_page_image = dest_page_image.convert("RGB")
@@ -401,6 +419,47 @@ class ComicBookImageBuilder:
         self._log_page_info("Dest", rgb_dest_page_image, dest_page)
 
         return rgb_dest_page_image
+
+    @staticmethod
+    def get_source_size_needed(
+        srce_page: CleanPage,
+        dest_page: CleanPage,
+        srce_size: tuple[int, int],
+        fit_within: tuple[int, int],
+    ) -> tuple[int, int] | None:
+        """Return the least size the scan need be decoded at for a page built to fit a box.
+
+        A page built at a reduced scale takes its panels, or its whole image, shrunk;
+        a scan decoded at that shrunken size already, as a JPEG decoder can, serves
+        it as well as the whole scan and costs a fraction to decode and resize.
+
+        Args:
+            srce_page: The source page's geometry: its panels box in the scan.
+            dest_page: The destination page's type and geometry, at the book's size.
+            srce_size: The scan's width and height, from its header.
+            fit_within: The width and height the page is to fit inside.
+
+        Returns:
+            The width and height the scan must be decoded at, at least; or None when
+            it must be decoded whole: a page measured in scan pixels, or one built
+            at the book's size.
+
+        """
+        scale = get_build_scale(dest_page.page_type, fit_within)
+        if scale.is_full or not source_may_be_reduced(dest_page.page_type):
+            return None
+        srce_width, srce_height = srce_size
+        if dest_page.page_type in PAGES_WITHOUT_PANELS:
+            # The whole image is resized onto the page at this scale.
+            needed = max(scale.width / srce_width, scale.height / srce_height)
+        else:
+            needed = max(
+                scale.of(dest_page.panels_bbox.get_width()) / srce_page.panels_bbox.get_width(),
+                scale.of(dest_page.panels_bbox.get_height()) / srce_page.panels_bbox.get_height(),
+            )
+        if needed >= 1.0:
+            return None
+        return math.ceil(srce_width * needed), math.ceil(srce_height * needed)
 
     def _get_no_panels_dest_image(
         self,
@@ -596,13 +655,14 @@ class ComicBookImageBuilder:
         srce_page: CleanPage,
         dest_page: CleanPage,
         scale: BuildScale,
+        srce_scale: float = 1.0,
     ) -> PilImage:
-        panels_image = srce_page_image.crop(srce_page.panels_bbox.get_box())
+        panels_image, panels_box = self._crop_panels(srce_page_image, srce_page, srce_scale)
         panels_rgb, paste_mask = self._page_image_source.to_renderable(panels_image)
 
         if dest_page.page_type not in PAGES_WITHOUT_PANELS:
             panels_rgb, paste_mask = self._get_resized_srce_images(
-                dest_page, panels_rgb, paste_mask, scale
+                dest_page, panels_rgb, paste_mask, scale, panels_box
             )
 
         dest_page_image = self._get_empty_page_image(scale).copy()
@@ -630,11 +690,35 @@ class ComicBookImageBuilder:
         return dest_page_image
 
     @staticmethod
+    def _crop_panels(
+        srce_page_image: PilImage, srce_page: CleanPage, srce_scale: float
+    ) -> tuple[PilImage, tuple[float, float, float, float] | None]:
+        """Crop the panels out of the scan, and say where they lie within the crop.
+
+        The panels box is measured on the whole scan. On a scan decoded smaller its
+        edges fall between pixels, so the crop takes the whole pixels around them and
+        the resize is told the exact box, as fractions of a pixel: rounding the box
+        instead would shift every page a part of a pixel, which shows on line art.
+
+        Returns:
+            The crop, and the panels box within it when it is fractional, else ``None``.
+
+        """
+        if srce_scale == 1.0:
+            return srce_page_image.crop(srce_page.panels_bbox.get_box()), None
+
+        left, upper, right, lower = (edge * srce_scale for edge in srce_page.panels_bbox.get_box())
+        crop_left, crop_upper = math.floor(left), math.floor(upper)
+        crop = srce_page_image.crop((crop_left, crop_upper, math.ceil(right), math.ceil(lower)))
+        return crop, (left - crop_left, upper - crop_upper, right - crop_left, lower - crop_upper)
+
+    @staticmethod
     def _get_resized_srce_images(
         dest_page: CleanPage,
         panels_rgb: PilImage,
         paste_mask: PilImage | None,
         scale: BuildScale = FULL_SCALE,
+        box: tuple[float, float, float, float] | None = None,
     ) -> tuple[PilImage, PilImage | None]:
         target_size = (
             scale.of(dest_page.panels_bbox.get_width()),
@@ -643,9 +727,9 @@ class ComicBookImageBuilder:
         # At the book's size the panels are enlarged a little, or not at all; at a
         # reduced scale they are shrunk, which LANCZOS does better.
         resample = Image.Resampling.BICUBIC if scale.is_full else Image.Resampling.LANCZOS
-        panels_rgb = panels_rgb.resize(size=target_size, resample=resample)
+        panels_rgb = panels_rgb.resize(size=target_size, resample=resample, box=box)
         if paste_mask is not None:
-            paste_mask = paste_mask.resize(size=target_size, resample=resample)
+            paste_mask = paste_mask.resize(size=target_size, resample=resample, box=box)
         return panels_rgb, paste_mask
 
     def _write_page_number(

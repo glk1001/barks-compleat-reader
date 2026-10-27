@@ -47,6 +47,7 @@ IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
 USE_VIRTUAL_KEYBOARD = "use_virtual_keyboard"
 DOUBLE_PAGE_MODE = "double_page_mode"
+DECODE_PAGES_WHOLE = "decode_pages_whole"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
 MAIN_WINDOW_HEIGHT = "main_window_height"
@@ -310,6 +311,10 @@ class ReaderSettings:
     def goto_fullscreen_on_comic_read(self) -> bool:
         return self._read(GOTO_FULLSCREEN_ON_COMIC_READ)
 
+    @property
+    def decode_pages_whole(self) -> bool:
+        return self._read(DECODE_PAGES_WHOLE)
+
     def get_use_harpies_instead_of_larkies(self) -> bool:
         return self._read(USE_HARPIES_INSTEAD_OF_LARKIES)
 
@@ -460,6 +465,15 @@ _FIELDS: tuple[FieldSpec, ...] = (
         desc="Record every comic you read in the Reading History view.",
         kind=FieldKind.BOOL,
         config_default=1,
+    ),
+    FieldSpec(
+        key=DECODE_PAGES_WHOLE,
+        title="Decode Pages Whole",
+        desc="Decode every page image whole before fitting it to the window, for the"
+        " sharpest page. Comics take longer to open. Makes no difference on a 4K"
+        " screen, where pages are decoded whole anyway.",
+        kind=FieldKind.BOOL,
+        config_default=0,
     ),
     # -- Appearance --
     FieldSpec(

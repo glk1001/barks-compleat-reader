@@ -252,6 +252,7 @@ are:
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
+| *Decode Pages Whole*                          | Decodes every page whole for the sharpest page; comics open more slowly |
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |
 | *Alternate Escape Key*                        | Extra key that behaves like Escape, for remotes without one    |

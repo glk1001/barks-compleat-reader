@@ -581,10 +581,17 @@ PageImage`. The production implementation `ArchivePageImageSource`
 page via `ComicBookImageBuilder.get_dest_page_image` → `resize_contain` (LANCZOS)
 → the pixels as they are (`core/page_image.py`). A prebuilt page, which goes
 straight from the decode to the resize, is decoded at the largest of libjpeg's
-reduced scales that still covers the window (`fit_within`); a volume page is
-decoded whole, since the builder's source geometry is the scan's own, and the
-builder lays it out at the window's scale instead (`get_build_scale`): every
-page but the lettered title page, which is built at the book's size and shrunk. There is no encode: the
+reduced scales that still covers the window (`fit_within`). A volume page is
+laid out by the builder at the window's scale (`get_build_scale`): every page
+but the lettered title page, which is built at the book's size and shrunk. The
+builder also says how small the scan may be decoded for that page
+(`get_source_size_needed`), and takes the panels box at the exact scale the scan
+came out at (`decoded_scale`, libjpeg's half, quarter or eighth), cropping whole
+pixels and resizing from the fractional box so the page does not shift; a
+splash, a bordered painting and the title page, measured in scan pixels, are
+decoded whole. The reduced decode softens line art a little (about the loss of
+a JPEG re-save), so the **Decode Pages Whole** setting turns it off on both
+paths for a slower, sharper load. There is no encode: the
 level-0 PNG the loader used to make was the same bytes with headers, and a
 decode on the UI thread to undo it.
 

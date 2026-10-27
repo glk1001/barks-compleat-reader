@@ -205,7 +205,7 @@ class TestComicBookReader:
                 barks_reader.ui.comic_book_reader, "get_action_bar_title"
             ) as _mock_get_title,
             patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
-            patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource"),
+            patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource") as source,
         ):
             # action_bar_title is a StringProperty, so the formatter must yield a str.
             _mock_get_title.return_value = "Title"
@@ -219,6 +219,11 @@ class TestComicBookReader:
             )
 
             assert reader._current_title_str == "Title"
+            # The page source takes the reader's decode-whole setting as it is.
+            assert (
+                source.call_args.kwargs["decode_whole"]
+                is reader._reader_settings.decode_pages_whole
+            )
             reader._comic_book_loader.set_comic.assert_called()
             # The reader screen is held back until page one draws, so opening a comic
             # arms the reveal rather than switching to a blank page.

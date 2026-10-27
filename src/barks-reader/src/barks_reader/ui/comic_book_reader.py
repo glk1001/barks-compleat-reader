@@ -370,6 +370,7 @@ class ComicBookReader(FloatLayout):
             use_fantagraphics_overrides=use_fantagraphics_overrides,
             max_width=self._comic_book_loader.max_window_width,
             max_height=self._comic_book_loader.max_window_height,
+            decode_whole=self._reader_settings.decode_pages_whole,
         )
         archive_desc = str(archive_path)
         self._comic_book_loader.set_comic(

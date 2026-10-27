@@ -15,7 +15,14 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.comics_consts import IMAGES_SUBDIR
 from loguru import logger
 
-from .image_pipeline import decode_pil, load_pil, resize_contain
+from .image_pipeline import (
+    decode_pil,
+    decoded_scale,
+    image_size,
+    load_pil,
+    read_raw_bytes,
+    resize_contain,
+)
 from .log_markers import EMPTY_PAGE_IMAGE
 from .page_image import PageImage
 from .reader_utils import is_blank_page, is_title_page
@@ -46,6 +53,8 @@ class ArchivePageImageSource:
         use_fantagraphics_overrides: Whether to prefer override images over originals.
         max_width: Maximum display width for resizing.
         max_height: Maximum display height for resizing.
+        decode_whole: Decode every page image whole, however small the window: the
+            reader's setting for the sharpest page at the cost of the load.
 
     """
 
@@ -58,6 +67,7 @@ class ArchivePageImageSource:
         use_fantagraphics_overrides: bool,
         max_width: int,
         max_height: int,
+        decode_whole: bool = False,
     ) -> None:
         self._archive_path = archive_path
         self._archive: zipfile.ZipFile | None = None
@@ -67,6 +77,7 @@ class ArchivePageImageSource:
         self._use_fantagraphics_overrides = use_fantagraphics_overrides
         self._max_width = max_width
         self._max_height = max_height
+        self._decode_whole = decode_whole
 
     def open(self) -> None:
         """Open the backing ZIP archive. Must be called before :meth:`load_page_image`."""
@@ -106,7 +117,7 @@ class ArchivePageImageSource:
             f' image_path = "{image_path}", is_from_archive = {is_from_archive}.'
         )
 
-        pil_image = self._read_image(image_path, is_from_archive)
+        pil_image, srce_scale = self._read_image(page_info, image_path, is_from_archive)
 
         if self._fanta_volume_archive:
             assert self._comic_book_image_builder
@@ -114,7 +125,8 @@ class ArchivePageImageSource:
                 pil_image,
                 page_info.srce_page,
                 page_info.dest_page,
-                fit_within=(self._max_width, self._max_height),
+                fit_within=self._window_box(),
+                srce_scale=srce_scale,
             )
 
         resized = resize_contain(pil_image, self._max_width, self._max_height)
@@ -130,13 +142,7 @@ class ArchivePageImageSource:
     # Internals
     # ------------------------------------------------------------------
 
-    def _decode_box(self) -> tuple[int, int] | None:
-        # A prebuilt page goes straight from the decode to the resize, so a JPEG can
-        # be decoded at a scale no larger than the window needs. A volume page is first
-        # laid out by the builder, whose source geometry is the scan's own: it is
-        # decoded whole, and the builder builds it at the window's scale instead.
-        if self._fanta_volume_archive is not None:
-            return None
+    def _window_box(self) -> tuple[int, int]:
         return self._max_width, self._max_height
 
     def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
@@ -168,23 +174,41 @@ class ArchivePageImageSource:
 
         return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
 
-    def _read_image(self, image_path: str, is_from_archive: bool) -> Image:
+    def _read_image(
+        self, page_info: PageInfo, image_path: str, is_from_archive: bool
+    ) -> tuple[Image, float]:
+        """Decode the page's source image, and say what scale of itself it was decoded at.
+
+        A prebuilt page goes straight from the decode to the resize, so its JPEG is
+        decoded no larger than the window needs. A volume page is laid out by the
+        builder, which says how small its scan may be decoded for the page it will
+        build at the window's scale; the scale it came out at goes back to the builder
+        with the image, so the panels box can follow. Override pages are decoded whole,
+        and so is every page when the reader is set to decode pages whole.
+        """
         if is_from_archive:
             assert self._archive is not None, (
                 "Page requires the Fantagraphics library archive, but it is not available."
             )
-            return load_pil(
-                zipfile.Path(self._archive, at=str(image_path)),
-                encrypted_zip=False,
-                use_ext_hint=True,
-                fit_within=self._decode_box(),
+            raw = read_raw_bytes(zipfile.Path(self._archive, at=str(image_path)))
+            ext = Path(image_path).suffix
+            if self._decode_whole:
+                return decode_pil(raw, ext=ext), 1.0
+            if self._fanta_volume_archive is None:
+                return decode_pil(raw, ext=ext, fit_within=self._window_box()), 1.0
+            assert self._comic_book_image_builder
+            srce_size = image_size(raw)
+            needed = self._comic_book_image_builder.get_source_size_needed(
+                page_info.srce_page, page_info.dest_page, srce_size, self._window_box()
             )
+            image = decode_pil(raw, ext=ext, fit_within=needed)
+            return image, decoded_scale(srce_size, image.size)
 
         if image_path == EMPTY_PAGE_IMAGE:
             # The resolver's verdict decides, not the page type: a TITLE-typed page that
             # resolved to a real override file is read like any other override page.
             # Nothing in any zip backs the placeholder; its bundled bytes are a JPEG.
-            return decode_pil(self._empty_page_image, ext=".jpg")
+            return decode_pil(self._empty_page_image, ext=".jpg"), 1.0
 
         assert self._fanta_volume_archive is not None
         assert self._fanta_volume_archive.override_archive is not None
@@ -192,4 +216,4 @@ class ArchivePageImageSource:
             zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path)),
             encrypted_zip=True,
             use_ext_hint=True,
-        )
+        ), 1.0

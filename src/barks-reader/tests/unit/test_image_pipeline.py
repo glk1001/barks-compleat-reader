@@ -16,7 +16,9 @@ from barks_reader.core import image_pipeline
 from barks_reader.core.image_pipeline import (
     convert_mode,
     decode_pil,
+    decoded_scale,
     encode_png_stream,
+    image_size,
     load_pil,
     read_raw_bytes,
     resize_contain,
@@ -70,6 +72,34 @@ class TestReadRawBytes:
         # The offending type is the whole point of the message, so match it too.
         with pytest.raises(TypeError, match=r"Unsupported PanelPath type: <class 'str'>"):
             read_raw_bytes("not a path")  # ty:ignore[invalid-argument-type]
+
+
+class TestImageSize:
+    def test_the_header_gives_the_size(self) -> None:
+        assert image_size(_make_jpg_bytes((400, 200))) == (400, 200)
+        assert image_size(_make_png_bytes((30, 15))) == (30, 15)
+
+
+class TestDecodedScale:
+    @pytest.mark.parametrize(
+        ("whole", "decoded", "scale"),
+        [
+            pytest.param((400, 200), (100, 50), 0.25, id="a quarter"),
+            pytest.param((2216, 3056), (1108, 1528), 0.5, id="a half"),
+            pytest.param((2216, 3056), (277, 382), 0.125, id="an eighth"),
+            # 2217 / 1109 is not 2, but libjpeg decoded at a half, not at 1109 / 2217.
+            pytest.param((2217, 3057), (1109, 1529), 0.5, id="a half of odd sides"),
+            pytest.param((400, 200), (400, 200), 1.0, id="whole"),
+        ],
+    )
+    def test_the_scale_is_the_exact_power_of_two_the_decoder_used(
+        self, whole: tuple[int, int], decoded: tuple[int, int], scale: float
+    ) -> None:
+        assert decoded_scale(whole, decoded) == scale
+
+    def test_a_size_no_reduced_decode_gives_is_refused(self) -> None:
+        with pytest.raises(AssertionError):
+            decoded_scale((400, 200), (150, 75))
 
 
 class TestDecodePil:
