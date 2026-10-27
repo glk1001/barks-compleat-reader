@@ -107,7 +107,7 @@ class TestComicReaderManager:
         ) as mock_builder_cls:
             manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
 
-            assert mock_screen.can_benefit_from_fullscreen is True
+            assert mock_screen.can_benefit_from_fullscreen is False
 
             mock_reader.read_comic.assert_called_once()
             args, _ = mock_reader.read_comic.call_args
@@ -328,6 +328,7 @@ class TestComicReaderManager:
     ) -> None:
         mock_reader = MagicMock()
         manager._comic_book_reader = mock_reader
+        manager._tracking = True  # as a read that succeeded leaves it
 
         sentinel = MagicMock()
         mock_dependencies["last_read_page_tracker"].end.return_value = sentinel
@@ -392,38 +393,36 @@ class TestArticleReading:
             mock_dependencies["layout_builder"],
         )
 
-    def test_fullscreen_is_suppressed_while_the_article_is_opening(
+    def test_fullscreen_is_suppressed_for_the_article_and_stays_so(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         """Articles are text, so the reader must not offer fullscreen for them.
 
-        The flag is restored afterwards, so its value has to be captured mid-read.
+        Regression: the flag was restored in a `finally` as soon as the read returned,
+        but the screen reads it only when it is shown, which the reader defers until
+        page one has drawn - so every article still opened fullscreen.
         """
-        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_screen, _mock_reader = _attach_reader_screen(manager)
         mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
-        seen: list[bool] = []
-        mock_reader.read_comic.side_effect = lambda *_a, **_k: seen.append(
-            mock_screen.can_benefit_from_fullscreen
-        )
 
         with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
 
-        assert seen == [False]
-        assert mock_screen.can_benefit_from_fullscreen is True
+        assert mock_screen.can_benefit_from_fullscreen is False
 
-    def test_fullscreen_is_restored_even_when_the_read_fails(
+    def test_a_barks_comic_read_after_an_article_may_go_fullscreen_again(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_screen, _mock_reader = _attach_reader_screen(manager)
         mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
-        mock_reader.read_comic.side_effect = RuntimeError("boom")
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
 
-        with (
-            patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"),
-            pytest.raises(RuntimeError),
-        ):
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
+            assert mock_screen.can_benefit_from_fullscreen is False
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
 
         assert mock_screen.can_benefit_from_fullscreen is True
 
@@ -504,6 +503,135 @@ def _read_a_missing_volume(
     return manager, mock_screen
 
 
+class TestTrackingBeginsOnlyWhenTheComicOpened:
+    """A failed open has no page to save and is not a read for the history.
+
+    Regression: both trackers were begun before the read was attempted, so a
+    missing volume still wrote a history event, and the deferred close then ended
+    it as a one-second read of a title never shown, with a "no valid last read page"
+    warning for good measure.
+    """
+
+    def test_a_missing_volume_begins_no_tracker(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _read_a_missing_volume(mock_dependencies, FakeScheduler())
+
+        mock_dependencies["last_read_page_tracker"].begin.assert_not_called()
+        mock_dependencies["reading_history_tracker"].begin.assert_not_called()
+
+    def test_the_close_after_a_failed_open_ends_no_tracker(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager, _mock_screen = _read_a_missing_volume(mock_dependencies, scheduler)
+        scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
+
+        assert manager.comic_closed() is None
+
+        mock_dependencies["last_read_page_tracker"].end.assert_not_called()
+        mock_dependencies["reading_history_tracker"].end.assert_not_called()
+
+    def test_the_trackers_begin_after_the_reader_has_taken_the_comic(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        order: list[str] = []
+        mock_reader.read_comic.side_effect = lambda *_a, **_k: order.append("read")
+        mock_dependencies["last_read_page_tracker"].begin.side_effect = lambda *_a, **_k: (
+            order.append("last-read")
+        )
+        mock_dependencies["reading_history_tracker"].begin.side_effect = lambda *_a, **_k: (
+            order.append("history")
+        )
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        assert order == ["read", "last-read", "history"]
+
+    def test_a_comic_that_opened_is_ended_once_only(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """A second close (the reader's own, then the screen's) persists nothing twice."""
+        _mock_screen, _mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        sentinel = MagicMock()
+        mock_dependencies["last_read_page_tracker"].end.return_value = sentinel
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        assert manager.comic_closed() is sentinel
+        assert manager.comic_closed() is None
+        mock_dependencies["last_read_page_tracker"].end.assert_called_once()
+        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(sentinel)
+
+
+class TestMissingPrebuiltComic:
+    """With prebuilt archives, the title's own comic file can be absent.
+
+    Regression: the resolver raised FileNotFoundError on the UI thread, which only
+    the loader thread's handler was written for; it escaped the Kivy event handler
+    with no dialog, no close and a history session left open.
+    """
+
+    def test_the_user_is_told_the_volume_is_not_found_and_the_reader_closes(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Lost in the Andes"
+        fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
+        fanta_info.fantagraphics_volume = "FANTA_07"
+        mock_reader.read_comic.side_effect = FileNotFoundError("no such comic file")
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        handle_error = mock_dependencies["user_error_handler"].handle_error
+        handle_error.assert_called_once()
+        error_type, error_info = handle_error.call_args.args
+        assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+        assert error_info.file_volume == 7  # noqa: PLR2004
+        assert error_info.title is Titles.LOST_IN_THE_ANDES
+
+        assert scheduler.one_shots == [
+            (mock_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS)
+        ]
+        mock_dependencies["reading_history_tracker"].begin.assert_not_called()
+
+    def test_the_missing_file_is_logged(
+        self,
+        manager: ComicReaderManager,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        _, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        fanta_info.fantagraphics_volume = "FANTA_07"
+        mock_reader.read_comic.side_effect = FileNotFoundError('Could not find comic file "x.cbz".')
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        assert 'Could not find comic file "x.cbz".' in loguru_sink
+
+
 class TestErrorCloseDelay:
     def test_closing_the_reader_first_cancels_the_pending_close(
         self, mock_dependencies: dict[str, MagicMock]
@@ -535,15 +663,15 @@ class TestErrorCloseDelay:
     def test_a_fired_close_is_not_cancelled_twice(
         self, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        """Once the delayed close has run, closing the reader just persists the page."""
+        """Once the delayed close has run, closing the reader has nothing left to cancel."""
         scheduler = FakeScheduler()
         manager, mock_screen = _read_a_missing_volume(mock_dependencies, scheduler)
 
         scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
         mock_screen.close_comic_book_reader.assert_called_once_with()
-        manager.comic_closed()
+        assert manager.comic_closed() is None
 
-        mock_dependencies["last_read_page_tracker"].end.assert_called_once()
+        assert scheduler.pending_one_shots == []
 
     def test_the_reader_closes_after_the_configured_delay(
         self, mock_dependencies: dict[str, MagicMock]

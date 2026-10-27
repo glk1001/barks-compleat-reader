@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_fantagraphics.fanta_comics_info import (
+    ALL_FANTA_COMIC_BOOK_INFO,
+    get_fanta_volume_from_str,
+)
 from loguru import logger
 
 from .comic_book_page_info import slice_comic_layout
@@ -74,8 +77,10 @@ class ComicReaderManager:
         self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
         self._comic_book_reader: ComicBookReaderPort | None = None
         self._fanta_info: FantaComicBookInfo | None = None
-        # The close a missing-volume error deferred, until it fires or no longer applies.
+        # The close an unreadable-comic error deferred, until it fires or no longer applies.
         self._pending_error_close: CancelHandle | None = None
+        # Whether the comic now in the reader opened, and so has trackers to end.
+        self._tracking = False
 
     def set_comic_book_reader_screen(
         self, comic_book_reader_screen: ComicBookReaderScreenPort
@@ -105,12 +110,12 @@ class ComicReaderManager:
         self._fanta_info = self.all_fanta_titles[article_title]
         article_as_comic = self._comics_database.get_comic_book(article_title_str)
 
+        # Set for the read, not restored after it: the screen reads the flag when it
+        # is shown, which the reader defers until page one has drawn, well after this
+        # returns. Restored on the way out, every article still opened fullscreen.
         assert self._comic_book_reader_screen
         self._comic_book_reader_screen.can_benefit_from_fullscreen = False
-        try:
-            self._read_comic_book(article_as_comic, page_to_first_goto, save_last_page=False)
-        finally:
-            self._comic_book_reader_screen.can_benefit_from_fullscreen = True
+        self._read_comic_book(article_as_comic, page_to_first_goto, save_last_page=False)
 
     def read_barks_comic_book(
         self,
@@ -141,6 +146,8 @@ class ComicReaderManager:
 
         """
         self._fanta_info = fanta_info
+        assert self._comic_book_reader_screen
+        self._comic_book_reader_screen.can_benefit_from_fullscreen = True
         self._read_comic_book(
             comic,
             page_to_first_goto,
@@ -175,11 +182,6 @@ class ComicReaderManager:
             self._layout = slice_comic_layout(self._layout, *collection_page_range)
 
         title_str = self._fanta_info.comic_book_info.get_title_str()
-        self._last_read_page_tracker.begin(title_str, self._layout, save_enabled=save_last_page)
-        if save_last_page:
-            # `save_last_page` is only False for articles, which aren't history-worthy.
-            self._reading_history_tracker.begin(history_title_str or title_str)
-
         logger.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
 
         try:
@@ -193,15 +195,39 @@ class ComicReaderManager:
             )
         except MissingVolumeError as e:
             logger.error(e)
-            error_info = ErrorInfo(missing_volumes=[e.missing_vol], title=e.title)
-            self._user_error_handler.handle_error(
-                ErrorTypes.MissingVolumeCannotShowTitle, error_info
+            self._report_unreadable(
+                ErrorTypes.MissingVolumeCannotShowTitle,
+                ErrorInfo(missing_volumes=[e.missing_vol], title=e.title),
             )
-            assert self._comic_book_reader_screen is not None
-            reader_screen = self._comic_book_reader_screen
-            self._pending_error_close = self._scheduler.schedule_once(
-                reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS
+            return
+        except FileNotFoundError as e:
+            # Prebuilt archives: the title's own comic file is absent.
+            logger.error(e)
+            self._report_unreadable(
+                ErrorTypes.ArchiveVolumeNotAvailable,
+                ErrorInfo(
+                    file_volume=get_fanta_volume_from_str(self._fanta_info.fantagraphics_volume),
+                    title=self._fanta_info.comic_book_info.title,
+                ),
             )
+            return
+
+        # Only a comic that opened is tracked: a failed open has no page to save, and
+        # is not a read for the history.
+        self._last_read_page_tracker.begin(title_str, self._layout, save_enabled=save_last_page)
+        if save_last_page:
+            # `save_last_page` is only False for articles, which aren't history-worthy.
+            self._reading_history_tracker.begin(history_title_str or title_str)
+        self._tracking = True
+
+    def _report_unreadable(self, error_type: ErrorTypes, error_info: ErrorInfo) -> None:
+        """Show the user why the comic cannot be read, then close the reader after a delay."""
+        self._user_error_handler.handle_error(error_type, error_info)
+        assert self._comic_book_reader_screen is not None
+        reader_screen = self._comic_book_reader_screen
+        self._pending_error_close = self._scheduler.schedule_once(
+            reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS
+        )
 
     def _cancel_pending_error_close(self) -> None:
         """Drop a deferred error close: the reader it was for is closed or gone."""
@@ -212,11 +238,15 @@ class ComicReaderManager:
     def comic_closed(self) -> SavedPageInfo | None:
         """Persist the last-read page when the reader closes.
 
-        A close still pending from a missing-volume error is cancelled here, so the
+        A close still pending from an unreadable-comic error is cancelled here, so the
         user closing the reader first, then opening another title within the delay,
-        does not have the stale close shut the new comic.
+        does not have the stale close shut the new comic. A comic that never opened
+        has nothing to persist.
         """
         self._cancel_pending_error_close()
+        if not self._tracking:
+            return None
+        self._tracking = False
         assert self._comic_book_reader
         last_read_page = self._last_read_page_tracker.end(self._comic_book_reader)
         self._reading_history_tracker.end(last_read_page)
