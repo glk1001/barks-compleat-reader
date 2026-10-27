@@ -317,7 +317,7 @@ class TestSourceDescription:
         source = _fanta_source(fanta, use_overrides=False)
 
         info = source.get_image_info_str(
-            _title_page_info("empty_page.jpg", page_type=PageType.BODY)
+            _title_page_info("empty_page.jpg", page_type=PageType.BLANK_PAGE)
         )
 
         assert info == '"__empty_page__" (from override)'
@@ -403,17 +403,14 @@ class TestReadImageDelegation:
         # There is no real file behind `__empty_page__`, so the extension is assumed.
         mock_decode.assert_called_once_with(b"placeholder-bytes", ext=".jpg")
 
-    def test_a_real_off_archive_page_keeps_its_own_extension(self) -> None:
-        """A TITLE-typed page that is *not* the placeholder still has a real file.
+    def test_a_blank_page_is_decoded_from_the_placeholder_too(self) -> None:
+        """BLANK_PAGE is the other page type that resolves to `__empty_page__`.
 
-        `is_title_page` only matches the `empty_page` stem, so this page resolves
-        through the override map and its extension must come from that path.
+        The resolver and the reader must agree on it: no zip holds a blank page, so
+        reading one must never reach for the (here absent) override archive.
         """
-        fanta = _make_fanta_archive(
-            archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
-        )
-        fanta.override_archive = MagicMock()
-        source = _fanta_source(fanta, use_overrides=True)
+        fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
+        source = _fanta_source(fanta, use_overrides=False)
         source._comic_book_image_builder = MagicMock()  # noqa: SLF001
         source._empty_page_image = b"placeholder-bytes"  # noqa: SLF001
 
@@ -422,9 +419,45 @@ class TestReadImageDelegation:
             patch.object(apis_module, "resize_contain"),
             patch.object(apis_module, "encode_png_stream"),
         ):
+            source.load_page_image(
+                _title_page_info("empty_page.jpg", page_type=PageType.BLANK_PAGE)
+            )
+
+        mock_decode.assert_called_once_with(b"placeholder-bytes", ext=".jpg")
+
+    def test_a_title_typed_page_with_a_real_override_file_reads_that_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A TITLE-typed page that is *not* the placeholder still has a real file.
+
+        `is_title_page` only matches the `empty_page` stem, so this page resolves
+        through the override map. The reader follows that verdict and reads the
+        override file; it must not decode the placeholder bytes under the file's
+        extension (JPEG bytes forced through a `.png` hint do not decode).
+        """
+        override_zip_path = tmp_path / "overrides.zip"
+        _write_cbz(override_zip_path, {"over/101.png": _make_png_bytes((4, 4))})
+        fanta = _make_fanta_archive(
+            archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
+        )
+        source = _fanta_source(fanta, use_overrides=True)
+        source._comic_book_image_builder = MagicMock()  # noqa: SLF001
+        source._empty_page_image = b"placeholder-bytes"  # noqa: SLF001
+
+        with (
+            zipfile.ZipFile(override_zip_path, "r") as override_archive,
+            patch.object(apis_module, "load_pil") as mock_load,
+            patch.object(apis_module, "decode_pil") as mock_decode,
+            patch.object(apis_module, "resize_contain"),
+            patch.object(apis_module, "encode_png_stream"),
+        ):
+            fanta.override_archive = override_archive
             source.load_page_image(_title_page_info("101.jpg"))
 
-        mock_decode.assert_called_once_with(b"placeholder-bytes", ext=".png")
+        mock_decode.assert_not_called()
+        zip_path = mock_load.call_args.args[0]
+        assert zip_path.at == "over/101.png"
+        assert mock_load.call_args.kwargs == {"encrypted_zip": True, "use_ext_hint": True}
 
     def test_fantagraphics_pages_are_rebuilt_by_the_image_builder(self, tmp_path: Path) -> None:
         volume_zip = tmp_path / "vol1.zip"
@@ -466,3 +499,30 @@ class TestReadImageDelegation:
         assert source._archive is None  # noqa: SLF001
         with pytest.raises(AssertionError, match="requires the Fantagraphics library archive"):
             source.load_page_image(_make_page_info("101.jpg"))
+
+
+class TestOverrideArchiveLifecycle:
+    """`close()` owns the override zip the loader opened, not only the library archive."""
+
+    def test_close_closes_the_override_archive_and_drops_it(self) -> None:
+        fanta = _make_fanta_archive(
+            archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
+        )
+        override_archive = MagicMock()
+        fanta.override_archive = override_archive
+        source = _fanta_source(fanta, use_overrides=True)
+
+        source.close()
+
+        # Nulling alone would leave the zip's file descriptor to the garbage collector.
+        override_archive.close.assert_called_once_with()
+        assert fanta.override_archive is None
+
+    def test_close_without_an_override_archive_is_a_no_op(self) -> None:
+        fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
+        source = _fanta_source(fanta, use_overrides=False)
+
+        source.close()
+        source.close()
+
+        assert fanta.override_archive is None

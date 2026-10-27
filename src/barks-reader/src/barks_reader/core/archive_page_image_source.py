@@ -12,7 +12,7 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import IMAGES_SUBDIR
 from loguru import logger
 
 from .image_pipeline import (
@@ -90,6 +90,9 @@ class ArchivePageImageSource:
             self._archive.close()
             self._archive = None
         if self._fanta_volume_archive:
+            override_archive = self._fanta_volume_archive.override_archive
+            if override_archive is not None:
+                override_archive.close()
             self._fanta_volume_archive.override_archive = None
 
     def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
@@ -109,7 +112,7 @@ class ArchivePageImageSource:
             f' image_path = "{image_path}", is_from_archive = {is_from_archive}.'
         )
 
-        pil_image = self._read_image(page_info, image_path, is_from_archive)
+        pil_image = self._read_image(image_path, is_from_archive)
 
         if self._fanta_volume_archive:
             assert self._comic_book_image_builder
@@ -132,7 +135,7 @@ class ArchivePageImageSource:
 
     def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
         if not self._fanta_volume_archive:
-            raw = Path("images") / page_info.dest_page.page_filename, True
+            raw = Path(IMAGES_SUBDIR) / page_info.dest_page.page_filename, True
         else:
             raw = self._get_fanta_volume_image_path(page_info)
 
@@ -159,7 +162,7 @@ class ArchivePageImageSource:
 
         return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
 
-    def _read_image(self, page_info: PageInfo, image_path: str, is_from_archive: bool) -> Image:
+    def _read_image(self, image_path: str, is_from_archive: bool) -> Image:
         if is_from_archive:
             assert self._archive is not None, (
                 "Page requires the Fantagraphics library archive, but it is not available."
@@ -170,9 +173,11 @@ class ArchivePageImageSource:
                 use_ext_hint=True,
             )
 
-        if page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
-            ext = Path(image_path).suffix if image_path != EMPTY_PAGE_IMAGE else ".jpg"
-            return decode_pil(self._empty_page_image, ext=ext)
+        if image_path == EMPTY_PAGE_IMAGE:
+            # The resolver's verdict decides, not the page type: a TITLE-typed page that
+            # resolved to a real override file is read like any other override page.
+            # Nothing in any zip backs the placeholder; its bundled bytes are a JPEG.
+            return decode_pil(self._empty_page_image, ext=".jpg")
 
         assert self._fanta_volume_archive is not None
         assert self._fanta_volume_archive.override_archive is not None
