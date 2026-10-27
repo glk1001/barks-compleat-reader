@@ -308,9 +308,11 @@ def test_the_two_kivy_escapers_agree_byte_for_byte(text: str) -> None:
 @given(st.text(alphabet=st.sampled_from(["a", " ", "[", "]", "/", "b", "i", "&"]), max_size=20))
 def test_escaping_editorial_brackets_leaves_only_the_bold_and_italic_tags(text: str) -> None:
     escaped = escape_editorial_brackets(text)
-    expected = text.replace("[", "&bl;").replace("]", "&br;")
-    for tag in ("[b]", "[/b]", "[i]", "[/i]"):
-        expected = expected.replace(tag.replace("[", "&bl;").replace("]", "&br;"), "")
+    # One pass over the original: removing a tag must not join the text around it into
+    # another ("[i[b]]" keeps its "[i" and "]").
+    expected = re.sub(
+        r"\[/?[bi]\]|[][]", lambda m: {"[": "&bl;", "]": "&br;"}.get(m.group(), ""), text
+    )
     assert get_text_with_markup_stripped(escaped) == expected
     assert set(re.findall(r"\[[^\]]*\]", escaped)) <= {"[b]", "[/b]", "[i]", "[/i]"}
 
