@@ -40,8 +40,16 @@ ATTRIBUTION_NOT_REQUIRED: dict[Titles, str] = {
 # those where his part was the whole of the art and most of the script.
 PLAIN_BYLINE_ALLOWED: dict[Titles, str] = {
     **ATTRIBUTION_NOT_REQUIRED,
+    Titles.VICTORY_GARDEN_THE: (
+        "Barks drew it all and revised the script (probably by Dorothy Strebe)."
+    ),
+    Titles.TOO_MANY_PETS: "Barks drew it all and rewrote the script by Merrill De Maris.",
+    Titles.CRAZY_QUIZ_SHOW_THE: "Barks drew it all and rewrote the script he was given.",
+    Titles.PIZEN_SPRING_DUDE_RANCH: "Barks drew it all and rewrote the script he was given.",
     Titles.CHRISTMAS_CHA_CHA_THE: "Barks drew it all and co-wrote the script with Bob Gregory.",
-    Titles.VICTORY_GARDEN_THE: "Barks drew it all and revised the script he was given.",
+    Titles.LEMONADE_FLING_THE: "Barks drew it all and probably rewrote the script he was given.",
+    Titles.BOXED_IN: "Barks drew it all and rewrote the script he was given.",
+    Titles.DUCK_LUCK: "Barks drew it all and rewrote the script he was given.",
 }
 
 

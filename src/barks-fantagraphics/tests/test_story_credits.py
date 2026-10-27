@@ -4,11 +4,13 @@ The ini's ``extra_pub_info`` credits the script and the art (``story_credits``);
 bibliography's ``BibEntry.effective_qualifier`` says which of them was Barks's: all of it
 (``None``), the art only, the script only, or the art and a rewrite of another's script.
 The two are kept apart, so they can disagree: a story Barrier marks art only whose ini
-names no other scriptwriter, or a wholly-Barks story whose ini credits someone else.
+names no other scriptwriter, or a wholly-Barks story whose ini credits someone else. A
+story with no bibliography entry has no role to disagree with (which stories those are is
+``EXPECTED_WITHOUT_BIB_ENTRY``, in ``test_barks_bibliography``).
 
-Each disagreement found so far is held in ``KNOWN_DISAGREEMENTS`` until one side or the
-other is corrected, the way ``EXPECTED_WITHOUT_BIB_ENTRY`` holds the titles with no entry.
-A new disagreement fails, and so does an entry that no longer disagrees.
+A disagreement awaiting review is held in ``KNOWN_DISAGREEMENTS`` until one side or the
+other is corrected. A new disagreement fails, and so does an entry that no longer
+disagrees.
 """
 
 from __future__ import annotations
@@ -23,25 +25,8 @@ from story_credits import StoryCredits, read_credits
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
 
-_NO_OTHER_WRITER = "the ini names no other scriptwriter"
-
 # Disagreements awaiting review: either the ini lacks a credit, or the role is wrong.
-KNOWN_DISAGREEMENTS: dict[Titles, str] = {
-    Titles.BOXED_IN: f"Barrier: art and rewriting of script; {_NO_OTHER_WRITER}.",
-    Titles.DUCK_LUCK: f"Barrier: art and rewriting of script; {_NO_OTHER_WRITER}.",
-    Titles.PIZEN_SPRING_DUDE_RANCH: f"Barrier: art and rewriting of script; {_NO_OTHER_WRITER}.",
-    Titles.CRAZY_QUIZ_SHOW_THE: f"Barrier: art and rewriting of script; {_NO_OTHER_WRITER}.",
-    Titles.MASTER_GLASSER_THE: f"Barrier: art only; {_NO_OTHER_WRITER}.",
-    Titles.LEMONADE_FLING_THE: (
-        f"Corrected (INDUCKS) to art and rewriting of script; {_NO_OTHER_WRITER}."
-    ),
-    Titles.TOO_MANY_PETS: (
-        f"Corrected (a studio writer began the script) to art and rewriting of script;"
-        f" {_NO_OTHER_WRITER}."
-    ),
-    Titles.PIED_PIPER_OF_DUCKBURG: "Completed by Don Rosa, after Barrier's 1978 bibliography.",
-    Titles.PIED_PIPER_OF_DUCKBURG_THE: "Completed by Don Rosa, after Barrier's 1978 bibliography.",
-}
+KNOWN_DISAGREEMENTS: dict[Titles, str] = {}
 
 
 def disagreement(title: Titles, story_credits: StoryCredits) -> str | None:
@@ -56,8 +41,8 @@ def disagreement(title: Titles, story_credits: StoryCredits) -> str | None:
 
     """
     entry = TITLE_TO_BIB_ENTRY.get(title)
-    if entry is None:
-        return "credits, but no bibliography entry" if story_credits.any else None
+    if entry is None:  # no role to disagree with
+        return None
     return _role_disagreement(entry.effective_qualifier, story_credits)
 
 
@@ -163,9 +148,9 @@ class TestTheAgreementRules:
             (Titles.PHANTOM_JOKER_THE, StoryCredits(barks_script=True, other_art=True), True),
             (Titles.PHANTOM_JOKER_THE, StoryCredits(barks_script=True), False),
             (Titles.PHANTOM_JOKER_THE, StoryCredits(other_script=True, other_art=True), False),
-            # No bibliography entry: any credit is reported.
+            # No bibliography entry: no role to disagree with.
             (Titles.PIED_PIPER_OF_DUCKBURG_THE, StoryCredits(), True),
-            (Titles.PIED_PIPER_OF_DUCKBURG_THE, StoryCredits(barks_script=True), False),
+            (Titles.PIED_PIPER_OF_DUCKBURG_THE, StoryCredits(other_script=True), True),
         ],
     )
     def test_a_role_and_its_credits(
