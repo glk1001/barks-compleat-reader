@@ -226,6 +226,7 @@ class TestComicBookReader:
         reader._page_manager = MagicMock()
         reader._page_manager.get_current_page_index.return_value = page_index
         reader._page_manager.get_current_page_str.return_value = str(page_index)
+        reader._page_manager.get_page_str.return_value = str(page_index)
         reader._page_manager.get_current_display_unit.return_value = None
         reader._is_one_pager_collection = False
         reader._is_covers_collection = False
@@ -319,7 +320,8 @@ class TestComicBookReader:
         # cursor + poll signal the wait instead.
         mock_loading.assert_not_called()
         reader._comic_book_loader.cursor.set_busy.assert_called_once()
-        reader._comic_book_loader.prioritize_page.assert_called_once_with(3)
+        # The loader is asked by the page's name, which only the page manager knows.
+        reader._comic_book_loader.prioritize_page.assert_called_once_with("3")
         mock_sched.assert_called_once()
         assert reader._pending_poll_ev is handle
         assert log_markers.PAGE_AWAITING_LOAD.format(index=3) in loguru_sink

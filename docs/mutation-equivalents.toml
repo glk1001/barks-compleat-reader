@@ -1506,7 +1506,7 @@ reason = "It guards a logger.debug only; the window is computed before it."
 
 [[equivalent]]
 module = "barks_reader.core.comic_book_loader_platform_settings"
-function = "PrefetchTuning.detect_system_profile"
+function = "get_max_worker_count"
 change = """
 - cpu_count = os.cpu_count() or 1
 + cpu_count = os.cpu_count() or 2
@@ -1515,7 +1515,7 @@ reason = "Reached only when cpu_count() is None; 1 and 2 both take the <= 2 bran
 
 [[equivalent]]
 module = "barks_reader.core.comic_book_loader_platform_settings"
-function = "autotune_worker_count"
+function = "PrefetchTuning.detect_system_profile"
 change = """
 - cpu_count = os.cpu_count() or 1
 + cpu_count = os.cpu_count() or 2
@@ -2421,14 +2421,6 @@ function = "_adjusted_payment_total"
 change = """
 - get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
 + get_adjusted_usd(payment.payment, payment.accepted_year, )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader_platform_settings"
-function = "autotune_worker_count"
-change = """
-- _AUTO_TUNED_THREAD_COUNT = 1
-+ _AUTO_TUNED_THREAD_COUNT = None
 """
 
 [[untriaged]]

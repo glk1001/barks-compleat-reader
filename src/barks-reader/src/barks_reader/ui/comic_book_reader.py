@@ -536,7 +536,7 @@ class ComicBookReader(FloatLayout):
     def _prioritize_pending(self, left_page_index: int, right_page_index: int | None) -> None:
         """Ask the loader to fetch the awaited page(s) next, ahead of prefetch order."""
         for idx in self._needed_indices(left_page_index, right_page_index):
-            self._comic_book_loader.prioritize_page(idx)
+            self._comic_book_loader.prioritize_page(self._page_manager.get_page_str(idx))
 
     def _start_pending_poll(self) -> None:
         """Start (once) the Clock poll that renders a page as soon as it loads.

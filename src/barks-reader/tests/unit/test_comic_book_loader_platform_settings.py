@@ -1,31 +1,25 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
-from types import SimpleNamespace
-from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import comic_book_loader_platform_settings as platform_settings_module
 from barks_reader.core.comic_book_loader_platform_settings import (
+    MAX_WORKER_COUNT,
+    PrefetchParams,
     PrefetchTuning,
     SystemProfile,
-    autotune_worker_count,
+    get_max_worker_count,
     get_prefetch_tuning,
+    process_rss_mib,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)
 def _reset_platform_caches() -> None:
     """Reset module-level caches between tests so each test starts clean."""
     platform_settings_module._SYSTEM_PROFILE = None  # noqa: SLF001
-    platform_settings_module._PREFETCH_TUNING = None  # noqa: SLF001
-    platform_settings_module._AUTO_TUNED_THREAD_COUNT = None  # noqa: SLF001
+    platform_settings_module._PREFETCH_PARAMS = None  # noqa: SLF001
 
 
 def _detect_profile(cpu_count: int, ram_gb: int | None) -> SystemProfile:
@@ -92,17 +86,25 @@ class TestSystemProfile:
         assert profile.cpu_count == 8  # noqa: PLR2004
 
 
+_PARAMS = PrefetchParams(
+    prefetch_min=2,
+    prefetch_max_factor=1.0,
+    memory_low_water_mib=200.0,
+    memory_high_water_mib=400.0,
+)
+
+
+def _rss(mib: float) -> MagicMock:
+    """Return a `psutil.Process` whose RSS is *mib* MiB."""
+    process = MagicMock()
+    process.memory_info.return_value.rss = int(mib * 1024 * 1024)
+    return process
+
+
 class TestPrefetchTuning:
     @pytest.fixture
     def tuning(self) -> PrefetchTuning:
-        return PrefetchTuning(
-            prefetch_min=2,
-            prefetch_max_factor=1.0,
-            memory_low_water_mib=200.0,
-            memory_high_water_mib=400.0,
-            worker_count=4,
-            num_pages=20,
-        )
+        return PrefetchTuning(_PARAMS, worker_count=4, num_pages=20)
 
     def test_base_max_window(self, tuning: PrefetchTuning) -> None:
         assert tuning.base_max_window == 4  # noqa: PLR2004
@@ -120,26 +122,18 @@ class TestPrefetchTuning:
     def test_base_max_window_scales_by_the_factor(
         self, worker_count: int, factor: float, prefetch_min: int, expected: int
     ) -> None:
-        tuning = PrefetchTuning(
+        params = PrefetchParams(
             prefetch_min=prefetch_min,
             prefetch_max_factor=factor,
             memory_low_water_mib=200.0,
             memory_high_water_mib=400.0,
-            worker_count=worker_count,
-            num_pages=100,
         )
+        tuning = PrefetchTuning(params, worker_count=worker_count, num_pages=100)
 
         assert tuning.base_max_window == expected
 
     def test_initial_dynamic_window_capped_by_num_pages(self) -> None:
-        tuning = PrefetchTuning(
-            prefetch_min=2,
-            prefetch_max_factor=1.0,
-            memory_low_water_mib=200.0,
-            memory_high_water_mib=400.0,
-            worker_count=10,
-            num_pages=3,
-        )
+        tuning = PrefetchTuning(_PARAMS, worker_count=10, num_pages=3)
         assert tuning.get_initial_dynamic_window() == 3  # noqa: PLR2004
 
     def test_initial_dynamic_window_capped_by_base_max(self, tuning: PrefetchTuning) -> None:
@@ -148,7 +142,7 @@ class TestPrefetchTuning:
     # The tuning fixture has low water 200 MiB, high water 400 MiB,
     # prefetch_min 2, and base_max_window 4.
     @pytest.mark.parametrize(
-        ("traced_mib", "dynamic_window", "expected_window"),
+        ("growth_mib", "dynamic_window", "expected_window"),
         [
             pytest.param(500, 4, 3, id="shrinks_under_high_memory"),
             pytest.param(100, 2, 3, id="grows_under_low_memory"),
@@ -164,62 +158,85 @@ class TestPrefetchTuning:
     def test_dynamic_window(
         self,
         tuning: PrefetchTuning,
-        traced_mib: int,
+        growth_mib: int,
         dynamic_window: int,
         expected_window: int,
     ) -> None:
+        """The window moves on the RSS growth since the watch started, not the RSS itself."""
+        baseline_mib = 1000.0
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
+            tuning.start_memory_watch()
         with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(traced_mib * 1024 * 1024, 0),
+            platform_settings_module.psutil, "Process", return_value=_rss(baseline_mib + growth_mib)
         ):
             _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=dynamic_window)
 
         assert new_window == expected_window
 
-    def test_dynamic_window_reports_current_usage_in_mib(self, tuning: PrefetchTuning) -> None:
-        with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(300 * 1024 * 1024, 999),
-        ):
+    def test_dynamic_window_reports_the_growth_in_mib(self, tuning: PrefetchTuning) -> None:
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
+            tuning.start_memory_watch()
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1300.0)):
             current_mib, _window = tuning.get_new_dynamic_window(dynamic_window=3)
 
-        # Converted from the traced byte count — and read from `current`, not `peak`.
         assert current_mib == 300.0  # noqa: PLR2004
 
 
-class TestTracedPeak:
-    def test_returns_zero_when_tracing_is_off(self) -> None:
-        with patch.object(platform_settings_module.tracemalloc, "is_tracing", return_value=False):
-            assert PrefetchTuning.get_traced_peak_mib() == 0.0
+class TestMemoryWatch:
+    """The RSS replaced tracemalloc: the decoded pages are C buffers, which it never saw."""
 
-    def test_returns_the_peak_in_mib_when_tracing(self) -> None:
-        with (
-            patch.object(platform_settings_module.tracemalloc, "is_tracing", return_value=True),
-            patch.object(
-                platform_settings_module.tracemalloc,
-                "get_traced_memory",
-                return_value=(1 * 1024 * 1024, 42 * 1024 * 1024),
-            ),
-        ):
-            # Reads `peak`, not `current`.
-            assert PrefetchTuning.get_traced_peak_mib() == 42.0  # noqa: PLR2004
+    def test_growth_is_measured_from_the_watch_start(self) -> None:
+        tuning = PrefetchTuning(_PARAMS, worker_count=4, num_pages=20)
 
-    def test_start_and_stop_drive_tracemalloc(self) -> None:
-        with (
-            patch.object(platform_settings_module.tracemalloc, "start") as mock_start,
-            patch.object(platform_settings_module.tracemalloc, "stop") as mock_stop,
-        ):
-            PrefetchTuning.start_mem_trace()
-            PrefetchTuning.stop_mem_trace()
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1200.0)):
+            tuning.start_memory_watch()
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1250.5)):
+            assert tuning.get_memory_growth_mib() == 50.5  # noqa: PLR2004
 
-        mock_start.assert_called_once_with()
-        mock_stop.assert_called_once_with()
+    def test_a_shrinking_process_reads_as_no_growth(self) -> None:
+        """RSS can fall below the baseline (the previous comic freed): that is not pressure."""
+        tuning = PrefetchTuning(_PARAMS, worker_count=4, num_pages=20)
+
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1200.0)):
+            tuning.start_memory_watch()
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(900.0)):
+            assert tuning.get_memory_growth_mib() == 0.0
+
+    def test_the_peak_is_the_largest_growth_sampled(self) -> None:
+        tuning = PrefetchTuning(_PARAMS, worker_count=4, num_pages=20)
+
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
+            tuning.start_memory_watch()
+        for rss in (1100.0, 1400.0, 1200.0):
+            with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(rss)):
+                tuning.get_memory_growth_mib()
+
+        assert tuning.get_peak_memory_growth_mib() == 400.0  # noqa: PLR2004
+
+    def test_a_new_watch_forgets_the_old_peak(self) -> None:
+        tuning = PrefetchTuning(_PARAMS, worker_count=4, num_pages=20)
+
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
+            tuning.start_memory_watch()
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1400.0)):
+            tuning.get_memory_growth_mib()
+            tuning.start_memory_watch()
+
+        assert tuning.get_peak_memory_growth_mib() == 0.0
+
+    def test_before_any_sample_the_peak_is_zero(self) -> None:
+        assert (
+            PrefetchTuning(_PARAMS, worker_count=4, num_pages=20).get_peak_memory_growth_mib()
+            == 0.0
+        )
+
+    def test_rss_is_reported_in_mebibytes(self) -> None:
+        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(150.0)):
+            assert process_rss_mib() == 150.0  # noqa: PLR2004
 
 
 # ---------------------------------------------------------------------------
-# get_prefetch_tuning — caching + 3-way profile branch
+# get_prefetch_tuning — per-load tuning on process-wide, profile-derived limits
 # ---------------------------------------------------------------------------
 
 
@@ -290,16 +307,29 @@ class TestGetPrefetchTuning:
         assert tuning.memory_low_water_mib == expected_low
         assert tuning.memory_high_water_mib == expected_high
 
-    def test_caches_result_across_calls(self) -> None:
+    def test_each_load_gets_its_own_window_on_the_cached_limits(self) -> None:
+        """Regression: the first comic's tuning was cached and handed to every later one.
+
+        A 2-page one-pager opened first then capped every later comic at two pages
+        in flight, whatever its size and the machine's workers. The profile is read
+        once; the window is built for each load's worker and page counts.
+        """
         with patch.object(
             platform_settings_module, "_get_system_profile", return_value=_profile(high=True)
         ) as mock_profile:
-            first = get_prefetch_tuning(worker_count=4, num_pages=10)
-            second = get_prefetch_tuning(worker_count=99, num_pages=999)
+            one_pager = get_prefetch_tuning(worker_count=2, num_pages=2)
+            long_comic = get_prefetch_tuning(worker_count=16, num_pages=186)
 
-        assert first is second
-        # Profile was queried exactly once (cache prevented the second invocation).
+        assert one_pager.get_initial_dynamic_window() == 2  # noqa: PLR2004
+        assert long_comic.get_initial_dynamic_window() == 16  # noqa: PLR2004
+        assert long_comic.base_max_window == 16  # noqa: PLR2004
+        assert long_comic is not one_pager
+        # The limits still come from one profile read, not one per load.
         assert mock_profile.call_count == 1
+        assert (long_comic.prefetch_min, long_comic.memory_high_water_mib) == (
+            one_pager.prefetch_min,
+            one_pager.memory_high_water_mib,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -320,174 +350,39 @@ class TestGetSystemProfile:
 
 
 # ---------------------------------------------------------------------------
-# autotune_worker_count
+# get_max_worker_count
 # ---------------------------------------------------------------------------
 
 
-_SYNTHETIC_JPEG_BYTES = b"synthetic-jpeg-bytes"
+class TestGetMaxWorkerCount:
+    """A table of the CPU count, in place of a benchmark that measured nothing.
 
-# The candidate worker counts the autotuner benchmarks, before the CPU cap is applied.
-_ALL_TEST_COUNTS = [1, 2, 3, 4, 6, 8, 10, 12, 16]
-
-
-class _Benchmark:
-    """Drives `autotune_worker_count`'s benchmark loop with scripted timings.
-
-    Records every `ThreadPoolExecutor(max_workers=...)` and every `submit(...)`, and
-    feeds `time.perf_counter` a fixed sequence so the elapsed time for each candidate
-    worker count is exactly what the test asks for.
+    The benchmark decoded four samples per candidate count, so every count above
+    four did the same work and its tie-break (the largest within 8%) always chose
+    the biggest candidate: the CPU count, capped. This returns that without the
+    second of decoding at boot.
     """
 
-    def __init__(self, timings: dict[int, float], *, start_time: float = 0.0) -> None:
-        self.timings = timings
-        self.max_workers: list[int | None] = []
-        self.submitted: list[tuple[object, tuple[object, ...]]] = []
-        self._clock: list[float] = []
-        for offset, worker_count in enumerate(timings):
-            base = start_time * (offset + 1)
-            self._clock += [base, base + timings[worker_count]]
+    @pytest.mark.parametrize(
+        ("cpu_count", "expected"),
+        [
+            pytest.param(1, 1, id="one_core_is_one_worker"),
+            pytest.param(2, 1, id="two_cores_is_still_one_worker"),
+            pytest.param(3, 3, id="three_cores_is_a_worker_per_core"),
+            pytest.param(8, 8, id="eight_cores_is_a_worker_per_core"),
+            pytest.param(16, 16, id="the_cap_is_inclusive"),
+            pytest.param(32, 16, id="beyond_the_cap_is_capped"),
+        ],
+    )
+    def test_a_worker_per_core_past_two_cores_up_to_the_cap(
+        self, cpu_count: int, expected: int
+    ) -> None:
+        with patch.object(platform_settings_module.os, "cpu_count", return_value=cpu_count):
+            assert get_max_worker_count() == expected
 
-    def pool_factory(self, max_workers: int | None = None) -> ThreadPoolExecutor:
-        self.max_workers.append(max_workers)
-        recorder = self
+    def test_an_unknown_cpu_count_is_one_worker(self) -> None:
+        with patch.object(platform_settings_module.os, "cpu_count", return_value=None):
+            assert get_max_worker_count() == 1
 
-        class _RecordingPool(ThreadPoolExecutor):
-            def submit(self, fn, /, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003, ANN202
-                recorder.submitted.append((fn, args))
-                return super().submit(fn, *args, **kwargs)
-
-        # A real executor, so a mangled `submit` call still raises through `f.result()`.
-        return _RecordingPool(max_workers=max_workers)
-
-    @contextmanager
-    def patched(self, cpu_count: int) -> Generator[SimpleNamespace]:
-        """Patch out the clock, the pool and the image work for one benchmark run."""
-        image = MagicMock()
-        # Give each synthetic sample real, identifiable bytes so what gets decoded can
-        # be told apart from an empty buffer.
-        image.save.side_effect = lambda buf, **_kwargs: buf.write(_SYNTHETIC_JPEG_BYTES)
-
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=cpu_count),
-            patch.object(platform_settings_module.time, "perf_counter", side_effect=self._clock),
-            patch.object(platform_settings_module, "ThreadPoolExecutor", self.pool_factory),
-            patch.object(platform_settings_module.Image, "new", return_value=image) as new,
-            patch.object(platform_settings_module.Image, "open") as opened,
-        ):
-            yield SimpleNamespace(image=image, new=new, opened=opened)
-
-
-class TestAutotuneWorkerCount:
-    def test_returns_one_for_two_or_fewer_cpus(self) -> None:
-        with patch.object(platform_settings_module.os, "cpu_count", return_value=2):
-            result = autotune_worker_count()
-
-        assert result == 1
-
-    def test_benchmarks_rather_than_short_circuiting_above_two_cpus(self) -> None:
-        """Three cores is one past the skip-the-benchmark cutoff."""
-        bench = _Benchmark({1: 3.0, 2: 2.0, 3: 1.0})
-
-        with bench.patched(cpu_count=3):
-            result = autotune_worker_count()
-
-        assert bench.max_workers == [1, 2, 3]
-        assert result == 3  # noqa: PLR2004
-
-    def test_caches_result(self) -> None:
-        with patch.object(platform_settings_module.os, "cpu_count", return_value=2):
-            first = autotune_worker_count()
-            # If caching works, the second call returns instantly without a new patch needed.
-            second = autotune_worker_count()
-
-        assert first == second == 1
-
-    def test_picks_the_largest_worker_count_within_eight_percent_of_the_fastest(self) -> None:
-        """Not simply the fastest: ties within 8% resolve to the *larger* count.
-
-        The smoothing exists so a marginally-faster single thread doesn't win over real
-        parallelism, so the tie-break direction matters as much as the threshold.
-        """
-        # 10 workers is 7% slower than the fastest (4), so it wins; 8 and 12 are outside
-        # the band even though 12 ties with 1.
-        bench = _Benchmark(
-            {1: 2.0, 2: 1.5, 3: 1.2, 4: 1.0, 6: 1.05, 8: 1.2, 10: 1.07, 12: 2.0, 16: 3.0},
-            # A non-zero, per-candidate start time: an elapsed time computed as
-            # `end + start` instead of `end - start` then reorders the results.
-            start_time=1000.0,
-        )
-        with bench.patched(cpu_count=16) as mocks:
-            result = autotune_worker_count()
-
-        assert result == 10  # noqa: PLR2004
-
-        # Every candidate count was benchmarked, capped at the CPU count (16 == all).
-        assert bench.max_workers == _ALL_TEST_COUNTS
-
-        # Four synthetic JPEGs, built at full page size so the decode is representative.
-        assert mocks.new.call_args_list == [call("RGB", (1800, 2600), (128, 64, 32))] * 4
-        assert mocks.image.save.call_count == 4  # noqa: PLR2004
-        for save_call in mocks.image.save.call_args_list:
-            assert save_call.kwargs == {"format": "JPEG", "quality": 90}
-
-        # Each sample was submitted for decoding, and decoded from its own bytes.
-        assert len(bench.submitted) == 4 * len(_ALL_TEST_COUNTS)
-        for _fn, args in bench.submitted:
-            assert args == (_SYNTHETIC_JPEG_BYTES,)
-        for open_call in mocks.opened.call_args_list:
-            assert open_call.args[0].getvalue() == _SYNTHETIC_JPEG_BYTES
-        mocks.opened.return_value.resize.assert_called_with(
-            (900, 1300), platform_settings_module.Image.Resampling.LANCZOS
-        )
-
-    def test_a_count_exactly_on_the_eight_percent_boundary_is_included(self) -> None:
-        """The band is inclusive: exactly 1.08x the fastest still counts as a tie."""
-        # 6 workers is 5% slower (inside the band either way); 10 is exactly 8% slower,
-        # so it only wins if the comparison is `<=` rather than `<`.
-        bench = _Benchmark(
-            {1: 2.0, 2: 1.5, 3: 1.2, 4: 1.0, 6: 1.05, 8: 1.2, 10: 1.08, 12: 2.0, 16: 3.0}
-        )
-
-        with bench.patched(cpu_count=16):
-            result = autotune_worker_count()
-
-        assert result == 10  # noqa: PLR2004
-
-    def test_caps_the_candidates_at_the_cpu_count(self) -> None:
-        bench = _Benchmark({1: 3.0, 2: 2.0, 3: 1.9, 4: 1.0, 6: 2.0})
-
-        with bench.patched(cpu_count=6):
-            result = autotune_worker_count()
-
-        # 8 and above are dropped; 6 is kept (the cap is inclusive).
-        assert bench.max_workers == [1, 2, 3, 4, 6]
-        assert result == 4  # noqa: PLR2004
-
-    def test_caches_the_benchmark_result(self) -> None:
-        bench = _Benchmark({1: 3.0, 2: 2.0, 3: 1.0})
-
-        with bench.patched(cpu_count=3):
-            first = autotune_worker_count()
-            # A second benchmark run would exhaust the scripted clock and raise.
-            second = autotune_worker_count()
-
-        assert first == second == 3  # noqa: PLR2004
-        assert bench.max_workers == [1, 2, 3]
-
-    def test_supplied_sample_images_are_read_instead_of_synthesised(self, tmp_path: Path) -> None:
-        sample_a = tmp_path / "a.jpg"
-        sample_b = tmp_path / "b.jpg"
-        sample_a.write_bytes(b"\xff\xd8\xff\xe0sample-a")
-        sample_b.write_bytes(b"\xff\xd8\xff\xe0sample-b")
-
-        bench = _Benchmark({1: 3.0, 2: 2.0, 3: 1.0})
-
-        with bench.patched(cpu_count=3) as mocks:
-            autotune_worker_count(sample_images=[str(sample_a), str(sample_b)])
-
-        # No synthetic images were built, and both files were decoded verbatim.
-        mocks.new.assert_not_called()
-        assert {args for _fn, args in bench.submitted} == {
-            (sample_a.read_bytes(),),
-            (sample_b.read_bytes(),),
-        }
+    def test_the_cap_is_sixteen(self) -> None:
+        assert MAX_WORKER_COUNT == 16  # noqa: PLR2004

@@ -608,8 +608,8 @@ via injected `Scheduler` + `Cursor` ports:
 - `set_comic()` stops any prior load, creates one `threading.Event` per
   page, and starts the daemon loader thread.
 - `_load_pages()` runs a `ThreadPoolExecutor` with a **dynamic sliding
-  prefetch window** — worker count auto-tuned to the platform, window size
-  growing/shrinking with live memory pressure.
+  prefetch window** — a worker per core (capped), window size growing/shrinking
+  with the process's memory growth since the load began.
 - Futures complete out of order; each result is stored at its page-index slot and
   its Event is set. The first-displayed page triggers an early UI callback; when
   all pages finish, another callback fires.
@@ -1024,7 +1024,7 @@ always pulled in via `from .adapters import …`.
 - **Also in the tree**, not walked through above. In `core/`:
   `comic_book_page_info.py` (`ComicLayoutBuilder`, the page map a comic opens
   with), `comic_book_loader_platform_settings.py` (the loader's prefetch tuning
-  and worker-count autotune, from a `SystemProfile`),
+  from a `SystemProfile`, and its worker count from the CPU count),
   `filtered_title_lists.py` (builds the `title_lists` the tree spec consumes),
   `collection_page_groups.py` (the *All One-Pagers* and *All Covers*
   collections), `hyphen_break_engine.py` (soft hyphenation for long titles),

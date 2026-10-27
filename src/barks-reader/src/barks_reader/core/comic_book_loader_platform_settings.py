@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import io
 import os
-import threading
-import time
-import tracemalloc
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from pathlib import Path
 
 import psutil
 from loguru import logger
-from PIL import Image
+
+# The most page-decode workers any machine gets: beyond this the archive reads and
+# the window's memory, not the cores, bound a load.
+MAX_WORKER_COUNT = 16
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,49 +20,60 @@ class SystemProfile:
     is_high_end: bool
 
 
+@dataclass(frozen=True, slots=True)
+class PrefetchParams:
+    """The profile-derived prefetch limits, the same for every comic this process loads."""
+
+    prefetch_min: int
+    prefetch_max_factor: float
+    memory_low_water_mib: float
+    memory_high_water_mib: float
+
+
+def process_rss_mib() -> float:
+    """Return this process's current resident set size (RSS), in MiB."""
+    return psutil.Process().memory_info().rss / (1024 * 1024)
+
+
 class PrefetchTuning:
-    def __init__(
-        self,
-        prefetch_min: int,
-        prefetch_max_factor: float,
-        memory_low_water_mib: float,
-        memory_high_water_mib: float,
-        worker_count: int,
-        num_pages: int,
-    ) -> None:
-        self.prefetch_min: int = prefetch_min
-        self.prefetch_max_factor: float = prefetch_max_factor
-        self.memory_low_water_mib: float = memory_low_water_mib
-        self.memory_high_water_mib: float = memory_high_water_mib
+    """One comic load's prefetch window: its bounds, and the memory signal that moves it.
+
+    The window shrinks when the process has grown past the high-water mark since the
+    load began, and grows back below the low one. Growth is of the resident set, which
+    holds the decoded pages (C buffers no Python tracer sees), from a baseline
+    :meth:`start_memory_watch` takes.
+    """
+
+    def __init__(self, params: PrefetchParams, worker_count: int, num_pages: int) -> None:
+        self.prefetch_min: int = params.prefetch_min
+        self.prefetch_max_factor: float = params.prefetch_max_factor
+        self.memory_low_water_mib: float = params.memory_low_water_mib
+        self.memory_high_water_mib: float = params.memory_high_water_mib
         self._num_pages = num_pages
         self.base_max_window = max(self.prefetch_min, int(worker_count * self.prefetch_max_factor))
+        self._rss_at_start_mib = 0.0
+        self._peak_growth_mib = 0.0
 
-    @staticmethod
-    def start_mem_trace() -> None:
-        tracemalloc.start()
+    def start_memory_watch(self) -> None:
+        """Take the RSS baseline the load's memory growth is measured from."""
+        self._rss_at_start_mib = process_rss_mib()
+        self._peak_growth_mib = 0.0
 
-    @staticmethod
-    def stop_mem_trace() -> None:
-        tracemalloc.stop()
+    def get_memory_growth_mib(self) -> float:
+        """Return how far the RSS has grown since the watch started (never negative)."""
+        growth = max(0.0, process_rss_mib() - self._rss_at_start_mib)
+        self._peak_growth_mib = max(self._peak_growth_mib, growth)
+        return growth
 
-    @staticmethod
-    def get_traced_peak_mib() -> float:
-        """Peak Python-traced allocation since ``start_mem_trace`` (MiB).
-
-        Call before ``stop_mem_trace``; returns 0.0 if tracing is not active.
-        """
-        if not tracemalloc.is_tracing():
-            return 0.0
-        _current, peak = tracemalloc.get_traced_memory()
-        return peak / (1024 * 1024)
+    def get_peak_memory_growth_mib(self) -> float:
+        """Return the largest growth any :meth:`get_memory_growth_mib` call has seen."""
+        return self._peak_growth_mib
 
     def get_initial_dynamic_window(self) -> int:
         return min(self.base_max_window, self._num_pages)
 
     def get_new_dynamic_window(self, dynamic_window: int) -> tuple[float, int]:
-        # Read memory usage.
-        current_mem, _peak_mem = tracemalloc.get_traced_memory()
-        current_mib = current_mem / (1024 * 1024)
+        current_mib = self.get_memory_growth_mib()
 
         # Adjust window based on memory usage.
         if current_mib > self.memory_high_water_mib:
@@ -138,16 +146,30 @@ class PrefetchTuning:
         )
 
 
-# Cache profile + tuning so we don't recompute every time.
+# The profile and the limits drawn from it are read once per process; the tuning
+# built from them is per load, as the worker and page counts are.
 _SYSTEM_PROFILE: SystemProfile | None = None
-_PREFETCH_TUNING: PrefetchTuning | None = None
+_PREFETCH_PARAMS: PrefetchParams | None = None
 
 
 def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
-    """Return tuning parameters based on system profile."""
-    global _PREFETCH_TUNING  # noqa: PLW0603
-    if _PREFETCH_TUNING is not None:
-        return _PREFETCH_TUNING
+    """Return the prefetch tuning for a load of *num_pages* pages on *worker_count* workers.
+
+    Args:
+        worker_count: The workers this load's pool has: the window's ceiling scales with it.
+        num_pages: The pages the load has: the initial window never exceeds it.
+
+    Returns:
+        A fresh :class:`PrefetchTuning` for this load, on the process-wide limits.
+
+    """
+    return PrefetchTuning(_get_prefetch_params(), worker_count=worker_count, num_pages=num_pages)
+
+
+def _get_prefetch_params() -> PrefetchParams:
+    global _PREFETCH_PARAMS  # noqa: PLW0603
+    if _PREFETCH_PARAMS is not None:
+        return _PREFETCH_PARAMS
 
     profile = _get_system_profile()
 
@@ -155,39 +177,37 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
         # Old laptops / tiny RAM:
         # - smaller window
         # - tighter memory thresholds
-        prefetch_min = 1
-        prefetch_max_factor = 0.5
-        mem_low = 150.0
-        mem_high = 300.0
+        params = PrefetchParams(
+            prefetch_min=1,
+            prefetch_max_factor=0.5,
+            memory_low_water_mib=150.0,
+            memory_high_water_mib=300.0,
+        )
     elif profile.is_mid_range:
         # Modest PCs / mid-laptops:
-        prefetch_min = 2
-        prefetch_max_factor = 0.75
-        mem_low = 200.0
-        mem_high = 350.0
+        params = PrefetchParams(
+            prefetch_min=2,
+            prefetch_max_factor=0.75,
+            memory_low_water_mib=200.0,
+            memory_high_water_mib=350.0,
+        )
     else:
         # High-end desktop / modern Ryzen / big RAM:
-        prefetch_min = 2
-        prefetch_max_factor = 1.0
-        mem_low = 250.0
-        mem_high = 450.0
+        params = PrefetchParams(
+            prefetch_min=2,
+            prefetch_max_factor=1.0,
+            memory_low_water_mib=250.0,
+            memory_high_water_mib=450.0,
+        )
 
-    tuning = PrefetchTuning(
-        prefetch_min=prefetch_min,
-        prefetch_max_factor=prefetch_max_factor,
-        memory_low_water_mib=mem_low,
-        memory_high_water_mib=mem_high,
-        worker_count=worker_count,
-        num_pages=num_pages,
-    )
-    _PREFETCH_TUNING = tuning
+    _PREFETCH_PARAMS = params
 
     logger.debug(
-        f"Prefetch tuning: min={prefetch_min}, max_factor={prefetch_max_factor},"
-        f" mem_low={mem_low} MiB, mem_high={mem_high} MiB."
+        f"Prefetch tuning: min={params.prefetch_min}, max_factor={params.prefetch_max_factor},"
+        f" mem_low={params.memory_low_water_mib} MiB, mem_high={params.memory_high_water_mib} MiB."
     )
 
-    return tuning
+    return params
 
 
 def _get_system_profile() -> SystemProfile:
@@ -209,95 +229,20 @@ def _get_system_profile() -> SystemProfile:
     return profile
 
 
-# We store the result so the autotuner only runs once per process.
-_AUTO_TUNED_THREAD_COUNT = None
-_AUTOTUNE_LOCK = threading.Lock()
+def get_max_worker_count() -> int:
+    """Return the page-decode worker count for this machine.
 
+    One worker on two cores or fewer, where a pool would only add switching; otherwise
+    a worker per core, capped at :data:`MAX_WORKER_COUNT`. This replaces a boot-time
+    benchmark that decoded four sample pages per candidate count: with only four
+    tasks, every count above four did the same work, and its tie-break always chose
+    the largest, so it measured nothing and cost a second at startup.
 
-def autotune_worker_count(sample_images: list[str] | None = None) -> int:  # noqa: C901
-    """Automatically determine the optimal number of worker threads for ZIP + JPEG decode workloads.
+    Returns:
+        The worker count.
 
-    sample_images: optional list of paths (inside ZIP or filesystem)
-                   to use as test samples.
-                   If None, it generates synthetic JPEG bytes.
-
-    Returns: integer worker count.
     """
-    global _AUTO_TUNED_THREAD_COUNT  # noqa: PLW0603
-
-    with _AUTOTUNE_LOCK:
-        if _AUTO_TUNED_THREAD_COUNT is not None:
-            return _AUTO_TUNED_THREAD_COUNT
-
-        cpu_count = os.cpu_count() or 1
-
-        # If 1-2 CPUs → don't bother benchmarking.
-        if cpu_count <= 2:  # noqa: PLR2004
-            _AUTO_TUNED_THREAD_COUNT = 1
-            return 1
-
-        logger.debug("[autotune] Starting thread count autotune...")
-
-        # ----------------------------------------------------------
-        # Step 1: obtain samples to decode
-        # ----------------------------------------------------------
-
-        if sample_images:
-            samples = []
-            for path in sample_images:
-                p = Path(path)
-                samples.append(p.read_bytes())
-        else:
-            # Create synthetic JPEGs in memory (fast + reliable)
-            samples = []
-
-            for _ in range(4):
-                image = Image.new("RGB", (1800, 2600), (128, 64, 32))
-                buf = io.BytesIO()
-                image.save(buf, format="JPEG", quality=90)
-                samples.append(buf.getvalue())
-
-        # ----------------------------------------------------------
-        # Step 2: test performance for various worker counts
-        # ----------------------------------------------------------
-
-        # Try these worker counts (cap at CPU count).
-        test_counts = [wc for wc in [1, 2, 3, 4, 6, 8, 10, 12, 16] if wc <= cpu_count]
-
-        times = {}
-
-        for wc in test_counts:
-            t0 = time.perf_counter()
-
-            def task(data) -> None:  # noqa: ANN001
-                img = Image.open(io.BytesIO(data))
-                img.load()
-                # noinspection PyUnusedLocal
-                img = img.resize((900, 1300), Image.Resampling.LANCZOS)
-
-            with ThreadPoolExecutor(max_workers=wc) as tp:
-                futures = [tp.submit(task, s) for s in samples]
-                for f in futures:
-                    f.result()  # ensure completion
-
-            dt = time.perf_counter() - t0
-            times[wc] = dt
-            logger.debug(f"[autotune] {wc} threads took {dt:.4f} sec.")
-
-        # ----------------------------------------------------------
-        # Step 3: pick the best-performing worker count.
-        # ----------------------------------------------------------
-
-        best_wc = min(times, key=lambda wc: times[wc])
-        best_time = times[best_wc]
-
-        # Some safety: don't return something silly like 1,
-        # if the difference is tiny. Allow slight smoothing.
-        for wc in sorted(times):
-            if times[wc] <= best_time * 1.08:  # within 8 percent of fastest
-                best_wc = wc
-
-        logger.debug(f"[autotune] Best worker count selected: {best_wc}.")
-
-        _AUTO_TUNED_THREAD_COUNT = best_wc
-        return best_wc
+    cpu_count = os.cpu_count() or 1
+    if cpu_count <= 2:  # noqa: PLR2004
+        return 1
+    return min(cpu_count, MAX_WORKER_COUNT)

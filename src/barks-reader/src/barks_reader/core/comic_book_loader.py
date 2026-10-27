@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import psutil
 from barks_build_comic_images.build_comic_images import build_double_page_image
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
@@ -30,8 +29,9 @@ from PIL import Image
 
 from . import log_markers
 from .comic_book_loader_platform_settings import (
-    autotune_worker_count,
+    get_max_worker_count,
     get_prefetch_tuning,
+    process_rss_mib,
 )
 from .fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
@@ -120,8 +120,10 @@ class ComicBookLoader:
         self._image_loaded_events: list[threading.Event] = []
         self._image_load_order: list[str] = []
         self._page_map: OrderedDict[str, PageInfo] = OrderedDict()
-        self._index_to_key: dict[int, str] = {}
         self._images: list[tuple[io.BytesIO, str] | None] = []
+        # Counts the comics set and closed, so a load error reported after its comic
+        # was superseded or closed can be told from one for the comic now open.
+        self._load_generation = 0
 
         # Page keys the user has navigated to that should jump the prefetch queue.
         # Written from the UI thread (prioritize_page), drained on the loader thread.
@@ -139,8 +141,8 @@ class ComicBookLoader:
             self._empty_page_image = file.read()
 
         self._thread: threading.Thread | None = None
-        self._max_worker_count = autotune_worker_count()
-        logger.debug(f"Using {self._max_worker_count} as max worker threads (auto-tuned).")
+        self._max_worker_count = get_max_worker_count()
+        logger.debug(f"Using {self._max_worker_count} as max worker threads.")
 
     @property
     def cursor(self) -> Cursor:
@@ -219,6 +221,8 @@ class ComicBookLoader:
         Raises:
             MissingVolumeError: If the volume is absent and at least one page of the
                 comic can only come from the (missing) library archive.
+            FileNotFoundError: If prebuilt archives are in use and the comic's own
+                archive file is absent.
 
         """
         if self._reader_settings.use_prebuilt_archives:
@@ -284,16 +288,20 @@ class ComicBookLoader:
         self._image_source = image_source
         self._image_load_order = image_load_order
         self._page_map = page_map
-        self._index_to_key = {page_info.page_index: key for key, page_info in page_map.items()}
         # Safe to swap the queue: set_comic and prioritize_page both run on the UI
         # thread, and the stop_now() above has joined the old loader thread (the only
         # reader of _priority_keys), so nothing can be draining or writing it here.
         self._priority_keys = queue.SimpleQueue()
         self._current_comic_desc = archive_desc
         self._stop = False
+        self._load_generation += 1
 
         logger.info(f"Archive source: {self._current_comic_desc}.")
 
+        # The page slots are laid out here, on the UI thread, before the loader thread
+        # exists: laid out by the thread, a page turn arriving first found an empty or
+        # the previous comic's list and read the wrong comic's readiness from it.
+        self._images = [None] * len(page_map)
         self._init_load_events()
         self._start_loading_thread()
 
@@ -345,14 +353,17 @@ class ComicBookLoader:
         return self._image_source.get_image_info_str(page_info)
 
     def wait_load_event(self, page_index: int, timeout: float) -> bool:
-        """Block until the image at *page_index* is loaded, or *timeout* expires."""
+        """Block until the image at *page_index* is loaded, or *timeout* expires.
+
+        With no comic open nothing is loaded, so this is ``False`` at once.
+        """
         if not self._images:
-            return True
+            return False
         assert 0 <= page_index < len(self._images)
         return self._image_loaded_events[page_index].wait(timeout)
 
-    def prioritize_page(self, page_index: int) -> None:
-        """Ask the background loader to fetch *page_index* next.
+    def prioritize_page(self, page_str: str) -> None:
+        """Ask the background loader to fetch the page keyed *page_str* next.
 
         Used when the user navigates to a page that has not been prefetched yet
         (e.g. paging backward, where pages load last). The page jumps to the front
@@ -360,14 +371,20 @@ class ComicBookLoader:
         than in its normal load-order position. A no-op if the page is already
         loaded or the comic is not currently loading.
         """
-        if not self._images or self._image_loaded_events[page_index].is_set():
+        if not self._images:
             return
-        load_key = self._index_to_key.get(page_index)
-        if load_key is not None:
-            self._priority_keys.put(load_key)
+        page_info = self._page_map.get(page_str)
+        if page_info is None or self._image_loaded_events[page_info.page_index].is_set():
+            return
+        self._priority_keys.put(page_str)
 
     def close_comic(self) -> None:
-        """Stop loading and release all cached images."""
+        """Stop loading and release all cached images.
+
+        UI thread only: the page lists it clears are the ones the UI thread's page
+        poll reads, so the loader thread hands its own close here through the
+        scheduler (:meth:`_close_and_report_load_error`).
+        """
         if not self._current_comic_desc:
             return
 
@@ -381,19 +398,33 @@ class ComicBookLoader:
         self._images.clear()
         self._image_loaded_events.clear()
         self._current_comic_desc = ""
+        self._load_generation += 1
 
     def stop_now(self) -> None:
-        """Signal the background thread to stop and wait for it to terminate."""
-        if self._stop:
+        """Signal the background thread to stop and wait for it to terminate.
+
+        A no-op once stopped with no thread left to wait for. A thread still alive
+        after an earlier stop (the loader thread stops itself on a load error) is
+        joined all the same: left running, the next comic's load would be refused as
+        already in progress.
+        """
+        if self._stop and self._thread is None:
             return
 
         logger.debug("Tell the comic book loader to stop...")
         self._stop = True
 
-        if self._thread and self._thread.is_alive():
+        thread = self._thread
+        if thread is threading.current_thread():
+            # The loader thread stopping itself: it cannot join itself, and the
+            # handle is the UI thread's to clear once it has seen the thread out.
+            self._cursor.set_normal()
+            return
+
+        if thread is not None and thread.is_alive():
             logger.debug("Waiting for image loading thread to terminate...")
-            self._thread.join(timeout=2.0)
-            if self._thread.is_alive():
+            thread.join(timeout=2.0)
+            if thread.is_alive():
                 logger.error("Image loading thread did not terminate in time.")
 
         self._thread = None
@@ -435,11 +466,6 @@ class ComicBookLoader:
         for _ in range(len(self._page_map)):
             self._image_loaded_events.append(threading.Event())
 
-    @staticmethod
-    def _process_rss_mib() -> float:
-        """Return this process's current resident set size (RSS), in MiB."""
-        return psutil.Process().memory_info().rss / (1024 * 1024)
-
     def _retained_image_stats(self, rss_before_mib: float) -> RetainedImageStats:
         """Measure how much RAM the currently-cached page images occupy.
 
@@ -457,7 +483,7 @@ class ComicBookLoader:
         """
         sizes = [entry[0].getbuffer().nbytes for entry in self._images if entry is not None]
         loaded = len(sizes)
-        rss_now = self._process_rss_mib()
+        rss_now = process_rss_mib()
         return RetainedImageStats(
             loaded=loaded,
             total_mib=sum(sizes) / (1024 * 1024),
@@ -486,12 +512,10 @@ class ComicBookLoader:
 
         load_error = False
         load_warning_only = False
-        rss_before_mib = self._process_rss_mib()
+        rss_before_mib = process_rss_mib()
         self._cursor.set_busy()
 
         try:
-            self._images = [None for _i in range(len(self._page_map))]
-
             assert self._image_source is not None
 
             # noinspection PyBroadException
@@ -598,7 +622,7 @@ class ComicBookLoader:
 
         worker_count = self.get_worker_count_for_pages(num_pages)
         tuning = get_prefetch_tuning(worker_count, num_pages)
-        tuning.start_mem_trace()
+        tuning.start_memory_watch()
         dynamic_window = tuning.get_initial_dynamic_window()
 
         logger.debug(
@@ -725,10 +749,9 @@ class ComicBookLoader:
             finally:
                 executor.shutdown(cancel_futures=True)
                 logger.info(
-                    f"[mem] Peak Python-traced allocation during load: "
-                    f"{tuning.get_traced_peak_mib():.1f} MiB."
+                    f"[mem] Peak RSS growth during load: "
+                    f"{tuning.get_peak_memory_growth_mib():.1f} MiB."
                 )
-                tuning.stop_mem_trace()
                 logger.debug("Platform-aware comic loading executor shut down.")
 
         logger.debug(
@@ -743,6 +766,22 @@ class ComicBookLoader:
         return min(self._max_worker_count, num_pages)
 
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
+        """Hand the failed load's close and its report to the UI thread.
+
+        This runs on the loader thread. The close clears the page lists the UI
+        thread's page poll reads, so it goes through the scheduler with the report,
+        and the thread never joins itself. A comic set or closed since this one
+        failed owns the loader now, so a stale error is dropped rather than closing
+        the new comic or raising for one already gone.
+        """
         self._stop = True
-        self.close_comic()
-        self._scheduler.schedule_once(lambda: self._on_load_error(load_warning_only))
+        generation = self._load_generation
+
+        def close_and_report() -> None:
+            if generation != self._load_generation:
+                logger.warning("Dropped the load error of a comic since superseded or closed.")
+                return
+            self.close_comic()
+            self._on_load_error(load_warning_only)
+
+        self._scheduler.schedule_once(close_and_report)
