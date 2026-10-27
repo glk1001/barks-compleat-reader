@@ -556,8 +556,10 @@ they talk through `core/ports/comic_reader.py`.
    metadata) and constructs an `ArchivePageImageSource`.
 7. **Start loading** — `comic_book_loader.set_comic(image_source, load_order, page_map, …)`
   . The **load order** (`core/comic_page_manager.py`, `ComicPageManager.get_image_load_order`)
-   is deliberate: the page you're jumping to first, then its neighbor, then
-   forward, then the rest backward — so the opening page appears fastest.
+   is deliberate: the page you're jumping to first (in double-page mode, both pages
+   of its pair), then its neighbor, then forward, then the rest backward — so the
+   opening page appears fastest. The loader loads those opening pages alone, and
+   opens its prefetch window only once they have all landed.
 8. **First page** — when the loader thread finishes the target page it schedules
    `_first_image_loaded` on the UI thread, which sets `_current_page_index`; that
    `NumericProperty` is bound to `_show_page`, which pulls the page's pixels

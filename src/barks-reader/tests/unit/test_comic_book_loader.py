@@ -391,6 +391,38 @@ def test_the_first_page_loads_alone_before_the_window_opens(loader: ComicBookLoa
     assert set(source.load_order) == {0, 1, 2, 3, 4}
 
 
+def test_the_awaited_pair_loads_together_and_alone(
+    loader: ComicBookLoader, mock_callbacks: dict[str, MagicMock]
+) -> None:
+    """In double-page mode the reader waits on two pages: both go at once, nothing else.
+
+    Four workers and a window of two: the right page used to wait for the left to
+    land, then load beside a stranger. Here the left lands while the right is held,
+    and no third page is submitted in the meantime.
+    """
+    page_map, load_order = _make_indexed_page_map(5)
+    started = threading.Event()
+    release = threading.Event()
+    source = OrderRecordingSource(block_index=1, started=started, release=release)
+    loader._max_worker_count = 4
+
+    loader.set_comic(source, load_order, page_map, archive_desc="pair.cbz", num_pages_awaited=2)
+
+    assert started.wait(2.0)  # page 1 is in flight
+    time.sleep(0.2)  # time enough for page 0, and for any stranger, to have loaded
+    assert source.load_order == [0]
+    # The first page's callback does not wait for its pair: the reader polls for both.
+    mock_callbacks["on_first_image_loaded"].assert_called_once()
+
+    release.set()
+    assert loader._thread is not None
+    loader._thread.join(timeout=2.0)
+
+    assert source.load_order[:2] == [0, 1]
+    assert set(source.load_order) == {0, 1, 2, 3, 4}
+    mock_callbacks["on_all_images_loaded"].assert_called_once()
+
+
 def test_prioritize_page_is_noop_when_page_already_loaded(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],

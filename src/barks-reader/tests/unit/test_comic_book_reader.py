@@ -225,6 +225,8 @@ class TestComicBookReader:
                 is reader._reader_settings.decode_pages_whole
             )
             reader._comic_book_loader.set_comic.assert_called()
+            # One page is awaited: the reader opens on a single page here.
+            assert reader._comic_book_loader.set_comic.call_args.kwargs["num_pages_awaited"] == 1
             # The reader screen is held back until page one draws, so opening a comic
             # arms the reveal rather than switching to a blank page.
             reader._on_comic_is_ready_to_read.assert_not_called()

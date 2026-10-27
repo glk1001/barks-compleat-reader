@@ -118,6 +118,7 @@ class ComicBookLoader:
 
         self._image_loaded_events: list[threading.Event] = []
         self._image_load_order: list[str] = []
+        self._num_pages_awaited = 1
         self._page_map: OrderedDict[str, PageInfo] = OrderedDict()
         self._images: list[PageImage | None] = []
         # Counts the comics set and closed, so a load error reported after its comic
@@ -268,6 +269,7 @@ class ComicBookLoader:
         image_load_order: list[str],
         page_map: OrderedDict[str, PageInfo],
         archive_desc: str = "",
+        num_pages_awaited: int = 1,
     ) -> None:
         """Start loading a comic using the given image source.
 
@@ -276,9 +278,13 @@ class ComicBookLoader:
             image_load_order: Page keys in the order they should be loaded.
             page_map: Ordered mapping of page keys to ``PageInfo`` objects.
             archive_desc: Human-readable description for logging.
+            num_pages_awaited: How many of the leading keys in *image_load_order* the
+                reader waits on before it shows anything: one page, or both of a
+                double-page pair. They load together, and alone.
 
         """
         assert len(image_load_order) == len(page_map)
+        assert 1 <= num_pages_awaited <= len(image_load_order)
 
         # Stop any previous loading process before starting a new one.
         if self._thread and self._thread.is_alive():
@@ -286,6 +292,7 @@ class ComicBookLoader:
 
         self._image_source = image_source
         self._image_load_order = image_load_order
+        self._num_pages_awaited = num_pages_awaited
         self._page_map = page_map
         # Safe to swap the queue: set_comic and prioritize_page both run on the UI
         # thread, and the stop_now() above has joined the old loader thread (the only
@@ -575,7 +582,7 @@ class ComicBookLoader:
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
-    def _load_pages(self) -> int:  # noqa: C901, PLR0915
+    def _load_pages(self) -> int:  # noqa: C901, PLR0912, PLR0915
         """Platform-aware dynamic prefetch window implementation.
 
         Uses system profile (CPU, RAM) to pick prefetch and memory thresholds.
@@ -606,6 +613,10 @@ class ComicBookLoader:
 
         first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
         logger.debug(f"First page index to display: {first_page_index_to_display}.")
+        pages_awaited = {
+            self._page_map[key].page_index
+            for key in self._image_load_order[: self._num_pages_awaited]
+        }
 
         worker_count = self.get_worker_count_for_pages(num_pages)
         tuning = get_prefetch_tuning(worker_count, num_pages)
@@ -646,10 +657,11 @@ class ComicBookLoader:
                 return key
             return None
 
-        # The page the reader is waiting for goes alone: primed all at once, the
-        # window set a worker's worth of other pages competing with it for the
-        # cores. The window opens once that page has landed.
-        first_page_delivered = False
+        # The pages the reader is waiting for go alone: primed all at once, the
+        # window set a worker's worth of other pages competing with them for the
+        # cores. Until they have all landed the window holds only the ones still in
+        # flight, so a landed left page does not let a stranger in beside the right.
+        window_open = False
 
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -657,7 +669,7 @@ class ComicBookLoader:
             def submit_next() -> bool:
                 """Submit the next page if window not full."""
                 nonlocal dynamic_window
-                window = dynamic_window if first_page_delivered else 1
+                window = dynamic_window if window_open else len(pages_awaited)
                 if len(futures) >= window:
                     return False
                 load_key = next_load_key()
@@ -671,8 +683,9 @@ class ComicBookLoader:
 
                 return True
 
-            # Prime the window with the first page alone.
-            submit_next()
+            # Prime the window with the awaited pages alone.
+            while submit_next():
+                pass
 
             try:
                 # Process futures as they complete, maintaining the prefetch window.
@@ -728,8 +741,11 @@ class ComicBookLoader:
                             # for the rest of the background prefetch. (Scheduled
                             # after the first-page display callback above.)
                             self._cursor.set_normal()
+
+                        pages_awaited.discard(page_index)
+                        if not window_open and not pages_awaited and not self._stop:
                             # Now the rest of the comic, a window at a time.
-                            first_page_delivered = True
+                            window_open = True
                             while not self._stop and submit_next():
                                 pass
 

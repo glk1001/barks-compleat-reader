@@ -198,29 +198,46 @@ class ComicPageManager:
         assert self._first_page_index == 0
         assert (self._last_page_index + 1) == len(page_map)
 
-    def get_image_load_order(self) -> list[str]:
-        """Determine the optimal order to load images for a smooth user experience."""
+    def get_first_pages_to_read(self) -> list[int]:
+        """Return the indices of the pages the comic opens on, in reading order.
+
+        One page, or in double-page mode both pages of the pair the opening page is
+        in: the reader shows nothing until every one of them has loaded.
+        """
         assert self._layout is not None
-        if self._first_page_to_read_index == 0:
-            return list(self._layout.page_map.keys())
+        if self.double_page_mode:
+            unit_idx = self._unit_idx_for(self._first_page_to_read_index)
+            if unit_idx is not None:
+                unit = self._display_units[unit_idx]
+                if unit.right_page_index is not None:
+                    return [unit.left_page_index, unit.right_page_index]
+                return [unit.left_page_index]
 
-        # Start with the current page
-        image_load_order = [self.get_page_str(self._first_page_to_read_index)]
+        return [self._first_page_to_read_index]
 
-        # Then the previous page (for immediate back navigation): there is one, as a
-        # start at index 0 returned above.
-        image_load_order.append(self.get_page_str(self._first_page_to_read_index - 1))
+    def get_image_load_order(self) -> list[str]:
+        """Determine the optimal order to load images for a smooth user experience.
 
-        # Then all subsequent pages.
+        The pages the comic opens on come first (see :meth:`get_first_pages_to_read`),
+        then the page before them for an immediate turn back, then every page after
+        them, then the rest of the pages before them, nearest first.
+        """
+        assert self._layout is not None
+        first_pages = self.get_first_pages_to_read()
+        first, last = first_pages[0], first_pages[-1]
+
+        image_load_order = [self.get_page_str(page_index) for page_index in first_pages]
+
+        if first > 0:
+            image_load_order.append(self.get_page_str(first - 1))
+
         image_load_order.extend(
             self.get_page_str(page_index)
-            for page_index in range(self._first_page_to_read_index + 1, self._last_page_index + 1)
+            for page_index in range(last + 1, self._last_page_index + 1)
         )
 
-        # Finally, the rest of the previous pages in reverse order.
         image_load_order.extend(
-            self.get_page_str(page_index)
-            for page_index in range(self._first_page_to_read_index - 2, -1, -1)
+            self.get_page_str(page_index) for page_index in range(first - 2, -1, -1)
         )
 
         return image_load_order

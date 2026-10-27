@@ -383,6 +383,7 @@ class ComicBookReader(FloatLayout):
             self._page_manager.get_image_load_order(),
             page_map,
             archive_desc=archive_desc,
+            num_pages_awaited=len(self._page_manager.get_first_pages_to_read()),
         )
 
         self._closed = False

@@ -144,6 +144,29 @@ class TestComicPageManager:
         # Expected: Current(2), Prev(1), Next...(3,4), Prev...(0)
         # 2, 1, 3, 4, 0
         assert order == ["2", "1", "3", "4", "0"]
+        assert pm.get_first_pages_to_read() == [2]
+
+    @pytest.mark.parametrize(
+        ("first_page", "first_pages", "order"),
+        [
+            # Units (0), (1, 2), (3), (4), (5, 6).
+            ("0", [0], ["0", "1", "2", "3", "4", "5", "6"]),
+            ("1", [1, 2], ["1", "2", "0", "3", "4", "5", "6"]),
+            ("2", [1, 2], ["1", "2", "0", "3", "4", "5", "6"]),  # the pair, opened at its right
+            ("3", [3], ["3", "2", "4", "5", "6", "1", "0"]),  # a solo page
+            ("6", [5, 6], ["5", "6", "4", "3", "2", "1", "0"]),
+        ],
+    )
+    def test_in_double_page_mode_the_opening_pair_loads_first(
+        self, first_page: str, first_pages: list[int], order: list[str]
+    ) -> None:
+        """The reader shows nothing until both pages of the pair are in; they go first."""
+        pm = ComicPageManager(MagicMock())
+        pm.double_page_mode = True
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), first_page)
+
+        assert pm.get_first_pages_to_read() == first_pages
+        assert pm.get_image_load_order() == order
 
     def test_no_display_unit_before_the_page_map_or_off_it(
         self, page_manager: tuple[ComicPageManager, MagicMock]
