@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
+    FULL_SCALE,
     INTRO_INSET_BORDER_SHADE,
     INTRO_INSET_BORDER_WIDTH,
     INTRO_INSET_LEAST_HEIGHT,
@@ -161,7 +162,9 @@ def test_panels_and_their_mask_are_scaled_together_to_the_dest_panels() -> None:
     panels = Image.new("RGB", (20, 10), WHITE)
     mask = Image.new("L", (20, 10), 255)
 
-    scaled, scaled_mask = ComicBookImageBuilder._get_resized_srce_images(dest_page, panels, mask)
+    scaled, scaled_mask = ComicBookImageBuilder._get_resized_srce_images(
+        dest_page, panels, mask, FULL_SCALE, None
+    )
 
     assert scaled.size == (100, 50)
     assert scaled_mask is not None

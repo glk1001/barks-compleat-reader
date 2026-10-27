@@ -659,11 +659,9 @@ class ComicBookImageBuilder:
     ) -> PilImage:
         panels_image, panels_box = self._crop_panels(srce_page_image, srce_page, srce_scale)
         panels_rgb, paste_mask = self._page_image_source.to_renderable(panels_image)
-
-        if dest_page.page_type not in PAGES_WITHOUT_PANELS:
-            panels_rgb, paste_mask = self._get_resized_srce_images(
-                dest_page, panels_rgb, paste_mask, scale, panels_box
-            )
+        panels_rgb, paste_mask = self._get_resized_srce_images(
+            dest_page, panels_rgb, paste_mask, scale, panels_box
+        )
 
         dest_page_image = self._get_empty_page_image(scale).copy()
         dest_panels_pos = (
@@ -717,9 +715,23 @@ class ComicBookImageBuilder:
         dest_page: CleanPage,
         panels_rgb: PilImage,
         paste_mask: PilImage | None,
-        scale: BuildScale = FULL_SCALE,
-        box: tuple[float, float, float, float] | None = None,
+        scale: BuildScale,
+        box: tuple[float, float, float, float] | None,
     ) -> tuple[PilImage, PilImage | None]:
+        """Resize the panels, and their paste mask with them, to the page's panels box.
+
+        Args:
+            dest_page: The page being built; its panels box gives the target size.
+            panels_rgb: The panels cropped out of the scan.
+            paste_mask: The panels' alpha, when the source has one, else ``None``.
+            scale: The scale the page is built at.
+            box: The panels' exact, fractional edges within the crop, or ``None`` for
+                the whole crop.
+
+        Returns:
+            The resized panels and, when there was one, the resized mask.
+
+        """
         target_size = (
             scale.of(dest_page.panels_bbox.get_width()),
             scale.of(dest_page.panels_bbox.get_height()),
