@@ -622,8 +622,11 @@ via injected `Scheduler` + `Cursor` ports:
 - `set_comic()` stops any prior load, creates one `threading.Event` per
   page, and starts the daemon loader thread.
 - `_load_pages()` runs a `ThreadPoolExecutor` with a **dynamic sliding
-  prefetch window** — a worker per core (capped), window size growing/shrinking
-  with the process's memory growth since the load began.
+  prefetch window** — a worker per core (capped), window size shrinking a step
+  while the machine's available memory is under a floor and growing a step back
+  only once it is over a higher ceiling (`PrefetchTuning` in
+  `core/comic_book_loader_platform_settings.py`; the process's own growth is
+  only sampled for the peak log line).
 - Futures complete out of order; each result is stored at its page-index slot and
   its Event is set. The first-displayed page triggers an early UI callback; when
   all pages finish, another callback fires.
