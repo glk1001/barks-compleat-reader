@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import re
 import threading
 import time
@@ -30,6 +29,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.page_image import PageImage
+
+
+def _fake_page() -> PageImage:
+    """Return a loaded page as the loader keeps it: two RGB pixels."""
+    return PageImage(2, 1, "RGB", bytes(6))
 
 
 class FakePageImageSource:
@@ -48,7 +53,7 @@ class FakePageImageSource:
     def close(self) -> None:
         self.closed = True
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:  # noqa: ARG002
+    def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
         """Return fake PNG bytes."""
         if self._delay:
             time.sleep(self._delay)
@@ -56,7 +61,7 @@ class FakePageImageSource:
             msg = "Simulated load failure"
             raise FileNotFoundError(msg)
         self.load_count += 1
-        return io.BytesIO(b"fake_png_data"), ".png"
+        return _fake_page()
 
     @staticmethod
     def get_image_info_str(page_info: PageInfo) -> str:
@@ -267,7 +272,7 @@ def test_cursor_restored_at_first_page_ready(
     class GatedPageImageSource(FakePageImageSource):
         """Blocks every page after the first until the test releases them."""
 
-        def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+        def load_page_image(self, page_info: PageInfo) -> PageImage:
             if page_info.page_index > 0:
                 release_last_page.wait(timeout=2.0)
             return super().load_page_image(page_info)
@@ -306,13 +311,13 @@ class OrderRecordingSource:
     def close(self) -> None:
         pass
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
         idx = page_info.page_index
         if idx == self._block_index:
             self._started.set()
             self._release.wait(timeout=2.0)
         self.load_order.append(idx)
-        return io.BytesIO(b"fake_png_data"), ".png"
+        return _fake_page()
 
     @staticmethod
     def get_image_info_str(page_info: PageInfo) -> str:  # noqa: ARG004
@@ -457,7 +462,7 @@ class _StopGatedPageImageSource(FakePageImageSource):
         self._loader = loader
         self.started = threading.Event()
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
         self.started.set()
         deadline = time.monotonic() + 5.0
         while not self._loader._stop and time.monotonic() < deadline:
@@ -770,27 +775,21 @@ def test_a_loading_thread_that_will_not_stop_is_reported(
 def test_get_double_page_image_ready_for_reading_composes_two_pages(
     loader: ComicBookLoader,
 ) -> None:
-    """Compose two real PNG streams into a wider landscape PNG."""
+    """Compose two loaded pages into one wider landscape page, each on its own side."""
     from PIL import Image  # noqa: PLC0415
 
-    left_buf = io.BytesIO()
-    Image.new("RGB", (50, 80), (255, 0, 0)).save(left_buf, format="PNG")
-    right_buf = io.BytesIO()
-    Image.new("RGB", (50, 80), (0, 255, 0)).save(right_buf, format="PNG")
-
     # Stub the loader's image cache directly.
-    loader._images = [(left_buf, ".png"), (right_buf, ".png")]
+    loader._images = [
+        PageImage.from_pil(Image.new("RGB", (50, 80), (255, 0, 0))),
+        PageImage.from_pil(Image.new("RGB", (50, 80), (0, 255, 0))),
+    ]
 
-    stream, ext = loader.get_double_page_image_ready_for_reading(0, 1)
+    spread = loader.get_double_page_image_ready_for_reading(0, 1)
 
-    assert ext == "png"  # PNG_EXT_FOR_KIVY (no leading dot)
-    data = stream.read()
-    assert data.startswith(b"\x89PNG\r\n")
-
-    # The composited image must be wider than either source.
-    out_image = Image.open(io.BytesIO(data))
-    assert out_image.width == 100  # noqa: PLR2004
-    assert out_image.height == 80  # noqa: PLR2004
+    assert (spread.width, spread.height, spread.mode) == (100, 80, "RGB")
+    out_image = spread.to_pil()
+    assert out_image.getpixel((10, 40)) == (255, 0, 0)
+    assert out_image.getpixel((60, 40)) == (0, 255, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -950,21 +949,17 @@ class TestLoaderInitialState:
 
 
 class TestCachedImageAccess:
-    def test_the_stream_is_rewound_before_it_is_handed_out(self, loader: ComicBookLoader) -> None:
-        """A page can be displayed twice; the second read must not start mid-stream."""
-        stream = io.BytesIO(b"png-bytes")
-        stream.seek(5)
-        loader._images = [(stream, ".png")]
+    def test_the_loaded_page_is_handed_out_as_it_is(self, loader: ComicBookLoader) -> None:
+        """The same page object every time: a page shown twice is not copied or decoded."""
+        page = _fake_page()
+        loader._images = [page]
 
-        returned, ext = loader.get_image_ready_for_reading(0)
-
-        assert returned.tell() == 0
-        assert returned.read() == b"png-bytes"
-        assert ext == ".png"
+        assert loader.get_image_ready_for_reading(0) is page
+        assert loader.get_image_ready_for_reading(0) is page
 
     def test_an_out_of_range_page_index_is_rejected(self, loader: ComicBookLoader) -> None:
         """The bound is exclusive: index == len is one past the last page."""
-        loader._images = [(io.BytesIO(b"x"), ".png")]
+        loader._images = [_fake_page()]
 
         with pytest.raises(AssertionError):
             loader.get_image_ready_for_reading(1)
@@ -984,7 +979,8 @@ class TestRetainedImageStats:
 
     @staticmethod
     def _with_page_sizes(loader: ComicBookLoader, *sizes: int) -> None:
-        loader._images = [(io.BytesIO(b"\0" * size), ".png") for size in sizes]
+        # One byte a pixel, so a page's memory is its width.
+        loader._images = [PageImage(size, 1, "L", b"\0" * size) for size in sizes]
 
     def test_totals_are_mebibytes_and_averages_are_kibibytes(self, loader: ComicBookLoader) -> None:
         # 1 MiB and 3 MiB: total 4 MiB, average 2 MiB (2048 KiB), max 3 MiB (3072 KiB).
@@ -1421,7 +1417,7 @@ class TestPrefetchWindow:
         release = threading.Event()
 
         class CountingSource(FakePageImageSource):
-            def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:  # noqa: ARG002
+            def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
                 nonlocal inflight, peak
                 with lock:
                     inflight += 1
@@ -1429,7 +1425,7 @@ class TestPrefetchWindow:
                 release.wait(timeout=0.05)
                 with lock:
                     inflight -= 1
-                return io.BytesIO(b"png"), ".png"
+                return _fake_page()
 
         # Two workers so the window, not the pool, is the binding constraint.
         loader._max_worker_count = 2
@@ -1448,10 +1444,10 @@ class TestPrefetchWindow:
         release = threading.Event()
 
         class SlowSecondPage(FakePageImageSource):
-            def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+            def load_page_image(self, page_info: PageInfo) -> PageImage:
                 if page_info.page_index == 1:
                     release.wait(timeout=5.0)
-                return io.BytesIO(b"png"), ".png"
+                return _fake_page()
 
         loader._max_worker_count = 2
         loader.set_comic(SlowSecondPage(), load_order, page_map, archive_desc="t.cbz")
@@ -1559,7 +1555,7 @@ class TestPrefetchWindow:
         first_done = threading.Event()
 
         class StopAfterFirstSource(FakePageImageSource):
-            def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+            def load_page_image(self, page_info: PageInfo) -> PageImage:
                 result = super().load_page_image(page_info)
                 if page_info.page_index == 0:
                     first_done.set()
@@ -1734,8 +1730,8 @@ class TestLoaderLifecycle:
         page_map, load_order = page_map_and_order
 
         class NoCloseSource:
-            def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:  # noqa: ARG002
-                return io.BytesIO(b"png"), ".png"
+            def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
+                return _fake_page()
 
             @staticmethod
             def get_image_info_str(page_info: PageInfo) -> str:  # noqa: ARG004
@@ -1822,25 +1818,24 @@ class TestMissingVolumeErrorContents:
 
 
 class TestDoublePageCompositing:
-    def test_the_composite_is_encoded_without_compression(self, loader: ComicBookLoader) -> None:
-        """Double-page spreads are re-encoded per turn; compression would cost latency."""
+    def test_the_composite_is_built_from_the_pages_own_pixels(
+        self, loader: ComicBookLoader
+    ) -> None:
+        """The spread is composed per turn from the loaded pixels, with no decode first."""
         from PIL import Image  # noqa: PLC0415
 
-        buffers = []
-        for _ in range(2):
-            buf = io.BytesIO()
-            Image.new("RGB", (10, 10), (1, 2, 3)).save(buf, format="PNG")
-            buffers.append(buf)
-        loader._images = [(buffers[0], ".png"), (buffers[1], ".png")]
+        loader._images = [PageImage(2, 1, "RGB", bytes(6)), PageImage(2, 1, "RGB", bytes(6))]
+        composite = Image.new("RGB", (4, 1), (7, 8, 9))
 
         with patch.object(
-            loader_module,
-            "get_pil_image_as_png_bytes",
-            return_value=io.BytesIO(b"\x89PNG\r\n composited"),
-        ) as encode:
-            loader.get_double_page_image_ready_for_reading(0, 1)
+            loader_module, "build_double_page_image", return_value=composite
+        ) as compose:
+            spread = loader.get_double_page_image_ready_for_reading(0, 1)
 
-        assert encode.call_args.kwargs == {"compress_level": 0}
+        left, right = compose.call_args.args
+        assert (left.size, left.mode, left.tobytes()) == ((2, 1), "RGB", bytes(6))
+        assert (right.size, right.tobytes()) == ((2, 1), bytes(6))
+        assert spread == PageImage.from_pil(composite)
 
 
 class TestBlankPageDetectionUsesPageType:
@@ -1873,7 +1868,7 @@ class PageCancellingSource(FakePageImageSource):
         super().__init__()
         self._cancelled_index = cancelled_index
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
         if page_info.page_index == self._cancelled_index:
             msg = "cancelled"
             raise CancelledError(msg)

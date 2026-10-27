@@ -1,7 +1,7 @@
 """Production ``PageImageSource`` backed by ZIP archives.
 
 Handles both prebuilt CBZ archives and Fantagraphics volume archives
-(with override/extra image priority). Actual read/decode/resize/encode
+(with override/extra image priority). Actual read/decode/resize
 stages live in :mod:`image_pipeline`; this module composes them and
 owns archive-specific source resolution.
 """
@@ -15,18 +15,12 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.comics_consts import IMAGES_SUBDIR
 from loguru import logger
 
-from .image_pipeline import (
-    decode_pil,
-    encode_png_stream,
-    load_pil,
-    resize_contain,
-)
+from .image_pipeline import decode_pil, load_pil, resize_contain
 from .log_markers import EMPTY_PAGE_IMAGE
-from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+from .page_image import PageImage
+from .reader_utils import is_blank_page, is_title_page
 
 if TYPE_CHECKING:
-    import io
-
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from PIL.Image import Image
 
@@ -95,14 +89,14 @@ class ArchivePageImageSource:
                 override_archive.close()
             self._fanta_volume_archive.override_archive = None
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
-        """Load, transform, resize, and encode a page image.
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
+        """Load, transform and resize a page image.
 
         Args:
             page_info: Metadata identifying which page to load.
 
         Returns:
-            A tuple of (*png_bytes_stream*, *kivy_image_ext*).
+            The page as the pixels a texture takes.
 
         """
         image_path, is_from_archive = self._get_image_path(page_info)
@@ -121,7 +115,7 @@ class ArchivePageImageSource:
             )
 
         resized = resize_contain(pil_image, self._max_width, self._max_height)
-        return encode_png_stream(resized, compress_level=0), PNG_EXT_FOR_KIVY
+        return PageImage.from_pil(resized)
 
     def get_image_info_str(self, page_info: PageInfo) -> str:
         """Return a human-readable description of the image source for *page_info*."""

@@ -560,8 +560,8 @@ they talk through `core/ports/comic_reader.py`.
    forward, then the rest backward — so the opening page appears fastest.
 8. **First page** — when the loader thread finishes the target page it schedules
    `_first_image_loaded` on the UI thread, which sets `_current_page_index`; that
-   `NumericProperty` is bound to `_show_page`, which pulls the decoded
-   PNG stream and uploads `CoreImage(stream).texture` to the `Image` widget
+   `NumericProperty` is bound to `_show_page`, which pulls the page's pixels
+   and fills a texture from them (`page_texture`) for the `Image` widget
   .
 
 ### 6.2 Where pages come from, and decryption
@@ -576,10 +576,12 @@ Archives are ZIPs, in one of two modes (chosen by `reader_settings.use_prebuilt_
 
 The `PageImageSource` protocol (`core/page_image_source.py`) hides all of this
 — I/O, decryption, transform, resize — behind `load_page_image(page_info) →
-(BytesIO, str)`. The production implementation `ArchivePageImageSource`
+PageImage`. The production implementation `ArchivePageImageSource`
  does: resolve path → read → (for Fanta volumes) assemble/transform the
 page via `ComicBookImageBuilder.get_dest_page_image` → `resize_contain` (LANCZOS)
-→ encode an **uncompressed** PNG (`compress_level=0`, for speed).
+→ the pixels as they are (`core/page_image.py`). There is no encode: the
+level-0 PNG the loader used to make was the same bytes with headers, and a
+decode on the UI thread to undo it.
 
 **Decryption is the load-bearing subtlety** (and the subject of recent bug
 fixes). The decryptor is a *generated module* (`comic_utils/get_panel_bytes.py`,

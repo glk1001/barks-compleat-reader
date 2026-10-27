@@ -11,24 +11,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    import io
-
     from .comic_book_page_info import PageInfo
+    from .page_image import PageImage
 
 
 @runtime_checkable
 class PageImageSource(Protocol):
     """Resolves, loads, and transforms a single page image for display."""
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+    def load_page_image(self, page_info: PageInfo) -> PageImage:
         """Load and return a display-ready image for the given page.
 
         Args:
             page_info: Metadata identifying which page to load.
 
         Returns:
-            A tuple of (*image_bytes_stream*, *kivy_image_ext*) where the
-            stream contains PNG data and the ext is e.g. ``"png"``.
+            The page resized for the window, as the pixels a texture takes.
 
         """
         ...

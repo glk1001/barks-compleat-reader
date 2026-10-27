@@ -22,10 +22,8 @@ from barks_fantagraphics.fanta_comics_info import (
     get_fanta_volume_from_str,
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT
-from comic_utils.pil_image_utils import get_pil_image_as_png_bytes
 from comic_utils.timing import Timing
 from loguru import logger
-from PIL import Image
 
 from . import log_markers
 from .comic_book_loader_platform_settings import (
@@ -39,10 +37,10 @@ from .fantagraphics_volumes import (
     MissingArchiveFilesError,
     MissingVolumeError,
 )
-from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+from .page_image import PageImage
+from .reader_utils import is_blank_page, is_title_page
 
 if TYPE_CHECKING:
-    import io
     from collections.abc import Callable, Mapping
 
     from .comic_book_page_info import PageInfo
@@ -121,7 +119,7 @@ class ComicBookLoader:
         self._image_loaded_events: list[threading.Event] = []
         self._image_load_order: list[str] = []
         self._page_map: OrderedDict[str, PageInfo] = OrderedDict()
-        self._images: list[tuple[io.BytesIO, str] | None] = []
+        self._images: list[PageImage | None] = []
         # Counts the comics set and closed, so a load error reported after its comic
         # was superseded or closed can be told from one for the comic now open.
         self._load_generation = 0
@@ -306,46 +304,33 @@ class ComicBookLoader:
         self._init_load_events()
         self._start_loading_thread()
 
-    def get_image_ready_for_reading(self, page_index: int) -> tuple[io.BytesIO, str]:
-        """Return the cached image for *page_index*, rewound to position 0."""
+    def get_image_ready_for_reading(self, page_index: int) -> PageImage:
+        """Return the loaded page at *page_index*."""
         assert self._images
         assert 0 <= page_index < len(self._images)
 
-        entry = self._images[page_index]
-        assert entry is not None
-        image_stream, image_ext = entry
-        assert image_stream
+        page = self._images[page_index]
+        assert page is not None
 
-        image_stream.seek(0)  # Ensure stream is at the beginning for reading
+        return page
 
-        return image_stream, image_ext
-
-    def get_double_page_image_ready_for_reading(
-        self, left_idx: int, right_idx: int
-    ) -> tuple[io.BytesIO, str]:
-        """Composite two cached page images side-by-side for double-page display.
+    def get_double_page_image_ready_for_reading(self, left_idx: int, right_idx: int) -> PageImage:
+        """Composite two loaded pages side by side for double-page display.
 
         Args:
             left_idx: Page index of the left page.
             right_idx: Page index of the right page.
 
         Returns:
-            A tuple of (BytesIO, str) where BytesIO contains the composited PNG image
-            and str is the image extension for Kivy.
+            The two pages as one landscape page.
 
         """
-        left_stream, _left_ext = self.get_image_ready_for_reading(left_idx)
-        right_stream, _right_ext = self.get_image_ready_for_reading(right_idx)
+        left_page = self.get_image_ready_for_reading(left_idx)
+        right_page = self.get_image_ready_for_reading(right_idx)
 
-        left_image = Image.open(left_stream)
-        right_image = Image.open(right_stream)
+        composited = build_double_page_image(left_page.to_pil(), right_page.to_pil())
 
-        composited_image = build_double_page_image(left_image, right_image)
-        composited_stream = get_pil_image_as_png_bytes(composited_image, compress_level=0)
-        assert composited_stream
-        composited_stream.seek(0)  # Ensure stream is at the beginning for reading
-
-        return composited_stream, PNG_EXT_FOR_KIVY
+        return PageImage.from_pil(composited)
 
     def get_image_info_str(self, page_str: str) -> str:
         """Return a human-readable description of the image source for a page."""
@@ -473,8 +458,8 @@ class ComicBookLoader:
     def _retained_image_stats(self, rss_before_mib: float) -> RetainedImageStats:
         """Measure how much RAM the currently-cached page images occupy.
 
-        Every loaded page is kept in ``self._images`` as encoded, window-resized
-        bytes until ``close_comic``, so this is the aggregate cost of holding a
+        Every loaded page is kept in ``self._images`` as window-resized pixels
+        until ``close_comic``, so this is the aggregate cost of holding a
         whole comic open. Split out from the logging so the unit arithmetic is
         assertable without pinning the log wording.
 
@@ -485,7 +470,7 @@ class ComicBookLoader:
             The page count, totals and the RSS growth since *rss_before_mib*.
 
         """
-        sizes = [entry[0].getbuffer().nbytes for entry in self._images if entry is not None]
+        sizes = [page.nbytes for page in self._images if page is not None]
         loaded = len(sizes)
         rss_now = process_rss_mib()
         return RetainedImageStats(
@@ -606,7 +591,7 @@ class ComicBookLoader:
         assert self._image_source is not None
         image_source = self._image_source
 
-        def load_wrapper(pg_info: PageInfo) -> tuple[io.BytesIO, str]:
+        def load_wrapper(pg_info: PageInfo) -> PageImage:
             if self._stop:
                 msg = "Load cancelled before starting work."
                 raise CancelledError(msg)
@@ -715,7 +700,7 @@ class ComicBookLoader:
                             break
 
                         try:
-                            image_stream, image_ext = future.result()
+                            page_image = future.result()
                         except CancelledError:
                             logger.warning(f"Page {page_index} cancelled.")
                             break
@@ -724,7 +709,7 @@ class ComicBookLoader:
                             raise CancelledError(e) from e
 
                         # Normal page delivery.
-                        self._images[page_index] = (image_stream, image_ext)
+                        self._images[page_index] = page_image
                         self._image_loaded_events[page_index].set()
                         num_loaded += 1
 

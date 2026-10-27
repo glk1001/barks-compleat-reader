@@ -1,7 +1,7 @@
 """Integration tests for :class:`ArchivePageImageSource`.
 
 Uses real ZIP archives with real PNG bytes on disk to exercise the prebuilt
-(non-Fantagraphics) path end-to-end: open → resolve → read → resize → encode.
+(non-Fantagraphics) path end-to-end: open → resolve → read → resize.
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ from barks_reader.core import archive_page_image_source as apis_module
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.fantagraphics_volumes import FantagraphicsArchive
-from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY
 from PIL import Image
 
 
@@ -57,7 +56,7 @@ def prebuilt_cbz(tmp_path: Path) -> Path:
 class TestArchivePageImageSourcePrebuilt:
     """End-to-end tests against a real CBZ (no Fantagraphics overrides)."""
 
-    def test_load_page_image_returns_resized_png(self, prebuilt_cbz: Path) -> None:
+    def test_load_page_image_returns_the_resized_pixels(self, prebuilt_cbz: Path) -> None:
         source = ArchivePageImageSource(
             archive_path=prebuilt_cbz,
             fanta_volume_archive=None,
@@ -69,16 +68,13 @@ class TestArchivePageImageSourcePrebuilt:
         )
         source.open()
         try:
-            stream, ext = source.load_page_image(_make_page_info("p01.png"))
+            page = source.load_page_image(_make_page_info("p01.png"))
         finally:
             source.close()
 
-        assert ext == "png"
-        assert stream.tell() == 0
-        decoded = Image.open(stream)
-        decoded.load()
         # 1000x500 contained within 200x200 -> 200x100 (aspect preserved).
-        assert decoded.size == (200, 100)
+        assert (page.width, page.height, page.mode) == (200, 100, "RGB")
+        assert page.to_pil().getpixel((100, 50)) == (40, 80, 120)
 
     def test_close_releases_archive(self, prebuilt_cbz: Path) -> None:
         source = ArchivePageImageSource(
@@ -348,9 +344,9 @@ class TestReadImageDelegation:
             with (
                 patch.object(apis_module, "load_pil") as mock_load,
                 patch.object(apis_module, "resize_contain") as mock_resize,
-                patch.object(apis_module, "encode_png_stream") as mock_encode,
+                patch.object(apis_module, "PageImage") as page_cls,
             ):
-                stream, ext = source.load_page_image(_make_page_info("p01.png"))
+                page = source.load_page_image(_make_page_info("p01.png"))
         finally:
             source.close()
 
@@ -358,10 +354,10 @@ class TestReadImageDelegation:
         assert zip_path.at == "images/p01.png"
         assert mock_load.call_args.kwargs == {"encrypted_zip": False, "use_ext_hint": True}
 
-        # The decoded image goes straight to resize, then to a fast (level 0) encode.
+        # The decoded image goes straight to resize, and its pixels straight out.
         mock_resize.assert_called_once_with(mock_load.return_value, 64, 64)
-        mock_encode.assert_called_once_with(mock_resize.return_value, compress_level=0)
-        assert (stream, ext) == (mock_encode.return_value, PNG_EXT_FOR_KIVY)
+        page_cls.from_pil.assert_called_once_with(mock_resize.return_value)
+        assert page is page_cls.from_pil.return_value
 
     def test_override_pages_are_read_from_the_encrypted_override_zip(self, tmp_path: Path) -> None:
         override_zip_path = tmp_path / "overrides.zip"
@@ -376,7 +372,7 @@ class TestReadImageDelegation:
             zipfile.ZipFile(override_zip_path, "r") as override_archive,
             patch.object(apis_module, "load_pil") as mock_load,
             patch.object(apis_module, "resize_contain"),
-            patch.object(apis_module, "encode_png_stream"),
+            patch.object(apis_module, "PageImage"),
         ):
             fanta.override_archive = override_archive
             source.load_page_image(_make_page_info("101.jpg"))
@@ -396,7 +392,7 @@ class TestReadImageDelegation:
         with (
             patch.object(apis_module, "decode_pil") as mock_decode,
             patch.object(apis_module, "resize_contain"),
-            patch.object(apis_module, "encode_png_stream"),
+            patch.object(apis_module, "PageImage"),
         ):
             source.load_page_image(_title_page_info("empty_page.jpg"))
 
@@ -417,7 +413,7 @@ class TestReadImageDelegation:
         with (
             patch.object(apis_module, "decode_pil") as mock_decode,
             patch.object(apis_module, "resize_contain"),
-            patch.object(apis_module, "encode_png_stream"),
+            patch.object(apis_module, "PageImage"),
         ):
             source.load_page_image(
                 _title_page_info("empty_page.jpg", page_type=PageType.BLANK_PAGE)
@@ -449,7 +445,7 @@ class TestReadImageDelegation:
             patch.object(apis_module, "load_pil") as mock_load,
             patch.object(apis_module, "decode_pil") as mock_decode,
             patch.object(apis_module, "resize_contain"),
-            patch.object(apis_module, "encode_png_stream"),
+            patch.object(apis_module, "PageImage"),
         ):
             fanta.override_archive = override_archive
             source.load_page_image(_title_page_info("101.jpg"))
@@ -474,7 +470,7 @@ class TestReadImageDelegation:
             with (
                 patch.object(apis_module, "load_pil") as mock_load,
                 patch.object(apis_module, "resize_contain") as mock_resize,
-                patch.object(apis_module, "encode_png_stream"),
+                patch.object(apis_module, "PageImage"),
             ):
                 source.load_page_image(page_info)
         finally:

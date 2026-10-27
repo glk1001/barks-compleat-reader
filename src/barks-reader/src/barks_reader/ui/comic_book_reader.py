@@ -74,6 +74,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
     from barks_reader.core.display_unit import DisplayUnit
+    from barks_reader.core.page_image import PageImage
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -623,22 +624,17 @@ class ComicBookReader(FloatLayout):
 
         # noinspection PyBroadException
         try:
-            # Kivy Image widget can load from BytesIO
             self._comic_image.texture = None  # Clear previous texture
             self._comic_image.source = ""  # Clear previous source
-            self._comic_image.reload()  # Ensure reload if source was same BytesIO object
+            self._comic_image.reload()
 
             if right_page_index is not None:
-                image_stream, image_ext = (
-                    self._comic_book_loader.get_double_page_image_ready_for_reading(
-                        left_page_index, right_page_index
-                    )
+                page = self._comic_book_loader.get_double_page_image_ready_for_reading(
+                    left_page_index, right_page_index
                 )
             else:
-                image_stream, image_ext = self._comic_book_loader.get_image_ready_for_reading(
-                    left_page_index
-                )
-            self._comic_image.texture = CoreImage(image_stream, ext=image_ext).texture
+                page = self._comic_book_loader.get_image_ready_for_reading(left_page_index)
+            self._comic_image.texture = page_texture(page)
         except Exception:  # noqa: BLE001
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
             # Optionally display a placeholder image or error message
@@ -1231,6 +1227,26 @@ def get_barks_comic_reader_screen(
         on_close_reader,
         name=screen_name,
     )
+
+
+def page_texture(page: PageImage) -> Texture:
+    """Fill a texture from a page's pixels: no image format, so no decode, in between.
+
+    PIL's rows run top to bottom and a texture's bottom to top, so the texture is
+    flipped, as Kivy's image loaders flip the ones they make.
+
+    Args:
+        page: The loaded page.
+
+    Returns:
+        A texture showing the page the right way up.
+
+    """
+    color_format = page.mode.lower()
+    texture = Texture.create(size=(page.width, page.height), colorfmt=color_format)
+    texture.blit_buffer(page.pixels, colorfmt=color_format, bufferfmt="ubyte")
+    texture.flip_vertical()
+    return texture
 
 
 def get_image_stream(file: PanelPath) -> Texture:

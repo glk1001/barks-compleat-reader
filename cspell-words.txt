@@ -79,6 +79,7 @@ fontfile
 fontsize
 fontstyle
 fontweight
+frombuffer
 frontmatter
 frozensets
 funcargs
@@ -246,6 +247,7 @@ unrunnable
 unthemed
 untinted
 untriaged
+uvsize
 Vacación
 vectorizer
 vmem

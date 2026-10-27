@@ -10,6 +10,7 @@ import weakref
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import barks_reader.ui.comic_book_reader
@@ -18,6 +19,7 @@ from barks_fantagraphics.barks_covers import get_cover_display_title, get_locate
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
+from barks_reader.core.page_image import PageImage
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui.comic_book_reader import (
     FIRST_PAGE_REVEAL_TIMEOUT_SECS,
@@ -26,6 +28,9 @@ from barks_reader.ui.comic_book_reader import (
 )
 from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
+
+if TYPE_CHECKING:
+    from kivy.core.image import Texture
 
 _reader_module = barks_reader.ui.comic_book_reader
 
@@ -1023,3 +1028,46 @@ def test_an_image_in_a_zip_is_read_from_its_bytes(tmp_path: Path) -> None:
     texture = _reader_module.get_image_stream(zipfile.Path(archive, "Insets/Story.png"))
 
     assert tuple(texture.size) == (6, 4)
+
+
+def test_a_loaded_page_fills_a_texture_the_right_way_up() -> None:
+    """The page's pixels go straight into a texture; PIL rows run top-down, so it is flipped."""
+    page = PageImage.from_pil(PilImage.new("RGB", (6, 4), (200, 100, 50)))
+
+    texture = _reader_module.page_texture(page)
+
+    assert tuple(texture.size) == (6, 4)
+    assert texture.colorfmt == "rgb"
+    assert texture.uvsize[1] < 0
+
+
+def _rendered(texture: Texture) -> bytes:
+    """Draw *texture* into an offscreen buffer and return the pixels it put there."""
+    from kivy.graphics import ClearBuffers, ClearColor, Fbo, Rectangle  # noqa: PLC0415
+
+    fbo = Fbo(size=texture.size)
+    with fbo:
+        ClearColor(0, 0, 0, 1)
+        ClearBuffers()
+        Rectangle(texture=texture, pos=(0, 0), size=texture.size)
+    fbo.draw()
+    return bytes(fbo.pixels)
+
+
+def test_a_page_texture_draws_what_the_kivy_loader_would() -> None:
+    """Orientation and colors: the page's texture renders pixel for pixel as the PNG did.
+
+    An asymmetric image, so a flipped or mirrored texture would show.
+    """
+    pil = PilImage.new("RGB", (4, 3), (0, 0, 255))
+    for x in range(4):
+        pil.putpixel((x, 0), (255, 0, 0))
+    pil.putpixel((0, 2), (0, 255, 0))
+    png = io.BytesIO()
+    pil.save(png, format="PNG")
+    png.seek(0)
+
+    from_png = _rendered(_reader_module.CoreImage(png, ext="png").texture)
+    from_page = _rendered(_reader_module.page_texture(PageImage.from_pil(pil)))
+
+    assert from_page == from_png
