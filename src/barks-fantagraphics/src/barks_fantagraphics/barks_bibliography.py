@@ -51,6 +51,15 @@ class BibEntry:
     disposition: Disposition
     disposition_reason: str | None
     cover_key: tuple[str, int, int, str, int] | None
+    # Barks's role where Barrier's mark is missing or wrong (ROLE_CORRECTIONS in
+    # experiments/bibliography/overrides.py); ``qualifier`` stays as Barrier printed it.
+    corrected_qualifier: Qualifier | None = None
+    correction_note: str | None = None  # the evidence for the correction
+
+    @property
+    def effective_qualifier(self) -> Qualifier | None:
+        """Barks's role: the correction when there is one, else Barrier's mark."""
+        return self.corrected_qualifier if self.correction_note is not None else self.qualifier
 
 
 @dataclass(frozen=True)
@@ -994,6 +1003,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
+                        corrected_qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+                        correction_note="Barks, quoted by Barrier: a Disney Studio writer started the script, and he merely polished up the other writer's gags; INDUCKS (W OS 29-03) credits the writing to Carl Barks and Merrill De Maris.",
                     ),
                 ),
                 notes=(),
@@ -4621,6 +4632,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
+                        corrected_qualifier=Qualifier.ART_ONLY,
+                        correction_note="Script by Vic Lockman (INDUCKS W OS 1161-02); Barrier marks the issue's other three stories art only, and this one's missing mark is his omission.",
                     ),
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS The Training Farm Fuss",
@@ -5822,6 +5835,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
+                        corrected_qualifier=Qualifier.SCRIPT_ONLY,
+                        correction_note="Barrier's own note says Barks's script was sixteen pages as submitted; INDUCKS (W JW 22-01) credits Barks with the writing only.",
                     ),
                 ),
                 notes=(),
@@ -12065,6 +12080,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
+                        corrected_qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+                        correction_note="INDUCKS (W US 46-04) credits the writing to Carl Barks (rewrite?), with its own question mark, where Barrier has art only.",
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
@@ -23218,6 +23235,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
+                        corrected_qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+                        correction_note="INDUCKS (W WDC 291-01) credits the writing to an unknown writer and Carl Barks (rewrite), where Barrier has art only.",
                     ),
                 ),
                 notes=(),

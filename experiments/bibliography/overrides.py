@@ -21,6 +21,7 @@ only pairs on an unambiguous same-date partner), so they live here.
 
 from __future__ import annotations
 
+from barks_fantagraphics.barks_bibliography import Qualifier
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 
@@ -168,4 +169,47 @@ NO_DATE_GIVEN: dict[Titles, str] = {
     Titles.DONALD_DUCK_ALBUM_1_BACK_COVER: "the top half of the front cover, enlarged",
     Titles.UNCLE_SCROOGE_40_BACK_COVER: "the front cover's illustration again",
     Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER: "redrawn by another artist",
+}
+
+# Barks's role where Barrier's mark is missing or, on other evidence, wrong:
+# (corrected qualifier, the evidence). The parser emits these beside Barrier's own
+# mark (corrected_qualifier / correction_note), never over it. INDUCKS codes are
+# the story codes on the INDUCKS issue pages.
+ROLE_CORRECTIONS: dict[Titles, tuple[Qualifier | None, str]] = {
+    Titles.DAY_THE_FARM_STOOD_STILL_THE: (
+        Qualifier.ART_ONLY,
+        (
+            "Script by Vic Lockman (INDUCKS W OS 1161-02); Barrier marks the issue's other"
+            " three stories art only, and this one's missing mark is his omission."
+        ),
+    ),
+    Titles.PHANTOM_JOKER_THE: (
+        Qualifier.SCRIPT_ONLY,
+        (
+            "Barrier's own note says Barks's script was sixteen pages as submitted;"
+            " INDUCKS (W JW 22-01) credits Barks with the writing only."
+        ),
+    ),
+    Titles.TOO_MANY_PETS: (
+        Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+        (
+            "Barks, quoted by Barrier: a Disney Studio writer started the script, and he"
+            " merely polished up the other writer's gags; INDUCKS (W OS 29-03) credits"
+            " the writing to Carl Barks and Merrill De Maris."
+        ),
+    ),
+    Titles.DELIVERY_DILEMMA: (
+        Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+        (
+            "INDUCKS (W WDC 291-01) credits the writing to an unknown writer and Carl Barks"
+            " (rewrite), where Barrier has art only."
+        ),
+    ),
+    Titles.LEMONADE_FLING_THE: (
+        Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+        (
+            "INDUCKS (W US 46-04) credits the writing to Carl Barks (rewrite?), with its own"
+            " question mark, where Barrier has art only."
+        ),
+    ),
 }

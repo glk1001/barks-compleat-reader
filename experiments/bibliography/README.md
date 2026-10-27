@@ -73,6 +73,12 @@ WARNINGS**). `(Illustrating "X.")` parentheticals resolve X to a `Titles` member
 with `ILLUSTRATES_OVERRIDES` in `overrides.py` covering the covers Barks drew for
 other artists' interior stories (resolved to `None`).
 
+Barrier's role marks ("art only", "script only", "art and rewriting of script")
+are kept exactly as printed, in `qualifier`. Where one is missing or, on other
+evidence, wrong, `ROLE_CORRECTIONS` in `overrides.py` adds `corrected_qualifier`
+and `correction_note` (the evidence) beside it; `BibEntry.effective_qualifier`
+gives the corrected role when there is one, else Barrier's.
+
 Text fields (descriptions, notes, titles) preserve inline formatting tags
 (`<em>`, `<i>`, `<strong>`, ...); structural tags are stripped. Dates are parsed
 on a tag-stripped copy, so a wrapped date like `<em>(Mar. 14, 1957)</em>` still

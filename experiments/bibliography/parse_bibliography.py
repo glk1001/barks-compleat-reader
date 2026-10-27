@@ -26,7 +26,13 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
 
-from overrides import ENTRY_EXCLUSIONS, ILLUSTRATES_OVERRIDES, NO_DATE_GIVEN, OVERRIDES
+from overrides import (
+    ENTRY_EXCLUSIONS,
+    ILLUSTRATES_OVERRIDES,
+    NO_DATE_GIVEN,
+    OVERRIDES,
+    ROLE_CORRECTIONS,
+)
 
 HERE = Path(__file__).parent
 SOURCE = HERE / "source.xhtml"
@@ -167,6 +173,8 @@ class BibEntry:
     disposition: Disposition | None = None
     disposition_reason: str | None = None
     cover_key: tuple[str, int, int, str, int] | None = None  # BarksCover.key for COVER entries
+    corrected_qualifier: Qualifier | None = None  # see ROLE_CORRECTIONS
+    correction_note: str | None = None
 
 
 @dataclass
@@ -1366,7 +1374,7 @@ def emit_module(series_list: list[BibSeries]) -> None:
     ART_ONLY = auto()
     SCRIPT_ONLY = auto()
     ART_AND_REWRITING_OF_SCRIPT = auto()''',
-        """@dataclass(frozen=True)
+        '''@dataclass(frozen=True)
 class BibEntry:
     raw_title: str
     page_count: str
@@ -1382,7 +1390,16 @@ class BibEntry:
     title: Titles | None
     disposition: Disposition
     disposition_reason: str | None
-    cover_key: tuple[str, int, int, str, int] | None""",
+    cover_key: tuple[str, int, int, str, int] | None
+    # Barks's role where Barrier's mark is missing or wrong (ROLE_CORRECTIONS in
+    # experiments/bibliography/overrides.py); ``qualifier`` stays as Barrier printed it.
+    corrected_qualifier: Qualifier | None = None
+    correction_note: str | None = None  # the evidence for the correction
+
+    @property
+    def effective_qualifier(self) -> Qualifier | None:
+        """Barks's role: the correction when there is one, else Barrier's mark."""
+        return self.corrected_qualifier if self.correction_note is not None else self.qualifier''',
         """@dataclass(frozen=True)
 class BibIssue:
     raw_issue_id: str
@@ -1450,6 +1467,10 @@ class BibSeries:
                 w(f"                        disposition=Disposition.{e.disposition.name},")
                 w(f"                        disposition_reason={e.disposition_reason!r},")
                 w(f"                        cover_key={e.cover_key!r},")
+                if e.correction_note is not None:
+                    corrected = py_repr(e.corrected_qualifier)
+                    w(f"                        corrected_qualifier={corrected},")
+                    w(f"                        correction_note={e.correction_note!r},")
                 w("                    ),")
             w("                ),")
             w(f"                notes={tuple(issue.notes)!r},")
@@ -1481,7 +1502,11 @@ def entry_title(entry: BibEntry) -> Titles | None:
 
 
 def apply_entry_overrides(series_list: list[BibSeries]) -> None:
-    """Mark the matched entries Barrier leaves undated (``NO_DATE_GIVEN``)."""
+    """Mark the entries Barrier leaves undated, and add the role corrections.
+
+    ``NO_DATE_GIVEN`` sets ``date_unavailable``; ``ROLE_CORRECTIONS`` sets
+    ``corrected_qualifier`` and ``correction_note`` beside Barrier's ``qualifier``.
+    """
     by_title = {
         title: e
         for s in series_list
@@ -1495,6 +1520,14 @@ def apply_entry_overrides(series_list: list[BibSeries]) -> None:
             msg = f"NO_DATE_GIVEN: {title.name} is not an undated matched entry"
             raise ValueError(msg)
         entry.date_unavailable = True
+    for title, (qualifier, note) in ROLE_CORRECTIONS.items():
+        entry = by_title.get(title)
+        corrected = None if qualifier is None else Qualifier[qualifier.name]
+        if entry is None or corrected == entry.qualifier:
+            msg = f"ROLE_CORRECTIONS: {title.name} has no entry, or Barrier already agrees"
+            raise ValueError(msg)
+        entry.corrected_qualifier = corrected
+        entry.correction_note = note
 
 
 # --------------------------------------------------------------------------- #

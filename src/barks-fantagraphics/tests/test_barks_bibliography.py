@@ -15,6 +15,7 @@ from barks_fantagraphics.barks_bibliography import (
     BibIssue,
     BibSeries,
     Disposition,
+    Qualifier,
 )
 from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, BARKS_COVERS, get_cover_title
 from barks_fantagraphics.barks_titles import Titles
@@ -258,3 +259,34 @@ def test_not_listed_entries_have_no_date() -> None:
 def test_entries_barrier_leaves_undated_say_so() -> None:
     entry = TITLE_TO_BIB_ENTRY[Titles.TREEING_OFF]
     assert (entry.raw_date, entry.date_unavailable) == ("", True)
+
+
+def test_a_role_correction_sits_beside_barriers_mark() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.DAY_THE_FARM_STOOD_STILL_THE]
+    assert entry.qualifier is None  # as Barrier printed it
+    assert entry.corrected_qualifier is Qualifier.ART_ONLY
+    assert entry.effective_qualifier is Qualifier.ART_ONLY
+    assert entry.correction_note
+
+
+def test_with_no_correction_the_role_is_barriers_mark() -> None:
+    entry = TITLE_TO_BIB_ENTRY[Titles.TRUANT_OFFICER_DONALD]
+    assert entry.correction_note is None
+    assert entry.effective_qualifier is entry.qualifier
+
+
+def test_every_correction_changes_barriers_mark_and_cites_evidence() -> None:
+    corrected = {t: e for t, e in TITLE_TO_BIB_ENTRY.items() if e.correction_note is not None}
+    assert set(corrected) == {
+        Titles.DAY_THE_FARM_STOOD_STILL_THE,
+        Titles.PHANTOM_JOKER_THE,
+        Titles.TOO_MANY_PETS,
+        Titles.DELIVERY_DILEMMA,
+        Titles.LEMONADE_FLING_THE,
+    }
+    assert all(e.corrected_qualifier is not e.qualifier for e in corrected.values())
+    assert not any(
+        e.corrected_qualifier is not None
+        for e in TITLE_TO_BIB_ENTRY.values()
+        if e.correction_note is None
+    )
