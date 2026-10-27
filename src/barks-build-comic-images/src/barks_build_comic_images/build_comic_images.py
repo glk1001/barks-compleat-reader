@@ -44,7 +44,7 @@ from barks_fantagraphics.pages import (
 )
 from barks_fantagraphics.panel_geometry import scale_height
 from comic_utils.decryption import DecryptionError
-from comic_utils.pil_image_utils import load_pil_image_from_bytes
+from comic_utils.pil_image_utils import contain_size, load_pil_image_from_bytes
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 from PIL.Image import Image as PilImage
@@ -282,6 +282,55 @@ SVG_ADAPTIVE_PROFILE = BuildSourceProfile(
 )
 
 
+@dataclass(frozen=True)
+class BuildScale:
+    """The size a page is built at: the book's own, or a fraction of it.
+
+    A reader showing a page in a window a fraction of the book's size has no use
+    for the whole page, so it asks for one built at that fraction: each length of
+    the page's geometry is scaled by *factor* as the page is laid out, once, rather
+    than the whole page being built and then shrunk.
+    """
+
+    factor: float
+    width: int
+    height: int
+
+    def of(self, length: int) -> int:
+        """Return *length* at this scale."""
+        return round(length * self.factor)
+
+    @property
+    def is_full(self) -> bool:
+        """Whether this is the book's own size."""
+        return self.factor == 1.0
+
+
+FULL_SCALE = BuildScale(1.0, DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT)
+
+
+def get_build_scale(page_type: PageType, fit_within: tuple[int, int] | None) -> BuildScale:
+    """Return the scale to build a page of *page_type* at so that it fits *fit_within*.
+
+    A title page is lettered and laid out at the book's size, so it is built whole;
+    so is any page when no box is given or the box is at least the book's page.
+
+    Args:
+        page_type: The destination page's type.
+        fit_within: The width and height the page is to fit inside, or None.
+
+    Returns:
+        The scale to build at.
+
+    """
+    if fit_within is None or page_type == PageType.TITLE:
+        return FULL_SCALE
+    width, height = contain_size((DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), fit_within)
+    if width >= DEST_TARGET_WIDTH or height >= DEST_TARGET_HEIGHT:
+        return FULL_SCALE
+    return BuildScale(min(width / DEST_TARGET_WIDTH, height / DEST_TARGET_HEIGHT), width, height)
+
+
 class ComicBookImageBuilder:
     def __init__(
         self,
@@ -295,6 +344,8 @@ class ComicBookImageBuilder:
         self._page_image_source = page_image_source or RgbPageImageSource()
         self._get_inset_decrypted_bytes = get_inset_decrypted_bytes
         self._required_dim: RequiredDimensions = RequiredDimensions()
+        # The empty page at each reduced scale it has been asked for.
+        self._scaled_empty_pages: dict[tuple[int, int], PilImage] = {}
 
     def set_required_dim(self, required_dim: RequiredDimensions) -> None:
         self._required_dim = required_dim
@@ -315,14 +366,35 @@ class ComicBookImageBuilder:
         srce_page_image: PilImage,
         srce_page: CleanPage,
         dest_page: CleanPage,
+        *,
+        fit_within: tuple[int, int] | None = None,
     ) -> PilImage:
+        """Build the destination page from its source page image.
+
+        Args:
+            srce_page_image: The source page, decoded.
+            srce_page: The source page's geometry: its panels box in the image.
+            dest_page: The destination page's type and geometry, at the book's size.
+            fit_within: The width and height the page is to fit inside, when it is
+                for a window rather than the book. Every page but a title page is
+                then built at that scale (see :func:`get_build_scale`).
+
+        Returns:
+            The page, in RGB, at the book's size or the scale that fits the box.
+
+        """
         self._log_page_info(f"{srce_page.page_num}-Srce", srce_page_image, srce_page)
         self._log_page_info(f"{srce_page.page_num}-Dest", None, dest_page)
 
+        scale = get_build_scale(dest_page.page_type, fit_within)
         if dest_page.page_type in PAGES_WITHOUT_PANELS:
-            dest_page_image = self._get_no_panels_dest_image(srce_page_image, srce_page, dest_page)
+            dest_page_image = self._get_no_panels_dest_image(
+                srce_page_image, srce_page, dest_page, scale
+            )
         else:
-            dest_page_image = self._get_main_page_dest_image(srce_page_image, srce_page, dest_page)
+            dest_page_image = self._get_main_page_dest_image(
+                srce_page_image, srce_page, dest_page, scale
+            )
 
         rgb_dest_page_image = dest_page_image.convert("RGB")
 
@@ -335,35 +407,37 @@ class ComicBookImageBuilder:
         srce_page_image: PilImage,
         srce_page: CleanPage,
         dest_page: CleanPage,
+        scale: BuildScale,
     ) -> PilImage:
         if dest_page.page_type == PageType.FRONT:
-            return self._get_front_page_dest_image(srce_page_image, srce_page)
+            return self._get_front_page_dest_image(srce_page_image, srce_page, scale)
         if dest_page.page_type == PageType.COVER:
-            return self._get_cover_page_dest_image(srce_page_image, srce_page)
+            return self._get_cover_page_dest_image(srce_page_image, srce_page, scale)
         if dest_page.page_type in PAINTING_PAGES:
-            return self._get_painting_page_dest_image(srce_page_image, srce_page)
+            return self._get_painting_page_dest_image(srce_page_image, srce_page, scale)
         if dest_page.page_type == PageType.SPLASH:
-            return self._get_splash_page_dest_image(srce_page_image, srce_page)
+            return self._get_splash_page_dest_image(srce_page_image, srce_page, scale)
         if dest_page.page_type in ([*BACK_NO_PANELS_PAGES, PageType.FRONT_NO_PANELS]):
-            return self._get_no_panels_page_dest_image(srce_page_image, srce_page, dest_page)
+            return self._get_no_panels_page_dest_image(srce_page_image, srce_page, dest_page, scale)
         if dest_page.page_type == PageType.BLANK_PAGE:
-            return self._get_blank_page_dest_image(srce_page_image)
+            return self._get_blank_page_dest_image(srce_page_image, scale)
         if dest_page.page_type == PageType.TITLE:
+            assert scale.is_full
             return self._get_dest_title_page_image(srce_page_image)
         raise AssertionError
 
     def _get_front_page_dest_image(
-        self, srce_page_image: PilImage, srce_page: CleanPage
+        self, srce_page_image: PilImage, srce_page: CleanPage, scale: BuildScale
     ) -> PilImage:
-        return self._get_black_bars_page_dest_image(srce_page_image, srce_page)
+        return self._get_black_bars_page_dest_image(srce_page_image, srce_page, scale)
 
     def _get_cover_page_dest_image(
-        self, srce_page_image: PilImage, srce_page: CleanPage
+        self, srce_page_image: PilImage, srce_page: CleanPage, scale: BuildScale
     ) -> PilImage:
-        return self._get_black_bars_page_dest_image(srce_page_image, srce_page)
+        return self._get_black_bars_page_dest_image(srce_page_image, srce_page, scale)
 
     def _get_painting_page_dest_image(
-        self, painting_image: PilImage, srce_page: CleanPage
+        self, painting_image: PilImage, srce_page: CleanPage, scale: BuildScale
     ) -> PilImage:
         assert srce_page.page_type in PAINTING_PAGES
 
@@ -371,14 +445,18 @@ class ComicBookImageBuilder:
             PageType.PAINTING_NO_BORDER,
             PageType.BACK_PAINTING_NO_BORDER,
         ]:
-            return self._get_black_bars_page_dest_image(painting_image, srce_page)
+            return self._get_black_bars_page_dest_image(painting_image, srce_page, scale)
 
         assert srce_page.page_type in [PageType.PAINTING, PageType.BACK_PAINTING]
         self._draw_border_around_image(painting_image)
 
-        return self._get_centred_page_dest_image(painting_image, srce_page, BasePageType.EMPTY_PAGE)
+        return self._get_centred_page_dest_image(
+            painting_image, srce_page, BasePageType.EMPTY_PAGE, scale
+        )
 
-    def _get_splash_page_dest_image(self, splash_image: PilImage, srce_page: CleanPage) -> PilImage:
+    def _get_splash_page_dest_image(
+        self, splash_image: PilImage, srce_page: CleanPage, scale: BuildScale
+    ) -> PilImage:
         assert srce_page.page_type == PageType.SPLASH
 
         splash_width = splash_image.width
@@ -396,7 +474,9 @@ class ComicBookImageBuilder:
         splash_image = self._empty_page_image.resize(size=(splash_width, splash_height))
         splash_image.paste(smaller_splash_image, (SPLASH_MARGIN, SPLASH_MARGIN))
 
-        return self._get_centred_page_dest_image(splash_image, srce_page, BasePageType.EMPTY_PAGE)
+        return self._get_centred_page_dest_image(
+            splash_image, srce_page, BasePageType.EMPTY_PAGE, scale
+        )
 
     @staticmethod
     def _draw_border_around_image(image: PilImage) -> None:
@@ -419,14 +499,16 @@ class ComicBookImageBuilder:
         no_panels_image: PilImage,
         srce_page: CleanPage,
         dest_page: CleanPage,
+        scale: BuildScale,
     ) -> PilImage:
         dest_page_image = self._get_centred_page_dest_image(
             no_panels_image,
             srce_page,
             BasePageType.EMPTY_PAGE,
+            scale,
         )
 
-        self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR)
+        self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR, scale)
 
         return dest_page_image
 
@@ -434,18 +516,32 @@ class ComicBookImageBuilder:
         self,
         srce_page_image: PilImage,
         srce_page: CleanPage,
+        scale: BuildScale,
     ) -> PilImage:
         return self._get_centred_page_dest_image(
             srce_page_image,
             srce_page,
             BasePageType.BLACK_PAGE,
+            scale,
         )
+
+    def _get_empty_page_image(self, scale: BuildScale) -> PilImage:
+        """Return the empty page at *scale*, shrunk once and kept for the next page."""
+        if scale.is_full:
+            return self._empty_page_image
+        size = (scale.width, scale.height)
+        if size not in self._scaled_empty_pages:
+            self._scaled_empty_pages[size] = self._empty_page_image.resize(
+                size, resample=Image.Resampling.LANCZOS
+            )
+        return self._scaled_empty_pages[size]
 
     def _get_centred_page_dest_image(
         self,
         srce_page_image: PilImage,
         srce_page: CleanPage,
         base_page_type: BasePageType,
+        scale: BuildScale,
     ) -> PilImage:
         small_float = 0.01
 
@@ -458,35 +554,39 @@ class ComicBookImageBuilder:
             )
 
         required_height = scale_height(
-            DEST_TARGET_WIDTH,
+            scale.width,
             srce_page_image.width,
             srce_page_image.height,
         )
+        # At a reduced scale the rounding of a page that fills the book's page can
+        # leave it a pixel short or over: that is the whole page, not a black bar.
+        if not scale.is_full and abs(required_height - scale.height) <= 1:
+            required_height = scale.height
 
         no_margins_image = srce_page_image.resize(
-            size=(DEST_TARGET_WIDTH, required_height),
-            resample=Image.Resampling.BICUBIC,
+            size=(scale.width, required_height),
+            resample=Image.Resampling.BICUBIC if scale.is_full else Image.Resampling.LANCZOS,
         )
         no_margins_aspect_ratio = float(no_margins_image.height) / float(no_margins_image.width)
         assert abs(srce_aspect_ratio - no_margins_aspect_ratio) <= small_float
 
-        if required_height == DEST_TARGET_HEIGHT:
+        if required_height == scale.height:
             return no_margins_image
 
-        cover_top = round(0.5 * (DEST_TARGET_HEIGHT - required_height))
+        cover_top = round(0.5 * (scale.height - required_height))
         base_page_image = (
-            self._empty_page_image.copy()
+            self._get_empty_page_image(scale).copy()
             if base_page_type == BasePageType.EMPTY_PAGE
-            else Image.new("RGB", (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), (0, 0, 0))
+            else Image.new("RGB", (scale.width, scale.height), (0, 0, 0))
         )
         base_page_image.paste(no_margins_image, (0, cover_top))
 
         return base_page_image
 
     @staticmethod
-    def _get_blank_page_dest_image(srce_page_image: PilImage) -> PilImage:
+    def _get_blank_page_dest_image(srce_page_image: PilImage, scale: BuildScale) -> PilImage:
         return srce_page_image.resize(
-            size=(DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT),
+            size=(scale.width, scale.height),
             resample=Image.Resampling.BICUBIC,
         )
 
@@ -495,53 +595,57 @@ class ComicBookImageBuilder:
         srce_page_image: PilImage,
         srce_page: CleanPage,
         dest_page: CleanPage,
+        scale: BuildScale,
     ) -> PilImage:
         panels_image = srce_page_image.crop(srce_page.panels_bbox.get_box())
         panels_rgb, paste_mask = self._page_image_source.to_renderable(panels_image)
 
         if dest_page.page_type not in PAGES_WITHOUT_PANELS:
             panels_rgb, paste_mask = self._get_resized_srce_images(
-                dest_page, panels_rgb, paste_mask
+                dest_page, panels_rgb, paste_mask, scale
             )
 
-        dest_page_image = self._empty_page_image.copy()
-        dest_panels_pos = (dest_page.panels_bbox.x_min, dest_page.panels_bbox.y_min)
+        dest_page_image = self._get_empty_page_image(scale).copy()
+        dest_panels_pos = (
+            scale.of(dest_page.panels_bbox.x_min),
+            scale.of(dest_page.panels_bbox.y_min),
+        )
         dest_page_image.paste(panels_rgb, dest_panels_pos, mask=paste_mask)
 
-        if dest_page_image.width != DEST_TARGET_WIDTH:
+        if dest_page_image.width != scale.width:
             msg = (
                 f'Width mismatch for page "{srce_page.page_filename}":'
-                f"{dest_page_image.width} != {DEST_TARGET_WIDTH}"
+                f"{dest_page_image.width} != {scale.width}"
             )
             raise RuntimeError(msg)
-        if dest_page_image.height != DEST_TARGET_HEIGHT:
+        if dest_page_image.height != scale.height:
             msg = (
                 f'Height mismatch for page "{srce_page.page_filename}":'
-                f"{dest_page_image.height} != {DEST_TARGET_HEIGHT}"
+                f"{dest_page_image.height} != {scale.height}"
             )
             raise RuntimeError(msg)
 
-        self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR)
+        self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR, scale)
 
         return dest_page_image
 
     @staticmethod
     def _get_resized_srce_images(
-        dest_page: CleanPage, panels_rgb: PilImage, paste_mask: PilImage | None
+        dest_page: CleanPage,
+        panels_rgb: PilImage,
+        paste_mask: PilImage | None,
+        scale: BuildScale = FULL_SCALE,
     ) -> tuple[PilImage, PilImage | None]:
         target_size = (
-            dest_page.panels_bbox.get_width(),
-            dest_page.panels_bbox.get_height(),
+            scale.of(dest_page.panels_bbox.get_width()),
+            scale.of(dest_page.panels_bbox.get_height()),
         )
-        panels_rgb = panels_rgb.resize(
-            size=target_size,
-            resample=Image.Resampling.BICUBIC,
-        )
+        # At the book's size the panels are enlarged a little, or not at all; at a
+        # reduced scale they are shrunk, which LANCZOS does better.
+        resample = Image.Resampling.BICUBIC if scale.is_full else Image.Resampling.LANCZOS
+        panels_rgb = panels_rgb.resize(size=target_size, resample=resample)
         if paste_mask is not None:
-            paste_mask = paste_mask.resize(
-                size=target_size,
-                resample=Image.Resampling.BICUBIC,
-            )
+            paste_mask = paste_mask.resize(size=target_size, resample=resample)
         return panels_rgb, paste_mask
 
     def _write_page_number(
@@ -549,21 +653,23 @@ class ComicBookImageBuilder:
         dest_page_image: PilImage,
         dest_page: CleanPage,
         color: tuple[int, int, int],
+        scale: BuildScale,
     ) -> None:
         draw = ImageDraw.Draw(dest_page_image)
 
         dest_page_centre = int(dest_page_image.width / 2)
-        page_num_x_start = dest_page_centre - PAGE_NUM_X_OFFSET_FROM_CENTRE
-        page_num_x_end = dest_page_centre + PAGE_NUM_X_OFFSET_FROM_CENTRE
+        page_num_x_start = dest_page_centre - scale.of(PAGE_NUM_X_OFFSET_FROM_CENTRE)
+        page_num_x_end = dest_page_centre + scale.of(PAGE_NUM_X_OFFSET_FROM_CENTRE)
+        page_num_height = scale.of(PAGE_NUM_HEIGHT)
         page_num_y_start = (
-            dest_page_image.height - self._required_dim.page_num_y_bottom
-        ) - PAGE_NUM_HEIGHT
-        page_num_y_end = page_num_y_start + PAGE_NUM_HEIGHT
+            dest_page_image.height - scale.of(self._required_dim.page_num_y_bottom)
+        ) - page_num_height
+        page_num_y_end = page_num_y_start + page_num_height
 
         # Get the color of a blank part of the page
         page_blank_color = dest_page_image.getpixel(
             (
-                page_num_x_start + PAGE_NUM_X_BLANK_PIXEL_OFFSET,
+                page_num_x_start + scale.of(PAGE_NUM_X_BLANK_PIXEL_OFFSET),
                 page_num_y_end,
             ),
         )
@@ -581,7 +687,7 @@ class ComicBookImageBuilder:
         )
         draw.rectangle(shape, fill=page_blank_color)
 
-        font = ImageFont.truetype(PAGE_NUM_FONT_FILE, PAGE_NUM_FONT_SIZE)
+        font = ImageFont.truetype(PAGE_NUM_FONT_FILE, max(1, scale.of(PAGE_NUM_FONT_SIZE)))
         text = get_page_num_str(dest_page)
         self._draw_centered_text(
             text,

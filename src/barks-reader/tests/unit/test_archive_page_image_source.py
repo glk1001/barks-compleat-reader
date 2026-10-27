@@ -503,9 +503,13 @@ class TestReadImageDelegation:
         finally:
             source.close()
 
-        # The raw page is transformed before resizing, using *this* page's geometry.
+        # The raw page is transformed before resizing, using *this* page's geometry,
+        # and built at the scale that fits the window.
         builder.get_dest_page_image.assert_called_once_with(
-            mock_load.return_value, page_info.srce_page, page_info.dest_page
+            mock_load.return_value,
+            page_info.srce_page,
+            page_info.dest_page,
+            fit_within=(100, 100),
         )
         mock_resize.assert_called_once_with(builder.get_dest_page_image.return_value, 100, 100)
 

@@ -111,7 +111,10 @@ class ArchivePageImageSource:
         if self._fanta_volume_archive:
             assert self._comic_book_image_builder
             pil_image = self._comic_book_image_builder.get_dest_page_image(
-                pil_image, page_info.srce_page, page_info.dest_page
+                pil_image,
+                page_info.srce_page,
+                page_info.dest_page,
+                fit_within=(self._max_width, self._max_height),
             )
 
         resized = resize_contain(pil_image, self._max_width, self._max_height)
@@ -130,7 +133,8 @@ class ArchivePageImageSource:
     def _decode_box(self) -> tuple[int, int] | None:
         # A prebuilt page goes straight from the decode to the resize, so a JPEG can
         # be decoded at a scale no larger than the window needs. A volume page is first
-        # laid out by the builder, whose geometry is the scan's own: it is decoded whole.
+        # laid out by the builder, whose source geometry is the scan's own: it is
+        # decoded whole, and the builder builds it at the window's scale instead.
         if self._fanta_volume_archive is not None:
             return None
         return self._max_width, self._max_height

@@ -129,7 +129,13 @@ def convert_mode(pil_image: Image, mode: str) -> Image:
 
 
 def resize_contain(pil_image: Image, max_width: int, max_height: int) -> Image:
-    """Shrink *pil_image* to fit within ``(max_width, max_height)`` using LANCZOS."""
+    """Shrink *pil_image* to fit within ``(max_width, max_height)`` using LANCZOS.
+
+    An image already at the size that fits, as a page built at window scale is, is
+    returned as it is: ``ImageOps.contain`` would resample it to the same size.
+    """
+    if pil_image.size == contain_size(pil_image.size, (max_width, max_height)):
+        return pil_image
     return ImageOps.contain(
         pil_image,
         (max_width, max_height),

@@ -582,7 +582,9 @@ page via `ComicBookImageBuilder.get_dest_page_image` → `resize_contain` (LANCZ
 → the pixels as they are (`core/page_image.py`). A prebuilt page, which goes
 straight from the decode to the resize, is decoded at the largest of libjpeg's
 reduced scales that still covers the window (`fit_within`); a volume page is
-decoded whole, since the builder's geometry is the scan's own. There is no encode: the
+decoded whole, since the builder's source geometry is the scan's own, and the
+builder lays it out at the window's scale instead (`get_build_scale`): every
+page but the lettered title page, which is built at the book's size and shrunk. There is no encode: the
 level-0 PNG the loader used to make was the same bytes with headers, and a
 decode on the UI thread to undo it.
 
