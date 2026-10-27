@@ -10,7 +10,7 @@ import weakref
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import barks_reader.ui.comic_book_reader
@@ -817,7 +817,7 @@ class TestComicBookReaderScreen:
 
     def test_goto_page_off_screen_stays_in_menu_mode(self, screen: ComicBookReaderScreen) -> None:
         """Enter on Goto Page mid-fade opens nothing; the menu keeps its focus."""
-        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        cast("MagicMock", screen.comic_book_reader).open_goto_page_for_keyboard.return_value = None
         with (
             patch.object(screen, "_enter_dropdown_nav") as enter_dropdown_nav,
             patch.object(screen, "_update_menu_focus") as update_menu_focus,
@@ -952,7 +952,7 @@ class TestComicBookReaderScreen:
     ) -> None:
         """A press on the bar button is no keyboard path, yet the arrows must work in it."""
         screen._menu_mode = False
-        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = 3
+        cast("MagicMock", screen.comic_book_reader).open_goto_page_for_keyboard.return_value = 3
         with (
             patch.object(
                 ComicBookReaderScreen,
@@ -979,7 +979,7 @@ class TestComicBookReaderScreen:
         self, screen: ComicBookReaderScreen
     ) -> None:
         screen._menu_mode = False
-        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        cast("MagicMock", screen.comic_book_reader).open_goto_page_for_keyboard.return_value = None
         with (
             patch.object(
                 ComicBookReaderScreen,
@@ -1004,7 +1004,7 @@ class TestComicBookReaderScreen:
         self, screen: ComicBookReaderScreen
     ) -> None:
         screen._menu_mode = True
-        screen.comic_book_reader.open_goto_page_for_keyboard.return_value = None
+        cast("MagicMock", screen.comic_book_reader).open_goto_page_for_keyboard.return_value = None
         with (
             patch.object(
                 ComicBookReaderScreen,

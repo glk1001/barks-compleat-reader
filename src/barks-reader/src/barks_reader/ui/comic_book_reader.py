@@ -260,7 +260,7 @@ class ComicBookReader(FloatLayout):
     @property
     def _page_map(self) -> OrderedDict[str, PageInfo]:
         page_map = self._page_manager.page_map
-        assert page_map is not None  # set by set_page_map before any page is shown
+        assert page_map is not None  # set by set_layout before any page is shown
         return page_map
 
     def get_last_read_page(self) -> str:
@@ -808,6 +808,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
+    # Declared so a caller's `screen.comic_book_reader.read_comic(...)` is type-checked:
+    # the Kivy base has no stubs, so an undeclared attribute reads as Unknown.
+    comic_book_reader: ComicBookReader
 
     def on_enter(self, *args: object) -> None:
         super().on_enter(*args)
@@ -1216,7 +1219,7 @@ def get_barks_comic_reader_screen(
     window_manager: WindowManager,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
-) -> ReaderScreen:
+) -> ComicBookReaderScreen:
     Builder.load_file(str(COMIC_BOOK_READER_KV_FILE))
 
     return ComicBookReaderScreen(

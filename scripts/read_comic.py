@@ -193,7 +193,10 @@ def _build_cli_app_class(
     to 0 and the action-bar title renders as dots.
     """
     from barks_reader.ui.action_bar import ACTION_BAR_KV_FILE
-    from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
+    from barks_reader.ui.comic_book_reader import (
+        ComicBookReaderScreen,
+        get_barks_comic_reader_screen,
+    )
     from barks_reader.ui.font_manager import FontManager
     from barks_reader.ui.platform_window_utils import WindowManager
     from barks_reader.ui.reader_screens import COMIC_BOOK_READER_SCREEN
@@ -205,6 +208,10 @@ def _build_cli_app_class(
     app_icon_path = str(reader_settings.sys_file_paths.get_barks_reader_app_window_icon_path())
 
     class BarksComicReaderCliApp(App):
+        # Declared on the class, where ty reads it despite the stub-less Kivy base, so
+        # the read_comic call below is checked against the reader's signature.
+        _screen: ComicBookReaderScreen | None
+
         def __init__(self, **kwargs: str) -> None:
             super().__init__(**kwargs)
             self.title = f"Barks Reader - {fanta_info.comic_book_info.get_title_str()}"
@@ -260,7 +267,7 @@ def _build_cli_app_class(
                 use_fantagraphics_overrides=True,
                 comic_book_image_builder=image_builder,
                 page_to_first_goto=begin_page,
-                page_map=layout.page_map,
+                layout=layout,
             )
 
         def _set_custom_title_bar(self) -> None:
