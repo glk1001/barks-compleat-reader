@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
@@ -31,6 +32,16 @@ if TYPE_CHECKING:
     from .user_error_types import UserErrorHandlerPort
 
 _CLOSE_READER_ON_ERROR_DELAY_SECS = 1
+
+
+@dataclass(frozen=True, slots=True)
+class _PendingTracking:
+    """What the trackers are to begin with, once the comic being opened has drawn."""
+
+    title_str: str
+    layout: ComicLayout
+    save_last_page: bool
+    history_title_str: str
 
 
 class ComicReaderManager:
@@ -79,6 +90,8 @@ class ComicReaderManager:
         self._fanta_info: FantaComicBookInfo | None = None
         # The close an unreadable-comic error deferred, until it fires or no longer applies.
         self._pending_error_close: CancelHandle | None = None
+        # The trackers' inputs for the comic now opening, until its first page draws.
+        self._pending_tracking: _PendingTracking | None = None
         # Whether the comic now in the reader opened, and so has trackers to end.
         self._tracking = False
 
@@ -184,6 +197,12 @@ class ComicReaderManager:
         title_str = self._fanta_info.comic_book_info.get_title_str()
         logger.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
 
+        # Only a comic that opened is tracked: a failed open has no page to save, and
+        # is not a read for the history. The reader says when page one has drawn; a
+        # load that fails before then, on the loader thread included, never says so.
+        self._pending_tracking = _PendingTracking(
+            title_str, self._layout, save_last_page, history_title_str or title_str
+        )
         try:
             self._comic_book_reader.read_comic(
                 self._fanta_info,
@@ -192,6 +211,7 @@ class ComicReaderManager:
                 page_to_first_goto,
                 self._layout,
                 tagged_pages=tagged_pages,
+                on_comic_opened=self._begin_tracking,
             )
         except MissingVolumeError as e:
             logger.error(e)
@@ -212,16 +232,22 @@ class ComicReaderManager:
             )
             return
 
-        # Only a comic that opened is tracked: a failed open has no page to save, and
-        # is not a read for the history.
-        self._last_read_page_tracker.begin(title_str, self._layout, save_enabled=save_last_page)
-        if save_last_page:
+    def _begin_tracking(self) -> None:
+        """Begin the trackers for the comic whose first page has just drawn."""
+        pending = self._pending_tracking
+        assert pending is not None
+        self._pending_tracking = None
+        self._last_read_page_tracker.begin(
+            pending.title_str, pending.layout, save_enabled=pending.save_last_page
+        )
+        if pending.save_last_page:
             # `save_last_page` is only False for articles, which aren't history-worthy.
-            self._reading_history_tracker.begin(history_title_str or title_str)
+            self._reading_history_tracker.begin(pending.history_title_str)
         self._tracking = True
 
     def _report_unreadable(self, error_type: ErrorTypes, error_info: ErrorInfo) -> None:
         """Show the user why the comic cannot be read, then close the reader after a delay."""
+        self._pending_tracking = None
         self._user_error_handler.handle_error(error_type, error_info)
         assert self._comic_book_reader_screen is not None
         reader_screen = self._comic_book_reader_screen
@@ -244,6 +270,7 @@ class ComicReaderManager:
         has nothing to persist.
         """
         self._cancel_pending_error_close()
+        self._pending_tracking = None
         if not self._tracking:
             return None
         self._tracking = False

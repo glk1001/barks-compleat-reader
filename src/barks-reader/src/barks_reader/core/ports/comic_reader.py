@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -42,10 +42,13 @@ class ComicBookReaderPort(Protocol):
         page_to_first_goto: str,
         layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
+        on_comic_opened: Callable[[], None] | None = None,
     ) -> None:
         """Load *fanta_info*'s comic, laid out as *layout*, and read from *page_to_first_goto*.
 
         *tagged_pages* are the pages a tag marks, when the comic was opened through it.
+        *on_comic_opened* is called once, when the comic's first page has drawn; a comic
+        that fails before that, on the loader thread included, never calls it.
         """
         ...
 

@@ -284,6 +284,48 @@ class TestComicBookReader:
         assert reader._reveal_ev is None
         reader._on_comic_is_ready_to_read.assert_not_called()
 
+    def test_the_first_page_drawn_says_the_comic_opened_once(self, reader: ComicBookReader) -> None:
+        """The opener hears of page one only, not of every page turn after it."""
+        self._stub_current_page(reader, 0)
+        on_comic_opened = MagicMock()
+        reader._on_comic_opened = on_comic_opened
+
+        reader._render_page(0, None)
+        reader._render_page(1, None)
+
+        on_comic_opened.assert_called_once_with()
+        assert reader._on_comic_opened is None
+
+    def test_a_timed_out_reveal_does_not_say_the_comic_opened(
+        self, reader: ComicBookReader
+    ) -> None:
+        """The reader shown on its loading page has opened nothing yet."""
+        on_comic_opened = MagicMock()
+        reader._on_comic_opened = on_comic_opened
+        with patch.object(
+            barks_reader.ui.comic_book_reader.Clock, "schedule_once"
+        ) as mock_schedule:
+            reader._arm_reveal()
+            on_timeout, _delay = mock_schedule.call_args[0]
+
+        on_timeout(0.0)
+
+        on_comic_opened.assert_not_called()
+        assert reader._on_comic_opened is on_comic_opened  # page one may still draw
+
+    def test_closing_before_the_first_page_drew_says_nothing_opened(
+        self, reader: ComicBookReader
+    ) -> None:
+        """A load error closes the reader before page one: the comic never opened."""
+        reader._closed = False
+        on_comic_opened = MagicMock()
+        reader._on_comic_opened = on_comic_opened
+
+        reader.close_comic_book_reader()
+
+        assert reader._on_comic_opened is None
+        on_comic_opened.assert_not_called()
+
     def test_show_page_renders_immediately_when_loaded(self, reader: ComicBookReader) -> None:
         self._stub_current_page(reader, 3)
         reader._all_loaded = True  # ready fast-path

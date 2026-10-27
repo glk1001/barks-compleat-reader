@@ -176,6 +176,9 @@ class ComicBookReader(FloatLayout):
         # "not yet revealed" flag in one: it is None both before a comic is opened and
         # once the reader screen has been shown. See _arm_reveal.
         self._reveal_ev: ClockEvent | None = None
+        # Told once, when page one of the comic just opened has drawn, then dropped: a
+        # comic closed before that (a load error) never opened. See read_comic.
+        self._on_comic_opened: Callable[[], None] | None = None
         self._goto_page_dropdown: ReaderDropDown | None = None
         self._goto_page_buttons: list[Button] = []
         self._tagged_pages: frozenset[str] = frozenset()
@@ -328,10 +331,12 @@ class ComicBookReader(FloatLayout):
         page_to_first_goto: str,
         layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
+        on_comic_opened: Callable[[], None] | None = None,
     ) -> None:
         page_map = layout.page_map
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
         self._tagged_pages = frozenset(tagged_pages)
+        self._on_comic_opened = on_comic_opened
 
         self._current_title_str = self.get_reader_comic_title(fanta_info)
 
@@ -401,8 +406,9 @@ class ComicBookReader(FloatLayout):
             return
 
         # A comic abandoned before page one drew (a load error) must not go on to
-        # reveal an empty reader when its timeout fires.
+        # reveal an empty reader when its timeout fires, and never opened.
         self._cancel_reveal()
+        self._on_comic_opened = None
         self._stop_pending_poll()
         self._comic_book_loader.stop_now()
         self._comic_book_loader.close_comic()
@@ -648,6 +654,9 @@ class ComicBookReader(FloatLayout):
 
         # Page one of a newly opened comic is what the reader screen was held back for.
         self._reveal_reader()
+        if self._on_comic_opened is not None:
+            on_comic_opened, self._on_comic_opened = self._on_comic_opened, None
+            on_comic_opened()
 
     def _hide_action_bar_if_fullscreen(self) -> None:
         if WindowManager.is_fullscreen_now():

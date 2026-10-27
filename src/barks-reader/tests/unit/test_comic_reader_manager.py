@@ -50,6 +50,11 @@ def _attach_reader_screen(manager: ComicReaderManager) -> tuple[MagicMock, Magic
     return mock_screen, mock_reader
 
 
+def _draw_page_one(mock_reader: MagicMock) -> None:
+    """Do what the reader does when the comic's first page has drawn."""
+    mock_reader.read_comic.call_args.kwargs["on_comic_opened"]()
+
+
 def _single_body_page_layout() -> ComicLayout:
     """Return a layout with a single body page "1"."""
     page_info_obj = PageInfo(
@@ -116,6 +121,7 @@ class TestComicReaderManager:
 
             mock_builder_cls.assert_called_once()
 
+            _draw_page_one(mock_reader)
             tracker_begin = mock_dependencies["last_read_page_tracker"].begin
             tracker_begin.assert_called_once()
             _, kwargs = tracker_begin.call_args
@@ -144,6 +150,7 @@ class TestComicReaderManager:
 
             mock_reader.read_comic.assert_called_once()
 
+            _draw_page_one(mock_reader)
             tracker_begin = mock_dependencies["last_read_page_tracker"].begin
             tracker_begin.assert_called_once()
             args, kwargs = tracker_begin.call_args
@@ -200,6 +207,7 @@ class TestComicReaderManager:
         assert "5" in sliced_page_map
 
         # The last-read-page tracker gets the same sliced layout (consistent indices).
+        _draw_page_one(mock_reader)
         tracker_args, _ = mock_dependencies["last_read_page_tracker"].begin.call_args
         assert list(tracker_args[1].page_map.keys()) == ["4", "5", "6", "7"]
 
@@ -226,7 +234,7 @@ class TestComicReaderManager:
     def test_read_barks_records_history_with_override_title(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        _attach_reader_screen(manager)
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
 
         mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
         mock_fanta_info.comic_book_info = MagicMock()
@@ -243,6 +251,7 @@ class TestComicReaderManager:
                 use_overrides_active=True,
                 history_title_str="Coffee for Two",
             )
+        _draw_page_one(mock_reader)
 
         mock_dependencies["reading_history_tracker"].begin.assert_called_once_with("Coffee for Two")
 
@@ -509,7 +518,9 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
     Regression: both trackers were begun before the read was attempted, so a
     missing volume still wrote a history event, and the deferred close then ended
     it as a one-second read of a title never shown, with a "no valid last read page"
-    warning for good measure.
+    warning for good measure. Then they were begun as soon as the reader had taken
+    the comic, which still recorded a comic that failed on the loader thread (a
+    corrupt archive, say): the reader closes it before its first page ever draws.
     """
 
     def test_a_missing_volume_begins_no_tracker(
@@ -532,7 +543,7 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
         mock_dependencies["last_read_page_tracker"].end.assert_not_called()
         mock_dependencies["reading_history_tracker"].end.assert_not_called()
 
-    def test_the_trackers_begin_after_the_reader_has_taken_the_comic(
+    def test_the_trackers_begin_when_the_first_page_has_drawn(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         _mock_screen, mock_reader = _attach_reader_screen(manager)
@@ -551,14 +562,46 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
 
         with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+        assert order == ["read"]
+
+        _draw_page_one(mock_reader)
 
         assert order == ["read", "last-read", "history"]
+
+    def test_a_comic_closed_before_its_first_page_drew_is_not_a_read(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """A load that fails on the loader thread closes the reader with no page drawn."""
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+        mock_reader.read_comic.assert_called_once()
+
+        assert manager.comic_closed() is None
+
+        mock_dependencies["last_read_page_tracker"].begin.assert_not_called()
+        mock_dependencies["reading_history_tracker"].begin.assert_not_called()
+        mock_dependencies["last_read_page_tracker"].end.assert_not_called()
+        mock_dependencies["reading_history_tracker"].end.assert_not_called()
+
+    def test_a_failed_open_forgets_the_pending_comic(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """Nothing of the title that failed to open is left for the next comic to track."""
+        manager, _mock_screen = _read_a_missing_volume(mock_dependencies, FakeScheduler())
+
+        assert manager._pending_tracking is None
 
     def test_a_comic_that_opened_is_ended_once_only(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         """A second close (the reader's own, then the screen's) persists nothing twice."""
-        _mock_screen, _mock_reader = _attach_reader_screen(manager)
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
         mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
         fanta_info = MagicMock(spec=FantaComicBookInfo)
         fanta_info.comic_book_info = MagicMock()
@@ -568,6 +611,7 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
 
         with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+        _draw_page_one(mock_reader)
 
         assert manager.comic_closed() is sentinel
         assert manager.comic_closed() is None
