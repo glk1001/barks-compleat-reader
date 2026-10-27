@@ -238,7 +238,7 @@ class TestSliceComicLayout:
         page_at_index_0 = sliced.page_by_index(0)
         assert page_at_index_0 is not None
         assert page_at_index_0.display_page_num == "4"
-        # Contiguous 0..n-1 (satisfies the reader's set_page_map assertion).
+        # Contiguous 0..n-1 (satisfies the page manager's set_layout assertion).
         assert [p.page_index for p in sliced.page_map.values()] == [0, 1, 2, 3]
 
 

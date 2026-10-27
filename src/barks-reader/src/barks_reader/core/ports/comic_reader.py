@@ -12,13 +12,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections import OrderedDict
     from collections.abc import Sequence
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
-    from barks_reader.core.comic_book_page_info import PageInfo
+    from barks_reader.core.comic_book_page_info import ComicLayout
     from barks_reader.core.display_unit import DisplayUnit
 
 
@@ -41,10 +40,10 @@ class ComicBookReaderPort(Protocol):
         use_fantagraphics_overrides: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
-        page_map: OrderedDict[str, PageInfo],
+        layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
     ) -> None:
-        """Load *fanta_info*'s comic and start reading at *page_to_first_goto*.
+        """Load *fanta_info*'s comic, laid out as *layout*, and read from *page_to_first_goto*.
 
         *tagged_pages* are the pages a tag marks, when the comic was opened through it.
         """

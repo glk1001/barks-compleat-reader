@@ -188,7 +188,7 @@ class ComicReaderManager:
                 use_overrides_active,
                 comic_book_image_builder,
                 page_to_first_goto,
-                self._layout.page_map,
+                self._layout,
                 tagged_pages=tagged_pages,
             )
         except MissingVolumeError as e:

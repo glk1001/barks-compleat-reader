@@ -7,27 +7,28 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from . import log_markers
-from .display_unit import DisplayUnit, build_display_units
 from .reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
     from collections import OrderedDict
     from collections.abc import Callable
 
-    from .comic_book_page_info import PageInfo
+    from .comic_book_page_info import ComicLayout, PageInfo
+    from .display_unit import DisplayUnit
 
 
 class ComicPageManager:
     """The state and navigation logic of a comic book's pages.
 
     Which page is current, the first and last, the one to open at, and the page
-    pairs of double-page mode. `on_page_change` is called whenever the current page
-    index changes (not when it is set to what it already is), as a Kivy property
-    would tell its bound callback.
+    pairs of double-page mode. The pages, their indexes and their pairs are the
+    comic's :class:`ComicLayout`'s; this adds only the position in them.
+    `on_page_change` is called whenever the current page index changes (not when it
+    is set to what it already is), as a Kivy property would tell its bound callback.
     """
 
     def __init__(self, on_page_change: Callable[[], None]) -> None:
-        """Start with no comic: no page map, and no page current.
+        """Start with no comic: no layout, and no page current.
 
         Args:
             on_page_change: Called after every change of the current page index.
@@ -36,16 +37,25 @@ class ComicPageManager:
         self._on_page_change = on_page_change
         self._current_page_index_value = -1
 
-        self.page_map: OrderedDict[str, PageInfo] | None = None
-        self._index_to_page_map: dict[int, str] = {}
+        self._layout: ComicLayout | None = None
         self._first_page_to_read_index = -1
 
         self._first_page_index = -1
         self._last_page_index = -1
 
-        self._display_units: list[DisplayUnit] = []
-        self._page_index_to_unit_idx: dict[int, int] = {}
         self.double_page_mode: bool = False
+
+    @property
+    def page_map(self) -> OrderedDict[str, PageInfo] | None:
+        """The comic's pages by name, in reading order, or None with no comic set."""
+        return None if self._layout is None else self._layout.page_map
+
+    @property
+    def _display_units(self) -> list[DisplayUnit]:
+        return [] if self._layout is None else self._layout.display_units
+
+    def _unit_idx_for(self, page_index: int) -> int | None:
+        return None if self._layout is None else self._layout.unit_idx_for(page_index)
 
     def get_current_page_index(self) -> int:
         """Return the current page's index, or -1 with no page current."""
@@ -57,14 +67,18 @@ class ComicPageManager:
 
     def get_current_page_str(self) -> str:
         """Return the current page's name ("5", "3b"), or "" with no page current."""
-        return self._index_to_page_map.get(self._current_page_index, "")
+        return self.get_page_str(self._current_page_index)
+
+    def get_page_str(self, page_index: int) -> str:
+        """Return the name of the page at `page_index`, or "" for an index off the comic."""
+        if self._layout is None:
+            return ""
+        page = self._layout.page_by_index(page_index)
+        return "" if page is None else page.display_page_num
 
     def get_current_display_unit(self) -> DisplayUnit | None:
         """Return the display unit that contains the current page index."""
-        if not self._display_units:
-            return None
-
-        unit_idx = self._page_index_to_unit_idx.get(self._current_page_index)
+        unit_idx = self._unit_idx_for(self._current_page_index)
         if unit_idx is None:
             return None
 
@@ -77,11 +91,11 @@ class ComicPageManager:
             page_str: The page's name in the page map.
 
         """
-        assert self.page_map is not None
-        page_index = self.page_map[page_str].page_index
+        assert self._layout is not None
+        page_index = self._layout.page_by_display(page_str).page_index
 
-        if self.double_page_mode and self._display_units:
-            unit_idx = self._page_index_to_unit_idx.get(page_index)
+        if self.double_page_mode:
+            unit_idx = self._unit_idx_for(page_index)
             if unit_idx is not None:
                 self._current_page_index = self._display_units[unit_idx].left_page_index
                 return
@@ -90,8 +104,8 @@ class ComicPageManager:
 
     def set_to_first_page_to_read(self) -> None:
         """Make the page the comic opens at current (its pair's left page in double-page mode)."""
-        if self.double_page_mode and self._display_units:
-            unit_idx = self._page_index_to_unit_idx.get(self._first_page_to_read_index)
+        if self.double_page_mode:
+            unit_idx = self._unit_idx_for(self._first_page_to_read_index)
             if unit_idx is not None:
                 self._current_page_index = self._display_units[unit_idx].left_page_index
                 return
@@ -127,8 +141,8 @@ class ComicPageManager:
     def next_page(self) -> None:
         """Make the next page (or page pair) current, logging when there is none."""
         if self.double_page_mode and self._display_units:
-            unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
-            if unit_idx < 0 or unit_idx >= len(self._display_units) - 1:
+            unit_idx = self._unit_idx_for(self._current_page_index)
+            if unit_idx is None or unit_idx >= len(self._display_units) - 1:
                 logger.debug(
                     log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index)
                 )
@@ -145,8 +159,8 @@ class ComicPageManager:
     def prev_page(self) -> None:
         """Make the previous page (or page pair) current, logging when there is none."""
         if self.double_page_mode and self._display_units:
-            unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
-            if unit_idx <= 0:
+            unit_idx = self._unit_idx_for(self._current_page_index)
+            if unit_idx is None or unit_idx <= 0:
                 logger.debug(
                     log_markers.ALREADY_ON_FIRST_PAGE.format(index=self._current_page_index)
                 )
@@ -160,56 +174,52 @@ class ComicPageManager:
             logger.debug(f"Prev page: requested index = {self._current_page_index - 1}")
             self._current_page_index -= 1
 
-    def set_page_map(self, page_map: OrderedDict[str, PageInfo], page_to_first_goto: str) -> None:
-        """Take a comic's pages, and the page to open it at.
+    def set_layout(self, layout: ComicLayout, page_to_first_goto: str) -> None:
+        """Take a comic's layout, and the page to open it at.
 
         Args:
-            page_map: The comic's pages by name, in reading order, indexed from 0.
+            layout: The comic's pages, indexed from 0 in reading order, with their
+                display units: the one source of both, for this and the reader.
             page_to_first_goto: The name of the page to open at, or the comic's beginning.
 
         """
-        self.page_map = page_map
-        assert self.page_map is not None
-        self._index_to_page_map: dict[int, str] = {
-            page_info.page_index: page_str for page_str, page_info in page_map.items()
-        }
+        self._layout = layout
+        page_map = layout.page_map
 
         self._first_page_to_read_index = (
             0
             if page_to_first_goto == COMIC_BEGIN_PAGE
-            else self.page_map[page_to_first_goto].page_index
+            else layout.page_by_display(page_to_first_goto).page_index
         )
 
-        self._first_page_index = next(iter(self.page_map.values())).page_index
-        self._last_page_index = next(reversed(self.page_map.values())).page_index
+        self._first_page_index = next(iter(page_map.values())).page_index
+        self._last_page_index = next(reversed(page_map.values())).page_index
 
         assert self._first_page_index == 0
-        assert (self._last_page_index + 1) == len(self.page_map)
-
-        self._display_units, self._page_index_to_unit_idx = build_display_units(page_map)
+        assert (self._last_page_index + 1) == len(page_map)
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience."""
-        assert self.page_map is not None
+        assert self._layout is not None
         if self._first_page_to_read_index == 0:
-            return list(self.page_map.keys())
+            return list(self._layout.page_map.keys())
 
         # Start with the current page
-        image_load_order = [self._index_to_page_map[self._first_page_to_read_index]]
+        image_load_order = [self.get_page_str(self._first_page_to_read_index)]
 
         # Then the previous page (for immediate back navigation): there is one, as a
         # start at index 0 returned above.
-        image_load_order.append(self._index_to_page_map[self._first_page_to_read_index - 1])
+        image_load_order.append(self.get_page_str(self._first_page_to_read_index - 1))
 
         # Then all subsequent pages.
         image_load_order.extend(
-            self._index_to_page_map[page_index]
+            self.get_page_str(page_index)
             for page_index in range(self._first_page_to_read_index + 1, self._last_page_index + 1)
         )
 
         # Finally, the rest of the previous pages in reverse order.
         image_load_order.extend(
-            self._index_to_page_map[page_index]
+            self.get_page_str(page_index)
             for page_index in range(self._first_page_to_read_index - 2, -1, -1)
         )
 

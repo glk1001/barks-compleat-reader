@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.comics_consts import PageType
-from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 
@@ -21,7 +21,7 @@ class TestComicPageManager:
         pm = ComicPageManager(callback)
         return pm, callback
 
-    def test_set_page_map(self, page_manager: tuple[ComicPageManager, MagicMock]) -> None:
+    def test_set_layout(self, page_manager: tuple[ComicPageManager, MagicMock]) -> None:
         pm, _ = page_manager
 
         # Create a dummy page map
@@ -48,7 +48,7 @@ class TestComicPageManager:
             dest_page=MagicMock(),
         )
 
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
 
         assert pm._first_page_index == 0
         assert pm._last_page_index == 2
@@ -72,7 +72,7 @@ class TestComicPageManager:
                 dest_page=MagicMock(),
             )
 
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
         pm.set_to_first_page_to_read()  # index 0
 
         pm.next_page()
@@ -107,7 +107,7 @@ class TestComicPageManager:
                 srce_page=MagicMock(),
                 dest_page=MagicMock(),
             )
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
         pm.double_page_mode = True
         pm.set_to_first_page_to_read()
 
@@ -134,12 +134,12 @@ class TestComicPageManager:
             )
 
         # Case 1: Start at beginning
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
         order = pm.get_image_load_order()
         assert order == ["0", "1", "2", "3", "4"]
 
         # Case 2: Start in middle (index 2)
-        pm.set_page_map(page_map, "2")
+        pm.set_layout(_layout(page_map), "2")
         order = pm.get_image_load_order()
         # Expected: Current(2), Prev(1), Next...(3,4), Prev...(0)
         # 2, 1, 3, 4, 0
@@ -165,7 +165,7 @@ class TestComicPageManager:
             )
             for i in range(4)
         )
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
         assert pm.get_current_page_index() == -1  # no page chosen yet
         assert pm.get_current_display_unit() is None
 
@@ -188,7 +188,7 @@ class TestComicPageManager:
                 srce_page=MagicMock(),
                 dest_page=MagicMock(),
             )
-        pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(page_map), COMIC_BEGIN_PAGE)
         on_change.assert_not_called()
 
         pm.set_to_first_page_to_read()
@@ -216,6 +216,11 @@ def _page_map(*solo: bool) -> OrderedDict[str, PageInfo]:
         )
         for i, is_solo in enumerate(solo)
     )
+
+
+def _layout(page_map: OrderedDict[str, PageInfo]) -> ComicLayout:
+    """Return `page_map` laid out, its last page the last body page."""
+    return ComicLayout(page_map, last_body_page=next(reversed(page_map)))
 
 
 # Units (0), (1, 2), (3), (4), (5, 6): a solo page stands alone, and so does the page
@@ -255,7 +260,7 @@ class TestBeforeAComic:
     ) -> None:
         """In double-page mode a page no unit holds, as -1 is, has no neighbour."""
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
         pm.double_page_mode = True
 
         pm.next_page()
@@ -269,7 +274,7 @@ class TestBeforeAComic:
 
     def test_a_reset_leaves_no_page_current(self) -> None:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
         pm.set_to_first_page_to_read()
 
         pm.reset_current_page_index()
@@ -281,21 +286,22 @@ class TestDoublePageMode:
     @pytest.fixture
     def pm(self) -> ComicPageManager:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
         pm.double_page_mode = True
         return pm
 
     def test_solo_pages_and_their_neighbors_stand_alone_and_the_rest_pair(
         self, pm: ComicPageManager
     ) -> None:
-        assert [(u.left_page_index, u.right_page_index) for u in pm._display_units] == [
+        assert pm._layout is not None
+        assert [(u.left_page_index, u.right_page_index) for u in pm._layout.display_units] == [
             (0, None),
             (1, 2),
             (3, None),
             (4, None),
             (5, 6),
         ]
-        assert pm._page_index_to_unit_idx == {0: 0, 1: 1, 2: 1, 3: 2, 4: 3, 5: 4, 6: 4}
+        assert [pm._layout.unit_idx_for(i) for i in range(7)] == [0, 1, 1, 2, 3, 4, 4]
 
     def test_next_and_prev_step_a_unit_at_a_time_and_stop_at_the_ends(
         self, pm: ComicPageManager, loguru_sink: list[str]
@@ -329,7 +335,7 @@ class TestDoublePageMode:
 
     def test_a_comic_opened_at_a_right_page_opens_at_its_pair(self) -> None:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), "2")
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), "2")
         pm.double_page_mode = True
 
         pm.set_to_first_page_to_read()
@@ -348,7 +354,7 @@ class TestSinglePageMode:
     @pytest.fixture
     def pm(self) -> ComicPageManager:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), COMIC_BEGIN_PAGE)
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
         return pm
 
     def test_next_and_prev_step_a_page_at_a_time_whatever_the_pairs(
@@ -372,7 +378,7 @@ class TestSinglePageMode:
 
     def test_a_comic_opened_at_a_right_page_opens_at_that_page(self) -> None:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), "2")
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), "2")
 
         pm.set_to_first_page_to_read()
         assert pm.get_current_page_index() == 2
@@ -384,7 +390,7 @@ class TestSinglePageMode:
 
     def test_pages_before_the_one_opened_at_load_last_nearest_first(self) -> None:
         pm = ComicPageManager(MagicMock())
-        pm.set_page_map(_page_map(*_SEVEN_PAGES), "4")
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), "4")
 
         assert pm.get_image_load_order() == ["4", "3", "5", "6", "2", "1", "0"]
 

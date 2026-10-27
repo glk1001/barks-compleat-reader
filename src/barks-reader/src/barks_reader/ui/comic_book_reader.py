@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from kivy.input import MotionEvent
     from kivy.uix.widget import Widget
 
-    from barks_reader.core.comic_book_page_info import PageInfo
+    from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
     from barks_reader.core.display_unit import DisplayUnit
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -325,9 +325,10 @@ class ComicBookReader(FloatLayout):
         use_fantagraphics_overrides: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
-        page_map: OrderedDict[str, PageInfo],
+        layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
     ) -> None:
+        page_map = layout.page_map
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
         self._tagged_pages = frozenset(tagged_pages)
 
@@ -353,7 +354,7 @@ class ComicBookReader(FloatLayout):
         self._page_manager.double_page_mode = (
             False if self.is_single_page_only_collection else self._reader_settings.double_page_mode
         )
-        self._page_manager.set_page_map(page_map, page_to_first_goto)
+        self._page_manager.set_layout(layout, page_to_first_goto)
 
         self._time_to_load_comic.restart()
 

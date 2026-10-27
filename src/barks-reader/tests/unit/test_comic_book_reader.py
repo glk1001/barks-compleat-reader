@@ -17,7 +17,7 @@ import pytest
 from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
-from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui.comic_book_reader import (
     FIRST_PAGE_REVEAL_TIMEOUT_SECS,
@@ -129,7 +129,7 @@ class TestComicBookReader:
         """The Kivy bind it replaced held the reader weakly: no cycle, no wait for a full gc."""
         page_manager = reader._page_manager
         page_info = PageInfo(0, "1", PageType.BODY, srce_page=MagicMock(), dest_page=MagicMock())
-        page_manager.set_page_map(OrderedDict([("1", page_info)]), COMIC_BEGIN_PAGE)
+        page_manager.set_layout(ComicLayout(OrderedDict([("1", page_info)]), "1"), COMIC_BEGIN_PAGE)
         with patch.object(reader, "_render_page") as render_page:
             page_manager.set_to_first_page_to_read()
         render_page.assert_called_once()  # a page change reaches the reader
@@ -142,7 +142,7 @@ class TestComicBookReader:
         """The benchmark stubs `_show_page` on the instance; the page change must find it."""
         page_manager = reader._page_manager
         page_info = PageInfo(0, "1", PageType.BODY, srce_page=MagicMock(), dest_page=MagicMock())
-        page_manager.set_page_map(OrderedDict([("1", page_info)]), COMIC_BEGIN_PAGE)
+        page_manager.set_layout(ComicLayout(OrderedDict([("1", page_info)]), "1"), COMIC_BEGIN_PAGE)
         with (
             patch.object(reader, "_show_page") as show_page,
             patch.object(reader, "_render_page") as render_page,
@@ -210,7 +210,7 @@ class TestComicBookReader:
                 use_fantagraphics_overrides=False,
                 comic_book_image_builder=builder,
                 page_to_first_goto=COMIC_BEGIN_PAGE,
-                page_map=page_map,
+                layout=ComicLayout(page_map, last_body_page="1"),
             )
 
             assert reader._current_title_str == "Title"

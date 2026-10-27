@@ -112,7 +112,7 @@ class TestComicReaderManager:
             mock_reader.read_comic.assert_called_once()
             args, _ = mock_reader.read_comic.call_args
             assert args[3] == "1"
-            assert args[4] == mock_layout.page_map
+            assert args[4] is mock_layout
 
             mock_builder_cls.assert_called_once()
 
@@ -191,9 +191,9 @@ class TestComicReaderManager:
                 collection_page_range=(4, 7),
             )
 
-        # read_comic receives the sliced map (global keys, page_index renumbered from 0).
+        # read_comic receives the sliced layout (global keys, page_index renumbered from 0).
         args, _ = mock_reader.read_comic.call_args
-        sliced_page_map = args[4]
+        sliced_page_map = args[4].page_map
         assert list(sliced_page_map.keys()) == ["4", "5", "6", "7"]
         assert [p.page_index for p in sliced_page_map.values()] == [0, 1, 2, 3]
         # Goto key "5" is still present and resolvable in the slice.
@@ -221,7 +221,7 @@ class TestComicReaderManager:
             )
 
         args, _ = mock_reader.read_comic.call_args
-        assert args[4] is full_layout.page_map
+        assert args[4] is full_layout
 
     def test_read_barks_records_history_with_override_title(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]

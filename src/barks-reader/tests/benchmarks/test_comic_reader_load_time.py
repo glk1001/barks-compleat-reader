@@ -16,7 +16,7 @@ import barks_reader.ui.comic_book_reader
 import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
-from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.testing import FakeScheduler
 from barks_reader.ui.comic_book_reader import ComicBookReader
@@ -235,7 +235,7 @@ class TestComicReaderLoadTime:
                 use_fantagraphics_overrides=False,
                 comic_book_image_builder=builder,
                 page_to_first_goto=COMIC_BEGIN_PAGE,
-                page_map=page_map,
+                layout=ComicLayout(page_map, last_body_page=next(reversed(page_map))),
             )
             if not first_loaded_event.wait(timeout=30.0):
                 msg = "Timed out waiting for first image to load"
@@ -281,7 +281,7 @@ class TestComicReaderLoadTime:
                 use_fantagraphics_overrides=False,
                 comic_book_image_builder=builder,
                 page_to_first_goto=COMIC_BEGIN_PAGE,
-                page_map=page_map,
+                layout=ComicLayout(page_map, last_body_page=next(reversed(page_map))),
             )
             if not all_loaded_event.wait(timeout=30.0):
                 msg = "Timed out waiting for all images to load"
