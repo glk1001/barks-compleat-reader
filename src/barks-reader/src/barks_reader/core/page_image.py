@@ -10,7 +10,7 @@ from PIL import Image as PilImage
 if TYPE_CHECKING:
     from PIL.Image import Image
 
-# The pixel layouts a texture takes as they are; any other is converted to RGB.
+# The pixel layouts a texture takes as they are; any other is converted to one of them.
 TEXTURE_MODES = ("RGB", "RGBA")
 
 
@@ -38,7 +38,11 @@ class PageImage:
 
     @classmethod
     def from_pil(cls, pil_image: Image) -> PageImage:
-        """Take a PIL image's pixels, converting any layout but RGB and RGBA to RGB.
+        """Take a PIL image's pixels, converting any layout but RGB and RGBA to one of them.
+
+        A layout with transparency (``LA``, ``PA``, a palette with a transparent entry)
+        becomes RGBA, so a page drawn over the reader's background keeps its holes,
+        as the PNG round trip this replaced did; any other becomes RGB.
 
         Args:
             pil_image: The resized page.
@@ -48,7 +52,7 @@ class PageImage:
 
         """
         if pil_image.mode not in TEXTURE_MODES:
-            pil_image = pil_image.convert("RGB")
+            pil_image = pil_image.convert("RGBA" if pil_image.has_transparency_data else "RGB")
         return cls(pil_image.width, pil_image.height, pil_image.mode, pil_image.tobytes())
 
     def to_pil(self) -> Image:

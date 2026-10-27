@@ -87,6 +87,7 @@ Funnybooks
 generalise
 generalises
 getbuffer
+getchannel
 getmouselocation
 getpid
 getpixel
@@ -176,6 +177,7 @@ powersave
 ppid
 preload
 pstate
+putpalette
 putpixel
 pyeof
 PYTHONHASHSEED

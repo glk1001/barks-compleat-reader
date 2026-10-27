@@ -26,7 +26,7 @@ class TestFromPil:
         assert page.pixels == bytes((1, 2, 3, 4)) * 2
 
     @pytest.mark.parametrize("mode", ["L", "P", "CMYK"])
-    def test_any_other_layout_becomes_rgb(self, mode: str) -> None:
+    def test_any_other_opaque_layout_becomes_rgb(self, mode: str) -> None:
         """A grayscale or palette scan is still filled into an RGB texture."""
         pil = Image.new(mode, (2, 2))
 
@@ -34,6 +34,32 @@ class TestFromPil:
 
         assert page.mode == "RGB"
         assert page.nbytes == 2 * 2 * 3
+
+    @pytest.mark.parametrize("mode", ["LA", "PA"])
+    def test_a_layout_with_an_alpha_band_keeps_it(self, mode: str) -> None:
+        """A grayscale page with holes in it is not flattened onto black."""
+        pil = Image.new(mode, (2, 1))
+        pil.putpixel((0, 0), (255, 0))  # transparent
+        pil.putpixel((1, 0), (255, 255))  # opaque
+
+        page = PageImage.from_pil(pil)
+
+        assert page.mode == "RGBA"
+        assert page.to_pil().getchannel("A").tobytes() == bytes((0, 255))
+
+    def test_a_palette_with_a_transparent_entry_keeps_it(self) -> None:
+        """A palette PNG's tRNS chunk is transparency too, though the mode is plain P."""
+        pil = Image.new("P", (2, 1))
+        pil.putpalette([0, 0, 0, 255, 255, 255])
+        pil.putpixel((0, 0), 0)
+        pil.putpixel((1, 0), 1)
+        pil.info["transparency"] = 0
+
+        page = PageImage.from_pil(pil)
+
+        assert page.mode == "RGBA"
+        assert page.to_pil().getpixel((0, 0)) == (0, 0, 0, 0)
+        assert page.to_pil().getpixel((1, 0)) == (255, 255, 255, 255)
 
 
 class TestToPil:
