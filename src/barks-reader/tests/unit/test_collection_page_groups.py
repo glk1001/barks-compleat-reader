@@ -71,11 +71,13 @@ class TestGroupRanges:
     Every number below is *derived* from the located lists' chronological order, so
     a mismatch is never a bug in this file. It means one of two things:
 
-    * ``TestCoverOrdering`` (barks-fantagraphics/tests/test_all_covers_collection.py)
-      also fails - the source order is broken. Repair that; these numbers return by
-      themselves. Do not edit them.
-    * ``TestCoverOrdering`` passes - cover/one-pager data legitimately changed, so
-      the groups legitimately moved. Update these to whatever the run reports.
+    * That collection's ordering test also fails - ``TestCoverOrdering``
+      (barks-fantagraphics/tests/test_all_covers_collection.py) for covers,
+      ``TestOnePagerOrdering`` (barks-fantagraphics/tests/test_one_pagers.py) for
+      one-pagers - so the source order is broken. Repair that; these numbers return
+      by themselves. Do not edit them.
+    * The ordering test passes - cover/one-pager data legitimately changed, so the
+      groups legitimately moved. Update these to whatever the run reports.
     """
 
     def test_cover_group_ranges_tile_the_collection(self) -> None:
@@ -182,8 +184,9 @@ class TestGetCollectionGroupPageRange:
     def test_cover_first_group(self) -> None:
         assert get_collection_group_page_range(Titles.ALL_COVERS, 1) == (1, 56)
 
-    def test_undated_cover_folds_into_final_group(self) -> None:
-        # There are 0 undated covers.
+    def test_last_cover_is_in_the_final_group(self) -> None:
+        # The last page is inclusive: an exclusive upper bound would raise here. (There
+        # are no undated covers; the -1 fold is pinned on synthetic data above.)
         assert get_collection_group_page_range(Titles.ALL_COVERS, 192) == (152, 192)
 
     def test_one_pager_group(self) -> None:

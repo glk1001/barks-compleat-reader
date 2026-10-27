@@ -456,7 +456,7 @@ table — no module on it is unswept now.
 | `minimal_config_info` | 4 | 3 |
 | `reader_palette` | 2 | **0** |
 | `config_info` | 2 | **0** |
-| `comic_book_info` | 2 | **0** |
+| `comic_book_info` | 2 | **0** | (module deleted 2026-10-27: it had no caller)
 | `settings_notifier` | 1 | **0** |
 | `navigation.navigation_model` | 1 | **0** |
 | **total** | **99** | **28** |
@@ -904,7 +904,7 @@ triaged floor** — nothing on this table has a known killable gap left.
 | `reader_palette` | 2 → 0 |
 | `navigation.navigation_model` | 2 → 0 |
 | `config_info` | 2 → 0 |
-| `comic_book_info` | 2 → 0 |
+| `comic_book_info` | 2 → 0 | (module deleted 2026-10-27: it had no caller)
 | `settings_notifier` | 1 → 0 |
 
 ## Known-equivalent survivors (triaged — do not re-triage)

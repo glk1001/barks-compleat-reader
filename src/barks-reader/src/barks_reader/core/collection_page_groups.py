@@ -1,10 +1,11 @@
 """Year-range page groups for the synthetic one-pager / cover collections.
 
-The "All One-Pagers" and "All Covers" collections are large (128 / 186 pages).
-Loading the whole collection to view a single member is expensive in RAM, so the
-reader opens only the member's *year-range group* — the same grouping the tree
-uses. Each group is a contiguous run of 1-based collection page positions (the
-located-list order is chronological, and the year ranges partition it).
+The "All One-Pagers" and "All Covers" collections are large (well over a hundred
+pages each; the exact counts are the located lists' lengths). Loading the whole
+collection to view a single member is expensive in RAM, so the reader opens only
+the member's *year-range group* — the same grouping the tree uses. Each group is a
+contiguous run of 1-based collection page positions (the located-list order is
+chronological, and the year ranges partition it).
 
 This module maps a collection member's page number to its group's page range.
 Pure ``barks_reader.core`` — no Kivy, no UI.
@@ -15,7 +16,7 @@ from __future__ import annotations
 from functools import cache
 from itertools import pairwise
 
-from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_located_covers
+from barks_fantagraphics.barks_covers import get_cover_title, get_located_covers
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import get_located_one_pagers
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -62,7 +63,9 @@ _ONE_PAGER_TILING_HINT = (
     " The ONE_PAGERS list in comic_book_info.py is not in submitted-date order. Note it is"
     " a separate hand-maintained list, NOT a slice of BARKS_TITLE_INFO: check_story_submitted_order"
     " validates BARKS_TITLE_INFO and cannot see ONE_PAGERS, so the two can drift apart. The"
-    " one-pager subsequence of BARKS_TITLE_INFO is the reference order to restore. Reordering"
+    " one-pager subsequence of BARKS_TITLE_INFO is the reference order to restore. Run"
+    " TestOnePagerOrdering in barks-fantagraphics/tests/test_one_pagers.py to see which"
+    " one-pagers, then repair with experiments/one_pagers/reorder_one_pagers.py. Reordering"
     " ONE_PAGERS renumbers the collection's pre-baked pages, so barks-stage-one-pagers must be"
     " re-run afterwards. Do NOT update the expected page numbers in test_collection_page_groups.py:"
     " they are derived."
@@ -111,8 +114,7 @@ def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "") ->
 @cache
 def get_cover_collection_group_ranges() -> list[tuple[int, int]]:
     """Contiguous page ranges of the cover collection's year-range groups."""
-    title_by_cover = {cover: title for title, cover in COVER_BY_TITLE.items()}
-    located = [title_by_cover[cover] for cover in get_located_covers()]
+    located = [get_cover_title(cover) for cover in get_located_covers()]
     return _group_ranges(located, COVER_YEAR_RANGES, _COVER_TILING_HINT)
 
 
