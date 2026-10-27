@@ -9,6 +9,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     PrefetchParams,
     PrefetchTuning,
     SystemProfile,
+    available_memory_mib,
     get_max_worker_count,
     get_prefetch_tuning,
     process_rss_mib,
@@ -89,8 +90,8 @@ class TestSystemProfile:
 _PARAMS = PrefetchParams(
     prefetch_min=2,
     prefetch_max_factor=1.0,
-    memory_low_water_mib=200.0,
-    memory_high_water_mib=400.0,
+    shrink_below_mib=200.0,
+    grow_above_mib=400.0,
 )
 
 
@@ -99,6 +100,11 @@ def _rss(mib: float) -> MagicMock:
     process = MagicMock()
     process.memory_info.return_value.rss = int(mib * 1024 * 1024)
     return process
+
+
+def _available(mib: float) -> MagicMock:
+    """Return a `psutil.virtual_memory()` result with *mib* MiB available."""
+    return MagicMock(available=int(mib * 1024 * 1024))
 
 
 class TestPrefetchTuning:
@@ -125,8 +131,8 @@ class TestPrefetchTuning:
         params = PrefetchParams(
             prefetch_min=prefetch_min,
             prefetch_max_factor=factor,
-            memory_low_water_mib=200.0,
-            memory_high_water_mib=400.0,
+            shrink_below_mib=200.0,
+            grow_above_mib=400.0,
         )
         tuning = PrefetchTuning(params, worker_count=worker_count, num_pages=100)
 
@@ -139,47 +145,72 @@ class TestPrefetchTuning:
     def test_initial_dynamic_window_capped_by_base_max(self, tuning: PrefetchTuning) -> None:
         assert tuning.get_initial_dynamic_window() == 4  # noqa: PLR2004
 
-    # The tuning fixture has low water 200 MiB, high water 400 MiB,
-    # prefetch_min 2, and base_max_window 4.
+    # The tuning fixture shrinks below 200 MiB available and grows above 400 MiB,
+    # with prefetch_min 2 and base_max_window 4.
     @pytest.mark.parametrize(
-        ("growth_mib", "dynamic_window", "expected_window"),
+        ("available_mib", "dynamic_window", "expected_window"),
         [
-            pytest.param(500, 4, 3, id="shrinks_under_high_memory"),
-            pytest.param(100, 2, 3, id="grows_under_low_memory"),
-            pytest.param(300, 3, 3, id="stays_when_between_thresholds"),
-            pytest.param(500, 2, 2, id="does_not_shrink_below_min"),
-            pytest.param(50, 4, 4, id="does_not_grow_above_base_max"),
-            # Both comparisons are strict, so sitting exactly on a watermark does
-            # nothing: shrink needs `> high`, grow needs `< low`.
-            pytest.param(400, 4, 4, id="exactly_at_high_water_does_not_shrink"),
-            pytest.param(200, 2, 2, id="exactly_at_low_water_does_not_grow"),
+            pytest.param(100, 4, 3, id="shrinks_when_the_machine_is_short"),
+            pytest.param(500, 2, 3, id="grows_when_the_machine_is_comfortable"),
+            pytest.param(300, 3, 3, id="stays_when_between_the_floors"),
+            pytest.param(100, 2, 2, id="does_not_shrink_below_min"),
+            pytest.param(900, 4, 4, id="does_not_grow_above_base_max"),
+            # Both comparisons are strict, so sitting exactly on a floor does
+            # nothing: shrink needs `< shrink_below`, grow needs `> grow_above`.
+            pytest.param(200, 4, 4, id="exactly_at_the_shrink_floor_does_not_shrink"),
+            pytest.param(400, 2, 2, id="exactly_at_the_grow_ceiling_does_not_grow"),
         ],
     )
     def test_dynamic_window(
         self,
         tuning: PrefetchTuning,
-        growth_mib: int,
+        available_mib: int,
         dynamic_window: int,
         expected_window: int,
     ) -> None:
-        """The window moves on the RSS growth since the watch started, not the RSS itself."""
-        baseline_mib = 1000.0
-        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
-            tuning.start_memory_watch()
-        with patch.object(
-            platform_settings_module.psutil, "Process", return_value=_rss(baseline_mib + growth_mib)
+        """The window moves on the machine's available memory, not this process's size.
+
+        Regression: it moved on the process's own growth since the load began, and a
+        full window of workers decoding pages grows it by hundreds of MiB as a matter
+        of course - so every load on a big machine shrank its window to the minimum
+        and took twice as long.
+        """
+        with (
+            patch.object(
+                platform_settings_module.psutil,
+                "virtual_memory",
+                return_value=_available(available_mib),
+            ),
+            # The process has grown enormously: that is not the signal.
+            patch.object(platform_settings_module.psutil, "Process", return_value=_rss(9000.0)),
         ):
             _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=dynamic_window)
 
         assert new_window == expected_window
 
-    def test_dynamic_window_reports_the_growth_in_mib(self, tuning: PrefetchTuning) -> None:
+    def test_dynamic_window_reports_the_available_memory_in_mib(
+        self, tuning: PrefetchTuning
+    ) -> None:
+        with patch.object(
+            platform_settings_module.psutil, "virtual_memory", return_value=_available(300.0)
+        ):
+            available_mib, _window = tuning.get_new_dynamic_window(dynamic_window=3)
+
+        assert available_mib == 300.0  # noqa: PLR2004
+
+    def test_dynamic_window_samples_the_growth_for_the_peak(self, tuning: PrefetchTuning) -> None:
+        """The process's growth is still watched, for the load's log line."""
         with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1000.0)):
             tuning.start_memory_watch()
-        with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1300.0)):
-            current_mib, _window = tuning.get_new_dynamic_window(dynamic_window=3)
+        with (
+            patch.object(platform_settings_module.psutil, "Process", return_value=_rss(1300.0)),
+            patch.object(
+                platform_settings_module.psutil, "virtual_memory", return_value=_available(300.0)
+            ),
+        ):
+            tuning.get_new_dynamic_window(dynamic_window=3)
 
-        assert current_mib == 300.0  # noqa: PLR2004
+        assert tuning.get_peak_memory_growth_mib() == 300.0  # noqa: PLR2004
 
 
 class TestMemoryWatch:
@@ -234,6 +265,12 @@ class TestMemoryWatch:
         with patch.object(platform_settings_module.psutil, "Process", return_value=_rss(150.0)):
             assert process_rss_mib() == 150.0  # noqa: PLR2004
 
+    def test_available_memory_is_reported_in_mebibytes(self) -> None:
+        with patch.object(
+            platform_settings_module.psutil, "virtual_memory", return_value=_available(2048.0)
+        ):
+            assert available_memory_mib() == 2048.0  # noqa: PLR2004
+
 
 # ---------------------------------------------------------------------------
 # get_prefetch_tuning — per-load tuning on process-wide, profile-derived limits
@@ -275,18 +312,18 @@ class TestGetPrefetchTuning:
             "worker_count",
             "expected_min",
             "expected_factor",
-            "expected_low",
-            "expected_high",
+            "expected_shrink_below",
+            "expected_grow_above",
         ),
         [
             pytest.param(
-                _profile(low=True), 2, 1, 0.5, 150.0, 300.0, id="low_end_conservative_params"
+                _profile(low=True), 2, 1, 0.5, 384.0, 768.0, id="low_end_conservative_params"
             ),
             pytest.param(
-                _profile(mid=True), 4, 2, 0.75, 200.0, 350.0, id="mid_range_modest_params"
+                _profile(mid=True), 4, 2, 0.75, 512.0, 1024.0, id="mid_range_modest_params"
             ),
             pytest.param(
-                _profile(high=True), 8, 2, 1.0, 250.0, 450.0, id="high_end_generous_params"
+                _profile(high=True), 8, 2, 1.0, 768.0, 1536.0, id="high_end_generous_params"
             ),
         ],
     )
@@ -296,16 +333,16 @@ class TestGetPrefetchTuning:
         worker_count: int,
         expected_min: int,
         expected_factor: float,
-        expected_low: float,
-        expected_high: float,
+        expected_shrink_below: float,
+        expected_grow_above: float,
     ) -> None:
         with patch.object(platform_settings_module, "_get_system_profile", return_value=profile):
             tuning = get_prefetch_tuning(worker_count=worker_count, num_pages=10)
 
         assert tuning.prefetch_min == expected_min
         assert tuning.prefetch_max_factor == expected_factor
-        assert tuning.memory_low_water_mib == expected_low
-        assert tuning.memory_high_water_mib == expected_high
+        assert tuning.shrink_below_mib == expected_shrink_below
+        assert tuning.grow_above_mib == expected_grow_above
 
     def test_each_load_gets_its_own_window_on_the_cached_limits(self) -> None:
         """Regression: the first comic's tuning was cached and handed to every later one.
@@ -326,9 +363,9 @@ class TestGetPrefetchTuning:
         assert long_comic is not one_pager
         # The limits still come from one profile read, not one per load.
         assert mock_profile.call_count == 1
-        assert (long_comic.prefetch_min, long_comic.memory_high_water_mib) == (
+        assert (long_comic.prefetch_min, long_comic.shrink_below_mib) == (
             one_pager.prefetch_min,
-            one_pager.memory_high_water_mib,
+            one_pager.shrink_below_mib,
         )
 
 

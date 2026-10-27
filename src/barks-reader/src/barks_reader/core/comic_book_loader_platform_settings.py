@@ -22,12 +22,17 @@ class SystemProfile:
 
 @dataclass(frozen=True, slots=True)
 class PrefetchParams:
-    """The profile-derived prefetch limits, the same for every comic this process loads."""
+    """The profile-derived prefetch limits, the same for every comic this process loads.
+
+    The two memory figures are floors on the machine's *available* memory: the window
+    shrinks while less than ``shrink_below_mib`` is left, and grows back only once more
+    than ``grow_above_mib`` is. The gap between them keeps it from flapping.
+    """
 
     prefetch_min: int
     prefetch_max_factor: float
-    memory_low_water_mib: float
-    memory_high_water_mib: float
+    shrink_below_mib: float
+    grow_above_mib: float
 
 
 def process_rss_mib() -> float:
@@ -35,20 +40,26 @@ def process_rss_mib() -> float:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
+def available_memory_mib() -> float:
+    """Return the memory the machine can still give out without swapping, in MiB."""
+    return psutil.virtual_memory().available / (1024 * 1024)
+
+
 class PrefetchTuning:
     """One comic load's prefetch window: its bounds, and the memory signal that moves it.
 
-    The window shrinks when the process has grown past the high-water mark since the
-    load began, and grows back below the low one. Growth is of the resident set, which
-    holds the decoded pages (C buffers no Python tracer sees), from a baseline
-    :meth:`start_memory_watch` takes.
+    Pressure is read where it exists, in the machine's available memory: the window
+    shrinks while that is under the profile's floor and grows back above its ceiling.
+    The process's own growth is no measure of it - a full window of decoding workers
+    legitimately holds hundreds of MiB of page buffers - so that is only watched, from
+    the baseline :meth:`start_memory_watch` takes, for the load's log line.
     """
 
     def __init__(self, params: PrefetchParams, worker_count: int, num_pages: int) -> None:
         self.prefetch_min: int = params.prefetch_min
         self.prefetch_max_factor: float = params.prefetch_max_factor
-        self.memory_low_water_mib: float = params.memory_low_water_mib
-        self.memory_high_water_mib: float = params.memory_high_water_mib
+        self.shrink_below_mib: float = params.shrink_below_mib
+        self.grow_above_mib: float = params.grow_above_mib
         self._num_pages = num_pages
         self.base_max_window = max(self.prefetch_min, int(worker_count * self.prefetch_max_factor))
         self._rss_at_start_mib = 0.0
@@ -73,29 +84,35 @@ class PrefetchTuning:
         return min(self.base_max_window, self._num_pages)
 
     def get_new_dynamic_window(self, dynamic_window: int) -> tuple[float, int]:
-        current_mib = self.get_memory_growth_mib()
+        """Return the machine's available memory (MiB) and the window it allows.
 
-        # Adjust window based on memory usage.
-        if current_mib > self.memory_high_water_mib:
-            # Under memory pressure - shrink window a bit.
+        One step down while the available memory is under the floor, one step up
+        while it is over the ceiling, nothing in between; and the process's growth
+        is sampled for the peak the load logs.
+        """
+        self.get_memory_growth_mib()
+        available_mib = available_memory_mib()
+
+        if available_mib < self.shrink_below_mib:
+            # The machine is running short - shrink the window a step.
             new_window = max(self.prefetch_min, dynamic_window - 1)
             if new_window != dynamic_window:
                 logger.debug(
-                    f"[prefetch] High memory {current_mib:.1f}-"
-                    f"shrinking window {dynamic_window} -> {new_window}"
+                    f"[prefetch] Only {available_mib:.0f} MiB available -"
+                    f" shrinking window {dynamic_window} -> {new_window}"
                 )
             dynamic_window = new_window
-        elif current_mib < self.memory_low_water_mib:
+        elif available_mib > self.grow_above_mib:
             # Memory comfortable - grow window up to base_max_window.
             new_window = min(self.base_max_window, dynamic_window + 1)
             if new_window != dynamic_window:
                 logger.debug(
-                    f"[prefetch] Low memory {current_mib:.1f}-"
-                    f"growing window {dynamic_window} -> {new_window}"
+                    f"[prefetch] {available_mib:.0f} MiB available -"
+                    f" growing window {dynamic_window} -> {new_window}"
                 )
             dynamic_window = new_window
 
-        return current_mib, dynamic_window
+        return available_mib, dynamic_window
 
     @staticmethod
     def detect_system_profile() -> SystemProfile:
@@ -173,38 +190,40 @@ def _get_prefetch_params() -> PrefetchParams:
 
     profile = _get_system_profile()
 
+    # The floors are on the machine's available memory. A worker decoding a page holds
+    # some 45 MiB (the full-size decode and its resize), so they sit a window's worth
+    # above where swapping would start, lower where the window is smaller anyway.
     if profile.is_low_end:
-        # Old laptops / tiny RAM:
-        # - smaller window
-        # - tighter memory thresholds
+        # Old laptops / tiny RAM: a smaller window, backing off sooner.
         params = PrefetchParams(
             prefetch_min=1,
             prefetch_max_factor=0.5,
-            memory_low_water_mib=150.0,
-            memory_high_water_mib=300.0,
+            shrink_below_mib=384.0,
+            grow_above_mib=768.0,
         )
     elif profile.is_mid_range:
         # Modest PCs / mid-laptops:
         params = PrefetchParams(
             prefetch_min=2,
             prefetch_max_factor=0.75,
-            memory_low_water_mib=200.0,
-            memory_high_water_mib=350.0,
+            shrink_below_mib=512.0,
+            grow_above_mib=1024.0,
         )
     else:
         # High-end desktop / modern Ryzen / big RAM:
         params = PrefetchParams(
             prefetch_min=2,
             prefetch_max_factor=1.0,
-            memory_low_water_mib=250.0,
-            memory_high_water_mib=450.0,
+            shrink_below_mib=768.0,
+            grow_above_mib=1536.0,
         )
 
     _PREFETCH_PARAMS = params
 
     logger.debug(
         f"Prefetch tuning: min={params.prefetch_min}, max_factor={params.prefetch_max_factor},"
-        f" mem_low={params.memory_low_water_mib} MiB, mem_high={params.memory_high_water_mib} MiB."
+        f" shrink below {params.shrink_below_mib:.0f} MiB available,"
+        f" grow above {params.grow_above_mib:.0f} MiB."
     )
 
     return params

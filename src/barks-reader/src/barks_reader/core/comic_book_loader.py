@@ -628,8 +628,8 @@ class ComicBookLoader:
         logger.debug(
             f"Loader config: workers={worker_count}, window_start={dynamic_window},"
             f" window_min={tuning.prefetch_min}, window_max={tuning.base_max_window},"
-            f" mem_low={tuning.memory_low_water_mib} MiB,"
-            f" mem_high={tuning.memory_high_water_mib} MiB."
+            f" shrink below {tuning.shrink_below_mib} MiB available,"
+            f" grow above {tuning.grow_above_mib} MiB."
         )
 
         num_loaded = 0
@@ -694,10 +694,10 @@ class ComicBookLoader:
 
                     done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
 
-                    current_mib, dynamic_window = tuning.get_new_dynamic_window(dynamic_window)
+                    available_mib, dynamic_window = tuning.get_new_dynamic_window(dynamic_window)
                     logger.debug(
-                        f"[prefetch] mem={current_mib:.1f} MiB, window={dynamic_window}, "
-                        f"inflight={len(futures)}"
+                        f"[prefetch] available={available_mib:.0f} MiB, window={dynamic_window},"
+                        f" inflight={len(futures)}"
                     )
 
                     for future in done:
