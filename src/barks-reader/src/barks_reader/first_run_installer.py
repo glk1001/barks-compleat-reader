@@ -7,6 +7,7 @@ from zipfile import ZipFile
 from loguru import logger
 
 from barks_reader.core.config_info import ConfigInfo, get_app_exe_dir
+from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES
 from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_utils import quote_and_join_with_and
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
@@ -16,11 +17,8 @@ _APP_NAME = "Barks Reader Installation"
 
 _ZIP_CONFIGS_SUBDIR = "Configs/"
 _ZIP_READER_FILES_SUBDIR = "Reader Files/"
-# The data packs are plain zip archives. They deliberately do NOT carry a ".zip"
-# extension: Safari auto-expands "safe" downloads (zip among them), which leaves the
-# user with a folder instead of the pack the installer expects. An extension no app
-# claims is left alone on every platform.
-_ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.barkspack", "barks-reader-data-2.barkspack"]
+# The data packs' names (and why they are not ".zip"): core/data_pack.py.
+_ZIP_DATA_INSTALLER_FILES = DATA_PACK_FILE_NAMES
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 

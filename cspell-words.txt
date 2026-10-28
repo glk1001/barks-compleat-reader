@@ -45,6 +45,7 @@ compresslevel
 configfile
 consolelog
 cpufreq
+creationflags
 cpus
 CRF
 currentTime
