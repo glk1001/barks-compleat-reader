@@ -360,11 +360,10 @@ laptops (win_lg, hp-notebook) are not among them: their runs' logs stay on them.
 - **What**: from each run folder, the files at its top level named `*.log`, `*.txt` or
   `*.jsonl`: `summary.txt`, the stages' logs and `gui-timings.jsonl`, about 1 MB a run.
   `coverage/` (about 40 MB) and `uv.lock.saved` stay behind.
-- **Which runs**: those not copied yet, and the newest again while its copy's
-  `summary.txt` header has no "finished in", since only the newest can still be going.
-  Run again, it reports `up to date`, unless that newest run stopped part-way (`stopped
-  during`, or `N of M stages done`): that one is copied again each time, until a later
-  run finishes.
+- **Which runs**: those not copied yet, and again any whose logs there (the files above)
+  add up to a different size from its copy here: one copied while it was going, however
+  many runs have started there since. Run again, it reports `up to date`; a run that
+  stopped part-way is not copied again, since its logs no longer change.
 - **From where**: only the machines that are up. It wakes and starts nothing, and reports
   the rest as skipped. `overnight-logs gmktec win-vm` names the machines; no names means
   all six. With `--wake` first, it wakes gmktec (also for `gmktec-fedora`) or greg-dell if
