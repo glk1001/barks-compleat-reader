@@ -4,14 +4,9 @@ from .barks_titles import Titles
 
 BARKS_EXTRA_INFO = {
     Titles.VICTORY_GARDEN_THE: " This was Barks's first comic-book work after leaving the Disney"
-    " studio."
-    " \n\nFrom Michael Barrier:"
-    " There is in the Disney Archives an undated note to Barks from the"
-    ' Disney studio, signed "Dorothy" (probably Dorothy Strebe, who worked in the Disney'
-    ' publications department for more than twenty years), that reads in part as follows: [i]"Here'
-    " is a 10-page story for Donald Duck. Hope that you like it ... you are to stage it, of course"
-    " ... and if you see that it can be strengthened, or that it deviates from Donald either in"
-    ' narration or action, please make the improvements."[/i]',
+    ' studio. He received a script from Western where Barks "noticed some bad errors in the plot"'
+    ' and got the editor\'s permission to "change things around" — treading lightly as a newcomer'
+    ' ("I wasn\'t going to make myself an obnoxious character right away")."',
     Titles.RABBITS_FOOT_THE: "The first Donald Duck story both written and drawn by Barks."
     "\n\nFrom a letter from Barks to Michael Barrier:"
     '[i]"They sent me a ready-written script to draw for story #1 several weeks after I left the'

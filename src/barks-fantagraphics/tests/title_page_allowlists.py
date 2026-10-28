@@ -41,7 +41,7 @@ ATTRIBUTION_NOT_REQUIRED: dict[Titles, str] = {
 PLAIN_BYLINE_ALLOWED: dict[Titles, str] = {
     **ATTRIBUTION_NOT_REQUIRED,
     Titles.VICTORY_GARDEN_THE: (
-        "Barks drew it all and revised the script (probably by Dorothy Strebe)."
+        "Barks drew it all and revised the script (by Eleanor Packer or Dorothy Strebe)."
     ),
     Titles.TOO_MANY_PETS: "Barks drew it all and rewrote the script by Merrill De Maris.",
     Titles.CRAZY_QUIZ_SHOW_THE: "Barks drew it all and rewrote the script he was given.",
