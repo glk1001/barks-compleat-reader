@@ -4,9 +4,10 @@ from .barks_titles import Titles
 
 BARKS_EXTRA_INFO = {
     Titles.VICTORY_GARDEN_THE: " This was Barks's first comic-book work after leaving the Disney"
-    ' studio. He received a script from Western where Barks "noticed some bad errors in the plot"'
-    ' and got the editor\'s permission to "change things around" — treading lightly as a newcomer'
-    ' ("I wasn\'t going to make myself an obnoxious character right away")."',
+    " studio. In a 1967 letter to Michael Barrier, Barks wrote that he"
+    ' "noticed some bad errors in the plot" of the script Western sent him, and got the editor\'s'
+    ' permission to "change things around", though carefully: "I wasn\'t going to make myself an'
+    ' obnoxious character right away."',
     Titles.RABBITS_FOOT_THE: "The first Donald Duck story both written and drawn by Barks."
     "\n\nFrom a letter from Barks to Michael Barrier:"
     '[i]"They sent me a ready-written script to draw for story #1 several weeks after I left the'
