@@ -8,7 +8,9 @@
 #
 # Expects barks-reader-data-1.barkspack and barks-reader-data-2.barkspack to already exist
 # (produced by `bash scripts/build-data-zips.sh`). Then:
-#   1. Works out the next tag (highest existing data-vN, plus one).
+#   1. Reads the tag from the packs: each carries "Reader Files/data-pack.json" naming
+#      its data pack N, so the release is data-vN. Both packs must agree, and N must be
+#      above every data-vN release that exists (a stale build is refused, not renumbered).
 #   2. Hashes both zips into SHA256SUMS.txt.
 #   3. Creates a DRAFT release and uploads both zips plus the checksums to it,
 #      so a failed or partial upload is never publicly visible.
@@ -16,8 +18,10 @@
 #   5. Publishes the release, marked pre-release so it can never become
 #      GitHub's "Latest" (the website's version resolver depends on that).
 #   6. Points DATA_TAG in website/app.html and the data-pack links in
-#      .github/workflows/build.yml at the new tag, and prints the exact commit and
-#      push commands. It never commits or pushes itself.
+#      .github/workflows/build.yml at the new tag, copies the pack's version file to
+#      scripts/data-pack-manifest.json (the record of what was published, which
+#      `data_manifest.py --pack` holds the main PC's data against), and prints the
+#      exact commit and push commands. It never commits or pushes itself.
 #
 # Refuses to run with uncommitted changes to tracked files: the tag bump must land
 # as its own commit, and a bump that is not pushed leaves the live website pointing at the
@@ -34,6 +38,7 @@ source "$(dirname "$0")/_data_release.sh"
 CHECKSUMS_FILE="SHA256SUMS.txt"
 WEBSITE_FILE="website/app.html"
 WORKFLOW_FILE=".github/workflows/build.yml"
+PACK_MANIFEST_FILE="scripts/data-pack-manifest.json"
 
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -90,14 +95,32 @@ sha256_of() {
 SIZE1=$(file_size "${ZIPS_DIR}/${DATA1_ZIP}")
 SIZE2=$(file_size "${ZIPS_DIR}/${DATA2_ZIP}")
 
-# --- Work out the previous and next data tags ---
-LAST_N=$(latest_data_version) || LAST_N=0
+# --- The new tag comes from the packs; the previous one from GitHub ---
+NEW_N=$(pack_version "${ZIPS_DIR}/${DATA1_ZIP}") || {
+    echo -e "${RED}\"${DATA1_ZIP}\" carries no \"${PACK_MEMBER}\": rebuild the packs with" \
+        "'bash scripts/build-data-zips.sh'.${NC}" >&2
+    exit 1
+}
+N2=$(pack_version "${ZIPS_DIR}/${DATA2_ZIP}") || N2="none"
+if [[ "$N2" != "$NEW_N" ]]; then
+    echo -e "${RED}The packs disagree: \"${DATA1_ZIP}\" is data pack ${NEW_N} and" \
+        "\"${DATA2_ZIP}\" is ${N2}. Rebuild both.${NC}" >&2
+    exit 1
+fi
+NEW_TAG="data-v${NEW_N}"
+LAST_N=$(latest_data_version) || {
+    echo -e "${RED}Cannot list the data-vN releases on GitHub (gh offline or not logged in).${NC}" >&2
+    exit 1
+}
+if ((NEW_N <= LAST_N)); then
+    echo -e "${RED}The packs are data pack ${NEW_N}, but data-v${LAST_N} is already published:" \
+        "rebuild them ('bash scripts/build-data-zips.sh' numbers the next release).${NC}" >&2
+    exit 1
+fi
 if [[ "$LAST_N" == 0 ]]; then
     OLD_TAG=""
-    NEW_TAG="data-v1"
 else
     OLD_TAG="data-v${LAST_N}"
-    NEW_TAG="data-v$((LAST_N + 1))"
 fi
 
 echo -e "${YELLOW}New release:${NC}  ${NEW_TAG} on ${REPO}"
@@ -144,7 +167,7 @@ SIZE_SUMS=$(file_size "${ZIPS_DIR}/${CHECKSUMS_FILE}")
 # --- Create draft, upload, verify, publish ---
 echo -e "${YELLOW}Creating draft release ${NEW_TAG}...${NC}"
 gh release create "$NEW_TAG" --repo "$REPO" --target main --draft --prerelease \
-    --title "Barks Reader Data Packs (v$((LAST_N + 1)))" \
+    --title "Barks Reader Data Packs (v${NEW_N})" \
     --notes "The two data packs required by every Barks Reader release. They rarely change, so they live on this dedicated release instead of being duplicated onto each app release.
 
 Download **both** packs and place them beside the app executable before first launch (see the [installation guide](https://glk1001.github.io/barks-compleat-reader/website/app.html#installation)). They are ordinary zip archives with a \`.barkspack\` extension so that browsers (Safari in particular) do not unpack them on download - leave them as they are, the app unpacks them itself.
@@ -174,18 +197,20 @@ fi
 echo -e "${YELLOW}Publishing ${NEW_TAG} (as pre-release)...${NC}"
 gh release edit "$NEW_TAG" --repo "$REPO" --draft=false --prerelease
 
-# --- Point the website and CI workflow at the new tag ---
+# --- Point the website and CI workflow at the new tag; record what was published ---
 perl -pi -e "s/const DATA_TAG = 'data-v[0-9]+'/const DATA_TAG = '${NEW_TAG}'/" "$WEBSITE_FILE"
 perl -pi -e "s|releases/download/data-v[0-9]+/|releases/download/${NEW_TAG}/|g" "$WORKFLOW_FILE"
+unzip -p "${ZIPS_DIR}/${DATA1_ZIP}" "$PACK_MEMBER" > "$PACK_MANIFEST_FILE"
 
 echo
 echo -e "${GREEN}=================================================="
 echo -e "Done: https://github.com/${REPO}/releases/tag/${NEW_TAG}"
 echo -e "==================================================${NC}"
-echo -e "Updated DATA_TAG in ${WEBSITE_FILE} and the data-pack links in ${WORKFLOW_FILE}."
+echo -e "Updated DATA_TAG in ${WEBSITE_FILE} and the data-pack links in ${WORKFLOW_FILE};"
+echo -e "wrote the published pack's version file to ${PACK_MANIFEST_FILE}."
 echo
 echo -e "${YELLOW}The live website now 404s on the data-pack buttons until this is pushed:${NC}"
-echo -e "  git add ${WEBSITE_FILE} ${WORKFLOW_FILE}"
+echo -e "  git add ${WEBSITE_FILE} ${WORKFLOW_FILE} ${PACK_MANIFEST_FILE}"
 echo -e "  git commit -m 'chore(release): point the data-pack links at ${NEW_TAG}'"
 echo -e "  git push origin ${BRANCH}"
 echo

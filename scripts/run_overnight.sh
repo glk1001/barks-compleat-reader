@@ -15,7 +15,9 @@
 #   data           data_manifest.py: this machine's data pack (the Reader Files
 #                  folders, prebuilt comics, PNG panels) against the manifest the
 #                  main PC wrote; warns, naming each folder that differs - a stale
-#                  copy otherwise passes, as the tests read the same data the app does
+#                  copy otherwise passes, as the tests read the same data the app does.
+#                  On the main PC, also its Reader Files against the published data
+#                  pack (scripts/data-pack-manifest.json): warns when a new one is due
 #   validate       validate-barks-reader-files.py: every title's panels, prebuilt
 #                  comic, layout, panel segments, wiki joins and the search index, on the real data;
 #                  --full-load-check decodes every source page, --strict-wiki fails

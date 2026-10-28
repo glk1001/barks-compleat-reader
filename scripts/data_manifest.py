@@ -40,7 +40,15 @@ The same fingerprints version the data packs. ``scripts/build-data-zips.sh`` run
 to write the ``Reader Files/data-pack.json`` it zips into both packs: data pack N
 (the N of its data-vN release), built when and where, and the fingerprint of each
 Reader Files folder under DIR (``core/data_pack.py`` reads the file; ``--list-entries``
-prints the folders, so the build script packs the same list).
+prints the folders, so the build script packs the same list). When
+``scripts/upload-data-zips.sh`` publishes the packs it copies that file to
+``scripts/data-pack-manifest.json``, the record of the data the published pack holds:
+
+  uv run scripts/data_manifest.py --pack    # this PC's Reader Files folders against it
+
+names each folder that has changed since - a new data pack is due - and exits 3. The
+plain check does the same on the main PC (the machine the manifest was written on)
+after its own comparison, so the overnight ``data`` stage there warns too.
 """
 
 from __future__ import annotations
@@ -55,11 +63,13 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from barks_reader.core.data_pack import pack_manifest_json
+from barks_reader.core.data_pack import DataPackInfo, pack_manifest_json
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = Path(__file__).with_name("data-manifest.json")
+# The published data pack's version file, copied there by upload-data-zips.sh.
+PACK_MANIFEST_PATH = Path(__file__).with_name("data-pack-manifest.json")
 CACHE_PATH = REPO_ROOT / "build" / "data-manifest-cache.json"
 DIFFER_EXIT = 3
 
@@ -265,6 +275,27 @@ def compare(manifest: dict, found: dict[str, Fingerprint | None]) -> list[str]:
     return lines
 
 
+def compare_pack(pack: DataPackInfo, found: dict[str, Fingerprint | None]) -> list[str]:
+    """Each Reader Files entry that differs from the published data pack.
+
+    Args:
+        pack: The published pack's version file.
+        found: This machine's fingerprints, by entry.
+
+    Returns:
+        The entries whose fingerprint differs from the pack's, is missing here, or is
+        not in the pack; empty when the pack holds exactly what this machine has.
+
+    """
+    differing = []
+    for name in READER_FILES_ENTRIES:
+        have = found.get(name)
+        want = pack.entries.get(name)
+        if want is None or have is None or asdict(have) != want:
+            differing.append(name)
+    return differing
+
+
 def _describe(fields: dict) -> str:
     return f"{fields['files']:,} files, {fields['bytes'] / 1e6:,.1f} MB"
 
@@ -290,6 +321,11 @@ def main(argv: list[str] | None = None) -> int:
         "--write", action="store_true", help="record this machine's data as the manifest"
     )
     parser.add_argument(
+        "--pack",
+        action="store_true",
+        help="compare this machine's Reader Files folders with the published data pack",
+    )
+    parser.add_argument(
         "--list-entries", action="store_true", help="print the Reader Files entries, one a line"
     )
     parser.add_argument(
@@ -311,10 +347,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.version is None or args.reader_files is None:
             parser.error("--write-pack-manifest needs --version and --reader-files")
         return _write_pack_manifest(args.write_pack_manifest, args.version, args.reader_files)
-    return _write_or_compare(write=args.write)
+    return _write_or_compare(write=args.write, pack_only=args.pack)
 
 
-def _write_or_compare(*, write: bool) -> int:
+def _write_or_compare(*, write: bool, pack_only: bool) -> int:
     try:
         roots = data_roots()
     except Exception as exc:  # noqa: BLE001 - say why, rather than a traceback, in the run's log
@@ -323,6 +359,9 @@ def _write_or_compare(*, write: bool) -> int:
     cache = _load_cache()
     found = fingerprints(roots, cache)
     _save_cache(cache)
+
+    if pack_only:
+        return _compare_with_pack(found, required=True)
 
     if write:
         host = platform.node()
@@ -339,11 +378,45 @@ def _write_or_compare(*, write: bool) -> int:
     source = f"{manifest['written_on']} on {manifest['written_at']}"
     if not differences:
         print(f"data: every folder matches the manifest written by {source}")  # noqa: T201
+        status = 0
+    else:
+        print(f"data: differs from the manifest written by {source}:")  # noqa: T201
+        for line in differences:
+            print(f"  {line}")  # noqa: T201
+        print("  copy those folders from the main PC; there, a difference means: run --write")  # noqa: T201
+        status = DIFFER_EXIT
+    # The main PC is where a new data pack is made: say there when one is due.
+    if manifest["written_on"] == platform.node():
+        status = _compare_with_pack(found, required=False) or status
+    return status
+
+
+def _compare_with_pack(found: dict[str, Fingerprint | None], *, required: bool) -> int:
+    """Say which Reader Files folders have changed since the published data pack.
+
+    Returns:
+        0 when none has (or, unless `required`, when nothing has been published yet),
+        `DIFFER_EXIT` naming the folders that have, 1 when the record cannot be read.
+
+    """
+    try:
+        pack = DataPackInfo.from_json(PACK_MANIFEST_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"data: no {PACK_MANIFEST_PATH.name}: no versioned data pack is published yet")  # noqa: T201
+        return 1 if required else 0
+    except (OSError, ValueError) as exc:
+        print(f"data: cannot read {PACK_MANIFEST_PATH.name}: {exc}")  # noqa: T201
+        return 1
+    differing = compare_pack(pack, found)
+    built = pack.built_at.date().isoformat()
+    if not differing:
+        print(f"data: the published data pack {pack.tag} (built {built}) holds this PC's data")  # noqa: T201
         return 0
-    print(f"data: differs from the manifest written by {source}:")  # noqa: T201
-    for line in differences:
-        print(f"  {line}")  # noqa: T201
-    print("  copy those folders from the main PC; there, a difference means: run --write")  # noqa: T201
+    print(  # noqa: T201
+        f"data: the published data pack {pack.tag} (built {built}) is behind this PC:"
+        f" {', '.join(differing)}"
+    )
+    print("  a new data pack is due: scripts/build-data-zips.sh, then scripts/upload-data-zips.sh")  # noqa: T201
     return DIFFER_EXIT
 
 
