@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid -->
 <!-- docs-refs: skip -->
 <!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
@@ -95,6 +95,34 @@ copied and adapted. How it differs:
 - **`setup-root.sh`**, in `~/nightly-job-setup/`, did the one-off root steps: the apt
   packages, the lid, the touch tests' udev rule, then `install.sh`. It is safe to run
   again.
+
+### Another distro: a Fedora container on gmktec
+
+Every Linux machine here runs Ubuntu, so `scripts/run_overnight_container.sh fedora`
+runs a slice of the overnight run on Fedora, in a rootless podman container on gmktec:
+the data stage, the suite, a Nuitka build made on Fedora and its smoke test, and the base
+GUI suite with its timings, then a smoke test of the executable gmktec itself built,
+which is the one a Fedora user would download. It tests the commit gmktec's checkout is
+on, in a clone of its own in `~/overnight-containers/fedora` (the container's home),
+with the data pack mounted read-only at the same paths. The script's header has the
+details.
+
+- **On demand only, for now**: not in `~/bin/nightly-job`. Start it after the night's run,
+  when nothing else on gmktec is timed: `ssh gmktec`, then
+  `tmux new -s fedora 'export PATH=$HOME/.local/bin:$PATH; cd ~/Prj/github/barks-compleat-digital/barks-compleat-reader && bash scripts/run_overnight_container.sh fedora'`.
+  Chained after the nightly run, it would still fit in the 5 h limit.
+- **The first run**, on 2026-10-28 on 3be50a2b (Fedora 44, glibc 2.43): everything
+  passed in 21 minutes (the build 11, the GUI suite's 154 tests 7), plus about a minute
+  building the image.
+- **The image** is `scripts/containers/fedora.Containerfile`, rebuilt each run with
+  `--pull=newer`, so a new Fedora release arrives by itself; the run's first line names
+  the release. Another distro would be another `scripts/containers/<name>.Containerfile`.
+- **Results**: two summaries in that clone's `build/overnight/`, one for the stages and one
+  for the smoke test of gmktec's build; the script's last lines name both.
+- **What it cannot show**: the desktop (GNOME, KDE, Wayland, the window manager). The GUI
+  tests run on Xvfb on every distro, so a check of those means a VM and a person.
+- **Set up** with `sudo apt install podman`; rootless podman uses greg's `/etc/subuid`
+  and `/etc/subgid` ranges, which Ubuntu creates with the user.
 
 ## Windows: the laptop
 

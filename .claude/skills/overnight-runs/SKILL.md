@@ -19,6 +19,9 @@ To run it on another machine, `bash scripts/copy-to-overnight-host.sh [--dry-run
 sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB of data;
 not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
+For another distro, `bash scripts/run_overnight_container.sh fedora` runs a slice (the suite,
+a build made there, the base GUI suite, and a smoke test of the host's build) in a podman
+container on the second Linux PC, on demand (`docs/overnight-schedule.md`, "Another distro").
 Each machine's data pack is a copy that nothing re-syncs, and a stale one passes every other
 stage. So both runners start with `data`: `scripts/data_manifest.py` compares the Reader Files
 folders, prebuilt comics and PNG panels there with `scripts/data-manifest.json`, and warns
