@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid libpod -->
 <!-- docs-refs: skip -->
 <!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
@@ -100,25 +100,29 @@ copied and adapted. How it differs:
 
 Every Linux machine here runs Ubuntu, so `scripts/run_overnight_container.sh fedora`
 runs a slice of the overnight run on Fedora, in a rootless podman container on gmktec:
-the data stage, the suite, a Nuitka build made on Fedora and its smoke test, and the base
-GUI suite with its timings, then a smoke test of the executable gmktec itself built,
-which is the one a Fedora user would download. It tests the commit gmktec's checkout is
-on, in a clone of its own in `~/overnight-containers/fedora` (the container's home),
-with the data pack mounted read-only at the same paths. The script's header has the
-details.
+the data stage, the suite, a Nuitka build made on Fedora, its smoke test, the GUI suite
+and a soak against that build (the `gui` stage's `built-app` and `built-app-soak` only,
+through `BARKS_OVERNIGHT_GUI_STAGES`), and the base GUI suite with its timings; then the
+same smoke test, GUI suite and soak against the executable gmktec itself built, which is
+the one a Fedora user would download. It tests the commit gmktec's checkout is on (or
+`--commit`'s), in a clone of its own in `~/overnight-containers/fedora` (the container's
+home), with the data pack mounted read-only at the same paths. The script's header has
+the details.
 
 - **On demand only, for now**: not in `~/bin/nightly-job`. Start it after the night's run,
-  when nothing else on gmktec is timed: `ssh gmktec`, then
-  `tmux new -s fedora 'export PATH=$HOME/.local/bin:$PATH; cd ~/Prj/github/barks-compleat-digital/barks-compleat-reader && bash scripts/run_overnight_container.sh fedora'`.
-  Chained after the nightly run, it would still fit in the 5 h limit.
-- **The first run**, on 2026-10-28 on 3be50a2b (Fedora 44, glibc 2.43): everything
-  passed in 21 minutes (the build 11, the GUI suite's 154 tests 7), plus about a minute
-  building the image.
+  when nothing else on gmktec is timed, from the main machine: `gmktec-fedora run`
+  ([below](#from-the-main-machine-running-watching-and-collecting)). Chained after the
+  nightly run, it would still fit in the 5 h limit.
+- **Timed** on 2026-10-28 on f9f3d63c (Fedora 44, glibc 2.43): everything passed in 33
+  minutes, 22 for the first part (the build 3.5, with its ccache warm: 11 cold;
+  `built-app` 7, `built-app-soak` 3, the base suite 7) and 10 for gmktec's build, plus
+  about a minute building the image.
 - **The image** is `scripts/containers/fedora.Containerfile`, rebuilt each run with
   `--pull=newer`, so a new Fedora release arrives by itself; the run's first line names
   the release. Another distro would be another `scripts/containers/<name>.Containerfile`.
 - **Results**: two summaries in that clone's `build/overnight/`, one for the stages and one
-  for the smoke test of gmktec's build; the script's last lines name both.
+  for the tests of gmktec's build; the script's last lines name both, and
+  `gmktec-fedora status` prints them.
 - **What it cannot show**: the desktop (GNOME, KDE, Wayland, the window manager). The GUI
   tests run on Xvfb on every distro, so a check of those means a VM and a person.
 - **Set up** with `sudo apt install podman`; rootless podman uses greg's `/etc/subuid`
@@ -270,6 +274,7 @@ collect their logs. They live outside any repo; each one's header says what it a
 |---|---|---|
 | `greg-dell` | greg-dell ([above](#asleep-with-no-keyboard)) | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
 | `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
+| `gmktec-fedora` | the Fedora container on gmktec ([above](#another-distro-a-fedora-container-on-gmktec)) | `status`, `run [--commit REF]`, `log [N]`, `kill` |
 | `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill` |
 | `overnight-local` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
 | `overnight-logs` | five machines' run logs ([below](#the-logs-collected)), copied here | `[--wake] [machine...]` |
@@ -280,6 +285,16 @@ collect their logs. They live outside any repo; each one's header says what it a
   it; gmktec stays awake, except that the 01:00 run's wrapper (root, out of `kill`'s
   reach) still suspends it afterwards if it woke for the run. gmktec wakes on a magic
   packet on its wired port (tested from sleep, 2026-10-15).
+- **`gmktec-fedora run`** does the same for the Fedora container's run: it wakes gmktec if
+  need be, pulls its checkout (not with `--commit`), and starts
+  `scripts/run_overnight_container.sh fedora` in the tmux session `fedora-overnight`,
+  logging to `~/.local/state/fedora-overnight/<stamp>.log` there; woken for it, gmktec
+  suspends again afterwards. It refuses while gmktec's own run or another container run
+  is going. `gmktec-fedora status` prints the run's two summaries, `log` the end of its
+  output, and `kill` stops it. The container's processes are greg's too, so `gmktec`
+  tells them from its own run by their cgroup (`libpod-<id>.scope`): `gmktec status`
+  shows a container run as going (so `gmktec sleep` and `gmktec run` refuse), and
+  `gmktec kill` leaves it to `gmktec-fedora kill`.
 - **`win-vm` and `mac-vm`** are one script, `overnight-vm`, under two names. They boot or
   resume the VM and wait for its desktop; `run` starts the run on that desktop (Windows:
   the Task Scheduler task "Barks Reader overnight now"; macOS: a Terminal window, which
