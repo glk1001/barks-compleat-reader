@@ -276,6 +276,9 @@ def parse_submission_date(paren_text: str) -> tuple[int, int, int, bool] | None:
     # A hedged date is still a date: "(Probably May 24, 1956)" - US 33 Tree
     # Trick and the DD FC at source line ~1565.
     t = re.sub(r"^Probably\s+", "", t, flags=re.IGNORECASE)
+    # And so is a hedged date in a date list: "Dec. 20, 1962 [idea] and possibly
+    # Aug. 19, 1963 [art]" - US 61 It Happened One Winter.
+    t = re.sub(r"\band possibly\s+", "and ", t, flags=re.IGNORECASE)
     # Barrier gives no date: "Date not available." or "(Not listed.)", an item
     # absent from Barks's own list.
     if t.rstrip(".").lower() in ("date not available", "not listed"):

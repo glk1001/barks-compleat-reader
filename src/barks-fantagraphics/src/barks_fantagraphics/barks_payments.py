@@ -1083,8 +1083,8 @@ def get_one_pager_page_count_errors() -> list[str]:
     A one-pager must have a payment row for one page, and a bibliography count, where
     it has one, of at most one page (several are a fraction, down to 3/8). The other
     way, a title paid for one page, or of at most one page in the bibliography, must be
-    a one-pager unless it is a cover. Three one-pagers have no bibliography entry
-    (BIRD_CAMERA_THE, UP_AND_AT_IT, IT_HAPPENED_ONE_WINTER); that is not an error.
+    a one-pager unless it is a cover. A one-pager with no bibliography entry is checked
+    against the payments alone; that is not an error.
 
     Returns:
         One message per problem found, empty when ONE_PAGERS agrees with both tables.

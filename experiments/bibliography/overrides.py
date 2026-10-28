@@ -96,15 +96,23 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     Titles.REMEMBER_THIS: (Issues.DD, 45, 1956, 2),          # remaining slot
     # WDCS 215
     Titles.MOCKING_BIRD_RIDGE: (Issues.CS, 215, 8, 58),
+    # Uncle Scrooge 47 — two same-date half-page gags, which Barrier names, in order,
+    # as Barks's "no bargain" and "up and at it". The library's own pages decide:
+    # No Bargain (vol. 30 p. 145) is the candle-power bulb, Up and at It (p. 171)
+    # the gold-finding gadget.
+    Titles.NO_BARGAIN: (Issues.US, 47, 1964, 3),             # "burns a mass of candles"
+    Titles.UP_AND_AT_IT: (Issues.US, 47, 1964, 4),           # "divining stick that attracts gold"
+    # Uncle Scrooge 61 — Barrier doubts the page's date, not that it is in the issue,
+    # and it is the issue's one Barks page left unmatched.
+    Titles.IT_HAPPENED_ONE_WINTER: (Issues.US, 61, 1966, 5),  # "fur coat to a ragged man"
 
     # --- no counterpart in Barrier's 1978 bibliography (validation findings) - #
     Titles.SILENT_NIGHT: None,        # famous unpublished story; not listed in WDCS 64
     Titles.MILKMAN_THE: None,         # unpublished story; not listed in WDCS 215
     # (LIGHTS_OUT and ALL_CHOKED_UP were recorded here as absent until the US 23
-    # entries were restored to source.xhtml from Appendix A's dates, 2026-06-12.)
-    Titles.BIRD_CAMERA_THE: None,     # FC 1047 lists 5 Gyro stories; Bird Camera absent
-    Titles.UP_AND_AT_IT: None,        # US 47 note: gag left unplaced by Barks
-    Titles.IT_HAPPENED_ONE_WINTER: None,  # US 61 lists 4 Barks items; this is not among them
+    # entries were restored to source.xhtml from Appendix A's dates, 2026-06-12;
+    # BIRD_CAMERA_THE and UP_AND_AT_IT until their entries, lost with the EPUB copy's
+    # "Reprinted:" lines they followed, were restored from the book's text, 2026-10-28.)
 }
 
 # Bibliography entries with *no* library counterpart, excluded by hand with a
@@ -128,12 +136,6 @@ ENTRY_EXCLUSIONS: dict[tuple[Issues, int, int, int], tuple[str, str]] = {
         "pursued by a hoodlum",
         "'Turnabout' gag marked '(Not listed.)' — absent from Barks's own "
         "records; uncertain attribution, not in the curated library.",
-    ),
-    (Issues.US, 61, 1966, 5): (
-        "fur coat to a ragged man",
-        "Inside-back-cover gag with uncertain attribution: Barks's list shows the "
-        "Aug. 19, 1963 art submission as intended for US 47; Barrier only "
-        "tentatively places it here.",
     ),
     (Issues.DD, 71, 1960, 1): (
         "first to the end of the rainbow",

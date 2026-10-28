@@ -128,11 +128,11 @@ class TestAttributionSection:
     @pytest.mark.parametrize(
         ("label", "expected"),
         [
-            ("Script and art", "558"),
+            ("Script and art", "561"),
             ("Art only", "79"),
             ("Script only", "28"),
             ("Art, script rewritten", "11"),
-            ("Not in the bibliography", "7"),
+            ("Not in the bibliography", "4"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:

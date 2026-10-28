@@ -35,9 +35,6 @@ EXPECTED_WITHOUT_BIB_ENTRY: frozenset[Titles] = frozenset(
     {
         Titles.SILENT_NIGHT,
         Titles.MILKMAN_THE,
-        Titles.BIRD_CAMERA_THE,
-        Titles.UP_AND_AT_IT,
-        Titles.IT_HAPPENED_ONE_WINTER,
     }
     | {c.title for c in BARKS_TITLE_INFO if c.issue_year > LAST_BIBLIOGRAPHY_YEAR}
 )
