@@ -330,7 +330,9 @@ just reader
 
   `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default
   three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_SCOPE`
-  picks the mutation share, and a machine keeps its own in the gitignored `.env.overnight`
+  picks the mutation share; `BARKS_OVERNIGHT_GUI_STAGES` (names from
+  `run_gui_overnight.sh --list`; default all) limits the `gui` stage to those. A machine
+  keeps its own in the gitignored `.env.overnight`
   (one `BARKS_OVERNIGHT_*=value` per line; the environment wins). Each stage's output goes to
   `build/overnight/<stamp>/<stage>.log`, and `summary.txt` there, rewritten after every
   stage, holds each one's result (passed, FAILED, WARNED, skipped or stopped) and time.

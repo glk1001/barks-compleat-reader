@@ -2,29 +2,32 @@
 # Run a slice of the overnight run on another distro, in a rootless podman container on
 # this machine: what this distro's own run (scripts/run_overnight.sh) does not show - a
 # distro's own libraries (glibc, Mesa, the X libraries, fonts) under the suite, a Nuitka
-# build and the base GUI suite, and whether the executable built here runs there.
+# build and the GUI suite, and whether the executable built here runs there.
 #
 #   1. builds the distro's image (scripts/containers/<distro>.Containerfile) with
 #      --pull=newer, so a new release or update of the base image comes in;
 #   2. brings the container's own clone of this repo, in ~/overnight-containers/<distro>
-#      (the container's home), to the commit this checkout is on - uncommitted changes
-#      here are not tested - and copies in .env.runtime and this machine's GUI timing
-#      calibration (.benchmarks/gui-timings.json, so the budgets are this hardware's);
+#      (the container's home), to the commit this checkout is on (or --commit's) -
+#      uncommitted changes here are not tested - and copies in .env.runtime and this
+#      machine's GUI timing calibration (.benchmarks/gui-timings.json, so the budgets
+#      are this hardware's);
 #   3. runs scripts/containers/in-container.sh there (the stages it runs: its header),
 #      with the data pack mounted read-only at the same paths as here, so the profile's
 #      absolute paths resolve, and the executable built here (barks-reader-linux, when
-#      there is one) for its smoke test.
+#      there is one) for its own smoke test, GUI suite and soak.
 # The container's home keeps its venv, uv's Python and the caches between runs. Results:
 # build/overnight/<stamp>/summary.txt in that clone, one run for the stages and one for
-# the smoke test of the build from here; the last lines of this script's output say where.
+# the tests of the build from here; the last lines of this script's output say where.
 #
 # Assumes: podman, rootless (sudo apt install podman); the data pack where
 # copy-to-overnight-host.sh puts it; the sibling barks-wiki checkout (the profile's
 # wiki_bundle_dir). The network, for the image, uv's Python and the packages.
 # Not while this machine's own overnight run is going: both are timed.
 #
-# Usage: scripts/run_overnight_container.sh DISTRO [run_overnight.sh options]
-#   DISTRO   fedora (a scripts/containers/<name>.Containerfile)
+# Usage: scripts/run_overnight_container.sh [--commit REF] DISTRO [run_overnight.sh options]
+#   --commit  test this branch or tag of this repo instead of the checkout's HEAD (a
+#             commit not yet pushed, say); the scripts run are still this checkout's
+#   DISTRO    fedora (a scripts/containers/<name>.Containerfile)
 #   Any further options go to its run_overnight.sh (e.g. --skip gui-timings).
 set -euo pipefail
 
@@ -32,7 +35,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
-distro="${1:?usage: run_overnight_container.sh DISTRO [run_overnight.sh options]}"
+commit=HEAD
+if [[ "${1:-}" == --commit ]]; then
+    commit="${2:?--commit needs a branch or tag}"
+    shift 2
+fi
+distro="${1:?usage: run_overnight_container.sh [--commit REF] DISTRO [run_overnight.sh options]}"
 shift
 containerfile="${SCRIPT_DIR}/containers/${distro}.Containerfile"
 [[ -f "$containerfile" ]] || { echo "run_overnight_container: no ${containerfile}" >&2; exit 2; }
@@ -55,9 +63,9 @@ MOUNTS=(
     "$(dirname "$repo_path")/barks-wiki"
 )
 
-sha="$(git rev-parse HEAD)"
-echo "run_overnight_container: ${distro}, commit $(git rev-parse --short HEAD)"
-[[ -z "$(git status --porcelain --untracked-files=no)" ]] \
+sha="$(git rev-parse --verify "${commit}^{commit}")"
+echo "run_overnight_container: ${distro}, commit $(git rev-parse --short "$sha") (${commit})"
+[[ "$commit" != HEAD || -z "$(git status --porcelain --untracked-files=no)" ]] \
     || echo "run_overnight_container: this checkout has uncommitted changes; they are not tested"
 
 uv_version="$(uv --version | awk '{print $2}')"
@@ -68,7 +76,7 @@ if [[ ! -d "${clone}/.git" ]]; then
     mkdir -p "$(dirname "$clone")"
     git clone --quiet "$REPO_ROOT" "$clone"
 fi
-git -C "$clone" fetch --quiet --tags --force "$REPO_ROOT" HEAD
+git -C "$clone" fetch --quiet --tags --force "$REPO_ROOT" "$commit"
 git -C "$clone" checkout --quiet --detach --force "$sha"
 # The venv and earlier runs' results stay; everything else untracked goes.
 git -C "$clone" clean -ffdxq -e /.venv -e /build/overnight/

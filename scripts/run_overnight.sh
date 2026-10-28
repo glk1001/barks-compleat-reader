@@ -53,7 +53,8 @@
 #                  Escape to close its popup, as CI does
 #   gui            run_gui_overnight.sh: every GUI stage, the built app's three too,
 #                  and a longer soak on new seeds each night; the workspace app's
-#                  coverage is measured (BARKS_PROBE_COVERAGE, ~10% slower)
+#                  coverage is measured (BARKS_PROBE_COVERAGE, ~10% slower); only
+#                  those BARKS_OVERNIGHT_GUI_STAGES names, when it is set
 #   gui-timings    the GUI suite once more, recording its timings, then each
 #                  kind's third-slowest test against .benchmarks/gui-timings.json
 #                  (not the slowest: one starved worker is not a drift); warns
@@ -84,7 +85,10 @@
 # Env: BARKS_OVERNIGHT_SOAK_STEPS (default here 1000) and BARKS_OVERNIGHT_SOAK_SEEDS
 # (default: three seeds from the day of the year, so each night walks new paths);
 # BARKS_OVERNIGHT_MUTATION_SCOPE (all, core or fantagraphics; default all) is what the
-# mutation stage mutates: two Linux machines can each take a share. A machine keeps its
+# mutation stage mutates: two Linux machines can each take a share.
+# BARKS_OVERNIGHT_GUI_STAGES (comma-separated, run_gui_overnight.sh --list; default all)
+# is what the gui stage runs: a slower machine, or another distro's container, can run
+# a few of them (scripts/run_overnight_container.sh does). A machine keeps its
 # own in .env.overnight (gitignored, and not copied by copy-to-overnight-host.sh), one
 # NAME=value per line; the environment, a one-off on the command line, wins over it.
 #
@@ -454,6 +458,10 @@ run_stage() {
         local args=()
         [[ -n "$exe" ]] && args=(--app "$exe")
         [[ -z "$exe" ]] && echo "gui: no executable, so no built-app stage"
+        if [[ -n "${BARKS_OVERNIGHT_GUI_STAGES:-}" ]]; then
+            echo "gui: only ${BARKS_OVERNIGHT_GUI_STAGES} (BARKS_OVERNIGHT_GUI_STAGES)"
+            args+=(--only "$BARKS_OVERNIGHT_GUI_STAGES")
+        fi
         BARKS_OVERNIGHT_SOAK_STEPS="${BARKS_OVERNIGHT_SOAK_STEPS:-1000}" \
             BARKS_OVERNIGHT_SOAK_SEEDS="${BARKS_OVERNIGHT_SOAK_SEEDS:-$(soak_seeds)}" \
             BARKS_PROBE_COVERAGE="$cov_dir" \

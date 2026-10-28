@@ -6,11 +6,12 @@
 #
 # What it runs, each through scripts/run_overnight.sh so the results and logs are the
 # usual ones (build/overnight/<stamp>/ in that clone):
-#   1. data, pytest, build, smoke and gui-timings: the suite, a Nuitka build made on this
-#      distro and its smoke test, and the base GUI suite (run_gui_tests.sh --headless,
-#      not run_gui_overnight.sh's 3 hours) against the host's GUI timing calibration;
-#   2. with --host-build PATH, a smoke test of the executable the host built: the one a
-#      user of this distro would download.
+#   1. data, pytest, build, smoke, gui and gui-timings: the suite, a Nuitka build made on
+#      this distro, its smoke test, the GUI suite and a soak against it (the gui stage's
+#      built-app and built-app-soak only, not run_gui_overnight.sh's 3 hours), and the
+#      base GUI suite on the workspace app against the host's GUI timing calibration;
+#   2. with --host-build PATH, the same smoke test, GUI suite and soak against the
+#      executable the host built: the one a user of this distro would download.
 #
 # Assumes: the data pack is mounted at the same paths as on the host, and the clone has
 # .env.runtime (the runner copies both in).
@@ -21,7 +22,11 @@ set -euo pipefail
 
 [[ -f scripts/run_overnight.sh ]] || { echo "in-container: not run from the clone's root" >&2; exit 2; }
 
-STAGES=data,pytest,build,smoke,gui-timings
+STAGES=data,pytest,build,smoke,gui,gui-timings
+HOST_BUILD_STAGES=smoke,gui
+# The GUI stages a distro's libraries can break that the base suite does not reach: the
+# packaged executable, which loads them, under the suite and a soak's deeper paths.
+export BARKS_OVERNIGHT_GUI_STAGES=built-app,built-app-soak
 VERSION_FILE="src/barks-reader/src/barks_reader/_version.py"
 
 host_build=""
@@ -40,14 +45,22 @@ bash scripts/generate-panel-module.sh
 [[ -f "$VERSION_FILE" ]] || printf 'COPYRIGHT_YEARS = "2025-2026"\nVERSION = "container"\n' \
     >"$VERSION_FILE"
 
+# A commit older than BARKS_OVERNIGHT_GUI_STAGES would run every GUI stage (3 hours):
+# leave the gui stage out there.
+if ! grep -q BARKS_OVERNIGHT_GUI_STAGES scripts/run_overnight.sh; then
+    echo "in-container: this commit's run_overnight.sh runs every GUI stage; no gui stage"
+    STAGES="${STAGES/,gui,/,}"
+    HOST_BUILD_STAGES=smoke
+fi
+
 status=0
 bash scripts/run_overnight.sh --only "$STAGES" "$@" || status=$?
 
 if [[ -n "$host_build" ]]; then
     echo
     echo "in-container: the host's build on ${PRETTY_NAME}"
-    bash scripts/run_overnight.sh --only smoke --app "$host_build" || status=$?
+    bash scripts/run_overnight.sh --only "$HOST_BUILD_STAGES" --app "$host_build" || status=$?
 else
-    echo "in-container: no host build given, so no smoke test of it"
+    echo "in-container: no host build given, so no tests of it"
 fi
 exit "$status"
