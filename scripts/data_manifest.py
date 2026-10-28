@@ -32,6 +32,15 @@ files a desktop leaves (``.DS_Store``, ``Thumbs.db``, ``desktop.ini``, ``._*``).
 Hashing every file takes about a minute for the ~11 GB, so each file's md5 is kept
 in ``build/data-manifest-cache.json`` (gitignored, this machine's own) under its
 path, size and modified time, and hashed again only when one of those changes.
+
+The same fingerprints version the data packs. ``scripts/build-data-zips.sh`` runs
+
+  uv run scripts/data_manifest.py --write-pack-manifest OUT --version N --reader-files DIR
+
+to write the ``Reader Files/data-pack.json`` it zips into both packs: data pack N
+(the N of its data-vN release), built when and where, and the fingerprint of each
+Reader Files folder under DIR (``core/data_pack.py`` reads the file; ``--list-entries``
+prints the folders, so the build script packs the same list).
 """
 
 from __future__ import annotations
@@ -46,6 +55,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from barks_reader.core.data_pack import pack_manifest_json
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -175,6 +185,39 @@ def data_roots() -> dict[str, Path | None]:
     return roots
 
 
+def reader_files_fingerprints(reader_files: Path, cache: Cache) -> dict[str, Fingerprint | None]:
+    """Fingerprint each Reader Files entry under `reader_files`; None for one not there."""
+    return {name: fingerprint(reader_files / name, cache) for name in READER_FILES_ENTRIES}
+
+
+def write_pack_manifest(out: Path, version: int, reader_files: Path, cache: Cache) -> list[str]:
+    """Write the version file the data packs carry.
+
+    Args:
+        out: Where to write it (the build script zips it in as Reader Files/data-pack.json).
+        version: The pack's number, the N of its data-vN release.
+        reader_files: The Reader Files folder the packs are made from.
+        cache: File md5s by path, as `fingerprint` takes.
+
+    Returns:
+        The entries missing under `reader_files`; nothing is written unless empty.
+
+    """
+    found = reader_files_fingerprints(reader_files, cache)
+    missing = [name for name, fp in found.items() if fp is None]
+    if missing:
+        return missing
+    entries = {name: asdict(fp) for name, fp in found.items() if fp is not None}
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        pack_manifest_json(
+            version, f"data-v{version}", datetime.now(UTC), platform.node(), entries
+        ),
+        encoding="utf-8",
+    )
+    return []
+
+
 def fingerprints(roots: dict[str, Path | None], cache: Cache) -> dict[str, Fingerprint | None]:
     """Fingerprint every entry; None for one that is not on this machine."""
     return {
@@ -246,8 +289,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--write", action="store_true", help="record this machine's data as the manifest"
     )
+    parser.add_argument(
+        "--list-entries", action="store_true", help="print the Reader Files entries, one a line"
+    )
+    parser.add_argument(
+        "--write-pack-manifest",
+        metavar="OUT",
+        type=Path,
+        help="write the data packs' version file (with --version and --reader-files)",
+    )
+    parser.add_argument("--version", type=int, help="the pack's number, the N of data-vN")
+    parser.add_argument(
+        "--reader-files", type=Path, help="the Reader Files folder the packs are made from"
+    )
     args = parser.parse_args(argv)
 
+    if args.list_entries:
+        print("\n".join(READER_FILES_ENTRIES))  # noqa: T201
+        return 0
+    if args.write_pack_manifest is not None:
+        if args.version is None or args.reader_files is None:
+            parser.error("--write-pack-manifest needs --version and --reader-files")
+        return _write_pack_manifest(args.write_pack_manifest, args.version, args.reader_files)
+    return _write_or_compare(write=args.write)
+
+
+def _write_or_compare(*, write: bool) -> int:
     try:
         roots = data_roots()
     except Exception as exc:  # noqa: BLE001 - say why, rather than a traceback, in the run's log
@@ -257,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
     found = fingerprints(roots, cache)
     _save_cache(cache)
 
-    if args.write:
+    if write:
         host = platform.node()
         MANIFEST_PATH.write_text(manifest_json(found, host, datetime.now(UTC)), encoding="utf-8")
         print(f"data: wrote {MANIFEST_PATH.relative_to(REPO_ROOT)} from {host}; commit it")  # noqa: T201
@@ -278,6 +345,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {line}")  # noqa: T201
     print("  copy those folders from the main PC; there, a difference means: run --write")  # noqa: T201
     return DIFFER_EXIT
+
+
+def _write_pack_manifest(out: Path, version: int, reader_files: Path) -> int:
+    cache = _load_cache()
+    missing = write_pack_manifest(out, version, reader_files, cache)
+    _save_cache(cache)
+    if missing:
+        print(f"data: not under {reader_files}: {', '.join(missing)}")  # noqa: T201
+        return 1
+    print(f"data: wrote {out} for data pack {version}")  # noqa: T201
+    return 0
 
 
 if __name__ == "__main__":

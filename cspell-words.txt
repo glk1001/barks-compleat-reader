@@ -45,8 +45,8 @@ compresslevel
 configfile
 consolelog
 cpufreq
-creationflags
 cpus
+creationflags
 CRF
 currentTime
 cythonize

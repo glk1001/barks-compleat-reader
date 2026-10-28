@@ -27,9 +27,8 @@
 
 set -eo pipefail
 
-REPO="glk1001/barks-compleat-reader"
-DATA1_ZIP="barks-reader-data-1.barkspack"
-DATA2_ZIP="barks-reader-data-2.barkspack"
+# shellcheck source=scripts/_data_release.sh
+source "$(dirname "$0")/_data_release.sh"
 # These packs are ~1.2GB each, and a size check cannot see a flipped byte - only a
 # truncation. Publish real hashes so a bad copy is identifiable as a bad copy.
 CHECKSUMS_FILE="SHA256SUMS.txt"
@@ -92,9 +91,8 @@ SIZE1=$(file_size "${ZIPS_DIR}/${DATA1_ZIP}")
 SIZE2=$(file_size "${ZIPS_DIR}/${DATA2_ZIP}")
 
 # --- Work out the previous and next data tags ---
-LAST_N=$(gh release list --repo "$REPO" --json tagName -q '.[].tagName' \
-    | grep -E '^data-v[0-9]+$' | sed 's/^data-v//' | sort -n | tail -1 || true)
-if [[ -z "$LAST_N" ]]; then
+LAST_N=$(latest_data_version) || LAST_N=0
+if [[ "$LAST_N" == 0 ]]; then
     OLD_TAG=""
     NEW_TAG="data-v1"
 else

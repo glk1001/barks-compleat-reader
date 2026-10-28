@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import asdict
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -14,6 +15,7 @@ from unittest.mock import patch
 import data_manifest
 import pytest
 from barks_reader.core import config_info as config_info_module
+from barks_reader.core.data_pack import DataPackInfo
 from data_manifest import Fingerprint, compare, fingerprint, fingerprints, manifest_json
 
 if TYPE_CHECKING:
@@ -206,3 +208,73 @@ class TestDataRoots:
     def test_every_entry_is_fingerprinted_even_when_absent(self, tmp_path: Path) -> None:
         found = fingerprints({"Indexes": tmp_path / "none", "PNG panels": None}, {})
         assert found == {"Indexes": None, "PNG panels": None}
+
+
+class TestPackManifest:
+    """The version file the data packs carry."""
+
+    @pytest.fixture
+    def reader_files(self, tmp_path: Path) -> Path:
+        root = tmp_path / "Reader Files"
+        for name in data_manifest.READER_FILES_ENTRIES:
+            if name.endswith(".zip"):
+                root.mkdir(exist_ok=True)
+                (root / name).write_bytes(b"zip")
+            else:
+                _folder(root / name, {"a.json": b"{}"})
+        return root
+
+    def _main(self, tmp_path: Path, *args: str) -> int:
+        with patch.object(data_manifest, "CACHE_PATH", tmp_path / "build" / "cache.json"):
+            return data_manifest.main(list(args))
+
+    def test_lists_the_entries_the_build_packs(self, capsys: pytest.CaptureFixture[str]) -> None:
+        assert data_manifest.main(["--list-entries"]) == 0
+        assert capsys.readouterr().out.splitlines() == list(data_manifest.READER_FILES_ENTRIES)
+
+    def test_writes_the_version_and_every_fingerprint(
+        self, tmp_path: Path, reader_files: Path
+    ) -> None:
+        out = tmp_path / "stage" / "Reader Files" / "data-pack.json"
+        with patch.object(data_manifest.platform, "node", return_value="main-pc"):
+            status = self._main(
+                tmp_path,
+                "--write-pack-manifest",
+                str(out),
+                "--version",
+                "7",
+                "--reader-files",
+                str(reader_files),
+            )
+
+        assert status == 0
+        info = DataPackInfo.from_json(out.read_text(encoding="utf-8"))
+        assert (info.version, info.tag, info.built_on) == (7, "data-v7", "main-pc")
+        assert set(info.entries) == set(data_manifest.READER_FILES_ENTRIES)
+        panels = fingerprint(reader_files / "Barks Panels.zip", {})
+        assert panels is not None
+        assert info.entries["Barks Panels.zip"] == asdict(panels)
+
+    def test_a_missing_entry_writes_nothing(
+        self, tmp_path: Path, reader_files: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        (reader_files / "Barks Panels.zip").unlink()
+        out = tmp_path / "data-pack.json"
+
+        status = self._main(
+            tmp_path,
+            "--write-pack-manifest",
+            str(out),
+            "--version",
+            "7",
+            "--reader-files",
+            str(reader_files),
+        )
+
+        assert status == 1
+        assert not out.exists()
+        assert "not under" in capsys.readouterr().out
+
+    def test_the_version_and_the_folder_are_both_needed(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            self._main(tmp_path, "--write-pack-manifest", str(tmp_path / "x.json"))
