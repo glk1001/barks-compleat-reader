@@ -16,7 +16,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from loguru import logger
 
-from barks_reader.core import log_markers
+from barks_reader.core import data_pack, log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -694,10 +694,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Opened by the keys, the box closed puts them back on the Menu button that
         # opened it, as the settings do; opened by mouse, it leaves mouse mode alone.
         by_keyboard = self._menu_action_by_keyboard
+        installed = data_pack.read_installed(self._reader_settings.reader_files_dir)
         show_about_box(
             self._font_manager,
             self._reader_settings.sys_file_paths.get_app_identity_image_file(),
             on_dismiss=self._enter_menu_mode if by_keyboard else None,
+            data_pack_text=data_pack.installed_version_text(installed),
         )
 
     def _update_action_bar_visibility(self) -> None:

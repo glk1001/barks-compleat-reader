@@ -31,10 +31,12 @@ from barks_reader.core.config_info import (
     seed_random_from_env,
     setup_loguru,
 )
-from barks_reader.core.log_markers import APP_STARTING
+from barks_reader.core.data_pack import read_installed
+from barks_reader.core.log_markers import APP_STARTING, DATA_PACK_INSTALLED
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
@@ -120,6 +122,9 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
 
     logger.info(APP_STARTING)
     logger.info(f"running_compiled_standalone = {cfg_info.is_running_compiled}")
+    installed_pack = read_installed(ReaderSettings.get_reader_files_dir(cfg_info.app_data_dir))
+    pack_text = "not versioned" if installed_pack is None else installed_pack.display()
+    logger.info(DATA_PACK_INSTALLED.format(version=pack_text))
     logger.info(f'app dir = "{cfg_info.app_dir}".')
     logger.info(f'app config path = "{cfg_info.app_config_path}".')
     logger.info(f'app_data_dir = "{cfg_info.app_data_dir}".')

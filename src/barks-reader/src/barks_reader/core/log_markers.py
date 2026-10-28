@@ -126,6 +126,8 @@ ALT_ESCAPE_CAPTURE_CANCELLED: Final = "Alternate Escape capture cancelled."
 ALT_ESCAPE_CLEARED: Final = "Alternate Escape cleared."
 ABOUT_BOX_OPENED: Final = "About box opened."
 ABOUT_BOX_DISMISSED: Final = "About box dismissed."
+# The installed data pack (core/data_pack.py), logged at boot with the app's version.
+DATA_PACK_INSTALLED: Final = "Installed data: {version}."
 # Any popup shown through show_standalone_popup: the About box, the error popups,
 # and the first-run installer's (which has no main reader, so these are its only
 # lines - the build smoke test waits on them). Closed is logged when the popup

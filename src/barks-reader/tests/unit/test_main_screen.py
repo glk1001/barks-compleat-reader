@@ -883,6 +883,16 @@ class TestAboutBoxFocus:
         else:
             assert on_dismiss is None
 
+    def test_about_names_the_installed_data_pack(self, main_screen: MainScreen) -> None:
+        with (
+            patch.object(barks_reader.ui.main_screen, "show_about_box") as show,
+            patch.object(barks_reader.ui.main_screen.data_pack, "read_installed") as read,
+        ):
+            read.return_value = None
+            main_screen.open_about()
+        read.assert_called_once_with(main_screen._reader_settings.reader_files_dir)
+        assert show.call_args.kwargs["data_pack_text"] == "Data pack: not versioned"
+
     def test_enter_on_the_menu_button_records_keyboard_intent(
         self, main_screen: MainScreen
     ) -> None:

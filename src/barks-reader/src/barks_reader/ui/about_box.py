@@ -26,6 +26,7 @@ def show_about_box(
     font_manager: FontManager,
     about_background_path: Path,
     on_dismiss: Callable[[], None] | None = None,
+    data_pack_text: str = "",
 ) -> None:
     """Show the About box.
 
@@ -33,6 +34,8 @@ def show_about_box(
         font_manager: The fonts for its text.
         about_background_path: Its background picture.
         on_dismiss: Called once the box has closed, after its dismissal is logged.
+        data_pack_text: The installed data pack's line (`core.data_pack`), under the
+            version; none when empty.
 
     """
     title_text_color = list(theme().text_display)  # bright cover-yellow hero
@@ -71,6 +74,19 @@ def show_about_box(
             size_hint=(1, 0.09),
         )
     )
+
+    # --- Data pack line ---
+    if data_pack_text:
+        content.add_widget(
+            Label(
+                text=data_pack_text,
+                color=version_text_color,
+                font_size=round(font_manager.about_box_fine_print_font_size),
+                halign="center",
+                valign="middle",
+                size_hint=(1, 0.07),
+            )
+        )
 
     # --- Copyright / Credits ---
     source_code_font_size = round(font_manager.about_box_fine_print_font_size)
