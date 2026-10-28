@@ -272,12 +272,12 @@ collect their logs. They live outside any repo; each one's header says what it a
 
 | Helper | For | Subcommands |
 |---|---|---|
-| `greg-dell` | greg-dell ([above](#asleep-with-no-keyboard)) | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
-| `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill` |
-| `gmktec-fedora` | the Fedora container on gmktec ([above](#another-distro-a-fedora-container-on-gmktec)) | `status`, `run [--commit REF]`, `log [N]`, `kill` |
-| `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill` |
+| `greg-dell` | greg-dell ([above](#asleep-with-no-keyboard)) | `status`, `wake`, `run`, `sleep [-f]`, `kill`, `copy-logs` |
+| `gmktec` | gmktec | `status`, `wake`, `run`, `sleep [-f]`, `kill`, `copy-logs` |
+| `gmktec-fedora` | the Fedora container on gmktec ([above](#another-distro-a-fedora-container-on-gmktec)) | `status`, `run [--commit REF]`, `log [N]`, `kill`, `copy-logs` |
+| `win-vm`, `mac-vm` | the Windows and macOS VMs on the main machine (`docs/setup.md`) | `status`, `start`, `run [--wait]`, `stop [-f]`, `kill`, `copy-logs` |
 | `overnight-local` | the two VMs, then the main machine, one after another | `[--no-pc] [--suspend]`, `status` |
-| `overnight-logs` | five machines' run logs ([below](#the-logs-collected)), copied here | `[--wake] [machine...]` |
+| `overnight-logs` | the machines' run logs ([below](#the-logs-collected)), copied here | `[--wake] [machine...]` |
 
 - **`gmktec run`** wakes it if need be and starts `~/bin/nightly-job` there in the tmux
   session `nightly-job-now`, sleep blocked; woken for it, gmktec suspends again when the
@@ -291,7 +291,8 @@ collect their logs. They live outside any repo; each one's header says what it a
   logging to `~/.local/state/fedora-overnight/<stamp>.log` there; woken for it, gmktec
   suspends again afterwards. It refuses while gmktec's own run or another container run
   is going. `gmktec-fedora status` prints the run's two summaries, `log` the end of its
-  output, and `kill` stops it. The container's processes are greg's too, so `gmktec`
+  output, `kill` stops it, and `copy-logs` copies its logs here
+  ([below](#the-logs-collected)). The container's processes are greg's too, so `gmktec`
   tells them from its own run by their cgroup (`libpod-<id>.scope`): `gmktec status`
   shows a container run as going (so `gmktec sleep` and `gmktec run` refuse), and
   `gmktec kill` leaves it to `gmktec-fedora kill`.
@@ -350,7 +351,10 @@ collect their logs. They live outside any repo; each one's header says what it a
 
 `overnight-logs` copies the runs' logs into this repo's
 `assets/logs-overnight-runs/<machine>/<stamp>/` (gitignored), so that five machines' runs
-sit side by side: `gregspc2`, `gmktec`, `greg-dell`, `win-vm` and `mac-vm`. The two
+sit side by side: `gregspc2`, `gmktec`, `greg-dell`, `win-vm` and `mac-vm`, and a sixth
+name, `gmktec-fedora`, for the Fedora container's runs on gmktec: the run folders in the
+container's clone, plus each `gmktec-fedora run`'s own output in `runner/`
+(`gmktec-fedora copy-logs` is `overnight-logs --wake gmktec-fedora`). The two
 laptops (win_lg, hp-notebook) are not among them: their runs' logs stay on them.
 
 - **What**: from each run folder, the files at its top level named `*.log`, `*.txt` or
@@ -363,9 +367,9 @@ laptops (win_lg, hp-notebook) are not among them: their runs' logs stay on them.
   run finishes.
 - **From where**: only the machines that are up. It wakes and starts nothing, and reports
   the rest as skipped. `overnight-logs gmktec win-vm` names the machines; no names means
-  all five. With `--wake` first, it wakes gmktec or greg-dell if asleep and puts it back
-  to sleep after the copy (only one it woke, and never while a run is going); the VMs
-  are never started.
+  all six. With `--wake` first, it wakes gmktec (also for `gmktec-fedora`) or greg-dell if
+  asleep and puts it back to sleep after the copy (only one it woke, and never while a run
+  is going); the VMs are never started.
 - **When**: `overnight-local` copies each VM's logs before shutting it down, and the main
   machine's after its run. gmktec's and greg-dell's 01:00 runs end while the main machine
   may be asleep, so a user timer on the main machine, `overnight-logs.timer` (in
