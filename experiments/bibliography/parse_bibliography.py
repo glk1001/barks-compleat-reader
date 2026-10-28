@@ -609,6 +609,12 @@ def split_entry_body(body: str, is_cover: bool) -> tuple[str, str, str]:
     title = body[: m.start()].strip()
     page_count = m.group(1).strip()
     desc = re.sub(r"^[-–—.]\s*", "", body[m.end() :].lstrip())
+    # The book sometimes prints a dash before the location as well, "- 1 - (inside
+    # back cover) - ..." (US 46, US 61, Donald's Grandma Duck): it is the count's.
+    location = re.match(r"(\([^)]*\))\s*[-–—.]\s*", desc)
+    if location and "(" not in page_count:
+        page_count = f"{page_count} {location.group(1)}"
+        desc = desc[location.end() :]
     # Drop a leading qualifier ("art only", "script only", ...) from the description.
     desc = re.sub(
         r"^(art and rewriting of script|art only|script only)\s*[-–—.]?\s*",
