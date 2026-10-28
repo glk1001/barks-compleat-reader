@@ -47,6 +47,12 @@ Stages (name: what it runs):
                  platform runs, which the Linux run cannot measure. The combined
                  figure is held within COVERAGE_TOLERANCE of this machine's best
                  (coverage_floor.py), on a night pytest and gui both passed
+  tidy           what the runs leave behind: CI's executable's old unpack folders on
+                 Windows (prune_onefile_cache.py: one of about 360 MB a build, kept to
+                 the newest three) and uv's dangling cache entries and cached
+                 environments (uv cache prune --force: this run's own `uv run` holds
+                 the cache's lock, so a plain prune waits on it for ever; not run, and
+                 a warning, while any other uv process is running); warns only
 
 Usage (from the repo root: PowerShell, cmd or Git Bash on Windows; Terminal on the
 Mac's own desktop, not over ssh, as its Accessibility and Screen Recording
@@ -122,7 +128,7 @@ import psutil
 import pull_sibling
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Mapping, Sequence
+    from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
@@ -147,6 +153,7 @@ STAGES = (
     "built-app",
     "soak",
     "coverage",
+    "tidy",
 )
 GUI_STAGES = frozenset({"gui", "built-app", "soak"})
 # How far, in percentage points, the combined coverage may fall below its best (as on Linux).
@@ -505,6 +512,27 @@ def biggest_apps(count: int = 5) -> list[tuple[str, int]]:
             name = str(info.get("name") or "?")
             totals[name] = totals.get(name, 0) + info["memory_info"].rss // _MB
     return sorted(totals.items(), key=lambda item: -item[1])[:count]
+
+
+_UV_NAMES = frozenset({"uv", "uv.exe", "uvx", "uvx.exe"})
+
+
+def other_uv_processes(
+    processes: Iterable[tuple[int, str]] | None = None, own: Iterable[int] | None = None
+) -> list[str]:
+    """Return "name (pid)" for each uv process running but this run's own ancestors.
+
+    `processes` is (pid, name) pairs, and `own` this run's ancestors' pids; by default
+    both are read from the system.
+    """
+    if processes is None:
+        processes = [(p.pid, str(p.info.get("name") or "")) for p in psutil.process_iter(["name"])]
+    ancestors = {p.pid for p in psutil.Process().parents()} if own is None else set(own)
+    return [
+        f"{name} ({pid})"
+        for pid, name in processes
+        if name.lower() in _UV_NAMES and pid not in ancestors
+    ]
 
 
 # The processes an app launch is made of: uv and the Python it starts, or a build.
@@ -1040,6 +1068,26 @@ class Run:
             return 0
         floor = ["uv", "run", "python", str(SCRIPTS / "coverage_floor.py"), total]
         return log.run([*floor, "--tolerance", str(COVERAGE_TOLERANCE)])
+
+    @staticmethod
+    def stage_tidy(log: StageLog) -> int:
+        """Prune the app's old unpack folders and uv's cache; a warning when either cannot."""
+        status = 0
+        if log.run(["uv", "run", "python", str(SCRIPTS / "prune_onefile_cache.py")]) != 0:
+            status = WARNED
+        others = other_uv_processes()
+        if others:
+            log.line(f"tidy: uv's cache left alone - other uv processes run: {', '.join(others)}")
+            return WARNED
+        _, before = log.capture(["uv", "cache", "size", "-H"])
+        log.line(f"tidy: uv's cache, {before.strip() or '?'} before pruning")
+        # This run's own `uv run` holds the cache's lock, which a plain prune waits on
+        # for ever; with no other uv process running, nothing else is using the cache.
+        if log.run(["uv", "cache", "prune", "--force"]) != 0:
+            status = WARNED
+        _, after = log.capture(["uv", "cache", "size", "-H"])
+        log.line(f"tidy: uv's cache, {after.strip() or '?'} after")
+        return status
 
     @staticmethod
     def _coverage_total(log: StageLog, data_file: Path) -> str:

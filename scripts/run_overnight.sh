@@ -76,6 +76,11 @@
 #                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns on a survivor neither a
 #                  known equivalent nor in the backlog, by what it changes
 #                  (mutation_survivors.py, docs/mutation-equivalents.toml)
+#   tidy           what the runs leave behind: the built app's old unpack folders
+#                  (prune_onefile_cache.py: one of about 360 MB a build, kept to the
+#                  newest three) and uv's dangling cache entries and cached
+#                  environments (uv cache prune, given ten minutes: another uv
+#                  process holding the cache makes it wait); warns only
 #
 # Usage: scripts/run_overnight.sh [--list] [--only A,B] [--skip A,B] [--app PATH]
 #   --list   print the stages and exit
@@ -122,7 +127,7 @@ if [[ -f .env.overnight ]]; then
 fi
 
 STAGES=(data validate panel-sources build-check wiki-order wiki-copy lint audit pytest random-order
-    dep-drift siblings build smoke gui gui-timings coverage dead-code docs-refs mutation)
+    dep-drift siblings build smoke gui gui-timings coverage dead-code docs-refs mutation tidy)
 SIBLINGS=(../barks-comic-building ../barks-ocr)
 BUILT_EXE="${REPO_ROOT}/barks-reader-linux" # where scripts/build.sh leaves it on Linux
 
@@ -393,6 +398,24 @@ mutation() {
     return "$status"
 }
 
+# What the runs leave behind, last, when nothing else is running: a warning, never a
+# failure, as nothing tested is wrong when it cannot.
+tidy() {
+    local status=0 prune
+    uv run python "${SCRIPT_DIR}/prune_onefile_cache.py" || status=$WARNED
+    echo "tidy: uv's cache, $(uv cache size -H 2>/dev/null || echo '?') before pruning"
+    prune=0
+    timeout 600 uv cache prune || prune=$?
+    if ((prune == 124)); then
+        echo "tidy: uv cache prune still waiting after ten minutes: another uv process holds the cache"
+        status=$WARNED
+    elif ((prune != 0)); then
+        status=$WARNED
+    fi
+    echo "tidy: uv's cache, $(uv cache size -H 2>/dev/null || echo '?') after"
+    return "$status"
+}
+
 # Run one stage. It returns SKIPPED (saying why) or WARNED as well as pass/fail.
 run_stage() {
     local status=0
@@ -482,6 +505,7 @@ run_stage() {
     dead-code) dead_code ;;
     docs-refs) uv run scripts/check_docs_refs.py --quiet || return "$WARNED" ;;
     mutation) mutation ;;
+    tidy) tidy ;;
     esac
 }
 

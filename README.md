@@ -296,7 +296,8 @@ just reader
   checks on the real data pack and the sibling repos, the full lint and test suite from a
   synced venv, the tests in random order and against upgraded dependencies, a Nuitka
   build and its smoke test, the GUI overnight run against that build, GUI timing drift,
-  and a slice of mutation testing. The data checks come first: when the data is broken,
+  a slice of mutation testing, and last a tidy of what the runs leave behind. The data
+  checks come first: when the data is broken,
   what fails later is only a symptom. Like the GUI overnight run, it runs every stage
   even after one fails, holds off sleep, warns when on battery, and exits non-zero if
   any stage failed (a warning does not count). Linux only.
@@ -327,6 +328,7 @@ just reader
   | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
   | `dead-code` | `dead_code_report.py`: vulture's unused functions, methods and classes (at 60%, below the gate's 80) that the `coverage` stage's data never ran and no `.kv` file, script or sibling repo names; warns only |
   | `mutation` | `mutmut.sh` on all of `core/` and on the `barks_fantagraphics` search modules, or on the share `BARKS_OVERNIGHT_MUTATION_SCOPE` (`core`, `fantagraphics`; default `all`) names; warns on a survivor that is neither a known equivalent (`docs/mutation-equivalents.toml`) nor in the backlog (`mutation_survivors.py`) |
+  | `tidy` | What the runs leave behind: the built app's old unpack folders, one of about 360 MB a build (`prune_onefile_cache.py`, keeping the newest three and any a running app uses), and uv's dangling cache entries and cached environments (`uv cache prune`, given ten minutes while another uv process holds the cache); warns only. The Windows and macOS runner has the same last stage |
 
   `BARKS_OVERNIGHT_SOAK_STEPS` (default 1000) and `BARKS_OVERNIGHT_SOAK_SEEDS` (default
   three seeds from the day of the year) set the soak; `BARKS_OVERNIGHT_MUTATION_SCOPE`

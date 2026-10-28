@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import gui_probe_win32
+import psutil
 import pytest
 import run_overnight_desktop as rw
 
@@ -58,6 +59,9 @@ class TestStageTable:
         assert stages.index("wiki-copy") == 2
         assert stages.index("wiki-copy") < stages.index("validate") < stages.index("gui")
 
+    def test_tidy_comes_last_when_nothing_else_runs(self) -> None:
+        assert rw.STAGES[-1] == "tidy"
+
     def test_the_statuses_are_the_linux_runs(self) -> None:
         text = LINUX_RUNNER.read_text(encoding="utf-8")
         assert f"SKIPPED={rw.SKIPPED}" in text
@@ -82,6 +86,7 @@ class TestSelectStages:
             "gui",
             "soak",
             "coverage",
+            "tidy",
         ]
 
     def test_an_unknown_name(self) -> None:
@@ -783,6 +788,49 @@ class TestCoverage:
         assert run.stage_coverage(log) == 1
         floor = log.run.call_args.args[0]
         assert floor[-4:] == [str(rw.SCRIPTS / "coverage_floor.py"), "84.2", "--tolerance", "1.0"]
+
+
+class TestOtherUvProcesses:
+    def test_this_runs_own_uv_is_not_another(self) -> None:
+        processes = [(10, "uv"), (11, "python"), (12, "uv.exe"), (13, "UVX.EXE")]
+        assert rw.other_uv_processes(processes, own=[10, 11]) == ["uv.exe (12)", "UVX.EXE (13)"]
+
+    def test_none_when_only_this_run_uses_uv(self) -> None:
+        assert rw.other_uv_processes([(10, "uv"), (11, "bash")], own=[10]) == []
+
+    def test_the_system_read_names_this_runs_ancestors(self) -> None:
+        """Run from pytest, none of this process's ancestors is reported as another uv."""
+        ancestors = {p.pid for p in psutil.Process().parents()}
+        assert not any(
+            f"({pid})" in found for pid in ancestors for found in rw.other_uv_processes()
+        )
+
+
+class TestTidy:
+    def test_with_no_other_uv_it_prunes_both(self) -> None:
+        log = _log()
+        with patch.object(rw, "other_uv_processes", return_value=[]):
+            assert rw.Run.stage_tidy(log) == 0
+        commands = [c.args[0] for c in log.run.call_args_list]
+        assert commands == [
+            ["uv", "run", "python", str(rw.SCRIPTS / "prune_onefile_cache.py")],
+            ["uv", "cache", "prune", "--force"],
+        ]
+
+    def test_another_uv_leaves_its_cache_alone_and_warns(self) -> None:
+        log = _log()
+        with patch.object(rw, "other_uv_processes", return_value=["uv (42)"]):
+            assert rw.Run.stage_tidy(log) == rw.WARNED
+        commands = [c.args[0] for c in log.run.call_args_list]
+        assert ["uv", "cache", "prune", "--force"] not in commands
+        assert "uv (42)" in log.line.call_args.args[0]
+
+    def test_a_failed_folder_prune_warns_and_still_prunes_uv(self) -> None:
+        log = _log()
+        log.run.side_effect = [1, 0]
+        with patch.object(rw, "other_uv_processes", return_value=[]):
+            assert rw.Run.stage_tidy(log) == rw.WARNED
+        assert log.run.call_args.args[0] == ["uv", "cache", "prune", "--force"]
 
 
 class TestMain:
