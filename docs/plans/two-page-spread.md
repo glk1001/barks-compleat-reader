@@ -62,7 +62,19 @@
 >   Found on the way: a result row is one line high, and a long word or name in the
 >   word list (Flintheart Glomgold) wrapped into the row beneath; every result row is
 >   cut short now as the title rows were, except a row's + button.
-> - Stage 4 the document reader and the wiki: TODO
+> - Stage 4 the document reader and the wiki: DONE 2026-10-29. Seen on this PC on a
+>   nested 2560x1440 display: Censorship Fixes opens at its first page alone in the
+>   middle of the pair-wide box under a bar as wide as the pair, Right turns to pages 2
+>   and 3, then 4 and 5, 6 and 7, Left back; a tap on the right half turns a pair on
+>   and on the left half back (decision 10). The wiki fills the spread window; in
+>   fullscreen its strip is 1876 wide at 1440p, the pair's shape (decision 9), and the
+>   Contrast toggle now darkens the sidebar's scrim as it did the reading pane's. The
+>   open point on a mode change under a full-window screen is settled the simple way:
+>   the app hands the mode to the document and wiki readers at the same moment as the
+>   main screen, and they lay out again with the window, which refits under them
+>   anyway. The readers log the right-hand page on its own line
+>   (`DOCUMENT_RIGHT_PAGE`), so the `DOCUMENT_PAGE` line keeps naming the first page
+>   shown and the GUI tests hold on the spread.
 > - Stage 5 tests, the matrix variant and the soak: TODO
 > - Stage 6 the how-to pages, the README and the demo videos: TODO
 
@@ -302,5 +314,7 @@ count where there is one, before the first multi-file edit of the stage.
 - Whether the tree page's wallpaper dims further behind the idle screen.
 - Where the playlist note sits on the title page in the spread.
 - Mode change while a full-window screen is up (comic reader, wiki, document):
-  evaluate on return to the main screen, never under the open screen.
+  evaluate on return to the main screen, never under the open screen. Settled at
+  stage 4 the other way: the window refits under the open screen already, so the
+  document and wiki readers take the mode at once and lay out with it.
 - The focus ring: one per page, the tree's and the portal's, drawn as today.

@@ -17,13 +17,15 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
-from barks_reader.core.reader_utils import get_win_dimensions
+from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -51,27 +53,34 @@ if TYPE_CHECKING:
 
 
 def wiki_fullscreen_viewer_size(
-    window_height: int, window_width: int, top_bar_height: int
+    window_height: int,
+    window_width: int,
+    top_bar_height: int,
+    aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO,
 ) -> tuple[int, int]:
     """Return the viewer's (width, height) as a monitor-safe fullscreen strip.
 
     Mirrors the main/comic screens: the width comes from the window *height* (a
-    comic-aspect strip via ``get_win_dimensions``), never from ``window_width``,
-    so a multi-monitor fullscreen ``Window.width`` that overshoots the visible
-    monitor cannot push the viewer off the right edge. The top bar height is
-    carried through so the content area keeps the comic aspect while the whole
-    viewer (bar + content) still fills the window vertically.
+    strip of the content's shape via ``get_win_dimensions``), never from
+    ``window_width``, so a multi-monitor fullscreen ``Window.width`` that overshoots
+    the visible monitor cannot push the viewer off the right edge. The top bar height
+    is carried through so the content area keeps its shape while the whole viewer
+    (bar + content) still fills the window vertically.
 
     Args:
         window_height: The fullscreen window height, in pixels.
         window_width: The fullscreen window width, in pixels (the clamp ceiling).
         top_bar_height: The viewer's top action-bar height, in pixels.
+        aspect_ratio: The content's height over its width: a page's, or the pair's on
+            the two-page spread (the book's footprint, ``core.main_layout``).
 
     Returns:
         The (width, height) for the viewer, in pixels.
 
     """
-    content_w, content_h = get_win_dimensions(window_height - top_bar_height, window_width)
+    content_w, content_h = get_win_dimensions(
+        window_height - top_bar_height, window_width, aspect_ratio
+    )
     return content_w, content_h + top_bar_height
 
 
@@ -100,7 +109,15 @@ class _GotoTitleActionProvider:
 
 
 class WikiReaderScreen(ReaderScreen):
-    """Top-level screen wrapping the OKF viewer on the configured wiki bundle."""
+    """Top-level screen wrapping the OKF viewer on the configured wiki bundle.
+
+    The viewer takes the book's footprint: in fullscreen a strip of the main screen's
+    content shape (a page's, or the pair's on the two-page spread), centred; windowed,
+    the window, which is already that shape. The app sets ``layout_mode``.
+    """
+
+    # The main screen's layout ("single" or "spread"), for the fullscreen strip's shape.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
 
     def __init__(
         self,
@@ -187,6 +204,10 @@ class WikiReaderScreen(ReaderScreen):
         self.save_session()
         self._on_close_screen()
 
+    def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
+        """Re-shape the fullscreen strip for the new layout (nothing before the first open)."""
+        self._apply_viewer_sizing()
+
     def _apply_viewer_sizing(self, *_args: object) -> None:
         """Shape this screen to a monitor-safe centred strip in fullscreen, else fill.
 
@@ -208,7 +229,15 @@ class WikiReaderScreen(ReaderScreen):
         if WindowManager.is_fullscreen_now():
             self.size_hint = (None, None)
             self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-            self.size = wiki_fullscreen_viewer_size(Window.height, Window.width, ACTION_BAR_SIZE_Y)
+            self.size = wiki_fullscreen_viewer_size(
+                Window.height,
+                Window.width,
+                ACTION_BAR_SIZE_Y,
+                content_aspect_ratio(MainLayoutMode(self.layout_mode)),
+            )
+            logger.debug(
+                log_markers.WIKI_STRIP.format(size=tuple(self.size), layout=self.layout_mode)
+            )
             self._viewer.size_hint = (1, 1)
             self._viewer.pos_hint = {}
         else:

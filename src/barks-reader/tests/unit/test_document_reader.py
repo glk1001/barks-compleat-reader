@@ -4,18 +4,16 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.document_links import StoryLink
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
 from barks_reader.ui.reader_screens import ReaderScreen
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 PAGES = ("01.png", "02.jpg")
 TWICE = 2
@@ -317,3 +315,108 @@ class TestResume:
         (tmp_path / "page-003.png").unlink()
         _open(screen, tmp_path, resume=True)
         assert screen.page_source.endswith("page-002.png")
+
+
+SEVEN_PAGES = tuple(f"page-{n:03d}.png" for n in range(1, 8))
+
+
+def _spread(screen: DocumentReaderScreen) -> None:
+    """Put the screen on the two-page spread (the fixture's init skips Kivy's auto-bind)."""
+    screen.layout_mode = MainLayoutMode.SPREAD.value
+    screen.on_layout_mode(screen, screen.layout_mode)
+
+
+def _shown(screen: DocumentReaderScreen) -> tuple[str, str]:
+    return Path(screen.page_source).name, Path(screen.right_page_source).name
+
+
+class TestTheSpread:
+    """Pages come in pairs on the spread, the first alone; a turn moves a pair."""
+
+    def test_the_first_page_opens_alone_and_right_turns_to_a_pair(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _spread(screen)
+        _open(screen, tmp_path)
+        assert _shown(screen) == ("page-001.png", "")
+        screen.next_page()
+        assert _shown(screen) == ("page-002.png", "page-003.png")
+        assert 'Document page 2/7: "page-002.png".' in loguru_sink
+        assert 'Document right page 3/7: "page-003.png".' in loguru_sink
+        screen.next_page()
+        assert _shown(screen) == ("page-004.png", "page-005.png")
+        screen.next_page()
+        assert _shown(screen) == ("page-006.png", "page-007.png")
+        screen.next_page()  # the last pair: nothing new
+        assert _shown(screen) == ("page-006.png", "page-007.png")
+        screen.prev_page()
+        assert _shown(screen) == ("page-004.png", "page-005.png")
+        screen.prev_page()
+        screen.prev_page()
+        assert _shown(screen) == ("page-001.png", "")
+
+    def test_an_odd_last_page_stands_alone(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        for name in SEVEN_PAGES[:4]:
+            (tmp_path / name).write_bytes(b"")
+        _spread(screen)
+        _open(screen, tmp_path)
+        screen.next_page()
+        screen.next_page()
+        assert _shown(screen) == ("page-004.png", "")
+
+    def test_a_single_page_shows_one_at_a_time_as_before(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.next_page()
+        assert _shown(screen) == ("page-002.png", "")
+        assert not [line for line in loguru_sink if "Document right page" in line]
+
+    def test_a_layout_change_under_an_open_document_pairs_the_current_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.next_page()
+        screen.next_page()  # page 3, a pair's right page on the spread
+        _spread(screen)
+        assert _shown(screen) == ("page-002.png", "page-003.png")
+        screen.layout_mode = MainLayoutMode.SINGLE.value
+        screen.on_layout_mode(screen, screen.layout_mode)
+        assert _shown(screen) == ("page-002.png", "")
+
+    def test_go_to_story_offers_both_pages_stories(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        for name in SEVEN_PAGES[:3]:
+            (tmp_path / name).write_bytes(b"")
+        _write_links(tmp_path / "page-002.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
+        _write_links(tmp_path / "page-003.png", _figure(Titles.VOODOO_HOODOO, "2", figure=2))
+        _spread(screen)
+        _open(screen, tmp_path)
+        assert screen.has_story_links is False
+        screen.next_page()
+        assert [link.title for link in screen._story_links] == [
+            Titles.LOST_IN_THE_ANDES,
+            Titles.VOODOO_HOODOO,
+        ]
+        assert screen.has_story_links is True
+
+    def test_a_resumed_document_comes_back_at_its_pair(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _spread(screen)
+        _open(screen, tmp_path)
+        screen.next_page()
+        screen.next_page()
+        _open(screen, tmp_path, resume=True)
+        assert _shown(screen) == ("page-004.png", "page-005.png")

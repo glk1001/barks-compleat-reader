@@ -877,3 +877,20 @@ class TestStandaloneAppWindow:
         with patch.object(OKFApp, "run") as run:
             viewer_module.run(bundle)
         run.assert_called_once_with()
+
+
+class TestContrast:
+    """The toggle darkens both panels: the reading pane's scrims and the sidebar's."""
+
+    def test_down_darkens_both_panels_and_up_restores_them(self, viewer: OKFViewer) -> None:
+        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+        viewer.contrast_btn.state = "down"
+        assert viewer._sidebar_scrim_color.a == pytest.approx(
+            viewer_module.SIDEBAR_SCRIM_CONTRAST_ALPHA
+        )
+        assert viewer._pane_scrim_color.a == pytest.approx(
+            viewer_module.READING_PANE_SCRIM_CONTRAST_ALPHA
+        )
+        viewer.contrast_btn.state = "normal"
+        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+        assert viewer._pane_scrim_color.a == pytest.approx(viewer_module.READING_PANE_SCRIM[3])

@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.keys import KEY_DOWN, KEY_ESCAPE, KEY_F, KEY_LEFT, set_alt_escape_key
+from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.ui import wiki_reader
 from barks_reader.ui.wiki_reader import WikiReaderScreen
 from kivy.uix.screenmanager import Screen
@@ -483,6 +485,11 @@ class TestWikiFullscreenViewerSize:
         # the comic aspect: 100 wide -> content height round(100 * 1.50943) = 151.
         assert wiki_reader.wiki_fullscreen_viewer_size(2000, 100, 45) == (100, 196)
 
+    def test_the_pairs_shape_on_the_spread(self) -> None:
+        # The spread's content is 2.03 pages wide: 1035 / 0.7436 = 1392 at 1080p.
+        spread = content_aspect_ratio(MainLayoutMode.SPREAD)
+        assert wiki_reader.wiki_fullscreen_viewer_size(1080, 1920, 45, spread) == (1392, 1080)
+
 
 class TestApplyViewerSizing:
     def test_no_viewer_is_noop(
@@ -514,10 +521,37 @@ class TestApplyViewerSizing:
         assert tuple(wiki_screen.size_hint) == (None, None)
         assert wiki_screen.pos_hint == {"center_x": 0.5, "center_y": 0.5}
         assert tuple(wiki_screen.size) == (686, 1080)
-        size_mock.assert_called_once_with(1080, 3840, wiki_reader.ACTION_BAR_SIZE_Y)
+        size_mock.assert_called_once_with(
+            1080, 3840, wiki_reader.ACTION_BAR_SIZE_Y, COMIC_PAGE_ASPECT_RATIO
+        )
         # ...and the viewer just fills the screen (no independent sizing to race).
         assert wiki_screen._viewer.size_hint == (1, 1)
         assert wiki_screen._viewer.pos_hint == {}
+
+    def test_on_the_spread_the_strip_is_the_pairs_shape(
+        self,
+        wiki_screen: WikiReaderScreen,
+        mock_window: MagicMock,
+        mock_window_manager: MagicMock,
+        loguru_sink: list[str],
+    ) -> None:
+        wiki_screen._viewer = MagicMock()
+        mock_window_manager.is_fullscreen_now.return_value = True
+        mock_window.height = 1440
+        mock_window.width = 2560
+        wiki_screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        wiki_screen._apply_viewer_sizing()
+
+        # The book's footprint (decision 9): the pair and its gutter, 1876 wide at 1440p.
+        assert tuple(wiki_screen.size) == (1876, 1440)
+        assert "Wiki strip: (1876, 1440) in fullscreen on the spread layout." in loguru_sink
+
+    def test_a_layout_change_re_shapes_the_strip(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = MagicMock()
+        with patch.object(WikiReaderScreen, "_apply_viewer_sizing", autospec=True) as apply_mock:
+            wiki_screen.on_layout_mode(wiki_screen, MainLayoutMode.SPREAD.value)
+        apply_mock.assert_called_once_with(wiki_screen)
 
     def test_windowed_fills_manager(
         self, wiki_screen: WikiReaderScreen, mock_window_manager: MagicMock

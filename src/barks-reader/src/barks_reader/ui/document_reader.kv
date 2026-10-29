@@ -1,5 +1,7 @@
 <DocumentReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
+    # Two pages across on the spread, the first alone (core.display_unit); one otherwise.
+    pages_across: 2 if root.layout_mode == 'spread' else 1
 
     # Shared skeleton (ui/action_bar.kv). Close sits alone behind the fence, as in the
     # comic reader, so an overshoot on Go to Story can't close the document.
@@ -8,6 +10,7 @@
         pos_hint: {"center_x": 0.5, 'top': 1}
         size_hint: None, None
         height: root.ACTION_BAR_HEIGHT
+        # As wide as the page box: a page, or the pair on the spread (decision 14).
         width: doc_page.width
         icon_source: root.app_icon_filepath
         title_text: root.action_bar_title
@@ -35,15 +38,35 @@
         orientation: "vertical"
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
         size_hint: None,None
-        width: min((root.height - doc_action_bar.height) / root.ASPECT_RATIO, root.width)
-        height: self.width * root.ASPECT_RATIO + doc_action_bar.height
+        # The pages at the height under the bar, unless the window is too narrow for them.
+        width: min(root.pages_across * (root.height - doc_action_bar.height) / root.ASPECT_RATIO, root.width)
+        height: self.width / root.pages_across * root.ASPECT_RATIO + doc_action_bar.height
         # Add padding to the top to make space for the ActionBar.
         padding: [dp(0), doc_action_bar.height, dp(0), dp(0)]
 
-        Image:
-            id: page_image
-            color: 1,1,1,1
-            opacity: 1
-            source: root.page_source
-            fit_mode: "contain"
-            mipmap: True
+        BoxLayout:
+            id: pages
+            orientation: "horizontal"
+
+            # Explicit widths, never a size hint of 0: a box layout keeps a child's own
+            # width for a falsy hint, and Kivy's default is 100 px. A lone page takes the
+            # whole box and "contain" centres it.
+            Image:
+                id: page_image
+                size_hint_x: None
+                width: pages.width / 2 if root.right_page_source else pages.width
+                color: 1,1,1,1
+                opacity: 1
+                source: root.page_source
+                fit_mode: "contain"
+                mipmap: True
+
+            Image:
+                id: right_page_image
+                size_hint_x: None
+                width: pages.width / 2 if root.right_page_source else 0
+                opacity: 1 if root.right_page_source else 0
+                color: 1,1,1,1
+                source: root.right_page_source
+                fit_mode: "contain"
+                mipmap: True

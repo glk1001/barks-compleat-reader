@@ -21,7 +21,7 @@ from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.keys import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
-from barks_reader.core.main_layout import MATCH_THE_SCREEN
+from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
@@ -51,7 +51,7 @@ from .bottom_title_view_screen import (
 from .collapse_parent_overlay import COLLAPSE_PARENT_OVERLAY_KV_FILE
 from .comic_book_reader import get_barks_comic_reader_screen
 from .corpus_stats_screen import get_corpus_stats_screen
-from .document_reader import get_document_reader_screen
+from .document_reader import DocumentReaderScreen, get_document_reader_screen
 from .entity_index_screen import EntityIndexScreen
 from .error_handling import handle_app_fail_with_traceback
 from .font_manager import FontManager
@@ -134,6 +134,7 @@ class BarksReaderApp(App):
         self._screen_switchers = self._reader_screen_manager.screen_switchers
 
         self._main_screen: MainScreen | None = None
+        self._document_reader_screen: DocumentReaderScreen | None = None
         self._wiki_reader_screen: WikiReaderScreen | None = None
         self._on_stop_done = False
 
@@ -320,10 +321,10 @@ class BarksReaderApp(App):
         root = self._build_screens()
 
         assert self._main_screen is not None
-        self._main_screen.set_layout_mode(self._window_geometry.layout_mode)
+        self._set_layout_mode(self._window_geometry.layout_mode)
         self._window_geometry.set_main_screen_callbacks(
             update_fonts=self._main_screen.update_fonts,
-            layout_mode_changed=self._main_screen.set_layout_mode,
+            layout_mode_changed=self._set_layout_mode,
         )
 
         logger.debug("Building the main tree view...")
@@ -471,6 +472,7 @@ class BarksReaderApp(App):
             self._main_screen.goto_title_from_wiki,
             self._screen_switchers.close_wiki_reader,
         )
+        self._document_reader_screen = document_reader_screen
         self._wiki_reader_screen = wiki_reader_screen
 
         logger.debug('Instantiating the "By the Numbers" screen...')
@@ -491,6 +493,20 @@ class BarksReaderApp(App):
         )
 
         return self._reader_screen_manager.add_screens(reader_screens)
+
+    def _set_layout_mode(self, mode: MainLayoutMode) -> None:
+        """Lay the main screen and the full-window readers out for the layout.
+
+        The document reader pairs its pages on the spread and the wiki's fullscreen
+        strip takes the pair's shape. A change under an open reader lays it out again
+        at once, with the window, which the geometry helper refits anyway.
+        """
+        assert self._main_screen is not None
+        assert self._document_reader_screen is not None
+        assert self._wiki_reader_screen is not None
+        self._main_screen.set_layout_mode(mode)
+        self._document_reader_screen.layout_mode = mode.value
+        self._wiki_reader_screen.layout_mode = mode.value
 
     def _set_custom_title_bar(self) -> None:
         assert self._main_screen is not None

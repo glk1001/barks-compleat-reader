@@ -9,13 +9,19 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
+    NumericProperty,
+    StringProperty,
+)
 from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.display_unit import DisplayUnit, build_document_units
 from barks_reader.core.document_chapters import PAGE_IMAGE_EXTENSIONS
 from barks_reader.core.document_links import StoryLink, load_story_links
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
@@ -55,6 +61,11 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     Each document's last page is kept until the app quits, so one opened to resume (an
     illustrated-history chapter, from its node or from Go Back after a story) comes back at
     the page it was left on.
+
+    On the two-page spread the pages show two at a time, the first alone
+    (``core.display_unit.build_document_units``), in a box twice a page wide with the bar
+    over it, and Go to Story offers both pages' stories; a turn moves a pair. A lone page
+    sits in the middle of the box, as the comic reader's does.
     """
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
@@ -62,7 +73,12 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     GREYED_BUTTON_OPACITY = 0.4
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
+    # The main screen's layout ("single" or "spread"); the app sets it, the kv file
+    # widens the page box to the pair for the spread (`pages_across`).
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
+    pages_across = NumericProperty(1)
     page_source = StringProperty()
+    right_page_source = StringProperty()
     has_story_links = BooleanProperty(defaultvalue=False)
 
     def __init__(
@@ -79,6 +95,8 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._on_goto_story = on_goto_story
         self._doc_dir: Path | None = None
         self._page_paths: list[Path] = []
+        self._units: list[DisplayUnit] = []
+        self._unit_idx_for_index: dict[int, int] = {}
         self._current_page_index = 0
         self._last_page_indexes: dict[Path, int] = {}
         self._story_links: list[StoryLink] = []
@@ -113,6 +131,7 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._page_paths = sorted(
             p for p in doc_dir.iterdir() if p.suffix.lower() in PAGE_IMAGE_EXTENSIONS
         )
+        self._units, self._unit_idx_for_index = build_document_units(len(self._page_paths))
         last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
         self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))
         logger.info(log_markers.DOCUMENT_OPENED.format(title=title, pages=len(self._page_paths)))
@@ -120,37 +139,69 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         Window.bind(on_key_down=self._on_key_down)
 
-    def _update_page_source(self) -> None:
+    def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
+        """Show the current page as the new layout shows it: alone, or with its pair."""
         if self._page_paths:
-            page = self._page_paths[self._current_page_index]
-            self.page_source = str(page)
-            self._story_links = load_story_links(page)
-            if self._doc_dir is not None:
-                self._last_page_indexes[self._doc_dir] = self._current_page_index
+            self._update_page_source()
+
+    def _current_unit(self) -> DisplayUnit:
+        """Return what the current page shows: itself alone, or its pair on the spread."""
+        if self.layout_mode == MainLayoutMode.SPREAD.value:
+            return self._units[self._unit_idx_for_index[self._current_page_index]]
+        return DisplayUnit(self._current_page_index, None)
+
+    def _update_page_source(self) -> None:
+        if not self._page_paths:
+            self.page_source = ""
+            self.right_page_source = ""
+            self._story_links = []
+            self.has_story_links = False
+            return
+
+        unit = self._current_unit()
+        self._current_page_index = unit.left_page_index
+        page = self._page_paths[unit.left_page_index]
+        right_page = (
+            None if unit.right_page_index is None else self._page_paths[unit.right_page_index]
+        )
+        self.page_source = str(page)
+        self.right_page_source = "" if right_page is None else str(right_page)
+        self._story_links = load_story_links(page)
+        if right_page is not None:
+            self._story_links += load_story_links(right_page)
+        if self._doc_dir is not None:
+            self._last_page_indexes[self._doc_dir] = self._current_page_index
+        pages = len(self._page_paths)
+        logger.debug(
+            log_markers.DOCUMENT_PAGE.format(
+                page=unit.left_page_index + 1, pages=pages, filename=page.name
+            )
+        )
+        if unit.right_page_index is not None and right_page is not None:
             logger.debug(
-                log_markers.DOCUMENT_PAGE.format(
-                    page=self._current_page_index + 1,
-                    pages=len(self._page_paths),
-                    filename=page.name,
+                log_markers.DOCUMENT_RIGHT_PAGE.format(
+                    page=unit.right_page_index + 1, pages=pages, filename=right_page.name
                 )
             )
-        else:
-            self.page_source = ""
-            self._story_links = []
         self.has_story_links = bool(self._story_links)
 
     def next_page(self) -> None:
-        if self._current_page_index < len(self._page_paths) - 1:
-            self._current_page_index += 1
+        unit = self._current_unit()
+        last_shown = (
+            unit.left_page_index if unit.right_page_index is None else unit.right_page_index
+        )
+        if last_shown < len(self._page_paths) - 1:
+            self._current_page_index = last_shown + 1
             self._update_page_source()
 
     def prev_page(self) -> None:
+        # The page before the unit's first; on the spread its unit shows (its pair).
         if self._current_page_index > 0:
             self._current_page_index -= 1
             self._update_page_source()
 
     def tap_target_regions(self) -> dict[str, Rect]:
-        """Return the page's two halves, back and forward, for a GUI test to tap."""
+        """Return the page box's two halves, back and forward, for a GUI test to tap."""
         page = self.ids.doc_page
         half = page.width / 2
         return {

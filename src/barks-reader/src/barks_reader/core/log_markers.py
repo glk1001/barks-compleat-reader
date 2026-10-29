@@ -220,6 +220,8 @@ WIKI_READER_ACTIVE: Final = "Wiki reader screen is active."
 # --------------------------------------------------- the document reader --
 DOCUMENT_OPENED: Final = 'Document reader opened "{title}" with {pages} pages.'
 DOCUMENT_PAGE: Final = 'Document page {page}/{pages}: "{filename}".'
+# On the two-page spread, the page shown beside DOCUMENT_PAGE's (the unit's first page).
+DOCUMENT_RIGHT_PAGE: Final = 'Document right page {page}/{pages}: "{filename}".'
 DOCUMENT_CLOSING: Final = "Document reader closing."
 DOCUMENT_LINKS_UNREADABLE: Final = 'Document story links "{path}" unreadable: {error}.'
 DOCUMENT_LINK_SKIPPED: Final = 'Document story links "{path}": skipped {entry}.'
@@ -396,6 +398,7 @@ STATISTICS_EXITED_DROPDOWN: Final = "StatisticsScreen: exited dropdown nav."
 
 # ------------------------------------------------------------------ wiki --
 WIKI_GOTO_TITLE: Final = 'Wiki goto title: "{name}".'
+WIKI_STRIP: Final = "Wiki strip: {size} in fullscreen on the {layout} layout."
 
 
 _FIELD_RE = re.compile(r"\{(\w+)\}")

@@ -131,6 +131,9 @@ WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
 # search-field seam a legibility floor over a vivid background panel. Near-black,
 # so a page with no background image is unchanged (black over the plain window).
 SIDEBAR_SCRIM = (0, 0, 0, 0.30)
+# The sidebar scrim's alpha while the Contrast toggle is down: the toggle darkens
+# both panels, the one background image under them dimmed the same at either side.
+SIDEBAR_SCRIM_CONTRAST_ALPHA = 0.85
 # Translucent rounded band drawn behind each page *section* (a heading plus
 # everything under it, up to the next heading) so body text keeps its contrast
 # over vivid background panels — the Barks Reader's BgColorLabel idiom
@@ -618,7 +621,9 @@ class OKFViewer(RelativeLayout):
         # the tree text and the search-field seam keep a legibility floor over a
         # vivid background panel.
         with left.canvas.before:  # ty: ignore[unresolved-attribute]
-            Color(rgba=SIDEBAR_SCRIM)
+            self._sidebar_scrim_color = Color(
+                rgba=(*SIDEBAR_SCRIM[:3], self._sidebar_scrim_alpha())
+            )
             sidebar_scrim = Rectangle(pos=left.pos, size=left.size)
         left.bind(
             pos=lambda _inst, pos: setattr(sidebar_scrim, "pos", pos),
@@ -2029,6 +2034,12 @@ class OKFViewer(RelativeLayout):
             return READING_PANE_SCRIM_CONTRAST_ALPHA
         return READING_PANE_SCRIM[3]
 
+    def _sidebar_scrim_alpha(self) -> float:
+        """Return the sidebar scrim alpha the Contrast toggle currently calls for."""
+        if self.contrast_btn.state == "down":
+            return SIDEBAR_SCRIM_CONTRAST_ALPHA
+        return SIDEBAR_SCRIM[3]
+
     def _add_reading_pane_scrim(self) -> None:
         """Draw the continuous scrim behind the reading column (see READING_PANE_SCRIM).
 
@@ -2050,11 +2061,12 @@ class OKFViewer(RelativeLayout):
         trace.contrast(on=state == "down")
 
     def _apply_band_alpha(self) -> None:
-        """Retune the current page's section bands and the reading-pane scrim to the toggle."""
+        """Retune the page's section bands and both panels' scrims to the toggle."""
         alpha = self._band_alpha()
         for color in self._band_colors:
             color.a = alpha
         self._pane_scrim_color.a = self._pane_scrim_alpha()
+        self._sidebar_scrim_color.a = self._sidebar_scrim_alpha()
 
     def _table_widget(self, blk: TableBlock, path: Path) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
