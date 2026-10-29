@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
@@ -17,6 +19,8 @@ from kivy.uix.textinput import TextInput
 from loguru import logger
 
 from barks_reader.core import data_pack, log_markers
+from barks_reader.core.config_info import IS_COMPILED, get_app_exe_dir
+from barks_reader.core.data_pack import INSTALL_DATA_PACK_ARG, UpdateCheck, UpdateStatus
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -76,6 +80,8 @@ if TYPE_CHECKING:
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeBuilderEventDispatcher
     from .user_error_handler import UserErrorHandler
+
+UPDATE_DATA_PACK_TITLE = "Update Data Pack"
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -571,7 +577,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
-        pass
+        self.check_for_data_pack_update(at_boot=True)
 
     def display_settings(self, app_window: Widget, settings: Widget) -> bool:
         logger.debug(log_markers.DISPLAY_SETTINGS)
@@ -682,6 +688,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self.open_how_to()
         elif value == "about":
             self.open_about()
+        elif value == "update-data-pack":
+            self.check_for_data_pack_update(at_boot=False)
         else:
             msg = f"Invalid menu option: '{value}'."
             raise ValueError(msg)
@@ -701,6 +709,69 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             on_dismiss=self._enter_menu_mode if by_keyboard else None,
             data_pack_text=data_pack.installed_version_text(installed),
         )
+
+    def check_for_data_pack_update(self, *, at_boot: bool) -> None:
+        """Offer to install the newer data packs beside the executable, if any.
+
+        Args:
+            at_boot: Whether this is the look every boot takes, which says nothing when
+                there is nothing to install; from the dots menu it says why not.
+
+        """
+        pack_dir = data_pack.pack_dir_for_update(
+            get_app_exe_dir(), is_compiled=IS_COMPILED, env=os.environ
+        )
+        installed = data_pack.read_installed(self._reader_settings.reader_files_dir)
+        check = data_pack.find_update(pack_dir, installed)
+        logger.info(
+            log_markers.DATA_PACK_CHECK.format(
+                status=check.status.value, dir=check.pack_dir or "nowhere"
+            )
+        )
+
+        # Opened by the keys, the popup closed puts them back on the Menu button that
+        # opened it, as the About box does; at boot there is no menu to go back to.
+        by_keyboard = not at_boot and self._menu_action_by_keyboard
+        on_close = self._enter_menu_mode if by_keyboard else None
+        if check.status is UpdateStatus.UPDATE_AVAILABLE:
+            assert check.available is not None
+            logger.info(
+                log_markers.DATA_PACK_UPDATE_OFFERED.format(version=check.available.display())
+            )
+            open_confirm_popup(
+                title=UPDATE_DATA_PACK_TITLE,
+                text=check.offer_message(),
+                ok_text="Install",
+                cancel_text="Not Now",
+                on_ok=lambda: self._start_data_pack_installer(check),
+                bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
+                on_cancel=on_close,
+            )
+        elif not at_boot:
+            open_message_popup(
+                title=UPDATE_DATA_PACK_TITLE,
+                text=check.no_update_message(),
+                ok_text="",
+                on_ok=None,
+                cancel_text="OK",
+                on_cancel=on_close,
+                msg_halign="center",
+            )
+
+    def _start_data_pack_installer(self, check: UpdateCheck) -> None:
+        """Spawn the data pack installer and close the reader for it (its files must close)."""
+        assert check.available is not None
+        logger.info(
+            log_markers.DATA_PACK_INSTALLER_STARTED.format(version=check.available.display())
+        )
+        command = data_pack.self_command(
+            INSTALL_DATA_PACK_ARG,
+            is_compiled=IS_COMPILED,
+            argv0=sys.argv[0],
+            executable=sys.executable,
+        )
+        data_pack.spawn_detached(command)
+        App.get_running_app().close_app()
 
     def _update_action_bar_visibility(self) -> None:
         if self._active:

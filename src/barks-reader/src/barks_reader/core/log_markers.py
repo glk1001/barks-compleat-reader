@@ -128,6 +128,13 @@ ABOUT_BOX_OPENED: Final = "About box opened."
 ABOUT_BOX_DISMISSED: Final = "About box dismissed."
 # The installed data pack (core/data_pack.py), logged at boot with the app's version.
 DATA_PACK_INSTALLED: Final = "Installed data: {version}."
+# The look for newer packs beside the executable: at boot, and from the dots menu.
+DATA_PACK_CHECK: Final = 'Data pack check: {status} (looked in "{dir}").'
+DATA_PACK_UPDATE_OFFERED: Final = "Data pack update offered: {version}."
+# The user accepted: the installer is spawned and the reader closes for it.
+DATA_PACK_INSTALLER_STARTED: Final = (
+    "Data pack installer started for {version}; closing the reader."
+)
 # Any popup shown through show_standalone_popup: the About box, the error popups,
 # and the first-run installer's (which has no main reader, so these are its only
 # lines - the build smoke test waits on them). Closed is logged when the popup

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.main_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core import window_minimum
+from barks_reader.core import data_pack, window_minimum
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -693,6 +696,115 @@ class TestQuitFocus:
             main_screen._enter_menu_mode()
         focused = main_screen._menu_buttons[main_screen._focused_btn_idx]
         assert focused is main_screen.ids.go_back_button
+
+
+class TestDataPackUpdate:
+    """Newer data packs beside the executable are offered at boot and from the dots menu."""
+
+    @staticmethod
+    def _check(status: data_pack.UpdateStatus) -> data_pack.UpdateCheck:
+        available = data_pack.DataPackInfo(
+            6, "data-v6", datetime(2026, 10, 29, tzinfo=UTC), "main-pc", {}
+        )
+        packs = (available, available) if status is data_pack.UpdateStatus.UPDATE_AVAILABLE else ()
+        return data_pack.UpdateCheck(status, Path("/exe"), None, packs)
+
+    @pytest.fixture
+    def popups(self) -> Generator[tuple[MagicMock, MagicMock]]:
+        with (
+            patch.object(barks_reader.ui.main_screen, "open_confirm_popup") as confirm,
+            patch.object(barks_reader.ui.main_screen, "open_message_popup") as message,
+            patch.object(
+                barks_reader.ui.main_screen.data_pack, "read_installed", return_value=None
+            ),
+        ):
+            yield confirm, message
+
+    def test_at_boot_newer_packs_are_offered(
+        self, main_screen: MainScreen, popups: tuple[MagicMock, MagicMock], loguru_sink: list[str]
+    ) -> None:
+        confirm, message = popups
+        check = self._check(data_pack.UpdateStatus.UPDATE_AVAILABLE)
+        with patch.object(barks_reader.ui.main_screen.data_pack, "find_update", return_value=check):
+            main_screen._on_tree_build_finished()
+        confirm.assert_called_once()
+        assert confirm.call_args.kwargs["title"] == "Update Data Pack"
+        assert confirm.call_args.kwargs["text"].startswith("Data pack 6 (29 Oct 2026) is beside")
+        assert confirm.call_args.kwargs["on_cancel"] is None  # no menu to go back to at boot
+        message.assert_not_called()
+        assert 'Data pack check: update available (looked in "/exe").' in loguru_sink
+        assert "Data pack update offered: Data pack 6 (29 Oct 2026)." in loguru_sink
+
+    @pytest.mark.parametrize(
+        "status",
+        [s for s in data_pack.UpdateStatus if s is not data_pack.UpdateStatus.UPDATE_AVAILABLE],
+    )
+    def test_at_boot_nothing_to_install_shows_nothing(
+        self,
+        main_screen: MainScreen,
+        popups: tuple[MagicMock, MagicMock],
+        status: data_pack.UpdateStatus,
+        loguru_sink: list[str],
+    ) -> None:
+        confirm, message = popups
+        with patch.object(
+            barks_reader.ui.main_screen.data_pack, "find_update", return_value=self._check(status)
+        ):
+            main_screen.check_for_data_pack_update(at_boot=True)
+        confirm.assert_not_called()
+        message.assert_not_called()
+        assert any(line.startswith(f"Data pack check: {status.value}") for line in loguru_sink)
+
+    def test_from_the_menu_nothing_to_install_says_why(
+        self, main_screen: MainScreen, popups: tuple[MagicMock, MagicMock]
+    ) -> None:
+        confirm, message = popups
+        main_screen._menu_action_by_keyboard = True
+        check = self._check(data_pack.UpdateStatus.PACKS_MISSING)
+        with patch.object(barks_reader.ui.main_screen.data_pack, "find_update", return_value=check):
+            main_screen.on_action_bar_menu_dots_selected(MagicMock(), "update-data-pack")
+        confirm.assert_not_called()
+        message.assert_called_once()
+        assert message.call_args.kwargs["title"] == "Update Data Pack"
+        assert message.call_args.kwargs["text"] == check.no_update_message()
+        assert message.call_args.kwargs["on_cancel"] == main_screen._enter_menu_mode
+
+    def test_from_the_menu_by_mouse_the_popup_leaves_the_keys_alone(
+        self, main_screen: MainScreen, popups: tuple[MagicMock, MagicMock]
+    ) -> None:
+        confirm, _message = popups
+        main_screen._menu_action_by_keyboard = False
+        check = self._check(data_pack.UpdateStatus.UPDATE_AVAILABLE)
+        with patch.object(barks_reader.ui.main_screen.data_pack, "find_update", return_value=check):
+            main_screen.check_for_data_pack_update(at_boot=False)
+        assert confirm.call_args.kwargs["on_cancel"] is None
+
+    def test_accepting_spawns_the_installer_then_closes_the_reader(
+        self, main_screen: MainScreen, popups: tuple[MagicMock, MagicMock], loguru_sink: list[str]
+    ) -> None:
+        confirm, _message = popups
+        check = self._check(data_pack.UpdateStatus.UPDATE_AVAILABLE)
+        order: list[str] = []
+        with (
+            patch.object(barks_reader.ui.main_screen.data_pack, "find_update", return_value=check),
+            patch.object(barks_reader.ui.main_screen, "App") as app_cls,
+            patch.object(
+                barks_reader.ui.main_screen.data_pack,
+                "spawn_detached",
+                side_effect=lambda argv: order.append(f"spawn {argv[-1]}"),
+            ),
+            patch.object(barks_reader.ui.main_screen, "IS_COMPILED", new=True),
+            patch.object(sys, "argv", ["/exe/barks-reader"]),
+        ):
+            app_cls.get_running_app.return_value.close_app.side_effect = lambda: order.append(
+                "close"
+            )
+            main_screen.check_for_data_pack_update(at_boot=True)
+            confirm.call_args.kwargs["on_ok"]()
+        assert order == ["spawn --install-data-pack", "close"]
+        assert "Data pack installer started for Data pack 6 (29 Oct 2026); closing the reader." in (
+            loguru_sink
+        )
 
 
 class TestSmallScreenWarning:

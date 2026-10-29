@@ -74,6 +74,7 @@ def open_confirm_popup(
     cancel_text: str,
     on_ok: Callable[[], None],
     bg_image: str = "",
+    on_cancel: Callable[[], None] | None = None,
 ) -> MessagePopup:
     """Open a keyboard-operable confirmation popup.
 
@@ -90,6 +91,7 @@ def open_confirm_popup(
         cancel_text: Label of the cancelling button.
         on_ok: Called after dismissal when the user confirms.
         bg_image: Optional path of artwork to show behind the message.
+        on_cancel: Called after dismissal when the user declines, or None.
 
     Returns:
         The opened popup.
@@ -106,7 +108,7 @@ def open_confirm_popup(
         bg_image_source=bg_image,
         msg_font_scale=1.35,
     )
-    nav = _ConfirmPopupNav(popup, on_ok, title)
+    nav = _ConfirmPopupNav(popup, on_ok, title, on_cancel=on_cancel)
     popup.ok = nav.confirm
     popup.cancel = nav.cancel
     popup.open()
