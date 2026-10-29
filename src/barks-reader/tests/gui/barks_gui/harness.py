@@ -27,7 +27,8 @@ from typing import TYPE_CHECKING
 import gui_driver as gd
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers as markers
-from barks_reader.core.log_markers import pattern
+from barks_reader.core.log_markers import capture, pattern
+from barks_reader.core.main_layout import SINGLE_PAGE, TWO_PAGE_SPREAD, MainLayoutMode
 from barks_reader.core.reader_settings import READER_FILES_DIR, WIKI_BUNDLE_SUBDIR
 from barks_reader.core.reader_utils import expand_path_vars
 from barks_reader.core.wiki_integration import wiki_session_path
@@ -201,6 +202,13 @@ def apply_ini_overrides(ini: Path, overrides: Mapping[str, str]) -> None:
         parser.set(INI_SECTION, key, value)
     with ini.open("w", encoding="utf-8") as out:
         parser.write(out)
+
+
+# The layout the app logs for each explicit value of the "Main screen layout" setting.
+LAYOUT_MODE_FOR_SETTING: dict[str, str] = {
+    SINGLE_PAGE: MainLayoutMode.SINGLE.value,
+    TWO_PAGE_SPREAD: MainLayoutMode.SPREAD.value,
+}
 
 
 def read_ini_value(ini: Path, key: str) -> str:
@@ -796,7 +804,29 @@ class AppBoot:
         # close or a fullscreen round trip is a defect even when every assertion
         # the test made passed (assert_window_size_kept, from the fixture teardown).
         self.boot_geometry = self.driver.window_geometry()
+        self._check_layout_as_set()
         return self.driver
+
+    def _check_layout_as_set(self) -> None:
+        """Fail a boot that did not come up on the layout the ini names.
+
+        The harness pins a single page and the matrix's spread variant forces the
+        spread; "Match the screen" (never a test's) is left to the app. The app logs
+        the layout it decided at boot (MAIN_LAYOUT_MODE), so a run meant for the
+        spread is known to have been one.
+        """
+        assert self.driver is not None
+        setting = read_ini_value(self.scratch / "barks-reader.ini", "main_screen_layout")
+        expected = LAYOUT_MODE_FOR_SETTING.get(setting)
+        if expected is None:
+            return
+        regex = re.compile(capture(markers.MAIN_LAYOUT_MODE, "mode"))
+        log_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
+        modes = [found["mode"] for found in regex.finditer(log_text)]
+        assert modes, f"the app logged no main screen layout (the ini says {setting!r})"
+        assert modes[-1] == expected, (
+            f"the app booted on the {modes[-1]} layout, the ini says {setting!r}"
+        )
 
     def assert_window_size_kept(self) -> None:
         """Fail the test if the app window is not the size it booted at.

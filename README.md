@@ -197,7 +197,8 @@ just reader
   tap is a click. The design is in `docs/plans/touch-gui-tests.md`.
 - **The settings matrix** runs the GUI suite once per setting the default run never sees
   (the other two colour themes, double-page mode, the virtual keyboard, the title-info
-  switches off, the censorship fixes on), headless, every variant even after one fails,
+  switches off, the censorship fixes on, the two-page spread on a 1920x1080 screen),
+  headless, every variant even after one fails,
   with a pass/fail table at the end. About twenty minutes; for a nightly or a release.
     ```
     bash scripts/run_gui_matrix.sh                     # every variant
@@ -208,7 +209,8 @@ just reader
 - **The GUI overnight run** runs every GUI test there is, every way it can run: the suite as
   configured, then on each panels source and each comic source, the settings matrix, a
   landscape 1920x1080 screen, the tap tests by real touch (skipped when the udev rule is
-  missing), and the random-walk soak from three seeds. With `--app PATH` it also runs the
+  missing), the random-walk soak from three seeds, and that walk on the two-page spread
+  from one. With `--app PATH` it also runs the
   suite, the settings matrix and one soak seed against a built executable: a setting that
   loads files only it needs (the virtual keyboard's layouts) and a walk's deep paths (lazy
   imports) test the packaging, which the workspace run cannot. It keeps going after a failure, prints a pass/fail

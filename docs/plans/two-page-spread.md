@@ -82,7 +82,20 @@
 >   margin" press with a negative x. The view takes no touch off itself now; a GUI tap
 >   test boots on the spread (the setting forced on the portrait test screen) and taps
 >   a lower row (fixed 2026-10-29).
-> - Stage 5 tests, the matrix variant and the soak: TODO
+> - Stage 5 tests, the matrix variant and the soak: DONE 2026-10-30. The settings
+>   matrix has a `spread` variant (the setting forced) on its own 1920x1080 screen (a
+>   variant line may now name a screen), and the harness fails any boot that did not
+>   come up on the layout its ini names. The overnight GUI run has a `spread-soak`
+>   stage. The unit tests listed were already in place from stages 1 to 4 (the rule
+>   table in `test_main_layout.py`, the window's shape per mode, the marker, the fun
+>   page's tiers, the document pairing). Seen on this PC: the whole suite on the spread
+>   variant green once two tests were taught the spread (the illustrated history's Go
+>   to Story tests turn a pair at a time and count both pages' links, from the data as
+>   before; the settings test takes either explicit layout), and the random walk on the
+>   spread from seed 1, 500 keys from each of its four starts: widgets steady within
+>   each walk (at most 3479 after the start on a story), RSS at most 1178 MiB, no
+>   climb. Found on the way, on this PC: only the tree's top row answered a mouse tap
+>   on the spread (the fun view's margins, see stage 4's note; fixed 2026-10-29).
 > - Stage 6 the how-to pages, the README and the demo videos: TODO
 
 ## Context

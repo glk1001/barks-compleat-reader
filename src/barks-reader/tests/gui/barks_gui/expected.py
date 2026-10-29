@@ -28,6 +28,7 @@ from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_gui import harness
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
+from barks_reader.core.display_unit import DisplayUnit, build_document_units
 from barks_reader.core.document_chapters import (
     PAGE_IMAGE_EXTENSIONS,
     DocumentChapter,
@@ -157,27 +158,46 @@ def illustrated_history_chapters() -> list[DocumentChapter]:
 
 @dataclass(frozen=True, slots=True)
 class LinkedPage:
-    """A chapter page whose figures link to stories."""
+    """A chapter page whose figures link to stories, as the document reader shows it.
+
+    On the two-page spread the reader shows pairs, the first page alone, and Go to Story
+    offers both pages' links: `page` is then the pair's first, the one the reader logs
+    (``DOCUMENT_PAGE``), and `links` the pair's. `turns` are the pages each Right logs
+    on the way there from the first.
+    """
 
     chapter: DocumentChapter
     page: int  # as the document reader logs it, from 1
     links: list[StoryLink]
+    turns: tuple[int, ...]
 
 
-def first_linked_page(*, several: bool) -> LinkedPage | None:
+def first_linked_page(*, several: bool, paired: bool = False) -> LinkedPage | None:
     """Return the first chapter page with one story link, or with `several`, two or more.
 
     Pages come in the order the document reader turns them (sorted by name), and the
-    links in the order its Go to Story list shows them.
+    links in the order its Go to Story list shows them. With `paired`, as the two-page
+    spread shows them: the first page alone, then pairs, each counted by both pages'
+    links (``core.display_unit.build_document_units``).
     """
     for chapter in illustrated_history_chapters():
         pages = sorted(
             p for p in chapter.doc_dir.iterdir() if p.suffix.lower() in DOCUMENT_IMAGE_SUFFIXES
         )
-        for number, page in enumerate(pages, start=1):
-            links = load_story_links(page)
+        if paired:
+            units, _ = build_document_units(len(pages))
+        else:
+            units = [DisplayUnit(i, None) for i in range(len(pages))]
+        turns: list[int] = []
+        for unit in units:
+            number = unit.left_page_index + 1
+            if unit.left_page_index > 0:
+                turns.append(number)
+            links = load_story_links(pages[unit.left_page_index])
+            if unit.right_page_index is not None:
+                links += load_story_links(pages[unit.right_page_index])
             if (len(links) > 1) if several else (len(links) == 1):
-                return LinkedPage(chapter, number, links)
+                return LinkedPage(chapter, number, links, tuple(turns))
     return None
 
 

@@ -10,16 +10,19 @@
 #
 # The variants are listed below, one per line: a name, then the settings for
 # that run as "key=value;key=value" (what run_gui_tests.sh --ini takes, and the
-# BARKS_GUI_INI form the harness reads). Settings the harness pins (fullscreen
-# on start, quit confirm, ...) cannot be a variant; double-page mode is a
-# harness default rather than a pin, so it can. Add a variant by adding a line.
+# BARKS_GUI_INI form the harness reads), then, for a variant that wants another
+# nested screen, its size after a second bar (the spread's landscape screen; the
+# harness checks each boot came up on the layout the setting names). Settings the
+# harness pins (fullscreen on start, quit confirm, ...) cannot be a variant;
+# double-page mode and the main screen layout are harness defaults rather than
+# pins, so they can. Add a variant by adding a line.
 #
 # Usage: scripts/run_gui_matrix.sh [--list] [--only NAME[,NAME...]] [--visible]
 #                                  [--screen WxH] [--progress] [--app PATH] [pytest args]
 #   --list      print the variants and exit
 #   --only      run only the named variants
 #   --visible   on the Xephyr window, serially, instead of headless on Xvfb
-#   --screen    nested screen size for every run (run_gui_tests.sh --screen)
+#   --screen    nested screen size for every run without its own (run_gui_tests.sh --screen)
 #   --progress  a line per test as it finishes (run_gui_tests.sh --progress)
 #   --app       every variant against this built executable (run_gui_tests.sh --app):
 #               a setting that loads files only it needs (the virtual keyboard's
@@ -42,7 +45,21 @@ VARIANTS=(
     "virtual-keyboard|use_virtual_keyboard=1"
     "no-title-info|show_tree_view_title_info=0;show_fun_view_title_info=0"
     "censorship-fixes|use_harpies=1;use_deah=1;use_blank_eyeballs=1;use_glk_firebug_ending=1"
+    "spread|main_screen_layout=Two-page spread|1920x1080"
 )
+
+# The three fields of a variant line: its name, its settings and its own screen size
+# (empty for most), into the variables named.
+split_variant() {
+    local line="$1" rest
+    name="${line%%|*}"
+    rest="${line#*|}"
+    settings="${rest%%|*}"
+    variant_screen=""
+    if [[ "$rest" == *"|"* ]]; then
+        variant_screen="${rest#*|}"
+    fi
+}
 
 only=""
 output=--quiet
@@ -53,7 +70,9 @@ while [[ "${1:-}" == --* ]]; do
     case "$1" in
     --list)
         for variant in "${VARIANTS[@]}"; do
-            printf '%-18s %s\n' "${variant%%|*}" "${variant#*|}"
+            split_variant "$variant"
+            printf '%-18s %s%s\n' "$name" "$settings" \
+                "${variant_screen:+ (on a ${variant_screen} screen)}"
         done
         exit 0
         ;;
@@ -83,7 +102,7 @@ done
 
 selected=()
 for variant in "${VARIANTS[@]}"; do
-    name="${variant%%|*}"
+    split_variant "$variant"
     if [[ -n "$only" ]] && ! [[ ",$only," == *",$name,"* ]]; then
         continue
     fi
@@ -103,12 +122,14 @@ results=()
 durations=()
 failed=0
 # One variant's run. BARKS_GUI_INI is what --ini appends to; setting it here is
-# the same as one --ini per key.
+# the same as one --ini per key. A variant's own screen size beats --screen.
 run_variant() {
-    local name="$1" settings="$2"
-    shift 2
+    local name="$1" settings="$2" variant_screen="$3"
+    shift 3
+    local -a run_screen=("${screen[@]}")
+    [[ -n "$variant_screen" ]] && run_screen=(--screen "$variant_screen")
     BARKS_GUI_INI="$settings" bash "${SCRIPT_DIR}/run_gui_tests.sh" "${mode[@]}" "$output" \
-        "${screen[@]}" "${app[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"
+        "${run_screen[@]}" "${app[@]}" "$@" 2>&1 | tee "${log_dir}/${name}.log"
 }
 
 # Stopping the matrix stops the variant running, whose own exit cleans up what
@@ -119,13 +140,12 @@ source "${SCRIPT_DIR}/_gui_run.sh"
 gui_trap_signals
 
 for variant in "${selected[@]}"; do
-    name="${variant%%|*}"
-    settings="${variant#*|}"
+    split_variant "$variant"
     echo
-    echo "==== ${name}: ${settings} ===="
+    echo "==== ${name}: ${settings}${variant_screen:+ (on a ${variant_screen} screen)} ===="
     started=$SECONDS
     # A failure is recorded and the loop goes on; an interrupt ends it.
-    if gui_run run_variant "$name" "$settings" "$@"; then
+    if gui_run run_variant "$name" "$settings" "$variant_screen" "$@"; then
         results+=("passed")
     elif [[ -n "$GUI_INTERRUPTED" ]]; then
         results+=("stopped")

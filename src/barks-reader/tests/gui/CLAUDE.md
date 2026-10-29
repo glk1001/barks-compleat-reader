@@ -14,7 +14,8 @@ against a Nuitka build; `--prebuilt`, `--png-images` and `--ini` move a run to o
 settings; `--screen WxH` picks another nested screen size; `--keep-logs` saves every
 passing test's artifacts too (logs, profile, final frame), as a failure's;
 `bash scripts/run_gui_matrix.sh` runs the suite once per settings variant (themes,
-double-page, virtual keyboard, ...; `--list`, `--only NAME`).
+double-page, virtual keyboard, the two-page spread on its landscape screen, ...;
+`--list`, `--only NAME`).
 
 `test_taps.py` taps instead, by what a widget shows, never by pixel: the app lists
 its tappable widgets on request (`barks_gui.taps`, `barks_reader.core.tap_targets`).

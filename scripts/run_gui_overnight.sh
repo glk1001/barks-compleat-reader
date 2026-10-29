@@ -16,11 +16,15 @@
 #   volumes        the suite reading comics from the Fantagraphics volumes (--prebuilt 0)
 #   prebuilt       ... and from the prebuilt comic archives (--prebuilt 1)
 #   matrix         run_gui_matrix.sh: the suite once per settings variant (themes,
-#                  double-page, virtual keyboard, title info off, censorship fixes)
+#                  double-page, virtual keyboard, title info off, censorship fixes,
+#                  the two-page spread on a 1920x1080 screen)
 #   screen-1080p   the suite on a landscape 1920x1080 nested screen
 #   touch          the tap tests by real touch (--touch); skipped, and said so,
 #                  when the machine lacks the udev rule (scripts/udev/)
 #   soak           the random walk, SOAK_STEPS keys from each of SOAK_SEEDS
+#   spread-soak    the random walk on the two-page spread (the setting forced, a
+#                  1920x1080 screen), from the first of SOAK_SEEDS: the fun page
+#                  holds two art images at once, so its memory census is its own
 #   built-app      the suite against a Nuitka build; only with --app PATH
 #   built-app-matrix  the settings matrix against that build: a setting that loads
 #                  files only it needs (the virtual keyboard's layouts) tests the
@@ -54,8 +58,8 @@ cd "$REPO_ROOT"
 
 SOAK_STEPS="${BARKS_OVERNIGHT_SOAK_STEPS:-500}"
 SOAK_SEEDS="${BARKS_OVERNIGHT_SOAK_SEEDS:-1 2 3}"
-STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch soak built-app
-    built-app-matrix built-app-soak)
+STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch soak spread-soak
+    built-app built-app-matrix built-app-soak)
 
 only=""
 skip=""
@@ -157,6 +161,12 @@ run_stage() {
                 "${gui[@]}" --soak || status=1
         done
         return "$status"
+        ;;
+    spread-soak)
+        local first="${SOAK_SEEDS%% *}"
+        echo "spread-soak: seed ${first}, ${SOAK_STEPS} keys"
+        BARKS_GUI_INI="main_screen_layout=Two-page spread" BARKS_GUI_WALK_SEED="$first" \
+            BARKS_GUI_WALK_STEPS="$SOAK_STEPS" "${gui[@]}" --soak --screen 1920x1080
         ;;
     built-app) "${gui[@]}" --app "$app" ;;
     built-app-matrix) bash "${SCRIPT_DIR}/run_gui_matrix.sh" --progress --app "$app" ;;

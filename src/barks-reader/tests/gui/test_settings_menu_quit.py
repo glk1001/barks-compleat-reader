@@ -119,7 +119,9 @@ def test_opening_the_settings_leaves_the_options_settings_as_the_ini_had_them(
     d = boot(nodes.THE_STORIES)
     layout = harness.read_ini_value(ini, LAYOUT_SETTING)
     log_level = harness.read_ini_value(ini, LOG_LEVEL_SETTING)
-    assert layout == "Single page"  # the harness pins it: the suite runs on one page
+    # An explicit layout: the harness pins a single page, the matrix's spread variant forces
+    # the spread.
+    assert layout in harness.LAYOUT_MODE_FOR_SETTING
 
     _open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)

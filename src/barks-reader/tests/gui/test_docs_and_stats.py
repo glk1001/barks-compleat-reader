@@ -15,6 +15,7 @@ from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import MainLayoutMode
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -171,11 +172,16 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
 GOTO_STORY = pattern(markers.DOCUMENT_GOTO_STORY)
 
 
-def _linked_page(*, several: bool) -> expected.LinkedPage:
-    """Return the first chapter page with one story link (or several), else skip."""
+def _linked_page(d: Driver, *, several: bool) -> expected.LinkedPage:
+    """Return the first chapter page with one story link (or several), else skip.
+
+    As the booted app shows pages: on the two-page spread in pairs, the first alone,
+    with Go to Story offering both pages' links, so the page is the pair's first.
+    """
     if not expected.illustrated_history_chapters():
         pytest.skip(f"no illustrated-history chapters here: {expected.illustrated_history_dir()}")
-    linked = expected.first_linked_page(several=several)
+    paired = last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == MainLayoutMode.SPREAD.value
+    linked = expected.first_linked_page(several=several, paired=paired)
     if linked is None:
         pytest.skip(f"no chapter page links {'several stories' if several else 'one story'}")
     return linked
@@ -185,7 +191,7 @@ def _open_chapter_at(d: Driver, linked: expected.LinkedPage) -> None:
     """Open the history, then the page's chapter, and turn to the page."""
     d.open_branch(nodes.ILLUSTRATED_HISTORY)
     _open_document(d, linked.chapter.title)
-    for page in range(2, linked.page + 1):
+    for page in linked.turns:
         d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=page), "Right")
 
 
@@ -217,9 +223,9 @@ def test_the_history_node_lists_the_chapters_on_disk(boot: AppBoot) -> None:
 
 def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
     """A page's one story is gone to at once; Go Back reopens the chapter at that page."""
-    linked = _linked_page(several=False)
-    (link,) = linked.links
     d = boot(nodes.INTRODUCTION)
+    linked = _linked_page(d, several=False)
+    (link,) = linked.links
     _open_chapter_at(d, linked)
     _focus_go_to_story(d)
     with (
@@ -252,9 +258,9 @@ def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
 
 def test_several_stories_on_a_page_are_picked_from_a_list(boot: AppBoot) -> None:
     """Go to Story on a page with several stories lists them; Down then Return picks the second."""
-    linked = _linked_page(several=True)
-    second = linked.links[1]
     d = boot(nodes.INTRODUCTION)
+    linked = _linked_page(d, several=True)
+    second = linked.links[1]
     _open_chapter_at(d, linked)
     _focus_go_to_story(d)
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the list opens, its first story focused
