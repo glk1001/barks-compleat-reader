@@ -42,6 +42,14 @@
 >   the mode, so over the pair in the spread window its items sat in the middle; in
 >   double-page mode the bar is now as wide as the pair, refitted at a comic's load
 >   and on the Double Page toggle (done 2026-10-29).
+>   A review of the six stages (2026-10-30): the reader's bar was pair-wide under a
+>   solo unit too, the cover or an odd last page drawn as one page in double-page
+>   mode; the reader now says what it drew (`showing_two_pages`) and the bar follows
+>   it. And with the saved window position on a second monitor of another shape, the
+>   geometry helper decided the boot layout for that monitor while main.py had sized
+>   the window for the primary's, so the boot check saw no change and the window kept
+>   the wrong shape; the helper now starts from main.py's decision and the boot check
+>   refits (both fixed 2026-10-30).
 > - Stage 2 the title page and the fun page: DONE 2026-10-29. Seen on this PC on a
 >   nested 1920x1080 display: Lost in the Andes and Land of the Pygmy Indians as hero,
 >   picture and colophon (the 841 characters whole, the three-row portal column with
@@ -82,6 +90,8 @@
 >   margin" press with a negative x. The view takes no touch off itself now; a GUI tap
 >   test boots on the spread (the setting forced on the portrait test screen) and taps
 >   a lower row (fixed 2026-10-29).
+>   From the same review: a layout change under a closed document laid it out again
+>   and moved the page it resumes at; closing drops the pages (fixed 2026-10-30).
 > - Stage 5 tests, the matrix variant and the soak: DONE 2026-10-30. The settings
 >   matrix has a `spread` variant (the setting forced) on its own 1920x1080 screen (a
 >   variant line may now name a screen), and the harness fails any boot that did not

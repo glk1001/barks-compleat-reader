@@ -140,7 +140,10 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         Window.bind(on_key_down=self._on_key_down)
 
     def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
-        """Show the current page as the new layout shows it: alone, or with its pair."""
+        """Show the current page as the new layout shows it: alone, or with its pair.
+
+        A closed reader has no pages (`close`), so a change under it shows nothing.
+        """
         if self._page_paths:
             self._update_page_source()
 
@@ -331,6 +334,9 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if self._menu_mode:
             self._exit_menu_mode()
         Window.unbind(on_key_down=self._on_key_down)
+        # No pages: a layout change under a closed reader laid the document out again
+        # and moved its resume page (2026-10-30). The resume pages stay (`open_document`).
+        self._page_paths = []
         self._on_close_screen()
 
 

@@ -288,6 +288,14 @@ class TestComicBookReader:
         assert reader._reveal_ev is None
         reader._on_comic_is_ready_to_read.assert_not_called()
 
+    def test_a_page_drawn_says_whether_it_is_a_pair(self, reader: ComicBookReader) -> None:
+        """A solo unit in double-page mode is one page: the screen's bar follows this."""
+        self._stub_current_page(reader, 2)
+        reader._render_page(2, 3)
+        assert reader.showing_two_pages is True
+        reader._render_page(4, None)
+        assert reader.showing_two_pages is False
+
     def test_the_first_page_drawn_says_the_comic_opened_once(self, reader: ComicBookReader) -> None:
         """The opener hears of page one only, not of every page turn after it."""
         self._stub_current_page(reader, 0)
@@ -987,7 +995,7 @@ class TestComicBookReaderScreen:
     # --- the bar is as wide as the pages under it ---
 
     @pytest.mark.parametrize(
-        ("window", "double_page", "expected_width"),
+        ("window", "two_pages", "expected_width"),
         [
             # The spread window on a 2560x1440 monitor: a page, then the pair.
             ((1775, 1365), False, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO)),
@@ -1000,14 +1008,24 @@ class TestComicBookReaderScreen:
         self,
         screen: ComicBookReaderScreen,
         window: tuple[int, int],
-        double_page: bool,
+        two_pages: bool,
         expected_width: int,
     ) -> None:
-        """A page wide in single-page mode, the pair's width in double-page mode."""
-        cast("MagicMock", screen.comic_book_reader).double_page_mode = double_page
+        """A page wide under one page, the pair's width under a pair: what the reader drew."""
+        cast("MagicMock", screen.comic_book_reader).showing_two_pages = two_pages
         with patch.object(_reader_module, "Window", width=window[0], height=window[1]):
             screen._reset_action_bar_width()
         assert screen.action_bar_width == expected_width
+
+    def test_the_bar_refits_as_the_pages_drawn_change(self, screen: ComicBookReaderScreen) -> None:
+        """A solo unit in double-page mode (the cover, an odd last page) is one page wide."""
+        binds = cast("MagicMock", screen.comic_book_reader).bind.call_args_list
+        on_change = next(
+            call.kwargs["showing_two_pages"] for call in binds if "showing_two_pages" in call.kwargs
+        )
+        with patch.object(screen, "_reset_action_bar_width") as reset:
+            on_change(screen.comic_book_reader, False)  # noqa: FBT003
+        reset.assert_called_once_with()
 
     @pytest.mark.parametrize("refit", ["toggle_double_page_mode", "_on_comic_is_ready_to_read"])
     def test_the_bar_refits_when_the_mode_can_change(

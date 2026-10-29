@@ -392,6 +392,27 @@ class TestTheSpread:
         screen.on_layout_mode(screen, screen.layout_mode)
         assert _shown(screen) == ("page-002.png", "")
 
+    def test_a_layout_change_under_a_closed_document_leaves_its_resume_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """A closed reader is not laid out again: that moved the page it resumes at."""
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.next_page()
+        screen.next_page()  # page 3, a pair's right page on the spread
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+        pages_shown = len([line for line in loguru_sink if "Document page" in line])
+
+        _spread(screen)
+        screen.layout_mode = MainLayoutMode.SINGLE.value
+        screen.on_layout_mode(screen, screen.layout_mode)
+
+        assert len([line for line in loguru_sink if "Document page" in line]) == pages_shown
+        _open(screen, tmp_path, resume=True)
+        assert _shown(screen) == ("page-003.png", "")
+
     def test_go_to_story_offers_both_pages_stories(
         self, screen: DocumentReaderScreen, tmp_path: Path
     ) -> None:

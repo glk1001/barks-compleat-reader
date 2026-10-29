@@ -1092,6 +1092,40 @@ def test_a_move_to_a_landscape_monitor_changes_the_layout_with_the_resize(
     assert any(re.search(wanted, line) for line in loguru_sink)
 
 
+def test_at_boot_the_window_is_refit_for_the_monitor_it_opens_on(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    """main.py sized the window for the primary's layout; its saved position is elsewhere."""
+    landscape = _landscape_screen(display=0)
+    portrait = _make_screen_info(width=1200, height=1920, display=1)
+    fake_metrics = MagicMock()
+    fake_metrics.get_primary_screen_info.return_value = landscape
+    fake_metrics.get_monitor_for_pos.return_value = portrait
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
+    fake_window.size = (2400, 1200)
+    h = AppWindowGeometryHelper(constraints, layout_setting=MATCH_THE_SCREEN)
+    assert h.layout_mode is MainLayoutMode.SPREAD  # the window's shape, from main.py
+    layout_changed = MagicMock()
+    h.set_main_screen_callbacks(MagicMock(), layout_mode_changed=layout_changed)
+
+    h.set_window_ready()
+
+    assert h.layout_mode is MainLayoutMode.SINGLE
+    layout_changed.assert_called_once_with(MainLayoutMode.SINGLE)
+    requested_width, requested_height = h._resize_requested_size  # noqa: SLF001
+    assert requested_width / (requested_height - CHROME) == pytest.approx(
+        1 / content_aspect_ratio(MainLayoutMode.SINGLE), rel=0.01
+    )
+    wanted = pattern(log_markers.MAIN_LAYOUT_MODE, mode="single", reason="boot")
+    assert any(re.search(wanted, line) for line in loguru_sink)
+
+
 def test_a_rotation_to_landscape_changes_the_layout_with_the_fit(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,

@@ -70,8 +70,11 @@ class AppWindowGeometryHelper:
             initial_monitor = SCREEN_METRICS.get_primary_screen_info()
         self._current_monitor: ScreenInfo = initial_monitor
         self._layout_setting = layout_setting
-        # Decided silently: main.py sized the window for it; `set_window_ready` logs it.
-        self._layout_mode = self._decide_layout()
+        # The layout main.py sized the window for, decided as main.py did, on the
+        # primary screen, and silently: `set_window_ready` decides for the monitor the
+        # window is on, logs that, and refits the window when the two differ (a saved
+        # position on a second monitor of another shape, 2026-10-30).
+        self._layout_mode = self._decide_layout_on(SCREEN_METRICS.get_primary_screen_info())
         self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
         self._resize_event: Any = None
         self._resize_requested_size = 0, 0
@@ -165,7 +168,9 @@ class AppWindowGeometryHelper:
         return True
 
     def _decide_layout(self) -> MainLayoutMode:
-        monitor = self._current_monitor
+        return self._decide_layout_on(self._current_monitor)
+
+    def _decide_layout_on(self, monitor: ScreenInfo) -> MainLayoutMode:
         return choose_main_layout(
             self._layout_setting,
             monitor.width_pixels,
