@@ -472,9 +472,7 @@ update leaves the installed data as it was and writes
 
 Releases are assembled by CI — don't upload executables by hand.
 
-1. Update `FALLBACK_TAG` in `website/app.html` to the upcoming tag (it's the no-API fallback
-   for the website's download links) and commit, so the tagged commit is self-consistent.
-1. Tag that commit and push:
+1. Tag a commit on `main` that is pushed and green in CI, and push the tag:
    ```
    git tag v1.2.3-alpha.2   # or plain v1.2.3 for a full release
    git push origin main v1.2.3-alpha.2
@@ -489,6 +487,9 @@ Releases are assembled by CI — don't upload executables by hand.
    edit the notes if needed, and click **"Publish release"**. Nothing is public until then.
    (If something is wrong, delete the draft — `gh release delete <tag> --cleanup-tag` also
    removes the tag — fix, and re-tag.)
+1. Publishing starts the `Sync website release tag` workflow, which points `FALLBACK_TAG` in
+   `website/app.html` (the website's download links when the GitHub API does not answer) at
+   the new tag and commits that to `main`. Nothing sets it by hand; `git pull` afterwards.
 1. Verify the published result: the release page shows its "Pre-release" badge, and on
    https://glk1001.github.io/barks-compleat-reader/website/app.html the masthead badge shows
    the new tag and the executable buttons download from it — the website tracks the newest
