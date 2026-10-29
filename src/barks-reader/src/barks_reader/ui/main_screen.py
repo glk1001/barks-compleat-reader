@@ -20,7 +20,12 @@ from loguru import logger
 
 from barks_reader.core import data_pack, log_markers
 from barks_reader.core.config_info import IS_COMPILED, get_app_exe_dir
-from barks_reader.core.data_pack import INSTALL_DATA_PACK_ARG, UpdateCheck, UpdateStatus
+from barks_reader.core.data_pack import (
+    INSTALL_DATA_PACK_ARG,
+    UPDATE_DATA_PACK_TITLE,
+    UpdateCheck,
+    UpdateStatus,
+)
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -80,8 +85,6 @@ if TYPE_CHECKING:
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeBuilderEventDispatcher
     from .user_error_handler import UserErrorHandler
-
-UPDATE_DATA_PACK_TITLE = "Update Data Pack"
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

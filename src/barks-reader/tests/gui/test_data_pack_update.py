@@ -19,10 +19,10 @@ from barks_reader.core.data_pack import (
     DATA_PACK_DIR_ENV_VAR,
     DATA_PACK_FILE_NAMES,
     PACK_MEMBER,
+    UPDATE_DATA_PACK_TITLE,
     DataPackInfo,
 )
 from barks_reader.core.log_markers import pattern
-from barks_reader.ui.main_screen import UPDATE_DATA_PACK_TITLE
 
 if TYPE_CHECKING:
     from pathlib import Path

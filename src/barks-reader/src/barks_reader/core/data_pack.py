@@ -53,6 +53,9 @@ DATA_PACK_FILE_NAMES = ("barks-reader-data-1.barkspack", "barks-reader-data-2.ba
 DATA_PACK_DIR_ENV_VAR = "BARKS_READER_DATA_PACK_DIR"
 # argv sentinel the reader spawns itself with to run the data pack installer.
 INSTALL_DATA_PACK_ARG = "--install-data-pack"
+# The update offer's popups' title; here, not in the UI, so the GUI tests can match it
+# without importing Kivy.
+UPDATE_DATA_PACK_TITLE = "Update Data Pack"
 NEW_SUFFIX = ".new"
 OLD_SUFFIX = ".old"
 
