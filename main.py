@@ -167,9 +167,8 @@ def update_window_size(
         min_options.win_top,
     )
 
-    best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics(
-        min_options.main_screen_layout
-    )
+    aspect_ratio = get_main_win_aspect_ratio(min_options.main_screen_layout)
+    best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics(aspect_ratio)
 
     win_height = cmd_arg_win_height
     win_left = cmd_arg_win_left
@@ -189,7 +188,7 @@ def update_window_size(
 
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
-    set_window_size(win_height, win_left, win_top, min_options.main_screen_layout)
+    set_window_size(win_height, win_left, win_top, aspect_ratio)
 
 
 def get_main_win_aspect_ratio(layout_setting: str) -> float:
@@ -209,7 +208,17 @@ def get_main_win_aspect_ratio(layout_setting: str) -> float:
     return content_aspect_ratio(mode)
 
 
-def get_main_win_from_screen_metrics(layout_setting: str) -> tuple[int, int, int]:
+def get_main_win_from_screen_metrics(aspect_ratio: float) -> tuple[int, int, int]:
+    """Return the main window's best height and position on the primary screen.
+
+    Args:
+        aspect_ratio: The shape (height over width) of the window's content, from
+            `get_main_win_aspect_ratio`.
+
+    Returns:
+        The window's height, and its left and top.
+
+    """
     primary_screen_info = SCREEN_METRICS.get_primary_screen_info()
 
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
@@ -220,7 +229,7 @@ def get_main_win_from_screen_metrics(layout_setting: str) -> tuple[int, int, int
         primary_screen_info.width_pixels,
         primary_screen_info.height_pixels,
         RAW_ACTION_BAR_SIZE_Y,
-        get_main_win_aspect_ratio(layout_setting),
+        aspect_ratio,
     )
     win_left = win_centre - round(win_width / 2)
     win_top = primary_screen_info.monitor_y + WINDOW_HEIGHT_MARGIN // 2
@@ -230,7 +239,17 @@ def get_main_win_from_screen_metrics(layout_setting: str) -> tuple[int, int, int
     return win_height, win_left, win_top
 
 
-def set_window_size(win_height: int, win_left: int, win_top: int, layout_setting: str) -> None:
+def set_window_size(win_height: int, win_left: int, win_top: int, aspect_ratio: float) -> None:
+    """Give Kivy's config the main window's position and size, before Kivy makes the window.
+
+    Args:
+        win_height: The window's height; the width follows from the content's shape.
+        win_left: The window's left.
+        win_top: The window's top.
+        aspect_ratio: The shape (height over width) of the window's content, from
+            `get_main_win_aspect_ratio`.
+
+    """
     from kivy import Config
 
     if PLATFORM != Platform.WIN:
@@ -251,7 +270,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int, layout_setting
     #       initializes the Window with wrong dimensions.
     monitor_width = SCREEN_METRICS.get_primary_screen_info().width_pixels
     win_width, content_h = get_win_dimensions(
-        win_height - RAW_ACTION_BAR_SIZE_Y, monitor_width, get_main_win_aspect_ratio(layout_setting)
+        win_height - RAW_ACTION_BAR_SIZE_Y, monitor_width, aspect_ratio
     )
     win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     logger.debug(f"Main win width: {win_width}.")

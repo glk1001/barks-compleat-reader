@@ -764,7 +764,7 @@ class SettingOptionsWithValue(SettingOptions):
         logger.info(log_markers.SETTING_OPTION_SET.format(key=self.key, value=self.value))
         Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
 
-    def on_value(self, instance, value) -> None:  # noqa: ANN001
+    def on_value(self, instance: SettingItem, value: str) -> None:
         # Kivy's handler is what saves the value and dispatches the panel's
         # on_config_change, which is how a changed setting reaches the app
         # (BarksReaderApp.on_config_change). Overridden without calling it, an
