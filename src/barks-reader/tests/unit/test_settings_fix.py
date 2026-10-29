@@ -148,14 +148,28 @@ class TestFolderChooserBrowsing:
         assert chooser.ids.path_input.text == str(tmp_path / "alpha")
         assert f'Folder chooser: in "{tmp_path / "alpha"}".' in loguru_sink
 
+    def test_a_folder_it_may_not_list_stays_shut(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        r"""Windows refuses a listing of C:\Documents and Settings; Kivy logs that as an error."""
+        chooser = _browsing(tmp_path, "alpha")
+        chooser.ids.path_input.text = str(tmp_path)
+        with patch.object(settings_fix.os, "scandir", side_effect=PermissionError("denied")):
+            SettingLongPathPopup._open_folder(chooser, str(tmp_path / "alpha"))
+        chooser.ids.file_chooser.set_path.assert_not_called()
+        assert chooser.ids.path_input.text == str(tmp_path)
+        assert f'Folder chooser: cannot list "{tmp_path / "alpha"}".' in loguru_sink
+
 
 class TestQuietFileSystem:
     """A file Windows keeps locked is hidden without the error Kivy logs for it."""
 
     @staticmethod
     @contextmanager
-    def _on_windows(stat_result: object) -> Generator[None]:
-        def fake_stat() -> object:
+    def _on_windows(stat_result: object, target_result: object = None) -> Generator[None]:
+        """Stand in for Windows: `stat_result` is the entry's own, `target_result` its target's."""
+
+        def fake_lstat() -> object:
             if isinstance(stat_result, Exception):
                 raise stat_result
             return stat_result
@@ -163,7 +177,7 @@ class TestQuietFileSystem:
         with patch.multiple(
             settings_fix,
             sys=SimpleNamespace(platform="win32"),
-            Path=lambda _fn: SimpleNamespace(stat=fake_stat),
+            Path=lambda _fn: SimpleNamespace(lstat=fake_lstat, stat=lambda: target_result),
         ):
             yield
 
@@ -177,6 +191,13 @@ class TestQuietFileSystem:
             assert QuietFileSystem().is_hidden("C:\\secret") is True
         with self._on_windows(SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_ARCHIVE)):
             assert QuietFileSystem().is_hidden("C:\\Comics") is False
+
+    def test_a_hidden_junction_is_hidden_though_its_target_is_not(self) -> None:
+        r"""C:\Documents and Settings: listing it is refused, and Explorer hides it."""
+        hidden = SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_HIDDEN)
+        shown = SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_DIRECTORY)
+        with self._on_windows(hidden, target_result=shown):
+            assert QuietFileSystem().is_hidden("C:\\Documents and Settings") is True
 
     def test_elsewhere_a_dot_file_is_hidden(self) -> None:
         # Kivy's own check reads its platform, not ours, so it moves off Windows too.

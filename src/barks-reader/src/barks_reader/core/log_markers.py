@@ -116,6 +116,8 @@ FOLDER_CHOOSER_SELECTED: Final = 'Folder chooser: selected "{path}".'
 FOLDER_CHOOSER_CLOSED: Final = "Folder chooser closed."
 FOLDER_CHOOSER_AT: Final = 'Folder chooser: at "{path}".'  # Up/Down moved the highlight
 FOLDER_CHOOSER_IN: Final = 'Folder chooser: in "{path}".'  # Right/Left opened a folder
+# Right/Left on a folder the reader may not list: the chooser stays where it was.
+FOLDER_CHOOSER_NOT_LISTED: Final = 'Folder chooser: cannot list "{path}".'
 # An options setting's value picked from its list (written straight to the ini, so
 # no CONFIG_CHANGE line follows).
 SETTING_OPTION_SET: Final = 'Setting "{key}" set to "{value}".'

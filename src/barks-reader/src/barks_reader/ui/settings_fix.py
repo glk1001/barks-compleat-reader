@@ -1,4 +1,5 @@
 # cspell:ignore hiberfil
+import os
 import stat
 import sys
 from pathlib import Path
@@ -321,20 +322,24 @@ KV_SETTINGS_OVERRIDE = """
 
 
 class QuietFileSystem(FileSystemLocal):
-    """Kivy's local file system, without its error for a file Windows keeps locked.
+    r"""Kivy's local file system, without its error for a file Windows keeps locked.
 
     On Windows, Kivy reads each listed file's attributes to tell whether it is hidden.
     For a file the system holds open (``pagefile.sys``, ``hiberfil.sys``) that fails,
     and Kivy logs the failure as an error, with its traceback, before taking the file
     as hidden. Browsing to the root of drive C: filled the log with them. Here such a
     file is hidden all the same, quietly.
+
+    The attributes read are the entry's own, not its target's: Windows marks the junctions
+    it keeps for old programs (``C:\Documents and Settings``) hidden, as Explorer shows
+    them, while the folders they lead to are not, and it lets no one list them.
     """
 
     def is_hidden(self, fn: str) -> bool:
         """Return whether `fn` is hidden: a dot file, or on Windows marked hidden or locked."""
         if sys.platform == "win32":
             try:
-                return bool(Path(fn).stat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
+                return bool(Path(fn).lstat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
             except OSError:
                 return True  # held by the system, so nothing the reader could use
         return bool(super().is_hidden(fn))
@@ -566,7 +571,17 @@ class SettingLongPathPopup(Popup):
             self._open_folder(target)
 
     def _open_folder(self, folder: str) -> None:
-        """Show `folder`'s entries, nothing highlighted, and put it in the box."""
+        """Show `folder`'s entries, nothing highlighted, and put it in the box.
+
+        A folder the reader may not list stays shut, the chooser where it was: Kivy
+        would show it empty and log the refusal as an error.
+        """
+        try:
+            with os.scandir(folder):
+                pass
+        except OSError:
+            logger.debug(log_markers.FOLDER_CHOOSER_NOT_LISTED.format(path=folder))
+            return
         chooser = self.ids.file_chooser
         chooser.set_path(folder)
         chooser.selection = []
