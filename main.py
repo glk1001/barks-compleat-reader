@@ -33,6 +33,7 @@ from barks_reader.core.config_info import (
 )
 from barks_reader.core.data_pack import INSTALL_DATA_PACK_ARG, read_installed
 from barks_reader.core.log_markers import APP_STARTING, DATA_PACK_INSTALLED
+from barks_reader.core.main_layout import choose_main_layout, content_aspect_ratio
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
@@ -199,7 +200,9 @@ def update_window_size(
         min_options.win_top,
     )
 
-    best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics()
+    best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics(
+        min_options.main_screen_layout
+    )
 
     win_height = cmd_arg_win_height
     win_left = cmd_arg_win_left
@@ -219,10 +222,27 @@ def update_window_size(
 
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
-    set_window_size(win_height, win_left, win_top)
+    set_window_size(win_height, win_left, win_top, min_options.main_screen_layout)
 
 
-def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
+def get_main_win_aspect_ratio(layout_setting: str) -> float:
+    """Return the shape (height over width) the main window's content opens at.
+
+    The main screen's layout on the primary screen, from its setting (core.main_layout):
+    a page, or a two-page spread. The window helper decides again for the monitor the
+    window is on once it shows.
+    """
+    primary_screen_info = SCREEN_METRICS.get_primary_screen_info()
+    mode = choose_main_layout(
+        layout_setting,
+        primary_screen_info.width_pixels,
+        primary_screen_info.height_pixels,
+        RAW_ACTION_BAR_SIZE_Y,
+    )
+    return content_aspect_ratio(mode)
+
+
+def get_main_win_from_screen_metrics(layout_setting: str) -> tuple[int, int, int]:
     primary_screen_info = SCREEN_METRICS.get_primary_screen_info()
 
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
@@ -230,7 +250,10 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
     # The window's minimum size on a 1080p screen (core.window_minimum): the same rule,
     # so the window opens no smaller than it may be made.
     win_width, win_height = largest_window_size(
-        primary_screen_info.width_pixels, primary_screen_info.height_pixels, RAW_ACTION_BAR_SIZE_Y
+        primary_screen_info.width_pixels,
+        primary_screen_info.height_pixels,
+        RAW_ACTION_BAR_SIZE_Y,
+        get_main_win_aspect_ratio(layout_setting),
     )
     win_left = win_centre - round(win_width / 2)
     win_top = primary_screen_info.monitor_y + WINDOW_HEIGHT_MARGIN // 2
@@ -240,7 +263,7 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
     return win_height, win_left, win_top
 
 
-def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
+def set_window_size(win_height: int, win_left: int, win_top: int, layout_setting: str) -> None:
     from kivy import Config
 
     if PLATFORM != Platform.WIN:
@@ -260,7 +283,9 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
     #       initializes the Window with wrong dimensions.
     monitor_width = SCREEN_METRICS.get_primary_screen_info().width_pixels
-    win_width, content_h = get_win_dimensions(win_height - RAW_ACTION_BAR_SIZE_Y, monitor_width)
+    win_width, content_h = get_win_dimensions(
+        win_height - RAW_ACTION_BAR_SIZE_Y, monitor_width, get_main_win_aspect_ratio(layout_setting)
+    )
     win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     logger.debug(f"Main win width: {win_width}.")
 

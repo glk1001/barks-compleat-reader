@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from barks_reader.core import screen_metrics
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import largest_window_size
 from barks_reader.core.window_minimum import (
     NO_SCREEN_WARNING_ENV_VAR,
@@ -40,6 +41,15 @@ def test_the_minimum_window_is_a_1080p_screens_or_a_smaller_screens_own(
 ) -> None:
     with patch.object(screen_metrics, "get_best_window_height_fit", side_effect=_fit):
         assert minimum_window_size(screen_width, screen_height, CHROME) == size
+
+
+def test_the_spreads_minimum_is_the_pair_at_the_same_height() -> None:
+    """The two-page spread's minimum window: the single page's height, the pair's width."""
+    spread = COMIC_PAGE_ASPECT_RATIO / 2.03
+    with patch.object(screen_metrics, "get_best_window_height_fit", side_effect=_fit):
+        width, height = minimum_window_size(1920, 1080, CHROME, spread)
+        assert (width, height) == (round(975 / spread), 1020)
+        assert width == pytest.approx(2.03 * 646, abs=2)
 
 
 def test_the_minimum_is_the_window_the_reader_opens_on_a_1080p_screen() -> None:

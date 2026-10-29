@@ -64,27 +64,34 @@ def expand_path_vars(path: str | PathLike[str]) -> str:
     return os.path.expandvars(text)
 
 
-def get_win_width_from_height(win_height: int) -> int:
-    return round(win_height / COMIC_PAGE_ASPECT_RATIO)
+def get_win_width_from_height(
+    win_height: int, aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO
+) -> int:
+    """Return the width content this tall has at an aspect ratio (height over width)."""
+    return round(win_height / aspect_ratio)
 
 
-def get_win_dimensions(content_height: int, max_width: int) -> tuple[int, int]:
+def get_win_dimensions(
+    content_height: int, max_width: int, aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO
+) -> tuple[int, int]:
     """Compute (width, content_height) maintaining aspect ratio, respecting max_width.
 
     Args:
         content_height: Desired content height (excluding action bar).
         max_width: Maximum allowed width.
+        aspect_ratio: The content's height over its width: the comic page's by default,
+            the two-page spread's for the main window in that layout.
 
     Returns:
         (width, content_height) tuple. If the width derived from content_height exceeds
         max_width, width is set to max_width and content_height is reduced to match.
 
     """
-    width = get_win_width_from_height(content_height)
+    width = get_win_width_from_height(content_height, aspect_ratio)
     if width <= max_width:
         return width, content_height
     # Width-limited: derive content height from max_width.
-    return max_width, round(max_width * COMIC_PAGE_ASPECT_RATIO)
+    return max_width, round(max_width * aspect_ratio)
 
 
 def get_title_str_from_reader_icon_file(icon_path: Path) -> str:

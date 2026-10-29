@@ -78,6 +78,14 @@ class TestReaderUtils:
         assert width == exact_w
         assert result_h == content_h
 
+    def test_get_win_dimensions_take_the_spreads_shape(self) -> None:
+        """The main window in the two-page spread: wider at the same height."""
+        spread = COMIC_PAGE_ASPECT_RATIO / 2.03
+        assert get_win_width_from_height(1000, spread) == round(1000 / spread)
+        assert get_win_dimensions(1000, 10_000, spread) == (round(1000 / spread), 1000)
+        # Width-limited at the spread's shape: the height follows the same shape.
+        assert get_win_dimensions(1000, 1000, spread) == (1000, round(1000 * spread))
+
     def test_get_title_str_from_reader_icon_file(self) -> None:
         """Test extracting title from icon filename."""
         # Case 1: Standard format

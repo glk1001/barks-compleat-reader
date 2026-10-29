@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.ui import main_screen_window as window_module
 from barks_reader.ui.main_screen_window import MainScreenWindowHelper
 
@@ -45,6 +46,7 @@ def hf() -> Generator[HelperFixture, Any]:
             main_layout=MagicMock(),
             fun_image_view_screen=MagicMock(),
             update_fonts=MagicMock(),
+            content_aspect_ratio=lambda: COMIC_PAGE_ASPECT_RATIO,
         )
         yield HelperFixture(
             helper=h, mock_wm_cls=mock_wm_cls, mock_controller=mock_controller_cls.return_value

@@ -8,6 +8,7 @@ from kivy.core.window import Window, WindowBase
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.main_layout import MainLayoutMode, choose_main_layout, content_aspect_ratio
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
@@ -36,7 +37,12 @@ class WindowSizeConstraints:
     """
 
     aspect_ratio: float
-    """Content aspect ratio: ``content_height / content_width`` (e.g. comic page)."""
+    """A page's aspect ratio, ``content_height / content_width`` (the comic page's).
+
+    The window's content is a page in the single-page layout and a pair with a gutter
+    in the two-page spread: `AppWindowGeometryHelper.content_aspect_ratio` is the one
+    the window is held to.
+    """
 
     chrome_height: int
     """Pixels of non-content chrome below the content (e.g. action bar)."""
@@ -46,9 +52,16 @@ class WindowSizeConstraints:
 
 
 class AppWindowGeometryHelper:
-    """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding."""
+    """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding.
 
-    def __init__(self, constraints: WindowSizeConstraints) -> None:
+    It also decides the main screen's layout, single page or two-page spread, from the
+    "Main screen layout" setting and the monitor the window is on (core.main_layout):
+    at boot, on a monitor change, on a rotation and on a change of the setting. The
+    window is held to the layout's shape, and the main screen is told of a change
+    through the callback given to `set_main_screen_callbacks`.
+    """
+
+    def __init__(self, constraints: WindowSizeConstraints, layout_setting: str) -> None:
         self._constraints = constraints
 
         # Window.left/top can be off-screen at startup on Windows; fall back to primary.
@@ -56,6 +69,10 @@ class AppWindowGeometryHelper:
         if initial_monitor is None:
             initial_monitor = SCREEN_METRICS.get_primary_screen_info()
         self._current_monitor: ScreenInfo = initial_monitor
+        self._layout_setting = layout_setting
+        # Decided silently: main.py sized the window for it; `set_window_ready` logs it.
+        self._layout_mode = self._decide_layout()
+        self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
         self._resize_event: Any = None
         self._resize_requested_size = 0, 0
         self._window_ready = False
@@ -66,24 +83,113 @@ class AppWindowGeometryHelper:
 
         self._update_fonts: Callable[[int], None] | None = None
 
-    def set_main_screen_callbacks(self, update_fonts: Callable[[int], None]) -> None:
+    def set_main_screen_callbacks(
+        self,
+        update_fonts: Callable[[int], None],
+        layout_mode_changed: Callable[[MainLayoutMode], None] | None = None,
+    ) -> None:
         """Set callbacks that require the main screen to be built first.
 
         Args:
             update_fonts: Callback to update font sizes for a given window height.
+            layout_mode_changed: Callback for a change of the main screen's layout.
 
         """
         self._update_fonts = update_fonts
+        self._layout_mode_changed = layout_mode_changed
 
     def set_window_ready(self) -> None:
         """Mark the window as ready to accept resize corrections, and set its minimum size."""
         self._window_ready = True
+        self.evaluate_layout("boot")
         self.apply_minimum_size()
 
     @property
     def current_monitor(self) -> ScreenInfo:
         """The monitor the window is on."""
         return self._current_monitor
+
+    # --- The main screen's layout ---
+
+    @property
+    def layout_mode(self) -> MainLayoutMode:
+        """The main screen's layout on the monitor the window is on."""
+        return self._layout_mode
+
+    @property
+    def content_aspect_ratio(self) -> float:
+        """The shape (height over width) the window's content is held to in this layout."""
+        return content_aspect_ratio(self._layout_mode, self._constraints.aspect_ratio)
+
+    def set_layout_setting(self, setting: str) -> None:
+        """Take a new value of the "Main screen layout" setting, and lay the window out for it.
+
+        Args:
+            setting: One of `MAIN_SCREEN_LAYOUT_OPTIONS` (core.main_layout).
+
+        """
+        self._layout_setting = setting
+        if not self._window_ready:
+            self._layout_mode = self._decide_layout()  # logged at `set_window_ready`
+            return
+        self.evaluate_layout("setting")
+
+    def evaluate_layout(self, reason: str, *, refit: bool = True) -> bool:
+        """Decide the layout for the monitor the window is on, and log the decision.
+
+        Args:
+            reason: Why it is decided now: "boot", "monitor change", "rotation", "setting".
+            refit: Resize the window to the new layout's shape when it changes (a caller
+                about to resize the window anyway passes False).
+
+        Returns:
+            True when the layout changed.
+
+        """
+        mode = self._decide_layout()
+        monitor = self._current_monitor
+        logger.info(
+            log_markers.MAIN_LAYOUT_MODE.format(
+                mode=mode.value,
+                reason=reason,
+                screen=f"{monitor.width_pixels}x{monitor.height_pixels}",
+            )
+        )
+        if mode is self._layout_mode:
+            return False
+        self._layout_mode = mode
+        if self._layout_mode_changed is not None:
+            self._layout_mode_changed(mode)
+        if refit and not Window.fullscreen:
+            self._refit_to_layout()
+        return True
+
+    def _decide_layout(self) -> MainLayoutMode:
+        monitor = self._current_monitor
+        return choose_main_layout(
+            self._layout_setting,
+            monitor.width_pixels,
+            monitor.height_pixels,
+            self._chrome_in_size_units(),
+            self._constraints.aspect_ratio,
+        )
+
+    def _refit_to_layout(self) -> None:
+        """Give the window the layout's width at its height, centred on its monitor."""
+        monitor = self._current_monitor
+        chrome = self._chrome_in_size_units()
+        height = Window.system_size[1]
+        new_width, content_h = get_win_dimensions(
+            height - chrome, monitor.width_pixels, self.content_aspect_ratio
+        )
+        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
+        left = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
+        logger.info(
+            f"Layout refit: ({new_width}, {new_height}) at ({left}, {Window.top})"
+            f" on monitor {monitor.display} ({monitor.width_pixels}x{monitor.height_pixels})."
+        )
+        self._schedule_guarded_resize(new_width, new_height, reposition=(left, Window.top))
+        self.apply_minimum_size()  # the layout's; after the guard, as on a move
 
     def apply_minimum_size(self) -> None:
         """Stop the window being made smaller than the reader is laid out for, on its monitor.
@@ -126,7 +232,10 @@ class AppWindowGeometryHelper:
     def _minimum_size(self) -> tuple[int, int]:
         monitor = self._current_monitor
         return minimum_window_size(
-            monitor.width_pixels, monitor.height_pixels, self._chrome_in_size_units()
+            monitor.width_pixels,
+            monitor.height_pixels,
+            self._chrome_in_size_units(),
+            self.content_aspect_ratio,
         )
 
     def _no_smaller_than_minimum(self, width: int, height: int) -> tuple[int, int]:
@@ -168,11 +277,14 @@ class AppWindowGeometryHelper:
         )
 
         self._current_monitor = monitor
+        self.evaluate_layout("monitor change", refit=False)  # the resize below is the refit
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
         new_height = min(round(scale_factor * new_max_height), new_max_height)
         chrome = self._chrome_in_size_units()
-        new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
+        new_width, content_h = get_win_dimensions(
+            new_height - chrome, monitor.width_pixels, self.content_aspect_ratio
+        )
         new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
 
         if new_height != old_height:
@@ -278,10 +390,11 @@ class AppWindowGeometryHelper:
 
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         monitor_w = monitor.width_pixels if monitor else 0
-        correct_width, content_h = get_win_dimensions(unit_height - chrome, monitor_w)
+        aspect_ratio = self.content_aspect_ratio
+        correct_width, content_h = get_win_dimensions(unit_height - chrome, monitor_w, aspect_ratio)
         correct_height = content_h + chrome
         if correct_width < min_width:
-            min_height = round(min_width * self._constraints.aspect_ratio) + chrome
+            min_height = round(min_width * aspect_ratio) + chrome
             monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
             monitor_max_h = get_best_window_height_fit(monitor.height_pixels) if monitor else 0
             if min_height <= monitor_max_h:
@@ -351,16 +464,20 @@ class AppWindowGeometryHelper:
             monitor = SCREEN_METRICS.get_primary_screen_info()
 
         self._current_monitor = monitor
+        self.evaluate_layout("rotation", refit=False)  # the resize below is the refit
 
         chrome = self._chrome_in_size_units()
+        aspect_ratio = self.content_aspect_ratio
         new_height = calculate_fitted_window_height(
             screen_width=monitor.width_pixels,
             screen_height=monitor.height_pixels,
-            aspect_ratio=self._constraints.aspect_ratio,
+            aspect_ratio=aspect_ratio,
             action_bar_height=chrome,
             fit_fraction=ROTATION_FIT_FRACTION,
         )
-        new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
+        new_width, content_h = get_win_dimensions(
+            new_height - chrome, monitor.width_pixels, aspect_ratio
+        )
         new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
 
         center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2

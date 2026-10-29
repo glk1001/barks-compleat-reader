@@ -1,3 +1,5 @@
+#:import main_layout_rules barks_reader.core.main_layout
+
 # Helper function to create a checkbox row
 <CheckBoxRow@BoxLayout>:
     orientation: 'horizontal'
@@ -138,3 +140,11 @@
                     icon: str(sys_paths.get_barks_reader_close_icon_file())
                     important: True
                     on_release: root.request_quit()
+
+        # The book: the tree and the current view, one above the other on a single
+        # page, or side by side with a gutter between them on the two-page spread
+        # (core.main_layout). The screens are added in MainScreen._wire_screens.
+        BoxLayout:
+            id: book
+            orientation: 'horizontal' if root.layout_mode == 'spread' else 'vertical'
+            spacing: main_layout_rules.gutter_width(self.width) if root.layout_mode == 'spread' else 0

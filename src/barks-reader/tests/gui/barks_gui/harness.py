@@ -81,6 +81,9 @@ INI_OVERRIDES: dict[str, str] = {
 # asks the ini which way it is toggling). The matrix runner flips these.
 INI_DEFAULTS: dict[str, str] = {
     "double_page_mode": "0",
+    # The nested screen is landscape, so matching the screen would give the suite the
+    # two-page spread; the single page is the layout the suite was written on.
+    "main_screen_layout": "Single page",
 }
 # Settings for the whole run, on top of the live ini: "key=value;key=value", set
 # by run_gui_tests.sh --ini/--prebuilt/--png-images. A key the harness pins

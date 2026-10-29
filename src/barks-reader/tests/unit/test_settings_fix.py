@@ -207,6 +207,16 @@ def test_an_option_picked_from_its_list_logs_the_new_value(loguru_sink: list[str
     assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
 
 
+def test_an_option_picked_reaches_the_panel_which_saves_it_and_tells_the_app() -> None:
+    """Kivy's panel writes the config and dispatches on_config_change: the live path."""
+    setting = MagicMock(spec=SettingOptionsWithValue)
+    setting.section, setting.key, setting.panel = "Barks Reader", "main_screen_layout", MagicMock()
+    with patch.object(settings_fix.SettingOptions, "on_value") as kivy_on_value:
+        SettingOptionsWithValue.on_value(setting, setting, "Single page")
+    kivy_on_value.assert_called_once_with(setting, "Single page")
+    setting._update_value_display.assert_called_once_with()
+
+
 class TestFileChooserTouch:
     """A touch on the chooser may not move it to another folder; only set_path may."""
 

@@ -8,7 +8,7 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from .platform_info import IS_MACOS, PLATFORM, Platform
-from .reader_utils import get_win_dimensions
+from .reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 
 _WINDOWS_TASKBAR_HEIGHT = 60
 _OTHER_TASKBAR_HEIGHT = 55
@@ -58,24 +58,29 @@ def get_best_window_height_fit(screen_height: int) -> int:
 
 
 def largest_window_size(
-    screen_width: int, screen_height: int, chrome_height: int
+    screen_width: int,
+    screen_height: int,
+    chrome_height: int,
+    aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO,
 ) -> tuple[int, int]:
     """Return the largest window a screen gets: the one the reader opens in, by default.
 
     The screen's height less the taskbar and `WINDOW_HEIGHT_MARGIN`, and the width the
-    comic page's shape gives that (or the screen's width, when that is less).
+    content's shape gives that (or the screen's width, when that is less).
 
     Args:
         screen_width: The screen's width.
         screen_height: The screen's height.
         chrome_height: The window's height besides its content (the action bar).
+        aspect_ratio: The content's height over its width: the comic page's, or the
+            two-page spread's (core.main_layout).
 
     Returns:
         The window's (width, height).
 
     """
     height = get_best_window_height_fit(screen_height) - WINDOW_HEIGHT_MARGIN
-    width, content_height = get_win_dimensions(height - chrome_height, screen_width)
+    width, content_height = get_win_dimensions(height - chrome_height, screen_width, aspect_ratio)
     return width, content_height + chrome_height
 
 

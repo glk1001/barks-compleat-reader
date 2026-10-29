@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 
 from .config_info import ConfigInfo
+from .main_layout import MATCH_THE_SCREEN
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,11 +17,14 @@ class MinimalConfigOptions:
     win_left: int = -1
     win_top: int = -1
     log_level: str = logging.getLevelName(logging.INFO)
+    main_screen_layout: str = MATCH_THE_SCREEN
 
 
 def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
     from .reader_settings import (  # noqa: PLC0415
+        BARKS_READER_SECTION,
         LOG_LEVEL,
+        MAIN_SCREEN_LAYOUT,
         MAIN_WINDOW_HEIGHT,
         MAIN_WINDOW_LEFT,
         MAIN_WINDOW_TOP,
@@ -38,6 +42,13 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
         win_left = read_setting_from_config(barks_config, MAIN_WINDOW_LEFT)
         win_top = read_setting_from_config(barks_config, MAIN_WINDOW_TOP)
         log_lvl = read_setting_from_config(barks_config, LOG_LEVEL)
+        # A setting newer than the ini (the first run after an update) is its default;
+        # it must not cost the saved window geometry.
+        main_screen_layout = (
+            read_setting_from_config(barks_config, MAIN_SCREEN_LAYOUT)
+            if barks_config.has_option(BARKS_READER_SECTION, MAIN_SCREEN_LAYOUT)
+            else MATCH_THE_SCREEN
+        )
 
         sys_paths = SystemFilePaths()
         sys_paths.set_barks_reader_files_dir(reader_files_dir, check_files=False)
@@ -52,6 +63,7 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
             win_left,
             win_top,
             log_lvl,
+            main_screen_layout,
         )
 
         logger.debug(
@@ -60,7 +72,8 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
             f'"{min_options.success_background_path}",'
             f" {min_options.win_height},"
             f" ({min_options.win_left}, {min_options.win_top}),"
-            f" '{min_options.log_level}'."
+            f" '{min_options.log_level}',"
+            f" '{min_options.main_screen_layout}'."
         )
 
     except Exception as e:  # noqa: BLE001

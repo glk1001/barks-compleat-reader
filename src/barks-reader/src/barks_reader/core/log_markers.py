@@ -156,6 +156,10 @@ WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{heig
 MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
 # The window's minimum size, set for the monitor it is on (core.window_minimum).
 WINDOW_MINIMUM_SET: Final = "Window minimum size: {width}x{height}, on a {screen} screen."
+# The main screen's layout, single page or two-page spread, each time the rule is
+# decided (core.main_layout): at boot, on a monitor change, on a rotation, and on a
+# change of the setting. The GUI tests wait on it to know which layout they are on.
+MAIN_LAYOUT_MODE: Final = "Main screen layout: {mode} ({reason}, on a {screen} screen)."
 # A screen smaller than the reader is laid out for: warned once per screen size.
 SCREEN_TOO_SMALL_WARNED: Final = (
     "Screen {screen} is smaller than the reader is laid out for: warned."

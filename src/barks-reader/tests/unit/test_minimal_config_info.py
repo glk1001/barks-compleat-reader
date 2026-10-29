@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from barks_reader.core import system_file_paths
+from barks_reader.core.main_layout import MATCH_THE_SCREEN
 from barks_reader.core.minimal_config_info import (
     MinimalConfigOptions,
     get_minimal_config_options,
@@ -29,13 +30,16 @@ def _write_ini(
     win_left: int = 100,
     win_top: int = 50,
     log_level: str = "DEBUG",
+    main_screen_layout: str | None = None,
 ) -> None:
+    """Write an ini; without `main_screen_layout`, one from before that setting existed."""
+    layout_line = f"main_screen_layout = {main_screen_layout}\n" if main_screen_layout else ""
     ini_path.write_text(
         "[Barks Reader]\n"
         f"main_window_height = {win_height}\n"
         f"main_window_left = {win_left}\n"
         f"main_window_top = {win_top}\n"
-        f"log_level = {log_level}\n"
+        f"log_level = {log_level}\n" + layout_line
     )
 
 
@@ -64,6 +68,7 @@ class TestMinimalConfigOptionsDefaults:
         assert opts.win_left == -1
         assert opts.win_top == -1
         assert opts.log_level == logging.getLevelName(logging.INFO)
+        assert opts.main_screen_layout == MATCH_THE_SCREEN
 
 
 class TestGetMinimalConfigOptions:
@@ -112,6 +117,26 @@ class TestGetMinimalConfigOptions:
         opts = get_minimal_config_options(_make_cfg_info(tmp_path, missing_ini))
 
         assert opts == MinimalConfigOptions()
+
+    def test_an_ini_from_before_the_layout_setting_keeps_its_geometry(self, tmp_path: Path) -> None:
+        """The first run after the update: the new setting is its default, nothing is lost."""
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "app.ini"
+        _write_ini(ini, win_height=1024, win_left=5, win_top=7)
+
+        opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        assert (opts.win_height, opts.win_left, opts.win_top) == (1024, 5, 7)
+        assert opts.main_screen_layout == MATCH_THE_SCREEN
+
+    def test_reads_the_layout_setting(self, tmp_path: Path) -> None:
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "app.ini"
+        _write_ini(ini, main_screen_layout="Two-page spread")
+
+        opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        assert opts.main_screen_layout == "Two-page spread"
 
     def test_returns_defaults_when_required_background_missing(self, tmp_path: Path) -> None:
         # Reader files tree exists but the required PNGs are absent → check_files raises

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from loguru import logger
 
+from .main_layout import MAIN_SCREEN_LAYOUT_OPTIONS, MATCH_THE_SCREEN
 from .reader_consts_and_types import ALT_ESCAPE_KEY_SETTING, LONG_PATH_SETTING
 from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from .reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
@@ -47,6 +48,7 @@ IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
 USE_VIRTUAL_KEYBOARD = "use_virtual_keyboard"
 DOUBLE_PAGE_MODE = "double_page_mode"
+MAIN_SCREEN_LAYOUT = "main_screen_layout"
 DECODE_PAGES_WHOLE = "decode_pages_whole"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
@@ -315,6 +317,11 @@ class ReaderSettings:
     def decode_pages_whole(self) -> bool:
         return self._read(DECODE_PAGES_WHOLE)
 
+    @property
+    def main_screen_layout(self) -> str:
+        """One of `MAIN_SCREEN_LAYOUT_OPTIONS` (core.main_layout)."""
+        return self._read(MAIN_SCREEN_LAYOUT)
+
     def get_use_harpies_instead_of_larkies(self) -> bool:
         return self._read(USE_HARPIES_INSTEAD_OF_LARKIES)
 
@@ -450,6 +457,15 @@ _FIELDS: tuple[FieldSpec, ...] = (
         kind=FieldKind.BOOL,
         section_header="Reading",
         config_default=0,
+    ),
+    FieldSpec(
+        key=MAIN_SCREEN_LAYOUT,
+        title="Main Screen Layout",
+        desc="The tree above the current view on one page, or beside it on a two-page"
+        " spread. Matching the screen gives the spread when two pages fit side by side.",
+        kind=FieldKind.OPTIONS,
+        options=MAIN_SCREEN_LAYOUT_OPTIONS,
+        config_default=MATCH_THE_SCREEN,
     ),
     FieldSpec(
         key=GOTO_FULLSCREEN_ON_COMIC_READ,

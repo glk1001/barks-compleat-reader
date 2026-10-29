@@ -2,12 +2,20 @@
 
 <!-- cspell:ignore recto verso colophon -->
 
-> Status: **design settled, no code yet** (2026-10-29). Designed on the mock at
+> Status: **stage 1 done, 2026-10-29** (the window, the book layout and the bar; the
+> commit is in the git log under this file's name). Designed on the mock at
 > https://claude.ai/artifact/1oHXzdz9tEi1zLyCH4Jv8u (private: it carries Fantagraphics
 > pages), twelve states, one per screen below. Implementing and testing on the main PC
 > (27-inch 2560x1440). Tick a stage off here, with its commit, as it lands.
 >
-> - Stage 1 the window, the book layout and the bar: TODO
+> - Stage 1 the window, the book layout and the bar: DONE 2026-10-29. Seen on this PC
+>   on a nested 1920x1080 display: the spread at boot (1291x1005 windowed, the pair
+>   1392 wide in fullscreen), the setting switched both ways live with the window
+>   refit at its height. Found on the way: the options setting widget
+>   (`ui/settings_fix.py`) overrode Kivy's value handler and never dispatched
+>   on_config_change, so no options setting had ever reached the app live; fixed. An
+>   ini from before the setting kept its saved window geometry only once the boot
+>   reader took the missing key as its default; a test holds that.
 > - Stage 2 the title page and the fun page: TODO
 > - Stage 3 the index and search pages: TODO
 > - Stage 4 the document reader and the wiki: TODO
@@ -46,14 +54,16 @@ Settled with the maintainer, 2026-10-29, in this order.
    (24 px to spare at 1440x1080, and the best-filled screen of all), 5:4 just misses.
    No fixed aspect threshold (arbitrary, and 1.4 would wrongly exclude 4:3) and no
    shrink tolerance (nothing in the fleet needs one; easy to add later).
-3. **Decided from the monitor's usable area, not the window.** The window is
+3. **Decided from the monitor's full size, not the window.** The window is
    aspect-locked and sized by the app, so the user cannot drag it to the boundary.
-   The input is the current monitor's usable area, which `AppWindowGeometryHelper`
-   already tracks across monitor moves and the rotation poll, less the taskbar in
-   windowed mode as `core/screen_metrics.py` already subtracts. The rule is
-   re-evaluated on boot, on a monitor move and on the rotation poll, and nowhere
-   else, so it cannot flip during use. No hysteresis: the flip laptop moves between
-   0.62 and 1.6, far from the boundary, and no screen in the table sits near 1.28.
+   The input is the current monitor's full size, which `AppWindowGeometryHelper`
+   already tracks across monitor moves and the rotation poll: the same size in
+   windowed and fullscreen mode, so a monitor gets one answer (the usable area less
+   the taskbar, as first written here, would let a 5:4 screen flip between the two).
+   The rule is re-evaluated on boot, on a monitor move, on the rotation poll and on a
+   change of the setting, and nowhere else, so it cannot flip during use. No
+   hysteresis: the flip laptop moves between 0.62 and 1.6, far from the boundary, and
+   no screen in the table sits near 1.28.
 4. **Left page art is wallpaper, right page art is a picture.** The tree page keeps
    the image under the tree as today (cover, dimmed to the tree's opacity); the view
    page shows its image whole (contain). The image selector's cover band
@@ -143,9 +153,9 @@ count where there is one, before the first multi-file edit of the stage.
 ### Stage 1: the window, the book layout and the bar
 
 - `core/main_layout.py`, new, Kivy-free: `MainLayoutMode` (single, spread), the
-  setting's three values, `spread_fits(usable_width, usable_height, bar_height)`,
-  `choose_main_layout(setting, usable_width, usable_height, bar_height)`, the gutter
-  fraction and `content_aspect_ratio(mode)`. Unit tests from the table above.
+  setting's three values, `spread_fits`, `choose_main_layout`, the gutter fraction,
+  `content_aspect_ratio(mode)`, `gutter_width` and `page_width`. Unit tests from the
+  table above.
 - `core/reader_settings.py`: `MAIN_SCREEN_LAYOUT` with a `FieldSpec` of the options
   kind beside `DOUBLE_PAGE_MODE`, default Match the screen.
 - `core/reader_utils.py`: `get_win_dimensions` and `get_win_width_from_height` take the
@@ -165,9 +175,17 @@ count where there is one, before the first multi-file edit of the stage.
   (`ui/main_screen_window.py`) still covers the whole middle stretch.
 - Popups and the settings panel: centred on the window, the settings panel at the
   page's proportion.
+- The GUI harness pins the setting to Single page (`INI_DEFAULTS`), so the suite
+  stays on the layout it was written on until stage 5 adds the variant.
 - Done when: the app boots on this PC into the spread with the old screens in the two
   pages, the single column on the flip laptop in portrait, and the setting forces
   either; windowed mode drags and resizes at the pair's proportion.
+- Not seen yet: fullscreen on a real desktop (the nested display has no window manager,
+  so SDL's fullscreen leaves the X window at its windowed size and crops the render;
+  the host box was 1392x1080 and centred in the log), the flip laptop in portrait, a
+  monitor move and a rotation (unit-tested only). The fun view's tap regions are still
+  worked out from the main layout's size, not the view's (`on_main_layout_size_changed`
+  in `ui/main_screen_window.py`): wrong on the right page, and stage 2's to fix.
 
 ### Stage 2: the title page and the fun page
 

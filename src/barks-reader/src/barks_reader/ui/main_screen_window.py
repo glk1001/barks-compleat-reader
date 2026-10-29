@@ -42,6 +42,7 @@ class MainScreenWindowHelper:
         main_layout: Widget,
         fun_image_view_screen: Widget,
         update_fonts: Callable[[int], None],
+        content_aspect_ratio: Callable[[], float],
     ) -> None:
         self._host = host_screen
         self._action_bar = action_bar
@@ -51,6 +52,8 @@ class MainScreenWindowHelper:
         self._main_layout = main_layout
         self._fun_image_view_screen = fun_image_view_screen
         self._update_fonts = update_fonts
+        # The shape the fullscreen box is held to: a page, or the two-page spread.
+        self._content_aspect_ratio = content_aspect_ratio
 
         # The window-mode engine is shared with the comic reader (one geometry
         # store); this controller carries the toggle policy + this screen's
@@ -144,13 +147,21 @@ class MainScreenWindowHelper:
             return
         self._change_fullscreen_win_size(size[1])
 
+    def refit_fullscreen(self) -> None:
+        """Size the fullscreen box again, for a change of the main screen's layout."""
+        if not WindowManager.is_fullscreen_now():
+            return
+        self._change_fullscreen_win_size(Window.height)
+
     def _change_fullscreen_win_size(self, height: int) -> None:
         logger.info(f"New fullscreen height = {height}.")
         if height < Window.height:
             height = Window.height
             logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
         self._host.size_hint = None, None
-        width, content_h = get_win_dimensions(height - ACTION_BAR_SIZE_Y, Window.width)
+        width, content_h = get_win_dimensions(
+            height - ACTION_BAR_SIZE_Y, Window.width, self._content_aspect_ratio()
+        )
         self._host.size = width, content_h + ACTION_BAR_SIZE_Y
         assert WindowManager.is_fullscreen_now()
         logger.info(

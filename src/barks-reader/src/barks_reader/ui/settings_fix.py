@@ -734,18 +734,16 @@ class SettingOptionsWithValue(SettingOptions):
 
     def _set_option(self, instance: Label) -> None:
         super()._set_option(instance)
-
-        # Manually ensure it's saved to config.
-        if hasattr(self, "panel") and self.panel:
-            config = self.panel.config
-            if config:
-                config.set(self.section, self.key, self.value)
-                config.write()
         logger.info(log_markers.SETTING_OPTION_SET.format(key=self.key, value=self.value))
-
         Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
 
-    def on_value(self, _instance, _value) -> None:  # ty:ignore[invalid-method-override]  # noqa: ANN001
+    def on_value(self, instance, value) -> None:  # noqa: ANN001
+        # Kivy's handler is what saves the value and dispatches the panel's
+        # on_config_change, which is how a changed setting reaches the app
+        # (BarksReaderApp.on_config_change). Overridden without calling it, an
+        # option was written to the config by hand and the app never heard of it
+        # (the main screen layout, 2026-10-29).
+        super().on_value(instance, value)
         self._update_value_display()
 
 

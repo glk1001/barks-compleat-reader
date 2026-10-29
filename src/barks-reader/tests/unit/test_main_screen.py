@@ -93,6 +93,7 @@ def main_screen(
 
             self.ids = {
                 "main_layout": MagicMock(),
+                "book": MagicMock(),
                 "action_bar": MagicMock(),
                 "fullscreen_button": MagicMock(),
                 "collapse_button": MagicMock(),

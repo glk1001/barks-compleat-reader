@@ -18,6 +18,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core import log_markers, screen_metrics
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import (
+    MATCH_THE_SCREEN,
+    SINGLE_PAGE,
+    TWO_PAGE_SPREAD,
+    MainLayoutMode,
+    content_aspect_ratio,
+)
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.core.testing import FakeClock
@@ -135,7 +142,7 @@ def helper(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
     return h
@@ -212,7 +219,7 @@ def test_resize_skipped_when_window_not_ready(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     # Deliberately do not call set_window_ready().
 
@@ -375,7 +382,7 @@ def _make_helper_two_monitors(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
@@ -427,7 +434,7 @@ def test_on_window_pos_change_skipped_when_same_monitor(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
@@ -450,7 +457,7 @@ def test_on_window_pos_change_skipped_when_monitor_is_none(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
@@ -529,7 +536,7 @@ def test_rotation_detected_triggers_guarded_resize(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
@@ -567,7 +574,7 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
 
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
@@ -624,7 +631,7 @@ def _helper_with_metrics(
     monkeypatch.setattr(geometry_module, "Window", fake_window)
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
-    h = AppWindowGeometryHelper(constraints)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
     return h
@@ -733,7 +740,8 @@ def _make_retina_helper(
             aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
             chrome_height=2 * CHROME,
             min_window_width=MIN_WIDTH,
-        )
+        ),
+        layout_setting=SINGLE_PAGE,
     )
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
@@ -886,3 +894,255 @@ def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -
     assert seen == [(663, 1040)]
     fake_window.unbind.assert_called_once()
     fake_window.bind.assert_called_once()
+
+
+# --- The main screen's layout: single page or two-page spread ---
+
+
+def _landscape_screen(display: int = 0) -> ScreenInfo:
+    return _make_screen_info(width=2560, height=1440, display=display)
+
+
+def _make_helper_on(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    screen: ScreenInfo,
+    layout_setting: str,
+) -> tuple[AppWindowGeometryHelper, MagicMock]:
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
+    h = AppWindowGeometryHelper(constraints, layout_setting=layout_setting)
+    layout_changed = MagicMock()
+    h.set_main_screen_callbacks(MagicMock(), layout_mode_changed=layout_changed)
+    return h, layout_changed
+
+
+def test_the_layout_is_decided_at_construction_and_logged_when_the_window_is_ready(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    """main.py sized the window for the decision; the boot line says which it was."""
+    h, layout_changed = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), MATCH_THE_SCREEN
+    )
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    assert h.content_aspect_ratio == content_aspect_ratio(MainLayoutMode.SPREAD)
+
+    h.set_window_ready()
+
+    wanted = pattern(log_markers.MAIN_LAYOUT_MODE, mode="spread", reason="boot", screen="2560x1440")
+    assert any(re.search(wanted, line) for line in loguru_sink)
+    layout_changed.assert_not_called()  # no change: the main screen was built for it
+    assert len(fake_clock.calls) == 0  # and no refit
+
+
+def test_a_portrait_screen_gets_the_single_page_and_the_setting_overrides_it(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    portrait = _make_screen_info(width=1200, height=1920)
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, portrait, MATCH_THE_SCREEN
+    )
+    assert h.layout_mode is MainLayoutMode.SINGLE
+    h2, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, portrait, TWO_PAGE_SPREAD
+    )
+    assert h2.layout_mode is MainLayoutMode.SPREAD
+
+
+def test_a_changed_setting_tells_the_main_screen_and_refits_the_window_at_its_height(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    fake_window.size = (686, 1080)
+    h, layout_changed = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), SINGLE_PAGE
+    )
+    h.set_window_ready()
+    scheduled_before = len(fake_clock.calls)
+
+    assert h.set_layout_setting(TWO_PAGE_SPREAD) is None
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    layout_changed.assert_called_once_with(MainLayoutMode.SPREAD)
+
+    # The guarded resize: the same height, the pair's width, centred on the monitor.
+    expected_width, _ = get_win_dimensions(
+        1080 - CHROME, 2560, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+    assert h._resize_requested_size == (expected_width, 1080)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before + 3  # resize, reposition, reset guard
+    fake_clock.drain()
+    assert fake_window.size == (expected_width, 1080)
+    assert fake_window.left == (2560 - expected_width) // 2
+    wanted = pattern(
+        log_markers.MAIN_LAYOUT_MODE, mode="spread", reason="setting", screen="2560x1440"
+    )
+    assert any(re.search(wanted, line) for line in loguru_sink)
+
+
+def test_a_setting_that_changes_nothing_logs_the_decision_and_leaves_the_window(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    h, layout_changed = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), MATCH_THE_SCREEN
+    )
+    h.set_window_ready()
+    scheduled_before = len(fake_clock.calls)
+
+    h.set_layout_setting(TWO_PAGE_SPREAD)  # the screen already gave the spread
+
+    layout_changed.assert_not_called()
+    assert len(fake_clock.calls) == scheduled_before
+    wanted = pattern(log_markers.MAIN_LAYOUT_MODE, reason="setting")
+    assert sum(bool(re.search(wanted, line)) for line in loguru_sink) == 1
+
+
+def test_the_setting_before_the_window_is_ready_decides_silently(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    """The app reads the setting after making the helper: no refit, no line, until boot."""
+    h, layout_changed = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), SINGLE_PAGE
+    )
+    h.set_layout_setting(MATCH_THE_SCREEN)
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    layout_changed.assert_not_called()
+    assert len(fake_clock.calls) == 0
+    assert not any("Main screen layout" in line for line in loguru_sink)
+
+
+def test_a_change_of_layout_in_fullscreen_tells_the_main_screen_but_leaves_the_window(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    fake_window.fullscreen = True
+    h, layout_changed = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), SINGLE_PAGE
+    )
+    h.set_window_ready()
+    scheduled_before = len(fake_clock.calls)
+
+    h.set_layout_setting(TWO_PAGE_SPREAD)
+
+    layout_changed.assert_called_once_with(MainLayoutMode.SPREAD)
+    assert len(fake_clock.calls) == scheduled_before  # the main screen resizes its own box
+
+
+def test_a_move_to_a_landscape_monitor_changes_the_layout_with_the_resize(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    portrait = _make_screen_info(width=1200, height=1920, display=0)
+    landscape = _landscape_screen(display=1)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = portrait
+    fake_metrics.get_primary_screen_info.return_value = portrait
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
+    fake_window.size = (1200, 1856)
+    h = AppWindowGeometryHelper(constraints, layout_setting=MATCH_THE_SCREEN)
+    layout_changed = MagicMock()
+    h.set_main_screen_callbacks(MagicMock(), layout_mode_changed=layout_changed)
+    h.set_window_ready()
+    assert h.layout_mode is MainLayoutMode.SINGLE
+    scheduled_before = len(fake_clock.calls)
+
+    fake_metrics.get_monitor_for_pos.return_value = landscape
+    h.on_window_pos_change(fake_window)
+
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    layout_changed.assert_called_once_with(MainLayoutMode.SPREAD)
+    # One guarded resize, at the spread's shape: not a refit and then a move's resize.
+    requested_width, requested_height = h._resize_requested_size  # noqa: SLF001
+    expected_width, _ = get_win_dimensions(
+        requested_height - CHROME, 2560, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+    assert requested_width == expected_width
+    assert len(fake_clock.calls) == scheduled_before + 3
+    wanted = pattern(log_markers.MAIN_LAYOUT_MODE, mode="spread", reason="monitor change")
+    assert any(re.search(wanted, line) for line in loguru_sink)
+
+
+def test_a_rotation_to_landscape_changes_the_layout_with_the_fit(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    loguru_sink: list[str],
+) -> None:
+    portrait = _make_screen_info(width=1200, height=1920)
+    landscape = _make_screen_info(width=1920, height=1200)
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = portrait
+    fake_metrics.get_primary_screen_info.return_value = portrait
+    fake_metrics.refresh.return_value = True
+    monkeypatch.setattr(geometry_module, "Window", fake_window)
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr(geometry_module, "Clock", fake_clock)
+    h = AppWindowGeometryHelper(constraints, layout_setting=MATCH_THE_SCREEN)
+    layout_changed = MagicMock()
+    h.set_main_screen_callbacks(MagicMock(), layout_mode_changed=layout_changed)
+    h.set_window_ready()
+    assert h.layout_mode is MainLayoutMode.SINGLE
+    scheduled_before = len(fake_clock.calls)
+
+    fake_metrics.get_monitor_for_pos.return_value = landscape
+    h._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    layout_changed.assert_called_once_with(MainLayoutMode.SPREAD)
+    assert len(fake_clock.calls) == scheduled_before + 3  # one fit, not a refit and a fit
+    requested_width, requested_height = h._resize_requested_size  # noqa: SLF001
+    assert requested_width / (requested_height - CHROME) == pytest.approx(
+        1 / content_aspect_ratio(MainLayoutMode.SPREAD), rel=0.01
+    )
+    wanted = pattern(log_markers.MAIN_LAYOUT_MODE, mode="spread", reason="rotation")
+    assert any(re.search(wanted, line) for line in loguru_sink)
+
+
+def test_the_minimum_window_in_the_spread_is_the_pairs(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), TWO_PAGE_SPREAD
+    )
+    h.set_window_ready()
+    single_width, height = geometry_module.minimum_window_size(2560, 1440, CHROME)
+    spread_width, spread_height = geometry_module.minimum_window_size(
+        2560, 1440, CHROME, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+    assert spread_height == height
+    assert spread_width == pytest.approx(2.03 * single_width, abs=2)
+    assert (fake_window.minimum_width, fake_window.minimum_height) == (spread_width, spread_height)

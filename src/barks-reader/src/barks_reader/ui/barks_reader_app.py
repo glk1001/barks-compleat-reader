@@ -21,6 +21,7 @@ from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.keys import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
+from barks_reader.core.main_layout import MATCH_THE_SCREEN
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
@@ -29,7 +30,11 @@ from barks_reader.core.reader_consts_and_types import (
     OPTIONS_SETTING,
 )
 from barks_reader.core.reader_palette import set_active_theme
-from barks_reader.core.reader_settings import ALT_ESCAPE_KEY, BARKS_READER_SECTION
+from barks_reader.core.reader_settings import (
+    ALT_ESCAPE_KEY,
+    BARKS_READER_SECTION,
+    MAIN_SCREEN_LAYOUT,
+)
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
@@ -137,7 +142,9 @@ class BarksReaderApp(App):
                 aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
                 chrome_height=ACTION_BAR_SIZE_Y,
                 min_window_width=900,
-            )
+            ),
+            # The setting is read in build(), which then gives the helper the real one.
+            layout_setting=MATCH_THE_SCREEN,
         )
 
     def suppress_aspect_ratio_correction(self, duration: float = 2.0) -> None:
@@ -247,6 +254,8 @@ class BarksReaderApp(App):
                     set_alt_escape_key(int(value))
                 except (TypeError, ValueError):
                     set_alt_escape_key(0)
+            elif key == MAIN_SCREEN_LAYOUT:
+                self._window_geometry.set_layout_setting(str(value))
             settings_notifier.notify(section, key)
 
     @override
@@ -284,6 +293,7 @@ class BarksReaderApp(App):
             SwapTransition._kivy_workaround_applied = True  # noqa: SLF001
 
         self._initialize_settings_and_db()
+        self._window_geometry.set_layout_setting(self.reader_settings.main_screen_layout)
 
         logger.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
@@ -310,8 +320,10 @@ class BarksReaderApp(App):
         root = self._build_screens()
 
         assert self._main_screen is not None
+        self._main_screen.set_layout_mode(self._window_geometry.layout_mode)
         self._window_geometry.set_main_screen_callbacks(
             update_fonts=self._main_screen.update_fonts,
+            layout_mode_changed=self._main_screen.set_layout_mode,
         )
 
         logger.debug("Building the main tree view...")

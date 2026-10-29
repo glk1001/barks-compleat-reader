@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 
+from .reader_utils import COMIC_PAGE_ASPECT_RATIO
 from .screen_metrics import largest_window_size
 
 SUPPORTED_SCREEN_WIDTH = 1920
@@ -26,7 +27,10 @@ NO_SCREEN_WARNING_ENV_VAR = "BARKS_READER_NO_SCREEN_WARNING"
 
 
 def minimum_window_size(
-    screen_width: int, screen_height: int, chrome_height: int
+    screen_width: int,
+    screen_height: int,
+    chrome_height: int,
+    aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO,
 ) -> tuple[int, int]:
     """Return the smallest window the reader allows on a screen.
 
@@ -34,6 +38,8 @@ def minimum_window_size(
         screen_width: The screen's width.
         screen_height: The screen's height.
         chrome_height: The window's height besides its content (the action bar).
+        aspect_ratio: The content's height over its width: the comic page's, or the
+            two-page spread's, whose minimum is the pair at the same height.
 
     Returns:
         The window (width, height) a 1080-tall screen opens in by default
@@ -41,7 +47,7 @@ def minimum_window_size(
 
     """
     return largest_window_size(
-        screen_width, min(screen_height, SUPPORTED_SCREEN_HEIGHT), chrome_height
+        screen_width, min(screen_height, SUPPORTED_SCREEN_HEIGHT), chrome_height, aspect_ratio
     )
 
 

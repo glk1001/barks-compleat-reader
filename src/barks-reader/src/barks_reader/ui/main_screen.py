@@ -35,6 +35,7 @@ from barks_reader.core.keys import (
     is_escape_key,
     is_escape_key_for_text_input,
 )
+from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio, page_width
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import APP_TITLE, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
@@ -163,6 +164,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
     app_title = StringProperty()
+    # The book's layout (core.main_layout): the tree above the view ("single") or beside
+    # it ("spread"). The window helper decides it; `set_layout_mode` takes it.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
 
@@ -251,11 +255,35 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._history_screen = screens.history
         self._search_screen = screens.search
 
-        self.ids.main_layout.add_widget(self._tree_view_screen)
+        self.ids.book.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
         for screen in screens.bottom_screens:
             self._bottom_base_view_screen.add_widget(screen)
-        self.ids.main_layout.add_widget(self._bottom_base_view_screen)
+        self.ids.book.add_widget(self._bottom_base_view_screen)
+
+    def set_layout_mode(self, mode: MainLayoutMode) -> None:
+        """Lay the book out as a single page or a two-page spread.
+
+        Args:
+            mode: The layout the window helper decided for the monitor.
+
+        """
+        if self.layout_mode == mode.value:
+            return
+        logger.debug(f"Main screen layout: {self.layout_mode} -> {mode.value}.")
+        self.layout_mode = mode.value
+        # Windowed, the window's own refit resizes the book; fullscreen, the box is ours.
+        self._window_helper.refit_fullscreen()
+
+    def content_aspect_ratio(self) -> float:
+        """Return the shape (height over width) of the screen's content in its layout."""
+        return content_aspect_ratio(MainLayoutMode(self.layout_mode))
+
+    def page_width(self) -> float:
+        """Return one page's width: the screen's on a single page, a page of the spread's."""
+        if self.layout_mode == MainLayoutMode.SPREAD.value:
+            return page_width(self.width)
+        return self.width
 
     def open_menu_dots(self, button: Button) -> bool:
         return open_dropdown(self.menu_dots_dropdown, button)
@@ -371,7 +399,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._exit_menu_mode()
             Window.unbind(on_key_down=self._on_key_down)
 
-        width, content_h = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
+        width, content_h = get_win_dimensions(
+            Window.height - ACTION_BAR_SIZE_Y, Window.width, self.content_aspect_ratio()
+        )
         if width > 0 and content_h > 0:
             self.size = width, content_h + ACTION_BAR_SIZE_Y
 
@@ -591,7 +621,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         app_window.add_widget(settings)
 
         settings.size_hint = (None, None)
-        settings.size = self.size
+        # A page's size: the whole screen on a single page, one page of the spread.
+        settings.size = self.page_width(), self.height
         settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
         self._settings_nav = SettingsKeyboardNav(settings)
