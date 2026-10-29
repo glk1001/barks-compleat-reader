@@ -19,8 +19,10 @@
     halign: 'left'
     valign: 'middle'
     text_size: self.width, self.height
-    # A story's issue and year sit at the right; a long title is cut short before them.
-    shorten: bool(self.detail)
+    # A row is one line: a long title is cut short before its issue and year at the
+    # right, and a long word or name (Flintheart Glomgold in the word list on a page
+    # of the spread) is cut short too, where it wrapped into the row beneath.
+    shorten: True
     shorten_from: 'right'
     font_size: fm.search_result_font_size
     padding: [dp(8), 0, (self.detail_width + dp(20)) if self.detail else dp(8), 0]
@@ -33,6 +35,10 @@
         size: self.texture_size[0], root.height
         pos: root.right - self.width - dp(8), root.y
         on_texture_size: root.detail_width = self.texture_size[0]
+
+# A row's + is one character in a narrow button: never cut short, or it is a dot.
+<_PlusButton>:
+    shorten: False
 
 # What a typed query tells the user (a word left out, a syntax error) and the
 # headings over its suggestions: rows of the word list that wrap and take no focus.
@@ -283,9 +289,11 @@
             on_arrow_press: root.on_goto_background_title()
 
         # ---- Title Search Content ----
+        # The box beside its results on a single page; over them on the spread's
+        # page, which is too narrow for the two side by side.
         BoxLayout:
             id: title_search_content
-            orientation: 'horizontal'
+            orientation: 'vertical' if root.layout_mode == 'spread' else 'horizontal'
             size_hint: 0.86, 1
             pos_hint: {'center_x': 0.5, 'y': 0}
             padding: [dp(40), dp(30), dp(40), dp(35)]
@@ -293,7 +301,8 @@
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.35
+                size_hint: (1, None) if root.layout_mode == 'spread' else (0.35, 1)
+                height: dp(48)
                 spacing: dp(8)
 
                 BoxLayout:
@@ -316,7 +325,7 @@
                 Widget:
 
             SearchPanel:
-                size_hint_x: 0.65
+                size_hint: (1, 1) if root.layout_mode == 'spread' else (0.65, 1)
 
                 BoxLayout:
                     size_hint: 1, 1

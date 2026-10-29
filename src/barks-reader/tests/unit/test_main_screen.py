@@ -1045,7 +1045,7 @@ class TestAboutBoxFocus:
 
 
 class TestTheBooksLayout:
-    """The layout mode reaches the three page screens; the spread seeds the fun page."""
+    """The layout mode reaches the page screens; the spread seeds the fun page."""
 
     def test_the_spread_reaches_the_screens_and_seeds_the_fun_view(
         self, main_screen: MainScreen
@@ -1055,6 +1055,7 @@ class TestTheBooksLayout:
             main_screen._tree_view_screen,
             main_screen._bottom_title_view_screen,
             main_screen._fun_image_view_screen,
+            main_screen._search_screen,
         ):
             assert screen.layout_mode == "spread"
         main_screen._renderer.seed_fun_view_second_image.assert_called_once()

@@ -2,9 +2,9 @@
 
 <!-- cspell:ignore recto verso colophon -->
 
-> Status: **stages 1 and 2 done, 2026-10-29** (the window, the book layout and the
-> bar; the title page and the fun page; the commits are in the git log under this
-> file's name). Designed on the mock at
+> Status: **stages 1 to 3 done, 2026-10-29** (the window, the book layout and the
+> bar; the title page and the fun page; the index and search pages; the commits are
+> in the git log under this file's name). Designed on the mock at
 > https://claude.ai/artifact/1oHXzdz9tEi1zLyCH4Jv8u (private: it carries Fantagraphics
 > pages), twelve states, one per screen below. Implementing and testing on the main PC
 > (27-inch 2560x1440). Tick a stage off here, with its commit, as it lands.
@@ -42,7 +42,15 @@
 >   100 px default height (a box layout keeps a child's own height for a falsy hint)
 >   and pushed the hero band up over the tree's last rows, where it swallowed their
 >   taps (two GUI tap tests caught it); the picture's height is explicit now.
-> - Stage 3 the index and search pages: TODO
+> - Stage 3 the index and search pages: DONE 2026-10-29. Seen on this PC on a nested
+>   2560x1440 display: the title search's box over its results at the page's width
+>   (decision 8), the tag and word searches in their columns with a query typed, the
+>   Main Index's rail and two columns, the Speech Bubble Index's Words (the prefix
+>   bar's twenty columns across the page), Names and Locations, the Statistics charts
+>   centred on the page, and By the Numbers alone in its page-aspect box (decision 11).
+>   Found on the way: a result row is one line high, and a long word or name in the
+>   word list (Flintheart Glomgold) wrapped into the row beneath; every result row is
+>   cut short now as the title rows were, except a row's + button.
 > - Stage 4 the document reader and the wiki: TODO
 > - Stage 5 tests, the matrix variant and the soak: TODO
 > - Stage 6 the how-to pages, the README and the demo videos: TODO

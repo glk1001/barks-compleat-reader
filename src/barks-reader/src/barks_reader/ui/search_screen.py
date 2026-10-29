@@ -42,6 +42,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.reader_palette import theme
@@ -362,6 +363,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     is_visible = BooleanProperty(defaultvalue=False)
     image_texture = ObjectProperty(allownone=True)
+    # The book's layout: on the two-page spread the title search stacks its box over
+    # its results on the page; the tag and word searches keep their columns.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=True)
     on_goto_title: Callable[[str, Sequence[Tags]], bool] | None = ObjectProperty(

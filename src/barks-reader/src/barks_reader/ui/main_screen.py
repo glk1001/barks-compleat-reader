@@ -275,6 +275,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._tree_view_screen.layout_mode = mode.value
         self._bottom_title_view_screen.layout_mode = mode.value
         self._fun_image_view_screen.layout_mode = mode.value
+        self._search_screen.layout_mode = mode.value
         if mode == MainLayoutMode.SPREAD:
             self._renderer.seed_fun_view_second_image()
         # Windowed, the window's own refit resizes the book; fullscreen, the box is ours.
