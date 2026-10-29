@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from kivy.uix.widget import Widget
+
     from .corpus_stats_screen import CorpusStatsScreen
     from .document_reader import DocumentReaderScreen
     from .wiki_reader import WikiReaderScreen
@@ -104,6 +106,20 @@ class ReaderScreen(Screen):
 
     def on_leave(self, *_args: object) -> None:
         logger.debug(log_markers.SCREEN_LEFT.format(name=self.name))
+
+    @property
+    def drag_region(self) -> Widget | None:
+        """The screen's bar's draggable title area, for the OS window-drag hit test.
+
+        With the OS titlebar replaced, SDL keeps asking whichever widget is registered
+        (``platform_window_utils.set_titlebar_drag_region``), in that widget's own window
+        coordinates, whatever screen is showing. A full-window screen whose bar lays out
+        differently from the main bar's must register its own while it is up: the
+        readers' bars are a page wide and centred, which on the two-page spread puts
+        their buttons inside the main bar's title area, where a tap was a window drag.
+        None when the screen has no bar (yet).
+        """
+        return None
 
     def is_active(self, active: bool) -> None:
         pass
@@ -244,6 +260,23 @@ class ReaderScreenManager:
             screen_in.dispatch("on_enter")
             screen_out.dispatch("on_leave")
 
+    def _hand_window_drag_to(self, screen: ReaderScreen) -> None:
+        """Point the OS window-drag hit test at ``screen``'s bar while it is up.
+
+        The registered region stays live whatever screen shows, so a full-window
+        screen's bar takes it over on the way in (`ReaderScreen.drag_region`) and the
+        main bar's gets it back on the way out (`_hand_window_drag_back`). A screen
+        with no bar leaves the main bar's in place.
+        """
+        drag_region = screen.drag_region
+        if drag_region is not None:
+            set_titlebar_drag_region(drag_region)
+
+    def _hand_window_drag_back(self) -> None:
+        """Give the OS window-drag hit test back to the main bar's title area."""
+        assert self._reader_screens
+        set_titlebar_drag_region(self._reader_screens.main_screen.ids.action_bar.drag_region)
+
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
 
@@ -258,6 +291,7 @@ class ReaderScreenManager:
         self._reader_screens.comic_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
+        self._hand_window_drag_to(self._reader_screens.comic_reader_screen)
         self._reader_screens.comic_reader_screen.is_active(active=True)
 
         logger.debug("Comic book reader screen is active.")
@@ -273,6 +307,7 @@ class ReaderScreenManager:
             app.suppress_aspect_ratio_correction()
 
         assert self._reader_screens
+        self._hand_window_drag_back()
         self._reader_screens.main_screen.on_comic_closed()
 
         self._set_transition(self._get_next_main_screen_transition(), "main screen")
@@ -295,6 +330,7 @@ class ReaderScreenManager:
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title, resume=resume)
+        self._hand_window_drag_to(self._reader_screens.document_reader_screen)
         self._finish_running_transition("document reader")
         self._screen_manager.current = DOCUMENT_READER_SCREEN
         logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))
@@ -302,6 +338,7 @@ class ReaderScreenManager:
     def _close_document_reader(self) -> None:
         logger.debug("Closing document reader and switching back to main screen...")
         assert self._reader_screens
+        self._hand_window_drag_back()
         self._reader_screens.main_screen.on_document_reader_closed()
 
         self._set_transition(self._get_next_main_screen_transition(), "main screen")
@@ -319,6 +356,7 @@ class ReaderScreenManager:
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.corpus_stats_screen.open()
+        self._hand_window_drag_to(self._reader_screens.corpus_stats_screen)
         self._finish_running_transition("By the Numbers page")
         self._screen_manager.current = CORPUS_STATS_SCREEN
         logger.info(log_markers.BY_THE_NUMBERS_ACTIVE)
@@ -326,6 +364,7 @@ class ReaderScreenManager:
     def _close_corpus_stats(self) -> None:
         logger.debug("Closing the By the Numbers page and switching back to main screen...")
         assert self._reader_screens
+        self._hand_window_drag_back()
         self._reader_screens.main_screen.on_corpus_stats_closed()
 
         self._set_transition(self._get_next_main_screen_transition(), "main screen")
@@ -337,13 +376,7 @@ class ReaderScreenManager:
         logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
         assert self._reader_screens
         self._reader_screens.wiki_reader_screen.open_wiki(bundle, page)
-
-        # The OS window-drag hit test keeps using whichever widget is
-        # registered — the main bar's region would swallow clicks on the
-        # wiki bar's buttons — so hand it the wiki bar's while it's up.
-        wiki_drag_region = self._reader_screens.wiki_reader_screen.drag_region
-        if wiki_drag_region is not None:
-            set_titlebar_drag_region(wiki_drag_region)
+        self._hand_window_drag_to(self._reader_screens.wiki_reader_screen)
 
         self._set_transition(self._get_next_reader_screen_transition(), "wiki reader")
         self._screen_manager.current = WIKI_READER_SCREEN
@@ -356,8 +389,7 @@ class ReaderScreenManager:
     def _close_wiki_reader(self) -> None:
         logger.debug("Closing wiki reader and switching back to main screen...")
         assert self._reader_screens
-        # Give the window-drag hit test back to the main bar's region.
-        set_titlebar_drag_region(self._reader_screens.main_screen.ids.action_bar.drag_region)
+        self._hand_window_drag_back()
         self._reader_screens.main_screen.on_wiki_reader_closed()
 
         self._set_transition(self._get_next_main_screen_transition(), "main screen")

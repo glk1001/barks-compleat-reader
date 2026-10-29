@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -138,6 +138,12 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self.ids.stats_page.bind(width=lambda *_args: self._rebuild_trigger())
 
     # --- Lifecycle -------------------------------------------------------
+
+    @property
+    @override
+    def drag_region(self) -> Widget | None:
+        # The bar is the page's width, centred: it takes the window-drag hit test over.
+        return self.ids.stats_action_bar.drag_region
 
     def open(self) -> None:
         """Show the page, computing the statistics the first time."""

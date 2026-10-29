@@ -18,9 +18,10 @@
             size_hint_y: None
             height: root.ACTION_BAR_HEIGHT
 
-            # Shared skeleton (ui/action_bar.kv). Its drag_region is what
-            # scripts/read_comic.py passes to Window.set_custom_titlebar as
-            # the window-drag region. The icon is not clickable here.
+            # Shared skeleton (ui/action_bar.kv). Its drag_region is the screen's
+            # drag_region: the window-drag region while the reader is up (in the app
+            # via ReaderScreenManager, in scripts/read_comic.py directly). The icon
+            # is not clickable here.
             ReaderActionBar:
                 id: action_bar_inner
                 pos_hint: {'center_x': 0.5, 'top': 1}

@@ -288,6 +288,60 @@ class TestReaderScreenManager:
         for origin in ("comic reader", "document reader", "By the Numbers", "wiki reader"):
             assert f"Main screen is active (from {origin})." in joined
 
+    @pytest.mark.parametrize(
+        ("screen_name", "switch", "close"),
+        [
+            ("comic_reader_screen", "_switch_to_comic_book_reader", "_close_comic_book_reader"),
+            ("document_reader_screen", "_switch_to_document_reader", "_close_document_reader"),
+            ("corpus_stats_screen", "_switch_to_corpus_stats", "_close_corpus_stats"),
+            ("wiki_reader_screen", "_switch_to_wiki_reader", "_close_wiki_reader"),
+        ],
+    )
+    def test_a_full_window_screen_takes_the_window_drag_and_hands_it_back(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        screen_name: str,
+        switch: str,
+        close: str,
+    ) -> None:
+        """The OS window-drag hit test follows the bar on show (ReaderScreen.drag_region).
+
+        Each reader's bar is a page wide and centred, so on the two-page spread its
+        buttons sit inside the main bar's title area: with the main bar's region still
+        registered, a tap on them was a window drag (the comic reader, 2026-10-29).
+        """
+        reader_screen_manager.add_screens(mock_reader_screens)
+        screen = getattr(mock_reader_screens, screen_name)
+        main_region = mock_reader_screens.main_screen.ids.action_bar.drag_region
+        args = {
+            "_switch_to_document_reader": (Path("/doc"), "How To"),
+            "_switch_to_wiki_reader": (Path("/bundle"), None),
+        }.get(switch, ())
+
+        with patch.object(barks_reader.ui.reader_screens, "set_titlebar_drag_region") as set_region:
+            getattr(reader_screen_manager, switch)(*args)
+            set_region.assert_called_once_with(screen.drag_region)
+            getattr(reader_screen_manager, close)()
+            assert set_region.call_args_list[-1].args == (main_region,)
+
+    def test_a_screen_with_no_bar_leaves_the_main_bar_as_the_window_drag(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+        cast("MagicMock", mock_reader_screens.wiki_reader_screen).drag_region = None
+
+        with patch.object(barks_reader.ui.reader_screens, "set_titlebar_drag_region") as set_region:
+            reader_screen_manager._switch_to_wiki_reader(Path("/bundle"), None)
+
+        set_region.assert_not_called()
+
+    def test_the_base_screen_has_no_drag_region(self) -> None:
+        with patch.object(Screen, "__init__", return_value=None):
+            assert ReaderScreen().drag_region is None
+
     def test_switching_to_document_and_corpus_stats_announces_them(
         self,
         reader_screen_manager: ReaderScreenManager,

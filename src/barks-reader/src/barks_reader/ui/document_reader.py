@@ -92,6 +92,12 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         self._setup_dropdown_nav()
 
+    @property
+    @override
+    def drag_region(self) -> Widget | None:
+        # The bar is the page's width, centred: it takes the window-drag hit test over.
+        return self.ids.doc_action_bar.drag_region
+
     def open_document(self, doc_dir: Path, title: str, *, resume: bool = False) -> None:
         """Open a folder of page images at its first page, or with `resume` at its last one.
 

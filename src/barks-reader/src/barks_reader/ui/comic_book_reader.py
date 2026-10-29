@@ -826,6 +826,13 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         super().on_enter(*args)
         self.comic_book_reader.log_page_placement_afresh()
 
+    @property
+    @override
+    def drag_region(self) -> Widget | None:
+        # The reader's bar is a page wide and centred (`action_bar_width`), not the
+        # main bar's layout, so it takes the window-drag hit test over while it is up.
+        return self.ids.action_bar_inner.drag_region
+
     def __init__(
         self,
         reader_settings: ReaderSettings,
