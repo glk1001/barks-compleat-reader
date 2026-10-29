@@ -2,7 +2,6 @@ import sys
 from configparser import ConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
-from zipfile import ZipFile
 
 from loguru import logger
 
@@ -10,13 +9,19 @@ from barks_reader.core.config_info import ConfigInfo, get_app_exe_dir
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES
 from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_utils import quote_and_join_with_and
+from barks_reader.installer_support import (
+    ZIP_CONFIGS_SUBDIR,
+    ZIP_READER_FILES_SUBDIR,
+    InstallerDataError,
+    extract_subdir,
+)
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
 
-_ZIP_CONFIGS_SUBDIR = "Configs/"
-_ZIP_READER_FILES_SUBDIR = "Reader Files/"
+_ZIP_CONFIGS_SUBDIR = ZIP_CONFIGS_SUBDIR
+_ZIP_READER_FILES_SUBDIR = ZIP_READER_FILES_SUBDIR
 # The data packs' names (and why they are not ".zip"): core/data_pack.py.
 _ZIP_DATA_INSTALLER_FILES = DATA_PACK_FILE_NAMES
 
@@ -44,20 +49,6 @@ def _handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # n
 
 
 sys.excepthook = _handle_uncaught_exception
-
-
-class InstallerDataError(Exception):
-    """The installer data on disk is not what the installer expects.
-
-    Raised for problems a user can fix themselves (a re-zipped data pack, an unreadable
-    config), as opposed to programming errors. ``main`` shows ``message`` and ``details``
-    in the installer's error popup instead of a raw traceback.
-    """
-
-    def __init__(self, message: str, details: str) -> None:
-        super().__init__(message)
-        self.message = message
-        self.details = details
 
 
 def main() -> None:
@@ -179,12 +170,12 @@ def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> 
     logger.info(
         f'Installing Barks Reader and Kivy configs to directory "{config_info.app_config_dir}".'
     )
-    _extract_subdir(installer_zip_paths[0], _ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
+    extract_subdir(installer_zip_paths[0], _ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
 
     reader_files_dir = config_info.app_data_dir / _ZIP_READER_FILES_SUBDIR
     logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
-    _extract_subdir(installer_zip_paths[0], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
-    _extract_subdir(installer_zip_paths[1], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    extract_subdir(installer_zip_paths[0], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    extract_subdir(installer_zip_paths[1], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
 
     return _configure_fanta_volumes_for_platform(config_info)
 
@@ -224,51 +215,6 @@ def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | Non
     logger.info(f'Rewrote fanta volumes setting as "{fanta_volumes_dir}".')
 
     return fanta_volumes_dir
-
-
-def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> int:
-    """Extract every file under ``subdir`` in ``installer_zip`` into ``extract_to_dir``.
-
-    Returns the number of files extracted. Raises ``InstallerDataError`` if no zip entry
-    starts with ``subdir`` - the usual cause is a data pack that was unzipped and
-    re-zipped (e.g. by Safari + Finder), which nests the contents one folder deeper.
-    """
-    num_extracted = 0
-    with ZipFile(installer_zip, "r") as installer_files:
-        for member in installer_files.infolist():
-            # TODO: Does this work with Windows????
-            if member.is_dir() or not member.filename.startswith(subdir):
-                continue
-            num_extracted += 1
-
-            # Create the new path by stripping the subdir prefix.
-            relative_path = member.filename.removeprefix(subdir)
-            target_path = extract_to_dir / relative_path
-
-            # Ensure the parent directory exists.
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Extract the file by reading from the zip and writing to the new path.
-            with installer_files.open(member) as source, target_path.open("wb") as target:
-                target.write(source.read())
-
-        if num_extracted == 0:
-            top_level = sorted({m.filename.split("/")[0] for m in installer_files.infolist()})
-            msg = (
-                f'The installer data pack has no "{subdir}" folder at its top level:'
-                f'\n\n[b]"{installer_zip}".[/b]'
-            )
-            details = (
-                f'Expected a top-level "{subdir}" folder but the data pack contains'
-                f" {quote_and_join_with_and(top_level)}.\n\nThis usually means the data"
-                f" pack was unzipped and then re-zipped, which puts everything inside an"
-                f" extra folder. Download the original data pack again, or re-zip from"
-                f' inside the unzipped folder so that "{subdir}" is at the top level.'
-            )
-            raise InstallerDataError(msg, details)
-
-    logger.info(f'Extracted {num_extracted} files from "{subdir}" to "{extract_to_dir}".')
-    return num_extracted
 
 
 def _set_installer_failed_flag() -> None:

@@ -31,7 +31,7 @@ from barks_reader.core.config_info import (
     seed_random_from_env,
     setup_loguru,
 )
-from barks_reader.core.data_pack import read_installed
+from barks_reader.core.data_pack import INSTALL_DATA_PACK_ARG, read_installed
 from barks_reader.core.log_markers import APP_STARTING, DATA_PACK_INSTALLED
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
@@ -382,6 +382,13 @@ if __name__ == "__main__":
 
         installer_main()
         sys.exit(0)
+
+    # Spawned by the reader to install newer data packs once it has closed (the user
+    # accepted the offer): the same isolation, and the reader is started again after.
+    if sys.argv[1:2] == [INSTALL_DATA_PACK_ARG]:
+        from barks_reader.data_pack_installer import main as data_pack_installer_main
+
+        sys.exit(data_pack_installer_main())
 
     maybe_run_first_run_installer()
 

@@ -20,7 +20,7 @@ _saved_excepthook = sys.excepthook
 from barks_reader import first_run_installer, first_run_installer_show_message  # noqa: E402
 from barks_reader.core import config_info as config_info_module  # noqa: E402
 from barks_reader.core import reader_utils  # noqa: E402
-from barks_reader.first_run_installer import InstallerDataError, _extract_subdir  # noqa: E402
+from barks_reader.installer_support import InstallerDataError, extract_subdir  # noqa: E402
 from barks_reader.ui import kivy_standalone_error_popup  # noqa: E402
 
 # Importing the installer module installs its own excepthook; keep pytest's.
@@ -49,7 +49,7 @@ class TestExtractSubdir:
         )
         out_dir = tmp_path / "config"
 
-        num_extracted = _extract_subdir(zip_path, "Configs/", out_dir)
+        num_extracted = extract_subdir(zip_path, "Configs/", out_dir)
 
         assert num_extracted == 2  # noqa: PLR2004
         assert (out_dir / "barks-reader.ini").read_text() == _INI_TEXT
@@ -69,7 +69,7 @@ class TestExtractSubdir:
         out_dir = tmp_path / "config"
 
         with pytest.raises(InstallerDataError) as exc_info:
-            _extract_subdir(zip_path, "Configs/", out_dir)
+            extract_subdir(zip_path, "Configs/", out_dir)
 
         error = exc_info.value
         assert str(zip_path) in error.message

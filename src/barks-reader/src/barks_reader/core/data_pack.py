@@ -443,6 +443,22 @@ def _rename_with_retries(
             return
 
 
+def self_command(*args: str, is_compiled: bool, argv0: str, executable: str) -> list[str]:
+    """Return the command that runs this program again, with `args`.
+
+    Args:
+        args: Its arguments, such as `INSTALL_DATA_PACK_ARG`.
+        is_compiled: Whether this is a standalone build - then ``sys.argv[0]`` is the
+            executable; in a development checkout it is ``main.py``, run by the
+            interpreter.
+        argv0: ``sys.argv[0]``.
+        executable: ``sys.executable``.
+
+    """
+    command = [argv0] if is_compiled else [executable, argv0]
+    return [*command, *args]
+
+
 def spawn_detached(argv: list[str]) -> None:
     """Start a process that outlives this one.
 
