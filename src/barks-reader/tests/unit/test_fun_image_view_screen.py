@@ -208,6 +208,22 @@ class TestFunImageViewScreen:
             mock_prev.assert_not_called()
             mock_next.assert_called_once()
 
+    def test_a_press_off_the_view_is_not_a_margin_press(
+        self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
+    ) -> None:
+        """On the spread the tree stands beside the view: its taps are none of the view's."""
+        screen, mock_nav, _ = screen_setup
+        screen.is_visible = True
+        screen.fun_options_enabled = False
+        mock_nav.is_in_left_margin.return_value = True  # a negative x passes the check
+
+        touch = MagicMock()
+        touch.x, touch.y = -50, 50  # left of the 100 x 100 view at (0, 0)
+        with patch.object(screen, "_goto_previous_image") as mock_prev:
+            assert screen.on_touch_down(touch) is False
+        mock_prev.assert_not_called()
+        mock_nav.is_in_left_margin.assert_not_called()
+
     def test_fun_options_button_pressed(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
     ) -> None:

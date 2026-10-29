@@ -75,6 +75,13 @@
 >   anyway. The readers log the right-hand page on its own line
 >   (`DOCUMENT_RIGHT_PAGE`), so the `DOCUMENT_PAGE` line keeps naming the first page
 >   shown and the GUI tests hold on the spread.
+>   And found after, on this PC: on the spread only the tree's top row answered a mouse
+>   tap. The fun view's margin presses are bounded by height alone and its touch
+>   handler never asked whether the touch was on it; with the tree beside it instead
+>   of above, every row but the top one (in the band above the margins) was a "left
+>   margin" press with a negative x. The view takes no touch off itself now; a GUI tap
+>   test boots on the spread (the setting forced on the portrait test screen) and taps
+>   a lower row (fixed 2026-10-29).
 > - Stage 5 tests, the matrix variant and the soak: TODO
 > - Stage 6 the how-to pages, the README and the demo videos: TODO
 

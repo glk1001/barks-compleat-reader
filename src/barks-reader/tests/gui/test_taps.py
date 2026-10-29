@@ -245,6 +245,22 @@ def test_fun_view_margin_taps_step_through_shown_images(boot: AppBoot) -> None:
     assert (back, forward) == (first, changed), titles
 
 
+def test_on_the_spread_a_tree_row_beside_the_fun_view_takes_its_tap(boot: AppBoot) -> None:
+    """The fun view stands beside the tree on the spread and must not take the tree's taps.
+
+    Only the top row was tappable: the rest lay level with the view's margins, which
+    bound a press by its height alone.
+    """
+    d = _boot(boot, nodes.THE_STORIES, ini={"main_screen_layout": "Two-page spread"})
+    taps.tap_then_wait(
+        d,
+        pattern(markers.NEW_SELECTED_NODE, name="Search"),
+        kind="MainTreeViewNode",
+        text="Search",
+    )
+    assert not fields_of(d, markers.LEFT_MARGIN_PRESSED, "x"), "the fun view took the tap"
+
+
 def test_document_halves_turn_its_pages(boot: AppBoot) -> None:
     """Tap a document's node to open it; its right half turns on, its left half back."""
     d = _boot(boot, nodes.APPENDIX)

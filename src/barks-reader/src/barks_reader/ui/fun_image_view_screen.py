@@ -226,6 +226,12 @@ class FunImageViewScreen(BoxLayout):
         # its options button took the title view's top-left presses. It takes no touch.
         if not self.is_visible:
             return False
+        # A press off the view is no press on it: the margin checks bound a press by
+        # its height only, and on the two-page spread the tree stands beside the view,
+        # where its rows' taps (but the top one's, in the band above the margins) were
+        # "left margin" presses with a negative x.
+        if not self.collide_point(touch.x, touch.y):
+            return False
         if self.fun_options_enabled:
             return bool(super().on_touch_down(touch))
 
