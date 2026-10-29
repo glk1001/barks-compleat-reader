@@ -426,22 +426,14 @@ class TestSettingsPanelSchema:
             else:
                 assert entry["options"] == list(spec.options)
 
-    def test_options_fields_carry_their_default_value(
-        self, schema: list[dict[str, object]]
-    ) -> None:
-        """Only `OPTIONS` entries get a `value`; Kivy uses it as the panel's default."""
-        by_key = {item["key"]: item for item in schema if item["type"] != "title"}
-        seen_options_field = False
+    def test_no_field_carries_a_value_into_the_panel(self, schema: list[dict[str, object]]) -> None:
+        """A row reads the config, so the schema carries no value.
 
-        for spec in reader_settings_module._FIELDS:
-            entry = by_key[spec.key]
-            if spec.kind is reader_settings_module.FieldKind.OPTIONS:
-                seen_options_field = True
-                assert entry["value"] == spec.config_default
-            else:
-                assert "value" not in entry
-
-        assert seen_options_field, "no OPTIONS field in _FIELDS — the branch went untested"
+        A `value` is written to the config as the row is built, which reset every
+        options setting to its default (2026-10-29).
+        """
+        for item in schema:
+            assert "value" not in item, item
 
     def test_a_known_entry_in_full(self, schema: list[dict[str, object]]) -> None:
         """One entry compared whole, to pin the exact key spelling Kivy expects."""

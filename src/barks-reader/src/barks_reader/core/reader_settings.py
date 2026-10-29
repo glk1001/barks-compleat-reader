@@ -704,8 +704,11 @@ def _get_reader_settings_json() -> str:
         }
         if spec.options is not None:
             entry["options"] = list(spec.options)
-        if spec.kind is FieldKind.OPTIONS:
-            entry["value"] = spec.config_default
+        # No `value`: a setting row reads the config. A value here is set on the row
+        # as it is built, before it reads the config, and the row's value handler
+        # writes it to the config, with nothing told (the panel is not yet bound to
+        # the app), so opening the settings reset every options setting to its
+        # default (the layout, the theme, the log level; 2026-10-29).
         items.append(entry)
     return json.dumps(items)
 

@@ -102,6 +102,33 @@ def test_a_settings_toggle_round_trips_through_the_ini(boot: AppBoot) -> None:
     assert harness.read_ini_value(ini, FUN_VIEW_TITLE_SETTING).strip() == original
 
 
+# The options settings the harness pins in the ini (barks_gui.harness.INI_DEFAULTS).
+LAYOUT_SETTING = "main_screen_layout"
+LOG_LEVEL_SETTING = "log_level"
+
+
+def test_opening_the_settings_leaves_the_options_settings_as_the_ini_had_them(
+    boot: AppBoot,
+) -> None:
+    """Opening and closing the panel changes nothing: an options row reads the ini's value.
+
+    Building the panel once wrote each options setting's default into the ini (the
+    layout went back to Match the screen, the log level to INFO, 2026-10-29).
+    """
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.THE_STORIES)
+    layout = harness.read_ini_value(ini, LAYOUT_SETTING)
+    log_level = harness.read_ini_value(ini, LOG_LEVEL_SETTING)
+    assert layout == "Single page"  # the harness pins it: the suite runs on one page
+
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    _close_settings(d)
+
+    assert harness.read_ini_value(ini, LAYOUT_SETTING) == layout
+    assert harness.read_ini_value(ini, LOG_LEVEL_SETTING) == log_level
+
+
 def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=HOW_TO_DOWNS)

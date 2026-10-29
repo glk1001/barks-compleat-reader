@@ -27,6 +27,12 @@
 >   was, off the window. The X was placed from the panel's `right`, a cached Kivy
 >   alias that reads stale inside a `pos` callback when the parent sets `center_x`;
 >   it is placed from `x + width` now, and a test moves the panel (fixed 2026-10-29).
+>   And a regression of the options-setting fix above: the panel's schema gave each
+>   options row its default as a `value`, which the row's value handler now wrote to
+>   the config as the panel was built, before the row read the real value and with
+>   nothing told; opening the settings reset the layout, the theme and the log level
+>   to their defaults. The schema carries no value now, and a GUI test holds the ini
+>   across an open and close (fixed 2026-10-29).
 >   And decision 14's half for the comic reader: its bar was a page wide whatever
 >   the mode, so over the pair in the spread window its items sat in the middle; in
 >   double-page mode the bar is now as wide as the pair, refitted at a comic's load
