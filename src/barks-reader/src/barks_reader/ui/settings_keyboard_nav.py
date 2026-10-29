@@ -117,11 +117,11 @@ class SettingsKeyboardNav:
         draw_focus_highlight(item, MENU_FOCUS_HIGHLIGHT_GROUP)
         self._last_focused_item = item
         if idx == 0:
-            # The first item means the panel's top, title row and section heading too:
-            # a scroll to the item alone left them above the view (the panel keeps its
-            # scroll between openings, and Up walks back to the first item) and the
-            # close X, fixed at the window's top, over the item. A jump, not a scroll
-            # to the item: that animation would write over it frame by frame.
+            # The first item means the panel's top, its section heading too: a
+            # scroll to the item alone left the heading above the view (the panel
+            # keeps its scroll between openings, and Up walks back to the first
+            # item). A jump, not a scroll to the item: that animation would write
+            # over it frame by frame.
             self._scroll_to_top(item)
         else:
             self._scroll_to_item(item)

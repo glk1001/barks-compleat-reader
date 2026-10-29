@@ -21,7 +21,7 @@ from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.settings import SettingItem, SettingOptions
+from kivy.uix.settings import ContentPanel, SettingItem, SettingOptions, Settings
 from kivy.uix.widget import Widget
 from loguru import logger
 
@@ -54,18 +54,24 @@ def _rgba(color: Color, alpha: float | None = None) -> str:
 # chooser, and popup buttons speak the same palette as the rest of the app rather
 # than the old fixed programmer-blue.
 KV_SETTINGS_OVERRIDE = """
-# Shrink the (menu-less) settings panel's title bar to the app action bar's
-# height, so the settings top bar lines up with the main action bar. This fully
-# replaces Kivy's default <SettingsPanel> rule (the ``-`` prefix discards it, so
-# the title Label is not doubled); the only change from that default is the title
-# Label height, which drops Kivy's 50px floor for the action bar height
-# (__TITLE_BAR_H__ px, substituted from ACTION_BAR_SIZE_Y).
+# The settings panel's title is not a row of the scrolled panel but a bar pinned
+# above it (<PinnedTitleSettingsInterface>), so this fully replaces Kivy's default
+# <SettingsPanel> rule (the ``-`` prefix discards it) to drop its title Label.
 <-SettingsPanel>:
     spacing: 5
     padding: 5
     size_hint_y: None
     height: self.minimum_height
+
+# The settings' title bar, pinned above the scroll pane so neither it nor the
+# scrollbar moves into the other. It is the app action bar's height
+# (__TITLE_BAR_H__ px, substituted from ACTION_BAR_SIZE_Y), so it lines up with
+# the main action bar, and main_screen sits the close X on its mid-line.
+<PinnedTitleSettingsInterface>:
+    orientation: 'vertical'
+    content: content
     Label:
+        id: title_bar
         size_hint_y: None
         text: root.title
         text_size: self.width - dp(32), None
@@ -78,6 +84,8 @@ KV_SETTINGS_OVERRIDE = """
             Rectangle:
                 size: self.width, 1
                 pos: self.x, self.y
+    ContentPanel:
+        id: content
 
 <-SettingItem>:
     # Non-folder rows stay compact/left (Option B) but wider than Kivy's default
@@ -289,47 +297,17 @@ KV_SETTINGS_OVERRIDE = """
         pos: root.x + dp(4), root.y + dp(4)
         size: root.width - dp(8), root.height - sp(8)
 
-# The settings panel's scroll pane (InterfaceWithNoMenu is a ContentPanel, a
-# ScrollView) wears the shared scroll-pane look. ContentPanel is Kivy's own class,
-# so this mirrors barks_kivy_ui.scrolling rather than inheriting it.
-# The panel's title bar is the top row of the scrolled content, so Kivy's
-# <ScrollView> bar, drawn down the pane's full height, ran over it and under the
-# corner X. The bar's track (and its drag area) here starts below the title bar:
-# its height plus the panel's top padding of 5. An additive rule would not do,
-# since <ScrollView>'s own handle bindings stay live and win again on a resize,
-# so this replaces both Kivy rules (the ``-`` prefix discards them); the rest is
-# Kivy's <ContentPanel> container and the vertical half of its <ScrollView> bar
-# (this pane does not scroll sideways).
-<-ContentPanel>:
-    do_scroll_x: False
-    container: content
+# The settings panel's scroll pane (a ContentPanel, a ScrollView) wears the shared
+# scroll-pane look. ContentPanel is Kivy's own class, so this mirrors
+# barks_kivy_ui.scrolling rather than inheriting it; Kivy's default <ContentPanel>
+# rule sets none of these, so this additive rule has no conflicts.
+<ContentPanel>:
     scroll_type: ['bars', 'content']
     always_overscroll: False
     effect_cls: 'ScrollEffect'
     bar_width: dp(12)
     bar_color: __SCROLLBAR_RGBA__
     bar_inactive_color: __SCROLLBAR_INACTIVE_RGBA__
-    _bar_track_h: max(0, self.height - (__TITLE_BAR_H__ + 5))
-    _handle_y_pos:
-        (
-        (self.right - self.bar_width - self.bar_margin) if self.bar_pos_y == 'right'
-        else (self.x + self.bar_margin),
-        self.y + self._bar_track_h * self.vbar[0]
-        )
-    _handle_y_size: min(self.bar_width, self.width), self._bar_track_h * self.vbar[1]
-    canvas.after:
-        Color:
-            rgba:
-                (self._bar_color if (self.do_scroll_y and self.viewport_size[1] > self.height)
-                else [0, 0, 0, 0])
-        Rectangle:
-            pos: root._handle_y_pos or (0, 0)
-            size: root._handle_y_size or (0, 0)
-    GridLayout:
-        id: content
-        cols: 1
-        size_hint_y: None
-        height: self.minimum_height
 """
 
 
@@ -413,6 +391,40 @@ class SettingsCloseButton(Button):
     icon_source = StringProperty("")
 
 
+class PinnedTitleSettingsInterface(BoxLayout):
+    """The settings' one panel, scrolling under a title bar that stays put (laid out in KV).
+
+    Kivy's no-menu interface is the scroll pane itself, with the panel's title as its
+    first row, so the title scrolled away and the scrollbar ran over it.
+    """
+
+    __events__ = ("on_close",)
+
+    title = StringProperty("")
+    content = ObjectProperty(None)  # the ContentPanel, as Kivy's menu interfaces name it
+
+    def add_panel(self, panel: Widget, name: str, uid: int) -> None:
+        """Keep `panel`, showing it and its name in the title bar if it is the first.
+
+        Only the first is ever shown; Kivy's own panel (``App.use_kivy_settings``)
+        comes after the reader's, and is kept but never seen.
+        """
+        self.content.add_panel(panel, name, uid)
+        if self.content.current_uid == uid:
+            self.title = name
+
+    def on_close(self, *_args: object) -> None:
+        """Do nothing: the settings close from main_screen (the X or Escape), not from here."""
+
+
+class PinnedTitleSettings(Settings):
+    """Kivy's Settings with one panel, its title pinned above it (no menu, no Close button)."""
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        self.interface_cls = PinnedTitleSettingsInterface
+        super().__init__(**kwargs)
+
+
 class ThemedSwitch(ButtonBehavior, Widget):
     """On-brand on/off toggle used by SettingBoolean (styled in KV).
 
@@ -428,6 +440,7 @@ class ThemedSwitch(ButtonBehavior, Widget):
 Factory.register("CustomFileChooserListView", cls=CustomFileChooserListView)
 Factory.register("SettingsCloseButton", cls=SettingsCloseButton)
 Factory.register("ThemedSwitch", cls=ThemedSwitch)
+Factory.register("ContentPanel", cls=ContentPanel)  # Kivy does not, and the KV builds one
 
 _settings_kv_installed = False
 

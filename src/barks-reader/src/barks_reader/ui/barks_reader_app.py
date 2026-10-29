@@ -13,7 +13,6 @@ from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.window import Keyboard, Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
-from kivy.uix.settings import Settings, SettingsWithNoMenu  # can take ~1s in VM Windows
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -74,6 +73,7 @@ from .reader_settings_buildable import BuildableReaderSettings
 from .screen_bundle import ScreenBundle
 from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
 from .settings_fix import (
+    PinnedTitleSettings,
     SettingAltEscapeKey,
     SettingLongPath,
     SettingOptionsWithValue,
@@ -94,6 +94,7 @@ if TYPE_CHECKING:
 
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
+    from kivy.uix.settings import Settings
     from kivy.uix.widget import Widget
 
     from barks_reader.core.config_info import ConfigInfo
@@ -114,10 +115,10 @@ class BarksReaderApp(App):
         self.timing = Timing()
 
         self.title = APP_TITLE
-        # No-menu settings: a single panel with no top spinner/title bar (the
-        # spinner just repeated the window title). Closing is via Escape, handled
+        # No-menu settings: a single panel with no top spinner (it just repeated the
+        # window title), its title pinned above it. Closing is via Escape, handled
         # by SettingsKeyboardNav — the same back-out gesture as every other screen.
-        self.settings_cls = SettingsWithNoMenu
+        self.settings_cls = PinnedTitleSettings
 
         self._config_info = config_info
         self._comics_database = comics_db
@@ -225,7 +226,7 @@ class BarksReaderApp(App):
 
         self.reader_settings.build_settings(settings)
         self.config.write()
-        # SettingsWithNoMenu has no top menu bar to size (the old spinner bar).
+        # PinnedTitleSettings has no top menu bar to size (the old spinner bar).
 
         logger.info(f"Time taken up to build settings: {self.timing.get_elapsed_time_with_unit()}.")
 
