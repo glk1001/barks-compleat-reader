@@ -19,6 +19,9 @@ navigation and a visually engaging interface.
 - **Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
 - **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
+- **Two-Page Spread on Wide Screens**: On a landscape monitor the main screen opens like a book — the navigation
+  tree on the left page, the current view on the right. A portrait screen (a flipped 2-in-1 laptop) keeps the
+  single column, and the *Main Screen Layout* setting fixes either.
 - **Full Keyboard & Remote Navigation**: Browse, open, and read comics using just the arrow keys, Enter, and Escape —
   designed to work from the couch with a TV remote as well as with a mouse or touchscreen.
 - **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
@@ -33,11 +36,15 @@ navigation and a visually engaging interface.
 
 ## Screenshots
 
-|                        Main Window                        |                          Reading a Story                          |
-|:---------------------------------------------------------:|:------------------------------------------------------------------:|
-| ![Main Window](website/screenshot-main-window.jpg)        | ![Reading a Story](website/screenshot-reading-a-story.jpg)          |
-|                    **Selecting a Title**                   |                           **Search Titles**                         |
-| ![Selecting a Title](website/screenshot-selecting-a-title.jpg) | ![Search Titles](website/screenshot-search-titles.jpg)          |
+|                   Main Window (the two-page spread, on a wide monitor)                   |
+|:----------------------------------------------------------------------------------------:|
+|                    ![Main Window](website/screenshot-main-window.jpg)                    |
+|                                  **Selecting a Title**                                   |
+|              ![Selecting a Title](website/screenshot-selecting-a-title.jpg)              |
+
+|                      Reading a Story                       |                      Search Titles                       |
+|:----------------------------------------------------------:|:--------------------------------------------------------:|
+| ![Reading a Story](website/screenshot-reading-a-story.jpg) | ![Search Titles](website/screenshot-search-titles.jpg)   |
 
 More screenshots (including the full index and speech bubble index) are on
 [the project website](https://glk1001.github.io/barks-compleat-reader/website/app.html).

@@ -47,7 +47,11 @@ read, so this backs up ``barks-reader.json`` and ``barks-reader-history.json``
 before touching either and restores both on any exit, including a failure, a
 Ctrl-C, and a SIGTERM/SIGHUP (the terminal closing). The backups' paths are
 printed at the start of a run in case even that fails. It never writes to
-``barks-reader.ini``.
+``barks-reader.ini``: the beats wait on lines the app logs at DEBUG, so that file's
+``log_level`` has to be DEBUG (or TRACE), and the recorder checks before the first
+boot. To record without touching the real profile at all, point
+``BARKS_READER_CONFIG_DIR`` at a copy of it with the level and the layout wanted -
+gui-probe.sh and the app both honour it.
 
 Each boot also pins the last-read-page cues the beats depend on (``PINNED_CUES``)
 and writes the reading history the Reading beat films (``CANNED_HISTORY``), so a
@@ -64,14 +68,20 @@ Usage:
     uv run scripts/record_demo.py --out /tmp/preview
     uv run scripts/record_demo.py --clean               # drop cached clips, record everything
 
-Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300) - both are
-passed straight through to gui-probe.sh.
+The demo is filmed on the two-page spread, the main screen's layout on a landscape
+monitor: the nested screen is landscape (``DEMO_SCREEN``), and the profile's Main
+screen layout setting has to allow the spread - the recorder checks what the app came
+up on and refuses to film the single page, since it never writes the ini.
+
+Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (``DEMO_SCREEN`` unless
+set) - both are passed straight through to gui-probe.sh.
 """
 
 # cspell:ignore windowmove windowsize
 from __future__ import annotations
 
 import argparse
+import configparser
 import json
 import os
 import re
@@ -121,6 +131,26 @@ CAPTION_SHADOW = 2
 # piece of text explaining what is on screen. 96 cleared it with room to spare,
 # so this sits lower again while keeping a 36px margin over the value that failed.
 CAPTION_BOTTOM = 72
+
+# The nested screen the beats are filmed on, unless BARKS_PROBE_SCREEN says otherwise.
+# Landscape, so the main screen comes up as the two-page spread, as it does on a
+# landscape monitor: the tree on the left page, the current view on the right. 1300
+# tall keeps the app window the height it had on the portrait 900x1300 screen the
+# clips were once shot on, so the app's text is the same size in the clips as before;
+# the width is the spread's at that height plus a margin wide enough that the app's
+# own rule (core.main_layout.spread_fits, from the whole screen) picks the spread with
+# room to spare. The fullscreen beat crops the screen to the clips' shape, and this
+# screen is nearly that shape, so it loses a few dozen pixels at each side.
+DEMO_SCREEN = "1760x1300"
+# The layout the demo is filmed on, as the app logs it when it comes up
+# (barks_reader.core.log_markers.MAIN_LAYOUT_MODE). A profile set to Single page
+# would film the wrong app, and the recorder never writes the ini, so it checks.
+MAIN_LAYOUT_SPREAD = "Main screen layout: spread"
+# The log levels at which the app writes every line the beats wait on: the title
+# view's fade, for one, is logged at DEBUG. The profile's ini sets the level, and the
+# recorder never writes that file, so it checks before the first boot.
+DEBUG_LOG_LEVELS = frozenset({"TRACE", "DEBUG"})
+INI_FILE_NAME = "barks-reader.ini"
 
 
 # Where each output's poster frame comes from. A beat name takes that beat's
@@ -823,8 +853,8 @@ def read_story(d: Driver) -> None:
     """Read a story, skip to a page through the page list, and go two-up.
 
     The two-up stays in this windowed beat rather than the fullscreen one: the
-    window is as wide as the clip, so a spread shows whole here, where the
-    fullscreen beat's crop of the screen would take a strip off each side of it.
+    window is as wide as the clip, so a pair of pages shows whole here, and the
+    fullscreen beat keeps to one page so the two are told apart.
     """
     d.hold(1.0)
     # The setup's select_node starts the title view's fade, and a Return during
@@ -870,9 +900,7 @@ def fullscreen(d: Driver) -> None:
     window is seen to grow into the frame: it opens at the other clips' scale
     with the screen's black around it, and the fullscreen page then fills the
     frame edge to edge. The crop and scale back to the shared clip size are the
-    recorder's (`Beat.whole_screen`). Single page only: the crop takes a strip
-    off each side of a spread, which fills the screen's width, so two-up is
-    read_story's.
+    recorder's (`Beat.whole_screen`). Single page only: the two-up is read_story's.
     """
     d.hold(1.0)
     d.focus_portal()
@@ -1173,6 +1201,37 @@ def fit_app_window_to_screen() -> None:
         raise BeatError(msg)
 
 
+def require_debug_log(ini: Path) -> None:
+    """Refuse to record from a profile whose log would not carry the beats' cues.
+
+    Args:
+        ini: The profile's ``barks-reader.ini``.
+
+    Raises:
+        BeatError: If the ini is missing, or its log level is above DEBUG.
+
+    """
+    parser = configparser.ConfigParser()
+    if not parser.read(ini, encoding="utf-8"):
+        msg = f"no {ini.name} beside the app config: {ini}"
+        raise BeatError(msg)
+    level = next(
+        (
+            parser.get(s, "log_level")
+            for s in parser.sections()
+            if parser.has_option(s, "log_level")
+        ),
+        "",
+    )
+    if level.strip().upper() not in DEBUG_LOG_LEVELS:
+        msg = (
+            f"log_level is {level.strip() or 'unset'} in {ini}, but the beats wait on lines the"
+            " app logs at DEBUG: set it to DEBUG there, or point BARKS_READER_CONFIG_DIR at a"
+            " copy of the profile that has it (the recorder never writes the ini)"
+        )
+        raise BeatError(msg)
+
+
 def select_beats(
     names: Sequence[str],
     only: str | None,
@@ -1243,6 +1302,7 @@ class Recorder:
         if not self._config.is_file():
             msg = f"app config not found: {self._config}"
             raise BeatError(msg)
+        require_debug_log(self._config.with_name(INI_FILE_NAME))
         self._history = self._config.with_name(HISTORY_FILE_NAME)
         # Named up front so that if the process is killed outright, the user knows
         # where the pristine copies are.
@@ -1341,6 +1401,26 @@ class Recorder:
         )
         boot_app_at(node, config=self._config, seed=RANDOM_SEED, cues=PINNED_CUES)
 
+    @staticmethod
+    def require_spread(driver: Driver, beat_name: str) -> None:
+        """Refuse to film a beat whose app came up on the single page.
+
+        The app logs the main screen's layout as it comes up, so by the time the
+        probe reports it ready the line is there to read.
+
+        Raises:
+            BeatError: If the app is not on the two-page spread.
+
+        """
+        if driver.match_count(MAIN_LAYOUT_SPREAD) == 0:
+            msg = (
+                f"[{beat_name}] the app came up on the single page, but the demo is filmed"
+                " on the two-page spread: set 'Main screen layout' to 'Match the screen' or"
+                " 'Two-page spread' in barks-reader.ini (the recorder never writes it), and"
+                f" film on a landscape screen (BARKS_PROBE_SCREEN={DEMO_SCREEN} unless set)"
+            )
+            raise BeatError(msg)
+
     def app_region(self) -> tuple[int, int, int, int]:
         """Return the app window's x11grab region on the nested display.
 
@@ -1380,6 +1460,7 @@ class Recorder:
         say(f"record-demo: [{item.name}] booting")
         self.boot_at(item.node)
         driver = Driver()
+        self.require_spread(driver, item.name)
         if item.setup is not None:
             say(f"record-demo: [{item.name}] setup")
             item.setup(driver)
@@ -1780,6 +1861,8 @@ def record_all(names: Sequence[str], out_dir: Path) -> None:
     """Record each named beat, always restoring the user's config afterwards."""
     if not names:
         return
+    # gui-probe.sh reads the screen size from the environment at every start.
+    os.environ.setdefault("BARKS_PROBE_SCREEN", DEMO_SCREEN)
     recorder = Recorder(out_dir)
     previous = {s: signal.signal(s, _raise_on_signal) for s in (signal.SIGTERM, signal.SIGHUP)}
     try:

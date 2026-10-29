@@ -3,60 +3,60 @@
     "beat": "browse_tree",
     "title": "Every Barks Disney story, in order",
     "start": 0.0,
-    "end": 22.57
+    "end": 22.53
   },
   {
     "beat": "series_view",
     "title": "Or by the series they ran in",
-    "start": 22.57,
-    "end": 56.13
+    "start": 22.53,
+    "end": 53.57
   },
   {
     "beat": "read_story",
     "title": "Skip to any page, or read two-up as printed",
-    "start": 56.13,
-    "end": 87.2
+    "start": 53.57,
+    "end": 82.6
   },
   {
     "beat": "fullscreen",
     "title": "Or fill the screen",
-    "start": 87.2,
-    "end": 109.77
+    "start": 82.6,
+    "end": 103.63
   },
   {
     "beat": "search_story",
     "title": "Find a story by name",
-    "start": 109.77,
-    "end": 139.33
+    "start": 103.63,
+    "end": 130.67
   },
   {
     "beat": "search_words",
     "title": "Search every word the characters speak",
-    "start": 139.33,
-    "end": 176.4
+    "start": 130.67,
+    "end": 166.7
   },
   {
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
-    "start": 176.4,
-    "end": 251.97
+    "start": 166.7,
+    "end": 232.77
   },
   {
     "beat": "wiki_jump",
     "title": "Every story linked to the Carl Barks Wiki",
-    "start": 251.97,
-    "end": 287.53
+    "start": 232.77,
+    "end": 267.8
   },
   {
     "beat": "speech_index",
     "title": "A full speech-bubble index, A to Z",
-    "start": 287.53,
-    "end": 300.6
+    "start": 267.8,
+    "end": 280.83
   },
   {
     "beat": "reading",
     "title": "Choose for me, playlists, and your history",
-    "start": 300.6,
-    "end": 347.17
+    "start": 280.83,
+    "end": 327.87
   }
 ]

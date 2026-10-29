@@ -96,7 +96,22 @@
 >   each walk (at most 3479 after the start on a story), RSS at most 1178 MiB, no
 >   climb. Found on the way, on this PC: only the tree's top row answered a mouse tap
 >   on the spread (the fun view's margins, see stage 4's note; fixed 2026-10-29).
-> - Stage 6 the how-to pages, the README and the demo videos: TODO
+> - Stage 6 the how-to pages, the README and the demo videos: DONE 2026-10-30, ahead
+>   of the release that carries the spread. `docs/how-to-use.md` describes both layouts
+>   (the Concept, a paragraph under Main Screen Layout, a row in the Settings table) and
+>   the text PDFs for the GIMP step (`docs/how-to-pdfs`, gitignored) were regenerated
+>   from it on this PC: five pages now, where the data pack's composited how-to has
+>   three and the markdown before this stage already made four, so the GIMP
+>   compositing that makes the data pack's how-to pages needs two more background
+>   pages. The README and the website name the spread in their feature lists, and the
+>   main window and selecting-a-title screenshots were re-shot on the spread (this PC's
+>   2560x1440 screen, the window 1775x1365, on the headless probe), with the title view
+>   page cropped out of the second for the website's side panel. The demo videos were
+>   re-recorded on the spread (`scripts/record_demo.py` films on a 1760x1300 nested
+>   screen unless told otherwise, clips of 1586x1224, and refuses a boot that came up
+>   on the single page) and uploaded to the website-assets release; the website's hero
+>   and tour player take the landscape clip. The release note's paragraph is in the
+>   stage 6 section below.
 
 ## Context
 
@@ -326,7 +341,19 @@ count where there is one, before the first multi-file edit of the stage.
   README's screenshots and the demo videos (`scripts/record_demo.py`) show the single
   column; re-render once the spread is in a release. Not before: the data pack's
   how-to pages are a data-pack version.
-- The release note names the setting (decision 16).
+- The release note names the setting (decision 16). The paragraph for the draft
+  release, which GitHub writes when the app tag is pushed and the maintainer publishes
+  by hand:
+
+  > **A two-page spread on wide monitors.** On a landscape monitor the main screen now
+  > opens like a book: the story tree on the left page and the current view (a story's
+  > title view, the fun view, an index or a search) on the right, each page as wide as
+  > the single column was, so nothing gets smaller. The default, *Match the screen*,
+  > picks the spread on a landscape monitor and the single column on a portrait one,
+  > so a monitor user sees the spread on the first run after updating. To keep the
+  > single column there, set *Main Screen Layout* to *Single page* in Settings. The
+  > document reader pairs its pages on the spread too, and the Carl Barks Wiki takes
+  > the wider window.
 
 ## Open points carried into implementation
 

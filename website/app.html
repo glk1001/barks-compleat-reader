@@ -205,9 +205,12 @@
 
         /* The art lives in panels, the way comics do it: ink border, offset
            shadow, flat paper around. Text surfaces stay opaque. */
+        /* The pitch, then the demo under it at the full width: the app's window is
+           a landscape two-page spread, which no side column could hold at a size
+           where its text still reads. */
         .intro-hero {
             display: grid;
-            grid-template-columns: 1.15fr 0.85fr;
+            grid-template-columns: 1fr;
             gap: 34px;
             align-items: stretch;
         }
@@ -234,15 +237,15 @@
             height: 100%;
         }
 
-        /* The app's window is portrait, so the demo is letterboxed onto the ink
-           rather than cropped to the panel the way the flat art is. */
+        /* The demo keeps its own shape on the ink rather than being cropped to the
+           panel the way the flat art is: the panel takes the clip's proportion. */
         .intro-demo {
             background: var(--ink);
         }
 
         .intro-demo video {
             object-fit: contain;
-            max-height: 780px;
+            height: auto;
         }
 
         /* The walkthrough player and its chapter buttons. */
@@ -250,11 +253,12 @@
             margin: 0 0 30px;
         }
 
-        /* The capture is 782px wide. Anything narrower than that scales the
-           app's own text down with it, so the player is given native size and
-           centred rather than squeezed into a column beside the copy. */
+        /* The capture is 1586px wide, the app's two-page spread. Narrower than
+           that the app's own text scales down with it, so the player is given
+           native size where there is room, and centred rather than squeezed into
+           a column beside the copy. */
         .tour__frame {
-            max-width: 782px;
+            max-width: 1586px;
             margin: 14px auto 0;
             padding: 14px;
         }
@@ -397,10 +401,6 @@
 
             .intro-art {
                 max-height: 340px;
-            }
-
-            .intro-demo video {
-                max-height: 560px;
             }
         }
 
@@ -894,6 +894,8 @@
                     <li>Hundreds of favourite Barks panels as backgrounds and enhancements</li>
                     <li>Fast reader with original comic book page numbering and optional fullscreen
                         and double page modes</li>
+                    <li>Opens like a book on a wide monitor &mdash; the story tree on the left page,
+                        the story on the right &mdash; and as a single column on a portrait screen</li>
                     <li>Works on Windows, macOS, and Linux &mdash; laptops, 2-in-1 touchscreens,
                         even 4K TVs</li>
                 </ul>
@@ -905,7 +907,7 @@
                     <!-- No src: set from the release URL once the reduced-motion
                          decision below has been made. -->
                     <video id="demo-video" poster="demo-poster.jpg"
-                           width="782" height="1224"
+                           width="1586" height="1224"
                            autoplay muted loop playsinline preload="metadata"
                            aria-label="The reader in use: opening the story tree, choosing a
                                        story, and reading it">
@@ -922,12 +924,12 @@
             <h2 style="margin-top: 20px;">Screenshots</h2>
             <div class="screenshots-grid">
                 <div class="screenshot-item">
-                    <h4>Main Window</h4>
-                    <img src="screenshot-main-window.jpg" alt="Main Interface" width="978" height="1524" loading="lazy">
+                    <h4>Main Window, on a Wide Monitor</h4>
+                    <img src="screenshot-main-window.jpg" alt="The main window as a two-page spread: the story tree on the left page, the fun view on the right" width="1775" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Selecting a Title</h4>
-                    <img src="screenshot-selecting-a-title.jpg" alt="Selecting a Title" width="981" height="1525" loading="lazy">
+                    <img src="screenshot-selecting-a-title.jpg" alt="Selecting a title on the two-page spread: the story list on the left page, the title view on the right" width="1775" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Reading a Story</h4>
@@ -990,7 +992,7 @@
                          the video is never fetched just by opening the page. -->
                     <video id="tour-video"
                            poster="walkthrough-poster.jpg" preload="none"
-                           width="782" height="1224" playsinline
+                           width="1586" height="1224" playsinline
                            aria-label="A tour of the reader, in chapters"></video>
                 </div>
                 <p class="tour__hint">Click the picture to play. Once it is running, the
@@ -1040,7 +1042,7 @@
 
             <div class="feature-section feature-section--split feature-section--flip">
                 <figure class="art-panel">
-                    <img src="screenshot-selecting-a-title.jpg" alt="Selecting a Title" width="981" height="1525" loading="lazy">
+                    <img src="screenshot-title-view.jpg" alt="A story's title view" width="874" height="1320" loading="lazy">
                 </figure>
                 <div>
                     <h3>Copious Amounts of Barks Panels as Backgrounds</h3>

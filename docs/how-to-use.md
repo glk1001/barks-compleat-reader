@@ -11,6 +11,8 @@ The Barks Reader gives you full access to all the Barks comics in your Fantagrap
 stories appear in which volumes and on which pages, and presents them through several
 complementary navigation systems. And if you have a touchscreen 2-in-1 or hybrid 16-inch laptop,
 then you can flip and fold it into a portrait screen and get a great Barks reading experience.
+On a wide monitor the main screen opens out instead, like a book: the navigation tree on the
+left page and the current view on the right.
 
 **No censorship.** Where Fantagraphics made alterations to Barks's original artwork — replacing
 or modifying panels for editorial reasons — the Reader includes override image files that
@@ -21,6 +23,15 @@ Fantagraphics versions.
 ---
 
 ## Main Screen Layout
+
+The main screen has two layouts, and the *Main Screen Layout* setting chooses between them.
+On a portrait screen it is a single page: the navigation tree above, the current view below.
+On a landscape screen it is a two-page spread: the tree is the left page, the current view —
+a story's title view, the fun view, an index or a search — is the right page, and the menu
+bar runs across both. Each page of the spread is as wide as the single page would be on the
+same screen, so nothing gets smaller. The default, *Match the screen*, picks whichever fits
+the monitor; *Single page* and *Two-page spread* fix one or the other. The sections below
+describe the single page: on the spread, what sits *below* the tree sits *beside* it.
 
 ### Top Menu Bar
 
@@ -80,7 +91,8 @@ A large background image sits behind the navigation tree. It is decorative but a
 
 ### Bottom Panel
 
-The bottom half below the main tree content switches between two modes:
+The bottom half below the main tree content (the right page, on the two-page spread) switches
+between two modes:
 
 **Comic View** — shown when a story is selected in the tree. Displays the story's title,
 publication info, and a favorite panel. Contains:
@@ -247,6 +259,7 @@ are:
 | *Fantagraphics Directory*                     | Path to the folder containing your Fantagraphics ZIP files     |
 | *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
 | *Double Page Mode*                            | Opens every comic in two-page view                             |
+| *Main Screen Layout*                          | *Single page* (the tree above the view), *Two-page spread* (the tree beside it), or *Match the screen*, which picks by the monitor's shape |
 | *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
 | *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading* |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |

@@ -9,6 +9,7 @@ logic is covered in test_gui_driver.py.
 from __future__ import annotations
 
 import json
+import os
 import re
 from contextlib import nullcontext
 from pathlib import Path
@@ -19,6 +20,7 @@ import pytest
 import record_demo
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core import log_markers
+from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode, choose_main_layout
 from record_demo import (
     OUTPUTS,
     POSTER_BEAT,
@@ -472,6 +474,12 @@ class TestBeatMarkersMatchTheApp:
                 record_demo.LETTER_POPULATED,
                 log_markers.INDEX_LETTER_POPULATED.format(letter="B", elapsed="1ms"),
             ),
+            (
+                record_demo.MAIN_LAYOUT_SPREAD,
+                log_markers.MAIN_LAYOUT_MODE.format(
+                    mode="spread", reason="boot", screen=record_demo.DEMO_SCREEN
+                ),
+            ),
         ],
     )
     def test_the_recorder_regex_matches_the_app_line(
@@ -512,6 +520,7 @@ class TestCannedHistory:
     def _recorder_for(tmp_path: Path) -> Recorder:
         config = tmp_path / "barks-reader.json"
         config.write_text("{}", encoding="utf-8")
+        _write_ini(tmp_path, "DEBUG")
         with patch.object(record_demo, "probe", return_value=str(config)):
             return Recorder(tmp_path, work_dir=tmp_path)
 
@@ -572,3 +581,92 @@ class TestChapteredOutputs:
             record_demo.stitch("tour.mp4", ("a", "b"), tmp_path, tmp_path)
             record_demo.stitch("hero.mp4", ("a", "b"), tmp_path, tmp_path)
         assert [c.args[0].name for c in writer.call_args_list] == ["tour.mp4"]
+
+
+class TestTheSpread:
+    """The demo is filmed on the two-page spread, and the recorder makes sure of it."""
+
+    def test_the_demo_screen_gives_the_spread_by_matching_it(self) -> None:
+        """A profile left on the default setting comes up as the spread on DEMO_SCREEN.
+
+        Whatever the action bar's height comes to in pixels, the pair of pages fits.
+        """
+        width, height = (int(n) for n in record_demo.DEMO_SCREEN.split("x"))
+        for chrome in (0, 45, 90):
+            layout = choose_main_layout(MATCH_THE_SCREEN, width, height, chrome)
+            assert layout is MainLayoutMode.SPREAD, chrome
+
+    def test_the_demo_screen_keeps_nearly_all_of_a_spread_clip(self) -> None:
+        """The fullscreen beat's crop to a spread clip's shape trims a few pixels a side."""
+        width, height = (int(n) for n in record_demo.DEMO_SCREEN.split("x"))
+        crop_width, crop_height, x, y = crop_to_aspect(width, height, 1592, 1224)
+        assert (crop_height, y) == (height, 0)
+        assert width - crop_width <= 80  # noqa: PLR2004
+        assert x == (width - crop_width) // 2
+
+    def test_a_boot_on_the_single_page_is_refused(
+        self, new_stub_driver: Callable[[], Driver]
+    ) -> None:
+        driver = new_stub_driver()
+        driver.log_path.write_text(
+            log_markers.MAIN_LAYOUT_MODE.format(mode="single", reason="boot", screen="900x1300")
+            + "\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(BeatError, match="Main screen layout"):
+            Recorder.require_spread(driver, "browse_tree")
+
+    def test_a_boot_on_the_spread_is_filmed(self, new_stub_driver: Callable[[], Driver]) -> None:
+        driver = new_stub_driver()
+        driver.log_path.write_text(
+            log_markers.MAIN_LAYOUT_MODE.format(mode="spread", reason="boot", screen="1700x1300")
+            + "\n",
+            encoding="utf-8",
+        )
+        Recorder.require_spread(driver, "browse_tree")
+
+    def test_recording_films_on_the_demo_screen_unless_told_otherwise(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("BARKS_PROBE_SCREEN", raising=False)
+        with patch.object(record_demo, "Recorder", side_effect=BeatError("stop here")):
+            with pytest.raises(BeatError, match="stop here"):
+                record_demo.record_all(["browse_tree"], Path("/nonexistent"))
+            assert os.environ["BARKS_PROBE_SCREEN"] == record_demo.DEMO_SCREEN
+            monkeypatch.setenv("BARKS_PROBE_SCREEN", "900x1300")
+            with pytest.raises(BeatError, match="stop here"):
+                record_demo.record_all(["browse_tree"], Path("/nonexistent"))
+            assert os.environ["BARKS_PROBE_SCREEN"] == "900x1300"
+
+
+def _write_ini(config_dir: Path, log_level: str) -> Path:
+    ini = config_dir / record_demo.INI_FILE_NAME
+    ini.write_text(f"[barks_reader]\nlog_level = {log_level}\n", encoding="utf-8")
+    return ini
+
+
+class TestTheLogLevel:
+    """The beats wait on DEBUG lines, so a profile logging at INFO is refused up front."""
+
+    @pytest.mark.parametrize("level", ["DEBUG", "TRACE", "debug"])
+    def test_a_debug_profile_records(self, tmp_path: Path, level: str) -> None:
+        record_demo.require_debug_log(_write_ini(tmp_path, level))
+
+    @pytest.mark.parametrize("level", ["INFO", "WARNING"])
+    def test_a_quieter_profile_is_refused(self, tmp_path: Path, level: str) -> None:
+        with pytest.raises(BeatError, match=f"log_level is {level}"):
+            record_demo.require_debug_log(_write_ini(tmp_path, level))
+
+    def test_a_profile_without_an_ini_is_refused(self, tmp_path: Path) -> None:
+        with pytest.raises(BeatError, match=r"no barks-reader\.ini"):
+            record_demo.require_debug_log(tmp_path / record_demo.INI_FILE_NAME)
+
+    def test_the_recorder_checks_before_its_first_boot(self, tmp_path: Path) -> None:
+        config = tmp_path / "barks-reader.json"
+        config.write_text("{}", encoding="utf-8")
+        _write_ini(tmp_path, "INFO")
+        with (
+            patch.object(record_demo, "probe", return_value=str(config)),
+            pytest.raises(BeatError, match="log_level is INFO"),
+        ):
+            Recorder(tmp_path, work_dir=tmp_path)
