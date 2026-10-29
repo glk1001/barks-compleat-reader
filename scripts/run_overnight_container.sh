@@ -14,7 +14,8 @@
 #   3. runs scripts/containers/in-container.sh there (the stages it runs: its header),
 #      with the data pack mounted read-only at the same paths as here, so the profile's
 #      absolute paths resolve, and the executable built here (barks-reader-linux, when
-#      there is one) for its own smoke test, GUI suite and soak.
+#      there is one) for its own smoke test, GUI suite and soak, run with the tests of
+#      the commit it was built from (its version module's git describe).
 # The container's home keeps its venv, uv's Python and the caches between runs. Results:
 # build/overnight/<stamp>/summary.txt in that clone, one run for the stages and one for
 # the tests of the build from here; the last lines of this script's output say where.
@@ -63,6 +64,27 @@ MOUNTS=(
     "$(dirname "$repo_path")/barks-wiki"
 )
 
+# The commit the executable built here is from: build.sh writes its git describe to the
+# version module just before building, so a version module older than the executable
+# names it. Prints the commit, or says why there is none and fails.
+host_build_commit() {
+    local version_file="src/barks-reader/src/barks_reader/_version.py" version sha
+    if [[ ! -f "$version_file" || "$version_file" -nt "$built_exe" ]]; then
+        echo "run_overnight_container: ${version_file} is missing or newer than the build," \
+            "so its tests are this commit's" >&2
+        return 1
+    fi
+    version="$(sed -n 's/^VERSION = "\(.*\)"$/\1/p' "$version_file")"
+    [[ "$version" != *-dirty ]] || echo "run_overnight_container: the build here is of" \
+        "${version}, with uncommitted changes; its tests are its commit's" >&2
+    if ! sha="$(git rev-parse --verify --quiet "${version%-dirty}^{commit}")"; then
+        echo "run_overnight_container: the build's version ${version:-(none)} names no" \
+            "commit here, so its tests are this commit's" >&2
+        return 1
+    fi
+    echo "$sha"
+}
+
 sha="$(git rev-parse --verify "${commit}^{commit}")"
 echo "run_overnight_container: ${distro}, commit $(git rev-parse --short "$sha") (${commit})"
 [[ "$commit" != HEAD || -z "$(git status --porcelain --untracked-files=no)" ]] \
@@ -97,6 +119,12 @@ in_container=(bash /opt/barks-overnight/in-container.sh)
 if [[ -x "$built_exe" ]]; then
     volumes+=(-v "${built_exe}:${host_build}:ro")
     in_container+=(--host-build "$host_build")
+    # The tests of the build from here are those of the commit it was built from, not the
+    # clone's: a newer commit's GUI tests can expect what the build does not have yet.
+    if host_build_sha="$(host_build_commit)"; then
+        git -C "$clone" fetch --quiet "$REPO_ROOT" "$host_build_sha"
+        in_container+=(--host-build-commit "$host_build_sha")
+    fi
 else
     echo "run_overnight_container: no ${built_exe}, so no smoke test of this machine's build"
 fi

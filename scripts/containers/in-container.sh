@@ -11,12 +11,15 @@
 #      built-app and built-app-soak only, not run_gui_overnight.sh's 3 hours), and the
 #      base GUI suite on the workspace app against the host's GUI timing calibration;
 #   2. with --host-build PATH, the same smoke test, GUI suite and soak against the
-#      executable the host built: the one a user of this distro would download.
+#      executable the host built: the one a user of this distro would download. With
+#      --host-build-commit SHA (the commit it was built from), the clone is checked out
+#      there first, so the tests and the runner are the ones that build was made with.
 #
 # Assumes: the data pack is mounted at the same paths as on the host, and the clone has
-# .env.runtime (the runner copies both in).
+# .env.runtime (the runner copies both in) and, with --host-build-commit, that commit (the
+# runner fetches it). The runner checks the clone out again at the start of the next run.
 #
-# Usage: in-container.sh [--host-build PATH] [run_overnight.sh options]
+# Usage: in-container.sh [--host-build PATH [--host-build-commit SHA]] [run_overnight.sh options]
 #   Any further options go to the first run (e.g. --skip gui-timings).
 set -euo pipefail
 
@@ -30,8 +33,13 @@ export BARKS_OVERNIGHT_GUI_STAGES=built-app,built-app-soak
 VERSION_FILE="src/barks-reader/src/barks_reader/_version.py"
 
 host_build=""
+host_build_commit=""
 if [[ "${1:-}" == --host-build ]]; then
     host_build="${2:?--host-build needs the path of the executable}"
+    shift 2
+fi
+if [[ "${1:-}" == --host-build-commit ]]; then
+    host_build_commit="${2:?--host-build-commit needs a commit}"
     shift 2
 fi
 
@@ -59,6 +67,16 @@ bash scripts/run_overnight.sh --only "$STAGES" "$@" || status=$?
 if [[ -n "$host_build" ]]; then
     echo
     echo "in-container: the host's build on ${PRETTY_NAME}"
+    if [[ -n "$host_build_commit" && "$(git rev-parse HEAD)" != "$host_build_commit" ]]; then
+        git checkout --quiet --detach --force "$host_build_commit"
+        echo "in-container: the host's build is of commit $(git rev-parse --short HEAD);" \
+            "its tests are that commit's"
+        bash scripts/generate-panel-module.sh
+        if ! grep -q BARKS_OVERNIGHT_GUI_STAGES scripts/run_overnight.sh; then
+            echo "in-container: that commit's run_overnight.sh runs every GUI stage; no gui stage"
+            HOST_BUILD_STAGES=smoke
+        fi
+    fi
     bash scripts/run_overnight.sh --only "$HOST_BUILD_STAGES" --app "$host_build" || status=$?
 else
     echo "in-container: no host build given, so no tests of it"
