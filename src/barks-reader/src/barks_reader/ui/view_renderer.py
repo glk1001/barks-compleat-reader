@@ -87,6 +87,7 @@ class ViewRenderer:
         screens.search.is_visible = False
 
         screens.fun_image_view.set_load_image_func(self._load_new_fun_view_image)
+        screens.fun_image_view.set_load_texture_func(applicator.load_fun_view_texture)
 
     # ------------------------------------------------------------------
     # Last-applied image info (used by main_screen for goto-title flow)
@@ -252,3 +253,14 @@ class ViewRenderer:
     def _load_new_fun_view_image(self, image_info: ImageInfo) -> None:
         self._applicator.load_new_fun_view_image(image_info)
         self._pipeline.set_bottom_view_fun_image(image_info)
+
+    def seed_fun_view_second_image(self) -> None:
+        """Give the spread's fun page a second image when its history holds only one.
+
+        The lower tier shows the image before the one on show; at boot, or on a
+        switch to the spread, there is none, so one more is picked for it.
+        """
+        fun_view = self._screens.fun_image_view
+        if not fun_view.needs_a_second_image():
+            return
+        fun_view.seed_previous_image(self._pipeline.pick_fun_view_image())

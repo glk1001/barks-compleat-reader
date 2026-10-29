@@ -371,3 +371,34 @@ def test_a_search_title_with_no_background_image_leaves_the_background(
     deps["pipeline"].set_search_screen_image_for_title.assert_called_with(Titles.ATTIC_ANTICS)
     deps["screens"].search.set_background_image.assert_not_called()
     deps["applicator"].load_search_texture.assert_not_called()
+
+
+class TestTheSpreadsSecondFunImage:
+    def test_the_fun_view_gets_the_applicators_texture_loader(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        _, deps = renderer
+        deps["screens"].fun_image_view.set_load_texture_func.assert_called_once_with(
+            deps["applicator"].load_fun_view_texture
+        )
+
+    def test_a_fun_view_wanting_a_second_image_is_given_one(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        r, deps = renderer
+        fun_view = deps["screens"].fun_image_view
+        fun_view.needs_a_second_image.return_value = True
+        r.seed_fun_view_second_image()
+        deps["pipeline"].pick_fun_view_image.assert_called_once_with()
+        fun_view.seed_previous_image.assert_called_once_with(
+            deps["pipeline"].pick_fun_view_image.return_value
+        )
+
+    def test_otherwise_nothing_is_picked(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        r, deps = renderer
+        deps["screens"].fun_image_view.needs_a_second_image.return_value = False
+        r.seed_fun_view_second_image()
+        deps["pipeline"].pick_fun_view_image.assert_not_called()
+        deps["screens"].fun_image_view.seed_previous_image.assert_not_called()

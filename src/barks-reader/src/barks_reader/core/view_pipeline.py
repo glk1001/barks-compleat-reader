@@ -633,6 +633,14 @@ class ViewPipeline:
         """Override the fun-view image directly (used by the fun-image screen)."""
         self._bottom_view_fun_image_info = image_info
 
+    def pick_fun_view_image(self) -> ImageInfo:
+        """Pick one more fun-view image for the current state, changing nothing here.
+
+        The two-page spread's fun page shows two images; this gives it a second
+        when its history holds only the one picked by the render.
+        """
+        return self._get_next_fun_view_image_info()
+
     def _set_next_bottom_view_fun_image(self) -> None:
         if self._view_state in [
             ViewStates.ON_TITLE_NODE,

@@ -38,3 +38,36 @@ def test_only_the_last_so_many_are_kept() -> None:
         history.add(_image(name))
     assert list(history.images) == [_image("b"), _image("c")]
     assert history.index == 1
+
+
+def test_the_image_before_the_one_on_show_is_known_without_moving() -> None:
+    history = ImageHistory(max_images=20)
+    assert history.previous() is None
+    history.add(_image("a"))
+    assert history.previous() is None
+    history.add(_image("b"))
+    history.add(_image("c"))
+    assert history.previous() == _image("b")
+    assert history.index == 2
+    history.back()
+    assert history.previous() == _image("a")
+    history.back()
+    assert history.previous() is None
+
+
+def test_an_image_added_as_the_oldest_goes_before_the_one_on_show() -> None:
+    history = ImageHistory(max_images=3)
+    assert history.add_oldest(_image("seed")) is True
+    assert history.index == -1  # Nothing on show yet.
+    history.add(_image("a"))
+    assert list(history.images) == [_image("seed"), _image("a")]
+    assert history.index == 1
+    assert history.previous() == _image("seed")
+
+    assert history.add_oldest(_image("older")) is True
+    assert list(history.images) == [_image("older"), _image("seed"), _image("a")]
+    assert history.index == 2
+    # Full: the images shown are kept over one that never was.
+    assert history.add_oldest(_image("dropped")) is False
+    assert list(history.images) == [_image("older"), _image("seed"), _image("a")]
+    assert history.index == 2

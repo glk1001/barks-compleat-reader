@@ -28,6 +28,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
@@ -47,6 +48,7 @@ from .tap_targets import Rect, window_rect
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.core.image import Texture
     from kivy.input import MotionEvent
     from kivy.uix.widget import Widget
 
@@ -56,6 +58,11 @@ FUN_IMAGE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 _MAX_IMAGES_HISTORY = 20
 _DEBUG = False
+
+# The margins a press steps the images from: all of the view but a band at the top,
+# which holds the options and goto buttons, and a sliver at the bottom.
+_TOP_MARGIN_FRAC_OF_HEIGHT = 0.04
+_BOTTOM_MARGIN_FRAC_OF_HEIGHT = 0.98
 
 _GOTO_FOCUS_GROUP = "fun_view_goto_focus"
 _FILTER_FOCUS_GROUP = "fun_view_filter_focus"
@@ -74,6 +81,10 @@ class _FunFocus(Enum):
     MENU = auto()  # inside the open image-type options menu
 
 
+def _title_str(title: Titles | None) -> str:
+    return "" if title is None else ENUM_TO_STR_TITLE[title]
+
+
 class FunImageViewScreen(BoxLayout):
     """Screen for displaying a fun image.
 
@@ -90,6 +101,14 @@ class FunImageViewScreen(BoxLayout):
     image_texture = ObjectProperty(allownone=True)
     image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     image_color = ColorProperty()
+    # The book's layout (core.main_layout). On the two-page spread the view is a page:
+    # the image on show above the one before it in the history, the lower tier, when
+    # the image on show is landscape; a tall one stands alone, whole.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
+    previous_image_texture = ObjectProperty(allownone=True)
+    previous_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
+    previous_title_str = StringProperty()
+    stacked = BooleanProperty(defaultvalue=False)
     fun_options_enabled = BooleanProperty(defaultvalue=False)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=True)
@@ -98,9 +117,15 @@ class FunImageViewScreen(BoxLayout):
         super().__init__(**kwargs)
 
         self._load_image: Callable[[ImageInfo], None] | None = None
+        self._load_texture: Callable[[ImageInfo, Callable[[Texture], None]], None] | None = None
         self._history = ImageHistory(_MAX_IMAGES_HISTORY)
+        # The lower tier's image, so a texture that arrives after another step is dropped.
+        self._wanted_previous: ImageInfo | None = None
         self._navigation = ReaderNavigation(
-            self.MAX_WINDOW_WIDTH, 0.54, 0.98, is_fullscreen=WindowManager.is_fullscreen_now
+            self.MAX_WINDOW_WIDTH,
+            _TOP_MARGIN_FRAC_OF_HEIGHT,
+            _BOTTOM_MARGIN_FRAC_OF_HEIGHT,
+            is_fullscreen=WindowManager.is_fullscreen_now,
         )
 
         # Takes a ``from_keyboard`` keyword so the handler can tell an Enter on the
@@ -132,18 +157,67 @@ class FunImageViewScreen(BoxLayout):
     def set_load_image_func(self, load_image_func: Callable[[ImageInfo], None]) -> None:
         self._load_image = load_image_func
 
-    def on_resized(self, size: tuple[int, int]) -> None:
-        self._navigation.update_regions(size[0], size[1], self.x, self.y)
+    def set_load_texture_func(
+        self, load_texture_func: Callable[[ImageInfo, Callable[[Texture], None]], None]
+    ) -> None:
+        """Take the loader the lower tier's image is decoded with."""
+        self._load_texture = load_texture_func
+
+    def on_size(self, _instance: Widget, size: tuple[float, float]) -> None:
+        """Work the tap margins out again for the view's new size.
+
+        The margins are the view's own: a press lands relative to the view, so its
+        place in the window plays no part (on the spread the view is the right page).
+        """
+        self._navigation.update_regions(round(size[0]), round(size[1]), 0, 0)
+
+    def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
+        self._refresh_lower_tier()
+
+    def on_image_texture(self, _instance: Widget, _texture: Texture | None) -> None:
+        self._update_stacked()
+
+    def on_previous_image_texture(self, _instance: Widget, _texture: Texture | None) -> None:
+        self._update_stacked()
+
+    def _update_stacked(self) -> None:
+        """Stack the two tiers when the view is a page and the image on show is landscape."""
+        texture = self.image_texture
+        self.stacked = (
+            self.layout_mode == MainLayoutMode.SPREAD.value
+            and self.previous_image_texture is not None
+            and texture is not None
+            and texture.width >= texture.height
+        )
+
+    def _lower_tier_height(self) -> int:
+        return round(self.height / 2)
 
     def tap_target_regions(self) -> dict[str, Rect]:
-        """Return the margins that step through the images, for a GUI test to tap."""
+        """Return the margins that step through the images, for a GUI test to tap.
+
+        Stacked, the margins are the upper tier's halves and the lower tier is its own
+        target: a press on it promotes its image.
+        """
         if not self.is_visible or self.fun_options_enabled:
             return {}
-        regions = self._navigation.tap_regions(round(self.width), round(self.height))
+        width, height = round(self.width), round(self.height)
+        regions = self._navigation.tap_regions(width, height)
+        targets: dict[str, tuple[int, int, int, int]] = {}
+        lower_tier_top = self._lower_tier_height() if self.stacked else 0
+        for name in ("left margin", "right margin"):
+            if name not in regions:
+                continue
+            x, y, w, h = regions[name]
+            top = y + h
+            bottom = max(y, lower_tier_top)
+            if top > bottom:
+                targets[name] = (x, bottom, w, top - bottom)
+        if self.stacked:
+            targets["lower tier"] = (0, 0, width, lower_tier_top)
         return {
             name: window_rect(self, self.x + x, self.y + y, w, h)
-            for name, (x, y, w, h) in regions.items()
-            if name in {"left margin", "right margin"}
+            for name, (x, y, w, h) in targets.items()
         }
 
     @override
@@ -174,6 +248,22 @@ class FunImageViewScreen(BoxLayout):
         if self.ids.goto_title_overlay.goto_button.collide_point(touch.x, touch.y):
             return bool(super().on_touch_down(touch))
 
+        if self._step_for_press(x_rel, y_rel):
+            return True
+
+        return bool(super().on_touch_down(touch))
+
+    def _step_for_press(self, x_rel: int, y_rel: int) -> bool:
+        """Step the images for a press at (x_rel, y_rel); False when it is on no margin.
+
+        Stacked, a press on the lower tier promotes its image, a step back; the
+        upper tier's halves step back and forward as the whole view's do.
+        """
+        if self.stacked and y_rel < self._lower_tier_height():
+            logger.debug(log_markers.LOWER_TIER_PRESSED.format(x=x_rel, y=y_rel))
+            self._goto_previous_image()
+            return True
+
         if self._navigation.is_in_left_margin(x_rel, y_rel):
             logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._goto_previous_image()
@@ -184,7 +274,7 @@ class FunImageViewScreen(BoxLayout):
             self._goto_next_image()
             return True
 
-        return bool(super().on_touch_down(touch))
+        return False
 
     def prev_image(self) -> None:
         self._goto_previous_image()
@@ -206,6 +296,53 @@ class FunImageViewScreen(BoxLayout):
         assert self._load_image is not None
         self._load_image(image_info)
         self._set_title(image_info.from_title)
+        self._refresh_lower_tier()
+
+    def needs_a_second_image(self) -> bool:
+        """Whether the spread's lower tier has nothing to show: one image in the history."""
+        return self.layout_mode == MainLayoutMode.SPREAD.value and len(self._history.images) == 1
+
+    def seed_previous_image(self, image_info: ImageInfo) -> None:
+        """Put `image_info` before the images shown, as the lower tier's at boot."""
+        if not self._history.add_oldest(image_info):
+            return
+        assert image_info.filename
+        logger.debug(
+            log_markers.FUN_VIEW_SEEDED.format(
+                filename=image_info.filename.name, title=_title_str(image_info.from_title)
+            )
+        )
+        self._refresh_lower_tier()
+
+    def _refresh_lower_tier(self) -> None:
+        """Show the image before the one on show in the lower tier, on the spread."""
+        on_the_spread = self.layout_mode == MainLayoutMode.SPREAD.value
+        previous = self._history.previous() if on_the_spread else None
+        self._wanted_previous = previous
+        if previous is None:
+            self.previous_image_texture = None
+            self.previous_title_str = ""
+            if on_the_spread:
+                logger.debug(log_markers.FUN_VIEW_LOWER_TIER_EMPTY)
+            return
+
+        assert previous.filename
+        assert self._load_texture is not None
+
+        def apply_texture(texture: Texture) -> None:
+            if self._wanted_previous is not previous:
+                return  # Another step overtook this load.
+            self.previous_image_fit_mode = previous.fit_mode
+            self.previous_title_str = _title_str(previous.from_title)
+            self.previous_image_texture = texture
+            assert previous.filename
+            logger.debug(
+                log_markers.FUN_VIEW_LOWER_TIER.format(
+                    filename=previous.filename.name, title=self.previous_title_str
+                )
+            )
+
+        self._load_texture(previous, apply_texture)
 
     def fun_options_button_pressed(self) -> None:
         self.fun_options_enabled = not self.fun_options_enabled
@@ -227,9 +364,10 @@ class FunImageViewScreen(BoxLayout):
                 filename=image_info.filename.name, title=self.current_title_str
             )
         )
+        self._refresh_lower_tier()
 
     def _set_title(self, title: Titles | None) -> None:
-        self.current_title_str = "" if title is None else ENUM_TO_STR_TITLE[title]
+        self.current_title_str = _title_str(title)
         self.fun_view_from_title = self.current_title_str != ""
         self.goto_title_button_active = self.fun_view_from_title
         logger.debug(log_markers.FUN_VIEW_TITLE_SET.format(title=self.current_title_str))

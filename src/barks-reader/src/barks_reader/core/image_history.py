@@ -28,6 +28,26 @@ class ImageHistory:
         self.images.append(image_info)
         self.index = len(self.images) - 1
 
+    def add_oldest(self, image_info: ImageInfo) -> bool:
+        """Record `image_info` as the oldest, before every image shown; the on-show one stays.
+
+        Returns:
+            Whether it was added: a full history keeps what it has.
+
+        """
+        if len(self.images) == self.images.maxlen:
+            return False
+        self.images.appendleft(image_info)
+        if self.index >= 0:
+            self.index += 1
+        return True
+
+    def previous(self) -> ImageInfo | None:
+        """Return the image before the one on show, without moving, or None at the oldest."""
+        if self.index <= 0:
+            return None
+        return self.images[self.index - 1]
+
     def back(self) -> ImageInfo | None:
         """Step to the image before the one on show and return it, or None at the oldest."""
         if self.index <= 0:

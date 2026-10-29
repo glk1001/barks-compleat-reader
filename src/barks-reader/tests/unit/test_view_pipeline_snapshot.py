@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
@@ -494,3 +495,19 @@ class TestRenderFlags:
 
         assert pipeline._fun_image_themes == {ImageThemes.SPLASHES}  # noqa: SLF001
         assert pipeline.current_request().fun_image_themes == {ImageThemes.SPLASHES}
+
+
+class TestPickFunViewImage:
+    def test_one_more_image_is_picked_and_the_fun_view_keeps_its_own(self) -> None:
+        pipeline = make_pipeline()
+        first = ImageInfo(filename=Path("first.png"), from_title=Titles.ATTIC_ANTICS)
+        second = ImageInfo(filename=Path("second.png"), from_title=Titles.GIFT_LION)
+        selector_of(pipeline).get_random_image.side_effect = [first, second]
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.PRE_INIT))
+        assert snap.fun_view.image_info == first
+
+        assert pipeline.pick_fun_view_image() == second
+
+        # The initial state keeps the fun image it has: the pick changed nothing.
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.INITIAL))
+        assert snap.fun_view.image_info == first

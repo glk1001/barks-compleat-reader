@@ -44,7 +44,6 @@ def hf() -> Generator[HelperFixture, Any]:
             fullscreen_icon="fullscreen.png",
             fullscreen_exit_icon="exit_fullscreen.png",
             main_layout=MagicMock(),
-            fun_image_view_screen=MagicMock(),
             update_fonts=MagicMock(),
             content_aspect_ratio=lambda: COMIC_PAGE_ASPECT_RATIO,
         )
@@ -140,7 +139,7 @@ class TestOnMainLayoutSizeChanged:
 
         hf.helper.on_main_layout_size_changed(MagicMock(), (1920, 1080))
 
-        hf.helper._fun_image_view_screen.on_resized.assert_called_with((1920, 1080))
+        hf.mock_controller.set_fullscreen_size.assert_not_called()
 
     def test_windowed_with_the_host_size_still_fixed_is_a_warning(
         self, hf: HelperFixture, loguru_sink: list[str]

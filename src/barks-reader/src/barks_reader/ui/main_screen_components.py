@@ -124,7 +124,6 @@ def build_main_screen_components(
             reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         ),
         main_layout=host.ids.main_layout,
-        fun_image_view_screen=host._fun_image_view_screen,
         update_fonts=host.update_fonts,
         content_aspect_ratio=host.content_aspect_ratio,
     )

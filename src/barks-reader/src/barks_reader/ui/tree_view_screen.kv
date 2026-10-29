@@ -18,9 +18,14 @@
             halign: "center"
             valign: "middle"
 
+        # The wallpaper under the tree. On the two-page spread it is the left page's,
+        # at full brightness behind the collapsed tree's six rows.
         Image:
             color: root.top_view_image_color
-            opacity: 0.3 if root.main_files_not_loaded else root.top_view_image_opacity
+            opacity:
+                0.3 if root.main_files_not_loaded \
+                else 1.0 if (root.layout_mode == 'spread' and root.tree_collapsed) \
+                else root.top_view_image_opacity
             texture: root.top_view_image_texture
             fit_mode: root.top_view_image_fit_mode
             mipmap: True

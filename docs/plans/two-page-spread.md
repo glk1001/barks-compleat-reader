@@ -2,8 +2,9 @@
 
 <!-- cspell:ignore recto verso colophon -->
 
-> Status: **stage 1 done, 2026-10-29** (the window, the book layout and the bar; the
-> commit is in the git log under this file's name). Designed on the mock at
+> Status: **stages 1 and 2 done, 2026-10-29** (the window, the book layout and the
+> bar; the title page and the fun page; the commits are in the git log under this
+> file's name). Designed on the mock at
 > https://claude.ai/artifact/1oHXzdz9tEi1zLyCH4Jv8u (private: it carries Fantagraphics
 > pages), twelve states, one per screen below. Implementing and testing on the main PC
 > (27-inch 2560x1440). Tick a stage off here, with its commit, as it lands.
@@ -15,8 +16,23 @@
 >   (`ui/settings_fix.py`) overrode Kivy's value handler and never dispatched
 >   on_config_change, so no options setting had ever reached the app live; fixed. An
 >   ini from before the setting kept its saved window geometry only once the boot
->   reader took the missing key as its default; a test holds that.
-> - Stage 2 the title page and the fun page: TODO
+>   reader took the missing key as its default; a test holds that. Found after, on the
+>   real monitor: the comic reader's bar answered the keyboard but not the mouse. The
+>   OS window-drag hit test stayed on the main bar's title area, which on the spread
+>   covers the reader's centred page-wide bar, so SDL took its buttons' taps as window
+>   drags; the comic and document readers and By the Numbers now take the hit test
+>   over as the wiki reader did (`drag_region` on `ReaderScreen`, fixed 2026-10-29).
+> - Stage 2 the title page and the fun page: DONE 2026-10-29. Seen on this PC on a
+>   nested 1920x1080 display: Lost in the Andes and Land of the Pygmy Indians as hero,
+>   picture and colophon (the 841 characters whole, the three-row portal column with
+>   room to spare), the fun page's two tiers at boot (seeded) and after Change Pics,
+>   the collapsed tree over its wallpaper at full brightness. Found on the way: a
+>   texture loader keeps one load in flight, so the lower tier's load through the fun
+>   view's loader dropped the image on show (a white page); it has its own loader now.
+>   And the single page's hidden title picture, given a size hint of 0, kept Kivy's
+>   100 px default height (a box layout keeps a child's own height for a falsy hint)
+>   and pushed the hero band up over the tree's last rows, where it swallowed their
+>   taps (two GUI tap tests caught it); the picture's height is explicit now.
 > - Stage 3 the index and search pages: TODO
 > - Stage 4 the document reader and the wiki: TODO
 > - Stage 5 tests, the matrix variant and the soak: TODO
@@ -200,6 +216,22 @@ count where there is one, before the first multi-file edit of the stage.
   picture (contain); the selector picks two fun panels on boot in the spread.
 - `ui/tree_view_screen.kv`: the idle (collapsed) state shows the wallpaper alone on
   the left page; nothing else changes.
+- As built: the three page screens carry a `layout_mode` property that `MainScreen`
+  sets with its own. The title view's background art shows only while the eye hides
+  the panel; the panel's picture is the same art, contain, 76% wide. The fun view
+  stacks when its image is landscape and the history has one before it (`previous`
+  in `core/image_history.py`), at 0.49 of the page each, the lower dimmed with its
+  title; a tall image stands alone, contain; the tap margins are the view's own
+  (`on_size`), the upper tier's halves when stacked, and the lower tier is a target of
+  its own. On a switch to the spread with one image shown the renderer seeds the
+  history with one more pick (`pick_fun_view_image` on the pipeline, `add_oldest` on
+  the history). The image selector is untouched: a tier of the spread page has the
+  single page's bottom view's shape (the book's two children split it evenly), so the
+  cover band already fits a tier. The collapsed tree (view state INITIAL) is a
+  `tree_collapsed` property the tree view's wallpaper reads.
+- Not seen yet: a tall fun image alone on the page (the fun pool gave none in twenty
+  Change Pics; the rule has a unit test), a press on the lower tier (unit-tested; the
+  GUI suite runs single page until stage 5), the title view's eye in the spread.
 
 ### Stage 3: the index and search pages
 

@@ -323,3 +323,16 @@ def test_a_texture_that_failed_to_load_is_raised() -> None:
         )
 
     assert applied == []
+
+
+class TestLoadFunViewTexture:
+    def test_the_texture_goes_to_the_caller_and_the_fun_view_is_left_alone(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        before = applicator.get_prev_fun_view_image_info()
+        info = ImageInfo(filename=Path("lower_tier.png"), from_title=Titles.GIFT_LION)
+        apply_texture = MagicMock()
+        applicator.load_fun_view_texture(info, apply_texture)
+        apply_texture.assert_called_once()
+        assert applicator.get_prev_fun_view_image_info() == before
+        assert screen_mocks["fun_image_view"].set_last_loaded_image_info.call_count == 0

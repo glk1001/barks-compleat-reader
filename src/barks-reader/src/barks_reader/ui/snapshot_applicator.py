@@ -41,6 +41,9 @@ class SnapshotApplicator:
 
         self._top_view_texture_loader = PanelTextureLoader()
         self._fun_view_texture_loader = PanelTextureLoader()
+        # Its own loader: a loader keeps one load in flight, and the lower tier's
+        # would otherwise drop the image on show (loaded a moment before it).
+        self._fun_view_lower_tier_texture_loader = PanelTextureLoader()
         self._bottom_title_view_texture_loader = PanelTextureLoader()
         self._search_texture_loader = PanelTextureLoader()
 
@@ -136,6 +139,12 @@ class SnapshotApplicator:
     def get_prev_fun_view_image_info(self) -> ImageInfo:
         """Return the last-applied fun view image info."""
         return self._prev_fun_view_image_info
+
+    def load_fun_view_texture(
+        self, image_info: ImageInfo, apply_texture: Callable[[Texture], None]
+    ) -> None:
+        """Load a fun-view texture for the screen's own use (the spread's lower tier)."""
+        self._load_texture(self._fun_view_lower_tier_texture_loader, image_info, apply_texture)
 
     def load_search_texture(
         self,

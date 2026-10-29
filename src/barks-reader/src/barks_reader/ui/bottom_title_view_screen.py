@@ -35,6 +35,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import (
     title_needs_footnote,
@@ -144,6 +145,8 @@ class BottomTitleViewScreen(FloatLayout):
     is_visible = BooleanProperty(defaultvalue=False)
     title_image_texture = ObjectProperty(allownone=True)
     title_image_fit_mode = StringProperty(FIT_MODE_COVER)
+    # The book's layout (core.main_layout): the view is the right page on the spread.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     title_image_color = ColorProperty()
 
     wiki_button_visible = BooleanProperty(defaultvalue=False)

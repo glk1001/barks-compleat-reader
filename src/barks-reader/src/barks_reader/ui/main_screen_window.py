@@ -40,7 +40,6 @@ class MainScreenWindowHelper:
         fullscreen_icon: str,
         fullscreen_exit_icon: str,
         main_layout: Widget,
-        fun_image_view_screen: Widget,
         update_fonts: Callable[[int], None],
         content_aspect_ratio: Callable[[], float],
     ) -> None:
@@ -50,7 +49,6 @@ class MainScreenWindowHelper:
         self._fullscreen_icon = fullscreen_icon
         self._fullscreen_exit_icon = fullscreen_exit_icon
         self._main_layout = main_layout
-        self._fun_image_view_screen = fun_image_view_screen
         self._update_fonts = update_fonts
         # The shape the fullscreen box is held to: a page, or the two-page spread.
         self._content_aspect_ratio = content_aspect_ratio
@@ -134,7 +132,6 @@ class MainScreenWindowHelper:
             f"Main layout size changed: size = {size},"
             f" fullscreen = '{WindowManager.get_screen_mode_now()}'."
         )
-        self._fun_image_view_screen.on_resized(size)
         if not WindowManager.is_fullscreen_now():
             if self._host.size_hint_x is None and self._host.size_hint_y is None:
                 # Only this screen's own windowed transition restores the hints

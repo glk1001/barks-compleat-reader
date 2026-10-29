@@ -47,6 +47,9 @@
             # Interpolate by the panel opacity so the scrim fades IN with the panel
             # rather than snapping on at the end of the fade; the instant peek toggle
             # (opacity set straight to 0/1) still lands on the exact endpoints.
+            # On the two-page spread the art is the page's picture instead (below), and
+            # the background shows only while the panel is hidden to peek at it.
+            opacity: (1 - bottom_view_box.opacity) if root.layout_mode == 'spread' else 1
             color:
                 ( \
                 (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[0], \
@@ -61,6 +64,9 @@
             mipmap: True
 
         # --- Two column layout with single column main title on top ---
+        # On a single page the hero title takes 18% and the two columns the rest; on
+        # the two-page spread the view is a page: hero 12%, the title art as a picture
+        # 38%, and the colophon (the same two columns) 50%, the single page's height.
         BoxLayout:
             # This is the top-level container for all content.
             id: bottom_view_box
@@ -70,7 +76,7 @@
 
             # --- Main Title (Full Width) ---
             FloatLayout:
-                size_hint: 1, 0.18
+                size_hint: 1, (0.12 if root.layout_mode == 'spread' else 0.18)
 
                 # Soft gradient banner behind the title (dark middle, transparent top/bottom edges).
                 canvas.before:
@@ -115,10 +121,24 @@
                     halign: 'left'
                     valign: 'bottom'
 
+            # --- The picture (the spread only): the title art, whole, centred ---
+            # Its height is explicit: a box layout keeps a child's own height for a
+            # size hint of 0 (the Widget default of 100), which pushed the hero band
+            # up out of the view and over the tree's last rows on a single page.
+            Image:
+                id: title_picture
+                texture: root.title_image_texture
+                fit_mode: "contain"
+                mipmap: True
+                size_hint: (0.76 if root.layout_mode == 'spread' else 1), None
+                height: 0.38 * bottom_view_box.height if root.layout_mode == 'spread' else 0
+                pos_hint: {'center_x': 0.5}
+                opacity: 1 if root.layout_mode == 'spread' else 0
+
             # --- Single RelativeLayout for all two column content below the title ---
             # This layout will fill the remaining vertical space.
             RelativeLayout:
-                size_hint: 1, 0.82
+                size_hint: 1, (0.50 if root.layout_mode == 'spread' else 0.82)
 
                 # --- Left Column (as a positioned BoxLayout) ---
                 # This layout holds the text and is forced to the top-left.

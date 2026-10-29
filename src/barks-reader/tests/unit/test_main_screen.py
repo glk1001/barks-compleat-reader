@@ -22,6 +22,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     set_alt_escape_key,
 )
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
@@ -1017,3 +1018,33 @@ class TestAboutBoxFocus:
             main_screen._activate_focused_button()
         open_dots.assert_called_once_with()
         assert main_screen._menu_action_by_keyboard is True
+
+
+class TestTheBooksLayout:
+    """The layout mode reaches the three page screens; the spread seeds the fun page."""
+
+    def test_the_spread_reaches_the_screens_and_seeds_the_fun_view(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.set_layout_mode(MainLayoutMode.SPREAD)
+        for screen in (
+            main_screen._tree_view_screen,
+            main_screen._bottom_title_view_screen,
+            main_screen._fun_image_view_screen,
+        ):
+            assert screen.layout_mode == "spread"
+        main_screen._renderer.seed_fun_view_second_image.assert_called_once()
+        main_screen._window_helper.refit_fullscreen.assert_called_once()
+
+    def test_a_single_page_seeds_nothing(self, main_screen: MainScreen) -> None:
+        main_screen.set_layout_mode(MainLayoutMode.SPREAD)
+        main_screen._renderer.seed_fun_view_second_image.reset_mock()
+        main_screen.set_layout_mode(MainLayoutMode.SINGLE)
+        assert main_screen._fun_image_view_screen.layout_mode == "single"
+        main_screen._renderer.seed_fun_view_second_image.assert_not_called()
+
+    def test_the_tree_knows_when_it_is_collapsed(self, main_screen: MainScreen) -> None:
+        main_screen._on_view_state_changed(ViewStates.INITIAL)
+        assert main_screen._tree_view_screen.tree_collapsed is True
+        main_screen._on_view_state_changed(ViewStates.ON_TITLE_NODE)
+        assert main_screen._tree_view_screen.tree_collapsed is False

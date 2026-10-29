@@ -14,6 +14,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 
 from barks_reader.core.image_selector import FIT_MODE_COVER
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
@@ -40,6 +41,9 @@ class TreeViewScreen(BoxLayout):
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
     top_view_image_color = ColorProperty()
     top_view_image_opacity = NumericProperty(0.0)
+    # The book's layout (core.main_layout), and whether the tree is shut to its top rows.
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
+    tree_collapsed = BooleanProperty(defaultvalue=False)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=False)
 

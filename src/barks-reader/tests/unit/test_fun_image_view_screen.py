@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
@@ -9,7 +10,8 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.fun_image_view_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
+from barks_reader.core import log_markers
+from barks_reader.core.image_selector import FIT_MODE_CONTAIN, FIT_MODE_COVER, ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -19,6 +21,8 @@ from barks_reader.core.keys import (
     KEY_SPACE,
     KEY_UP,
 )
+from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui.fun_image_view_screen import FunImageViewScreen, _FunFocus
 from kivy.uix.boxlayout import BoxLayout
 
@@ -604,3 +608,186 @@ def test_an_inactive_arrow_is_given_no_focus_ring(
         screen._draw_nav_focus()
     draw.assert_not_called()
     assert clear.call_count == 2  # noqa: PLR2004
+
+
+def _info(name: str, title: Titles = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) -> ImageInfo:
+    return ImageInfo(Path(name), title, FIT_MODE_COVER)
+
+
+def _texture(width: int, height: int) -> MagicMock:
+    return MagicMock(width=width, height=height)
+
+
+class TestTheSpreadsTwoTiers:
+    """On the two-page spread the view stacks the image on show over the one before it."""
+
+    @staticmethod
+    def _on_the_spread(screen: FunImageViewScreen) -> MagicMock:
+        # The fixture skips Widget.__init__, which binds the on_<property> handlers,
+        # so the layout mode's handler runs by hand where a test needs it.
+        screen.layout_mode = MainLayoutMode.SPREAD.value
+        loader = MagicMock()
+        screen.set_load_texture_func(loader)
+        screen.set_load_image_func(MagicMock())
+        return loader
+
+    def test_on_a_single_page_the_lower_tier_stays_empty(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        loader = MagicMock()
+        screen.set_load_texture_func(loader)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        screen.set_last_loaded_image_info(_info("b.png"))
+        loader.assert_not_called()
+        assert screen.previous_image_texture is None
+
+    def test_the_lower_tier_shows_the_image_before_the_one_on_show(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        loader.assert_not_called()  # Nothing before the first.
+        assert any(log_markers.FUN_VIEW_LOWER_TIER_EMPTY in line for line in loguru_sink)
+
+        screen.set_last_loaded_image_info(_info("b.png", Titles.GIFT_LION))
+        (previous, apply_texture), _ = loader.call_args
+        assert previous == _info("a.png")
+        texture = _texture(400, 300)
+        apply_texture(texture)
+        assert screen.previous_image_texture is texture
+        assert screen.previous_image_fit_mode == FIT_MODE_COVER
+        assert screen.previous_title_str == "Donald Duck Finds Pirate Gold"
+        marker = pattern(
+            log_markers.FUN_VIEW_LOWER_TIER,
+            filename="a.png",
+            title="Donald Duck Finds Pirate Gold",
+        )
+        assert any(re.search(marker, line) for line in loguru_sink)
+
+    def test_a_texture_that_arrives_after_another_step_is_dropped(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        screen.set_last_loaded_image_info(_info("b.png"))
+        screen.set_last_loaded_image_info(_info("c.png"))
+        (_, apply_a), _ = loader.call_args_list[0]
+        (wanted, apply_b), _ = loader.call_args_list[1]
+        assert wanted == _info("b.png")
+        late, timely = _texture(4, 3), _texture(4, 3)
+        apply_a(late)
+        assert screen.previous_image_texture is None
+        apply_b(timely)
+        assert screen.previous_image_texture is timely
+
+    def test_stepping_back_moves_the_lower_tier_with_it(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        for name in ("a.png", "b.png", "c.png"):
+            screen.set_last_loaded_image_info(_info(name))
+        loader.reset_mock()
+        screen.prev_image()  # c -> b on show; a before it.
+        (previous, _), _ = loader.call_args
+        assert previous == _info("a.png")
+        loader.reset_mock()
+        screen.prev_image()  # a on show; nothing before it.
+        loader.assert_not_called()
+        assert screen.previous_image_texture is None
+
+    @pytest.mark.parametrize(
+        ("layout", "with_previous", "size", "expected"),
+        [
+            (MainLayoutMode.SPREAD, True, (400, 300), True),
+            (MainLayoutMode.SPREAD, True, (300, 300), True),
+            (MainLayoutMode.SPREAD, True, (300, 400), False),  # A tall image stands alone.
+            (MainLayoutMode.SPREAD, False, (400, 300), False),
+            (MainLayoutMode.SINGLE, True, (400, 300), False),
+        ],
+    )
+    def test_stacked_on_the_spread_with_a_landscape_image_over_a_previous_one(
+        self,
+        screen_setup: _Setup,
+        layout: MainLayoutMode,
+        with_previous: bool,
+        size: tuple[int, int],
+        expected: bool,
+    ) -> None:
+        screen, _, _ = screen_setup
+        screen.layout_mode = layout.value
+        screen.image_texture = _texture(*size)
+        screen.previous_image_texture = _texture(4, 3) if with_previous else None
+        screen.on_image_texture(screen, screen.image_texture)
+        assert screen.stacked is expected
+
+    def test_a_press_on_the_lower_tier_promotes_its_image(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        screen.stacked = True
+        nav.is_in_left_margin.return_value = False
+        nav.is_in_right_margin.return_value = True
+        with (
+            patch.object(screen, "_goto_previous_image") as back,
+            patch.object(screen, "_goto_next_image") as forward,
+        ):
+            assert screen.on_touch_down(MagicMock(x=70, y=20)) is True  # The lower tier.
+            back.assert_called_once()
+            forward.assert_not_called()
+            assert screen.on_touch_down(MagicMock(x=70, y=80)) is True  # The upper tier.
+            forward.assert_called_once()
+
+    def test_stacked_the_tap_targets_are_the_upper_halves_and_the_lower_tier(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        screen.stacked = True
+        nav.tap_regions.return_value = {
+            "left margin": (0, 2, 50, 94),
+            "right margin": (50, 2, 50, 94),
+            "top margin": (0, 96, 100, 4),
+        }
+        with patch.object(
+            barks_reader.ui.fun_image_view_screen,
+            "window_rect",
+            side_effect=lambda _widget, *rect: rect,
+        ):
+            regions = screen.tap_target_regions()
+        assert regions == {
+            "left margin": (0, 50, 50, 46),
+            "right margin": (50, 50, 50, 46),
+            "lower tier": (0, 0, 100, 50),
+        }
+
+    def test_a_second_image_is_wanted_on_the_spread_with_one_shown(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        self._on_the_spread(screen)
+        assert not screen.needs_a_second_image()
+        screen.set_last_loaded_image_info(_info("a.png"))
+        assert screen.needs_a_second_image()
+        screen.set_last_loaded_image_info(_info("b.png"))
+        assert not screen.needs_a_second_image()
+        screen.layout_mode = MainLayoutMode.SINGLE.value
+        screen._history.back()
+        assert not screen.needs_a_second_image()
+
+    def test_a_seed_goes_before_the_image_on_show_into_the_lower_tier(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        screen.seed_previous_image(_info("seed.png", Titles.GIFT_LION))
+        assert [info.filename.name for info in screen._history.images] == ["seed.png", "a.png"]
+        assert screen._history.index == 1
+        (previous, _), _ = loader.call_args
+        assert previous == _info("seed.png", Titles.GIFT_LION)
+        marker = pattern(log_markers.FUN_VIEW_SEEDED, filename="seed.png", title="Gift Lion")
+        assert any(re.search(marker, line) for line in loguru_sink)
+
+    def test_the_tap_margins_come_from_the_views_own_size(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.on_size(screen, (300.0, 200.0))
+        nav.update_regions.assert_called_once_with(300, 200, 0, 0)

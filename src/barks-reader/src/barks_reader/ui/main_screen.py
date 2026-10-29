@@ -272,6 +272,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
         logger.debug(f"Main screen layout: {self.layout_mode} -> {mode.value}.")
         self.layout_mode = mode.value
+        self._tree_view_screen.layout_mode = mode.value
+        self._bottom_title_view_screen.layout_mode = mode.value
+        self._fun_image_view_screen.layout_mode = mode.value
+        if mode == MainLayoutMode.SPREAD:
+            self._renderer.seed_fun_view_second_image()
         # Windowed, the window's own refit resizes the book; fullscreen, the box is ours.
         self._window_helper.refit_fullscreen()
 
@@ -691,6 +696,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
+        self._tree_view_screen.tree_collapsed = view_state == ViewStates.INITIAL
         self._nav.on_bottom_screen_visibility_changed()
 
     def on_action_bar_go_back(self) -> None:
