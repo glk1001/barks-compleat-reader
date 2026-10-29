@@ -13,14 +13,18 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.ui import settings_fix
+from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.settings_fix import (
     QuietFileSystem,
     SettingLongPathPopup,
     SettingOptionsWithValue,
 )
+from kivy.lang import Builder
 from kivy.uix import filechooser
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
+from kivy.uix.settings import InterfaceWithNoMenu
 from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
@@ -260,6 +264,43 @@ class TestSettingsThemeKv:
         kv = builder.load_string.call_args.args[0]
         assert "__SEL_RGBA__" not in kv
         assert "__TITLE_BAR_H__" not in kv
+
+
+class TestSettingsScrollbar:
+    """The panel's title bar scrolls with its rows; the scrollbar must not run over it."""
+
+    KV_FILE = "test_settings_fix-themed.kv"
+
+    @pytest.fixture
+    def pane(self) -> Generator[InterfaceWithNoMenu]:
+        Builder.load_string(settings_fix._themed_settings_kv(), filename=self.KV_FILE)
+        try:
+            pane = InterfaceWithNoMenu(size_hint=(None, None), size=(800, 600), pos=(0, 0))
+            rows = GridLayout(cols=1, size_hint_y=None, height=3000)
+            pane.add_widget(rows)
+            pane.container.height = rows.height  # what a layout pass would settle
+            yield pane
+        finally:
+            Builder.unload_file(self.KV_FILE)
+
+    @staticmethod
+    def _track_top(pane: InterfaceWithNoMenu) -> float:
+        return pane.y + pane._handle_y_size[1] / pane.vbar[1]
+
+    def test_the_bar_stops_below_the_title_bar(self, pane: InterfaceWithNoMenu) -> None:
+        title_bottom = pane.top - (ACTION_BAR_SIZE_Y + 5)
+        assert pane.vbar[1] < 1  # there is something to scroll
+        assert pane._handle_y_pos[1] + pane._handle_y_size[1] == pytest.approx(title_bottom)
+        assert self._track_top(pane) == pytest.approx(title_bottom)
+
+    def test_it_still_does_after_a_scroll_and_a_resize(self, pane: InterfaceWithNoMenu) -> None:
+        pane.scroll_y = 0.5
+        pane.size = (1000, 700)
+        pane.bar_margin = 3  # <ScrollView>'s own bindings would have taken the bar back
+
+        assert pane._handle_y_pos[1] + pane._handle_y_size[1] < pane.top - ACTION_BAR_SIZE_Y
+        assert self._track_top(pane) == pytest.approx(pane.top - (ACTION_BAR_SIZE_Y + 5))
+        assert pane._handle_y_pos[0] == pytest.approx(pane.right - pane.bar_width - 3)
 
 
 def test_an_empty_folder_has_nothing_to_highlight(tmp_path: Path) -> None:

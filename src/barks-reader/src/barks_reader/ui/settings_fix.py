@@ -291,15 +291,45 @@ KV_SETTINGS_OVERRIDE = """
 
 # The settings panel's scroll pane (InterfaceWithNoMenu is a ContentPanel, a
 # ScrollView) wears the shared scroll-pane look. ContentPanel is Kivy's own class,
-# so this mirrors barks_kivy_ui.scrolling rather than inheriting it; Kivy's default
-# <ContentPanel> rule sets none of these, so this additive rule has no conflicts.
-<ContentPanel>:
+# so this mirrors barks_kivy_ui.scrolling rather than inheriting it.
+# The panel's title bar is the top row of the scrolled content, so Kivy's
+# <ScrollView> bar, drawn down the pane's full height, ran over it and under the
+# corner X. The bar's track (and its drag area) here starts below the title bar:
+# its height plus the panel's top padding of 5. An additive rule would not do,
+# since <ScrollView>'s own handle bindings stay live and win again on a resize,
+# so this replaces both Kivy rules (the ``-`` prefix discards them); the rest is
+# Kivy's <ContentPanel> container and the vertical half of its <ScrollView> bar
+# (this pane does not scroll sideways).
+<-ContentPanel>:
+    do_scroll_x: False
+    container: content
     scroll_type: ['bars', 'content']
     always_overscroll: False
     effect_cls: 'ScrollEffect'
     bar_width: dp(12)
     bar_color: __SCROLLBAR_RGBA__
     bar_inactive_color: __SCROLLBAR_INACTIVE_RGBA__
+    _bar_track_h: max(0, self.height - (__TITLE_BAR_H__ + 5))
+    _handle_y_pos:
+        (
+        (self.right - self.bar_width - self.bar_margin) if self.bar_pos_y == 'right'
+        else (self.x + self.bar_margin),
+        self.y + self._bar_track_h * self.vbar[0]
+        )
+    _handle_y_size: min(self.bar_width, self.width), self._bar_track_h * self.vbar[1]
+    canvas.after:
+        Color:
+            rgba:
+                (self._bar_color if (self.do_scroll_y and self.viewport_size[1] > self.height)
+                else [0, 0, 0, 0])
+        Rectangle:
+            pos: root._handle_y_pos or (0, 0)
+            size: root._handle_y_size or (0, 0)
+    GridLayout:
+        id: content
+        cols: 1
+        size_hint_y: None
+        height: self.minimum_height
 """
 
 
