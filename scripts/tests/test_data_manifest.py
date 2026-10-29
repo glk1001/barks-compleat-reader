@@ -182,6 +182,8 @@ class TestMain:
     def _main(self, tmp_path: Path, data: Path, *args: str) -> int:
         with (
             patch.object(data_manifest, "MANIFEST_PATH", tmp_path / "data-manifest.json"),
+            # The real record of the published pack is beside the script: never read it here.
+            patch.object(data_manifest, "PACK_MANIFEST_PATH", tmp_path / "data-pack-manifest.json"),
             patch.object(data_manifest, "CACHE_PATH", tmp_path / "build" / "cache.json"),
             patch.object(data_manifest, "REPO_ROOT", tmp_path),
             patch.object(data_manifest, "data_roots", return_value={"Indexes": data}),
