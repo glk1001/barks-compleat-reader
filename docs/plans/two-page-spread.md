@@ -33,6 +33,11 @@
 >   nothing told; opening the settings reset the layout, the theme and the log level
 >   to their defaults. The schema carries no value now, and a GUI test holds the ini
 >   across an open and close (fixed 2026-10-29).
+>   And on the spread the settings' X could not be tapped: the main bar's title area,
+>   the window-drag region, runs under the centred panel's corner, so SDL took the
+>   tap as a drag (on a single page the X sits over the bar's buttons). The panel
+>   takes the drag region over while it is up, its title bar short of the X, and
+>   hands the bar's back on close, as the full-window screens do (fixed 2026-10-29).
 >   And decision 14's half for the comic reader: its bar was a page wide whatever
 >   the mode, so over the pair in the spread window its items sat in the middle; in
 >   double-page mode the bar is now as wide as the pair, refitted at a comic's load

@@ -70,6 +70,7 @@ KV_SETTINGS_OVERRIDE = """
 <PinnedTitleSettingsInterface>:
     orientation: 'vertical'
     content: content
+    drag_region: drag_region
     Label:
         id: title_bar
         size_hint_y: None
@@ -84,6 +85,14 @@ KV_SETTINGS_OVERRIDE = """
             Rectangle:
                 size: self.width, 1
                 pos: self.x, self.y
+        # The strip the window drags by while the settings are up: the title bar
+        # short of the close X that main_screen sits at its right end. A Label lays
+        # its children out nowhere, so the strip follows the bar by hand.
+        Widget:
+            id: drag_region
+            size_hint: None, None
+            pos: title_bar.pos
+            size: max(0, title_bar.width - __TITLE_BAR_H__ - dp(14)), title_bar.height
     ContentPanel:
         id: content
 
@@ -402,6 +411,9 @@ class PinnedTitleSettingsInterface(BoxLayout):
 
     title = StringProperty("")
     content = ObjectProperty(None)  # the ContentPanel, as Kivy's menu interfaces name it
+    # The title bar short of the close X: the OS window-drag region while the
+    # settings are up (main_screen hands it over and back).
+    drag_region = ObjectProperty(None)
 
     def add_panel(self, panel: Widget, name: str, uid: int) -> None:
         """Keep `panel`, showing it and its name in the title bar if it is the first.

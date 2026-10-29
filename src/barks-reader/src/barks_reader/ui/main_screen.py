@@ -53,7 +53,7 @@ from barks_reader.core.window_minimum import (
 from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .main_screen_components import build_main_screen_components
-from .platform_window_utils import WindowManager
+from .platform_window_utils import WindowManager, set_titlebar_drag_region
 from .popup_widgets import open_confirm_popup, open_message_popup
 from .reader_keyboard_nav import (
     MENU_FOCUS_HIGHLIGHT_GROUP,
@@ -635,6 +635,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._settings_nav.focus_first()
         settings.bind(on_close=self._on_settings_closed)
         self._add_settings_close_button(app_window, settings)
+        # The panel takes the OS window-drag hit test over while it is up, as the
+        # full-window screens do: on the spread the main bar's title area runs under
+        # the centred panel's X, where a tap was a window drag (2026-10-29). Its
+        # region is its title bar short of the X.
+        set_titlebar_drag_region(settings.interface.drag_region)
 
         return True
 
@@ -692,6 +697,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Both ways out of the settings panel (its close button, or Escape) funnel
         # here; Kivy's close_settings() itself announces nothing.
         self._remove_settings_close_button()
+        set_titlebar_drag_region(self.ids.action_bar.drag_region)
         self._settings_x_focused = False
         if self._settings_nav is not None:
             self._settings_nav.reset()

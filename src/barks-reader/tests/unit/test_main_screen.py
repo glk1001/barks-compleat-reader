@@ -876,6 +876,21 @@ class TestSmallScreenWarning:
         popup.assert_not_called()
 
 
+def test_the_settings_take_the_window_drag_and_hand_it_back(main_screen: MainScreen) -> None:
+    """Their X sits under the main bar's title area on the spread, where a tap was a drag."""
+    settings = MagicMock()
+    app_window = MagicMock(children=[])
+    with (
+        patch.object(barks_reader.ui.main_screen, "set_titlebar_drag_region") as drag,
+        patch.object(barks_reader.ui.main_screen.SettingsKeyboardNav, "focus_first"),
+        patch.object(main_screen, "_add_settings_close_button"),
+    ):
+        main_screen.display_settings(app_window, settings)
+        drag.assert_called_once_with(settings.interface.drag_region)
+        main_screen._teardown_settings()
+    assert drag.call_args_list[-1].args == (main_screen.ids.action_bar.drag_region,)
+
+
 def test_settings_open_with_their_first_item_focused(main_screen: MainScreen) -> None:
     """Otherwise the first item is focused invisibly and the first Down lands on the second."""
     settings = MagicMock()
