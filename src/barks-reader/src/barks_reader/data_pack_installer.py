@@ -91,12 +91,14 @@ def main() -> int:
 
 def _install(config_info: ConfigInfo, exe_dir: Path) -> DataPackInfo:
     reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
-    pack_dir = data_pack.pack_dir_for_update(exe_dir, is_compiled=IS_COMPILED, env=os.environ)
-    check = data_pack.find_update(pack_dir, data_pack.read_installed(reader_files))
+    check = data_pack.look_for_update(
+        exe_dir, reader_files, is_compiled=IS_COMPILED, env=os.environ
+    )
     if check.status is not UpdateStatus.UPDATE_AVAILABLE or check.available is None:
         msg = "There is no newer data pack to install."
         raise InstallerDataError(msg, check.no_update_message())
     available = check.available
+    pack_dir = check.pack_dir
     assert pack_dir is not None
     logger.info(f'Installing {available.display()} from "{pack_dir}" over "{reader_files}".')
 
@@ -118,7 +120,19 @@ def _install(config_info: ConfigInfo, exe_dir: Path) -> DataPackInfo:
 
     try:
         old_dir = data_pack.swap_reader_files(reader_files)
-    except PermissionError as exc:
+    except data_pack.ReaderFilesStrandedError as exc:
+        shutil.rmtree(new_dir, ignore_errors=True)
+        msg = (
+            f"The new data could not be moved in, and the installed data could not be put"
+            f' back: it is in [b]"{exc.old_dir}"[/b].'
+        )
+        details = (
+            f"{exc}\n\nClose the Barks Reader, and any window showing those folders, and"
+            f' run the update again: it puts "{exc.old_dir.name}" back first. Or rename'
+            f' that folder to "{reader_files.name}" yourself.'
+        )
+        raise InstallerDataError(msg, details) from exc
+    except OSError as exc:
         shutil.rmtree(new_dir, ignore_errors=True)
         msg = (
             f'The folder [b]"{reader_files}"[/b] is in use, so the new data could not be moved in.'

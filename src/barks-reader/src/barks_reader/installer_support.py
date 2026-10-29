@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
@@ -53,9 +54,10 @@ def extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> in
             # Ensure the parent directory exists.
             target_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Extract the file by reading from the zip and writing to the new path.
+            # Stream the member out: the panels zip alone is over a gigabyte, and reading
+            # it whole would need that much memory on the user's machine.
             with installer_files.open(member) as source, target_path.open("wb") as target:
-                target.write(source.read())
+                shutil.copyfileobj(source, target)
 
         if num_extracted == 0:
             top_level = sorted({m.filename.split("/")[0] for m in installer_files.infolist()})

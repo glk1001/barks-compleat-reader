@@ -20,11 +20,6 @@ from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
 
-_ZIP_CONFIGS_SUBDIR = ZIP_CONFIGS_SUBDIR
-_ZIP_READER_FILES_SUBDIR = ZIP_READER_FILES_SUBDIR
-# The data packs' names (and why they are not ".zip"): core/data_pack.py.
-_ZIP_DATA_INSTALLER_FILES = DATA_PACK_FILE_NAMES
-
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 
 _CONFIG_UNREADABLE_DETAILS = (
@@ -111,7 +106,7 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
     )
 
     minimal_config_options = get_minimal_config_options(config_info)
-    data_zips = [Path(p) for p in _ZIP_DATA_INSTALLER_FILES]
+    data_zips = [Path(p) for p in DATA_PACK_FILE_NAMES]
 
     logger.debug("Preparing to show installation success message.")
 
@@ -146,7 +141,8 @@ def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
 
 def _check_installer_zips() -> list[Path]:
     installer_zip_paths = []
-    for zip_file in _ZIP_DATA_INSTALLER_FILES:
+    # The data packs' names (and why they are not ".zip"): core/data_pack.py.
+    for zip_file in DATA_PACK_FILE_NAMES:
         installer_zip = _barks_reader_exe_dir / zip_file
 
         logger.info(f'Checking existence of installer zip: "{installer_zip}".')
@@ -170,12 +166,12 @@ def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> 
     logger.info(
         f'Installing Barks Reader and Kivy configs to directory "{config_info.app_config_dir}".'
     )
-    extract_subdir(installer_zip_paths[0], _ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
+    extract_subdir(installer_zip_paths[0], ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
 
-    reader_files_dir = config_info.app_data_dir / _ZIP_READER_FILES_SUBDIR
+    reader_files_dir = config_info.app_data_dir / ZIP_READER_FILES_SUBDIR
     logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
-    extract_subdir(installer_zip_paths[0], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
-    extract_subdir(installer_zip_paths[1], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    extract_subdir(installer_zip_paths[0], ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    extract_subdir(installer_zip_paths[1], ZIP_READER_FILES_SUBDIR, reader_files_dir)
 
     return _configure_fanta_volumes_for_platform(config_info)
 

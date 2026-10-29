@@ -52,18 +52,23 @@ class TestAppInitializer:
             lambda_func(0)
             mock_tree_builder.build_main_screen_tree.assert_called_once()
 
-    def test_on_tree_build_finished(self, app_initializer: AppInitializer) -> None:
-        mock_callback = MagicMock()
+    def test_on_tree_build_finished_runs_the_callback_after_the_post_build_setup(
+        self, app_initializer: AppInitializer
+    ) -> None:
+        # The callback's popup (the data pack offer) must come after the setup's
+        # no-library notice, or the notice sits on top while the offer takes the keys.
+        order: list[str] = []
         # Manually set the callback as start() would
-        app_initializer._on_tree_build_finished = mock_callback
+        app_initializer._on_tree_build_finished = lambda: order.append("callback")
 
         with patch.object(
-            app_initializer, AppInitializer._post_build_setup.__name__
-        ) as mock_post_setup:
+            app_initializer,
+            AppInitializer._post_build_setup.__name__,
+            side_effect=lambda: order.append("post build setup"),
+        ):
             app_initializer.on_tree_build_finished(MagicMock())
 
-            mock_callback.assert_called_once()
-            mock_post_setup.assert_called_once()
+        assert order == ["post build setup", "callback"]
 
     def test_post_build_setup_prebuilt(
         self,

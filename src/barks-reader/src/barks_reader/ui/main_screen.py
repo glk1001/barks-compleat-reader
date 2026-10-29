@@ -718,11 +718,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 there is nothing to install; from the dots menu it says why not.
 
         """
-        pack_dir = data_pack.pack_dir_for_update(
-            get_app_exe_dir(), is_compiled=IS_COMPILED, env=os.environ
+        check = data_pack.look_for_update(
+            get_app_exe_dir(),
+            self._reader_settings.reader_files_dir,
+            is_compiled=IS_COMPILED,
+            env=os.environ,
         )
-        installed = data_pack.read_installed(self._reader_settings.reader_files_dir)
-        check = data_pack.find_update(pack_dir, installed)
         logger.info(
             log_markers.DATA_PACK_CHECK.format(
                 status=check.status.value, dir=check.pack_dir or "nowhere"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
@@ -160,23 +161,80 @@ class TestMain:
         assert not update.reader_files.with_name("Reader Files.new").exists()
         update.success.assert_not_called()
 
+    @staticmethod
+    def _swap_with(rename: Any, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: ANN401
+        """Run the real swap, with `rename` in place of the OS's and no waiting."""
+        monkeypatch.setattr(
+            data_pack_installer.data_pack,
+            "swap_reader_files",
+            partial(data_pack.swap_reader_files, attempts=2, sleep=lambda _s: None, rename=rename),
+        )
+
     def test_a_folder_in_use_is_reported_and_the_data_put_back(
         self, update: _Update, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         update.install_old_data()
         update.write_packs()
 
-        def refuse(*_args: Any, **_kwargs: Any) -> None:  # noqa: ANN401
-            raise PermissionError(13, "in use")
+        def rename(source: Path, target: Path) -> None:
+            if source.name.endswith(".new"):
+                raise PermissionError(13, "in use")
+            source.rename(target)
 
-        monkeypatch.setattr(data_pack_installer.data_pack, "swap_reader_files", refuse)
+        self._swap_with(rename, monkeypatch)
 
         with pytest.raises(SystemExit):
             data_pack_installer.main()
 
         assert "is in use" in update.error_message()
+        assert "left as it was" in update.error_details()
         assert (update.reader_files / "Indexes" / "old.seg").exists()
         assert not update.reader_files.with_name("Reader Files.new").exists()
+        assert not update.reader_files.with_name("Reader Files.old").exists()
+        update.success.assert_not_called()
+
+    def test_data_that_cannot_be_put_back_is_reported_where_it_is(
+        self, update: _Update, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        update.install_old_data()
+        update.write_packs()
+        old = update.reader_files.with_name("Reader Files.old")
+
+        def rename(source: Path, target: Path) -> None:
+            if target == update.reader_files:
+                raise PermissionError(13, "in use")
+            source.rename(target)
+
+        self._swap_with(rename, monkeypatch)
+
+        with pytest.raises(SystemExit):
+            data_pack_installer.main()
+
+        assert "could not be put back" in update.error_message()
+        assert f'"{old}"' in update.error_message()
+        assert 'run the update again: it puts "Reader Files.old" back first' in (
+            update.error_details()
+        )
+        assert not update.reader_files.exists()
+        assert (old / "Indexes" / "old.seg").exists()
+        assert not update.reader_files.with_name("Reader Files.new").exists()
+        update.success.assert_not_called()
+
+    def test_data_stranded_by_a_failed_update_is_put_back_before_the_next(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs(panels=b"truncated!")
+        old = update.reader_files.with_name("Reader Files.old")
+        update.reader_files.rename(old)
+
+        with pytest.raises(SystemExit):
+            data_pack_installer.main()
+
+        # The packs were bad, and the stranded data is back where the reader looks.
+        assert "not what its packs promised" in update.error_message()
+        assert (update.reader_files / "Indexes" / "old.seg").exists()
+        assert not old.exists()
 
     def test_leftovers_of_an_interrupted_update_are_cleared_first(self, update: _Update) -> None:
         update.install_old_data()

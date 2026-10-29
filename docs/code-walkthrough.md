@@ -993,14 +993,15 @@ always pulled in via `from .adapters import …`.
 - **Kivy UI** — `ui/reader_settings_buildable.py` (`BuildableReaderSettings`
   subclasses the pure model, adding `build_config`/`build_settings`/validators)
   plus custom widgets and on-brand styling in `ui/settings_fix.py`. The panel is
-  a menu-less `SettingsWithNoMenu` (`ui/barks_reader_app.py`) — no top
-  spinner/title bar (it just repeated the window title); it closes with **Escape**
+  menu-less: its interface is `PinnedTitleSettingsInterface` (`ui/settings_fix.py`),
+  the one `ContentPanel` scrolling under a title bar that stays put — no
+  spinner/sidebar menu (there is one panel); it closes with **Escape**
   or an overlaid corner `SettingsCloseButton` added in
-  `MainScreen.display_settings` (`ui/main_screen.py`). Because the no-menu
-  interface *is* the `ContentPanel` (no `.content` wrapper, no `.menu`), the
+  `MainScreen.display_settings` (`ui/main_screen.py`). The interface holds the
+  `ContentPanel` as `.content`, as Kivy's menu interfaces do, which is where the
   keyboard navigator (`ui/settings_keyboard_nav.py`) and the save-time panel
-  refresh (`reader_settings_buildable._update_settings_panel`) both fall back to
-  the interface itself, and `build_settings` no longer sizes a menu bar.
+  refresh (`reader_settings_buildable._update_settings_panel`) look for it (a bare
+  `ContentPanel` used as the interface is itself); `build_settings` sizes no menu bar.
 - **On-brand theming** — `settings_fix.py` styles the whole panel from the active
   palette. `KV_SETTINGS_OVERRIDE` carries color tokens (`__SEL_RGBA__`,
   `__HEADING_RGBA__`, `__SWITCH_ON_RGBA__`, …) that `install_settings_theme_kv()`

@@ -137,8 +137,8 @@ class SettingsKeyboardNav:
         interface = getattr(self._settings, "interface", None)
         if interface is None:
             return None
-        # InterfaceWithSpinner/Sidebar wrap a ContentPanel in `.content`;
-        # InterfaceWithNoMenu *is* the ContentPanel, so fall back to itself.
+        # Kivy's menu interfaces and PinnedTitleSettingsInterface hold the ContentPanel
+        # in `.content`; a bare ContentPanel used as the interface is itself.
         content = getattr(interface, "content", None) or interface
         current = getattr(content, "current_panel", None)
         if current is not None:

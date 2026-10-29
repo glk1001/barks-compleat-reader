@@ -16,9 +16,12 @@ from barks_reader.core.data_pack import (
     DATA_PACK_FILE_NAMES,
     PACK_MEMBER,
     DataPackInfo,
+    PackUnreadableError,
+    ReaderFilesStrandedError,
     UpdateStatus,
     find_update,
     installed_version_text,
+    look_for_update,
     pack_dir_for_update,
     read_from_pack,
     read_installed,
@@ -110,11 +113,28 @@ class TestReading:
 
         assert read_from_pack(pack) == _info()
 
-    def test_a_pack_without_the_file_or_not_a_zip_is_unversioned(self, tmp_path: Path) -> None:
+    def test_a_pack_without_the_file_is_unversioned(self, tmp_path: Path) -> None:
         assert read_from_pack(_write_pack(tmp_path / "old.barkspack", None)) is None
+
+    def test_a_pack_that_cannot_be_read_is_not_mistaken_for_an_old_one(
+        self, tmp_path: Path
+    ) -> None:
         (tmp_path / "junk.barkspack").write_text("not a zip")
-        assert read_from_pack(tmp_path / "junk.barkspack") is None
-        assert read_from_pack(tmp_path / "absent.barkspack") is None
+        with pytest.raises(PackUnreadableError, match=r'junk\.barkspack" could not be read: File'):
+            read_from_pack(tmp_path / "junk.barkspack")
+        with pytest.raises(PackUnreadableError, match="absent"):
+            read_from_pack(tmp_path / "absent.barkspack")
+
+        good = _write_pack(tmp_path / "good.barkspack", _info())
+        truncated = tmp_path / "truncated.barkspack"
+        truncated.write_bytes(good.read_bytes()[: good.stat().st_size // 2])
+        with pytest.raises(PackUnreadableError, match="truncated"):
+            read_from_pack(truncated)
+
+        with ZipFile(tmp_path / "broken.barkspack", "w") as pack:
+            pack.writestr(PACK_MEMBER, "{}")
+        with pytest.raises(PackUnreadableError, match="not a data pack version file"):
+            read_from_pack(tmp_path / "broken.barkspack")
 
 
 class TestPackDir:
@@ -126,6 +146,22 @@ class TestPackDir:
 
     def test_a_standalone_build_looks_beside_the_executable(self) -> None:
         assert pack_dir_for_update(Path("/exe"), is_compiled=True, env={}) == Path("/exe")
+
+    def test_the_reader_and_the_installer_share_one_lookup(self, tmp_path: Path) -> None:
+        _write_packs(tmp_path / "exe", _info(6), _info(6))
+        installed = tmp_path / "Reader Files"
+        installed.mkdir()
+        (installed / DATA_PACK_FILE_NAME).write_text(_info(5).to_json())
+
+        check = look_for_update(tmp_path / "exe", installed, is_compiled=True, env={})
+
+        assert check.status is UpdateStatus.UPDATE_AVAILABLE
+        assert check.installed == _info(5)
+        assert check.available == _info(6)
+        assert (
+            look_for_update(tmp_path / "exe", installed, is_compiled=False, env={}).status
+            is UpdateStatus.NO_PACK_DIR
+        )
 
     def test_a_development_run_looks_nowhere(self) -> None:
         assert pack_dir_for_update(Path("/exe"), is_compiled=False, env={}) is None
@@ -189,6 +225,26 @@ class TestFindUpdate:
         assert check.status is UpdateStatus.PACKS_NOT_VERSIONED
         assert check.missing == (DATA_PACK_FILE_NAMES[0],)
         assert "carry no version" in check.no_update_message()
+
+    def test_a_pack_that_cannot_be_read_says_so_not_that_it_is_old(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        _write_packs(tmp_path, _info(6), _info(6))
+        pack = tmp_path / DATA_PACK_FILE_NAMES[1]
+        pack.write_bytes(pack.read_bytes()[:100])
+
+        check = find_update(tmp_path, _info(5))
+
+        assert check.status is UpdateStatus.PACK_UNREADABLE
+        assert check.missing == (DATA_PACK_FILE_NAMES[1],)
+        assert check.available is None
+        message = check.no_update_message()
+        assert message.startswith(
+            f'The data pack "{DATA_PACK_FILE_NAMES[1]}" in "{tmp_path}" could not be read ('
+        )
+        assert "SHA256SUMS.txt" in message
+        assert "carry no version" not in message
+        assert any("could not be read" in line for line in loguru_sink)
 
     def test_packs_of_different_versions(self, tmp_path: Path) -> None:
         _write_packs(tmp_path, _info(6), _info(7))
@@ -311,6 +367,46 @@ class TestSwap:
         assert (reader_files.with_name("Reader Files.new") / "new.txt").exists()
         assert not reader_files.with_name("Reader Files.old").exists()
 
+    def test_the_put_back_is_retried_too(self, reader_files: Path, loguru_sink: list[str]) -> None:
+        # The .new rename fails for good; the put-back fails once, then goes through.
+        put_back_failures = iter([True, False])
+
+        def rename(source: Path, target: Path) -> None:
+            if source.name.endswith(".new"):
+                raise OSError(5, "sharing violation")
+            if source.name.endswith(".old") and next(put_back_failures, False):
+                raise OSError(5, "sharing violation")
+            source.rename(target)
+
+        with pytest.raises(OSError, match="sharing violation"):
+            swap_reader_files(reader_files, attempts=2, sleep=lambda _s: None, rename=rename)
+
+        assert (reader_files / "old.txt").read_text() == "old"
+        assert not reader_files.with_name("Reader Files.old").exists()
+        retried = [line for line in loguru_sink if "try 1 of 2" in line]
+        assert len(retried) == len([".new", ".old"])
+        assert 'Renaming "' + str(reader_files.with_name("Reader Files.new")) in retried[0]
+        assert 'Renaming "' + str(reader_files.with_name("Reader Files.old")) in retried[1]
+
+    def test_a_put_back_that_fails_for_good_names_where_the_data_is(
+        self, reader_files: Path
+    ) -> None:
+        def rename(source: Path, target: Path) -> None:
+            if target == reader_files:
+                raise PermissionError(13, "in use")
+            source.rename(target)
+
+        old = reader_files.with_name("Reader Files.old")
+        with pytest.raises(ReaderFilesStrandedError) as info:
+            swap_reader_files(reader_files, attempts=2, sleep=lambda _s: None, rename=rename)
+
+        assert info.value.old_dir == old
+        assert info.value.reader_files_dir == reader_files
+        assert isinstance(info.value.__cause__, PermissionError)
+        assert f'Putting "{old}" back as "{reader_files}" failed' in str(info.value)
+        assert not reader_files.exists()
+        assert (old / "old.txt").read_text() == "old"
+
     def test_leftovers_of_an_interrupted_update_are_removed(self, reader_files: Path) -> None:
         old = reader_files.with_name("Reader Files.old")
         old.mkdir()
@@ -320,6 +416,19 @@ class TestSwap:
         assert not old.exists()
         assert not reader_files.with_name("Reader Files.new").exists()
         assert (reader_files / "old.txt").exists()
+
+    def test_a_stranded_old_folder_is_put_back_not_removed(
+        self, reader_files: Path, loguru_sink: list[str]
+    ) -> None:
+        old = reader_files.with_name("Reader Files.old")
+        reader_files.rename(old)
+
+        data_pack.clear_leftovers(reader_files)
+
+        assert (reader_files / "old.txt").read_text() == "old"
+        assert not old.exists()
+        assert not reader_files.with_name("Reader Files.new").exists()
+        assert any(f'Putting the leftover "{old}" back' in line for line in loguru_sink)
 
 
 class TestSpawnDetached:

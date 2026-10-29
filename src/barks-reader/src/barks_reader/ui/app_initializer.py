@@ -79,10 +79,14 @@ class AppInitializer:
     def on_tree_build_finished(self, _instance: Widget) -> None:
         logger.debug("Received the 'on_finished_building_event' - dismiss the loading popup.")
 
+        self._post_build_setup()
+
+        # After the post-build setup, whose no-library notice must come first: a popup
+        # the callback opens (the data pack offer) binds the window's keys, and Kivy
+        # hands a key to the earliest binding, so a notice opened after it would sit on
+        # top while the hidden offer answered the keys.
         assert self._on_tree_build_finished is not None
         self._on_tree_build_finished()
-
-        self._post_build_setup()
 
     def _post_build_setup(self) -> None:
         """Handle all setup tasks that must occur after the tree is built."""

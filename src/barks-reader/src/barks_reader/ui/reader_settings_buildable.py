@@ -103,8 +103,8 @@ class BuildableReaderSettings(ReaderSettings):
 
         logger.info("Updating panel reader settings.")
 
-        # InterfaceWithSpinner/Sidebar wrap a ContentPanel in `.content`;
-        # InterfaceWithNoMenu *is* the ContentPanel, so fall back to itself.
+        # Kivy's menu interfaces and PinnedTitleSettingsInterface hold the ContentPanel
+        # in `.content`; a bare ContentPanel used as the interface is itself.
         interface = self._settings.interface
         content = getattr(interface, "content", None) or interface
         panels = content.panels

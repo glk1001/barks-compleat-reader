@@ -24,6 +24,7 @@ import json
 import shutil
 import subprocess
 import time
+import zlib
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -165,6 +166,19 @@ def read_installed(reader_files_dir: Path) -> DataPackInfo | None:
         return None
 
 
+class PackUnreadableError(Exception):
+    """A data pack could not be read: not a zip, truncated, or its version file is broken.
+
+    Distinct from a pack that carries no version file at all (one from before the file):
+    this is a bad download, and the user needs to hear that, not that the pack is old.
+    """
+
+    def __init__(self, zip_path: Path, reason: str) -> None:
+        super().__init__(f'The data pack "{zip_path}" could not be read: {reason}')
+        self.zip_path = zip_path
+        self.reason = reason
+
+
 def read_from_pack(zip_path: Path) -> DataPackInfo | None:
     """Read a pack's version file without extracting it.
 
@@ -175,16 +189,25 @@ def read_from_pack(zip_path: Path) -> DataPackInfo | None:
         zip_path: The pack.
 
     Returns:
-        Its version, or None when it has no version file (a pack from before the file)
-        or is not a zip at all.
+        Its version, or None when it has no version file (a pack from before the file).
+
+    Raises:
+        PackUnreadableError: The pack is missing, not a zip, truncated, or its version
+            file is not one.
 
     """
     try:
         with ZipFile(zip_path) as pack:
-            return DataPackInfo.from_json(pack.read(PACK_MEMBER).decode("utf-8"))
-    except (OSError, BadZipFile, KeyError, ValueError) as exc:
-        logger.info(f'No data pack version in "{zip_path}": {exc}')
+            member = pack.read(PACK_MEMBER)
+    except KeyError:
+        logger.info(f'No data pack version in "{zip_path}".')
         return None
+    except (OSError, BadZipFile, zlib.error) as exc:
+        raise PackUnreadableError(zip_path, str(exc)) from exc
+    try:
+        return DataPackInfo.from_json(member.decode("utf-8"))
+    except ValueError as exc:
+        raise PackUnreadableError(zip_path, str(exc)) from exc
 
 
 class UpdateStatus(Enum):
@@ -193,6 +216,7 @@ class UpdateStatus(Enum):
     UPDATE_AVAILABLE = "update available"
     NO_PACK_DIR = "no folder to look in"
     PACKS_MISSING = "a pack is missing"
+    PACK_UNREADABLE = "a pack could not be read"
     PACKS_NOT_VERSIONED = "the packs carry no version"
     PACKS_DISAGREE = "the packs are different versions"
     NOT_NEWER = "the packs are not newer than the installed data"
@@ -207,6 +231,8 @@ class UpdateCheck:
     installed: DataPackInfo | None
     packs: tuple[DataPackInfo | None, ...] = ()
     missing: tuple[str, ...] = ()
+    # Why the pack in `missing` could not be read (`UpdateStatus.PACK_UNREADABLE`).
+    problem: str = ""
 
     @property
     def available(self) -> DataPackInfo | None:
@@ -223,7 +249,7 @@ class UpdateCheck:
             f" The reader will close, install it, and start again."
         )
 
-    def no_update_message(self) -> str:
+    def no_update_message(self) -> str:  # noqa: PLR0911  (one return per status)
         """Return why there is nothing to install, for the menu's message popup."""
         installed = _UNVERSIONED if self.installed is None else self.installed.short()
         match self.status:
@@ -237,6 +263,12 @@ class UpdateCheck:
                 return (
                     f"No newer data pack beside the Barks Reader (installed: {installed};"
                     f' looked in "{self.pack_dir}" and did not find {names}).'
+                )
+            case UpdateStatus.PACK_UNREADABLE:
+                return (
+                    f'The data pack "{self.missing[0]}" in "{self.pack_dir}" could not be read'
+                    f" ({self.problem}). The download may be incomplete: download it again and"
+                    f" check it against the release's SHA256SUMS.txt."
                 )
             case UpdateStatus.PACKS_NOT_VERSIONED:
                 return (
@@ -282,7 +314,27 @@ def pack_dir_for_update(exe_dir: Path, *, is_compiled: bool, env: Mapping[str, s
     return exe_dir if is_compiled else None
 
 
-def find_update(pack_dir: Path | None, installed: DataPackInfo | None) -> UpdateCheck:
+def look_for_update(
+    exe_dir: Path, reader_files_dir: Path, *, is_compiled: bool, env: Mapping[str, str]
+) -> UpdateCheck:
+    """Look for packs newer than the installed data: the reader's and the installer's one check.
+
+    The reader offers what this finds, and the installer it spawns must find the same.
+
+    Args:
+        exe_dir: The folder beside the executable (`config_info.get_app_exe_dir`).
+        reader_files_dir: The installed Reader Files folder.
+        is_compiled: Whether this is a standalone build.
+        env: The process environment.
+
+    """
+    pack_dir = pack_dir_for_update(exe_dir, is_compiled=is_compiled, env=env)
+    return find_update(pack_dir, read_installed(reader_files_dir))
+
+
+def find_update(  # noqa: PLR0911  (one return per status)
+    pack_dir: Path | None, installed: DataPackInfo | None
+) -> UpdateCheck:
     """Look for packs newer than the installed data.
 
     Args:
@@ -291,8 +343,8 @@ def find_update(pack_dir: Path | None, installed: DataPackInfo | None) -> Update
             any versioned pack is newer than.
 
     Returns:
-        `UpdateStatus.UPDATE_AVAILABLE` when both packs are there, both carry the same
-        version and it is newer; otherwise why not.
+        `UpdateStatus.UPDATE_AVAILABLE` when both packs are there, both readable, both
+        carry the same version and it is newer; otherwise why not.
 
     """
     if pack_dir is None:
@@ -303,22 +355,34 @@ def find_update(pack_dir: Path | None, installed: DataPackInfo | None) -> Update
     if missing:
         return UpdateCheck(UpdateStatus.PACKS_MISSING, pack_dir, installed, missing=missing)
 
-    packs = tuple(read_from_pack(path) for path in paths)
+    packs: list[DataPackInfo | None] = []
+    for path in paths:
+        try:
+            packs.append(read_from_pack(path))
+        except PackUnreadableError as exc:
+            logger.warning(str(exc))
+            return UpdateCheck(
+                UpdateStatus.PACK_UNREADABLE,
+                pack_dir,
+                installed,
+                missing=(path.name,),
+                problem=exc.reason,
+            )
     unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=True) if pack is None)
     if unversioned:
         return UpdateCheck(
-            UpdateStatus.PACKS_NOT_VERSIONED, pack_dir, installed, packs, missing=unversioned
+            UpdateStatus.PACKS_NOT_VERSIONED, pack_dir, installed, tuple(packs), missing=unversioned
         )
 
     versions = {pack.version for pack in packs if pack is not None}
     if len(versions) != 1:
-        return UpdateCheck(UpdateStatus.PACKS_DISAGREE, pack_dir, installed, packs)
+        return UpdateCheck(UpdateStatus.PACKS_DISAGREE, pack_dir, installed, tuple(packs))
 
     installed_version = 0 if installed is None else installed.version
     if versions.pop() <= installed_version:
-        return UpdateCheck(UpdateStatus.NOT_NEWER, pack_dir, installed, packs)
+        return UpdateCheck(UpdateStatus.NOT_NEWER, pack_dir, installed, tuple(packs))
 
-    return UpdateCheck(UpdateStatus.UPDATE_AVAILABLE, pack_dir, installed, packs)
+    return UpdateCheck(UpdateStatus.UPDATE_AVAILABLE, pack_dir, installed, tuple(packs))
 
 
 def verify_extracted(new_dir: Path, expected: DataPackInfo) -> list[str]:
@@ -366,11 +430,42 @@ def old_dir_for(reader_files_dir: Path) -> Path:
 
 
 def clear_leftovers(reader_files_dir: Path) -> None:
-    """Remove a ``.new`` or ``.old`` folder an earlier, interrupted update left behind."""
-    for leftover in (new_dir_for(reader_files_dir), old_dir_for(reader_files_dir)):
+    """Tidy the ``.new`` and ``.old`` folders an earlier, interrupted update left behind.
+
+    Both are removed, except a ``.old`` beside no installed folder: then it is the only
+    copy of the installed data (the swap moved it aside and got no further, or could not
+    put it back), and it is put back now, before anything else is tried.
+
+    Args:
+        reader_files_dir: The installed Reader Files folder.
+
+    Raises:
+        OSError: The ``.old`` folder could not be put back.
+
+    """
+    old_dir = old_dir_for(reader_files_dir)
+    if old_dir.exists() and not reader_files_dir.exists():
+        logger.warning(f'Putting the leftover "{old_dir}" back as "{reader_files_dir}".')
+        old_dir.rename(reader_files_dir)
+    for leftover in (new_dir_for(reader_files_dir), old_dir):
         if leftover.exists():
             logger.warning(f'Removing the leftover folder "{leftover}".')
             shutil.rmtree(leftover, ignore_errors=True)
+
+
+class ReaderFilesStrandedError(Exception):
+    """A failed swap could not put the installed folder back: it is still at ``.old``.
+
+    `clear_leftovers` puts it back when the update next runs.
+    """
+
+    def __init__(self, old_dir: Path, reader_files_dir: Path, put_back_error: OSError) -> None:
+        super().__init__(
+            f'Putting "{old_dir}" back as "{reader_files_dir}" failed ({put_back_error}):'
+            f" the installed data is still in the former, and the latter is missing."
+        )
+        self.old_dir = old_dir
+        self.reader_files_dir = reader_files_dir
 
 
 def swap_reader_files(
@@ -386,7 +481,8 @@ def swap_reader_files(
     The installed folder goes to ``.old`` first and ``.new`` is renamed over its name. On
     Windows a rename fails with ``PermissionError`` while a process holds a file in the
     folder - the reader that spawned the installer, still closing - so each rename is
-    retried. If the second rename fails anyway, the installed folder is put back.
+    retried. If the second rename fails anyway, the installed folder is put back, with
+    the same retries.
 
     Args:
         reader_files_dir: The installed Reader Files folder.
@@ -400,7 +496,9 @@ def swap_reader_files(
         installed folder to move aside.
 
     Raises:
-        PermissionError: A rename still failed after every attempt.
+        OSError: A rename still failed after every attempt (``PermissionError`` for a
+            folder in use); the installed folder is back in place.
+        ReaderFilesStrandedError: The installed folder could not be put back either.
 
     """
     new_dir = new_dir_for(reader_files_dir)
@@ -411,10 +509,15 @@ def swap_reader_files(
         _rename_with_retries(reader_files_dir, old_dir, attempts, delay, sleep, rename)
     try:
         _rename_with_retries(new_dir, reader_files_dir, attempts, delay, sleep, rename)
-    except PermissionError:
+    except OSError:
         if moved_aside:
             logger.error(f'Putting "{old_dir}" back as "{reader_files_dir}".')
-            rename(old_dir, reader_files_dir)
+            try:
+                _rename_with_retries(old_dir, reader_files_dir, attempts, delay, sleep, rename)
+            except OSError as put_back_exc:
+                raise ReaderFilesStrandedError(
+                    old_dir, reader_files_dir, put_back_exc
+                ) from put_back_exc
         raise
     logger.info(f'Installed "{new_dir}" as "{reader_files_dir}".')
     return old_dir if moved_aside else None
@@ -431,7 +534,7 @@ def _rename_with_retries(
     for attempt in range(1, attempts + 1):
         try:
             rename(source, target)
-        except PermissionError as exc:
+        except OSError as exc:
             if attempt == attempts:
                 raise
             logger.warning(
