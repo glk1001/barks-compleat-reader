@@ -732,7 +732,8 @@ class TestDataPackUpdate:
         assert confirm.call_args.kwargs["text"].startswith("Data pack 6 (29 Oct 2026) is beside")
         assert confirm.call_args.kwargs["on_cancel"] is None  # no menu to go back to at boot
         message.assert_not_called()
-        assert 'Data pack check: update available (looked in "/exe").' in loguru_sink
+        # The path as the OS spells it: "\exe" on Windows.
+        assert f'Data pack check: update available (looked in "{check.pack_dir}").' in loguru_sink
         assert "Data pack update offered: Data pack 6 (29 Oct 2026)." in loguru_sink
 
     @pytest.mark.parametrize(
