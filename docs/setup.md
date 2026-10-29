@@ -140,6 +140,8 @@ that have changed since the published pack (the overnight `data` stage there war
 same way): time for `build-data-zips.sh` and `upload-data-zips.sh`. To try the update
 offer in a development run, put two packs in a folder and name it in
 `BARKS_READER_DATA_PACK_DIR`; the GUI test `test_data_pack_update.py` does, with tiny ones.
+To look at the installer's success popup without installing anything:
+`uv run --env-file .env.runtime python -m barks_reader.data_pack_installer --preview`.
 
 ## 7. Optional system rules
 

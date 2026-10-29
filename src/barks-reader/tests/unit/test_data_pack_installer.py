@@ -317,6 +317,25 @@ class TestSuccessMessage:
         assert popup.call_args.kwargs["background_image_file"] is None
         spawn.assert_not_called()
 
+    def test_the_preview_shows_a_made_up_pack_and_its_close_starts_nothing(
+        self, spawn: MagicMock
+    ) -> None:
+        with (
+            patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
+            patch.object(
+                data_pack_installer, "get_centred_position_on_primary_monitor", return_value=(1, 2)
+            ),
+            patch.object(minimal_config_info_module, "get_minimal_config_options"),
+        ):
+            data_pack_installer.preview_success_message()
+
+            title, content = popup.call_args.args
+            assert title == "Data Pack Updated"
+            assert "Data pack 6 (" in content.text
+            popup.call_args.kwargs["on_dismiss"]()
+
+        spawn.assert_not_called()
+
     def test_a_development_run_starts_the_reader_through_the_interpreter(
         self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:

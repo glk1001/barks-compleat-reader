@@ -9,11 +9,15 @@ swaps the folders, removes the old one, says so, and starts the reader again.
 It never touches the config, so the user's settings survive, and never sets the
 first-run installer's failed flag: a failed update leaves the installed data as it
 was, and the reader runs on it.
+
+To look at the success popup without installing anything (`preview_success_message`):
+``uv run --env-file .env.runtime python -m barks_reader.data_pack_installer --preview``.
 """
 
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import sys
 from datetime import UTC, datetime
@@ -34,11 +38,13 @@ from barks_reader.installer_support import (
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Data Pack Update"
 _POPUP_SIZE = (720, 420)
+PREVIEW_ARG = "--preview"
 
 
 def main() -> int:
@@ -150,7 +156,22 @@ def _install(config_info: ConfigInfo, exe_dir: Path) -> DataPackInfo:
     return available
 
 
-def _show_success_message(config_info: ConfigInfo, installed: DataPackInfo) -> None:
+def preview_success_message() -> None:
+    """Show the success popup for a made-up pack, to look at it; nothing is installed.
+
+    Run with the reader's folders in the environment (``.env.runtime``), so the popup
+    finds its background art. Closing it does not start the reader.
+    """
+    info = DataPackInfo(6, "data-v6", datetime.now(UTC), platform.node() or "preview", {})
+    _show_success_message(ConfigInfo(), info, on_dismiss=lambda: None)
+
+
+def _show_success_message(
+    config_info: ConfigInfo,
+    installed: DataPackInfo,
+    *,
+    on_dismiss: Callable[[], None] | None = None,
+) -> None:
     # Kivy only now: config_info must be constructed before any kivy import (its guard).
     from kivy import Config  # noqa: PLC0415
     from kivy.uix.label import Label  # noqa: PLC0415
@@ -187,7 +208,7 @@ def _show_success_message(config_info: ConfigInfo, installed: DataPackInfo) -> N
         size_hint=(0.92, 0.85),
         add_close_button=True,
         background_image_file=background,
-        on_dismiss=_restart_reader,
+        on_dismiss=on_dismiss or _restart_reader,
     )
 
 
@@ -209,4 +230,7 @@ def _restart_reader() -> None:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == [PREVIEW_ARG]:
+        preview_success_message()
+        sys.exit(0)
     sys.exit(main())
