@@ -22,6 +22,11 @@
 >   covers the reader's centred page-wide bar, so SDL took its buttons' taps as window
 >   drags; the comic and document readers and By the Numbers now take the hit test
 >   over as the wiki reader did (`drag_region` on `ReaderScreen`, fixed 2026-10-29).
+>   Also found after: switching the layout setting with the panel open refits the
+>   window and re-centres the panel, but its close X stayed where the old panel edge
+>   was, off the window. The X was placed from the panel's `right`, a cached Kivy
+>   alias that reads stale inside a `pos` callback when the parent sets `center_x`;
+>   it is placed from `x + width` now, and a test moves the panel (fixed 2026-10-29).
 > - Stage 2 the title page and the fun page: DONE 2026-10-29. Seen on this PC on a
 >   nested 1920x1080 display: Lost in the Andes and Land of the Pygmy Indians as hero,
 >   picture and colophon (the 841 characters whole, the three-row portal column with

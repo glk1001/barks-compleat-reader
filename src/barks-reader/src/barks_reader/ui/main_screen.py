@@ -656,14 +656,17 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         close_button.bind(on_release=lambda *_: self._close_settings())
 
-        # Sit the X on the action bar's mid-line. The settings panel covers the
-        # main screen (size = self.size, centred), so settings.top aligns with
-        # the window/action-bar top and the right inset puts the button's right
-        # edge next to where the bar's quit button sits — so on close the X barely
-        # moves. Nudged a touch further left than the bar's dp(5).
+        # Sit the X on the action bar's mid-line. The settings panel is a page, centred,
+        # so its top aligns with the window/action-bar top and the right inset puts the
+        # button's right edge next to where the bar's quit button sits — so on close
+        # the X barely moves. Nudged a touch further left than the bar's dp(5).
+        # From x/width and y/height, not `right`/`top`: Kivy caches those aliases, and
+        # a pos callback bound before the alias was first read sees it stale (the X
+        # stayed off the window when the layout setting refitted the window under the
+        # open panel, 2026-10-29).
         def _place(*_: object) -> None:
-            close_button.right = settings.right - dp(7)
-            close_button.center_y = settings.top - ACTION_BAR_SIZE_Y / 2
+            close_button.x = settings.x + settings.width - dp(7) - close_button.width
+            close_button.center_y = settings.y + settings.height - ACTION_BAR_SIZE_Y / 2
 
         settings.bind(pos=_place, size=_place)
         app_window.add_widget(close_button)

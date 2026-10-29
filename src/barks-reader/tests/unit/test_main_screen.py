@@ -24,11 +24,14 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import ImageThemesChange
+from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
+from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -919,6 +922,27 @@ class TestDocumentGoto:
         main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
             keyboard_initiated=keyboard_initiated
         )
+
+
+def test_the_settings_x_follows_the_panel_when_the_window_refits(main_screen: MainScreen) -> None:
+    """The layout setting refits the window under the open panel, which is re-centred.
+
+    The X is placed from the panel's x/width and y/height: Kivy caches the `right` and
+    `top` aliases, and a pos callback bound before the alias was first read sees the
+    old value (the X stayed off the window's right edge, 2026-10-29).
+    """
+    settings = Widget(size_hint=(None, None), size=(874, 1365), pos=(450, 0))
+    close_button = Widget(size_hint=(None, None), size=(45, 45))
+    with patch.object(
+        barks_reader.ui.main_screen.Factory, "SettingsCloseButton", return_value=close_button
+    ):
+        main_screen._add_settings_close_button(MagicMock(children=[]), settings)
+    assert close_button.x == pytest.approx(450 + 874 - dp(7) - 45)
+
+    settings.pos = (0, 0)
+
+    assert close_button.x == pytest.approx(874 - dp(7) - 45)
+    assert close_button.center_y == pytest.approx(1365 - ACTION_BAR_SIZE_Y / 2)
 
 
 class TestSettingsEscape:
