@@ -518,7 +518,7 @@ The script (options: `--zips-dir <dir>`, `--dry-run`, `--yes`):
    website's version resolver depends on that).
 1. Points `DATA_TAG` in `website/app.html` and the data-pack links in
    `.github/workflows/build.yml` at the new tag, copies the pack's version file to
-   `scripts/data-pack-manifest.json` (the record `--pack` compares against), and prints <!-- docs-refs: ok -->
+   `scripts/data-pack-manifest.json` (the record `--pack` compares against), and prints
    the exact commit and push commands. **Push them straight away**: until that lands, the
    live website's data-pack buttons name the new pack files under the old tag and 404.
 
