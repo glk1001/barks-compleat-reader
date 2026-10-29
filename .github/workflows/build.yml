@@ -241,7 +241,9 @@ jobs:
           {
               cat <<'EOF'
           Download the executable for your platform (listed below), plus the two
-          data packs - needed on first install, unchanged between most releases:
+          data packs - needed on first install, unchanged between most releases. When
+          they do change, put the new packs beside the reader and it offers to install
+          them (the About box names the installed data pack):
 
           - [barks-reader-data-1.barkspack](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v5/barks-reader-data-1.barkspack)
           - [barks-reader-data-2.barkspack](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v5/barks-reader-data-2.barkspack)

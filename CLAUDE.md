@@ -88,6 +88,14 @@ bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
 bunx cspell
 ```
 
+**Check whether a new data pack is due** (this PC's Reader Files folders against the
+published pack's version file, `scripts/data-pack-manifest.json`; the overnight `data`
+stage asks the same on the main PC; `--write-pack-manifest` is how `build-data-zips.sh`
+stamps the packs):
+```bash
+uv run scripts/data_manifest.py --pack
+```
+
 **Check the docs name things that exist** (paths, modules, script flags, links, `BARKS_*`
 variables; no line numbers in the evergreen docs; `--only RULE`, `--quiet`):
 ```bash

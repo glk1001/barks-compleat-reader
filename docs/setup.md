@@ -131,6 +131,16 @@ The reader's files (panel zips, indexes, fonts, the shipped wiki copy) go under
 folder there. `copy-to-overnight-host.sh` copies all of it (about 36 GB) but not the comic
 build tree (about 330 GB), which is why an overnight host runs with `--skip build-check`.
 
+The published data packs carry `Reader Files/data-pack.json`: their `data-vN` number,
+build date and each folder's fingerprint (`scripts/build-data-zips.sh` writes it,
+`core/data_pack.py` reads it). A reader installed from them names the pack in its About
+box; a development checkout, whose Reader Files has no such file, shows "Data pack: not
+versioned". On the main PC, `uv run scripts/data_manifest.py --pack` names the folders
+that have changed since the published pack (the overnight `data` stage there warns the
+same way): time for `build-data-zips.sh` and `upload-data-zips.sh`. To try the update
+offer in a development run, put two packs in a folder and name it in
+`BARKS_READER_DATA_PACK_DIR`; the GUI test `test_data_pack_update.py` does, with tiny ones.
+
 ## 7. Optional system rules
 
 **Touch tests** (`run_gui_tests.sh --touch`, the overnight `touch` stage). A udev rule lets
@@ -347,8 +357,10 @@ Both run the app, the unit tests and the build, and the GUI tests
      step, "Writing version", writes `_version.py`, and the standalone build after it can be
      stopped with Ctrl-C if it is not wanted.
   6. **Data as new as the code.** An installed data pack older than the code stops the
-     reader at boot ("Required file not found") or fails a GUI test on what it lacks;
-     install the current data packs over it (`README.md`). The installer sets `fanta_dir` in
+     reader at boot ("Required file not found") or fails a GUI test on what it lacks. Put
+     the current data packs beside the executable and start the reader: it offers to
+     install them (or Menu > Update Data does), closes, installs, and starts again, with
+     the config untouched (`README.md`). The first-run installer sets `fanta_dir` in
      `config/barks-reader.ini` to the volumes' folder; `doctor` (step 11) checks it.
   7. **The override archives at their fixed path.** The `barks-fantagraphics` tests read
      FANTA_01's and FANTA_02's override archives under `~/Books/Carl Barks/Compleat Barks

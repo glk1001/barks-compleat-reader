@@ -271,6 +271,9 @@ just reader
   reader builds for each comic (with the panel-segments JSONs it reads, present and no
   older than their pages), and the wiki: every story page joins its title and back again.
   Needs the data directories and `.env.runtime`. Run it nightly beside the settings matrix.
+  `uv run scripts/data_manifest.py --pack` says whether the published data pack is behind
+  this PC's Reader Files, naming the folders that changed (`--write` and the plain check
+  are the overnight machines' comparison with this PC; see "Deployment").
     ```
     uv run scripts/validate-barks-reader-files.py                        # everything (about a minute and a half)
     uv run scripts/validate-barks-reader-files.py --titles-only          # only the per-title phases
@@ -456,6 +459,15 @@ For a true first run, move any `config/` and `Reader Files/` beside the `.app` o
 way first: the installer only runs when `config/barks-reader.ini` is missing. Why it works
 this way is in the script's header.
 
+**Updating the data packs** on an installed reader: put both new packs beside the
+executable (or the `.app`) and start the reader. It sees they are newer than the installed
+data (each pack carries `Reader Files/data-pack.json`; the About box names the installed
+one) and offers to install them; Menu > Update Data asks again later. On Install the
+reader closes, a separate process extracts the packs into `Reader Files.new`, swaps the
+folders, and starts the reader again. The `config` folder is never touched. A failed
+update leaves the installed data as it was and writes
+`barks-reader-data-pack-update-<timestamp>.log` beside the executable.
+
 ## Deployment
 
 Releases are assembled by CI — don't upload executables by hand.
@@ -484,14 +496,20 @@ Releases are assembled by CI — don't upload executables by hand.
 
 The ~1GB data packs (`barks-reader-data-1.barkspack`, `barks-reader-data-2.barkspack`) live on their own
 dedicated `data-vN` release, not on app releases, because they rarely change — the current
-tag is whatever `DATA_TAG` in `website/app.html` names. When they do change, rebuild them
-(`bash scripts/build-data-zips.sh` — no exe build needed) and run:
+tag is whatever `DATA_TAG` in `website/app.html` names. The overnight `data` stage on the
+main PC (or `uv run scripts/data_manifest.py --pack`) says when the published pack is
+behind the data here. Then rebuild them (`bash scripts/build-data-zips.sh` — no exe build
+needed; it packs the folders `data_manifest.py --list-entries` names, backups beside them
+excluded, and writes `Reader Files/data-pack.json` into both: data pack N, the newest
+`data-vN` on GitHub plus one or `--version N`, with the build date and each folder's
+fingerprint) and run:
 ```
 bash scripts/upload-data-zips.sh
 ```
 The script (options: `--zips-dir <dir>`, `--dry-run`, `--yes`):
 
-1. Auto-numbers the next tag from the highest existing `data-vN` release.
+1. Reads the tag from the packs' version file (both must agree) and refuses a number no
+   higher than the newest published `data-vN`: a stale build is rebuilt, not renumbered.
 1. Warns if both zips are byte-for-byte the same size as the previous data release's — a
    sign the data didn't actually change.
 1. Uploads both zips to a **draft** release first, so a failed or partial ~2GB upload is
@@ -499,9 +517,10 @@ The script (options: `--zips-dir <dir>`, `--dry-run`, `--yes`):
 1. Publishes the release, marked pre-release so it can never become GitHub's "Latest" (the
    website's version resolver depends on that).
 1. Points `DATA_TAG` in `website/app.html` and the data-pack links in
-   `.github/workflows/build.yml` at the new tag, and prints the exact commit and push
-   commands. **Push them straight away**: until that lands, the live website's data-pack
-   buttons name the new pack files under the old tag and 404.
+   `.github/workflows/build.yml` at the new tag, copies the pack's version file to
+   `scripts/data-pack-manifest.json` (the record `--pack` compares against), and prints <!-- docs-refs: ok -->
+   the exact commit and push commands. **Push them straight away**: until that lands, the
+   live website's data-pack buttons name the new pack files under the old tag and 404.
 
 It refuses to start with uncommitted changes to tracked files, so the tag bump is always
 its own commit.
