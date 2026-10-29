@@ -35,8 +35,8 @@ OFFERED = pattern(markers.CONFIRM_POPUP_OPENED, title=UPDATE_DATA_PACK_TITLE)
 DECLINED = pattern(markers.CONFIRM_POPUP_CANCELLED, title=UPDATE_DATA_PACK_TITLE)
 NOTHING_TO_INSTALL = pattern(markers.MESSAGE_POPUP_OPENED, title=UPDATE_DATA_PACK_TITLE)
 DISMISSED = pattern(markers.MESSAGE_POPUP_CANCELLED, title=UPDATE_DATA_PACK_TITLE)
-# Settings, How To, About, Update Data: the dots menu opens on its first entry.
-UPDATE_DATA_DOWNS = 3
+# Settings, How To, Update Data, About: the dots menu opens on its first entry.
+UPDATE_DATA_DOWNS = 2
 
 
 @pytest.fixture

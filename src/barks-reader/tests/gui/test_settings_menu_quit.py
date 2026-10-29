@@ -18,9 +18,9 @@ if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
 
-# The dropdown opens focused on its first entry: Settings, How To, About.
+# The dropdown opens focused on its first entry: Settings, How To, Update Data, About.
 HOW_TO_DOWNS = 1
-ABOUT_DOWNS = 2
+ABOUT_DOWNS = 3
 QUIT_TITLE = "Quit"
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)

@@ -60,16 +60,16 @@
         on_release: root.select("how-to")
 
     Button:
-        text: "About"
-        size_hint_y: None
-        height: dp(40)
-        on_release: root.select("about")
-
-    Button:
         text: "Update Data"
         size_hint_y: None
         height: dp(40)
         on_release: root.select("update-data-pack")
+
+    Button:
+        text: "About"
+        size_hint_y: None
+        height: dp(40)
+        on_release: root.select("about")
 
 <MainScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
