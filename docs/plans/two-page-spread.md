@@ -27,6 +27,10 @@
 >   was, off the window. The X was placed from the panel's `right`, a cached Kivy
 >   alias that reads stale inside a `pos` callback when the parent sets `center_x`;
 >   it is placed from `x + width` now, and a test moves the panel (fixed 2026-10-29).
+>   And decision 14's half for the comic reader: its bar was a page wide whatever
+>   the mode, so over the pair in the spread window its items sat in the middle; in
+>   double-page mode the bar is now as wide as the pair, refitted at a comic's load
+>   and on the Double Page toggle (done 2026-10-29).
 > - Stage 2 the title page and the fun page: DONE 2026-10-29. Seen on this PC on a
 >   nested 1920x1080 display: Lost in the Andes and Land of the Pygmy Indians as hero,
 >   picture and colophon (the 841 characters whole, the three-row portal column with

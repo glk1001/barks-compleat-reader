@@ -21,6 +21,8 @@ from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.page_image import PageImage
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
+from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.comic_book_reader import (
     FIRST_PAGE_REVEAL_TIMEOUT_SECS,
     ComicBookReader,
@@ -981,6 +983,47 @@ class TestComicBookReaderScreen:
             and "'windowed'" in line
             for line in loguru_sink
         )
+
+    # --- the bar is as wide as the pages under it ---
+
+    @pytest.mark.parametrize(
+        ("window", "double_page", "expected_width"),
+        [
+            # The spread window on a 2560x1440 monitor: a page, then the pair.
+            ((1775, 1365), False, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO)),
+            ((1775, 1365), True, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO * 2)),
+            # The single-page window: the pair is width-limited to the window.
+            ((874, 1365), True, 874),
+        ],
+    )
+    def test_the_bar_is_as_wide_as_the_pages_under_it(
+        self,
+        screen: ComicBookReaderScreen,
+        window: tuple[int, int],
+        double_page: bool,
+        expected_width: int,
+    ) -> None:
+        """A page wide in single-page mode, the pair's width in double-page mode."""
+        cast("MagicMock", screen.comic_book_reader).double_page_mode = double_page
+        with patch.object(_reader_module, "Window", width=window[0], height=window[1]):
+            screen._reset_action_bar_width()
+        assert screen.action_bar_width == expected_width
+
+    @pytest.mark.parametrize("refit", ["toggle_double_page_mode", "_on_comic_is_ready_to_read"])
+    def test_the_bar_refits_when_the_mode_can_change(
+        self, screen: ComicBookReaderScreen, refit: str
+    ) -> None:
+        """The Double Page toggle and a comic's load (its mode is per comic) refit the bar."""
+        cast("MagicMock", screen.comic_book_reader).action_bar_title = "Lost in the Andes"
+        with (
+            patch.object(screen, "_reset_action_bar_width") as reset,
+            patch.object(_reader_module, "WindowManager"),
+            patch.object(
+                ComicBookReaderScreen, "ids", new_callable=PropertyMock, return_value=MagicMock()
+            ),
+        ):
+            getattr(screen, refit)()
+        reset.assert_called_once_with()
 
     # --- the goto-page dropdown opened from its bar button ---
 

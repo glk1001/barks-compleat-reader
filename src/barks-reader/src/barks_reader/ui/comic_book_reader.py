@@ -40,7 +40,11 @@ from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, lo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_navigation import ReaderNavigation
-from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
+from barks_reader.core.reader_utils import (
+    COMIC_PAGE_ASPECT_RATIO,
+    PNG_EXT_FOR_KIVY,
+    get_win_dimensions,
+)
 
 from .action_bar_helpers import (
     ACTION_BAR_SIZE_Y,
@@ -872,7 +876,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._action_bar_fullscreen_exit_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
-        self._reset_action_bar_width()
 
         self._was_fullscreen_on_entry = False
         self._fullscreen_button = self.ids.fullscreen_button
@@ -891,6 +894,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # "All One-Pagers" collection) reach the action bar automatically.
         self.comic_book_reader.bind(action_bar_title=self.setter("action_bar_title"))
         self.ids.image_layout.add_widget(self.comic_book_reader)
+        self._reset_action_bar_width()
 
         # Ordered left-to-right as they appear in the action bar.
         self._setup_action_bar_nav(
@@ -1000,6 +1004,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._on_comic_is_ready_to_read_func()
         self.action_bar_title = self.comic_book_reader.action_bar_title
         self._sync_double_page_button()
+        self._reset_action_bar_width()
 
     def _on_key_down(
         self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
@@ -1056,6 +1061,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Toggle double-page mode on/off for the current comic (does not change config)."""
         self.comic_book_reader.toggle_double_page_mode()
         self._sync_double_page_button()
+        self._reset_action_bar_width()
         if WindowManager.is_fullscreen_now():
             self._hide_action_bar()
 
@@ -1196,9 +1202,15 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
 
     def _reset_action_bar_width(self) -> None:
-        # Match the inner action bar's width to the comic image's aspect-fit width so it
-        # spans only the visible image area, not the full monitor width in fullscreen.
-        w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
+        # Match the inner action bar's width to the comic's aspect-fit width so it spans
+        # the visible image area, not the full monitor width in fullscreen: a page's in
+        # single-page mode, the pair's in double-page mode (the two pages are composited
+        # as one landscape image, twice a page wide). It refits with the window, at a
+        # comic's load (the mode is per comic) and on the Double Page toggle.
+        aspect_ratio = COMIC_PAGE_ASPECT_RATIO
+        if self.comic_book_reader.double_page_mode:
+            aspect_ratio /= 2
+        w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width, aspect_ratio)
         self.action_bar_width = max(1, w)
 
     def _show_action_bar(self) -> None:
