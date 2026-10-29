@@ -7,7 +7,6 @@
 # --- it before any kivy imports.                                  --- #
 
 import gc
-import logging
 import os
 import sys
 import threading
@@ -32,6 +31,7 @@ from barks_reader.core.config_info import (
     setup_loguru,
 )
 from barks_reader.core.data_pack import INSTALL_DATA_PACK_ARG, read_installed
+from barks_reader.core.kivy_log_handler import LoguruKivyHandler
 from barks_reader.core.log_markers import APP_STARTING, DATA_PACK_INSTALLED
 from barks_reader.core.main_layout import choose_main_layout, content_aspect_ratio
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
@@ -147,40 +147,7 @@ def redirect_kivy_logs() -> None:
     from kivy import Logger as KivyLogger
 
     # Redirect Kivy's log messages to our main loguru setup.
-    class LoguruKivyHandler(logging.Handler):
-        def __init__(self, logr) -> None:  # noqa: ANN001
-            self.logr = logr
-            super().__init__()
-
-        def emit(self, record: logging.LogRecord) -> None:
-            def patch_loguru_rec(rec) -> None:  # noqa: ANN001
-                rec.update(exception=record.exc_info)
-                rec.update(file=record.filename)
-                rec.update(function=record.funcName)
-                rec.update(line=record.lineno)
-                rec.update(module=record.module)
-                rec.update(name=record.name)
-                rec.update(process=record.process)
-                rec.update(thread=record.thread)
-
-            # noinspection PyBroadException
-            try:
-                patched_logger = self.logr.patch(patch_loguru_rec)
-                level = logging.getLevelName(record.levelno).lower()
-
-                # Kivy emits this message: "kivy: Modules: Start <inspector> with config {}"
-                # which we need to be careful with.
-                message = record.getMessage().replace("{", "{{").replace("}", "}}")
-
-                # Now log the kivy information using Loguru.
-                # Use getattr to call the appropriate logging method based on level.
-                # And fallback to 'info'.
-                log_method = getattr(patched_logger, level, patched_logger.info)
-                log_method(message, sys_name=KIVY_LOGGING_NAME)
-            except Exception:
-                self.logr.exception("Error in LoguruKivyHandler.emit: ")
-
-    KivyLogger.addHandler(LoguruKivyHandler(logger))
+    KivyLogger.addHandler(LoguruKivyHandler(logger, KIVY_LOGGING_NAME))
 
 
 def update_window_size(
