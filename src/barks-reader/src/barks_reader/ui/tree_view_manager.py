@@ -92,6 +92,9 @@ class TreeViewManager:
         # (Go Back, the saved-node restore at boot): the node is the destination,
         # so its open-on-child rule (Search opening on Titles) does not apply.
         self._opening_for_caller = False
+        # True while setup_and_select_node renders for Go Back: the view comes back
+        # under the images it was left with, as a collapse does (2026-10-30).
+        self._keep_images_for_caller = False
         self._search_node: MainTreeViewNode | None = None
         self._speech_words_node: ButtonTreeViewNode | None = None
 
@@ -116,7 +119,12 @@ class TreeViewManager:
         elif isinstance(node, ButtonTreeViewNode):
             node.trigger_action()
 
-    def setup_and_select_node(self, node: BaseTreeViewNode) -> None:
+    def setup_and_select_node(self, node: BaseTreeViewNode, *, keep_images: bool = False) -> None:
+        """Put the tree at `node` and show its view: the parents open, the rest closed.
+
+        `keep_images` keeps the top and fun images on show through the renders on the
+        way (Go Back: the view comes back as it was left, not under fresh images).
+        """
         logger.debug(f'Selecting and setting up node "{node.get_name()}".')
 
         # noinspection PyArgumentList
@@ -124,6 +132,7 @@ class TreeViewManager:
             self._tree_view_screen.deselect_and_close_open_nodes()
             self._tree_view_screen.open_all_parent_nodes(node)
 
+        self._keep_images_for_caller = keep_images
         self._opening_for_caller = True
         try:
             self._tree_view_screen.open_node(node)
@@ -131,10 +140,13 @@ class TreeViewManager:
             self._opening_for_caller = False
         self._tree_view_screen.select_node(node)
 
-        if isinstance(node, TitleTreeViewNode):
-            self._handle_title_node_selection(node)
-        elif isinstance(node, ButtonTreeViewNode):
-            self._handle_button_node_selection(node)
+        try:
+            if isinstance(node, TitleTreeViewNode):
+                self._handle_title_node_selection(node)
+            elif isinstance(node, ButtonTreeViewNode):
+                self._handle_button_node_selection(node)
+        finally:
+            self._keep_images_for_caller = False
         # The tree shows the node as it was put: no expanding on the way scrolls it.
         self._scroll_pinner.cancel_pending_reveals()
 
@@ -172,7 +184,7 @@ class TreeViewManager:
         if node.saved_state.get("open", True):
             node.trigger_action()
         elif node.destination is not None:
-            self._renderer.render(node.destination)
+            self.set_view_state_for_node(node, keep_images=self._keep_images_for_caller)
 
     def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
         # noinspection PyArgumentList
@@ -213,11 +225,21 @@ class TreeViewManager:
         # fresh open's back-history) and re-open the screen.
         reopen = _REOPEN_ON_BACK.get(type(prev_node.destination))
         if reopen is not None:
+            # The tree as a fresh open leaves it: the branch left for closed, the
+            # node's parents open and the node in view, so closing the screen lands on
+            # the node and not on the story it was left for (2026-10-30).
+            # noinspection PyArgumentList
+            with self.suppress_view_state_changes():
+                self._tree_view_screen.deselect_and_close_open_nodes()
+                self._tree_view_screen.open_all_parent_nodes(prev_node)
             self._tree_view_screen.select_node(prev_node)
+            self.scroll_to_node(prev_node)
             reopen(self._nav, prev_node.destination)
             return
 
-        self.setup_and_select_node(prev_node)
+        # Under the images the node was left with: Go Back from a fun image's title
+        # came back on a fresh image, the one left a step back (2026-10-30).
+        self.setup_and_select_node(prev_node, keep_images=True)
 
     def goto_node(self, node: BaseTreeViewNode, scroll_to: bool = False) -> None:
         self._scroll_pinner.cancel_pending_reveals()
@@ -276,14 +298,15 @@ class TreeViewManager:
         view": bound as the ``on_press`` handler for the simple index, search,
         and statistics nodes, and also called from the expand/collapse paths.
         Nodes with extra behavior (e.g. the speech index/words nodes) keep their
-        own handlers. `keep_images` keeps the top and fun images on show (a collapse).
+        own handlers. `keep_images` keeps the top and fun images on show (a collapse,
+        or Go Back).
         """
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
         logger.info(f"Rendering view for node '{node.get_name()}'.")
         if keep_images:
-            logger.info(log_markers.NODE_COLLAPSED_IMAGES_KEPT.format(name=node.get_name()))
+            logger.info(log_markers.NODE_IMAGES_KEPT.format(name=node.get_name()))
         self._renderer.render(
             node.destination, preserve_top_view=keep_images, preserve_fun_view=keep_images
         )
@@ -339,7 +362,7 @@ class TreeViewManager:
             self._tree_view_screen.select_node(child)
             self.set_view_state_for_node(child)
         else:
-            self.set_view_state_for_node(node)
+            self.set_view_state_for_node(node, keep_images=self._keep_images_for_caller)
 
         # 4) NOTE: Do not call scroll_to_node() here — that causes the "snap-to-top/bottom" jump.
 

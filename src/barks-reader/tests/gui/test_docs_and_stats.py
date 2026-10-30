@@ -245,8 +245,11 @@ def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
 
     # A keyboard jump leaves the keys on the title view; Escape hands them back to the tree.
     d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
+    # Back closes the story's branch and puts the tree at the chapter's node, as a fresh
+    # open leaves it, so closing the chapter lands there and not on the story.
     with (
         d.expect(pattern(markers.GOING_BACK_TO_NODE, name=linked.chapter.title)),
+        d.expect(pattern(markers.NODE_COLLAPSED_NO_STATE_CHANGE, name="The Stories")),
         d.expect(pattern(markers.DOCUMENT_OPENED, title=linked.chapter.title)),
         d.expect(pattern(markers.DOCUMENT_PAGE, page=linked.page)),
         d.expect(DOCUMENT_ENTERED),

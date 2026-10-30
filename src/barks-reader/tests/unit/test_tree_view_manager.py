@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.tree_view_manager
 import pytest
@@ -107,7 +107,9 @@ class TestTreeViewManager:
 
         tree_view_manager.setup_and_select_node(node)
 
-        mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
+        mock_dependencies["renderer"].render.assert_called_with(
+            IntroDestination(), preserve_top_view=False, preserve_fun_view=False
+        )
 
     def test_set_view_state_for_node_renders_destination(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -167,8 +169,49 @@ class TestTreeViewManager:
         # We need to mock setup_and_select_node to avoid recursion/complexity
         with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
             tree_view_manager.go_back_to_previous_node()
-            mock_setup.assert_called_with(prev_node)
+            # Under the images the node was left with, as a collapse keeps them.
+            mock_setup.assert_called_with(prev_node, keep_images=True)
         mock_dependencies["nav_coordinator"].open_wiki.assert_not_called()
+
+    def test_setting_up_a_node_for_go_back_keeps_the_images_through_its_renders(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """Both the expand on the way and a closed node's own render keep the images."""
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.populate_callback = None
+        node.destination = SearchDestination()
+        node.get_name.return_value = "Search"
+        node.saved_state = {"open": False}
+        node.nodes = []
+        node.parent_node = MagicMock()
+        node.parent_node.nodes = [node]
+        tree_view = screen_mocks["tree_view"]
+        tree_view.open_node.side_effect = lambda n: tree_view_manager.on_node_expanded(
+            MagicMock(), n
+        )
+        renderer = mock_dependencies["renderer"]
+
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
+            tree_view_manager.setup_and_select_node(node, keep_images=True)
+        assert renderer.render.call_args_list == [
+            call(SearchDestination(), preserve_top_view=True, preserve_fun_view=True),
+            call(SearchDestination(), preserve_top_view=True, preserve_fun_view=True),
+        ]
+        assert log_markers.NODE_IMAGES_KEPT.format(name="Search") in loguru_sink
+        assert tree_view_manager._keep_images_for_caller is False
+
+        # A plain setup (the saved-node restore at boot) picks fresh images as before.
+        renderer.render.reset_mock()
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
+            tree_view_manager.setup_and_select_node(node)
+        assert renderer.render.call_args_list == [
+            call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
+            call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
+        ]
 
     def test_go_back_to_previous_node_reopens_wiki(
         self,
@@ -207,10 +250,18 @@ class TestTreeViewManager:
         )
         mock_tree.previous_selected_node = chapter_node
 
-        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+        with (
+            patch.object(tree_view_manager, "setup_and_select_node") as mock_setup,
+            patch.object(tree_view_manager, "scroll_to_node") as mock_scroll,
+        ):
             tree_view_manager.go_back_to_previous_node()
 
+        # The tree as a fresh open leaves it, so the chapter's close lands on its node
+        # and not on the story's branch it was left for.
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.assert_called_once_with()
+        screen_mocks["tree_view"].open_all_parent_nodes.assert_called_once_with(chapter_node)
         screen_mocks["tree_view"].select_node.assert_called_with(chapter_node)
+        mock_scroll.assert_called_once_with(chapter_node)
         mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
             Path("/docs/illustrated-history/04-becoming-himself"),
             "Becoming Himself",
@@ -238,7 +289,7 @@ class TestTreeViewManager:
         mock_dependencies["renderer"].render.assert_called_with(
             IntroDestination(), preserve_top_view=True, preserve_fun_view=True
         )
-        assert log_markers.NODE_COLLAPSED_IMAGES_KEPT.format(name="Themes") in loguru_sink
+        assert log_markers.NODE_IMAGES_KEPT.format(name="Themes") in loguru_sink
 
     def test_a_collapse_with_state_changes_suppressed_is_not_pinned(
         self, tree_view_manager: TreeViewManager

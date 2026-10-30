@@ -36,7 +36,7 @@ def test_a_collapse_keeps_the_images_and_an_expand_picks_new_ones(boot: AppBoot)
     d = boot(nodes.THEMES)
     top_picks, fun_picks = d.match_count(ANY_TOP_IMAGE), d.match_count(ANY_FUN_IMAGE)
 
-    d.key_then_wait(pattern(markers.NODE_COLLAPSED_IMAGES_KEPT, name="Themes"), "Left")
+    d.key_then_wait(pattern(markers.NODE_IMAGES_KEPT, name="Themes"), "Left")
     d.expect_no_new(ANY_TOP_IMAGE, NO_NEW_IMAGE_SECS)
     assert d.match_count(ANY_TOP_IMAGE) == top_picks, "the collapse picked a new top image"
     assert d.match_count(ANY_FUN_IMAGE) == fun_picks, "the collapse picked a new fun image"

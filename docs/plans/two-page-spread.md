@@ -395,7 +395,10 @@ count where there is one, before the first multi-file edit of the stage.
   and the document reader's bar has the comic reader's Fullscreen, hiding the bar in
   fullscreen (a top-margin tap or Escape brings it back), closing into the mode the
   document opened in once laid out for it. A document never goes fullscreen on its
-  own: the goto-fullscreen-on-read setting is the comic reader's. Removing the
+  own: the goto-fullscreen-on-read setting is the comic reader's. Go Back into a
+  chapter now leaves the tree as a fresh open does (the story's branch closed, the
+  chapter's node in view), so closing the chapter lands on its node and not on the
+  story it was left for. Removing the
   document reader for packaged `.cbz` documents was weighed and kept: a document's
   pages link to stories (Go to Story) and resume per chapter, which a comic cannot.
 - `ui/wiki_reader.py` and `okf_reader/ui/viewer.py`: the viewer takes the book's

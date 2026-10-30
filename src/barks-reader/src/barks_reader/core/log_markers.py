@@ -49,8 +49,8 @@ FUN_VIEW_IMAGE_PICKED: Final = (
     "Bottom view fun image: State: {state}, Image: '{image}', FitMode: '{fit_mode}',"
     " Color: {color}, Opacity: {opacity}."
 )
-# A reader's collapse renders its node's view but keeps the images on show.
-NODE_COLLAPSED_IMAGES_KEPT: Final = "Node collapsed: keeping the top and fun images: '{name}'."
+# A collapse, or Go Back, renders the node's view but keeps the images on show.
+NODE_IMAGES_KEPT: Final = "Keeping the top and fun images for node: '{name}'."
 
 # ------------------------------------------------------------------ keys --
 # Every key press the window receives, before any handler can consume it. The

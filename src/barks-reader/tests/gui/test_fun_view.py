@@ -98,6 +98,19 @@ def test_goto_button_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
     assert expected.is_title(d.current_node())
 
+    # Go Back comes back to the fun view on the image left, not a fresh one: no new
+    # image loads, and the goto's image is still the one on show.
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")
+    images_loaded = d.match_count(pattern(markers.FUN_IMAGE_LOADED))
+    with (
+        d.expect(pattern(markers.GOING_BACK_TO_NODE, name=nodes.THE_STORIES[0])),
+        d.expect(pattern(markers.NODE_IMAGES_KEPT, name=nodes.THE_STORIES[0])),
+    ):
+        d.go_back()
+    d.settle()
+    assert d.match_count(pattern(markers.FUN_IMAGE_LOADED)) == images_loaded
+    assert goto_file.name == last_field(d, markers.FUN_IMAGE_LOADED, "filename")
+
 
 def _two_story_tiers(d: Driver) -> bool:
     """Whether the tiers are stacked and each shows an image from a story."""
