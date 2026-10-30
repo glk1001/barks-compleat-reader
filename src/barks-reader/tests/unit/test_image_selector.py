@@ -725,6 +725,39 @@ class TestSelectBestCandidateImage:
 
         assert mock_choice.call_args.args[0] == [(fresh, FileTypes.SPLASH)]
 
+    def test_another_treatment_of_a_recent_panel_is_recent_too(
+        self, image_selector: ImageSelector
+    ) -> None:
+        """The panel's photo was on show and its watercolor went below it (2026-10-30)."""
+        title_dir = Path("AI/You Can't Win")
+        image_selector._most_recently_used_images.append(title_dir / "172-2-photo.jpg")
+        same_panel = [
+            (title_dir / "172-2-water.jpg", FileTypes.AI),
+            (Path("Favourites/You Can't Win/172-2.jpg"), FileTypes.FAVOURITE),
+        ]
+        other_panels = [
+            (title_dir / "172-3-photo.jpg", FileTypes.AI),
+            (Path("AI/Trick or Treat/172-2-photo.jpg"), FileTypes.AI),
+            (Path("Insets/You Can't Win.png"), FileTypes.INSET),
+        ]
+        with patch.object(random, random.choice.__name__) as mock_choice:
+            image_selector._select_best_candidate_image(
+                [*same_panel, *other_panels],
+                "You Can't Win",
+            )
+
+        assert mock_choice.call_args.args[0] == other_panels
+
+    def test_an_unnumbered_file_is_its_own_panel(self) -> None:
+        assert ImageSelector._panel_key(Path("Insets/Machine Mix-Up.png")) == (
+            "Insets",
+            "Machine Mix-Up",
+        )
+        assert ImageSelector._panel_key(Path("AI/A Title/042-7-clean.png")) == (
+            "A Title",
+            "042-7",
+        )
+
     def test_falls_back_to_every_file_when_all_are_filtered_out(
         self, image_selector: ImageSelector
     ) -> None:

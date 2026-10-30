@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import random
+import re
 from collections import deque
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 from random import randrange
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -26,6 +27,9 @@ if TYPE_CHECKING:
     from .reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10
+# A panel file's page-panel number, "172-2" of "172-2-water.jpg": one panel comes in
+# many treatments (AI: halftone, oil, pastel, photo, water, ... and the favourite).
+_PANEL_NUMBER = re.compile(r"^\d+-\d+")
 MAX_IMAGE_FILENAMES_TO_KEEP = 100
 
 SEARCH_TITLES = [
@@ -148,6 +152,18 @@ class ImageSelector:
 
     def _add_last_image(self, image_filename: PanelPath) -> None:
         self._most_recently_used_images.append(image_filename)
+
+    @staticmethod
+    def _panel_key(filename: PanelPath) -> tuple[str, str]:
+        """Return the panel `filename` shows: its folder and page-panel number, or stem.
+
+        Every treatment of a panel shares the key ("You Can't Win", "172-2"), so a
+        panel shown lately is not shown again in another treatment: the spread's two
+        tiers held the photo and the watercolor of one panel (2026-10-30).
+        """
+        path = PurePath(str(filename))  # A zip member's parent is typed as a bare PathLike.
+        number = _PANEL_NUMBER.match(path.stem)
+        return path.parent.name, number.group(0) if number else path.stem
 
     def _get_fallback_image_info(self) -> ImageInfo:
         return ImageInfo(
@@ -358,14 +374,18 @@ class ImageSelector:
     def _select_best_candidate_image(
         self, possible_files: PossibleFiles, title_str: str | None
     ) -> tuple[PanelPath, FileTypes] | None:
-        """Select the best candidate image, preferring ones not recently used."""
+        """Select the best candidate image, preferring ones not recently used.
+
+        Recently used means the panel, in any of its treatments (`_panel_key`).
+        """
         if not possible_files:
             return None
 
+        recent_panels = {self._panel_key(f) for f in self._most_recently_used_images}
         candidates = [
             (filename, file_type)
             for filename, file_type in possible_files
-            if filename not in self._most_recently_used_images
+            if self._panel_key(filename) not in recent_panels
             and (title_str is None or filename != self._last_title_image.get(title_str, ""))
         ]
 
