@@ -205,14 +205,15 @@
 
         /* The art lives in panels, the way comics do it: ink border, offset
            shadow, flat paper around. Text surfaces stay opaque. */
-        /* The pitch, then the demo under it at the full width: the app's window is
-           a landscape two-page spread, which no side column could hold at a size
-           where its text still reads. */
+        /* The pitch with the demo beside it. The clip is a landscape two-page
+           spread, so it gets the wider column, and the panel keeps the clip's own
+           shape rather than stretching to the pitch's height with ink above and
+           below the picture. */
         .intro-hero {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1.15fr;
             gap: 34px;
-            align-items: stretch;
+            align-items: start;
         }
 
         .art-panel {
