@@ -579,8 +579,9 @@ class TestFullscreen:
     ) -> None:
         (tmp_path / "page-001.png").write_bytes(b"")
         _open(screen, tmp_path)
-        with patch.object(document_reader_module, "Window"):
+        with patch.object(document_reader_module, "Window") as window:
             screen.close()
+        window.unbind.assert_called_once_with(on_key_down=screen._on_key_down)
         screen._on_close_screen.assert_called_once()
         assert screen._is_closing is False
 
@@ -591,12 +592,13 @@ class TestFullscreen:
         _open(screen, tmp_path)  # windowed on entry
         windowed.is_fullscreen_now.return_value = True  # fullscreen since
         screen._mode = MagicMock()
-        with patch.object(document_reader_module, "Window"):
+        with patch.object(document_reader_module, "Window") as window:
             screen.close()
         screen._mode.goto_windowed.assert_called_once()
         screen._on_close_screen.assert_not_called()
         assert screen._is_closing is True
-        # Keys and taps have nothing left to act on.
+        # Keys stay bound, to be swallowed, and taps have nothing left to act on.
+        window.unbind.assert_not_called()
         assert screen._on_key_down(None, 0, 0, "", []) is True
         assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5, y=5)) is True
         # Then the window lands, and the screen leaves once laid out for it.
@@ -605,10 +607,12 @@ class TestFullscreen:
             patch.object(document_reader_module, "log_window_geometry"),
             patch.object(screen, "_fills_window", return_value=True),
             patch.object(document_reader_module, "Clock") as clock,
+            patch.object(document_reader_module, "Window") as window,
         ):
             screen._on_finished_goto_windowed_mode()
             clock.schedule_once.assert_called_once()
             clock.schedule_once.call_args[0][0](0)
+        window.unbind.assert_called_once_with(on_key_down=screen._on_key_down)
         screen._on_close_screen.assert_called_once()
         assert screen._is_closing is False
 

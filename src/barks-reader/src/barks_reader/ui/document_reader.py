@@ -488,7 +488,6 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         logger.debug(log_markers.DOCUMENT_CLOSING)
         if self._menu_mode:
             self._exit_menu_mode()
-        Window.unbind(on_key_down=self._on_key_down)
         # No pages: a layout change under a closed reader laid the document out again
         # and moved its resume page (2026-10-30). The resume pages stay (`open_document`).
         self._page_paths = []
@@ -498,7 +497,8 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._finish_closing()
             return
         # The window changed mode under the document: back to the mode it opened in,
-        # and the screen leaves once laid out for it (the mode's finish callback).
+        # and the screen leaves once laid out for it (the mode's finish callback). The
+        # keys stay bound till then, for `_on_key_down` to swallow.
         self._is_closing = True
         if self._was_fullscreen_on_entry:
             self._mode.goto_fullscreen()
@@ -528,6 +528,7 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def _finish_closing(self) -> None:
+        Window.unbind(on_key_down=self._on_key_down)
         self._is_closing = False
         self._on_close_screen()
         after_close, self._after_close = self._after_close, None
