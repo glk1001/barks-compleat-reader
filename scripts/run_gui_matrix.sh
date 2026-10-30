@@ -14,8 +14,8 @@
 # nested screen, its size after a second bar (the spread's landscape screen; the
 # harness checks each boot came up on the layout the setting names). Settings the
 # harness pins (fullscreen on start, quit confirm, ...) cannot be a variant;
-# double-page mode and the main screen layout are harness defaults rather than
-# pins, so they can. Add a variant by adding a line.
+# the layout is a harness default rather than a pin, so it can. Add a variant
+# by adding a line.
 #
 # Usage: scripts/run_gui_matrix.sh [--list] [--only NAME[,NAME...]] [--visible]
 #                                  [--screen WxH] [--progress] [--app PATH] [pytest args]

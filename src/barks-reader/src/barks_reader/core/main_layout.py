@@ -7,7 +7,7 @@ comic page's shape, a gutter between them, the action bar across the pair. A pag
 the spread is exactly as wide as the single column is on the same screen, so nothing
 gets smaller and the fonts, keyed to the window's height, do not change.
 
-The "Main screen layout" setting chooses: the single page, the spread, or, by default,
+The "Layout" setting chooses: the single page, the spread, or, by default,
 whichever matches the screen. Matching the screen is one measurement, `spread_fits`:
 the spread when two pages fit side by side at full height, decided from the monitor's
 full size in both windowed and fullscreen mode so a monitor gets one answer (a usable

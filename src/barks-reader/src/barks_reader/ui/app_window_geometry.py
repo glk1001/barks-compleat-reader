@@ -55,7 +55,7 @@ class AppWindowGeometryHelper:
     """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding.
 
     It also decides the main screen's layout, single page or two-page spread, from the
-    "Main screen layout" setting and the monitor the window is on (core.main_layout):
+    "Layout" setting and the monitor the window is on (core.main_layout):
     at boot, on a monitor change, on a rotation and on a change of the setting. The
     window is held to the layout's shape, and the main screen is told of a change
     through the callback given to `set_main_screen_callbacks`.
@@ -125,7 +125,7 @@ class AppWindowGeometryHelper:
         return content_aspect_ratio(self._layout_mode, self._constraints.aspect_ratio)
 
     def set_layout_setting(self, setting: str) -> None:
-        """Take a new value of the "Main screen layout" setting, and lay the window out for it.
+        """Take a new value of the "Layout" setting, and lay the window out for it.
 
         Args:
             setting: One of `MAIN_SCREEN_LAYOUT_OPTIONS` (core.main_layout).

@@ -204,7 +204,7 @@ def apply_ini_overrides(ini: Path, overrides: Mapping[str, str]) -> None:
         parser.write(out)
 
 
-# The layout the app logs for each explicit value of the "Main screen layout" setting.
+# The layout the app logs for each explicit value of the "Layout" setting.
 LAYOUT_MODE_FOR_SETTING: dict[str, str] = {
     SINGLE_PAGE: MainLayoutMode.SINGLE.value,
     TWO_PAGE_SPREAD: MainLayoutMode.SPREAD.value,

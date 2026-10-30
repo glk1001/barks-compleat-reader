@@ -613,7 +613,7 @@ class TestTheSpread:
             + "\n",
             encoding="utf-8",
         )
-        with pytest.raises(BeatError, match="Main screen layout"):
+        with pytest.raises(BeatError, match="set 'Layout'"):
             Recorder.require_spread(driver, "browse_tree")
 
     def test_a_boot_on_the_spread_is_filmed(self, new_stub_driver: Callable[[], Driver]) -> None:

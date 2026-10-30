@@ -1421,7 +1421,7 @@ class Recorder:
         if driver.match_count(MAIN_LAYOUT_SPREAD) == 0:
             msg = (
                 f"[{beat_name}] the app came up on the single page, but the demo is filmed"
-                " on the two-page spread: set 'Main screen layout' to 'Match the screen' or"
+                " on the two-page spread: set 'Layout' to 'Match the screen' or"
                 " 'Two-page spread' in barks-reader.ini (the recorder never writes it), and"
                 f" film on a landscape screen (BARKS_PROBE_SCREEN={DEMO_SCREEN} unless set)"
             )
