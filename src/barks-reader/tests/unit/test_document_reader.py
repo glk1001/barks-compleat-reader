@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
@@ -164,13 +164,52 @@ class TestGotoStory:
         (tmp_path / "page-001.png").write_bytes(b"")
         _write_links(tmp_path / "page-001.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
         _open(screen, tmp_path)
+        order = MagicMock()
+        order.attach_mock(screen._on_close_screen, "close")
+        order.attach_mock(screen._on_goto_story, "goto")
         with patch.object(document_reader_module, "Window"):
             screen._open_goto_story(keyboard_initiated=True)
-        screen._on_close_screen.assert_called_once()
-        screen._on_goto_story.assert_called_once_with(
-            Titles.LOST_IN_THE_ANDES, "7", keyboard_initiated=True
-        )
+        # The document goes first, then the main screen navigates.
+        assert order.mock_calls == [
+            call.close(),
+            call.goto(Titles.LOST_IN_THE_ANDES, "7", keyboard_initiated=True),
+        ]
         assert 'Document goto story: "LOST_IN_THE_ANDES", page 7.' in loguru_sink
+
+    def test_from_a_changed_mode_the_story_waits_for_the_document_to_go(
+        self, screen: DocumentReaderScreen, tmp_path: Path, windowed: MagicMock
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _write_links(tmp_path / "page-001.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
+        _open(screen, tmp_path)  # windowed on entry
+        windowed.is_fullscreen_now.return_value = True  # the bar's Fullscreen since
+        screen._mode = MagicMock()
+        order = MagicMock()
+        order.attach_mock(screen._on_close_screen, "close")
+        order.attach_mock(screen._on_goto_story, "goto")
+        with patch.object(document_reader_module, "Window"):
+            screen._open_goto_story(keyboard_initiated=False)
+        screen._mode.goto_windowed.assert_called_once()
+        assert order.mock_calls == []  # nothing until the window is back
+
+        windowed.is_fullscreen_now.return_value = False
+        with (
+            patch.object(document_reader_module, "log_window_geometry"),
+            patch.object(screen, "_fills_window", return_value=True),
+            patch.object(document_reader_module, "Clock") as clock,
+        ):
+            screen._on_finished_goto_windowed_mode()
+            clock.schedule_once.call_args[0][0](0)
+        assert order.mock_calls == [
+            call.close(),
+            call.goto(Titles.LOST_IN_THE_ANDES, "7", keyboard_initiated=False),
+        ]
+        # Done with: a later close does not navigate again.
+        screen._on_goto_story.reset_mock()
+        _open(screen, tmp_path)
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+        screen._on_goto_story.assert_not_called()
 
     def test_no_story_does_nothing(self, screen: DocumentReaderScreen, tmp_path: Path) -> None:
         (tmp_path / "page-001.png").write_bytes(b"")

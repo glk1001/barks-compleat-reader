@@ -140,6 +140,8 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         self._was_fullscreen_on_entry = False
         self._is_closing = False
+        # What runs once the screen has gone (`close`), e.g. Go to Story's navigation.
+        self._after_close: Callable[[], None] | None = None
         self._doc_dir: Path | None = None
         self._page_paths: list[Path] = []
         self._units: list[DisplayUnit] = []
@@ -451,8 +453,13 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _goto_story(self, link: StoryLink, *, keyboard_initiated: bool) -> None:
         logger.info(log_markers.DOCUMENT_GOTO_STORY.format(name=link.title.name, page=link.page))
-        self.close()
-        self._on_goto_story(link.title, link.page, keyboard_initiated=keyboard_initiated)
+        # Once the document has gone: a close from a changed window mode waits for the
+        # window to come back, and the main screen's navigation must come after it.
+        self.close(
+            then=lambda: self._on_goto_story(
+                link.title, link.page, keyboard_initiated=keyboard_initiated
+            )
+        )
 
     @override
     def _activate_dropdown_item(self) -> None:
@@ -468,8 +475,14 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if self._story_dropdown is not None:
             self._story_dropdown.dismiss()
 
-    def close(self) -> None:
-        """Close the document, returning the window to the mode it was opened in."""
+    def close(self, then: Callable[[], None] | None = None) -> None:
+        """Close the document, returning the window to the mode it was opened in.
+
+        Args:
+            then: Called once the screen has gone: at once, or after the window mode
+                change a close from a changed mode waits for.
+
+        """
         if self._is_closing:
             return
         logger.debug(log_markers.DOCUMENT_CLOSING)
@@ -480,8 +493,9 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # and moved its resume page (2026-10-30). The resume pages stay (`open_document`).
         self._page_paths = []
 
+        self._after_close = then
         if bool(WindowManager.is_fullscreen_now()) == self._was_fullscreen_on_entry:
-            self._on_close_screen()
+            self._finish_closing()
             return
         # The window changed mode under the document: back to the mode it opened in,
         # and the screen leaves once laid out for it (the mode's finish callback).
@@ -516,6 +530,9 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _finish_closing(self) -> None:
         self._is_closing = False
         self._on_close_screen()
+        after_close, self._after_close = self._after_close, None
+        if after_close is not None:
+            after_close()
 
 
 def get_document_reader_screen(
