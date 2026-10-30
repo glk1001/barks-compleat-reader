@@ -37,8 +37,11 @@
         # The opacity controls this entire container.
         opacity: 1
         disabled: not root.is_visible
-        title_box_padding: dp(0.03 * self.parent.width)
-        title_box_spacing: dp(0.055 * self.parent.height)
+        # On the spread the text's left margin is the portal's right one (a tenth of
+        # its 0.44 column), and the gap under the info rows is a paragraph's, not a
+        # break's: the rows and the notes read as one block.
+        title_box_padding: dp((0.044 if root.layout_mode == 'spread' else 0.03) * self.parent.width)
+        title_box_spacing: dp((0.0275 if root.layout_mode == 'spread' else 0.055) * self.parent.height)
 
         # The background image is now a direct child, simplifying the structure.
         Image:
@@ -125,30 +128,53 @@
             # Its height is explicit: a box layout keeps a child's own height for a
             # size hint of 0 (the Widget default of 100), which pushed the hero band
             # up out of the view and over the tree's last rows on a single page.
+            # A compact colophon (a title without notes) leaves it the rest of the page,
+            # and wider: a landscape picture is bound by its width, not that height.
             Image:
                 id: title_picture
                 texture: root.title_image_texture
                 fit_mode: "contain"
                 mipmap: True
-                size_hint: (0.76 if root.layout_mode == 'spread' else 1), None
-                height: 0.38 * bottom_view_box.height if root.layout_mode == 'spread' else 0
+                size_hint: ((0.88 if root.compact_colophon else 0.76) if root.layout_mode == 'spread' else 1), None
+                height:
+                    max(0, 0.88 * bottom_view_box.height - colophon.height) \
+                    if root.compact_colophon else \
+                    (0.38 * bottom_view_box.height if root.layout_mode == 'spread' else 0)
                 pos_hint: {'center_x': 0.5}
                 opacity: 1 if root.layout_mode == 'spread' else 0
 
             # --- Single RelativeLayout for all two column content below the title ---
-            # This layout will fill the remaining vertical space.
+            # This layout will fill the remaining vertical space; compact, it is as
+            # tall as the portal column's stack (the portal on its foot, its rows, and
+            # a margin over the top row like the one under the portal). Otherwise the
+            # rule names the share the box gives it: a dummy value here moved the
+            # text, which moves the portal (tied to it), whose rows size this - a loop.
             RelativeLayout:
-                size_hint: 1, (0.50 if root.layout_mode == 'spread' else 0.82)
+                id: colophon
+                size_hint: 1, (None if root.compact_colophon else (0.50 if root.layout_mode == 'spread' else 0.82))
+                height:
+                    (wiki_page_button.top + 0.1 * title_portal_column.width) \
+                    if root.compact_colophon else \
+                    ((0.50 if root.layout_mode == 'spread' else 0.82) * bottom_view_box.height)
 
                 # --- Left Column (as a positioned BoxLayout) ---
-                # This layout holds the text and is forced to the top-left.
+                # This layout holds the text and is forced to the top-left; in a
+                # compact colophon it holds the info rows alone, their glyphs' top
+                # level with the portal's (the spacing under the rows is counted in
+                # the height so the rows stay at the top).
                 BoxLayout:
                     id: title_info_box
                     orientation: 'vertical'
                     # As tall as the space under its top: a taller box ran on below the
                     # panel, and a long extra-info text was cut at the panel's edge.
-                    size_hint: 0.56, 0.92
-                    pos_hint: {'x': 0, 'top': 0.92}
+                    size_hint: 0.56, (None if root.compact_colophon else 0.92)
+                    height:
+                        (title_info_label.height + 2 * self.spacing) \
+                        if root.compact_colophon else 0
+                    pos_hint: {'x': 0} if root.compact_colophon else {'x': 0, 'top': 0.92}
+                    y:
+                        (title_portal_image_button.top + root.TEXT_LEADING * title_info_label.font_size - self.height) \
+                        if root.compact_colophon else 0
                     padding: [bottom_title_view.title_box_padding, 0, 0, 0]
                     spacing: bottom_title_view.title_box_spacing
 
@@ -189,7 +215,7 @@
                         markup: True
                         mipmap: True
                         size_hint_y: None
-                        height: self.texture_size[1]
+                        height: self.texture_size[1] if root.title_extra_info_text else 0
                         text_size: self.width, None
                         halign: 'justify'
                         padding: [dp(1), 0, 0, 0]
@@ -202,6 +228,7 @@
 
                 # --- Right Column (as a relative container) ---
                 RelativeLayout:
+                    id: title_portal_column
                     size_hint: 0.44, 1.0
                     pos_hint: {'right': 1.0, 'top': 1.0}
 
@@ -216,8 +243,20 @@
                         height: self.width / 1.036
                         # Center the button within the right column
                         pos_hint: {'center_x': 0.5}
-                        # Make the space at the button's bottom roughly that of the space on the right.
-                        top: 1.01 * (self.height + (self.parent.width - (self.x + self.width)))
+                        # On the spread with notes, its top is level with their first
+                        # line's glyphs, the rows above it in the gap under the info
+                        # rows, but never higher than lets the top row clear the info
+                        # rows' last line (three rows on a tag-cued title with an
+                        # override); otherwise it sits on the column's foot, with a
+                        # margin at the bottom roughly that of the space on the right,
+                        # and a compact colophon lifts it a little clear of the page's foot.
+                        top:
+                            min(title_extra_info_label.top - root.TEXT_LEADING * title_extra_info_label.font_size, \
+                            title_info_label.y - (goto_page_layout.height + use_overrides_layout.height \
+                            + wiki_page_button.height + 1.15 * fm.check_box_font_size)) \
+                            if (root.layout_mode == 'spread' and not root.compact_colophon) else \
+                            (1.01 * (self.height + (self.parent.width - (self.x + self.width))) \
+                            + (0.05 * bottom_view_box.height if root.compact_colophon else 0))
 
                         canvas.before:
                             Color:

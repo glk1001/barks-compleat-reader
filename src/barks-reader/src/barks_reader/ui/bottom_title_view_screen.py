@@ -14,6 +14,7 @@ from comic_utils.timing import Timing
 from kivy.animation import Animation
 from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
 from kivy.properties import (  # ty: ignore[unresolved-import]
+    AliasProperty,
     BooleanProperty,
     ColorProperty,
     ListProperty,
@@ -129,6 +130,9 @@ class BottomTitleViewScreen(FloatLayout):
     main_title_footnote = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
+    # The share of a label's font size between its texture's top and its glyphs' tops
+    # (the font's ascent over its cap height): what lines the portal up with the text.
+    TEXT_LEADING = 0.25
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     # Dark text outline for the left-column info text, for the same reason.
     TITLE_INFO_OUTLINE_COLOR = (0, 0, 0, 1)
@@ -148,6 +152,16 @@ class BottomTitleViewScreen(FloatLayout):
     # The book's layout (core.main_layout): the view is the right page on the spread.
     layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     title_image_color = ColorProperty()
+
+    def _get_compact_colophon(self) -> bool:
+        return self.layout_mode == MainLayoutMode.SPREAD.value and not self.title_extra_info_text
+
+    # On the spread a title without notes packs its colophon (the info rows beside the
+    # portal column) into a short foot and the picture takes the rest of the page: with
+    # the colophon at half the page, the notes' empty room made the page look unfinished.
+    compact_colophon = AliasProperty(
+        _get_compact_colophon, None, bind=("layout_mode", "title_extra_info_text"), cache=True
+    )
 
     wiki_button_visible = BooleanProperty(defaultvalue=False)
 

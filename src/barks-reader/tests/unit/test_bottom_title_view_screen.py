@@ -13,6 +13,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
@@ -112,6 +113,22 @@ class ScreenFixtureBase:
 
 
 class TestBottomTitleViewScreen(ScreenFixtureBase):
+    def test_the_colophon_is_compact_on_the_spread_for_a_title_without_notes(self) -> None:
+        seen: list[bool] = []
+        self.screen.bind(compact_colophon=lambda _instance, compact: seen.append(compact))
+        assert self.screen.compact_colophon is False
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        assert self.screen.compact_colophon is True
+        self.screen.title_extra_info_text = "Extra Info"
+        assert self.screen.compact_colophon is False
+        self.screen.title_extra_info_text = ""
+        assert self.screen.compact_colophon is True
+        self.screen.layout_mode = MainLayoutMode.SINGLE.value
+        assert self.screen.compact_colophon is False
+
+        assert seen == [True, False, True, False]
+
     def test_set_title_view(self) -> None:
         mock_info = MagicMock()
         mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD

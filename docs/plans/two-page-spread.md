@@ -61,6 +61,24 @@
 >   100 px default height (a box layout keeps a child's own height for a falsy hint)
 >   and pushed the hero band up over the tree's last rows, where it swallowed their
 >   taps (two GUI tap tests caught it); the picture's height is explicit now.
+>   A title without notes (The Lemonade Fling) left the colophon's lower half empty,
+>   and on the page's black that read as a layout gone wrong; a grey card where the
+>   notes would sit was mocked and rejected (an empty box reads as a missing element).
+>   Since 2026-10-30 such a title packs its colophon into a short foot lifted a little
+>   clear of the page's bottom, and the picture takes the rest of the page
+>   (`compact_colophon` on the title view screen). On the spread the portal's top is
+>   level with the glyphs of the text beside it in both cases: the notes' first line,
+>   or the info rows (`TEXT_LEADING`), its rows stacked in the gap above, but never
+>   above the info rows' last line (three rows on a cued title with an override).
+>   Also on the spread: the text's left margin is the portal's right one, the gap
+>   under the info rows is halved (the notes read on from the rows, and show whole
+>   at 1080p), and the compact page's picture is 88% wide, not 76% (a landscape
+>   picture was bound by its width there). A strict grid, the text and portal on the
+>   picture's edges, is not to be had: with notes the picture is bound by its 38%
+>   height, so its width is each title's art's. Tying the
+>   portal to the notes made the colophon's height rule a Kivy binding loop (a
+>   thousand "too much iteration" warnings) until its other branch named the share
+>   the box gives it instead of a dummy.
 > - Stage 3 the index and search pages: DONE 2026-10-29. Seen on this PC on a nested
 >   2560x1440 display: the title search's box over its results at the page's width
 >   (decision 8), the tag and word searches in their columns with a query typed, the
