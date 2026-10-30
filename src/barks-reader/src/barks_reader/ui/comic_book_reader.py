@@ -464,6 +464,9 @@ class ComicBookReader(FloatLayout):
         self._comic_image.source = ""  # Clear previous source
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
+        # One page drawn: a slow page one reveals the reader on this, and the bar must
+        # not keep the last comic's pair width over it.
+        self.showing_two_pages = False
 
     def _set_one_pager_action_bar_title(self, page_str: str) -> None:
         """Set the window title to the one-pager shown on the collection's *page_str*.
@@ -1027,7 +1030,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._on_comic_is_ready_to_read_func()
         self.action_bar_title = self.comic_book_reader.action_bar_title
         self._sync_double_page_button()
-        self._reset_action_bar_width()
 
     def _on_key_down(
         self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
@@ -1084,7 +1086,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Toggle double-page mode on/off for the current comic (does not change config)."""
         self.comic_book_reader.toggle_double_page_mode()
         self._sync_double_page_button()
-        self._reset_action_bar_width()
         if WindowManager.is_fullscreen_now():
             self._hide_action_bar()
 
@@ -1233,8 +1234,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # under a page, the pair's under a pair (the two pages are composited as one
         # landscape image, twice a page wide); in double-page mode a solo unit, the
         # cover or an odd last page, is drawn as one page, so the bar follows what the
-        # reader draws (`showing_two_pages`), not the mode. It refits with the window,
-        # at a comic's load, on the Double Page toggle and as the pages drawn change.
+        # reader draws (`showing_two_pages`), not the mode. It refits with the window
+        # and as the pages drawn change (a comic's load and the Double Page toggle
+        # reach it there, once the reader has drawn).
         aspect_ratio = COMIC_PAGE_ASPECT_RATIO
         if self.comic_book_reader.showing_two_pages:
             aspect_ratio /= 2

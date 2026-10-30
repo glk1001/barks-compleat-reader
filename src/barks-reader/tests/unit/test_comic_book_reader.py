@@ -310,6 +310,13 @@ class TestComicBookReader:
         reader._render_page(4, None)
         assert reader.showing_two_pages is False
 
+    def test_the_loading_page_is_one_page(self, reader: ComicBookReader) -> None:
+        """A slow page one reveals the reader on it: the bar is not the last comic's pair."""
+        self._stub_current_page(reader, 2)
+        reader._render_page(2, 3)
+        reader._show_loading_page()
+        assert reader.showing_two_pages is False
+
     def test_the_first_page_drawn_says_the_comic_opened_once(self, reader: ComicBookReader) -> None:
         """The opener hears of page one only, not of every page turn after it."""
         self._stub_current_page(reader, 0)
@@ -1066,22 +1073,6 @@ class TestComicBookReaderScreen:
         )
         with patch.object(screen, "_reset_action_bar_width") as reset:
             on_change(screen.comic_book_reader, False)  # noqa: FBT003
-        reset.assert_called_once_with()
-
-    @pytest.mark.parametrize("refit", ["toggle_double_page_mode", "_on_comic_is_ready_to_read"])
-    def test_the_bar_refits_when_the_mode_can_change(
-        self, screen: ComicBookReaderScreen, refit: str
-    ) -> None:
-        """The Double Page toggle and a comic's load (its mode is per comic) refit the bar."""
-        cast("MagicMock", screen.comic_book_reader).action_bar_title = "Lost in the Andes"
-        with (
-            patch.object(screen, "_reset_action_bar_width") as reset,
-            patch.object(_reader_module, "WindowManager"),
-            patch.object(
-                ComicBookReaderScreen, "ids", new_callable=PropertyMock, return_value=MagicMock()
-            ),
-        ):
-            getattr(screen, refit)()
         reset.assert_called_once_with()
 
     # --- the goto-page dropdown opened from its bar button ---
