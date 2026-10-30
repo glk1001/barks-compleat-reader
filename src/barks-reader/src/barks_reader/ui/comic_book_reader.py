@@ -36,6 +36,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import ARTICLE_TITLE_TEXTS, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
@@ -145,6 +146,9 @@ class ComicBookReader(FloatLayout):
         super().__init__(**kwargs)
 
         self._reader_settings = reader_settings
+        # Whether a comic opens two pages at a time: the main screen's layout is the
+        # spread (`ComicBookReaderScreen.layout_mode`). The bar's toggle is per comic.
+        self.opens_two_up = False
         self._font_manager = font_manager
         self._on_comic_is_ready_to_read = on_comic_is_ready_to_read
         self._toggle_action_bar_visibility = toggle_action_bar_visibility
@@ -366,7 +370,7 @@ class ComicBookReader(FloatLayout):
         # The collections are always single-page: each page is a separate gag or
         # cover, so a two-page spread would pair unrelated items.
         self._page_manager.double_page_mode = (
-            False if self.is_single_page_only_collection else self._reader_settings.double_page_mode
+            False if self.is_single_page_only_collection else self.opens_two_up
         )
         self._page_manager.set_layout(layout, page_to_first_goto)
 
@@ -830,6 +834,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
+    # The main screen's layout ("single" or "spread"); the app sets it. On the spread a
+    # comic opens two pages at a time; a change under an open comic waits for the next
+    # (the bar's Double Page is there meanwhile).
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     # Declared so a caller's `screen.comic_book_reader.read_comic(...)` is type-checked:
     # the Kivy base has no stubs, so an undeclared attribute reads as Unknown.
     comic_book_reader: ComicBookReader
@@ -837,6 +845,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_enter(self, *args: object) -> None:
         super().on_enter(*args)
         self.comic_book_reader.log_page_placement_afresh()
+
+    def on_layout_mode(self, _instance: Widget, mode: str) -> None:
+        """Have the next comic open two-up on the spread, one page at a time otherwise."""
+        self.comic_book_reader.opens_two_up = mode == MainLayoutMode.SPREAD.value
 
     @property
     @override

@@ -539,6 +539,33 @@ class TestComicBookReader:
         reader._is_covers_collection = False
         return reader
 
+    @pytest.mark.parametrize(
+        ("opens_two_up", "collection", "two_up"),
+        [(False, False, False), (True, False, True), (True, True, False)],
+    )
+    def test_a_comic_opens_two_up_on_the_spread_unless_a_collection(
+        self, reader: ComicBookReader, *, opens_two_up: bool, collection: bool, two_up: bool
+    ) -> None:
+        """The layout decides (`opens_two_up`); the one-pager and cover collections never pair."""
+        reader = self._bare_reader(reader)
+        reader.opens_two_up = opens_two_up
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        fanta_info.comic_book_info.title = (
+            Titles.ALL_ONE_PAGERS if collection else Titles.LOST_IN_THE_ANDES
+        )
+        layout = MagicMock()
+        layout.page_map = {COMIC_BEGIN_PAGE: MagicMock()}
+        with (
+            patch.object(reader, "_stop_pending_poll"),
+            patch.object(
+                reader._comic_book_loader, "resolve_archive_for_comic", side_effect=RuntimeError
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            reader.read_comic(fanta_info, False, MagicMock(), COMIC_BEGIN_PAGE, layout)  # noqa: FBT003
+        assert reader._page_manager.double_page_mode is two_up
+
     def test_double_page_toggle_logs_the_new_mode(
         self, reader: ComicBookReader, loguru_sink: list[str]
     ) -> None:

@@ -136,9 +136,9 @@ def test_every_setting_the_panel_writes_reads_back_typed_the_same_from_the_ini_f
         assert setting_value_from_panel(key, value) == value
 
 
-@given(st.booleans(), st.booleans(), st.integers(min_value=0, max_value=1_000_000))
+@given(st.booleans(), st.integers(min_value=0, max_value=1_000_000))
 def test_the_setters_read_back_what_they_were_set_here_and_after_a_reload(
-    double_page: bool, first_use: bool, keycode: int
+    first_use: bool, keycode: int
 ) -> None:
     config = _IniConfig()
     for spec in _FIELDS:  # Every field present, as the panel leaves the file.
@@ -147,14 +147,12 @@ def test_the_setters_read_back_what_they_were_set_here_and_after_a_reload(
     reader_settings = ReaderSettings()
     reader_settings.set_config(config, Path("/app/barks-reader.ini"), Path("/app"))
 
-    reader_settings.double_page_mode = double_page
     reader_settings.is_first_use_of_reader = first_use
     reader_settings.set_alt_escape_key(keycode)
 
     for cfg in (config, _reloaded(config)):
         loaded = ReaderSettings()
         loaded.set_config(cfg, Path("/app/barks-reader.ini"), Path("/app"))
-        assert loaded.double_page_mode is double_page
         assert loaded.is_first_use_of_reader is first_use
         assert loaded.get_alt_escape_key() == keycode
 

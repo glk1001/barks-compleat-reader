@@ -16,8 +16,8 @@
 #   volumes        the suite reading comics from the Fantagraphics volumes (--prebuilt 0)
 #   prebuilt       ... and from the prebuilt comic archives (--prebuilt 1)
 #   matrix         run_gui_matrix.sh: the suite once per settings variant (themes,
-#                  double-page, virtual keyboard, title info off, censorship fixes,
-#                  the two-page spread on a 1920x1080 screen)
+#                  virtual keyboard, title info off, censorship fixes, the two-page
+#                  spread on a 1920x1080 screen, where comics open two-up)
 #   screen-1080p   the suite on a landscape 1920x1080 nested screen
 #   touch          the tap tests by real touch (--touch); skipped, and said so,
 #                  when the machine lacks the udev rule (scripts/udev/)

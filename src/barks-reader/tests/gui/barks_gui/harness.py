@@ -79,9 +79,9 @@ INI_OVERRIDES: dict[str, str] = {
 }
 # What the scratch profile starts from unless the run says otherwise: a setting
 # the suite reads rather than depends on (a test that toggles double-page mode
-# asks the ini which way it is toggling). The matrix runner flips these.
+# asks the ini which way it is toggling: `booted_two_up`). The matrix runner
+# flips these.
 INI_DEFAULTS: dict[str, str] = {
-    "double_page_mode": "0",
     # The nested screen is landscape, so matching the screen would give the suite the
     # two-page spread; the single page is the layout the suite was written on.
     "main_screen_layout": "Single page",
@@ -209,6 +209,22 @@ LAYOUT_MODE_FOR_SETTING: dict[str, str] = {
     SINGLE_PAGE: MainLayoutMode.SINGLE.value,
     TWO_PAGE_SPREAD: MainLayoutMode.SPREAD.value,
 }
+
+
+def booted_two_up(scratch: Path) -> bool:
+    """Whether the profile opens comics two pages at a time: it boots on the spread.
+
+    The comic reader opens two-up when the layout is the two-page spread (the matrix's
+    spread variant forces it); the harness pins the single page otherwise, and a test
+    never asks to match the screen.
+    """
+    ini = scratch / "barks-reader.ini"
+    if not ini.is_file():
+        return False
+    try:
+        return read_ini_value(ini, "main_screen_layout") == TWO_PAGE_SPREAD
+    except configparser.Error:
+        return False
 
 
 def read_ini_value(ini: Path, key: str) -> str:

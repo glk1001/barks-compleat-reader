@@ -648,7 +648,7 @@ def test_a_tag_on_several_runs_of_pages_steps_through_them(boot: AppBoot) -> Non
 
     layout = expected.comic_layout(nodes.LOST_IN_THE_ANDES_TITLE)
     page_index = layout.page_map[second].page_index
-    two_up = harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
+    two_up = harness.booted_two_up(boot.scratch)
     shows = expected.unit_start(nodes.LOST_IN_THE_ANDES_TITLE, page_index) if two_up else page_index
     assert d.current_page() == shows
 

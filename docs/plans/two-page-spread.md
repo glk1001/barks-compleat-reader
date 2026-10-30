@@ -166,6 +166,10 @@ Settled with the maintainer, 2026-10-29, in this order.
    in the Reading section. The two explicit values bypass the rule below; Two-page
    spread on a portrait screen is width-limited and the pages shrink, the same as
    Double Page Mode in the reader on the portrait laptop today.
+   Revised 2026-10-30: one "Layout" setting for both. The comic reader opens two-up
+   when the layout is the spread, whichever way it was decided (on a landscape screen
+   two pages are as tall as one, so nothing shrinks), and Double Page Mode is gone;
+   the bar's Double Page toggles the comic at hand. The old ini key is ignored.
 2. **The rule behind Match the screen: the spread when two pages fit side by side at
    full height.** With a bar of 45 dp and a gutter of 3% of a page's width, a page's
    width is fixed by the screen's height, so the only question is whether two of them
@@ -223,7 +227,8 @@ Settled with the maintainer, 2026-10-29, in this order.
 12. **The comic reader is untouched.** Its two-page footprint is 1.325 times the
     screen height wide; the main-screen spread is about 5% narrower per page because
     it keeps the bar, and it has a gutter the reader lacks. The pages shift slightly
-    between the two; accepted.
+    between the two; accepted. (Its opening mode follows the layout from 2026-10-30:
+    decision 1.)
 13. **Popups are centred on the spread,** to start with. The Menu dropdown still drops
     from its button, over the right page. The settings panel, today sized to the main
     screen (`ui/main_screen.py`, the settings `size`), keeps the single page's

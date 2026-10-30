@@ -47,7 +47,6 @@ USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
 USE_VIRTUAL_KEYBOARD = "use_virtual_keyboard"
-DOUBLE_PAGE_MODE = "double_page_mode"
 MAIN_SCREEN_LAYOUT = "main_screen_layout"
 DECODE_PAGES_WHOLE = "decode_pages_whole"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
@@ -363,17 +362,6 @@ class ReaderSettings:
     def use_virtual_keyboard(self) -> bool:
         return self._read(USE_VIRTUAL_KEYBOARD)
 
-    @property
-    def double_page_mode(self) -> bool:
-        return self._read(DOUBLE_PAGE_MODE)
-
-    @double_page_mode.setter
-    def double_page_mode(self, value: bool) -> None:
-        logger.info(f"Setting double_page_mode = {value}.")
-        assert self._config
-        self._config.set(BARKS_READER_SECTION, DOUBLE_PAGE_MODE, 1 if value else 0)
-        self._save_settings()
-
     @is_first_use_of_reader.setter
     def is_first_use_of_reader(self, value: bool) -> None:
         logger.info(f"Setting is_first_use_of_reader = {value}.")
@@ -450,21 +438,18 @@ _FIELDS: tuple[FieldSpec, ...] = (
         validator=ReaderSettings.is_valid_fantagraphics_volumes_dir,
     ),
     # -- Reading --
-    FieldSpec(
-        key=DOUBLE_PAGE_MODE,
-        title="Double Page Mode",
-        desc="Show two pages side-by-side when reading comics.",
-        kind=FieldKind.BOOL,
-        section_header="Reading",
-        config_default=0,
-    ),
+    # One layout for the main screen and the comic reader: on the spread a comic
+    # opens two pages at a time (the bar's Double Page toggles the comic at hand). A
+    # separate "Double Page Mode" setting went on 2026-10-30; its ini key is ignored.
     FieldSpec(
         key=MAIN_SCREEN_LAYOUT,
-        title="Main Screen Layout",
+        title="Layout",
         desc="The tree above the current view on one page, or beside it on a two-page"
-        " spread. Matching the screen gives the spread when two pages fit side by side.",
+        " spread, where comics open two pages at a time. Matching the screen gives the"
+        " spread when two pages fit side by side.",
         kind=FieldKind.OPTIONS,
         options=MAIN_SCREEN_LAYOUT_OPTIONS,
+        section_header="Reading",
         config_default=MATCH_THE_SCREEN,
     ),
     FieldSpec(

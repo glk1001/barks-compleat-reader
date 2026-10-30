@@ -382,9 +382,11 @@ class TestIniOverridesFromEnv:
             harness.ini_overrides_from_env("confirm_quit=0")
 
     def test_a_default_the_harness_only_starts_from_is_accepted(self) -> None:
-        assert harness.ini_overrides_from_env("double_page_mode=1") == {"double_page_mode": "1"}
-        assert "double_page_mode" in harness.INI_DEFAULTS
-        assert "double_page_mode" not in harness.INI_OVERRIDES
+        assert harness.ini_overrides_from_env("main_screen_layout=Two-page spread") == {
+            "main_screen_layout": "Two-page spread"
+        }
+        assert "main_screen_layout" in harness.INI_DEFAULTS
+        assert "main_screen_layout" not in harness.INI_OVERRIDES
 
 
 class TestBuildTemplateRunOverrides:
@@ -410,13 +412,15 @@ class TestBuildTemplateRunOverrides:
     ) -> None:
         live = tmp_path / "live"
         live.mkdir()
-        (live / "barks-reader.ini").write_text("[Barks Reader]\ndouble_page_mode = 0\n")
-        monkeypatch.setenv(harness.INI_ENV_VAR, "double_page_mode=1")
+        (live / "barks-reader.ini").write_text("[Barks Reader]\nmain_screen_layout = Single page\n")
+        monkeypatch.setenv(harness.INI_ENV_VAR, "main_screen_layout=Two-page spread")
         (tmp_path / "template").mkdir()
 
         template = harness.build_template(live, tmp_path / "template")
 
-        assert harness.read_ini_value(template / "barks-reader.ini", "double_page_mode") == "1"
+        ini = template / "barks-reader.ini"
+        assert harness.read_ini_value(ini, "main_screen_layout") == "Two-page spread"
+        assert harness.booted_two_up(template)
 
 
 class TestStrayKeyPresses:
@@ -854,9 +858,11 @@ class TestReadsPersisted:
         assert persisted.reads_persisted_problems(scratch, log) == []
 
     def test_a_profile_booted_two_up_does_not_hold_the_index_either(self, tmp_path: Path) -> None:
-        """The matrix boots with double_page_mode=1; no toggle line is logged then."""
+        """The matrix's spread variant opens comics two-up; no toggle line is logged then."""
         scratch = self._scratch(tmp_path, self._cue(index=9), [self._event()])
-        (scratch / "barks-reader.ini").write_text("[Barks Reader]\ndouble_page_mode = 1\n")
+        (scratch / "barks-reader.ini").write_text(
+            "[Barks Reader]\nmain_screen_layout = Two-page spread\n"
+        )
         assert persisted.reads_persisted_problems(scratch, self._log()) == []
 
     def test_an_open_without_its_event_is_a_problem(self, tmp_path: Path) -> None:

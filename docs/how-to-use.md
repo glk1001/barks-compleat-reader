@@ -22,16 +22,18 @@ Fantagraphics versions.
 
 ---
 
-## Main Screen Layout
+## Layout
 
-The main screen has two layouts, and the *Main Screen Layout* setting chooses between them.
+The main screen has two layouts, and the *Layout* setting chooses between them.
 On a portrait screen it is a single page: the navigation tree above, the current view below.
 On a landscape screen it is a two-page spread: the tree is the left page, the current view —
 a story's title view, the fun view, an index or a search — is the right page, and the menu
 bar runs across both. Each page of the spread is as wide as the single page would be on the
 same screen, so nothing gets smaller. The default, *Match the screen*, picks whichever fits
-the monitor; *Single page* and *Two-page spread* fix one or the other. The sections below
-describe the single page: on the spread, what sits *below* the tree sits *beside* it.
+the monitor; *Single page* and *Two-page spread* fix one or the other. The comic reader
+follows: on the spread a comic opens two pages at a time, on the single page one, and the
+reader's *Double Page* button switches the comic at hand. The sections below describe the
+single page: on the spread, what sits *below* the tree sits *beside* it.
 
 ### Top Menu Bar
 
@@ -144,7 +146,7 @@ screen** or use the **up arrow key** to make it appear. It contains:
 - <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
 - <img src="icon-double-page-spread-black.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  — toggle double page mode.
+  — toggle double page mode for this comic (a comic opens two-up on the two-page spread).
 - <img src="icon-goto-start-orig.png" alt="[b]Go to Start[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — jump to the first page.
 - <img src="icon-goto-end-orig.png" alt="[b]Go to End[/b]" style="position: relative; top: 3px;" width="15" height="15">
@@ -263,8 +265,7 @@ are:
 |-----------------------------------------------|----------------------------------------------------------------|
 | *Fantagraphics Directory*                     | Path to the folder containing your Fantagraphics ZIP files     |
 | *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
-| *Double Page Mode*                            | Opens every comic in two-page view                             |
-| *Main Screen Layout*                          | *Single page* (the tree above the view), *Two-page spread* (the tree beside it), or *Match the screen*, which picks by the monitor's shape |
+| *Layout*                                      | *Single page* (the tree above the view, comics a page at a time), *Two-page spread* (the tree beside it, comics two pages at a time), or *Match the screen*, which picks by the monitor's shape |
 | *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
 | *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading* |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |

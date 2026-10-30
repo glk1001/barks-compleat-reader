@@ -21,7 +21,7 @@ navigation and a visually engaging interface.
   background art and information related to the selected comic or category.
 - **Two-Page Spread on Wide Screens**: On a landscape monitor the main screen opens like a book — the navigation
   tree on the left page, the current view on the right. A portrait screen (a flipped 2-in-1 laptop) keeps the
-  single column, and the *Main Screen Layout* setting fixes either.
+  single column, and the *Layout* setting fixes either.
 - **Full Keyboard & Remote Navigation**: Browse, open, and read comics using just the arrow keys, Enter, and Escape —
   designed to work from the couch with a TV remote as well as with a mouse or touchscreen.
 - **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click

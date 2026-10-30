@@ -32,8 +32,8 @@ SPREAD_ROUND_TRIPS = 6
 
 
 def _booted_two_up(boot: AppBoot) -> bool:
-    """Whether the run booted the reader in double-page mode (the matrix does)."""
-    return harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
+    """Whether the run opens comics two-up: it booted on the spread (the matrix does)."""
+    return harness.booted_two_up(boot.scratch)
 
 
 def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:

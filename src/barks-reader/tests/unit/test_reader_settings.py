@@ -150,9 +150,8 @@ class TestReaderSettings:
     @pytest.mark.parametrize(
         ("change", "key", "stored"),
         [
-            pytest.param(lambda rs: setattr(rs, "double_page_mode", True), "double_page_mode", 1),
-            pytest.param(lambda rs: setattr(rs, "double_page_mode", False), "double_page_mode", 0),
             pytest.param(lambda rs: rs.set_alt_escape_key(113), "alt_escape_key", 113),
+            pytest.param(lambda rs: rs.set_alt_escape_key(0), "alt_escape_key", 0),
         ],
     )
     def test_a_setting_set_is_stored_and_saved(

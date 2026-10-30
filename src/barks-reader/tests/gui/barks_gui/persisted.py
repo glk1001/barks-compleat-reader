@@ -8,14 +8,13 @@ test made, without the test saying a word about it.
 
 from __future__ import annotations
 
-import configparser
 import json
 import re
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
 from barks_gui import expected
-from barks_gui.harness import FIXTURES_DIR, read_ini_value
+from barks_gui.harness import FIXTURES_DIR, booted_two_up
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BODY_PAGE
@@ -176,14 +175,8 @@ def _history_problems(scratch: Path, app_log: str, saves: list[Save]) -> list[st
 
 
 def _double_page_booted(scratch: Path) -> bool:
-    """Whether the profile booted in double-page mode (a matrix run flips it on)."""
-    ini = scratch / "barks-reader.ini"
-    if not ini.is_file():
-        return False
-    try:
-        return read_ini_value(ini, "double_page_mode") == "1"
-    except configparser.Error:
-        return False
+    """Whether the profile opens comics two-up (the matrix's spread variant does)."""
+    return booted_two_up(scratch)
 
 
 def reads_persisted_problems(scratch: Path, app_log: str) -> list[str]:

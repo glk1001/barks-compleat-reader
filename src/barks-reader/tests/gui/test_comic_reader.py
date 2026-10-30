@@ -32,8 +32,8 @@ def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
 
 
 def _two_up(boot: AppBoot) -> bool:
-    """Whether the run booted the reader in double-page mode (the matrix does)."""
-    return harness.read_ini_value(boot.scratch / "barks-reader.ini", "double_page_mode") == "1"
+    """Whether the run opens comics two-up: it booted on the spread (the matrix does)."""
+    return harness.booted_two_up(boot.scratch)
 
 
 def _shows(boot: AppBoot, title: str, page_index: int) -> int:

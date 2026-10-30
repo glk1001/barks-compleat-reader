@@ -31,15 +31,17 @@ def _app(**attrs: object) -> Any:  # noqa: ANN401
 
 
 def test_the_layout_mode_reaches_every_full_window_screen() -> None:
-    """The document reader pairs its pages, the wiki and By the Numbers widen their bars."""
+    """The comic reader opens two-up, the document reader pairs, the bars widen."""
     app = _app(
         _main_screen=MagicMock(),
+        _comic_reader_screen=MagicMock(),
         _document_reader_screen=MagicMock(),
         _wiki_reader_screen=MagicMock(),
         _corpus_stats_screen=MagicMock(),
     )
     BarksReaderApp._set_layout_mode(app, MainLayoutMode.SPREAD)
     app._main_screen.set_layout_mode.assert_called_once_with(MainLayoutMode.SPREAD)
+    assert app._comic_reader_screen.layout_mode == "spread"
     assert app._document_reader_screen.layout_mode == "spread"
     assert app._wiki_reader_screen.layout_mode == "spread"
     assert app._corpus_stats_screen.layout_mode == "spread"
