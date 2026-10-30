@@ -38,8 +38,8 @@ from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
-from barks_reader.core.reader_consts_and_types import ARTICLE_TITLE_TEXTS, COMIC_BEGIN_PAGE
-from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_formatter import get_action_bar_title, get_article_title_text
 from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
@@ -413,8 +413,8 @@ class ComicBookReader(FloatLayout):
     @staticmethod
     def get_reader_comic_title(fanta_info: FantaComicBookInfo) -> str:
         comic_book_info = fanta_info.comic_book_info
-        if comic_book_info.title in ARTICLE_TITLE_TEXTS:
-            return ARTICLE_TITLE_TEXTS[comic_book_info.title]
+        if (article_text := get_article_title_text(comic_book_info.title)) is not None:
+            return article_text
         if comic_book_info.is_barks_title:
             return comic_book_info.get_title_str()
         return comic_book_info.get_title_from_issue_name()

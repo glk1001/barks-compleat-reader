@@ -91,6 +91,14 @@ def test_get_clean_text_without_extra() -> None:
     assert reader_formatter.get_clean_text_without_extra(text) == "Title"
 
 
+def test_an_article_is_named_as_its_tree_node_and_a_story_is_not() -> None:
+    assert (
+        reader_formatter.get_article_title_text(Titles.GEORGE_LUCAS___AN_APPRECIATION)
+        == "George Lucas: An Appreciation"
+    )
+    assert reader_formatter.get_article_title_text(Titles.LOST_IN_THE_ANDES) is None
+
+
 def test_get_text_with_markup_stripped() -> None:
     text = "[b]Bold[/b] and [i]Italic[/i]"
     assert reader_formatter.get_text_with_markup_stripped(text) == "Bold and Italic"

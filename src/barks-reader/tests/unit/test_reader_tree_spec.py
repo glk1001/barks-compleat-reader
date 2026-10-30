@@ -41,6 +41,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
 from barks_reader.core.navigation import (
+    ArticleDestination,
     CategoryDestination,
     ChooseForMeDestination,
     DocumentDestination,
@@ -74,6 +75,7 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
+    ARTICLE_TITLE_TEXTS,
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     COVER_YEAR_RANGES,
@@ -104,7 +106,7 @@ from barks_reader.core.reader_consts_and_types import (
 from barks_reader.core.reader_formatter import get_markup_text_with_num_titles
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -326,6 +328,20 @@ class TestTopLevelStructure:
 
     def test_intro_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[0], _INTRO_SNAPSHOT)
+
+    def test_every_article_has_a_node_named_as_the_readers_name_it(
+        self, specs: tuple[NodeSpec, ...]
+    ) -> None:
+        """One map names an article in the tree and in the readers' bars: no other."""
+
+        def article_names(spec: NodeSpec) -> Iterator[tuple[Titles, str]]:
+            if isinstance(spec.destination, ArticleDestination):
+                yield spec.destination.article_title, spec.text
+            for child in spec.children:
+                yield from article_names(child)
+
+        named = dict(name for spec in specs for name in article_names(spec))
+        assert named == ARTICLE_TITLE_TEXTS
 
     def test_stories_group_headers(self, specs: tuple[NodeSpec, ...]) -> None:
         _assert_snapshot(specs[1], _STORIES_SNAPSHOT, max_depth=1)

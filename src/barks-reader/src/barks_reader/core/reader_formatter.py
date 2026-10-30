@@ -25,7 +25,7 @@ from barks_fantagraphics.speech_markup import escape_markup, transform_lettering
 from comic_utils.cpi_calculator import get_adjusted_usd
 
 from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
-from .reader_consts_and_types import CLOSE_TO_ZERO
+from .reader_consts_and_types import ARTICLE_TITLE_TEXTS, CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
@@ -132,6 +132,22 @@ def get_clean_text_without_extra(markup_text: str) -> str:
         return match.group(1)
 
     return markup_text
+
+
+def get_article_title_text(title: Titles) -> str | None:
+    """Return an article's name as its tree node has it, or None for any other title.
+
+    An article is a non-Barks title, which would otherwise be named by its issue,
+    "Extras (Non-Barks) #1".
+
+    Args:
+        title: The title to name.
+
+    Returns:
+        The article's tree node text, or None when `title` is not an article.
+
+    """
+    return ARTICLE_TITLE_TEXTS.get(title)
 
 
 def get_text_with_markup_stripped(text: str) -> str:

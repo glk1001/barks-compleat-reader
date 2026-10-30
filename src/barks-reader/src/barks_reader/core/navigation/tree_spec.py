@@ -47,12 +47,9 @@ from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.playlists import PLAYLISTS, Playlist, get_playlist_title_infos
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
-    APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
-    APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
     APPENDIX_NODE_TEXT,
-    APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
     APPENDIX_STATISTICS_NODE_TEXT,
+    ARTICLE_TITLE_TEXTS,
     CATEGORIES_NODE_TEXT,
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
@@ -73,7 +70,6 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_WIKI_TEXT,
     INTRO_BY_THE_NUMBERS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
-    INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
     ONE_PAGER_YEAR_RANGES,
@@ -451,7 +447,6 @@ class _SpecBuilder:
                     start_closed=True,
                 ),
                 self._article_spec(
-                    INTRO_DON_AULT_FANTA_INTRO_TEXT,
                     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
                     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
                 ),
@@ -685,22 +680,18 @@ class _SpecBuilder:
             destination=AppendixDestination(),
             children=(
                 self._article_spec(
-                    APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
                     ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
                     Titles.RICH_TOMMASO___ON_COLORING_BARKS,
                 ),
                 self._article_spec(
-                    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
                     ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
                     Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
                 ),
                 self._article_spec(
-                    APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
                     ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
                     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
                 ),
                 self._article_spec(
-                    APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
                     ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,
                     Titles.GEORGE_LUCAS___AN_APPRECIATION,
                 ),
@@ -1014,10 +1005,11 @@ class _SpecBuilder:
     # --- Shared leaf helpers ---
 
     @staticmethod
-    def _article_spec(text: str, view_state: ViewStates, article_title: Titles) -> NodeSpec:
+    def _article_spec(view_state: ViewStates, article_title: Titles) -> NodeSpec:
+        # Named from the one map the readers' bars name an open article from too.
         return NodeSpec(
             kind=NodeKind.MAIN,
-            text=text,
+            text=ARTICLE_TITLE_TEXTS[article_title],
             destination=ArticleDestination(view_state=view_state, article_title=article_title),
             press_action=PressAction.OPEN_ARTICLE,
             start_closed=True,
