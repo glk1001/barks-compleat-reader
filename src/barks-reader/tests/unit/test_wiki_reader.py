@@ -443,6 +443,25 @@ class TestWikiReaderScreenBuildViewer:
 
         assert viewer_cls.call_args.kwargs["on_exit"] == wiki_screen.close
 
+    @pytest.mark.parametrize(
+        ("layout", "contrast"), [(MainLayoutMode.SPREAD, True), (MainLayoutMode.SINGLE, False)]
+    )
+    def test_the_viewer_starts_with_the_layouts_contrast(
+        self, wiki_screen: WikiReaderScreen, layout: MainLayoutMode, contrast: bool
+    ) -> None:
+        wiki_screen.layout_mode = layout.value
+        with (
+            patch.object(wiki_reader, "OKFViewer") as viewer_cls,
+            patch.object(wiki_reader, "wiki_top_bar_spec"),
+            patch.object(wiki_reader, "wiki_session_path"),
+            patch.object(wiki_reader, "BarksPanelsImageProvider"),
+            patch.object(wiki_reader, "BarksTableRewriter"),
+            patch.object(wiki_screen, "add_widget"),
+        ):
+            wiki_screen._build_viewer(self.BUNDLE)
+
+        viewer_cls.return_value.set_contrast.assert_called_once_with(contrast)
+
     def test_a_rebuild_saves_the_outgoing_viewers_place_and_replaces_it(
         self, wiki_screen: WikiReaderScreen
     ) -> None:
@@ -547,11 +566,40 @@ class TestApplyViewerSizing:
         assert tuple(wiki_screen.size) == (1876, 1440)
         assert "Wiki strip: (1876, 1440) in fullscreen on the spread layout." in loguru_sink
 
-    def test_a_layout_change_re_shapes_the_strip(self, wiki_screen: WikiReaderScreen) -> None:
+    @pytest.mark.parametrize(
+        ("layout", "cap"),
+        [(MainLayoutMode.SPREAD, wiki_reader.BODY_MAX_WIDTH_SPREAD), (MainLayoutMode.SINGLE, 760)],
+    )
+    def test_the_articles_width_cap_follows_the_layout(
+        self,
+        wiki_screen: WikiReaderScreen,
+        mock_window_manager: MagicMock,
+        layout: MainLayoutMode,
+        cap: int,
+    ) -> None:
         wiki_screen._viewer = MagicMock()
+        mock_window_manager.is_fullscreen_now.return_value = False
+        wiki_screen.layout_mode = layout.value
+
+        wiki_screen._apply_viewer_sizing()
+
+        wiki_screen._viewer.set_body_max_width.assert_called_once_with(cap)
+
+    def test_a_layout_change_re_shapes_the_strip_and_resets_contrast(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        wiki_screen._viewer = MagicMock()
+        wiki_screen.layout_mode = MainLayoutMode.SPREAD.value
         with patch.object(WikiReaderScreen, "_apply_viewer_sizing", autospec=True) as apply_mock:
             wiki_screen.on_layout_mode(wiki_screen, MainLayoutMode.SPREAD.value)
         apply_mock.assert_called_once_with(wiki_screen)
+        wiki_screen._viewer.set_contrast.assert_called_once_with(True)  # noqa: FBT003
+
+    def test_a_layout_change_before_the_first_open_sets_no_contrast(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        wiki_screen._viewer = None
+        wiki_screen.on_layout_mode(wiki_screen, MainLayoutMode.SPREAD.value)  # No error.
 
     def test_windowed_fills_manager(
         self, wiki_screen: WikiReaderScreen, mock_window_manager: MagicMock

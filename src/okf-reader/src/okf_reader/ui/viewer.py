@@ -164,9 +164,10 @@ SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
 # the search-result title/breadcrumb/hint colors are themable — they live on
 # `ViewerThemeSpec` (okf_reader.core.theme), read here via `self._theme` so an
 # embedding app can recolor them; the defaults there reproduce this look.
-# Cap on the reading column: past this the body column stops growing and
-# centers in its pane, keeping the measure comfortable (~90 characters at the
-# body size) on maximized windows. Wide tables scroll within it.
+# Cap on the reading column: past this the body column stops growing, keeping
+# the measure comfortable (~90 characters at the body size) on maximized
+# windows. Wide tables scroll within it. An embedding app may set another
+# (`set_body_max_width`), as the Barks Reader does on its two-page spread.
 BODY_MAX_WIDTH = 760  # dp
 # Hanging-indent geometry for list items and blockquote paragraphs
 # (Block.indent > 0): the marker glyph sits right-aligned in its own fixed
@@ -498,6 +499,7 @@ class OKFViewer(RelativeLayout):
         # lazily on the first query, so defaulting it here costs nothing up front;
         # an embedding app may inject a different backend (e.g. full-text).
         self._searcher: SearchProvider = search_provider or BundleSearcher(bundle)
+        self._body_max_width: float = BODY_MAX_WIDTH  # dp
         # Building the index walks the whole bundle, so it is warmed off the UI
         # thread (see warm_search), by the field's first focus or by the host
         # sooner; until it is ready a query shows a "Searching…" note rather than
@@ -558,15 +560,15 @@ class OKFViewer(RelativeLayout):
         )
         self.body.bind(minimum_height=self.body.setter("height"))
         self._add_reading_pane_scrim()
-        # The scroll child is a full-width anchor that centers the body column,
-        # whose width is capped at BODY_MAX_WIDTH so the measure stays readable
-        # on maximized windows (below the cap the column just fills the pane).
-        body_anchor = AnchorLayout(anchor_x="center", size_hint_y=None)
+        # The scroll child is a full-width anchor holding the body column against
+        # the sidebar, its width capped at BODY_MAX_WIDTH so the measure stays
+        # readable on wide windows (below the cap the column just fills the pane).
+        # Centred, the column floated between two bands of art on the two-page
+        # spread, away from the contents beside it (2026-10-30).
+        body_anchor = AnchorLayout(anchor_x="left", size_hint_y=None)
         body_anchor.add_widget(self.body)
         self.body.bind(height=body_anchor.setter("height"))
-        self.body_scroll.bind(
-            width=lambda _inst, w: setattr(self.body, "width", min(w, dp(BODY_MAX_WIDTH)))
-        )
+        self.body_scroll.bind(width=lambda *_args: self._fit_body_width())
         self.body_scroll.add_widget(body_anchor)
         content.add_widget(self.body_scroll)
 
@@ -943,6 +945,18 @@ class OKFViewer(RelativeLayout):
             self._search_ready = True
             return
         threading.Thread(target=self._warm_search_index, args=(warm,), daemon=True).start()
+
+    def set_body_max_width(self, width_dp: float) -> None:
+        """Cap the reading column at `width_dp` (density-independent pixels).
+
+        The default is BODY_MAX_WIDTH; a wider window may afford a wider measure.
+        """
+        self._body_max_width = width_dp
+        self._fit_body_width()
+
+    def _fit_body_width(self) -> None:
+        """Size the body column to its pane, no wider than the cap."""
+        self.body.width = min(self.body_scroll.width, dp(self._body_max_width))
 
     def _warm_search_index(self, warm: Callable[[], None]) -> None:
         """Worker thread: build the index, then flip readiness on the UI thread.
@@ -2043,18 +2057,32 @@ class OKFViewer(RelativeLayout):
     def _add_reading_pane_scrim(self) -> None:
         """Draw the continuous scrim behind the reading column (see READING_PANE_SCRIM).
 
-        Spans the whole body column under the per-section bands, so the
-        inter-section gaps and the column padding keep a legibility floor over a
-        vivid background panel. Its Color is kept so the Contrast toggle can dial
-        it up alongside the bands (see _apply_band_alpha).
+        Spans the body column's width and the whole reading pane's height under the
+        per-section bands, so the inter-section gaps, the column padding and the
+        pane below a short page keep a legibility floor over a vivid background
+        panel (sized to the body, the scrim ended with a short page and the art
+        showed below it, 2026-10-30). Drawn on the pane, not the body, so it stays
+        put while the body scrolls; the pane keeps its content at the origin and
+        draws it through a translation, so the body's x is an offset in the pane.
+        Its Color is kept so the Contrast toggle can dial it up alongside the bands
+        (see _apply_band_alpha).
         """
-        with self.body.canvas.before:
+        with self.body_scroll.canvas.before:
             self._pane_scrim_color = Color(rgba=(*READING_PANE_SCRIM[:3], self._pane_scrim_alpha()))
-            rect = Rectangle(pos=self.body.pos, size=self.body.size)
-        self.body.bind(
-            pos=lambda _inst, pos: setattr(rect, "pos", pos),
-            size=lambda _inst, size: setattr(rect, "size", size),
-        )
+            self._pane_scrim_rect = Rectangle()
+
+        def fit_scrim(*_args: object) -> None:
+            pane = self.body_scroll
+            self._pane_scrim_rect.pos = (pane.x + self.body.x, pane.y)
+            self._pane_scrim_rect.size = (self.body.width, pane.height)
+
+        self.body.bind(x=fit_scrim, width=fit_scrim)
+        self.body_scroll.bind(pos=fit_scrim, size=fit_scrim)
+        fit_scrim()
+
+    def set_contrast(self, on: bool) -> None:
+        """Set the Contrast toggle, as a press on it would: darker bands and scrims when on."""
+        self.contrast_btn.state = "down" if on else "normal"
 
     def _on_contrast_state(self, _button: Widget, state: str) -> None:
         self._apply_band_alpha()

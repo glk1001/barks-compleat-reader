@@ -362,7 +362,9 @@ def test_the_top_bar_is_walked_and_contrast_toggled_by_remote(wiki_boot: AppBoot
     """Escape lifts to the bar on Back; Right reaches Contrast; Return toggles; Down drops out."""
     d = wiki_boot(nodes.INDEXES)
     _open_wiki_from_its_node(d)
-    for state in ("on", "off"):
+    # On the spread the wiki opens with Contrast on, so the first press turns it off.
+    states = ("off", "on") if d.match_count(pattern(wiki.CONTRAST, state="on")) else ("on", "off")
+    for state in states:
         d.key_then_wait(TOP_BAR, "Escape")  # the ring starts on Back
         d.key_then_wait(CONTRAST_RINGED, "Right")
         with d.expect(SIDEBAR):  # the focus goes back where it came from, then the toggle

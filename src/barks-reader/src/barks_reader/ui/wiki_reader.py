@@ -20,7 +20,7 @@ from kivy.core.window import Window
 from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 from okf_reader.core.actions import PageAction
-from okf_reader.ui.viewer import OKFViewer
+from okf_reader.ui.viewer import BODY_MAX_WIDTH, OKFViewer
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
@@ -38,6 +38,10 @@ from barks_reader.core.wiki_integration import (
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .platform_window_utils import WindowManager
 from .reader_screens import ReaderScreen
+
+# The article's width cap on the two-page spread (dp): the viewer's own cap left it
+# floating in a page's worth of art beside the contents (2026-10-30).
+BODY_MAX_WIDTH_SPREAD = 880
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -205,8 +209,9 @@ class WikiReaderScreen(ReaderScreen):
         self._on_close_screen()
 
     def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
-        """Re-shape the fullscreen strip for the new layout (nothing before the first open)."""
+        """Re-shape the strip and reset Contrast for the new layout (nothing before an open)."""
         self._apply_viewer_sizing()
+        self._apply_layout_contrast()
 
     def _apply_viewer_sizing(self, *_args: object) -> None:
         """Shape this screen to a monitor-safe centred strip in fullscreen, else fill.
@@ -226,6 +231,8 @@ class WikiReaderScreen(ReaderScreen):
         """
         if self._viewer is None:
             return
+        on_the_spread = self.layout_mode == MainLayoutMode.SPREAD.value
+        self._viewer.set_body_max_width(BODY_MAX_WIDTH_SPREAD if on_the_spread else BODY_MAX_WIDTH)
         if WindowManager.is_fullscreen_now():
             self.size_hint = (None, None)
             self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
@@ -338,6 +345,17 @@ class WikiReaderScreen(ReaderScreen):
         )
         self._bundle = bundle
         self.add_widget(self._viewer)
+        self._apply_layout_contrast()
+
+    def _apply_layout_contrast(self) -> None:
+        """Start the Contrast toggle down on the two-page spread, up on the single page.
+
+        The spread's wide window puts a page's worth of art beside the article, and
+        the darker scrims read better over it (2026-10-30). A press on the toggle
+        still overrides it until the viewer is rebuilt or the layout changes.
+        """
+        if self._viewer is not None:
+            self._viewer.set_contrast(self.layout_mode == MainLayoutMode.SPREAD.value)
 
 
 def get_wiki_reader_screen(

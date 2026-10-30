@@ -367,6 +367,16 @@ count where there is one, before the first multi-file edit of the stage.
   both pages' links; single-page as today in single mode.
 - `ui/wiki_reader.py` and `okf_reader/ui/viewer.py`: the viewer takes the book's
   footprint; one background under both panels; Contrast darkens both.
+- As seen (2026-10-30): on the spread the article, capped at `BODY_MAX_WIDTH`,
+  floated centred between two bands of art, away from the contents beside it. It
+  is now anchored against the sidebar, the spare width all on the right, and on
+  the spread its cap is `BODY_MAX_WIDTH_SPREAD` in `ui/wiki_reader.py` (880 dp,
+  through the viewer's `set_body_max_width`; 760 on the single page), and it opens
+  with Contrast on (`_apply_layout_contrast`, through the viewer's `set_contrast`;
+  the single page opens with it off). The reading pane's scrim was the body's
+  height, so a short page showed the art below it: it is now drawn on the pane,
+  the article's width and the pane's full height (`_add_reading_pane_scrim`).
+  Still open: the gutter between the sidebar and the article is narrow.
 
 ### Stage 5: tests, the matrix variant and the soak
 

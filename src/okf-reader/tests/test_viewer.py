@@ -894,3 +894,47 @@ class TestContrast:
         viewer.contrast_btn.state = "normal"
         assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
         assert viewer._pane_scrim_color.a == pytest.approx(viewer_module.READING_PANE_SCRIM[3])
+
+
+class TestTheReadingColumnsCap:
+    """The body column fills its pane up to a cap an embedding app may move."""
+
+    def test_the_column_fills_a_narrow_pane_and_stops_at_the_cap(self, viewer: OKFViewer) -> None:
+        narrow = 500
+        viewer.body_scroll.width = narrow
+        assert viewer.body.width == narrow
+        viewer.body_scroll.width = 5000
+        assert viewer.body.width == viewer_module.dp(viewer_module.BODY_MAX_WIDTH)
+
+    def test_a_wider_cap_widens_the_column_at_once(self, viewer: OKFViewer) -> None:
+        viewer.body_scroll.width = 5000
+        viewer.set_body_max_width(880)
+        assert viewer.body.width == viewer_module.dp(880)
+        viewer.set_body_max_width(viewer_module.BODY_MAX_WIDTH)
+        assert viewer.body.width == viewer_module.dp(viewer_module.BODY_MAX_WIDTH)
+
+
+class TestContrastSetByTheApp:
+    def test_set_contrast_presses_the_toggle_and_resets_the_scrims(self, viewer: OKFViewer) -> None:
+        viewer.set_contrast(True)
+        assert viewer.contrast_btn.state == "down"
+        assert viewer._sidebar_scrim_color.a == viewer_module.SIDEBAR_SCRIM_CONTRAST_ALPHA
+        viewer.set_contrast(False)
+        assert viewer.contrast_btn.state == "normal"
+        assert viewer._sidebar_scrim_color.a == viewer_module.SIDEBAR_SCRIM[3]
+
+
+class TestTheReadingPaneScrim:
+    """The scrim behind the column is the pane's height, the column's width."""
+
+    def test_the_scrim_reaches_the_panes_bottom_under_a_short_page(self, viewer: OKFViewer) -> None:
+        viewer.body_scroll.pos = (300, 50)
+        viewer.body_scroll.size = (1000, 900)
+        viewer.body.height = 120  # A short page.
+        viewer.body.x = 40  # An offset in the pane: its content is kept at the origin.
+        assert viewer._pane_scrim_rect.pos == (340, 50)
+        assert viewer._pane_scrim_rect.size == (viewer.body.width, 900)
+
+    def test_the_scrim_is_the_columns_width(self, viewer: OKFViewer) -> None:
+        viewer.body_scroll.width = 5000
+        assert viewer._pane_scrim_rect.size[0] == viewer_module.dp(viewer_module.BODY_MAX_WIDTH)
