@@ -299,11 +299,14 @@ class TreeViewManager:
         and statistics nodes, and also called from the expand/collapse paths.
         Nodes with extra behavior (e.g. the speech index/words nodes) keep their
         own handlers. `keep_images` keeps the top and fun images on show (a collapse,
-        or Go Back).
+        or Go Back). A node put back by Go Back keeps them however it comes here: an
+        open node's ``trigger_action`` reaches this as its bound ``on_press``, with no
+        argument to pass on.
         """
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
+        keep_images = keep_images or self._keep_images_for_caller
         logger.info(f"Rendering view for node '{node.get_name()}'.")
         if keep_images:
             logger.info(log_markers.NODE_IMAGES_KEPT.format(name=node.get_name()))

@@ -213,6 +213,33 @@ class TestTreeViewManager:
             call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
         ]
 
+    def test_go_back_to_an_open_node_keeps_the_images_through_its_press(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+    ) -> None:
+        """An open node's view comes from its press: the bound handler, given only the node."""
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = TitleSearchDestination()
+        node.get_name.return_value = "Title Search"
+        node.saved_state = {"open": True}
+        node.trigger_action.side_effect = lambda: tree_view_manager.set_view_state_for_node(node)
+        renderer = mock_dependencies["renderer"]
+
+        tree_view_manager.setup_and_select_node(node, keep_images=True)
+
+        node.trigger_action.assert_called_once()
+        renderer.render.assert_called_once_with(
+            TitleSearchDestination(), preserve_top_view=True, preserve_fun_view=True
+        )
+
+        # A press of its own, outside Go Back, picks fresh images.
+        renderer.render.reset_mock()
+        tree_view_manager.set_view_state_for_node(node)
+        renderer.render.assert_called_once_with(
+            TitleSearchDestination(), preserve_top_view=False, preserve_fun_view=False
+        )
+
     def test_go_back_to_previous_node_reopens_wiki(
         self,
         tree_view_manager: TreeViewManager,
