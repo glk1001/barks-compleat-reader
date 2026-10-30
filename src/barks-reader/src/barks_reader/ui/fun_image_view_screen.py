@@ -136,6 +136,10 @@ class FunImageViewScreen(BoxLayout):
         self._history = ImageHistory(_MAX_IMAGES_HISTORY)
         # The lower tier's image, so a texture that arrives after another step is dropped.
         self._wanted_previous: ImageInfo | None = None
+        # The image the lower tier shows, once its texture has come: its goto button
+        # goes to this one, not to the image before the one on show, which a step
+        # changes before the new texture arrives.
+        self._shown_previous: ImageInfo | None = None
         self._navigation = ReaderNavigation(
             self.MAX_WINDOW_WIDTH,
             _TOP_MARGIN_FRAC_OF_HEIGHT,
@@ -231,13 +235,13 @@ class FunImageViewScreen(BoxLayout):
     def _update_tiered(self) -> None:
         """Draw the tiers when stacked and not zoomed; arm the goto buttons for what shows."""
         self.tiered = self.stacked and not self.zoomed
-        # The lower tier's title is set before its texture (`_refresh_lower_tier`).
-        self.lower_goto_title_button_active = self.tiered and self.previous_title_str != ""
+        # The lower tier's title is set before its texture (`_refresh_lower_tier`), and
+        # its button is off while a step's texture loads (the image shown is the old one).
+        lower_has_title = self._shown_previous is not None and self.previous_title_str != ""
+        self.lower_goto_title_button_active = self.tiered and lower_has_title
         # Zoomed in on the lower tier, the upper overlay shows that image's title.
         self.goto_title_button_active = (
-            self.previous_title_str != ""
-            if self.zoomed == _ZOOM_LOWER
-            else self.fun_view_from_title
+            lower_has_title if self.zoomed == _ZOOM_LOWER else self.fun_view_from_title
         )
 
     def _lower_tier_height(self) -> int:
@@ -440,6 +444,9 @@ class FunImageViewScreen(BoxLayout):
         on_the_spread = self.layout_mode == MainLayoutMode.SPREAD.value
         previous = self._history.previous() if on_the_spread else None
         self._wanted_previous = previous
+        # The tier shows the old image until the new one's texture comes: no goto meanwhile.
+        self._shown_previous = None
+        self._update_tiered()
         if previous is None:
             self.previous_image_texture = None
             self.previous_title_str = ""
@@ -456,6 +463,8 @@ class FunImageViewScreen(BoxLayout):
             self.previous_image_fit_mode = previous.fit_mode
             self.previous_title_str = _title_str(previous.from_title)
             self.previous_image_texture = texture
+            self._shown_previous = previous
+            self._update_tiered()  # a texture the same as the last fires no change
             assert previous.filename
             logger.debug(
                 log_markers.FUN_VIEW_LOWER_TIER.format(
@@ -509,9 +518,11 @@ class FunImageViewScreen(BoxLayout):
         self.on_goto_title_func(from_keyboard=from_keyboard)
 
     def on_goto_lower_title(self, *, from_keyboard: bool = False) -> None:
-        """Fire the lower tier's goto-title button: the image before the one on show."""
-        previous = self._history.previous()
-        assert previous is not None
+        """Fire the lower tier's goto-title button: the image the tier shows."""
+        previous = self._shown_previous
+        if previous is None:
+            logger.debug("Lower tier goto pressed while its image loads: ignored.")
+            return
         assert self.on_goto_title_func is not None
         self.on_goto_title_func(from_keyboard=from_keyboard, image_info=previous)
 

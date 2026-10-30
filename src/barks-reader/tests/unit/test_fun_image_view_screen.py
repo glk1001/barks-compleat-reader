@@ -1134,3 +1134,28 @@ class TestTheLowerTiersGotoButton:
         goto.assert_called_once_with(
             from_keyboard=False, image_info=_info("a.png", Titles.GIFT_LION)
         )
+
+    def test_while_a_steps_lower_texture_loads_the_lower_button_is_off(
+        self, screen_setup: _Setup
+    ) -> None:
+        """The tier shows the old image until the new one comes: no goto to either."""
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        loader = screen._load_texture
+        assert isinstance(loader, MagicMock)
+        goto = MagicMock()
+        screen.on_goto_title_func = goto
+
+        # The image on show (stock, no title) becomes the one before the next.
+        screen.set_last_loaded_image_info(_info("c.png"))
+        assert screen.stacked  # the old lower texture still shows
+        assert not screen.lower_goto_title_button_active
+        screen.on_goto_lower_title()
+        goto.assert_not_called()
+
+        (wanted, apply_texture), _ = loader.call_args
+        assert wanted == _info("b.png", Titles.LOST_IN_THE_ANDES)
+        apply_texture(_texture(400, 300))
+        assert screen.lower_goto_title_button_active
+        screen.on_goto_lower_title()
+        goto.assert_called_once_with(from_keyboard=False, image_info=wanted)
