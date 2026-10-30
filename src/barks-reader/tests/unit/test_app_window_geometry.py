@@ -1109,7 +1109,9 @@ def test_at_boot_the_window_is_refit_for_the_monitor_it_opens_on(
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", fake_metrics)
     monkeypatch.setattr(geometry_module, "Clock", fake_clock)
     fake_window.size = (2400, 1200)
-    h = AppWindowGeometryHelper(constraints, layout_setting=MATCH_THE_SCREEN)
+    h = AppWindowGeometryHelper(constraints, layout_setting=SINGLE_PAGE)
+    # As the app does: the real setting comes in build(), before the window is ready.
+    h.set_layout_setting(MATCH_THE_SCREEN)
     assert h.layout_mode is MainLayoutMode.SPREAD  # the window's shape, from main.py
     layout_changed = MagicMock()
     h.set_main_screen_callbacks(MagicMock(), layout_mode_changed=layout_changed)

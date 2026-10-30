@@ -133,7 +133,11 @@ class AppWindowGeometryHelper:
         """
         self._layout_setting = setting
         if not self._window_ready:
-            self._layout_mode = self._decide_layout()  # logged at `set_window_ready`
+            # As the constructor decides: on the primary screen, as main.py sized the
+            # window. The current monitor's layout here left the boot refit nothing to
+            # change (the app gives the setting in build(), before `set_window_ready`).
+            primary = SCREEN_METRICS.get_primary_screen_info()
+            self._layout_mode = self._decide_layout_on(primary)  # logged at `set_window_ready`
             return
         self.evaluate_layout("setting")
 
