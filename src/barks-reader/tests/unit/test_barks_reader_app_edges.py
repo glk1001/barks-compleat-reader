@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.barks_reader_app as app_module
 import pytest
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui.barks_reader_app import BarksReaderApp
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen, SwapTransition, TransitionBase
@@ -27,6 +28,21 @@ _WORKAROUND_FLAG = "_kivy_workaround_applied"
 
 def _app(**attrs: object) -> Any:  # noqa: ANN401
     return cast("Any", SimpleNamespace(**attrs))
+
+
+def test_the_layout_mode_reaches_every_full_window_screen() -> None:
+    """The document reader pairs its pages, the wiki and By the Numbers widen their bars."""
+    app = _app(
+        _main_screen=MagicMock(),
+        _document_reader_screen=MagicMock(),
+        _wiki_reader_screen=MagicMock(),
+        _corpus_stats_screen=MagicMock(),
+    )
+    BarksReaderApp._set_layout_mode(app, MainLayoutMode.SPREAD)
+    app._main_screen.set_layout_mode.assert_called_once_with(MainLayoutMode.SPREAD)
+    assert app._document_reader_screen.layout_mode == "spread"
+    assert app._wiki_reader_screen.layout_mode == "spread"
+    assert app._corpus_stats_screen.layout_mode == "spread"
 
 
 def test_settings_before_any_window_is_refused() -> None:

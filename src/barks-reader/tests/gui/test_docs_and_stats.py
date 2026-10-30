@@ -125,14 +125,19 @@ def test_the_intro_document_opens_and_closes(boot: AppBoot) -> None:
 
 
 def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
+    """Right turns a page, or on the two-page spread a pair (pages 1 and 2, then 3 and 4)."""
     d = boot(nodes.APPENDIX)
     _open_document(d, nodes.CENSORSHIP_DOCUMENT)
-    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
+    paired = last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == MainLayoutMode.SPREAD.value
+    turned_to = 3 if paired else 2
+    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=turned_to), "Right")
     d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=1), "Left")
     pages = _pages_opened(d, nodes.CENSORSHIP_DOCUMENT)
     assert pages == expected.document_page_count(expected.censorship_document_dir())
-    assert pages >= PAGES_FOR_A_TURN
-    assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", "2", "1"]
+    assert pages >= PAGES_FOR_A_TURN + (1 if paired else 0)
+    assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", str(turned_to), "1"]
+    if paired:
+        assert fields_of(d, markers.DOCUMENT_RIGHT_PAGE, "page") == ["2", "4", "2"]
     _close_document(d)
 
 
@@ -175,7 +180,7 @@ GOTO_STORY = pattern(markers.DOCUMENT_GOTO_STORY)
 def _linked_page(d: Driver, *, several: bool) -> expected.LinkedPage:
     """Return the first chapter page with one story link (or several), else skip.
 
-    As the booted app shows pages: on the two-page spread in pairs, the first alone,
+    As the booted app shows pages: on the two-page spread in pairs from the first,
     with Go to Story offering both pages' links, so the page is the pair's first.
     """
     if not expected.illustrated_history_chapters():

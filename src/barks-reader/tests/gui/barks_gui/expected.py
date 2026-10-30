@@ -160,7 +160,7 @@ def illustrated_history_chapters() -> list[DocumentChapter]:
 class LinkedPage:
     """A chapter page whose figures link to stories, as the document reader shows it.
 
-    On the two-page spread the reader shows pairs, the first page alone, and Go to Story
+    On the two-page spread the reader shows pairs from the first page, and Go to Story
     offers both pages' links: `page` is then the pair's first, the one the reader logs
     (``DOCUMENT_PAGE``), and `links` the pair's. `turns` are the pages each Right logs
     on the way there from the first.
@@ -177,8 +177,8 @@ def first_linked_page(*, several: bool, paired: bool = False) -> LinkedPage | No
 
     Pages come in the order the document reader turns them (sorted by name), and the
     links in the order its Go to Story list shows them. With `paired`, as the two-page
-    spread shows them: the first page alone, then pairs, each counted by both pages'
-    links (``core.display_unit.build_document_units``).
+    spread shows them: pairs from the first page, each counted by both pages' links
+    (``core.display_unit.build_document_units``).
     """
     for chapter in illustrated_history_chapters():
         pages = sorted(

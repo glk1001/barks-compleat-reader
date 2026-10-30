@@ -50,7 +50,7 @@ from .bottom_title_view_screen import (
 )
 from .collapse_parent_overlay import COLLAPSE_PARENT_OVERLAY_KV_FILE
 from .comic_book_reader import get_barks_comic_reader_screen
-from .corpus_stats_screen import get_corpus_stats_screen
+from .corpus_stats_screen import CorpusStatsScreen, get_corpus_stats_screen
 from .document_reader import DocumentReaderScreen, get_document_reader_screen
 from .entity_index_screen import EntityIndexScreen
 from .error_handling import handle_app_fail_with_traceback
@@ -136,6 +136,7 @@ class BarksReaderApp(App):
         self._main_screen: MainScreen | None = None
         self._document_reader_screen: DocumentReaderScreen | None = None
         self._wiki_reader_screen: WikiReaderScreen | None = None
+        self._corpus_stats_screen: CorpusStatsScreen | None = None
         self._on_stop_done = False
 
         self._window_geometry = AppWindowGeometryHelper(
@@ -448,7 +449,9 @@ class BarksReaderApp(App):
         logger.debug("Instantiating document reader screen...")
         document_reader_screen = get_document_reader_screen(
             DOCUMENT_READER_SCREEN,
+            self.reader_settings,
             self.font_manager,
+            window_manager,
             self._screen_switchers.close_document_reader,
             self._main_screen.goto_title_from_document,
         )
@@ -483,6 +486,7 @@ class BarksReaderApp(App):
             self.reader_settings.sys_file_paths.get_by_the_numbers_background_path(),
             self._screen_switchers.close_corpus_stats,
         )
+        self._corpus_stats_screen = corpus_stats_screen
 
         reader_screens = ReaderScreens(
             self._main_screen,
@@ -504,9 +508,11 @@ class BarksReaderApp(App):
         assert self._main_screen is not None
         assert self._document_reader_screen is not None
         assert self._wiki_reader_screen is not None
+        assert self._corpus_stats_screen is not None
         self._main_screen.set_layout_mode(mode)
         self._document_reader_screen.layout_mode = mode.value
         self._wiki_reader_screen.layout_mode = mode.value
+        self._corpus_stats_screen.layout_mode = mode.value
 
     def _set_custom_title_bar(self) -> None:
         assert self._main_screen is not None

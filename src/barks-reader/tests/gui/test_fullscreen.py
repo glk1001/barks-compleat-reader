@@ -19,7 +19,9 @@ if TYPE_CHECKING:
 
 FULLSCREEN_TIMEOUT = 20
 READER = "ComicBookReaderScreen"
+DOCUMENT_READER = "DocumentReaderScreen"
 MAIN = "MainScreen"
+MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
 SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 # Pages turned before going two-up, to land on a spread rather than the title page
 # and the full-page splash that open the story, which show alone even two-up.
@@ -45,6 +47,49 @@ def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:
     d.settle()
     assert d.window_geometry()[:2] == before[:2], "the window must come back at its old size"
     d.close_reader()
+
+
+def test_document_reader_fullscreen_round_trip(boot: AppBoot) -> None:
+    """The document reader's bar has the comic reader's Fullscreen; the bar hides in it."""
+    d = boot(nodes.APPENDIX)
+    d.select_node(nodes.CENSORSHIP_DOCUMENT)
+    with (
+        d.expect(pattern(markers.DOCUMENT_OPENED)),
+        d.expect(pattern(markers.SCREEN_ENTERED, name="document_reader")),
+    ):
+        d.key("Return")
+    before = d.window_geometry()
+    with d.expect(pattern(markers.ENTERED_FULLSCREEN, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT):
+        d.press_document_menu_button("fullscreen")
+    # The bar is hidden now; Escape brings it back for the menu, as in the comic reader.
+    with d.expect(pattern(markers.ENTERED_WINDOWED, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT):
+        d.press_document_menu_button("fullscreen")
+    d.settle()
+    assert d.window_geometry()[:2] == before[:2], "the window must come back at its old size"
+    with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
+        d.press_document_menu_button("close")
+
+
+def test_a_document_closed_from_fullscreen_comes_back_windowed(boot: AppBoot) -> None:
+    """A document opened windowed and closed in fullscreen leaves the window as it found it."""
+    d = boot(nodes.APPENDIX)
+    d.select_node(nodes.CENSORSHIP_DOCUMENT)
+    with (
+        d.expect(pattern(markers.DOCUMENT_OPENED)),
+        d.expect(pattern(markers.SCREEN_ENTERED, name="document_reader")),
+    ):
+        d.key("Return")
+    before = d.window_geometry()
+    with d.expect(pattern(markers.ENTERED_FULLSCREEN, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT):
+        d.press_document_menu_button("fullscreen")
+    with (
+        d.expect(markers.DOCUMENT_CLOSING),
+        d.expect(pattern(markers.ENTERED_WINDOWED, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT),
+        d.expect(MAIN_FROM_DOCUMENT, FULLSCREEN_TIMEOUT),
+    ):
+        d.press_document_menu_button("close")
+    d.settle()
+    assert d.window_geometry()[:2] == before[:2]
 
 
 def test_main_screen_fullscreen_round_trip(boot: AppBoot) -> None:

@@ -16,7 +16,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import barks_reader.ui.comic_book_reader
 import pytest
 from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.page_image import PageImage
@@ -85,6 +87,18 @@ class TestComicBookReader:
                 reader._on_toggle_action_bar_visibility = on_toggle
 
             return reader
+
+    def test_the_reader_names_an_article_as_its_tree_node_is(self) -> None:
+        """An article is a non-Barks title: named by its issue, it would read "Extras ... #1"."""
+        article = ALL_FANTA_COMIC_BOOK_INFO[Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION]
+        assert not article.comic_book_info.is_barks_title
+        title = ComicBookReader.get_reader_comic_title(article)
+        assert title == "Don Ault: Fantagraphics Introduction"
+        assert title != article.comic_book_info.get_title_from_issue_name()
+
+    def test_the_reader_names_a_comic_by_its_title(self) -> None:
+        comic = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        assert ComicBookReader.get_reader_comic_title(comic) == "Lost in the Andes!"
 
     @staticmethod
     def _place_page(reader: ComicBookReader, texture: object) -> None:

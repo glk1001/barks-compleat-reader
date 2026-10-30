@@ -37,6 +37,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.reader_consts_and_types import ARTICLE_TITLE_TEXTS
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import (
     title_needs_footnote,
@@ -561,6 +562,10 @@ class BottomTitleViewScreen(FloatLayout):
         # "Uncle Scrooge #7 (Sep 1954)".
         if comic_book_info.title in COVERS_SET:
             return get_cover_display_title(COVER_BY_TITLE[comic_book_info.title])
+
+        # An article (a non-Barks title) is named as its tree node is, not by its issue.
+        if comic_book_info.title in ARTICLE_TITLE_TEXTS:
+            return ARTICLE_TITLE_TEXTS[comic_book_info.title]
 
         if comic_book_info.is_barks_title:
             if comic_book_info.title in LONG_TITLE_SPLITS:

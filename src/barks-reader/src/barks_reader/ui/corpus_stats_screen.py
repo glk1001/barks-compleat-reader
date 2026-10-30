@@ -49,6 +49,7 @@ from barks_reader.core.corpus_stats import (
     compute_text_stats,
 )
 from barks_reader.core.keys import KEY_LEFT, KEY_UP, is_escape_key
+from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_consts_and_types import INTRO_BY_THE_NUMBERS_TEXT
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_palette import theme
@@ -109,6 +110,10 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
+    # The main screen's layout ("single" or "spread"); the app sets it, the kv file
+    # widens the bar to the pair on the spread, as the document reader's over a
+    # one-page document. The page itself stays a page (decision 11 of the plan).
+    layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     background_source = StringProperty()
     background_scrim = ListProperty(_BACKGROUND_SCRIM)
     background_veil = ListProperty(_BACKGROUND_VEIL)

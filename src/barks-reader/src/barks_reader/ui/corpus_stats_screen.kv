@@ -79,7 +79,9 @@
         pos_hint: {"center_x": 0.5, 'top': 1}
         size_hint: None, None
         height: root.ACTION_BAR_HEIGHT
-        width: stats_page.width
+        # The pair's width on the spread, as the document reader's bar over a one-page
+        # document; the page beneath stays a page.
+        width: min(2 * stats_page.width, root.width) if root.layout_mode == 'spread' else stats_page.width
         icon_source: root.app_icon_filepath
         title_text: root.action_bar_title
 

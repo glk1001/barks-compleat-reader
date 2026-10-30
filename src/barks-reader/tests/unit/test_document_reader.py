@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,8 +16,25 @@ from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
 from barks_reader.ui.reader_screens import ReaderScreen
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 PAGES = ("01.png", "02.jpg")
 TWICE = 2
+
+
+@pytest.fixture(autouse=True)
+def windowed() -> Iterator[MagicMock]:
+    """Hold the window windowed, as the real one reads from Kivy's Window."""
+    with patch.object(document_reader_module, "WindowManager") as window_manager:
+        window_manager.is_fullscreen_now.return_value = False
+        yield window_manager
+
+
+def _bar() -> MagicMock:
+    bar = MagicMock()
+    bar.disabled = False
+    return bar
 
 
 @pytest.fixture
@@ -27,11 +45,20 @@ def screen() -> DocumentReaderScreen:
     ):
 
         def side_effect(instance: DocumentReaderScreen, **_kwargs: object) -> None:
-            instance.ids = {"close_button": MagicMock(), "goto_story_button": MagicMock()}
+            instance.ids = {
+                "doc_action_bar": _bar(),
+                "fullscreen_button": MagicMock(),
+                "close_button": MagicMock(),
+                "goto_story_button": MagicMock(),
+            }
 
         mock_init.side_effect = side_effect
         built = DocumentReaderScreen(
-            font_manager=MagicMock(), on_close_screen=MagicMock(), on_goto_story=MagicMock()
+            reader_settings=MagicMock(),
+            font_manager=MagicMock(),
+            window_manager=MagicMock(),
+            on_close_screen=MagicMock(),
+            on_goto_story=MagicMock(),
         )
         built._menu_mode = False
         return built
@@ -100,14 +127,14 @@ class TestEdges:
         for name in PAGES:
             (tmp_path / name).write_bytes(b"")
         _open(screen, tmp_path)
-        off_it = MagicMock()
+        off_it = _bar()
         off_it.collide_point.return_value = False
         screen.ids = {"doc_action_bar": off_it, "doc_page": off_it}
         with (
             patch.object(screen, "_clear_menu_on_touch"),
             patch.object(ReaderScreen, "on_touch_down", return_value=True) as screen_press,
         ):
-            assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5)) is True
+            assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5, y=5)) is True
         screen_press.assert_called_once()
         assert screen._current_page_index == 0
 
@@ -331,42 +358,42 @@ def _shown(screen: DocumentReaderScreen) -> tuple[str, str]:
 
 
 class TestTheSpread:
-    """Pages come in pairs on the spread, the first alone; a turn moves a pair."""
+    """Pages come in pairs on the spread, from the first; a turn moves a pair."""
 
-    def test_the_first_page_opens_alone_and_right_turns_to_a_pair(
+    def test_the_document_opens_on_its_first_pair_and_right_turns_a_pair(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
     ) -> None:
         for name in SEVEN_PAGES:
             (tmp_path / name).write_bytes(b"")
         _spread(screen)
         _open(screen, tmp_path)
-        assert _shown(screen) == ("page-001.png", "")
+        assert _shown(screen) == ("page-001.png", "page-002.png")
+        assert 'Document page 1/7: "page-001.png".' in loguru_sink
+        assert 'Document right page 2/7: "page-002.png".' in loguru_sink
         screen.next_page()
-        assert _shown(screen) == ("page-002.png", "page-003.png")
-        assert 'Document page 2/7: "page-002.png".' in loguru_sink
-        assert 'Document right page 3/7: "page-003.png".' in loguru_sink
+        assert _shown(screen) == ("page-003.png", "page-004.png")
         screen.next_page()
-        assert _shown(screen) == ("page-004.png", "page-005.png")
+        assert _shown(screen) == ("page-005.png", "page-006.png")
         screen.next_page()
-        assert _shown(screen) == ("page-006.png", "page-007.png")
-        screen.next_page()  # the last pair: nothing new
-        assert _shown(screen) == ("page-006.png", "page-007.png")
+        assert _shown(screen) == ("page-007.png", "")
+        screen.next_page()  # the last page: nothing new
+        assert _shown(screen) == ("page-007.png", "")
         screen.prev_page()
-        assert _shown(screen) == ("page-004.png", "page-005.png")
+        assert _shown(screen) == ("page-005.png", "page-006.png")
         screen.prev_page()
         screen.prev_page()
-        assert _shown(screen) == ("page-001.png", "")
+        assert _shown(screen) == ("page-001.png", "page-002.png")
 
     def test_an_odd_last_page_stands_alone(
         self, screen: DocumentReaderScreen, tmp_path: Path
     ) -> None:
-        for name in SEVEN_PAGES[:4]:
+        for name in SEVEN_PAGES[:5]:
             (tmp_path / name).write_bytes(b"")
         _spread(screen)
         _open(screen, tmp_path)
         screen.next_page()
         screen.next_page()
-        assert _shown(screen) == ("page-004.png", "")
+        assert _shown(screen) == ("page-005.png", "")
 
     def test_a_single_page_shows_one_at_a_time_as_before(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
@@ -385,12 +412,13 @@ class TestTheSpread:
             (tmp_path / name).write_bytes(b"")
         _open(screen, tmp_path)
         screen.next_page()
-        screen.next_page()  # page 3, a pair's right page on the spread
+        screen.next_page()
+        screen.next_page()  # page 4, a pair's right page on the spread
         _spread(screen)
-        assert _shown(screen) == ("page-002.png", "page-003.png")
+        assert _shown(screen) == ("page-003.png", "page-004.png")
         screen.layout_mode = MainLayoutMode.SINGLE.value
         screen.on_layout_mode(screen, screen.layout_mode)
-        assert _shown(screen) == ("page-002.png", "")
+        assert _shown(screen) == ("page-003.png", "")
 
     def test_a_layout_change_under_a_closed_document_leaves_its_resume_page(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
@@ -400,7 +428,8 @@ class TestTheSpread:
             (tmp_path / name).write_bytes(b"")
         _open(screen, tmp_path)
         screen.next_page()
-        screen.next_page()  # page 3, a pair's right page on the spread
+        screen.next_page()
+        screen.next_page()  # page 4, a pair's right page on the spread
         with patch.object(document_reader_module, "Window"):
             screen.close()
         pages_shown = len([line for line in loguru_sink if "Document page" in line])
@@ -411,24 +440,24 @@ class TestTheSpread:
 
         assert len([line for line in loguru_sink if "Document page" in line]) == pages_shown
         _open(screen, tmp_path, resume=True)
-        assert _shown(screen) == ("page-003.png", "")
+        assert _shown(screen) == ("page-004.png", "")
 
     def test_go_to_story_offers_both_pages_stories(
         self, screen: DocumentReaderScreen, tmp_path: Path
     ) -> None:
         for name in SEVEN_PAGES[:3]:
             (tmp_path / name).write_bytes(b"")
-        _write_links(tmp_path / "page-002.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
-        _write_links(tmp_path / "page-003.png", _figure(Titles.VOODOO_HOODOO, "2", figure=2))
+        _write_links(tmp_path / "page-001.png", _figure(Titles.LOST_IN_THE_ANDES, "7"))
+        _write_links(tmp_path / "page-002.png", _figure(Titles.VOODOO_HOODOO, "2", figure=2))
         _spread(screen)
         _open(screen, tmp_path)
-        assert screen.has_story_links is False
-        screen.next_page()
         assert [link.title for link in screen._story_links] == [
             Titles.LOST_IN_THE_ANDES,
             Titles.VOODOO_HOODOO,
         ]
         assert screen.has_story_links is True
+        screen.next_page()
+        assert screen.has_story_links is False
 
     def test_a_resumed_document_comes_back_at_its_pair(
         self, screen: DocumentReaderScreen, tmp_path: Path
@@ -440,4 +469,120 @@ class TestTheSpread:
         screen.next_page()
         screen.next_page()
         _open(screen, tmp_path, resume=True)
-        assert _shown(screen) == ("page-004.png", "page-005.png")
+        assert _shown(screen) == ("page-005.png", "page-006.png")
+
+
+class TestFullscreen:
+    """The bar's Fullscreen, as the comic reader's: the bar hides, and a close comes back."""
+
+    def test_the_toggle_asks_the_window_for_the_other_mode(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        screen._mode = MagicMock()
+        screen.toggle_screen_mode()
+        screen._mode.toggle.assert_called_once()
+
+    def test_fullscreen_hides_the_bar_and_offers_windowed(
+        self, screen: DocumentReaderScreen, windowed: MagicMock, loguru_sink: list[str]
+    ) -> None:
+        windowed.is_fullscreen_now.return_value = True
+        with patch.object(document_reader_module, "log_window_geometry"):
+            screen._on_finished_goto_fullscreen_mode()
+        assert screen.is_fullscreen is True
+        assert screen.ids["doc_action_bar"].disabled is True
+        assert screen.ids["doc_action_bar"].height == 0
+        assert screen.ids["fullscreen_button"].text == "Windowed"
+        assert "Entered fullscreen mode on DocumentReaderScreen." in loguru_sink
+
+    def test_windowed_shows_the_bar_and_offers_fullscreen(
+        self, screen: DocumentReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        screen.is_fullscreen = True
+        screen._update_widget_states()
+        with patch.object(document_reader_module, "log_window_geometry"):
+            screen._on_finished_goto_windowed_mode()
+        assert screen.is_fullscreen is False
+        assert screen.ids["doc_action_bar"].disabled is False
+        assert screen.ids["fullscreen_button"].text == "Fullscreen"
+        assert "Entered windowed mode on DocumentReaderScreen." in loguru_sink
+
+    def test_a_document_opens_in_the_window_mode_it_finds(
+        self, screen: DocumentReaderScreen, tmp_path: Path, windowed: MagicMock
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        windowed.is_fullscreen_now.return_value = True
+        _open(screen, tmp_path)
+        assert screen.is_fullscreen is True
+        assert screen.ids["doc_action_bar"].disabled is True
+        assert screen._was_fullscreen_on_entry is True
+
+    def test_a_tap_on_the_top_margin_brings_a_hidden_bar_back(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.is_fullscreen = True
+        screen._update_widget_states()
+        bar = screen.ids["doc_action_bar"]
+        bar.collide_point.return_value = False
+        page = MagicMock()
+        page.collide_point.return_value = True
+        screen.ids["doc_page"] = page
+        screen.size = (800, 600)
+        with patch.object(screen, "_clear_menu_on_touch"):
+            assert screen.on_touch_down(MagicMock(pos=(400, 590), x=400, y=590)) is True
+        assert bar.disabled is False
+        assert "Showing action bar on top margin press." in loguru_sink
+        assert screen._current_page_index == 0  # not a page turn
+
+    def test_a_close_in_the_entry_mode_leaves_at_once(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+        screen._on_close_screen.assert_called_once()
+        assert screen._is_closing is False
+
+    def test_a_close_from_a_changed_mode_waits_for_the_window_to_come_back(
+        self, screen: DocumentReaderScreen, tmp_path: Path, windowed: MagicMock
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)  # windowed on entry
+        windowed.is_fullscreen_now.return_value = True  # fullscreen since
+        screen._mode = MagicMock()
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+        screen._mode.goto_windowed.assert_called_once()
+        screen._on_close_screen.assert_not_called()
+        assert screen._is_closing is True
+        # Keys and taps have nothing left to act on.
+        assert screen._on_key_down(None, 0, 0, "", []) is True
+        assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5, y=5)) is True
+        # Then the window lands, and the screen leaves once laid out for it.
+        windowed.is_fullscreen_now.return_value = False
+        with (
+            patch.object(document_reader_module, "log_window_geometry"),
+            patch.object(screen, "_fills_window", return_value=True),
+            patch.object(document_reader_module, "Clock") as clock,
+        ):
+            screen._on_finished_goto_windowed_mode()
+            clock.schedule_once.assert_called_once()
+            clock.schedule_once.call_args[0][0](0)
+        screen._on_close_screen.assert_called_once()
+        assert screen._is_closing is False
+
+    def test_a_close_never_waits_past_the_frame_budget(self, screen: DocumentReaderScreen) -> None:
+        screen._is_closing = True
+        with (
+            patch.object(screen, "_fills_window", return_value=False),
+            patch.object(document_reader_module, "Clock") as clock,
+        ):
+            screen._finish_closing_once_laid_out()
+            frames = 0
+            while clock.schedule_once.call_count > frames:
+                frames += 1
+                clock.schedule_once.call_args_list[frames - 1][0][0](0)
+        assert frames == DocumentReaderScreen._CLOSE_LAYOUT_MAX_FRAMES
+        screen._on_close_screen.assert_called_once()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from barks_fantagraphics.barks_titles import Titles
+
 RAW_ACTION_BAR_SIZE_Y = 45
 
 # Shared action-bar look, used by the kv bars (ui/action_bar.kv) and passed to
@@ -57,6 +59,18 @@ APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
 APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT = "Maggie Thompson: Comics Readers Find..."  # noqa: E501
 APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT = "George Lucas: An Appreciation"
 APPENDIX_CENSORSHIP_FIXES_NODE_TEXT = "Censorship Fixes and Other Changes"
+# The articles by title, named as their tree nodes are, for a bar over an open one (the
+# comic reader's): an article is a non-Barks title, which the reader otherwise names
+# by its issue, "Extras (Non-Barks) #1".
+ARTICLE_TITLE_TEXTS: dict[Titles, str] = {
+    Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION: INTRO_DON_AULT_FANTA_INTRO_TEXT,
+    Titles.RICH_TOMMASO___ON_COLORING_BARKS: APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
+    Titles.DON_AULT___LIFE_AMONG_THE_DUCKS: APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
+    Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD: (
+        APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT
+    ),
+    Titles.GEORGE_LUCAS___AN_APPRECIATION: APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
+}
 APPENDIX_STATISTICS_NODE_TEXT = "Statistics"
 INDEX_NODE_TEXT = "Indexes"
 INDEX_MAIN_TEXT = "Main Index"

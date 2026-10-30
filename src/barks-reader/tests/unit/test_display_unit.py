@@ -47,19 +47,20 @@ class TestBuildDisplayUnits:
 
 
 class TestBuildDocumentUnits:
-    def test_the_first_page_stands_alone_then_the_rest_pair_off(self) -> None:
-        units, unit_for = build_document_units(5)
-        assert units == [DisplayUnit(0, None), DisplayUnit(1, 2), DisplayUnit(3, 4)]
-        assert unit_for == {0: 0, 1: 1, 2: 1, 3: 2, 4: 2}
+    def test_the_pages_pair_off_from_the_first(self) -> None:
+        """A document has no cover: its first page is the left of the first pair."""
+        units, unit_for = build_document_units(4)
+        assert units == [DisplayUnit(0, 1), DisplayUnit(2, 3)]
+        assert unit_for == {0: 0, 1: 0, 2: 1, 3: 1}
 
     def test_an_odd_last_page_stands_alone(self) -> None:
-        units, unit_for = build_document_units(4)
-        assert units == [DisplayUnit(0, None), DisplayUnit(1, 2), DisplayUnit(3, None)]
-        assert units[unit_for[3]] == DisplayUnit(3, None)
+        units, unit_for = build_document_units(5)
+        assert units == [DisplayUnit(0, 1), DisplayUnit(2, 3), DisplayUnit(4, None)]
+        assert unit_for == {0: 0, 1: 0, 2: 1, 3: 1, 4: 2}
 
     @pytest.mark.parametrize(
         ("page_count", "expected"),
-        [(0, []), (1, [DisplayUnit(0, None)]), (2, [DisplayUnit(0, None), DisplayUnit(1, None)])],
+        [(0, []), (1, [DisplayUnit(0, None)]), (2, [DisplayUnit(0, 1)])],
     )
     def test_the_short_documents(self, page_count: int, expected: list[DisplayUnit]) -> None:
         units, unit_for = build_document_units(page_count)

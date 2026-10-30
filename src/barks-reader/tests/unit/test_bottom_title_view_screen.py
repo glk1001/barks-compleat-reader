@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
@@ -286,8 +287,14 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
 
         # Case 2: Non-Barks title
         mock_info.comic_book_info.is_barks_title = False
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
         mock_info.comic_book_info.get_title_from_issue_name.return_value = "Issue Title"
         assert self.screen._get_main_title_str(mock_info) == "Issue Title"
+
+        # Case 3: an article, named as its tree node is rather than by its issue
+        article = ALL_FANTA_COMIC_BOOK_INFO[Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION]
+        assert not article.comic_book_info.is_barks_title
+        assert self.screen._get_main_title_str(article) == "Don Ault: Fantagraphics Introduction"
 
 
 class TestBottomTitleViewNav(ScreenFixtureBase):

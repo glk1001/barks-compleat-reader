@@ -170,11 +170,16 @@ class Driver:
         "quit",
     )
     _MAIN_MENU_DEFAULT = "go_back"
+    # The document reader's bar, in the order document_reader.py passes to
+    # _setup_action_bar_nav; its menu opens on Close (default_focus_idx=2).
+    _DOCUMENT_MENU_BUTTONS = ("fullscreen", "goto_story", "close")
+    _DOCUMENT_MENU_DEFAULT = "close"
 
     # Menu focus is sticky on both bars, so the driver remembers where it left
     # each. Class-level defaults so a stub driver (no __init__) still has them.
     _menu_focus: str = _MENU_BUTTONS[0]
     _main_menu_focus: str = _MAIN_MENU_DEFAULT
+    _document_menu_focus: str = _DOCUMENT_MENU_DEFAULT
     _paced: bool = True
 
     # Log lines the app writes for keyboard focus moves and dropdowns, which every
@@ -215,6 +220,7 @@ class Driver:
         self._log = Path(self._run(["log"]).strip())
         self._menu_focus = self._MENU_BUTTONS[0]
         self._main_menu_focus = self._MAIN_MENU_DEFAULT
+        self._document_menu_focus = self._DOCUMENT_MENU_DEFAULT
 
     def _run(self, args: Sequence[str]) -> str:
         return probe(*args, script=self._probe)
@@ -763,6 +769,23 @@ class Driver:
         """
         with self.expect(pattern, timeout):
             self.go_back()
+
+    def press_document_menu_button(self, name: str) -> None:
+        """Open the document reader's action-bar menu and activate one button by name.
+
+        Sticky like the comic reader's menu: the bar reopens on whatever was
+        activated last, and this tracks that.
+
+        Args:
+            name: One of `_DOCUMENT_MENU_BUTTONS`.
+
+        Raises:
+            DriverError: If `name` is not a document-reader button.
+
+        """
+        self._walk_bar_to(self._DOCUMENT_MENU_BUTTONS, self._document_menu_focus, name)
+        self._document_menu_focus = name
+        self.key("Return")
 
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""

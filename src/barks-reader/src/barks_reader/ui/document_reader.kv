@@ -1,6 +1,6 @@
 <DocumentReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
-    # Two pages across on the spread, the first alone (core.display_unit); one otherwise.
+    # Two pages across on the spread, paired from the first (core.display_unit); one otherwise.
     pages_across: 2 if root.layout_mode == 'spread' else 1
 
     # Shared skeleton (ui/action_bar.kv). Close sits alone behind the fence, as in the
@@ -15,10 +15,17 @@
         icon_source: root.app_icon_filepath
         title_text: root.action_bar_title
 
+        # The comic reader's button and behaviour: fullscreen hides the bar.
+        ChromeFullscreenBarButton:
+            id: fullscreen_button
+            on_press: root.toggle_screen_mode()
+
+        # The goto-title glyph, as a story is what it goes to; the comic reader's
+        # curved arrow is its Goto Page.
         ChromeBarButton:
             id: goto_story_button
             text: "Go to Story"
-            icon: str(sys_paths.get_barks_reader_goto_icon_file())
+            icon: str(sys_paths.get_barks_reader_goto_title_icon_file())
             important: True
             # Greyed, not disabled: Kivy's disabled state drops an icon button's icon.
             opacity: 1.0 if root.has_story_links else root.GREYED_BUTTON_OPACITY

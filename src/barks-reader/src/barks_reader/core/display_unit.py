@@ -39,8 +39,9 @@ def build_display_units(
 def build_document_units(page_count: int) -> tuple[list[DisplayUnit], dict[int, int]]:
     """Group a document's pages into the units the two-page spread shows.
 
-    The reader's pairing without a page map: the first page stands alone (a title
-    page), the rest pair off in reading order, and an odd last page stands alone.
+    The reader's pairing without a page map: the pages pair off in reading order from
+    the first (a document has no cover to stand alone), and an odd last page stands
+    alone.
 
     Args:
         page_count: The document's number of pages.
@@ -49,7 +50,7 @@ def build_document_units(page_count: int) -> tuple[list[DisplayUnit], dict[int, 
         The units in order, and each page index's unit.
 
     """
-    return _pair_off(page_count, lambda i: i == 0)
+    return _pair_off(page_count, lambda _i: False)
 
 
 def _pair_off(

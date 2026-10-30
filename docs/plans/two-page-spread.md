@@ -211,11 +211,15 @@ Settled with the maintainer, 2026-10-29, in this order.
    `BODY_MAX_WIDTH` in `okf_reader/core/theme.py`); the change is its width.
 10. **The document viewers go two-up.** The documents are already comic-format pages
     (2120x3200), so the reader's pairing applies: `build_display_units` in
-    `core/display_unit.py` gives the first page alone, then (2, 3), (4, 5) and so on;
+    `core/display_unit.py` gives the first page alone, then (2, 3), (4, 5) and so on
+    (from 2026-10-30 the pairs run from the first page, (1, 2), (3, 4): a document
+    has no cover, so a lone first page was half a spread for nothing);
     the bar widens to the pair; Go to Story merges both pages' links from
     `core/document_links.py`. Fantagraphics Extras articles already use the comic
     reader and need nothing.
-11. **By the Numbers stands alone, centred,** in its page-aspect box as today.
+11. **By the Numbers stands alone, centred,** in its page-aspect box as today. Its
+    bar is the pair's width on the spread (from 2026-10-30), as the document reader's
+    is over a one-page document such as the Compleat Barks Reader introduction.
 12. **The comic reader is untouched.** Its two-page footprint is 1.325 times the
     screen height wide; the main-screen spread is about 5% narrower per page because
     it keeps the bar, and it has a gutter the reader lacks. The pages shift slightly
@@ -383,6 +387,17 @@ count where there is one, before the first multi-file edit of the stage.
 - `ui/document_reader.kv` and `ui/document_reader.py`: pairs from
   `build_display_units`, first page alone; the bar as wide as the pair; Go to Story over
   both pages' links; single-page as today in single mode.
+- Afterwards (2026-10-30), the two document readers brought level: the pairs run
+  from the first page (a document has no cover); the comic reader's bar names an
+  article as its tree node does (`ARTICLE_TITLE_TEXTS` in
+  `core/reader_consts_and_types.py`) rather than "Extras (Non-Barks) #1"; Go to Story
+  carries the goto-title glyph, the comic reader's curved arrow being its Goto Page;
+  and the document reader's bar has the comic reader's Fullscreen, hiding the bar in
+  fullscreen (a top-margin tap or Escape brings it back), closing into the mode the
+  document opened in once laid out for it. A document never goes fullscreen on its
+  own: the goto-fullscreen-on-read setting is the comic reader's. Removing the
+  document reader for packaged `.cbz` documents was weighed and kept: a document's
+  pages link to stories (Go to Story) and resume per chapter, which a comic cannot.
 - `ui/wiki_reader.py` and `okf_reader/ui/viewer.py`: the viewer takes the book's
   footprint; one background under both panels; Contrast darkens both.
 - As seen (2026-10-30): on the spread the article, capped at `BODY_MAX_WIDTH`,
