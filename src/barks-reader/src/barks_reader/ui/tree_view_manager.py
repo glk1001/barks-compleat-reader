@@ -132,15 +132,17 @@ class TreeViewManager:
             self._tree_view_screen.deselect_and_close_open_nodes()
             self._tree_view_screen.open_all_parent_nodes(node)
 
+        # Both flags are reset whatever raises: a stuck flag kept the images, or
+        # skipped opening on a child, for every expansion after.
         self._keep_images_for_caller = keep_images
-        self._opening_for_caller = True
         try:
-            self._tree_view_screen.open_node(node)
-        finally:
-            self._opening_for_caller = False
-        self._tree_view_screen.select_node(node)
+            self._opening_for_caller = True
+            try:
+                self._tree_view_screen.open_node(node)
+            finally:
+                self._opening_for_caller = False
+            self._tree_view_screen.select_node(node)
 
-        try:
             if isinstance(node, TitleTreeViewNode):
                 self._handle_title_node_selection(node)
             elif isinstance(node, ButtonTreeViewNode):

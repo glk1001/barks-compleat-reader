@@ -213,6 +213,21 @@ class TestTreeViewManager:
             call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
         ]
 
+    def test_a_failed_open_on_go_back_leaves_later_renders_fresh(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.get_name.return_value = "Search"
+        screen_mocks["tree_view"].open_node.side_effect = RuntimeError("populate failed")
+
+        with pytest.raises(RuntimeError, match="populate failed"):
+            tree_view_manager.setup_and_select_node(node, keep_images=True)
+
+        assert tree_view_manager._keep_images_for_caller is False
+        assert tree_view_manager._opening_for_caller is False
+
     def test_go_back_to_an_open_node_keeps_the_images_through_its_press(
         self,
         tree_view_manager: TreeViewManager,
