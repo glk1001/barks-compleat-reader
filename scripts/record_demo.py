@@ -276,9 +276,11 @@ SEARCH_WORD_READ = Pick(pages=4, dwell=1.0)
 OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 
 # The story fullscreen opens, and how much of it to read before and after the
-# switch. It reads the same story as read_story, from the same cued page.
+# switch. It reads the same story as read_story, from the same cued page, and
+# stops at the story's last pair: a turn more is the volume's back matter, one
+# page with the screen's black either side of it.
 FULLSCREEN_PICK = Pick("LOST_IN_THE_ANDES", pages=1, dwell=2.0)
-FULLSCREEN_READ = Pick(pages=3, dwell=2.0)
+FULLSCREEN_READ = Pick(pages=2, dwell=2.0)
 
 # The page read_story jumps to through the goto-page dropdown, to show that the
 # reader skips about rather than only turning forward.
@@ -288,8 +290,11 @@ FULLSCREEN_READ = Pick(pages=3, dwell=2.0)
 # so it runs ahead of what is printed on the page. The dropdown lists pages in
 # that same index order, which is why stepping by the difference between two of
 # them lands exactly. Must exist in READ_STORY_PICK's story, or the jump ends up
-# somewhere else - loudly, since the landing is checked against the log.
-READ_STORY_GOTO_PAGE = 25
+# somewhere else - loudly, since the landing is checked against the log. The
+# spread opens the story two-up, where the reader shows the unit holding the
+# page and logs it by the unit's left page: so this is a left page, and the
+# landing checked is the page asked for.
+READ_STORY_GOTO_PAGE = 24
 
 # How many Ups wiki_jump takes from the read portal to reach the wiki button.
 #
@@ -846,15 +851,15 @@ def _setup_read_story(d: Driver) -> None:
 @beat(
     "read_story",
     node=["The Stories", "root"],
-    label="Skip to any page, or read two-up as printed",
+    label="Two-up as printed, or a page at a time; skip to any page",
     setup=_setup_read_story,
 )
 def read_story(d: Driver) -> None:
-    """Read a story, skip to a page through the page list, and go two-up.
+    """Read a story two-up, skip to a page through the page list, and go single.
 
-    The two-up stays in this windowed beat rather than the fullscreen one: the
-    window is as wide as the clip, so a pair of pages shows whole here, and the
-    fullscreen beat keeps to one page so the two are told apart.
+    On the spread a comic opens two-up, so the reading is a pair at a time and
+    the beat ends on the reader's Double Page button, which puts this comic on
+    one page at a time: the one place the per-comic switch is shown.
     """
     d.hold(1.0)
     # The setup's select_node starts the title view's fade, and a Return during
@@ -894,13 +899,14 @@ def _go_fullscreen(d: Driver) -> None:
     whole_screen=True,
 )
 def fullscreen(d: Driver) -> None:
-    """Open the story and fill the screen with it, a page at a time.
+    """Open the story and fill the screen with it, a pair of pages at a time.
 
     Filmed from the whole nested screen rather than the app window, so the
     window is seen to grow into the frame: it opens at the other clips' scale
     with the screen's black around it, and the fullscreen page then fills the
     frame edge to edge. The crop and scale back to the shared clip size are the
-    recorder's (`Beat.whole_screen`). Single page only: the two-up is read_story's.
+    recorder's (`Beat.whole_screen`). Two-up, as the spread opens a comic: the
+    pair fills the landscape frame where one page would leave its sides black.
     """
     d.hold(1.0)
     d.focus_portal()

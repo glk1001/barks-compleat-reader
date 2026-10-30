@@ -13,50 +13,50 @@
   },
   {
     "beat": "read_story",
-    "title": "Skip to any page, or read two-up as printed",
+    "title": "Two-up as printed, or a page at a time; skip to any page",
     "start": 53.57,
-    "end": 82.6
+    "end": 84.1
   },
   {
     "beat": "fullscreen",
     "title": "Or fill the screen",
-    "start": 82.6,
-    "end": 103.63
+    "start": 84.1,
+    "end": 102.63
   },
   {
     "beat": "search_story",
     "title": "Find a story by name",
-    "start": 103.63,
-    "end": 130.67
+    "start": 102.63,
+    "end": 129.67
   },
   {
     "beat": "search_words",
     "title": "Search every word the characters speak",
-    "start": 130.67,
-    "end": 166.7
+    "start": 129.67,
+    "end": 165.7
   },
   {
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
-    "start": 166.7,
-    "end": 232.77
+    "start": 165.7,
+    "end": 231.77
   },
   {
     "beat": "wiki_jump",
     "title": "Every story linked to the Carl Barks Wiki",
-    "start": 232.77,
-    "end": 267.8
+    "start": 231.77,
+    "end": 266.8
   },
   {
     "beat": "speech_index",
     "title": "A full speech-bubble index, A to Z",
-    "start": 267.8,
-    "end": 280.83
+    "start": 266.8,
+    "end": 279.83
   },
   {
     "beat": "reading",
     "title": "Choose for me, playlists, and your history",
-    "start": 280.83,
-    "end": 327.87
+    "start": 279.83,
+    "end": 326.87
   }
 ]
