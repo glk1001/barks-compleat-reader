@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.document_links import StoryLink
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
+from barks_reader.ui import reader_close_mixin as reader_close_mixin_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
 from barks_reader.ui.reader_screens import ReaderScreen
 
@@ -28,7 +29,9 @@ def windowed() -> Iterator[MagicMock]:
     """Hold the window windowed, as the real one reads from Kivy's Window."""
     with patch.object(document_reader_module, "WindowManager") as window_manager:
         window_manager.is_fullscreen_now.return_value = False
-        yield window_manager
+        # The fullscreen check after a goto reads it there (`ReaderCloseMixin`).
+        with patch.object(reader_close_mixin_module, "WindowManager", window_manager):
+            yield window_manager
 
 
 def _bar() -> MagicMock:
@@ -196,7 +199,7 @@ class TestGotoStory:
         with (
             patch.object(document_reader_module, "log_window_geometry"),
             patch.object(screen, "_fills_window", return_value=True),
-            patch.object(document_reader_module, "Clock") as clock,
+            patch.object(reader_close_mixin_module, "Clock") as clock,
         ):
             screen._on_finished_goto_windowed_mode()
             clock.schedule_once.call_args[0][0](0)
@@ -606,7 +609,7 @@ class TestFullscreen:
         with (
             patch.object(document_reader_module, "log_window_geometry"),
             patch.object(screen, "_fills_window", return_value=True),
-            patch.object(document_reader_module, "Clock") as clock,
+            patch.object(reader_close_mixin_module, "Clock") as clock,
             patch.object(document_reader_module, "Window") as window,
         ):
             screen._on_finished_goto_windowed_mode()
@@ -615,17 +618,3 @@ class TestFullscreen:
         window.unbind.assert_called_once_with(on_key_down=screen._on_key_down)
         screen._on_close_screen.assert_called_once()
         assert screen._is_closing is False
-
-    def test_a_close_never_waits_past_the_frame_budget(self, screen: DocumentReaderScreen) -> None:
-        screen._is_closing = True
-        with (
-            patch.object(screen, "_fills_window", return_value=False),
-            patch.object(document_reader_module, "Clock") as clock,
-        ):
-            screen._finish_closing_once_laid_out()
-            frames = 0
-            while clock.schedule_once.call_count > frames:
-                frames += 1
-                clock.schedule_once.call_args_list[frames - 1][0][0](0)
-        assert frames == DocumentReaderScreen._CLOSE_LAYOUT_MAX_FRAMES
-        screen._on_close_screen.assert_called_once()

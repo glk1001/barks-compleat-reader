@@ -61,6 +61,7 @@ from .platform_window_utils import (
     WindowModeController,
     log_window_geometry,
 )
+from .reader_close_mixin import ReaderCloseMixin
 from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
@@ -75,6 +76,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
     from kivy.input import MotionEvent
+    from kivy.uix.actionbar import ActionBar
     from kivy.uix.widget import Widget
 
     from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
@@ -821,17 +823,11 @@ class ComicBookReader(FloatLayout):
             self._goto_page_buttons.append(button)
 
 
-class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
+class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     # Opacity for an action-bar button that is greyed out (e.g. the double-page
     # toggle while reading the single-page-only one-pager collection).
     _GREYED_BUTTON_OPACITY = 0.4
-    # A close waits for the reader to fill the window it closes into (see
-    # _finish_closing_once_laid_out), a frame at a time, but never longer than this.
-    _CLOSE_LAYOUT_MAX_FRAMES = 10
-    # How near the window's size the reader counts as filling it: a resize can land a
-    # pixel apart (2561 against 2560 on the Mac guest).
-    _FILLS_WINDOW_TOLERANCE_PX = 2
     action_bar_title = StringProperty()
     # Width of the inner action bar (centered to match the comic image's aspect-fit width).
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
@@ -1114,11 +1110,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._reader_settings.sys_file_paths.get_barks_reader_double_page_icon_file()
             )
 
-    def _set_hints_for_windowed_mode(self) -> None:
-        # Restore the layout properties so the screen fills the window again.
-        self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
     def _on_finished_goto_windowed_mode(self) -> None:
         if self._is_closing:
             logger.debug("Entering windowed mode finished, now closing reader.")
@@ -1143,16 +1134,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._mode.goto_windowed()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
-        if not is_fullscreen_now:
-            logger.error(
-                f"Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen"
-                f" = '{WindowManager.get_screen_mode_now()}'. "
-            )
-
-        # The actual mode, not an assumed True: if the transition failed, the
-        # button and action-bar state must keep matching the real window.
-        self.is_fullscreen = is_fullscreen_now
+        self.is_fullscreen = self._is_fullscreen_now_after_goto()
         self._update_widget_states()
         self._update_fullscreen_button()
 
@@ -1163,33 +1145,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             logger.debug("Entering fullscreen mode finished, now closing reader.")
             self._finish_closing_once_laid_out()
 
-    def _finish_closing_once_laid_out(self, frames_left: int = _CLOSE_LAYOUT_MAX_FRAMES) -> None:
-        """Close once the reader fills the window it closes into, and a frame more.
+    @override
+    def _reader_action_bar(self) -> ActionBar:
+        return self._action_bar
 
-        The closing animation (a shader transition) draws the reader as it stands
-        when it starts. Closing returns the window to the mode the reader opened in,
-        and the reader is laid out for a new window size a frame or more after the
-        mode change reports itself done: closed at once, the reader fell out at the
-        old size, its page pinned to the screen's left edge. The extra frame lets
-        the page inside it follow. At most _CLOSE_LAYOUT_MAX_FRAMES frames: a reader
-        that never fills the window must still close.
-        """
-        if frames_left > 0 and not self._fills_window():
-            Clock.schedule_once(lambda _dt: self._finish_closing_once_laid_out(frames_left - 1))
-            return
-        if frames_left > 0:
-            Clock.schedule_once(lambda _dt: self._finish_closing_comic())
-            return
-        self._finish_closing_comic()
-
-    def _fills_window(self) -> bool:
-        tolerance = self._FILLS_WINDOW_TOLERANCE_PX
-        return (
-            abs(self.width - Window.width) <= tolerance
-            and abs(self.height - Window.height) <= tolerance
-        )
-
-    def _finish_closing_comic(self) -> None:
+    @override
+    def _finish_closing(self) -> None:
         logger.debug(
             log_markers.READER_CLOSING.format(
                 width=round(self.width),
@@ -1242,16 +1203,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             aspect_ratio /= 2
         w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width, aspect_ratio)
         self.action_bar_width = max(1, w)
-
-    def _show_action_bar(self) -> None:
-        """Show the action bar if currently hidden. No-op if already visible."""
-        if not is_action_bar_visible(self._action_bar):
-            set_action_bar_visibility(self._action_bar, ActionBarVisibility.VISIBLE)
-
-    def _hide_action_bar(self) -> None:
-        """Hide the action bar if currently visible. No-op if already hidden."""
-        if is_action_bar_visible(self._action_bar):
-            set_action_bar_visibility(self._action_bar, ActionBarVisibility.HIDDEN)
 
     def _update_widget_states(self) -> None:
         visibility = (

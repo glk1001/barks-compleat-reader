@@ -38,6 +38,7 @@ from .platform_window_utils import (
     WindowModeController,
     log_window_geometry,
 )
+from .reader_close_mixin import ReaderCloseMixin
 from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_titles import Titles
     from kivy.input import MotionEvent
+    from kivy.uix.actionbar import ActionBar
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_settings import ReaderSettings
@@ -65,7 +67,7 @@ class GotoStory(Protocol):
     def __call__(self, title: Titles, page: str, *, keyboard_initiated: bool) -> None: ...
 
 
-class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
+class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, ActionBarNavMixin):
     """A folder of page images, turned by tap or arrow key.
 
     A page may name the stories its figures come from (``core.document_links``). "Go to
@@ -86,16 +88,12 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     pages take its room; a tap on the top margin, or Escape, brings it back. A document
     never goes fullscreen on its own (the comic reader's setting does not reach it), and
     closing returns the window to the mode the document opened in, waiting for the
-    screen to be laid out for it (the comic reader's ``_finish_closing_once_laid_out``).
+    screen to be laid out for it (``ReaderCloseMixin``, the comic reader's too).
     """
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     GREYED_BUTTON_OPACITY = 0.4
-    # A close from a changed window mode waits for the screen to fill the window it
-    # closes into, a frame at a time, but never longer than this (as the comic reader).
-    _CLOSE_LAYOUT_MAX_FRAMES = 10
-    _FILLS_WINDOW_TOLERANCE_PX = 2
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
@@ -311,11 +309,6 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Switch the window to the other mode, from the bar's Fullscreen button."""
         self._mode.toggle()
 
-    def _set_hints_for_windowed_mode(self) -> None:
-        # Restore the layout properties so the screen fills the window again.
-        self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
     def _on_finished_goto_windowed_mode(self) -> None:
         self.is_fullscreen = False
         self._update_widget_states()
@@ -326,15 +319,7 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._finish_closing_once_laid_out()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        # The actual mode, not an assumed True: if the transition failed, the button
-        # and the bar must keep matching the real window.
-        is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
-        if not is_fullscreen_now:
-            logger.error(
-                f"Finishing goto fullscreen on DocumentReaderScreen but Window fullscreen"
-                f" = '{WindowManager.get_screen_mode_now()}'."
-            )
-        self.is_fullscreen = is_fullscreen_now
+        self.is_fullscreen = self._is_fullscreen_now_after_goto()
         self._update_widget_states()
         logger.info(log_markers.ENTERED_FULLSCREEN.format(screen=DocumentReaderScreen.__name__))
         log_window_geometry("DocumentReaderScreen fullscreen")
@@ -354,13 +339,9 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             fullscreen_exit_icon=self._fullscreen_exit_icon,
         )
 
-    def _show_action_bar(self) -> None:
-        if not is_action_bar_visible(self.ids.doc_action_bar):
-            set_action_bar_visibility(self.ids.doc_action_bar, ActionBarVisibility.VISIBLE)
-
-    def _hide_action_bar(self) -> None:
-        if is_action_bar_visible(self.ids.doc_action_bar):
-            set_action_bar_visibility(self.ids.doc_action_bar, ActionBarVisibility.HIDDEN)
+    @override
+    def _reader_action_bar(self) -> ActionBar:
+        return self.ids.doc_action_bar
 
     @override
     def _is_action_bar_hidden(self) -> bool:
@@ -505,28 +486,7 @@ class DocumentReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         else:
             self._mode.goto_windowed()
 
-    def _finish_closing_once_laid_out(self, frames_left: int = _CLOSE_LAYOUT_MAX_FRAMES) -> None:
-        """Close once the screen fills the window it closes into, and a frame more.
-
-        The closing transition draws the screen as it stands when it starts, and the
-        screen is laid out for the new window size a frame or more after the mode
-        change reports itself done (the comic reader's close has the same wait).
-        """
-        if frames_left > 0 and not self._fills_window():
-            Clock.schedule_once(lambda _dt: self._finish_closing_once_laid_out(frames_left - 1))
-            return
-        if frames_left > 0:
-            Clock.schedule_once(lambda _dt: self._finish_closing())
-            return
-        self._finish_closing()
-
-    def _fills_window(self) -> bool:
-        tolerance = self._FILLS_WINDOW_TOLERANCE_PX
-        return (
-            abs(self.width - Window.width) <= tolerance
-            and abs(self.height - Window.height) <= tolerance
-        )
-
+    @override
     def _finish_closing(self) -> None:
         Window.unbind(on_key_down=self._on_key_down)
         self._is_closing = False
