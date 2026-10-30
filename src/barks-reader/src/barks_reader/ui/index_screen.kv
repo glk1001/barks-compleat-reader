@@ -67,7 +67,7 @@
 
 #:set POPUP_BGND_COLOR [0, 0, 0, 0.45]  # Neutral dim (was programmer-blue)
 
-<SpeechBubblesPopup@Popup>:
+<SpeechBubblesPopup>:
     background_color: POPUP_BGND_COLOR
     canvas.before:
         Color:
@@ -76,7 +76,7 @@
             pos: self.pos
             size: self.size
 
-<TextBoxWithTitleAndBorder@BoxLayout>:
+<TextBoxWithTitleAndBorder>:
     orientation: "vertical"
     padding: dp(10)
     spacing: dp(0)
