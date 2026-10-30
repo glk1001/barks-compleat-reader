@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-10-24.
+Last updated: 2026-10-30.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -548,6 +548,16 @@ in the OCR repo, which is read-only from here:
       after "Exiting fullscreen mode". At the saved size, delete `move_now` (the Win32
       backend's, the Kivy backend's no-op and its call in
       `WindowManager.goto_windowed_mode`); still 16x39 bigger, keep it.
+
+---
+
+## Website
+
+- [ ] **One layout story on the page** — `website/app.html` mixes spread captures (the
+      videos, the main window, selecting a title) with the old portrait single-page
+      captures (the reader, search, index, wiki, history) and never says which is which;
+      no Features section for the spread. The rule, the re-shoots and the text changes:
+      `docs/plans/website-spread-consistency.md` (reviewed 2026-10-30).
 
 ---
 
