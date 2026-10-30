@@ -31,12 +31,19 @@ class ImageHistory:
     def add_oldest(self, image_info: ImageInfo) -> bool:
         """Record `image_info` as the oldest, before every image shown; the on-show one stays.
 
+        A full history drops its newest image to make room, as `add` drops the oldest:
+        the window of images kept moves with the one on show (a step back at the oldest
+        image on the spread seeds behind it, and a full history refused it, 2026-10-30).
+
         Returns:
-            Whether it was added: a full history keeps what it has.
+            Whether it was added: a full history whose newest image is on show keeps
+            what it has.
 
         """
         if len(self.images) == self.images.maxlen:
-            return False
+            if self.index == len(self.images) - 1:
+                return False
+            self.images.pop()
         self.images.appendleft(image_info)
         if self.index >= 0:
             self.index += 1

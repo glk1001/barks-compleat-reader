@@ -174,7 +174,8 @@ Settled with the maintainer, 2026-10-29, in this order.
 5. **The fun page is two tiers.** Two fun panels stacked, the current one above the
    previous one from the image history; two 1.37 panels stacked make 0.69, the page's
    0.66 near enough. A cover or any tall image (the Covers pool's median is 0.73)
-   stands alone. Tapping the lower tier promotes it.
+   sits in its tier fitted by height. Tapping the page's middle third zooms the tier
+   under it.
 6. **The title page budget: hero 12%, picture 38%, colophon 50%,** the colophon in the
    same 56/44 columns as today (title info left, portal image and the override
    checkboxes right). Sized to the longest texts: Land of the Pygmy Indians (841
@@ -295,7 +296,7 @@ count where there is one, before the first multi-file edit of the stage.
   portal image and the checkbox column fit the 44% column at the page's width; verify
   on Lost in the Andes and Land of the Pygmy Indians.
 - `ui/fun_image_view_screen.kv` and `core/image_history.py`: two tiers in the spread,
-  the lower from the history; tall images alone; tapping the lower tier promotes it.
+  the lower from the history; the middle third zooms a tier.
 - `core/image_selector.py` and `core/view_pipeline.py`: the fit rule takes the region's
   aspect; the tree page is wallpaper (cover, the tree's opacity), the view page a
   picture (contain); the selector picks two fun panels on boot in the spread.
@@ -306,17 +307,50 @@ count where there is one, before the first multi-file edit of the stage.
   the panel; the panel's picture is the same art, contain, 76% wide. The fun view
   stacks when its image is landscape and the history has one before it (`previous`
   in `core/image_history.py`), at 0.49 of the page each, the lower dimmed with its
-  title; a tall image stands alone, contain; the tap margins are the view's own
+  title; a tall image stood alone, contain (until the zoom, below); the tap margins are the view's own
   (`on_size`), the upper tier's halves when stacked, and the lower tier is a target of
-  its own. On a switch to the spread with one image shown the renderer seeds the
-  history with one more pick (`pick_fun_view_image` on the pipeline, `add_oldest` on
-  the history). The image selector is untouched: a tier of the spread page has the
+  its own (superseded the same day: the page in thirds, below). The title and goto arrow of the image on show sit at its top right, as the
+  tree's wallpaper has them, in both layouts, and stacked the lower tier's title sits
+  at its own top right with a goto button of its own (they were both at the bottom of
+  the lower tier, 2026-10-30). The goto buttons are one glyph everywhere, the wiki's
+  open book on the arrows' disc (`Various/goto-title-button.png`): the up and down
+  arrows said where the title lay, which on the spread is beside the image. The lower
+  button is a keyboard stop below the upper one; its goto names its image
+  (`on_goto_lower_title`); `FUN_VIEW_STACKED` logs the tiers. A tap on the lower tier
+  right after boot collapsed the tiers: the step back landed on the seeded image,
+  which had nothing below it. A step back onto the oldest image on the spread now
+  picks one more and puts it behind (the view holds the pipeline's picker), so the
+  lower tier never runs dry; a full history drops its newest image for it, as it drops
+  the oldest for a new one at the front (the cap refused the seed after three taps on
+  this PC, 2026-10-30; both fixed that day). A press on the lower tier promoted its
+  image, a step back, and a tall one then stood alone with the pair a step *forward*:
+  the next press, a step back, lost it. The page's presses are now thirds
+  (`_press_on_the_page`): the outer thirds step back and forward, both tiers moving
+  with the history as the keys move them, and the middle third zooms the tier under
+  it to fill the page, view-only, a second middle press bringing the pair back
+  (`zoomed`, `tiered`; `MIDDLE_PRESSED` and `FUN_VIEW_ZOOM`; the tap targets "upper
+  middle", "lower middle" and, zoomed, "middle"). The history never moves on a zoom,
+  so a step back is always the pair the zoom came from; any step, a new image or a
+  layout change ends it. Zoomed in on the lower tier, the upper overlay carries that
+  image's title and goto. The single page keeps its halves (2026-10-30). With the
+  zoom there, a tall image stands alone no more: a step onto one changed the layout
+  as if it were a zoom. The tiers stack whatever the shape of the image on show, a
+  tall one fitted by its height, and only a middle press fills the page.
+  The two tiers once held the photo and the watercolor of one panel: the selector
+  skipped recently used *files*, and a panel comes in up to ten treatments (the AI
+  folder's and the favourite). Recently used is now the panel in any treatment
+  (`_panel_key` in `core/image_selector.py`: folder and page-panel number).
+  The view feeds its own history's oldest end whenever the lower tier has nothing
+  to show (`_feed_the_oldest_end`, on every refresh of the tier: the first image, a
+  switch to the spread, a step back onto the oldest; `pick_fun_view_image` on the
+  pipeline, `add_oldest` on the history; the renderer's own seed on a layout switch
+  was folded in, 2026-10-30). The image selector is untouched: a tier of the spread page has the
   single page's bottom view's shape (the book's two children split it evenly), so the
   cover band already fits a tier. The collapsed tree (view state INITIAL) is a
   `tree_collapsed` property the tree view's wallpaper reads.
-- Not seen yet: a tall fun image alone on the page (the fun pool gave none in twenty
-  Change Pics; the rule has a unit test), a press on the lower tier (unit-tested; the
-  GUI suite runs single page until stage 5), the title view's eye in the spread.
+- Not seen yet (at stage 2): a tall fun image on the page (the fun pool gave none in
+  twenty Change Pics), a press on the lower tier (unit-tested; the GUI suite runs
+  single page until stage 5), the title view's eye in the spread.
 
 ### Stage 3: the index and search pages
 

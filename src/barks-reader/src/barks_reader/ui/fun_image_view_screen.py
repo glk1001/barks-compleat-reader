@@ -64,7 +64,12 @@ _DEBUG = False
 _TOP_MARGIN_FRAC_OF_HEIGHT = 0.04
 _BOTTOM_MARGIN_FRAC_OF_HEIGHT = 0.98
 
+# The tier a middle press on the spread zooms in on, filling the page with its image.
+_ZOOM_UPPER = "upper"
+_ZOOM_LOWER = "lower"
+
 _GOTO_FOCUS_GROUP = "fun_view_goto_focus"
+_LOWER_GOTO_FOCUS_GROUP = "fun_view_lower_goto_focus"
 _FILTER_FOCUS_GROUP = "fun_view_filter_focus"
 _MENU_FOCUS_GROUP = "fun_view_menu_focus"
 
@@ -76,7 +81,8 @@ _MENU_START_IDX = 1
 class _FunFocus(Enum):
     """Which fun-view control currently holds keyboard focus."""
 
-    ARROW = auto()  # the "Goto Title" overlay arrow (top-right)
+    GOTO = auto()  # the "Goto Title" overlay button (top-right)
+    LOWER_GOTO = auto()  # the lower tier's goto button, on the spread when stacked
     FILTER = auto()  # the image-filter toggle button (top-left)
     MENU = auto()  # inside the open image-type options menu
 
@@ -96,19 +102,27 @@ class FunImageViewScreen(BoxLayout):
     MAX_WINDOW_WIDTH = get_monitors()[0].width
 
     goto_title_button_active = BooleanProperty(defaultvalue=True)
+    # The lower tier's goto: stacked, and the image there comes from a story.
+    lower_goto_title_button_active = BooleanProperty(defaultvalue=False)
 
     is_visible = BooleanProperty(defaultvalue=False)
     image_texture = ObjectProperty(allownone=True)
     image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     image_color = ColorProperty()
     # The book's layout (core.main_layout). On the two-page spread the view is a page:
-    # the image on show above the one before it in the history, the lower tier, when
-    # the image on show is landscape; a tall one stands alone, whole.
+    # the image on show above the one before it in the history, the lower tier, each
+    # fitted to its tier (a tall image by its height).
     layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
     previous_image_texture = ObjectProperty(allownone=True)
     previous_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     previous_title_str = StringProperty()
     stacked = BooleanProperty(defaultvalue=False)
+    # Stacked, a press on the page's middle third zooms the tier under it: the view
+    # shows that tier's image alone, until a middle press brings the pair back or a
+    # step moves on. The history stays put ("upper", "lower", or "" for no zoom).
+    zoomed = StringProperty()
+    # The two tiers are drawn: stacked and not zoomed in on one of them.
+    tiered = BooleanProperty(defaultvalue=False)
     fun_options_enabled = BooleanProperty(defaultvalue=False)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=True)
@@ -118,6 +132,7 @@ class FunImageViewScreen(BoxLayout):
 
         self._load_image: Callable[[ImageInfo], None] | None = None
         self._load_texture: Callable[[ImageInfo, Callable[[Texture], None]], None] | None = None
+        self._pick_image: Callable[[], ImageInfo] | None = None
         self._history = ImageHistory(_MAX_IMAGES_HISTORY)
         # The lower tier's image, so a texture that arrives after another step is dropped.
         self._wanted_previous: ImageInfo | None = None
@@ -138,7 +153,7 @@ class FunImageViewScreen(BoxLayout):
         # Keyboard navigation state.
         self._nav_active = False
         self._nav_on_exit_request: Callable[[], None] | None = None
-        self._nav_focus = _FunFocus.ARROW
+        self._nav_focus = _FunFocus.GOTO
         self._menu_idx = 0
 
         settings_notifier.register_callback(
@@ -163,6 +178,10 @@ class FunImageViewScreen(BoxLayout):
         """Take the loader the lower tier's image is decoded with."""
         self._load_texture = load_texture_func
 
+    def set_pick_image_func(self, pick_image_func: Callable[[], ImageInfo]) -> None:
+        """Take the picker a fresh image comes from, for a lower tier with nothing to show."""
+        self._pick_image = pick_image_func
+
     def on_size(self, _instance: Widget, size: tuple[float, float]) -> None:
         """Work the tap margins out again for the view's new size.
 
@@ -172,6 +191,7 @@ class FunImageViewScreen(BoxLayout):
         self._navigation.update_regions(round(size[0]), round(size[1]), 0, 0)
 
     def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
+        self._set_zoom("")
         self._refresh_lower_tier()
 
     def on_image_texture(self, _instance: Widget, _texture: Texture | None) -> None:
@@ -181,44 +201,87 @@ class FunImageViewScreen(BoxLayout):
         self._update_stacked()
 
     def _update_stacked(self) -> None:
-        """Stack the two tiers when the view is a page and the image on show is landscape."""
-        texture = self.image_texture
-        self.stacked = (
+        """Stack the two tiers when the view is a page with an image before the one on show.
+
+        Whatever its shape: a tall image stood alone, and a step onto one changed the
+        layout like a zoom, so only a middle press does now (2026-10-30).
+        """
+        stacked = (
             self.layout_mode == MainLayoutMode.SPREAD.value
             and self.previous_image_texture is not None
-            and texture is not None
-            and texture.width >= texture.height
+            and self.image_texture is not None
+        )
+        if stacked != self.stacked:
+            self.stacked = stacked
+            logger.debug(log_markers.FUN_VIEW_STACKED.format(state=stacked))
+        if not stacked:
+            self._set_zoom("")  # No pair to zoom in on, or to bring back.
+        self._update_tiered()
+
+    def _set_zoom(self, tier: str) -> None:
+        """Zoom in on `tier` (_ZOOM_UPPER or _ZOOM_LOWER), or out with "": view-only."""
+        if tier == self.zoomed:
+            return
+        self.zoomed = tier
+        logger.debug(log_markers.FUN_VIEW_ZOOM.format(tier=tier or "off"))
+        self._update_tiered()
+        if self._nav_active and self._nav_focus != _FunFocus.MENU:
+            self._reconcile_button_focus()  # The lower button comes and goes with the tiers.
+
+    def _update_tiered(self) -> None:
+        """Draw the tiers when stacked and not zoomed; arm the goto buttons for what shows."""
+        self.tiered = self.stacked and not self.zoomed
+        # The lower tier's title is set before its texture (`_refresh_lower_tier`).
+        self.lower_goto_title_button_active = self.tiered and self.previous_title_str != ""
+        # Zoomed in on the lower tier, the upper overlay shows that image's title.
+        self.goto_title_button_active = (
+            self.previous_title_str != ""
+            if self.zoomed == _ZOOM_LOWER
+            else self.fun_view_from_title
         )
 
     def _lower_tier_height(self) -> int:
         return round(self.height / 2)
 
     def tap_target_regions(self) -> dict[str, Rect]:
-        """Return the margins that step through the images, for a GUI test to tap.
+        """Return the regions a press steps or zooms the images from, for a GUI test to tap.
 
-        Stacked, the margins are the upper tier's halves and the lower tier is its own
-        target: a press on it promotes its image.
+        On the single page they are its two margins. On the spread the page is in
+        thirds: "left margin" and "right margin" are the outer ones, and the middle
+        third is "upper middle" and "lower middle" with the tiers drawn, or "middle"
+        zoomed in on one (a lone image has no middle target: nothing to zoom).
         """
         if not self.is_visible or self.fun_options_enabled:
             return {}
         width, height = round(self.width), round(self.height)
         regions = self._navigation.tap_regions(width, height)
-        targets: dict[str, tuple[int, int, int, int]] = {}
-        lower_tier_top = self._lower_tier_height() if self.stacked else 0
-        for name in ("left margin", "right margin"):
-            if name not in regions:
-                continue
-            x, y, w, h = regions[name]
-            top = y + h
-            bottom = max(y, lower_tier_top)
-            if top > bottom:
-                targets[name] = (x, bottom, w, top - bottom)
-        if self.stacked:
-            targets["lower tier"] = (0, 0, width, lower_tier_top)
+        targets = {
+            name: regions[name] for name in ("left margin", "right margin") if name in regions
+        }
+        if self.layout_mode == MainLayoutMode.SPREAD.value and "left margin" in regions:
+            targets = self._page_targets(width, regions["left margin"])
         return {
             name: window_rect(self, self.x + x, self.y + y, w, h)
             for name, (x, y, w, h) in targets.items()
         }
+
+    def _page_targets(
+        self, width: int, band: tuple[int, int, int, int]
+    ) -> dict[str, tuple[int, int, int, int]]:
+        """Return the spread page's targets in thirds, within the margins' band `band`."""
+        _, y, _, h = band
+        third = round(width / 3)
+        targets = {
+            "left margin": (0, y, third, h),
+            "right margin": (2 * third, y, width - 2 * third, h),
+        }
+        if self.tiered:
+            split = self._lower_tier_height()
+            targets["upper middle"] = (third, split, third, y + h - split)
+            targets["lower middle"] = (third, y, third, split - y)
+        elif self.zoomed:
+            targets["middle"] = (third, y, third, h)
+        return targets
 
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
@@ -250,8 +313,8 @@ class FunImageViewScreen(BoxLayout):
                 f" y_top_margin = {self._navigation.y_top_margin}."
             )
 
-        # Give the up-arrow button priority before margin navigation.
-        if self.ids.goto_title_overlay.goto_button.collide_point(touch.x, touch.y):
+        # The goto buttons take their presses before the margins and the lower tier.
+        if any(button.collide_point(touch.x, touch.y) for button in self._goto_buttons()):
             return bool(super().on_touch_down(touch))
 
         if self._step_for_press(x_rel, y_rel):
@@ -259,16 +322,21 @@ class FunImageViewScreen(BoxLayout):
 
         return bool(super().on_touch_down(touch))
 
+    def _goto_buttons(self) -> list[Widget]:
+        """Return the goto buttons that can take a press: the lower tier's only drawn."""
+        buttons = [self.ids.goto_title_overlay.goto_button]
+        if self.tiered:
+            buttons.append(self.ids.lower_goto_title_overlay.goto_button)
+        return buttons
+
     def _step_for_press(self, x_rel: int, y_rel: int) -> bool:
         """Step the images for a press at (x_rel, y_rel); False when it is on no margin.
 
-        Stacked, a press on the lower tier promotes its image, a step back; the
-        upper tier's halves step back and forward as the whole view's do.
+        The single page's margins are the view's halves; on the spread the page is in
+        thirds (`_press_on_the_page`).
         """
-        if self.stacked and y_rel < self._lower_tier_height():
-            logger.debug(log_markers.LOWER_TIER_PRESSED.format(x=x_rel, y=y_rel))
-            self._goto_previous_image()
-            return True
+        if self.layout_mode == MainLayoutMode.SPREAD.value:
+            return self._press_on_the_page(x_rel, y_rel)
 
         if self._navigation.is_in_left_margin(x_rel, y_rel):
             logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
@@ -281,6 +349,39 @@ class FunImageViewScreen(BoxLayout):
             return True
 
         return False
+
+    def _press_on_the_page(self, x_rel: int, y_rel: int) -> bool:
+        """Step or zoom for a press on the spread's page; False when it is in no third.
+
+        The left third steps back and the right third forward, both tiers moving with
+        the history as the keys move them. The middle third zooms the tier under it to
+        fill the page, and zoomed, brings the pair back: the history stays put, so a
+        step back is always the pair the zoom came from. (A press on the lower tier
+        was a step back that promoted its image, and a tall one then stood alone with
+        the pair a step *forward*: the next press, a step back, lost it, 2026-10-30.)
+        """
+        if not self._navigation.y_bottom_margin <= y_rel <= self._navigation.y_top_margin:
+            return False
+
+        third = self.width / 3
+        if x_rel < third:
+            logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
+            self._goto_previous_image()
+            return True
+        if x_rel >= 2 * third:
+            logger.debug(log_markers.RIGHT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
+            self._goto_next_image()
+            return True
+
+        if self.zoomed:
+            tier = ""
+        elif self.stacked:
+            tier = _ZOOM_LOWER if y_rel < self._lower_tier_height() else _ZOOM_UPPER
+        else:
+            return False  # One image, alone: nothing to zoom in on.
+        logger.debug(log_markers.MIDDLE_PRESSED.format(x=x_rel, y=y_rel, tier=tier or "off"))
+        self._set_zoom(tier)
+        return True
 
     def prev_image(self) -> None:
         self._goto_previous_image()
@@ -300,16 +401,30 @@ class FunImageViewScreen(BoxLayout):
 
     def _load_history_image(self, image_info: ImageInfo) -> None:
         assert self._load_image is not None
+        self._set_zoom("")
         self._load_image(image_info)
         self._set_title(image_info.from_title)
         self._refresh_lower_tier()
 
-    def needs_a_second_image(self) -> bool:
-        """Whether the spread's lower tier has nothing to show: one image in the history."""
-        return self.layout_mode == MainLayoutMode.SPREAD.value and len(self._history.images) == 1
+    def _needs_a_second_image(self) -> bool:
+        """Whether the spread's lower tier has nothing to show: nothing before the image on show."""
+        return (
+            self.layout_mode == MainLayoutMode.SPREAD.value
+            and self._history.index >= 0
+            and self._history.previous() is None
+        )
 
-    def seed_previous_image(self, image_info: ImageInfo) -> None:
-        """Put `image_info` before the images shown, as the lower tier's at boot."""
+    def _feed_the_oldest_end(self) -> None:
+        """Pick one more image and put it behind the images shown, when the tier needs it.
+
+        The first image, a switch to the spread and a step back onto the oldest image
+        all leave nothing before the image on show: one is picked and put behind, so
+        the lower tier never runs dry (a step back onto the oldest once collapsed the
+        tiers to one, 2026-10-30). A full history drops its newest for it.
+        """
+        if not self._needs_a_second_image() or self._pick_image is None:
+            return
+        image_info = self._pick_image()
         if not self._history.add_oldest(image_info):
             return
         assert image_info.filename
@@ -318,10 +433,10 @@ class FunImageViewScreen(BoxLayout):
                 filename=image_info.filename.name, title=_title_str(image_info.from_title)
             )
         )
-        self._refresh_lower_tier()
 
     def _refresh_lower_tier(self) -> None:
         """Show the image before the one on show in the lower tier, on the spread."""
+        self._feed_the_oldest_end()
         on_the_spread = self.layout_mode == MainLayoutMode.SPREAD.value
         previous = self._history.previous() if on_the_spread else None
         self._wanted_previous = previous
@@ -361,6 +476,7 @@ class FunImageViewScreen(BoxLayout):
             child.active = False
 
     def set_last_loaded_image_info(self, image_info: ImageInfo) -> None:
+        self._set_zoom("")
         self._set_title(image_info.from_title)
 
         self._history.add(image_info)
@@ -379,18 +495,30 @@ class FunImageViewScreen(BoxLayout):
         logger.debug(log_markers.FUN_VIEW_TITLE_SET.format(title=self.current_title_str))
 
     def on_goto_title(self, *, from_keyboard: bool = False) -> None:
-        """Fire the goto-title arrow.
+        """Fire the goto-title button of the image on show.
 
-        The kv-wired ``on_arrow_press`` is the pointer path and leaves ``from_keyboard``
+        The kv-wired ``on_goto_press`` is the pointer path and leaves ``from_keyboard``
         at its default, so the handler can keep a mouse click in mouse mode rather than
-        landing the app in keyboard nav.
+        landing the app in keyboard nav. Zoomed in on the lower tier, the button is
+        that image's.
         """
+        if self.zoomed == _ZOOM_LOWER:
+            self.on_goto_lower_title(from_keyboard=from_keyboard)
+            return
         assert self.on_goto_title_func is not None
         self.on_goto_title_func(from_keyboard=from_keyboard)
 
+    def on_goto_lower_title(self, *, from_keyboard: bool = False) -> None:
+        """Fire the lower tier's goto-title button: the image before the one on show."""
+        previous = self._history.previous()
+        assert previous is not None
+        assert self.on_goto_title_func is not None
+        self.on_goto_title_func(from_keyboard=from_keyboard, image_info=previous)
+
     # --- Keyboard navigation -------------------------------------------------
-    # Focus moves between the goto arrow (top-right) and the filter button
-    # (top-left) with Up/Down; Enter fires the focused one. Pressing the filter
+    # Focus moves between the goto button (top-right), the lower tier's goto button
+    # (below it, stacked on the spread) and the filter button (top-left) with
+    # Up/Down; Enter fires the focused one. Pressing the filter
     # button opens the image-type options menu and moves focus into it, where
     # Up/Down move, Enter/Space toggle, and Escape closes the menu. Left/Right
     # keep cycling images while focus is on a button.
@@ -401,7 +529,7 @@ class FunImageViewScreen(BoxLayout):
         return self._nav_active
 
     def enter_nav_focus(self, on_exit_request: Callable[[], None]) -> None:
-        """Enter keyboard focus, landing on the menu, the arrow, or the filter button.
+        """Enter keyboard focus, landing on the menu, the goto button, or the filter button.
 
         ``on_exit_request`` is called when the user backs out of the top level
         (Escape) so the caller can hand focus back to the tree.
@@ -412,7 +540,7 @@ class FunImageViewScreen(BoxLayout):
             self._nav_focus = _FunFocus.MENU
             self._menu_idx = _MENU_START_IDX
         elif self.goto_title_button_active:
-            self._nav_focus = _FunFocus.ARROW
+            self._nav_focus = _FunFocus.GOTO
         else:
             self._nav_focus = _FunFocus.FILTER
         self._draw_nav_focus()
@@ -441,12 +569,17 @@ class FunImageViewScreen(BoxLayout):
             self.next_image()
             self._reconcile_button_focus()
         elif key == KEY_UP:
-            self._nav_focus = _FunFocus.FILTER
+            self._nav_focus = (
+                _FunFocus.GOTO if self._nav_focus == _FunFocus.LOWER_GOTO else _FunFocus.FILTER
+            )
             self._draw_nav_focus()
         elif key == KEY_DOWN:
-            if self.goto_title_button_active:
-                self._nav_focus = _FunFocus.ARROW
-                self._draw_nav_focus()
+            if self._nav_focus == _FunFocus.GOTO and self.lower_goto_title_button_active:
+                self._nav_focus = _FunFocus.LOWER_GOTO
+            elif self._nav_focus == _FunFocus.FILTER and self.goto_title_button_active:
+                self._nav_focus = _FunFocus.GOTO
+            # Drawn even with nowhere to go: the GUI driver paces its keys on the line.
+            self._draw_nav_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_SPACE):
             self._activate_button_focus()
         elif is_escape_key(key):
@@ -456,9 +589,12 @@ class FunImageViewScreen(BoxLayout):
         return True
 
     def _activate_button_focus(self) -> None:
-        if self._nav_focus == _FunFocus.ARROW:
+        if self._nav_focus == _FunFocus.GOTO:
             if self.goto_title_button_active:
                 self.on_goto_title(from_keyboard=True)
+        elif self._nav_focus == _FunFocus.LOWER_GOTO:
+            if self.lower_goto_title_button_active:
+                self.on_goto_lower_title(from_keyboard=True)
         else:  # FILTER: open the options menu and move focus into it.
             self.fun_options_button_pressed()
             self._nav_focus = _FunFocus.MENU
@@ -466,8 +602,10 @@ class FunImageViewScreen(BoxLayout):
             self._draw_nav_focus()
 
     def _reconcile_button_focus(self) -> None:
-        """Keep focus valid after prev/next changed whether the arrow is actionable."""
-        if self._nav_focus == _FunFocus.ARROW and not self.goto_title_button_active:
+        """Keep focus valid after prev/next changed which goto buttons are actionable."""
+        if self._nav_focus == _FunFocus.LOWER_GOTO and not self.lower_goto_title_button_active:
+            self._nav_focus = _FunFocus.GOTO
+        if self._nav_focus == _FunFocus.GOTO and not self.goto_title_button_active:
             self._nav_focus = _FunFocus.FILTER
         self._draw_nav_focus()
 
@@ -548,9 +686,14 @@ class FunImageViewScreen(BoxLayout):
 
     def _draw_nav_focus(self) -> None:
         self._clear_nav_focus()
-        if self._nav_focus == _FunFocus.ARROW:
+        if self._nav_focus == _FunFocus.GOTO:
             if self.goto_title_button_active:
                 draw_focus_highlight(self.ids.goto_title_overlay.goto_button, _GOTO_FOCUS_GROUP)
+        elif self._nav_focus == _FunFocus.LOWER_GOTO:
+            if self.lower_goto_title_button_active:
+                draw_focus_highlight(
+                    self.ids.lower_goto_title_overlay.goto_button, _LOWER_GOTO_FOCUS_GROUP
+                )
         elif self._nav_focus == _FunFocus.FILTER:
             draw_focus_highlight(self.ids.fun_options_button, _FILTER_FOCUS_GROUP)
         else:  # MENU
@@ -560,6 +703,9 @@ class FunImageViewScreen(BoxLayout):
 
     def _clear_nav_focus(self) -> None:
         clear_focus_highlight(self.ids.goto_title_overlay.goto_button, _GOTO_FOCUS_GROUP)
+        clear_focus_highlight(
+            self.ids.lower_goto_title_overlay.goto_button, _LOWER_GOTO_FOCUS_GROUP
+        )
         clear_focus_highlight(self.ids.fun_options_button, _FILTER_FOCUS_GROUP)
         clear_focus_in_list(self._all_menu_widgets(), _MENU_FOCUS_GROUP)
 

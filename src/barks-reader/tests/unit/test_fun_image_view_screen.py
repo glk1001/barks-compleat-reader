@@ -67,6 +67,10 @@ def screen_setup() -> Generator[tuple[FunImageViewScreen, Any, MagicMock], Any]:
             mock_goto_button.collide_point.return_value = False
             mock_goto_title_overlay = MagicMock()
             mock_goto_title_overlay.goto_button = mock_goto_button
+            mock_lower_goto_button = MagicMock()
+            mock_lower_goto_button.collide_point.return_value = False
+            mock_lower_goto_title_overlay = MagicMock()
+            mock_lower_goto_title_overlay.goto_button = mock_lower_goto_button
             mock_all_checkbox = MagicMock()
             mock_all_checkbox.active = True
             mock_custom_checkbox = MagicMock()
@@ -74,6 +78,7 @@ def screen_setup() -> Generator[tuple[FunImageViewScreen, Any, MagicMock], Any]:
             instance.ids = {
                 "custom_options_box": mock_custom_options_box,
                 "goto_title_overlay": mock_goto_title_overlay,
+                "lower_goto_title_overlay": mock_lower_goto_title_overlay,
                 "fun_options_button": MagicMock(),
                 "clear_all_button": MagicMock(),
                 "checkbox_all_image_types": mock_all_checkbox,
@@ -257,7 +262,7 @@ class TestFunImageViewScreen:
         screen.enter_nav_focus(MagicMock())
 
         assert screen.is_nav_active
-        assert screen._nav_focus is _FunFocus.ARROW
+        assert screen._nav_focus is _FunFocus.GOTO
 
     @pytest.mark.usefixtures("_no_focus_draw")
     def test_enter_nav_focus_filter_when_arrow_inactive(
@@ -284,7 +289,7 @@ class TestFunImageViewScreen:
         assert screen._nav_focus is _FunFocus.FILTER
 
         assert screen.handle_key(KEY_DOWN) is True
-        assert screen._nav_focus is _FunFocus.ARROW
+        assert screen._nav_focus is _FunFocus.GOTO
 
     @pytest.mark.usefixtures("_no_focus_draw")
     def test_enter_on_arrow_calls_goto(
@@ -585,7 +590,7 @@ class TestKeysLeftAlone:
         assert screen.handle_key(KEY_ENTER) is True
 
         goto.assert_not_called()
-        assert screen._nav_focus is _FunFocus.ARROW
+        assert screen._nav_focus is _FunFocus.GOTO
 
     def test_escape_in_a_menu_already_closed_still_returns_to_the_filter(
         self, screen_setup: _Setup
@@ -610,12 +615,12 @@ class TestKeysLeftAlone:
         assert not screen.is_nav_active
 
 
-def test_an_inactive_arrow_is_given_no_focus_ring(
+def test_an_inactive_goto_button_is_given_no_focus_ring(
     screen_setup: _Setup,
 ) -> None:
     screen, _, _ = screen_setup
     mod = barks_reader.ui.fun_image_view_screen
-    screen._nav_focus = _FunFocus.ARROW
+    screen._nav_focus = _FunFocus.GOTO
     screen.goto_title_button_active = False
     with (
         patch.object(mod, "draw_focus_highlight") as draw,
@@ -623,7 +628,7 @@ def test_an_inactive_arrow_is_given_no_focus_ring(
     ):
         screen._draw_nav_focus()
     draw.assert_not_called()
-    assert clear.call_count == 2  # noqa: PLR2004
+    assert clear.call_count == 3  # the two goto buttons and the filter  # noqa: PLR2004
 
 
 def _info(name: str, title: Titles = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) -> ImageInfo:
@@ -632,6 +637,28 @@ def _info(name: str, title: Titles = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) -> Im
 
 def _texture(width: int, height: int) -> MagicMock:
     return MagicMock(width=width, height=height)
+
+
+def _stack_the_tiers(screen: FunImageViewScreen, nav: MagicMock | None = None) -> None:
+    """Two story images on the spread: the tiers stack.
+
+    With `nav`, the view is visible and its margins' band is all but the top and
+    bottom slivers of its 100 x 100, so a press can be placed by its thirds.
+    """
+    screen.layout_mode = MainLayoutMode.SPREAD.value
+    loader = MagicMock()
+    screen.set_load_texture_func(loader)
+    screen.set_load_image_func(MagicMock())
+    screen.set_last_loaded_image_info(_info("a.png", Titles.GIFT_LION))
+    screen.set_last_loaded_image_info(_info("b.png", Titles.LOST_IN_THE_ANDES))
+    (_, apply_texture), _ = loader.call_args
+    apply_texture(_texture(400, 300))  # the lower tier's title and texture
+    screen.image_texture = _texture(400, 300)
+    screen._update_stacked()  # the fixture skips the on_<property> bindings
+    if nav is not None:
+        screen.is_visible = True
+        nav.y_bottom_margin = 2
+        nav.y_top_margin = 96
 
 
 class TestTheSpreadsTwoTiers:
@@ -716,12 +743,12 @@ class TestTheSpreadsTwoTiers:
         [
             (MainLayoutMode.SPREAD, True, (400, 300), True),
             (MainLayoutMode.SPREAD, True, (300, 300), True),
-            (MainLayoutMode.SPREAD, True, (300, 400), False),  # A tall image stands alone.
+            (MainLayoutMode.SPREAD, True, (300, 400), True),  # A tall image stacks too.
             (MainLayoutMode.SPREAD, False, (400, 300), False),
             (MainLayoutMode.SINGLE, True, (400, 300), False),
         ],
     )
-    def test_stacked_on_the_spread_with_a_landscape_image_over_a_previous_one(
+    def test_stacked_on_the_spread_with_an_image_of_any_shape_over_a_previous_one(
         self,
         screen_setup: _Setup,
         layout: MainLayoutMode,
@@ -736,28 +763,128 @@ class TestTheSpreadsTwoTiers:
         screen.on_image_texture(screen, screen.image_texture)
         assert screen.stacked is expected
 
-    def test_a_press_on_the_lower_tier_promotes_its_image(self, screen_setup: _Setup) -> None:
+    def test_on_the_spread_the_outer_thirds_step_and_the_middle_zooms(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        """Both tiers move with the history on an outer third; the middle third zooms."""
         screen, nav, _ = screen_setup
-        screen.is_visible = True
-        screen.stacked = True
-        nav.is_in_left_margin.return_value = False
-        nav.is_in_right_margin.return_value = True
+        _stack_the_tiers(screen, nav)
         with (
             patch.object(screen, "_goto_previous_image") as back,
             patch.object(screen, "_goto_next_image") as forward,
         ):
-            assert screen.on_touch_down(MagicMock(x=70, y=20)) is True  # The lower tier.
-            back.assert_called_once()
-            forward.assert_not_called()
-            assert screen.on_touch_down(MagicMock(x=70, y=80)) is True  # The upper tier.
+            assert screen.on_touch_down(MagicMock(x=10, y=20)) is True  # Left, lower tier.
+            assert screen.on_touch_down(MagicMock(x=20, y=80)) is True  # Left, upper tier.
+            assert back.call_count == 2  # noqa: PLR2004
+            assert screen.on_touch_down(MagicMock(x=90, y=20)) is True  # Right, lower tier.
             forward.assert_called_once()
+            assert not screen.zoomed
 
-    def test_stacked_the_tap_targets_are_the_upper_halves_and_the_lower_tier(
+        assert screen.on_touch_down(MagicMock(x=50, y=20)) is True  # Middle, lower tier.
+        assert screen.zoomed == "lower"
+        assert not screen.tiered
+        assert log_markers.MIDDLE_PRESSED.format(x=50, y=20, tier="lower") in loguru_sink
+        assert log_markers.FUN_VIEW_ZOOM.format(tier="lower") in loguru_sink
+        assert screen._history.index == 1  # The history stays put.
+
+        assert screen.on_touch_down(MagicMock(x=50, y=80)) is True  # Middle, zoomed: out.
+        assert not screen.zoomed
+        assert screen.tiered
+        assert log_markers.FUN_VIEW_ZOOM.format(tier="off") in loguru_sink
+
+        assert screen.on_touch_down(MagicMock(x=50, y=80)) is True  # Middle, upper tier.
+        assert screen.zoomed == "upper"
+
+    def test_a_press_above_or_below_the_margins_band_is_not_a_step(
         self, screen_setup: _Setup
     ) -> None:
         screen, nav, _ = screen_setup
-        screen.is_visible = True
-        screen.stacked = True
+        _stack_the_tiers(screen, nav)
+        with patch.object(BoxLayout, "on_touch_down", return_value=False):
+            assert screen.on_touch_down(MagicMock(x=10, y=98)) is False
+            assert screen.on_touch_down(MagicMock(x=50, y=1)) is False
+        assert not screen.zoomed
+
+    def test_a_lone_image_has_nothing_to_zoom(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen.previous_image_texture = None
+        screen._update_stacked()
+        assert not screen.stacked
+        with patch.object(BoxLayout, "on_touch_down", return_value=False):
+            assert screen.on_touch_down(MagicMock(x=50, y=20)) is False
+        assert not screen.zoomed
+
+    def test_zoomed_in_on_the_lower_tier_the_goto_button_is_that_images(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        goto = MagicMock()
+        screen.on_goto_title_func = goto
+        screen.on_touch_down(MagicMock(x=50, y=20))
+        assert screen.goto_title_button_active
+        assert not screen.lower_goto_title_button_active
+        screen.on_goto_title()
+        goto.assert_called_once_with(
+            from_keyboard=False, image_info=_info("a.png", Titles.GIFT_LION)
+        )
+
+        screen.previous_title_str = ""
+        screen._update_tiered()
+        assert not screen.goto_title_button_active
+
+        goto.reset_mock()
+        screen.on_touch_down(MagicMock(x=50, y=20))  # Out, then in on the upper tier.
+        screen.on_touch_down(MagicMock(x=50, y=80))
+        assert screen.zoomed == "upper"
+        screen.on_goto_title()
+        goto.assert_called_once_with(from_keyboard=False)
+
+    @pytest.mark.parametrize("step", ["back", "forward", "new image", "layout"])
+    def test_a_step_ends_the_zoom(self, screen_setup: _Setup, step: str) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen.on_touch_down(MagicMock(x=50, y=20))
+        assert screen.zoomed
+        if step == "back":
+            screen.prev_image()
+        elif step == "forward":
+            screen._history.back()
+            screen.next_image()
+        elif step == "new image":
+            screen.set_last_loaded_image_info(_info("c.png"))
+        else:
+            screen.layout_mode = MainLayoutMode.SINGLE.value
+            screen.on_layout_mode(screen, screen.layout_mode)
+        assert not screen.zoomed
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_a_zoom_moves_the_keyboard_focus_off_the_lower_button(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        screen.handle_key(KEY_DOWN)
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        screen.on_touch_down(MagicMock(x=50, y=20))
+        assert screen._nav_focus is _FunFocus.GOTO
+
+    @pytest.mark.parametrize(
+        ("zoom", "expected_middle"),
+        [
+            ("", {"upper middle": (33, 50, 33, 46), "lower middle": (33, 2, 33, 48)}),
+            ("lower", {"middle": (33, 2, 33, 94)}),
+        ],
+    )
+    def test_on_the_spread_the_tap_targets_are_thirds(
+        self, screen_setup: _Setup, zoom: str, expected_middle: dict[str, tuple[int, ...]]
+    ) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen._set_zoom(zoom)
         nav.tap_regions.return_value = {
             "left margin": (0, 2, 50, 94),
             "right margin": (50, 2, 50, 94),
@@ -770,32 +897,59 @@ class TestTheSpreadsTwoTiers:
         ):
             regions = screen.tap_target_regions()
         assert regions == {
-            "left margin": (0, 50, 50, 46),
-            "right margin": (50, 50, 50, 46),
-            "lower tier": (0, 0, 100, 50),
+            "left margin": (0, 2, 33, 94),
+            "right margin": (66, 2, 34, 94),
+            **expected_middle,
         }
+
+    def test_a_lone_image_has_no_middle_target(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen.previous_image_texture = None
+        screen._update_stacked()
+        nav.tap_regions.return_value = {"left margin": (0, 2, 50, 94)}
+        with patch.object(
+            barks_reader.ui.fun_image_view_screen,
+            "window_rect",
+            side_effect=lambda _widget, *rect: rect,
+        ):
+            regions = screen.tap_target_regions()
+        assert set(regions) == {"left margin", "right margin"}
 
     def test_a_second_image_is_wanted_on_the_spread_with_one_shown(
         self, screen_setup: _Setup
     ) -> None:
         screen, _, _ = screen_setup
         self._on_the_spread(screen)
-        assert not screen.needs_a_second_image()
+        assert not screen._needs_a_second_image()
         screen.set_last_loaded_image_info(_info("a.png"))
-        assert screen.needs_a_second_image()
+        assert screen._needs_a_second_image()
         screen.set_last_loaded_image_info(_info("b.png"))
-        assert not screen.needs_a_second_image()
+        assert not screen._needs_a_second_image()
         screen.layout_mode = MainLayoutMode.SINGLE.value
         screen._history.back()
-        assert not screen.needs_a_second_image()
+        assert not screen._needs_a_second_image()
 
-    def test_a_seed_goes_before_the_image_on_show_into_the_lower_tier(
+    def test_a_second_image_is_wanted_at_the_oldest_image(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        self._on_the_spread(screen)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        screen.set_last_loaded_image_info(_info("b.png"))
+        assert not screen._needs_a_second_image()
+        screen._history.back()
+        assert screen._needs_a_second_image()
+
+    def test_the_first_image_on_the_spread_is_given_one_behind_it(
         self, screen_setup: _Setup, loguru_sink: list[str]
     ) -> None:
+        """The lower tier is fed at boot, and on a switch to the spread (`on_layout_mode`)."""
         screen, _, _ = screen_setup
         loader = self._on_the_spread(screen)
+        picker = MagicMock(return_value=_info("seed.png", Titles.GIFT_LION))
+        screen.set_pick_image_func(picker)
         screen.set_last_loaded_image_info(_info("a.png"))
-        screen.seed_previous_image(_info("seed.png", Titles.GIFT_LION))
+
+        picker.assert_called_once_with()
         assert [info.filename.name for info in screen._history.images] == ["seed.png", "a.png"]
         assert screen._history.index == 1
         (previous, _), _ = loader.call_args
@@ -803,7 +957,180 @@ class TestTheSpreadsTwoTiers:
         marker = pattern(log_markers.FUN_VIEW_SEEDED, filename="seed.png", title="Gift Lion")
         assert any(re.search(marker, line) for line in loguru_sink)
 
+    def test_a_step_back_to_the_oldest_image_puts_one_more_behind_it(
+        self, screen_setup: _Setup
+    ) -> None:
+        """A tap on the lower tier at boot collapsed the tiers: the oldest had none below."""
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        picker = MagicMock(side_effect=[_info("seed.png"), _info("older.png")])
+        screen.set_pick_image_func(picker)
+        screen.set_last_loaded_image_info(_info("a.png"))  # Fed: the seed goes behind.
+        screen.set_last_loaded_image_info(_info("b.png"))
+
+        screen._goto_previous_image()  # Onto "a": the seed below it, nothing picked.
+        assert picker.call_count == 1
+        screen._goto_previous_image()  # Onto the seed: one more picked and put behind.
+
+        assert picker.call_count == 2  # noqa: PLR2004
+        assert [info.filename.name for info in screen._history.images] == [
+            "older.png",
+            "seed.png",
+            "a.png",
+            "b.png",
+        ]
+        assert screen._history.index == 1
+        (previous, _), _ = loader.call_args  # the lower tier, loaded with the new pick
+        assert previous == _info("older.png")
+
+    def test_a_step_back_with_more_behind_picks_nothing_more(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        self._on_the_spread(screen)
+        picker = MagicMock(return_value=_info("seed.png"))
+        screen.set_pick_image_func(picker)
+        for name in ("a.png", "b.png", "c.png"):
+            screen.set_last_loaded_image_info(_info(name))
+        screen._goto_previous_image()
+        picker.assert_called_once_with()  # At the first image only.
+
+    def test_on_a_single_page_a_step_back_picks_nothing(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.set_load_texture_func(MagicMock())
+        screen.set_load_image_func(MagicMock())
+        picker = MagicMock()
+        screen.set_pick_image_func(picker)
+        screen.set_last_loaded_image_info(_info("a.png"))
+        screen.set_last_loaded_image_info(_info("b.png"))
+        screen._goto_previous_image()
+        picker.assert_not_called()
+        assert screen._history.index == 0
+
+    def test_a_switch_to_the_spread_feeds_the_lower_tier(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        loader = MagicMock()
+        screen.set_load_texture_func(loader)
+        screen.set_load_image_func(MagicMock())
+        picker = MagicMock(return_value=_info("seed.png"))
+        screen.set_pick_image_func(picker)
+        screen.set_last_loaded_image_info(_info("a.png"))  # On the single page: unfed.
+        picker.assert_not_called()
+
+        screen.layout_mode = MainLayoutMode.SPREAD.value
+        screen.on_layout_mode(screen, screen.layout_mode)
+        picker.assert_called_once_with()
+        (previous, _), _ = loader.call_args
+        assert previous == _info("seed.png")
+
     def test_the_tap_margins_come_from_the_views_own_size(self, screen_setup: _Setup) -> None:
         screen, nav, _ = screen_setup
         screen.on_size(screen, (300.0, 200.0))
         nav.update_regions.assert_called_once_with(300, 200, 0, 0)
+
+
+class TestTheLowerTiersGotoButton:
+    """Stacked, the lower tier carries its own goto button: a tap target and a key stop."""
+
+    @staticmethod
+    def _stack(screen: FunImageViewScreen) -> None:
+        _stack_the_tiers(screen)
+
+    def test_stacking_is_logged_and_arms_the_lower_button(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        assert screen.stacked
+        assert screen.lower_goto_title_button_active
+        assert log_markers.FUN_VIEW_STACKED.format(state=True) in loguru_sink
+
+        screen.layout_mode = MainLayoutMode.SINGLE.value
+        screen._update_stacked()
+        assert not screen.stacked
+        assert not screen.lower_goto_title_button_active
+        assert log_markers.FUN_VIEW_STACKED.format(state=False) in loguru_sink
+
+    def test_a_stock_image_in_the_lower_tier_gets_no_button(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        screen.previous_title_str = ""
+        screen._update_stacked()
+        assert screen.stacked
+        assert not screen.lower_goto_title_button_active
+
+    def test_the_lower_button_wins_over_the_lower_tier_under_it(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        screen.ids["lower_goto_title_overlay"].goto_button.collide_point.return_value = True
+        with (
+            patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
+            patch.object(screen, "_goto_next_image") as forward,
+        ):
+            assert screen.on_touch_down(MagicMock(x=90, y=40)) is True
+        widgets_press.assert_called_once()
+        forward.assert_not_called()
+
+    def test_unstacked_the_lower_button_takes_no_press(self, screen_setup: _Setup) -> None:
+        screen, nav, _ = screen_setup
+        screen.is_visible = True
+        screen.ids["lower_goto_title_overlay"].goto_button.collide_point.return_value = True
+        nav.is_in_left_margin.return_value = True
+        with patch.object(screen, "_goto_previous_image") as back:
+            assert screen.on_touch_down(MagicMock(x=5, y=40)) is True
+        back.assert_called_once_with()
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_down_reaches_the_lower_button_and_enter_goes_to_its_story(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        goto = MagicMock()
+        screen.on_goto_title_func = goto
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        assert screen._nav_focus is _FunFocus.GOTO
+
+        assert screen.handle_key(KEY_DOWN) is True
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        assert screen.handle_key(KEY_ENTER) is True
+        goto.assert_called_once_with(
+            from_keyboard=True, image_info=_info("a.png", Titles.GIFT_LION)
+        )
+
+        assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.GOTO
+        assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.FILTER
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_unstacked_down_stays_on_the_goto_button(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen.goto_title_button_active = True
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        assert screen.handle_key(KEY_DOWN) is True
+        assert screen._nav_focus is _FunFocus.GOTO
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_a_step_that_unstacks_moves_focus_off_the_lower_button(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        screen.handle_key(KEY_DOWN)
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        screen.lower_goto_title_button_active = False
+        screen._reconcile_button_focus()
+        assert screen._nav_focus is _FunFocus.GOTO
+
+    def test_a_lower_button_press_names_the_lower_image(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        self._stack(screen)
+        goto = MagicMock()
+        screen.on_goto_title_func = goto
+        screen.on_goto_lower_title()
+        goto.assert_called_once_with(
+            from_keyboard=False, image_info=_info("a.png", Titles.GIFT_LION)
+        )

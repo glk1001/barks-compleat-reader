@@ -21,15 +21,17 @@ from .ui_helpers import TouchExpandedButton
 
 GOTO_TITLE_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
 
-OVERLAY_ARROW_WIDTH = ARROW_WIDTH
+OVERLAY_BUTTON_WIDTH = ARROW_WIDTH
 
 
 class GotoTitleOverlay(FloatLayout):
-    """A shared overlay widget containing a title label and arrow navigation button.
+    """A shared overlay widget containing a title label and a goto-title button.
 
-    Supports two position variants:
-    - "bottom-right": label + up arrow in the bottom-right corner
-    - "top-right": label + down arrow in the top-right corner
+    The button is an open book on a disc, the same wherever the overlay sits (the
+    arrows it replaced pointed at a title above or below, which on the two-page
+    spread lies beside the image, 2026-10-30). Two position variants:
+    - "bottom-right": button + label in the bottom-right corner
+    - "top-right": button + label in the top-right corner
     """
 
     current_title_str = StringProperty("")
@@ -38,12 +40,11 @@ class GotoTitleOverlay(FloatLayout):
     label_color = ColorProperty((1, 1, 0, 1))
     label_opacity = NumericProperty(0.8)
     label_bg_color = ColorProperty((0.1, 0.1, 0.1, 0.5))
-    arrow_direction = StringProperty("up")
     position = StringProperty("bottom-right")
     goto_button = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
-        self.register_event_type("on_arrow_press")
+        self.register_event_type("on_goto_press")
         super().__init__(**kwargs)
         if "label_color" not in kwargs:
             self.label_color = theme().text_title
@@ -54,22 +55,21 @@ class GotoTitleOverlay(FloatLayout):
         else:
             self._build_bottom_right()
 
-    def on_arrow_press(self) -> None:
+    def on_goto_press(self) -> None:
         pass
 
-    def _get_arrow_source(self) -> str:
+    @staticmethod
+    def _get_button_source() -> str:
         sys_paths = App.get_running_app().reader_settings.sys_file_paths
-        if self.arrow_direction == "up":
-            return str(sys_paths.get_up_arrow_file())
-        return str(sys_paths.get_down_arrow_file())
+        return str(sys_paths.get_goto_title_button_file())
 
     def _create_button(self) -> TouchExpandedButton:
         button = TouchExpandedButton(
-            source=self._get_arrow_source(),
-            visual_size=OVERLAY_ARROW_WIDTH,
+            source=self._get_button_source(),
+            visual_size=OVERLAY_BUTTON_WIDTH,
             is_active=self.is_active,
         )
-        button.bind(on_press=lambda _inst: self.dispatch("on_arrow_press"))
+        button.bind(on_press=lambda _inst: self.dispatch("on_goto_press"))
         self.bind(is_active=button.setter("is_active"))
         self.goto_button = button
         return button
@@ -105,16 +105,18 @@ class GotoTitleOverlay(FloatLayout):
         label = self._create_label()
 
         def update_button_pos(*_args: object) -> None:
-            button.x = self.x + self.width - (1.4 * OVERLAY_ARROW_WIDTH) - button.touch_padding
-            button.y = self.y + (0.4 * OVERLAY_ARROW_WIDTH) - button.touch_padding
+            button.x = self.x + self.width - (1.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
+            button.y = self.y + (0.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
 
         self.bind(pos=update_button_pos, size=update_button_pos)
 
         def update_label_pos(*_args: object) -> None:
-            label.x = button.x - label.width - dp(5)
-            label.y = button.y + button.touch_padding
+            # Level with the disc (centred on the button, whose padding is symmetric),
+            # a sliver short of its touch padding.
+            label.x = button.x - label.width - dp(2)
+            label.y = button.y + (button.height - label.height) / 2
 
-        button.bind(pos=update_label_pos)
+        button.bind(pos=update_label_pos, size=update_label_pos)
         label.bind(size=update_label_pos)
 
         self.add_widget(label)
@@ -125,16 +127,18 @@ class GotoTitleOverlay(FloatLayout):
         label = self._create_label()
 
         def update_button_pos(*_args: object) -> None:
-            button.x = self.x + self.width - (1.4 * OVERLAY_ARROW_WIDTH) - button.touch_padding
-            button.y = self.y + self.height - OVERLAY_ARROW_WIDTH - button.touch_padding - dp(10)
+            button.x = self.x + self.width - (1.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
+            button.y = self.y + self.height - OVERLAY_BUTTON_WIDTH - button.touch_padding - dp(10)
 
         self.bind(pos=update_button_pos, size=update_button_pos)
 
         def update_label_pos(*_args: object) -> None:
-            label.x = button.x - label.width - dp(5)
-            label.y = button.y + button.touch_padding
+            # Level with the disc (centred on the button, whose padding is symmetric),
+            # a sliver short of its touch padding.
+            label.x = button.x - label.width - dp(2)
+            label.y = button.y + (button.height - label.height) / 2
 
-        button.bind(pos=update_label_pos)
+        button.bind(pos=update_label_pos, size=update_label_pos)
         label.bind(size=update_label_pos)
 
         self.add_widget(label)

@@ -297,7 +297,10 @@ FUN_IMAGE_LOADED: Final = 'Set last loaded fun image file "{filename} and title:
 # The spread's fun page: the image before the one on show, in the lower tier, or none.
 FUN_VIEW_LOWER_TIER: Final = 'Fun view lower tier: "{filename}" from "{title}".'
 FUN_VIEW_LOWER_TIER_EMPTY: Final = "Fun view lower tier: empty."
-LOWER_TIER_PRESSED: Final = "Lower tier pressed at ({x}, {y}): promoting its image."
+MIDDLE_PRESSED: Final = "Middle pressed at ({x}, {y}): zoom {tier}."
+FUN_VIEW_ZOOM: Final = "Fun view zoom: {tier}."
+# Two tiers on show (a landscape image over the one before it) or one.
+FUN_VIEW_STACKED: Final = "Fun view stacked: {state}."
 FUN_VIEW_SEEDED: Final = 'Fun view seeded with a second image "{filename}" from "{title}".'
 
 # --------------------------------------------------------------- history --

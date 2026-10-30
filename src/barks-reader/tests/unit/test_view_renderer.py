@@ -382,23 +382,10 @@ class TestTheSpreadsSecondFunImage:
             deps["applicator"].load_fun_view_texture
         )
 
-    def test_a_fun_view_wanting_a_second_image_is_given_one(
+    def test_the_fun_view_gets_the_pipelines_picker(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
     ) -> None:
-        r, deps = renderer
-        fun_view = deps["screens"].fun_image_view
-        fun_view.needs_a_second_image.return_value = True
-        r.seed_fun_view_second_image()
-        deps["pipeline"].pick_fun_view_image.assert_called_once_with()
-        fun_view.seed_previous_image.assert_called_once_with(
-            deps["pipeline"].pick_fun_view_image.return_value
+        _, deps = renderer
+        deps["screens"].fun_image_view.set_pick_image_func.assert_called_once_with(
+            deps["pipeline"].pick_fun_view_image
         )
-
-    def test_otherwise_nothing_is_picked(
-        self, renderer: tuple[ViewRenderer, dict[str, Any]]
-    ) -> None:
-        r, deps = renderer
-        deps["screens"].fun_image_view.needs_a_second_image.return_value = False
-        r.seed_fun_view_second_image()
-        deps["pipeline"].pick_fun_view_image.assert_not_called()
-        deps["screens"].fun_image_view.seed_previous_image.assert_not_called()

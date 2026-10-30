@@ -37,6 +37,7 @@ FULLSCREEN_TIMEOUT = 20
 # Long enough for a doubled tap's second press to have turned a second page.
 NO_DOUBLE_TAP_SECS = 1.5
 ANY_FUN_TITLE = pattern(markers.FUN_VIEW_TITLE_SET)
+CHANGE_PICS_TRIES = 6
 # Every title the reader can go to, as the main index writes it: to tell a title's
 # entry from a tag's. A title with no Fantagraphics volume (Bubbleweight Champ, Beach
 # Boy) is indexed too, but tapping it opens the volume-not-available popup instead:
@@ -243,6 +244,30 @@ def test_fun_view_margin_taps_step_through_shown_images(boot: AppBoot) -> None:
     titles = fields_of(d, markers.FUN_VIEW_TITLE_SET, "title")
     first, changed, back, forward = titles[-4:]
     assert (back, forward) == (first, changed), titles
+
+
+def test_on_the_spread_a_middle_tap_zooms_a_tier_and_another_brings_the_pair_back(
+    boot: AppBoot,
+) -> None:
+    """The middle third zooms the tier under it, view-only: the history does not move."""
+    d = _boot(boot, nodes.THE_STORIES, ini={"main_screen_layout": "Two-page spread"})
+    for _ in range(CHANGE_PICS_TRIES):
+        d.settle()
+        if last_field(d, markers.FUN_VIEW_STACKED, "state") == "True":
+            break
+        taps.tap_then_wait(d, pattern(markers.FUN_IMAGE_LOADED), kv_id="change_pics_button")
+    else:
+        pytest.fail("no stacked pair after Change Pics")
+    titles_shown = d.match_count(ANY_FUN_TITLE)
+    zoom = markers.FUN_VIEW_ZOOM
+    taps.tap_then_wait(
+        d, pattern(zoom, tier="lower"), kind="FunImageViewScreen", text="lower middle"
+    )
+    taps.tap_then_wait(d, pattern(zoom, tier="off"), kind="FunImageViewScreen", text="middle")
+    taps.tap_then_wait(
+        d, pattern(zoom, tier="upper"), kind="FunImageViewScreen", text="upper middle"
+    )
+    assert d.match_count(ANY_FUN_TITLE) == titles_shown, "a zoom moved the history"
 
 
 def test_on_the_spread_a_tree_row_beside_the_fun_view_takes_its_tap(boot: AppBoot) -> None:

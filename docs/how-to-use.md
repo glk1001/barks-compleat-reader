@@ -86,7 +86,7 @@ speaker line.
 
 A large background image sits behind the navigation tree. It is decorative but also interactive:
 
-- A **down-arrow button** at the top right navigates to the story associated with that image.
+- A **goto-title button** (an open book) at the top right navigates to the story associated with that image.
 - Click **Refresh** in the menu bar to pick a new random image.
 
 ### Bottom Panel
@@ -116,9 +116,14 @@ publication info, and a favorite panel. Contains:
 **Fun View** — shown when no specific story is selected. Displays a random comic panel.
 
 - A **category filter button** at the top left of the fun image lets you control which panel categories are shown.
-- An **up-arrow button** at the bottom right of the fun image navigates to the story associated with
-  the currently displayed panel.
+- A **goto-title button** (an open book) at the top right of the fun image navigates to the story
+  associated with the currently displayed panel. On the two-page spread, where two panels stack,
+  the lower one carries its own.
 - **Click left/right** of fun image or use **left/right keys** to step through the panel history.
+  On the two-page spread the page is in thirds: the left and right thirds step through the
+  history, both panels moving together, and a click in the **middle third** zooms the panel
+  under it to fill the page. Click the middle again to bring the pair back; the history does
+  not move on a zoom.
 
 ---
 

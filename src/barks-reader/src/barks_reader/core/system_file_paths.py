@@ -42,8 +42,7 @@ class SystemFilePaths:
         self._speech_bubble_icon_path: Path | None = None
         self._eye_open_icon_path: Path | None = None
         self._eye_off_icon_path: Path | None = None
-        self._up_arrow_path: Path | None = None
-        self._down_arrow_path: Path | None = None
+        self._goto_title_button_path: Path | None = None
         self._transparent_blank_path: Path | None = None
         self._empty_page_path: Path | None = None
         self._favourite_titles_path: Path | None = None
@@ -96,8 +95,7 @@ class SystemFilePaths:
         self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
         self._eye_open_icon_path = various_files_dir / "icon-eye-open.png"
         self._eye_off_icon_path = various_files_dir / "icon-eye-off.png"
-        self._up_arrow_path = various_files_dir / "up-arrow.png"
-        self._down_arrow_path = various_files_dir / "down-arrow.png"
+        self._goto_title_button_path = various_files_dir / "goto-title-button.png"
         self._transparent_blank_path = various_files_dir / "transparent-blank.png"
         self._empty_page_path = various_files_dir / "empty-page.jpg"
         self._favourite_titles_path = various_files_dir / "favourite-titles.txt"
@@ -159,8 +157,7 @@ class SystemFilePaths:
             self._go_back_icon_path,
             self._app_identity_image_path,
             self._speech_bubble_icon_path,
-            self._up_arrow_path,
-            self._down_arrow_path,
+            self._goto_title_button_path,
             self._transparent_blank_path,
             self._empty_page_path,
             self._favourite_titles_path,
@@ -234,13 +231,10 @@ class SystemFilePaths:
         assert self._eye_off_icon_path
         return self._eye_off_icon_path
 
-    def get_up_arrow_file(self) -> Path:
-        assert self._up_arrow_path
-        return self._up_arrow_path
-
-    def get_down_arrow_file(self) -> Path:
-        assert self._down_arrow_path
-        return self._down_arrow_path
+    def get_goto_title_button_file(self) -> Path:
+        """Return the goto-title button, an open book on a disc, that the image overlays show."""
+        assert self._goto_title_button_path
+        return self._goto_title_button_path
 
     def get_app_identity_image_file(self) -> Path:
         """Return the app's identity image (see ``_APP_IDENTITY_IMAGE_FILENAME``).

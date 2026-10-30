@@ -95,7 +95,7 @@ class TreeViewScreen(BoxLayout):
         """Fire the top-view goto arrow from the keyboard.
 
         Calls the kv-wired ``on_goto_title`` directly, flagged as a keyboard
-        activation, rather than dispatching the overlay's ``on_arrow_press`` — that
+        activation, rather than dispatching the overlay's ``on_goto_press`` — that
         event is the pointer path, and the handler must tell the two apart to keep a
         mouse click in mouse mode.
         """

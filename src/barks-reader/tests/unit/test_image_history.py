@@ -67,7 +67,24 @@ def test_an_image_added_as_the_oldest_goes_before_the_one_on_show() -> None:
     assert history.add_oldest(_image("older")) is True
     assert list(history.images) == [_image("older"), _image("seed"), _image("a")]
     assert history.index == 2
-    # Full: the images shown are kept over one that never was.
+    # Full, the newest on show: the images shown are kept over one that never was.
     assert history.add_oldest(_image("dropped")) is False
     assert list(history.images) == [_image("older"), _image("seed"), _image("a")]
     assert history.index == 2
+
+
+def test_a_full_history_drops_its_newest_for_one_added_at_the_oldest_end() -> None:
+    """Stepping back past the oldest image rolls the window, as adding rolls the oldest off."""
+    history = ImageHistory(max_images=3)
+    for name in ("a", "b", "c"):
+        history.add(_image(name))
+    history.back()
+    history.back()
+    assert history.index == 0
+
+    assert history.add_oldest(_image("seed")) is True
+    assert list(history.images) == [_image("seed"), _image("a"), _image("b")]
+    assert history.index == 1
+    assert history.previous() == _image("seed")
+    assert history.forward() == _image("b")
+    assert history.forward() is None

@@ -90,7 +90,7 @@ class TestTreeViewScreen:
 
         tree_view_screen.activate_top_goto()
 
-        # The pointer path (the overlay's on_arrow_press) is left untouched, so the
+        # The pointer path (the overlay's on_goto_press) is left untouched, so the
         # handler can keep a mouse click in mouse mode.
         mock_goto.assert_called_once_with(from_keyboard=True)
         tree_view_screen.ids.goto_title_overlay.dispatch.assert_not_called()

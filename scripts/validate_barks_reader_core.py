@@ -423,8 +423,7 @@ def phase2_system_file_paths(
         ("hamburger_menu_icon_path", sys_paths._hamburger_menu_icon_path),  # noqa: SLF001
         ("go_back_icon_path", sys_paths._go_back_icon_path),  # noqa: SLF001
         ("speech_bubble_icon_path", sys_paths._speech_bubble_icon_path),  # noqa: SLF001
-        ("up_arrow_path", sys_paths._up_arrow_path),  # noqa: SLF001
-        ("down_arrow_path", sys_paths._down_arrow_path),  # noqa: SLF001
+        ("goto_title_button_path", sys_paths._goto_title_button_path),  # noqa: SLF001
         ("transparent_blank_path", sys_paths._transparent_blank_path),  # noqa: SLF001
         ("empty_page_path", sys_paths._empty_page_path),  # noqa: SLF001
         ("favourite_titles_path", sys_paths._favourite_titles_path),  # noqa: SLF001

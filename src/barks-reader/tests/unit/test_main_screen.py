@@ -1060,11 +1060,9 @@ class TestAboutBoxFocus:
 
 
 class TestTheBooksLayout:
-    """The layout mode reaches the page screens; the spread seeds the fun page."""
+    """The layout mode reaches the page screens."""
 
-    def test_the_spread_reaches_the_screens_and_seeds_the_fun_view(
-        self, main_screen: MainScreen
-    ) -> None:
+    def test_the_spread_reaches_the_screens(self, main_screen: MainScreen) -> None:
         main_screen.set_layout_mode(MainLayoutMode.SPREAD)
         for screen in (
             main_screen._tree_view_screen,
@@ -1073,18 +1071,33 @@ class TestTheBooksLayout:
             main_screen._search_screen,
         ):
             assert screen.layout_mode == "spread"
-        main_screen._renderer.seed_fun_view_second_image.assert_called_once()
         main_screen._window_helper.refit_fullscreen.assert_called_once()
 
-    def test_a_single_page_seeds_nothing(self, main_screen: MainScreen) -> None:
+    def test_a_single_page_reaches_them_too(self, main_screen: MainScreen) -> None:
         main_screen.set_layout_mode(MainLayoutMode.SPREAD)
-        main_screen._renderer.seed_fun_view_second_image.reset_mock()
         main_screen.set_layout_mode(MainLayoutMode.SINGLE)
         assert main_screen._fun_image_view_screen.layout_mode == "single"
-        main_screen._renderer.seed_fun_view_second_image.assert_not_called()
 
     def test_the_tree_knows_when_it_is_collapsed(self, main_screen: MainScreen) -> None:
         main_screen._on_view_state_changed(ViewStates.INITIAL)
         assert main_screen._tree_view_screen.tree_collapsed is True
         main_screen._on_view_state_changed(ViewStates.ON_TITLE_NODE)
         assert main_screen._tree_view_screen.tree_collapsed is False
+
+
+class TestTheFunViewsGoto:
+    """The fun view's goto takes the image on show, or the one its lower tier names."""
+
+    def test_the_image_on_show_is_the_default(self, main_screen: MainScreen) -> None:
+        main_screen._on_goto_fun_view_title()
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
+            main_screen._renderer.get_bottom_view_fun_image_info.return_value
+        )
+
+    def test_the_lower_tier_names_its_image(self, main_screen: MainScreen) -> None:
+        info = ImageInfo(Path("a.png"), Titles.GIFT_LION)
+        main_screen._on_goto_fun_view_title(from_keyboard=True, image_info=info)
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(info)
+        main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
+            keyboard_initiated=True
+        )

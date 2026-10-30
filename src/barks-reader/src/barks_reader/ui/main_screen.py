@@ -276,8 +276,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._bottom_title_view_screen.layout_mode = mode.value
         self._fun_image_view_screen.layout_mode = mode.value
         self._search_screen.layout_mode = mode.value
-        if mode == MainLayoutMode.SPREAD:
-            self._renderer.seed_fun_view_second_image()
         # Windowed, the window's own refit resizes the book; fullscreen, the box is ours.
         self._window_helper.refit_fullscreen()
 
@@ -849,9 +847,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav_coord.navigate_to_chrono_title(self._renderer.get_top_view_image_info())
         self._nav.focus_title_portal_after_goto(keyboard_initiated=from_keyboard)
 
-    def _on_goto_fun_view_title(self, *, from_keyboard: bool = False) -> None:
-        # Same keyboard/mouse split as the top-view arrow above.
-        self._nav_coord.navigate_to_chrono_title(self._renderer.get_bottom_view_fun_image_info())
+    def _on_goto_fun_view_title(
+        self, *, from_keyboard: bool = False, image_info: ImageInfo | None = None
+    ) -> None:
+        # Same keyboard/mouse split as the top-view button above. The fun view names the
+        # image for its lower tier's button; the image on show is the default.
+        if image_info is None:
+            image_info = self._renderer.get_bottom_view_fun_image_info()
+        self._nav_coord.navigate_to_chrono_title(image_info)
         self._nav.focus_title_portal_after_goto(keyboard_initiated=from_keyboard)
 
     def goto_reader_icon_title(self) -> None:
