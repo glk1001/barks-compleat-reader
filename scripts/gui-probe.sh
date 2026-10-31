@@ -52,7 +52,8 @@
 # so a run of many boots opens one Xephyr window - which takes the host keyboard
 # focus once, not once per boot; `stop-xserver` ends it),
 # BARKS_PROBE_APP (a built executable to run instead of `uv run main.py`; it gets
-# the same config and data dir env vars, which the app honours when set),
+# the same config and data dir env vars, which the app honours when set, and looks
+# for data packs only in an empty folder unless BARKS_READER_DATA_PACK_DIR names one),
 # BARKS_PROBE_COVERAGE (a directory: run the workspace app under `coverage run
 # --parallel-mode`, each boot writing its own data file there, for the overnight
 # run to combine with the unit suite's; ignored with BARKS_PROBE_APP),
@@ -409,8 +410,19 @@ cmd_start() {
     # A built executable reads no .env.runtime, so it gets the data dir the
     # workspace run would read from there (the config dir env var, when set, is
     # already in the environment for both).
+    # A build also looks beside itself for newer data packs and offers them at boot
+    # with Install focused. Beside a build in the repo root sit the published packs,
+    # and a test's keys once installed them over the real Reader Files, so it is
+    # pointed at an empty folder instead, unless the caller names one (the data
+    # pack update test). A workspace run never looks unless one is named.
     if [[ -n "${BARKS_PROBE_APP:-}" ]]; then
+        local packs="${BARKS_READER_DATA_PACK_DIR:-}"
+        if [[ -z "$packs" ]]; then
+            packs="$RUN_DIR/no-data-packs"
+            mkdir -p "$packs"
+        fi
         setsid env DISPLAY="$DPY" BARKS_READER_DATA_DIR="$(data_dir)" \
+            BARKS_READER_DATA_PACK_DIR="$packs" \
             BARKS_READER_NO_SCREEN_WARNING=1 \
             BARKS_READER_TAP_TARGETS_FILE="$TAP_REQUEST" \
             BARKS_READER_MEMORY_CENSUS_FILE="$CENSUS_REQUEST" \

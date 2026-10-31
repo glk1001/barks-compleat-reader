@@ -163,6 +163,45 @@ class TestCoverage:
             gui_probe.Probe(backend)._launch()  # noqa: SLF001
         assert popen.call_args.args[0] == ["app.exe"]
 
+    def test_a_build_looks_for_data_packs_only_in_an_empty_folder(self, run_dir: Path) -> None:
+        """Beside a build in the repo root sit the published packs; a test once installed them."""
+        env = {"BARKS_PROBE_APP": "app.exe"}
+        with (
+            patch.dict(os.environ, env),
+            patch.object(gui_probe, "data_dir", return_value=run_dir),
+            patch.object(gui_probe.subprocess, "Popen") as popen,
+        ):
+            os.environ.pop(gui_probe.DATA_PACK_DIR_ENV_VAR, None)
+            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+        packs = Path(popen.call_args.kwargs["env"][gui_probe.DATA_PACK_DIR_ENV_VAR])
+        assert packs == gui_probe.no_data_packs_dir()
+        assert packs.is_dir()
+        assert not any(packs.iterdir())
+
+    def test_a_build_keeps_a_pack_folder_its_caller_names(self, run_dir: Path) -> None:
+        env = {"BARKS_PROBE_APP": "app.exe", gui_probe.DATA_PACK_DIR_ENV_VAR: "/test/packs"}
+        with (
+            patch.dict(os.environ, env),
+            patch.object(gui_probe, "data_dir", return_value=run_dir),
+            patch.object(gui_probe.subprocess, "Popen") as popen,
+        ):
+            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+        assert popen.call_args.kwargs["env"][gui_probe.DATA_PACK_DIR_ENV_VAR] == "/test/packs"
+
+    @pytest.mark.usefixtures("run_dir")
+    def test_a_workspace_run_is_not_pointed_at_any_pack_folder(self) -> None:
+        """A workspace run never looks for packs unless one is named: nothing to change."""
+        with (
+            patch.dict(os.environ, {}),
+            patch.object(gui_probe.subprocess, "Popen") as popen,
+        ):
+            os.environ.pop("BARKS_PROBE_APP", None)
+            os.environ.pop(gui_probe.DATA_PACK_DIR_ENV_VAR, None)
+            os.environ.pop(gui_probe.COVERAGE_ENV_VAR, None)
+            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+        assert gui_probe.DATA_PACK_DIR_ENV_VAR not in popen.call_args.kwargs["env"]
+        assert not gui_probe.no_data_packs_dir().exists()
+
 
 class TestGlBackend:
     LOG = "2026-09-23 | INFO | kivy: kivy:print_gl_version:51 - GL: Backend used <glew>\n"

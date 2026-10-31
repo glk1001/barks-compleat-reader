@@ -23,7 +23,8 @@ Usage (the same as gui-probe.sh; see there):
 Env: BARKS_PROBE_DISPLAY (":2"; only names the run directory here),
 BARKS_PROBE_KEY_GAP (seconds after each injected key, default 0.4),
 BARKS_READER_CONFIG_DIR, BARKS_PROBE_NO_RESTORE=1, BARKS_PROBE_APP and
-BARKS_PROBE_COVERAGE, all as for gui-probe.sh. BARKS_PROBE_TOUCH=1 (touch mode)
+BARKS_PROBE_COVERAGE, all as for gui-probe.sh (a build, too, looks for data packs only
+in an empty folder, unless BARKS_READER_DATA_PACK_DIR names one). BARKS_PROBE_TOUCH=1 (touch mode)
 is Linux only so far: here a tap is a click, and touch mode refuses to start.
 
 Only the standard library is used, plus Pillow for ``shot``, as the driver
@@ -47,6 +48,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, Protocol
 
 from barks_reader.core import log_markers as markers
+from barks_reader.core.data_pack import DATA_PACK_DIR_ENV_VAR
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
@@ -193,6 +195,17 @@ def frame_request() -> Path:
 
 def _pid_file() -> Path:
     return run_dir() / "app.pid"
+
+
+def no_data_packs_dir() -> Path:
+    """Return the empty folder a build is told to look in for data packs (as gui-probe.sh's).
+
+    A build looks beside itself for newer packs and offers them at boot with Install
+    focused. Beside a build in the repo root sit the published packs, and a test's keys
+    once installed them over the real Reader Files; here it finds none. A caller that
+    names a pack folder itself (the data pack update test) keeps its own.
+    """
+    return run_dir() / "no-data-packs"
 
 
 def env_runtime_value(name: str, env_file: Path | None = None) -> str:
@@ -498,6 +511,10 @@ class Probe:
             # A build reads no .env.runtime: hand it the data dir a workspace run would read.
             argv = [app]
             env["BARKS_READER_DATA_DIR"] = str(data_dir())
+            if not env.get(DATA_PACK_DIR_ENV_VAR):
+                packs = no_data_packs_dir()
+                packs.mkdir(parents=True, exist_ok=True)
+                env[DATA_PACK_DIR_ENV_VAR] = str(packs)
         else:
             argv = self._backend.workspace_app_argv(REPO_ROOT)
             coverage_dir = os.environ.get(COVERAGE_ENV_VAR)
