@@ -168,6 +168,38 @@ class TestPopupFrame:
         assert "Copied to clipboard" in titles
         assert "A Title" not in titles
 
+    def test_a_key_handler_is_asked_first_and_what_it_takes_the_frame_leaves(self) -> None:
+        frame = _frame()
+        frame.key_handler = MagicMock(side_effect=lambda key: key == KEY_ENTER)
+        with patch.object(frame, "dismiss") as dismiss:
+            assert _press(frame, KEY_ENTER) is True  # taken: the frame does not close
+            dismiss.assert_not_called()
+            frame.key_handler = MagicMock(return_value=False)
+            _press(frame, KEY_ENTER)  # left: the frame's Return closes it
+        dismiss.assert_called_once_with()
+
+    def test_its_body_can_be_put_in_another_place(self) -> None:
+        ok = FrameButton("OK", MagicMock())
+        frame = _frame((ok,))
+        old, new = frame.body, Label(text="new body")
+        content = old.parent
+        frame.set_body(new)
+        assert frame.body is new
+        assert old.parent is None
+        assert content.children[-1] is new  # above the button row
+
+    def test_only_a_frame_that_asks_closes_on_a_tap_outside(self) -> None:
+        assert _frame().auto_dismiss is False
+        assert _frame(close_on_outside_tap=True).auto_dismiss is True
+
+    def test_the_title_can_carry_markup_a_font_and_a_new_size(self) -> None:
+        frame = _frame(title_markup=True, title_font_name="Roboto")
+        (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]
+        assert title.markup is True
+        assert title.font_name == "Roboto"
+        frame.title_font_size = 31
+        assert title.font_size == 31  # noqa: PLR2004
+
     def test_on_closed_runs_once_it_has_left_the_window(self) -> None:
         on_closed = MagicMock()
         frame = _frame(on_closed=on_closed)

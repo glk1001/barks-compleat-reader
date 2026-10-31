@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -101,6 +101,7 @@ class PopupFrame(ModalView):
 
     # The title bar's text; set it to show a moment's news there (Saved, Copied).
     title = StringProperty()
+    title_font_size = NumericProperty(TITLE_FONT_SIZE)
 
     def __init__(
         self,
@@ -114,6 +115,9 @@ class PopupFrame(ModalView):
         title_font_size: float = TITLE_FONT_SIZE,
         button_font_size: float = BUTTON_FONT_SIZE,
         fill_window: bool = False,
+        title_markup: bool = False,
+        title_font_name: str = "",
+        close_on_outside_tap: bool = False,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -129,16 +133,21 @@ class PopupFrame(ModalView):
             button_font_size: The buttons' font size.
             fill_window: Whether the frame fills the window, as a popup does that is its
                 own window's only content, rather than being sized by its class.
+            title_markup: Whether the title carries Kivy markup.
+            title_font_name: The title's font, or "" for the app's.
+            close_on_outside_tap: Whether a tap outside the frame closes it, as it does
+                a popup browsed beside the screen it came from (the speech bubbles).
 
         """
         super().__init__(
             size_hint=(1, 1) if fill_window else (None, None),
             pos_hint={"center_x": 0.5, "center_y": 0.5},
-            auto_dismiss=False,
+            auto_dismiss=close_on_outside_tap,
             background="",
             background_color=(0, 0, 0, 0),
         )
         self.title = title
+        self.title_font_size = title_font_size
         self.size_class = size
         self.fill_window = fill_window
         self._frame_buttons = tuple(buttons)
@@ -146,10 +155,14 @@ class PopupFrame(ModalView):
         self._focused_idx = 0  # the first button, the confirming one, starts focused
         self._close_button: Button | None = None
         self._close_focused = False
+        # Asked first about every key, by a body that takes keys of its own (a list's
+        # Up and Down); what it does not take, the frame does.
+        self.key_handler: Callable[[int], bool] | None = None
+        self._body = body
 
         self._button_widgets = [self._button(b, button_font_size) for b in self._frame_buttons]
         root = BoxLayout(orientation="vertical")
-        root.add_widget(self._title_bar(title, title_font_size))
+        root.add_widget(self._title_bar(title_markup, title_font_name))
         root.add_widget(self._card(body, art_file))
         self.add_widget(root)
 
@@ -163,12 +176,25 @@ class PopupFrame(ModalView):
         """The row's buttons, left to right."""
         return self._button_widgets
 
+    @property
+    def body(self) -> Widget:
+        """The popup's own content."""
+        return self._body
+
+    def set_body(self, body: Widget) -> None:
+        """Put `body` in the place of the popup's content, for a popup shown again."""
+        content = self._body.parent
+        assert content is not None
+        content.remove_widget(self._body)
+        content.add_widget(body, index=len(content.children))  # above the button row
+        self._body = body
+
     def fit_to_window(self, *_args: object) -> None:
         """Size the frame by its class for the window as it is now (unless it fills it)."""
         if not self.fill_window:
             self.size = popup_size(self.size_class, Window.width, Window.height)
 
-    def _title_bar(self, title: str, font_size: float) -> BoxLayout:
+    def _title_bar(self, markup: bool, font_name: str) -> BoxLayout:
         bar = BoxLayout(
             size_hint_y=None, height=TITLE_BAR_HEIGHT, padding=[dp(12), dp(8)], spacing=dp(8)
         )
@@ -187,15 +213,18 @@ class PopupFrame(ModalView):
         bar.bind(pos=fit_bands, size=fit_bands)
 
         title_label = Label(
-            text=title,
+            text=self.title,
+            markup=markup,
             color=list(theme().text_title),
-            font_size=font_size,
+            font_size=self.title_font_size,
             bold=True,
             halign="left",
             valign="middle",
         )
+        if font_name:
+            title_label.font_name = font_name
         title_label.bind(size=_wrap_to_size)
-        self.bind(title=title_label.setter("text"))
+        self.bind(title=title_label.setter("text"), title_font_size=title_label.setter("font_size"))
         bar.add_widget(title_label)
         if not self._frame_buttons:
             close = Button(
@@ -302,6 +331,8 @@ class PopupFrame(ModalView):
     def _on_key_down(
         self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
     ) -> bool:
+        if self.key_handler is not None and self.key_handler(key):
+            return True
         if not self._frame_buttons:
             if is_escape_key(key):
                 self._toggle_close_focus()  # Escape to the X, as everywhere; again, away

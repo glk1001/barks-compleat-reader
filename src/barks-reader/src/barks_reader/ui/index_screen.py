@@ -13,7 +13,6 @@ from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.core.window import Window
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -26,8 +25,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -45,6 +44,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.nav_focus import log_nav_focus
+from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.speech_bubble_markup import (
     SPEAKER_LABEL_SCALE,
@@ -56,6 +56,7 @@ from barks_reader.core.user_error_types import (
     get_volume_not_available_error_info,
 )
 
+from .popup_frame import PopupFrame
 from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
@@ -68,7 +69,6 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.core.image import Texture
-    from kivy.uix.widget import Widget
 
     from barks_reader.core.index_items import IndexItem
 
@@ -122,8 +122,11 @@ class TitleShowSpeechButton(Button):
     """A custom button for showing speech bubbles for titles, styled in the .kv file."""
 
 
-class SpeechBubblesPopup(Popup):
-    """A custom popup for showing speech bubbles, styled in the .kv file."""
+class SpeechBubblesPopup(PopupFrame):
+    """The speech bubbles of a title's matching pages, on the shared frame (``ui.popup_frame``).
+
+    One is made per screen and shown again with each title's bubbles in its body.
+    """
 
 
 class TextBoxWithTitleAndBorder(BoxLayout):
@@ -183,12 +186,13 @@ def show_speech_bubbles_popup(
     scroll_view = ReaderScrollView()
     scroll_view.add_widget(text_boxes)
 
-    popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
+    title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
     speaker_label = speaker_display_name(speaker) if speaker else None
     if speaker_label:
-        popup.title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
-    popup.title_size = title_font_size
-    popup.content = scroll_view
+        title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
+    popup.title = title
+    popup.title_font_size = title_font_size
+    popup.set_body(scroll_view)
     popup.open()
 
 
@@ -202,16 +206,17 @@ class PopupKeyboardNav:
     Handles up/down/enter/escape/page-up/page-down to navigate
     TextBoxWithTitleAndBorder entries inside the popup's ScrollView.
 
-    The popup is a modal ``Popup`` (``ModalView``), so the main screen's key
-    handler yields to it (see ``_modal_popup_is_open`` in ``main_screen``). This
-    helper therefore owns its own ``Window.on_key_down`` binding while open —
-    bound after the main handler so it sees the key — as the shared popup frame
-    (``ui.popup_frame``) does.
+    The popup is the shared frame (``ui.popup_frame``), a ``ModalView``, so the main
+    screen's key handler yields to it (see ``_modal_popup_is_open`` in
+    ``main_screen``), and the frame takes every key while it is open. This helper is
+    the frame's key handler, asked first about each: Escape closes the popup at once,
+    the keys being on its list of pages rather than on its X.
     """
 
     def __init__(self, popup: SpeechBubblesPopup) -> None:
         self._popup = popup
         self._focused_idx: int = 0
+        popup.key_handler = self.handle_key
         popup.bind(on_open=self._on_opened)
         popup.bind(on_dismiss=self._on_dismissed)
 
@@ -238,22 +243,12 @@ class PopupKeyboardNav:
 
     def _on_opened(self, *_args: object) -> None:
         self._focused_idx = 0
-        Window.bind(on_key_down=self._on_key_down)
         logger.debug(log_markers.BUBBLES_POPUP_OPENED)
         Clock.schedule_once(lambda _dt: self._draw_focus(), 0)
 
     def _on_dismissed(self, *_args: object) -> None:
-        Window.unbind(on_key_down=self._on_key_down)
         self._clear_focus()
         logger.debug(log_markers.BUBBLES_POPUP_DISMISSED)
-
-    def _on_key_down(
-        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
-    ) -> bool:
-        self.handle_key(key)
-        # Consume every key while the popup is modal, so nothing leaks to the
-        # background tree/search widgets underneath.
-        return True
 
     def _move_focus(self, delta: int) -> None:
         entries = self._get_entries()
@@ -286,7 +281,7 @@ class PopupKeyboardNav:
                 width=3,
                 group=POPUP_NAV_FOCUS_GROUP,
             )
-        sv = self._popup.content
+        sv = self._popup.body
         if isinstance(sv, ScrollView):
             sv.scroll_to(entry)
         log_nav_focus(entry)
@@ -296,14 +291,14 @@ class PopupKeyboardNav:
             entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
 
     def _get_entries(self) -> list[TextBoxWithTitleAndBorder]:
-        sv = self._popup.content
-        if sv is None or not sv.children:
+        sv = self._popup.body
+        if not sv.children:
             return []
         grid = sv.children[0]
         return list(reversed(grid.children))
 
     def _scroll(self, direction: int) -> None:
-        sv = self._popup.content
+        sv = self._popup.body
         if isinstance(sv, ScrollView):
             sv.scroll_y = max(0.0, min(1.0, sv.scroll_y - direction * _POPUP_SCROLL_STEP))
 
@@ -313,13 +308,13 @@ def create_speech_bubble_popup(
 ) -> tuple[SpeechBubblesPopup, PopupKeyboardNav]:
     """Create a speech bubbles popup and its keyboard nav helper."""
     popup = SpeechBubblesPopup(
-        title_font=font_name,
-        title_align="left",
-        title_color=list(theme().text_title),  # themed gold (was programmer-cyan)
-        size_hint=(0.7, 0.4),
-        pos_hint={"x": 0.06, "y": 0.06},
+        title="",
+        body=Widget(),  # each title's bubbles take its place
+        size=PopupSize.MEDIUM,
+        title_markup=True,
+        title_font_name=font_name,
+        close_on_outside_tap=True,  # the screen it came from is beside it
     )
-    popup.children[0].children[-1].markup = True
     nav = PopupKeyboardNav(popup)
     return popup, nav
 

@@ -7,21 +7,23 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
+import barks_reader.ui.popup_frame
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_items import IndexItem
 from barks_reader.core.keys import KEY_ESCAPE
+from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.index_screen import (
-    KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
     PopupKeyboardNav,
     TextBoxWithTitleAndBorder,
+    create_speech_bubble_popup,
     show_speech_bubbles_popup,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
@@ -377,37 +379,35 @@ class TestIndexScreen:
         mock_func.assert_called_with(info)
 
 
-class TestPopupKeyboardNavWindowBinding:
-    """The speech-bubble popup owns the keyboard via its own Window binding.
+class TestPopupKeyboardNavOnTheFrame:
+    """The speech-bubble popup's keys reach its list through the frame.
 
-    The main screen yields to the modal popup (see `_modal_popup_is_open`), so the
-    nav helper must bind `Window.on_key_down` itself to receive keys while open.
+    The main screen yields to the modal popup (see `_modal_popup_is_open`), and the
+    frame takes every key while it is open, asking the nav helper about each first.
     """
 
     @staticmethod
     def _make_nav() -> PopupKeyboardNav:
         return PopupKeyboardNav(MagicMock())
 
-    def test_on_opened_binds_window_key_handler(self, loguru_sink: list[str]) -> None:
+    def test_it_is_the_frames_key_handler(self) -> None:
         nav = self._make_nav()
-        with (
-            patch.object(barks_reader.ui.index_screen, "Window") as window,
-            patch.object(barks_reader.ui.index_screen, "Clock"),
-        ):
+        assert nav._popup.key_handler == nav.handle_key
+
+    def test_opening_is_logged_and_the_focus_drawn_next_frame(self, loguru_sink: list[str]) -> None:
+        nav = self._make_nav()
+        with patch.object(barks_reader.ui.index_screen, "Clock") as clock:
             nav._on_opened()
 
-        window.bind.assert_called_once_with(on_key_down=nav._on_key_down)
+        clock.schedule_once.assert_called_once()
         assert "Speech bubbles popup opened." in loguru_sink
 
-    def test_on_dismissed_unbinds_window_key_handler(self, loguru_sink: list[str]) -> None:
+    def test_dismissal_clears_the_focus_and_is_logged(self, loguru_sink: list[str]) -> None:
         nav = self._make_nav()
-        with (
-            patch.object(barks_reader.ui.index_screen, "Window") as window,
-            patch.object(PopupKeyboardNav, "_clear_focus"),
-        ):
+        with patch.object(PopupKeyboardNav, "_clear_focus") as clear:
             nav._on_dismissed()
 
-        window.unbind.assert_called_once_with(on_key_down=nav._on_key_down)
+        clear.assert_called_once_with()
         assert "Speech bubbles popup dismissed." in loguru_sink
 
     def test_drawing_the_focus_logs_the_entry_it_landed_on(self, loguru_sink: list[str]) -> None:
@@ -422,15 +422,6 @@ class TestPopupKeyboardNavWindowBinding:
         ):
             nav._draw_focus()
         assert any(line.startswith("Nav focus on") for line in loguru_sink)
-
-    def test_on_key_down_delegates_to_handle_key_and_consumes(self) -> None:
-        nav = self._make_nav()
-        with patch.object(PopupKeyboardNav, "handle_key") as handle_key:
-            consumed = nav._on_key_down(object(), KEY_DOWN, 0, "", [])
-
-        handle_key.assert_called_once_with(KEY_DOWN)
-        # Every key is consumed while the popup is modal, so nothing leaks.
-        assert consumed is True
 
 
 class _FakeWidget:
@@ -657,6 +648,11 @@ class _StubbedPopupNav(PopupKeyboardNav):
         self.cleared()
 
 
+def _stand_in_popup(nav: PopupKeyboardNav) -> MagicMock:
+    """Return the stand-in popup a navigator was made with, to set its body."""
+    return cast("MagicMock", nav._popup)
+
+
 def _popup_nav(entries: list[MagicMock]) -> tuple[_StubbedPopupNav, MagicMock, MagicMock]:
     nav = _StubbedPopupNav(entries)
     return nav, nav.drawn, nav.cleared
@@ -691,7 +687,7 @@ class TestPopupKeyboardNavKeys:
         nav, _, _ = _popup_nav([])
         content = MagicMock(spec=_module.ScrollView)
         content.scroll_y = 0.5
-        nav._popup.content = content
+        _stand_in_popup(nav).body = content
         assert nav.handle_key(_module.KEY_PAGE_DOWN) is True
         assert content.scroll_y < 0.5
         content.scroll_y = 0.95
@@ -700,7 +696,7 @@ class TestPopupKeyboardNavKeys:
 
     def test_with_no_bubbles_no_focus_is_drawn(self, loguru_sink: list[str]) -> None:
         nav = PopupKeyboardNav(MagicMock())
-        nav._popup.content = None
+        _stand_in_popup(nav).body = MagicMock(children=[])
         nav._draw_focus()
         assert nav._focused_idx == 0
         assert not any(line.startswith("Nav focus on") for line in loguru_sink)
@@ -711,12 +707,12 @@ class TestPopupKeyboardNavKeys:
 
     def test_the_bubbles_are_the_grids_children_in_display_order(self) -> None:
         nav = PopupKeyboardNav(MagicMock())
-        nav._popup.content = None
+        _stand_in_popup(nav).body = MagicMock(children=[])  # the placeholder before the first show
         assert nav._get_entries() == []
         first, second = MagicMock(), MagicMock()
         grid = MagicMock()
         grid.children = [second, first]  # Kivy keeps the last added first
-        nav._popup.content = MagicMock(children=[grid])
+        _stand_in_popup(nav).body = MagicMock(children=[grid])
         assert nav._get_entries() == [first, second]
 
 
@@ -871,6 +867,17 @@ class TestItemsPanelKeys:
         assert "IndexScreen: entered nav focus." in loguru_sink
 
 
+def test_the_speech_bubbles_popup_is_a_medium_frame_a_tap_outside_closes() -> None:
+    with patch.object(barks_reader.ui.popup_frame, "Window") as window:
+        window.width, window.height = 1760, 1300
+        popup, nav = create_speech_bubble_popup("Roboto")
+    assert popup.size_class is PopupSize.MEDIUM
+    assert popup.pos_hint == {"center_x": 0.5, "center_y": 0.5}
+    assert popup.auto_dismiss is True
+    assert popup.key_handler == nav.handle_key
+    assert nav.is_open is False
+
+
 class TestShowSpeechBubblesPopup:
     @pytest.fixture
     def popup(self) -> Generator[MagicMock]:
@@ -898,7 +905,8 @@ class TestShowSpeechBubblesPopup:
         assert popup.title == (
             "[b][i]Lost in the Andes!  —  [/i]'square eggs'[/b][b]  —  [/b]Goldstein &amp; Co."
         )
-        assert popup.content is popup.scroll_view
+        popup.set_body.assert_called_once_with(popup.scroll_view)
+        assert popup.title_font_size == 20
         popup.open.assert_called_once()
 
     def test_without_a_speaker_the_title_is_the_story_and_the_search(
