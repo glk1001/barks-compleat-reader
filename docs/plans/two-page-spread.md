@@ -44,8 +44,11 @@
 >   and on the Double Page toggle (done 2026-10-29).
 >   A review of the six stages (2026-10-30): the reader's bar was pair-wide under a
 >   solo unit too, the cover or an odd last page drawn as one page in double-page
->   mode; the reader now says what it drew (`showing_two_pages`) and the bar follows
->   it. And with the saved window position on a second monitor of another shape, the
+>   mode; the bar followed what the reader drew for a day, then went back to the
+>   pair's width all through double-page mode (2026-10-31, with the user): narrowing
+>   under the cover moved its buttons at the first page turn of every comic, and the
+>   document reader's bar spans the pair under a lone page too (`two_up`, set with the
+>   mode). And with the saved window position on a second monitor of another shape, the
 >   geometry helper decided the boot layout for that monitor while main.py had sized
 >   the window for the primary's, so the boot check saw no change and the window kept
 >   the wrong shape; the helper now starts from main.py's decision and the boot check

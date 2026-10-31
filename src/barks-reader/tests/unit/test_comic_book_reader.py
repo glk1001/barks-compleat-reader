@@ -303,20 +303,15 @@ class TestComicBookReader:
         assert reader._reveal_ev is None
         reader._on_comic_is_ready_to_read.assert_not_called()
 
-    def test_a_page_drawn_says_whether_it_is_a_pair(self, reader: ComicBookReader) -> None:
-        """A solo unit in double-page mode is one page: the screen's bar follows this."""
+    def test_a_solo_unit_drawn_in_double_page_mode_leaves_it_two_up(
+        self, reader: ComicBookReader
+    ) -> None:
+        """The cover or an odd last page alone: the screen's bar stays the pair's width."""
         self._stub_current_page(reader, 2)
-        reader._render_page(2, 3)
-        assert reader.showing_two_pages is True
+        reader.two_up = True
         reader._render_page(4, None)
-        assert reader.showing_two_pages is False
-
-    def test_the_loading_page_is_one_page(self, reader: ComicBookReader) -> None:
-        """A slow page one reveals the reader on it: the bar is not the last comic's pair."""
-        self._stub_current_page(reader, 2)
-        reader._render_page(2, 3)
         reader._show_loading_page()
-        assert reader.showing_two_pages is False
+        assert reader.two_up is True
 
     def test_the_first_page_drawn_says_the_comic_opened_once(self, reader: ComicBookReader) -> None:
         """The opener hears of page one only, not of every page turn after it."""
@@ -573,6 +568,7 @@ class TestComicBookReader:
         ):
             reader.read_comic(fanta_info, False, MagicMock(), COMIC_BEGIN_PAGE, layout)  # noqa: FBT003
         assert reader._page_manager.double_page_mode is two_up
+        assert reader.two_up is two_up
 
     def test_double_page_toggle_logs_the_new_mode(
         self, reader: ComicBookReader, loguru_sink: list[str]
@@ -581,6 +577,7 @@ class TestComicBookReader:
         with patch.object(reader, "_show_page"):
             reader.toggle_double_page_mode()
         assert "Double page mode toggled: True." in loguru_sink
+        assert reader.two_up is True
 
     def test_double_page_toggle_is_ignored_for_single_page_collections(
         self, reader: ComicBookReader, loguru_sink: list[str]
@@ -1012,7 +1009,7 @@ class TestComicBookReaderScreen:
     # --- the bar is as wide as the pages under it ---
 
     @pytest.mark.parametrize(
-        ("window", "two_pages", "expected_width"),
+        ("window", "two_up", "expected_width"),
         [
             # The spread window on a 2560x1440 monitor: a page, then the pair.
             ((1775, 1365), False, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO)),
@@ -1025,21 +1022,19 @@ class TestComicBookReaderScreen:
         self,
         screen: ComicBookReaderScreen,
         window: tuple[int, int],
-        two_pages: bool,
+        two_up: bool,
         expected_width: int,
     ) -> None:
-        """A page wide under one page, the pair's width under a pair: what the reader drew."""
-        cast("MagicMock", screen.comic_book_reader).showing_two_pages = two_pages
+        """A page wide in single-page mode, the pair's width in double-page mode."""
+        cast("MagicMock", screen.comic_book_reader).two_up = two_up
         with patch.object(_reader_module, "Window", width=window[0], height=window[1]):
             screen._reset_action_bar_width()
         assert screen.action_bar_width == expected_width
 
-    def test_the_bar_refits_as_the_pages_drawn_change(self, screen: ComicBookReaderScreen) -> None:
-        """A solo unit in double-page mode (the cover, an odd last page) is one page wide."""
+    def test_the_bar_refits_as_the_mode_changes(self, screen: ComicBookReaderScreen) -> None:
+        """A comic's load and the Double Page toggle set the mode; the bar follows it."""
         binds = cast("MagicMock", screen.comic_book_reader).bind.call_args_list
-        on_change = next(
-            call.kwargs["showing_two_pages"] for call in binds if "showing_two_pages" in call.kwargs
-        )
+        on_change = next(call.kwargs["two_up"] for call in binds if "two_up" in call.kwargs)
         with patch.object(screen, "_reset_action_bar_width") as reset:
             on_change(screen.comic_book_reader, False)  # noqa: FBT003
         reset.assert_called_once_with()

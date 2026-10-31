@@ -213,21 +213,23 @@ def test_in_fullscreen_a_top_tap_shows_the_hidden_bar(boot: AppBoot) -> None:
         taps.tap_then_wait(
             d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
         )
+        taps.tap_then_wait(
+            d,
+            pattern(markers.ENTERED_WINDOWED, screen=READER),
+            kv_id="fullscreen_button",
+            timeout=FULLSCREEN_TIMEOUT,
+        )
     except taps.TapOutsideWindowError as exc:
         # No window manager on the nested display: fullscreen draws a screen-sized
-        # frame into the windowed-size window, and here the margin is off its edge.
-        # Back to windowed (by the bar's key path) first, as the teardown expects.
+        # frame into the windowed-size window, and here the margin, or the bar's
+        # Windowed button (the bar is the pair's width in double-page mode), is off
+        # its edge. Back to windowed (by the bar's key path) first, as the teardown
+        # expects.
         with d.expect(pattern(markers.ENTERED_WINDOWED, screen=READER), FULLSCREEN_TIMEOUT):
             d.press_menu_button("fullscreen")
         d.settle()
         d.close_reader()
         pytest.skip(f"fullscreen is not real on this nested screen: {exc}")
-    taps.tap_then_wait(
-        d,
-        pattern(markers.ENTERED_WINDOWED, screen=READER),
-        kv_id="fullscreen_button",
-        timeout=FULLSCREEN_TIMEOUT,
-    )
     d.settle()
     d.close_reader()
 

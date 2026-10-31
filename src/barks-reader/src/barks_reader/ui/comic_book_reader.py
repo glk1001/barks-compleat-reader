@@ -132,10 +132,10 @@ class ComicBookReader(FloatLayout):
     # The window/action-bar title. A Kivy property so the screen can bind to it and
     # reflect per-page title changes (e.g. the "All One-Pagers" collection).
     action_bar_title = StringProperty()
-    # Whether a pair of pages is on show, set as a page is drawn: in double-page mode a
-    # solo unit (the cover, an odd last page) is drawn as one page, and the screen's
-    # bar follows what is drawn, not the mode.
-    showing_two_pages = BooleanProperty(defaultvalue=False)
+    # Whether this comic is in double-page mode, set with the mode: the screen's bar is
+    # the pair's width all through it, under a solo unit (the cover, an odd last page)
+    # too, so the bar's buttons stay put as the pages turn.
+    two_up = BooleanProperty(defaultvalue=False)
 
     def __init__(
         self,
@@ -371,7 +371,7 @@ class ComicBookReader(FloatLayout):
 
         # The collections are always single-page: each page is a separate gag or
         # cover, so a two-page spread would pair unrelated items.
-        self._page_manager.double_page_mode = (
+        self._set_double_page_mode(
             False if self.is_single_page_only_collection else self.opens_two_up
         )
         self._page_manager.set_layout(layout, page_to_first_goto)
@@ -466,9 +466,6 @@ class ComicBookReader(FloatLayout):
         self._comic_image.source = ""  # Clear previous source
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
-        # One page drawn: a slow page one reveals the reader on this, and the bar must
-        # not keep the last comic's pair width over it.
-        self.showing_two_pages = False
 
     def _set_one_pager_action_bar_title(self, page_str: str) -> None:
         """Set the window title to the one-pager shown on the collection's *page_str*.
@@ -647,7 +644,6 @@ class ComicBookReader(FloatLayout):
     def _render_page(self, left_page_index: int, right_page_index: int | None) -> None:
         """Draw the given (already-loaded) page(s) into the comic image widget."""
         self._stop_pending_poll()
-        self.showing_two_pages = right_page_index is not None
 
         timing = Timing()
 
@@ -697,6 +693,10 @@ class ComicBookReader(FloatLayout):
         """Return the current active double-page mode (not the config setting)."""
         return self._page_manager.double_page_mode
 
+    def _set_double_page_mode(self, on: bool) -> None:
+        self._page_manager.double_page_mode = on
+        self.two_up = on
+
     @property
     def is_one_pager_collection(self) -> bool:
         """Whether the comic currently being read is the All One-Pagers collection."""
@@ -725,7 +725,7 @@ class ComicBookReader(FloatLayout):
             # The collections are always single-page - ignore the toggle.
             logger.debug(log_markers.DOUBLE_PAGE_IGNORED)
             return
-        self._page_manager.double_page_mode = not self._page_manager.double_page_mode
+        self._set_double_page_mode(not self._page_manager.double_page_mode)
         logger.info(
             log_markers.DOUBLE_PAGE_TOGGLED.format(mode=self._page_manager.double_page_mode)
         )
@@ -912,9 +912,9 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         # Mirror the reader's title onto the screen so per-page title changes (e.g. the
         # "All One-Pagers" collection) reach the action bar automatically.
         self.comic_book_reader.bind(action_bar_title=self.setter("action_bar_title"))
-        # The bar is as wide as the pages drawn: a solo unit in double-page mode is one
-        # page wide (see _reset_action_bar_width).
-        self.comic_book_reader.bind(showing_two_pages=self._on_showing_two_pages)
+        # The bar is as wide as the comic's mode, a page or the pair (see
+        # _reset_action_bar_width).
+        self.comic_book_reader.bind(two_up=self._on_two_up)
         self.ids.image_layout.add_widget(self.comic_book_reader)
         self._reset_action_bar_width()
 
@@ -1186,20 +1186,20 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         self._reset_action_bar_width()
         self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
 
-    def _on_showing_two_pages(self, _reader: ComicBookReader, _showing: bool) -> None:
+    def _on_two_up(self, _reader: ComicBookReader, _two_up: bool) -> None:
         self._reset_action_bar_width()
 
     def _reset_action_bar_width(self) -> None:
         # Match the inner action bar's width to the comic's aspect-fit width so it spans
         # the visible image area, not the full monitor width in fullscreen: a page's
-        # under a page, the pair's under a pair (the two pages are composited as one
-        # landscape image, twice a page wide); in double-page mode a solo unit, the
-        # cover or an odd last page, is drawn as one page, so the bar follows what the
-        # reader draws (`showing_two_pages`), not the mode. It refits with the window
-        # and as the pages drawn change (a comic's load and the Double Page toggle
-        # reach it there, once the reader has drawn).
+        # in single-page mode, the pair's in double-page mode (the two pages are
+        # composited as one landscape image, twice a page wide). In double-page mode it
+        # stays the pair's under a solo unit, the cover or an odd last page, as the
+        # document reader's does on the spread: a bar that narrowed there moved its
+        # buttons at a page turn, the first of every comic. It refits with the window
+        # and with the mode (`two_up`: a comic's load and the Double Page toggle).
         aspect_ratio = COMIC_PAGE_ASPECT_RATIO
-        if self.comic_book_reader.showing_two_pages:
+        if self.comic_book_reader.two_up:
             aspect_ratio /= 2
         w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width, aspect_ratio)
         self.action_bar_width = max(1, w)
