@@ -8,7 +8,6 @@ maps each `ErrorDialogKind` onto a popup layout and button wiring.
 
 from __future__ import annotations
 
-import textwrap
 from dataclasses import dataclass
 from enum import Enum, auto
 from textwrap import dedent
@@ -76,6 +75,16 @@ WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG = dedent("""\
     wrong archives, then restart the app!""")
 
 
+def _paragraphs(*paragraphs: str) -> str:
+    """Join paragraphs with a blank line between them, for the popup's label to wrap.
+
+    A message is never broken into lines here: the label wraps each paragraph at its
+    own width (a long path included, broken where it must be), and a line broken here
+    as well was broken twice, leaving a word stranded on a line of its own.
+    """
+    return "\n\n".join(paragraphs)
+
+
 def build_error_presentation(
     error_type: ErrorTypes,
     error_info: ErrorInfo | None,
@@ -112,12 +121,12 @@ def _build_fanta_root_not_set(
     popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for the Fantagraphics directory not being set."""
-    text = dedent("""\
-        The Fantagraphics comic zips directory has not been set in the app settings.
-
-        You can still browse the whole library, search, read the wiki, and read the
-        hand-restored censored stories. To read the full comics, go to settings, enter
-        the zips directory, then restart the app.""")
+    text = _paragraphs(
+        "The Fantagraphics comic zips directory has not been set in the app settings.",
+        "You can still browse the whole library, search, read the wiki, and read the"
+        " hand-restored censored stories. To read the full comics, go to settings, enter"
+        " the zips directory, then restart the app.",
+    )
 
     return ErrorPresentation(
         kind=ErrorDialogKind.GOTO_SETTINGS,
@@ -133,23 +142,14 @@ def _build_fanta_root_not_found(
     popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for a configured Fantagraphics directory that does not exist."""
-    fanta_volume_dir = escape_kivy_markup(
-        textwrap.fill(str(reader_settings.fantagraphics_volumes_dir), 50)
+    fanta_volume_dir = escape_kivy_markup(str(reader_settings.fantagraphics_volumes_dir))
+    text = _paragraphs(
+        "In app settings, the Fantagraphics comic zips directory is",
+        f'[b]"{fanta_volume_dir}"[/b]',
+        "But this directory could not be found. You can still browse the library, search,"
+        " read the wiki, and read the hand-restored censored stories. To read the full"
+        " comics, go to settings, enter the correct directory, then restart the app.",
     )
-
-    # Dedent the template *before* substituting: `fanta_volume_dir` is wrapped, so
-    # for a directory over 50 columns it contributes a continuation line with no
-    # indentation of its own. Inside an f-string that drops the common prefix to ""
-    # and `dedent` silently no-ops, leaving the whole dialog indented on screen.
-    text = dedent("""\
-        In app settings, the Fantagraphics comic zips directory is
-
-            [b]"{fanta_volume_dir}"[/b]
-
-        But this directory could not be found. You can still browse the
-        library, search, read the wiki, and read the hand-restored
-        censored stories. To read the full comics, go to settings, enter
-        the correct directory, then restart the app.""").format(fanta_volume_dir=fanta_volume_dir)
 
     return ErrorPresentation(
         kind=ErrorDialogKind.GOTO_SETTINGS,
@@ -168,20 +168,14 @@ def _build_duplicate_archive_files(
     assert error_info is not None
     assert error_info.duplicate_volumes is not None
 
-    archive_file = escape_kivy_markup(textwrap.fill(str(error_info.file), 50))
-    # Dedent before substituting - see the note in '_build_fanta_root_not_found'.
-    text = dedent("""\
-        There were duplicate Fantagraphics archive files in the directory:
-
-            [b]"{archive_file}"[/b]
-
-        The duplicate volumes are {duplicate_volumes}. You need to
-        make sure the archives are prefixed with the numbers
-        {first_volume:02d} to {last_volume:02d} inclusive, without duplicates, then restart the app.""").format(  # noqa: E501
-        archive_file=archive_file,
-        duplicate_volumes=", ".join(map(str, error_info.duplicate_volumes)),
-        first_volume=FIRST_VOLUME_NUMBER,
-        last_volume=LAST_VOLUME_NUMBER,
+    archive_file = escape_kivy_markup(str(error_info.file))
+    duplicate_volumes = ", ".join(map(str, error_info.duplicate_volumes))
+    text = _paragraphs(
+        "There were duplicate Fantagraphics archive files in the directory:",
+        f'[b]"{archive_file}"[/b]',
+        f"The duplicate volumes are {duplicate_volumes}. You need to make sure the archives"
+        f" are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
+        f" {LAST_VOLUME_NUMBER:02d} inclusive, without duplicates, then restart the app.",
     )
 
     return ErrorPresentation(
@@ -200,11 +194,12 @@ def _build_too_many_archive_files(
     """Compose the message for too many Fantagraphics archive files."""
     assert error_info is not None
 
-    text = dedent(f"""\
-        There were too many Fantagraphics archive files. The
-        expected number of files is {error_info.num_volumes} not {error_info.num_archive_files}. You need to
-        make sure the archives are prefixed with the numbers
-        {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
+    text = _paragraphs(
+        f"There were too many Fantagraphics archive files. The expected number of files is"
+        f" {error_info.num_volumes} not {error_info.num_archive_files}. You need to make"
+        f" sure the archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
+        f" {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.",
+    )
 
     return ErrorPresentation(
         kind=ErrorDialogKind.FATAL_CONFIG,

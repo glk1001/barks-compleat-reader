@@ -144,3 +144,17 @@ def test_open_message_popup_opens_next_frame_and_logs(loguru_sink: list[str]) ->
         clock.schedule_once.call_args.args[0](0)
     popup_cls.return_value.open.assert_called_once()
     assert 'Message popup opened: "T".' in loguru_sink
+
+
+def test_a_message_is_left_aligned_unless_asked_otherwise() -> None:
+    # Justified, a message's lines stretched into wide gaps in the popup's narrow column.
+    with (
+        patch.object(popup_widgets, "MessagePopup") as popup_cls,
+        patch.object(popup_widgets, "Window"),
+        patch.object(popup_widgets, "Clock"),
+    ):
+        popup_cls.return_value.cancel_text = "Close"
+        popup_widgets.open_message_popup(
+            title="T", text="x", ok_text="", on_ok=None, cancel_text="Close", on_cancel=None
+        )
+    assert popup_cls.call_args.kwargs["msg_halign"] == "left"

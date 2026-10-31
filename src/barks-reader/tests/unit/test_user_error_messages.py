@@ -18,12 +18,20 @@ from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 _A_TITLE = Titles.LOST_IN_THE_ANDES
 _A_TITLE_STR = ENUM_TO_STR_TITLE[_A_TITLE]
 
-# 58 characters, no spaces and no hyphens, so `textwrap.fill` breaks it at exactly
-# the column it is given. That makes the dialogs' 50-column wrap observable: at 51
-# the break lands one character later, and at textwrap's own default of 70 there is
-# no break at all.
+# 58 characters with no spaces: longer than a narrow popup's line, so a message that
+# broke it (as the dialogs once did, at 50 columns) would show here.
 _LONG_PATH = "/mnt/media/comics/fantagraphics_carl_barks_library/volumes"
-_LONG_PATH_WRAPPED_AT_50 = "/mnt/media/comics/fantagraphics_carl_barks_library\n/volumes"
+
+# Each error's sample, with every field its message reads.
+_SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
+    ErrorTypes.FantagraphicsVolumeRootNotSet: None,
+    ErrorTypes.FantagraphicsVolumeRootNotFound: None,
+    ErrorTypes.DuplicateVolumeArchiveFiles: ErrorInfo(file=_LONG_PATH, duplicate_volumes=[3, 7]),
+    ErrorTypes.TooManyVolumeArchiveFiles: ErrorInfo(num_volumes=25, num_archive_files=30),
+    ErrorTypes.MissingArchiveVolumes: ErrorInfo(missing_volumes=[5, 9, 14]),
+    ErrorTypes.MissingVolumeCannotShowTitle: ErrorInfo(title=_A_TITLE, missing_volumes=[7]),
+    ErrorTypes.ArchiveVolumeNotAvailable: ErrorInfo(title=_A_TITLE, file_volume=7),
+}
 
 
 @pytest.fixture
@@ -64,16 +72,14 @@ class TestGotoSettingsErrors:
 
         assert '[b]"/dir/with &bl;markup&br; &amp; ampersand"[/b]' in pres.text
 
-    def test_fanta_root_not_found_wraps_the_dir_at_50_columns(
-        self, reader_settings: MagicMock
-    ) -> None:
+    def test_fanta_root_not_found_leaves_a_long_dir_whole(self, reader_settings: MagicMock) -> None:
         reader_settings.fantagraphics_volumes_dir = _LONG_PATH
 
         pres = build_error_presentation(
             ErrorTypes.FantagraphicsVolumeRootNotFound, None, reader_settings
         )
 
-        assert f'[b]"{_LONG_PATH_WRAPPED_AT_50}"[/b]' in pres.text
+        assert f'\n\n[b]"{_LONG_PATH}"[/b]\n\n' in pres.text
 
     def test_popup_title_override(self, reader_settings: MagicMock) -> None:
         pres = build_error_presentation(
@@ -100,8 +106,8 @@ class TestFatalConfigErrors:
         assert pres.close_message == WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG
 
     def test_duplicate_archive_files_full_text(self, reader_settings: MagicMock) -> None:
-        # The whole dialog body, so the wrapped directory cannot silently go
-        # missing (or be wrapped at some other width) behind a substring check.
+        # The whole dialog body, so the directory cannot silently go missing (or be
+        # broken into lines again) behind a substring check.
         error_info = ErrorInfo(file=_LONG_PATH, duplicate_volumes=[3, 7])
 
         pres = build_error_presentation(
@@ -109,14 +115,11 @@ class TestFatalConfigErrors:
         )
 
         assert pres.text == (
-            f"There were duplicate Fantagraphics archive files in the directory:\n"
-            f"\n"
-            f'    [b]"{_LONG_PATH_WRAPPED_AT_50}"[/b]\n'
-            f"\n"
-            f"The duplicate volumes are 3, 7. You need to\n"
-            f"make sure the archives are prefixed with the numbers\n"
-            f"{FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive,"
-            f" without duplicates, then restart the app."
+            f"There were duplicate Fantagraphics archive files in the directory:\n\n"
+            f'[b]"{_LONG_PATH}"[/b]\n\n'
+            f"The duplicate volumes are 3, 7. You need to make sure the archives are"
+            f" prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
+            f" {LAST_VOLUME_NUMBER:02d} inclusive, without duplicates, then restart the app."
         )
 
     def test_too_many_archive_files(self, reader_settings: MagicMock) -> None:
@@ -251,6 +254,24 @@ class TestFormatVolumeList:
     )
     def test_collapses_runs(self, volumes: list[int], expected: str) -> None:
         assert _format_volume_list(volumes) == expected
+
+
+@pytest.mark.parametrize("error_type", list(ErrorTypes))
+def test_a_message_is_paragraphs_the_popup_wraps(
+    error_type: ErrorTypes, reader_settings: MagicMock
+) -> None:
+    # A line broken here as well as by the popup's label leaves a word stranded.
+    reader_settings.fantagraphics_volumes_dir = _LONG_PATH
+
+    pres = build_error_presentation(error_type, _SAMPLES[error_type], reader_settings)
+
+    paragraphs = pres.text.split("\n\n")
+    assert all(paragraph and "\n" not in paragraph for paragraph in paragraphs)
+    assert all(paragraph == paragraph.strip() for paragraph in paragraphs)
+
+
+def test_every_error_type_has_a_sample() -> None:
+    assert set(_SAMPLES) == set(ErrorTypes)
 
 
 def test_unconfigured_error_type_raises(reader_settings: MagicMock) -> None:

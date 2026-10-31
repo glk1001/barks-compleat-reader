@@ -125,7 +125,7 @@ def open_message_popup(
     on_ok: Callable[[], None] | None,
     cancel_text: str,
     on_cancel: Callable[[], None] | None,
-    msg_halign: str = "justify",
+    msg_halign: str = "left",
 ) -> MessagePopup:
     """Open a keyboard-operable message popup (the error popups), one frame from now.
 
