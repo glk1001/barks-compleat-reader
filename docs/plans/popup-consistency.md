@@ -113,6 +113,8 @@ starts focused, then Save to File and Copy to Clipboard, which leave it up and s
 their news in the title bar); the glyphs Roboto lacks are dropped. For it the frame
 learnt to fill its window, to keep a button's popup up, and to land Escape on the X
 of a popup with no buttons first, as everywhere in the app (47d61baf).
+About is since as tall as its text and no taller (`fit_body_height`), never more
+than the large class: at the class's full height a third of its card was empty.
 
 The speech bubbles' move, decided with the user: `SpeechBubblesPopup`
 (`ui/index_screen.py`) is a `PopupFrame`, medium and centred, with its close X;

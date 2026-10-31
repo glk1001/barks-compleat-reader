@@ -15,10 +15,18 @@ from barks_reader.core.popup_frame import (
     popup_size,
 )
 from barks_reader.ui import popup_frame
-from barks_reader.ui.popup_frame import CLOSE_BUTTON_WIDTH, PopupFrame, message_body
+from barks_reader.ui.popup_frame import (
+    CARD_PADDING,
+    CLOSE_BUTTON_WIDTH,
+    TITLE_BAR_HEIGHT,
+    PopupFrame,
+    message_body,
+)
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
+from kivy.uix.widget import Widget
 
 
 class TestPopupSize:
@@ -211,6 +219,21 @@ class TestPopupFrame:
         beside = [w for w in bar.children if w is not title]
         # Right of it the X, left of it a spacer as wide; with buttons, neither.
         assert [w.width for w in beside] == ([] if has_buttons else [CLOSE_BUTTON_WIDTH] * 2)
+
+    def test_a_frame_fitting_its_body_is_as_tall_as_it_needs_and_no_taller(self) -> None:
+        body = BoxLayout(orientation="vertical", size_hint_y=None)
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            frame = PopupFrame(title="T", body=body, size=PopupSize.LARGE, fit_body_height=True)
+            class_width, class_height = popup_size(PopupSize.LARGE, 1760, 1300)
+            body.add_widget(Widget(size_hint_y=None, height=300))
+            body.do_layout()
+            assert tuple(frame.size) == pytest.approx(
+                (class_width, TITLE_BAR_HEIGHT + 2 * CARD_PADDING + 300)
+            )
+            body.add_widget(Widget(size_hint_y=None, height=5000))  # more than the class
+            body.do_layout()
+            assert tuple(frame.size) == pytest.approx((class_width, class_height))
 
     def test_the_focus_can_start_on_another_button(self) -> None:
         clear, cancel = MagicMock(), MagicMock()

@@ -197,6 +197,10 @@ class TestWithTheApp:
         assert isinstance(popup, PopupFrame)
         assert popup.size_class is PopupSize.MEDIUM
         assert not popup.fill_window
+        assert not popup.fit_body_height
+
+    def test_a_popup_can_be_as_tall_as_its_content(self, app: _Loop) -> None:
+        assert _open(app, fit_body_height=True).fit_body_height
 
     def test_a_popup_that_is_its_windows_only_content_fills_it(self, no_app: _Loop) -> None:
         popup = _open(no_app, fill_window=True)

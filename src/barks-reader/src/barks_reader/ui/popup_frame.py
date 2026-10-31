@@ -5,7 +5,8 @@ in the theme's title colour, and under it a dark card, with art beneath a scrim 
 has art, holding the popup's body and a row of buttons along the bottom, right-aligned.
 A popup with no buttons has a close X in its title bar instead. The frame is centred,
 sized by its class (``core/popup_frame.py``), and follows the window as it resizes; a
-popup that is its own window's only content fills that window instead.
+popup that is its own window's only content fills that window instead, and one whose
+body says how tall it is (About) can be as tall as that and no taller.
 
 The remote's six keys work it as they work the confirm popups: Left and Right move the
 focus ring along the buttons, Return presses the focused one, Escape presses the last
@@ -123,6 +124,7 @@ class PopupFrame(ModalView):
         title_font_name: str = "",
         close_on_outside_tap: bool = False,
         first_focus: int | None = 0,
+        fit_body_height: bool = False,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -145,6 +147,9 @@ class PopupFrame(ModalView):
             first_focus: The button the focus starts on: the first, the confirming one,
                 unless a slip of the hand there would cost something (Clear); None
                 leaves the row unfocused, for a body that holds the focus itself.
+            fit_body_height: Whether the frame is only as tall as its body needs (its
+                ``minimum_height``), never taller than its class, rather than its
+                class's height with the spare left empty.
 
         """
         super().__init__(
@@ -158,6 +163,7 @@ class PopupFrame(ModalView):
         self.title_font_size = title_font_size
         self.size_class = size
         self.fill_window = fill_window
+        self.fit_body_height = fit_body_height
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
         self._focused_idx = first_focus
@@ -175,6 +181,8 @@ class PopupFrame(ModalView):
         self.add_widget(root)
 
         self.fit_to_window()
+        if fit_body_height:
+            body.bind(minimum_height=self.fit_to_window)
         self.bind(
             on_pre_open=self._on_pre_open, on_dismiss=self._on_dismiss, parent=self._on_parent
         )
@@ -207,12 +215,22 @@ class PopupFrame(ModalView):
         assert content is not None
         content.remove_widget(self._body)
         content.add_widget(body, index=len(content.children))  # above the button row
+        if self.fit_body_height:
+            self._body.unbind(minimum_height=self.fit_to_window)
+            body.bind(minimum_height=self.fit_to_window)
         self._body = body
+        self.fit_to_window()
 
     def fit_to_window(self, *_args: object) -> None:
         """Size the frame by its class for the window as it is now (unless it fills it)."""
-        if not self.fill_window:
-            self.size = popup_size(self.size_class, Window.width, Window.height)
+        if self.fill_window:
+            return
+        width, height = popup_size(self.size_class, Window.width, Window.height)
+        if self.fit_body_height:
+            row = BUTTON_HEIGHT + CARD_PADDING if self._frame_buttons else 0
+            needed = TITLE_BAR_HEIGHT + 2 * CARD_PADDING + row + self._body.minimum_height
+            height = min(height, needed)
+        self.size = (width, height)
 
     def _title_bar(self, markup: bool, font_name: str) -> BoxLayout:
         bar = BoxLayout(

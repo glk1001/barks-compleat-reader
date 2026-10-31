@@ -54,6 +54,7 @@ def show_standalone_popup(
     *,
     size: PopupSize = PopupSize.LARGE,
     fill_window: bool = False,
+    fit_body_height: bool = False,
     buttons: Sequence[FrameButton] = (),
     timeout: float = 0,
     background_image_file: Path | None = None,
@@ -71,6 +72,8 @@ def show_standalone_popup(
         size: The frame's size class, over the app.
         fill_window: Whether the popup fills its window, as one that is its window's only
             content does.
+        fit_body_height: Whether the popup is only as tall as its content needs (its
+            ``minimum_height``), never taller than its size class.
         buttons: The frame's buttons; none puts a close X in the title bar.
         timeout: Auto-dismiss after this many seconds (0 = wait for the user).
         background_image_file: Optional art drawn behind the content, under the scrim.
@@ -109,6 +112,7 @@ def show_standalone_popup(
             art_file=str(background_image_file) if background_image_file else "",
             on_closed=on_closed,
             fill_window=fill_window,
+            fit_body_height=fit_body_height,
         )
         content.popup_ref = popup
         popup.bind(on_open=lambda *_: log_popup_opened(title))

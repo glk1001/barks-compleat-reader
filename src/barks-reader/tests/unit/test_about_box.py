@@ -42,6 +42,32 @@ def test_a_dismiss_callback_runs_after_the_dismissal_is_logged(loguru_sink: list
     # No buttons, so a close X, which Escape lands on first (the frame's rule).
     assert "buttons" not in show.call_args.kwargs
     assert show.call_args.kwargs["size"] is PopupSize.LARGE
+    assert show.call_args.kwargs["fit_body_height"] is True  # no gap under its text
+
+
+def test_its_lines_are_as_tall_as_their_text_and_the_box_as_its_lines() -> None:
+    with (
+        patch.object(about_box, "theme") as theme,
+        patch.object(about_box, "show_standalone_popup") as show,
+    ):
+        theme.return_value = MagicMock(
+            text_display=(1, 1, 0, 1), app_title=(1, 0.8, 0, 1), text_secondary=(1, 1, 1, 1)
+        )
+        font_manager = MagicMock(
+            about_box_title_font_size=30,
+            about_box_title_font_name="Roboto",
+            about_box_version_font_size=20,
+            about_box_fine_print_font_size=14,
+        )
+        about_box.show_about_box(font_manager, Path("/art/about.png"))
+    content = show.call_args.kwargs["content"]
+    lines = list(reversed(content.children))
+    assert all(line.size_hint_y is None for line in lines)
+    lines[-1].texture_size = (400, 321)
+    assert lines[-1].height == 321  # noqa: PLR2004
+    content.do_layout()
+    assert content.minimum_height > 321  # noqa: PLR2004
+    assert content.height == content.minimum_height
 
 
 def _label_texts(label: MagicMock) -> list[str]:

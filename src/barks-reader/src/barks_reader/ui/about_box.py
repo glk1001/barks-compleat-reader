@@ -2,8 +2,10 @@ import textwrap
 from collections.abc import Callable
 from pathlib import Path
 
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
@@ -16,6 +18,18 @@ from .font_manager import FontManager
 from .kivy_standalone_show_message import show_standalone_popup
 
 ABOUT_POPUP_TITLE = "About the Barks Reader"
+# Air under the app's name, between the version lines and the licence text.
+HEADING_GAP = dp(14)
+
+
+def _fit_height_to_text(label: Widget, texture_size: tuple[float, float]) -> None:
+    label.height = texture_size[1]
+
+
+def _fitted(label: Label) -> Label:
+    """Return `label` as tall as its text, so the box (and the popup) are as tall as theirs."""
+    label.bind(texture_size=_fit_height_to_text)
+    return label
 
 
 def show_about_box(
@@ -38,49 +52,59 @@ def show_about_box(
     version_text_color = list(theme().app_title)  # coin gold
     other_text_color = list(theme().text_secondary)  # newsprint cream
     # --- Main container for the About dialog ---
+    # Each line is as tall as its text and the box as tall as its lines: the frame
+    # takes its height from the box (``fit_body_height``), leaving no gap under them.
     content = BoxLayout(
         orientation="vertical",
         spacing="12dp",
-        padding=("30dp", "30dp"),
+        padding=("30dp", "24dp"),
     )
+    content.bind(minimum_height=content.setter("height"))
 
     # --- App name ---
     content.add_widget(
-        Label(
-            text=APP_TITLE,
-            size_hint=(1, 0.12),
-            bold=True,
-            color=title_text_color,
-            font_size=round(font_manager.about_box_title_font_size),
-            font_name=font_manager.about_box_title_font_name,
-            halign="center",
-            valign="middle",
+        _fitted(
+            Label(
+                text=APP_TITLE,
+                size_hint=(1, None),
+                padding=(0, 0, 0, HEADING_GAP),
+                bold=True,
+                color=title_text_color,
+                font_size=round(font_manager.about_box_title_font_size),
+                font_name=font_manager.about_box_title_font_name,
+                halign="center",
+                valign="middle",
+            )
         )
     )
 
     # --- Version line ---
     content.add_widget(
-        Label(
-            text=f"Version {VERSION}",
-            color=version_text_color,
-            bold=True,
-            font_size=round(font_manager.about_box_version_font_size),
-            halign="center",
-            valign="middle",
-            size_hint=(1, 0.09),
+        _fitted(
+            Label(
+                text=f"Version {VERSION}",
+                color=version_text_color,
+                bold=True,
+                font_size=round(font_manager.about_box_version_font_size),
+                halign="center",
+                valign="middle",
+                size_hint=(1, None),
+            )
         )
     )
 
     # --- Data pack line ---
     if data_pack_text:
         content.add_widget(
-            Label(
-                text=data_pack_text,
-                color=version_text_color,
-                font_size=round(font_manager.about_box_fine_print_font_size),
-                halign="center",
-                valign="middle",
-                size_hint=(1, 0.07),
+            _fitted(
+                Label(
+                    text=data_pack_text,
+                    color=version_text_color,
+                    font_size=round(font_manager.about_box_fine_print_font_size),
+                    halign="center",
+                    valign="middle",
+                    size_hint=(1, None),
+                )
             )
         )
 
@@ -111,25 +135,24 @@ def show_about_box(
         width=80,
     )
 
+    licence_text = (
+        "[b]This software is licensed under the Apache License, Version 2.0.\n\n"
+        f"© {COPYRIGHT_YEARS} Greg Kay.\n\n\n"
+        f"[size={source_code_font_size}]{source_licence_text}[/size][/b]\n\n\n"
+        f"[size={fan_font_size}][i]{fan_project_text}[/i][/size]"
+    )
     content.add_widget(
-        Label(
-            text=f"""
-[b]This software is licensed under the Apache License, Version 2.0.
-
-© {COPYRIGHT_YEARS} Greg Kay.
-
-
-[size={source_code_font_size}]{source_licence_text}[/size][/b]
-
-
-[size={fan_font_size}][i]{fan_project_text}[/i][/size]
-            """,
-            color=other_text_color,
-            markup=True,
-            font_size=font_manager.about_box_fine_print_font_size,
-            halign="center",
-            valign="middle",
-            size_hint=(1, 1),
+        _fitted(
+            Label(
+                text=licence_text,
+                color=other_text_color,
+                markup=True,
+                font_size=font_manager.about_box_fine_print_font_size,
+                halign="center",
+                valign="top",
+                size_hint=(1, None),
+                padding=(0, HEADING_GAP, 0, 0),
+            )
         )
     )
 
@@ -139,6 +162,7 @@ def show_about_box(
         title=ABOUT_POPUP_TITLE,
         content=content,
         size=PopupSize.LARGE,
+        fit_body_height=True,
         background_image_file=about_background_path,
         on_dismiss=lambda: _dismissed(on_dismiss),
     )
