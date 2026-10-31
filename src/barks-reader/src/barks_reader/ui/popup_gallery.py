@@ -201,7 +201,6 @@ def _open_speech_bubbles(app: GalleryApp) -> None:
         "square eggs",
         _sample_title_speech(),
         _ignore,
-        fm.speech_bubble_popup_title_font_size,
         text_font_size=fm.speech_bubble_text_font_size,
     )
 
@@ -230,11 +229,10 @@ _FRAME_LARGE_TEXT = (
 
 def _open_frame_sample(size: PopupSize) -> Callable[[GalleryApp], None]:
     def _open(app: GalleryApp) -> None:
-        font_size = app.font_manager.error_popup_font_size
         if size is PopupSize.SMALL:
             frame = PopupFrame(
                 title="Quit",
-                body=message_body("Quit the Barks Reader?", font_size=font_size, centred=True),
+                body=message_body("Quit the Barks Reader?", centred=True),
                 size=size,
                 buttons=(FrameButton("Quit", _ignore), FrameButton("Stay", _ignore)),
                 art_file=_identity_art(app),
@@ -242,14 +240,14 @@ def _open_frame_sample(size: PopupSize) -> Callable[[GalleryApp], None]:
         elif size is PopupSize.MEDIUM:
             frame = PopupFrame(
                 title="Fantagraphics Volumes Missing",
-                body=message_body(_FRAME_MEDIUM_TEXT, font_size=font_size),
+                body=message_body(_FRAME_MEDIUM_TEXT),
                 size=size,
                 buttons=(FrameButton("Settings", _ignore), FrameButton("Close", _ignore)),
             )
         else:
             frame = PopupFrame(
                 title="About the Barks Reader",
-                body=message_body(_FRAME_LARGE_TEXT, font_size=font_size),
+                body=message_body(_FRAME_LARGE_TEXT),
                 size=size,
                 art_file=_identity_art(app),
             )

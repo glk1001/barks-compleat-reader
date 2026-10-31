@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import popup_frame as core_frame
+from barks_reader.core.font_sizes import HI_RES_FONT_SIZES, LOW_RES_FONT_SIZES, FontTheme
 from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT
 from barks_reader.core.popup_frame import (
     MAX_WINDOW_WIDTH_FRACTION,
@@ -26,8 +27,10 @@ from barks_reader.ui.popup_frame import (
     TITLE_BAR_TOP,
     PopupFrame,
     message_body,
+    popup_fonts,
 )
 from kivy.graphics import Color
+from kivy.metrics import sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -71,6 +74,45 @@ def _press(frame: PopupFrame, key: int) -> bool:
 
 def _texts(widget: object) -> list[str]:
     return [w.text for w in widget.walk() if isinstance(w, Button)]  # ty: ignore[unresolved-attribute]
+
+
+class TestPopupFonts:
+    """One title, text and button size for every popup, by the window's height."""
+
+    @pytest.mark.parametrize(
+        ("height", "sizes"), [(1000, LOW_RES_FONT_SIZES), (1300, HI_RES_FONT_SIZES)]
+    )
+    def test_they_follow_the_windows_height(self, height: int, sizes: FontTheme) -> None:
+        with patch.object(popup_frame, "Window") as window:
+            window.height = height
+            fonts = popup_fonts()
+        assert (fonts.title, fonts.text, fonts.button) == (
+            sp(sizes.popup_title),
+            sp(sizes.popup_text),
+            sp(sizes.popup_button),
+        )
+
+    @pytest.mark.parametrize("sizes", [LOW_RES_FONT_SIZES, HI_RES_FONT_SIZES])
+    def test_the_title_is_larger_than_the_text(self, sizes: FontTheme) -> None:
+        assert sizes.popup_title > sizes.popup_text
+
+    def test_the_frame_and_its_message_text_take_them(self) -> None:
+        frame = _frame((FrameButton("OK", MagicMock()),))
+        (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]
+        with patch.object(popup_frame, "Window") as window:
+            window.height = 1300
+            fonts = popup_fonts()
+            body = message_body("Prose.")
+        assert title.font_size == fonts.title
+        assert frame.button_widgets[0].font_size == fonts.button
+        assert body.font_size == fonts.text
+
+    def test_the_close_x_takes_the_button_size(self) -> None:
+        frame = _frame()
+        (close,) = [w for w in frame.walk() if isinstance(w, Button) and w.text == "X"]
+        with patch.object(popup_frame, "Window") as window:
+            window.height = 1300
+            assert close.font_size == popup_fonts().button
 
 
 class TestPopupFrame:

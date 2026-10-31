@@ -225,7 +225,7 @@ class TestDesignMatchesTheAppScale:
         for ours, theirs in (
             (layout.DESIGN.standfirst, LOW_RES_FONTS.title_info),
             (layout.DESIGN.heading, LOW_RES_FONTS.text_block_heading),
-            (layout.DESIGN.footnote, LOW_RES_FONTS.about_box_fine_print),
+            (layout.DESIGN.footnote, LOW_RES_FONTS.popup_text),  # About's fine print
         ):
             role = theirs / one_sp
             assert abs(ours - role) / role < self._MAX_DRIFT

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kivy.core.window import Keyboard
-from kivy.metrics import sp
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -59,7 +58,6 @@ class AltEscapeCapturePopup(PopupFrame):
                 "Press the key to use as an alternate Escape.\n"
                 "Escape cancels; Left, Right and Enter work the buttons.\n\n"
                 f"Current: {keycode_to_name(current_keycode)}",
-                font_size=sp(16),
                 centred=True,
             ),
             size=PopupSize.SMALL,

@@ -580,7 +580,6 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             index_terms,
             title_speech_info,
             self._handle_title_from_bubble_press,
-            self._font_manager.speech_bubble_popup_title_font_size,
             text_font_size=self._font_manager.speech_bubble_text_font_size,
         )
 

@@ -9,7 +9,7 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
-from kivy.metrics import dp, sp
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
@@ -49,7 +49,7 @@ from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .popup_frame import BUTTON_BACKGROUND, PopupFrame
+from .popup_frame import BUTTON_BACKGROUND, PopupFrame, popup_fonts
 from .reader_keyboard_nav import update_focus_in_list
 
 
@@ -721,8 +721,6 @@ class SettingLongPath(SettingItem):
 # A choice setting's list and a number setting's entry box.
 CHOICE_HEIGHT = dp(44)
 CHOICE_SPACING = dp(6)
-CHOICE_FONT_SIZE = sp(16)
-NUMBER_FONT_SIZE = sp(22)
 NUMBER_BOX_BACKGROUND = (0.0, 0.0, 0.0, 0.35)
 _CHOICE_FOCUS_GROUP = "setting_choice_focus"
 
@@ -733,7 +731,7 @@ def _choice_button(option: str, *, current: bool) -> Button:
         text=option,
         size_hint_y=None,
         height=CHOICE_HEIGHT,
-        font_size=CHOICE_FONT_SIZE,
+        font_size=popup_fonts().button,
         bold=current,
         background_normal="",
         background_color=list(theme().accent_selection if current else BUTTON_BACKGROUND),
@@ -834,9 +832,9 @@ class SettingNumberPopup(PopupFrame):
             multiline=False,
             write_tab=False,
             input_filter="float" if "." in value else "int",
-            font_size=NUMBER_FONT_SIZE,
+            font_size=popup_fonts().text,
             size_hint_y=None,
-            height=NUMBER_FONT_SIZE * 2,
+            height=popup_fonts().text * 2,
             padding=[dp(10), dp(8)],
             background_normal="",
             background_active="",

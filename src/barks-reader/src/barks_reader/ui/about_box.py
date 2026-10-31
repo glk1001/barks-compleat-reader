@@ -16,6 +16,7 @@ from barks_reader.core.reader_palette import theme
 
 from .font_manager import FontManager
 from .kivy_standalone_show_message import show_standalone_popup
+from .popup_frame import popup_fonts
 
 ABOUT_POPUP_TITLE = "About the Barks Reader"
 # Air under the app's name, between the version lines and the licence text.
@@ -51,6 +52,8 @@ def show_about_box(
     title_text_color = list(theme().text_display)  # bright cover-yellow hero
     version_text_color = list(theme().app_title)  # coin gold
     other_text_color = list(theme().text_secondary)  # newsprint cream
+    # Its title and version lines are its own; the rest is the popups' message text.
+    text_font_size = popup_fonts().text
     # --- Main container for the About dialog ---
     # Each line is as tall as its text and the box as tall as its lines: the frame
     # takes its height from the box (``fit_body_height``), leaving no gap under them.
@@ -100,7 +103,7 @@ def show_about_box(
                 Label(
                     text=data_pack_text,
                     color=version_text_color,
-                    font_size=round(font_manager.about_box_fine_print_font_size),
+                    font_size=round(text_font_size),
                     halign="center",
                     valign="middle",
                     size_hint=(1, None),
@@ -109,8 +112,8 @@ def show_about_box(
         )
 
     # --- Copyright / Credits ---
-    source_code_font_size = round(font_manager.about_box_fine_print_font_size)
-    fan_font_size = round(font_manager.about_box_fine_print_font_size - 1)
+    source_code_font_size = round(text_font_size)
+    fan_font_size = round(text_font_size - 1)
 
     source_licence_text = textwrap.fill(
         textwrap.dedent(
@@ -147,7 +150,7 @@ def show_about_box(
                 text=licence_text,
                 color=other_text_color,
                 markup=True,
-                font_size=font_manager.about_box_fine_print_font_size,
+                font_size=text_font_size,
                 halign="center",
                 valign="top",
                 size_hint=(1, None),

@@ -56,7 +56,7 @@ from barks_reader.core.user_error_types import (
     get_volume_not_available_error_info,
 )
 
-from .popup_frame import PopupFrame
+from .popup_frame import PopupFrame, popup_fonts
 from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
@@ -144,7 +144,6 @@ def show_speech_bubbles_popup(
     search_terms: str,
     title_speech_info: TitleInfo,
     on_page_press: Callable[[str, str], None],
-    title_font_size: float,
     speaker: str | None = None,
     text_font_size: float | None = None,
     highlight_terms: Sequence[str] | None = None,
@@ -157,7 +156,6 @@ def show_speech_bubbles_popup(
         search_terms: What was searched for; highlighted in the bubbles.
         title_speech_info: The title's matching pages and groups.
         on_page_press: Called with ``(title_str, comic_page)`` when a bubble is pressed.
-        title_font_size: The popup title's font size.
         speaker: The stored speaker value the results were filtered to, if
             any; named in the popup title so a thinner result set explains
             itself.
@@ -191,7 +189,7 @@ def show_speech_bubbles_popup(
     if speaker_label:
         title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
     popup.title = title
-    popup.title_font_size = title_font_size
+    popup.title_font_size = popup_fonts().title  # the window may have changed since
     popup.set_body(scroll_view)
     popup.open()
 

@@ -5,24 +5,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from kivy.app import App
 from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 
-from .popup_frame import PopupFrame, message_body
+from .popup_frame import PopupFrame, message_body, popup_fonts
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.label import Label
 
-    from .font_manager import FontManager
 
-# A question's text, short and alone in a small popup, is set this much larger.
-QUESTION_FONT_SCALE = 1.35
+# A question's text, short and alone in a small popup, is set this much larger than
+# the popups' message text: the point of the popup, but not towering over the rest.
+QUESTION_FONT_SCALE = 1.15
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,13 +77,10 @@ def open_confirm_popup(
         The opened popup.
 
     """
-    fm = _font_manager()
     frame = _logged_frame(
         _CONFIRM_MARKERS,
         title=title,
-        body=message_body(
-            text, font_size=QUESTION_FONT_SCALE * fm.error_popup_font_size, centred=True
-        ),
+        body=message_body(text, font_size=QUESTION_FONT_SCALE * popup_fonts().text, centred=True),
         size=PopupSize.SMALL,
         ok=(ok_text, on_ok),
         cancel=(cancel_text, on_cancel),
@@ -129,7 +125,7 @@ def open_message_popup(
     frame = _logged_frame(
         _MESSAGE_MARKERS,
         title=title,
-        body=message_body(text, font_size=_font_manager().error_popup_font_size, centred=centred),
+        body=message_body(text, centred=centred),
         size=PopupSize.MEDIUM,
         ok=(ok_text, on_ok),
         cancel=(cancel_text, on_cancel),
@@ -141,11 +137,6 @@ def open_message_popup(
 
     Clock.schedule_once(_open, 0)
     return frame
-
-
-def _font_manager() -> FontManager:
-    # pyrefly: ignore[missing-attribute]  # a popup opens only in the running app.
-    return App.get_running_app().font_manager
 
 
 def _logged_frame(
@@ -179,7 +170,6 @@ def _logged_frame(
         if on_cancel is not None:
             on_cancel()
 
-    fm = _font_manager()
     buttons = [FrameButton(ok_text, _confirmed)] if ok_text else []
     buttons.append(FrameButton(cancel_text, _cancelled))
     return PopupFrame(
@@ -189,6 +179,4 @@ def _logged_frame(
         buttons=buttons,
         art_file=art_file,
         on_closed=lambda: logger.debug(markers.closed.format(title=title)),
-        title_font_size=fm.message_title_size,
-        button_font_size=fm.error_popup_button_font_size,
     )

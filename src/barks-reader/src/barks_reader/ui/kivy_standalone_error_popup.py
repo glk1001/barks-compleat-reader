@@ -102,12 +102,15 @@ def _get_error_content(  # noqa: C901
     from barks_reader.core.reader_formatter import get_text_with_markup_stripped
     from barks_reader.core.reader_palette import theme
 
-    from .popup_frame import BUTTON_BACKGROUND
+    from .popup_frame import BUTTON_BACKGROUND, popup_fonts
 
+    # The banner and the headings are its own; the text and the Show Details button
+    # are the popups' (the window is sized before this).
+    fonts = popup_fonts()
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
-    info_text_font_size = sp(14)
-    button_font_size = sp(17)
+    info_text_font_size = fonts.text
+    button_font_size = fonts.button
     text_color = list(theme().text_secondary)
 
     class _ErrorContent(BoxLayout):

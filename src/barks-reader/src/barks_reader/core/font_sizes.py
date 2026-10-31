@@ -28,6 +28,24 @@ def font_group_for_height(window_height: int) -> FontGroup:
     return FontGroup.HI_RES
 
 
+def font_sizes_for_height(window_height: int) -> FontTheme:
+    """Return the sizes a window of `window_height` takes, unscaled (in sp).
+
+    For a popup that is its own window, opened before the font manager exists, and for
+    the popup frame, whose sizes follow the window it is on.
+
+    Args:
+        window_height: The window's height, in pixels.
+
+    Returns:
+        The low- or high-resolution sizes.
+
+    """
+    if font_group_for_height(window_height) is FontGroup.LOW_RES:
+        return LOW_RES_FONT_SIZES
+    return HI_RES_FONT_SIZES
+
+
 @dataclass(frozen=True, slots=True)
 class FontTheme:
     """Every font size the app uses, by role."""
@@ -41,20 +59,20 @@ class FontTheme:
     main_index_item: float
     speech_index_item: float
     index_title_item: float
-    speech_bubble_popup_title: float
     speech_bubble_text: float
     year_range: float
-    message_title: float
     checkbox: float
     default: float
     error_main_view: float
-    error_popup: float
-    error_popup_button: float
     text_block_heading: float
     app_title: float
     about_box_title: float
     about_box_version: float
-    about_box_fine_print: float
+    # Every popup on the shared frame (``ui.popup_frame``): its title, its message text
+    # and its buttons.
+    popup_title: float
+    popup_text: float
+    popup_button: float
     search_result: float
     search_input: float
     search_tag_chip: float
@@ -73,20 +91,18 @@ LOW_RES_FONT_SIZES = FontTheme(
     main_index_item=12,
     speech_index_item=11,
     index_title_item=12,
-    speech_bubble_popup_title=17,
     speech_bubble_text=13,
     year_range=14,
-    message_title=16,
     checkbox=14,
     default=15,
     error_main_view=40,
-    error_popup=16,
-    error_popup_button=13,
     text_block_heading=20,
     app_title=12,
     about_box_title=20,
     about_box_version=17,
-    about_box_fine_print=14,
+    popup_title=18,
+    popup_text=15,
+    popup_button=15,
     search_result=14,
     search_input=17,
     search_tag_chip=13,
@@ -104,20 +120,18 @@ HI_RES_FONT_SIZES = FontTheme(
     main_index_item=16,
     speech_index_item=15,
     index_title_item=16,
-    speech_bubble_popup_title=20,
     speech_bubble_text=15,
     year_range=18,
-    message_title=20,
     checkbox=19,
     default=19,
     error_main_view=40,
-    error_popup=23,
-    error_popup_button=18,
     text_block_heading=25,
     app_title=17,
     about_box_title=26,
     about_box_version=23,
-    about_box_fine_print=16,
+    popup_title=23,
+    popup_text=20,
+    popup_button=18,
     search_result=18,
     search_input=22,
     search_tag_chip=17,

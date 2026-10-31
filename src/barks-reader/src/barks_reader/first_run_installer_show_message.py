@@ -58,12 +58,15 @@ def _get_installer_success_content(  # noqa: C901
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_palette import theme
+    from barks_reader.ui.popup_frame import popup_fonts
 
+    # The banner and the headings are its own; the rest is the popups' message text,
+    # sized, as the frame's title and buttons are, by the window (set before this).
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
     file_path_font_size = sp(13)
-    warning_text_font_size = sp(14)
-    info_text_font_size = sp(14)
+    warning_text_font_size = popup_fonts().text
+    info_text_font_size = popup_fonts().text
 
     class _InstallerSuccessContent(BoxLayout):
         """The installer's report, on the frame's dark card; its Start button is the frame's."""

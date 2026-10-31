@@ -72,6 +72,11 @@ look in the theme's colours, for every popup to be built on. Decided with the us
   Escape close the rest;
 - one body text style (`message_body`): cream, prose left-aligned, a short question
   centred;
+- one set of font sizes (`popup_fonts`, from `core/font_sizes.py`'s `popup_title`,
+  `popup_text` and `popup_button`), picked by the window's height as the app's other
+  fonts are, so a popup that is its own window takes them too: the title a step above
+  the text, a question 1.15x the text, About's licence the text (set with the user
+  2026-10-31, when five popup families still had five sets of sizes);
 - one button row along the bottom, right-aligned, one height, one focus ring; Left and
   Right move it, Return presses, Escape presses the last button (the cancel);
 - one card: dark, as About's, with any art beneath one scrim (`CARD_SCRIM`), the art

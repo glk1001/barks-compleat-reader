@@ -9,22 +9,16 @@ import pytest
 from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_RIGHT
 from barks_reader.core.popup_frame import PopupSize
 from barks_reader.ui import popup_frame, popup_widgets
-from barks_reader.ui.popup_frame import PopupFrame
+from barks_reader.ui.popup_frame import PopupFrame, popup_fonts
 from kivy.uix.label import Label
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-FONT_SIZE = 20
-
 
 @pytest.fixture(autouse=True)
-def _app_fonts() -> Iterator[None]:
-    fm = MagicMock(
-        error_popup_font_size=FONT_SIZE, message_title_size=18, error_popup_button_font_size=16
-    )
+def _window() -> Iterator[None]:
     with (
-        patch.object(popup_widgets, "_font_manager", return_value=fm),
         patch.object(popup_frame, "Window") as window,
         patch.object(PopupFrame, "open"),
         patch.object(PopupFrame, "dismiss"),
@@ -86,7 +80,7 @@ class TestConfirmPopup:
         assert frame.size_class is PopupSize.SMALL
         assert _body(frame).halign == "center"
         assert _body(frame).font_size == pytest.approx(
-            popup_widgets.QUESTION_FONT_SCALE * FONT_SIZE
+            popup_widgets.QUESTION_FONT_SCALE * popup_fonts().text
         )
         assert any(getattr(w, "source", "") == "art.png" for w in frame.walk())
         assert [b.text for b in frame.button_widgets] == ["Quit", "Stay"]
@@ -145,7 +139,7 @@ class TestMessagePopup:
         frame = _message("", None, None)
         assert frame.size_class is PopupSize.MEDIUM
         assert _body(frame).halign == "left"
-        assert _body(frame).font_size == FONT_SIZE
+        assert _body(frame).font_size == popup_fonts().text
         assert _body(_message("", None, None, centred=True)).halign == "center"
 
     def test_a_close_only_popup_closes_on_enter(self, loguru_sink: list[str]) -> None:

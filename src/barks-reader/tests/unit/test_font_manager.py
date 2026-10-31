@@ -89,20 +89,15 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.main_index_item = 16
     mock_theme.speech_index_item = 15
     mock_theme.index_title_item = 16
-    mock_theme.speech_bubble_popup_title = 17
     mock_theme.speech_bubble_text = 18
     mock_theme.year_range = 19
-    mock_theme.message_title = 20
     mock_theme.checkbox = 21
     mock_theme.default = 22
     mock_theme.error_main_view = 23
-    mock_theme.error_popup = 24
-    mock_theme.error_popup_button = 25
     mock_theme.text_block_heading = 26
     mock_theme.app_title = 27
     mock_theme.about_box_title = 28
     mock_theme.about_box_version = 29
-    mock_theme.about_box_fine_print = 30
     mock_theme.search_result = 31
     mock_theme.search_input = 32
     mock_theme.search_tag_chip = 33
@@ -121,10 +116,8 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.main_index_item_font_size == 16
     assert font_manager.speech_index_item_font_size == 15
     assert font_manager.index_title_item_font_size == 16
-    assert font_manager.speech_bubble_popup_title_font_size == 17
     assert font_manager.speech_bubble_text_font_size == 18
     assert font_manager.tree_view_year_range_node_font_size == 19
-    assert font_manager.message_title_size == 20
     assert font_manager.check_box_font_size == 21
 
     # Defaults
@@ -142,13 +135,10 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.tree_view_tag_title_spinner_font_size == 22
 
     assert font_manager.error_main_view_font_size == 23
-    assert font_manager.error_popup_font_size == 24
-    assert font_manager.error_popup_button_font_size == 25
     assert font_manager.text_block_heading_font_size == 26
     assert font_manager.app_title_font_size == 27
     assert font_manager.about_box_title_font_size == 28
     assert font_manager.about_box_version_font_size == 29
-    assert font_manager.about_box_fine_print_font_size == 30
     assert font_manager.search_result_font_size == 31
     assert font_manager.search_input_font_size == 32
     assert font_manager.search_tag_chip_font_size == 33

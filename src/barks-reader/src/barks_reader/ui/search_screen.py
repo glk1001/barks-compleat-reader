@@ -1832,7 +1832,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             search_text,
             title_speech_info,
             self._handle_bubble_title_press,
-            self._font_manager.speech_bubble_popup_title_font_size,
             speaker=self._speaker or None,
             text_font_size=self._font_manager.speech_bubble_text_font_size,
             highlight_terms=highlight_terms,

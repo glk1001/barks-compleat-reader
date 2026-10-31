@@ -49,12 +49,9 @@ class FontManager(EventDispatcher):
     main_index_item_font_size = NumericProperty()
     speech_index_item_font_size = NumericProperty()
     index_title_item_font_size = NumericProperty()
-    speech_bubble_popup_title_font_size = NumericProperty()
     speech_bubble_text_font_size = NumericProperty()
     check_box_font_size = NumericProperty()
     error_main_view_font_size = NumericProperty()
-    error_popup_font_size = NumericProperty()
-    error_popup_button_font_size = NumericProperty()
     text_block_heading_font_size = NumericProperty()
     search_result_font_size = NumericProperty()
     search_input_font_size = NumericProperty()
@@ -78,8 +75,6 @@ class FontManager(EventDispatcher):
     tree_view_tag_spinner_font_size = NumericProperty()
     tree_view_tag_title_spinner_font_size = NumericProperty()
 
-    message_title_size = NumericProperty()
-
     main_title_font_name = str(CARL_BARKS_FONT_FILE)
     message_title_font_name = main_title_font_name
     main_index_item_font_name = ROBOTO_FONT
@@ -95,7 +90,6 @@ class FontManager(EventDispatcher):
         self.about_box_title_font_name = str(CARL_BARKS_FONT_FILE)
         self.about_box_title_font_size = 0.0
         self.about_box_version_font_size = 0.0
-        self.about_box_fine_print_font_size = 0.0
 
         self._previous_font_group = FontGroup.NOT_SET
 
@@ -132,18 +126,13 @@ class FontManager(EventDispatcher):
         self.main_index_item_font_size = theme.main_index_item
         self.speech_index_item_font_size = theme.speech_index_item
         self.index_title_item_font_size = theme.index_title_item
-        self.speech_bubble_popup_title_font_size = theme.speech_bubble_popup_title
         self.speech_bubble_text_font_size = theme.speech_bubble_text
         self.check_box_font_size = theme.checkbox
         self.error_main_view_font_size = theme.error_main_view
-        self.error_popup_font_size = theme.error_popup
-        self.error_popup_button_font_size = theme.error_popup_button
         self.text_block_heading_font_size = theme.text_block_heading
         self.app_title_font_size = theme.app_title
         self.about_box_title_font_size = theme.about_box_title
         self.about_box_version_font_size = theme.about_box_version
-        self.about_box_fine_print_font_size = theme.about_box_fine_print
-        self.message_title_size = theme.message_title
         self.search_result_font_size = theme.search_result
         self.search_input_font_size = theme.search_input
         self.search_tag_chip_font_size = theme.search_tag_chip

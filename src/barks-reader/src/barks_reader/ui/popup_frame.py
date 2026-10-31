@@ -20,6 +20,7 @@ hands it on (`focus_button`). Every other key is kept while the frame is open.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from kivy.core.window import Window
@@ -35,6 +36,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
+from barks_reader.core.font_sizes import font_sizes_for_height
 from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
 from barks_reader.core.popup_frame import FrameButton, PopupSize, popup_size
 from barks_reader.core.reader_palette import theme
@@ -58,7 +60,6 @@ TITLE_BAR_TOP = (0.30, 0.25, 0.20, 1.0)
 TITLE_BAR_BOTTOM = (0.25, 0.21, 0.17, 1.0)
 TITLE_BAR_RULE_ALPHA = 0.85
 TITLE_BAR_RULE_HEIGHT = dp(2)
-TITLE_FONT_SIZE = sp(18)
 CLOSE_BUTTON_WIDTH = dp(44)
 
 # The card: a solid warm dark, and over any art a scrim dark enough for cream text.
@@ -71,18 +72,36 @@ BUTTON_HEIGHT = dp(48)
 BUTTON_MIN_WIDTH = dp(130)
 BUTTON_TEXT_PADDING = dp(32)
 BUTTON_SPACING = dp(12)
-BUTTON_FONT_SIZE = sp(16)
 BUTTON_BACKGROUND = (0.26, 0.23, 0.20, 1.0)
 
 _FOCUS_GROUP = "popup_frame_focus"
 
 
-def message_body(text: str, *, font_size: float, centred: bool = False) -> Label:
+@dataclass(frozen=True, slots=True)
+class PopupFonts:
+    """Every popup's font sizes: its title, its message text, its buttons."""
+
+    title: float
+    text: float
+    button: float
+
+
+def popup_fonts() -> PopupFonts:
+    """Return the popups' font sizes for the window as it is now (``core.font_sizes``).
+
+    By the window's height, as the app's other fonts are, so they are the same in the
+    app and in a popup that is its own window, opened before the app's fonts exist.
+    """
+    sizes = font_sizes_for_height(Window.height)
+    return PopupFonts(sp(sizes.popup_title), sp(sizes.popup_text), sp(sizes.popup_button))
+
+
+def message_body(text: str, *, font_size: float | None = None, centred: bool = False) -> Label:
     """Return the frame's body text: prose left-aligned, a short question centred.
 
     Args:
         text: The message, with Kivy markup.
-        font_size: Its font size.
+        font_size: Its font size: the popups' message text (`popup_fonts`) unless given.
         centred: Whether it is centred (a question) rather than left-aligned (prose).
 
     Returns:
@@ -92,7 +111,7 @@ def message_body(text: str, *, font_size: float, centred: bool = False) -> Label
     label = Label(
         text=text,
         markup=True,
-        font_size=font_size,
+        font_size=popup_fonts().text if font_size is None else font_size,
         color=list(theme().text_secondary),
         halign="center" if centred else "left",
         valign="middle",
@@ -110,7 +129,7 @@ class PopupFrame(ModalView):
 
     # The title bar's text; set it to show a moment's news there (Saved, Copied).
     title = StringProperty()
-    title_font_size = NumericProperty(TITLE_FONT_SIZE)
+    title_font_size = NumericProperty()
 
     def __init__(
         self,
@@ -121,8 +140,6 @@ class PopupFrame(ModalView):
         buttons: Sequence[FrameButton] = (),
         art_file: str = "",
         on_closed: Callable[[], None] | None = None,
-        title_font_size: float = TITLE_FONT_SIZE,
-        button_font_size: float = BUTTON_FONT_SIZE,
         fill_window: bool = False,
         title_markup: bool = False,
         title_font_name: str = "",
@@ -140,8 +157,6 @@ class PopupFrame(ModalView):
                 puts a close X in the title bar.
             art_file: Art to show beneath the card's scrim, or "" for none.
             on_closed: Called once the frame has left the window, however it closed.
-            title_font_size: The title's font size.
-            button_font_size: The buttons' font size.
             fill_window: Whether the frame fills the window, as a popup does that is its
                 own window's only content, rather than being sized by its class.
             title_markup: Whether the title carries Kivy markup.
@@ -164,7 +179,9 @@ class PopupFrame(ModalView):
             background_color=(0, 0, 0, 0),
         )
         self.title = title
-        self.title_font_size = title_font_size
+        fonts = popup_fonts()
+        self.title_font_size = fonts.title
+        self._button_font_size = fonts.button
         self.size_class = size
         self.fill_window = fill_window
         self.fit_body_height = fit_body_height
@@ -178,7 +195,7 @@ class PopupFrame(ModalView):
         self.key_handler: Callable[[int], bool] | None = None
         self._body = body
 
-        self._button_widgets = [self._button(b, button_font_size) for b in self._frame_buttons]
+        self._button_widgets = [self._button(b, fonts.button) for b in self._frame_buttons]
         root = BoxLayout(orientation="vertical")
         root.add_widget(self._title_bar(title_markup, title_font_name))
         root.add_widget(self._card(body, art_file))
@@ -282,7 +299,7 @@ class PopupFrame(ModalView):
                 background_normal="",
                 background_color=[*theme().danger[:3], 0.85],
                 color=[1, 1, 1, 1],
-                font_size=sp(16),
+                font_size=self._button_font_size,
             )
             close.bind(on_release=lambda *_: self.dismiss())
             bar.add_widget(close)
