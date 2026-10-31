@@ -2,7 +2,7 @@
 
 """Standalone popup utilities for displaying messages when Kivy may or may not be running."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -10,20 +10,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
-from barks_reader.core.reader_palette import theme
-
-from .reader_keyboard_nav import (
-    MENU_FOCUS_HIGHLIGHT_GROUP,
-    clear_focus_highlight,
-    draw_focus_highlight,
-)
-
-_SAME_SIZE_CUTOFF_PX = 10
-
-# Default content-wrapper scrim: a light wash over the background art. Error
-# popups render dark text on this, so it must stay light. The About box passes
-# a dark scrim instead so gold/cream text reads on-brand over the same art.
-_LIGHT_WRAPPER_SCRIM: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 0.4)
+from barks_reader.core.popup_frame import FrameButton, PopupSize
 
 
 # --- Light divider line widget ---
@@ -61,228 +48,72 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
     return w
 
 
-def show_standalone_popup(  # noqa: C901, PLR0915
+def show_standalone_popup(
     title: str,
     content,  # noqa: ANN001
-    size_hint: tuple[float, float] = (0.9, 0.9),
+    *,
+    size: PopupSize = PopupSize.LARGE,
+    fill_window: bool = False,
+    buttons: Sequence[FrameButton] = (),
     timeout: float = 0,
-    auto_dismiss: bool = False,
-    add_close_button: bool = True,
     background_image_file: Path | None = None,
-    wrapper_scrim: tuple[float, float, float, float] | None = None,
     on_dismiss: Callable[[], None] | None = None,
-    escape_focuses_close: bool = False,
 ) -> None:
-    """Show a popup even if no Kivy app or event loop is running.
+    """Show a popup on the shared frame (``ui.popup_frame``), even if no Kivy app is running.
+
+    With no app running (the installers, the error popup), it runs a Kivy loop of its own
+    until the popup has closed.
 
     Args:
         title: Text for the popup's title bar.
-        content: The widget to place inside the popup.
-        size_hint: Popup size as a fraction of the window.
+        content: The widget to place inside the popup; its ``popup_ref`` is set to the
+            popup, for content that shows news in the title bar.
+        size: The frame's size class, over the app.
+        fill_window: Whether the popup fills its window, as one that is its window's only
+            content does.
+        buttons: The frame's buttons; none puts a close X in the title bar.
         timeout: Auto-dismiss after this many seconds (0 = wait for the user).
-        auto_dismiss: Whether clicking outside the popup dismisses it.
-        add_close_button: Whether to show the title-bar close button.
-        background_image_file: Optional image drawn behind the content.
-        wrapper_scrim: RGBA scrim drawn over the background art behind the
-            content. Defaults to a light wash (``_LIGHT_WRAPPER_SCRIM``); pass a
-            dark scrim for popups that render light, on-brand text.
+        background_image_file: Optional art drawn behind the content, under the scrim.
         on_dismiss: Called once the popup has closed and left the window, however
             it was closed.
-        escape_focuses_close: Whether Escape lands the keys on the close button
-            first, as in the readers, Return then closing; pressed there again, it
-            gives the focus back. Else Escape closes at once.
 
     """
-    scrim = wrapper_scrim if wrapper_scrim is not None else _LIGHT_WRAPPER_SCRIM
     from kivy.app import App
     from kivy.base import EventLoop, runTouchApp, stopTouchApp
     from kivy.clock import Clock
     from kivy.core.window import Window
-    from kivy.graphics import Color, Rectangle, RoundedRectangle
-    from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.button import Button
-    from kivy.uix.label import Label
-    from kivy.uix.popup import Popup
-    from kivy.uix.widget import Widget
 
-    from .comic_book_reader import get_image_stream
+    from .popup_frame import PopupFrame
 
     app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
 
-    def _show(*_) -> None:  # noqa: ANN002, C901, PLR0915
-        # --- Root layout ---
-        root_box = BoxLayout(orientation="vertical", spacing=0)
-
-        # --- Title bar (gradient + shadow) ---
-        title_bar = BoxLayout(size_hint_y=None, height=56, padding=[12, 8], spacing=8)
-
-        with title_bar.canvas.before:  # ty:ignore[unresolved-attribute]
-            # Shadow under title bar.
-            Color(0, 0, 0, 0.1)
-            shadow_rect = Rectangle(pos=(title_bar.x, title_bar.y - 4), size=(title_bar.width, 6))
-
-            # Gradient simulation: two stacked rectangles. Warm near-black chrome
-            # so the title bar matches the app's dark chrome instead of the old
-            # programmer-blue that clashed with the gold/cream palette.
-            Color(0.10, 0.09, 0.08, 1)  # top
-            top_rect = Rectangle(pos=(title_bar.x, title_bar.y + 28), size=(title_bar.width, 28))
-            Color(0.14, 0.12, 0.10, 1)  # bottom
-            bottom_rect = Rectangle(pos=(title_bar.x, title_bar.y), size=(title_bar.width, 28))
-
-        def update_title_bg(inst: Widget, _val) -> None:  # noqa: ANN001
-            shadow_rect.pos = (inst.x, inst.y - 4)
-            shadow_rect.size = (inst.width, 6)
-            top_rect.pos = (inst.x, inst.y + 28)
-            top_rect.size = (inst.width, 28)
-            bottom_rect.pos = (inst.x, inst.y)
-            bottom_rect.size = (inst.width, 28)
-
-        title_bar.bind(pos=update_title_bg, size=update_title_bg)
-
-        # --- Title label ---
-        title_label = Label(
-            text=title,
-            color=list(theme().app_title),
-            font_size="18sp",
-            bold=True,
-            halign="left",
-            valign="middle",
-        )
-        title_label.bind(size=lambda inst, val: setattr(inst, "text_size", (val[0], None)))
-        title_bar.add_widget(title_label)
-
-        # --- Close button ---
-        if add_close_button:
-            close_button = Button(
-                text="X",
-                size_hint=(None, 1),
-                width=44,
-                background_normal="",
-                background_color=[*theme().danger[:3], 0.85],
-                color=[1, 1, 1, 1],
-                font_size="16sp",
-            )
-            title_bar.add_widget(close_button)
-
-        # --- Content wrapper with rounded white background + subtle shadow ---
-        content_wrapper = BoxLayout(orientation="vertical", padding=[14, 12, 14, 12], spacing=10)
-
-        # Store references for the update function
-        bgnd_rect = None
-        bgnd_texture_size = None
-
-        with content_wrapper.canvas.before:  # ty:ignore[unresolved-attribute]
-            # Drop shadow.
-            Color(0, 0, 0, 0.05)
-            shadow = Rectangle(
-                pos=(content_wrapper.x + 2, content_wrapper.y - 2),
-                size=(content_wrapper.width, content_wrapper.height),
-            )
-
-            # Background image (if provided)
-            if background_image_file:
-                bgnd_texture = get_image_stream(background_image_file)
-                bgnd_texture_size = (
-                    (bgnd_texture.width, bgnd_texture.height) if bgnd_texture else (1, 1)
-                )
-
-                Color(1, 1, 1, 0.4)
-                bgnd_rect = RoundedRectangle(
-                    pos=content_wrapper.pos,
-                    size=content_wrapper.size,
-                    texture=bgnd_texture,
-                    radius=[12],
-                )
-
-            # Scrim over the image (light by default; dark for on-brand popups).
-            Color(*scrim)
-            wrapper_bg = RoundedRectangle(
-                pos=content_wrapper.pos, size=content_wrapper.size, radius=[12]
-            )
-
-        def update_wrapper_bgnd(inst: Widget, _val) -> None:  # noqa: ANN001
-            shadow.pos = (inst.x + 2, inst.y - 2)
-            shadow.size = (inst.width, inst.height)
-            wrapper_bg.pos = inst.pos
-            wrapper_bg.size = inst.size
-
-            if background_image_file and bgnd_rect and bgnd_texture_size:
-                texture_ratio = (
-                    bgnd_texture_size[0] / bgnd_texture_size[1] if bgnd_texture_size[1] > 0 else 1
-                )
-
-                bgnd_rect.pos, bgnd_rect.size = _get_background_image_pos_and_size(
-                    (inst.x, inst.y),
-                    inst.size,
-                    texture_ratio,
-                )
-
-        # Place user content directly inside the wrapper.
-        content_wrapper.add_widget(content)
-        # The shadow, the scrim and the art follow the card wherever layout puts it.
-        content_wrapper.bind(pos=update_wrapper_bgnd, size=update_wrapper_bgnd)
-
-        # --- Assemble root layout ---
-        root_box.add_widget(title_bar)
-        root_box.add_widget(content_wrapper)
-
-        # --- Create popup ---
-        popup = Popup(
-            title="",  # hide native title
-            content=root_box,
-            size_hint=size_hint,
-            auto_dismiss=auto_dismiss,
-        )
-        content.popup_ref = popup
-
-        if add_close_button:
-            # noinspection PyUnboundLocalVariable
-            close_button.bind(on_press=lambda *_: popup.dismiss())
-
-        popup.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
-        if timeout > 0:
-            Clock.schedule_once(lambda _dt: popup.dismiss(), timeout)
-
-        # All of it once the popup has left the window, not when its dismissal
-        # began: Kivy fades a dismissed popup out first, and the main screen
-        # ignores every key while a modal is still on the window, so a caller that
-        # logs "dismissed" in `on_dismiss` can be waited on for the next key. The
-        # temporary loop stops last: stopped at the dismissal, as it once was, it
-        # never ran the removal, and the closed line was never logged.
-        def on_left_window(_popup: object, parent: object) -> None:
-            if parent is not None:
-                return
+    def _show(*_args: object) -> None:
+        # All of it once the popup has left the window, not when its dismissal began:
+        # Kivy fades a dismissed popup out first, and the main screen ignores every key
+        # while a modal is still on the window, so a caller that logs "dismissed" in
+        # `on_dismiss` can be waited on for the next key. The temporary loop stops last:
+        # stopped at the dismissal, as it once was, it never ran the removal, and the
+        # closed line was never logged.
+        def on_closed() -> None:
             log_popup_closed(title)
             if on_dismiss is not None:
                 on_dismiss()
             if not app_already_running:
                 stopTouchApp()
 
-        popup.bind(parent=on_left_window)
-
+        popup = PopupFrame(
+            title=title,
+            body=content,
+            size=size,
+            buttons=buttons,
+            art_file=str(background_image_file) if background_image_file else "",
+            on_closed=on_closed,
+            fill_window=fill_window,
+        )
+        content.popup_ref = popup
         popup.bind(on_open=lambda *_: log_popup_opened(title))
-
-        x_focused = False
-
-        def _on_key_down(_win: object, key: int, *_args: object) -> bool:
-            nonlocal x_focused
-            if escape_focuses_close and add_close_button and is_escape_key(key):
-                # noinspection PyUnboundLocalVariable
-                if x_focused:
-                    clear_focus_highlight(close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
-                else:
-                    draw_focus_highlight(close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
-                x_focused = not x_focused
-                return True
-            if closes_popup(key):
-                popup.dismiss()
-                return True
-            return False
-
-        Window.bind(on_key_down=_on_key_down)
-        popup.bind(on_dismiss=lambda *_: Window.unbind(on_key_down=_on_key_down))
-
+        if timeout > 0:
+            Clock.schedule_once(lambda _dt: popup.dismiss(), timeout)
         popup.open()
 
     try:
@@ -300,33 +131,3 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     except Exception as e:
         logger.critical(f"Failed to show standalone popup: {e}")
         raise
-
-
-def _get_background_image_pos_and_size(
-    container_pos: tuple[int, int],
-    container_size: tuple[int, int],
-    texture_ratio: float,
-) -> tuple[tuple[int, int], tuple[int, int]]:
-    container_ratio = (container_size[0] / container_size[1]) if container_size[1] > 0 else 1
-    max_width = container_size[0]
-    max_height = container_size[1]
-
-    # Fit the image inside the container: the side that is relatively longer fills it.
-    # The other side can come out over the container only by a rounding error, which
-    # the snap below absorbs.
-    if container_ratio < texture_ratio:
-        bgnd_width = max_width
-        bgnd_height = max_width / texture_ratio
-    else:
-        bgnd_height = max_height
-        bgnd_width = max_height * texture_ratio
-
-    if (max_width - bgnd_width) < _SAME_SIZE_CUTOFF_PX:
-        bgnd_width = max_width
-    if (max_height - bgnd_height) < _SAME_SIZE_CUTOFF_PX:
-        bgnd_height = max_height
-
-    bgnd_x = container_pos[0] + ((container_size[0] - bgnd_width) / 2)
-    bgnd_y = container_pos[1] + ((container_size[1] - bgnd_height) / 2)
-
-    return (round(bgnd_x), round(bgnd_y)), (round(bgnd_width), round(bgnd_height))

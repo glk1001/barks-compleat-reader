@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from barks_reader.core.popup_frame import PopupSize
 from barks_reader.ui import about_box
 
 
@@ -38,7 +39,9 @@ def test_a_dismiss_callback_runs_after_the_dismissal_is_logged(loguru_sink: list
         )
         show.call_args.kwargs["on_dismiss"]()
     assert seen == ["About box dismissed."]
-    assert show.call_args.kwargs["escape_focuses_close"] is True  # Escape to the X first
+    # No buttons, so a close X, which Escape lands on first (the frame's rule).
+    assert "buttons" not in show.call_args.kwargs
+    assert show.call_args.kwargs["size"] is PopupSize.LARGE
 
 
 def _label_texts(label: MagicMock) -> list[str]:

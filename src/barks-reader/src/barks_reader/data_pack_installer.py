@@ -47,8 +47,6 @@ _APP_NAME = "Barks Reader Data Pack Update"
 # content below the 56 px title bar keeps the success art's 1184 x 864 shape, so the art
 # fills it with no bands at the sides.
 _POPUP_SIZE = (900, 720)
-# A light dark wash over the art, so the gold message is what the eye lands on.
-_ART_SCRIM = (0.0, 0.0, 0.0, 0.28)
 PREVIEW_ARG = "--preview"
 
 
@@ -181,6 +179,7 @@ def _show_success_message(
     from kivy import Config  # noqa: PLC0415
 
     from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
+    from barks_reader.core.popup_frame import FrameButton  # noqa: PLC0415
     from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup  # noqa: PLC0415
 
     # Set the window pos and size now to avoid moving window flicker. No OS frame: the
@@ -204,32 +203,24 @@ def _show_success_message(
     show_standalone_popup(
         "Data Pack Updated",
         content,
-        size_hint=(1, 1),
-        add_close_button=False,
+        fill_window=True,
+        buttons=(FrameButton("OK", lambda: None),),  # closing it restarts the reader
         background_image_file=background,
-        wrapper_scrim=_ART_SCRIM,
         on_dismiss=on_dismiss or _restart_reader,
     )
 
 
 def _success_content(text: str) -> Any:  # noqa: ANN401
-    """Return the popup's body: the message over the art, and an OK button under it.
+    """Return the popup's body: the message, over the art.
 
-    The button presses the popup's dismiss (``popup_ref``, which the standalone popup
-    sets); Return and Escape close it too, for the remote.
+    The popup's OK button is the frame's; Return and Escape press it too, for the remote.
     """
     from kivy.metrics import dp, sp  # noqa: PLC0415
-    from kivy.uix.anchorlayout import AnchorLayout  # noqa: PLC0415
-    from kivy.uix.boxlayout import BoxLayout  # noqa: PLC0415
-    from kivy.uix.button import Button  # noqa: PLC0415
     from kivy.uix.label import Label  # noqa: PLC0415
 
     from barks_reader.core.reader_palette import theme  # noqa: PLC0415
 
-    content = BoxLayout(orientation="vertical")
-    content.popup_ref = None
-
-    # The app's hero-title gold, outlined dark so it stands out over the light art.
+    # The app's hero-title gold, outlined dark so it stands out over the art.
     label = Label(
         text=text,
         markup=True,
@@ -242,26 +233,7 @@ def _success_content(text: str) -> Any:  # noqa: ANN401
         padding=(dp(24), dp(24)),
     )
     label.bind(size=lambda widget, size: setattr(widget, "text_size", size))
-    content.add_widget(label)
-
-    ok_button = Button(
-        text="OK",
-        size_hint=(None, None),
-        size=(dp(200), dp(50)),
-        font_size=sp(20),
-        bold=True,
-        color=[1, 1, 1, 1],
-        background_normal="",
-        background_color=[*theme().accent_selection[:3], 0.9],
-    )
-    ok_button.bind(on_press=lambda *_: content.popup_ref and content.popup_ref.dismiss())
-    bottom = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=dp(90))
-    bottom.add_widget(ok_button)
-    content.add_widget(bottom)
-
-    content.label = label
-    content.ok_button = ok_button
-    return content
+    return label
 
 
 def success_text(installed: DataPackInfo) -> str:

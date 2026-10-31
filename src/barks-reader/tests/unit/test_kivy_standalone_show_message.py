@@ -18,17 +18,14 @@ import kivy.clock
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE
-from barks_reader.ui.kivy_standalone_show_message import (
-    _get_background_image_pos_and_size,
-    divider_line,
-    show_standalone_popup,
-)
+from barks_reader.core.popup_frame import FrameButton, PopupSize
+from barks_reader.ui.kivy_standalone_show_message import divider_line, show_standalone_popup
+from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
 from kivy.core.window import Window
-from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from PIL import Image
+from kivy.uix.image import Image
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -103,11 +100,6 @@ def _open(loop: _Loop, **kwargs: Any) -> ModalView:  # noqa: ANN401
     return loop.popup
 
 
-def _write_png(path: Path, size: tuple[int, int]) -> Path:
-    Image.new("RGBA", size, (200, 180, 120, 255)).save(path)
-    return path
-
-
 class TestWithoutAnApp:
     def test_it_shows_the_window_and_runs_a_loop_of_its_own(
         self, no_app: _Loop, loguru_sink: list[str]
@@ -121,14 +113,14 @@ class TestWithoutAnApp:
         assert no_app.content.parent is not None
         assert log_markers.STANDALONE_POPUP_OPENED.format(title=_TITLE) in loguru_sink
 
-    def test_escape_closes_it_and_ends_the_loop_once_it_has_left_the_window(
+    def test_return_closes_it_and_ends_the_loop_once_it_has_left_the_window(
         self, no_app: _Loop, loguru_sink: list[str]
     ) -> None:
         on_dismiss = MagicMock()
         popup = _open(no_app, on_dismiss=on_dismiss)
         closed = log_markers.STANDALONE_POPUP_CLOSED.format(title=_TITLE)
 
-        assert Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])
+        assert Window.dispatch("on_key_down", KEY_ENTER, 0, None, [])
 
         # Dismissed, but still fading out: nothing has closed yet.
         assert closed not in loguru_sink
@@ -142,11 +134,11 @@ class TestWithoutAnApp:
         on_dismiss.assert_called_once_with()
         no_app.stop.assert_called_once_with()
 
-    def test_escape_can_land_on_the_close_button_first(
+    def test_escape_lands_on_the_close_button_first(
         self, no_app: _Loop, loguru_sink: list[str]
     ) -> None:
-        """As in the readers: Escape to the X, Return closes; Escape there gives it back."""
-        popup = _open(no_app, escape_focuses_close=True)
+        """As everywhere: Escape to the X, Return closes; Escape there gives it back."""
+        popup = _open(no_app)
         with patch.object(popup, "dismiss", wraps=popup.dismiss) as dismiss:
             assert Window.dispatch("on_key_down", KEY_ESCAPE, 0, None, [])
             dismiss.assert_not_called()
@@ -176,7 +168,7 @@ class TestWithoutAnApp:
             no_app.popup.dismiss()
             no_app.finish_closing()
 
-        unbind.assert_any_call(on_key_down=handler)
+        assert handler in [c.kwargs.get("on_key_down") for c in unbind.call_args_list]
 
     def test_a_loop_that_fails_is_logged_and_raised(
         self, no_app: _Loop, loguru_sink: list[str]
@@ -200,18 +192,36 @@ class TestWithTheApp:
 
         app.stop.assert_not_called()
 
+    def test_it_is_the_shared_frame_sized_as_asked(self, app: _Loop) -> None:
+        popup = _open(app, size=PopupSize.MEDIUM)
+        assert isinstance(popup, PopupFrame)
+        assert popup.size_class is PopupSize.MEDIUM
+        assert not popup.fill_window
+
+    def test_a_popup_that_is_its_windows_only_content_fills_it(self, no_app: _Loop) -> None:
+        popup = _open(no_app, fill_window=True)
+        assert popup.fill_window
+        assert tuple(popup.size_hint) == (1, 1)
+
     def test_the_close_button_closes_it(self, app: _Loop) -> None:
         popup = _open(app)
         close = next(w for w in popup.walk() if isinstance(w, Button) and w.text == "X")
 
         with patch.object(popup, "dismiss") as dismiss:
-            close.dispatch("on_press")
+            close.dispatch("on_release")
 
         dismiss.assert_called_once_with()
 
-    def test_it_can_have_no_close_button(self, app: _Loop) -> None:
-        popup = _open(app, add_close_button=False)
-        assert not any(isinstance(w, Button) and w.text == "X" for w in popup.walk())
+    def test_buttons_take_the_place_of_the_close_button(self, app: _Loop) -> None:
+        start = MagicMock()
+        popup = _open(app, buttons=(FrameButton("Start", start),))
+        assert [w.text for w in popup.walk() if isinstance(w, Button)] == ["Start"]
+
+        with patch.object(popup, "dismiss") as dismiss:
+            assert Window.dispatch("on_key_down", KEY_ENTER, 0, None, [])
+
+        dismiss.assert_called_once_with()
+        start.assert_called_once_with()
 
     def test_a_timeout_closes_it(self, app: _Loop) -> None:
         popup = _open(app, timeout=5)
@@ -222,114 +232,14 @@ class TestWithTheApp:
 
         dismiss.assert_called_once_with()
 
-    def test_the_title_bar_follows_its_size(self, app: _Loop) -> None:
+    def test_the_art_is_drawn_behind_the_content(self, app: _Loop, tmp_path: Path) -> None:
+        art = tmp_path / "background.png"
+        popup = _open(app, background_image_file=art)
+        assert [w.source for w in popup.walk() if isinstance(w, Image)] == [str(art)]
+
+    def test_no_art_draws_no_image(self, app: _Loop) -> None:
         popup = _open(app)
-        title_bar = popup.content.children[-1]
-        title_bar.pos = (10, 20)
-        title_bar.size = (300, 56)
-        shadow, top, bottom = (
-            i for i in title_bar.canvas.before.children if type(i).__name__ == "Rectangle"
-        )
-        assert (tuple(shadow.pos), tuple(shadow.size)) == ((10, 16), (300, 6))
-        assert (tuple(top.pos), tuple(bottom.pos)) == ((10, 48), (10, 20))
-        assert tuple(top.size) == tuple(bottom.size) == (300, 28)
-
-
-class TestBackgroundImage:
-    def test_the_image_is_drawn_behind_the_content(self, app: _Loop, tmp_path: Path) -> None:
-        background = _write_png(tmp_path / "background.png", (40, 20))
-
-        popup = _open(app, background_image_file=background)
-
-        wrapper = popup.content.children[0]
-        sizes = [
-            tuple(i.texture.size)
-            for i in wrapper.canvas.before.children
-            if getattr(i, "texture", None) is not None
-        ]
-        assert (40, 20) in sizes
-
-    def test_the_image_fits_the_card_and_follows_it(self, app: _Loop, tmp_path: Path) -> None:
-        background = _write_png(tmp_path / "background.png", (40, 20))
-        popup = _open(app, background_image_file=background)
-        card = _card(popup)
-
-        card.pos = (50, 60)
-        card.size = (400, 400)
-
-        image = next(
-            i
-            for i in card.canvas.before.children
-            if isinstance(i, RoundedRectangle) and tuple(i.texture.size) == (40, 20)
-        )
-        assert (tuple(image.pos), tuple(image.size)) == ((50, 160), (400, 200))
-
-
-def _card(popup: ModalView) -> Any:  # noqa: ANN401
-    """Return the popup's card: the box under the title bar that holds the content."""
-    return popup.content.children[0]
-
-
-class TestScrim:
-    """The wash between the background art and the content covers the card, however sized.
-
-    The error popups draw dark text on it; were it left behind, that text would sit
-    on the popup's dark grey.
-    """
-
-    @pytest.mark.parametrize("with_image", [False, True])
-    def test_it_covers_the_card_and_follows_it(
-        self, app: _Loop, tmp_path: Path, with_image: bool
-    ) -> None:
-        image = _write_png(tmp_path / "background.png", (40, 20)) if with_image else None
-        popup = _open(app, background_image_file=image)
-        card = _card(popup)
-
-        for pos, size in (((50, 60), (400, 300)), ((70, 80), (500, 350))):
-            card.pos = pos
-            card.size = size
-
-            *_, scrim = (i for i in card.canvas.before.children if isinstance(i, RoundedRectangle))
-            shadow = next(i for i in card.canvas.before.children if type(i) is Rectangle)
-            assert (tuple(scrim.pos), tuple(scrim.size)) == (pos, size)
-            assert (tuple(shadow.pos), tuple(shadow.size)) == ((pos[0] + 2, pos[1] - 2), size)
-
-    def test_its_colour_is_the_one_asked_for(self, app: _Loop) -> None:
-        popup = _open(app, wrapper_scrim=(0.1, 0.1, 0.1, 0.7))
-        *_, scrim_colour = (i for i in _card(popup).canvas.before.children if type(i) is Color)
-        assert tuple(scrim_colour.rgba) == pytest.approx((0.1, 0.1, 0.1, 0.7))
-
-
-class TestBackgroundFit:
-    """The image fits inside its box, centred, its longer side filling the box."""
-
-    def test_a_wide_image_fills_the_width(self) -> None:
-        assert _get_background_image_pos_and_size((0, 0), (400, 400), 2.0) == (
-            (0, 100),
-            (400, 200),
-        )
-
-    def test_a_tall_image_fills_the_height(self) -> None:
-        assert _get_background_image_pos_and_size((10, 20), (400, 400), 0.5) == (
-            (110, 20),
-            (200, 400),
-        )
-
-    def test_a_side_within_ten_pixels_of_the_box_is_snapped_to_it(self) -> None:
-        assert _get_background_image_pos_and_size((0, 0), (400, 300), 400 / 295) == (
-            (0, 0),
-            (400, 300),
-        )
-
-    def test_a_rounding_hair_over_the_box_is_snapped_back(self) -> None:
-        # 3422 * (4042 / 3422) is 4042.0000000000005 in floating point.
-        assert _get_background_image_pos_and_size((0, 0), (4042, 3422), 4042 / 3422) == (
-            (0, 0),
-            (4042, 3422),
-        )
-
-    def test_a_box_with_no_height_gets_no_image(self) -> None:
-        assert _get_background_image_pos_and_size((0, 0), (100, 0), 1.0) == ((50, 0), (0, 0))
+        assert not any(isinstance(w, Image) for w in popup.walk())
 
 
 def test_a_divider_line_is_one_pixel_and_follows_its_widget() -> None:

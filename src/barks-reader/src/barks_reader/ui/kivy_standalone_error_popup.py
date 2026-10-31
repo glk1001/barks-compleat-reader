@@ -43,6 +43,7 @@ def show_error_popup(
         background_image_file: Image to put behind everything
 
     """
+    from barks_reader.core.popup_frame import FrameButton
     from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
 
     from .kivy_standalone_show_message import show_standalone_popup
@@ -69,8 +70,13 @@ def show_error_popup(
     show_standalone_popup(
         title=f"{title_bar_text} {severity.title()}",
         content=content,
+        fill_window=True,
+        buttons=(
+            FrameButton("OK", lambda: None),
+            FrameButton("Save to File", content.save_to_file, closes=False),
+            FrameButton("Copy to Clipboard", content.copy_to_clipboard, closes=False),
+        ),
         timeout=timeout,
-        auto_dismiss=False,
         background_image_file=background_image_file,
     )
 
@@ -94,14 +100,18 @@ def _get_error_content(  # noqa: C901
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_formatter import get_text_with_markup_stripped
+    from barks_reader.core.reader_palette import theme
+
+    from .popup_frame import BUTTON_BACKGROUND
 
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
     info_text_font_size = sp(14)
     button_font_size = sp(17)
+    text_color = list(theme().text_secondary)
 
     class _ErrorContent(BoxLayout):
-        """Content widget for error popups with severity levels and action buttons."""
+        """The error popup's body, on the frame's dark card; its buttons are the frame's."""
 
         def __init__(  # noqa: PLR0915
             self,
@@ -121,27 +131,9 @@ def _get_error_content(  # noqa: C901
                 f"{self.message}\n\n{self.details}" if self.details else self.message
             )
             self.popup_ref = None
+            self._base_title = ""
             self.severity = error_severity.lower()
             self.details_visible = False
-
-            # ========== BACKGROUND & SHADOW ==========
-            with self.canvas.before:  # ty: ignore[unresolved-attribute]
-                # Drop shadow
-                Color(0, 0, 0, 0.25)
-                self.shadow_rect = RoundedRectangle(
-                    pos=(self.x + 5, self.y - 5),
-                    size=self.size,
-                    radius=[14],
-                )
-                # Main white card background
-                Color(1, 1, 1, 0.5)
-                self.bg_rect = RoundedRectangle(
-                    pos=(self.x, self.y),
-                    size=self.size,
-                    radius=[12],
-                )
-
-            self.bind(pos=self._update_background, size=self._update_background)
 
             # ========== SEVERITY BANNER ==========
             self.colors = {
@@ -153,7 +145,7 @@ def _get_error_content(  # noqa: C901
             color_scheme = self.colors.get(self.severity, self.colors["error"])
 
             severity_banner = Label(
-                text=f"ꕕ {self.title} {self.severity.capitalize()}",
+                text=f"{self.title} {self.severity.capitalize()}",
                 size_hint_y=None,
                 height=60,
                 font_size=banner_header_font_size,
@@ -173,9 +165,6 @@ def _get_error_content(  # noqa: C901
 
             severity_banner.bind(pos=self._update_severity_bgnd, size=self._update_severity_bgnd)
             self.add_widget(severity_banner)
-
-            # Add a bit of spacing so the white card doesn't overlap banner corners
-            self.padding = [20, 10, 20, 20]
 
             # --- Scrollable content ---
             self.scroll_view = ReaderScrollView(size_hint=(1, 1))
@@ -202,14 +191,14 @@ def _get_error_content(  # noqa: C901
                     markup=True,
                     size_hint_y=None,
                     height=32,
-                    color=[0, 0, 0, 1],
+                    color=list(theme().text_title),
                     halign="left",
                     valign="middle",
                     padding=[10, 0],
                 )
                 heading.bind(width=lambda inst, val: setattr(inst, "text_size", (val - 20, None)))
                 with heading.canvas.before:  # ty:ignore[unresolved-attribute]
-                    Color(0.95, 0.95, 0.95, 1)  # faint gray background
+                    Color(1, 1, 1, 0.06)  # a faint band in the dark card
                     heading.bg_rect = Rectangle(size=heading.size, pos=heading.pos)
                 heading.bind(size=lambda inst, val: setattr(inst.bg_rect, "size", val))
                 heading.bind(pos=lambda inst, val: setattr(inst.bg_rect, "pos", val))
@@ -224,7 +213,7 @@ def _get_error_content(  # noqa: C901
                 size_hint_y=None,
                 halign="left",
                 valign="top",
-                color=[0, 0, 0, 1],
+                color=text_color,
                 padding=[0, 10],
             )
             self.label_msg.bind(width=update_text_size)
@@ -245,7 +234,7 @@ def _get_error_content(  # noqa: C901
                 size_hint_y=None,
                 halign="left",
                 valign="top",
-                color=[0.2, 0.2, 0.2, 1],
+                color=text_color,
             )
             self.label_log_path.bind(width=update_text_size)
             scroll_content.add_widget(self.label_log_path)
@@ -261,7 +250,7 @@ def _get_error_content(  # noqa: C901
                 size_hint_y=None,
                 halign="left",
                 valign="top",
-                color=[0, 0, 0, 1],
+                color=text_color,
             )
             self.label_details.bind(width=update_text_size)
             self.label_details.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
@@ -273,11 +262,13 @@ def _get_error_content(  # noqa: C901
             # --- Details toggle button ---
             if self.details:
                 btn_toggle = Button(
-                    text="▼ Show Details",
+                    text="Show Details",
                     font_size=button_font_size,
                     size_hint_y=None,
                     height=40,
-                    background_color=[0.3, 0.3, 0.3, 1],
+                    background_normal="",
+                    background_color=list(BUTTON_BACKGROUND),
+                    color=text_color,
                     font_name=ROBOTO_FONT,
                 )
                 btn_toggle.bind(on_press=self.toggle_details)
@@ -286,30 +277,15 @@ def _get_error_content(  # noqa: C901
                 if show_error_details:
                     self.toggle_details()
 
-            # --- Action buttons ---
-            button_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
-            btn_save = Button(text="Save to File", font_size=button_font_size, size_hint_x=0.33)
-            btn_save.bind(on_press=self.save_to_file)
-            button_layout.add_widget(btn_save)
-
-            btn_copy = Button(
-                text="Copy to Clipboard", font_size=button_font_size, size_hint_x=0.33
-            )
-            btn_copy.bind(on_press=self.copy_to_clipboard)
-            button_layout.add_widget(btn_copy)
-
-            btn_ok = Button(text="OK", font_size=button_font_size, size_hint_x=0.34)
-            btn_ok.bind(on_press=self.dismiss_popup)
-            button_layout.add_widget(btn_ok)
-            self.add_widget(button_layout)
-
         # --- Helper methods ---
-        def _update_background(self, *_args) -> None:  # noqa: ANN002
-            """Keep background and shadow aligned with widget bounds."""
-            self.bg_rect.pos = self.pos
-            self.bg_rect.size = self.size
-            self.shadow_rect.pos = (self.x + 5, self.y - 5)
-            self.shadow_rect.size = self.size
+        def _flash_title(self, text: str, seconds: float) -> None:
+            """Show `text` in the popup's title bar for a moment, then its title again."""
+            if not self.popup_ref:
+                return
+            self._base_title = self._base_title or self.popup_ref.title
+            self.popup_ref.title = text
+            base = self._base_title
+            Clock.schedule_once(lambda _dt: setattr(self.popup_ref, "title", base), seconds)
 
         def _update_severity_bgnd(self, instance: Widget, _) -> None:  # noqa: ANN001
             """Keep severity banner background aligned with label."""
@@ -326,7 +302,7 @@ def _get_error_content(  # noqa: C901
                     self.scroll_content.add_widget(self._error_details_divider_line)
                     self.scroll_content.add_widget(self.heading_details, index=idx)
                     self.scroll_content.add_widget(self.label_details, index=idx)
-                self.btn_toggle.text = "▲ Hide Details"
+                self.btn_toggle.text = "Hide Details"
             else:
                 if self.label_details.parent is not None:
                     self.scroll_content.remove_widget(self.label_details)
@@ -334,7 +310,7 @@ def _get_error_content(  # noqa: C901
                     self.scroll_content.remove_widget(self.heading_details)
                 if self._error_details_divider_line:
                     self.scroll_content.remove_widget(self._error_details_divider_line)
-                self.btn_toggle.text = "▼ Show Details"
+                self.btn_toggle.text = "Show Details"
 
             # Scroll back to top
             from kivy.clock import Clock
@@ -363,21 +339,10 @@ def _get_error_content(  # noqa: C901
 
                 logger.info(f'Error saved to "{error_msg_file}".')
 
-                # Update popup title with feedback
-                if self.popup_ref:
-                    self.popup_ref.title = f'Error Information: Saved to "{error_msg_file}"'
-                    Clock.schedule_once(
-                        lambda _dt: setattr(self.popup_ref, "title", ""),
-                        3.0,
-                    )
+                self._flash_title(f'Saved to "{error_msg_file}"', 3.0)
             except Exception:  # noqa: BLE001
                 logger.exception("Failed to save error to file:")
-                if self.popup_ref:
-                    self.popup_ref.title = "Error Information (Save Failed!)"
-                    Clock.schedule_once(
-                        lambda _dt: setattr(self.popup_ref, "title", ""),
-                        2.0,
-                    )
+                self._flash_title("Save failed", 2.0)
 
         def copy_to_clipboard(self, *_args) -> None:  # noqa: ANN002
             """Copy error message to clipboard."""
@@ -385,20 +350,9 @@ def _get_error_content(  # noqa: C901
             try:
                 Clipboard.copy(self.full_message)
                 logger.info("Error message copied to clipboard")
-
-                if self.popup_ref:
-                    self.popup_ref.title = "Error Information: Copied to clipboard"
-                    Clock.schedule_once(
-                        lambda _dt: setattr(self.popup_ref, "title", ""),
-                        2.0,
-                    )
+                self._flash_title("Copied to clipboard", 2.0)
             except Exception:  # noqa: BLE001
                 logger.exception("Failed to copy to clipboard:")
-
-        def dismiss_popup(self, *_args) -> None:  # noqa: ANN002
-            """Dismiss the popup."""
-            if self.popup_ref:
-                self.popup_ref.dismiss()
 
     return _ErrorContent(title, message, log_path, severity, details, show_details)
 

@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from barks_reader.core.popup_frame import FrameButton
 from barks_reader.core.reader_utils import (
     get_centred_position_on_primary_monitor,
     quote_and_join_with_and,
@@ -10,6 +11,8 @@ from barks_reader.core.reader_utils import (
 from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
+# A path's box: a darker well in the frame's dark card.
+PATH_BOX_BACKGROUND = (0.0, 0.0, 0.0, 0.35)
 
 
 def show_installer_message(
@@ -34,8 +37,8 @@ def show_installer_message(
     show_standalone_popup(
         title,
         _get_installer_success_content(fanta_volumes_dir, data_zips, app_config_dir, app_log_path),
-        size_hint=(0.90, 0.85),
-        add_close_button=False,
+        fill_window=True,
+        buttons=(FrameButton("Start Barks Reader", lambda: None),),  # closing it starts it
         background_image_file=background_image_file,
     )
 
@@ -49,23 +52,23 @@ def _get_installer_success_content(  # noqa: C901
     # Delay Kivy imports until instantiation
     from barks_kivy_ui.scrolling import ReaderScrollView
     from kivy.graphics import Color, RoundedRectangle
-    from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
     from kivy.metrics import dp, sp
-    from kivy.uix.anchorlayout import AnchorLayout
     from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.button import Button
     from kivy.uix.label import Label
     from kivy.uix.widget import Widget
+
+    from barks_reader.core.reader_palette import theme
 
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
     file_path_font_size = sp(13)
     warning_text_font_size = sp(14)
     info_text_font_size = sp(14)
-    button_font_size = sp(17)
 
     class _InstallerSuccessContent(BoxLayout):
-        def __init__(  # noqa: PLR0915
+        """The installer's report, on the frame's dark card; its Start button is the frame's."""
+
+        def __init__(
             self,
             fanta_volumes_dir: Path | None,
             data_zips: list[Path],
@@ -73,35 +76,16 @@ def _get_installer_success_content(  # noqa: C901
             app_log_path: Path,
         ) -> None:
             super().__init__(orientation="vertical", padding=0, spacing=0)
+            self.popup_ref = None
 
             if data_zips is None:
                 data_zips = []
-
-            # === BACKGROUND ======================================================
-            # noinspection PyArgumentList
-            tex = Texture.create(size=(1, 64), colorfmt="rgba")
-            grad = bytearray()
-            for i in range(64):
-                t = 250 - int(10 * i / 63)
-                grad.extend([t, t, 255, 255])
-            tex.blit_buffer(bytes(grad), colorfmt="rgba", bufferfmt="ubyte")
-
-            with self.canvas.before:  # ty:ignore[unresolved-attribute]
-                # Drop shadow (same as error popup)
-                Color(0, 0, 0, 0.25)
-                self._shadow = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
-                # White gradient background
-                Color(1, 1, 1, 0.5)
-                self._bg = RoundedRectangle(
-                    pos=self.pos, size=self.size, radius=[dp(12)], texture=tex
-                )
-            self.bind(pos=self._update_bg, size=self._update_bg)
 
             # === SCROLL AREA =====================================================
             scroll_view = ReaderScrollView(size_hint=(1, 1), do_scroll_y=False)
             content_box = BoxLayout(
                 orientation="vertical",
-                padding=[25, 20],
+                padding=[dp(4), 0],
                 spacing=10,
                 size_hint_y=None,
             )
@@ -116,7 +100,7 @@ def _get_installer_success_content(  # noqa: C901
             banner.bind(pos=lambda _i, v: setattr(banner.bg, "pos", v))
             banner.add_widget(
                 Label(
-                    text="✅  Installation Completed Successfully",
+                    text="Installation Completed Successfully",
                     color=[1, 1, 1, 1],
                     font_size=banner_header_font_size,
                     bold=True,
@@ -135,7 +119,7 @@ def _get_installer_success_content(  # noqa: C901
                 self._add_paths_box(content_box, [fanta_volumes_dir])
             else:
                 self._add_warning_text(
-                    content_box, "⚠ Your Fantagraphics Carl Barks Library was NOT found."
+                    content_box, "Your Fantagraphics Carl Barks Library was NOT found."
                 )
                 self._add_info_text(
                     content_box,
@@ -168,47 +152,14 @@ def _get_installer_success_content(  # noqa: C901
             scroll_view.add_widget(content_box)
             self.add_widget(scroll_view)
 
-            # === OK BUTTON (centered vertically inside bottom area) ===
-            # Fixed height bottom area so centering works predictably.
-            bottom_area = BoxLayout(
-                size_hint_y=None,
-                height=dp(90),  # room for centering; tweak if you want more/less space
-                padding=[dp(100), dp(10), dp(100), dp(10)],
-            )
-
-            # AnchorLayout centers its child both vertically & horizontally
-            anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, 1))
-
-            btn_ok = Button(
-                size_hint=(None, None),
-                size=(dp(320), dp(45)),  # explicit width/height keeps it stable across DPI
-                text="🚀  Start Barks Reader",
-                font_size=button_font_size,
-                bold=True,
-                color=[1, 1, 1, 1],
-                background_normal="",
-                background_color=[0.2, 0.5, 0.9, 1],
-            )
-            btn_ok.bind(on_press=self._dismiss)
-
-            anchor.add_widget(btn_ok)
-            bottom_area.add_widget(anchor)
-            self.add_widget(bottom_area)
-
         # === Helpers ============================================================
-        def _update_bg(self, *_args) -> None:  # noqa: ANN002
-            self._bg.pos = self.pos
-            self._bg.size = self.size
-            self._shadow.pos = (self.x + dp(5), self.y - dp(5))
-            self._shadow.size = self.size
-
         @staticmethod
         def _add_section_header(parent: Widget, text: str) -> None:
             lbl = Label(
                 text=text,
                 font_size=section_header_font_size,
                 bold=True,
-                color=[0, 0, 0, 1],  # match error popup heading
+                color=list(theme().text_title),
                 size_hint_y=None,
                 height=28,
                 halign="left",
@@ -222,7 +173,7 @@ def _get_installer_success_content(  # noqa: C901
             lbl = Label(
                 text=text,
                 font_size=info_text_font_size,
-                color=[0.1, 0.1, 0.1, 1],
+                color=list(theme().text_secondary),
                 size_hint_y=None,
                 halign="left",
                 valign="top",
@@ -241,7 +192,7 @@ def _get_installer_success_content(  # noqa: C901
             lbl = Label(
                 text=text,
                 font_size=warning_text_font_size,
-                color=[0.9, 0.45, 0.1, 1],
+                color=[0.95, 0.55, 0.2, 1],
                 bold=True,
                 size_hint_y=None,
                 halign="left",
@@ -260,7 +211,7 @@ def _get_installer_success_content(  # noqa: C901
         def _add_paths_box(parent: Widget, paths: list[Path]) -> None:
             card = BoxLayout(size_hint_y=None, height=45, padding=[10, 6])
             with card.canvas.before:  # ty:ignore[unresolved-attribute]
-                Color(0.96, 0.97, 1, 0.5)
+                Color(*PATH_BOX_BACKGROUND)
                 card.bg = RoundedRectangle(size=card.size, pos=card.pos, radius=[dp(5)])
             card.bind(size=lambda _i, v: setattr(card.bg, "size", v))
             card.bind(pos=lambda _i, v: setattr(card.bg, "pos", v))
@@ -272,20 +223,13 @@ def _get_installer_success_content(  # noqa: C901
                 font_name="RobotoMono-Regular",
                 font_size=file_path_font_size,
                 bold=True,
-                color=[0.1, 0.2, 0.6, 1],
+                color=list(theme().text_secondary),
                 halign="center",
                 valign="middle",
             )
             lbl.bind(size=lambda i, v: setattr(i, "text_size", (v[0] - 15, None)))
             card.add_widget(lbl)
             parent.add_widget(card)
-
-        def _dismiss(self, *_args) -> None:  # noqa: ANN002
-            parent = self.parent
-            while parent and not hasattr(parent, "dismiss"):
-                parent = parent.parent
-            if parent:
-                parent.dismiss()
 
     return _InstallerSuccessContent(fanta_vol_dir, dat_zips, config_dir, log_path)
 

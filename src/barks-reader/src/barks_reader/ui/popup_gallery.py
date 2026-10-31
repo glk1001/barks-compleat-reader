@@ -39,7 +39,7 @@ from barks_reader.core import data_pack, log_markers
 from barks_reader.core.data_pack import DataPackInfo, UpdateCheck, UpdateStatus
 from barks_reader.core.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from barks_reader.core.memory_census import take_request
-from barks_reader.core.popup_frame import PopupSize
+from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
     POPUP_GALLERY_ENV_VAR,
@@ -59,7 +59,7 @@ from .main_screen import (
     open_quit_popup,
     open_small_screen_popup,
 )
-from .popup_frame import FrameButton, PopupFrame, message_body
+from .popup_frame import PopupFrame, message_body
 from .settings_fix import open_folder_chooser_popup
 from .user_error_handler import UserErrorHandler
 

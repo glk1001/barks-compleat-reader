@@ -289,23 +289,20 @@ class TestSuccessMessage:
 
             title, content = popup.call_args.args
             assert title == "Data Pack Updated"
-            assert "Data pack 6 (29 Oct 2026)" in content.label.text
+            assert "Data pack 6 (29 Oct 2026)" in content.text
             assert popup.call_args.kwargs["background_image_file"] == tmp_path / "ok.png"
-            assert popup.call_args.kwargs["size_hint"] == (1, 1)
-            assert popup.call_args.kwargs["add_close_button"] is False
+            assert popup.call_args.kwargs["fill_window"] is True
+            (ok,) = popup.call_args.kwargs["buttons"]
+            assert (ok.text, ok.closes) == ("OK", True)
+            ok.on_press()  # the frame closes it; the closing restarts the reader
             popup.call_args.kwargs["on_dismiss"]()
 
         spawn.assert_called_once_with(["/exe/barks-reader"])
 
-    def test_the_ok_button_dismisses_the_popup(self) -> None:
+    def test_the_body_is_the_message_alone_its_ok_the_frames(self) -> None:
         content = data_pack_installer._success_content("done")  # noqa: SLF001
-
-        content.ok_button.trigger_action()  # before the popup exists: nothing to dismiss
-        content.popup_ref = MagicMock()
-        content.ok_button.trigger_action()
-
-        content.popup_ref.dismiss.assert_called_once()
-        assert content.ok_button.text == "OK"
+        assert content.text == "done"
+        assert not content.children
 
     def test_without_the_background_art_the_popup_still_shows(
         self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch
@@ -343,7 +340,7 @@ class TestSuccessMessage:
 
             title, content = popup.call_args.args
             assert title == "Data Pack Updated"
-            assert "Data pack 6 (" in content.label.text
+            assert "Data pack 6 (" in content.text
             popup.call_args.kwargs["on_dismiss"]()
 
         spawn.assert_not_called()

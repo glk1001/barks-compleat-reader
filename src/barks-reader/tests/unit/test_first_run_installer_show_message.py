@@ -1,16 +1,21 @@
-"""The installer's success screen: where things went, what to do next, and its start button."""
+"""The installer's success screen: where things went, what to do next, and its start button.
+
+The start button is the popup frame's (``ui.popup_frame``), not the content's.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 from barks_reader import first_run_installer_show_message
 from kivy.config import Config
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.widget import Widget
+
+if TYPE_CHECKING:
+    from kivy.uix.widget import Widget
 
 _FANTA = Path("/books/Fantagraphics Carl Barks Library")
 _ZIPS = [Path("barks-reader-data-1.barkspack"), Path("barks-reader-data-2.barkspack")]
@@ -39,7 +44,7 @@ def _texts(widget: Widget) -> list[str]:
 def test_it_says_where_everything_went() -> None:
     texts = _texts(_content())
 
-    assert texts[0] == "✅  Installation Completed Successfully"
+    assert texts[0] == "Installation Completed Successfully"
     assert f'"{_FANTA}"' in texts
     assert f'"{_CONFIG}"' in texts
     assert f'"{_LOG}"' in texts
@@ -50,7 +55,7 @@ def test_it_says_where_everything_went() -> None:
 def test_a_library_not_found_is_a_warning_with_what_to_do() -> None:
     texts = _texts(_content(fanta_dir=None))
 
-    assert "⚠ Your Fantagraphics Carl Barks Library was NOT found." in texts
+    assert "Your Fantagraphics Carl Barks Library was NOT found." in texts
     assert "You'll need to configure the library location when the app starts." in texts
 
 
@@ -70,29 +75,12 @@ def test_the_text_wraps_to_its_width() -> None:
 
     wrapped = [w for w in content.walk() if isinstance(w, Label) and w.text_size[0] is not None]
     assert wrapped
-    assert tuple(content._bg.size) == (600, 900)  # noqa: SLF001
 
 
-def test_start_closes_the_popup_around_it() -> None:
-    class _Popup(Widget):
-        dismiss = MagicMock()
-
+def test_it_draws_no_card_and_no_button_of_its_own_on_the_frames() -> None:
     content = _content()
-    popup = _Popup()
-    middle = Widget()
-    popup.add_widget(middle)
-    middle.add_widget(content)
-    start = next(w for w in content.walk() if isinstance(w, Button))
-    assert start.text == "🚀  Start Barks Reader"
-
-    start.dispatch("on_press")
-
-    popup.dismiss.assert_called_once_with()
-
-
-def test_start_outside_a_popup_does_nothing() -> None:
-    start = next(w for w in _content().walk() if isinstance(w, Button))
-    start.dispatch("on_press")
+    assert not content.canvas.before.children
+    assert not [w for w in content.walk() if isinstance(w, Button)]
 
 
 def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path: Path) -> None:
@@ -125,8 +113,8 @@ def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path:
     title, content = show.call_args.args
     assert title == "Installation Complete"
     assert f'"{_FANTA}"' in _texts(content)
-    assert show.call_args.kwargs == {
-        "size_hint": (0.90, 0.85),
-        "add_close_button": False,
-        "background_image_file": background,
-    }
+    kwargs = dict(show.call_args.kwargs)
+    (start,) = kwargs.pop("buttons")
+    assert kwargs == {"fill_window": True, "background_image_file": background}
+    assert (start.text, start.closes) == ("Start Barks Reader", True)
+    start.on_press()  # the frame closes it; the installer goes on to start the app

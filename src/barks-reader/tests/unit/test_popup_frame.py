@@ -10,11 +10,12 @@ from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT
 from barks_reader.core.popup_frame import (
     MAX_WINDOW_WIDTH_FRACTION,
     SIZE_CLASSES,
+    FrameButton,
     PopupSize,
     popup_size,
 )
 from barks_reader.ui import popup_frame
-from barks_reader.ui.popup_frame import FrameButton, PopupFrame, message_body
+from barks_reader.ui.popup_frame import PopupFrame, message_body
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
@@ -159,6 +160,13 @@ class TestPopupFrame:
         with patch.object(frame, "dismiss") as dismiss:
             assert _press(frame, KEY_LEFT) is True
         dismiss.assert_not_called()
+
+    def test_its_title_can_be_changed_to_show_news(self) -> None:
+        frame = _frame()
+        frame.title = "Copied to clipboard"
+        titles = [w.text for w in frame.walk() if isinstance(w, Label)]
+        assert "Copied to clipboard" in titles
+        assert "A Title" not in titles
 
     def test_on_closed_runs_once_it_has_left_the_window(self) -> None:
         on_closed = MagicMock()

@@ -8,6 +8,7 @@ from loguru import logger
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
 from barks_reader.core import log_markers
+from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_palette import theme
 
@@ -15,11 +16,6 @@ from .font_manager import FontManager
 from .kivy_standalone_show_message import show_standalone_popup
 
 ABOUT_POPUP_TITLE = "About the Barks Reader"
-
-# Warm near-black scrim over the background art so the gold/cream text reads
-# on-brand — the same "art under a dark scrim" language as the rest of the app,
-# replacing the old white wash with black text.
-ABOUT_WRAPPER_SCRIM = (0.14, 0.12, 0.10, 0.38)
 
 
 def show_about_box(
@@ -142,14 +138,9 @@ def show_about_box(
     show_standalone_popup(
         title=ABOUT_POPUP_TITLE,
         content=content,
-        size_hint=(0.85, 0.54),
-        timeout=0,
-        auto_dismiss=True,
-        add_close_button=True,
+        size=PopupSize.LARGE,
         background_image_file=about_background_path,
-        wrapper_scrim=ABOUT_WRAPPER_SCRIM,
         on_dismiss=lambda: _dismissed(on_dismiss),
-        escape_focuses_close=True,  # as in the readers: Escape to the X, Return closes
     )
 
 

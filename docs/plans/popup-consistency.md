@@ -1,8 +1,8 @@
 # Plan: one look for every popup, and a gallery to check them
 
 > Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
-> 2026-10-31**; stage 3 begun: the `MessagePopup` family is on the frame; the
-> standalone family, speech bubbles and the settings popups are still to move. Decided with the user that day: every
+> 2026-10-31**; stage 3 begun: the `MessagePopup` and standalone families are on the
+> frame; speech bubbles and the settings popups are still to move. Decided with the user that day: every
 > popup the app owns is in scope; the shared look starts from the standalone family's
 > (About, the installers); the popups are viewed both live and as a screenshot sheet;
 > the gallery comes first, so today's inconsistencies are seen side by side before any
@@ -88,7 +88,7 @@ stage 3 is done.
 ## Stage 3 onward: one family at a time
 
 Move each family onto the frame, each its own commit, each checked in the gallery
-before and after: `MessagePopup` (the most used; done 2026-10-31), then the standalone family, then
+before and after: `MessagePopup` (the most used; done 2026-10-31), then the standalone family (done 2026-10-31), then
 speech bubbles, then the settings popups, restyling Kivy's options list and the
 wiki's footnote bubble only where it is cheap (the bubble is `okf_reader`'s, shared
 with the standalone viewer).
@@ -99,6 +99,18 @@ The `MessagePopup` family's move: `open_confirm_popup` and `open_message_popup`
 questions are small, with their art and their text at 1.35x, centred; the two notices
 and the seven user errors are medium. The frame now takes the keys on `on_pre_open`,
 as the old driver did on opening: a key pressed during the fade-in reached no one.
+
+The standalone family's move, decided with the user: `show_standalone_popup`
+(`ui/kivy_standalone_show_message.py`) builds a `PopupFrame` and still runs a loop of
+its own when no app is running. About is large, with its art and its close X; the
+three popups that are their own window (the first-run installer, the error popup, the
+data pack success) fill that window, so the black margin round their card is gone.
+The installer's and the error popup's light cards are dark, their green and red
+banners kept; their buttons are the frame's row (the error popup's OK first, so it
+starts focused, then Save to File and Copy to Clipboard, which leave it up and show
+their news in the title bar); the glyphs Roboto lacks are dropped. For it the frame
+learnt to fill its window, to keep a button's popup up, and to land Escape on the X
+of a popup with no buttons first, as everywhere in the app (47d61baf).
 
 ## Open questions
 

@@ -16,12 +16,12 @@ key is kept while the frame is open.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
+from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -31,7 +31,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.widget import Widget
 
 from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
-from barks_reader.core.popup_frame import PopupSize, popup_size
+from barks_reader.core.popup_frame import FrameButton, PopupSize, popup_size
 from barks_reader.core.reader_palette import theme
 
 from .kivy_standalone_show_message import closes_popup
@@ -68,19 +68,6 @@ BUTTON_BACKGROUND = (0.26, 0.23, 0.20, 1.0)
 _FOCUS_GROUP = "popup_frame_focus"
 
 
-@dataclass(frozen=True, slots=True)
-class FrameButton:
-    """A button on the frame's row: its label, and what pressing it does.
-
-    A button closes the popup before its action runs, unless it is one that leaves the
-    popup up (Save to File, Copy to Clipboard).
-    """
-
-    text: str
-    on_press: Callable[[], None]
-    closes: bool = True
-
-
 def message_body(text: str, *, font_size: float, centred: bool = False) -> Label:
     """Return the frame's body text: prose left-aligned, a short question centred.
 
@@ -111,6 +98,9 @@ def _wrap_to_size(label: Label, size: tuple[float, float]) -> None:
 
 class PopupFrame(ModalView):
     """A popup on the shared frame: a title, a body, and buttons or a close X."""
+
+    # The title bar's text; set it to show a moment's news there (Saved, Copied).
+    title = StringProperty()
 
     def __init__(
         self,
@@ -148,6 +138,7 @@ class PopupFrame(ModalView):
             background="",
             background_color=(0, 0, 0, 0),
         )
+        self.title = title
         self.size_class = size
         self.fill_window = fill_window
         self._frame_buttons = tuple(buttons)
@@ -204,6 +195,7 @@ class PopupFrame(ModalView):
             valign="middle",
         )
         title_label.bind(size=_wrap_to_size)
+        self.bind(title=title_label.setter("text"))
         bar.add_widget(title_label)
         if not self._frame_buttons:
             close = Button(

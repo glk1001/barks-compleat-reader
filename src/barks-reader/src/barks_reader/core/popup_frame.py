@@ -1,4 +1,4 @@
-"""The popup frame's size classes, free of Kivy: how big a popup is on a given window.
+"""The popup frame's size classes and buttons, free of Kivy: how big a popup is.
 
 Every popup the app owns is one of three sizes (``docs/plans/popup-consistency.md``).
 A size is measured in comic pages across and in the window's height down, a page being
@@ -12,8 +12,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from .reader_utils import COMIC_PAGE_ASPECT_RATIO
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class PopupSize(StrEnum):
@@ -22,6 +26,20 @@ class PopupSize(StrEnum):
     SMALL = "small"  # a question: Quit, Delete, Clear
     MEDIUM = "medium"  # a message, an error, a setting
     LARGE = "large"  # a long list or text: About, speech bubbles, the installers
+
+
+@dataclass(frozen=True, slots=True)
+class FrameButton:
+    """A button on the frame's row: its label, and what pressing it does.
+
+    A button closes the popup before its action runs, unless it is one that leaves the
+    popup up (Save to File, Copy to Clipboard). Free of Kivy, so the popups that are
+    their own window can name their buttons before Kivy is imported.
+    """
+
+    text: str
+    on_press: Callable[[], None]
+    closes: bool = True
 
 
 @dataclass(frozen=True, slots=True)

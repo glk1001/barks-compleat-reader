@@ -10,9 +10,9 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.popup_frame import PopupSize
+from barks_reader.core.popup_frame import FrameButton, PopupSize
 
-from .popup_frame import FrameButton, PopupFrame, message_body
+from .popup_frame import PopupFrame, message_body
 
 if TYPE_CHECKING:
     from collections.abc import Callable

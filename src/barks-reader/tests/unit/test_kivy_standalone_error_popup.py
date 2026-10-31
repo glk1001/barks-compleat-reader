@@ -1,5 +1,7 @@
 """The crash popup: what it shows, its details toggle, and its Save, Copy and OK buttons.
 
+Its buttons are the popup frame's (``ui.popup_frame``); Save and Copy leave it up.
+
 The widgets are real, built on the test process's window; the clock never runs
 here, so what the popup schedules (the title's reset, the scroll back to the top)
 is caught and run by hand.
@@ -66,7 +68,7 @@ def _run_last_scheduled(clock: MagicMock) -> None:
 class TestContent:
     def test_the_banner_names_the_severity(self) -> None:
         texts = _texts(_content(severity="CRITICAL"))
-        assert "ꕕ Barks Reader Critical" in texts
+        assert "Barks Reader Critical" in texts
 
     @pytest.mark.parametrize(
         ("severity", "background"),
@@ -87,22 +89,15 @@ class TestContent:
     def test_without_a_log_it_says_so(self) -> None:
         assert "No log file available." in _texts(_content(log_path=""))
 
-    def test_the_three_buttons_are_there_and_no_toggle_without_details(self) -> None:
-        texts = _texts(_content())
-        assert {"Save to File", "Copy to Clipboard", "OK"} <= set(texts)
-        assert "▼ Show Details" not in texts
+    def test_its_buttons_are_the_frames_and_no_toggle_without_details(self) -> None:
+        assert not [w for w in _content().walk() if isinstance(w, Button)]
 
     def test_the_copy_holds_the_message_and_details_without_markup(self) -> None:
         content = _content(details=_DETAILS)
         assert content.full_message == "Something broke\n\nTraceback line 1\nline 2"
 
-    def test_the_background_follows_the_widget(self) -> None:
-        content = _content()
-        content.pos = (100, 200)
-        content.size = (300, 400)
-        assert tuple(content.bg_rect.pos) == (100, 200)
-        assert tuple(content.shadow_rect.pos) == (105, 195)
-        assert tuple(content.shadow_rect.size) == (300, 400)
+    def test_it_draws_no_card_of_its_own_on_the_frames(self) -> None:
+        assert not _content().canvas.before.children
 
     def test_the_banner_background_follows_the_banner(self) -> None:
         content = _content()
@@ -123,7 +118,7 @@ class TestContent:
 class TestDetails:
     def test_details_start_hidden_behind_a_toggle(self, clock: MagicMock) -> None:
         content = _content(details=_DETAILS)
-        assert content.btn_toggle.text == "▼ Show Details"
+        assert content.btn_toggle.text == "Show Details"
         assert content.label_details.parent is None
         clock.schedule_once.assert_not_called()
 
@@ -133,9 +128,9 @@ class TestDetails:
         content = _content(details=_DETAILS)
         content.scroll_view.scroll_y = 0
 
-        _button(content, "▼ Show Details").dispatch("on_press")
+        _button(content, "Show Details").dispatch("on_press")
 
-        assert content.btn_toggle.text == "▲ Hide Details"
+        assert content.btn_toggle.text == "Hide Details"
         texts = _texts(content.scroll_content)
         log_at = texts.index('Check the log for more info:\n\n[b]"/logs/app.log".[/b]')
         assert texts[log_at + 1 : log_at + 3] == [
@@ -152,14 +147,14 @@ class TestDetails:
         content.toggle_details()
         content.toggle_details()
 
-        assert content.btn_toggle.text == "▼ Show Details"
+        assert content.btn_toggle.text == "Show Details"
         assert content.label_details.parent is None
         assert content.heading_details.parent is None
         assert list(content.scroll_content.children) == before
 
     def test_they_can_start_shown(self) -> None:
         content = _content(details=_DETAILS, show_details=True)
-        assert content.btn_toggle.text == "▲ Hide Details"
+        assert content.btn_toggle.text == "Hide Details"
         assert content.label_details.parent is content.scroll_content
 
 
@@ -169,9 +164,9 @@ class TestSave:
         self, tmp_path: Path, clock: MagicMock, loguru_sink: list[str]
     ) -> None:
         content = _content(log_path=str(tmp_path / "app.log"), details=_DETAILS)
-        content.popup_ref = MagicMock()
+        content.popup_ref = MagicMock(title="Installer Error")
 
-        _button(content, "Save to File").dispatch("on_press")
+        content.save_to_file()
 
         (report,) = tmp_path.glob("barks-reader-error-details-*.txt")
         text = report.read_text(encoding="utf-8")
@@ -179,9 +174,9 @@ class TestSave:
         assert "Severity: ERROR\n" in text
         assert text.endswith("Something broke\n\nTraceback line 1\nline 2")
         assert f'Error saved to "{report}".' in loguru_sink
-        assert content.popup_ref.title == f'Error Information: Saved to "{report}"'
+        assert content.popup_ref.title == f'Saved to "{report}"'
         _run_last_scheduled(clock)
-        assert content.popup_ref.title == ""
+        assert content.popup_ref.title == "Installer Error"
 
     def test_without_a_log_it_saves_in_the_working_directory(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -197,14 +192,14 @@ class TestSave:
         self, tmp_path: Path, clock: MagicMock, loguru_sink: list[str]
     ) -> None:
         content = _content(log_path=str(tmp_path / "no-such-dir" / "app.log"))
-        content.popup_ref = MagicMock()
+        content.popup_ref = MagicMock(title="Installer Error")
 
         content.save_to_file()
 
         assert _logged(loguru_sink, "Failed to save error to file:")
-        assert content.popup_ref.title == "Error Information (Save Failed!)"
+        assert content.popup_ref.title == "Save failed"
         _run_last_scheduled(clock)
-        assert content.popup_ref.title == ""
+        assert content.popup_ref.title == "Installer Error"
 
     @pytest.mark.usefixtures("clock")
     def test_without_a_popup_nothing_is_retitled(
@@ -216,20 +211,29 @@ class TestSave:
         assert _logged(loguru_sink, "Failed to save error to file:")
 
 
-class TestCopyAndOk:
+class TestCopy:
     def test_copy_puts_the_plain_text_on_the_clipboard(
         self, clock: MagicMock, clipboard: MagicMock, loguru_sink: list[str]
     ) -> None:
         content = _content(details=_DETAILS)
-        content.popup_ref = MagicMock()
+        content.popup_ref = MagicMock(title="Installer Error")
 
-        _button(content, "Copy to Clipboard").dispatch("on_press")
+        content.copy_to_clipboard()
 
         clipboard.copy.assert_called_once_with("Something broke\n\nTraceback line 1\nline 2")
         assert "Error message copied to clipboard" in loguru_sink
-        assert content.popup_ref.title == "Error Information: Copied to clipboard"
+        assert content.popup_ref.title == "Copied to clipboard"
         _run_last_scheduled(clock)
-        assert content.popup_ref.title == ""
+        assert content.popup_ref.title == "Installer Error"
+
+    @pytest.mark.usefixtures("clipboard")
+    def test_news_on_news_still_ends_on_the_popups_title(self, clock: MagicMock) -> None:
+        content = _content()
+        content.popup_ref = MagicMock(title="Installer Error")
+        content.copy_to_clipboard()
+        content.copy_to_clipboard()  # before the first news has gone
+        _run_last_scheduled(clock)
+        assert content.popup_ref.title == "Installer Error"
 
     @pytest.mark.usefixtures("clock")
     def test_a_copy_without_a_popup_is_only_logged(
@@ -248,19 +252,6 @@ class TestCopyAndOk:
         content.copy_to_clipboard()
 
         assert _logged(loguru_sink, "Failed to copy to clipboard:")
-
-    @pytest.mark.usefixtures("clock", "clipboard")
-    def test_ok_closes_the_popup(self) -> None:
-        content = _content()
-        content.popup_ref = MagicMock()
-
-        _button(content, "OK").dispatch("on_press")
-
-        content.popup_ref.dismiss.assert_called_once_with()
-
-    @pytest.mark.usefixtures("clock", "clipboard")
-    def test_ok_before_the_popup_exists_does_nothing(self) -> None:
-        _content().dismiss_popup()
 
 
 @pytest.mark.usefixtures("clock", "clipboard")
@@ -295,9 +286,17 @@ def test_show_error_popup_places_the_window_and_shows_the_content(tmp_path: Path
     kwargs = show.call_args.kwargs
     assert kwargs["title"] == "Installer Critical"
     assert kwargs["timeout"] == 0
-    assert kwargs["auto_dismiss"] is False
+    assert kwargs["fill_window"] is True
     assert kwargs["background_image_file"] == background
     content = kwargs["content"]
+    ok, save, copy = kwargs["buttons"]
+    assert [(b.text, b.closes) for b in kwargs["buttons"]] == [
+        ("OK", True),  # first, so it starts focused; the last that closes, so Escape's
+        ("Save to File", False),
+        ("Copy to Clipboard", False),
+    ]
+    assert (save.on_press, copy.on_press) == (content.save_to_file, content.copy_to_clipboard)
+    ok.on_press()  # the frame closes it; OK itself does nothing more
     assert content.message == "Could not find the data pack"
     assert content.log_path == "/logs/installer.log"
     assert content.details_visible
