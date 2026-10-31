@@ -15,7 +15,7 @@ from barks_reader.core.popup_frame import (
     popup_size,
 )
 from barks_reader.ui import popup_frame
-from barks_reader.ui.popup_frame import PopupFrame, message_body
+from barks_reader.ui.popup_frame import CLOSE_BUTTON_WIDTH, PopupFrame, message_body
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
@@ -200,6 +200,17 @@ class TestPopupFrame:
         assert title.font_name == "Roboto"
         frame.title_font_size = 31
         assert title.font_size == 31  # noqa: PLR2004
+
+    @pytest.mark.parametrize("has_buttons", [False, True])
+    def test_the_title_is_centred_on_the_bar_x_or_none(self, has_buttons: bool) -> None:
+        frame = _frame((FrameButton("OK", MagicMock()),) if has_buttons else ())
+        (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]
+        assert title.halign == "center"
+        bar = title.parent
+        assert bar is not None
+        beside = [w for w in bar.children if w is not title]
+        # Right of it the X, left of it a spacer as wide; with buttons, neither.
+        assert [w.width for w in beside] == ([] if has_buttons else [CLOSE_BUTTON_WIDTH] * 2)
 
     def test_the_focus_can_start_on_another_button(self) -> None:
         clear, cancel = MagicMock(), MagicMock()

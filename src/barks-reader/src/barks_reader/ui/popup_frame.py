@@ -1,7 +1,7 @@
 """The frame every popup the app owns is built on (``docs/plans/popup-consistency.md``).
 
-One look, from the standalone family's: a warm-dark title bar with the title in the
-theme's title colour, and under it a dark card, with art beneath a scrim if the popup
+One look, from the standalone family's: a warm-dark title bar with the title centred
+in the theme's title colour, and under it a dark card, with art beneath a scrim if the popup
 has art, holding the popup's body and a row of buttons along the bottom, right-aligned.
 A popup with no buttons has a close X in its title bar instead. The frame is centred,
 sized by its class (``core/popup_frame.py``), and follows the window as it resizes; a
@@ -238,13 +238,16 @@ class PopupFrame(ModalView):
             color=list(theme().text_title),
             font_size=self.title_font_size,
             bold=True,
-            halign="left",
+            halign="center",
             valign="middle",
         )
         if font_name:
             title_label.font_name = font_name
         title_label.bind(size=_wrap_to_size)
         self.bind(title=title_label.setter("text"), title_font_size=title_label.setter("font_size"))
+        if not self._frame_buttons:
+            # The X's width on the left too, so the title is centred on the bar.
+            bar.add_widget(Widget(size_hint_x=None, width=CLOSE_BUTTON_WIDTH))
         bar.add_widget(title_label)
         if not self._frame_buttons:
             close = Button(
