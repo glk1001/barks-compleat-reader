@@ -1,6 +1,7 @@
 # Plan: one look for every popup, and a gallery to check them
 
-> Status: **stage 1 (the gallery) done 2026-10-31**; stages 2 onward planned. Decided with the user that day: every
+> Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
+> 2026-10-31**; stage 3 onward planned. Decided with the user that day: every
 > popup the app owns is in scope; the shared look starts from the standalone family's
 > (About, the installers); the popups are viewed both live and as a screenshot sheet;
 > the gallery comes first, so today's inconsistencies are seen side by side before any
@@ -57,18 +58,31 @@ Two ways to look, from one list of popups.
 
 ## Stage 2: the shared frame
 
-One popup frame, from the standalone family's look in the theme's colours, every
-popup built on it:
+One popup frame (`ui/popup_frame.py`'s `PopupFrame`), from the standalone family's
+look in the theme's colours, for every popup to be built on. Decided with the user
+2026-10-31:
 
-- one title bar (the warm-dark bar, the title font and colour from the theme);
-- one body text style: prose left-aligned, a short question centred;
-- one button row, along the bottom, one height, one focus ring;
-- one way to put art behind a popup, with one scrim;
-- centred, always;
-- three size classes, each a window fraction held between dp limits so a popup reads
-  on the 4K television and in a small window: small (a question: Quit, Delete,
-  Clear), medium (a message, an error, a setting), large (a long list, About, the
-  installers).
+- one title bar: the warm-dark bar, the title in the theme's title colour; a close X
+  only on a popup with no buttons (About, the data pack success), since Cancel and
+  Escape close the rest;
+- one body text style (`message_body`): cream, prose left-aligned, a short question
+  centred;
+- one button row along the bottom, right-aligned, one height, one focus ring; Left and
+  Right move it, Return presses, Escape presses the last button (the cancel);
+- one card: dark, as About's, with any art beneath one scrim (`CARD_SCRIM`), the art
+  filling the card;
+- centred, always: the speech bubbles popup too, now pinned 6% in from the window's
+  bottom-left corner (its placement may be looked at again later);
+- three size classes (`core/popup_frame.py`), measured in comic pages across (the
+  window's height over the page aspect, as the spread lays out its pages) and in the
+  window's height down, so a popup is the same size on the single page and on the
+  spread at one height, as the fonts are, rather than stretching across two pages:
+  small (a question: Quit, Delete, Clear), medium (a message, an error, a setting),
+  large (a long list, About, the speech bubbles, the installers, the folder chooser).
+
+The gallery shows the frame's three samples (`frame-small`, `frame-medium`,
+`frame-large`) at every screen size until the real popups are on it; drop them once
+stage 3 is done.
 
 ## Stage 3 onward: one family at a time
 
@@ -81,6 +95,9 @@ with the standalone viewer).
 ## Open questions
 
 - The own-window popups (installer, error, data pack success) size their window in
-  pixels before Kivy starts; the size classes may need a pixel form for them.
+  pixels before Kivy starts; `popup_size` gives the pixels, but the frame's module
+  imports Kivy, so they must import it after `config_info`, as their previews now do.
+- The size classes scale with the window's height, the fonts by two height groups;
+  check the frame on the 4K television before stage 3 is done.
 - The GUI tests wait on the popups' log lines (`CONFIRM_POPUP_OPENED` and the rest);
   the frame keeps every one.

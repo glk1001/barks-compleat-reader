@@ -39,6 +39,7 @@ from barks_reader.core import data_pack, log_markers
 from barks_reader.core.data_pack import DataPackInfo, UpdateCheck, UpdateStatus
 from barks_reader.core.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from barks_reader.core.memory_census import take_request
+from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
     POPUP_GALLERY_ENV_VAR,
@@ -58,6 +59,7 @@ from .main_screen import (
     open_quit_popup,
     open_small_screen_popup,
 )
+from .popup_frame import FrameButton, PopupFrame, message_body
 from .settings_fix import open_folder_chooser_popup
 from .user_error_handler import UserErrorHandler
 
@@ -207,6 +209,54 @@ def _open_alt_escape(_app: GalleryApp) -> None:
     AltEscapeCapturePopup(current_keycode=0, on_capture=_ignore, on_clear=_ignore).open()
 
 
+_FRAME_MEDIUM_TEXT = (
+    "Fantagraphics volumes [b]5, 9[/b] and [b]14[/b] are missing from the comic zips"
+    " directory.\n\nYou can still browse the whole library, search, and read the wiki;"
+    " the titles in those volumes will not open until their archives are found. To set"
+    " the directory, go to settings, then restart the app."
+)
+_FRAME_LARGE_TEXT = (
+    "[b]The Compleat Barks Disney Reader[/b] reads the Fantagraphics Carl Barks library:"
+    " every story in its volumes, with the restored censored pages, the covers and the"
+    " one-pagers.\n\nThe library is browsed by chronology, by series, by character and by"
+    " tag, or searched word by word through every speech bubble. A title opens at its"
+    " first page, or at the page a search found.\n\nThe wiki, read beside the stories,"
+    " tells what is known of each: when Barks wrote and drew it, where it was first"
+    " printed, and who has written about it since.\n\nThis sample has no buttons, so its"
+    " close X is in the title bar; Escape and Return close it too."
+)
+
+
+def _open_frame_sample(size: PopupSize) -> Callable[[GalleryApp], None]:
+    def _open(app: GalleryApp) -> None:
+        font_size = app.font_manager.error_popup_font_size
+        if size is PopupSize.SMALL:
+            frame = PopupFrame(
+                title="Quit",
+                body=message_body("Quit the Barks Reader?", font_size=font_size, centred=True),
+                size=size,
+                buttons=(FrameButton("Quit", _ignore), FrameButton("Stay", _ignore)),
+                art_file=_identity_art(app),
+            )
+        elif size is PopupSize.MEDIUM:
+            frame = PopupFrame(
+                title="Fantagraphics Volumes Missing",
+                body=message_body(_FRAME_MEDIUM_TEXT, font_size=font_size),
+                size=size,
+                buttons=(FrameButton("Settings", _ignore), FrameButton("Close", _ignore)),
+            )
+        else:
+            frame = PopupFrame(
+                title="About the Barks Reader",
+                body=message_body(_FRAME_LARGE_TEXT, font_size=font_size),
+                size=size,
+                art_file=_identity_art(app),
+            )
+        frame.open()
+
+    return _open
+
+
 # How each popup in `POPUP_NAMES` (``core.popup_gallery``) is opened.
 _OPENERS: dict[str, Callable[[GalleryApp], None]] = {
     "quit": lambda app: open_quit_popup(_identity_art(app), _ignore),
@@ -229,6 +279,9 @@ _OPENERS: dict[str, Callable[[GalleryApp], None]] = {
         "Fantagraphics Directory", str(Path.home()), _SettingStandIn()
     ),
     "alt-escape-key": _open_alt_escape,
+    "frame-small": _open_frame_sample(PopupSize.SMALL),
+    "frame-medium": _open_frame_sample(PopupSize.MEDIUM),
+    "frame-large": _open_frame_sample(PopupSize.LARGE),
 }
 
 GALLERY: tuple[GalleryPopup, ...] = tuple(

@@ -28,7 +28,12 @@ def error_popup_name(error_type: ErrorTypes) -> str:
     return "error-" + "".join(f"-{c.lower()}" if c.isupper() else c for c in name).lstrip("-")
 
 
-# The gallery's order: the confirms, the messages, the user errors, then the rest.
+# The shared frame's samples (``ui.popup_frame``), one per size class, shown until the
+# real popups are moved onto it.
+FRAME_SAMPLE_NAMES: tuple[str, ...] = ("frame-small", "frame-medium", "frame-large")
+
+# The gallery's order: the confirms, the messages, the user errors, the rest, then the
+# frame's samples.
 POPUP_NAMES: tuple[str, ...] = (
     "quit",
     "delete-reading",
@@ -42,6 +47,7 @@ POPUP_NAMES: tuple[str, ...] = (
     "speech-bubbles",
     "folder-chooser",
     "alt-escape-key",
+    *FRAME_SAMPLE_NAMES,
 )
 
 
