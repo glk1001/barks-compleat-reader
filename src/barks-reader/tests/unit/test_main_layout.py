@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from barks_reader.core.main_layout import (
-    GUTTER_FRACTION,
     MAIN_SCREEN_LAYOUT_OPTIONS,
     MATCH_THE_SCREEN,
     SINGLE_PAGE,
@@ -13,7 +12,6 @@ from barks_reader.core.main_layout import (
     MainLayoutMode,
     choose_main_layout,
     content_aspect_ratio,
-    gutter_width,
     page_width,
     spread_fits,
 )
@@ -23,7 +21,7 @@ BAR = 45
 
 
 # The geometry table in docs/plans/two-page-spread.md: the spread when two pages as tall
-# as the screen allows fit side by side, with the gutter between them.
+# as the screen allows fit side by side.
 @pytest.mark.parametrize(
     ("name", "width", "height", "fits"),
     [
@@ -33,8 +31,8 @@ BAR = 45
         ("laptop 1920x1200", 1920, 1200, True),
         ("3:2 2160x1440", 2160, 1440, True),
         ("1366x768", 1366, 768, True),
-        ("4:3 1440x1080, 55 px to spare", 1440, 1080, True),
-        ("5:4 1280x1024, the pages would shrink 2%", 1280, 1024, False),
+        ("4:3 1440x1080, 68 px to spare", 1440, 1080, True),
+        ("5:4 1280x1024, the pages would shrink 1%", 1280, 1024, False),
         ("ultra-wide 3440x1440", 3440, 1440, True),
         ("the flip laptop in portrait", 1200, 1920, False),
     ],
@@ -72,20 +70,18 @@ def test_the_settings_options_are_the_three_values_in_the_panels_order() -> None
     assert MAIN_SCREEN_LAYOUT_OPTIONS == (MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD)
 
 
-def test_the_spreads_shape_is_the_pages_over_two_pages_and_the_gutter() -> None:
+def test_the_spreads_shape_is_the_page_over_two_pages() -> None:
     assert content_aspect_ratio(MainLayoutMode.SINGLE) == COMIC_PAGE_ASPECT_RATIO
     spread = content_aspect_ratio(MainLayoutMode.SPREAD)
-    assert spread == pytest.approx(COMIC_PAGE_ASPECT_RATIO / (2 + GUTTER_FRACTION))
-    assert spread == pytest.approx(0.747, abs=0.001)
-    assert content_aspect_ratio(MainLayoutMode.SPREAD, 2.0) == pytest.approx(2.0 / 2.02)
+    assert spread == pytest.approx(COMIC_PAGE_ASPECT_RATIO / 2)
+    assert spread == pytest.approx(0.755, abs=0.001)
+    assert content_aspect_ratio(MainLayoutMode.SPREAD, 2.0) == pytest.approx(1.0)
 
 
-def test_a_spreads_width_is_two_pages_and_the_gutter() -> None:
-    page = page_width(2020.0)
-    gutter = gutter_width(2020.0)
-    assert page == pytest.approx(1000.0)
-    assert gutter == pytest.approx(20.0)
-    assert 2 * page + gutter == pytest.approx(2020.0)
+def test_a_spread_is_two_touching_pages() -> None:
+    """No gutter: the readers' two-up pairs, which touch, fill the window as the pages do."""
+    assert page_width(2000.0) == pytest.approx(1000.0)
+    assert 2 * page_width(2000.0) == pytest.approx(2000.0)
 
 
 def test_a_page_in_the_spread_is_as_wide_as_the_single_column_at_the_same_height() -> None:

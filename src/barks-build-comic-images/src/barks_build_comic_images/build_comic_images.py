@@ -1448,36 +1448,25 @@ def _load_title_page_font(font_file: str, size: int) -> FreeTypeFont:
     return ImageFont.truetype(font_file, size, layout_engine=ImageFont.Layout.BASIC)
 
 
-def build_double_page_image(
-    left: PilImage,
-    right: PilImage,
-    gap: int = 0,
-    gap_color: tuple[int, int, int] = (0, 0, 0),
-) -> PilImage:
+def build_double_page_image(left: PilImage, right: PilImage) -> PilImage:
     """Composite two pages side-by-side into a single landscape image.
 
     Args:
         left: The left page PIL image.
         right: The right page PIL image.
-        gap: Pixels between the two pages (a book's gutter).
-        gap_color: The gutter's RGB colour.
 
     Returns:
         A single landscape RGB PIL Image with left on the left and right on the right,
-        *gap* apart, both vertically centred on a black canvas.
+        both vertically centred on a black canvas.
 
     """
-    width = left.width + gap + right.width
+    width = left.width + right.width
     height = max(left.height, right.height)
     result = Image.new("RGB", (width, height), (0, 0, 0))
 
     left_top = (height - left.height) // 2
     right_top = (height - right.height) // 2
     result.paste(left, (0, left_top))
-    result.paste(right, (left.width + gap, right_top))
-    if gap > 0:
-        ImageDraw.Draw(result).rectangle(
-            (left.width, 0, left.width + gap - 1, height - 1), fill=gap_color
-        )
+    result.paste(right, (left.width, right_top))
 
     return result

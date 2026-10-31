@@ -130,10 +130,9 @@ def _rebuild(screen: CorpusStatsScreen) -> None:
 
 
 class TestTheSpreadBar:
-    def test_the_bar_spans_the_spread_gutter_and_all(self) -> None:
-        """The kv file widens the bar by this: two pages alone fell a gutter short."""
+    def test_the_bar_is_as_wide_as_the_spread(self) -> None:
+        """The kv file widens the bar by the spread's own width in pages, not a copy of it."""
         assert CorpusStatsScreen.SPREAD_WIDTH_IN_PAGES == SPREAD_WIDTH_IN_PAGES
-        assert CorpusStatsScreen.SPREAD_WIDTH_IN_PAGES > 2
 
 
 class TestBuildOnOpen:

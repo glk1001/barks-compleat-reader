@@ -158,7 +158,8 @@ The design: on a landscape monitor the main screen becomes an open book. The tre
 the left page, the current bottom view is the right page, each page at the comic page's
 proportion, the pair centred on black with a gutter between, the action bar across the
 top of the pair. Every page is the same width the single column has on the same screen,
-so nothing gets smaller and the fonts, keyed to window height, do not change.
+so nothing gets smaller and the fonts, keyed to window height, do not change. (From
+2026-11-01 there is no gutter: the two pages touch at a drawn spine; decision 12.)
 
 ## Decisions
 
@@ -238,6 +239,14 @@ Settled with the maintainer, 2026-10-29, in this order.
     now have the main screen's gutter, so in the window, bar shown, their pages land
     where the main screen's do. Both readers' gutter is the comic paper's cream
     (`READER_GUTTER_COLOR`), black being too jarring between two pages.
+    Revised again 2026-11-01 with the user: no gutter anywhere. A strip of cream that
+    is not in the comic split any art crossing the spine, and the window was wider
+    than two pages only for the main screen's sake. The spread is now exactly two
+    pages (`SPREAD_WIDTH_IN_PAGES` = 2): the comic and document pairs touch as a
+    printed book's pages do and fill the window, and the main screen's tree and view
+    pages touch too, a 2 dp spine (`SPINE_WIDTH_DP`, black at 55%) drawn over their
+    inner edges, taking no width, so they still read as two pages. The readers' pairs
+    have no spine. At 1440p the spread window goes from 1766 to 1748 px wide.
 13. **Popups are centred on the spread,** to start with. The Menu dropdown still drops
     from its button, over the right page. The settings panel, today sized to the main
     screen (`ui/main_screen.py`, the settings `size`), keeps the single page's
@@ -266,7 +275,9 @@ Bar 45 dp, gutter 3% of a page's width (about 20 px at 1080p, 28 px at 1440p). A
 width is (H - bar) / 1.509. The pair is 2.03 pages. Fullscreen (the table is the 3%
 design's; from 2026-10-31 the gutter is 2%, about 14 px at 1080p and 18 px at 1440p,
 the pair 2.02 pages and 0.5% narrower, every "Fits" the same, 4:3 with 55 px to spare
-and 5:4's pages 2% short):
+and 5:4's pages 2% short; from 2026-11-01 there is no gutter, the pair exactly 2 pages,
+1% narrower than the table's, every "Fits" the same, 4:3 with 68 px to spare and 5:4's
+pages 1% short):
 
 | Screen | w/h | Page | Pair | Fits | Margin each side | Width used, single | Width used, spread |
 |---|---|---|---|---|---|---|---|
@@ -282,8 +293,8 @@ and 5:4's pages 2% short):
 | Flip laptop portrait 1200x1920 | 0.62 | 1243 | 2522 | no, pages shrink 52% | 0 | 100% | 100% |
 
 The spread's content aspect (height over width) is a constant,
-`COMIC_PAGE_ASPECT_RATIO / (2 + gutter fraction)` = 0.743 (0.747 at 2%), because the gutter is a
-fraction of the page. That is what makes the window lock a constant per mode rather
+`COMIC_PAGE_ASPECT_RATIO / (2 + gutter fraction)` = 0.743 (0.747 at 2%; 0.755 with no
+gutter, from 2026-11-01), because the gutter is a fraction of the page. That is what makes the window lock a constant per mode rather
 than a function of the screen. This table is the parametrised unit test of the rule.
 
 ## Changes, by stage
@@ -465,7 +476,8 @@ count where there is one, before the first multi-file edit of the stage.
 ## Open points carried into implementation
 
 - The gutter's exact fraction, once seen on this PC (3% is the mock's). Settled
-  2026-10-31: 2%, the user finding 3% too wide once the readers had it too.
+  2026-10-31: 2%, the user finding 3% too wide once the readers had it too. Removed
+  2026-11-01 (decision 12): the pages touch, the main screen's at a drawn spine.
 - Whether the tree page's wallpaper dims further behind the idle screen.
 - Where the playlist note sits on the title page in the spread.
 - Mode change while a full-window screen is up (comic reader, wiki, document):

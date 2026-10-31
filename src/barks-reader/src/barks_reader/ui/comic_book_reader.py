@@ -1193,8 +1193,8 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         # Match the inner action bar's width to the comic's aspect-fit width so it spans
         # the visible image area, not the full monitor width in fullscreen: a page's
         # in single-page mode, the pair's in double-page mode (the two pages are
-        # composited as one landscape image with the spread's gutter between them,
-        # `SPREAD_WIDTH_IN_PAGES` pages wide). In double-page mode it
+        # composited as one landscape image, `SPREAD_WIDTH_IN_PAGES` pages wide: the
+        # spread window's width). In double-page mode it
         # stays the pair's under a solo unit, the cover or an odd last page, as the
         # document reader's does on the spread: a bar that narrowed there moved its
         # buttons at a page turn, the first of every comic. It refits with the window

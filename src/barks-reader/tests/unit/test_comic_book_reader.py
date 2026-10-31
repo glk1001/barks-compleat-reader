@@ -1012,8 +1012,8 @@ class TestComicBookReaderScreen:
     @pytest.mark.parametrize(
         ("window", "two_up", "expected_width"),
         [
-            # The spread window on a 2560x1440 monitor: a page, then the pair and its
-            # gutter, the window's width.
+            # The spread window on a 2560x1440 monitor: a page, then the pair, the
+            # window's width.
             ((1775, 1365), False, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO)),
             (
                 (1775, 1365),

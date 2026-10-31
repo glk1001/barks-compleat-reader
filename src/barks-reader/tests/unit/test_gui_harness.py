@@ -400,11 +400,13 @@ class TestLayoutMatchingTheScreen:
     ) -> None:
         assert harness.layout_matching_the_screen(width, height) == "single"
 
-    @pytest.mark.parametrize(("width", "height"), [(1920, 1080), (2560, 1440), (3840, 2160)])
-    def test_a_wide_screen_gives_the_spread(self, width: int, height: int) -> None:
+    @pytest.mark.parametrize(
+        ("width", "height"), [(1920, 1080), (2560, 1440), (3840, 2160), (1600, 1200)]
+    )
+    def test_a_wide_or_4_3_screen_gives_the_spread(self, width: int, height: int) -> None:
         assert harness.layout_matching_the_screen(width, height) == "spread"
 
-    @pytest.mark.parametrize(("width", "height"), [(1280, 1024), (1600, 1200)])
+    @pytest.mark.parametrize(("width", "height"), [(1280, 1024), (1600, 1280)])
     def test_a_shape_the_action_bar_decides_gives_no_answer(self, width: int, height: int) -> None:
         assert harness.layout_matching_the_screen(width, height) is None
 

@@ -39,8 +39,8 @@ class WindowSizeConstraints:
     aspect_ratio: float
     """A page's aspect ratio, ``content_height / content_width`` (the comic page's).
 
-    The window's content is a page in the single-page layout and a pair with a gutter
-    in the two-page spread: `AppWindowGeometryHelper.content_aspect_ratio` is the one
+    The window's content is a page in the single-page layout and a pair of touching
+    pages in the two-page spread: `AppWindowGeometryHelper.content_aspect_ratio` is the one
     the window is held to.
     """
 

@@ -3,7 +3,7 @@
 The main screen was laid out for a portrait screen: the tree above the current view,
 the window locked to the comic page's shape. On a landscape screen it becomes an open
 book: the tree is the left page, the current view the right page, each page at the
-comic page's shape, a gutter between them, the action bar across the pair. A page in
+comic page's shape, the two meeting at a drawn spine, the action bar across the pair. A page in
 the spread is exactly as wide as the single column is on the same screen, so nothing
 gets smaller and the fonts, keyed to the window's height, do not change.
 
@@ -12,12 +12,14 @@ whichever matches the screen. Matching the screen is one measurement, `spread_fi
 the spread when two pages fit side by side at full height, decided from the monitor's
 full size in both windowed and fullscreen mode so a monitor gets one answer (a usable
 area less the taskbar would let a 5:4 screen flip between the two). The pair fits down
-to a width-to-height of about 1.28: 4:3 qualifies, 5:4 just misses, and no screen shape
+to a width-to-height of about 1.27: 4:3 qualifies, 5:4 just misses, and no screen shape
 sits near the boundary, so there is no hysteresis.
 
-The gutter is a fraction of a page's width, which makes the spread's content aspect
-(`content_aspect_ratio`) a constant per mode rather than a function of the screen: the
-window lock stays one number. Kivy-free, so the rule can be tested without a window.
+The spread is exactly two pages wide, with no gap between them: the readers' two-up
+pairs then fill the spread window as the main screen's pages do, touching as a printed
+book's do. The spread's content aspect (`content_aspect_ratio`) is a constant per mode
+rather than a function of the screen: the window lock stays one number. Kivy-free, so
+the rule can be tested without a window.
 The design and its decisions: ``docs/plans/two-page-spread.md``.
 """
 
@@ -33,15 +35,13 @@ SINGLE_PAGE = "Single page"
 TWO_PAGE_SPREAD = "Two-page spread"
 MAIN_SCREEN_LAYOUT_OPTIONS: tuple[str, ...] = (MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD)
 
-# The gutter between the two pages, as a fraction of a page's width (about 14 px at
-# 1080p, 18 px at 1440p): the main screen's, and the readers' between a pair.
-GUTTER_FRACTION = 0.02
-# The spread's width in pages: two pages and the gutter.
-SPREAD_WIDTH_IN_PAGES = 2 + GUTTER_FRACTION
-# The readers' gutter, the comic reader's and the document reader's: the restored pages'
-# cream paper as the reader draws it, so a pair reads as one open book rather than two
-# pages either side of a black bar.
-READER_GUTTER_COLOR = (247, 239, 226)
+# The spread's width in pages: two, touching. A gap between them would leave the
+# readers' two-up pairs, which touch, short of the window or split by a strip of colour.
+SPREAD_WIDTH_IN_PAGES = 2
+# The main screen's spine: a line drawn over the inner edges of its two pages, taking no
+# width, so the tree and the view still read as two pages. The readers' pairs have none.
+SPINE_WIDTH_DP = 2
+SPINE_RGBA = (0.0, 0.0, 0.0, 0.55)
 
 
 class MainLayoutMode(Enum):
@@ -61,7 +61,7 @@ def content_aspect_ratio(
         page_aspect_ratio: A page's height over its width.
 
     Returns:
-        The page's shape in single mode; the pair's, gutter included, in the spread.
+        The page's shape in single mode; the pair's in the spread.
 
     """
     if mode is MainLayoutMode.SPREAD:
@@ -84,8 +84,8 @@ def spread_fits(
         page_aspect_ratio: A page's height over its width.
 
     Returns:
-        True when a pair of pages as tall as the screen allows, with the gutter between
-        them, is no wider than the screen.
+        True when a pair of pages as tall as the screen allows is no wider than the
+        screen.
 
     """
     page_width = (screen_height - chrome_height) / page_aspect_ratio
@@ -122,11 +122,6 @@ def choose_main_layout(
     return MainLayoutMode.SINGLE
 
 
-def gutter_width(spread_width: float) -> float:
-    """Return the gutter's width in a spread this wide (two pages and the gutter)."""
-    return spread_width * GUTTER_FRACTION / SPREAD_WIDTH_IN_PAGES
-
-
 def page_width(spread_width: float) -> float:
-    """Return one page's width in a spread this wide (two pages and the gutter)."""
+    """Return one page's width in a spread this wide."""
     return spread_width / SPREAD_WIDTH_IN_PAGES

@@ -108,7 +108,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
-    # The spread's width in pages, its gutter included: the bar there is the window's width.
+    # The spread's width in pages: the bar there is the window's width.
     SPREAD_WIDTH_IN_PAGES = SPREAD_WIDTH_IN_PAGES
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()

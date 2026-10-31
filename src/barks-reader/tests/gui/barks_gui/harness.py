@@ -240,7 +240,7 @@ def layout_matching_the_screen(width: int, height: int) -> str | None:
 
     Returns:
         The `MainLayoutMode` value the app must log, or None on a shape in between
-        (5:4, 4:3), where the bar's height decides.
+        (5:4), where the bar's height decides.
 
     """
     if spread_fits(width, height, chrome_height=0):
