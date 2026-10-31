@@ -279,7 +279,7 @@ Both run the app, the unit tests and the build, and the GUI tests
     on it. The overnight runner switches to ANGLE by itself on such a machine (it says
     so at the start), and `check_windows_overnight_host.py`, run on the desktop, names
     the OpenGL there.
-  - **The nightly task**: the laptop's is the wake, run and sleep task in
+  - **The nightly task**: greg-dell's is the wake, run and sleep task in
     `docs/overnight-schedule.md` (01:00, pulls first), which also has its commands.
     `powershell -ExecutionPolicy Bypass -File scripts\windows\register-overnight-task.ps1`
     (02:00; `-At` for another time) registers a simpler one that does not pull first.
