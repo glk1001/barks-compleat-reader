@@ -22,6 +22,9 @@ from barks_reader.core.reader_settings import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+# The settings window's title bar; the ini section stays BARKS_READER_SECTION.
+SETTINGS_PANEL_TITLE = "Settings"
+
 
 def _always_true(_value: Any) -> bool:  # noqa: ANN401
     return True
@@ -53,7 +56,7 @@ class BuildableReaderSettings(ReaderSettings):
     def build_settings(self, settings: Settings) -> None:
         assert self._config
         settings.add_json_panel(
-            BARKS_READER_SECTION, self._config, data=_get_reader_settings_json()
+            SETTINGS_PANEL_TITLE, self._config, data=_get_reader_settings_json()
         )
         self._settings = settings
 

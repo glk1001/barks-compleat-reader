@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -19,7 +20,10 @@ from barks_reader.core.reader_settings import (
     WIKI_BUNDLE_DIR,
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
-from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
+from barks_reader.ui.reader_settings_buildable import (
+    SETTINGS_PANEL_TITLE,
+    BuildableReaderSettings,
+)
 from kivy.uix import settings as kivy_settings
 
 if TYPE_CHECKING:
@@ -63,6 +67,19 @@ def test_every_field_gets_its_default(config: MagicMock) -> None:
     section, defaults = config.setdefaults.call_args.args
     assert section == BARKS_READER_SECTION
     assert set(defaults) == {spec.key for spec in _FIELDS}
+
+
+def test_the_panel_is_titled_settings_and_its_items_keep_the_ini_section(
+    settings: BuildableReaderSettings, config: MagicMock
+) -> None:
+    kivy_panel = MagicMock()
+    settings.build_settings(kivy_panel)
+    kivy_panel.add_json_panel.assert_called_once()
+    title, panel_config = kivy_panel.add_json_panel.call_args.args
+    assert (title, panel_config) == ("Settings", config)
+    assert title == SETTINGS_PANEL_TITLE
+    items = json.loads(kivy_panel.add_json_panel.call_args.kwargs["data"])
+    assert {item["section"] for item in items if "section" in item} == {BARKS_READER_SECTION}
 
 
 class TestOnChangedSetting:
