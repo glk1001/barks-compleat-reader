@@ -33,8 +33,8 @@ BAR = 45
         ("laptop 1920x1200", 1920, 1200, True),
         ("3:2 2160x1440", 2160, 1440, True),
         ("1366x768", 1366, 768, True),
-        ("4:3 1440x1080, 24 px to spare", 1440, 1080, True),
-        ("5:4 1280x1024, the pages would shrink 3%", 1280, 1024, False),
+        ("4:3 1440x1080, 55 px to spare", 1440, 1080, True),
+        ("5:4 1280x1024, the pages would shrink 2%", 1280, 1024, False),
         ("ultra-wide 3440x1440", 3440, 1440, True),
         ("the flip laptop in portrait", 1200, 1920, False),
     ],
@@ -76,16 +76,16 @@ def test_the_spreads_shape_is_the_pages_over_two_pages_and_the_gutter() -> None:
     assert content_aspect_ratio(MainLayoutMode.SINGLE) == COMIC_PAGE_ASPECT_RATIO
     spread = content_aspect_ratio(MainLayoutMode.SPREAD)
     assert spread == pytest.approx(COMIC_PAGE_ASPECT_RATIO / (2 + GUTTER_FRACTION))
-    assert spread == pytest.approx(0.743, abs=0.001)
-    assert content_aspect_ratio(MainLayoutMode.SPREAD, 2.0) == pytest.approx(2.0 / 2.03)
+    assert spread == pytest.approx(0.747, abs=0.001)
+    assert content_aspect_ratio(MainLayoutMode.SPREAD, 2.0) == pytest.approx(2.0 / 2.02)
 
 
 def test_a_spreads_width_is_two_pages_and_the_gutter() -> None:
-    page = page_width(2030.0)
-    gutter = gutter_width(2030.0)
+    page = page_width(2020.0)
+    gutter = gutter_width(2020.0)
     assert page == pytest.approx(1000.0)
-    assert gutter == pytest.approx(30.0)
-    assert 2 * page + gutter == pytest.approx(2030.0)
+    assert gutter == pytest.approx(20.0)
+    assert 2 * page + gutter == pytest.approx(2020.0)
 
 
 def test_a_page_in_the_spread_is_as_wide_as_the_single_column_at_the_same_height() -> None:

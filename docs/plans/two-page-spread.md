@@ -263,7 +263,10 @@ Settled with the maintainer, 2026-10-29, in this order.
 ## Geometry
 
 Bar 45 dp, gutter 3% of a page's width (about 20 px at 1080p, 28 px at 1440p). A page's
-width is (H - bar) / 1.509. The pair is 2.03 pages. Fullscreen:
+width is (H - bar) / 1.509. The pair is 2.03 pages. Fullscreen (the table is the 3%
+design's; from 2026-10-31 the gutter is 2%, about 14 px at 1080p and 18 px at 1440p,
+the pair 2.02 pages and 0.5% narrower, every "Fits" the same, 4:3 with 55 px to spare
+and 5:4's pages 2% short):
 
 | Screen | w/h | Page | Pair | Fits | Margin each side | Width used, single | Width used, spread |
 |---|---|---|---|---|---|---|---|
@@ -279,7 +282,7 @@ width is (H - bar) / 1.509. The pair is 2.03 pages. Fullscreen:
 | Flip laptop portrait 1200x1920 | 0.62 | 1243 | 2522 | no, pages shrink 52% | 0 | 100% | 100% |
 
 The spread's content aspect (height over width) is a constant,
-`COMIC_PAGE_ASPECT_RATIO / (2 + gutter fraction)` = 0.743, because the gutter is a
+`COMIC_PAGE_ASPECT_RATIO / (2 + gutter fraction)` = 0.743 (0.747 at 2%), because the gutter is a
 fraction of the page. That is what makes the window lock a constant per mode rather
 than a function of the screen. This table is the parametrised unit test of the rule.
 
@@ -461,7 +464,8 @@ count where there is one, before the first multi-file edit of the stage.
 
 ## Open points carried into implementation
 
-- The gutter's exact fraction, once seen on this PC (3% is the mock's).
+- The gutter's exact fraction, once seen on this PC (3% is the mock's). Settled
+  2026-10-31: 2%, the user finding 3% too wide once the readers had it too.
 - Whether the tree page's wallpaper dims further behind the idle screen.
 - Where the playlist note sits on the title page in the spread.
 - Mode change while a full-window screen is up (comic reader, wiki, document):

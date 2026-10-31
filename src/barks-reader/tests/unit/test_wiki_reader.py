@@ -505,9 +505,9 @@ class TestWikiFullscreenViewerSize:
         assert wiki_reader.wiki_fullscreen_viewer_size(2000, 100, 45) == (100, 196)
 
     def test_the_pairs_shape_on_the_spread(self) -> None:
-        # The spread's content is 2.03 pages wide: 1035 / 0.7436 = 1392 at 1080p.
+        # The spread's content is 2.02 pages wide: 1035 / 0.7472 = 1385 at 1080p.
         spread = content_aspect_ratio(MainLayoutMode.SPREAD)
-        assert wiki_reader.wiki_fullscreen_viewer_size(1080, 1920, 45, spread) == (1392, 1080)
+        assert wiki_reader.wiki_fullscreen_viewer_size(1080, 1920, 45, spread) == (1385, 1080)
 
 
 class TestApplyViewerSizing:
@@ -562,9 +562,9 @@ class TestApplyViewerSizing:
 
         wiki_screen._apply_viewer_sizing()
 
-        # The book's footprint (decision 9): the pair and its gutter, 1876 wide at 1440p.
-        assert tuple(wiki_screen.size) == (1876, 1440)
-        assert "Wiki strip: (1876, 1440) in fullscreen on the spread layout." in loguru_sink
+        # The book's footprint (decision 9): the pair and its gutter, 1867 wide at 1440p.
+        assert tuple(wiki_screen.size) == (1867, 1440)
+        assert "Wiki strip: (1867, 1440) in fullscreen on the spread layout." in loguru_sink
 
     @pytest.mark.parametrize(
         ("layout", "cap"),

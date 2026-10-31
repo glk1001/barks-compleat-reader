@@ -21,6 +21,7 @@ from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import (
     MATCH_THE_SCREEN,
     SINGLE_PAGE,
+    SPREAD_WIDTH_IN_PAGES,
     TWO_PAGE_SPREAD,
     MainLayoutMode,
     content_aspect_ratio,
@@ -1180,5 +1181,5 @@ def test_the_minimum_window_in_the_spread_is_the_pairs(
         2560, 1440, CHROME, content_aspect_ratio(MainLayoutMode.SPREAD)
     )
     assert spread_height == height
-    assert spread_width == pytest.approx(2.03 * single_width, abs=2)
+    assert spread_width == pytest.approx(SPREAD_WIDTH_IN_PAGES * single_width, abs=2)
     assert (fake_window.minimum_width, fake_window.minimum_height) == (spread_width, spread_height)

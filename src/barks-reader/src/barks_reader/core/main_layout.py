@@ -33,9 +33,9 @@ SINGLE_PAGE = "Single page"
 TWO_PAGE_SPREAD = "Two-page spread"
 MAIN_SCREEN_LAYOUT_OPTIONS: tuple[str, ...] = (MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD)
 
-# The gutter between the two pages, as a fraction of a page's width (about 20 px at
-# 1080p, 28 px at 1440p).
-GUTTER_FRACTION = 0.03
+# The gutter between the two pages, as a fraction of a page's width (about 14 px at
+# 1080p, 18 px at 1440p): the main screen's, and the readers' between a pair.
+GUTTER_FRACTION = 0.02
 # The spread's width in pages: two pages and the gutter.
 SPREAD_WIDTH_IN_PAGES = 2 + GUTTER_FRACTION
 # The readers' gutter, the comic reader's and the document reader's: the restored pages'

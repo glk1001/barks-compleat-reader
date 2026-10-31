@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import reader_utils as utils_module
+from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.core.reader_file_paths import ReaderFilePaths
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
@@ -80,7 +81,7 @@ class TestReaderUtils:
 
     def test_get_win_dimensions_take_the_spreads_shape(self) -> None:
         """The main window in the two-page spread: wider at the same height."""
-        spread = COMIC_PAGE_ASPECT_RATIO / 2.03
+        spread = COMIC_PAGE_ASPECT_RATIO / SPREAD_WIDTH_IN_PAGES
         assert get_win_width_from_height(1000, spread) == round(1000 / spread)
         assert get_win_dimensions(1000, 10_000, spread) == (round(1000 / spread), 1000)
         # Width-limited at the spread's shape: the height follows the same shape.
