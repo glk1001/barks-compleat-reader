@@ -27,6 +27,7 @@ class TestLiveProfileDir:
         monkeypatch.delenv(CONFIG_DIR_ENV_VAR, raising=False)
         monkeypatch.setattr(popup_gallery, "REPO_ROOT", tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path / "home"))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))  # Path.home() on Windows
         (tmp_path / ".env.runtime").write_text(
             f'{CONFIG_DIR_ENV_VAR}="${{HOME}}/opt/barks-reader/config"\n', encoding="utf-8"
         )
