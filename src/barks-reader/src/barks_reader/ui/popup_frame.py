@@ -1,8 +1,9 @@
 """The frame every popup the app owns is built on (``docs/plans/popup-consistency.md``).
 
-One look, from the standalone family's: a warm-dark title bar with the title centred
-in the theme's title colour, and under it a dark card, with art beneath a scrim if the popup
-has art, holding the popup's body and a row of buttons along the bottom, right-aligned.
+One look, from the standalone family's: a warm-brown title bar, lighter than the card
+and ruled along its foot, with the title centred in the theme's title colour; under it
+a dark card, with art beneath a scrim if the popup has art, holding the popup's body
+and a row of buttons along the bottom, right-aligned.
 A popup with no buttons has a close X in its title bar instead. The frame is centred,
 sized by its class (``core/popup_frame.py``), and follows the window as it resizes; a
 popup that is its own window's only content fills that window instead, and one whose
@@ -50,10 +51,13 @@ from .reader_keyboard_nav import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-# The title bar: the standalone family's warm near-black, two bands for a gradient.
+# The title bar: a warm brown, lighter than the card so it reads as a bar, in two bands
+# for a gradient, and a rule along its foot in the title's colour.
 TITLE_BAR_HEIGHT = dp(56)
-TITLE_BAR_TOP = (0.10, 0.09, 0.08, 1.0)
-TITLE_BAR_BOTTOM = (0.14, 0.12, 0.10, 1.0)
+TITLE_BAR_TOP = (0.30, 0.25, 0.20, 1.0)
+TITLE_BAR_BOTTOM = (0.25, 0.21, 0.17, 1.0)
+TITLE_BAR_RULE_ALPHA = 0.85
+TITLE_BAR_RULE_HEIGHT = dp(2)
 TITLE_FONT_SIZE = sp(18)
 CLOSE_BUTTON_WIDTH = dp(44)
 
@@ -242,11 +246,14 @@ class PopupFrame(ModalView):
             bottom = Rectangle()
             Color(*TITLE_BAR_TOP)
             top = Rectangle()
+            Color(*theme().text_title[:3], TITLE_BAR_RULE_ALPHA)
+            rule = Rectangle()
 
         def fit_bands(widget: Widget, *_args: object) -> None:
             half = widget.height / 2
             bottom.pos, bottom.size = widget.pos, (widget.width, half)
             top.pos, top.size = (widget.x, widget.y + half), (widget.width, half)
+            rule.pos, rule.size = widget.pos, (widget.width, TITLE_BAR_RULE_HEIGHT)
 
         bar.bind(pos=fit_bands, size=fit_bands)
 

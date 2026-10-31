@@ -14,14 +14,20 @@ from barks_reader.core.popup_frame import (
     PopupSize,
     popup_size,
 )
+from barks_reader.core.reader_palette import theme
 from barks_reader.ui import popup_frame
 from barks_reader.ui.popup_frame import (
+    CARD_BACKING,
     CARD_PADDING,
     CLOSE_BUTTON_WIDTH,
+    TITLE_BAR_BOTTOM,
     TITLE_BAR_HEIGHT,
+    TITLE_BAR_RULE_ALPHA,
+    TITLE_BAR_TOP,
     PopupFrame,
     message_body,
 )
+from kivy.graphics import Color
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -234,6 +240,19 @@ class TestPopupFrame:
             body.add_widget(Widget(size_hint_y=None, height=5000))  # more than the class
             body.do_layout()
             assert tuple(frame.size) == pytest.approx((class_width, class_height))
+
+    def test_the_title_bar_is_lighter_than_the_card_and_ruled_in_the_title_colour(self) -> None:
+        frame = _frame()
+        (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]
+        bar = title.parent
+        assert bar is not None
+        colours = [tuple(i.rgba) for i in bar.canvas.before.children if isinstance(i, Color)]
+        assert colours == [
+            TITLE_BAR_BOTTOM,
+            TITLE_BAR_TOP,
+            (*theme().text_title[:3], TITLE_BAR_RULE_ALPHA),
+        ]
+        assert sum(TITLE_BAR_BOTTOM[:3]) > sum(CARD_BACKING[:3])
 
     def test_the_focus_can_start_on_another_button(self) -> None:
         clear, cancel = MagicMock(), MagicMock()

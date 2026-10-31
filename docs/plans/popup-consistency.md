@@ -65,7 +65,9 @@ One popup frame (`ui/popup_frame.py`'s `PopupFrame`), from the standalone family
 look in the theme's colours, for every popup to be built on. Decided with the user
 2026-10-31:
 
-- one title bar: the warm-dark bar, the title centred in the theme's title colour; a close X
+- one title bar: a warm-brown bar, lighter than the card and ruled along its foot in
+  the theme's title colour (chosen from three looks in the gallery), the title centred
+  in that colour; a close X
   only on a popup with no buttons (About, the data pack success), since Cancel and
   Escape close the rest;
 - one body text style (`message_body`): cream, prose left-aligned, a short question
