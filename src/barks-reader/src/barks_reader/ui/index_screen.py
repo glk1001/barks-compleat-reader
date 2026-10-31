@@ -184,7 +184,7 @@ def show_speech_bubbles_popup(
     scroll_view = ReaderScrollView()
     scroll_view.add_widget(text_boxes)
 
-    title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
+    title = f'[b][i]{title_str}  \u2014  [/i]"{search_terms}"[/b]'
     speaker_label = speaker_display_name(speaker) if speaker else None
     if speaker_label:
         title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"

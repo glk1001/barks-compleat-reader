@@ -903,7 +903,7 @@ class TestShowSpeechBubblesPopup:
         )
 
         assert popup.title == (
-            "[b][i]Lost in the Andes!  —  [/i]'square eggs'[/b][b]  —  [/b]Goldstein &amp; Co."
+            '[b][i]Lost in the Andes!  —  [/i]"square eggs"[/b][b]  —  [/b]Goldstein &amp; Co.'
         )
         popup.set_body.assert_called_once_with(popup.scroll_view)
         assert popup.title_font_size == 23  # the popups' title size, as the window is now
@@ -915,7 +915,7 @@ class TestShowSpeechBubblesPopup:
         show_speech_bubbles_popup(
             popup, "Lost in the Andes!", "eggs", MagicMock(fanta_pages={}), MagicMock()
         )
-        assert popup.title == "[b][i]Lost in the Andes!  —  [/i]'eggs'[/b]"
+        assert popup.title == '[b][i]Lost in the Andes!  —  [/i]"eggs"[/b]'
 
 
 class TestSetBackgroundImage:
