@@ -649,6 +649,50 @@ class SettingLongPathPopup(Popup):
         Clock.schedule_once(lambda _dt: setattr(self, "_updating", False), 0.6)
 
 
+def open_folder_chooser_popup(title: str, value: str, setting_widget: object) -> None:
+    """Open the directory chooser on `value`, its parent folder listed.
+
+    One function, so the popup gallery (`ui.popup_gallery`) opens the very popup a
+    long-path setting does.
+
+    Args:
+        title: The popup's title: the setting's.
+        value: The directory chosen so far.
+        setting_widget: The setting the chosen directory goes back to
+            (``update_setting_value``).
+
+    """
+    selected_dir = Path(value)
+    setting_parent_dir = (
+        selected_dir.parent if value and selected_dir.parent.is_dir() else Path("~").expanduser()
+    )
+    setting_dir = str(selected_dir)
+
+    popup = SettingLongPathPopup(title=title, title_size="18sp", setting_widget=setting_widget)
+
+    popup.ids.file_chooser.path = str(setting_parent_dir)
+    popup.ids.path_input.text = setting_dir
+
+    # Bind the text input to update file chooser.
+    popup.ids.path_input.bind(text=lambda _instance, text: popup.update_file_chooser_path(text))
+
+    def set_initial_selection(_dt: float) -> None:
+        """Set the initial selection after files are loaded."""
+        fc = popup.ids.file_chooser
+
+        # Look for the matching directory in the files list.
+        for file_path in fc.files:
+            if Path(file_path).resolve() == Path(setting_dir).resolve():
+                fc.set_initial_selection([file_path])
+                return
+
+    popup.bind(on_dismiss=lambda *_a: logger.debug(log_markers.FOLDER_CHOOSER_CLOSED))
+    popup.open()
+
+    # Set selection after a short delay to ensure files are loaded.
+    Clock.schedule_once(set_initial_selection, 0.2)
+
+
 class SettingLongPath(SettingItem):
     """Custom widget for long paths that are shortened in the middle to prevent truncation."""
 
@@ -677,39 +721,7 @@ class SettingLongPath(SettingItem):
 
     def _create_popup(self, _instance: Widget) -> None:
         """Create and open the directory selection popup."""
-        selected_dir = Path(self.value)
-        setting_parent_dir = (
-            selected_dir.parent
-            if self.value and selected_dir.parent.is_dir()
-            else Path("~").expanduser()
-        )
-        setting_dir = str(selected_dir)
-
-        popup = SettingLongPathPopup(title=self.title, title_size="18sp", setting_widget=self)
-
-        popup.ids.file_chooser.path = str(setting_parent_dir)
-        popup.ids.path_input.text = setting_dir
-
-        # Bind the text input to update file chooser.
-        popup.ids.path_input.bind(
-            text=lambda _instance, value: popup.update_file_chooser_path(value)
-        )
-
-        def set_initial_selection(_dt: float) -> None:
-            """Set the initial selection after files are loaded."""
-            fc = popup.ids.file_chooser
-
-            # Look for the matching directory in the files list.
-            for file_path in fc.files:
-                if Path(file_path).resolve() == Path(setting_dir).resolve():
-                    fc.set_initial_selection([file_path])
-                    return
-
-        popup.bind(on_dismiss=lambda *_a: logger.debug(log_markers.FOLDER_CHOOSER_CLOSED))
-        popup.open()
-
-        # Set selection after a short delay to ensure files are loaded.
-        Clock.schedule_once(set_initial_selection, 0.2)
+        open_folder_chooser_popup(self.title, self.value, self)
 
 
 class SettingOptionsWithValue(SettingOptions):

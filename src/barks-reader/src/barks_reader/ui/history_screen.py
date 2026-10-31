@@ -220,6 +220,48 @@ def _add_header_hairline(label: Label) -> None:
     _update()
 
 
+# The screen's popups, one function each, so the popup gallery (`ui.popup_gallery`)
+# opens the very popup the screen does.
+
+
+def open_delete_from_history_popup(title: str | None, on_delete: Callable[[], None]) -> None:
+    """Ask before deleting a reading, or every reading of a title, from the history.
+
+    Args:
+        title: The title whose every reading goes (the Titles view), or None for the
+            one reading focused (the Journal view).
+        on_delete: Called when the user confirms.
+
+    """
+    if title is None:
+        text = "Delete this reading from the history?"
+    else:
+        text = f'Delete every reading of "{title}" from the history?'
+    open_confirm_popup(
+        title="Delete From History",
+        text=text,
+        ok_text="Delete",
+        cancel_text="Keep",
+        on_ok=on_delete,
+    )
+
+
+def open_clear_history_popup(on_clear: Callable[[], None]) -> None:
+    """Ask before clearing the whole reading history.
+
+    Args:
+        on_clear: Called when the user confirms.
+
+    """
+    open_confirm_popup(
+        title="Clear Reading History",
+        text="Clear all reading history?",
+        ok_text="Clear",
+        cancel_text="Cancel",
+        on_ok=on_clear,
+    )
+
+
 class HistoryViewButton(ToggleButton):
     """A tab button for the history top bar (Journal/Titles)."""
 
@@ -759,17 +801,8 @@ class HistoryScreen(FloatLayout):
         if not self._nav_rows:
             return
         row = self._nav_rows[self._nav_focused_idx]
-        if self._current_view == _JOURNAL_VIEW:
-            text = "Delete this reading from the history?"
-        else:
-            text = f'Delete every reading of "{row.key}" from the history?'
-        open_confirm_popup(
-            title="Delete From History",
-            text=text,
-            ok_text="Delete",
-            cancel_text="Keep",
-            on_ok=self._delete_focused_row,
-        )
+        title = None if self._current_view == _JOURNAL_VIEW else row.key
+        open_delete_from_history_popup(title, self._delete_focused_row)
 
     def _delete_focused_row(self) -> None:
         # The delete action drops the row, which re-clamps the focus index.
@@ -817,10 +850,4 @@ class HistoryScreen(FloatLayout):
             self._history_store.clear()
             self._refresh()
 
-        open_confirm_popup(
-            title="Clear Reading History",
-            text="Clear all reading history?",
-            ok_text="Clear",
-            cancel_text="Cancel",
-            on_ok=do_clear,
-        )
+        open_clear_history_popup(do_clear)

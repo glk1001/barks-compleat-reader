@@ -160,6 +160,92 @@ def _modal_popup_is_open() -> bool:
     return any(isinstance(widget, ModalView) for widget in Window.children)
 
 
+# The main screen's popups, one function each, so the popup gallery
+# (`ui.popup_gallery`) opens the very popup the screen does.
+
+
+def open_quit_popup(bg_image: str, on_quit: Callable[[], None]) -> None:
+    """Ask before quitting the app.
+
+    Args:
+        bg_image: The art behind the question.
+        on_quit: Called when the user confirms.
+
+    """
+    open_confirm_popup(
+        title="Quit",
+        text="Quit the Barks Reader?",
+        ok_text="Quit",
+        cancel_text="Stay",
+        on_ok=on_quit,
+        bg_image=bg_image,
+    )
+
+
+def open_small_screen_popup(screen_width: int, screen_height: int) -> None:
+    """Say this screen is smaller than the reader's layout.
+
+    Args:
+        screen_width: The width of the screen the window is on.
+        screen_height: Its height.
+
+    """
+    open_message_popup(
+        title="Small screen",
+        text=screen_warning_text(screen_width, screen_height),
+        ok_text="",
+        on_ok=None,
+        cancel_text="OK",
+        on_cancel=None,
+        msg_halign="center",
+    )
+
+
+def open_data_pack_offer_popup(
+    check: UpdateCheck,
+    on_install: Callable[[], None],
+    bg_image: str,
+    on_cancel: Callable[[], None] | None,
+) -> None:
+    """Offer to install the newer data packs `check` found.
+
+    Args:
+        check: The look for packs, its status `UpdateStatus.UPDATE_AVAILABLE`.
+        on_install: Called when the user accepts.
+        bg_image: The art behind the question.
+        on_cancel: Called when the user declines, or None.
+
+    """
+    open_confirm_popup(
+        title=UPDATE_DATA_PACK_TITLE,
+        text=check.offer_message(),
+        ok_text="Install",
+        cancel_text="Not Now",
+        on_ok=on_install,
+        bg_image=bg_image,
+        on_cancel=on_cancel,
+    )
+
+
+def open_no_data_pack_update_popup(check: UpdateCheck, on_close: Callable[[], None] | None) -> None:
+    """Say why there is no data pack to install.
+
+    Args:
+        check: The look for packs, its status anything but an update available.
+        on_close: Called once the popup is closed, or None.
+
+    """
+    open_message_popup(
+        title=UPDATE_DATA_PACK_TITLE,
+        text=check.no_update_message(),
+        ok_text="",
+        on_ok=None,
+        cancel_text="OK",
+        on_cancel=on_close,
+        msg_halign="center",
+    )
+
+
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
@@ -538,13 +624,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Menu mode reopens on the last button used, and the popup starts on Quit: after
         # a "Stay", focus must not wait on the X, or Escape, Enter, Enter would quit.
         self._last_used_btn_idx = self._default_btn_idx
-        open_confirm_popup(
-            title="Quit",
-            text="Quit the Barks Reader?",
-            ok_text="Quit",
-            cancel_text="Stay",
-            on_ok=app.close_app,
-            bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
+        open_quit_popup(
+            str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
+            # pyrefly: ignore[missing-attribute]  # this screen exists only in a running app.
+            app.close_app,
         )
 
     def warn_if_screen_too_small(self, screen_width: int, screen_height: int) -> None:
@@ -569,15 +652,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
         logger.warning(log_markers.SCREEN_TOO_SMALL_WARNED.format(screen=size_key))
         self._json_settings_manager.save_screen_size_warned(size_key)
-        open_message_popup(
-            title="Small screen",
-            text=screen_warning_text(screen_width, screen_height),
-            ok_text="",
-            on_ok=None,
-            cancel_text="OK",
-            on_cancel=None,
-            msg_halign="center",
-        )
+        open_small_screen_popup(screen_width, screen_height)
 
     def app_closing(self) -> None:
         logger.debug(log_markers.CLOSING_APP)
@@ -787,25 +862,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             logger.info(
                 log_markers.DATA_PACK_UPDATE_OFFERED.format(version=check.available.display())
             )
-            open_confirm_popup(
-                title=UPDATE_DATA_PACK_TITLE,
-                text=check.offer_message(),
-                ok_text="Install",
-                cancel_text="Not Now",
-                on_ok=lambda: self._start_data_pack_installer(check),
-                bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
-                on_cancel=on_close,
+            open_data_pack_offer_popup(
+                check,
+                lambda: self._start_data_pack_installer(check),
+                str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
+                on_close,
             )
         elif not at_boot:
-            open_message_popup(
-                title=UPDATE_DATA_PACK_TITLE,
-                text=check.no_update_message(),
-                ok_text="",
-                on_ok=None,
-                cancel_text="OK",
-                on_cancel=on_close,
-                msg_halign="center",
-            )
+            open_no_data_pack_update_popup(check, on_close)
 
     def _start_data_pack_installer(self, check: UpdateCheck) -> None:
         """Spawn the data pack installer and close the reader for it (its files must close)."""
