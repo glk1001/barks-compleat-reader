@@ -236,7 +236,8 @@ Settled with the maintainer, 2026-10-29, in this order.
     13 px on a 1440p screen), while a single page filled the single-page window. The
     comic reader's pair (`build_double_page_image`'s gap) and the document reader's
     now have the main screen's gutter, so in the window, bar shown, their pages land
-    where the main screen's do.
+    where the main screen's do. The comic reader's gutter is the paper's cream
+    (`COMIC_GUTTER_COLOR`), black being too jarring between two pages.
 13. **Popups are centred on the spread,** to start with. The Menu dropdown still drops
     from its button, over the right page. The settings panel, today sized to the main
     screen (`ui/main_screen.py`, the settings `size`), keeps the single page's

@@ -813,3 +813,13 @@ class TestDoublePageImage:
             (0, 0, 0),
             (0, 0, 255),
         ]
+
+    def test_the_gap_takes_its_colour_down_its_whole_height(self) -> None:
+        pair = build_double_page_image(
+            Image.new("RGB", (3, 4), "red"),
+            Image.new("RGB", (3, 2), "blue"),
+            gap=1,
+            gap_color=(247, 239, 226),
+        )
+        assert {pair.getpixel((3, y)) for y in range(4)} == {(247, 239, 226)}
+        assert pair.getpixel((4, 0)) == (0, 0, 0)  # above the shorter page: the canvas
