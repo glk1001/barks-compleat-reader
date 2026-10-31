@@ -22,8 +22,11 @@ Live (``--live``)
 The profile
     The app writes its config on exit and its history on every read, so it is only
     ever run from a copy: the top-level files of the live profile's folder (its
-    ``kivy`` folder of logs is left behind), with ``log_level`` set to DEBUG, since the
-    lines waited on are logged at DEBUG. The live profile is never written.
+    ``kivy`` folder of logs is left behind). For the contact sheets ``log_level`` is set
+    to DEBUG, since the lines waited on are logged at DEBUG, and the main screen's
+    layout to match the screen, so each size gets the layout it would (the single page
+    on a portrait screen, the spread on a landscape one), whatever the profile chose.
+    The live profile is never written.
 
 Assumes
     - ``scripts/gui-probe.sh doctor`` passes, and nothing else is on its display
@@ -58,6 +61,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_reader.core import log_markers
+from barks_reader.core.main_layout import MATCH_THE_SCREEN
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
     POPUP_GALLERY_ENV_VAR,
@@ -100,6 +104,7 @@ OWN_WINDOW_SETTLE_SECS = 2.0
 DEFAULT_OUT = REPO_ROOT / "build" / "popup-gallery"
 LIVE_PROFILE_DEFAULT = Path.home() / "opt" / "barks-reader" / "config"
 _LOG_LEVEL_RE = re.compile(r"^log_level\s*=.*$", re.MULTILINE)
+_LAYOUT_RE = re.compile(r"^main_screen_layout\s*=.*$", re.MULTILINE)
 # A top-level window in `xwininfo -root -children`: its size and position.
 _WINDOW_RE = re.compile(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)")
 _MIN_WINDOW_SIDE = 200
@@ -126,13 +131,14 @@ def live_profile_dir() -> Path:
     return Path(configured) if configured else LIVE_PROFILE_DEFAULT
 
 
-def make_scratch_profile(live: Path, scratch: Path, *, debug: bool = True) -> Path:
-    """Copy the live profile's top-level files to `scratch`, logging at DEBUG if asked.
+def make_scratch_profile(live: Path, scratch: Path, *, for_capture: bool = True) -> Path:
+    """Copy the live profile's top-level files to `scratch`, set up for capture if asked.
 
     Args:
         live: The live profile's folder; only read.
         scratch: The folder to make (emptied first if it is there).
-        debug: Set the ini's ``log_level`` to DEBUG, for the lines waited on.
+        for_capture: Set the ini's ``log_level`` to DEBUG, for the lines waited on, and
+            its main screen layout to match the screen.
 
     Returns:
         `scratch`.
@@ -149,9 +155,10 @@ def make_scratch_profile(live: Path, scratch: Path, *, debug: bool = True) -> Pa
         (scratch / "kivy").mkdir()
         shutil.copy2(kivy_ini, scratch / "kivy" / "config.ini")
     ini = scratch / "barks-reader.ini"
-    if debug and ini.is_file():
-        text = ini.read_text(encoding="utf-8")
-        ini.write_text(_LOG_LEVEL_RE.sub("log_level = DEBUG", text), encoding="utf-8")
+    if for_capture and ini.is_file():
+        text = _LOG_LEVEL_RE.sub("log_level = DEBUG", ini.read_text(encoding="utf-8"))
+        text = _LAYOUT_RE.sub(f"main_screen_layout = {MATCH_THE_SCREEN}", text)
+        ini.write_text(text, encoding="utf-8")
     return scratch
 
 
@@ -411,7 +418,7 @@ def _stop_group(process: subprocess.Popen[bytes]) -> None:
 
 def run_live(out: Path) -> int:
     """Run the real app on this screen with the live gallery, from a scratch profile."""
-    profile = make_scratch_profile(live_profile_dir(), out / "profile", debug=False)
+    profile = make_scratch_profile(live_profile_dir(), out / "profile", for_capture=False)
     env = {
         **os.environ,
         CONFIG_DIR_ENV_VAR: str(profile),

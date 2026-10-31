@@ -43,7 +43,9 @@ class TestScratchProfile:
         live = root / "live"
         (live / "kivy" / "logs").mkdir(parents=True)
         (live / "barks-reader.ini").write_text(
-            "[Barks Reader]\nconfirm_quit = 1\nlog_level = INFO\nuse_deah = 1\n", encoding="utf-8"
+            "[Barks Reader]\nconfirm_quit = 1\nlog_level = INFO\n"
+            "main_screen_layout = Single page\nuse_deah = 1\n",
+            encoding="utf-8",
         )
         (live / "barks-reader.json").write_text("{}", encoding="utf-8")
         (live / "kivy" / "config.ini").write_text("[kivy]\n", encoding="utf-8")
@@ -59,19 +61,23 @@ class TestScratchProfile:
         ]
         assert [p.name for p in (scratch / "kivy").iterdir()] == ["config.ini"]
 
-    def test_the_copy_logs_at_debug_and_the_live_ini_is_untouched(self, tmp_path: Path) -> None:
+    def test_the_copy_logs_at_debug_matches_the_screen_and_the_live_ini_is_untouched(
+        self, tmp_path: Path
+    ) -> None:
         live = self._live(tmp_path)
         scratch = popup_gallery.make_scratch_profile(live, tmp_path / "scratch")
         assert (scratch / "barks-reader.ini").read_text(encoding="utf-8") == (
-            "[Barks Reader]\nconfirm_quit = 1\nlog_level = DEBUG\nuse_deah = 1\n"
+            "[Barks Reader]\nconfirm_quit = 1\nlog_level = DEBUG\n"
+            "main_screen_layout = Match the screen\nuse_deah = 1\n"
         )
         assert "log_level = INFO" in (live / "barks-reader.ini").read_text(encoding="utf-8")
 
-    def test_live_mode_keeps_the_level(self, tmp_path: Path) -> None:
-        scratch = popup_gallery.make_scratch_profile(
-            self._live(tmp_path), tmp_path / "scratch", debug=False
-        )
-        assert "log_level = INFO" in (scratch / "barks-reader.ini").read_text(encoding="utf-8")
+    def test_live_mode_keeps_the_profiles_settings(self, tmp_path: Path) -> None:
+        live = self._live(tmp_path)
+        scratch = popup_gallery.make_scratch_profile(live, tmp_path / "scratch", for_capture=False)
+        assert (scratch / "barks-reader.ini").read_text(encoding="utf-8") == (
+            live / "barks-reader.ini"
+        ).read_text(encoding="utf-8")
 
     def test_a_second_run_starts_from_a_fresh_copy(self, tmp_path: Path) -> None:
         live = self._live(tmp_path)
