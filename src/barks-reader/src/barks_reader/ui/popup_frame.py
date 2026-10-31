@@ -4,12 +4,14 @@ One look, from the standalone family's: a warm-dark title bar with the title in 
 theme's title colour, and under it a dark card, with art beneath a scrim if the popup
 has art, holding the popup's body and a row of buttons along the bottom, right-aligned.
 A popup with no buttons has a close X in its title bar instead. The frame is centred,
-sized by its class (``core/popup_frame.py``), and follows the window as it resizes.
+sized by its class (``core/popup_frame.py``), and follows the window as it resizes; a
+popup that is its own window's only content fills that window instead.
 
 The remote's six keys work it as they work the confirm popups: Left and Right move the
 focus ring along the buttons, Return presses the focused one, Escape presses the last
-(the cancel). A popup with no buttons closes on Escape or Return. Every key is kept
-while the frame is open.
+that closes the popup (the cancel). A popup with no buttons closes on Return; Escape
+lands on its close X first, as everywhere in the app, and Return there closes it. Every
+key is kept while the frame is open.
 """
 
 from __future__ import annotations
@@ -33,7 +35,12 @@ from barks_reader.core.popup_frame import PopupSize, popup_size
 from barks_reader.core.reader_palette import theme
 
 from .kivy_standalone_show_message import closes_popup
-from .reader_keyboard_nav import update_focus_in_list
+from .reader_keyboard_nav import (
+    MENU_FOCUS_HIGHLIGHT_GROUP,
+    clear_focus_highlight,
+    draw_focus_highlight,
+    update_focus_in_list,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -63,10 +70,15 @@ _FOCUS_GROUP = "popup_frame_focus"
 
 @dataclass(frozen=True, slots=True)
 class FrameButton:
-    """A button on the frame's row: its label, and what pressing it does after closing."""
+    """A button on the frame's row: its label, and what pressing it does.
+
+    A button closes the popup before its action runs, unless it is one that leaves the
+    popup up (Save to File, Copy to Clipboard).
+    """
 
     text: str
     on_press: Callable[[], None]
+    closes: bool = True
 
 
 def message_body(text: str, *, font_size: float, centred: bool = False) -> Label:
@@ -111,6 +123,7 @@ class PopupFrame(ModalView):
         on_closed: Callable[[], None] | None = None,
         title_font_size: float = TITLE_FONT_SIZE,
         button_font_size: float = BUTTON_FONT_SIZE,
+        fill_window: bool = False,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -124,19 +137,24 @@ class PopupFrame(ModalView):
             on_closed: Called once the frame has left the window, however it closed.
             title_font_size: The title's font size.
             button_font_size: The buttons' font size.
+            fill_window: Whether the frame fills the window, as a popup does that is its
+                own window's only content, rather than being sized by its class.
 
         """
         super().__init__(
-            size_hint=(None, None),
+            size_hint=(1, 1) if fill_window else (None, None),
             pos_hint={"center_x": 0.5, "center_y": 0.5},
             auto_dismiss=False,
             background="",
             background_color=(0, 0, 0, 0),
         )
         self.size_class = size
+        self.fill_window = fill_window
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
         self._focused_idx = 0  # the first button, the confirming one, starts focused
+        self._close_button: Button | None = None
+        self._close_focused = False
 
         self._button_widgets = [self._button(b, button_font_size) for b in self._frame_buttons]
         root = BoxLayout(orientation="vertical")
@@ -155,8 +173,9 @@ class PopupFrame(ModalView):
         return self._button_widgets
 
     def fit_to_window(self, *_args: object) -> None:
-        """Size the frame by its class for the window as it is now."""
-        self.size = popup_size(self.size_class, Window.width, Window.height)
+        """Size the frame by its class for the window as it is now (unless it fills it)."""
+        if not self.fill_window:
+            self.size = popup_size(self.size_class, Window.width, Window.height)
 
     def _title_bar(self, title: str, font_size: float) -> BoxLayout:
         bar = BoxLayout(
@@ -198,6 +217,7 @@ class PopupFrame(ModalView):
             )
             close.bind(on_release=lambda *_: self.dismiss())
             bar.add_widget(close)
+            self._close_button = close
         return bar
 
     def _card(self, body: Widget, art_file: str) -> FloatLayout:
@@ -250,8 +270,24 @@ class PopupFrame(ModalView):
         return button
 
     def _press(self, frame_button: FrameButton) -> None:
-        self.dismiss()
+        if frame_button.closes:
+            self.dismiss()
         frame_button.on_press()
+
+    def _press_cancel(self) -> None:
+        closing = [b for b in self._frame_buttons if b.closes]
+        if closing:
+            self._press(closing[-1])
+        else:
+            self.dismiss()
+
+    def _toggle_close_focus(self) -> None:
+        assert self._close_button is not None
+        if self._close_focused:
+            clear_focus_highlight(self._close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+        else:
+            draw_focus_highlight(self._close_button, MENU_FOCUS_HIGHLIGHT_GROUP)
+        self._close_focused = not self._close_focused
 
     def _show_focus(self) -> None:
         update_focus_in_list(self._button_widgets, self._focused_idx, _FOCUS_GROUP)
@@ -275,7 +311,9 @@ class PopupFrame(ModalView):
         self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
     ) -> bool:
         if not self._frame_buttons:
-            if closes_popup(key):
+            if is_escape_key(key):
+                self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
+            elif closes_popup(key):
                 self.dismiss()
         elif key in (KEY_RIGHT, KEY_LEFT):
             step = 1 if key == KEY_RIGHT else -1
@@ -284,7 +322,7 @@ class PopupFrame(ModalView):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._press(self._frame_buttons[self._focused_idx])
         elif is_escape_key(key):
-            self._press(self._frame_buttons[-1])
+            self._press_cancel()
         return True  # the frame is modal: no key reaches the screen beneath it
 
 

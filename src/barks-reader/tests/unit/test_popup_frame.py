@@ -98,12 +98,61 @@ class TestPopupFrame:
         cancel.assert_called_once_with()
         ok.assert_not_called()
 
-    @pytest.mark.parametrize("key", [KEY_ESCAPE, KEY_ENTER])
-    def test_with_no_buttons_escape_and_enter_close_it(self, key: int) -> None:
+    def test_with_no_buttons_return_closes_it(self) -> None:
         frame = _frame()
         with patch.object(frame, "dismiss") as dismiss:
-            assert _press(frame, key) is True
+            assert _press(frame, KEY_ENTER) is True
         dismiss.assert_called_once_with()
+
+    def test_with_no_buttons_escape_lands_on_the_x_and_again_leaves_it(self) -> None:
+        # As everywhere in the app: Escape to the close X, Return there closes.
+        frame = _frame()
+        with (
+            patch.object(frame, "dismiss") as dismiss,
+            patch.object(popup_frame, "draw_focus_highlight") as draw,
+            patch.object(popup_frame, "clear_focus_highlight") as clear,
+        ):
+            assert _press(frame, KEY_ESCAPE) is True
+            draw.assert_called_once()
+            assert draw.call_args.args[0].text == "X"
+            _press(frame, KEY_ESCAPE)
+            clear.assert_called_once()
+            _press(frame, KEY_ENTER)
+        dismiss.assert_called_once_with()
+
+    def test_a_button_can_leave_the_popup_up(self) -> None:
+        save = MagicMock()
+        frame = _frame((FrameButton("Save", save, closes=False), FrameButton("OK", MagicMock())))
+        with patch.object(frame, "dismiss") as dismiss:
+            _press(frame, KEY_ENTER)
+        save.assert_called_once_with()
+        dismiss.assert_not_called()
+
+    def test_escape_presses_the_last_button_that_closes(self) -> None:
+        ok, copy = MagicMock(), MagicMock()
+        frame = _frame((FrameButton("OK", ok), FrameButton("Copy", copy, closes=False)))
+        with patch.object(frame, "dismiss") as dismiss:
+            _press(frame, KEY_ESCAPE)
+        ok.assert_called_once_with()
+        copy.assert_not_called()
+        dismiss.assert_called_once_with()
+
+    def test_escape_closes_a_popup_whose_buttons_all_leave_it_up(self) -> None:
+        copy = MagicMock()
+        frame = _frame((FrameButton("Copy", copy, closes=False),))
+        with patch.object(frame, "dismiss") as dismiss:
+            _press(frame, KEY_ESCAPE)
+        copy.assert_not_called()
+        dismiss.assert_called_once_with()
+
+    def test_it_can_fill_its_window_whatever_the_window_does(self) -> None:
+        frame = _frame(fill_window=True)
+        assert tuple(frame.size_hint) == (1, 1)
+        size = tuple(frame.size)
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 400, 300
+            frame.fit_to_window()
+        assert tuple(frame.size) == size
 
     def test_every_key_is_kept_while_it_is_open(self) -> None:
         frame = _frame()

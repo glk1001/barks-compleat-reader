@@ -223,7 +223,7 @@ _FRAME_LARGE_TEXT = (
     " first page, or at the page a search found.\n\nThe wiki, read beside the stories,"
     " tells what is known of each: when Barks wrote and drew it, where it was first"
     " printed, and who has written about it since.\n\nThis sample has no buttons, so its"
-    " close X is in the title bar; Escape and Return close it too."
+    " close X is in the title bar; Escape lands on it and Return closes it."
 )
 
 
