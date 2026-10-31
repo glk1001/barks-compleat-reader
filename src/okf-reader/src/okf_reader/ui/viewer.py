@@ -25,13 +25,14 @@ from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
 from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 from kivy.effects.scroll import ScrollEffect
-from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.graphics import Color, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp, sp
 from kivy.uix.actionbar import ActionButton, ActionToggleButton
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
@@ -190,10 +191,13 @@ LIST_INDENT_STEP = 20  # dp per nesting level past the first
 SEARCH_FIELD_HEIGHT = 32  # dp
 SEARCH_FIELD_GAP = 6  # dp between the field and the tree/results below it
 SEARCH_FIELD_BG = (0.16, 0.16, 0.16, 1)
+# A faint light outline round the search field, so it stands off the sidebar scrim
+# over any background art (2026-10-31); a lighter fill would cost the text contrast.
+SEARCH_FIELD_BORDER = (1.0, 1.0, 1.0, 0.25)
+SEARCH_FIELD_BORDER_WIDTH = 1  # px
 SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
 SEARCH_ERROR_TEXT = "Search unavailable"  # shown if the index build failed
-SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button beside the field
-SEARCH_FIELD_ROW_GAP = 4  # dp between the field and the clear button
+SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button inside the field's right end
 SEARCH_CLEAR_GLYPH_SIZE = 22  # dp — big/bold enough to read in the small button
 SEARCH_CLEAR_GLYPH_COLOR = (0.9, 0.9, 0.9, 1)  # light glyph on the dark (tinted) button
 # The open page's result row gets the theme selection band (self._theme.selection):
@@ -652,20 +656,31 @@ class OKFViewer(RelativeLayout):
             foreground_color=(1, 1, 1, 1),
             hint_text_color=self._theme.secondary_text,
             cursor_color=(1, 1, 1, 1),
-            padding=(dp(8), dp(6)),
+            # The right padding keeps the text clear of the button over that end.
+            padding=(dp(8), dp(6), dp(8) + dp(SEARCH_CLEAR_BTN_WIDTH), dp(6)),
+            # A FloatLayout places only a child with a pos_hint: without one the
+            # field sat at the window's origin, away from its row.
+            pos_hint={"x": 0, "y": 0},
         )
         self.search_field.bind(
             text=self._on_search_text,
             on_text_validate=self._on_search_enter,
             focus=self._on_search_focus,
         )
-        # The field shares a fixed-height row with a "clear" button that shows
+        with self.search_field.canvas.after:  # ty: ignore[unresolved-attribute]
+            Color(rgba=SEARCH_FIELD_BORDER)
+            field_border = Line(width=SEARCH_FIELD_BORDER_WIDTH, close=True)
+
+        def fit_border(field: Widget, _value: object) -> None:
+            x, y, w, h = (*field.pos, *field.size)
+            field_border.points = [x, y, x + w, y, x + w, y + h, x, y + h]
+
+        self.search_field.bind(pos=fit_border, size=fit_border)
+        # The field spans the sidebar, and a "clear" button over its right end shows
         # only while there is text — a one-tap return to the tree when done searching.
-        search_row = BoxLayout(
-            size_hint_y=None,
-            height=dp(SEARCH_FIELD_HEIGHT),
-            spacing=dp(SEARCH_FIELD_ROW_GAP),
-        )
+        # Hidden, it has no width: a disabled widget still swallows the touches it
+        # covers, which would leave that end of the field dead to a click.
+        search_row = FloatLayout(size_hint_y=None, height=dp(SEARCH_FIELD_HEIGHT))
         search_row.add_widget(self.search_field)
         self.search_clear_btn = _FlatButton(
             text="×",  # noqa: RUF001 — the multiplication sign renders in every font (unlike ✕)
@@ -673,17 +688,10 @@ class OKFViewer(RelativeLayout):
             bold=True,
             color=SEARCH_CLEAR_GLYPH_COLOR,
             size_hint=(None, 1),
-            width=dp(SEARCH_CLEAR_BTN_WIDTH),
+            pos_hint={"right": 1, "y": 0},
+            width=0,
             opacity=0,
             disabled=True,
-        )
-        # A dark backing matching the field, under the transparent-background glyph.
-        with self.search_clear_btn.canvas.before:  # ty: ignore[unresolved-attribute]
-            Color(rgba=SEARCH_FIELD_BG)
-            clear_bg = Rectangle()
-        self.search_clear_btn.bind(
-            pos=lambda w, _v: setattr(clear_bg, "pos", w.pos),
-            size=lambda w, _v: setattr(clear_bg, "size", w.size),
         )
         self.search_clear_btn.bind(on_release=lambda *_: self._clear_search())
         search_row.add_widget(self.search_clear_btn)
@@ -1045,6 +1053,7 @@ class OKFViewer(RelativeLayout):
         has_text = bool(text)
         self.search_clear_btn.opacity = 1 if has_text else 0
         self.search_clear_btn.disabled = not has_text
+        self.search_clear_btn.width = dp(SEARCH_CLEAR_BTN_WIDTH) if has_text else 0
         if not text.strip():
             self._show_tree_panel()
         elif not self._search_ready:

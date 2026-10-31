@@ -923,6 +923,48 @@ class TestTheContentPadding:
         assert list(viewer._content.padding) == [40, 0, 8, 2]
 
 
+class TestTheSearchFieldsBorder:
+    """A faint outline keeps to the search field's edges as it moves and resizes."""
+
+    def test_the_outline_follows_the_field(self, viewer: OKFViewer) -> None:
+        field = viewer.search_field
+        field.pos = (10, 20)
+        field.size = (200, 32)
+        lines = [i for i in field.canvas.after.children if isinstance(i, viewer_module.Line)]
+        assert len(lines) == 1
+        assert list(lines[0].points) == [10, 20, 210, 20, 210, 52, 10, 52]
+        assert lines[0].close
+        assert lines[0].width == viewer_module.SEARCH_FIELD_BORDER_WIDTH
+
+
+class TestTheClearButtonInsideTheField:
+    """The field spans the sidebar; the clear button sits over its right end."""
+
+    def test_the_field_fills_the_row(self, viewer: OKFViewer) -> None:
+        field = viewer.search_field
+        row = field.parent
+        row.pos, row.size = (8, 720), (300, 32)
+        row.do_layout()
+        assert (*field.pos, *field.size) == (*row.pos, *row.size)
+
+    def test_text_shows_the_button_at_the_fields_right_end(self, viewer: OKFViewer) -> None:
+        row = viewer.search_field.parent
+        row.pos, row.size = (8, 720), (300, 32)
+        viewer.search_field.text = "duck"
+        row.do_layout()
+        btn = viewer.search_clear_btn
+        assert btn.width == viewer_module.dp(viewer_module.SEARCH_CLEAR_BTN_WIDTH)
+        assert (btn.right, btn.y) == (row.right, row.y)
+        assert not btn.disabled
+
+    def test_hidden_the_button_takes_no_touches_from_the_field(self, viewer: OKFViewer) -> None:
+        viewer.search_field.text = "duck"
+        viewer.search_field.text = ""
+        btn = viewer.search_clear_btn
+        assert btn.width == 0
+        assert btn.disabled
+
+
 class TestTheCentredBlock:
     """Centred, the sidebar and the capped column sit with even art either side."""
 
