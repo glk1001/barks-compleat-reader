@@ -133,7 +133,7 @@ class BottomTitleViewScreen(FloatLayout):
     # two-page spread (the bands are 18% and 12% of the view). A long title that wraps
     # grows down from there.
     MAIN_TITLE_TOP_OFFSET_SINGLE = 28
-    MAIN_TITLE_TOP_OFFSET_SPREAD = 37
+    MAIN_TITLE_TOP_OFFSET_SPREAD = 50
     main_title_banner_texture = ObjectProperty(allownone=True)
     main_title_text = StringProperty()
     main_title_footnote = StringProperty()
