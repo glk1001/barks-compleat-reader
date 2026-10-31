@@ -880,20 +880,20 @@ class TestStandaloneAppWindow:
 
 
 class TestContrast:
-    """The toggle darkens both panels: the reading pane's scrims and the sidebar's."""
+    """The toggle darkens the article panel alone: the sidebar's scrim stays put."""
 
-    def test_down_darkens_both_panels_and_up_restores_them(self, viewer: OKFViewer) -> None:
-        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+    def test_down_darkens_the_article_and_up_restores_it(self, viewer: OKFViewer) -> None:
         viewer.contrast_btn.state = "down"
-        assert viewer._sidebar_scrim_color.a == pytest.approx(
-            viewer_module.SIDEBAR_SCRIM_CONTRAST_ALPHA
-        )
         assert viewer._pane_scrim_color.a == pytest.approx(
             viewer_module.READING_PANE_SCRIM_CONTRAST_ALPHA
         )
         viewer.contrast_btn.state = "normal"
-        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
         assert viewer._pane_scrim_color.a == pytest.approx(viewer_module.READING_PANE_SCRIM[3])
+
+    def test_the_sidebar_scrim_ignores_the_toggle(self, viewer: OKFViewer) -> None:
+        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+        viewer.contrast_btn.state = "down"
+        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
 
 
 class TestTheReadingColumnsCap:
@@ -918,10 +918,10 @@ class TestContrastSetByTheApp:
     def test_set_contrast_presses_the_toggle_and_resets_the_scrims(self, viewer: OKFViewer) -> None:
         viewer.set_contrast(True)
         assert viewer.contrast_btn.state == "down"
-        assert viewer._sidebar_scrim_color.a == viewer_module.SIDEBAR_SCRIM_CONTRAST_ALPHA
+        assert viewer._pane_scrim_color.a == viewer_module.READING_PANE_SCRIM_CONTRAST_ALPHA
         viewer.set_contrast(False)
         assert viewer.contrast_btn.state == "normal"
-        assert viewer._sidebar_scrim_color.a == viewer_module.SIDEBAR_SCRIM[3]
+        assert viewer._pane_scrim_color.a == viewer_module.READING_PANE_SCRIM[3]
 
 
 class TestTheReadingPaneScrim:

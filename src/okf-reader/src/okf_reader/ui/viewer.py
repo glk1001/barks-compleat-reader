@@ -123,17 +123,16 @@ TREE_PANEL_FONT_SIZE = 13  # sp
 # below 20 without clipping the top level's arrows at the panel edge.
 TREE_INDENT_START = 20  # dp — space before a top-level node's text
 TREE_INDENT_LEVEL = 12  # dp — extra indent per tree depth
-# Multiplied into the background image (Kivy Image.color) so white text stays
-# readable over it — the same darkening mechanism the Barks Reader's kv files use.
-WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
+# The background image shows at full strength: each panel's own scrim darkens it
+# (once a whole-window tint of 0.30, folded into the two scrims below, 2026-10-31),
+# so the art round the panels stays bright.
 # Translucent black drawn over the background image behind the whole sidebar
 # column (the search field and the tree), giving the tree text and the
 # search-field seam a legibility floor over a vivid background panel. Near-black,
 # so a page with no background image is unchanged (black over the plain window).
-SIDEBAR_SCRIM = (0, 0, 0, 0.30)
-# The sidebar scrim's alpha while the Contrast toggle is down: the toggle darkens
-# both panels, the one background image under them dimmed the same at either side.
-SIDEBAR_SCRIM_CONTRAST_ALPHA = 0.85
+# Fixed, the Contrast toggle leaving it be: the sidebar always shows some of the
+# background, and the toggle governs the article panel alone (2026-10-31).
+SIDEBAR_SCRIM = (0, 0, 0, 0.79)
 # Translucent rounded band drawn behind each page *section* (a heading plus
 # everything under it, up to the next heading) so body text keeps its contrast
 # over vivid background panels — the Barks Reader's BgColorLabel idiom
@@ -150,8 +149,10 @@ BLOCK_BG_CONTRAST_ALPHA = 0.9
 # standalone case) is unchanged. Its alpha tracks the Contrast toggle
 # (READING_PANE_SCRIM_CONTRAST_ALPHA) alongside the bands, so pressing Contrast
 # darkens the whole reading pane — the gaps included — not just the text bands.
-READING_PANE_SCRIM = (0.0, 0.0, 0.0, 0.20)
-READING_PANE_SCRIM_CONTRAST_ALPHA = 0.85
+# The alpha is the article panel's see-through knob: 0 shows the art at full
+# strength under the text, 1 hides it.
+READING_PANE_SCRIM = (0.0, 0.0, 0.0, 0.76)
+READING_PANE_SCRIM_CONTRAST_ALPHA = 0.955
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
@@ -523,7 +524,7 @@ class OKFViewer(RelativeLayout):
         # The whole window layers over a context background image (RelativeLayout
         # children stack in add order): image below, the action bar and both
         # panels above.
-        self.bg_image = Image(fit_mode="cover", color=WINDOW_BG_TINT, size_hint=(1, 1))
+        self.bg_image = Image(fit_mode="cover", size_hint=(1, 1))
         self.add_widget(self.bg_image)
         root = BoxLayout(orientation="vertical", size_hint=(1, 1))
         self.add_widget(root)
@@ -623,9 +624,7 @@ class OKFViewer(RelativeLayout):
         # the tree text and the search-field seam keep a legibility floor over a
         # vivid background panel.
         with left.canvas.before:  # ty: ignore[unresolved-attribute]
-            self._sidebar_scrim_color = Color(
-                rgba=(*SIDEBAR_SCRIM[:3], self._sidebar_scrim_alpha())
-            )
+            self._sidebar_scrim_color = Color(rgba=SIDEBAR_SCRIM)
             sidebar_scrim = Rectangle(pos=left.pos, size=left.size)
         left.bind(
             pos=lambda _inst, pos: setattr(sidebar_scrim, "pos", pos),
@@ -2048,12 +2047,6 @@ class OKFViewer(RelativeLayout):
             return READING_PANE_SCRIM_CONTRAST_ALPHA
         return READING_PANE_SCRIM[3]
 
-    def _sidebar_scrim_alpha(self) -> float:
-        """Return the sidebar scrim alpha the Contrast toggle currently calls for."""
-        if self.contrast_btn.state == "down":
-            return SIDEBAR_SCRIM_CONTRAST_ALPHA
-        return SIDEBAR_SCRIM[3]
-
     def _add_reading_pane_scrim(self) -> None:
         """Draw the continuous scrim behind the reading column (see READING_PANE_SCRIM).
 
@@ -2081,7 +2074,7 @@ class OKFViewer(RelativeLayout):
         fit_scrim()
 
     def set_contrast(self, on: bool) -> None:
-        """Set the Contrast toggle, as a press on it would: darker bands and scrims when on."""
+        """Set the Contrast toggle, as a press on it would: a darker article panel when on."""
         self.contrast_btn.state = "down" if on else "normal"
 
     def _on_contrast_state(self, _button: Widget, state: str) -> None:
@@ -2089,12 +2082,11 @@ class OKFViewer(RelativeLayout):
         trace.contrast(on=state == "down")
 
     def _apply_band_alpha(self) -> None:
-        """Retune the page's section bands and both panels' scrims to the toggle."""
+        """Retune the page's section bands and the reading pane's scrim to the toggle."""
         alpha = self._band_alpha()
         for color in self._band_colors:
             color.a = alpha
         self._pane_scrim_color.a = self._pane_scrim_alpha()
-        self._sidebar_scrim_color.a = self._sidebar_scrim_alpha()
 
     def _table_widget(self, blk: TableBlock, path: Path) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
