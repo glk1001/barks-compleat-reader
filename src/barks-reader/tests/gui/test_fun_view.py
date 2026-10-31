@@ -83,7 +83,10 @@ def test_goto_button_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _change_pics_until_a_story_image(d)
     d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
-    d.move_focus("Down")  # the goto button, active for a story image
+    # Up reaches the filter button from either button (Right lands on the goto button
+    # when the image is from a story), then Down the goto button: a Down from the goto
+    # button itself reaches the lower tier's on the spread, its tiers stacked.
+    d.move_focus("Up", "Down")
     with (
         d.expect(pattern(markers.GOTO_TITLE)),
         d.expect(markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL),

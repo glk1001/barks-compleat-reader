@@ -23,6 +23,7 @@ from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.index_text import indexable_title
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import MainLayoutMode
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -289,7 +290,10 @@ def test_on_the_spread_a_tree_row_beside_the_fun_view_takes_its_tap(boot: AppBoo
 
 
 def test_document_halves_turn_its_pages(boot: AppBoot) -> None:
-    """Tap a document's node to open it; its right half turns on, its left half back."""
+    """Tap a document's node to open it; its right half turns on, its left half back.
+
+    On the two-page spread a turn is a pair: pages 1 and 2, then 3 and 4.
+    """
     d = _boot(boot, nodes.APPENDIX)
     with (
         d.expect(pattern(markers.DOCUMENT_READER_ACTIVE)),
@@ -297,13 +301,18 @@ def test_document_halves_turn_its_pages(boot: AppBoot) -> None:
         d.expect(DOCUMENT_ENTERED),
     ):
         taps.tap(d, text=nodes.CENSORSHIP_DOCUMENT)
+    paired = last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == MainLayoutMode.SPREAD.value
+    turned_to = 3 if paired else 2
     taps.tap_then_wait(
-        d, pattern(markers.DOCUMENT_PAGE, page=2), kind="DocumentReaderScreen", text="right half"
+        d,
+        pattern(markers.DOCUMENT_PAGE, page=turned_to),
+        kind="DocumentReaderScreen",
+        text="right half",
     )
     taps.tap_then_wait(
         d, pattern(markers.DOCUMENT_PAGE, page=1), kind="DocumentReaderScreen", text="left half"
     )
-    assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", "2", "1"]
+    assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", str(turned_to), "1"]
     with d.expect(markers.DOCUMENT_CLOSING):
         taps.tap(d, text="Close")
 
