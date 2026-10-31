@@ -19,6 +19,7 @@ from barks_reader.core.corpus_stats import (
     StatSection,
 )
 from barks_reader.core.keys import KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
+from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_screens import ReaderScreen
@@ -126,6 +127,13 @@ def _open(screen: CorpusStatsScreen) -> None:
 def _rebuild(screen: CorpusStatsScreen) -> None:
     with patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()):
         screen._rebuild()
+
+
+class TestTheSpreadBar:
+    def test_the_bar_spans_the_spread_gutter_and_all(self) -> None:
+        """The kv file widens the bar by this: two pages alone fell a gutter short."""
+        assert CorpusStatsScreen.SPREAD_WIDTH_IN_PAGES == SPREAD_WIDTH_IN_PAGES
+        assert CorpusStatsScreen.SPREAD_WIDTH_IN_PAGES > 2
 
 
 class TestBuildOnOpen:
