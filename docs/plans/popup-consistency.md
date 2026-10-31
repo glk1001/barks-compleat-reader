@@ -2,8 +2,8 @@
 
 > Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
 > 2026-10-31**; stage 3 begun: the `MessagePopup` and standalone families and the
-> speech bubbles and the settings popups are on the frame; the wiki's footnote bubble
-> and dropping the gallery's frame samples remain. Decided
+> speech bubbles and the settings popups are on the frame, and the gallery's frame
+> samples are gone; the wiki's footnote bubble remains. Decided
 > with the user that day: every popup the app owns is in scope; the shared look starts
 > from the standalone family's (About, the installers); the popups are viewed both live
 > and as a screenshot sheet; the gallery comes first, so today's inconsistencies are
@@ -90,9 +90,8 @@ look in the theme's colours, for every popup to be built on. Decided with the us
   small (a question: Quit, Delete, Clear), medium (a message, an error, a setting),
   large (a long list, About, the speech bubbles, the installers, the folder chooser).
 
-The gallery shows the frame's three samples (`frame-small`, `frame-medium`,
-`frame-large`) at every screen size until the real popups are on it; drop them once
-stage 3 is done.
+The gallery showed the frame's three samples, one per size class, at every screen
+size until the real popups were on it; they were dropped once they were.
 
 ## Stage 3 onward: one family at a time
 
