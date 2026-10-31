@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.document_links import StoryLink
-from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.main_layout import READER_GUTTER_COLOR, MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui import reader_close_mixin as reader_close_mixin_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
@@ -618,3 +618,10 @@ class TestFullscreen:
         window.unbind.assert_called_once_with(on_key_down=screen._on_key_down)
         screen._on_close_screen.assert_called_once()
         assert screen._is_closing is False
+
+
+def test_the_gutter_is_the_comic_readers_cream() -> None:
+    """The kv paints the gutter between a pair in the colour the comic reader's pair has."""
+    *rgb, alpha = DocumentReaderScreen.GUTTER_RGBA
+    assert tuple(round(c * 255) for c in rgb) == READER_GUTTER_COLOR
+    assert alpha == 1

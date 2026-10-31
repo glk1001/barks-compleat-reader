@@ -38,9 +38,10 @@ MAIN_SCREEN_LAYOUT_OPTIONS: tuple[str, ...] = (MATCH_THE_SCREEN, SINGLE_PAGE, TW
 GUTTER_FRACTION = 0.03
 # The spread's width in pages: two pages and the gutter.
 SPREAD_WIDTH_IN_PAGES = 2 + GUTTER_FRACTION
-# The comic reader's gutter: the restored pages' cream paper as the reader draws it, so
-# a pair reads as one open book rather than two pages either side of a black bar.
-COMIC_GUTTER_COLOR = (247, 239, 226)
+# The readers' gutter, the comic reader's and the document reader's: the restored pages'
+# cream paper as the reader draws it, so a pair reads as one open book rather than two
+# pages either side of a black bar.
+READER_GUTTER_COLOR = (247, 239, 226)
 
 
 class MainLayoutMode(Enum):

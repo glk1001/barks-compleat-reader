@@ -37,7 +37,7 @@ from .fantagraphics_volumes import (
     MissingArchiveFilesError,
     MissingVolumeError,
 )
-from .main_layout import COMIC_GUTTER_COLOR, GUTTER_FRACTION
+from .main_layout import GUTTER_FRACTION, READER_GUTTER_COLOR
 from .page_image import PageImage
 from .reader_utils import is_blank_page, is_title_page
 
@@ -340,7 +340,9 @@ class ComicBookLoader:
         # window and its pages land where the main screen's do; in the paper's cream.
         left_pil = left_page.to_pil()
         gap = round(GUTTER_FRACTION * left_pil.width)
-        composited = build_double_page_image(left_pil, right_page.to_pil(), gap, COMIC_GUTTER_COLOR)
+        composited = build_double_page_image(
+            left_pil, right_page.to_pil(), gap, READER_GUTTER_COLOR
+        )
 
         return PageImage.from_pil(composited)
 

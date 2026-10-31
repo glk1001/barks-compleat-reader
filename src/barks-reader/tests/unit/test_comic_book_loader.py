@@ -22,7 +22,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
 )
 from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
 from barks_reader.core.log_markers import pattern
-from barks_reader.core.main_layout import COMIC_GUTTER_COLOR, GUTTER_FRACTION
+from barks_reader.core.main_layout import GUTTER_FRACTION, READER_GUTTER_COLOR
 from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
@@ -888,7 +888,7 @@ def test_get_double_page_image_ready_for_reading_composes_two_pages(
     assert (spread.width, spread.height, spread.mode) == (100 + gutter, 80, "RGB")
     out_image = spread.to_pil()
     assert out_image.getpixel((10, 40)) == (255, 0, 0)
-    assert out_image.getpixel((50, 40)) == COMIC_GUTTER_COLOR
+    assert out_image.getpixel((50, 40)) == READER_GUTTER_COLOR
     assert out_image.getpixel((60, 40)) == (0, 255, 0)
 
 

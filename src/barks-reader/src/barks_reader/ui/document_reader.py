@@ -21,7 +21,12 @@ from barks_reader.core import log_markers
 from barks_reader.core.display_unit import DisplayUnit, build_document_units
 from barks_reader.core.document_chapters import PAGE_IMAGE_EXTENSIONS
 from barks_reader.core.document_links import StoryLink, load_story_links
-from barks_reader.core.main_layout import GUTTER_FRACTION, SPREAD_WIDTH_IN_PAGES, MainLayoutMode
+from barks_reader.core.main_layout import (
+    GUTTER_FRACTION,
+    READER_GUTTER_COLOR,
+    SPREAD_WIDTH_IN_PAGES,
+    MainLayoutMode,
+)
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
@@ -94,6 +99,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     GUTTER_FRACTION = GUTTER_FRACTION
+    GUTTER_RGBA = (*(c / 255 for c in READER_GUTTER_COLOR), 1)
     SPREAD_WIDTH_IN_PAGES = SPREAD_WIDTH_IN_PAGES
     GREYED_BUTTON_OPACITY = 0.4
     action_bar_title = StringProperty()
