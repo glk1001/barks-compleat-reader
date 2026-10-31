@@ -47,6 +47,7 @@ from barks_reader.core.popup_gallery import (
     error_popup_name,
     parse_request,
 )
+from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
 from .about_box import show_about_box
@@ -60,7 +61,7 @@ from .main_screen import (
     open_small_screen_popup,
 )
 from .popup_frame import PopupFrame, message_body
-from .settings_fix import open_folder_chooser_popup
+from .settings_fix import SettingNumberPopup, SettingOptionsPopup, open_folder_chooser_popup
 from .user_error_handler import UserErrorHandler
 
 if TYPE_CHECKING:
@@ -279,6 +280,10 @@ _OPENERS: dict[str, Callable[[GalleryApp], None]] = {
         "Fantagraphics Directory", str(Path.home()), _SettingStandIn()
     ),
     "alt-escape-key": _open_alt_escape,
+    "setting-options": lambda _app: SettingOptionsPopup(
+        "Color Theme", THEME_NAMES, DEFAULT_THEME_NAME, _ignore
+    ).open(),
+    "setting-number": lambda _app: SettingNumberPopup("Main Window Height", "0", _ignore).open(),
     "frame-small": _open_frame_sample(PopupSize.SMALL),
     "frame-medium": _open_frame_sample(PopupSize.MEDIUM),
     "frame-large": _open_frame_sample(PopupSize.LARGE),

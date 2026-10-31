@@ -27,6 +27,7 @@ from barks_reader.core.reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
     APP_TITLE,
     LONG_PATH_SETTING,
+    NUMERIC_SETTING,
     OPTIONS_SETTING,
 )
 from barks_reader.core.reader_palette import set_active_theme
@@ -81,6 +82,7 @@ from .settings_fix import (
     PinnedTitleSettings,
     SettingAltEscapeKey,
     SettingLongPath,
+    SettingNumberEntry,
     SettingOptionsWithValue,
     install_settings_theme_kv,
 )
@@ -232,6 +234,7 @@ class BarksReaderApp(App):
         logger.debug("Building application settings...")
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
         settings.register_type(OPTIONS_SETTING, SettingOptionsWithValue)
+        settings.register_type(NUMERIC_SETTING, SettingNumberEntry)
         settings.register_type(ALT_ESCAPE_KEY_SETTING, SettingAltEscapeKey)
 
         self.reader_settings.build_settings(settings)

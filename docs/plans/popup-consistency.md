@@ -2,8 +2,8 @@
 
 > Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
 > 2026-10-31**; stage 3 begun: the `MessagePopup` and standalone families and the
-> speech bubbles are on the frame, and of the settings popups Select Directory and
-> Alternate Escape Key; Kivy's options list and number entry are still to move. Decided
+> speech bubbles and the settings popups are on the frame; the wiki's footnote bubble
+> and dropping the gallery's frame samples remain. Decided
 > with the user that day: every popup the app owns is in scope; the shared look starts
 > from the standalone family's (About, the installers); the popups are viewed both live
 > and as a screenshot sheet; the gallery comes first, so today's inconsistencies are
@@ -130,8 +130,19 @@ row; its keys stay the list's (Up and Down, Right opens, Left goes up a folder, 
 selects the box's path). Alternate Escape Key (`ui/alt_escape_capture_popup.py`) is
 small, its Clear and Cancel the frame's row with Cancel focused first; any key but the
 frame's own is captured. For them the frame learnt to start its focus on any button
-and to leave every key but Escape to a text box that has the focus. Then Kivy's
-options list and number entry, rebuilt on the frame and added to the gallery.
+and to leave every key but Escape to a text box that has the focus (50be5528).
+
+Then Kivy's own two, rebuilt on the frame and added to the gallery (`setting-options`,
+`setting-number`). A choice setting's list (`SettingOptionsPopup`) is medium, the
+choices a column with the current one marked and focused: Up and Down move along it,
+Down past the last reaches Cancel, the row's only button, and Return picks. A number
+setting's entry (`SettingNumberPopup`, opened by `SettingNumberEntry`, registered for
+`numeric`) is small, its box taking the keyboard as it opens: Return there takes the
+number, Down leaves the box for OK and Cancel, Up goes back. Each popup takes its own
+keys, so the settings list's popup driver is gone. For them the frame learnt to leave
+its row unfocused while the body holds the focus, to be handed it (`focus_button`),
+and to let a text box's keyboard go as it closes: still focused, the box took the
+next Return from the settings beneath.
 
 ## Open questions
 

@@ -2,13 +2,14 @@
 import os
 import stat
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
@@ -20,7 +21,15 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
 from kivy.uix.label import Label
-from kivy.uix.settings import ContentPanel, SettingItem, SettingOptions, Settings
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.settings import (
+    ContentPanel,
+    SettingItem,
+    SettingNumeric,
+    SettingOptions,
+    Settings,
+)
+from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 from loguru import logger
 
@@ -40,7 +49,8 @@ from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .popup_frame import PopupFrame
+from .popup_frame import BUTTON_BACKGROUND, PopupFrame
+from .reader_keyboard_nav import update_focus_in_list
 
 
 def _rgba(color: Color, alpha: float | None = None) -> str:
@@ -708,6 +718,172 @@ class SettingLongPath(SettingItem):
         open_folder_chooser_popup(self.title, self.value, self)
 
 
+# A choice setting's list and a number setting's entry box.
+CHOICE_HEIGHT = dp(44)
+CHOICE_SPACING = dp(6)
+CHOICE_FONT_SIZE = sp(16)
+NUMBER_FONT_SIZE = sp(22)
+NUMBER_BOX_BACKGROUND = (0.0, 0.0, 0.0, 0.35)
+_CHOICE_FOCUS_GROUP = "setting_choice_focus"
+
+
+def _choice_button(option: str, *, current: bool) -> Button:
+    """Return a choice's button: the current one marked, in the selection colour."""
+    return Button(
+        text=option,
+        size_hint_y=None,
+        height=CHOICE_HEIGHT,
+        font_size=CHOICE_FONT_SIZE,
+        bold=current,
+        background_normal="",
+        background_color=list(theme().accent_selection if current else BUTTON_BACKGROUND),
+        color=list(theme().text_secondary),
+    )
+
+
+class SettingOptionsPopup(PopupFrame):
+    """A choice setting's list, on the shared frame (``ui.popup_frame``).
+
+    The choices are a column, the current one marked and focused. Up and Down move
+    along it, stopping at its top; Down past the last choice reaches the frame's
+    Cancel, and Up there comes back. Return picks the focused choice, a tap the one
+    tapped; Escape cancels.
+    """
+
+    def __init__(
+        self, title: str, options: Sequence[str], current: str, on_pick: Callable[[str], None]
+    ) -> None:
+        self.choices = [_choice_button(option, current=option == current) for option in options]
+        column = BoxLayout(orientation="vertical", size_hint_y=None, spacing=CHOICE_SPACING)
+        column.bind(minimum_height=column.setter("height"))
+        for choice in self.choices:
+            column.add_widget(choice)
+        scroll = ScrollView(do_scroll_x=False)  # a list too long for the frame scrolls
+        scroll.add_widget(column)
+        super().__init__(
+            title=title,
+            body=scroll,
+            size=PopupSize.MEDIUM,
+            buttons=(FrameButton("Cancel", lambda: None),),
+            first_focus=None,  # the list has the focus
+        )
+        self._options = list(options)
+        self._on_pick = on_pick
+        self._scroll = scroll
+        self.choice_idx: int | None = (
+            self._options.index(current) if current in self._options else (0 if options else None)
+        )
+        for option, choice in zip(self._options, self.choices, strict=True):
+            choice.bind(on_release=lambda _btn, option=option: self._pick(option))
+        self.key_handler = self._handle_key
+        self.bind(on_pre_open=self._show_choice_focus)
+        if self.choice_idx is None:  # nothing to choose: the focus is Cancel's
+            self.focus_button(0)
+
+    def _pick(self, option: str) -> None:
+        self.dismiss()
+        self._on_pick(option)
+
+    def _show_choice_focus(self, *_args: object) -> None:
+        if self.choice_idx is not None:
+            update_focus_in_list(self.choices, self.choice_idx, _CHOICE_FOCUS_GROUP)
+
+    def _focus_choice(self, idx: int | None) -> None:
+        if idx == self.choice_idx:
+            return  # at the list's top: Up stays, as the app's lists do
+        self.choice_idx = idx
+        if idx is None:
+            update_focus_in_list(self.choices, -1, _CHOICE_FOCUS_GROUP)
+            self.focus_button(0)
+            return
+        self.focus_button(None)
+        self._show_choice_focus()
+        self._scroll.scroll_to(self.choices[idx], animate=False)
+
+    def _handle_key(self, key: int) -> bool:
+        """Take the list's keys; Escape, and Return on Cancel, are the frame's."""
+        last = len(self.choices) - 1
+        if self.choice_idx is None:  # on Cancel, the bottom
+            if key == KEY_UP and self.choices:
+                self._focus_choice(last)
+                return True
+            return key == KEY_DOWN
+        if key == KEY_UP:
+            self._focus_choice(max(0, self.choice_idx - 1))
+            return True
+        if key == KEY_DOWN:
+            self._focus_choice(None if self.choice_idx == last else self.choice_idx + 1)
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._pick(self._options[self.choice_idx])
+            return True
+        return not is_escape_key(key)  # Left and Right have nowhere to go in a column
+
+
+class SettingNumberPopup(PopupFrame):
+    """A number setting's entry box, on the shared frame (``ui.popup_frame``).
+
+    The box has the keyboard from the start: Return there takes the number, Escape
+    cancels. Down leaves the box for the frame's OK and Cancel, and Up from them
+    goes back to it.
+    """
+
+    def __init__(self, title: str, value: str, on_enter: Callable[[str], None]) -> None:
+        box = TextInput(
+            text=value,
+            multiline=False,
+            write_tab=False,
+            input_filter="float" if "." in value else "int",
+            font_size=NUMBER_FONT_SIZE,
+            size_hint_y=None,
+            height=NUMBER_FONT_SIZE * 2,
+            padding=[dp(10), dp(8)],
+            background_normal="",
+            background_active="",
+            background_color=list(NUMBER_BOX_BACKGROUND),
+            foreground_color=list(theme().text_title),
+            cursor_color=list(theme().focus_ring),
+        )
+        body = BoxLayout(orientation="vertical")
+        body.add_widget(Widget())
+        body.add_widget(box)
+        body.add_widget(Widget())
+        super().__init__(
+            title=title,
+            body=body,
+            size=PopupSize.SMALL,
+            buttons=(
+                FrameButton("OK", lambda: on_enter(box.text)),
+                FrameButton("Cancel", lambda: None),
+            ),
+            first_focus=None,  # the box has the keyboard
+        )
+        self.textinput = box
+        self._on_enter = on_enter
+        box.bind(on_text_validate=self._enter)
+        self.key_handler = self._handle_key
+        self.bind(on_pre_open=self._focus_box)
+
+    def _focus_box(self, *_args: object) -> None:
+        self.textinput.focus = True
+
+    def _enter(self, *_args: object) -> None:
+        self.dismiss()
+        self._on_enter(self.textinput.text)
+
+    def _handle_key(self, key: int) -> bool:
+        """Move between the box and the row; a one-line box has no use for Up or Down."""
+        if key == KEY_DOWN and self.textinput.focus:
+            self.textinput.focus = False
+            self.focus_button(0)
+            return True
+        if key == KEY_UP and not self.textinput.focus:
+            self.focus_button(None)
+            self._focus_box()
+            return True
+        return key in (KEY_UP, KEY_DOWN)
+
+
 class SettingOptionsWithValue(SettingOptions):
     """Override class to fix Kivy SettingOptions not displaying value in settings panel."""
 
@@ -752,11 +928,20 @@ class SettingOptionsWithValue(SettingOptions):
                         value_label.bind(size=value_label.setter("text_size"))
                         content_box.add_widget(value_label)
 
-    def _create_popup(self, instance) -> None:  # noqa: ANN001
-        super()._create_popup(instance)
+    def _create_popup(self, instance: Widget) -> None:  # noqa: ARG002
+        """Open the choices on the shared frame, in the place of Kivy's popup."""
+        self.popup = popup = SettingOptionsPopup(
+            self.title, self.options, self.value, self._pick_option
+        )
+        popup.bind(
+            on_open=lambda *_a: logger.debug(
+                log_markers.SETTING_OPTIONS_OPENED.format(key=self.key, value=self.value)
+            )
+        )
+        popup.open()
 
-    def _set_option(self, instance: Label) -> None:
-        super()._set_option(instance)
+    def _pick_option(self, option: str) -> None:
+        self.value = option
         logger.info(log_markers.SETTING_OPTION_SET.format(key=self.key, value=self.value))
         Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
 
@@ -768,6 +953,29 @@ class SettingOptionsWithValue(SettingOptions):
         # (the main screen layout, 2026-10-29).
         super().on_value(instance, value)
         self._update_value_display()
+
+
+class SettingNumberEntry(SettingNumeric):
+    """Kivy's number setting, its entry box on the shared frame (``ui.popup_frame``)."""
+
+    def _create_popup(self, instance: Widget) -> None:  # noqa: ARG002
+        """Open the entry box on the shared frame, in the place of Kivy's popup."""
+        self.popup = popup = SettingNumberPopup(self.title, str(self.value), self._take_number)
+        self.textinput = popup.textinput
+        popup.bind(
+            on_open=lambda *_a: logger.debug(
+                log_markers.SETTING_NUMBER_OPENED.format(key=self.key, value=self.value)
+            )
+        )
+        popup.open()
+
+    def _take_number(self, text: str) -> None:
+        """Take `text` as the value, a float if the value was one; leave it if not a number."""
+        is_float = "." in str(self.value)
+        try:
+            self.value = str(float(text) if is_float else int(text))
+        except ValueError:
+            logger.info(log_markers.SETTING_NUMBER_REFUSED.format(key=self.key, text=text))
 
 
 class SettingAltEscapeKey(SettingItem):

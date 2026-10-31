@@ -1,5 +1,5 @@
 # ruff: noqa: SLF001
-"""The folder chooser's remote keys, and the lines the settings popups log."""
+"""The settings popups on the shared frame: their remote keys, and the lines they log."""
 
 from __future__ import annotations
 
@@ -20,6 +20,9 @@ from barks_reader.ui.settings_fix import (
     PinnedTitleSettingsInterface,
     QuietFileSystem,
     SettingLongPathPopup,
+    SettingNumberEntry,
+    SettingNumberPopup,
+    SettingOptionsPopup,
     SettingOptionsWithValue,
 )
 from kivy.lang import Builder
@@ -31,6 +34,8 @@ from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from barks_reader.ui.popup_frame import PopupFrame
 
 
 def _stand_in(**attrs: object) -> Any:  # noqa: ANN401
@@ -252,14 +257,200 @@ def test_selecting_a_path_logs_it(loguru_sink: list[str]) -> None:
 
 
 def test_an_option_picked_from_its_list_logs_the_new_value(loguru_sink: list[str]) -> None:
-    setting = MagicMock(spec=SettingOptionsWithValue)  # passes _set_option's super()
-    setting.key, setting.value, setting.panel = "color_theme", "Duckburg", None
-    with (
-        patch.object(settings_fix.SettingOptions, "_set_option"),
-        patch.object(settings_fix, "Clock"),
-    ):
-        SettingOptionsWithValue._set_option(setting, MagicMock())
+    setting = _stand_in(key="color_theme", value="")
+    with patch.object(settings_fix, "Clock"):
+        SettingOptionsWithValue._pick_option(setting, "Duckburg")
+    assert setting.value == "Duckburg"
     assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
+
+
+_THEMES = ("Duckburg", "Calisota", "Klondike")
+
+
+def _options_popup(current: str = "Calisota") -> tuple[SettingOptionsPopup, MagicMock]:
+    on_pick = MagicMock()
+    with patch.object(popup_frame, "Window") as window:
+        window.width, window.height = 1760, 1300
+        return SettingOptionsPopup("Color Theme", _THEMES, current, on_pick), on_pick
+
+
+def _key(popup: PopupFrame, key: int) -> bool:
+    return popup._on_key_down(None, key, 0, "", [])
+
+
+class TestOptionsOnTheFrame:
+    """A choice setting's list: medium, the current choice marked and focused, Cancel below."""
+
+    def test_it_is_medium_with_the_choices_and_only_cancel(self) -> None:
+        popup, _ = _options_popup()
+        assert popup.size_class is PopupSize.MEDIUM
+        assert [c.text for c in popup.choices] == list(_THEMES)
+        assert [b.text for b in popup.button_widgets] == ["Cancel"]
+        assert [c.bold for c in popup.choices] == [False, True, False]  # the current one
+        assert popup.choice_idx == 1
+
+    def test_down_and_return_pick_the_next_choice(self) -> None:
+        popup, on_pick = _options_popup()
+        with patch.object(popup, "dismiss") as dismiss:
+            assert _key(popup, KEY_DOWN) is True
+            assert _key(popup, KEY_ENTER) is True
+        dismiss.assert_called_once_with()
+        on_pick.assert_called_once_with("Klondike")
+
+    def test_up_stops_at_the_top_without_moving_the_focus_again(
+        self, loguru_sink: list[str]
+    ) -> None:
+        popup, _ = _options_popup(current="Duckburg")
+        popup.dispatch("on_pre_open")
+        focus_lines = len(loguru_sink)
+        assert _key(popup, KEY_UP) is True
+        assert popup.choice_idx == 0
+        assert len(loguru_sink) == focus_lines  # no new "Nav focus on" line
+
+    def test_down_past_the_last_choice_reaches_cancel_and_up_comes_back(self) -> None:
+        popup, on_pick = _options_popup(current="Klondike")
+        _key(popup, KEY_DOWN)
+        assert popup.choice_idx is None
+        assert _key(popup, KEY_DOWN) is True  # Cancel is the bottom
+        with patch.object(popup, "dismiss") as dismiss:
+            _key(popup, KEY_ENTER)  # the frame's: Return on Cancel
+        dismiss.assert_called_once_with()
+        on_pick.assert_not_called()
+        _key(popup, KEY_UP)
+        assert popup.choice_idx == len(_THEMES) - 1
+
+    def test_left_and_right_stay_in_the_column(self) -> None:
+        popup, _ = _options_popup()
+        assert _key(popup, KEY_RIGHT) is True
+        assert _key(popup, KEY_LEFT) is True
+        assert popup.choice_idx == 1
+
+    def test_escape_cancels_unchanged(self) -> None:
+        popup, on_pick = _options_popup()
+        with patch.object(popup, "dismiss") as dismiss:
+            assert _key(popup, KEY_ESCAPE) is True
+        dismiss.assert_called_once_with()
+        on_pick.assert_not_called()
+
+    def test_a_tapped_choice_is_picked(self) -> None:
+        popup, on_pick = _options_popup()
+        with patch.object(popup, "dismiss"):
+            popup.choices[0].dispatch("on_release")
+        on_pick.assert_called_once_with("Duckburg")
+
+    def test_with_nothing_to_choose_the_focus_is_cancels(self) -> None:
+        on_pick = MagicMock()
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            popup = SettingOptionsPopup("Empty", (), "", on_pick)
+        assert popup.choice_idx is None
+        _key(popup, KEY_UP)  # nowhere to go
+        assert popup.choice_idx is None
+        with patch.object(popup, "dismiss") as dismiss:
+            _key(popup, KEY_ENTER)
+        dismiss.assert_called_once_with()
+
+    def test_the_setting_opens_it_and_logs_it_open(self, loguru_sink: list[str]) -> None:
+        setting = _stand_in(
+            title="Color Theme", options=list(_THEMES), value="Klondike", key="color_theme"
+        )
+        setting._pick_option = MagicMock()
+        with patch.object(settings_fix, "SettingOptionsPopup") as popup_class:
+            SettingOptionsWithValue._create_popup(setting, MagicMock())
+        popup_class.assert_called_once_with(
+            "Color Theme", list(_THEMES), "Klondike", setting._pick_option
+        )
+        popup = popup_class.return_value
+        assert setting.popup is popup
+        popup.open.assert_called_once_with()
+        on_open = popup.bind.call_args.kwargs["on_open"]
+        on_open(popup)
+        assert 'Setting options opened for "color_theme" (current "Klondike").' in loguru_sink
+
+
+def _number_popup(value: str = "20") -> tuple[SettingNumberPopup, MagicMock]:
+    on_enter = MagicMock()
+    with patch.object(popup_frame, "Window") as window:
+        window.width, window.height = 1760, 1300
+        return SettingNumberPopup("Main Window Height", value, on_enter), on_enter
+
+
+class TestNumberOnTheFrame:
+    """A number setting's entry box: small, the box focused, OK and Cancel."""
+
+    def test_it_is_small_with_the_box_and_ok_and_cancel(self) -> None:
+        popup, _ = _number_popup()
+        assert popup.size_class is PopupSize.SMALL
+        assert [b.text for b in popup.button_widgets] == ["OK", "Cancel"]
+        assert popup.textinput.text == "20"
+        assert popup.textinput.input_filter == "int"
+        assert _number_popup("1.5")[0].textinput.input_filter == "float"
+
+    def test_the_box_has_the_keyboard_once_it_opens_and_return_there_takes_it(self) -> None:
+        popup, on_enter = _number_popup()
+        popup.dispatch("on_pre_open")
+        try:
+            assert popup.textinput.focus is True
+            assert _key(popup, KEY_ENTER) is False  # the box's own Return
+            popup.textinput.text = "640"
+            with patch.object(popup, "dismiss") as dismiss:
+                popup.textinput.dispatch("on_text_validate")
+            dismiss.assert_called_once_with()
+            on_enter.assert_called_once_with("640")
+        finally:
+            popup.textinput.focus = False
+
+    def test_down_leaves_the_box_for_ok_and_up_goes_back(self) -> None:
+        popup, on_enter = _number_popup()
+        popup.dispatch("on_pre_open")
+        try:
+            assert _key(popup, KEY_DOWN) is True
+            assert popup.textinput.focus is False
+            with patch.object(popup, "dismiss"):
+                _key(popup, KEY_ENTER)  # OK, focused
+            on_enter.assert_called_once_with("20")
+            assert _key(popup, KEY_UP) is True
+            assert popup.textinput.focus is True
+            assert _key(popup, KEY_UP) is True  # kept from the settings list behind
+        finally:
+            popup.textinput.focus = False
+
+    def test_escape_cancels_unchanged(self) -> None:
+        popup, on_enter = _number_popup()
+        with patch.object(popup, "dismiss") as dismiss:
+            assert _key(popup, KEY_ESCAPE) is True
+        dismiss.assert_called_once_with()
+        on_enter.assert_not_called()
+
+
+class TestNumberSetting:
+    def test_a_number_is_taken_as_the_value(self) -> None:
+        setting = _stand_in(key="main_window_height", value="0")
+        SettingNumberEntry._take_number(setting, "640")
+        assert setting.value == "640"
+
+    def test_a_float_setting_stays_a_float(self) -> None:
+        setting = _stand_in(key="zoom", value="1.0")
+        SettingNumberEntry._take_number(setting, "2")
+        assert setting.value == "2.0"
+
+    def test_what_is_not_a_number_is_refused_and_logged(self, loguru_sink: list[str]) -> None:
+        setting = _stand_in(key="main_window_height", value="0")
+        SettingNumberEntry._take_number(setting, "")
+        assert setting.value == "0"
+        assert 'Setting "main_window_height" left as it was: "" is not a number.' in loguru_sink
+
+    def test_the_setting_opens_it_and_logs_it_open(self, loguru_sink: list[str]) -> None:
+        setting = _stand_in(title="Main Window Height", value="0", key="main_window_height")
+        setting._take_number = MagicMock()
+        with patch.object(settings_fix, "SettingNumberPopup") as popup_class:
+            SettingNumberEntry._create_popup(setting, MagicMock())
+        popup_class.assert_called_once_with("Main Window Height", "0", setting._take_number)
+        popup = popup_class.return_value
+        assert (setting.popup, setting.textinput) == (popup, popup.textinput)
+        popup.open.assert_called_once_with()
+        popup.bind.call_args.kwargs["on_open"](popup)
+        assert 'Setting number entry opened for "main_window_height" (current "0").' in loguru_sink
 
 
 def test_an_option_picked_reaches_the_panel_which_saves_it_and_tells_the_app() -> None:
@@ -576,11 +767,8 @@ class TestSettingsSavedWithoutAConfig:
         setting = MagicMock(spec=SettingOptionsWithValue)
         setting.key, setting.value = "color_theme", "Duckburg"
         setting.panel = MagicMock(config=None)
-        with (
-            patch.object(settings_fix.SettingOptions, "_set_option"),
-            patch.object(settings_fix, "Clock"),
-        ):
-            SettingOptionsWithValue._set_option(setting, MagicMock())
+        with patch.object(settings_fix, "Clock"):
+            SettingOptionsWithValue._pick_option(setting, "Duckburg")
         assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
 
     @pytest.mark.parametrize("has_panel", [False, True])

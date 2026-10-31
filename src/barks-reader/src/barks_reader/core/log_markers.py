@@ -127,6 +127,10 @@ FOLDER_CHOOSER_NOT_LISTED: Final = 'Folder chooser: cannot list "{path}".'
 # An options setting's value picked from its list (written straight to the ini, so
 # no CONFIG_CHANGE line follows).
 SETTING_OPTION_SET: Final = 'Setting "{key}" set to "{value}".'
+SETTING_OPTIONS_OPENED: Final = 'Setting options opened for "{key}" (current "{value}").'
+# A number setting's entry box (its value, once taken, logs the CONFIG_CHANGE line).
+SETTING_NUMBER_OPENED: Final = 'Setting number entry opened for "{key}" (current "{value}").'
+SETTING_NUMBER_REFUSED: Final = 'Setting "{key}" left as it was: "{text}" is not a number.'
 # The alternate-Escape setting's capture popup: the next key pressed (real Escape cancels).
 ALT_ESCAPE_CAPTURE_OPENED: Final = "Alternate Escape capture opened (current {name})."
 ALT_ESCAPE_CAPTURED: Final = "Alternate Escape captured: {name} ({keycode})."

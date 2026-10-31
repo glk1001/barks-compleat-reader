@@ -209,6 +209,42 @@ class TestPopupFrame:
         cancel.assert_called_once_with()
         clear.assert_not_called()
 
+    def test_a_row_left_unfocused_presses_nothing_on_enter_and_escape_still_cancels(self) -> None:
+        ok, cancel = MagicMock(), MagicMock()
+        frame = _frame((FrameButton("OK", ok), FrameButton("Cancel", cancel)), first_focus=None)
+        with patch.object(frame, "dismiss"):
+            assert _press(frame, KEY_ENTER) is True  # kept, but no button has the focus
+            ok.assert_not_called()
+            _press(frame, KEY_ESCAPE)
+        cancel.assert_called_once_with()
+
+    @pytest.mark.parametrize(("key", "pressed"), [(KEY_RIGHT, "OK"), (KEY_LEFT, "Cancel")])
+    def test_right_or_left_onto_an_unfocused_row_lands_on_its_near_end(
+        self, key: int, pressed: str
+    ) -> None:
+        on_press = {"OK": MagicMock(), "Cancel": MagicMock()}
+        frame = _frame(
+            tuple(FrameButton(text, action) for text, action in on_press.items()), first_focus=None
+        )
+        _press(frame, key)
+        with patch.object(frame, "dismiss"):
+            _press(frame, KEY_ENTER)
+        on_press[pressed].assert_called_once_with()
+
+    def test_a_body_can_hand_the_focus_to_the_row_and_take_it_back(self) -> None:
+        ok = MagicMock()
+        frame = _frame(
+            (FrameButton("OK", ok), FrameButton("Cancel", MagicMock())), first_focus=None
+        )
+        frame.focus_button(0)
+        with patch.object(frame, "dismiss"):
+            _press(frame, KEY_ENTER)
+        ok.assert_called_once_with()
+        frame.focus_button(None)
+        with patch.object(frame, "dismiss"):
+            _press(frame, KEY_ENTER)
+        ok.assert_called_once_with()  # not again: the row has no focus
+
     def test_while_a_text_box_has_the_keyboard_only_escape_is_the_frames(self) -> None:
         box = TextInput()
         ok, cancel = MagicMock(), MagicMock()
@@ -225,6 +261,16 @@ class TestPopupFrame:
             assert _press(frame, KEY_ESCAPE) is True
         cancel.assert_called_once_with()
         box.focus = False
+
+    def test_closing_lets_a_focused_text_box_go(self) -> None:
+        box = TextInput()
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            frame = PopupFrame(title="T", body=box, buttons=(FrameButton("OK", MagicMock()),))
+        box.focus = True
+        with patch.object(popup_frame, "Window"):
+            frame.dispatch("on_dismiss")
+        assert box.focus is False
 
     def test_on_closed_runs_once_it_has_left_the_window(self) -> None:
         on_closed = MagicMock()

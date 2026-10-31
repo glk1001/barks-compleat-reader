@@ -241,6 +241,7 @@ def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> Non
 # The options and key-capture settings, by their place in the panel (reader_settings order;
 # a field added or removed above one moves it, as Double Page Mode's removal did on 2026-10-30).
 DOWNS_TO_COLOR_THEME = 5
+DOWNS_TO_WINDOW_HEIGHT = 10
 DOWNS_TO_ALT_ESCAPE = 14
 KEY_TAB_CODE = 9
 
@@ -265,6 +266,27 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     d.key_then_wait(set_to, "Return")
     _close_settings(d)
     assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
+
+
+def test_a_number_setting_opens_its_entry_box_and_escape_leaves_it_unchanged(
+    boot: AppBoot,
+) -> None:
+    """Return opens the number's box on the shared frame; Escape closes it, the ini as it was.
+
+    Escape is the frame's even while the box has the keyboard: had it gone to the box,
+    the next Escape would close the popup and the settings' X would never be focused.
+    """
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.THE_STORIES)
+    before = harness.read_ini_value(ini, "main_window_height")
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_WINDOW_HEIGHT)
+    opened = pattern(markers.SETTING_NUMBER_OPENED, key="main_window_height")
+    d.key_then_wait(opened, "Return")
+    d.key("Escape")
+    _close_settings(d)
+    assert harness.read_ini_value(ini, "main_window_height") == before
 
 
 def test_the_settings_list_stops_at_its_top(boot: AppBoot) -> None:

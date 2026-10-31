@@ -47,6 +47,8 @@ POPUP_NAMES: tuple[str, ...] = (
     "speech-bubbles",
     "folder-chooser",
     "alt-escape-key",
+    "setting-options",
+    "setting-number",
     *FRAME_SAMPLE_NAMES,
 )
 

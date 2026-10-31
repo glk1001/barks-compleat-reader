@@ -10,7 +10,12 @@ from typing import TYPE_CHECKING, Any, Protocol
 from loguru import logger
 
 from .main_layout import MAIN_SCREEN_LAYOUT_OPTIONS, MATCH_THE_SCREEN
-from .reader_consts_and_types import ALT_ESCAPE_KEY_SETTING, LONG_PATH_SETTING
+from .reader_consts_and_types import (
+    ALT_ESCAPE_KEY_SETTING,
+    LONG_PATH_SETTING,
+    NUMERIC_SETTING,
+    OPTIONS_SETTING,
+)
 from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from .reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 from .reader_utils import expand_path_vars
@@ -64,8 +69,8 @@ class FieldKind(Enum):
     """Setting types accepted by Kivy's settings panel."""
 
     BOOL = "bool"
-    INT = "numeric"
-    OPTIONS = "options"
+    INT = NUMERIC_SETTING
+    OPTIONS = OPTIONS_SETTING
     LONG_PATH = LONG_PATH_SETTING
     ALT_ESCAPE = ALT_ESCAPE_KEY_SETTING
 

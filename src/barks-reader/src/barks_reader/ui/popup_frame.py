@@ -11,8 +11,9 @@ The remote's six keys work it as they work the confirm popups: Left and Right mo
 focus ring along the buttons, Return presses the focused one, Escape presses the last
 that closes the popup (the cancel). A popup with no buttons closes on Return; Escape
 lands on its close X first, as everywhere in the app, and Return there closes it. While
-a text box in the popup has the keyboard, every key but Escape is the box's. Every other
-key is kept while the frame is open.
+a text box in the popup has the keyboard, every key but Escape is the box's. A body with
+keys of its own (a list) can hold the focus itself, the row unfocused until the body
+hands it on (`focus_button`). Every other key is kept while the frame is open.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ from .kivy_standalone_show_message import closes_popup
 from .reader_keyboard_nav import (
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,
+    clear_focus_in_list,
     draw_focus_highlight,
     update_focus_in_list,
 )
@@ -120,7 +122,7 @@ class PopupFrame(ModalView):
         title_markup: bool = False,
         title_font_name: str = "",
         close_on_outside_tap: bool = False,
-        first_focus: int = 0,
+        first_focus: int | None = 0,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -141,7 +143,8 @@ class PopupFrame(ModalView):
             close_on_outside_tap: Whether a tap outside the frame closes it, as it does
                 a popup browsed beside the screen it came from (the speech bubbles).
             first_focus: The button the focus starts on: the first, the confirming one,
-                unless a slip of the hand there would cost something (Clear).
+                unless a slip of the hand there would cost something (Clear); None
+                leaves the row unfocused, for a body that holds the focus itself.
 
         """
         super().__init__(
@@ -185,6 +188,18 @@ class PopupFrame(ModalView):
     def body(self) -> Widget:
         """The popup's own content."""
         return self._body
+
+    def focus_button(self, idx: int | None) -> None:
+        """Put the focus ring on the row's button `idx`, or take it off the row (None).
+
+        For a body that holds the focus itself: a list hands it down to the row past its
+        last entry, and takes it back.
+        """
+        self._focused_idx = idx
+        if idx is None:
+            clear_focus_in_list(self._button_widgets, _FOCUS_GROUP)
+        else:
+            self._show_focus()
 
     def set_body(self, body: Widget) -> None:
         """Put `body` in the place of the popup's content, for a popup shown again."""
@@ -319,17 +334,23 @@ class PopupFrame(ModalView):
         self._close_focused = not self._close_focused
 
     def _show_focus(self) -> None:
+        assert self._focused_idx is not None
         update_focus_in_list(self._button_widgets, self._focused_idx, _FOCUS_GROUP)
 
     def _on_pre_open(self, *_args: object) -> None:
         # Before the fade-in, not after it: the screen beneath already yields every key
         # to an open modal, so a key pressed while it faded in would reach no one.
         Window.bind(on_key_down=self._on_key_down, size=self.fit_to_window)
-        if self._button_widgets:
+        if self._button_widgets and self._focused_idx is not None:
             self._show_focus()
 
     def _on_dismiss(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down, size=self.fit_to_window)
+        # A text box gone with the popup must let the keyboard go: still focused, the
+        # screen beneath would leave every key to it (Return, closing the settings).
+        for widget in self._body.walk():
+            if isinstance(widget, TextInput) and widget.focus:
+                widget.focus = False
         return False
 
     def _on_parent(self, _frame: object, parent: object) -> None:
@@ -349,14 +370,21 @@ class PopupFrame(ModalView):
             elif closes_popup(key):
                 self.dismiss()
         elif key in (KEY_RIGHT, KEY_LEFT):
-            step = 1 if key == KEY_RIGHT else -1
-            self._focused_idx = (self._focused_idx + step) % len(self._frame_buttons)
-            self._show_focus()
+            self._move_focus(1 if key == KEY_RIGHT else -1)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._press(self._frame_buttons[self._focused_idx])
+            if self._focused_idx is not None:
+                self._press(self._frame_buttons[self._focused_idx])
         elif is_escape_key(key):
             self._press_cancel()
         return True  # the frame is modal: no key reaches the screen beneath it
+
+    def _move_focus(self, step: int) -> None:
+        count = len(self._frame_buttons)
+        if self._focused_idx is None:  # onto the row from outside it, at its near end
+            self._focused_idx = 0 if step > 0 else count - 1
+        else:
+            self._focused_idx = (self._focused_idx + step) % count
+        self._show_focus()
 
 
 def _fit_button_width(button: Button, texture_size: tuple[float, float]) -> None:
