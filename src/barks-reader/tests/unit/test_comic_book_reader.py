@@ -22,6 +22,7 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
+from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.core.page_image import PageImage
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -1011,9 +1012,14 @@ class TestComicBookReaderScreen:
     @pytest.mark.parametrize(
         ("window", "two_up", "expected_width"),
         [
-            # The spread window on a 2560x1440 monitor: a page, then the pair.
+            # The spread window on a 2560x1440 monitor: a page, then the pair and its
+            # gutter, the window's width.
             ((1775, 1365), False, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO)),
-            ((1775, 1365), True, round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO * 2)),
+            (
+                (1775, 1365),
+                True,
+                round((1365 - ACTION_BAR_SIZE_Y) / COMIC_PAGE_ASPECT_RATIO * SPREAD_WIDTH_IN_PAGES),
+            ),
             # The single-page window: the pair is width-limited to the window.
             ((874, 1365), True, 874),
         ],

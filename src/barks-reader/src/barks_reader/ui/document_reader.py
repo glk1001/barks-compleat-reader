@@ -21,7 +21,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.display_unit import DisplayUnit, build_document_units
 from barks_reader.core.document_chapters import PAGE_IMAGE_EXTENSIONS
 from barks_reader.core.document_links import StoryLink, load_story_links
-from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.main_layout import GUTTER_FRACTION, SPREAD_WIDTH_IN_PAGES, MainLayoutMode
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
@@ -93,14 +93,16 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
+    GUTTER_FRACTION = GUTTER_FRACTION
+    SPREAD_WIDTH_IN_PAGES = SPREAD_WIDTH_IN_PAGES
     GREYED_BUTTON_OPACITY = 0.4
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
     # The main screen's layout ("single" or "spread"); the app sets it, the kv file
-    # widens the page box to the pair for the spread (`pages_across`).
+    # widens the page box to the pair and its gutter for the spread (`pages_wide`).
     layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
-    pages_across = NumericProperty(1)
+    pages_wide = NumericProperty(1)
     page_source = StringProperty()
     right_page_source = StringProperty()
     has_story_links = BooleanProperty(defaultvalue=False)

@@ -48,6 +48,7 @@ from barks_build_comic_images.build_comic_images import (
     _get_inset_border_color,
     _get_title_page_font,
     _PubTextLine,
+    build_double_page_image,
 )
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import (
@@ -791,3 +792,24 @@ class TestSmallWordTitleLines:
         full = builder._get_intro_text_height("Hound\nof thy\nMoaning Hills", font)
 
         assert small < full
+
+
+class TestDoublePageImage:
+    def test_the_pages_sit_side_by_side_with_no_gap_by_default(self) -> None:
+        pair = build_double_page_image(
+            Image.new("RGB", (3, 2), "red"), Image.new("RGB", (3, 2), "blue")
+        )
+        assert pair.size == (6, 2)
+        assert (pair.getpixel((2, 0)), pair.getpixel((3, 0))) == ((255, 0, 0), (0, 0, 255))
+
+    def test_a_gap_is_black_between_the_pages(self) -> None:
+        pair = build_double_page_image(
+            Image.new("RGB", (3, 2), "red"), Image.new("RGB", (3, 2), "blue"), gap=2
+        )
+        assert pair.size == (8, 2)
+        assert [pair.getpixel((x, 1)) for x in range(2, 6)] == [
+            (255, 0, 0),
+            (0, 0, 0),
+            (0, 0, 0),
+            (0, 0, 255),
+        ]

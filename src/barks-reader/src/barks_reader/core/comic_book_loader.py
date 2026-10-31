@@ -37,6 +37,7 @@ from .fantagraphics_volumes import (
     MissingArchiveFilesError,
     MissingVolumeError,
 )
+from .main_layout import GUTTER_FRACTION
 from .page_image import PageImage
 from .reader_utils import is_blank_page, is_title_page
 
@@ -329,13 +330,17 @@ class ComicBookLoader:
             right_idx: Page index of the right page.
 
         Returns:
-            The two pages as one landscape page.
+            The two pages as one landscape page, the spread's gutter between them.
 
         """
         left_page = self.get_image_ready_for_reading(left_idx)
         right_page = self.get_image_ready_for_reading(right_idx)
 
-        composited = build_double_page_image(left_page.to_pil(), right_page.to_pil())
+        # The main screen's gutter between them, so the pair is as wide as the spread
+        # window and its pages land where the main screen's do.
+        left_pil = left_page.to_pil()
+        gap = round(GUTTER_FRACTION * left_pil.width)
+        composited = build_double_page_image(left_pil, right_page.to_pil(), gap)
 
         return PageImage.from_pil(composited)
 

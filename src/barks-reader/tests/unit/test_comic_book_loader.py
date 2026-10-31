@@ -22,6 +22,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
 )
 from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import GUTTER_FRACTION
 from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
@@ -883,9 +884,11 @@ def test_get_double_page_image_ready_for_reading_composes_two_pages(
 
     spread = loader.get_double_page_image_ready_for_reading(0, 1)
 
-    assert (spread.width, spread.height, spread.mode) == (100, 80, "RGB")
+    gutter = round(GUTTER_FRACTION * 50)
+    assert (spread.width, spread.height, spread.mode) == (100 + gutter, 80, "RGB")
     out_image = spread.to_pil()
     assert out_image.getpixel((10, 40)) == (255, 0, 0)
+    assert out_image.getpixel((50, 40)) == (0, 0, 0)
     assert out_image.getpixel((60, 40)) == (0, 255, 0)
 
 
@@ -1954,10 +1957,19 @@ class TestDoublePageCompositing:
         ) as compose:
             spread = loader.get_double_page_image_ready_for_reading(0, 1)
 
-        left, right = compose.call_args.args
+        left, right, _gap = compose.call_args.args
         assert (left.size, left.mode, left.tobytes()) == ((2, 1), "RGB", bytes(6))
         assert (right.size, right.tobytes()) == ((2, 1), bytes(6))
         assert spread == PageImage.from_pil(composite)
+
+    def test_the_pages_are_a_spread_gutter_apart(self, loader: ComicBookLoader) -> None:
+        """The main screen's gutter, so the pair fills the spread window as its pages do."""
+        loader._images = [
+            PageImage(200, 1, "RGB", bytes(600)),
+            PageImage(200, 1, "RGB", bytes(600)),
+        ]
+        spread = loader.get_double_page_image_ready_for_reading(0, 1)
+        assert spread.width == 400 + round(GUTTER_FRACTION * 200)
 
 
 class TestBlankPageDetectionUsesPageType:

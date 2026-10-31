@@ -36,7 +36,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
-from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title, get_article_title_text
@@ -1193,14 +1193,15 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         # Match the inner action bar's width to the comic's aspect-fit width so it spans
         # the visible image area, not the full monitor width in fullscreen: a page's
         # in single-page mode, the pair's in double-page mode (the two pages are
-        # composited as one landscape image, twice a page wide). In double-page mode it
+        # composited as one landscape image with the spread's gutter between them,
+        # `SPREAD_WIDTH_IN_PAGES` pages wide). In double-page mode it
         # stays the pair's under a solo unit, the cover or an odd last page, as the
         # document reader's does on the spread: a bar that narrowed there moved its
         # buttons at a page turn, the first of every comic. It refits with the window
         # and with the mode (`two_up`: a comic's load and the Double Page toggle).
         aspect_ratio = COMIC_PAGE_ASPECT_RATIO
         if self.comic_book_reader.two_up:
-            aspect_ratio /= 2
+            aspect_ratio /= SPREAD_WIDTH_IN_PAGES
         w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width, aspect_ratio)
         self.action_bar_width = max(1, w)
 

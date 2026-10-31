@@ -231,7 +231,12 @@ Settled with the maintainer, 2026-10-29, in this order.
     screen height wide; the main-screen spread is about 5% narrower per page because
     it keeps the bar, and it has a gutter the reader lacks. The pages shift slightly
     between the two; accepted. (Its opening mode follows the layout from 2026-10-30:
-    decision 1.)
+    decision 1.) Revised 2026-10-31 with the user: in the spread window the reader's
+    pair, with no gutter, stood a black strip short of the window at each side (about
+    13 px on a 1440p screen), while a single page filled the single-page window. The
+    comic reader's pair (`build_double_page_image`'s gap) and the document reader's
+    now have the main screen's gutter, so in the window, bar shown, their pages land
+    where the main screen's do.
 13. **Popups are centred on the spread,** to start with. The Menu dropdown still drops
     from its button, over the right page. The settings panel, today sized to the main
     screen (`ui/main_screen.py`, the settings `size`), keeps the single page's
