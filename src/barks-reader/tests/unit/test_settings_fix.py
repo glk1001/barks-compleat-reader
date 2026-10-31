@@ -12,7 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
-from barks_reader.ui import settings_fix
+from barks_reader.core.popup_frame import PopupSize
+from barks_reader.ui import popup_frame, settings_fix
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.settings_fix import (
     PinnedTitleSettings,
@@ -46,25 +47,15 @@ def _chooser(*, box_focused: bool = False) -> MagicMock:
 
 
 def _press(chooser: MagicMock, key: int) -> bool:
-    return SettingLongPathPopup._on_key_down(chooser, None, key, 0, "", [])
+    return SettingLongPathPopup._handle_key(chooser, key)
 
 
 class TestFolderChooserKeys:
-    """auto_dismiss is off, so without these a remote could never leave the chooser."""
+    """Its browsing keys, asked before the frame's (``ui.popup_frame``)."""
 
-    def test_opened_is_logged_once_the_keys_are_bound(self, loguru_sink: list[str]) -> None:
-        """A test waits on this line and presses Escape: before on_open, the panel took it."""
+    def test_escape_is_left_to_the_frame(self) -> None:
         chooser = _chooser()
-        chooser.title = "Fantagraphics Directory"
-        with patch.object(settings_fix, "Window") as window:
-            SettingLongPathPopup._bind_keys(chooser)
-        window.bind.assert_called_once_with(on_key_down=chooser._on_key_down)
-        assert 'Folder chooser opened for "Fantagraphics Directory".' in loguru_sink
-
-    def test_escape_closes_it_unchanged(self) -> None:
-        chooser = _chooser()
-        assert _press(chooser, KEY_ESCAPE) is True
-        chooser.dismiss.assert_called_once()
+        assert _press(chooser, KEY_ESCAPE) is False  # the frame's: it presses Cancel
         chooser.select_path.assert_not_called()
 
     def test_enter_takes_the_path_in_its_box(self) -> None:
@@ -90,13 +81,56 @@ class TestFolderChooserKeys:
         _press(chooser, KEY_LEFT)
         chooser._open_folder.assert_called_once_with(str(Path("/books")))
 
-    def test_while_the_box_types_only_escape_is_taken(self) -> None:
+    def test_while_the_box_types_nothing_is_taken(self) -> None:
         chooser = _chooser(box_focused=True)
         assert _press(chooser, KEY_DOWN) is False
-        assert _press(chooser, KEY_ESCAPE) is True
 
     def test_other_keys_pass(self) -> None:
         assert _press(_chooser(), ord("a")) is False
+
+
+class TestFolderChooserOnTheFrame:
+    """The real popup: a large frame, its body the box and the folders, Select and Cancel."""
+
+    KV_FILE = "test_settings_fix-chooser.kv"
+
+    @pytest.fixture
+    def chooser(self) -> Generator[SettingLongPathPopup]:
+        Builder.load_string(settings_fix._themed_settings_kv(), filename=self.KV_FILE)
+        try:
+            with patch.object(popup_frame, "Window") as window:
+                window.width, window.height = 1760, 1300
+                yield SettingLongPathPopup(title="Fantagraphics Directory")
+        finally:
+            Builder.unload_file(self.KV_FILE)
+
+    def test_it_is_large_with_select_and_cancel(self, chooser: SettingLongPathPopup) -> None:
+        assert chooser.size_class is PopupSize.LARGE
+        assert [b.text for b in chooser.button_widgets] == ["Select", "Cancel"]
+        assert chooser.ids.path_input.parent is not None
+        assert chooser.ids.file_chooser.parent is not None
+
+    def test_select_keeps_the_box_path(self, chooser: SettingLongPathPopup) -> None:
+        chooser.ids.path_input.text = "/library"
+        with patch.object(SettingLongPathPopup, "select_path") as select:
+            chooser.button_widgets[0].dispatch("on_release")
+        select.assert_called_once_with("/library")
+
+    def test_escape_cancels_it_unchanged(self, chooser: SettingLongPathPopup) -> None:
+        with (
+            patch.object(chooser, "dismiss") as dismiss,
+            patch.object(SettingLongPathPopup, "select_path") as select,
+        ):
+            assert chooser._on_key_down(None, KEY_ESCAPE, 0, "", []) is True
+        dismiss.assert_called_once_with()
+        select.assert_not_called()
+
+    def test_opened_is_logged_once_open(
+        self, chooser: SettingLongPathPopup, loguru_sink: list[str]
+    ) -> None:
+        """A test waits on this line and presses Escape: the frame has the keys by then."""
+        chooser.dispatch("on_open")
+        assert 'Folder chooser opened for "Fantagraphics Directory".' in loguru_sink
 
 
 def _browsing(tmp_path: Path, selected: str | None) -> MagicMock:

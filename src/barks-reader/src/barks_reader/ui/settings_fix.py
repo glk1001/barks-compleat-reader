@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
@@ -21,7 +20,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
 from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.settings import ContentPanel, SettingItem, SettingOptions, Settings
 from kivy.uix.widget import Widget
 from loguru import logger
@@ -37,10 +35,12 @@ from barks_reader.core.keys import (
     is_escape_key,
     set_alt_escape_key,
 )
+from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
+from .popup_frame import PopupFrame
 
 
 def _rgba(color: Color, alpha: float | None = None) -> str:
@@ -217,76 +217,43 @@ KV_SETTINGS_OVERRIDE = """
             pos: self.pos
             size: self.size
 
-<SettingLongPathPopup>:
-    title: "Select Directory"
-    title_align: "center"
-    auto_dismiss: False
-    size_hint: 0.8, 0.8
-    separator_color: __SEL_RGBA__
-    title_color: 1, 1, 1, 1
+# The directory chooser's body, on the popup frame (ui.popup_frame): the path box
+# over the list of folders. Its Select and Cancel are the frame's buttons.
+<FolderChooserBody>:
+    orientation: 'vertical'
+    spacing: dp(5)
 
+    # Top row for displaying/editing the current path
     BoxLayout:
-        orientation: 'vertical'
-        spacing: dp(5)
-        padding: dp(10)
-        #canvas.before:
-        #    Color:
-        #        rgba: 0.12, 0.12, 0.12, 1
-        #    Rectangle:
-        #        pos: self.pos
-        #        size: self.size
+        size_hint_y: None
+        height: dp(60)
+        padding: [dp(4), dp(10), dp(4), dp(10)]
+        spacing: dp(10)
 
-        # Top row for displaying/editing the current path
-        BoxLayout:
-            size_hint_y: None
-            height: dp(60)
-            padding: [dp(10), dp(10), dp(10), dp(10)]
-            spacing: dp(10)
+        Label:
+            text: 'Selected:'
+            size_hint_x: None
+            width: dp(70)
+            color: __TEXT_SECONDARY_RGBA__
 
-            Label:
-                text: 'Selected:'
-                size_hint_x: None
-                width: dp(50)
-                bold: False
-                color: 1, 1, 1, 1
+        TextInput:
+            id: path_input
+            text: file_chooser.selection[0] if file_chooser.selection else ""
+            multiline: False
+            font_size: '15sp'
+            hint_text: 'Type or select a path'
+            padding: [6, self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 6, 0]
+            on_text_validate: root.popup.select_path(self.text)
+            background_color: 0.2, 0.2, 0.2, 1
+            foreground_color: __TEXT_TITLE_RGBA__
+            cursor_color: __FOCUS_RGBA__
 
-            TextInput:
-                id: path_input
-                text: file_chooser.selection[0] if file_chooser.selection else ""
-                multiline: False
-                font_size: '15sp'
-                hint_text: 'Type or select a path'
-                padding: [6, self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 6, 0]
-                on_text_validate: root.select_path(self.text)
-                background_color: 0.2, 0.2, 0.2, 1
-                foreground_color: __TEXT_TITLE_RGBA__
-                cursor_color: __FOCUS_RGBA__
-
-        # The FileChooser takes up the main space
-        CustomFileChooserListView:
-            id: file_chooser
-            dirselect: True
-            multiselect: False
-            on_selection: root.on_file_selection(self, self.selection)
-
-        # The bottom row for action buttons
-        BoxLayout:
-            size_hint_y: None
-            height: dp(44)
-            spacing: dp(10)
-
-            Button:
-                text: 'Select'
-                bold: True
-                on_release: root.select_path(path_input.text)
-                background_color: __SEL_RGBA__
-                color: 1, 1, 1, 1
-
-            Button:
-                text: 'Cancel'
-                on_release: root.dismiss()
-                background_color: __DANGER_RGBA__
-                color: 1, 1, 1, 1
+    # The FileChooser takes up the main space
+    CustomFileChooserListView:
+        id: file_chooser
+        dirselect: True
+        multiselect: False
+        on_selection: root.popup.on_file_selection(self, self.selection)
 
 # Corner close affordance for the (menu-less) settings panel: the app's own
 # close glyph, theme-tinted, with no background chip so it reads as the same
@@ -471,6 +438,7 @@ def _themed_settings_kv() -> str:
         KV_SETTINGS_OVERRIDE.replace("__SEL_RGBA__", _rgba(sel, alpha=1.0))
         .replace("__SEL_RGB__", sel_rgb)
         .replace("__TEXT_TITLE_RGBA__", _rgba(t.text_title, alpha=1.0))
+        .replace("__TEXT_SECONDARY_RGBA__", _rgba(t.text_secondary, alpha=1.0))
         .replace("__FOCUS_RGBA__", _rgba(t.focus_ring, alpha=1.0))
         .replace("__DANGER_RGBA__", _rgba(t.danger, alpha=1.0))
         .replace("__ICON_TINT_RGBA__", _rgba(t.icon_tint, alpha=1.0))
@@ -496,43 +464,59 @@ def install_settings_theme_kv() -> None:
     _settings_kv_installed = True
 
 
-class SettingLongPathPopup(Popup):
-    """A custom popup for directory selection."""
+class FolderChooserBody(BoxLayout):
+    """The directory chooser's body: the path box over the folders (laid out in KV)."""
+
+    popup = ObjectProperty(None)
+
+
+class SettingLongPathPopup(PopupFrame):
+    """The directory chooser, on the shared frame (``ui.popup_frame``).
+
+    Its keys are the remote's: the arrows browse, Return keeps the box's path, and
+    Escape is the frame's, pressing Cancel. While the box has the keyboard, every key
+    but Escape is the box's.
+    """
 
     setting_widget = ObjectProperty(None)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
-        super().__init__(**kwargs)
+    def __init__(self, title: str, setting_widget: object = None) -> None:
+        body = FolderChooserBody()
+        super().__init__(
+            title=title,
+            body=body,
+            size=PopupSize.LARGE,
+            buttons=(
+                # Select closes the popup itself, once the path is on its way back.
+                FrameButton("Select", self._select_the_box_path, closes=False),
+                FrameButton("Cancel", lambda: None),
+            ),
+        )
+        body.popup = self
+        # The body's kv ids, where the chooser's code and its tests reach them.
+        self.ids.update(body.ids)
+        self.setting_widget = setting_widget
         self._updating = False  # Flag to prevent infinite loops
         self._update_event = None  # Store the scheduled event
-        # auto_dismiss is off and the main screen hands an open popup every key, so
-        # without its own a remote could never leave: Escape cancels, Enter selects.
-        self.bind(on_open=self._bind_keys, on_dismiss=self._unbind_keys)
+        self.key_handler = self._handle_key
+        self.bind(on_open=self._log_opened)
 
-    def _bind_keys(self, *_args: object) -> None:
-        Window.bind(on_key_down=self._on_key_down)
-        # Logged here, once the keys are ours: the popup opens over an animation, and
-        # a key pressed before on_open still goes to the settings panel under it.
+    def _log_opened(self, *_args: object) -> None:
+        # Logged once it is open, its keys taken before its fade-in by the frame.
         logger.debug(log_markers.FOLDER_CHOOSER_OPENED.format(title=self.title))
 
-    def _unbind_keys(self, *_args: object) -> bool:
-        Window.unbind(on_key_down=self._on_key_down)
-        return False  # do not veto the dismissal
+    def _select_the_box_path(self) -> None:
+        self.select_path(self.ids.path_input.text)
 
-    def _on_key_down(
-        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
-    ) -> bool:
-        """Take the remote's keys: arrows browse, Enter keeps the box's path, Escape cancels.
+    def _handle_key(self, key: int) -> bool:
+        """Take the remote's browsing keys: the arrows, and Return to keep the box's path.
 
         Up/Down move the highlight through the listed entries (the box follows it),
-        Right opens the highlighted folder and Left the parent one. While the box
-        itself has the keyboard, only Escape is taken here.
+        Right opens the highlighted folder and Left the parent one. What is not taken
+        here (Escape, and every key while the box is typed in) is the frame's.
         """
-        if is_escape_key(key):
-            self.dismiss()
-            return True
-        if self.ids.path_input.focus:
-            return False  # typing; the box's own Enter (on_text_validate) selects
+        if is_escape_key(key) or self.ids.path_input.focus:
+            return False
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self.select_path(self.ids.path_input.text)
         elif key in (KEY_UP, KEY_DOWN):
@@ -668,7 +652,7 @@ def open_folder_chooser_popup(title: str, value: str, setting_widget: object) ->
     )
     setting_dir = str(selected_dir)
 
-    popup = SettingLongPathPopup(title=title, title_size="18sp", setting_widget=setting_widget)
+    popup = SettingLongPathPopup(title=title, setting_widget=setting_widget)
 
     popup.ids.file_chooser.path = str(setting_parent_dir)
     popup.ids.path_input.text = setting_dir

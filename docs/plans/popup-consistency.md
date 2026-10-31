@@ -2,7 +2,8 @@
 
 > Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
 > 2026-10-31**; stage 3 begun: the `MessagePopup` and standalone families and the
-> speech bubbles are on the frame; the settings popups are still to move. Decided
+> speech bubbles are on the frame, and of the settings popups Select Directory and
+> Alternate Escape Key; Kivy's options list and number entry are still to move. Decided
 > with the user that day: every popup the app owns is in scope; the shared look starts
 > from the standalone family's (About, the installers); the popups are viewed both live
 > and as a screenshot sheet; the gallery comes first, so today's inconsistencies are
@@ -121,6 +122,16 @@ Escape still closes it at once, the keys being on the list rather than the X; a 
 outside still closes it. For it the frame learnt to ask a key handler first, to swap
 its body, to close on a tap outside, and to take a title with markup, a font of its
 own and a size set later.
+
+The settings popups' move, decided with the user: in two commits, the app's own two
+first. Select Directory (`SettingLongPathPopup`, `ui/settings_fix.py`) is a large
+`PopupFrame`, its path box and folder list the body, Select and Cancel the frame's
+row; its keys stay the list's (Up and Down, Right opens, Left goes up a folder, Return
+selects the box's path). Alternate Escape Key (`ui/alt_escape_capture_popup.py`) is
+small, its Clear and Cancel the frame's row with Cancel focused first; any key but the
+frame's own is captured. For them the frame learnt to start its focus on any button
+and to leave every key but Escape to a text box that has the focus. Then Kivy's
+options list and number entry, rebuilt on the frame and added to the gallery.
 
 ## Open questions
 

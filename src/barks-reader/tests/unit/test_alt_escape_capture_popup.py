@@ -1,4 +1,7 @@
-"""The alternate-Escape capture popup: what each key does, and the line it logs."""
+"""The alternate-Escape capture popup: what each key does, and the line it logs.
+
+It is on the popup frame (``ui.popup_frame``): its buttons and Escape are the frame's.
+"""
 
 from __future__ import annotations
 
@@ -15,14 +18,15 @@ from barks_reader.core.keys import (
     KEY_TAB,
     KEY_UP,
 )
-from barks_reader.ui import alt_escape_capture_popup as capture_module
+from barks_reader.ui import popup_frame
 from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
 
 
 @pytest.fixture
 def popup() -> tuple[AltEscapeCapturePopup, MagicMock, MagicMock]:
     on_capture, on_clear = MagicMock(), MagicMock()
-    with patch.object(capture_module, "Window"):
+    with patch.object(popup_frame, "Window") as window:
+        window.width, window.height = 1760, 1300
         made = AltEscapeCapturePopup(current_keycode=0, on_capture=on_capture, on_clear=on_clear)
     made.dismiss = MagicMock()
     return made, on_capture, on_clear
@@ -36,7 +40,11 @@ def test_opening_logs_the_current_key_and_focuses_cancel(
     popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
 ) -> None:
     made, _, _ = popup
-    with patch.object(capture_module, "update_focus_in_list") as focus:
+    with (
+        patch.object(popup_frame, "update_focus_in_list") as focus,
+        patch.object(popup_frame, "Window"),
+    ):
+        made.dispatch("on_pre_open")
         made.dispatch("on_open")
     assert f"Alternate Escape capture opened (current {keycode_to_name(0)})." in loguru_sink
     assert focus.call_args.args[1] == 1  # the Cancel button: a slip must not clear the key
@@ -59,7 +67,7 @@ def test_any_other_key_is_captured_once(
     assert _press(made, KEY_TAB) is True
     on_capture.assert_called_once_with(KEY_TAB)
     assert f"Alternate Escape captured: {keycode_to_name(KEY_TAB)} ({KEY_TAB})." in loguru_sink
-    assert _press(made, KEY_TAB) is False  # once captured, keys pass on
+    _press(made, KEY_TAB)  # once captured, a key is not captured again
     on_capture.assert_called_once()
 
 
@@ -69,7 +77,7 @@ def test_the_remotes_own_keys_are_not_captured(
 ) -> None:
     """Each has work of its own, in the popup and in the app: none can be bound as Escape."""
     made, on_capture, _ = popup
-    with patch.object(capture_module, "update_focus_in_list"):
+    with patch.object(popup_frame, "update_focus_in_list"):
         assert _press(made, key) is True
     on_capture.assert_not_called()
 
@@ -79,7 +87,7 @@ def test_enter_presses_cancel_to_start_and_clear_after_a_left(
 ) -> None:
     """A slip of the hand must not clear the key: Cancel is focused first, Clear is a Left away."""
     made, _, on_clear = popup
-    with patch.object(capture_module, "update_focus_in_list") as focus:
+    with patch.object(popup_frame, "update_focus_in_list") as focus:
         assert _press(made, KEY_ENTER) is True
         assert "Alternate Escape capture cancelled." in loguru_sink
         on_clear.assert_not_called()

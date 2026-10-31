@@ -18,6 +18,7 @@ from barks_reader.ui import popup_frame
 from barks_reader.ui.popup_frame import PopupFrame, message_body
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
 
 
 class TestPopupSize:
@@ -199,6 +200,31 @@ class TestPopupFrame:
         assert title.font_name == "Roboto"
         frame.title_font_size = 31
         assert title.font_size == 31  # noqa: PLR2004
+
+    def test_the_focus_can_start_on_another_button(self) -> None:
+        clear, cancel = MagicMock(), MagicMock()
+        frame = _frame((FrameButton("Clear", clear), FrameButton("Cancel", cancel)), first_focus=1)
+        with patch.object(frame, "dismiss"):
+            _press(frame, KEY_ENTER)
+        cancel.assert_called_once_with()
+        clear.assert_not_called()
+
+    def test_while_a_text_box_has_the_keyboard_only_escape_is_the_frames(self) -> None:
+        box = TextInput()
+        ok, cancel = MagicMock(), MagicMock()
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            frame = PopupFrame(
+                title="T", body=box, buttons=(FrameButton("OK", ok), FrameButton("Cancel", cancel))
+            )
+        box.focus = True
+        with patch.object(frame, "dismiss"):
+            assert _press(frame, KEY_ENTER) is False  # the box's own Enter
+            assert _press(frame, KEY_LEFT) is False
+            ok.assert_not_called()
+            assert _press(frame, KEY_ESCAPE) is True
+        cancel.assert_called_once_with()
+        box.focus = False
 
     def test_on_closed_runs_once_it_has_left_the_window(self) -> None:
         on_closed = MagicMock()

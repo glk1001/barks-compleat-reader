@@ -10,7 +10,8 @@ popup that is its own window's only content fills that window instead.
 The remote's six keys work it as they work the confirm popups: Left and Right move the
 focus ring along the buttons, Return presses the focused one, Escape presses the last
 that closes the popup (the cancel). A popup with no buttons closes on Return; Escape
-lands on its close X first, as everywhere in the app, and Return there closes it. Every
+lands on its close X first, as everywhere in the app, and Return there closes it. While
+a text box in the popup has the keyboard, every key but Escape is the box's. Every other
 key is kept while the frame is open.
 """
 
@@ -28,6 +29,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
+from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
@@ -118,6 +120,7 @@ class PopupFrame(ModalView):
         title_markup: bool = False,
         title_font_name: str = "",
         close_on_outside_tap: bool = False,
+        first_focus: int = 0,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -137,6 +140,8 @@ class PopupFrame(ModalView):
             title_font_name: The title's font, or "" for the app's.
             close_on_outside_tap: Whether a tap outside the frame closes it, as it does
                 a popup browsed beside the screen it came from (the speech bubbles).
+            first_focus: The button the focus starts on: the first, the confirming one,
+                unless a slip of the hand there would cost something (Clear).
 
         """
         super().__init__(
@@ -152,7 +157,7 @@ class PopupFrame(ModalView):
         self.fill_window = fill_window
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
-        self._focused_idx = 0  # the first button, the confirming one, starts focused
+        self._focused_idx = first_focus
         self._close_button: Button | None = None
         self._close_focused = False
         # Asked first about every key, by a body that takes keys of its own (a list's
@@ -295,6 +300,9 @@ class PopupFrame(ModalView):
             self.dismiss()
         frame_button.on_press()
 
+    def _typing(self) -> bool:
+        return any(isinstance(w, TextInput) and w.focus for w in self._body.walk())
+
     def _press_cancel(self) -> None:
         closing = [b for b in self._frame_buttons if b.closes]
         if closing:
@@ -333,6 +341,8 @@ class PopupFrame(ModalView):
     ) -> bool:
         if self.key_handler is not None and self.key_handler(key):
             return True
+        if not is_escape_key(key) and self._typing():
+            return False  # the text box's key; Escape is still the frame's, to cancel
         if not self._frame_buttons:
             if is_escape_key(key):
                 self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
