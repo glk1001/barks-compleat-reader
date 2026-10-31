@@ -197,7 +197,7 @@ def open_small_screen_popup(screen_width: int, screen_height: int) -> None:
         on_ok=None,
         cancel_text="OK",
         on_cancel=None,
-        msg_halign="center",
+        centred=True,
     )
 
 
@@ -242,7 +242,7 @@ def open_no_data_pack_update_popup(check: UpdateCheck, on_close: Callable[[], No
         on_ok=None,
         cancel_text="OK",
         on_cancel=on_close,
-        msg_halign="center",
+        centred=True,
     )
 
 

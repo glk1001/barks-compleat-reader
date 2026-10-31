@@ -205,8 +205,8 @@ class PopupKeyboardNav:
     The popup is a modal ``Popup`` (``ModalView``), so the main screen's key
     handler yields to it (see ``_modal_popup_is_open`` in ``main_screen``). This
     helper therefore owns its own ``Window.on_key_down`` binding while open —
-    bound after the main handler so it sees the key — mirroring the confirm
-    popup's ``_ConfirmPopupNav``.
+    bound after the main handler so it sees the key — as the shared popup frame
+    (``ui.popup_frame``) does.
     """
 
     def __init__(self, popup: SpeechBubblesPopup) -> None:

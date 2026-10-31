@@ -1,8 +1,8 @@
 """Popup presentation for user-facing errors.
 
 Message composition is pure and lives in `core.user_error_messages`; this
-module only maps each `ErrorDialogKind` onto a `MessagePopup` layout and its
-button wiring. Satisfies `core.user_error_types.UserErrorHandlerPort`.
+module only maps each `ErrorDialogKind` onto a message popup's buttons and
+their wiring. Satisfies `core.user_error_types.UserErrorHandlerPort`.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class UserErrorHandler:
             on_ok=None,
             cancel_text="Close",
             on_cancel=None,
-            msg_halign="center",
+            centred=True,
         )
 
     def _show_settings_error_popup(

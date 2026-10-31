@@ -119,13 +119,20 @@ class TestPopupFrame:
         frame._on_parent(frame, None)  # noqa: SLF001
         on_closed.assert_called_once_with()
 
+    def test_the_keys_are_taken_before_the_fade_in(self) -> None:
+        # The screen beneath yields keys to any modal on the window, fading in or not.
+        frame = _frame()
+        with patch.object(popup_frame, "Window") as window:
+            frame.dispatch("on_pre_open")
+        window.bind.assert_called_once()
+
     def test_the_window_bindings_go_with_the_dismissal(self) -> None:
         frame = _frame((FrameButton("OK", MagicMock()),))
         with (
             patch.object(popup_frame, "Window") as window,
             patch.object(popup_frame, "update_focus_in_list") as focus,
         ):
-            frame._on_open()  # noqa: SLF001
+            frame._on_pre_open()  # noqa: SLF001
             frame._on_dismiss()  # noqa: SLF001
         assert window.bind.call_args.kwargs == window.unbind.call_args.kwargs
         focus.assert_called_once_with(frame.button_widgets, 0, popup_frame._FOCUS_GROUP)  # noqa: SLF001

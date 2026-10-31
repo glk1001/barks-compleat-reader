@@ -65,7 +65,6 @@ from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM W
 from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
 from .popup_gallery import install_popup_gallery_service
-from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     CORPUS_STATS_SCREEN,
@@ -308,7 +307,6 @@ class BarksReaderApp(App):
         # screen kv files below (and by the lazily loaded comic/document kv).
         Builder.load_file(str(ACTION_BAR_KV_FILE))
         Builder.load_file(str(KIVY_HELPERS_KV_FILE))
-        Builder.load_file(str(READER_POPUPS_KV_FILE))
         Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
         Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))

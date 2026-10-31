@@ -145,7 +145,9 @@ class PopupFrame(ModalView):
         self.add_widget(root)
 
         self.fit_to_window()
-        self.bind(on_open=self._on_open, on_dismiss=self._on_dismiss, parent=self._on_parent)
+        self.bind(
+            on_pre_open=self._on_pre_open, on_dismiss=self._on_dismiss, parent=self._on_parent
+        )
 
     @property
     def button_widgets(self) -> list[Button]:
@@ -254,7 +256,9 @@ class PopupFrame(ModalView):
     def _show_focus(self) -> None:
         update_focus_in_list(self._button_widgets, self._focused_idx, _FOCUS_GROUP)
 
-    def _on_open(self, *_args: object) -> None:
+    def _on_pre_open(self, *_args: object) -> None:
+        # Before the fade-in, not after it: the screen beneath already yields every key
+        # to an open modal, so a key pressed while it faded in would reach no one.
         Window.bind(on_key_down=self._on_key_down, size=self.fit_to_window)
         if self._button_widgets:
             self._show_focus()

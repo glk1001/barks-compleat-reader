@@ -1,69 +1,52 @@
+"""The app's confirm and message popups, opened on the shared frame (``ui.popup_frame``)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kivy.app import App
 from kivy.clock import Clock
-from kivy.core.window import Window
-from kivy.properties import (  # ty: ignore[unresolved-import]
-    NumericProperty,
-    ObjectProperty,
-    StringProperty,
-)
-from kivy.uix.popup import Popup
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
+from barks_reader.core.popup_frame import PopupSize
 
-from .reader_keyboard_nav import update_focus_in_list
+from .popup_frame import FrameButton, PopupFrame, message_body
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from kivy.uix.button import Button
+    from kivy.uix.label import Label
 
-_CONFIRM_FOCUS_GROUP = "confirm_popup_focus"
+    from .font_manager import FontManager
 
-READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
-
-
-class LoadingDataPopup(Popup):
-    progress_bar_value = NumericProperty(0)
-    splash_image_texture = ObjectProperty()
+# A question's text, short and alone in a small popup, is set this much larger.
+QUESTION_FONT_SCALE = 1.35
 
 
-class MessagePopup(Popup):
-    msg_text = StringProperty()
-    ok_text = StringProperty()
-    cancel_text = StringProperty()
-    # Optional background artwork shown behind the message (empty = plain popup).
-    bg_image_source = StringProperty("")
-    # Multiplier on the standard message font size (e.g. 1.35 for the quit popup).
-    msg_font_scale = NumericProperty(1.0)
-    ok = ObjectProperty(None, allownone=True)
-    cancel = ObjectProperty(None, allownone=True)
+@dataclass(frozen=True, slots=True)
+class _Markers:
+    """The lines a popup logs: a confirm popup's, or a message popup's."""
 
-    def __init__(
-        self,
-        text: str,
-        ok_func: Callable[[], None] | None,
-        ok_text: str,
-        cancel_func: Callable[[], None] | None,
-        cancel_text: str,
-        msg_halign: str,
-        **kwargs,  # noqa: ANN003
-    ) -> None:
-        super().__init__(**kwargs)
+    opened: str
+    confirmed: str
+    cancelled: str
+    closed: str
 
-        self.msg_text = text
-        self.ok_text = ok_text
-        self.cancel_text = cancel_text
-        self.msg_halign = msg_halign
 
-        self.ok = ok_func
-        self.cancel = cancel_func
+_CONFIRM_MARKERS = _Markers(
+    log_markers.CONFIRM_POPUP_OPENED,
+    log_markers.CONFIRM_POPUP_CONFIRMED,
+    log_markers.CONFIRM_POPUP_CANCELLED,
+    log_markers.CONFIRM_POPUP_CLOSED,
+)
+_MESSAGE_MARKERS = _Markers(
+    log_markers.MESSAGE_POPUP_OPENED,
+    log_markers.MESSAGE_POPUP_OK,
+    log_markers.MESSAGE_POPUP_CANCELLED,
+    log_markers.MESSAGE_POPUP_CLOSED,
+)
 
 
 def open_confirm_popup(
@@ -75,14 +58,12 @@ def open_confirm_popup(
     on_ok: Callable[[], None],
     bg_image: str = "",
     on_cancel: Callable[[], None] | None = None,
-) -> MessagePopup:
-    """Open a keyboard-operable confirmation popup.
+) -> PopupFrame:
+    """Open a confirmation popup on the shared frame (``ui.popup_frame``).
 
-    While the popup is open it captures all key input: Left/Right move the
-    focus ring between the two buttons (the confirming button starts focused),
-    Enter activates the focused button, and Escape always cancels — so it
-    works with a 6-button remote. The window key binding is removed again
-    when the popup is dismissed.
+    The frame's keys work it with a 6-button remote: Left/Right move the focus ring
+    between the two buttons (the confirming one starts focused), Enter presses the
+    focused one, and Escape always cancels.
 
     Args:
         title: The popup window title.
@@ -97,24 +78,21 @@ def open_confirm_popup(
         The opened popup.
 
     """
-    popup = MessagePopup(
-        text=text,
-        ok_func=None,
-        ok_text=ok_text,
-        cancel_func=None,
-        cancel_text=cancel_text,
+    fm = _font_manager()
+    frame = _logged_frame(
+        _CONFIRM_MARKERS,
         title=title,
-        msg_halign="center",
-        bg_image_source=bg_image,
-        msg_font_scale=1.35,
+        body=message_body(
+            text, font_size=QUESTION_FONT_SCALE * fm.error_popup_font_size, centred=True
+        ),
+        size=PopupSize.SMALL,
+        ok=(ok_text, on_ok),
+        cancel=(cancel_text, on_cancel),
+        art_file=bg_image,
     )
-    nav = _ConfirmPopupNav(popup, on_ok, title, on_cancel=on_cancel)
-    popup.ok = nav.confirm
-    popup.cancel = nav.cancel
-    popup.open()
-    nav.show_focus()
-    logger.debug(log_markers.CONFIRM_POPUP_OPENED.format(title=title))
-    return popup
+    frame.open()
+    logger.debug(_CONFIRM_MARKERS.opened.format(title=title))
+    return frame
 
 
 def open_message_popup(
@@ -125,16 +103,14 @@ def open_message_popup(
     on_ok: Callable[[], None] | None,
     cancel_text: str,
     on_cancel: Callable[[], None] | None,
-    msg_halign: str = "left",
-) -> MessagePopup:
-    """Open a keyboard-operable message popup (the error popups), one frame from now.
+    centred: bool = False,
+) -> PopupFrame:
+    """Open a message popup (the error popups) on the shared frame, one frame from now.
 
     The same keys as the confirm popup: Left/Right move the focus ring between
     the buttons it shows (the first starts focused), Enter presses the focused
     one and Escape is its cancel. A popup with no ok_text has only its cancel
-    button, which Enter and Escape both press. Without this a remote had no way
-    out: the popup does not dismiss itself on Escape, and the main screen hands
-    every key to it.
+    button, which Enter and Escape both press.
 
     Args:
         title: The popup window title.
@@ -143,140 +119,76 @@ def open_message_popup(
         on_ok: Called after dismissal when that button is pressed.
         cancel_text: Label of the cancelling button.
         on_cancel: Called after dismissal on cancel, or None.
-        msg_halign: The message's horizontal alignment.
+        centred: Whether the message is centred (a short notice) rather than
+            left-aligned (prose).
 
     Returns:
         The popup, opened on the next frame (to avoid graphics issues at startup).
 
     """
-    popup = MessagePopup(
-        text=text,
-        ok_func=None,
-        ok_text=ok_text,
-        cancel_func=None,
-        cancel_text=cancel_text,
+    frame = _logged_frame(
+        _MESSAGE_MARKERS,
         title=title,
-        msg_halign=msg_halign,
+        body=message_body(text, font_size=_font_manager().error_popup_font_size, centred=centred),
+        size=PopupSize.MEDIUM,
+        ok=(ok_text, on_ok),
+        cancel=(cancel_text, on_cancel),
     )
-    nav = _ConfirmPopupNav(
-        popup, on_ok or (lambda: None), title, on_cancel=on_cancel, markers=_MESSAGE_MARKERS
-    )
-    popup.ok = nav.confirm
-    popup.cancel = nav.cancel
 
     def _open(_dt: float) -> None:
-        popup.open()
-        nav.show_focus()
-        logger.debug(log_markers.MESSAGE_POPUP_OPENED.format(title=title))
+        frame.open()
+        logger.debug(_MESSAGE_MARKERS.opened.format(title=title))
 
     Clock.schedule_once(_open, 0)
-    return popup
+    return frame
 
 
-@dataclass(frozen=True, slots=True)
-class _NavMarkers:
-    """The lines a popup's keyboard driver logs: a confirm popup's, or a message popup's."""
-
-    confirmed: str
-    cancelled: str
-    closed: str
+def _font_manager() -> FontManager:
+    # pyrefly: ignore[missing-attribute]  # a popup opens only in the running app.
+    return App.get_running_app().font_manager
 
 
-_CONFIRM_MARKERS = _NavMarkers(
-    log_markers.CONFIRM_POPUP_CONFIRMED,
-    log_markers.CONFIRM_POPUP_CANCELLED,
-    log_markers.CONFIRM_POPUP_CLOSED,
-)
-_MESSAGE_MARKERS = _NavMarkers(
-    log_markers.MESSAGE_POPUP_OK,
-    log_markers.MESSAGE_POPUP_CANCELLED,
-    log_markers.MESSAGE_POPUP_CLOSED,
-)
+def _logged_frame(
+    markers: _Markers,
+    *,
+    title: str,
+    body: Label,
+    size: PopupSize,
+    ok: tuple[str, Callable[[], None] | None],
+    cancel: tuple[str, Callable[[], None] | None],
+    art_file: str = "",
+) -> PopupFrame:
+    """Return a frame whose buttons, ok (if it has a label) then cancel, log their press.
 
-
-class _ConfirmPopupNav:
-    """Keyboard driver for a confirmation or message popup.
-
-    Owns the focus ring and the window key binding; the binding is removed
-    when the popup is dismissed. The ring holds the buttons the popup shows:
-    both for a confirmation, the cancel alone for a message with no ok button.
+    The closing line is logged once the frame has left the window, not when its
+    dismissal began: Kivy fades a dismissed popup out before removing it, and the
+    main screen ignores every key while a modal is still on the window, so a driver
+    that pressed its next key on the dismissal line lost it whenever the fade
+    outlasted the key gap.
     """
+    ok_text, on_ok = ok
+    cancel_text, on_cancel = cancel
 
-    def __init__(
-        self,
-        popup: MessagePopup,
-        on_ok: Callable[[], None],
-        title: str = "",
-        *,
-        on_cancel: Callable[[], None] | None = None,
-        markers: _NavMarkers = _CONFIRM_MARKERS,
-    ) -> None:
-        self._popup = popup
-        self._on_ok = on_ok
-        self._on_cancel = on_cancel
-        self._title = title
-        self._markers = markers
-        self._buttons: list[Button] = [
-            button
-            for button, label in (
-                (popup.ids.ok_button, popup.ok_text),
-                (popup.ids.cancel_button, popup.cancel_text),
-            )
-            if label
-        ]
-        self._focused_idx = 0  # The confirming button (or the only one) starts focused.
-        Window.bind(on_key_down=self._on_key_down)
-        popup.bind(on_dismiss=self._unbind_window, parent=self._on_parent)
+    def _confirmed() -> None:
+        logger.info(markers.confirmed.format(title=title, button=ok_text))
+        if on_ok is not None:
+            on_ok()
 
-    def confirm(self) -> None:
-        logger.info(self._markers.confirmed.format(title=self._title, button=self._popup.ok_text))
-        self._popup.dismiss()
-        self._on_ok()
+    def _cancelled() -> None:
+        logger.info(markers.cancelled.format(title=title))
+        if on_cancel is not None:
+            on_cancel()
 
-    def cancel(self) -> None:
-        logger.info(self._markers.cancelled.format(title=self._title))
-        self._popup.dismiss()
-        if self._on_cancel is not None:
-            self._on_cancel()
-
-    def show_focus(self) -> None:
-        update_focus_in_list(self._buttons, self._focused_idx, _CONFIRM_FOCUS_GROUP)
-
-    def _move_focus(self, delta: int) -> None:
-        self._focused_idx = (self._focused_idx + delta) % len(self._buttons)
-        self.show_focus()
-
-    def _activate_focused(self) -> None:
-        if self._buttons[self._focused_idx] is self._popup.ids.ok_button:
-            self.confirm()
-        else:
-            self.cancel()
-
-    def _on_key_down(
-        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
-    ) -> bool:
-        if key == KEY_RIGHT:
-            self._move_focus(1)
-        elif key == KEY_LEFT:
-            self._move_focus(-1)
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._activate_focused()
-        elif is_escape_key(key):
-            self.cancel()
-        # Consume every key while the popup is modal.
-        return True
-
-    def _unbind_window(self, *_args: object) -> bool:
-        Window.unbind(on_key_down=self._on_key_down)
-        return False
-
-    def _on_parent(self, _popup: object, parent: object) -> None:
-        """Log the popup closed once it has left the window, not when its dismissal began.
-
-        Kivy fades a dismissed popup out before removing it, and the main screen
-        ignores every key while a modal is still on the window; a driver that
-        pressed the next key on the dismissal line lost it whenever the fade
-        outlasted the key gap. The line it waits on is written here instead.
-        """
-        if parent is None:
-            logger.debug(self._markers.closed.format(title=self._title))
+    fm = _font_manager()
+    buttons = [FrameButton(ok_text, _confirmed)] if ok_text else []
+    buttons.append(FrameButton(cancel_text, _cancelled))
+    return PopupFrame(
+        title=title,
+        body=body,
+        size=size,
+        buttons=buttons,
+        art_file=art_file,
+        on_closed=lambda: logger.debug(markers.closed.format(title=title)),
+        title_font_size=fm.message_title_size,
+        button_font_size=fm.error_popup_button_font_size,
+    )

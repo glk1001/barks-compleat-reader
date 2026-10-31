@@ -368,7 +368,7 @@ def test_quit_by_tap_asks_first_and_cancel_stays(boot: AppBoot) -> None:
     ):
         taps.tap(d, kv_id="quit_button")
     taps.tap_then_wait(
-        d, pattern(markers.CONFIRM_POPUP_CANCELLED, title="Quit"), kv_id="cancel_button"
+        d, pattern(markers.CONFIRM_POPUP_CANCELLED, title="Quit"), kind="Button", text="Stay"
     )
     d.expect_no_new(pattern(markers.CLOSING_APP), 2.0)
 

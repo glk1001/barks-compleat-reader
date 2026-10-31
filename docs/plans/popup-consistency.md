@@ -1,7 +1,8 @@
 # Plan: one look for every popup, and a gallery to check them
 
 > Status: **stages 1 (the gallery: 1ebd9347, 81bbb5dd) and 2 (the frame) done
-> 2026-10-31**; stage 3 onward planned. Decided with the user that day: every
+> 2026-10-31**; stage 3 begun: the `MessagePopup` family is on the frame; the
+> standalone family, speech bubbles and the settings popups are still to move. Decided with the user that day: every
 > popup the app owns is in scope; the shared look starts from the standalone family's
 > (About, the installers); the popups are viewed both live and as a screenshot sheet;
 > the gallery comes first, so today's inconsistencies are seen side by side before any
@@ -87,10 +88,17 @@ stage 3 is done.
 ## Stage 3 onward: one family at a time
 
 Move each family onto the frame, each its own commit, each checked in the gallery
-before and after: `MessagePopup` (the most used), then the standalone family, then
+before and after: `MessagePopup` (the most used; done 2026-10-31), then the standalone family, then
 speech bubbles, then the settings popups, restyling Kivy's options list and the
 wiki's footnote bubble only where it is cheap (the bubble is `okf_reader`'s, shared
 with the standalone viewer).
+
+The `MessagePopup` family's move: `open_confirm_popup` and `open_message_popup`
+(`ui/popup_widgets.py`) keep their callers and their log lines and build a
+`PopupFrame`; the class, its keyboard driver and its `.kv` rule are gone. The five
+questions are small, with their art and their text at 1.35x, centred; the two notices
+and the seven user errors are medium. The frame now takes the keys on `on_pre_open`,
+as the old driver did on opening: a key pressed during the fade-in reached no one.
 
 ## Open questions
 
