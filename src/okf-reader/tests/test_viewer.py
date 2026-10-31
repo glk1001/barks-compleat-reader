@@ -914,6 +914,56 @@ class TestTheReadingColumnsCap:
         assert viewer.body.width == viewer_module.dp(viewer_module.BODY_MAX_WIDTH)
 
 
+class TestTheContentPadding:
+    """The panels sit CONTENT_PADDING in from every side until an app moves them."""
+
+    def test_the_default_and_an_apps_padding(self, viewer: OKFViewer) -> None:
+        assert list(viewer._content.padding) == [viewer_module.CONTENT_PADDING] * 4
+        viewer.set_content_padding(40, 0, 8, 2)
+        assert list(viewer._content.padding) == [40, 0, 8, 2]
+
+
+class TestTheCentredBlock:
+    """Centred, the sidebar and the capped column sit with even art either side."""
+
+    def _lay_out(self, viewer: OKFViewer, width: float) -> None:
+        viewer.size = (width, 800)
+        viewer._content.size = (width, 700)
+        viewer._content.do_layout()
+        viewer.body_scroll.width = viewer.body_scroll.width  # the column's fit
+
+    def test_the_pair_is_centred_with_the_sidebars_share_kept(self, viewer: OKFViewer) -> None:
+        viewer.set_body_max_width(880)
+        viewer.set_centre_block(True)
+        self._lay_out(viewer, 1876)
+        sidebar = viewer._left_column
+        assert sidebar.width == pytest.approx(1876 * viewer_module.TREE_PANEL_WIDTH)
+        pane = viewer.body_scroll
+        assert sidebar.x == pytest.approx(viewer._content.right - pane.right)
+        assert viewer.body.width == viewer_module.dp(880)
+
+    def test_centred_the_pane_is_the_columns_width(self, viewer: OKFViewer) -> None:
+        """So its scroll bar sits at the column's edge, not a margin away."""
+        viewer.set_body_max_width(880)
+        viewer.set_centre_block(True)
+        self._lay_out(viewer, 1876)
+        assert viewer.body_scroll.width == pytest.approx(viewer_module.dp(880))
+
+    def test_too_narrow_to_centre_it_keeps_the_plain_layout(self, viewer: OKFViewer) -> None:
+        viewer.set_content_padding(40, 0, 8, 0)
+        viewer.set_centre_block(True)
+        self._lay_out(viewer, 1000)
+        assert viewer._left_column.size_hint_x == viewer_module.TREE_PANEL_WIDTH
+        assert list(viewer._content.padding) == [40, 0, 8, 0]
+
+    def test_off_restores_the_plain_layout(self, viewer: OKFViewer) -> None:
+        viewer.set_centre_block(True)
+        self._lay_out(viewer, 1876)
+        viewer.set_centre_block(False)
+        assert viewer._left_column.size_hint_x == viewer_module.TREE_PANEL_WIDTH
+        assert list(viewer._content.padding) == [viewer_module.CONTENT_PADDING] * 4
+
+
 class TestContrastSetByTheApp:
     def test_set_contrast_presses_the_toggle_and_resets_the_scrims(self, viewer: OKFViewer) -> None:
         viewer.set_contrast(True)

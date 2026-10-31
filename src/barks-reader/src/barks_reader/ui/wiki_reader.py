@@ -20,7 +20,7 @@ from kivy.core.window import Window
 from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 from okf_reader.core.actions import PageAction
-from okf_reader.ui.viewer import BODY_MAX_WIDTH, OKFViewer
+from okf_reader.ui.viewer import BODY_MAX_WIDTH, CONTENT_PADDING, OKFViewer
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
@@ -42,6 +42,14 @@ from .reader_screens import ReaderScreen
 # The article's width cap on the two-page spread (dp): the viewer's own cap left it
 # floating in a page's worth of art beside the contents (2026-10-30).
 BODY_MAX_WIDTH_SPREAD = 880
+# The sidebar and article panels' inset below the top bar on the two-page spread (px):
+# from the bar above and from the strip's bottom. The pair is centred in the strip
+# (2026-10-31), so the left one is only its smallest margin, for a narrow window.
+WIKI_SPREAD_OFFSET_LEFT = 40
+WIKI_SPREAD_OFFSET_TOP = 0
+WIKI_SPREAD_OFFSET_BOTTOM = 0
+# The same inset on the single page, on every side (px).
+WIKI_SINGLE_PAGE_OFFSET = 0
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -233,6 +241,16 @@ class WikiReaderScreen(ReaderScreen):
             return
         on_the_spread = self.layout_mode == MainLayoutMode.SPREAD.value
         self._viewer.set_body_max_width(BODY_MAX_WIDTH_SPREAD if on_the_spread else BODY_MAX_WIDTH)
+        self._viewer.set_centre_block(on_the_spread)
+        if on_the_spread:
+            self._viewer.set_content_padding(
+                WIKI_SPREAD_OFFSET_LEFT,
+                WIKI_SPREAD_OFFSET_TOP,
+                CONTENT_PADDING,
+                WIKI_SPREAD_OFFSET_BOTTOM,
+            )
+        else:
+            self._viewer.set_content_padding(*(WIKI_SINGLE_PAGE_OFFSET,) * 4)
         if WindowManager.is_fullscreen_now():
             self.size_hint = (None, None)
             self.pos_hint = {"center_x": 0.5, "center_y": 0.5}

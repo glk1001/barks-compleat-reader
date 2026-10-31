@@ -585,6 +585,39 @@ class TestApplyViewerSizing:
 
         wiki_screen._viewer.set_body_max_width.assert_called_once_with(cap)
 
+    @pytest.mark.parametrize(
+        ("layout", "padding"),
+        [
+            (
+                MainLayoutMode.SPREAD,
+                (
+                    wiki_reader.WIKI_SPREAD_OFFSET_LEFT,
+                    wiki_reader.WIKI_SPREAD_OFFSET_TOP,
+                    wiki_reader.CONTENT_PADDING,
+                    wiki_reader.WIKI_SPREAD_OFFSET_BOTTOM,
+                ),
+            ),
+            (MainLayoutMode.SINGLE, (wiki_reader.WIKI_SINGLE_PAGE_OFFSET,) * 4),
+        ],
+    )
+    def test_the_panels_offsets_follow_the_layout(
+        self,
+        wiki_screen: WikiReaderScreen,
+        mock_window_manager: MagicMock,
+        layout: MainLayoutMode,
+        padding: tuple[int, int, int, int],
+    ) -> None:
+        wiki_screen._viewer = MagicMock()
+        mock_window_manager.is_fullscreen_now.return_value = False
+        wiki_screen.layout_mode = layout.value
+
+        wiki_screen._apply_viewer_sizing()
+
+        wiki_screen._viewer.set_content_padding.assert_called_once_with(*padding)
+        wiki_screen._viewer.set_centre_block.assert_called_once_with(
+            layout == MainLayoutMode.SPREAD
+        )
+
     def test_a_layout_change_re_shapes_the_strip_and_resets_contrast(
         self, wiki_screen: WikiReaderScreen
     ) -> None:

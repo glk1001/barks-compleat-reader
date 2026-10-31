@@ -110,6 +110,13 @@ LAZY_TABLE_MIN_ROWS = 100
 # so a scroll step finds its rows ready.
 LAZY_TABLE_MARGIN = 0.5
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
+# The sidebar and reading pane's inset below the top bar (px), on every side; an
+# embedding app may set others (`set_content_padding`), as the Barks Reader does on
+# its two-page spread.
+CONTENT_PADDING = 8
+# Between the sidebar's edge and the reading pane's scrim (px): none, the two
+# scrims meet (2026-10-31).
+PANEL_GAP = 0
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.22  # fraction of the window; the page panel gets the rest
@@ -501,6 +508,8 @@ class OKFViewer(RelativeLayout):
         # an embedding app may inject a different backend (e.g. full-text).
         self._searcher: SearchProvider = search_provider or BundleSearcher(bundle)
         self._body_max_width: float = BODY_MAX_WIDTH  # dp
+        self._content_padding: tuple[float, ...] = (CONTENT_PADDING,) * 4  # l, t, r, b
+        self._centre_block = False
         # Building the index walks the whole bundle, so it is warmed off the UI
         # thread (see warm_search), by the field's first focus or by the host
         # sooner; until it is ready a query shows a "Searching…" note rather than
@@ -529,8 +538,10 @@ class OKFViewer(RelativeLayout):
         root = BoxLayout(orientation="vertical", size_hint=(1, 1))
         self.add_widget(root)
         root.add_widget(self._build_top_bar(top_bar if top_bar is not None else TopBarSpec()))
-        content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
-        root.add_widget(content)
+        self._content = BoxLayout(
+            orientation="horizontal", spacing=PANEL_GAP, padding=CONTENT_PADDING, size_hint=(1, 1)
+        )
+        root.add_widget(self._content)
 
         self.tree_scroll = _scroll_view(self._theme, size_hint=(1, 1), do_scroll_x=False)
         self.tree = TreeView(
@@ -548,7 +559,8 @@ class OKFViewer(RelativeLayout):
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
 
-        content.add_widget(self._build_left_column())
+        self._left_column = self._build_left_column()
+        self._content.add_widget(self._left_column)
 
         self.body_scroll = _scroll_view(
             self._theme, size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False
@@ -570,8 +582,9 @@ class OKFViewer(RelativeLayout):
         body_anchor.add_widget(self.body)
         self.body.bind(height=body_anchor.setter("height"))
         self.body_scroll.bind(width=lambda *_args: self._fit_body_width())
+        self.bind(width=lambda *_args: self._fit_content())
         self.body_scroll.add_widget(body_anchor)
-        content.add_widget(self.body_scroll)
+        self._content.add_widget(self.body_scroll)
 
         # Lazy: load only the bundle's top level (all tiers) now; each directory's
         # children are read on first expansion (see _on_dir_open). This keeps startup
@@ -952,6 +965,46 @@ class OKFViewer(RelativeLayout):
         """
         self._body_max_width = width_dp
         self._fit_body_width()
+        self._fit_content()
+
+    def set_content_padding(self, left: float, top: float, right: float, bottom: float) -> None:
+        """Inset the sidebar and reading pane below the top bar by these pixels.
+
+        The default is CONTENT_PADDING on every side. A centred block (see
+        `set_centre_block`) takes `left` as its smallest margin.
+        """
+        self._content_padding = (left, top, right, bottom)
+        self._fit_content()
+
+    def set_centre_block(self, on: bool) -> None:
+        """Centre the sidebar and the capped reading column together, or not.
+
+        Centred, the sidebar keeps its fraction of the whole viewer and the art
+        left beside the pair is split evenly into the row's padding on either side,
+        so the reading pane is the column's width and its scroll bar sits at the
+        column's edge, as the sidebar's does at its own (in the pane, the bar stood
+        a margin away at the window's edge, 2026-10-31). A viewer too narrow for a
+        margin wider than the left padding falls back to the plain layout.
+        """
+        self._centre_block = on
+        self._fit_content()
+
+    def _fit_content(self) -> None:
+        """Lay the row out to the padding, centring the pair if asked and it fits."""
+        left, top, right, bottom = self._content_padding
+        if self._centre_block:
+            sidebar_width = self.width * TREE_PANEL_WIDTH
+            column_width = dp(self._body_max_width)
+            margin = (self.width - sidebar_width - PANEL_GAP - column_width) / 2
+            if margin > left:
+                self._left_column.size_hint_x = None
+                self._left_column.width = sidebar_width
+                self.body_scroll.size_hint_x = 1
+                self._content.padding = (margin, top, margin, bottom)
+                return
+        self._left_column.size_hint_x = TREE_PANEL_WIDTH
+        self.body_scroll.size_hint_x = 1 - TREE_PANEL_WIDTH
+        self._content.padding = (left, top, right, bottom)
 
     def _fit_body_width(self) -> None:
         """Size the body column to its pane, no wider than the cap."""
