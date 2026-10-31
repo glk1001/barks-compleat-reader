@@ -64,6 +64,7 @@ from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
+from .popup_gallery import install_popup_gallery_service
 from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
@@ -356,6 +357,7 @@ class BarksReaderApp(App):
         install_tap_targets_service(Window)
         install_memory_census_service()
         install_frame_capture_service()
+        install_popup_gallery_service(self)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

@@ -1,0 +1,86 @@
+# Plan: one look for every popup, and a gallery to check them
+
+> Status: **stage 1 (the gallery) done 2026-10-31**; stages 2 onward planned. Decided with the user that day: every
+> popup the app owns is in scope; the shared look starts from the standalone family's
+> (About, the installers); the popups are viewed both live and as a screenshot sheet;
+> the gallery comes first, so today's inconsistencies are seen side by side before any
+> of them changes. Tick a stage off here, with its commit, as it lands.
+
+## Why
+
+The popups were written one at a time, five ways, and it shows: two kinds of title bar
+(Kivy's own, its title in red, and the standalone family's warm-dark bar), five window
+sizes, three background treatments, a button row placed by hints a `BoxLayout` ignores,
+and one popup (speech bubbles) pinned to the bottom-left rather than centred.
+
+## What there is (2026-10-31)
+
+| Family | Popups | Title bar | Size (window fraction) | Background |
+|---|---|---|---|---|
+| `MessagePopup` (`ui/reader_popups.kv`, `ui/popup_widgets.py`) | Quit, Delete From History, Clear Reading History, Small screen, the data pack offer and its "no update", the user errors (`ui/user_error_handler.py`: close only, go to settings, fatal config) | Kivy's, red title | 0.9 x 0.5 | Kivy's, tinted blue; Quit and the data pack offer add art, bold outlined text at 1.35x |
+| `show_standalone_popup` (`ui/kivy_standalone_show_message.py`) | About (in the app); the first-run installer, the error popup, the data pack success (each its own window) | warm-dark, 56 px, a close X | 0.85 x 0.54, 0.9 x 0.85, 0.9 x 0.9, 1 x 1 | rounded card, art under a scrim set per popup |
+| `SpeechBubblesPopup` (`ui/index_screen.py`) | the index screen's speech bubbles | Kivy's, themed gold | 0.7 x 0.4, at x 0.06, y 0.06 | its own colour |
+| settings (`ui/settings_fix.py`, `ui/alt_escape_capture_popup.py`) | Select Directory, Alternate Escape Key, Kivy's options list | Kivy's, white | 0.8 x 0.8, 0.6 x 0.4, Kivy's | Kivy's |
+| the wiki (`okf_reader`) | a footnote bubble | none | 0.75 x 100 px | `ModalView` |
+
+`LoadingDataPopup` (`ui/popup_widgets.py`) is never built: delete it.
+
+The gallery's first sheets showed two more things to set right: the standalone
+family's icon glyphs (the banners' and the Start and Show Details buttons') draw as
+boxes, Roboto having no such characters; and the first-run installer and the error
+popup draw their card smaller than their own window, inside a black margin.
+
+## Stage 1: the gallery
+
+Two ways to look, from one list of popups.
+
+- **In the app**, a gallery service (`ui/popup_gallery.py`, its names and requests in
+  the Kivy-free `core/popup_gallery.py`), on only when `BARKS_READER_POPUP_GALLERY` is
+  set (the way the GUI probe's frame, census and tap-target requests are): `live`
+  steps through the popups with Page Up and Page Down, a corner label naming each
+  ("3/18 quit"); a file path is a request file, each request (`<id> <name>`) opening
+  that popup and logging `POPUP_GALLERY_SHOWN` for the driver to wait on. A popup's
+  own keys are left alone: the remote's six drive its buttons as ever.
+- **One function per popup.** Each call site's arguments move into a named function
+  (`confirm_quit_popup(...)` and the like) that the call site and the gallery both
+  call, so the gallery shows what the app shows and cannot drift from it. The gallery
+  never calls `request_quit`, which quits outright when confirm-quit is off.
+- **`scripts/popup_gallery.py`**, the driver: boots the app through `gui-probe.sh` from
+  a scratch copy of the profile (`BARKS_READER_CONFIG_DIR`; the real one is never
+  touched), at three sizes (the single page, the spread, a 1080p screen), capturing
+  each popup with the probe's frame request; runs each own-window popup (first-run
+  installer, error popup, data pack success) by its module's own preview, imported
+  after `config_info` as `main.py` would, on a private Xvfb and captured from it; and
+  lays every PNG out on one contact sheet per size and one for the own-window popups
+  (ImageMagick `montage`). `--list`, `--only`, `--sizes`, `--no-own-window`, `--live`,
+  `--out`.
+
+## Stage 2: the shared frame
+
+One popup frame, from the standalone family's look in the theme's colours, every
+popup built on it:
+
+- one title bar (the warm-dark bar, the title font and colour from the theme);
+- one body text style: prose left-aligned, a short question centred;
+- one button row, along the bottom, one height, one focus ring;
+- one way to put art behind a popup, with one scrim;
+- centred, always;
+- three size classes, each a window fraction held between dp limits so a popup reads
+  on the 4K television and in a small window: small (a question: Quit, Delete,
+  Clear), medium (a message, an error, a setting), large (a long list, About, the
+  installers).
+
+## Stage 3 onward: one family at a time
+
+Move each family onto the frame, each its own commit, each checked in the gallery
+before and after: `MessagePopup` (the most used), then the standalone family, then
+speech bubbles, then the settings popups, restyling Kivy's options list and the
+wiki's footnote bubble only where it is cheap (the bubble is `okf_reader`'s, shared
+with the standalone viewer).
+
+## Open questions
+
+- The own-window popups (installer, error, data pack success) size their window in
+  pixels before Kivy starts; the size classes may need a pixel form for them.
+- The GUI tests wait on the popups' log lines (`CONFIRM_POPUP_OPENED` and the rest);
+  the frame keeps every one.

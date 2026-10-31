@@ -67,6 +67,15 @@ Ctrl-C or `kill` of any GUI runner stops everything it started. After a `kill -9
 the next run clears the leftovers, or `bash scripts/gui-probe.sh cleanup` does (`--all`
 also stops a display started by hand).
 
+**Look over every popup** (the popup gallery: each popup the app owns, opened by the function
+its screen calls; PNGs and one contact sheet per screen size in `build/popup-gallery/<stamp>/`,
+booted headless through `scripts/gui-probe.sh` from a scratch copy of the profile; `--live` steps
+through them with Page Up/Down in the real app; `--list`, `--only`, `--sizes`; the plan they
+serve is `docs/plans/popup-consistency.md`):
+```bash
+uv run scripts/popup_gallery.py
+```
+
 **Run the GUI path tests** (excluded from the default test run; boots the real app on
 the nested Xephyr display via `scripts/gui-probe.sh`, driven by `scripts/gui_driver.py`):
 ```bash

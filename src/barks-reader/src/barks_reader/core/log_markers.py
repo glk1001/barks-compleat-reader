@@ -74,6 +74,12 @@ MEMORY_CENSUS: Final = (
 # The answer to a GUI test's frame request (``barks_reader.ui.frame_capture``): what the
 # window draws, drawn again off screen and saved as a PNG beside the request file.
 FRAME_CAPTURED: Final = 'Frame #{request} captured: {width}x{height} to "{path}".'
+# The popup gallery (``barks_reader.ui.popup_gallery``): a popup opened on a request
+# from ``scripts/popup_gallery.py`` (``{request}`` is empty in live mode), a request
+# naming no popup, and the live gallery starting.
+POPUP_GALLERY_SHOWN: Final = 'Popup gallery #{request}: "{name}" shown.'
+POPUP_GALLERY_UNKNOWN: Final = 'Popup gallery #{request}: no popup "{name}".'
+POPUP_GALLERY_LIVE: Final = "Popup gallery: live, {count} popups (Page Up / Page Down)."
 # A press on a margin that turns a page (the comic reader) or an image (the fun view).
 LEFT_MARGIN_PRESSED: Final = "Left margin pressed: x_rel,y_rel = {x},{y}."
 RIGHT_MARGIN_PRESSED: Final = "Right margin pressed: x_rel,y_rel = {x},{y}."
