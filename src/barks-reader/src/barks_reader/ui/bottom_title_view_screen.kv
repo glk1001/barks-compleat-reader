@@ -105,7 +105,11 @@
                     size_hint: 1, 1
                     text_size: self.size
                     halign: 'center'
-                    valign: 'middle'
+                    valign: 'top'
+                    padding:
+                        0, \
+                        dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD if root.layout_mode == 'spread' else root.MAIN_TITLE_TOP_OFFSET_SINGLE), \
+                        0, 0
 
                 # --- Footnote at bottom-left ---
                 BgColorLabel:

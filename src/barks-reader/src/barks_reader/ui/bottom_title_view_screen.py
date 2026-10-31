@@ -129,6 +129,11 @@ class BottomTitleViewScreen(FloatLayout):
     # One-pagers sit over the busy collage and keep the full banner; other titles get a
     # lighter banner (the baked texture alpha scaled by this factor).
     MAIN_TITLE_BANNER_DIM_FACTOR = 0.3
+    # The main title's top below its band's top, in dp: on a single page and on the
+    # two-page spread (the bands are 18% and 12% of the view). A long title that wraps
+    # grows down from there.
+    MAIN_TITLE_TOP_OFFSET_SINGLE = 28
+    MAIN_TITLE_TOP_OFFSET_SPREAD = 37
     main_title_banner_texture = ObjectProperty(allownone=True)
     main_title_text = StringProperty()
     main_title_footnote = StringProperty()
