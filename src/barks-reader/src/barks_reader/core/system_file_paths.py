@@ -20,6 +20,7 @@ class SystemFilePaths:
 
         self._action_bar_icons_dir: Path | None = None
         self._close_icon_path: Path | None = None
+        self._power_icon_path: Path | None = None
         self._go_back_icon_path: Path | None = None
         self._collapse_icon_path: Path | None = None
         self._refresh_arrow_icon_path: Path | None = None
@@ -74,6 +75,7 @@ class SystemFilePaths:
         action_bar_icons_dir = reader_icon_files_dir / "ActionBar Icons"
         self._action_bar_icons_dir = action_bar_icons_dir
         self._close_icon_path = action_bar_icons_dir / "icon-close.png"
+        self._power_icon_path = action_bar_icons_dir / "icon-power.png"
         self._go_back_icon_path = action_bar_icons_dir / "icon-back-arrow.png"
         self._collapse_icon_path = action_bar_icons_dir / "icon-collapse.png"
         self._refresh_arrow_icon_path = action_bar_icons_dir / "icon-refresh-arrow.png"
@@ -139,6 +141,7 @@ class SystemFilePaths:
             self._error_background_path,
             self._success_background_path,
             self._close_icon_path,
+            self._power_icon_path,
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
             self._settings_icon_path,
@@ -247,6 +250,11 @@ class SystemFilePaths:
     def get_barks_reader_close_icon_file(self) -> Path:
         assert self._close_icon_path
         return self._close_icon_path
+
+    def get_barks_reader_power_icon_file(self) -> Path:
+        """Return the Quit button's power glyph: leaving the app, not closing a screen."""
+        assert self._power_icon_path
+        return self._power_icon_path
 
     def get_barks_reader_go_back_icon_file(self) -> Path:
         assert self._go_back_icon_path

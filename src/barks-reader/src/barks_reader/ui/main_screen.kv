@@ -134,10 +134,12 @@
                 # overshoot on the working buttons can't kill the app.
                 QuitFence:
 
+                # A power glyph, not the X: the stacked screens' X closes the screen,
+                # this one leaves the app (2026-10-31).
                 ChromeBarButton:
                     id: quit_button
                     text: 'Quit'
-                    icon: str(sys_paths.get_barks_reader_close_icon_file())
+                    icon: str(sys_paths.get_barks_reader_power_icon_file())
                     important: True
                     on_release: root.request_quit()
 

@@ -46,6 +46,7 @@ _EXPECTED_PATHS: tuple[tuple[str, str], ...] = (
     ("get_by_the_numbers_background_path", "Various/by-the-numbers-background.jpg"),
     # Action-bar icons.
     ("get_barks_reader_close_icon_file", "Reader Icons/ActionBar Icons/icon-close.png"),
+    ("get_barks_reader_power_icon_file", "Reader Icons/ActionBar Icons/icon-power.png"),
     (
         "get_barks_reader_go_back_icon_file",
         "Reader Icons/ActionBar Icons/icon-back-arrow.png",
