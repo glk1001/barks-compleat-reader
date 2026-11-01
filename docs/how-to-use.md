@@ -50,9 +50,11 @@ The bar across the top of the main screen contains:
   — randomly refreshes the background and panel images.
 - <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a dropdown containing
-    <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> and <strong><em>About.</em></strong>
-- <img src="icon-close-orig.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  — at the far right, set apart in the window corner; closes the application.
+    <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> <strong><em>Update Data,</em></strong>
+    and <strong><em>About.</em></strong> *Update Data* looks for newer data packs placed beside the app
+    and offers to install them (or says why there is nothing to install).
+- <img src="icon-power-black.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — a power button at the far right, set apart in the window corner; quits the application.
 
 ### Navigation Tree (left panel)
 
@@ -78,7 +80,8 @@ The tree on the left is the primary way to find stories. Its top-level sections 
     history can be cleared from within the view.
 - **Appendix** — supplementary articles, a censorship-fixes summary, and reading *Statistics*.
 - **Indexes** — the *Main Index* (alphabetic) and the *Speech Bubble Index* (with *Words*, *Names*,
-  and *Locations* sub-indexes). If a Carl Barks Wiki bundle is configured, a *Wiki* index appears too.
+  and *Locations* sub-indexes), and the *Carl Barks Wiki*, whenever the wiki is installed (by default
+  the copy that comes with the Reader's files).
 
 Wherever speech bubbles are shown, each bubble names who says it on an italic, coloured line
 above the text (*Scrooge:*, *Narrator:* for a narration box). Sound effects and signs have no
@@ -105,8 +108,8 @@ publication info, and a favorite panel. Contains:
   it to have the portal button reopen the comic at that page instead of the first page. When a tag
   marks several pages the label reads *Goto page N (2 of 5):* and two small arrows beside it (or
   **Left | Right** while the row is focused) step through them.
-- A **"Goto wiki page" link** (optional) — appears when a Carl Barks Wiki bundle is configured and
-  the story has a wiki page; opens that story's page in the Wiki Reader.
+- A **"Goto wiki page" link** (optional) — appears when the story has a page in the Carl Barks
+  Wiki; opens that story's page in the Wiki Reader.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
 - A **peek toggle**
   <img src="icon-eye-peek-black.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
@@ -245,7 +248,7 @@ cycle through its widgets — the title portal, the *Goto page* and censorship-f
 checkboxes, the *Goto wiki page* link, and the peek eye — with **Enter** activating the
 focused one and **Esc** returning to the tree.
 
-In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Wiki* index),
+In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Carl Barks Wiki* index),
 **Up | Down** read the page and step through its links while **Left | Right** move between the
 contents tree and the page. **Esc** lifts focus to the reader's top bar, where **Left | Right**
 move between its buttons and **Enter** on **Back** returns to the previous page (and at the first
@@ -269,12 +272,13 @@ are:
 | *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
 | *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading* |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
-| *Go Straight to Fullscreen on App start*      | Launches the app in fullscreen                                 |
+| *Go Straight to Fullscreen on App Start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
 | *Decode Pages Whole*                          | Decodes every page whole for the sharpest page; comics open more slowly |
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |
 | *Alternate Escape Key*                        | Extra key that behaves like Escape, for remotes without one    |
+| *Use Virtual Keyboard*                        | Always shows an on-screen keyboard when tapping search fields, even with a physical keyboard connected (requires restart) |
 | *First Use of Reader*                         | Reset this to re-run the first-launch setup (requires restart) |
 | *Log Level*                                   | Controls how much is written to the log file                   |
 | *Controversial Censorship Fixes*              | Individual toggles for some censorship fixes                   |
