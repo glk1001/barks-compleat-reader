@@ -175,9 +175,14 @@ Match the window *title*, not "barks-reader" — that hits editor windows. Then:
   `xwininfo -id "$WID"` absolute upper-left plus the screenshot pixel offset.
   Needs the portal approval; if clicks do nothing, that is why. `xdotool click`
   is no help — it goes through XTEST too, so it is gated identically. `ydotool
-  mousemove -a` bypasses the portal in principle, but its absolute positioning
-  could not be confirmed from a session here (moves were not reflected in
-  `xdotool getmouselocation`), so do not rely on it for targeting.
+  mousemove -a` bypasses the portal, and does target, once the request is divided
+  by GNOME's pointer-acceleration factor: it pins the pointer to the top-left
+  corner and then moves relatively, so N pixels land factor × N away (2.0 here;
+  `bash scripts/comic-capture.sh --calibrate` measures it; its `move_pointer` and
+  `CLICK_DIV_X`/`CLICK_DIV_Y` show the arithmetic). It reaches the primary monitor only,
+  with coordinates from that monitor's corner, and the corner pin trips GNOME's
+  hot corner: turn its `enable-hot-corners` setting off first, as the script's
+  `DISABLE_HOT_CORNER` does, and put it back after.
 - `xdotool` is still worth having on this path for *queries* rather than
   injection: `xdotool getmouselocation`, and `xdotool search --name` as an
   alternative to parsing `wmctrl -l`.
