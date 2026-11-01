@@ -49,6 +49,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import re
 import shutil
@@ -407,13 +408,17 @@ def capture_own_windows(names: Sequence[str], out: Path, profile: Path) -> list[
 
 
 def _stop_group(process: subprocess.Popen[bytes]) -> None:
+    """Stop a process's group, killing it if it will not go; one already gone is left."""
     if process.poll() is not None:
         return
     try:
         os.killpg(process.pid, signal.SIGTERM)
         process.wait(timeout=10)
-    except (ProcessLookupError, subprocess.TimeoutExpired):
-        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return  # gone between the poll and the signal: nothing left to stop
+    except subprocess.TimeoutExpired:
+        with contextlib.suppress(ProcessLookupError):  # gone since the SIGTERM after all
+            os.killpg(process.pid, signal.SIGKILL)
 
 
 def run_live(out: Path) -> int:

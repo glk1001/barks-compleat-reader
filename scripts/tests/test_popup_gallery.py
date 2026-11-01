@@ -1,11 +1,14 @@
 """scripts/popup_gallery.py: the scratch profile, the requests, the window finder, the sheet."""
 
+# cspell:ignore killpg
+
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import popup_gallery
 import pytest
@@ -167,6 +170,52 @@ def test_an_own_window_failing_leaves_the_rest_to_capture(
     failed = popup_gallery.capture_own_windows(list(popup_gallery.OWN_WINDOW), tmp_path, tmp_path)
     assert failed == ["error-popup"]
     assert sheets == [[tmp_path / "first-run-installer.png", tmp_path / "data-pack-success.png"]]
+
+
+class TestStopGroup:
+    """A preview or display gone before it is stopped is no error."""
+
+    @staticmethod
+    def _process(*, wait_raises: Exception | None = None) -> MagicMock:
+        process = MagicMock(pid=4321)
+        process.poll.return_value = None
+        process.wait.side_effect = wait_raises
+        return process
+
+    def test_a_group_gone_before_the_signal_is_left(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        killpg = MagicMock(side_effect=ProcessLookupError)
+        monkeypatch.setattr(popup_gallery.os, "killpg", killpg, raising=False)
+        popup_gallery._stop_group(self._process())  # noqa: SLF001
+        assert killpg.call_count == 1  # no SIGKILL sent after it
+
+    def test_a_group_that_will_not_go_is_killed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        killpg = MagicMock()
+        monkeypatch.setattr(popup_gallery.os, "killpg", killpg, raising=False)
+        monkeypatch.setattr(popup_gallery.signal, "SIGKILL", 9, raising=False)
+        popup_gallery._stop_group(  # noqa: SLF001
+            self._process(wait_raises=subprocess.TimeoutExpired("preview", 10))
+        )
+        assert [c.args for c in killpg.call_args_list] == [
+            (4321, popup_gallery.signal.SIGTERM),
+            (4321, 9),
+        ]
+
+    def test_a_group_gone_before_the_kill_is_left(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        killpg = MagicMock(side_effect=[None, ProcessLookupError])
+        monkeypatch.setattr(popup_gallery.os, "killpg", killpg, raising=False)
+        monkeypatch.setattr(popup_gallery.signal, "SIGKILL", 9, raising=False)
+        popup_gallery._stop_group(  # noqa: SLF001
+            self._process(wait_raises=subprocess.TimeoutExpired("preview", 10))
+        )
+        assert killpg.call_count == 2  # noqa: PLR2004
+
+    def test_a_finished_process_is_not_signalled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        killpg = MagicMock()
+        monkeypatch.setattr(popup_gallery.os, "killpg", killpg, raising=False)
+        process = self._process()
+        process.poll.return_value = 0
+        popup_gallery._stop_group(process)  # noqa: SLF001
+        killpg.assert_not_called()
 
 
 class TestSelect:
