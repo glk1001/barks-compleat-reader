@@ -258,7 +258,7 @@ page, leaves the reader). Opening a story's wiki page lands focus straight in th
 
 ## Settings
 
-Open *Settings* from the **⋯** menu on the top action bar. Close it with **Escape** or the
+Open *Settings* from the **⋮** menu on the top action bar. Close it with **Escape** or the
 **✕** in the top-right corner. Settings are grouped into sections — *Folders*, *Reading*,
 *Appearance*, *Startup*, *Window*, *Controls*, *Controversial Censorship Fixes*, and
 *Advanced* — with the power-user options gathered under *Advanced* at the bottom. Key options

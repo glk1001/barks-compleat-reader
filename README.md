@@ -124,7 +124,7 @@ your comic archives.
 ```
 just reader
 ```
-1. When the application opens, open the **Menu** (**⋯**) in the action bar and choose **Settings**.
+1. When the application opens, open the **Menu** (**⋮**) in the action bar and choose **Settings**.
 1. In the settings panel, under *Folders*, locate the setting for the **"Fantagraphics Directory"**.
 1. Set this to the absolute path of the folder containing your Fantagraphics comic book archive files (the `.zip` or
    `.cbz` files).
