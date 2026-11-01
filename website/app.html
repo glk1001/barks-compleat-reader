@@ -212,8 +212,25 @@
         .intro-hero {
             display: grid;
             grid-template-columns: 1fr 1.15fr;
-            gap: 34px;
+            gap: 0 34px;
             align-items: start;
+        }
+
+        /* The heading has a row of its own over the pitch, so the demo beside the
+           pitch starts level with its first paragraph however the heading wraps. */
+        .intro-title {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .intro-pitch {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .intro-hero > .intro-art {
+            grid-column: 2;
+            grid-row: 2;
         }
 
         .art-panel {
@@ -398,6 +415,17 @@
         @media (max-width: 900px) {
             .intro-hero {
                 grid-template-columns: 1fr;
+            }
+
+            .intro-title,
+            .intro-pitch,
+            .intro-hero > .intro-art {
+                grid-column: auto;
+                grid-row: auto;
+            }
+
+            .intro-hero > .intro-art {
+                margin-top: 34px;
             }
 
             .intro-art {
@@ -924,8 +952,8 @@
         <!-- Introduction Tab -->
         <div id="intro" class="tab-content active" role="tabpanel" aria-labelledby="tab-intro">
             <div class="intro-hero">
+                <h2 class="intro-title">Every Barks Disney story &mdash; indexed, searchable, uncensored</h2>
                 <div class="intro-pitch">
-                <h2>Every Barks Disney story &mdash; indexed, searchable, uncensored</h2>
                 <p>
                     <em>The Compleat Barks Disney Reader</em> is a multi-platform desktop app for
                     reading your digital copy of the
