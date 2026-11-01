@@ -1,10 +1,11 @@
 # Plan: one layout story on the website
 
-> Status: **review done 2026-10-30; stage 1 done 2026-11-01.** The review is of
+> Status: **review done 2026-10-30; stages 1 and 2 done 2026-11-01.** The review is of
 > `website/app.html` as it stood at commit 618a5c39, after the two-page spread landed
 > (`docs/plans/two-page-spread.md`). Tick the stages off here, with their commits, as they
-> land. The site is GitHub Pages served from `main`, so stage 1's pictures are pushed only
-> with stage 2's HTML on top: alone, they put spreads in the 340 px Features column.
+> land. The site is GitHub Pages served from `main`, so stages 1 and 2 are pushed only with
+> stage 3 on top: stage 1 alone puts spreads in the 340 px Features column, and stage 2
+> adds the layout section with its pictures but not yet its text.
 
 ## The problem
 
@@ -91,13 +92,25 @@ layout.
   scratch copy of the profile with `log_level = DEBUG` and the layout set to
   *Two-page spread*. The fun view and backgrounds are random: the menu bar's refresh
   button and a reboot re-roll them.
-- [ ] **Stage 2, the pictures in the page.** The Screenshots grid: six spread captures.
+- [x] **Stage 2, the pictures in the page.** The Screenshots grid: six spread captures.
   The comic reader section shows the double page as a wide figure under its paragraph,
   not in the 340 px side column. A new layout section gets the one paired figure on
   the page: a title view as a spread beside the same view as a single page, each
   captioned. Every other Features close-up is a cropped page. Every screenshot `<img>`
   states its file's size, and all of them have changed in stage 1: a spread is
   `width="1749" height="1365"`, a page crop `width="874" height="1320"`.
+
+  *Done 2026-11-01.* The layout section, "Two-Page Spread or Single Page", is first in
+  Features with a heading and the pair only; its text is stage 3's. The pair is
+  `screenshot-selecting-a-title.jpg` beside `screenshot-title-view-single-page.jpg`
+  (874x1365, a new capture of the same title on *Single page*), captioned with the
+  setting's name and the screen it suits; `.layout-pair` gives the grid tracks the two
+  widths, so the pictures come out one height. The comic reader's double page is an
+  `art-panel--wide` figure, at most 900 px, under the section's buttons. The index
+  section stacks the index crop over the search crop in its side column. The wiki's
+  close-up lost its 45 px title bar to match the other crops' shape (873x1320). The
+  history spread `screenshot-reading-history-bg.jpg` is now on no page: only its crop
+  is shown.
 - [ ] **Stage 3, the text.**
   - Merge the Introduction's two layout bullets into one, in the setting's own words:
     a two-page spread on a landscape screen, the tree on the left page and the story on

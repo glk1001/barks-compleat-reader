@@ -484,6 +484,45 @@
             }
         }
 
+        /* A whole-window picture under its section's text. The spread is twice as
+           wide as a page, so it takes the text column's width, not the 340 px side
+           column, and stops short of full width so it is not a screen tall. */
+        .art-panel--wide {
+            max-width: 900px;
+            margin: 25px auto 0;
+        }
+
+        /* The one place the single page is shown: the same view both ways, side by
+           side at one height. The tracks are the two captures' widths, so equal
+           heights fall out of the grid; the ink edge is a shadow ring rather than
+           a border so it adds nothing to either width and the heights stay equal. */
+        .layout-pair {
+            display: grid;
+            grid-template-columns: 1749fr 874fr;
+            gap: 22px;
+            align-items: start;
+            margin-top: 20px;
+        }
+
+        .layout-pair figure {
+            margin: 0;
+        }
+
+        .layout-pair img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 3px;
+            box-shadow: 0 0 0 3px var(--ink), 5px 5px 0 3px var(--ink);
+        }
+
+        .layout-pair figcaption {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--ink-soft);
+        }
+
         .platform-tabs {
             display: flex;
             gap: 10px;
@@ -926,27 +965,27 @@
             <div class="screenshots-grid">
                 <div class="screenshot-item">
                     <h4>Main Window, on a Wide Monitor</h4>
-                    <img src="screenshot-main-window.jpg" alt="The main window as a two-page spread: the story tree on the left page, the fun view on the right" width="1775" height="1365" loading="lazy">
+                    <img src="screenshot-main-window.jpg" alt="The main window as a two-page spread: the story tree on the left page, the fun view on the right" width="1749" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Selecting a Title</h4>
-                    <img src="screenshot-selecting-a-title.jpg" alt="Selecting a title on the two-page spread: the story list on the left page, the title view on the right" width="1775" height="1365" loading="lazy">
+                    <img src="screenshot-selecting-a-title.jpg" alt="Selecting a title on the two-page spread: the story list on the left page, the title view on the right" width="1749" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Reading a Story</h4>
-                    <img src="screenshot-reading-a-story.jpg" alt="Reading a Story" width="872" height="1364" loading="lazy">
+                    <img src="screenshot-reading-a-story.jpg" alt="A comic open two pages at a time: the first two pages of The Seven Cities of Cibola" width="1749" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Searching Titles</h4>
-                    <img src="screenshot-search-titles.jpg" alt="Searching Titles" width="873" height="1363" loading="lazy">
+                    <img src="screenshot-search-titles.jpg" alt="Searching titles on the two-page spread: the tree on the left page, the search and its six results on the right" width="1749" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Speech Bubble Index with Links</h4>
-                    <img src="screenshot-speech-bubble-index.jpg" alt="Speech Index" width="874" height="1365" loading="lazy">
+                    <img src="screenshot-speech-bubble-index.jpg" alt="The speech bubble index on the two-page spread: the tree on the left page, the words on the right with one opened to the stories that use it" width="1749" height="1365" loading="lazy">
                 </div>
                 <div class="screenshot-item">
                     <h4>Carl Barks Wiki</h4>
-                    <img src="screenshot-carl-barks-wiki.jpg" alt="The Carl Barks Wiki" width="873" height="1365" loading="lazy">
+                    <img src="screenshot-carl-barks-wiki.jpg" alt="The Carl Barks Wiki filling the window: its contents on the left, the Voodoo Hoodoo page beside them" width="1749" height="1365" loading="lazy">
                 </div>
             </div>
 
@@ -1008,6 +1047,20 @@
             <figure class="art-panel art-panel--banner">
                 <img src="features-bg.jpg" alt="" width="1800" height="600" loading="lazy">
             </figure>
+
+            <div class="feature-section">
+                <h3>Two-Page Spread or Single Page</h3>
+                <div class="layout-pair">
+                    <figure>
+                        <img src="screenshot-selecting-a-title.jpg" alt="A story's title view on the two-page spread: the story list on the left page, the title view on the right" width="1749" height="1365" loading="lazy">
+                        <figcaption>Two-page spread, on a landscape screen</figcaption>
+                    </figure>
+                    <figure>
+                        <img src="screenshot-title-view-single-page.jpg" alt="The same title view on a single page: the story list above, the title view below" width="874" height="1365" loading="lazy">
+                        <figcaption>Single page, on a portrait screen</figcaption>
+                    </figure>
+                </div>
+            </div>
 
             <div class="feature-section">
                 <h3>Chronological Access to All Stories</h3>
@@ -1080,10 +1133,7 @@
                 </figure>
             </div>
 
-            <div class="feature-section feature-section--split feature-section--flip">
-                <figure class="art-panel">
-                    <img src="screenshot-reading-a-story.jpg" alt="Reading a Story" width="872" height="1364" loading="lazy">
-                </figure>
+            <div class="feature-section">
                 <div>
                     <h3>Fullscreen Reader</h3>
                     <p>When you select a story through the title portal image, the comic is
@@ -1098,6 +1148,9 @@
                     <button class="chapter-link" data-chapter="read_story">&#9654; Skip to a page</button>
                     <button class="chapter-link" data-chapter="fullscreen">&#9654; Fullscreen</button>
                 </div>
+                <figure class="art-panel art-panel--wide">
+                    <img src="screenshot-reading-a-story.jpg" alt="A comic open two pages at a time: the first two pages of The Seven Cities of Cibola" width="1749" height="1365" loading="lazy">
+                </figure>
             </div>
 
             <div class="feature-section feature-section--split">
@@ -1114,14 +1167,19 @@
                     <button class="chapter-link" data-chapter="search_words">&#9654; Search spoken words</button>
                     <button class="chapter-link" data-chapter="speech_index">&#9654; The index</button>
                 </div>
-                <figure class="art-panel">
-                    <img src="screenshot-speech-bubble-index.jpg" alt="Speech Bubble Index" width="874" height="1365" loading="lazy">
-                </figure>
+                <div>
+                    <figure class="art-panel">
+                        <img src="screenshot-speech-bubble-index-page.jpg" alt="The speech bubble index: words starting ah to aj, one opened to the stories that use it" width="874" height="1320" loading="lazy">
+                    </figure>
+                    <figure class="art-panel">
+                        <img src="screenshot-search-titles-page.jpg" alt="A title search for lost and its six results" width="874" height="1320" loading="lazy">
+                    </figure>
+                </div>
             </div>
 
             <div class="feature-section feature-section--split feature-section--flip">
                 <figure class="art-panel">
-                    <img src="screenshot-carl-barks-wiki-2.jpg" alt="The Carl Barks Wiki" width="873" height="1365" loading="lazy">
+                    <img src="screenshot-carl-barks-wiki-2.jpg" alt="The Carl Barks Wiki" width="873" height="1320" loading="lazy">
                 </figure>
                 <div>
                     <h3>The Carl Barks Wiki, Built In</h3>
@@ -1165,7 +1223,7 @@
                     <button class="chapter-link" data-chapter="reading">&#9654; Watch this</button>
                 </div>
                 <figure class="art-panel">
-                    <img src="screenshot-reading-history-bg.jpg" alt="Reading History" width="874" height="1365" loading="lazy">
+                    <img src="screenshot-reading-history-bg-page.jpg" alt="The reading history's journal: each day's reads, newest first" width="874" height="1320" loading="lazy">
                 </figure>
             </div>
 
