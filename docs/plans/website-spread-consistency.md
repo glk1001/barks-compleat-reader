@@ -1,6 +1,6 @@
 # Plan: one layout story on the website
 
-> Status: **review done 2026-10-30; stages 1 to 3 done 2026-11-01, stage 4 to go.** The
+> Status: **done 2026-11-01 (review 2026-10-30).** The
 > review is of `website/app.html` as it stood at commit 618a5c39, after the two-page spread
 > landed (`docs/plans/two-page-spread.md`). Tick the stages off here, with their commits,
 > as they land. The site is GitHub Pages served from `main`, so stages 1 to 3 went out in
@@ -138,9 +138,17 @@ layout.
   app re-decides on a rotation, `AppWindowGeometry.evaluate_layout`). "The Comic Reader"
   is in title case like the other headings, and no longer says the comic opens in a
   new window: it opens in the reader, in the same window.
-- [ ] **Stage 4, the checks.** `uv run scripts/check_docs_refs.py`, `bunx cspell`, the
+- [x] **Stage 4, the checks.** `uv run scripts/check_docs_refs.py`, `bunx cspell`, the
   page rendered headless at 1400 wide and at phone width, then the README's shared
   screenshots looked at once.
+
+  *Done 2026-11-01.* Both checks pass; the Introduction and Features tabs were rendered
+  at 1400 and 390 wide with no sideways scroll. The README's pictures were all spreads by
+  then, so its side-by-side row became one column of four under a line saying they are
+  all on a landscape screen, and its text took the same sweep as the page: the layout
+  bullet names the two layouts, the screens each suits and the setting's three values,
+  and the comic reader bullet says how a comic opens on each and what *Double Page*
+  does.
 
 ## The cheaper alternative
 

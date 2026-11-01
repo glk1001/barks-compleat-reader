@@ -19,13 +19,16 @@ navigation and a visually engaging interface.
 - **Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
 - **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
-- **Two-Page Spread on Wide Screens**: On a landscape monitor the main screen opens like a book — the navigation
-  tree on the left page, the current view on the right. A portrait screen (a flipped 2-in-1 laptop) keeps the
-  single column, and the *Layout* setting fixes either.
+- **Two-Page Spread or Single Page**: On a landscape screen, such as a large monitor or a 4K TV, the main screen is
+  a two-page spread — the navigation tree on the left page, the current view on the right. On a portrait screen,
+  such as a 2-in-1 held upright, it is a single page, the tree above the view. The *Layout* setting's default,
+  *Match the screen*, picks whichever fits; *Single page* and *Two-page spread* fix one or the other.
 - **Full Keyboard & Remote Navigation**: Browse, open, and read comics using just the arrow keys, Enter, and Escape —
   designed to work from the couch with a TV remote as well as with a mouse or touchscreen.
-- **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
-  left/right side of the screen) and a "go to page" dropdown for jumping directly to a specific page.
+- **Integrated Comic Reader**: A touch/click-friendly reader, windowed or fullscreen, with intuitive page navigation
+  (click left/right side of the screen) and a "go to page" dropdown for jumping directly to a specific page. On the
+  two-page spread a comic opens two pages at a time, as it was printed, and on the single page one at a time; the
+  reader's *Double Page* button switches the comic at hand between the two.
 - **No Censorship**: Every attempt has been made to remove Disney and Fantagraphics censorship. This has been done
   using an override mechanism where censored pages in the original are overridden by fixed pages in the reader.
 - **Smart Loading**: Asynchronously loads comic images in the background for a smooth, non-blocking user experience.
@@ -36,15 +39,18 @@ navigation and a visually engaging interface.
 
 ## Screenshots
 
-|                   Main Window (the two-page spread, on a wide monitor)                   |
-|:----------------------------------------------------------------------------------------:|
-|                    ![Main Window](website/screenshot-main-window.jpg)                    |
-|                                  **Selecting a Title**                                   |
-|              ![Selecting a Title](website/screenshot-selecting-a-title.jpg)              |
+All four are taken on a landscape screen, where the main screen is a two-page spread and a comic opens two pages
+at a time.
 
-|                      Reading a Story                       |                      Search Titles                       |
-|:----------------------------------------------------------:|:--------------------------------------------------------:|
-| ![Reading a Story](website/screenshot-reading-a-story.jpg) | ![Search Titles](website/screenshot-search-titles.jpg)   |
+|                          Main Window                           |
+|:--------------------------------------------------------------:|
+|       ![Main Window](website/screenshot-main-window.jpg)       |
+|                     **Selecting a Title**                      |
+| ![Selecting a Title](website/screenshot-selecting-a-title.jpg) |
+|                      **Reading a Story**                       |
+|   ![Reading a Story](website/screenshot-reading-a-story.jpg)   |
+|                       **Search Titles**                        |
+|     ![Search Titles](website/screenshot-search-titles.jpg)     |
 
 More screenshots (including the full index and speech bubble index) are on
 [the project website](https://glk1001.github.io/barks-compleat-reader/website/app.html).
