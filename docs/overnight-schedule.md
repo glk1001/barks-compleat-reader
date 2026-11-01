@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid libpod -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid libpod MSYS PATHCONV -->
 <!-- docs-refs: skip -->
 <!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
@@ -145,11 +145,13 @@ that task too, or two runs start in a night.
 - **Execution policy**: the scripts run with `-ExecutionPolicy Bypass` for that one
   process; the machine's own policy is left at Windows' default.
 - **Ping goes unanswered**: Windows' firewall drops it. Watch a wake with ssh, or
-  afterwards in `powercfg /lastwake`, which names the task.
+  afterwards in `powercfg /lastwake`, which names the task (over ssh, see the table).
 - **The ssh shell is Git Bash** (since 2026-11-02; PowerShell before), as on win_vm:
   `scripts/windows/setup-ssh-server.ps1 -Shell bash` sets it. Task Scheduler is
   PowerShell's, so those commands go through `powershell`, quoted once more for bash;
-  `~` and forward slashes work, Git Bash turning a path into Windows' for `powershell`. A
+  `~` and forward slashes work, Git Bash turning a path into Windows' for `powershell`.
+  It turns a `/option` into a path too, so a Windows tool's slash options need
+  `MSYS_NO_PATHCONV=1` first: `powercfg /query` alone fails with "Invalid Parameters". A
   task started over ssh still runs on the desktop, which the GUI stages need.
 
 | To | Run (from the main machine) |
@@ -164,6 +166,7 @@ that task too, or two runs start in a night.
 | See the next scheduled run | `ssh greg-dell "powershell '(Get-ScheduledTaskInfo nightly-job).NextRunTime'"` |
 | Turn the schedule off | `ssh greg-dell powershell Disable-ScheduledTask nightly-job` |
 | Turn it back on | `ssh greg-dell powershell Enable-ScheduledTask nightly-job` |
+| See what last woke it | `ssh greg-dell 'MSYS_NO_PATHCONV=1 powercfg /lastwake'` |
 
 ### Asleep, with no keyboard
 
