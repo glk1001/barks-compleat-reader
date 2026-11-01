@@ -9,7 +9,7 @@ them **opportunistically** when you're already in the file. After fixing one:
 bash scripts/pyrefly.sh --update-baseline   # regenerates the baseline minus what you fixed
 ```
 
-These are *real* type imprecision (unlike the 44 Kivy-boundary entries also baselined, and
+These are *real* type imprecision (unlike the 43 Kivy-boundary entries also baselined, and
 7 Win32 `ctypes` ones that exist only because `pyrefly.toml` checks as Linux). Kivy ships
 no stubs; generating them is the only fix for those. Fix notes below are a **starting point
 derived from the type errors** — verify at the call site; some may reveal a real
