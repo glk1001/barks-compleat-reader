@@ -142,7 +142,12 @@ Numbered, in the order it actually happens:
    handles the `--run-first-run-installer` re-exec sentinel (`main.py`) and,
    on a first run, blocks in `maybe_run_first_run_installer()` (`main.py`)
    while an isolated subprocess unpacks the data zips — a failed install aborts
-   the launch. Then `ok_to_run()` checks the installer-failed flag file;
+   the launch. A second sentinel, `INSTALL_DATA_PACK_ARG` (`core/data_pack.py`),
+   re-execs the app as the data-pack installer (`data_pack_installer.py`): the
+   reader spawns it after the user accepts an offer to install newer packs and
+   closes, so its open zips and index files let the Reader Files folder move;
+   the installer swaps the folders and starts the reader again. Then
+   `ok_to_run()` checks the installer-failed flag file;
    `reset_python_gc()` raises the GC thresholds (a real startup speedup); and
    Typer dispatches to `main()`.
 6. **`main()` executes** (`main.py`). It builds `ConfigInfo()` (which sets
@@ -151,7 +156,12 @@ Numbered, in the order it actually happens:
    (`core/minimal_config_info.py`), calls `start_logging` (first Kivy import,
    `main.py`), computes and applies the window geometry via
    `update_window_size` → `set_window_size` (`main.py`), and finally
-   `call_reader_main` (`main.py`).
+   `call_reader_main` (`main.py`). The window's shape comes first:
+   `get_main_win_aspect_ratio(min_options.main_screen_layout)` asks
+   `choose_main_layout` (`core/main_layout.py`) whether the *Layout*
+   setting, on the primary monitor, means a single page or a two-page spread, and
+   takes that layout's `content_aspect_ratio`; the window helper decides again for
+   whichever monitor the window ends up on.
 7. **`reader_main(config_info)`** (`ui/barks_reader_app.py`) constructs the
    **data layer** — `ComicsDatabase(for_building_comics=False)` — then
    the Kivy app `BarksReaderApp(config_info, comics_database)` and calls
@@ -161,7 +171,13 @@ Numbered, in the order it actually happens:
    hook. In order: apply two Kivy 2.3.1 `_remove_group` workarounds
    (`barks_kivy_ui.kivy_patches.apply_text_input_remove_group_patch()` and an
    inline `SwapTransition.on_complete` patch); `_initialize_settings_and_db()`;
-   load every `.kv` file via `Builder`; `_build_screens()`; build the tree view;
+   hand the layout setting to the window helper
+   (`_window_geometry.set_layout_setting(...)`); load every `.kv` file via
+   `Builder`; `_build_screens()`; lay the screens out for the helper's layout
+   (`_set_layout_mode(...)`, which passes the mode to the main screen and the
+   full-window readers) and register `set_main_screen_callbacks(update_fonts=…,
+   layout_mode_changed=self._set_layout_mode)`, so a move to a monitor that
+   calls for the other layout re-lays them; build the tree view;
    `_finalize_window_setup()`; return the root `ScreenManager`.
 9. **`_build_screens()`** (`ui/barks_reader_app.py`) instantiates the
    `MainScreen` and all its sub-screens plus the comic/document/wiki reader
@@ -178,10 +194,16 @@ Numbered, in the order it actually happens:
     (`WINDOW_SHOW_DELAY`).
 12. **Kivy's event loop starts.** The deferred callbacks fire: the tree finishes
     building → `AppInitializer.on_tree_build_finished` (`ui/app_initializer.py`)
-    dismisses the loading popup, renders the initial view
-    (`render_state(ViewStates.INITIAL)`), initializes comic data, and
-    restores the last-selected node. ~2s in, `show_the_window` fires and you see
-    the first frame.
+    runs `_post_build_setup`: it renders the initial view
+    (`render_state(ViewStates.INITIAL)`), shows one dismissible "no library"
+    notice when the Fantagraphics volumes are unset or unreadable (the app stays
+    browsable on the bundled pages), initializes comic data, and restores the
+    last-selected node. Only then does it call back into
+    `MainScreen._on_tree_build_finished`, which runs
+    `check_for_data_pack_update(at_boot=True)` — the offer of newer data packs
+    comes after the notice, because Kivy hands a key to the earliest binding, and
+    an offer opened first would answer the keys from under the notice. ~2s in,
+    `show_the_window` fires and you see the first frame.
 
 ### 2.3 Boot gotchas worth knowing
 
@@ -202,10 +224,12 @@ Numbered, in the order it actually happens:
   (`core/config_info.py`; on macOS that's the directory *beside* the `.app`
   bundle). A plain dev run instead requires `BARKS_READER_CONFIG_DIR` /
   `BARKS_READER_DATA_DIR` env vars, loaded from `.env.runtime` (`main.py`).
-- **Fonts are bimodal.** `FontManager.update_font_sizes` switches between a
-  low-res and hi-res font theme at a window-height cutoff of 1090px
-  (`ui/font_manager.py`), and no-ops otherwise — so resize-driven font
-  changes only fire when you cross that threshold.
+- **Fonts are bimodal.** `FontManager.update_font_sizes` (`ui/font_manager.py`)
+  switches between a low-res and hi-res font theme at a window-height cutoff of
+  1090px, and no-ops otherwise — so resize-driven font changes only fire when
+  you cross that threshold. The cutoff (`HI_RES_WINDOW_HEIGHT_CUTOFF`), the
+  choice (`font_group_for_height`) and both size tables live in the Kivy-free
+  `core/font_sizes.py`; the manager only scales them and holds the properties.
 
 ---
 
@@ -297,17 +321,20 @@ click from widget to rendered view.
 Three types carry the whole model:
 
 - **`Destination`** (`destinations.py`) — a frozen dataclass base with one
-  subclass per navigable kind (32 of them). Two flavors: no-payload singletons
-  (`IntroDestination`, `CorpusStatsDestination`, `StoriesDestination`,
-  `SearchDestination`, `ReadingDestination`, `ChooseForMeDestination`,
-  `PlaylistsDestination`, `HistoryDestination`, `AppendixDestination`,
-  `IndexDestination`, …) and payload-bearing ones that carry the domain data
+  subclass per navigable kind (37 of them). Two flavors: 26 no-payload singletons
+  (`IntroDestination`, `IntroDocDestination`, `CorpusStatsDestination`,
+  `IllustratedHistoryDestination`, `StoriesDestination`, `SearchDestination`,
+  `ReadingDestination`, `ChooseForMeDestination`, `PlaylistsDestination`,
+  `HistoryDestination`, `AppendixDestination`, `CensorshipFixesDocDestination`,
+  `IndexDestination`, …) and 11 payload-bearing ones that carry the domain data
   needed to reconstruct the decision: `YearRangeDestination` (start/end/kind),
-  `SeriesDestination`, `CategoryDestination`, `TagGroupDestination`,
-  `TagDestination`, `TagYearRangeDestination`, `PlaylistDestination(playlist_id=…)`,
-  `TitleDestination(fanta_info=…)` (the leaf), `ArticleDestination`,
-  `IntroDocDestination`, and `RandomTitlesDestination` (the *Choose for me*
-  filter nodes; see below).
+  `SeriesDestination(series_name)`, `CategoryDestination`, `TagGroupDestination`,
+  `TagDestination`, `TagYearRangeDestination` (tag/start/end),
+  `PlaylistDestination(playlist_id=…)`, `TitleDestination(fanta_info=…)` (the
+  leaf), `ArticleDestination(view_state, article_title)`,
+  `DocumentDestination(view_state, doc_dir, title)` (a folder of page images for
+  the document reader, an Illustrated History chapter; §7.1), and
+  `RandomTitlesDestination` (the *Choose for me* filter nodes; see below).
   Payloads live on destinations, *not* on widget subclasses — that's the key
   design move.
 
@@ -388,9 +415,15 @@ the view pipeline:
    `BARKS_TAGGED_PAGES`.
 
 Programmatic navigation (Back history, "goto title" from a background image, a
-search or index result) goes through `TreeViewManager.setup_and_select_node`,
-which uses the `chrono_year_range_nodes` / `series_nodes` lookups the builder
-collected (`reader_tree_builder.py`) to open the tree to the right node.
+search or index result) opens the tree to the right node. The node lookups the
+builder collected (`reader_tree_builder.py`: the chronological, one-pager and
+cover year-range nodes and the series nodes) are handed to
+`NavigationCoordinator` in `MainScreen.build_tree_view`
+(`set_year_range_nodes`, `set_one_pager_year_range_nodes`,
+`set_cover_year_range_nodes`, `set_series_nodes`), and
+`navigate_to_chrono_title` uses them to find a title's parent year-range node
+(`_get_title_parent_node`), open it and select the row; restoring a saved or
+Back-history node goes through `TreeViewManager.setup_and_select_node`.
 
 ### 4.4 Extending it
 
@@ -430,9 +463,10 @@ SnapshotApplicator.apply(snapshot)  ◄── SnapshotSink port ◄───┘
 dataclass whose only required field is `view_state`, plus nav-context selectors
 (`category`, `year_range`, `cs_year_range`, `us_year_range`, `tag`, `tag_group`,
 `playlist_id`, `title_str`), a one-shot
-`title_image_file`, a `preserve_top_view` flag (keep the current background
-instead of re-picking), and `fun_image_themes` (stamped by the renderer, not by
-call sites).
+`title_image_file`, `preserve_top_view` and `preserve_fun_view` flags (keep the
+current background or bottom fun image instead of re-picking; `ViewRenderer.render`
+takes both, and Go Back passes them so a node comes back under the images it was
+left with), and `fun_image_themes` (stamped by the renderer, not by call sites).
 
 **`ViewSnapshot`** (`core/view_snapshot.py`) is the complete description of one
 screen state, composed of five sub-snapshots:
@@ -441,7 +475,8 @@ screen state, composed of five sub-snapshots:
 - `fun_view` — the decorative bottom image (visible?, info, color).
 - `title_view` — the selected title's image (visible?, info, color).
 - `screen_visibility` — booleans for the index/statistics/history sub-screens.
-- `search_view` — search visibility + mode (Title/Tag/Word).
+- `search_view` — search visibility + mode (Title/Tag/Word) + its backdrop's
+  `image_info`.
 
 Note the boundary discipline: `ViewSnapshot.view_state` is stored as a **raw
 `int`**, deliberately, "to avoid a ui import" (`core/view_snapshot.py`).
@@ -490,7 +525,8 @@ as "the only class that directly touches these Kivy widgets." Its `apply()`
  fans out to `_apply_top_view`, `_apply_fun_view`, `_apply_title_view`,
 `_apply_screen_visibility`, `_apply_search_view`. Each sets the cheap properties
 (visibility, opacity, color, fit mode) immediately and **defers the texture**:
-it holds four `PanelTextureLoader`s (one per view) and loads the image
+it holds five `PanelTextureLoader`s (top view, fun view, the fun view's lower
+tier, bottom title view, search) and loads the image
 asynchronously, so a slow disk read never blocks the UI thread. Change
 suppression (skip reload when the `ImageInfo` is unchanged) keeps it cheap.
 
@@ -499,8 +535,12 @@ The async chain — important, because you'll see it again in section 6:
 1. `PanelTextureLoader.load_texture` (`ui/panel_texture_loader.py`) delegates
    the read/decode to `PanelImageLoader.load_pil`.
 2. `PanelImageLoader` (`core/panel_image_loader.py`) runs the heavy I/O +
-   Pillow decode on a **daemon thread** (`_worker`), killing any in-flight
-   thread first.
+   Pillow decode on a **daemon thread** (`_worker`). It never kills a thread:
+   each new load, or `cancel()`, bumps a `_generation` counter, and a worker
+   whose captured generation no longer matches drops its result — checked in
+   `_worker` between steps, and again in `_deliver` on the UI thread, since a
+   stale worker may have scheduled its callback just before the bump. So the UI
+   thread never waits on a superseded decode.
 3. On completion it marshals back to the UI thread via
    `self._scheduler.schedule_once(...)` — **this is what the
    `Scheduler` port is for**: crossing the thread boundary without importing
@@ -544,13 +584,20 @@ they talk through `core/ports/comic_reader.py`.
    the `ComicLayout`, chooses a decryption function based on whether panels are
    encrypted, constructs a `ComicBookImageBuilder`, and returns
    `(layout, image_builder)`.
-4. **Resume session begins** — `LastReadPageTracker.begin(title, layout, save_enabled)`
-  .
+4. **Tracking is held back** — the manager does *not* begin its trackers yet.
+   It stores a `_PendingTracking` (title, layout, `save_last_page`, the history
+   title) and passes `on_comic_opened=self._begin_tracking` to the widget, so
+   only a comic that actually opened is tracked: a failed open has no page to
+   save and is not a read for the history.
 5. **Hand to the widget** — through the `ComicBookReaderPort`,
-   `comic_book_reader.read_comic(...)`. A `MissingVolumeError` here is
-   caught, shown to the user, and schedules the reader to close after 1s.
+   `comic_book_reader.read_comic(...)`. A `MissingVolumeError` (a volume the
+   library lacks) or a `FileNotFoundError` (with prebuilt archives, the title's
+   own comic file is absent; reported as `ErrorTypes.ArchiveVolumeNotAvailable`)
+   is caught here; both go through `_report_unreadable`, which drops the pending
+   tracking, shows the user why, and schedules the reader to close after 1s.
 6. **Widget setup** — `ComicBookReader.read_comic()` (`ui/comic_book_reader.py`)
-   sets up page state, double-page mode, and the page map, then asks the loader
+   sets up double-page mode and hands the layout to the page manager
+   (`ComicPageManager.set_layout(layout, page_to_first_goto)`), then asks the loader
    for the archive (`ComicBookLoader.resolve_archive_for_comic(fanta_info, page_map)`
    in `core/comic_book_loader.py`, returning the archive path and the volume's
    metadata) and constructs an `ArchivePageImageSource`.
@@ -561,10 +608,18 @@ they talk through `core/ports/comic_reader.py`.
    opening page appears fastest. The loader loads those opening pages alone, and
    opens its prefetch window only once they have all landed.
 8. **First page** — when the loader thread finishes the target page it schedules
-   `_first_image_loaded` on the UI thread, which sets `_current_page_index`; that
-   `NumericProperty` is bound to `_show_page`, which pulls the page's pixels
-   and fills a texture from them (`page_texture`) for the `Image` widget
-  .
+   `_first_image_loaded` on the UI thread, which calls the page manager's
+   `set_to_first_page_to_read()`. The widget's `_current_page_index` is a plain
+   `@property` reading `self._page_manager.get_current_page_index()`; the
+   manager was built as `ComicPageManager(lambda: _call_if_alive(reader,
+   "_show_page"))`, so its page-change callback runs `_show_page`, which pulls
+   the page's pixels and fills a texture from them (`page_texture`) for the
+   `Image` widget.
+9. **Opened** — once page one has drawn (`_render_page`), the widget calls
+   `on_comic_opened()` once, and `ComicReaderManager._begin_tracking` begins
+   `LastReadPageTracker` (`begin(title, layout, save_enabled)`) and, when
+   `save_last_page` is set, `ReadingHistoryTracker`. A load that fails before
+   then, on the loader thread included, never calls it.
 
 ### 6.2 Where pages come from, and decryption
 
@@ -642,8 +697,11 @@ via injected `Scheduler` + `Cursor` ports:
 Three cooperating classes, one of them Kivy-free in core:
 
 - **`ComicPageManager`** (`core/comic_page_manager.py`) — pure page-navigation
-  state (page map, index maps, double-page display units,
-  `next_page`/`prev_page`/`goto_*`). It knows nothing about images; every change
+  state: which page is current, and the moves between pages
+  (`next_page`/`prev_page`/`goto_*`). The page map, the index maps and the
+  double-page display units are the comic's `ComicLayout`'s
+  (`core/comic_book_page_info.py`, handed over in `set_layout`); the manager
+  adds only the position in them. It knows nothing about images; every change
   of its current page index calls the reader's `_show_page`, which is what
   drives redisplay.
 - **`ComicBookReader`** — owns the `ComicBookLoader` and the single Kivy
@@ -654,15 +712,18 @@ Three cooperating classes, one of them Kivy-free in core:
   transitions, and the close lifecycle. It implements both comic-reader ports.
 
 **Resume tracking** is bracketed by `LastReadPageTracker.begin/end`
-(`core/last_read_page_tracker.py`). On close (`on_comic_closed` →
-`comic_closed()` → `tracker.end(...)`), it reads the widget's last page, resolves
+(`core/last_read_page_tracker.py`). `begin` runs from `_begin_tracking` once the
+comic's first page has drawn (§6.1, step 9), never for a comic that failed to
+open. On close (`on_comic_closed` → `comic_closed()` → `tracker.end(...)`),
+`comic_closed` returns `None` at once when nothing is being tracked; otherwise
+the tracker reads the widget's last page, resolves
 it through the layout (in double-page mode, preferring the right page unless the
 left is an edge), and persists a `SavedPageInfo` (`core/saved_page_info.py`)
 as JSON via `SettingsManager`. A finished comic is normalized back to its cover
 so next time you start fresh.
 
 The same open/close bracket also feeds the **reading-history log**:
-`_read_comic_book` calls `ReadingHistoryTracker.begin`
+`_begin_tracking` calls `ReadingHistoryTracker.begin`
 (`core/comic_reader_manager.py`) and `comic_closed()` passes the resolved
 `SavedPageInfo` to `ReadingHistoryTracker.end`. Section 7.5 covers the
 whole subsystem.
@@ -693,7 +754,7 @@ switching is an animated push/pop:
 |---|---|---|
 | `MainScreen` | `ui/main_screen.py` | The always-present shell (action bar + tree + bottom pane). |
 | `ComicBookReaderScreen` | `ui/comic_book_reader.py` | Page-by-page reader. |
-| `DocumentReaderScreen` | `ui/document_reader.py` | Simple image-page "How To" viewer. |
+| `DocumentReaderScreen` | `ui/document_reader.py` | A folder of page images: the How To and the Illustrated History chapters (`DocumentDestination`). A page may name its figures' stories (`core/document_links`) for *Go to Story*; each document's last page is kept for the session to resume at; on the spread the pages pair up (`build_document_units`). |
 | `WikiReaderScreen` | `ui/wiki_reader.py` | Embedded Carl Barks Wiki (OKF viewer). |
 | `CorpusStatsScreen` | `ui/corpus_stats_screen.py` | The Introduction's full-window *By the Numbers* page (§7.7). |
 
@@ -707,9 +768,15 @@ an `is_visible` property — *not* by the screen manager: `TreeViewScreen`,
 ### 7.2 The main screen layout
 
 `ui/main_screen.kv` composes a vertical `BoxLayout`: an action-bar row on top,
-and a content area filled at runtime by `_wire_screens` (`ui/main_screen.py`)
-— the `TreeViewScreen` plus a single wrapper `Screen` into which all nine bottom
-sub-screens are stacked. Only one bottom screen shows at a time, and their
+and below it the **book** (`ids.book`), a `BoxLayout` filled at runtime by
+`_wire_screens` (`ui/main_screen.py`) — the `TreeViewScreen` plus a single
+wrapper `Screen` into which all nine bottom sub-screens are stacked. The book's
+orientation follows the layout: vertical on a single page (the tree above the
+view), horizontal on the two-page spread (the tree beside it), where a spine is
+drawn over the middle in its `canvas.after` (`SPINE_RGBA`, `SPINE_WIDTH_DP` in
+`core/main_layout.py`; a line that takes no width, the pages touching).
+`MainScreen.set_layout_mode` sets the mode and passes it on to the tree, bottom
+title, fun and search screens. Only one bottom screen shows at a time, and their
 `is_visible` flags are pushed by `SnapshotApplicator` (section 5.5).
 
 The **fun view and the bottom title view** are mutually exclusive presentations
@@ -728,13 +795,19 @@ always returns to main and calls the corresponding `on_*_closed` hook so the mai
 screen re-activates.
 
 The **action bar** (`ReaderActionBar`, `ui/action_bar.py`) is a shared
-skeleton reused by the main/comic/document screens; its draggable title region is
-what backs `Window.set_custom_titlebar`. The main screen's buttons
+skeleton reused by the main, comic, document and *By the Numbers* screens
+(`corpus_stats_screen.kv`); its draggable title region is what backs
+`Window.set_custom_titlebar`. That region is handed to each pushed screen's bar
+on the way in (`_hand_window_drag_to`, `ui/reader_screens.py`) and back to the
+main bar's on the way out (`_hand_window_drag_back`); the wiki hands over its
+viewer's bar once it is built, and a screen with no bar leaves the main bar's in
+place. The main screen's buttons
 (`main_screen.kv`): fullscreen toggle, **Go Back** (which is
 *tree-navigation* back to the previous node — `on_action_bar_go_back` →
 `tree_view_manager.go_back_to_previous_node()`, **not** a screen pop), Collapse
 (close all open tree nodes), Change Pics (new random images + `renderer.refresh()`),
-Menu (Settings/How To/About dropdown), and Quit (fenced off by a separator so an
+Menu (a dropdown of four: Settings, How To, Update Data — the data-pack check
+of §2.2 step 12, run on demand — and About), and Quit (fenced off by a separator so an
 overshoot can't hit it).
 
 ### 7.4 The specialized screens
@@ -816,9 +889,10 @@ and *Playlists*). The feature splits cleanly along the core/ui line.
   **Record Reading History** settings toggle
   (`record_reading_history`, `core/reader_settings.py`) — and the clock is
   injectable for tests.
-- The hook lives in `ComicReaderManager`: `begin` fires in `_read_comic_book`
-  (`core/comic_reader_manager.py`) only when `save_last_page` is true, so
-  **articles are never recorded**. A one-pager read via the "All One-Pagers"
+- The hook lives in `ComicReaderManager`: `begin` fires in `_begin_tracking`
+  (`core/comic_reader_manager.py`), called by the reader once the comic's first
+  page has drawn (§6.1), and only when `save_last_page` is true, so
+  **articles are never recorded** — nor is a comic that failed to open. A one-pager read via the "All One-Pagers"
   collection passes `history_title_str` (`ui/navigation_coordinator.py`)
   so the history records the *individual one-pager*, not the collection.
   `end` fires from `comic_closed` with the same `SavedPageInfo` the
@@ -924,7 +998,8 @@ focus-highlight group, and two mixins, `ActionBarNavMixin` (Up into the action
 bar, Left/Right along it, Return to press, the menu-mode entered by
 `_enter_menu_mode`) and `DropdownNavMixin` (Up/Down in a dropdown, Escape to
 dismiss, logged through `DROPDOWN_DISMISSED`). Four of the five top-level
-screens mix `ActionBarNavMixin` in (and so does the Statistics sub-screen); the
+screens mix `ActionBarNavMixin` in (the Statistics sub-screen mixes in only
+`DropdownNavMixin`, for its word-statistics dropdown); the
 wiki reader uses okf-reader's own `okf_reader.ui.keynav`. The main screen's own
 policy is `MainScreenNavigation` (`ui/main_screen_nav.py`): which region has
 focus (`_FocusRegion.TREE` or `BOTTOM`), how Right enters the bottom pane and
@@ -1029,7 +1104,8 @@ always pulled in via `from .adapters import …`.
   and reach `core` only through the `ColorSource` port, implemented by the
   Kivy-free `FixedColorSource` (`core/reader_colors.py`).
 - **Fonts** — `ui/font_manager.py`: two font themes selected by the 1090px
-  window-height cutoff (section 2.3), about 40 `NumericProperty` sizes bound in `.kv`.
+  window-height cutoff (section 2.3), 33 `NumericProperty` sizes bound in `.kv`;
+  the cutoff and the size tables are the Kivy-free `core/font_sizes.py`.
 - **Errors — two subsystems, both split pure/UI.** *Recoverable user errors*:
   pure types/messages in `core/user_error_types.py` + `core/user_error_messages.py`,
   presented by `ui/user_error_handler.py`. *Fatal crashes*: `ui/error_handling.py`
@@ -1095,7 +1171,8 @@ title row → `on_title_row_button_pressed` → `nav.select_title` →
 `ComicReaderManager` (§6.1) → `prepare_comic_for_reading` builds the layout →
 `ComicBookReader.read_comic` resolves the archive and starts `ComicBookLoader`
 (§6.3) → the opening page loads first (§6.1 step 7) → `_show_page` uploads its
-texture → the comic reader screen is now on top (§7.1). Close it →
+texture → the comic reader screen is now on top (§7.1), and page one drawn calls
+`on_comic_opened`, which begins the trackers (§6.1 step 9). Close it →
 `tracker.end` persists the last-read page (§6.4) → `render_state` restores the
 previous main-screen view.
 
