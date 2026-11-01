@@ -7,10 +7,11 @@ description: Run, set up, check or debug the overnight runs (run_overnight.sh on
 
 **Run the whole repo overnight** (the data-pack validators, full-lint, the suite with coverage,
 in random order and against upgraded dependencies, the sibling repos' tests, a Nuitka build and
-its smoke test, every GUI stage below against that build, GUI timing drift, unused code that
-nothing ran (`dead_code_report.py`, warns only), mutation testing of all of `core/` and the
-fantagraphics search modules (`BARKS_OVERNIGHT_MUTATION_SCOPE=core` or `fantagraphics` gives a
-machine one share, kept in its gitignored `.env.overnight`), and last `tidy`: the built app's old
+its smoke test, every stage of `run_gui_overnight.sh` (the suite on each comic and panel
+source, the settings matrix, a 1080p screen, touch, the soaks, and the suite, matrix and a soak
+against that build), GUI timing drift, unused code that nothing ran (`dead_code_report.py`,
+warns only), mutation testing of all of `core/` and the fantagraphics search modules
+(`BARKS_OVERNIGHT_MUTATION_SCOPE=core` or `fantagraphics` gives a machine one share, kept in its gitignored `.env.overnight`), and last `tidy`: the built app's old
 unpack folders (`prune_onefile_cache.py`, the newest three kept) and `uv cache prune`, warns
 only, the desktop runner's last stage too; `--list`, `--only`, `--skip`, `--app PATH`; results in
 `build/overnight/<stamp>/summary.txt`, where a warn-only stage shows WARNED):
@@ -22,8 +23,10 @@ sets that one up over ssh (repos, `.env.runtime`'s `BARKS_` lines, about 36 GB o
 not the build tree, so it runs with `--skip build-check`), and
 `bash scripts/check-overnight-host.sh` there says what is still missing.
 For another distro, `bash scripts/run_overnight_container.sh fedora` runs a slice (the suite,
-a build made there, the base GUI suite, and a smoke test of the host's build) in a podman
-container on the second Linux PC, on demand (`docs/overnight-schedule.md`, "Another distro").
+a build made there with its smoke test, the GUI suite and a soak against that build, the
+base GUI suite against the host's timings, and, when the host has a build, its executable
+through the same smoke test, GUI suite and soak: `scripts/containers/in-container.sh`) in a
+podman container on the second Linux PC, on demand (`docs/overnight-schedule.md`, "Another distro").
 Each machine's data pack is a copy that nothing re-syncs, and a stale one passes every other
 stage. So both runners start with `data`: `scripts/data_manifest.py` compares the Reader Files
 folders, prebuilt comics and PNG panels there with `scripts/data-manifest.json`, and warns
