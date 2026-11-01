@@ -558,7 +558,7 @@ in the OCR repo, which is read-only from here:
       2026-11-01: every whole-window picture is the spread, every close-up a page cut from
       one, a Layout section shows the same view both ways, and the page and README name the
       layouts as the app does (`docs/plans/website-spread-consistency.md`). The demo videos
-      still show the gutter the spread lost that day (954f6e1e).
+      were re-recorded the same day without the gutter the spread lost (954f6e1e).
 
 ---
 
