@@ -208,14 +208,22 @@
             # Spacer to stop BoxLayout centering the above widgets.
             Widget:
 
+        # The filter toggle. Closed, it sits at the view's bottom-left corner: at the
+        # top-left it was next to the tree page's goto-title button across the spread's
+        # fold, and looked like its twin. Open, it is the menu's close (x) at the top
+        # right of the menu box, inside the box's top padding. (The RelativeLayout makes
+        # these coordinates its own.)
         Button:
             id: fun_options_button
             text: ''
-            pos_hint:
-                {'x': (0.5 - 0.025) if root.fun_options_enabled else 0.007, \
-                'top': 0.986 if root.fun_options_enabled else 0.990}
+            x:
+                (self.parent.width * 0.5 - self.width - dp(4)) if root.fun_options_enabled \
+                else dp(8)
+            y:
+                (self.parent.height - self.height - dp(4)) if root.fun_options_enabled \
+                else dp(8)
             size_hint: None, None
-            size: dp(15), dp(15)
+            size: dp(22), dp(22)
             bold: True
             background_color: (0, 0, 0, 0) # Make default background transparent
             background_normal: ''
