@@ -111,7 +111,7 @@ variables; no line numbers in the evergreen docs; `--only RULE`, `--quiet`):
 uv run scripts/check_docs_refs.py
 ```
 
-**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, deptry, vulture, relative imports, .kv imports, the GUI-key check, cspell, benchmark compare; `uv audit` and the wiki story-order check warn only; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
+**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, deptry, vulture, relative imports, .kv imports, the GUI-key check, cspell, benchmark compare; `uv audit`, the wiki story-order check and the docs-refs check warn only; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
 ```bash
 bash scripts/full-lint.sh
 bash scripts/full-lint.sh --with-gui-test
