@@ -24,8 +24,8 @@ you need to know.
 4. [Navigation — turning a click into an intent](#4-navigation)
 5. [The view pipeline — computing what to show](#5-the-view-pipeline)
 6. [Opening a comic — loading and reading pages](#6-opening-a-comic)
-7. [The UI shell — screens, action bar, indexes, search, wiki](#7-the-ui-shell)
-8. [Ports, adapters, and cross-cutting concerns](#8-ports-adapters-and-cross-cutting)
+7. [The UI shell — screens, action bar, indexes, search, wiki, the two-page spread](#7-the-ui-shell)
+8. [Ports, adapters, and cross-cutting concerns — data packs, the popup frame](#8-ports-adapters-and-cross-cutting)
 9. [Putting it together — three end-to-end traces](#9-end-to-end-traces)
 
 ---
@@ -1007,6 +1007,100 @@ Escape returns to the tree, and how a nav-screen node (Statistics, History)
 drops focus into its panel (`_enter_nav_screen_bottom_focus`). The focus moves
 are logged (`NAV_FOCUS_PREFIX`), which is what the GUI tests wait on.
 
+### 7.9 The two-page spread
+
+The main screen was laid out for a portrait screen: the tree above the view, the
+window locked to a comic page's shape. On a landscape screen it becomes an **open
+book** — the tree the left page, the current view the right, each at the comic
+page's shape, the action bar across the pair. A spread page is exactly as wide as
+the single column is on the same screen, so nothing gets smaller and the fonts,
+keyed to the window's height alone (§2.3), do not change. The design and its
+decisions are `docs/plans/two-page-spread.md`.
+
+**The rule is Kivy-free**, in `core/main_layout.py`. `MainLayoutMode` is `SINGLE`
+or `SPREAD`. The *Layout* setting (`main_screen_layout`) has three values,
+`MAIN_SCREEN_LAYOUT_OPTIONS`: *Match the screen* (the default), *Single page* and
+*Two-page spread*. `choose_main_layout` returns the forced mode for the last two,
+and for the first asks `spread_fits` — do two pages, as tall as the monitor
+allows less the action bar, fit side by side? It measures the monitor's full
+size in both window modes, so a monitor always gets one answer; 4:3 qualifies,
+5:4 just misses, and no screen shape sits near the line, so there is no
+hysteresis. `content_aspect_ratio` is the window's lock: the page's height over
+width on a single page, half that on the spread. Since 954f6e1e the spread is
+exactly two pages wide (`SPREAD_WIDTH_IN_PAGES`) with **no gutter**: the readers'
+two-up pairs then fill the spread window as the main screen's pages do, and the
+main screen's spine (§7.2) is a line drawn over the pages' inner edges that
+takes no width.
+
+**Deciding per monitor.** `main.py` sizes the window for the primary monitor
+(§2.2 step 6). `AppWindowGeometryHelper` (`ui/app_window_geometry.py`) then
+decides again for the monitor the window is actually on, in `evaluate_layout`:
+at boot (`set_window_ready`), on a monitor change, on a rotation, and when the
+setting changes (`set_layout_setting`). Each decision is logged
+(`MAIN_LAYOUT_MODE`); a change calls the `layout_mode_changed` callback
+(`BarksReaderApp._set_layout_mode`) and refits the window to the new shape,
+centred on its monitor (`_refit_to_layout`), unless the caller is about to
+resize anyway.
+
+**Fanning out.** `_set_layout_mode` hands the mode to every screen that cares,
+each holding it as a `layout_mode` string property its `.kv` reads:
+
+- `MainScreen.set_layout_mode` turns the book (§7.2) and passes the mode to the
+  tree, bottom title, fun (§7.10) and search screens.
+- The comic reader opens its **next** comic two-up on the spread
+  (`ComicBookReaderScreen.on_layout_mode` sets `opens_two_up`); the bar's Double
+  Page toggle still changes the comic at hand, and the *All One-Pagers* / *All
+  Covers* collections always open one page at a time, since a pair there
+  would put two unrelated gags or covers side by side.
+- The document reader pairs its pages from the first
+  (`core/display_unit.py`'s `build_document_units`: a document has no cover to
+  stand alone) in a box `pages_across` pages wide; a turn moves a pair and an odd
+  last page sits alone in the middle.
+- The wiki, in fullscreen, becomes a centred strip of the pair's shape
+  (`WikiReaderScreen._apply_viewer_sizing`); windowed, the window already is that
+  shape. *By the Numbers* widens its bar to the pair, but its page stays a page.
+
+### 7.10 The fun view on the spread
+
+On a single page the fun view is one image with prev/next margins. On the spread
+the view is a page of its own, and one panel in a tall page wastes it, so
+`FunImageViewScreen` (`ui/fun_image_view_screen.py`) **stacks two tiers**: the
+image on show on top, and below it, dimmed, the image before it in the history
+(`ImageHistory.previous`, `core/image_history.py`), each fitted to its tier.
+`stacked` is true whenever the layout is the spread and both textures are there;
+`tiered` (stacked and not zoomed) is what the `.kv` draws the tiers from.
+
+**The lower tier never runs dry.** The first image, a switch to the spread and a
+step back onto the oldest image all leave nothing before the one on show, so
+`_feed_the_oldest_end` asks the pipeline for one more image
+(`ViewPipeline.pick_fun_view_image`, which changes no pipeline state) and puts it
+behind the rest with `ImageHistory.add_oldest`.
+
+**Its own loader.** `_refresh_lower_tier` loads the lower image through
+`SnapshotApplicator.load_fun_view_texture`, which uses the applicator's fifth
+`PanelTextureLoader` (§5.5). A loader keeps only one load in flight (a newer load
+supersedes the older, §5.5 step 2), so sharing the upper tier's would drop the
+image on show, loaded a moment before. A texture that arrives after another step
+is dropped too (`_wanted_previous`).
+
+**The lower goto row.** The lower tier has its own title and Goto Title button
+(`lower_goto_title_button_active`, `on_goto_lower_title`), armed only once its
+texture has come (`_shown_previous`), so it never names an image still loading;
+it routes to `MainScreen._on_goto_fun_view_title` with that tier's `ImageInfo`.
+Keyboard focus reaches it as `_FunFocus.LOWER_GOTO`, a Down from the top goto
+button (the filter, the goto and the lower goto, in that order).
+
+**The middle-third zoom.** On the spread a press is read in thirds
+(`_press_on_the_page`): the left third steps back, the right third forward (both
+tiers move with the history), and the middle third **zooms** the tier under the
+press — `zoomed` becomes `"upper"` or `"lower"` and that image fills the page. A
+middle press zoomed brings the pair back, and any step clears the zoom; the
+history never moves, so a step back is always the pair the zoom came from.
+Zoomed on the lower tier, the top goto button is that image's. A lone image has
+nothing to zoom. The GUI tests tap these regions by name (`tap_target_regions`:
+"upper middle", "lower middle") and wait on `FUN_VIEW_STACKED`,
+`FUN_VIEW_ZOOM` and `FUN_VIEW_LOWER_TIER`.
+
 ---
 
 ## 8. Ports, adapters, and cross-cutting
@@ -1140,7 +1234,99 @@ always pulled in via `from .adapters import …`.
   `memory_census.py` and `frame_capture.py`; and the standalone (no `App`)
   windows `kivy_standalone_error_popup.py` and `kivy_standalone_show_message.py`,
   which the first-run installer (`first_run_installer.py`,
-  `first_run_installer_show_message.py`) and the fatal-error path use.
+  `first_run_installer_show_message.py`) and the fatal-error path use; the two
+  installers share the packs' layout and extraction in `installer_support.py`.
+  The modules the sections after this one walk through are `core/main_layout.py`
+  and `core/display_unit.py` (§7.9), `core/image_history.py` (§7.10),
+  `core/data_pack.py` and `data_pack_installer.py` (§8.5), and
+  `core/popup_frame.py`, `ui/popup_frame.py`, `core/popup_gallery.py` and
+  `ui/popup_gallery.py` (§8.6); `core/font_sizes.py` is in §2.3.
+
+### 8.5 Data packs and the update offer
+
+The reader's data (panel zips, indexes, fonts, the shipped wiki) ships as two
+**data packs**, `barks-reader-data-1.barkspack` and `-2` (`DATA_PACK_FILE_NAMES`;
+plain zips under an extension no app claims, so Safari does not expand them on
+download). The first-run installer unpacks them on a first install (§2.2 step
+5); this section is how an installed reader takes a **newer** pair. How the
+packs are built, checked and published is `docs/setup.md`, section 6.
+
+**The version file.** Each pack carries `Reader Files/data-pack.json`
+(`PACK_MEMBER`): the pack's version `N` — the `N` of the `data-vN` GitHub release
+it is published as — when and where it was built, and a fingerprint (files,
+bytes, md5) of every Reader Files folder it holds. `scripts/build-data-zips.sh`
+stamps it through `scripts/data_manifest.py --write-pack-manifest`, and
+`pack_manifest_json` is the one place its shape is written. The installer
+extracts it with the rest, so an installed reader reads its own version from
+there (`read_installed`, shown in the About box); an install from packs older
+than the file is "not versioned", and any versioned pack is newer than it.
+
+**Finding an update** is Kivy-free, in `core/data_pack.py`, which the UI, both
+installers and the scripts share. `look_for_update` looks where
+`pack_dir_for_update` says — the folder `BARKS_READER_DATA_PACK_DIR` names, else
+the executable's folder in a compiled build, else nowhere (a dev run never looks)
+— and `find_update` returns an `UpdateCheck` whose `UpdateStatus` is
+`UPDATE_AVAILABLE` only when both packs are there, readable, versioned, the same
+version, and newer than the installed one; every other status says why not.
+
+**The offer.** `MainScreen.check_for_data_pack_update` runs once at boot
+(`at_boot=True`, after the no-library notice, §2.2 step 12), silent unless there
+is something to install, and again from the Menu's *Update Data* (§7.3), which
+also says why there is nothing. Accepting (`_start_data_pack_installer`) spawns
+the app again as a detached process with `INSTALL_DATA_PACK_ARG`
+(`self_command`, `spawn_detached`) and closes the reader: its open panel zips
+and index files must be closed before the Reader Files folder can move.
+
+**The installer** (`data_pack_installer.py`, entered from `main.py`'s sentinel
+check) runs the same `look_for_update`, tidies what an interrupted update left
+(`clear_leftovers`), extracts both packs into `Reader Files.new`, checks them
+against the fingerprints the packs promised (`verify_extracted`), and swaps the
+folders (`swap_reader_files`: the installed folder to `.old`, `.new` into its
+place, each rename retried while Windows still holds the closing reader's files,
+the old folder put back if the second rename fails). Then it shows a success
+popup, and closing it starts the reader again. It never touches the config, so settings
+survive, and a failure leaves the installed data as it was.
+
+### 8.6 The popup frame and the popup gallery
+
+The popups were written one at a time, five ways — two kinds of title bar, five
+window sizes, three background treatments. `docs/plans/popup-consistency.md` is
+the plan that gives them one look; the frame is its result, and the gallery is how
+each step was checked.
+
+**The frame** is split along the usual line. `core/popup_frame.py` is the
+Kivy-free part: the three size classes (`PopupSize`: `SMALL` for a question,
+`MEDIUM` for a message, an error or a setting, `LARGE` for a long list or text)
+and `popup_size`, which measures a popup in **comic pages across** and in the
+window's height down. A page being the window's height over the page aspect, a
+popup comes out the same size on the single page and on the spread (§7.9), as the
+fonts do, rather than stretching across two pages. `FrameButton` names a button
+and its action without Kivy, so the popups that are their own window (the
+installers, the fatal-error popup) can name theirs before Kivy is imported.
+
+`ui/popup_frame.py`'s `PopupFrame` (a `ModalView`) draws it: a warm-brown title
+bar ruled along its foot, a dark card (with art beneath a scrim if the popup has
+art) holding the popup's body, and a right-aligned button row — or, with no
+buttons, a close X in the title bar. It is centred, sized by its class, and
+follows the window as it resizes. Its keys are the remote's (§7.8): Left/Right
+along the buttons, Return presses, Escape presses the last button (the cancel).
+Only a popup that asks (`close_on_outside_tap`, the speech bubbles) closes on a
+tap outside. The message popups, About, the speech bubbles, the settings popups
+and the standalone windows are built on it.
+
+**The gallery** opens every popup the app owns, with sample content, **through the
+function its screen calls**, so what it shows is what the app shows.
+`core/popup_gallery.py` names them, in order (`POPUP_NAMES`), and writes the
+requests, Kivy-free, so the script can ask without importing the UI;
+`ui/popup_gallery.py` opens them, and the app installs it only when
+`BARKS_READER_POPUP_GALLERY` is set (`POPUP_GALLERY_ENV_VAR`), so no normal run
+depends on it. `scripts/popup_gallery.py` boots the real app headless through
+`scripts/gui-probe.sh` from a scratch copy of the profile, asks for each popup,
+captures it, and builds one contact sheet per screen size (`SIZES`: a portrait
+single page, a landscape spread and 1080p) in `build/popup-gallery/<stamp>/`;
+the popups that run in their own window before the app does are captured from
+their own previews. `--live` steps through them in the real app with Page
+Up/Down instead.
 
 ---
 
