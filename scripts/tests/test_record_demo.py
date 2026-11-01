@@ -31,9 +31,9 @@ from record_demo import (
     Recorder,
     beat_names,
     check_same_encode,
-    crop_to_aspect,
     even,
     find_beat,
+    fit_to_size,
     missing_clips,
     parse_args,
     parse_geometry,
@@ -97,18 +97,18 @@ class TestWholeScreenGrab:
         with pytest.raises(BeatError, match="screen size"):
             parse_root_size("nothing here")
 
-    def test_a_taller_clip_shape_trims_the_sides(self) -> None:
-        """900x1300 to the clips' 782x1224: full height, 35 pixels off each side."""
-        assert crop_to_aspect(900, 1300, 782, 1224) == (830, 1300, 35, 0)
+    def test_a_wider_screen_gets_bars_above_and_below(self) -> None:
+        """900x1300 into the clips' 782x1224: full width, 48 pixels of bar top and bottom."""
+        assert fit_to_size(900, 1300, 782, 1224) == (782, 1128, 0, 48)
 
-    def test_a_wider_clip_shape_trims_top_and_bottom(self) -> None:
-        assert crop_to_aspect(1000, 1000, 1600, 900) == (1000, 562, 0, 219)
+    def test_a_taller_screen_gets_bars_at_the_sides(self) -> None:
+        assert fit_to_size(1000, 1000, 1600, 900) == (900, 900, 350, 0)
 
-    def test_the_same_shape_keeps_the_whole_screen(self) -> None:
-        assert crop_to_aspect(1564, 2448, 782, 1224) == (1564, 2448, 0, 0)
+    def test_the_same_shape_fills_the_clip(self) -> None:
+        assert fit_to_size(1564, 2448, 782, 1224) == (782, 1224, 0, 0)
 
-    def test_the_crop_is_even_sized(self) -> None:
-        width, height, _, _ = crop_to_aspect(901, 1301, 782, 1224)
+    def test_the_fit_is_even_sized(self) -> None:
+        width, height, _, _ = fit_to_size(901, 1301, 782, 1224)
         assert width % 2 == 0
         assert height % 2 == 0
 
@@ -129,7 +129,7 @@ class TestWholeScreenGrab:
             patch.object(Recorder, "root_size", return_value=(900, 1300)),
         ):
             grab = self._recorder().grab_for(Beat(name="b", node=["root"], whole_screen=True))
-        assert grab == Grab(900, 1300, 0, 0, crop=(830, 1300, 35, 0), out_size=(782, 1224))
+        assert grab == Grab(900, 1300, 0, 0, fit=(782, 1128, 0, 48), out_size=(782, 1224))
 
     @staticmethod
     def _ffmpeg_argv(grab: Grab) -> list[str]:
@@ -137,15 +137,15 @@ class TestWholeScreenGrab:
             TestWholeScreenGrab._recorder()._start_ffmpeg(Path("x.mp4"), grab, Path("cap.txt"))  # noqa: SLF001
         return popen.call_args.args[0]
 
-    def test_the_screen_is_cropped_and_scaled_before_the_caption(self) -> None:
+    def test_the_screen_is_scaled_and_padded_before_the_caption(self) -> None:
         argv = self._ffmpeg_argv(
-            Grab(900, 1300, 0, 0, crop=(830, 1300, 35, 0), out_size=(782, 1224))
+            Grab(900, 1300, 0, 0, fit=(782, 1128, 0, 48), out_size=(782, 1224))
         )
         assert argv[argv.index("-video_size") + 1] == "900x1300"
         assert argv[argv.index("-i") + 1].endswith("+0,0")
         filters = argv[argv.index("-vf") + 1].split(",")
-        assert filters[0] == "crop=830:1300:35:0"
-        assert filters[1].startswith("scale=782:1224")
+        assert filters[0].startswith("scale=782:1128")
+        assert filters[1] == "pad=782:1224:0:48:black"
         assert filters[2].startswith("drawtext=")
 
     def test_a_window_grab_has_only_the_caption(self) -> None:
@@ -596,13 +596,16 @@ class TestTheSpread:
             layout = choose_main_layout(MATCH_THE_SCREEN, width, height, chrome)
             assert layout is MainLayoutMode.SPREAD, chrome
 
-    def test_the_demo_screen_keeps_nearly_all_of_a_spread_clip(self) -> None:
-        """The fullscreen beat's crop to a spread clip's shape trims a few pixels a side."""
+    def test_the_demo_screen_fills_nearly_all_of_a_spread_clip(self) -> None:
+        """The fullscreen beat's whole screen fits a spread clip with thin bars.
+
+        Nothing is trimmed: the fullscreen two-up runs the screen's full width.
+        """
         width, height = (int(n) for n in record_demo.DEMO_SCREEN.split("x"))
-        crop_width, crop_height, x, y = crop_to_aspect(width, height, 1592, 1224)
-        assert (crop_height, y) == (height, 0)
-        assert width - crop_width <= 80  # noqa: PLR2004
-        assert x == (width - crop_width) // 2
+        fit_width, fit_height, x, y = fit_to_size(width, height, 1564, 1224)
+        assert (fit_width, x) == (1564, 0)
+        assert 1224 - fit_height <= 80  # noqa: PLR2004
+        assert y == (1224 - fit_height) // 2
 
     def test_a_boot_on_the_single_page_is_refused(
         self, new_stub_driver: Callable[[], Driver]

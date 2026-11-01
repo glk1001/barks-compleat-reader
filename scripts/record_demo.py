@@ -139,8 +139,8 @@ CAPTION_BOTTOM = 72
 # clips were once shot on, so the app's text is the same size in the clips as before;
 # the width is the spread's at that height plus a margin wide enough that the app's
 # own rule (core.main_layout.spread_fits, from the whole screen) picks the spread with
-# room to spare. The fullscreen beat crops the screen to the clips' shape, and this
-# screen is nearly that shape, so it loses a few dozen pixels at each side.
+# room to spare. The fullscreen beat fits the whole screen into the clips' shape, and
+# this screen is nearly that shape, so the bars above and below it are thin.
 DEMO_SCREEN = "1760x1300"
 # The layout the demo is filmed on, as the app logs it when it comes up
 # (barks_reader.core.log_markers.MAIN_LAYOUT_MODE). A profile set to Single page
@@ -523,7 +523,7 @@ class Beat:
     label: str = ""
     body: Callable[[Driver], None] = field(default=lambda _d: None)
     setup: Callable[[Driver], None] | None = None
-    # Film the whole nested screen, cropped and scaled to the other clips' size,
+    # Film the whole nested screen, fitted (scaled and padded) to the other clips' size,
     # instead of the app window's own region: for a beat that goes fullscreen.
     whole_screen: bool = False
 
@@ -904,8 +904,8 @@ def fullscreen(d: Driver) -> None:
     Filmed from the whole nested screen rather than the app window, so the
     window is seen to grow into the frame: it opens at the other clips' scale
     with the screen's black around it, and the fullscreen page then fills the
-    frame edge to edge. The crop and scale back to the shared clip size are the
-    recorder's (`Beat.whole_screen`). Two-up, as the spread opens a comic: the
+    frame side to side. The fit back to the shared clip size is the recorder's
+    (`Beat.whole_screen`). Two-up, as the spread opens a comic: the
     pair fills the landscape frame where one page would leave its sides black.
     """
     d.hold(1.0)
@@ -1138,15 +1138,15 @@ def parse_root_size(xwininfo_root_output: str) -> tuple[int, int]:
     return int(width.group(1)), int(height.group(1))
 
 
-def crop_to_aspect(
+def fit_to_size(
     root_width: int, root_height: int, width: int, height: int
 ) -> tuple[int, int, int, int]:
-    """Return the largest centred crop of the screen with the clips' aspect.
+    """Return how the whole screen fits the clips' size: scaled down, then padded.
 
-    The fullscreen page is centred on the screen with its margins at the sides
-    (or top and bottom), so trimming the screen to the clips' shape loses only
-    margin; scaling that crop to the clips' size then gives one encode across
-    every beat, which the stitch needs.
+    The fullscreen two-up fills the screen's width, so nothing may be trimmed from
+    the screen: it is scaled to fit inside the clips' size and centred, with black
+    bars on the two sides it does not reach. One size across every beat is what
+    the stitch needs.
 
     Args:
         root_width: The screen's width.
@@ -1155,15 +1155,16 @@ def crop_to_aspect(
         height: The other clips' height.
 
     Returns:
-        ``(crop_width, crop_height, x, y)`` for ffmpeg's crop filter, even-sized.
+        ``(scaled_width, scaled_height, x, y)``: ffmpeg's scale size (even) and the
+        pad filter's offsets into the clip size.
 
     """
     if root_width * height >= root_height * width:
-        # The screen is wider than the clips: keep its height, trim the sides.
-        crop_width, crop_height = even(root_height * width // height), even(root_height)
+        # The screen is wider than the clips: keep the clips' width, bars above and below.
+        scaled_width, scaled_height = even(width), even(root_height * width // root_width)
     else:
-        crop_width, crop_height = even(root_width), even(root_width * height // width)
-    return crop_width, crop_height, (root_width - crop_width) // 2, (root_height - crop_height) // 2
+        scaled_width, scaled_height = even(root_width * height // root_height), even(height)
+    return scaled_width, scaled_height, (width - scaled_width) // 2, (height - scaled_height) // 2
 
 
 def _xwininfo(*args: str) -> str:
@@ -1287,9 +1288,9 @@ class Grab:
     height: int
     x: int
     y: int
-    # For a whole-screen beat: the crop (width, height, x, y) and the size it is
+    # For a whole-screen beat: the fit (scaled width, height, pad x, y) and the size it is
     # scaled to, which is the app window's, so the clip matches the others.
-    crop: tuple[int, int, int, int] | None = None
+    fit: tuple[int, int, int, int] | None = None
     out_size: tuple[int, int] | None = None
 
 
@@ -1445,8 +1446,8 @@ class Recorder:
         if not item.whole_screen:
             return Grab(width, height, pos_x, pos_y)
         root_width, root_height = self.root_size()
-        crop = crop_to_aspect(root_width, root_height, width, height)
-        return Grab(root_width, root_height, 0, 0, crop=crop, out_size=(width, height))
+        fit = fit_to_size(root_width, root_height, width, height)
+        return Grab(root_width, root_height, 0, 0, fit=fit, out_size=(width, height))
 
     def record(self, item: Beat) -> Path:
         """Record one beat to its cached clip and return the path.
@@ -1475,12 +1476,12 @@ class Recorder:
         say(
             f"record-demo: [{item.name}] recording {grab.width}x{grab.height} at +{grab.x}+{grab.y}"
         )
-        if grab.crop and grab.out_size:
-            crop_w, crop_h, crop_x, crop_y = grab.crop
+        if grab.fit and grab.out_size:
+            fit_w, fit_h, fit_x, fit_y = grab.fit
             say(
-                f"record-demo: [{item.name}] the whole screen, cropped to"
-                f" {crop_w}x{crop_h} at +{crop_x}+{crop_y} and scaled to"
-                f" {grab.out_size[0]}x{grab.out_size[1]}"
+                f"record-demo: [{item.name}] the whole screen, scaled to"
+                f" {fit_w}x{fit_h} and padded to {grab.out_size[0]}x{grab.out_size[1]}"
+                f" at +{fit_x}+{fit_y}"
             )
         with _caption_file(item.label) as caption:
             self._ffmpeg = self._start_ffmpeg(partial, grab, caption)
@@ -1512,13 +1513,13 @@ class Recorder:
     ) -> subprocess.Popen[bytes]:
         # The caption is burned in at record time, not at stitch time, because the
         # stitch is a stream copy - there is no re-encode later to draw it into.
-        # A whole-screen grab is cropped and scaled to the clip size first, so the
+        # A whole-screen grab is scaled and padded to the clip size first, so the
         # caption is drawn at the same size and place as on every other beat.
         filters: list[str] = []
-        if grab.crop and grab.out_size:
-            crop_w, crop_h, crop_x, crop_y = grab.crop
-            filters.append(f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y}")
-            filters.append(f"scale={grab.out_size[0]}:{grab.out_size[1]}:flags=lanczos")
+        if grab.fit and grab.out_size:
+            fit_w, fit_h, fit_x, fit_y = grab.fit
+            filters.append(f"scale={fit_w}:{fit_h}:flags=lanczos")
+            filters.append(f"pad={grab.out_size[0]}:{grab.out_size[1]}:{fit_x}:{fit_y}:black")
         if caption is not None:
             filters.append(
                 f"drawtext=fontfile={FONT}:textfile={caption}:"
