@@ -69,6 +69,8 @@ CLOSE_BUTTON_WIDTH = dp(44)
 # The card: a solid warm dark, and over any art a scrim dark enough for cream text.
 CARD_BACKING = (0.14, 0.12, 0.10, 1.0)
 CARD_SCRIM = (0.10, 0.09, 0.08, 0.62)
+# A box set into the card (a path, a number to type): a darker well in it.
+CARD_WELL = (0.0, 0.0, 0.0, 0.35)
 CARD_PADDING = dp(18)
 
 # The button row.

@@ -57,7 +57,6 @@ def test_its_lines_are_as_tall_as_their_text_and_the_box_as_its_lines() -> None:
             about_box_title_font_size=30,
             about_box_title_font_name="Roboto",
             about_box_version_font_size=20,
-            about_box_fine_print_font_size=14,
         )
         about_box.show_about_box(font_manager, Path("/art/about.png"))
     content = show.call_args.kwargs["content"]

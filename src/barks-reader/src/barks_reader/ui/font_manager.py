@@ -76,7 +76,6 @@ class FontManager(EventDispatcher):
     tree_view_tag_title_spinner_font_size = NumericProperty()
 
     main_title_font_name = str(CARL_BARKS_FONT_FILE)
-    message_title_font_name = main_title_font_name
     main_index_item_font_name = ROBOTO_FONT
     speech_index_item_font_name = SPEECH_FONT  # Allows for words like H2O and music notes
     speech_bubble_text_font_name = SPEECH_FONT

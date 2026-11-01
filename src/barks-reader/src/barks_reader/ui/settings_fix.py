@@ -49,7 +49,7 @@ from barks_reader.core.reader_palette import Color, theme
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
-from .popup_frame import BUTTON_BACKGROUND, PopupFrame, popup_fonts
+from .popup_frame import BUTTON_BACKGROUND, CARD_WELL, PopupFrame, popup_fonts
 from .reader_keyboard_nav import update_focus_in_list
 
 
@@ -721,7 +721,6 @@ class SettingLongPath(SettingItem):
 # A choice setting's list and a number setting's entry box.
 CHOICE_HEIGHT = dp(44)
 CHOICE_SPACING = dp(6)
-NUMBER_BOX_BACKGROUND = (0.0, 0.0, 0.0, 0.35)
 _CHOICE_FOCUS_GROUP = "setting_choice_focus"
 
 
@@ -838,7 +837,7 @@ class SettingNumberPopup(PopupFrame):
             padding=[dp(10), dp(8)],
             background_normal="",
             background_active="",
-            background_color=list(NUMBER_BOX_BACKGROUND),
+            background_color=list(CARD_WELL),
             foreground_color=list(theme().text_title),
             cursor_color=list(theme().focus_ring),
         )

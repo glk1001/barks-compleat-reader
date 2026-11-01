@@ -11,8 +11,6 @@ from barks_reader.core.reader_utils import (
 from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
-# A path's box: a darker well in the frame's dark card.
-PATH_BOX_BACKGROUND = (0.0, 0.0, 0.0, 0.35)
 
 
 def show_installer_message(
@@ -58,7 +56,7 @@ def _get_installer_success_content(  # noqa: C901
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_palette import theme
-    from barks_reader.ui.popup_frame import popup_fonts
+    from barks_reader.ui.popup_frame import CARD_WELL, popup_fonts
 
     # The banner and the headings are its own; the rest is the popups' message text,
     # sized, as the frame's title and buttons are, by the window (set before this).
@@ -214,7 +212,7 @@ def _get_installer_success_content(  # noqa: C901
         def _add_paths_box(parent: Widget, paths: list[Path]) -> None:
             card = BoxLayout(size_hint_y=None, height=45, padding=[10, 6])
             with card.canvas.before:  # ty:ignore[unresolved-attribute]
-                Color(*PATH_BOX_BACKGROUND)
+                Color(*CARD_WELL)  # a path's box
                 card.bg = RoundedRectangle(size=card.size, pos=card.pos, radius=[dp(5)])
             card.bind(size=lambda _i, v: setattr(card.bg, "size", v))
             card.bind(pos=lambda _i, v: setattr(card.bg, "pos", v))
