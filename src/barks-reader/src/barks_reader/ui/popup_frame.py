@@ -146,6 +146,7 @@ class PopupFrame(ModalView):
         close_on_outside_tap: bool = False,
         first_focus: int | None = 0,
         fit_body_height: bool = False,
+        wrap_focus: bool = True,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -169,6 +170,9 @@ class PopupFrame(ModalView):
             fit_body_height: Whether the frame is only as tall as its body needs (its
                 ``minimum_height``), never taller than its class, rather than its
                 class's height with the spare left empty.
+            wrap_focus: Whether Left and Right go round from one end of the row to the
+                other, rather than stopping there, as they must where one button at an
+                end would cost something to land on by mistake (Clear).
 
         """
         super().__init__(
@@ -188,6 +192,7 @@ class PopupFrame(ModalView):
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
         self._focused_idx = first_focus
+        self._wrap_focus = wrap_focus
         self._close_button: Button | None = None
         self._close_focused = False
         # Asked first about every key, by a body that takes keys of its own (a list's
@@ -427,8 +432,10 @@ class PopupFrame(ModalView):
         count = len(self._frame_buttons)
         if self._focused_idx is None:  # onto the row from outside it, at its near end
             self._focused_idx = 0 if step > 0 else count - 1
-        else:
+        elif self._wrap_focus:
             self._focused_idx = (self._focused_idx + step) % count
+        else:
+            self._focused_idx = min(max(self._focused_idx + step, 0), count - 1)
         self._show_focus()
 
 

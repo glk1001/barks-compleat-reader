@@ -66,6 +66,7 @@ class AltEscapeCapturePopup(PopupFrame):
                 FrameButton("Cancel", self._cancel),
             ),
             first_focus=1,  # a slip of the hand must not clear the key
+            wrap_focus=False,  # nor a Right from Cancel, going round onto Clear
         )
 
         self._on_capture = on_capture

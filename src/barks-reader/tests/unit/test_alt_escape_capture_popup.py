@@ -98,6 +98,19 @@ def test_enter_presses_cancel_to_start_and_clear_after_a_left(
     assert "Alternate Escape cleared." in loguru_sink
 
 
+def test_right_from_cancel_stays_on_cancel(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
+) -> None:
+    """Cancel is the row's right end: a Right there must not go round onto Clear."""
+    made, _, on_clear = popup
+    with patch.object(popup_frame, "update_focus_in_list") as focus:
+        assert _press(made, KEY_RIGHT) is True
+        assert focus.call_args.args[1] == 1  # still the Cancel button
+        assert _press(made, KEY_ENTER) is True
+    on_clear.assert_not_called()
+    assert "Alternate Escape capture cancelled." in loguru_sink
+
+
 def test_clear_empties_it(
     popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], loguru_sink: list[str]
 ) -> None:

@@ -148,6 +148,20 @@ class TestPopupFrame:
             _press(frame, KEY_ENTER)
         presses[2].assert_called_once_with()
 
+    @pytest.mark.parametrize(("keys", "pressed"), [((KEY_RIGHT,) * 3, 2), ((KEY_LEFT,), 0)])
+    def test_a_row_that_does_not_wrap_stops_at_its_ends(
+        self, keys: tuple[int, ...], pressed: int
+    ) -> None:
+        presses = [MagicMock(), MagicMock(), MagicMock()]
+        frame = _frame(
+            tuple(FrameButton(str(i), p) for i, p in enumerate(presses)), wrap_focus=False
+        )
+        with patch.object(frame, "dismiss"), patch.object(popup_frame, "update_focus_in_list"):
+            for key in keys:
+                _press(frame, key)
+            _press(frame, KEY_ENTER)
+        assert [p.call_count for p in presses] == [int(i == pressed) for i in range(3)]
+
     def test_escape_presses_the_last_button_the_cancel(self) -> None:
         ok, cancel = MagicMock(), MagicMock()
         frame = _frame((FrameButton("Settings", ok), FrameButton("Close", cancel)))
