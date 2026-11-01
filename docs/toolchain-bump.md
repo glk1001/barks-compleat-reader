@@ -102,7 +102,7 @@ versions even after the files are reverted.
 | | reader | comic-building | ocr |
 |---|---|---|---|
 | pyrefly gate | 0 new vs baseline | 0 errors, no baseline | 0 errors, no baseline |
-| `full-lint.sh` extras | import-linter, deptry, vulture, kv-imports, benchmarks | deptry | — |
+| `full-lint.sh` extras | import-linter, deptry, vulture, relative imports, kv-imports, gui-keys, benchmarks; wiki story order and docs refs warn only | deptry | — |
 | CI | GitHub Actions | none | none |
 
 Only the reader has CI, so in the other two `scripts/full-lint.sh` plus pre-commit
