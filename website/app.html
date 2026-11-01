@@ -504,6 +504,14 @@
             margin-top: 20px;
         }
 
+        /* Two close-ups of one section side by side under its text, each the size
+           of a close-up in the side column. */
+        .layout-pair--close-ups {
+            grid-template-columns: 1fr 1fr;
+            max-width: 720px;
+            margin: 25px auto 0;
+        }
+
         .layout-pair figure {
             margin: 0;
         }
@@ -1171,7 +1179,7 @@
                 </figure>
             </div>
 
-            <div class="feature-section feature-section--split">
+            <div class="feature-section">
                 <div>
                     <h3>Titles/Tags and Speech Bubble Index</h3>
                     <p>There are two indexes: a titles/tags index and a speech bubble index.
@@ -1185,12 +1193,14 @@
                     <button class="chapter-link" data-chapter="search_words">&#9654; Search spoken words</button>
                     <button class="chapter-link" data-chapter="speech_index">&#9654; The index</button>
                 </div>
-                <div>
-                    <figure class="art-panel">
+                <div class="layout-pair layout-pair--close-ups">
+                    <figure>
                         <img src="screenshot-speech-bubble-index-page.jpg" alt="The speech bubble index: words starting ah to aj, one opened to the stories that use it" width="874" height="1320" loading="lazy">
+                        <figcaption>The speech bubble index</figcaption>
                     </figure>
-                    <figure class="art-panel">
+                    <figure>
                         <img src="screenshot-search-titles-page.jpg" alt="A title search for lost and its six results" width="874" height="1320" loading="lazy">
+                        <figcaption>A title search</figcaption>
                     </figure>
                 </div>
             </div>
