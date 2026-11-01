@@ -141,6 +141,12 @@ popup_logged() {
 kivy_logged() {
     grep -rqs --include='*.txt' "$1" "$WORK"
 }
+# The exception line of each Python traceback in the given files: the first line
+# after the "Traceback" header that is not indented.
+traceback_exceptions() {
+    awk '/Traceback \(most recent call last\):/ { open = 1; next }
+         open && /^[^ \t]/ { print; open = 0 }' "$@"
+}
 # Kivy said why it could open no window: the machine has no usable OpenGL.
 no_window_explained() {
     kivy_logged "Unable to get a Window" || kivy_logged "Minimum required OpenGL version"
@@ -250,10 +256,23 @@ if [[ -n "${KIVY_GL_BACKEND:-}" ]]; then
         fail=1
     fi
 fi
+# A program this script stopped can print a traceback that is only the stop. On
+# Linux and macOS, Nuitka's onefile bootstrap answers the SIGTERM above by sending
+# the program it unpacked a SIGINT, so that Python can clean up, and where that
+# KeyboardInterrupt lands (inside Kivy's own shutdown, say) decides whether main.py's
+# excepthook prints it. So once this script has stopped the run, a traceback whose
+# exception is KeyboardInterrupt is the stop. Every traceback is counted, so any
+# other one, even chained to a KeyboardInterrupt, is still a crash.
 if grep -q "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"}; then
-    echo "smoke-test-build: FAIL - a traceback:" >&2
-    grep -A12 "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"} | head -40 >&2
-    fail=1
+    tracebacks="$(cat "$WORK/stdout.log" ${log:+"$log"} | grep -c "Traceback (most recent call last)" || true)"
+    interrupts="$(traceback_exceptions "$WORK/stdout.log" ${log:+"$log"} | grep -cE '^KeyboardInterrupt(:|$)' || true)"
+    if [[ -n "$killed" && "$interrupts" == "$tracebacks" ]]; then
+        echo "smoke-test-build: note - the stop surfaced as a KeyboardInterrupt traceback (the onefile bootstrap passes a SIGTERM on as SIGINT); not a crash"
+    else
+        echo "smoke-test-build: FAIL - a traceback:" >&2
+        grep -A12 "Traceback (most recent call last)" "$WORK/stdout.log" ${log:+"$log"} | head -40 >&2
+        fail=1
+    fi
 fi
 # Say what the launch reached, from Kivy's log and the app's lines: a runner with
 # no usable OpenGL stops at Kivy's error box, or opens no window at all, and the
