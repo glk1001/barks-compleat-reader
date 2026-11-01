@@ -87,13 +87,19 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 
 ## Data completeness (`barks_fantagraphics`)
 
-- [ ] **Regenerate unauthored dates** — ~31 `_TODO = (0, 0, 0)` placeholder
-      entries in `comic_book_info.py` mark stories with unknown authored dates
-      (107 before the 2026-07-17 INDUCKS backfill, `b1dde680`).
-      Regenerate from the bibliography source (`experiments/bibliography/`).
-- [ ] **Reconcile date discrepancies** — 14 dates flagged as differing from
-      Barrier's bibliography (27 when `barks_bibliography.py` was generated;
-      listed in `experiments/bibliography/PLAN-one-to-one.md`).
+- [ ] **Locate the unlocated one-pagers** — 14 `_TODO = (0, 0, 0)` placeholder
+      entries in `ONE_PAGER_LOCATIONS` (`comic_book_info.py`) mark one-pagers with no
+      Fantagraphics volume and page yet, so they are skipped everywhere. The count:
+      103 before the 2026-07-17 INDUCKS backfill (`b1dde680`), 27 after it, 22 with
+      volume 30 (`6e8431d5`), 28 with six new one-pagers (`7517bf97`), 14 since
+      `b3e391fa` (2026-10-26) located 14 in volumes 23, 27 and 28.
+- [ ] **Reconcile date discrepancies** — 2 dates differ from Barrier's
+      bibliography as of 2026-11-01 (The Victory Garden, Fishing Mystery: the
+      report `uv run python parse_bibliography.py` prints them); 27 when
+      `barks_bibliography.py` was generated, 15 until 2026-10-27, when 13 turned
+      out to be covers matched to gag entries (`3090b37b`). `e1b31917` (2026-10-28,
+      US #61's winter gag) did not change the count. Status in
+      `experiments/bibliography/PLAN-one-to-one.md`.
 - [x] **Tag data validation** — the last `NEED TO CHECK THESE` marker in
       `barks_tags_data.py` went with the Gyro split (`579da591`, 2026-10-08).
 
@@ -342,7 +348,7 @@ in the OCR repo, which is read-only from here:
       `scripts/make_one_pager_mosaic.py` (9). Then fix any positional call sites
       the `*` breaks. Most already pass by keyword (`NavigationCoordinator` is
       all-keyword in both prod and tests), but `MainScreen` is constructed
-      positionally with 9 args at `barks_reader_app.py:406` — the concrete
+      positionally with 9 args in `BarksReaderApp._build_screens` — the concrete
       transposition hazard, and the best place to start.
       Re-list current hits with `uv run ruff check . --select PLR0917`.
 - [x] **GUI acceptance harness + deterministic dev mode** — built 2026-09-15 as
@@ -541,7 +547,8 @@ in the OCR repo, which is read-only from here:
       a reserve (2.5-4 GB) is to be decided from the soak's peak on a full run started
       by hand, outside Claude Code.
 - [ ] **The full settings matrix overnight on Windows** (`windows-overnight.md`,
-      "Later") — beyond the one variant a night the desktop runner takes.
+      "Later") — the desktop runner runs no settings variant yet: one of
+      `run_gui_matrix.sh`'s variants a night first, then the full matrix.
 - [ ] **Kivy 3.0: recheck the fullscreen frame step on Windows**
       (`cross-platform-gui-tests.md`, "What is left" 3; SDL3, expected January 2027) —
       run `--keep-logs -k fullscreen` and read the first "Main window resize event"
@@ -602,8 +609,7 @@ in the OCR repo, which is read-only from here:
       a golden dump of every barks-wiki page rendered before and after (1,689 pages,
       byte-identical) plus the full GUI suite. Left: the "Footnotes" section heading
       uses the standalone `HEADING_COLOR`, not the themed one `render_page` is passed
-      (pre-existing, kept as is); the Groma `okf-core` component does not list
-      `core/bundle.py` yet (groma is not installed on this PC).
+      (pre-existing, kept as is).
 - [x] **Strengthen weak generic type annotations** (2026-07-08, commit 430e04c) —
       all 37 bare `dict`/`list`/`tuple` annotations parameterized; also fixed 3
       latent type issues the stronger types exposed.
