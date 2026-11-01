@@ -16,13 +16,15 @@ checks in the last step say what is still missing, so a step skipped here shows 
 ## 1. System packages
 
 ```bash
-sudo apt install build-essential gh tmux \
+sudo apt install build-essential git rsync gh tmux \
     xvfb xserver-xephyr xautomation x11-utils imagemagick xclip xdotool
 ```
 
 | Package | What needs it |
 |---|---|
 | `build-essential` | The C compiler Nuitka builds the standalone executable with (`scripts/build.sh`, the overnight `build` stage). CI also installs `patchelf` and `ccache`: the build ran without `patchelf` on Ubuntu 26.04, and `ccache` only makes rebuilds faster. |
+| `git` | The repos themselves; `check-overnight-host.sh` fails without it. |
+| `rsync` | `copy-to-overnight-host.sh` copies the data with it, on both machines. |
 | `gh` | The GitHub CLI: CI status, and `get-win-build.sh`, `upload-data-zips.sh` and `upload-website-videos.sh`. Run `gh auth login` once. |
 | `tmux` | Keeps an overnight run going when the ssh session that started it drops. Optional. |
 | `xvfb` | The headless GUI tests (`run_gui_tests.sh --headless`), everything the overnight run does on a display, and the benchmark baseline over ssh. |
@@ -126,10 +128,14 @@ to run. Running the app does not create either.
 ## 6. The data
 
 The reader's files (panel zips, indexes, fonts, the shipped wiki copy) go under
-`$BARKS_READER_DATA_DIR/Reader Files`, and the Fantagraphics volumes under
-`~/Books/Carl Barks/Fantagraphics-original`. The `siblings` stage checks every volume's
-folder there. `copy-to-overnight-host.sh` copies all of it (about 36 GB) but not the comic
-build tree (about 330 GB), which is why an overnight host runs with `--skip build-check`.
+`$BARKS_READER_DATA_DIR/Reader Files`, and the app reads the Fantagraphics volumes from
+the profile's `fanta_dir`, here
+`~/Documents/Fantagraphics Complete Carl Barks Disney Library`.
+`copy-to-overnight-host.sh` copies what the overnight run reads (about 36 GB): the
+prebuilt comics (`The Comics`), the PNG panels, the reader's files, that library and the
+profile. Of `~/Books/Carl Barks/Fantagraphics-original` it copies the folders alone, which
+is all the `siblings` stage checks. It leaves out the comic build tree (about 330 GB),
+which is why an overnight host runs with `--skip build-check`.
 
 The published data packs carry `Reader Files/data-pack.json`: their `data-vN` number,
 build date and each folder's fingerprint (`scripts/build-data-zips.sh` writes it,
@@ -152,9 +158,12 @@ the test's virtual touchscreen be created, and stops the desktop from using it:
 sudo cp scripts/udev/70-barks-gui-touch.rules /etc/udev/rules.d/
 sudo udevadm control --reload
 sudo udevadm trigger --action=change --sysname-match=uinput
+sudo usermod -aG input "$USER"   # then log out and in again
 ```
 
-Without it the overnight `touch` stage skips itself.
+The rule gives `/dev/uinput` to the `input` group, so the user running the tests must be
+in it. `BARKS_PROBE_TOUCH=1 BARKS_PROBE_HEADLESS=1 bash scripts/gui-probe.sh doctor`
+checks all three. Without them the overnight `touch` stage skips itself.
 
 **Sleep during an overnight run started over ssh.** The run keeps the machine awake with
 `systemd-inhibit`, which asks for a password when started from a remote session. The
@@ -401,8 +410,8 @@ Both run the app, the unit tests and the build, and the GUI tests
       Terminal's. The unit suite: `bash scripts/macos/with-soft-gl.sh pytest -n auto`.
   12. **Calibrate** once: `uv run python scripts/run_gui_tests.py --calibrate`, the whole
       GUI suite with the timing budgets off; it writes this machine's to
-      `.benchmarks/gui-timings.json` only if every test passes. On the 2-core guest a
-      comic's images took up to 15s to load, where the committed budget is 6s.
+      `.benchmarks/gui-timings.json` only if every test passes. On the guest, then with
+      two cores, a comic's images took up to 15s to load, where the committed budget is 6s.
   13. **Run it**: `git pull --ff-only; uv run python scripts/run_overnight_desktop.py`
       (`--list`, `--only`, `--skip`; add `; pmset sleepnow` to sleep the Mac after).
       Results go to `build/overnight/<stamp>/summary.txt`. On macOS it skips `fetch-build`
