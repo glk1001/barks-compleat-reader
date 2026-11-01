@@ -56,7 +56,7 @@ from barks_reader.core.user_error_types import (
     get_volume_not_available_error_info,
 )
 
-from .popup_frame import PopupFrame, popup_fonts
+from .popup_frame import PopupFrame
 from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
@@ -189,7 +189,6 @@ def show_speech_bubbles_popup(
     if speaker_label:
         title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
     popup.title = title
-    popup.title_font_size = popup_fonts().title  # the window may have changed since
     popup.set_body(scroll_view)
     popup.open()
 

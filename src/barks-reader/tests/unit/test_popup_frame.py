@@ -72,6 +72,16 @@ def _press(frame: PopupFrame, key: int) -> bool:
     return frame._on_key_down(None, key, 0, "", [])  # noqa: SLF001
 
 
+def _buttons(frame: PopupFrame) -> list[Button]:
+    return [w for w in frame.walk() if isinstance(w, Button)]
+
+
+def _popup_fonts_at(height: int) -> popup_frame.PopupFonts:
+    with patch.object(popup_frame, "Window") as window:
+        window.height = height
+        return popup_fonts()
+
+
 def _texts(widget: object) -> list[str]:
     return [w.text for w in widget.walk() if isinstance(w, Button)]  # ty: ignore[unresolved-attribute]
 
@@ -381,6 +391,16 @@ class TestPopupFrame:
             frame.dispatch("on_dismiss")
         assert box.focus is False
 
+    def test_a_text_box_in_a_body_put_in_later_is_typed_in_too(self) -> None:
+        ok = MagicMock()
+        frame = _frame((FrameButton("OK", ok),))
+        box = TextInput()
+        frame.set_body(box)
+        box.focus = True
+        assert _press(frame, KEY_ENTER) is False  # the new body's box has the keyboard
+        ok.assert_not_called()
+        box.focus = False
+
     def test_on_closed_runs_once_it_has_left_the_window(self) -> None:
         on_closed = MagicMock()
         frame = _frame(on_closed=on_closed)
@@ -393,8 +413,45 @@ class TestPopupFrame:
         # The screen beneath yields keys to any modal on the window, fading in or not.
         frame = _frame()
         with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
             frame.dispatch("on_pre_open")
         window.bind.assert_called_once()
+
+    def test_it_opens_sized_for_the_window_as_it_is_then(self) -> None:
+        # Made for one window, opened a frame later in a window since resized.
+        frame = _frame((FrameButton("OK", MagicMock()),), size=PopupSize.SMALL)
+        with (
+            patch.object(popup_frame, "Window") as window,
+            patch.object(popup_frame, "update_focus_in_list"),
+        ):
+            window.width, window.height = 1200, 800
+            frame.dispatch("on_pre_open")
+            fonts = popup_fonts()
+        assert tuple(frame.size) == pytest.approx(popup_size(PopupSize.SMALL, 1200, 800))
+        assert frame.title_font_size == fonts.title
+        assert frame.button_widgets[0].font_size == fonts.button
+
+    @pytest.mark.parametrize("has_buttons", [True, False])
+    def test_a_resize_while_it_is_open_resizes_its_title_and_buttons(
+        self, has_buttons: bool
+    ) -> None:
+        buttons = (FrameButton("OK", MagicMock()),) if has_buttons else ()
+        frame = _frame(buttons)
+        (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]
+        with (
+            patch.object(popup_frame, "Window") as window,
+            patch.object(popup_frame, "update_focus_in_list"),
+        ):
+            window.width, window.height = 1760, 1300
+            frame.dispatch("on_pre_open")
+            follow = window.bind.call_args.kwargs["size"]
+            window.width, window.height = 1000, 700  # across the fonts' cutoff
+            follow(window, (1000, 700))
+            fonts = popup_fonts()
+        assert fonts.title != _popup_fonts_at(1300).title
+        assert title.font_size == fonts.title
+        assert all(b.font_size == fonts.button for b in _buttons(frame))
+        assert tuple(frame.size) == pytest.approx(popup_size(PopupSize.MEDIUM, 1000, 700))
 
     def test_the_window_bindings_go_with_the_dismissal(self) -> None:
         frame = _frame((FrameButton("OK", MagicMock()),))
@@ -402,6 +459,7 @@ class TestPopupFrame:
             patch.object(popup_frame, "Window") as window,
             patch.object(popup_frame, "update_focus_in_list") as focus,
         ):
+            window.width, window.height = 1760, 1300
             frame._on_pre_open()  # noqa: SLF001
             frame._on_dismiss()  # noqa: SLF001
         assert window.bind.call_args.kwargs == window.unbind.call_args.kwargs

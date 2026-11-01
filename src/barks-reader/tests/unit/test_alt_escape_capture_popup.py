@@ -42,8 +42,9 @@ def test_opening_logs_the_current_key_and_focuses_cancel(
     made, _, _ = popup
     with (
         patch.object(popup_frame, "update_focus_in_list") as focus,
-        patch.object(popup_frame, "Window"),
+        patch.object(popup_frame, "Window") as window,
     ):
+        window.width, window.height = 1760, 1300
         made.dispatch("on_pre_open")
         made.dispatch("on_open")
     assert f"Alternate Escape capture opened (current {keycode_to_name(0)})." in loguru_sink

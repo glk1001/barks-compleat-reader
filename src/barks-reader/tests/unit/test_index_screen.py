@@ -886,7 +886,6 @@ class TestShowSpeechBubblesPopup:
             patch.object(_module, "GridLayout"),
             patch.object(_module, "TextBoxWithTitleAndBorder"),
             patch.object(_module, "ReaderScrollView") as scroll_view_cls,
-            patch.object(_module, "popup_fonts", return_value=MagicMock(title=23)),
         ):
             popup = MagicMock()
             popup.scroll_view = scroll_view_cls.return_value
@@ -906,7 +905,6 @@ class TestShowSpeechBubblesPopup:
             '[b][i]Lost in the Andes!  —  [/i]"square eggs"[/b][b]  —  [/b]Goldstein &amp; Co.'
         )
         popup.set_body.assert_called_once_with(popup.scroll_view)
-        assert popup.title_font_size == 23  # the popups' title size, as the window is now
         popup.open.assert_called_once()
 
     def test_without_a_speaker_the_title_is_the_story_and_the_search(

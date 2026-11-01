@@ -5,9 +5,13 @@ and ruled along its foot, with the title centred in the theme's title colour; un
 a dark card, with art beneath a scrim if the popup has art, holding the popup's body
 and a row of buttons along the bottom, right-aligned.
 A popup with no buttons has a close X in its title bar instead. The frame is centred,
-sized by its class (``core/popup_frame.py``), and follows the window as it resizes; a
-popup that is its own window's only content fills that window instead, and one whose
-body says how tall it is (About) can be as tall as that and no taller.
+sized by its class (``core/popup_frame.py``), and follows the window from its opening
+on, as it resizes, in its size and its title's and buttons' fonts (its body's text
+keeps the size it was made with); a popup that is its own window's only content fills
+that window instead, and one whose body says how tall it is (About) can be as tall as
+that and no taller. Only a popup that asks closes on a tap outside it (the speech
+bubbles, browsed beside the screen they came from); About and the rest close by their
+buttons, their X, Return or Escape.
 
 The remote's six keys work it as they work the confirm popups: Left and Right move the
 focus ring along the buttons, Return presses the focused one, Escape presses the last
@@ -163,7 +167,8 @@ class PopupFrame(ModalView):
             title_markup: Whether the title carries Kivy markup.
             title_font_name: The title's font, or "" for the app's.
             close_on_outside_tap: Whether a tap outside the frame closes it, as it does
-                a popup browsed beside the screen it came from (the speech bubbles).
+                a popup browsed beside the screen it came from (the speech bubbles);
+                no other does, About included.
             first_focus: The button the focus starts on: the first, the confirming one,
                 unless a slip of the hand there would cost something (Clear); None
                 leaves the row unfocused, for a body that holds the focus itself.
@@ -199,6 +204,7 @@ class PopupFrame(ModalView):
         # Up and Down); what it does not take, the frame does.
         self.key_handler: Callable[[int], bool] | None = None
         self._body = body
+        self._text_boxes = _text_boxes_in(body)
 
         self._button_widgets = [self._button(b, fonts.button) for b in self._frame_buttons]
         root = BoxLayout(orientation="vertical")
@@ -245,6 +251,7 @@ class PopupFrame(ModalView):
             self._body.unbind(minimum_height=self.fit_to_window)
             body.bind(minimum_height=self.fit_to_window)
         self._body = body
+        self._text_boxes = _text_boxes_in(body)
         self.fit_to_window()
 
     def fit_to_window(self, *_args: object) -> None:
@@ -257,6 +264,20 @@ class PopupFrame(ModalView):
             needed = TITLE_BAR_HEIGHT + 2 * CARD_PADDING + row + self._body.minimum_height
             height = min(height, needed)
         self.size = (width, height)
+
+    def _follow_window(self, *_args: object) -> None:
+        """Size the frame, its title and its buttons for the window as it is now.
+
+        From its opening on: a frame made a frame or more before it opens (a popup
+        opened on the next frame) may have been made for a window since resized.
+        """
+        self.fit_to_window()
+        fonts = popup_fonts()
+        self.title_font_size = fonts.title
+        for button in self._button_widgets:
+            button.font_size = fonts.button
+        if self._close_button is not None:
+            self._close_button.font_size = fonts.button
 
     def _title_bar(self, markup: bool, font_name: str) -> BoxLayout:
         bar = BoxLayout(
@@ -366,7 +387,7 @@ class PopupFrame(ModalView):
         frame_button.on_press()
 
     def _typing(self) -> bool:
-        return any(isinstance(w, TextInput) and w.focus for w in self._body.walk())
+        return any(box.focus for box in self._text_boxes)
 
     def _press_cancel(self) -> None:
         closing = [b for b in self._frame_buttons if b.closes]
@@ -390,17 +411,18 @@ class PopupFrame(ModalView):
     def _on_pre_open(self, *_args: object) -> None:
         # Before the fade-in, not after it: the screen beneath already yields every key
         # to an open modal, so a key pressed while it faded in would reach no one.
-        Window.bind(on_key_down=self._on_key_down, size=self.fit_to_window)
+        Window.bind(on_key_down=self._on_key_down, size=self._follow_window)
+        self._follow_window()
         if self._button_widgets and self._focused_idx is not None:
             self._show_focus()
 
     def _on_dismiss(self, *_args: object) -> bool:
-        Window.unbind(on_key_down=self._on_key_down, size=self.fit_to_window)
+        Window.unbind(on_key_down=self._on_key_down, size=self._follow_window)
         # A text box gone with the popup must let the keyboard go: still focused, the
         # screen beneath would leave every key to it (Return, closing the settings).
-        for widget in self._body.walk():
-            if isinstance(widget, TextInput) and widget.focus:
-                widget.focus = False
+        for box in self._text_boxes:
+            if box.focus:
+                box.focus = False
         return False
 
     def _on_parent(self, _frame: object, parent: object) -> None:
@@ -437,6 +459,15 @@ class PopupFrame(ModalView):
         else:
             self._focused_idx = min(max(self._focused_idx + step, 0), count - 1)
         self._show_focus()
+
+
+def _text_boxes_in(body: Widget) -> list[TextInput]:
+    """Return the text boxes in `body`, found once rather than at every key.
+
+    A body's boxes are made with it (a KV rule's are made in its ``__init__``); a list
+    of a few thousand folders would otherwise be walked at every key it does not take.
+    """
+    return [widget for widget in body.walk() if isinstance(widget, TextInput)]
 
 
 def _fit_button_width(button: Button, texture_size: tuple[float, float]) -> None:

@@ -121,6 +121,10 @@ learnt to fill its window, to keep a button's popup up, and to land Escape on th
 of a popup with no buttons first, as everywhere in the app (47d61baf).
 About is since as tall as its text and no taller (`fit_body_height`), never more
 than the large class: at the class's full height a third of its card was empty.
+A tap outside About no longer closes it, as it did before the move; that is meant
+(confirmed with the user 2026-11-01): only a popup browsed beside the screen it came
+from closes on a tap outside (the speech bubbles, below), and About closes by its X,
+Return, or Escape and Return.
 
 The speech bubbles' move, decided with the user: `SpeechBubblesPopup`
 (`ui/index_screen.py`) is a `PopupFrame`, medium and centred, with its close X;
