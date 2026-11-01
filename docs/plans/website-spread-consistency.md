@@ -83,6 +83,13 @@ layout.
   - Merge the Introduction's two layout bullets into one, in the setting's own words:
     a two-page spread on a landscape screen, the tree on the left page and the story on
     the right, a single page on a portrait screen.
+  - Tie each layout to the devices it suits, in that bullet and in the new Layout
+    section: a single page on a portrait screen, such as a 2-in-1 held upright; a
+    two-page spread on a landscape screen, such as a large monitor or a 4K TV. Say "a
+    2-in-1 held upright", not that a 2-in-1 is portrait: it turns either way, and
+    *Match the screen* follows how it is held. The Introduction's separate devices
+    bullet (laptops, 2-in-1 touchscreens, 4K TVs) then folds into this one or keeps
+    only the platforms.
   - Drop "on a Wide Monitor" from the first caption, and say once under the
     Screenshots heading that all of them are the spread.
   - Add a Features section for the layout, drawn from the how-to's Layout paragraph,
