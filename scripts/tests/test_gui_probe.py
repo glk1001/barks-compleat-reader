@@ -25,6 +25,7 @@ import gui_probe
 import gui_probe_darwin
 import gui_probe_win32
 import pytest
+from barks_reader.core import data_pack
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -124,6 +125,27 @@ class TestAppEnv:
         env = gui_probe.app_env({"TERM": "xterm", "PATH": "p"})
         assert env["LOGURU_COLORIZE"] == "0"
         assert env["PATH"] == "p"
+
+
+class TestStartsLight:
+    """The driver starts the probe afresh for every key and wait, so it must start fast."""
+
+    def test_it_names_the_data_pack_folder_as_the_app_does(self) -> None:
+        assert gui_probe.DATA_PACK_DIR_ENV_VAR == data_pack.DATA_PACK_DIR_ENV_VAR
+
+    def test_importing_it_pulls_in_no_loguru_or_story_catalogue(self) -> None:
+        heavy = ("loguru", "barks_fantagraphics", "barks_reader.core.data_pack")
+        code = (
+            "import sys\n"
+            f"sys.path.insert(0, {str(Path(gui_probe.__file__).parent)!r})\n"
+            "import gui_probe\n"
+            f"print(sorted(m for m in sys.modules if m.startswith({heavy!r})))\n"
+        )
+        result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
+            [sys.executable, "-c", code], capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "[]"
 
 
 class TestCoverage:

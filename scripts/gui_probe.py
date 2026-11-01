@@ -48,7 +48,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, Protocol
 
 from barks_reader.core import log_markers as markers
-from barks_reader.core.data_pack import DATA_PACK_DIR_ENV_VAR
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
@@ -60,6 +59,10 @@ WINDOW_NAME = "Compleat Barks Disney Reader"
 READY_MARKER = "Main window shown."
 DEFAULT_KEY_GAP = 0.4
 COVERAGE_ENV_VAR = "BARKS_PROBE_COVERAGE"
+# core.data_pack's name, written out: importing that module pulls in loguru and the
+# story catalogue, and the driver starts this script afresh for every key and wait
+# (the import made the desktop runners' GUI stages 40% slower and their soak twice as slow).
+DATA_PACK_DIR_ENV_VAR = "BARKS_READER_DATA_PACK_DIR"
 # How long `start` waits for the app's window to appear once the ready line is logged.
 WINDOW_WAIT_SECS = 10
 # Kivy's line naming the graphics backend it drew through, by the names
