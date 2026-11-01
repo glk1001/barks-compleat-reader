@@ -1,11 +1,11 @@
 # Plan: one layout story on the website
 
-> Status: **review done 2026-10-30; stages 1 and 2 done 2026-11-01.** The review is of
-> `website/app.html` as it stood at commit 618a5c39, after the two-page spread landed
-> (`docs/plans/two-page-spread.md`). Tick the stages off here, with their commits, as they
-> land. The site is GitHub Pages served from `main`, so stages 1 and 2 are pushed only with
-> stage 3 on top: stage 1 alone puts spreads in the 340 px Features column, and stage 2
-> adds the layout section with its pictures but not yet its text.
+> Status: **review done 2026-10-30; stages 1 to 3 done 2026-11-01, stage 4 to go.** The
+> review is of `website/app.html` as it stood at commit 618a5c39, after the two-page spread
+> landed (`docs/plans/two-page-spread.md`). Tick the stages off here, with their commits,
+> as they land. The site is GitHub Pages served from `main`, so stages 1 to 3 went out in
+> one push: stage 1 alone put spreads in the 340 px Features column, and stage 2 alone a
+> layout section with no text.
 
 ## The problem
 
@@ -42,7 +42,7 @@ What is which, today:
 | `website/screenshot-reading-a-story.jpg`  | portrait window, comic single page               |
 | `website/screenshot-search-titles.jpg`    | portrait window, tree stacked over the search    |
 | `website/screenshot-speech-bubble-index.jpg` | portrait window, tree stacked over the index  |
-| `website/screenshot-reading-history-bg.jpg` | portrait window, tree stacked over the history |
+| `website/screenshot-reading-history-bg.jpg` | portrait window, tree stacked over the history (deleted in stage 3) <!-- docs-refs: ok --> |
 | `website/screenshot-carl-barks-wiki.jpg`, `website/screenshot-carl-barks-wiki-2.jpg` | portrait wiki window |
 
 The share card (`website/og-card.jpg`) and the banner art are drawings, not screenshots,
@@ -109,9 +109,9 @@ layout.
   `art-panel--wide` figure, at most 900 px, under the section's buttons. The index
   section stacks the index crop over the search crop in its side column. The wiki's
   close-up lost its 45 px title bar to match the other crops' shape (873x1320). The
-  history spread `screenshot-reading-history-bg.jpg` is now on no page: only its crop
-  is shown.
-- [ ] **Stage 3, the text.**
+  history spread `screenshot-reading-history-bg.jpg` was then on no page, and stage 3
+  deleted it: only its crop is shown.
+- [x] **Stage 3, the text.**
   - Merge the Introduction's two layout bullets into one, in the setting's own words:
     a two-page spread on a landscape screen, the tree on the left page and the story on
     the right, a single page on a portrait screen.
@@ -130,6 +130,14 @@ layout.
     pages at a time, as printed, one on the single page, and the Double Page button
     switches the comic at hand. The 2-in-1 and 4K TV sentence stays.
   - Sweep the vocabulary to the two pairs above.
+
+  *Done 2026-11-01.* The Introduction's reader bullet keeps only the fullscreen mode,
+  and its layout bullet carries the double page as well as the devices; the devices
+  bullet keeps only the platforms. The Layout section's two paragraphs follow the
+  how-to's, and say that *Match the screen* changes over when a 2-in-1 is turned (the
+  app re-decides on a rotation, `AppWindowGeometry.evaluate_layout`). "The Comic Reader"
+  is in title case like the other headings, and no longer says the comic opens in a
+  new window: it opens in the reader, in the same window.
 - [ ] **Stage 4, the checks.** `uv run scripts/check_docs_refs.py`, `bunx cspell`, the
   page rendered headless at 1400 wide and at phone width, then the README's shared
   screenshots looked at once.
