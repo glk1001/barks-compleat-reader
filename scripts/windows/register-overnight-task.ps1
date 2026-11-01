@@ -7,7 +7,8 @@
 #   - "Run only when user is logged on" (an Interactive logon): SendInput needs the
 #     interactive desktop, which a task run without a logged-on user does not have;
 #   - "Wake the computer to run this task";
-#   - "Stop the task if it runs longer than" 2 hours, in case a stage hangs;
+#   - "Stop the task if it runs longer than" 4 hours, in case a stage hangs (a whole run
+#     takes 2 to 3 h);
 #   - not started late when a night was missed: it would take over the machine
 #     while someone uses it.
 # `uv run --no-sync`: the run's update stage does the sync, in its own log.
@@ -46,7 +47,7 @@ $trigger = New-ScheduledTaskTrigger -Daily -At $At
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
     -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -WakeToRun `
-    -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 4) `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -MultipleInstances IgnoreNew
 
