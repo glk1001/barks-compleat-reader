@@ -1,9 +1,10 @@
 # Plan: one layout story on the website
 
-> Status: **review done 2026-10-30, nothing changed yet.** The review is of
+> Status: **review done 2026-10-30; stage 1 done 2026-11-01.** The review is of
 > `website/app.html` as it stood at commit 618a5c39, after the two-page spread landed
-> (`docs/plans/two-page-spread.md`). Work starts 2026-10-31. Tick the stages off here, with
-> their commits, as they land.
+> (`docs/plans/two-page-spread.md`). Tick the stages off here, with their commits, as they
+> land. The site is GitHub Pages served from `main`, so stage 1's pictures are pushed only
+> with stage 2's HTML on top: alone, they put spreads in the 340 px Features column.
 
 ## The problem
 
@@ -62,7 +63,7 @@ layout.
 
 ## Stages
 
-- [ ] **Stage 1, the captures.** Re-shoot four spread captures on this PC: searching
+- [x] **Stage 1, the captures.** Re-shoot four spread captures on this PC: searching
   titles, the speech bubble index, the wiki, and a comic open double page. With the two
   existing spread shots that is the whole grid. The existing ones were shot on the
   headless probe (`scripts/gui-probe.sh`) on this PC's 2560x1440 screen, the window
@@ -74,11 +75,29 @@ layout.
   is a full-window screen, and a page of it is just a narrower window. The three
   stacked single-page captures retire from everywhere else. The README shares these
   files, so it inherits the new shots.
+
+  *Done 2026-11-01.* All six grid shots were re-shot, not four: the spread lost its
+  gutter that morning (954f6e1e), and the two older spread shots still showed it. The
+  window is now 1749x1365 and its right page is the 874x1320 strip at x 875, y 45 (under
+  the menu bar). A spread keeps the file's old name, and its page crop adds `-page`:
+  `screenshot-search-titles-page.jpg`, `screenshot-speech-bubble-index-page.jpg`,
+  `screenshot-reading-history-bg-page.jpg`; `screenshot-title-view.jpg` is the crop of
+  `screenshot-selecting-a-title.jpg`. History was a fifth capture, of
+  `record_demo.py`'s canned history rather than the profile's own.
+  `screenshot-carl-barks-wiki-2.jpg` is unchanged. Same content as before: Chronological;
+  The Seven Cities of Cibola (Uncle Scrooge #7), whose pages 1 and 2 are also the comic's
+  double page; "lost" (six titles now); the Speech Bubble Index's ah–aj words with
+  airline open; Voodoo Hoodoo. They were shot headless (`BARKS_PROBE_SCREEN=2560x1440`) from a
+  scratch copy of the profile with `log_level = DEBUG` and the layout set to
+  *Two-page spread*. The fun view and backgrounds are random: the menu bar's refresh
+  button and a reboot re-roll them.
 - [ ] **Stage 2, the pictures in the page.** The Screenshots grid: six spread captures.
   The comic reader section shows the double page as a wide figure under its paragraph,
   not in the 340 px side column. A new layout section gets the one paired figure on
   the page: a title view as a spread beside the same view as a single page, each
-  captioned. Every other Features close-up is a cropped page.
+  captioned. Every other Features close-up is a cropped page. Every screenshot `<img>`
+  states its file's size, and all of them have changed in stage 1: a spread is
+  `width="1749" height="1365"`, a page crop `width="874" height="1320"`.
 - [ ] **Stage 3, the text.**
   - Merge the Introduction's two layout bullets into one, in the setting's own words:
     a two-page spread on a landscape screen, the tree on the left page and the story on
