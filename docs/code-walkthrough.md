@@ -4,7 +4,8 @@ A guided tour of how the app works, following the runtime flow from the moment
 you type `python main.py` to the moment a comic page paints on screen. Read it
 top to bottom: each section builds on the last.
 
-All `file:line` references are clickable in most editors. Paths are given
+Code is named by path and symbol, never by line number (the lines move; the names
+stay findable). Paths are given
 relative to the app package `src/barks-reader/src/barks_reader/` unless they
 carry a package prefix (`barks_fantagraphics/…`, `comic_utils/…`) or start at
 the repo root (`main.py`, `.importlinter`).
