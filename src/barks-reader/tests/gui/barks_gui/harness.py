@@ -27,8 +27,13 @@ from typing import TYPE_CHECKING
 import gui_driver as gd
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers as markers
-from barks_reader.core.log_markers import capture, pattern
-from barks_reader.core.main_layout import SINGLE_PAGE, TWO_PAGE_SPREAD, MainLayoutMode
+from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import (
+    SINGLE_PAGE,
+    TWO_PAGE_SPREAD,
+    MainLayoutMode,
+    spread_fits,
+)
 from barks_reader.core.reader_settings import READER_FILES_DIR, WIKI_BUNDLE_SUBDIR
 from barks_reader.core.reader_utils import expand_path_vars
 from barks_reader.core.wiki_integration import wiki_session_path
@@ -82,8 +87,9 @@ INI_OVERRIDES: dict[str, str] = {
 # asks the ini which way it is toggling: `booted_two_up`). The matrix runner
 # flips these.
 INI_DEFAULTS: dict[str, str] = {
-    # The nested screen is landscape, so matching the screen would give the suite the
-    # two-page spread; the single page is the layout the suite was written on.
+    # Matching the screen would give the suite the two-page spread on a landscape screen
+    # (a desktop's monitor, the 1080p stage's nested one); the single page is the layout
+    # the suite was written on. One test boots matching the screen.
     "main_screen_layout": "Single page",
 }
 # Settings for the whole run, on top of the live ini: "key=value;key=value", set
@@ -210,13 +216,76 @@ LAYOUT_MODE_FOR_SETTING: dict[str, str] = {
     TWO_PAGE_SPREAD: MainLayoutMode.SPREAD.value,
 }
 
+# The layout line the app logs at boot, its mode and screen captured.
+_MAIN_LAYOUT_RE = re.compile(
+    pattern(
+        markers.MAIN_LAYOUT_MODE,
+        mode=re.compile(r"(?P<mode>\w+)"),
+        screen=re.compile(r"(?P<width>\d+)x(?P<height>\d+)"),
+    )
+)
+
+
+def layout_matching_the_screen(width: int, height: int) -> str | None:
+    """Return the layout "Match the screen" must give on a `width` by `height` screen.
+
+    The app's rule (core.main_layout) takes the action bar's height off the screen's,
+    which a test does not know, so this answers only where that cannot matter: the
+    spread when two pages fit with no bar at all, the single page on a portrait or
+    square screen, where two pages never fit.
+
+    Args:
+        width: The screen's width, as the app logged it.
+        height: The screen's height, as the app logged it.
+
+    Returns:
+        The `MainLayoutMode` value the app must log, or None on a shape in between
+        (5:4, 4:3), where the bar's height decides.
+
+    """
+    if spread_fits(width, height, chrome_height=0):
+        return MainLayoutMode.SPREAD.value
+    if width <= height:
+        return MainLayoutMode.SINGLE.value
+    return None
+
+
+def layout_problem(setting: str, log_text: str) -> str | None:
+    """Return why a boot did not come up on the layout its ini names, or None if it did.
+
+    The app logs the layout it decided (MAIN_LAYOUT_MODE) and the screen it decided
+    on; the last line is the one in force. An explicit setting names its layout;
+    "Match the screen" (and any other value, as the app reads it) must give what the
+    logged screen's shape does, where `layout_matching_the_screen` can say.
+
+    Args:
+        setting: The ini's ``main_screen_layout``.
+        log_text: The app log.
+
+    Returns:
+        A sentence for the failed assertion, or None.
+
+    """
+    found = list(_MAIN_LAYOUT_RE.finditer(log_text))
+    if not found:
+        return f"the app logged no main screen layout (the ini says {setting!r})"
+    last = found[-1]
+    width, height = int(last["width"]), int(last["height"])
+    expected = LAYOUT_MODE_FOR_SETTING.get(setting) or layout_matching_the_screen(width, height)
+    if expected is None or last["mode"] == expected:
+        return None
+    return (
+        f"the app booted on the {last['mode']} layout on a {width}x{height} screen,"
+        f" the ini says {setting!r}"
+    )
+
 
 def booted_two_up(scratch: Path) -> bool:
     """Whether the profile opens comics two pages at a time: it boots on the spread.
 
     The comic reader opens two-up when the layout is the two-page spread (the matrix's
-    spread variant forces it); the harness pins the single page otherwise, and a test
-    never asks to match the screen.
+    spread variant forces it); the harness pins the single page otherwise, and the one
+    test that boots matching the screen opens no comic.
     """
     ini = scratch / "barks-reader.ini"
     if not ini.is_file():
@@ -826,23 +895,15 @@ class AppBoot:
     def _check_layout_as_set(self) -> None:
         """Fail a boot that did not come up on the layout the ini names.
 
-        The harness pins a single page and the matrix's spread variant forces the
-        spread; "Match the screen" (never a test's) is left to the app. The app logs
-        the layout it decided at boot (MAIN_LAYOUT_MODE), so a run meant for the
-        spread is known to have been one.
+        The harness pins a single page, the matrix's spread variant forces the spread,
+        and a test matching the screen gets the screen's shape (`layout_problem`), so
+        a run meant for the spread is known to have been one.
         """
         assert self.driver is not None
         setting = read_ini_value(self.scratch / "barks-reader.ini", "main_screen_layout")
-        expected = LAYOUT_MODE_FOR_SETTING.get(setting)
-        if expected is None:
-            return
-        regex = re.compile(capture(markers.MAIN_LAYOUT_MODE, "mode"))
         log_text = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
-        modes = [found["mode"] for found in regex.finditer(log_text)]
-        assert modes, f"the app logged no main screen layout (the ini says {setting!r})"
-        assert modes[-1] == expected, (
-            f"the app booted on the {modes[-1]} layout, the ini says {setting!r}"
-        )
+        problem = layout_problem(setting, log_text)
+        assert problem is None, problem
 
     def assert_window_size_kept(self) -> None:
         """Fail the test if the app window is not the size it booted at.

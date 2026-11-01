@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import harness, nodes
+from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.main_layout import MATCH_THE_SCREEN
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 
 if TYPE_CHECKING:
@@ -129,6 +131,23 @@ def test_opening_the_settings_leaves_the_options_settings_as_the_ini_had_them(
 
     assert harness.read_ini_value(ini, LAYOUT_SETTING) == layout
     assert harness.read_ini_value(ini, LOG_LEVEL_SETTING) == log_level
+
+
+def test_matching_the_screen_boots_on_the_layout_its_shape_gives(boot: AppBoot) -> None:
+    """The layout a new profile has, which the harness's pin hides from every other test.
+
+    The run's screen decides what to expect: the default nested screen is portrait (the
+    single page), the 1080p stage's and a desktop's monitor landscape (the spread).
+    """
+    d = boot(nodes.THE_STORIES, ini={LAYOUT_SETTING: MATCH_THE_SCREEN})
+    screen = last_field(d, markers.MAIN_LAYOUT_MODE, "screen")
+    width, height = (int(side) for side in screen.split("x"))
+    expected = harness.layout_matching_the_screen(width, height)
+    if expected is None:
+        pytest.skip(f"on a {screen} screen the action bar's height decides the layout")
+
+    assert last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == expected
+    assert last_field(d, markers.MAIN_LAYOUT_MODE, "reason") == "boot"
 
 
 def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:

@@ -15,7 +15,9 @@ settings; `--screen WxH` picks another nested screen size; `--keep-logs` saves e
 passing test's artifacts too (logs, profile, final frame), as a failure's;
 `bash scripts/run_gui_matrix.sh` runs the suite once per settings variant (themes,
 double-page, virtual keyboard, the two-page spread on its landscape screen, ...;
-`--list`, `--only NAME`).
+`--list`, `--only NAME`). Every boot is held to the layout its ini names
+(`harness.layout_problem`): the harness pins the single page, and one test boots on the
+default, "Match the screen", whose layout the run's screen shape decides.
 
 `test_taps.py` taps instead, by what a widget shows, never by pixel: the app lists
 its tappable widgets on request (`barks_gui.taps`, `barks_reader.core.tap_targets`).

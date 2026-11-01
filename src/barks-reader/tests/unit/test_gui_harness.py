@@ -389,6 +389,62 @@ class TestIniOverridesFromEnv:
         assert "main_screen_layout" not in harness.INI_OVERRIDES
 
 
+def _layout_line(mode: str, screen: str, reason: str = "boot") -> str:
+    return markers.MAIN_LAYOUT_MODE.format(mode=mode, reason=reason, screen=screen) + "\n"
+
+
+class TestLayoutMatchingTheScreen:
+    @pytest.mark.parametrize(("width", "height"), [(900, 1300), (1080, 1920), (1000, 1000)])
+    def test_a_portrait_or_square_screen_gives_the_single_page(
+        self, width: int, height: int
+    ) -> None:
+        assert harness.layout_matching_the_screen(width, height) == "single"
+
+    @pytest.mark.parametrize(("width", "height"), [(1920, 1080), (2560, 1440), (3840, 2160)])
+    def test_a_wide_screen_gives_the_spread(self, width: int, height: int) -> None:
+        assert harness.layout_matching_the_screen(width, height) == "spread"
+
+    @pytest.mark.parametrize(("width", "height"), [(1280, 1024), (1600, 1200)])
+    def test_a_shape_the_action_bar_decides_gives_no_answer(self, width: int, height: int) -> None:
+        assert harness.layout_matching_the_screen(width, height) is None
+
+
+class TestLayoutProblem:
+    def test_an_explicit_setting_is_held_to_its_layout(self) -> None:
+        assert harness.layout_problem("Single page", _layout_line("single", "1920x1080")) is None
+        problem = harness.layout_problem("Single page", _layout_line("spread", "1920x1080"))
+        assert problem is not None
+        assert "booted on the spread layout on a 1920x1080 screen" in problem
+
+    def test_matching_the_screen_is_held_to_the_screens_shape(self) -> None:
+        assert (
+            harness.layout_problem("Match the screen", _layout_line("single", "900x1300")) is None
+        )
+        assert (
+            harness.layout_problem("Match the screen", _layout_line("spread", "1920x1080")) is None
+        )
+        problem = harness.layout_problem("Match the screen", _layout_line("single", "1920x1080"))
+        assert problem is not None
+        assert "the ini says 'Match the screen'" in problem
+
+    def test_matching_a_shape_the_bar_decides_passes_either_layout(self) -> None:
+        for mode in ("single", "spread"):
+            assert (
+                harness.layout_problem("Match the screen", _layout_line(mode, "1280x1024")) is None
+            )
+
+    def test_the_last_line_is_the_layout_in_force(self) -> None:
+        log = _layout_line("single", "900x1300") + _layout_line(
+            "spread", "1920x1080", "monitor change"
+        )
+        assert harness.layout_problem("Match the screen", log) is None
+        assert harness.layout_problem("Single page", log) is not None
+
+    def test_a_boot_that_logged_no_layout_is_a_problem(self) -> None:
+        problem = harness.layout_problem("Match the screen", "Main window shown.\n")
+        assert problem == "the app logged no main screen layout (the ini says 'Match the screen')"
+
+
 class TestBuildTemplateRunOverrides:
     def test_run_overrides_go_on_top_of_the_pins(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
