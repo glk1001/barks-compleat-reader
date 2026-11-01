@@ -7,6 +7,7 @@ the window and Kivy's clock stood in for; no Kivy app is booted.
 
 from __future__ import annotations
 
+import sys
 from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,6 +17,8 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.barks_reader_app as app_module
 import pytest
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.popup_gallery import POPUP_GALLERY_ENV_VAR
+from barks_reader.ui import popup_gallery
 from barks_reader.ui.barks_reader_app import BarksReaderApp
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen, SwapTransition, TransitionBase
@@ -138,6 +141,23 @@ class TestFinalizeWindowSetup:
 
         show.assert_called_once_with(app_module.Window, app._window_geometry)
         app._main_screen.warn_if_screen_too_small.assert_called_once_with(1366, 768)
+
+
+class TestThePopupGalleryIsImportedOnlyWhenAskedFor:
+    """A table of the gallery's out of step with the popups must not stop the app's boot."""
+
+    def test_unasked_its_module_is_not_imported(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(POPUP_GALLERY_ENV_VAR, raising=False)
+        # None in sys.modules makes an import of the module raise.
+        with patch.dict(sys.modules, {popup_gallery.__name__: None}):
+            app_module._install_popup_gallery(_app())
+
+    def test_asked_for_it_is_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(POPUP_GALLERY_ENV_VAR, "live")
+        app = _app()
+        with patch.object(popup_gallery, "install_popup_gallery_service") as install:
+            app_module._install_popup_gallery(app)
+        install.assert_called_once_with(app)
 
 
 class TestAltEscapeDismissesTheTopPopup:

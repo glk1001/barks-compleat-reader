@@ -9,6 +9,7 @@ import pytest
 from barks_reader.core import log_markers
 from barks_reader.core import popup_gallery as core_gallery
 from barks_reader.core.keys import KEY_ENTER, KEY_PAGE_DOWN, KEY_PAGE_UP
+from barks_reader.core.popup_frame import FrameButton
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
     POPUP_GALLERY_ENV_VAR,
@@ -19,9 +20,13 @@ from barks_reader.core.popup_gallery import (
 )
 from barks_reader.core.user_error_messages import build_error_presentation
 from barks_reader.core.user_error_types import ErrorTypes
-from barks_reader.ui import popup_gallery
+from barks_reader.ui import popup_frame, popup_gallery
+from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.popup_gallery import GALLERY, GalleryPopup
 from kivy.clock import Clock
+from kivy.event import EventDispatcher
+from kivy.properties import ListProperty, NumericProperty  # ty: ignore[unresolved-import]
+from kivy.uix.label import Label
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -153,7 +158,43 @@ class TestService:
         assert log_markers.POPUP_GALLERY_LIVE.format(count=len(GALLERY)) in loguru_sink
 
 
+class _KeyWindow(EventDispatcher):
+    """A window that hands keys to its handlers as Kivy's does: the one bound last first."""
+
+    __events__ = ("on_key_down",)
+    size = ListProperty([1760, 1300])
+    width = NumericProperty(1760)
+    height = NumericProperty(1300)
+
+    def on_key_down(self, *_args: object) -> None:
+        """Take no key itself."""
+
+    def add_widget(self, _widget: object) -> None:
+        """Hold no widget."""
+
+    def remove_widget(self, _widget: object) -> None:
+        """Hold no widget."""
+
+
 class TestLiveGallery:
+    def test_page_down_gets_past_a_popup_that_keeps_every_key(self) -> None:
+        window = _KeyWindow()
+        with (
+            patch.object(popup_gallery, "Window", window),
+            patch.object(popup_frame, "Window", window),
+            patch.object(popup_gallery, "show_popup") as show,
+            patch.object(popup_frame, "update_focus_in_list"),
+            patch.object(Clock, "schedule_once"),
+        ):
+            live = popup_gallery._LiveGallery(MagicMock())  # noqa: SLF001
+            live.start()
+            frame = PopupFrame(title="T", body=Label(), buttons=(FrameButton("OK", MagicMock()),))
+            frame.dispatch("on_pre_open")  # the popup the gallery opened binds the keys
+            live._come_to_front()  # noqa: SLF001  # as it does once the popup is up
+            window.dispatch("on_key_down", KEY_PAGE_DOWN, 0, "", [])
+            frame.dispatch("on_dismiss")
+        show.assert_called_once()
+
     def _press(self, live: popup_gallery._LiveGallery, key: int) -> bool:
         return live._on_key_down(None, key, 0, "", [])  # noqa: SLF001
 

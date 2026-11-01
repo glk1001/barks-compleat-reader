@@ -7,7 +7,8 @@ shows. It runs only when ``POPUP_GALLERY_ENV_VAR`` is set, which no normal run d
 
 - ``live``: Page Down and Page Up step through the popups in the running app, a
   corner label naming each. The popup's own keys are left to it; every button it
-  has is a no-op here, so nothing a press does reaches the profile.
+  has is a no-op here, so nothing a press does reaches the profile. The app imports
+  this module only when the variable is set, so no normal run depends on it.
 - a file path: the app answers requests written to that file, as the GUI probe's
   frame requests are answered (``ui.frame_capture``). A request ``<id> <name>``
   closes any open popup, opens the one named and logs ``POPUP_GALLERY_SHOWN``;
@@ -306,11 +307,17 @@ class _LiveGallery:
         self._label_bg.size = label.size
 
     def start(self) -> None:
-        Window.bind(on_key_down=self._on_key_down)
-        self._raise_label()
+        self._come_to_front()
 
-    def _raise_label(self, *_args: object) -> None:
-        """Put the label on top of the window, over any popup."""
+    def _come_to_front(self, *_args: object) -> None:
+        """Take the keys ahead of any popup, and put the label on top of the window.
+
+        Kivy hands a key to the handler bound last first, and a popup on the frame binds
+        at opening and keeps every key; so the gallery binds again after each popup is
+        up, or Page Down would never get past the first.
+        """
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.bind(on_key_down=self._on_key_down)
         if self._label.parent is not None:
             Window.remove_widget(self._label)
         Window.add_widget(self._label)
@@ -328,16 +335,16 @@ class _LiveGallery:
             f"{self._index + 1}/{len(GALLERY)}  {popup.name}    (Page Up / Page Down)"
         )
         # After the popup is up: it opens a frame from now, some a frame after that.
-        Clock.schedule_once(self._raise_label, 0.3)
+        Clock.schedule_once(self._come_to_front, 0.3)
         return True
 
 
 def install_popup_gallery_service(app: GalleryApp) -> bool:
     """Run the gallery when ``POPUP_GALLERY_ENV_VAR`` asks for it; else do nothing.
 
-    Installed with the app's other services, before any screen binds the keyboard, so
-    the live gallery's Page Up and Page Down reach it first (Kivy hands a key to its
-    handlers earliest bound first).
+    The live gallery starts a frame after the app's build, when the window has its
+    screens, so its label is over them and its keys are bound after theirs (Kivy hands
+    a key to the handler bound last first); each popup it opens it gets ahead of again.
 
     Args:
         app: The running app.

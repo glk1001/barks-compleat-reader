@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, LiteralString, override
@@ -23,6 +24,7 @@ from barks_reader.core.keys import get_alt_escape_key, is_escape_key, set_alt_es
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode
 from barks_reader.core.platform_info import PLATFORM, Platform
+from barks_reader.core.popup_gallery import POPUP_GALLERY_ENV_VAR
 from barks_reader.core.reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
     APP_TITLE,
@@ -65,7 +67,6 @@ from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
-from .popup_gallery import install_popup_gallery_service
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     CORPUS_STATS_SCREEN,
@@ -358,7 +359,7 @@ class BarksReaderApp(App):
         install_tap_targets_service(Window)
         install_memory_census_service()
         install_frame_capture_service()
-        install_popup_gallery_service(self)
+        _install_popup_gallery(self)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
@@ -623,6 +624,19 @@ def _install_key_press_log(window: Any) -> None:  # noqa: ANN401
         return original(event_name, *args, **kwargs)
 
     window.dispatch = dispatch
+
+
+def _install_popup_gallery(app: BarksReaderApp) -> None:
+    """Run the popup gallery when ``POPUP_GALLERY_ENV_VAR`` asks for it.
+
+    Its module, every popup's sample content, is imported only then: a table of its
+    out of step with the popups would otherwise stop every run of the app at boot.
+    """
+    if not os.environ.get(POPUP_GALLERY_ENV_VAR):
+        return
+    from .popup_gallery import install_popup_gallery_service  # noqa: PLC0415
+
+    install_popup_gallery_service(app)
 
 
 def _dismiss_top_popup_on_alt_escape(
