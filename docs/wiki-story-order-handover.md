@@ -96,6 +96,10 @@ that has not changed. It names itself in the summary and the lint still passes.
 It also passes, saying so, when the bundle is not present at all — which is most
 checkouts and all of CI, since no workflow here checks out `barks-wiki`.
 
+`scripts/run_overnight.sh` runs it nightly too, as its `wiki-order` stage: it first
+pulls `../barks-wiki` to its upstream where that is safe (`scripts/pull_sibling.py`),
+then runs the check `--quiet`, and warns only, as in full-lint.
+
 ## Re-running the check
 
 Committed here as a diagnostic (it never writes to the bundle):
