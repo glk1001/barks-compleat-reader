@@ -120,7 +120,8 @@ publication info, and a favorite panel. Contains:
 
 **Fun View** — shown when no specific story is selected. Displays a random comic panel.
 
-- A **category filter button** at the top left of the fun image lets you control which panel categories are shown.
+- A **category filter button** at the bottom left of the fun view lets you control which panel
+  categories are shown.
 - A **goto-title button** (an open book) at the top right of the fun image navigates to the story
   associated with the currently displayed panel. On the two-page spread, where two panels stack,
   the lower one carries its own.
