@@ -14,7 +14,7 @@ bash scripts/mutmut.sh --changed                  # only core/ modules you have 
 bash scripts/mutmut.sh --changed HEAD~3           # ...plus everything since a ref
 bash scripts/mutmut.sh '*/core/reader_utils.py'   # one module
 bash scripts/mutmut.sh '*/core/navigation/*'      # a subpackage
-bash scripts/mutmut.sh                            # all of core/ (~7000 mutants, slow)
+bash scripts/mutmut.sh                            # all of core/ (~8500 mutants, ~8 min)
 bash scripts/mutmut.sh --package fantagraphics     # the search modules (~2500 mutants)
 ```
 
@@ -151,13 +151,21 @@ the work that is left.
 |---|---:|
 | 2026-07-25 full run | 1523 |
 | after the seven passes below (derived) | 363 |
-| 2026-10-13 full run (measured) | **361** |
+| 2026-10-13 full run (measured) | 361 |
+| 2026-10-29 nightly run, 88 modules (measured) | **396** |
 
 The derived 363 was the sum of the per-module "after" counts from seven separately-scoped
 runs taken at different times. The overnight stage has mutated all of `core/` every night
 since 2026-10-07; the run below replaces it with a single measurement, and it held.
 
-### Last measured full run — `core/` (2026-10-13)
+The live figure is the newest nightly `build/overnight/<stamp>/mutation.log` (and the
+`mutation` line of that run's `summary.txt`). The newest on 2026-11-01, of 2026-10-29
+(commit `2d15c27d`): 88 modules against 83 Kivy-free test files, 8,539 mutants, 7,904
+killed, 396 survived, 236 with no covering test, 3 timeouts, in 8m07s; the 396 read as
+302 equivalent (171 listed, 131 log wording), 94 untriaged and 0 new. The survivors
+rose with the module count (64 on 2026-10-13); the score is ≈ 95.2% (7904/8300).
+
+### Full run measured at the burn-down's end — `core/` (2026-10-13)
 
 The overnight run of 2026-10-13 (commit `d310e943`, `scope core`, 64 modules, mutated
 against 57 Kivy-free test files, 6m30s on the main PC). Its log is
@@ -1166,6 +1174,9 @@ list file has, so a real gap. Two `ReaderFilePaths` attributes set in `__init__`
 read were deleted. Left: 120 untriaged, all in `core/`, led by `comic_book_loader` (23, its
 threaded `_load_pages`), `corpus_stats` (18), `wiki_integration` (15) and `image_selector`.
 A second round the same day (`5bcdc075`: the never-crop list, the shut archive and nine
-checked defaults) killed or explained 15 more, and `e228d39f` (2026-10-12) one: **105
-untriaged** now, led by `comic_book_loader` (23), `corpus_stats` (18), `wiki_integration`
-(15), then `reader_file_paths` and `archive_page_image_source` (7 each).
+checked defaults) killed or explained 15 more, and `e228d39f` (2026-10-12) one: 105
+untriaged then, led by `comic_book_loader` (23), `corpus_stats` (18), `wiki_integration`
+(15), then `reader_file_paths` and `archive_page_image_source` (7 each). On 2026-10-28
+(the file's last change, `226d7f6c`): **89 untriaged**, all in `core/`, led by
+`comic_book_loader` (18), `wiki_integration` (15), `corpus_stats` (10), `reader_file_paths`
+(7), then `hyphen_break_engine` and `archive_page_image_source` (6 each); 256 equivalent.

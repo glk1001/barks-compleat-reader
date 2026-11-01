@@ -31,7 +31,7 @@
 #   bash scripts/mutmut.sh --package fantagraphics      # the search modules
 #   bash scripts/mutmut.sh --package fantagraphics '*/barks_fantagraphics/tag_query.py'
 #
-# --changed is the everyday mode: a full core/ sweep is ~6000 mutants and many
+# --changed is the everyday mode: a full core/ sweep is ~8500 mutants and many
 # minutes, but one module is a minute or two, which is fast enough to run while the
 # code is still fresh in your head. With no ref it scopes to your working tree
 # (staged, unstaged and untracked); pass a ref to also include commits since then.

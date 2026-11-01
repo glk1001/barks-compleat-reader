@@ -73,7 +73,7 @@
 #   docs-refs      check_docs_refs.py: a doc naming a path, module, script flag,
 #                  link or BARKS_* variable the repo does not have, or a line
 #                  number in an evergreen doc; warns when there are any
-#   mutation       mutmut.sh on all of core/ (under eight minutes) and on the
+#   mutation       mutmut.sh on all of core/ (about eight minutes) and on the
 #                  barks_fantagraphics search modules (under three), or on the share
 #                  BARKS_OVERNIGHT_MUTATION_SCOPE names; warns on a survivor neither a
 #                  known equivalent nor in the backlog, by what it changes
@@ -339,7 +339,7 @@ dead_code() {
 }
 
 # All of core/'s modules (the testing helpers left out: they are not the code under
-# test), every night: about 7,000 mutants in under eight minutes, so new code is
+# test), every night: about 8,500 mutants in about eight minutes, so new code is
 # checked the next morning rather than on its weekday a week later.
 mutation_core() {
     local core="src/barks-reader/src/barks_reader/core"
