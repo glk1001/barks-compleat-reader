@@ -1672,7 +1672,15 @@
         <div id="troubleshooting" class="tab-content" role="tabpanel" aria-labelledby="tab-troubleshooting">
             <h2>Troubleshooting</h2>
             <div class="install-intro">
-                <p>Common issues and their solutions. If your problem isn't listed here, please check our
+                <p>Common issues and their solutions: downloading, starting the app, the first launch,
+                    speed, and updating. First check that your computer meets the
+                    <a href="#" onclick="openTab(event, 'requirements'); return false;">System
+                    Requirements</a>. Everything the app writes sits beside it: the install log, the
+                    <strong>"config"</strong> folder (your settings and the app's log) and the
+                    <strong>"Reader Files"</strong> folder, so most fixes start there. If your problem
+                    isn't listed here, set <em>Log Level</em> to DEBUG (<strong>&#8942;</strong> menu
+                    &rarr; Settings &rarr; Advanced), repeat the problem, and attach
+                    <strong>"config/kivy/logs/barks-reader.log"</strong> to a report on our
                     <a href="https://github.com/glk1001/barks-compleat-reader/issues">GitHub Issues page</a>.</p>
                 <figure class="art-panel">
                     <img src="troubleshooting-bg.jpg" alt="" width="900" height="746" loading="lazy">
@@ -1868,8 +1876,10 @@
                 <li>Application version</li>
                 <li>Detailed description of the problem</li>
                 <li>Steps to reproduce the issue</li>
-                <li>Any error messages or logs (including any
-                    <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong> file)</li>
+                <li>Any error messages or logs: the app's log,
+                    <strong>"config/kivy/logs/barks-reader.log"</strong> (with <em>Log Level</em> set
+                    to DEBUG), and any <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong>
+                    file</li>
             </ul>
         </div>
 
