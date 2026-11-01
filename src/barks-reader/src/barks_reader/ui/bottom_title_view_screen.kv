@@ -112,11 +112,19 @@
                         0, 0
 
                 # --- Footnote at bottom-left ---
+                # Its left edge is the picture's on the spread (the drawn art, not the
+                # wider widget it is fitted into) and the info rows' on a single page,
+                # where the art is the background (the colophon is a RelativeLayout, so
+                # the rows' x is counted from its own).
                 BgColorLabel:
                     id: main_title_footnote
                     opacity: 1 if root.main_title_footnote else 0
                     text: root.main_title_footnote
-                    pos_hint: {'x': 0.005, 'y': 0.05}
+                    pos_hint: {'y': 0.05}
+                    x:
+                        (title_picture.center_x - title_picture.norm_image_size[0] / 2) \
+                        if root.layout_mode == 'spread' else \
+                        (colophon.x + title_info_label.x)
                     font_size: fm.main_title_footnote_font_size
                     color: reader_palette.theme().text_title
                     outline_color: root.MAIN_TITLE_OUTLINE_COLOR

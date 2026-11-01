@@ -83,7 +83,7 @@ class FontTheme:
 
 LOW_RES_FONT_SIZES = FontTheme(
     main_title=30,
-    main_title_footnote=9,
+    main_title_footnote=12,
     title_info=16,
     title_extra_info=14,
     index_menu=13,
@@ -112,7 +112,7 @@ LOW_RES_FONT_SIZES = FontTheme(
 )
 HI_RES_FONT_SIZES = FontTheme(
     main_title=40,
-    main_title_footnote=10,
+    main_title_footnote=14,
     title_info=20,
     title_extra_info=18,
     index_menu=17,
