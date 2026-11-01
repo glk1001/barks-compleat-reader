@@ -16,7 +16,8 @@ navigation and a visually engaging interface.
     - **Chronological**: View stories in order based on their original submission date.
     - **Series**: Browse by comic book series (e.g., *Walt Disney's Comics and Stories*, *Donald Duck*, *Uncle Scrooge*).
     - **Categories**: Explore stories grouped by tags, such as characters, themes, or story types.
-- **Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
+- **Search**: Quickly find titles by name, stories by specific tags, or stories by the words in their speech
+  bubbles (the *Words* search) using the integrated search boxes.
 - **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
 - **Two-Page Spread or Single Page**: On a landscape screen, such as a large monitor or a 4K TV, the main screen is
@@ -101,7 +102,21 @@ And install *just* to conveniently run commands.
 curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
 ```
 
-**3. Initial Run and Configuration**
+**3. Generate the Two Gitignored Modules**
+
+Every workspace boot imports two modules that are not in the repository. Generate them once:
+
+```bash
+bash scripts/generate-panel-module.sh   # comic_utils/get_panel_bytes.py; needs BARKS_ZIPS_KEY in .env.runtime
+bash scripts/build.sh                   # barks_reader/_version.py (its first step writes it)
+```
+
+Without them the app dies on an import at boot. Running the app does not create either.
+The reader's own data (the `Reader Files` folder: panel zips, indexes, fonts, the shipped
+wiki copy) must also be in place under `$BARKS_READER_DATA_DIR`; see "Secrets and the
+generated modules" and "The data" in [docs/setup.md](docs/setup.md).
+
+**4. Initial Run and Configuration**
 
 The first time you run the application, it will create a configuration file. You will then need to configure the path to
 your comic archives.
@@ -109,8 +124,8 @@ your comic archives.
 ```
 just reader
 ```
-1. When the application opens, click the **Settings** icon in the action bar.
-1. In the settings panel, locate the setting for the **"Fantagraphics Volumes Directory"**.
+1. When the application opens, open the **Menu** (**⋯**) in the action bar and choose **Settings**.
+1. In the settings panel, under *Folders*, locate the setting for the **"Fantagraphics Directory"**.
 1. Set this to the absolute path of the folder containing your Fantagraphics comic book archive files (the `.zip` or
    `.cbz` files).
 1. Close the settings panel and **restart the application**.
@@ -123,21 +138,22 @@ The application will now load the titles from your specified directory.
 ```
 just reader
 ```
-- **Navigation**: Use the `TreeView` on the left to browse the collection.
+- **Navigation**: Use the navigation tree to browse the collection: the top half of the main screen on a single
+  page, or the left page on the two-page spread.
 - **View Info**: Click on a title in the tree to see its related comic art, publication details, and other information
-  in the main panel at the bottom.
-- **Read a Comic**: In the bottom right corner of the main panel, click the highlighted comic inset image to open
+  in the current view: below the tree on a single page, or the right page on the two-page spread.
+- **Read a Comic**: In the bottom right corner of that view, click the highlighted comic inset image to open
   the comic book reader.
 
 ---
 
 ## Testing
 
-- **Unit tests** (about 6,000, mocked Kivy, run in CI on Linux, macOS and Windows):
+- **Unit tests** (about 7,400, mocked Kivy, run in CI on Linux, macOS and Windows):
     ```
     uv run pytest
     ```
-- **GUI path tests** (about 130; on Linux through a nested X display, on Windows and macOS
+- **GUI path tests** (about 170; on Linux through a nested X display, on Windows and macOS
   on the real desktop, below): boot the real app from a scratch profile and drive it with the keyboard or by tapping, waiting only on lines the app logs. They need the
   reader's data directories and a few X tools; `bash scripts/gui-probe.sh doctor` says what
   is missing. Each passing test is also held to a set of teardown checks: the window is the
@@ -181,10 +197,12 @@ just reader
   The tests may press only the remote's six keys (Escape, Enter and the arrows); a check
   in the lint gates, `scripts/check_gui_keys.py`, reads them and fails on any other key
   unless the call carries `# desktop key: <why>`.
-- **Tap tests** (14, in `test_taps.py`, part of the GUI suite): drive the reader as a
+- **Tap tests** (26, in `test_taps.py`, part of the GUI suite): drive the reader as a
   touchscreen laptop's user does. They tap the page margins, the fullscreen top margin,
-  tree nodes, menu buttons and popups, the main and speech-bubble index items, and the
-  search box. A test never taps a pixel it worked out itself. It asks the app where its
+  tree nodes, the fun view's margins and, on the two-page spread, its middle to zoom a
+  panel and back, a document's halves to turn its pages, menu buttons and popups (About,
+  Quit, the speaker and word-statistics lists), the main and speech-bubble index items,
+  the search box, tag groups and the search chips. A test never taps a pixel it worked out itself. It asks the app where its
   tappable widgets are and taps the one it names, so a layout or theme change moves the
   tap with the widget. By default a tap is a click, which is what a touch reaches the app
   as on Linux, so the tap tests run headless and in parallel with the rest.
@@ -209,14 +227,14 @@ just reader
   it runs the whole suite on one worker. Touch mode is Linux only for now; on Windows a
   tap is a click. The design is in `docs/plans/touch-gui-tests.md`.
 - **The settings matrix** runs the GUI suite once per setting the default run never sees
-  (the other two colour themes, double-page mode, the virtual keyboard, the title-info
+  (the other two colour themes, the virtual keyboard, the title-info
   switches off, the censorship fixes on, the two-page spread on a 1920x1080 screen),
   headless, every variant even after one fails,
   with a pass/fail table at the end. About twenty minutes; for a nightly or a release.
     ```
     bash scripts/run_gui_matrix.sh                     # every variant
     bash scripts/run_gui_matrix.sh --list              # the variants and their settings
-    bash scripts/run_gui_matrix.sh --only double-page  # one of them (comma-separated for more)
+    bash scripts/run_gui_matrix.sh --only spread       # one of them (comma-separated for more)
     bash scripts/run_gui_matrix.sh --app ./barks-reader-linux  # every variant against a build
     ```
 - **The GUI overnight run** runs every GUI test there is, every way it can run: the suite as
@@ -328,6 +346,7 @@ just reader
 
   | Stage | What it runs |
   |---|---|
+  | `data` | `data_manifest.py`: this machine's data (the Reader Files folders, prebuilt comics, PNG panels) against the manifest the main PC wrote, naming each folder that differs; on the main PC, also its Reader Files against the published data pack (`scripts/data-pack-manifest.json`), for when a new one is due; warns only |
   | `validate` | `validate-barks-reader-files.py` on the real data pack (above), with `--full-load-check --strict-wiki` |
   | `panel-sources` | `check-barks-panel-sources.py`: every PNG panel belongs to a title |
   | `build-check` | The `../barks-comic-building` integrity checker on the whole build tree: every check, with `--check-panel-segment-image-size` |
@@ -345,6 +364,7 @@ just reader
   | `gui-timings` | The GUI suite once more, then each timing's third-slowest test against `.benchmarks/gui-timings.json` (one slow sample is not a drift); warns on drift well before a budget would fail |
   | `coverage` | The unit suite's and the GUI tests' coverage, each and combined, and an HTML report of what nothing tests. Fails when the combined total falls more than a point below its best (`coverage_floor.py`, `.benchmarks/coverage.json`); judged only when `pytest` and `gui` both passed |
   | `dead-code` | `dead_code_report.py`: vulture's unused functions, methods and classes (at 60%, below the gate's 80) that the `coverage` stage's data never ran and no `.kv` file, script or sibling repo names; warns only |
+  | `docs-refs` | `check_docs_refs.py`: a doc naming a path, module, script flag, link or `BARKS_*` variable the repo does not have, or a line number in an evergreen doc; warns only |
   | `mutation` | `mutmut.sh` on all of `core/` and on the `barks_fantagraphics` search modules, or on the share `BARKS_OVERNIGHT_MUTATION_SCOPE` (`core`, `fantagraphics`; default `all`) names; warns on a survivor that is neither a known equivalent (`docs/mutation-equivalents.toml`) nor in the backlog (`mutation_survivors.py`) |
   | `tidy` | What the runs leave behind: the built app's old unpack folders, one of about 360 MB a build (`prune_onefile_cache.py`, keeping the newest three and any a running app uses), and uv's dangling cache entries and cached environments (`uv cache prune`, given ten minutes while another uv process holds the cache); warns only. The Windows and macOS runner has the same last stage |
 
