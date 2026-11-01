@@ -146,22 +146,24 @@ that task too, or two runs start in a night.
   process; the machine's own policy is left at Windows' default.
 - **Ping goes unanswered**: Windows' firewall drops it. Watch a wake with ssh, or
   afterwards in `powercfg /lastwake`, which names the task.
-- **The ssh shell is PowerShell**, not bash: the commands go without the
-  `powershell -Command` wrapper, and `~` and backslashes work as written. A task started
-  over ssh still runs on the desktop, which the GUI stages need.
+- **The ssh shell is Git Bash** (since 2026-11-02; PowerShell before), as on win_vm:
+  `scripts/windows/setup-ssh-server.ps1 -Shell bash` sets it. Task Scheduler is
+  PowerShell's, so those commands go through `powershell`, quoted once more for bash;
+  `~` and forward slashes work, Git Bash turning a path into Windows' for `powershell`. A
+  task started over ssh still runs on the desktop, which the GUI stages need.
 
 | To | Run (from the main machine) |
 |---|---|
 | Wake it if need be, run, and sleep again after | `greg-dell run` (below) |
-| Run it now (stays awake afterwards) | `ssh greg-dell Start-ScheduledTask nightly-job-now` |
-| See whether it is running | `ssh greg-dell '(Get-ScheduledTask nightly-job-now).State'` |
-| The newest run's results so far | `ssh greg-dell 'gc ((ls ~\source\repos\barks-compleat-reader\build\overnight -Dir \| sort Name)[-1].FullName + "\summary.txt")'` |
-| Stop it | `ssh greg-dell Stop-ScheduledTask nightly-job-now` |
-| Test the wake (the ssh session drops as it sleeps) | `ssh greg-dell 'powershell -ExecutionPolicy Bypass -File $HOME\nightly-job\test.ps1'` |
-| Remove the test's task afterwards | `ssh greg-dell 'Unregister-ScheduledTask nightly-job-test -Confirm:$false'` |
-| See the next scheduled run | `ssh greg-dell '(Get-ScheduledTaskInfo nightly-job).NextRunTime'` |
-| Turn the schedule off | `ssh greg-dell Disable-ScheduledTask nightly-job` |
-| Turn it back on | `ssh greg-dell Enable-ScheduledTask nightly-job` |
+| Run it now (stays awake afterwards) | `ssh greg-dell powershell Start-ScheduledTask nightly-job-now` |
+| See whether it is running | `ssh greg-dell "powershell '(Get-ScheduledTask nightly-job-now).State'"` |
+| The newest run's results so far | `ssh greg-dell 'cat "$(ls -d ~/source/repos/barks-compleat-reader/build/overnight/2*/ \| tail -1)summary.txt"'` |
+| Stop it | `ssh greg-dell powershell Stop-ScheduledTask nightly-job-now` |
+| Test the wake (the ssh session drops as it sleeps) | `ssh greg-dell 'powershell -ExecutionPolicy Bypass -File ~/nightly-job/test.ps1'` |
+| Remove the test's task afterwards | `ssh greg-dell "powershell 'Unregister-ScheduledTask nightly-job-test -Confirm:\$false'"` |
+| See the next scheduled run | `ssh greg-dell "powershell '(Get-ScheduledTaskInfo nightly-job).NextRunTime'"` |
+| Turn the schedule off | `ssh greg-dell powershell Disable-ScheduledTask nightly-job` |
+| Turn it back on | `ssh greg-dell powershell Enable-ScheduledTask nightly-job` |
 
 ### Asleep, with no keyboard
 
@@ -316,5 +318,6 @@ container's clone, plus each `gmktec-fedora run`'s own output in `runner/`
   to report `connected`: without it, the magic packets failed with "Network is
   unreachable" and both machines were skipped (2026-10-16). A machine that does not wake
   fails the service. Its output: `journalctl --user -u overnight-logs`.
-- **greg-dell**'s ssh shell is PowerShell, which is no pipe for binary output, so its logs
-  go through a tar file in its home folder and `scp`; the others stream a tar over ssh.
+- **Every machine streams a tar over ssh**, greg-dell too since its ssh shell became Git
+  Bash (2026-11-02): while it was PowerShell, no pipe for binary output, its logs went
+  through a tar file in its home folder and `scp`.
