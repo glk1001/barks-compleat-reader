@@ -6,7 +6,6 @@ import platform
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from comic_utils.sys_utils import get_os_name, is_virtual_machine
@@ -14,7 +13,23 @@ from comic_utils.sys_utils import get_os_name, is_virtual_machine
 from barks_reader._version import VERSION
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import TracebackType
+
+# Each line of the report's system section, and how to read it. Any of them can fail - a
+# deleted working folder, a VM check whose subprocess cannot start - and the report is
+# being built because the app is already failing, so each is read on its own.
+_SYSTEM_PROBES: tuple[tuple[str, Callable[[], object]], ...] = (
+    ("Version", lambda: VERSION),
+    ("OS", get_os_name),
+    ("System", platform.system),
+    ("System Release", platform.release),
+    ("System Version", platform.version),
+    ("Processor", platform.processor),
+    ("Python Version", platform.python_version),
+    ("Virtual Machine", is_virtual_machine),
+    ("Cwd", Path.cwd),
+)
 
 
 def crash_report(
@@ -38,20 +53,16 @@ def crash_report(
 
     message = f"{exc_type.__name__}: {exc_value}"
 
-    details = dedent(f"""Full Traceback:
-{stack}
-
-System Information:
-  - Version: {VERSION}
-  - OS: {get_os_name()}
-  - System: {platform.system()}
-  - System Release: {platform.release()}
-  - System Version: {platform.version()}
-  - Processor: {platform.processor()}
-  - Python Version: {platform.python_version()}
-  - Virtual Machine: {is_virtual_machine()}
-  - Cwd: {Path.cwd()}
-  - Time: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")}
-""")
+    system = "".join(f"  - {label}: {_probe(read)}\n" for label, read in _SYSTEM_PROBES)
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+    details = f"Full Traceback:\n{stack}\n\nSystem Information:\n{system}  - Time: {now}\n"
 
     return message, details
+
+
+def _probe(read: Callable[[], object]) -> str:
+    """Return what one system probe reads, or why it could not be read."""
+    try:
+        return str(read())
+    except Exception as exc:  # noqa: BLE001 - one failed probe must not lose the crash report
+        return f"unknown ({type(exc).__name__}: {exc})"

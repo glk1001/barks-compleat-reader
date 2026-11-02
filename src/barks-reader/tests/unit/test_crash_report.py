@@ -5,11 +5,16 @@ from __future__ import annotations
 import sys
 import traceback
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import barks_reader.core.crash_report as crash_report_module
+import pytest
 from barks_reader._version import VERSION
 from barks_reader.core.crash_report import crash_report
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def test_a_traceback_becomes_the_message_and_the_details() -> None:
@@ -34,3 +39,40 @@ def test_a_traceback_becomes_the_message_and_the_details() -> None:
     assert "  - Python Version: " in details
     clock.now.assert_called_once_with(UTC)  # the time is UTC, whatever the machine's zone
     assert details.endswith("  - Time: 2026-10-21 01:02:03\n")
+
+
+def _raised() -> tuple[type[BaseException], BaseException, TracebackType | None]:
+    try:
+        msg = "boom"
+        raise ValueError(msg)  # noqa: TRY301
+    except ValueError as exc:
+        return type(exc), exc, exc.__traceback__
+
+
+@pytest.mark.parametrize(
+    ("label", "error"),
+    [
+        ("Cwd", FileNotFoundError(2, "No such file or directory")),  # a deleted working folder
+        ("Virtual Machine", OSError("cannot start")),  # the VM check's subprocess
+    ],
+)
+def test_a_failed_probe_does_not_lose_the_report(
+    monkeypatch: pytest.MonkeyPatch, label: str, error: OSError
+) -> None:
+    """The report is built while the app is failing; a probe failing too must not hide it."""
+
+    def failing() -> object:
+        raise error
+
+    probes = tuple(
+        (name, failing if name == label else read)
+        for name, read in crash_report_module._SYSTEM_PROBES  # noqa: SLF001
+    )
+    monkeypatch.setattr(crash_report_module, "_SYSTEM_PROBES", probes)
+
+    message, details = crash_report(*_raised())
+
+    assert message == "ValueError: boom"
+    assert f"  - {label}: unknown ({type(error).__name__}: {error})\n" in details
+    assert f"  - Version: {VERSION}\n" in details
+    assert "  - Time: " in details
