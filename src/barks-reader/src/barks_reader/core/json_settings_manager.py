@@ -31,6 +31,49 @@ _LEGACY_HISTORY_NODE_PATH = ["Reading History", "root"]
 _NEW_HISTORY_NODE_PATH = ["History", "Reading", "root"]
 
 
+# A settings file that cannot be read is moved aside under this suffix, to be looked at.
+CORRUPT_SUFFIX = ".corrupt"
+_TEMP_SUFFIX = ".tmp"
+
+
+def _load(store_path: Path) -> dict[str, dict[str, Any]]:
+    """Return the settings stored at `store_path`: empty if it is missing, empty or corrupt.
+
+    A file that is not a JSON object (cut short, or overwritten) once stopped the app
+    booting. It is moved aside to `<name>.corrupt` instead, and the settings start
+    empty: the next save writes a good file in its place.
+    """
+    if not store_path.exists():
+        return {}
+
+    try:
+        contents = store_path.read_text(encoding="utf-8").strip()
+        if not contents:
+            return {}
+        data = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        reason = f"not valid JSON ({e})"
+    else:
+        if isinstance(data, dict):
+            return data
+        reason = f"a JSON {type(data).__name__}, not an object"
+
+    corrupt_path = store_path.with_name(store_path.name + CORRUPT_SUFFIX)
+    try:
+        store_path.replace(corrupt_path)
+    except OSError as e:
+        logger.error(
+            f'Settings file "{store_path}" is {reason}, and could not be moved aside: {e}.'
+            " Starting with empty settings."
+        )
+    else:
+        logger.error(
+            f'Settings file "{store_path}" is {reason}. Moved it to "{corrupt_path}";'
+            " starting with empty settings."
+        )
+    return {}
+
+
 class SavableTreeViewNode(BaseTreeViewNodeProtocol, Protocol):
     """A tree-view node whose expansion state can be persisted."""
 
@@ -42,12 +85,14 @@ class SettingsManager:
 
     def __init__(self, store_path: Path) -> None:
         self._store_path = store_path
-        self._data: dict[str, dict[str, Any]] = {}
-        if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
-            self._data = json.loads(contents)
+        self._data: dict[str, dict[str, Any]] = _load(store_path)
 
     def _sync(self) -> None:
-        self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
+        # Written whole to a file beside it, then swapped in: a write cut short (a
+        # crash, a kill, power lost mid page-turn) leaves the old file, not half of one.
+        temp_path = self._store_path.with_name(self._store_path.name + _TEMP_SUFFIX)
+        temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
+        temp_path.replace(self._store_path)
 
     def get_last_selected_node_path(self) -> tuple[list[str] | None, dict[str, Any]]:
         """Retrieve the path of the last selected node."""

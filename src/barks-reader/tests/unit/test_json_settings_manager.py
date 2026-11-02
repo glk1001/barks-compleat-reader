@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import Any, cast
 
+import pytest
 from barks_fantagraphics.comics_consts import PageType
-from barks_reader.core.json_settings_manager import SavableTreeViewNode, SettingsManager
+from barks_reader.core.json_settings_manager import (
+    CORRUPT_SUFFIX,
+    SavableTreeViewNode,
+    SettingsManager,
+)
 from barks_reader.core.saved_page_info import SavedPageInfo
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class _FakeTreeViewNode:
@@ -52,6 +55,80 @@ class TestEmptyStore:
         manager = SettingsManager(store_path)
 
         assert manager.get_last_selected_node_path() == (None, {})
+
+
+class TestCorruptStore:
+    """A settings file that is not a JSON object once stopped the app booting."""
+
+    @pytest.mark.parametrize(
+        "contents",
+        [
+            pytest.param('{"AAA_Settings": {"last_selected_node": ["Hi', id="cut short"),
+            pytest.param("[1, 2, 3]", id="a list"),
+            pytest.param('"text"', id="a string"),
+        ],
+    )
+    def test_a_corrupt_file_is_moved_aside_and_settings_start_empty(
+        self, tmp_path: Path, contents: str, loguru_sink: list[str]
+    ) -> None:
+        store_path = tmp_path / "store.json"
+        store_path.write_text(contents, encoding="utf-8")
+
+        manager = SettingsManager(store_path)
+
+        assert manager.get_last_selected_node_path() == (None, {})
+        assert not store_path.exists()
+        corrupt_path = tmp_path / f"store.json{CORRUPT_SUFFIX}"
+        assert corrupt_path.read_text(encoding="utf-8") == contents
+        assert any("starting with empty settings" in line for line in loguru_sink)
+
+    def test_a_file_that_is_not_utf8_is_moved_aside(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "store.json"
+        store_path.write_bytes(b"\xff\xfe{")
+
+        SettingsManager(store_path)
+
+        assert (tmp_path / f"store.json{CORRUPT_SUFFIX}").exists()
+
+    def test_the_next_save_writes_a_good_file(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "store.json"
+        store_path.write_text("{", encoding="utf-8")
+
+        SettingsManager(store_path).save_last_read_page("Lost in the Andes!", _a_saved_page())
+
+        assert SettingsManager(store_path).get_last_read_page("Lost in the Andes!") == (
+            _a_saved_page()
+        )
+
+
+class TestAtomicSave:
+    def test_a_save_leaves_no_temp_file(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "store.json"
+
+        SettingsManager(store_path).save_last_read_page("Lost in the Andes!", _a_saved_page())
+
+        assert [p.name for p in tmp_path.iterdir()] == ["store.json"]
+
+    def test_a_write_that_fails_leaves_the_old_file_whole(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        store_path = tmp_path / "store.json"
+        manager = SettingsManager(store_path)
+        manager.save_last_read_page("Lost in the Andes!", _a_saved_page())
+        before = store_path.read_text(encoding="utf-8")
+
+        real_write_text = Path.write_text
+
+        def write_half_then_fail(path: Path, data: str, *args: object, **kwargs: object) -> int:
+            real_write_text(path, data[: len(data) // 2], *args, **kwargs)  # ty: ignore[invalid-argument-type]
+            msg = "disk full"
+            raise OSError(msg)
+
+        monkeypatch.setattr(Path, Path.write_text.__name__, write_half_then_fail)
+        with pytest.raises(OSError, match="disk full"):
+            manager.save_last_read_page("Trail of the Unicorn", _a_saved_page())
+
+        assert store_path.read_text(encoding="utf-8") == before
 
 
 class TestLastSelectedNode:
