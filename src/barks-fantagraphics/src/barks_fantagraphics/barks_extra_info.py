@@ -28,7 +28,9 @@ BARKS_EXTRA_INFO = {
     " (The artist's name was Merrill de Maris).",
     Titles.MIGHTY_TRAPPER_THE: "The first appearance of [b][i]Daisy.[/i][/b]",
     Titles.GOOD_DEEDS: "The first appearance of [b][i]Neighbor Jones.[/i][/b]"
-    " (Mr. Jones in this story.)",
+    " (Mr. Jones in this story.)"
+    "\n\nFantagraphics dropped this story from CBDL Volume 1 without comment. It is restored in"
+    " this digital edition from the Carl Barks Library.",
     Titles.GOOD_NEIGHBORS: "The first real appearance of [b][i]Neighbor Jones[/i][/b]"
     " – the one we all know!"
     " And the first appearance of [b][i]Car 313[/i][/b] in a Barks story.",
@@ -57,9 +59,16 @@ BARKS_EXTRA_INFO = {
     "In this edition, the last two panels are replaced with text by GLK and art "
     " from the last panel of WDCS #62. But there is also the option of choosing the Fantagraphics"
     " ending by Geoffrey Blum and Daan Jippes.",
+    Titles.SILENT_NIGHT: "Western rejected this story in 1945, and Fantagraphics dropped it from"
+    " CBDL Volume 3 without comment. It is restored in this digital edition from"
+    " [i]The Fine Art of Donald Duck.[/i] Barks's opening half-page is lost, so this one is new:"
+    " art by Daan Jippes, script by David Gerstein and Unn Printz-Påhlson.",
     Titles.SMUGSNORKLE_SQUATTIE_THE: "Last appearance of [b][i]Herbert[/i][/b].",
     Titles.HIGH_WIRE_DAREDEVILS: "First mention of [b][i]Duckburg.[/i][/b]"
     " (Last panel of last page.)",
+    Titles.BILL_COLLECTORS_THE: "Fantagraphics left page 3, the Wild Woman of Borneo sequence, out"
+    " of CBDL Volume 4 without comment. It is restored in this digital edition from the Carl Barks"
+    " Library.",
     Titles.TURKEY_RAFFLE: 'On page 4, a can of "Barks Dog Soup" is shown in Donald\'s kitchen'
     '-cupboard. In a letter to Michael Barrier, Barks wrote: "As for the can of dog food with'
     " Barks on it..., I probably put the name on it myself just to see if the editors would white"
