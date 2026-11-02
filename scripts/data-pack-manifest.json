@@ -1,11 +1,11 @@
 {
-  "built_at": "2026-10-31T22:20:43+00:00",
+  "built_at": "2026-11-02T02:44:50+00:00",
   "built_on": "gregspc2",
   "entries": {
     "Barks Panels.zip": {
-      "bytes": 1297792747,
+      "bytes": 1297835278,
       "files": 1,
-      "md5": "d8e1aa5067f0dcaa4a6211871b44ca08"
+      "md5": "f17038bc34b61842726edc8683dad783"
     },
     "Carl Barks Wiki": {
       "bytes": 9233683,
@@ -43,6 +43,6 @@
       "md5": "87a4dfce153f9fc27545083f7914b5b7"
     }
   },
-  "tag": "data-v7",
-  "version": 7
+  "tag": "data-v8",
+  "version": 8
 }
