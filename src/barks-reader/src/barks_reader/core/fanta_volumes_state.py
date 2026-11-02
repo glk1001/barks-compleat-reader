@@ -15,7 +15,6 @@ from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
 from .fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     MissingArchiveFilesError,
-    TooManyArchiveFilesError,
 )
 from .reader_settings import UNSET_FANTA_DIR_MARKER
 from .user_error_types import ErrorInfo, ErrorTypes
@@ -31,7 +30,6 @@ class FantaVolumesState(Enum):
     ALL_VOLUMES_MISSING = auto()
     SOME_VOLUMES_MISSING = auto()
     VOLUMES_NOT_SET = auto()
-    VOLUMES_TOO_MANY = auto()
     DUPLICATE_VOLUMES = auto()
     VOLUMES_NOT_NEEDED = auto()
 
@@ -46,12 +44,7 @@ NO_LIBRARY_STATES = frozenset(
     }
 )
 # Misconfiguration the user must fix and restart; reading is blocked with a popup.
-BAD_STATES = frozenset(
-    {
-        FantaVolumesState.VOLUMES_TOO_MANY,
-        FantaVolumesState.DUPLICATE_VOLUMES,
-    }
-)
+BAD_STATES = frozenset({FantaVolumesState.DUPLICATE_VOLUMES})
 
 # Why a state is bad or has no library, and the error to tell the user with.
 STATE_ERRORS: dict[FantaVolumesState, tuple[str, ErrorTypes]] = {
@@ -62,10 +55,6 @@ STATE_ERRORS: dict[FantaVolumesState, tuple[str, ErrorTypes]] = {
     FantaVolumesState.ALL_VOLUMES_MISSING: (
         "Fantagraphics Directory Not Found",
         ErrorTypes.FantagraphicsVolumeRootNotFound,
-    ),
-    FantaVolumesState.VOLUMES_TOO_MANY: (
-        "Too Many Archive Files in Fantagraphics Directory",
-        ErrorTypes.TooManyVolumeArchiveFiles,
     ),
     FantaVolumesState.DUPLICATE_VOLUMES: (
         "Duplicate Archive Files in Fantagraphics Directory",
@@ -129,7 +118,7 @@ class LibraryCheck:
 
 
 def check_library_error(
-    error: TooManyArchiveFilesError | DuplicateArchiveFilesError | MissingArchiveFilesError,
+    error: DuplicateArchiveFilesError | MissingArchiveFilesError,
     *,
     library_notice_shown: bool,
 ) -> LibraryCheck:
@@ -141,19 +130,11 @@ def check_library_error(
             (an unset or non-existent folder), so missing volumes get no second one.
 
     Returns:
-        The check: too many or duplicate archives block reading with their popup; missing
+        The check: duplicate archives block reading with their popup; missing
         volumes let reading go on, with one no-library notice when none is there, the
         per-volume popup when some are, and nothing when a notice was already shown.
 
     """
-    if isinstance(error, TooManyArchiveFilesError):
-        return LibraryCheck(
-            FantaVolumesState.VOLUMES_TOO_MANY,
-            ErrorInfo(num_volumes=error.num_volumes, num_archive_files=error.num_archive_files),
-            LibraryNotice.ERROR,
-            ErrorTypes.TooManyVolumeArchiveFiles,
-            readable=False,
-        )
     if isinstance(error, DuplicateArchiveFilesError):
         return LibraryCheck(
             FantaVolumesState.DUPLICATE_VOLUMES,

@@ -9,7 +9,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.fanta_volumes_state import FantaVolumesState
-from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
+from barks_reader.core.fantagraphics_volumes import DuplicateArchiveFilesError
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
@@ -236,10 +236,10 @@ class TestAppInitializer:
         assert app_initializer._init_comic_book_data() is True
         mock_dependencies["comic_reader_manager"].init_comic_book_data.assert_called_once()
 
-    def test_init_comic_book_data_too_many_files(
+    def test_init_comic_book_data_duplicate_files(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        error = TooManyArchiveFilesError(10, 12, Path("/root"))
+        error = DuplicateArchiveFilesError([3, 7], Path("/root"))
         mock_dependencies["comic_reader_manager"].init_comic_book_data.side_effect = error
 
         with patch.object(
@@ -247,9 +247,9 @@ class TestAppInitializer:
         ) as mock_handle_error:
             assert app_initializer._init_comic_book_data() is False
 
-            assert app_initializer._fanta_volumes_state == FantaVolumesState.VOLUMES_TOO_MANY
+            assert app_initializer._fanta_volumes_state == FantaVolumesState.DUPLICATE_VOLUMES
 
-            mock_handle_error.assert_called_with(ErrorTypes.TooManyVolumeArchiveFiles, ANY)
+            mock_handle_error.assert_called_with(ErrorTypes.DuplicateVolumeArchiveFiles, ANY)
 
     def test_is_fanta_volumes_state_ok(self, app_initializer: AppInitializer) -> None:
         # Case OK
@@ -261,14 +261,14 @@ class TestAppInitializer:
         assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
 
         # Case Bad (misconfiguration that must be fixed + restart): blocks with a popup.
-        app_initializer._fanta_volumes_state = FantaVolumesState.VOLUMES_TOO_MANY
+        app_initializer._fanta_volumes_state = FantaVolumesState.DUPLICATE_VOLUMES
 
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
         ) as mock_handle_error:
             ok, reason = app_initializer.is_fanta_volumes_state_ok()
             assert ok is False
-            assert reason == "Too Many Archive Files in Fantagraphics Directory"
+            assert reason == "Duplicate Archive Files in Fantagraphics Directory"
             mock_handle_error.assert_called()
 
     def test_handle_error_ui(

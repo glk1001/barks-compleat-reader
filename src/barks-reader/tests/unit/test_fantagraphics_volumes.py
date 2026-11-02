@@ -17,11 +17,8 @@ from barks_reader.core.fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
     MissingArchiveFilesError,
     MissingVolumeError,
-    NotEnoughOverrideDirsError,
     PageExtError,
     PageNumError,
-    TooManyArchiveFilesError,
-    TooManyOverrideDirsError,
 )
 
 
@@ -112,26 +109,10 @@ class TestCheckImageNames:
 
 
 class TestCheckCorrectVolumeNumbers:
-    def test_raises_too_many_for_volume_exceeding_max(
-        self, archives: FantagraphicsVolumeArchives
-    ) -> None:
-        # Create filenames with a volume number > LAST_VOLUME_NUMBER.
-        filenames = [
-            Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
-        ] + [Path("999-extra.cbz")]
-        with pytest.raises(TooManyArchiveFilesError) as exc_info:
-            archives.check_correct_volume_numbers(filenames)
-
-        # The error reports how many files were actually seen against the expected
-        # count, and where — all three are what the user needs to fix it.
-        assert exc_info.value.num_archive_files == len(filenames)
-        assert exc_info.value.num_volumes == NUM_VOLUMES
-        assert exc_info.value.archive_root == archives._archive_root
-
     def test_last_volume_number_is_accepted(self, archives: FantagraphicsVolumeArchives) -> None:
         """The valid range is inclusive of `LAST_VOLUME_NUMBER`."""
         filenames = [Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, NUM_VOLUMES + 1)]
-        # No exception expected — and the last volume must not read as "too many".
+        # No exception expected.
         archives.check_correct_volume_numbers(filenames)
 
     def test_raises_duplicate_for_repeated_volumes(
@@ -289,17 +270,6 @@ class TestExceptionMessages:
         err = MissingArchiveFilesError([7, 12], Path("/archives"))
         assert err.missing_file_vols == [7, 12]
 
-    def test_too_many_archive_files_error(self) -> None:
-        root = Path("/archives")
-        err = TooManyArchiveFilesError(num_archive_files=31, num_volumes=29, archive_root=root)
-
-        assert str(err) == (
-            f'There are too many archive files in "{root}". There are 31 but there should be 29.'
-        )
-        assert err.num_archive_files == 31
-        assert err.num_volumes == 29
-        assert err.archive_root == root
-
     def test_duplicate_archive_files_error(self) -> None:
         root = Path("/archives")
         err = DuplicateArchiveFilesError([7, 12], root)
@@ -309,25 +279,6 @@ class TestExceptionMessages:
         )
         assert err.duplicates == [7, 12]
         assert err.archive_root == root
-
-    def test_not_enough_override_dirs_error_message(self) -> None:
-        root = Path("/over")
-        err = NotEnoughOverrideDirsError(
-            num_override_dirs=2, num_volumes=29, override_dirs_root=root
-        )
-        msg = str(err)
-        assert "not enough override dirs" in msg
-        assert str(root) in msg  # Path separator varies by OS.
-        assert "2" in msg
-        assert "29" in msg
-
-    def test_too_many_override_dirs_error_message(self) -> None:
-        err = TooManyOverrideDirsError(
-            num_override_dirs=50, num_volumes=29, override_dirs_root=Path("/over")
-        )
-        msg = str(err)
-        assert "too many override dirs" in msg
-        assert "50" in msg
 
 
 class TestAccessors:
@@ -356,28 +307,6 @@ class TestAccessors:
         )
         archives._fantagraphics_archive_dict[4] = sentinel
         assert archives.get_fantagraphics_archive(4) is sentinel
-
-
-class TestCheckArchivesAndOverrides:
-    def test_raises_too_many_override_dirs(self, archives: FantagraphicsVolumeArchives) -> None:
-        archive_filenames = [
-            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
-        ]
-        too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
-        with pytest.raises(TooManyOverrideDirsError):
-            archives.check_archives_and_overrides(archive_filenames, too_many)
-
-    def test_one_override_per_volume_is_allowed(
-        self, archives: FantagraphicsVolumeArchives
-    ) -> None:
-        """The limit is `> NUM_VOLUMES`: exactly one override per volume is fine."""
-        archive_filenames = [
-            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
-        ]
-        exactly_enough = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 1)}
-
-        # No exception expected.
-        archives.check_archives_and_overrides(archive_filenames, exactly_enough)
 
 
 class TestDirectoryScanning:
@@ -810,21 +739,6 @@ class TestErrorsIdentifyTheArchiveRoot:
             archives.check_correct_volume_numbers([])
 
         assert str(archives._archive_root) in str(exc_info.value)
-
-    def test_too_many_override_dirs_error_names_the_root_and_counts(
-        self, archives: FantagraphicsVolumeArchives
-    ) -> None:
-        archive_filenames = [
-            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
-        ]
-        too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
-
-        with pytest.raises(TooManyOverrideDirsError) as exc_info:
-            archives.check_archives_and_overrides(archive_filenames, too_many)
-
-        msg = str(exc_info.value)
-        assert str(archives._archive_root) in msg
-        assert f" There are {NUM_VOLUMES + 1} but there should be {NUM_VOLUMES}." in msg
 
 
 class TestVolumeRangeEdges:

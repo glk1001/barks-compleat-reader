@@ -186,29 +186,6 @@ def _build_duplicate_archive_files(
     )
 
 
-def _build_too_many_archive_files(
-    error_info: ErrorInfo | None,
-    _reader_settings: ReaderSettings,
-    popup_title: str,
-) -> ErrorPresentation:
-    """Compose the message for too many Fantagraphics archive files."""
-    assert error_info is not None
-
-    text = _paragraphs(
-        f"There were too many Fantagraphics archive files. The expected number of files is"
-        f" {error_info.num_volumes} not {error_info.num_archive_files}. You need to make"
-        f" sure the archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
-        f" {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.",
-    )
-
-    return ErrorPresentation(
-        kind=ErrorDialogKind.FATAL_CONFIG,
-        title=popup_title or "Too Many Fantagraphics Archives",
-        text=text,
-        close_message=WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG,
-    )
-
-
 # A run of this many or more consecutive volumes collapses to "first-last".
 _MIN_RUN_TO_COLLAPSE = 3
 
@@ -340,7 +317,6 @@ _BUILDERS: dict[
     ErrorTypes.FantagraphicsVolumeRootNotSet: _build_fanta_root_not_set,
     ErrorTypes.FantagraphicsVolumeRootNotFound: _build_fanta_root_not_found,
     ErrorTypes.DuplicateVolumeArchiveFiles: _build_duplicate_archive_files,
-    ErrorTypes.TooManyVolumeArchiveFiles: _build_too_many_archive_files,
     ErrorTypes.MissingArchiveVolumes: _build_missing_volumes,
     ErrorTypes.MissingVolumeCannotShowTitle: _build_cannot_show_title,
     ErrorTypes.ArchiveVolumeNotAvailable: _build_volume_not_available,

@@ -35,7 +35,6 @@ class ErrorTypes(Enum):
     FantagraphicsVolumeRootNotSet = auto()
     FantagraphicsVolumeRootNotFound = auto()
     DuplicateVolumeArchiveFiles = auto()
-    TooManyVolumeArchiveFiles = auto()
     MissingArchiveVolumes = auto()
     MissingVolumeCannotShowTitle = auto()
     ArchiveVolumeNotAvailable = auto()
@@ -46,8 +45,6 @@ class ErrorInfo:
     file: str = ""
     file_volume: int = 0
     expected_volume: int = 0
-    num_volumes: int = 0
-    num_archive_files: int = 0
     duplicate_volumes: list[int] | None = None
     missing_volumes: list[int] | None = None
     title: Titles | None = None

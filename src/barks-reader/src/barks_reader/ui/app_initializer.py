@@ -20,7 +20,6 @@ from barks_reader.core.fanta_volumes_state import (
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     MissingArchiveFilesError,
-    TooManyArchiveFilesError,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_tree_view_utils import ancestor_paths
@@ -181,11 +180,7 @@ class AppInitializer:
     def _init_comic_book_data(self, *, library_notice_shown: bool = False) -> bool:
         try:
             self._comic_reader_manager.init_comic_book_data()
-        except (
-            TooManyArchiveFilesError,
-            DuplicateArchiveFilesError,
-            MissingArchiveFilesError,
-        ) as e:
+        except (DuplicateArchiveFilesError, MissingArchiveFilesError) as e:
             check = check_library_error(e, library_notice_shown=library_notice_shown)
             self._fanta_volumes_state = check.state
             self._fanta_volumes_error_info = check.error_info

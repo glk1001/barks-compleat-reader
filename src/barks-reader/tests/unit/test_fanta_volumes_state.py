@@ -19,7 +19,6 @@ from barks_reader.core.fanta_volumes_state import (
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     MissingArchiveFilesError,
-    TooManyArchiveFilesError,
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.core.user_error_types import ErrorTypes
@@ -62,20 +61,6 @@ def test_every_bad_or_no_library_state_has_a_reason() -> None:
 
 
 class TestCheckLibraryError:
-    def test_too_many_archives_block_reading_with_their_popup(self) -> None:
-        check = check_library_error(
-            TooManyArchiveFilesError(14, 12, Path("/root")), library_notice_shown=False
-        )
-        assert (check.state, check.notice, check.readable) == (
-            FantaVolumesState.VOLUMES_TOO_MANY,
-            LibraryNotice.ERROR,
-            False,
-        )
-        assert check.error_type is ErrorTypes.TooManyVolumeArchiveFiles
-        assert check.state in BAD_STATES
-        # The popup says how many archives there are and how many there should be.
-        assert (check.error_info.num_archive_files, check.error_info.num_volumes) == (14, 12)
-
     def test_duplicate_archives_block_reading_with_their_popup(self) -> None:
         root = Path("/root")
         check = check_library_error(

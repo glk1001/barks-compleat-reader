@@ -27,7 +27,6 @@ _SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
     ErrorTypes.FantagraphicsVolumeRootNotSet: None,
     ErrorTypes.FantagraphicsVolumeRootNotFound: None,
     ErrorTypes.DuplicateVolumeArchiveFiles: ErrorInfo(file=_LONG_PATH, duplicate_volumes=[3, 7]),
-    ErrorTypes.TooManyVolumeArchiveFiles: ErrorInfo(num_volumes=25, num_archive_files=30),
     ErrorTypes.MissingArchiveVolumes: ErrorInfo(missing_volumes=[5, 9, 14]),
     ErrorTypes.MissingVolumeCannotShowTitle: ErrorInfo(title=_A_TITLE, missing_volumes=[7]),
     ErrorTypes.ArchiveVolumeNotAvailable: ErrorInfo(title=_A_TITLE, file_volume=7),
@@ -121,18 +120,6 @@ class TestFatalConfigErrors:
             f" prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
             f" {LAST_VOLUME_NUMBER:02d} inclusive, without duplicates, then restart the app."
         )
-
-    def test_too_many_archive_files(self, reader_settings: MagicMock) -> None:
-        error_info = ErrorInfo(num_volumes=25, num_archive_files=30)
-
-        pres = build_error_presentation(
-            ErrorTypes.TooManyVolumeArchiveFiles, error_info, reader_settings
-        )
-
-        assert pres.kind is ErrorDialogKind.FATAL_CONFIG
-        assert pres.title == "Too Many Fantagraphics Archives"
-        assert "expected number of files is 25 not 30" in pres.text
-        assert pres.close_message == WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG
 
 
 class TestNoticeErrors:

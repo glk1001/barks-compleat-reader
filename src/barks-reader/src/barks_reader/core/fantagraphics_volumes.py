@@ -9,7 +9,6 @@ from barks_fantagraphics.comic_book import get_page_str
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
-    NUM_VOLUMES,
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT, JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
@@ -46,18 +45,6 @@ class MissingVolumeError(Exception):
         self.title = title
 
 
-class TooManyArchiveFilesError(Exception):
-    def __init__(self, num_archive_files: int, num_volumes: int, archive_root: Path) -> None:
-        super().__init__(
-            f'There are too many archive files in "{archive_root}".'
-            f" There are {num_archive_files} but there should be {num_volumes}."
-        )
-
-        self.num_archive_files = num_archive_files
-        self.num_volumes = num_volumes
-        self.archive_root = archive_root
-
-
 class DuplicateArchiveFilesError(Exception):
     def __init__(self, duplicates: list[int], archive_root: Path) -> None:
         super().__init__(
@@ -67,22 +54,6 @@ class DuplicateArchiveFilesError(Exception):
 
         self.duplicates = duplicates
         self.archive_root = archive_root
-
-
-class NotEnoughOverrideDirsError(Exception):
-    def __init__(self, num_override_dirs: int, num_volumes: int, override_dirs_root: Path) -> None:
-        super().__init__(
-            f'There are not enough override dirs in "{override_dirs_root}".'
-            f" There are {num_override_dirs} but there should be {num_volumes}."
-        )
-
-
-class TooManyOverrideDirsError(Exception):
-    def __init__(self, num_override_dirs: int, num_volumes: int, override_dirs_root: Path) -> None:
-        super().__init__(
-            f'There are too many override dirs in "{override_dirs_root}".'
-            f" There are {num_override_dirs} but there should be {num_volumes}."
-        )
 
 
 class PageNumError(Exception):
@@ -158,17 +129,12 @@ class FantagraphicsVolumeArchives:
     def get_fantagraphics_archive(self, volume: int) -> FantagraphicsArchive:
         return self._fantagraphics_archive_dict[volume]
 
-    def check_archives_and_overrides(
-        self, archive_filenames: list[Path], override_archive_filenames: dict[int, Path]
-    ) -> None:
-        self.check_correct_volume_numbers(archive_filenames)
-
-        if len(override_archive_filenames) > NUM_VOLUMES:
-            raise TooManyOverrideDirsError(
-                len(override_archive_filenames), NUM_VOLUMES, self._archive_root
-            )
-
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
+        """Raise if the library's volume files have duplicates or gaps.
+
+        A file numbered outside the volume range never gets here:
+        `get_all_volume_filenames` keeps only the volumes in the volume list.
+        """
         file_vols = sorted([self._get_fanta_volume(f) for f in archive_filenames])
 
         # An empty archive dir (or one with no valid volume files) means every volume
@@ -178,10 +144,6 @@ class FantagraphicsVolumeArchives:
             raise MissingArchiveFilesError(
                 list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)), self._archive_root
             )
-
-        # Check valid volume numbers.
-        if file_vols[-1] > LAST_VOLUME_NUMBER:
-            raise TooManyArchiveFilesError(len(archive_filenames), NUM_VOLUMES, self._archive_root)
 
         # Check there are no duplicates.
         counts = Counter(file_vols)
@@ -203,7 +165,7 @@ class FantagraphicsVolumeArchives:
         override_archive_filenames = self.get_all_volume_override_archives()
 
         try:
-            self.check_archives_and_overrides(archive_filenames, override_archive_filenames)
+            self.check_correct_volume_numbers(archive_filenames)
         except MissingArchiveFilesError as e:
             missing_volumes = e.missing_file_vols
         else:

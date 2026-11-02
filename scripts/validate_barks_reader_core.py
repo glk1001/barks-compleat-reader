@@ -64,8 +64,6 @@ from barks_reader.core.fantagraphics_volumes import (
     MissingArchiveFilesError,
     PageExtError,
     PageNumError,
-    TooManyArchiveFilesError,
-    TooManyOverrideDirsError,
 )
 from barks_reader.core.image_pipeline import load_pil as reader_load_pil
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
@@ -1108,12 +1106,6 @@ def phase6_fantagraphics(
 
     _check_volume_numbers(phase, state, archives_mgr, archive_filenames)
 
-    if len(override_archive_filenames) > LAST_VOLUME_NUMBER - FIRST_VOLUME_NUMBER + 1:
-        try:
-            archives_mgr.check_archives_and_overrides(archive_filenames, override_archive_filenames)
-        except TooManyOverrideDirsError as exc:
-            phase.add(f"too many override archives: {exc}")
-
     _process_archive_filenames(
         phase, state, archives_mgr, archive_filenames, override_archive_filenames
     )
@@ -1157,8 +1149,6 @@ def _check_volume_numbers(
         for vol in exc.duplicates:
             state.error_volumes.add(vol)
             phase.add(f"Volume {vol}: duplicate archive files")
-    except TooManyArchiveFilesError as exc:
-        phase.add(f"too many archive files: {exc}")
 
 
 def _process_archive_filenames(

@@ -156,11 +156,6 @@ _ERROR_SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
     ErrorTypes.DuplicateVolumeArchiveFiles: ErrorInfo(
         file="/media/greg/Barks/Fantagraphics Carl Barks Library", duplicate_volumes=[7, 12]
     ),
-    ErrorTypes.TooManyVolumeArchiveFiles: ErrorInfo(
-        file="/media/greg/Barks/Fantagraphics Carl Barks Library",
-        num_volumes=28,
-        num_archive_files=29,
-    ),
     ErrorTypes.MissingArchiveVolumes: ErrorInfo(missing_volumes=[5, 9, 14]),
     ErrorTypes.MissingVolumeCannotShowTitle: ErrorInfo(
         missing_volumes=[7], title=Titles.LOST_IN_THE_ANDES
