@@ -48,6 +48,9 @@ BARKS_EXTRA_INFO = {
     " thoughts just pour all over me ... When I had gotten enough that I knew I had a story,"
     " I &bl;re&br;joined the party and hoisted a few drinks. Next day I was hard at it writing"
     ' the Gneezles story."[/i]',
+    Titles.ICEBOX_ROBBER_THE: "Fantagraphics printed this story in CBDL Volume 3 with its wartime"
+    " references to the Japanese on page 7 censored. They are restored in this digital edition as"
+    " they first appeared in 1945.",
     Titles.FIREBUG_THE: "Barks said this about Western's change to The Firebug ending:"
     ' [i]"The editors objected to the last couple of panels of that story because I had Donald set'
     " fire to the judge's wastebasket. &bl;It&br; accidentally burned down the courthouse, and he"
