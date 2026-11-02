@@ -1,7 +1,7 @@
 """Tests for resolving a censorship-fixes row's `Story` cell to a real story.
 
 Every other consumer of the CSV starts here. `barks-check-build` grades each row against
-the story it names, `barks-ocr-censorship-csv` derives the Volume, Image and Fanta_page
+the story it names, `barks-censorship-csv` derives the Volume, Image and Fanta_page
 columns from it, and the wiki's censorship table prints it - and all three go through
 `resolve_censorship_story` and `censorship_story_pages`. A cell that does not resolve
 therefore does not fail in one place: it fails in three, and two of them by raising.
@@ -107,7 +107,7 @@ class TestResolvingTheStoryCell:
 class TestTheStoryPages:
     def test_a_one_pager_has_one_numbered_page(self, db: ComicsDatabase) -> None:
         # Numbered rather than unnumbered, so a row against it reads like every other
-        # row - and so `barks-ocr-censorship-csv`, which refuses a story with no BODY
+        # row - and so `barks-censorship-csv`, which refuses a story with no BODY
         # pages, can derive its columns.
         volume, page, _issue_page = ONE_PAGER_LOCATIONS[ONE_PAGER]
 

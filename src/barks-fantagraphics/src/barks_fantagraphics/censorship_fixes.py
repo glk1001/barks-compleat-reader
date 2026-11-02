@@ -5,7 +5,7 @@ Reader puts it back. Each row here is one such correction - a line of dialogue r
 a hat recoloured, a glitch cleaned - located by the Fantagraphics volume, the scan image
 it lands on, and the panel within it. GLK maintains the file by hand; the volume, image
 and printed-page columns are derived from the comics database by
-`barks-ocr-censorship-csv`.
+`barks-censorship-csv`.
 
 The rows are not one-to-one with the fix images on disk: several panels of one page each
 get their own row, so `censorship_fix_pages` is the way to ask which *pages* were fixed.
@@ -280,7 +280,7 @@ def censorship_story_pages(comics_database: ComicsDatabase, title: str) -> Censo
     A one-pager is read from `ONE_PAGER_LOCATIONS` instead, because it has no `.ini` for
     `get_comic_book` to open. Its one page is a numbered BODY page like any other story's
     - `ONE_PAGER_COMIC_PAGE` - rather than an unnumbered one: a row against it then reads
-    exactly like the rest of the CSV, and `barks-ocr-censorship-csv` can derive its
+    exactly like the rest of the CSV, and `barks-censorship-csv` can derive its
     columns, which it refuses to do for a story with no BODY pages at all.
 
     Args:
