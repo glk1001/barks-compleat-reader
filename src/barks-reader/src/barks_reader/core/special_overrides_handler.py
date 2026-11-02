@@ -29,7 +29,7 @@ class SpecialFantaOverrides:
                 reader_settings.get_use_deah_instead_of_theah,
             ),
             Titles.VOODOO_HOODOO: (
-                "Use blank eyeballs for Bombie",
+                "Blank-eyed Bombie",
                 reader_settings.get_use_blank_eyeballs_for_bombie,
             ),
             Titles.GOLDEN_FLEECING_THE: (
