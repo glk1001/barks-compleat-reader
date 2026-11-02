@@ -39,24 +39,24 @@
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
     "start": 165.7,
-    "end": 231.77
+    "end": 231.73
   },
   {
     "beat": "wiki_jump",
     "title": "Every story linked to the Carl Barks Wiki",
-    "start": 231.77,
-    "end": 266.8
+    "start": 231.73,
+    "end": 266.77
   },
   {
     "beat": "speech_index",
     "title": "A full speech-bubble index, A to Z",
-    "start": 266.8,
-    "end": 279.83
+    "start": 266.77,
+    "end": 279.8
   },
   {
     "beat": "reading",
     "title": "Choose for me, playlists, and your history",
-    "start": 279.83,
-    "end": 326.87
+    "start": 279.8,
+    "end": 326.83
   }
 ]
