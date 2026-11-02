@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import zipfile
 from enum import Enum, auto
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
@@ -413,6 +413,12 @@ class ReaderFilePaths:
         return get_all_files_in_dir(image_dir)
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
+        # Already the edited one: there is no "edited/edited/" copy to look for, and an
+        # edited cover was once letterboxed for not finding one.
+        # PurePath: a zip member's parent is typed as a bare PathLike.
+        if PurePath(str(image_file)).parent.name == EDITED_SUBDIR:
+            return image_file, True
+
         edited_image_file = (
             image_file.parent / Path(EDITED_SUBDIR) / (image_file.stem + self._edited_files_ext)
         )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 import re
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 from random import randrange
@@ -119,6 +119,44 @@ class ImageFileResolver(Protocol):
         ...
 
 
+def resolve_all_title_image_files(
+    resolver: ImageFileResolver, title_str: str
+) -> dict[FileTypes, set[tuple[PanelPath, bool]]]:
+    """Resolve all of a title's image files across every category but nontitles.
+
+    The one place the edited and unedited lists are merged: the selector and
+    `ReaderFilePathsResolver` (for scripts/panels-info.py) both come here.
+
+    Args:
+        resolver: Where each category's files are looked up.
+        title_str: The title string to look up.
+
+    Returns:
+        Each category's files, each listed once: flagged edited when the edited
+        pass returned it, and unedited otherwise. A category with no files is absent.
+
+    """
+    image_dict: dict[FileTypes, set[tuple[PanelPath, bool]]] = defaultdict(set)
+
+    for file_type in FileTypes:
+        if file_type == FileTypes.NONTITLE:
+            continue
+
+        edited_files = resolver.resolve(title_str, file_type, prefer_edited=True)
+        all_files = resolver.resolve(title_str, file_type, prefer_edited=False)
+
+        edited_paths = {path for path, _ in edited_files}
+
+        if edited_files:
+            image_dict[file_type].update({(f, True) for f, _ in edited_files})
+        if all_files:
+            image_dict[file_type].update(
+                {(f, False) for f, _ in all_files if f not in edited_paths}
+            )
+
+    return image_dict
+
+
 class ImageSelector:
     """Selects random images from the comic library for display.
 
@@ -197,18 +235,18 @@ class ImageSelector:
         return str((Path(filepart1) / filepart2).as_posix())
 
     def get_random_search_image(self) -> ImageInfo:
-        """Return a random search-themed image."""
+        """Return a random search-themed image, or the emergency inset when its title has none."""
         title = random.choice(SEARCH_TITLES)
 
-        return ImageInfo(
-            self._get_random_comic_file(
-                ENUM_TO_STR_TITLE[title],
-                self._resolver.get_comic_search_files,
-                use_only_edited_if_possible=False,
-            ),
-            title,
-            FIT_MODE_COVER,
+        search_file = self._get_random_comic_file(
+            ENUM_TO_STR_TITLE[title],
+            self._resolver.get_comic_search_files,
+            use_only_edited_if_possible=False,
         )
+        if search_file is None:
+            return self._get_fallback_image_info()
+
+        return ImageInfo(search_file, title, FIT_MODE_COVER)
 
     def get_search_image_for_title(self, title: Titles) -> ImageInfo:
         """Return an inset image for a specific title (used in search results)."""
@@ -277,18 +315,14 @@ class ImageSelector:
             logger.warning(f'No possible images for title "{title_str}". Using emergency image.')
             return self._resolver.get_comic_inset_file(EMERGENCY_INSET_FILE)
 
-        preferred_images = [
-            image_info
-            for image_info in possible_images
-            if image_info[0] != self._last_title_image.get(title_str, "")
-        ]
+        # The same no-repeat memory as the fun images: not the title's last image, and
+        # not a panel shown lately in any treatment. Title images once skipped only the
+        # title's last file, so a panel just shown could come straight back.
+        selected_image = self._select_best_candidate_image(possible_images, title_str)
+        assert selected_image is not None  # possible_images is not empty.
 
-        if preferred_images:
-            selected_image_info = random.choice(preferred_images)
-        else:
-            selected_image_info = random.choice(possible_images)
-
-        image_filename = selected_image_info[0]
+        image_filename = selected_image[0]
+        self._add_last_image(image_filename)
         self._last_title_image[title_str] = image_filename
 
         return image_filename
@@ -354,7 +388,9 @@ class ImageSelector:
         """Randomly select either a title from the list or a "nontitle" image."""
         if FileTypes.NONTITLE in file_types:
             num_titles = len(title_list)
-            biased_upper_bound = int((1 + NON_TITLE_BIAS) * num_titles)
+            # At least one nontitle slot: int(1.1 * n) is just n for fewer than 10
+            # titles, and a short title list then never drew a nontitle image.
+            biased_upper_bound = num_titles + max(1, int(NON_TITLE_BIAS * num_titles))
             if randrange(0, biased_upper_bound) >= num_titles:
                 logger.debug("Chose a nontitle image based on bias.")
                 return None, None, self._nontitle_files
@@ -410,8 +446,13 @@ class ImageSelector:
         Near-square and moderately wide images fill the view edge-to-edge (cover);
         images that are too tall or too wide are letterboxed (contain) so the whole
         image stays visible instead of being cropped hard on its long axis. Falls
-        back to contain when the dimensions cannot be read (e.g. a non-filesystem
-        path or an unreadable file).
+        back to contain when the dimensions cannot be read (an unreadable file).
+
+        A zip member (`zipfile.Path`) is always contained, unread, on purpose: the
+        shipped panels zip is encrypted, and reading a size would mean decrypting and
+        decoding each pick an extra time before it is shown. So with the default
+        panels source every fun image is letterboxed; only a folder of panels is
+        measured.
         """
         if not isinstance(image_filename, Path):
             return FIT_MODE_CONTAIN
@@ -520,42 +561,24 @@ class ImageSelector:
             return
 
         logger.debug(f'Updating comic image files for title "{title_str}".')
-        self._title_image_files[title_str] = self._resolve_all_title_image_files(title_str)
-
-    def _resolve_all_title_image_files(
-        self, title_str: str
-    ) -> dict[FileTypes, set[tuple[PanelPath, bool]]]:
-        """Resolve all image files for a title across all categories."""
-        from collections import defaultdict  # noqa: PLC0415
-
-        image_dict: dict[FileTypes, set[tuple[PanelPath, bool]]] = defaultdict(set)
-
-        for file_type in FileTypes:
-            if file_type == FileTypes.NONTITLE:
-                continue
-
-            edited_files = self._resolver.resolve(title_str, file_type, prefer_edited=True)
-            all_files = self._resolver.resolve(title_str, file_type, prefer_edited=False)
-
-            edited_paths = {path for path, _ in edited_files}
-
-            if edited_files:
-                image_dict[file_type].update({(f, True) for f, _ in edited_files})
-            if all_files:
-                image_dict[file_type].update(
-                    {(f, False) for f, _ in all_files if f not in edited_paths}
-                )
-
-        return image_dict
+        self._title_image_files[title_str] = resolve_all_title_image_files(
+            self._resolver, title_str
+        )
 
     @staticmethod
     def _get_random_comic_file(
         title_str: str,
         get_files_func: Callable[[str, bool], list[PanelPath]],
         use_only_edited_if_possible: bool,
-    ) -> PanelPath:
+    ) -> PanelPath | None:
+        """Return one of the files `get_files_func` lists for the title, or None if it has none.
+
+        A panels source without them (the PNG folder, a partial data pack) once raised
+        a bare AssertionError here, crashing search.
+        """
         title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
             return random.choice(title_files)
 
-        raise AssertionError
+        logger.warning(f'No files for title "{title_str}". Using emergency image.')
+        return None

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from .image_selector import resolve_all_title_image_files
 from .reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
@@ -93,25 +93,8 @@ class ReaderFilePathsResolver:
             title_str: The title string to look up.
 
         Returns:
-            Dict mapping FileTypes to sets of (path, is_edited) tuples.
+            Dict mapping FileTypes to sets of (path, is_edited) tuples; see
+            `image_selector.resolve_all_title_image_files`.
 
         """
-        image_dict: dict[FileTypes, set[tuple[PanelPath, bool]]] = defaultdict(set)
-
-        for file_type in FileTypes:
-            if file_type == FileTypes.NONTITLE:
-                continue
-
-            edited_files = self.resolve(title_str, file_type, prefer_edited=True)
-            all_files = self.resolve(title_str, file_type, prefer_edited=False)
-
-            edited_paths = {path for path, _ in edited_files}
-
-            if edited_files:
-                image_dict[file_type].update({(f, True) for f, _ in edited_files})
-            if all_files:
-                image_dict[file_type].update(
-                    {(f, False) for f, _ in all_files if f not in edited_paths}
-                )
-
-        return image_dict
+        return resolve_all_title_image_files(self, title_str)

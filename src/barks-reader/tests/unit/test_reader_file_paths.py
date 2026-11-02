@@ -442,3 +442,42 @@ class TestEditedFilesAreOptIn:
         assert paths.get_comic_bw_files(title, use_only_edited_if_possible=True) == [
             edited / "page1.png"
         ]
+
+
+class TestEditedVersionIfPossible:
+    @pytest.fixture
+    def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
+        with patch("os.path.expandvars", return_value=str(panels_dir)):
+            reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+        return reader_file_paths
+
+    def test_a_plain_cover_gives_its_edited_copy(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        main = panels_dir / "Covers" / "Some Title.jpg"
+        main.touch()
+        edited_dir = panels_dir / "Covers" / EDITED_SUBDIR
+        edited_dir.mkdir()
+        edited = edited_dir / "Some Title.png"
+        edited.touch()
+
+        assert paths.get_edited_version_if_possible(main) == (edited, True)
+
+    def test_a_plain_cover_with_no_edited_copy_is_itself(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        main = panels_dir / "Covers" / "Some Title.jpg"
+        main.touch()
+
+        assert paths.get_edited_version_if_possible(main) == (main, False)
+
+    def test_an_edited_cover_is_already_edited(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        """No "edited/edited/" copy is looked for: an edited cover was once letterboxed."""
+        edited_dir = panels_dir / "Covers" / EDITED_SUBDIR
+        edited_dir.mkdir()
+        edited = edited_dir / "Some Title.png"
+        edited.touch()
+
+        assert paths.get_edited_version_if_possible(edited) == (edited, True)

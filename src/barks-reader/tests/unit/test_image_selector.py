@@ -18,6 +18,7 @@ from barks_reader.core.image_selector import (
     FIT_MODE_COVER,
     ImageSelector,
     get_title_str,
+    resolve_all_title_image_files,
 )
 from barks_reader.core.reader_file_paths import EMERGENCY_INSET_FILE, FileTypes
 from barks_reader.core.reader_settings import ReaderSettings
@@ -358,7 +359,7 @@ class TestImageSelector:
         image_selector._last_title_image[title_str] = only_image
 
         # No "preferred" candidates exist (the only image is the last one), so the
-        # fallback random.choice over possible_images is hit (line 291).
+        # fallback random.choice over every possible image is hit.
         with patch.object(
             random, random.choice.__name__, return_value=(only_image, FileTypes.SPLASH)
         ) as mock_choice:
@@ -571,18 +572,32 @@ class TestImageSelector:
         assert (plain, FileTypes.SPLASH) not in choices_arg
         assert (edited, FileTypes.SPLASH) in choices_arg
 
-    def test_get_random_comic_file_raises_when_no_files(self) -> None:
-        """The internal random-comic-file helper asserts when no files are available."""
+    def test_get_random_comic_file_is_none_when_no_files(self) -> None:
+        """The internal random-comic-file helper has nothing to give when no files exist."""
 
         def empty_files(_title: str, _prefer_edited: bool) -> list[PanelPath]:
             return []
 
-        with pytest.raises(AssertionError):
+        assert (
             ImageSelector._get_random_comic_file(
                 "Some Title",
                 empty_files,
                 use_only_edited_if_possible=False,
             )
+            is None
+        )
+
+    def test_a_search_title_with_no_files_falls_back_to_the_emergency_inset(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """A panels source with no Search folder once crashed search with a bare assert."""
+        fake_resolver.search_files = []
+        fake_resolver.inset_file = Path("emergency.png")
+
+        info = image_selector.get_random_search_image()
+
+        assert info.filename == Path("emergency.png")
+        assert info.from_title == Titles.GOOD_NEIGHBORS
 
 
 class TestAdaptiveFitMode:
@@ -625,6 +640,19 @@ class TestAdaptiveFitMode:
             # Aspect 1.0 is inside the cover band, so the guard must not have fired.
             assert ImageSelector._get_adaptive_fit_mode(Path("x.png")) == FIT_MODE_COVER
 
+    def test_a_zip_member_is_contained_without_reading(self, tmp_path: Path) -> None:
+        """The shipped panels zip is encrypted: its members are letterboxed, unmeasured."""
+        zip_file = tmp_path / "panels.zip"
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("Fun/012-3.jpg", b"not read")
+
+        with zipfile.ZipFile(zip_file) as zf:
+            member = zipfile.Path(zf, "Fun/012-3.jpg")
+            with patch.object(is_module, is_module.get_image_size.__name__) as mock_size:
+                assert ImageSelector._get_adaptive_fit_mode(member) == FIT_MODE_CONTAIN
+
+        mock_size.assert_not_called()
+
     def test_non_path_image_is_contained_without_reading(self) -> None:
         with patch.object(is_module, is_module.get_image_size.__name__) as mock_size:
             assert ImageSelector._get_adaptive_fit_mode("not-a-path") == FIT_MODE_CONTAIN  # ty: ignore[invalid-argument-type]
@@ -639,7 +667,7 @@ class TestAdaptiveFitMode:
 
 
 class TestNonTitleBias:
-    """The nontitle draw: `randrange(0, int(1.1 * n)) >= n` picks a nontitle image."""
+    """The nontitle draw: `randrange(0, n + max(1, int(0.1 * n))) >= n` picks a nontitle."""
 
     @staticmethod
     def _titles(count: int) -> list[MagicMock]:
@@ -657,6 +685,22 @@ class TestNonTitleBias:
             )
 
         mock_randrange.assert_called_once_with(0, 11)
+
+    @pytest.mark.parametrize("count", [1, 3, 9])
+    def test_a_short_title_list_still_has_a_nontitle_slot(
+        self, image_selector: ImageSelector, count: int
+    ) -> None:
+        """int(1.1 * n) is n below 10 titles, and a nontitle was then never drawn."""
+        with patch.object(is_module, randrange.__name__, return_value=count) as mock_randrange:
+            title_str, title_enum, possible = image_selector._select_random_title_or_nontitle(
+                self._titles(count),  # ty: ignore[invalid-argument-type]
+                {FileTypes.NONTITLE},
+                use_only_edited_if_possible=False,
+            )
+
+        mock_randrange.assert_called_once_with(0, count + 1)
+        assert (title_str, title_enum) == (None, None)
+        assert possible == image_selector._nontitle_files
 
     @pytest.mark.parametrize(
         ("draw", "expects_nontitle"),
@@ -826,12 +870,11 @@ class TestLoadNeverCropImages:
 
 class TestResolveAllTitleImageFiles:
     def test_queries_the_resolver_for_every_type_except_nontitle(
-        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+        self, fake_resolver: FakeResolver
     ) -> None:
         resolver = MagicMock(wraps=fake_resolver)
-        image_selector._resolver = resolver
 
-        image_selector._resolve_all_title_image_files("A Title")
+        resolve_all_title_image_files(resolver, "A Title")
 
         expected = [
             call("A Title", file_type, prefer_edited=prefer_edited)
@@ -842,7 +885,7 @@ class TestResolveAllTitleImageFiles:
         assert resolver.resolve.call_args_list == expected
 
     def test_edited_files_win_over_their_unedited_counterparts(
-        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+        self, fake_resolver: FakeResolver
     ) -> None:
         both = Path("both.png")
         plain_only = Path("plain.png")
@@ -851,7 +894,7 @@ class TestResolveAllTitleImageFiles:
             (plain_only, False),
         ]
 
-        resolved = image_selector._resolve_all_title_image_files("A Title")
+        resolved = resolve_all_title_image_files(fake_resolver, "A Title")  # ty: ignore[invalid-argument-type]
 
         # `both` is recorded once, flagged edited; `plain_only` is recorded unedited.
         assert resolved[FileTypes.SPLASH] == {(both, True), (plain_only, False)}
@@ -1295,3 +1338,32 @@ class TestGetRandomImageForTitle:
 
         resolver.get_comic_inset_file.assert_called_once_with(EMERGENCY_INSET_FILE)
         assert result == fake_resolver.inset_file
+
+    def test_a_panel_shown_lately_in_another_treatment_is_not_drawn(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """The title view shares the fun view's memory: a panel just shown stays away."""
+        title_str = "A Title"
+        photo = Path(title_str) / "172-2-photo.jpg"
+        water = Path(title_str) / "172-2-water.jpg"
+        fresh = Path(title_str) / "180-1.jpg"
+        fake_resolver.files[title_str][FileTypes.AI] = [(water, False), (fresh, False)]
+        image_selector._most_recently_used_images.append(photo)
+
+        with patch.object(
+            random, random.choice.__name__, return_value=(fresh, FileTypes.AI)
+        ) as mock_choice:
+            image_selector.get_random_image_for_title(title_str, {FileTypes.AI})
+
+        assert [f for f, _t in mock_choice.call_args.args[0]] == [fresh]
+
+    def test_the_image_drawn_joins_the_recently_used(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        title_str = "A Title"
+        splash = Path("splash.png")
+        fake_resolver.files[title_str][FileTypes.SPLASH] = [(splash, False)]
+
+        image_selector.get_random_image_for_title(title_str, {FileTypes.SPLASH})
+
+        assert list(image_selector._most_recently_used_images) == [splash]
