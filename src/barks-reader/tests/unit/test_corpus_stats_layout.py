@@ -148,6 +148,12 @@ class TestSectionHeights:
         with_note = StatSection(heading="H", rows=(StatRow("a", "1"),), footnote="x")
         grew = layout.section_height(with_note) - layout.section_height(without)
         assert grew == pytest.approx(2 * layout.DESIGN.footnote_line_height)
+        assert layout.FOOTNOTE_LINES == 2  # noqa: PLR2004
+
+    def test_the_dialogue_footnote_is_budgeted_as_the_page_budgets_every_footnote(self) -> None:
+        # The reserved slot reads the shape's lines and the arrived section the page's,
+        # so the two must be one number or the page reflows when the scan lands.
+        assert TEXT_SECTION_SHAPE.footnote_lines == layout.FOOTNOTE_LINES
 
     def test_the_reserved_slot_matches_the_section_it_stands_in_for(self) -> None:
         # What is reserved before the scan must equal what arrives after it, or the

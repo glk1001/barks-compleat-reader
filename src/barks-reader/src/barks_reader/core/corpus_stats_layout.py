@@ -16,10 +16,11 @@ Two conventions here are deliberate and differ from the rest of the app:
   scale - like a comic page, its composition sets its own scale.
 * The type sizes are not read from ``FontManager``. That is a two-step ladder
   (``LOW_RES``/``HI_RES``), and two steps cannot make a fixed composition fit at
-  an arbitrary window height. The ``DESIGN`` values below are instead copied from
-  the ``LOW_RES_FONTS`` role that plays the same part elsewhere in the app, so the
-  page stays a strict similarity transform of the app's own scale. The comments
-  record which role each came from, and a test pins them.
+  an arbitrary window height. The ``DESIGN`` sizes below started as the
+  ``LOW_RES_FONTS`` roles that play the same parts elsewhere in the app, then came
+  down a notch (the comment on them says why). A test holds the standfirst, heading
+  and footnote within a band of their roles, so the page keeps the app's
+  proportions without copying its sizes.
 
 This module is deliberately Kivy-free: it is what lets the "does it fit" check be
 an ordinary unit test instead of something only a running window can answer.
@@ -100,6 +101,10 @@ DESIGN = PageMetrics(
 # label over a value that wraps to two lines in a column this narrow.
 PROSE_ROW_HEIGHT_UNITS = 3.0
 
+# A footnote is budgeted at this many lines whatever its length, so one that wraps
+# cannot push a column past the fold.
+FOOTNOTE_LINES = 2
+
 # The floor below which the page stops shrinking and is allowed to clip rather
 # than become unreadable. Well under any window the app itself permits.
 MIN_SCALE = 0.5
@@ -168,15 +173,14 @@ def section_height(section: StatSection) -> float:
         section: The section to measure.
 
     Returns:
-        Its height in design pixels, counting a two-line footnote so that a
-        footnote which happens to wrap cannot push a column past the fold.
+        Its height in design pixels, counting a footnote as ``FOOTNOTE_LINES`` lines.
 
     """
     height = DESIGN.heading_height
     for row in section.rows:
         height += DESIGN.row_height * (PROSE_ROW_HEIGHT_UNITS if row.prose else 1.0)
     if section.footnote:
-        height += 2.0 * DESIGN.footnote_line_height
+        height += FOOTNOTE_LINES * DESIGN.footnote_line_height
     return height
 
 
