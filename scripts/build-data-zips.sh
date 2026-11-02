@@ -83,4 +83,13 @@ zip -q "${THIS_DIR}/${DATA1_ZIP}" "${PACK_MEMBER}"
 zip -q "${THIS_DIR}/${DATA2_ZIP}" "${PACK_MEMBER}"
 popd >/dev/null
 echo -e "Data zips took $(format_elapsed $((SECONDS - DATA_ZIPS_START)))."
+# The packs are left in place to look at; upload-data-zips.sh refuses them too.
+TOO_BIG=0
+for zip in "${DATA1_ZIP}" "${DATA2_ZIP}"; do
+    check_pack_size "$zip" || TOO_BIG=1
+done
+if ((TOO_BIG)); then
+    echo -e "${RED}Data pack ${VERSION} is too big to publish.${NC}" >&2
+    exit 1
+fi
 echo -e "${GREEN}Data pack ${VERSION} complete.${NC}"

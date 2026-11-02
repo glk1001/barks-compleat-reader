@@ -79,10 +79,6 @@ for zip in "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}"; do
     fi
 done
 
-file_size() {
-    # stat's size flag differs between GNU (-c%s) and BSD/macOS (-f%z).
-    stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
-}
 sha256_of() {
     # sha256sum is GNU; macOS ships shasum instead.
     if command -v sha256sum >/dev/null 2>&1; then
@@ -91,6 +87,11 @@ sha256_of() {
         shasum -a 256 "$1" | cut -d" " -f1
     fi
 }
+
+# Before anything is created: GitHub would refuse an oversized pack partway through.
+for zip in "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}"; do
+    check_pack_size "$zip" || exit 1
+done
 
 SIZE1=$(file_size "${ZIPS_DIR}/${DATA1_ZIP}")
 SIZE2=$(file_size "${ZIPS_DIR}/${DATA2_ZIP}")
