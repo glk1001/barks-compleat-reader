@@ -18,7 +18,6 @@ from barks_reader.core.config_info import (
     ConfigInfo,
     _assert_kivy_not_yet_imported,
     _find_dir_on_search_path,
-    _find_dir_under_directory,
     _find_fanta_volumes,
     _run_loguru_config,
     barks_reader_installer_failed,
@@ -226,26 +225,43 @@ class TestInstallerFailedFlag:
 
 
 # ---------------------------------------------------------------------------
-# _find_dir_under_directory
+# _find_dir_on_search_path
 # ---------------------------------------------------------------------------
 
 
-class TestFindDirUnderDirectory:
-    def test_returns_matching_directory(self, tmp_path: Path) -> None:
+class TestFindDirOnSearchPath:
+    def test_returns_the_first_search_dir_holding_the_target(self, tmp_path: Path) -> None:
+        first, second = tmp_path / "first", tmp_path / "second"
+        first.mkdir()
+        (first / "match").touch()  # a file of that name is not the folder
+        (second / "match").mkdir(parents=True)
+
+        assert _find_dir_on_search_path([str(first), str(second)], "match") == second / "match"
+
+    def test_returns_none_when_no_search_dir_holds_it(self, tmp_path: Path) -> None:
         (tmp_path / "alpha").mkdir()
-        (tmp_path / "match").mkdir()
-        (tmp_path / "zulu").mkdir()
-        (tmp_path / "not_a_dir.txt").touch()  # File with the same name should be skipped.
 
-        result = _find_dir_under_directory(tmp_path, "match")
+        assert _find_dir_on_search_path([str(tmp_path), str(tmp_path / "gone")], "nope") is None
 
-        assert result == [tmp_path / "match"]
+    def test_a_search_dir_it_may_not_look_in_is_skipped(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """MacOS denies ~/Documents without permission: the search goes on, not the app down."""
+        blocked, open_dir = tmp_path / "blocked", tmp_path / "open"
+        (blocked / "match").mkdir(parents=True)
+        (open_dir / "match").mkdir(parents=True)
+        real_is_dir = Path.is_dir
 
-    def test_returns_empty_when_no_match(self, tmp_path: Path) -> None:
-        (tmp_path / "alpha").mkdir()
-        (tmp_path / "beta").mkdir()
+        def is_dir(path: Path) -> bool:
+            if path.parent == blocked:
+                raise PermissionError(1, "Operation not permitted", str(path))
+            return real_is_dir(path)
 
-        assert _find_dir_under_directory(tmp_path, "nope") == []
+        with patch.object(Path, "is_dir", is_dir):
+            found = _find_dir_on_search_path([str(blocked), str(open_dir)], "match")
+
+        assert found == open_dir / "match"
+        assert any(f'cannot look in "{blocked}"' in line for line in loguru_sink)
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +389,7 @@ class TestLoguruSetup:
     def cfg(self, tmp_path: Path) -> ConfigInfo:
         cfg = _bare_config_info(tmp_path)
         cfg.app_config_dir = tmp_path
-        cfg.app_log_path = tmp_path / "kivy" / "logs" / "barks-reader.log"
+        cfg.app_log_path = tmp_path / "logs" / "the-app.log"
         return cfg
 
     def test_setup_records_the_level_and_the_log_path(self, cfg: ConfigInfo) -> None:
@@ -381,7 +397,7 @@ class TestLoguruSetup:
             setup_loguru(cfg, "INFO")
 
         assert get_log_level() == "INFO"
-        assert get_log_path() == cfg.app_config_dir / "kivy" / "logs" / "barks-reader.log"
+        assert get_log_path() == cfg.app_log_path
         run.assert_called_once_with(cfg)
 
     def test_a_good_config_is_loaded_once(self, cfg: ConfigInfo) -> None:

@@ -274,7 +274,7 @@ def get_log_path() -> Path | None:
 
 def setup_loguru(cfg_info: ConfigInfo, log_lvl: str) -> None:
     global log_path  # noqa: PLW0603
-    log_path = cfg_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
+    log_path = cfg_info.app_log_path
 
     global log_level  # noqa: PLW0603
     log_level = log_lvl
@@ -329,19 +329,23 @@ def _find_fanta_volumes(
 
 
 def _find_dir_on_search_path(search_path: list[str], target_dirname: str) -> Path | None:
+    """Return the first ``<search dir>/<target_dirname>`` folder, or None.
+
+    A search folder the app may not look in (``~/Documents`` without macOS's permission,
+    or one behind Windows' controlled folder access) is skipped, not fatal.
+    """
     for path in search_path:
         dirpath = Path(path).expanduser()
-        if not dirpath.is_dir():
-            logger.debug(f'Searching: "{dirpath}" is not a directory.')
+        candidate = dirpath / target_dirname
+        try:
+            if not dirpath.is_dir():
+                logger.debug(f'Searching: "{dirpath}" is not a directory.')
+                continue
+            if candidate.is_dir():
+                return candidate
+        except OSError as exc:
+            logger.debug(f'Searching: cannot look in "{dirpath}" ({exc}).')
             continue
-
-        candidates = _find_dir_under_directory(dirpath, target_dirname)
-        if candidates:
-            return candidates[0]
         logger.debug(f'Searching: "{target_dirname}" not found under "{dirpath}".')
 
     return None
-
-
-def _find_dir_under_directory(start_path: Path, target_dirname: str) -> list[Path]:
-    return [path for path in start_path.iterdir() if path.is_dir() and path.name == target_dirname]
