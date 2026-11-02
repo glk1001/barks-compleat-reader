@@ -115,6 +115,10 @@ class TestDecodedScale:
             # 2217 / 1109 is not 2, but libjpeg decoded at a half, not at 1109 / 2217.
             pytest.param((2217, 3057), (1109, 1529), 0.5, id="a half of odd sides"),
             pytest.param((400, 200), (400, 200), 1.0, id="whole"),
+            # 9 / 2 rounds to 4, which once failed the decode: the eighth gives 2.
+            pytest.param((9, 9), (2, 2), 0.125, id="an eighth of a narrow image"),
+            pytest.param((7, 7), (1, 1), 0.125, id="an eighth that is one pixel"),
+            pytest.param((3, 3), (1, 1), 0.25, id="the smaller of two that fit"),
         ],
     )
     def test_the_scale_is_the_exact_power_of_two_the_decoder_used(
@@ -123,7 +127,7 @@ class TestDecodedScale:
         assert decoded_scale(whole, decoded) == scale
 
     def test_a_size_no_reduced_decode_gives_is_refused(self) -> None:
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="No reduced decode"):
             decoded_scale((400, 200), (150, 75))
 
 

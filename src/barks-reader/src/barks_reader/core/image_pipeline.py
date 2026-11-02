@@ -63,30 +63,41 @@ def read_raw_bytes(panel_path: PanelPath) -> bytes:
     raise TypeError(msg)
 
 
+# The reductions libjpeg decodes at: a half, a quarter and an eighth of each side.
+_JPEG_REDUCTIONS = (2, 4, 8)
+
+
 def decoded_scale(whole_size: tuple[int, int], decoded_size: tuple[int, int]) -> float:
     """Return the scale an image was decoded at, given its whole size and the decoded size.
 
     A JPEG decoded reduced comes out at an exact half, quarter or eighth of itself,
     its sides rounded up; a side of odd length makes the ratio of the sizes a shade
-    off that scale, so the scale is recovered from the nearest power of two rather
-    than read off the ratio. Anything else decodes whole, at scale 1.
+    off that scale, so the scale is found as the reduction whose rounded-up sides are
+    the decoded size, not read off the ratio. (Rounding the ratio to a power of two
+    picked the wrong one for a narrow image: 9 px decoded at an eighth is 2 px, and
+    9 / 2 rounds to 4.) Anything else decodes whole, at scale 1.
 
     Args:
         whole_size: The image's width and height, from its header.
         decoded_size: The width and height it was decoded at.
 
     Returns:
-        The scale, exactly: 1.0, 0.5, 0.25 or 0.125.
+        The scale, exactly: 1.0, 0.5, 0.25 or 0.125. An image so small that two
+        reductions give the same size is given the smaller reduction.
+
+    Raises:
+        ValueError: No reduced decode of `whole_size` comes out at `decoded_size`.
 
     """
-    whole_width, decoded_width = whole_size[0], decoded_size[0]
-    if decoded_width >= whole_width:
+    whole_width, whole_height = whole_size
+    if decoded_size[0] >= whole_width:
         return 1.0
-    reduction = round(whole_width / decoded_width)
-    assert reduction in {2, 4, 8}, (whole_size, decoded_size)
-    expected = (math.ceil(whole_width / reduction), math.ceil(whole_size[1] / reduction))
-    assert decoded_size == expected, (whole_size, decoded_size)
-    return 1.0 / reduction
+    for reduction in _JPEG_REDUCTIONS:
+        reduced = (math.ceil(whole_width / reduction), math.ceil(whole_height / reduction))
+        if decoded_size == reduced:
+            return 1.0 / reduction
+    msg = f"No reduced decode of an image of {whole_size} comes out at {decoded_size}."
+    raise ValueError(msg)
 
 
 def decode_pil(
