@@ -1095,14 +1095,7 @@ def phase6_fantagraphics(
         collector.finalize_phase(phase)
         return state
 
-    try:
-        override_archive_filenames = archives_mgr.get_all_volume_override_archives()
-    except FileExistsError as exc:
-        phase.add(f"override directory contains a non-file entry: {exc}")
-        override_archive_filenames = {}
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not enumerate override archives: {exc}")
-        override_archive_filenames = {}
+    override_archive_filenames = _scan_override_archives(phase, archives_mgr)
 
     _check_volume_numbers(phase, state, archives_mgr, archive_filenames)
 
@@ -1115,6 +1108,20 @@ def phase6_fantagraphics(
     )
     collector.finalize_phase(phase)
     return state
+
+
+def _scan_override_archives(
+    phase: PhaseResult, archives_mgr: FantagraphicsVolumeArchives
+) -> dict[int, Path]:
+    """Return the override archives by volume, flagging each stray entry in their folder."""
+    try:
+        override_archive_filenames, strays = archives_mgr.scan_override_root()
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not enumerate override archives: {exc}")
+        return {}
+    for stray in strays:
+        phase.add(f'override directory holds an unexpected entry: "{stray}"')
+    return override_archive_filenames
 
 
 def _resolve_archive_root(cfg_info: ConfigInfo, barks_config: ConfigParser) -> Path | None:

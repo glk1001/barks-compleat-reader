@@ -999,3 +999,23 @@ class TestStatisticsDir:
     def test_a_missing_folder_is_one_error(self, tmp_path: Path) -> None:
         phase = self._run(tmp_path / "gone")
         assert len(phase.errors) == 1
+
+
+class TestScanOverrideArchives:
+    def test_each_stray_override_entry_is_an_error(self, tmp_path: Path) -> None:
+        override_root = tmp_path / "overrides"
+        override_root.mkdir()
+        good = override_root / "01-x.cbz"
+        good.touch()
+        (override_root / "__MACOSX").mkdir()
+        (override_root / "notes.txt").touch()
+        archives_mgr = core.FantagraphicsVolumeArchives(tmp_path / "library", override_root, [1])
+        phase = core.PhaseResult(name="test")
+
+        found = core._scan_override_archives(phase, archives_mgr)  # noqa: SLF001
+
+        assert found == {1: good}
+        assert phase.errors == [
+            f'override directory holds an unexpected entry: "{override_root / "__MACOSX"}"',
+            f'override directory holds an unexpected entry: "{override_root / "notes.txt"}"',
+        ]

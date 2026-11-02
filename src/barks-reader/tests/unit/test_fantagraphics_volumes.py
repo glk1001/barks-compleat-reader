@@ -17,6 +17,7 @@ from barks_reader.core.fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
     MissingArchiveFilesError,
     MissingVolumeError,
+    MixedImageFoldersError,
     PageExtError,
     PageNumError,
 )
@@ -356,22 +357,91 @@ class TestDirectoryScanning:
         assert result[1] == override_root / "01-x.cbz"
         assert result[2] == override_root / "02-y.cbz"
 
-    def test_get_all_volume_override_archives_raises_on_directory_entry(
-        self, tmp_path: Path
+    def test_stray_override_entries_are_skipped_and_logged(
+        self, tmp_path: Path, loguru_sink: list[str]
     ) -> None:
-        archive_root = tmp_path / "archive"
+        """A bad data pack must not stop the app: strays are warned about, not raised."""
         override_root = tmp_path / "override"
-        archive_root.mkdir()
         override_root.mkdir()
-        (override_root / "unexpected_subdir").mkdir()
+        (override_root / "__MACOSX").mkdir()
+        (override_root / "00-notes.txt").touch()  # volume 0 is out of range
+        (override_root / f"{LAST_VOLUME_NUMBER + 1}-extra.cbz").touch()
+        good = override_root / "01-x.cbz"
+        good.touch()
 
         archives = FantagraphicsVolumeArchives(
-            archive_root=archive_root,
+            archive_root=tmp_path / "archive",
             override_root=override_root,
             volume_list=[1],
         )
-        with pytest.raises(FileExistsError, match="Unexpected override archive directory"):
-            archives.get_all_volume_override_archives()
+
+        assert archives.get_all_volume_override_archives() == {1: good}
+        warnings = [line for line in loguru_sink if "unexpected entry" in line]
+        assert len(warnings) == 3
+        assert any("__MACOSX" in line for line in warnings)
+
+    def test_scan_reports_each_stray_in_name_order(self, tmp_path: Path) -> None:
+        override_root = tmp_path / "override"
+        override_root.mkdir()
+        first = override_root / "02-a.cbz"
+        first.touch()
+        (override_root / "02-b.cbz").touch()  # a second file for volume 2
+        (override_root / "README").touch()  # no volume number
+        (override_root / "sub").mkdir()
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=[2],
+        )
+
+        found, strays = archives.scan_override_root()
+
+        assert found == {2: first}
+        assert strays == [
+            override_root / "02-b.cbz",
+            override_root / "README",
+            override_root / "sub",
+        ]
+
+    def test_an_override_file_needs_no_extension(self, tmp_path: Path) -> None:
+        """The shipped volume 18 override has no ".cbz"; it must still count."""
+        override_root = tmp_path / "override"
+        override_root.mkdir()
+        bare = override_root / "18 - Donald Duck - The Lost Peg Leg Mine"
+        bare.touch()
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=[18],
+        )
+
+        assert archives.scan_override_root() == ({18: bare}, [])
+
+    def test_a_volume_outside_the_list_is_not_a_stray(self, tmp_path: Path) -> None:
+        override_root = tmp_path / "override"
+        override_root.mkdir()
+        (override_root / "05-x.cbz").touch()
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=[1],
+        )
+
+        assert archives.scan_override_root() == ({}, [])
+
+    def test_a_missing_overrides_folder_is_reported_not_raised(self, tmp_path: Path) -> None:
+        override_root = tmp_path / "gone"
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=[1],
+        )
+
+        assert archives.scan_override_root() == ({}, [override_root])
+        assert archives.get_all_volume_override_archives() == {}
 
 
 class TestGetArchiveContents:
@@ -397,6 +467,42 @@ class TestGetArchiveContents:
         _subdir, image_filenames = FantagraphicsVolumeArchives._get_archive_contents(zip_path)
 
         assert image_filenames == ["page001.png", "page002.png"]
+
+    def test_skips_the_junk_finder_compress_adds(self, tmp_path: Path) -> None:
+        """A volume zipped with Finder holds `__MACOSX/` and `._` copies of every image."""
+        zip_path = tmp_path / "01-vol.cbz"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for name in ["page001.png", "page002.png"]:
+                zf.writestr(f"images/{name}", b"\x89PNG\r\n")
+                zf.writestr(f"__MACOSX/images/._{name}", b"junk")
+                zf.writestr(f"images/._{name}", b"junk")
+
+        subdir, image_filenames = FantagraphicsVolumeArchives._get_archive_contents(zip_path)
+
+        assert subdir == Path("images")
+        assert image_filenames == ["page001.png", "page002.png"]
+
+    def test_images_in_two_folders_are_an_error_naming_both(self, tmp_path: Path) -> None:
+        zip_path = tmp_path / "01-vol.cbz"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("images/page001.png", b"\x89PNG\r\n")
+            zf.writestr("extra/page002.png", b"\x89PNG\r\n")
+
+        with pytest.raises(MixedImageFoldersError) as exc_info:
+            FantagraphicsVolumeArchives._get_archive_contents(zip_path)
+
+        assert exc_info.value.image_subdirs == [Path("extra"), Path("images")]
+        msg = str(exc_info.value)
+        assert '"extra", "images"' in msg
+        assert str(zip_path) in msg
+
+    def test_images_at_the_archive_root_have_an_empty_subdir(self, tmp_path: Path) -> None:
+        zip_path = _make_override_zip(tmp_path / "01-vol.cbz", ["page001.png"])
+
+        subdir, image_filenames = FantagraphicsVolumeArchives._get_archive_contents(zip_path)
+
+        assert subdir == Path()
+        assert image_filenames == ["page001.png"]
 
 
 class TestGetFirstAndLastPageNums:

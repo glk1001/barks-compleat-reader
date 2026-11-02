@@ -2,7 +2,7 @@ import re
 import zipfile
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book import get_page_str
@@ -74,6 +74,29 @@ class EmptyArchiveError(Exception):
             f" (looked for {exts}). The file is most likely empty, truncated or a"
             f" partial copy - replace it from the library and retry."
         )
+
+
+class MixedImageFoldersError(Exception):
+    """A volume archive whose page images are not all in one folder."""
+
+    def __init__(self, archive_filename: Path, image_subdirs: list[Path]) -> None:
+        folders = ", ".join(f'"{subdir.as_posix()}"' for subdir in image_subdirs)
+        super().__init__(
+            f'Fantagraphics archive "{archive_filename}" has page images in more than one'
+            f" folder ({folders}); they must all be in one. Replace it from the library"
+            f" and retry."
+        )
+        self.image_subdirs = image_subdirs
+
+
+_MACOS_JUNK_DIR = "__MACOSX"
+_MACOS_JUNK_PREFIX = "._"
+
+
+def _is_macos_junk(zip_entry_name: str) -> bool:
+    """Return whether a zip entry is macOS metadata, not content (Finder's Compress adds it)."""
+    entry = PurePosixPath(zip_entry_name)
+    return entry.parts[0] == _MACOS_JUNK_DIR or entry.name.startswith(_MACOS_JUNK_PREFIX)
 
 
 @dataclass(slots=True)
@@ -277,44 +300,83 @@ class FantagraphicsVolumeArchives:
         return archive_files
 
     def get_all_volume_override_archives(self) -> dict[int, Path]:
-        """Return a map of volume number to override archive path."""
-        override_archives = {}
-        for override_archive_file in self._override_root.iterdir():
-            if not override_archive_file.is_file():
-                msg = f'Unexpected override archive directory "{override_archive_file}".'
-                raise FileExistsError(msg)
+        """Return a map of volume number to override archive path.
 
-            try:
-                vol = self._get_fanta_volume(override_archive_file)
-                assert FIRST_VOLUME_NUMBER <= vol <= LAST_VOLUME_NUMBER
-                if vol in self._volume_list:
-                    override_archives[vol] = override_archive_file
-            except ValueError:
-                continue
-
+        A stray entry is logged and skipped rather than stopping the app: the overrides
+        folder comes from the data pack, so a stray is a bad install, which the nightly
+        validator reports through `scan_override_root`.
+        """
+        override_archives, strays = self.scan_override_root()
+        for stray in strays:
+            logger.warning(f'Skipping the unexpected entry "{stray}" in the overrides folder.')
         return override_archives
+
+    def scan_override_root(self) -> tuple[dict[int, Path], list[Path]]:
+        """Return the override archives by volume, and the overrides folder's stray entries.
+
+        An override archive is a file named for its volume; it needs no extension. A stray
+        is a folder, a file with no volume number or one outside the volume range, or a
+        second file for a volume (the first by name is kept). A missing folder holds
+        nothing and is itself reported as the one stray.
+
+        Returns:
+            The map of volume number to override archive path for the volumes in the
+            volume list, and the stray entries in name order.
+
+        """
+        override_archives: dict[int, Path] = {}
+        strays: list[Path] = []
+        try:
+            entries = sorted(self._override_root.iterdir())
+        except (FileNotFoundError, NotADirectoryError):
+            return {}, [self._override_root]
+
+        seen_vols: set[int] = set()
+        for entry in entries:
+            vol = self._get_override_volume(entry)
+            if vol is None or vol in seen_vols:
+                strays.append(entry)
+                continue
+            seen_vols.add(vol)
+            if vol in self._volume_list:
+                override_archives[vol] = entry
+
+        return override_archives, strays
+
+    def _get_override_volume(self, entry: Path) -> int | None:
+        """Return the volume an overrides-folder entry is for, or None for a stray."""
+        if not entry.is_file():
+            return None
+        try:
+            vol = self._get_fanta_volume(entry)
+        except ValueError:
+            return None
+        return vol if FIRST_VOLUME_NUMBER <= vol <= LAST_VOLUME_NUMBER else None
 
     @staticmethod
     def _get_archive_contents(archive_filename: Path) -> tuple[Path, list[str]]:
-        """Get the subdirectory and list of image filenames from the archive."""
+        """Get the folder and the sorted file names of the archive's page images.
+
+        macOS junk - the ``__MACOSX/`` folder and ``._`` files that Finder's Compress
+        adds - is skipped.
+
+        Raises:
+            MixedImageFoldersError: The page images are in more than one folder.
+
+        """
         with zipfile.ZipFile(archive_filename, "r") as archive:
             image_names = sorted(
-                [
-                    Path(f)
-                    for f in archive.namelist()
-                    if f.lower().endswith(tuple(_VALID_IMAGE_EXTENSION))
-                ]
+                Path(name)
+                for name in archive.namelist()
+                if name.lower().endswith(tuple(_VALID_IMAGE_EXTENSION)) and not _is_macos_junk(name)
             )
-            image_subdir = Path()
-            image_filenames = []
-            for image_name in image_names:
-                subdir = image_name.parent
-                if subdir != image_subdir:
-                    image_subdir = subdir
-                assert image_subdir == subdir
-                image_filenames.append(image_name.name)
 
-            return image_subdir, image_filenames
+        image_subdirs = sorted({image_name.parent for image_name in image_names})
+        if len(image_subdirs) > 1:
+            raise MixedImageFoldersError(archive_filename, image_subdirs)
+        image_subdir = image_subdirs[0] if image_subdirs else Path()
+
+        return image_subdir, [image_name.name for image_name in image_names]
 
     @staticmethod
     def _get_fanta_volume(archive_filename: Path) -> int:
