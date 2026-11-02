@@ -257,7 +257,7 @@ FANTA_OVERRIDE_ZIPS = {
     15: "15 - Donald Duck - The Ghost Sheriff of Last Gasp.cbz",
     16: "16 - Uncle Scrooge - The Lost Crown of Genghis Khan.cbz",
     17: "17 - Donald Duck - The Secret of Hondorica.cbz",
-    18: "18 - Donald Duck - The Lost Peg Leg Mine",
+    18: "18 - Donald Duck - The Lost Peg Leg Mine.cbz",
     19: "19 - Donald Duck - The Black Pearls of Tabu Yama.cbz",
     20: "20 - Uncle Scrooge - The Mines of King Solomon.cbz",
     21: "21 - Donald Duck - Christmas in Duckburg.cbz",

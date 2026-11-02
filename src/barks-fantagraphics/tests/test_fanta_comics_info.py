@@ -3,6 +3,9 @@ from collections import Counter
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
+    FANTA_OVERRIDE_ZIPS,
+    FIRST_VOLUME_NUMBER,
+    LAST_VOLUME_NUMBER,
     SERIES_COVERS,
     SERIES_CS,
     SERIES_ONE_PAGERS,
@@ -66,3 +69,21 @@ class TestSeriesInfo:
                 if info.series_name == series_name
             )
             assert series_numbers == list(range(1, len(series_numbers) + 1))
+
+
+class TestOverrideZipNames:
+    """The overrides script writes each volume's archive under its name here."""
+
+    def test_every_volume_has_one(self) -> None:
+        assert sorted(FANTA_OVERRIDE_ZIPS) == list(
+            range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        )
+
+    def test_each_is_a_cbz_named_for_its_volume(self) -> None:
+        """Volume 18's once lacked ".cbz", and data-v8 shipped it that way."""
+        misnamed = {
+            volume: name
+            for volume, name in FANTA_OVERRIDE_ZIPS.items()
+            if not (name.startswith(f"{volume:02d} - ") and name.endswith(".cbz"))
+        }
+        assert misnamed == {}
