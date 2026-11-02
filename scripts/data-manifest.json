@@ -6,9 +6,9 @@
       "md5": "c953aa0d8a63883e11c8f891fd67a69f"
     },
     "Carl Barks Wiki": {
-      "bytes": 9233683,
+      "bytes": 9238595,
       "files": 1125,
-      "md5": "77cf0aa60828cdb96c4592732dfb5c91"
+      "md5": "90e789f1aad71b2803c4550951587f9c"
     },
     "Fantagraphics Volumes Overrides": {
       "bytes": 1349303714,
@@ -46,11 +46,11 @@
       "md5": "87a4dfce153f9fc27545083f7914b5b7"
     },
     "prebuilt comics": {
-      "bytes": 9596584724,
+      "bytes": 9596844658,
       "files": 465,
-      "md5": "c90a6d3f80f07ae0332e8f00b2d0e402"
+      "md5": "7f81ef48e23ae761e9a2f923c84157ac"
     }
   },
-  "written_at": "2026-11-02T11:57:13+00:00",
+  "written_at": "2026-11-02T21:55:21+00:00",
   "written_on": "gregspc2"
 }
