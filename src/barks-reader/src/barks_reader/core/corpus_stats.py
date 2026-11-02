@@ -12,11 +12,12 @@ Two figures here are easy to get wrong, so they are computed deliberately:
   (``BibEntry.effective_qualifier``: his mark, or its correction where he left one
   out or other evidence overrules it), never from ``ComicBookInfo.is_barks_title``
   - that flag means "Barks himself titled it", not "Barks made it".
-* The payment ledger uses ``-1`` as an "unknown" sentinel for both the amount
-  and the accepted date - and 383 of its 947 records carry it, most of them
-  covers. Summing the column blindly *subtracts* a dollar per cover, so every
-  payment figure here is computed over the records with a real amount only, and
-  the footnote says how many that is.
+* The payment ledger records an unknown amount two ways: ``-1`` (277 records,
+  nearly all covers, ten of them with an unknown accepted date as well) and ``0``
+  (106 records, nearly all stories accepted from 1954 on) - 383 of its 947 records
+  in all. Summing the column blindly *subtracts* a dollar per ``-1``, so every
+  payment figure here is computed over the records with a positive amount and a
+  known date only, and the footnote says how many that is.
 
 The text section is separate because it needs the optional Whoosh speech index:
 ``compute_static_stats`` is instant and always available, while
@@ -484,7 +485,8 @@ def get_paid_records() -> list[PaymentInfo]:
 
     Returns:
         Every ``PaymentInfo`` whose amount and accepted year are both known.
-        Covers and a handful of late stories are recorded without an amount.
+        Covers (amount ``-1``) and about a hundred stories, nearly all accepted from
+        1954 on (amount ``0``), are recorded without one.
 
     """
     return [
