@@ -1,5 +1,10 @@
+# cspell:ignore PYTHONCOERCECLOCALE
+
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
@@ -143,6 +148,31 @@ class TestGetByline:
 class TestComicBookIniFiles:
     def test_all_ini_files_are_valid(self) -> None:
         validate_ini_files_against_barks_titles()
+
+    def test_a_name_with_an_accent_is_read_whatever_the_locale(self) -> None:
+        """A story ini is UTF-8, whatever a machine's default encoding (Windows: cp1252)."""
+        script = (
+            "from barks_fantagraphics.comics_database import ComicsDatabase\n"
+            "from barks_fantagraphics.comics_helpers import"
+            " validate_ini_files_against_barks_titles\n"
+            "validate_ini_files_against_barks_titles()\n"
+            "db = ComicsDatabase(for_building_comics=False)\n"
+            "db.get_configured_titles_in_fantagraphics_volume(3)\n"
+            "print(ascii(db.get_comic_book('Silent Night').extra_pub_info))\n"
+        )
+        env = dict(os.environ, PYTHONUTF8="0", PYTHONCOERCECLOCALE="0", LC_ALL="C", LANG="C")
+
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert ascii("Printz-Påhlson")[1:-1] in result.stdout
 
 
 # ---------------------------------------------------------------------------

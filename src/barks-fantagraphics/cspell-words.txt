@@ -616,7 +616,6 @@ overseeded
 paddleballs
 paddleocr
 pago
-pahlsom
 påhlson
 palo
 panamint

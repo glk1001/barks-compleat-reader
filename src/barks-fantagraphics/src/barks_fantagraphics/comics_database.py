@@ -194,7 +194,7 @@ class ComicsDatabase:
         fanta_key = f"FANTA_{volume:02}"
         for file in self._ini_files:
             ini_file = self._story_titles_dir / file
-            config.read(ini_file)
+            config.read(ini_file, encoding="utf-8")
             if config["info"]["source_comic"] == fanta_key:
                 story_title = get_title_str_from_filename(file)
                 if not exclude_non_comics or STR_TITLE_TO_ENUM[story_title] not in NON_COMIC_TITLES:
@@ -447,7 +447,7 @@ class ComicsDatabase:
         fanta_info: FantaComicBookInfo = self.get_fanta_comic_book_info(story_title)
 
         config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-        config.read(ini_file)
+        config.read(ini_file, encoding="utf-8")
         fanta_book = FANTA_SOURCE_COMICS[config["info"]["source_comic"]]
         comic_book_dirs = self._get_comic_book_dirs(fanta_book)
 
@@ -560,7 +560,7 @@ def _build_comic_book(
     logger.debug(f'Getting comic book info from config file "{get_relpath(ini_file)}".')
 
     config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-    config.read(ini_file)
+    config.read(ini_file, encoding="utf-8")
 
     issue_title = config["info"].get("issue_title", "")
 

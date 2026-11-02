@@ -109,7 +109,7 @@ class TestTheCreditReader:
         "note",
         [
             "New opening half-page written by David Gerstein",
-            "and Unn Printz-Pahlsom, art by Daan Jippes",
+            "and Unn Printz-Påhlson, art by Daan Jippes",
             "Layout and restoration by Kim Weston",
             "Original art and dialogue on pages 2, 4, 5, 6, 7, and 8 restored by GLK, Dec 2025",
         ],

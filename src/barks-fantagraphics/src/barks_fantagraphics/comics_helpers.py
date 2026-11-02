@@ -211,7 +211,7 @@ def validate_ini_files_against_barks_titles() -> None:
 
     for file in comics_database._ini_files:  # noqa: SLF001
         ini_file = comics_database.get_story_titles_dir() / file
-        config.read(ini_file)
+        config.read(ini_file, encoding="utf-8")
 
         story_title = get_title_str_from_filename(file)
         if story_title not in STR_TITLE_TO_ENUM:

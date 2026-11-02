@@ -16,7 +16,7 @@ Each line of ``extra_pub_info`` is read on its own, and a credit must be the who
 
 Anything else is not a credit: restoration notes ("Original art and dialogue ... restored
 by GLK"), "Layout and restoration by Kim Weston", and Silent Night's "and Unn
-Printz-Pahlsom, art by Daan Jippes", which credits only its added opening half-page. A line
+Printz-Påhlson, art by Daan Jippes", which credits only its added opening half-page. A line
 that names a script, pencils or inks but is none of the forms above is kept as
 unrecognised, so a new wording is reported rather than silently missed. (Bare "art" is no
 sign of a credit: restoration notes say it too.)
