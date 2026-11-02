@@ -1,3 +1,4 @@
+# cspell:ignore Émile Ögel Ogel Øresund
 """How the Main Index heads a tag or tag group (barks_reader.core.index_headings)."""
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from barks_reader.core.index_headings import (
     tag_group_heading,
     tag_heading,
     tag_heading_markup,
+    without_accents,
 )
 
 
@@ -74,6 +76,7 @@ def test_no_cross_reference_points_to_where_the_reader_already_is() -> None:
         ("Daisy Duck", "Daisy Duck: first appearance"),
         ("Daisy Duck: first appearance", "Daisy's Dazed Days"),  # word by word
         ("McBrine, P.J.", "McCobb, Cornelius"),
+        ("Garé", "Garfield"),  # an accented letter sorts as its plain one, not after z
     ],
 )
 def test_entries_sort_word_by_word_ignoring_case_and_punctuation(before: str, after: str) -> None:
@@ -83,6 +86,14 @@ def test_entries_sort_word_by_word_ignoring_case_and_punctuation(before: str, af
 def test_the_sort_key_is_the_letters_digits_and_spaces_lower_cased() -> None:
     """Its words kept apart, so "Daisy Duck" sorts before "Daisy's Dazed Days"."""
     assert index_sort_key("Donald's Gold-Mine, 1952!") == "donalds goldmine 1952"
+
+
+@pytest.mark.parametrize(
+    ("text", "plain"),
+    [("Émile", "Emile"), ("Ögel Señor", "Ogel Senor"), ("Øresund", "Øresund"), ("", "")],
+)
+def test_without_accents_drops_only_the_marks(text: str, plain: str) -> None:
+    assert without_accents(text) == plain
 
 
 def test_neighbor_jones_first_real_appearance_has_real_in_italics() -> None:

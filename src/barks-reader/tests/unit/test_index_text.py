@@ -60,6 +60,15 @@ class TestShortenIfNecessary:
             shorten_if_necessary(number) == "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"
         )
 
+    @pytest.mark.parametrize("term", ["500,000", "500,000,000", "500,000 dollars"])
+    def test_an_ordinary_number_starting_like_the_huge_one_is_kept(self, term: str) -> None:
+        """Only the 77-zero number is written out: one that merely starts "500,000" was refused."""
+        assert shorten_if_necessary(term) == term
+
+    def test_a_long_term_starting_like_the_huge_number_is_shortened(self) -> None:
+        term = "500,000 dollars in a bag on the bank's back step"
+        assert shorten_if_necessary(term) == "500,000 dollars in a bag on..."
+
 
 class TestStackedPrefixLabel:
     def test_a_range_is_stacked_over_two_lines(self) -> None:

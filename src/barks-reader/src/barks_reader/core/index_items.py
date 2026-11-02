@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 
+from .index_headings import without_accents
 from .index_text import shorten_if_necessary
 from .speech_hits import comic_pages
 
@@ -80,7 +81,8 @@ def entity_index(terms: Iterable[str]) -> dict[str, list[IndexItem]]:
 
     Returns:
         The rows under each letter (``"A"`` to ``"Z"``), in the terms' order. An empty
-        term is left out.
+        term is left out; an accented first letter files under its plain one ("Éclair"
+        under "E").
 
     Raises:
         RuntimeError: A term starts with something other than a letter.
@@ -90,7 +92,7 @@ def entity_index(terms: Iterable[str]) -> dict[str, list[IndexItem]]:
     for term in terms:
         if not term:
             continue
-        ch = term[0].lower()
+        ch = without_accents(term[0]).lower()[:1]
         if not "a" <= ch <= "z":
             msg = f'Entity term has non-alpha prefix: "{term}".'
             raise RuntimeError(msg)

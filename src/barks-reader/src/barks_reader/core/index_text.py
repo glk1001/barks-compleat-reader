@@ -47,6 +47,9 @@ def indexable_title(title: Titles) -> str:
 
 # The longest text a word or entity index item shows, before it is shortened.
 INDEX_ITEM_MAX_TEXT_WIDTH = 30
+# The zeros in the one huge number said in a story ("500,000,000,...,000.16"): any
+# other number starting "500,000" is an ordinary term, shortened like the rest.
+_HUGE_NUMBER_ZEROS = 69 + 8
 
 
 def shorten_if_necessary(text: str) -> str:
@@ -60,13 +63,12 @@ def shorten_if_necessary(text: str) -> str:
         77-zero number said in a story is written out in words instead.
 
     """
-    if not text.startswith("500,000"):
-        if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
-            return text
-        return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
+    if text.startswith("500,000") and text.count("0") == _HUGE_NUMBER_ZEROS:
+        return "500,000,—plus sixty-nine more zeroes—,000.16"
 
-    assert text.count("0") == (69 + 8)
-    return "500,000,—plus sixty-nine more zeroes—,000.16"
+    if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
+        return text
+    return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
 
 
 def stacked_prefix_label(prefix: str, terms: list[str]) -> str:

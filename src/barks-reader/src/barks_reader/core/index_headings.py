@@ -18,6 +18,8 @@ Kivy-free, so the headings can be tested without the screen.
 
 from __future__ import annotations
 
+import unicodedata
+
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.speech_markup import escape_markup
 
@@ -158,10 +160,26 @@ def index_sort_key(text: str) -> str:
         text: The entry as the index shows it.
 
     Returns:
-        The text lower-cased, with only its letters, digits and spaces.
+        The text lower-cased and without accents, with only its letters, digits and
+        spaces: "Garé" sorts with "Gare", not after "Garfield".
 
     """
-    return "".join(c for c in text.lower() if c.isalnum() or c == " ")
+    return "".join(c for c in without_accents(text).lower() if c.isalnum() or c == " ")
+
+
+def without_accents(text: str) -> str:
+    """Return `text` with the accents taken off its letters: "Éclair" is "Eclair".
+
+    Args:
+        text: Any text.
+
+    Returns:
+        The text with each letter's combining marks dropped. A letter that has no
+        unaccented form (such as "Ø" or "ß") is kept as it is.
+
+    """
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
 def _without_leading_article(text: str) -> str:

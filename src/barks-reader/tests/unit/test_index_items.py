@@ -1,3 +1,4 @@
+# cspell:ignore Émile Ögel Ogel Øresund
 """What an index row opens (barks_reader.core.index_items)."""
 
 from __future__ import annotations
@@ -58,3 +59,15 @@ class TestEntityIndex:
 
     def test_z_is_a_letter(self) -> None:
         assert [i.id for i in entity_index(["Zinc"])["Z"]] == ["Zinc"]
+
+    def test_an_accented_first_letter_files_under_its_plain_letter(self) -> None:
+        """An accented name once raised for the whole index."""
+        index = entity_index(["Émile", "Ögel", "Eggs"])
+        assert {k: [i.id for i in v] for k, v in index.items()} == {
+            "E": ["Émile", "Eggs"],
+            "O": ["Ögel"],
+        }
+
+    def test_a_letter_with_no_plain_form_is_still_an_error(self) -> None:
+        with pytest.raises(RuntimeError, match="non-alpha prefix"):
+            entity_index(["Øresund"])
