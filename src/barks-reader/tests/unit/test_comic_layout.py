@@ -413,6 +413,27 @@ class TestBuildPageMap:
         assert layout.page_map["1"].is_solo is False
         assert layout.page_map["2"].is_solo is True
 
+    def test_back_no_panels_double_pages_show_as_a_pair(self) -> None:
+        # As in The Terror of the River!!: the pair, then a solo back page.
+        pages = _srce_dest(
+            [
+                ("body1.jpg", PageType.BODY),
+                ("body2.jpg", PageType.BODY),
+                ("left.jpg", PageType.BACK_NO_PANELS_DOUBLE),
+                ("right.jpg", PageType.BACK_NO_PANELS_DOUBLE),
+                ("back.jpg", PageType.BACK_NO_PANELS),
+            ]
+        )
+        builder = ComicLayoutBuilder(sorted_pages_port=FakeSortedPagesPort(pages))
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert layout.display_units == [
+            DisplayUnit(0, 1),
+            DisplayUnit(2, 3),
+            DisplayUnit(4, None),
+        ]
+
     def test_front_matter_only_comic_has_no_last_body_page(self) -> None:
         # Nothing ever starts the body, so last_body_page keeps its initial "".
         pages = _srce_dest(

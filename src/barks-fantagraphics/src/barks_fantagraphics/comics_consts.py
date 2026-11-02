@@ -104,7 +104,6 @@ SOLO_PAGE_TYPES: frozenset[PageType] = frozenset(
         PageType.PAINTING_NO_BORDER,
         PageType.BACK_MATTER,
         PageType.BACK_NO_PANELS,
-        PageType.BACK_NO_PANELS_DOUBLE,
         PageType.BACK_PAINTING,
         PageType.BACK_PAINTING_NO_BORDER,
     ]
