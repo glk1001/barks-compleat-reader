@@ -128,7 +128,7 @@ class BottomTitleViewScreen(FloatLayout):
     MAIN_TITLE_BANNER_DIM_FACTOR = 0.3
     # The main title's top below its band's top, in dp: on a single page and on the
     # two-page spread (the bands are 18% and 12% of the view). A long title that wraps
-    # grows down from there.
+    # rises from there as far as its lines need to stay in the band.
     MAIN_TITLE_TOP_OFFSET_SINGLE = 28
     MAIN_TITLE_TOP_OFFSET_SPREAD = 50
     main_title_banner_texture = ObjectProperty(allownone=True)

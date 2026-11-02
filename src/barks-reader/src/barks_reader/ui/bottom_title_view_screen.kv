@@ -90,9 +90,17 @@
                         pos: self.pos
                         size: self.size
 
+                # As tall as its lines, its top the offset below the band's top; a title
+                # that wraps rises as far as its lines need to stay in the band. A label
+                # held to the band's height (with the offset as padding) dropped the lines
+                # that did not fit: "Christmas on Bear" lost its "Mountain".
                 BgColorLabel:
                     id: main_title_label
-                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                    pos_hint: {'center_x': 0.5}
+                    y:
+                        self.parent.top - self.height - min( \
+                        dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD if root.layout_mode == 'spread' else root.MAIN_TITLE_TOP_OFFSET_SINGLE), \
+                        max(0, self.parent.height - self.height))
                     text: root.main_title_text
                     font_name: fm.main_title_font_name
                     font_size: fm.main_title_font_size
@@ -102,14 +110,11 @@
                     bold: True
                     markup: True
                     mipmap: True
-                    size_hint: 1, 1
-                    text_size: self.size
+                    size_hint: 1, None
+                    text_size: self.width, None
+                    height: self.texture_size[1]
                     halign: 'center'
                     valign: 'top'
-                    padding:
-                        0, \
-                        dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD if root.layout_mode == 'spread' else root.MAIN_TITLE_TOP_OFFSET_SINGLE), \
-                        0, 0
 
                 # --- Footnote at bottom-left ---
                 # Its left edge is the picture's on the spread (the drawn art, not the
