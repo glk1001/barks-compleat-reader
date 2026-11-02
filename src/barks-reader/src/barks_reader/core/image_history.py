@@ -24,7 +24,16 @@ class ImageHistory:
         self.index = -1
 
     def add(self, image_info: ImageInfo) -> None:
-        """Record `image_info` as the image on show, the newest."""
+        """Record `image_info` as the image on show, the newest.
+
+        After a step back, the images ahead of the one on show are dropped, as a
+        browser drops its forward pages: the new image follows the one that was on
+        show, so the spread's lower tier shows that one, not the old newest. Images
+        put behind before any was on show (`add_oldest`) are kept.
+        """
+        if self.index >= 0:
+            while len(self.images) - 1 > self.index:
+                self.images.pop()
         self.images.append(image_info)
         self.index = len(self.images) - 1
 

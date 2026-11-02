@@ -88,3 +88,49 @@ def test_a_full_history_drops_its_newest_for_one_added_at_the_oldest_end() -> No
     assert history.previous() == _image("seed")
     assert history.forward() == _image("b")
     assert history.forward() is None
+
+
+def test_an_image_added_after_a_step_back_drops_the_images_ahead() -> None:
+    """The lower tier once showed the old newest image, not the one just on show."""
+    history = ImageHistory(max_images=20)
+    for name in "abc":
+        history.add(_image(name))
+    history.back()
+    history.back()
+
+    history.add(_image("d"))
+
+    assert list(history.images) == [_image("a"), _image("d")]
+    assert history.index == 1
+    assert history.previous() == _image("a")
+    assert history.forward() is None
+
+
+def test_an_image_added_at_the_newest_keeps_every_image() -> None:
+    history = ImageHistory(max_images=20)
+    history.add(_image("a"))
+    history.add(_image("b"))
+    assert list(history.images) == [_image("a"), _image("b")]
+
+
+def test_the_first_image_added_keeps_the_seeds_put_behind() -> None:
+    history = ImageHistory(max_images=20)
+    history.add_oldest(_image("seed2"))
+    history.add_oldest(_image("seed1"))
+
+    history.add(_image("a"))
+
+    assert list(history.images) == [_image("seed1"), _image("seed2"), _image("a")]
+    assert history.index == 2
+
+
+def test_an_image_added_as_the_oldest_of_an_empty_history_shows_nothing() -> None:
+    history = ImageHistory(max_images=1)
+    assert history.add_oldest(_image("seed")) is True
+    assert list(history.images) == [_image("seed")]
+    assert history.index == -1
+    assert history.previous() is None
+    # Full with nothing on show: a seed may still replace the newest.
+    assert history.add_oldest(_image("older")) is True
+    assert list(history.images) == [_image("older")]
+    assert history.index == -1
