@@ -89,6 +89,19 @@ class MixedImageFoldersError(Exception):
         self.image_subdirs = image_subdirs
 
 
+def has_archive_extension(path: Path) -> bool:
+    """Return whether a volume or override archive is named as one.
+
+    Args:
+        path: The archive.
+
+    Returns:
+        Whether its extension is ``.cbz`` or ``.zip``, in any case.
+
+    """
+    return path.suffix.lower() in (CBZ_FILE_EXT, ZIP_FILE_EXT)
+
+
 _MACOS_JUNK_DIR = "__MACOSX"
 _MACOS_JUNK_PREFIX = "._"
 
@@ -286,7 +299,7 @@ class FantagraphicsVolumeArchives:
             # check. Treat it as empty; callers route this to the all-missing path.
             return []
         for archive_file in archive_root_contents:
-            if archive_file.suffix.lower() not in [CBZ_FILE_EXT, ZIP_FILE_EXT]:
+            if not has_archive_extension(archive_file):
                 continue
 
             if archive_file.is_file():
@@ -302,19 +315,28 @@ class FantagraphicsVolumeArchives:
     def get_all_volume_override_archives(self) -> dict[int, Path]:
         """Return a map of volume number to override archive path.
 
-        A stray entry is logged and skipped rather than stopping the app: the overrides
-        folder comes from the data pack, so a stray is a bad install, which the nightly
-        validator reports through `scan_override_root`.
+        A stray entry is logged and skipped rather than stopping the app, and an archive
+        without a ``.cbz`` or ``.zip`` extension is logged and used: the overrides folder
+        comes from the data pack, so either is a bad pack, which the nightly validator
+        reports through `scan_override_root` and `has_archive_extension`.
         """
         override_archives, strays = self.scan_override_root()
         for stray in strays:
             logger.warning(f'Skipping the unexpected entry "{stray}" in the overrides folder.')
+        for archive in override_archives.values():
+            if not has_archive_extension(archive):
+                logger.warning(
+                    f'The override archive "{archive}" has no "{CBZ_FILE_EXT}" or'
+                    f' "{ZIP_FILE_EXT}" extension; using it anyway.'
+                )
         return override_archives
 
     def scan_override_root(self) -> tuple[dict[int, Path], list[Path]]:
         """Return the override archives by volume, and the overrides folder's stray entries.
 
-        An override archive is a file named for its volume; it needs no extension. A stray
+        An override archive is a file named for its volume. It should end in ``.cbz`` or
+        ``.zip`` (`has_archive_extension`), but one that does not is still the volume's
+        archive, not a stray, so a misnamed file in a published pack keeps working. A stray
         is a folder, a file with no volume number or one outside the volume range, or a
         second file for a volume (the first by name is kept). A missing folder holds
         nothing and is itself reported as the one stray.

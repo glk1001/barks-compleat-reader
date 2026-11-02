@@ -64,6 +64,7 @@ from barks_reader.core.fantagraphics_volumes import (
     MissingArchiveFilesError,
     PageExtError,
     PageNumError,
+    has_archive_extension,
 )
 from barks_reader.core.image_pipeline import load_pil as reader_load_pil
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
@@ -1121,6 +1122,9 @@ def _scan_override_archives(
         return {}
     for stray in strays:
         phase.add(f'override directory holds an unexpected entry: "{stray}"')
+    for archive in override_archive_filenames.values():
+        if not has_archive_extension(archive):
+            phase.add(f'override archive has no ".cbz" or ".zip" extension: "{archive}"')
     return override_archive_filenames
 
 

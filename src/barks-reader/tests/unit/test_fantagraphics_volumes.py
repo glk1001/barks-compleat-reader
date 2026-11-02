@@ -20,6 +20,7 @@ from barks_reader.core.fantagraphics_volumes import (
     MixedImageFoldersError,
     PageExtError,
     PageNumError,
+    has_archive_extension,
 )
 
 
@@ -404,8 +405,10 @@ class TestDirectoryScanning:
             override_root / "sub",
         ]
 
-    def test_an_override_file_needs_no_extension(self, tmp_path: Path) -> None:
-        """The shipped volume 18 override has no ".cbz"; it must still count."""
+    def test_an_override_file_without_an_extension_is_used_but_warned_about(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """data-v8 ships volume 18's override with no ".cbz": a bad name, but still the archive."""
         override_root = tmp_path / "override"
         override_root.mkdir()
         bare = override_root / "18 - Donald Duck - The Lost Peg Leg Mine"
@@ -418,6 +421,24 @@ class TestDirectoryScanning:
         )
 
         assert archives.scan_override_root() == ({18: bare}, [])
+        assert archives.get_all_volume_override_archives() == {18: bare}
+        assert any(
+            f'"{bare}" has no ".cbz" or ".zip" extension; using it anyway' in line
+            for line in loguru_sink
+        )
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("01 - a.cbz", True),
+            ("01 - a.ZIP", True),
+            ("01 - a", False),
+            ("05 - Mr. X", False),  # a dot in the title is not an extension
+            ("01 - a.cbr", False),
+        ],
+    )
+    def test_has_archive_extension(self, name: str, *, expected: bool) -> None:
+        assert has_archive_extension(Path(name)) is expected
 
     def test_a_volume_outside_the_list_is_not_a_stray(self, tmp_path: Path) -> None:
         override_root = tmp_path / "override"
