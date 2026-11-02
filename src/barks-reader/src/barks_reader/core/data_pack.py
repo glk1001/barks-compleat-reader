@@ -1,3 +1,4 @@
+# cspell:ignore ENOTEMPTY
 """The data pack's version file, and the update an installed reader can take from new packs.
 
 The two data packs (``barks-reader-data-1.barkspack`` and ``-2``) each carry
@@ -20,6 +21,7 @@ scripts.
 
 from __future__ import annotations
 
+import errno
 import json
 import shutil
 import subprocess
@@ -98,7 +100,7 @@ class DataPackInfo:
                 tag=str(body["tag"]),
                 built_at=datetime.fromisoformat(body["built_at"]),
                 built_on=str(body["built_on"]),
-                entries=dict(body["entries"]),
+                entries=_parse_entries(body["entries"]),
             )
         except (KeyError, TypeError, ValueError) as exc:
             msg = f"not a data pack version file: {exc}"
@@ -118,6 +120,25 @@ class DataPackInfo:
     def short(self) -> str:
         """Return the pack as a message names it: "data pack 6"."""
         return f"data pack {self.version}"
+
+
+def _parse_entries(entries: object) -> dict[str, dict[str, Any]]:
+    """Return a version file's folder fingerprints, checking each has its byte count.
+
+    Raises:
+        TypeError: The entries are not a map of names to fingerprints with an integer
+            ``bytes``.
+
+    """
+    if not isinstance(entries, dict):
+        msg = f"entries is not a map: {entries!r}"
+        raise TypeError(msg)
+    for name, fingerprint in entries.items():
+        size = fingerprint.get("bytes") if isinstance(fingerprint, dict) else None
+        if not isinstance(size, int) or isinstance(size, bool):
+            msg = f"entry {name!r} has no byte count: {fingerprint!r}"
+            raise TypeError(msg)
+    return dict(entries)
 
 
 def pack_manifest_json(
@@ -414,10 +435,9 @@ def verify_extracted(new_dir: Path, expected: DataPackInfo) -> list[str]:
         path = new_dir / name
         if not path.exists():
             problems.append(f'"{name}" was not extracted')
-        elif path.is_file() and path.stat().st_size != fingerprint.get("bytes"):
+        elif path.is_file() and (size := path.stat().st_size) != fingerprint["bytes"]:
             problems.append(
-                f'"{name}" is {path.stat().st_size:,} bytes, not the'
-                f" {fingerprint.get('bytes'):,} the pack says"
+                f'"{name}" is {size:,} bytes, not the {fingerprint["bytes"]:,} the pack says'
             )
     return problems
 
@@ -484,7 +504,8 @@ def swap_reader_files(
     The installed folder goes to ``.old`` first and ``.new`` is renamed over its name. On
     Windows a rename fails with ``PermissionError`` while a process holds a file in the
     folder - the reader that spawned the installer, still closing - so each rename is
-    retried. If the second rename fails anyway, the installed folder is put back, with
+    retried, unless its error cannot clear up by waiting (the source missing, or the
+    target already there). If the second rename fails anyway, the installed folder is put back, with
     the same retries.
 
     Args:
@@ -500,7 +521,8 @@ def swap_reader_files(
 
     Raises:
         OSError: A rename still failed after every attempt (``PermissionError`` for a
-            folder in use); the installed folder is back in place.
+            folder in use), or failed at once for good; the installed folder is back in
+            place.
         ReaderFilesStrandedError: The installed folder could not be put back either.
 
     """
@@ -526,6 +548,16 @@ def swap_reader_files(
     return old_dir if moved_aside else None
 
 
+# A rename failing with one of these will fail the same way however long it waits: the
+# source is not there, or the target is (a ``.old`` that `clear_leftovers` could not
+# remove). Anything else - a file held open on Windows above all - may clear up.
+_PERMANENT_RENAME_ERRORS = (FileNotFoundError, FileExistsError, NotADirectoryError)
+
+
+def _is_permanent_rename_error(exc: OSError) -> bool:
+    return isinstance(exc, _PERMANENT_RENAME_ERRORS) or exc.errno == errno.ENOTEMPTY
+
+
 def _rename_with_retries(
     source: Path,
     target: Path,
@@ -538,7 +570,7 @@ def _rename_with_retries(
         try:
             rename(source, target)
         except OSError as exc:
-            if attempt == attempts:
+            if attempt == attempts or _is_permanent_rename_error(exc):
                 raise
             logger.warning(
                 f'Renaming "{source}" to "{target}" failed ({exc});'

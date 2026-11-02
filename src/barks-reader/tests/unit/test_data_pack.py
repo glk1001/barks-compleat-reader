@@ -1,7 +1,9 @@
+# cspell:ignore ENOTEMPTY
 """The data pack version file, the search for newer packs, and the folder swap."""
 
 from __future__ import annotations
 
+import errno
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -77,6 +79,11 @@ class TestDataPackInfo:
             _FIELDS.replace('"version": 6', '"version": "6"'),
             _FIELDS.replace('"version": 6', '"version": true'),
             _FIELDS.replace("2026-10-29", "yesterday"),
+            _FIELDS.replace('"entries": {}', '"entries": []'),
+            _FIELDS.replace('"entries": {}', '"entries": {"Indexes": 10}'),
+            _FIELDS.replace('"entries": {}', '"entries": {"Indexes": {"files": 2}}'),
+            _FIELDS.replace('"entries": {}', '"entries": {"Indexes": {"bytes": "10"}}'),
+            _FIELDS.replace('"entries": {}', '"entries": {"Indexes": {"bytes": true}}'),
         ],
     )
     def test_a_file_of_another_shape_is_rejected(self, text: str) -> None:
@@ -135,6 +142,14 @@ class TestReading:
             pack.writestr(PACK_MEMBER, "{}")
         with pytest.raises(PackUnreadableError, match="not a data pack version file"):
             read_from_pack(tmp_path / "broken.barkspack")
+
+    def test_a_pack_whose_entry_has_no_byte_count_is_unreadable(self, tmp_path: Path) -> None:
+        """Caught here, it cannot crash `verify_extracted` formatting a missing size."""
+        with ZipFile(tmp_path / "no-bytes.barkspack", "w") as pack:
+            pack.writestr(PACK_MEMBER, _FIELDS.replace("{}", '{"Indexes": {"files": 2}}'))
+
+        with pytest.raises(PackUnreadableError, match=r"entry 'Indexes' has no byte count"):
+            read_from_pack(tmp_path / "no-bytes.barkspack")
 
 
 class TestPackDir:
@@ -406,6 +421,32 @@ class TestSwap:
         assert f'Putting "{old}" back as "{reader_files}" failed' in str(info.value)
         assert not reader_files.exists()
         assert (old / "old.txt").read_text() == "old"
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FileNotFoundError(2, "no such folder"),
+            FileExistsError(17, "already there"),
+            NotADirectoryError(20, "not a folder"),
+            OSError(errno.ENOTEMPTY, "not empty"),
+        ],
+    )
+    def test_a_rename_that_cannot_clear_up_is_not_retried(
+        self, reader_files: Path, error: OSError
+    ) -> None:
+        """A half-removed ``.old`` in the way would fail all 30 tries; waiting cannot help."""
+        waits: list[float] = []
+
+        def rename(source: Path, target: Path) -> None:
+            if source == reader_files:
+                raise error
+            source.rename(target)
+
+        with pytest.raises(type(error)):
+            swap_reader_files(reader_files, attempts=5, sleep=waits.append, rename=rename)
+
+        assert waits == []
+        assert (reader_files / "old.txt").read_text() == "old"
 
     def test_leftovers_of_an_interrupted_update_are_removed(self, reader_files: Path) -> None:
         old = reader_files.with_name("Reader Files.old")
