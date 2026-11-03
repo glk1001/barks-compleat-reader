@@ -234,6 +234,12 @@ BARKS_EXTRA_INFO = {
     " water. You can't dive into a pile of money like you would into a snowdrift. So he had to"
     " have a trick by which he did it, and I don't explain that trick because I don't understand"
     ' it myself."[/i]',
+    Titles.GOLDEN_HELMET_THE: "This story began with a coastline in Hal Foster's [i]Prince"
+    ' Valiant.[/i] Barks recalled: [i]"Valiant was beautifully illustrated. Each panel was a work'
+    " of art. I was very much taken with one of the coastal scenes... I wanted to work with the"
+    ' coastline, so I tried to think of what would happen to Donald to bring him up there."[/i]'
+    " Reading about how the Norsemen discovered America centuries before Columbus then gave him"
+    " the plot.",
     Titles.FINANCIAL_FABLE_A: "In a letter from October 14, 1969, Barks wrote:"
     " [i]\"...I have no favorite 10-pager anymore. The issue of March 1951 I've always considered"
     ' technically well done. It had a rhythm that could almost have been set to music."[/i]',
