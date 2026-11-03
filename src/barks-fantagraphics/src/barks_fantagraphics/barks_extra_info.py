@@ -43,6 +43,13 @@ BARKS_EXTRA_INFO = {
     Titles.GOOD_NEIGHBORS: "The first real appearance of [b][i]Neighbor Jones[/i][/b]"
     " – the one we all know!"
     " And the first appearance of [b][i]Car 313[/i][/b] in a Barks story.",
+    Titles.KITE_WEATHER: "Barks originally drew this as a ten-page story with three tiers of panels"
+    " to a page. With World War II paper restrictions forcing comics to shed pages, his editor,"
+    " rather than cut panels, shrank the art and rearranged it into seven pages of four tiers,"
+    " leaving the lettering at full size. For the Fantagraphics volume, the version here, Kim"
+    " Weston restored the original three-tier layout: the art was enlarged by about 40% with the"
+    " captions kept at proper size, and ink lines and details were cloned to fill panels the editor"
+    " had trimmed. The trimmed parts are lost for good.",
     Titles.THREE_DIRTY_LITTLE_DUCKS: "The first appearance of [b][i]Herbert[/i][/b]"
     " and [b][i]Bolivar[/i][/b] the dog."
     "\n\nAnd the first Barks Duck story drawn in a four tier layout.",
