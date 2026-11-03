@@ -221,6 +221,14 @@ BARKS_EXTRA_INFO = {
     " Brittanica. The rock of gibraltar picture in 'Ancient Persia' and the authentic-looking"
     " background props and frescoes are from Nat'l Geo. I simplify such material,"
     ' naturally."[/i]',
+    Titles.VACATION_TIME: "In the [i]Duck Man[/i] interview, Barks said this about"
+    " [i]Vacation Time:[/i]"
+    " [i]\"I couldn't create suspense without having them in real danger, and real danger means"
+    " the fear of death. So all of the times these ducks got in bad situations they did have that"
+    " opportunity of dying, in case they got clobbered. It made it more true to life to have them"
+    " up against these impossible situations in which they could lose their lives if they didn't"
+    " win. And in the forest fire sequence, you bet they were in danger. It made the story"
+    ' memorable."[/i]',
     Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] interview Barks said this about"
     " [i]In Old California:[/i]"
     ' [i]"I was able to present a little love story in that, and also'
