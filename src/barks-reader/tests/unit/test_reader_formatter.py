@@ -1,4 +1,4 @@
-# cspell:ignore duckin
+# cspell:ignore duckin pered
 from __future__ import annotations
 
 from typing import Any
@@ -24,6 +24,25 @@ def test_hyphenate_text_skips_markup_and_paragraph_tokens() -> None:
     assert SOFT_HYPHEN not in res.split(" ")[1]  # newline token untouched
     assert SOFT_HYPHEN not in res.split(" ")[2]  # ampersand token untouched
     assert SOFT_HYPHEN in res.split(" ")[3]
+
+
+@pytest.mark.parametrize(
+    ("word", "expected"),
+    [
+        # A break one letter before the word's own hyphen would strand the letter.
+        ("full-dress", f"full-{SOFT_HYPHEN}dress"),
+        ("all-Barks", "all-Barks"),
+        ("ill-tempered", f"ill-tem{SOFT_HYPHEN}pered"),
+        # A break right before the hyphen would double it.
+        ("three-tier", f"three-ti{SOFT_HYPHEN}er"),
+        # A break right after the hyphen is the natural one.
+        ("half-closed", f"half-{SOFT_HYPHEN}closed"),
+        # Away from a hyphen, nothing changes.
+        ("after", f"af{SOFT_HYPHEN}ter"),
+    ],
+)
+def test_hyphenate_text_keeps_breaks_clear_of_a_words_own_hyphen(word: str, expected: str) -> None:
+    assert reader_formatter.hyphenate_text(word) == expected
 
 
 # `escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.

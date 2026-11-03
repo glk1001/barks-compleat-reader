@@ -24,7 +24,7 @@ from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, Fant
 from barks_fantagraphics.speech_markup import escape_markup, transform_lettering_only
 from comic_utils.cpi_calculator import get_adjusted_usd
 
-from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
+from .hyphen_break_engine import HYPHEN_CHARS, NO_BREAK_CHARS, SOFT_HYPHEN
 from .reader_consts_and_types import CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
 
@@ -97,6 +97,19 @@ class FontManagerProtocol(Protocol):
     title_info_font_size: int | float
 
 
+# A break point right before a word's own hyphen, or one letter away from it: "ful-l-dress"
+# strands a letter, and "three--tier" doubles the hyphen. A break right after the hyphen,
+# "full-dress" at the end of a line, is the natural one and stays.
+_HYPHEN_CLASS = "".join(re.escape(char) for char in HYPHEN_CHARS)
+_BREAK_BY_OWN_HYPHEN = re.compile(
+    rf"{SOFT_HYPHEN}(?=\w?[{_HYPHEN_CLASS}])|(?<=[{_HYPHEN_CLASS}]\w){SOFT_HYPHEN}"
+)
+
+
+def _hyphenate_word(word: str) -> str:
+    return _BREAK_BY_OWN_HYPHEN.sub("", PYPHEN_DICT.inserted(word, hyphen=SOFT_HYPHEN))
+
+
 def hyphenate_text(text: str) -> str:
     """Mark hyphenation points in text with soft hyphens (U+00AD).
 
@@ -107,9 +120,7 @@ def hyphenate_text(text: str) -> str:
     land inside a markup tag or a paragraph break.
     """
     return " ".join(
-        word
-        if any(c in word for c in NO_BREAK_CHARS)
-        else PYPHEN_DICT.inserted(word, hyphen=SOFT_HYPHEN)
+        word if any(c in word for c in NO_BREAK_CHARS) else _hyphenate_word(word)
         for word in text.split(" ")
     )
 
