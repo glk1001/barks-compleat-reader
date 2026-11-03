@@ -285,10 +285,11 @@ BARKS_EXTRA_INFO = {
     ' it myself."[/i]',
     Titles.THINK_BOX_BOLLIX_THE: "Although Gyro's first appearance was a month earlier in WDCS"
     " #140, this is the first story built around him.",
-    Titles.GOLDEN_HELMET_THE: "This story began with a coastline in Hal Foster's [i]Prince"
-    ' Valiant.[/i] Barks recalled: [i]"Valiant was beautifully illustrated. Each panel was a work'
-    " of art. I was very much taken with one of the coastal scenes... I wanted to work with the"
-    ' coastline, so I tried to think of what would happen to Donald to bring him up there."[/i]'
+    Titles.GOLDEN_HELMET_THE: "The idea for this story began with a coastline in Hal Foster's"
+    ' [i]Prince Valiant.[/i] Barks recalled: [i]"Valiant was beautifully illustrated. Each panel'
+    " was a work of art. I was very much taken with one of the coastal scenes... I wanted to work"
+    " with the coastline, so I tried to think of what would happen to Donald to bring him up"
+    ' there."[/i]'
     " Reading about how the Norsemen discovered America centuries before Columbus then gave him"
     " the plot.",
     Titles.GILDED_MAN_THE: "The MacGuffin of this story is the 1856 British Guiana one-cent"
