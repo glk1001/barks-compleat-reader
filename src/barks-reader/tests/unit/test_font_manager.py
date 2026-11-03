@@ -9,8 +9,8 @@ import pytest
 from barks_fantagraphics.comics_consts import FONT_DIR, SPEECH_FONT
 from barks_reader.core.font_sizes import (
     HI_RES_WINDOW_HEIGHT_CUTOFF,
-    TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF,
     FontGroup,
+    title_text_sizes_for_height,
 )
 from barks_reader.ui.font_manager import HI_RES_FONTS, LOW_RES_FONTS, FontManager
 from fontTools.ttLib import TTFont
@@ -18,8 +18,6 @@ from kivy.core.text import LabelBase
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from barks_reader.core.font_sizes import FontTheme
 
 
 @pytest.fixture
@@ -64,31 +62,15 @@ def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
     assert font_manager._previous_font_group == FontGroup.HI_RES
 
 
-def _assert_title_text_sizes(font_manager: FontManager, sizes: FontTheme) -> None:
-    assert font_manager.title_info_font_size == sizes.title_info
-    assert font_manager.title_extra_info_font_size == sizes.title_extra_info
-
-
-def test_the_title_text_keeps_the_low_res_sizes_above_the_font_groups_cutoff(
+def test_the_title_text_follows_every_change_of_height_inside_a_font_group(
     font_manager: FontManager,
 ) -> None:
-    font_manager.update_font_sizes(HI_RES_WINDOW_HEIGHT_CUTOFF + 1)
-
-    assert font_manager.main_title_font_size == HI_RES_FONTS.main_title
-    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
-
-
-def test_the_title_text_changes_size_inside_the_hi_res_font_group(
-    font_manager: FontManager,
-) -> None:
-    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF)
-    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
-
-    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF + 1)
-    _assert_title_text_sizes(font_manager, HI_RES_FONTS)
-
-    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF)
-    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
+    for height in (1200, 1360, 1120):
+        font_manager.update_font_sizes(height)
+        sizes = title_text_sizes_for_height(height)
+        assert font_manager.title_info_font_size == sizes.info
+        assert font_manager.title_extra_info_font_size == sizes.notes
+    assert font_manager._previous_font_group == FontGroup.HI_RES
 
 
 def test_update_font_sizes_optimization(font_manager: FontManager) -> None:

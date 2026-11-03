@@ -224,12 +224,17 @@ class TestDesignMatchesTheAppScale:
     _MIN_FOOTNOTE_RATIO = 0.55
 
     def test_design_sizes_stay_in_the_apps_ballpark(self) -> None:
+        from barks_reader.core.font_sizes import (  # noqa: PLC0415
+            HI_RES_WINDOW_HEIGHT_CUTOFF,
+            title_text_sizes_for_height,
+        )
         from barks_reader.ui.font_manager import LOW_RES_FONTS  # noqa: PLC0415
         from kivy.metrics import sp  # noqa: PLC0415
 
         one_sp = sp(1)
+        low_res_title_info = title_text_sizes_for_height(HI_RES_WINDOW_HEIGHT_CUTOFF).info
         for ours, theirs in (
-            (layout.DESIGN.standfirst, LOW_RES_FONTS.title_info),
+            (layout.DESIGN.standfirst, low_res_title_info * one_sp),
             (layout.DESIGN.heading, LOW_RES_FONTS.text_block_heading),
             (layout.DESIGN.footnote, LOW_RES_FONTS.popup_text),  # About's fine print
         ):

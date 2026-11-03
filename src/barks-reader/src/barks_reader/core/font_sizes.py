@@ -8,13 +8,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import NamedTuple
 
 # A window taller than this takes the high-resolution sizes.
 HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
-# The title panel's publication info and notes keep the low-resolution sizes up to this
-# height. Just above the cutoff the window is still narrow, and at the high-resolution sizes
-# 27 of the 77 notes ran past the panel at 1091 tall, 9 at this height.
-TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF = 1250
+
+# The title panel's publication info and notes take these sizes in the window a 2560x1440
+# screen opens (1360 tall on Windows, 1365 elsewhere), and scale with the window's height
+# from there: its shape is fixed and the panel grows with it, so the lines break much the
+# same at any size. Kivy cuts a font size down to a whole number, so these do it themselves.
+TITLE_TEXT_REFERENCE_WINDOW_HEIGHT = 1360
+TITLE_INFO_REFERENCE_SIZE = 19
+TITLE_EXTRA_INFO_REFERENCE_SIZE = 17
+# A window shorter than a 1080p screen's keeps this height's sizes, to stay readable.
+TITLE_TEXT_SMALLEST_WINDOW_HEIGHT = 1000
 
 
 class FontGroup(Enum):
@@ -32,11 +39,28 @@ def font_group_for_height(window_height: int) -> FontGroup:
     return FontGroup.HI_RES
 
 
-def title_text_font_group_for_height(window_height: int) -> FontGroup:
-    """Return the set of sizes the title panel's info and notes take at `window_height`."""
-    if window_height <= TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF:
-        return FontGroup.LOW_RES
-    return FontGroup.HI_RES
+class TitleTextSizes(NamedTuple):
+    """The title panel's text sizes, in pixels."""
+
+    info: int
+    notes: int
+
+
+def title_text_sizes_for_height(window_height: int) -> TitleTextSizes:
+    """Return the sizes of the title panel's publication info and notes.
+
+    Args:
+        window_height: The window's height, in pixels.
+
+    Returns:
+        The sizes, in pixels rather than sp: they follow the window's pixels, as the panel does.
+
+    """
+    height = max(window_height, TITLE_TEXT_SMALLEST_WINDOW_HEIGHT)
+    return TitleTextSizes(
+        info=TITLE_INFO_REFERENCE_SIZE * height // TITLE_TEXT_REFERENCE_WINDOW_HEIGHT,
+        notes=TITLE_EXTRA_INFO_REFERENCE_SIZE * height // TITLE_TEXT_REFERENCE_WINDOW_HEIGHT,
+    )
 
 
 def font_sizes_for_height(window_height: int) -> FontTheme:
@@ -63,8 +87,6 @@ class FontTheme:
 
     main_title: float
     main_title_footnote: float
-    title_info: float
-    title_extra_info: float
     playlist_intro: float
     index_menu: float
     index_prefix: float
@@ -96,8 +118,6 @@ class FontTheme:
 LOW_RES_FONT_SIZES = FontTheme(
     main_title=30,
     main_title_footnote=12,
-    title_info=15,
-    title_extra_info=13,
     playlist_intro=14,
     index_menu=13,
     index_prefix=12,
@@ -126,8 +146,6 @@ LOW_RES_FONT_SIZES = FontTheme(
 HI_RES_FONT_SIZES = FontTheme(
     main_title=40,
     main_title_footnote=14,
-    title_info=19,
-    title_extra_info=17,
     playlist_intro=18,
     index_menu=17,
     index_prefix=15,

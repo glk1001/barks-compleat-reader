@@ -19,7 +19,7 @@ from barks_reader.core.font_sizes import (
     FontGroup,
     FontTheme,
     font_group_for_height,
-    title_text_font_group_for_height,
+    title_text_sizes_for_height,
 )
 
 # Set up custom fonts.
@@ -104,14 +104,10 @@ class FontManager(EventDispatcher):
 
     def update_font_sizes(self, window_height: int) -> None:
         """Calculate and set all font sizes based on window height."""
-        # Before the check below: this cutoff is inside the high-resolution group.
-        title_text_theme = (
-            LOW_RES_FONTS
-            if title_text_font_group_for_height(window_height) == FontGroup.LOW_RES
-            else HI_RES_FONTS
-        )
-        self.title_info_font_size = title_text_theme.title_info
-        self.title_extra_info_font_size = title_text_theme.title_extra_info
+        # Before the check below: these follow every change of height, not the font group.
+        title_text = title_text_sizes_for_height(window_height)
+        self.title_info_font_size = title_text.info
+        self.title_extra_info_font_size = title_text.notes
 
         required_font_group = font_group_for_height(window_height)
 
