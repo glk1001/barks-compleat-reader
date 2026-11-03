@@ -71,7 +71,7 @@ BARKS_EXTRA_INFO = {
     Titles.ICEBOX_ROBBER_THE: "Fantagraphics printed this story in CBDL Volume 3 with its wartime"
     " references to the Japanese on page 7 censored. They are restored in this digital edition as"
     " they first appeared in 1945.",
-    Titles.FIREBUG_THE: "Barks said this about Western's change to The Firebug ending:"
+    Titles.FIREBUG_THE: "Barks on Western's change to the ending:"
     ' [i]"The editors objected to the last couple of panels of that story because I had Donald set'
     " fire to the judge's wastebasket. &bl;It&br; accidentally burned down the courthouse, and he"
     " wound up in jail. Western couldn't have a Disney character looking out from behind bars in"
@@ -79,9 +79,8 @@ BARKS_EXTRA_INFO = {
     " like that; the editors would often suggest that the artist do the changing himself. But"
     " these two panels would have been done by one of the staff artists, either Carl Buettner"
     ' or Tom McKimson."[/i]\n'
-    "In this edition, the last two panels are replaced with text by GLK and art "
-    " from the last panel of WDCS #62. But there is also the option of choosing the Fantagraphics"
-    " ending by Geoffrey Blum and Daan Jippes.",
+    "Here, text by GLK and art from the last panel of WDCS #62 replace the last two panels, with"
+    " the option of the Fantagraphics ending by Geoffrey Blum and Daan Jippes.",
     Titles.SILENT_NIGHT: "Western rejected this story in 1945, and Fantagraphics dropped it from"
     " CBDL Volume 3 without comment. It is restored in this digital edition from"
     " [i]The Fine Art of Donald Duck.[/i] Barks's opening half-page is lost, so this one is new:"
