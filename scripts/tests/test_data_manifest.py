@@ -173,6 +173,15 @@ class TestComparePack:
 
         assert compare_pack(self._pack(entries), found) == ["Indexes", "Statistics", "Various"]
 
+    def test_a_changed_wiki_copy_does_not_make_a_pack_due(self) -> None:
+        found: dict[str, Fingerprint | None] = {
+            name: Fingerprint(1, 2, "m") for name in data_manifest.READER_FILES_ENTRIES
+        }
+        entries = {name: asdict(Fingerprint(1, 2, "m")) for name in found}
+        entries[data_manifest.WIKI_ENTRY]["md5"] = "edited"
+
+        assert compare_pack(self._pack(entries), found) == []
+
 
 class TestMain:
     @pytest.fixture
@@ -308,6 +317,7 @@ class TestDataRoots:
             roots = data_manifest.data_roots()
         assert roots["Indexes"] == tmp_path / "data" / "Reader Files" / "Indexes"
         assert roots["Barks Panels.zip"] == tmp_path / "data" / "Reader Files" / "Barks Panels.zip"
+        assert data_manifest.WIKI_ENTRY not in roots  # a work in progress: not held to a record
         assert roots[data_manifest.PREBUILT_ENTRY] == tmp_path / "The Comics" / "Chronological"
         assert roots[data_manifest.PNG_PANELS_ENTRY] == tmp_path / "Barks Panels Pngs"
 

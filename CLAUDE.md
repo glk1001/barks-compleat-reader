@@ -97,8 +97,8 @@ bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
 bunx cspell
 ```
 
-**Check whether a new data pack is due** (this PC's Reader Files folders against the
-published pack's version file, `scripts/data-pack-manifest.json`; the overnight `data`
+**Check whether a new data pack is due** (this PC's Reader Files folders, but for the wiki
+copy, against the published pack's version file, `scripts/data-pack-manifest.json`; the overnight `data`
 stage asks the same on the main PC; `--write-pack-manifest` is how `build-data-zips.sh`
 stamps the packs):
 ```bash

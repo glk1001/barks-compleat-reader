@@ -492,10 +492,6 @@ class TestWikiCopy:
         (log,) = repo.glob("build/overnight/*/wiki-copy.log")
         assert "wiki-copy: said" in log.read_text(encoding="utf-8")
 
-    def test_a_stale_copy_warns(self, repo: Path) -> None:
-        self._stage(repo, pulled=True, status=rw.WIKI_COPY_STALE)
-        assert _results(repo) == {"wiki-copy": "WARNED"}
-
     def test_a_wiki_that_could_not_be_pulled_warns_though_the_copy_matches_it(
         self, repo: Path
     ) -> None:
@@ -511,10 +507,6 @@ class TestWikiCopy:
         pull = self._stage(repo, pulled=True, status=0, wiki=False)
         pull.assert_not_called()
         assert _results(repo) == {"wiki-copy": "skipped"}
-
-    def test_the_stale_status_matches_check_wiki_copy(self) -> None:
-        source = (Path(rw.__file__).parent / "check_wiki_copy.py").read_text(encoding="utf-8")
-        assert f"STALE_EXIT = {rw.WIKI_COPY_STALE}" in source
 
 
 def _ci(

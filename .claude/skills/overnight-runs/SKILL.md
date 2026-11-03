@@ -29,8 +29,9 @@ through the same smoke test, GUI suite and soak: `scripts/containers/in-containe
 podman container on the second Linux PC, on demand (`docs/overnight-schedule.md`, "Another distro").
 Each machine's data pack is a copy that nothing re-syncs, and a stale one passes every other
 stage. So both runners start with `data`: `scripts/data_manifest.py` compares the Reader Files
-folders, prebuilt comics and PNG panels there with `scripts/data-manifest.json`, and warns
-naming each folder that differs. After changing data on the main PC, run
+folders (but for the wiki copy, a work in progress that `wiki-copy` looks after), prebuilt
+comics and PNG panels there with `scripts/data-manifest.json`, and warns naming each folder
+that differs. After changing data on the main PC, run
 `uv run scripts/data_manifest.py --write` and commit the manifest (its own `data` stage
 warns until then), then copy the changed folders to every machine. On the main PC the stage
 also holds the Reader Files folders against the published data pack

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
+import check_wiki_copy
+import pytest
 from check_wiki_copy import differences, report_staleness
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def _bundle(root: Path, pages: dict[str, str]) -> Path:
@@ -56,3 +58,50 @@ class TestReportStaleness:
         assert "concept/stories/9.md" in out
         assert "concept/stories/10.md" not in out
         assert "... and 15 more" in out
+
+
+class TestExitStatus:
+    """What the overnight stage (no flags) and the data pack build (--strict) are told."""
+
+    @staticmethod
+    def _main(
+        tmp_path: Path, *args: str, stale: bool = False, exported: bool = True, broken: bool = False
+    ) -> int:
+        collector = SimpleNamespace(any_failed=broken)
+        found = {"missing": [], "extra": [], "changed": ["a.md"] if stale else []}
+        cfg = SimpleNamespace(app_data_dir=tmp_path)
+        with (
+            patch.object(check_wiki_copy, "ErrorCollector", return_value=collector),
+            patch.object(check_wiki_copy, "phase1_config", return_value=cfg),
+            patch.object(check_wiki_copy, "phase11_wiki"),
+            patch.object(check_wiki_copy, "fresh_export", return_value=exported),
+            patch.object(check_wiki_copy, "differences", return_value=found),
+        ):
+            return check_wiki_copy.main(list(args))
+
+    def test_a_stale_copy_is_only_a_note_overnight(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert self._main(tmp_path, stale=True) == 0
+        assert "a note only" in capsys.readouterr().out
+
+    def test_a_broken_join_fails_overnight(self, tmp_path: Path) -> None:
+        assert self._main(tmp_path, broken=True) == 1
+
+    def test_no_export_is_no_failure_overnight(self, tmp_path: Path) -> None:
+        assert self._main(tmp_path, exported=False) == 0
+
+    @pytest.mark.parametrize(
+        ("stale", "exported", "broken", "status"),
+        [
+            (False, True, False, 0),
+            (True, True, False, check_wiki_copy.STALE_EXIT),
+            (False, False, False, 1),
+            (False, True, True, 1),
+        ],
+    )
+    def test_strict_passes_only_a_copy_known_to_be_current(
+        self, tmp_path: Path, *, stale: bool, exported: bool, broken: bool, status: int
+    ) -> None:
+        kwargs = {"stale": stale, "exported": exported, "broken": broken}
+        assert self._main(tmp_path, "--strict", **kwargs) == status

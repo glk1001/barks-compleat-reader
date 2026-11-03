@@ -10,7 +10,8 @@
 # fingerprint of each Reader Files folder it holds. N is the newest data-vN release on
 # GitHub plus one, or --version N (offline, or to rebuild a number). The packs hold
 # exactly the folders data_manifest.py lists (--list-entries), so the backup folders
-# beside them (Indexes-old and the like) stay home.
+# beside them (Indexes-old and the like) stay home. A stale wiki copy stops the build:
+# nothing else asks for it to be refreshed, so this is where each pack gets a current one.
 #
 # Usage: bash scripts/build-data-zips.sh [--version N]
 
@@ -52,6 +53,13 @@ if [[ -z "$VERSION" ]]; then
 fi
 if [[ ! "$VERSION" =~ ^[0-9]+$ ]]; then
     echo -e "${RED}--version takes a number, not \"${VERSION}\".${NC}" >&2
+    exit 1
+fi
+
+if ! uv run scripts/check_wiki_copy.py --strict; then
+    echo -e "${RED}The wiki copy must be current before a data pack is built. From ../barks-wiki:${NC}" >&2
+    echo "  ../barks-compleat-reader/.venv/bin/python -B scripts/export_reader_wiki.py \\" >&2
+    echo "      \"${DATA_FILES_PARENT_DIR}/${DATA_FILES_SUBDIR}/Carl Barks Wiki\" --apply --clean" >&2
     exit 1
 fi
 

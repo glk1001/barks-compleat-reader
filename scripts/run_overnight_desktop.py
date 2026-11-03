@@ -20,8 +20,8 @@ Stages (name: what it runs):
   wiki-copy      the sibling barks-wiki pulled to its upstream where that is safe
                  (pull_sibling.py), then check_wiki_copy.py: the wiki copy in Reader
                  Files, which the GUI stages show - a broken join fails, a copy
-                 older than a fresh export of the live bundle warns, and so does a
-                 barks-wiki that could not be pulled (the copy is then checked
+                 older than a fresh export of the live bundle is only a note, and a
+                 barks-wiki that could not be pulled warns (the copy is then checked
                  against it as it is); skipped without barks-wiki
   pytest         the unit suite, with the data pack CI's legs do not have, its
                  coverage measured for the coverage stage
@@ -165,8 +165,6 @@ WARNED = 4
 
 DEFAULT_GH_REPO = "glk1001/barks-compleat-reader"
 WIKI_REPO = REPO_ROOT.parent / "barks-wiki"
-# check_wiki_copy.py's exit for a stale copy whose joins hold.
-WIKI_COPY_STALE = 3
 # data_manifest.py's exit for a data folder that differs from the manifest.
 DATA_DIFFERS = 3
 # Windows' own OpenGL 1.1, all a machine without a driver has; ANGLE draws instead.
@@ -1025,8 +1023,6 @@ class Run:
         pulled, message = pull_sibling.pull(WIKI_REPO, stage="wiki-copy")
         log.line(message)
         status = log.run(venv_command("python", str(SCRIPTS / "check_wiki_copy.py")))
-        if status == WIKI_COPY_STALE:
-            return WARNED
         if status == 0 and not pulled:
             return WARNED
         return status

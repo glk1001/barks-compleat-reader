@@ -12,17 +12,20 @@ select, never sees the copy users get. This checks that copy:
    (a copyright-free subset, its dead links rewritten), so the copy differs from
    the live bundle by design. The honest comparison is with what that export
    makes from the live bundle today: it is run into a temporary directory and the
-   copy compared with it, file by file. A difference means the copy needs
-   refreshing (re-run the export into Reader Files), a warning rather than a
-   failure. barks-wiki is read-only from here: the export only reads it
-   (``python -B``: not even bytecode is written), and writes to the temp dir.
+   copy compared with it, file by file. A difference is only a note: the wiki is a
+   work in progress, so its copy is expected to fall behind between data packs.
+   barks-wiki is read-only from here: the export only reads it (``python -B``: not
+   even bytecode is written), and writes to the temp dir.
 
-Exits 1 when a join is broken, 3 when the copy is stale but its joins hold (the
-overnight run's WARNED), 0 when it is current; a missing barks-wiki skips step 2.
+Exits 1 when a join is broken, otherwise 0; a missing barks-wiki skips step 2.
+
+With ``--strict``, which ``build-data-zips.sh`` uses so that each pack ships the wiki as
+it stands, it also exits 3 when the copy is stale and 1 when it cannot tell.
 """
 
 from __future__ import annotations
 
+import argparse
 import filecmp
 import subprocess
 import sys
@@ -102,8 +105,14 @@ def fresh_export(dest: Path) -> bool:
     return True
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Check the copy's joins, then its staleness; return the exit status."""
+    parser = argparse.ArgumentParser(description="Check the wiki copy shipped in Reader Files.")
+    parser.add_argument(
+        "--strict", action="store_true", help="fail unless the copy is known to be current"
+    )
+    strict = parser.parse_args(argv).strict
+
     collector = ErrorCollector()
     cfg_info = phase1_config(collector, None, None)
     if cfg_info is None:
@@ -114,10 +123,18 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="wiki-export-") as tmp:
         fresh = Path(tmp) / "okf"
-        stale = fresh_export(fresh) and report_staleness(differences(copy, fresh))
+        exported = fresh_export(fresh)
+        stale = exported and report_staleness(differences(copy, fresh))
 
     if joins_broken:
         print(f"wiki copy: joins broken in {copy}")  # noqa: T201
+        return 1
+    if not strict:
+        if stale:
+            print("wiki copy: a note only; it is refreshed when a data pack is built")  # noqa: T201
+        return 0
+    if not exported:
+        print("wiki copy: cannot tell whether it is current")  # noqa: T201
         return 1
     return STALE_EXIT if stale else 0
 

@@ -33,7 +33,7 @@
 #   wiki-copy      check_wiki_copy.py: the wiki copy shipped in Reader Files, which
 #                  the live-bundle setting hides from validate - a broken join
 #                  there fails; a copy older than a fresh export of the live
-#                  bundle (barks-wiki's own export, into a temp dir) warns
+#                  bundle (barks-wiki's own export, into a temp dir) is only a note
 #   lint           full-lint.sh: every static check, and the benchmarks against
 #                  their baseline (a quiet machine is when those numbers mean most)
 #   audit          uv audit, the locked dependencies' known CVEs; warns only
@@ -441,12 +441,7 @@ run_stage() {
         uv run scripts/check_wiki_story_order.py --quiet || return "$WARNED"
         return "$status"
         ;;
-    wiki-copy)
-        uv run scripts/check_wiki_copy.py || status=$?
-        # Its 3 is a stale copy with sound joins: a warning, not a failure.
-        ((status == 3)) && return "$WARNED"
-        return "$status"
-        ;;
+    wiki-copy) uv run scripts/check_wiki_copy.py ;;
     # The benchmarks import the UI, whose screen metrics need a display.
     lint) with_display bash "${SCRIPT_DIR}/full-lint.sh" ;;
     audit) uv audit || return "$WARNED" ;;

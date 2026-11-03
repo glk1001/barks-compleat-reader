@@ -346,12 +346,12 @@ just reader
 
   | Stage | What it runs |
   |---|---|
-  | `data` | `data_manifest.py`: this machine's data (the Reader Files folders, prebuilt comics, PNG panels) against the manifest the main PC wrote, naming each folder that differs; on the main PC, also its Reader Files against the published data pack (`scripts/data-pack-manifest.json`), for when a new one is due; warns only |
+  | `data` | `data_manifest.py`: this machine's data (the Reader Files folders but for the wiki copy, prebuilt comics, PNG panels) against the manifest the main PC wrote, naming each folder that differs; on the main PC, also its Reader Files against the published data pack (`scripts/data-pack-manifest.json`), for when a new one is due; warns only |
   | `validate` | `validate-barks-reader-files.py` on the real data pack (above), with `--full-load-check --strict-wiki` |
   | `panel-sources` | `check-barks-panel-sources.py`: every PNG panel belongs to a title |
   | `build-check` | The `../barks-comic-building` integrity checker on the whole build tree: every check, with `--check-panel-segment-image-size` |
   | `wiki-order` | `check_wiki_story_order.py` on the sibling barks-wiki bundle; warns only |
-  | `wiki-copy` | The wiki copy shipped in Reader Files, which `validate` does not see while the settings use the live bundle: a broken join fails; a copy that differs from a fresh export of the live bundle (barks-wiki's `export_reader_wiki.py`, into a temp dir) warns |
+  | `wiki-copy` | The wiki copy shipped in Reader Files, which `validate` does not see while the settings use the live bundle: a broken join fails; a copy that differs from a fresh export of the live bundle (barks-wiki's `export_reader_wiki.py`, into a temp dir) is only a note |
   | `lint` | `full-lint.sh`, with the benchmarks against their baseline |
   | `audit` | `uv audit`, known CVEs in the locked dependencies; warns only |
   | `pytest` | `uv sync --locked`, then the whole suite with coverage, kept for the `coverage` stage |
@@ -534,7 +534,9 @@ The ~1GB data packs (`barks-reader-data-1.barkspack`, `barks-reader-data-2.barks
 dedicated `data-vN` release, not on app releases, because they rarely change — the current
 tag is whatever `DATA_TAG` in `website/app.html` names. The overnight `data` stage on the
 main PC (or `uv run scripts/data_manifest.py --pack`) says when the published pack is
-behind the data here. Then rebuild them (`bash scripts/build-data-zips.sh` — no exe build
+behind the data here. The wiki copy does not count: it changes most days, so it is held to
+neither that check nor the data manifest, and `build-data-zips.sh` refuses to pack a stale
+one instead (`scripts/check_wiki_copy.py --strict`). Then rebuild them (`bash scripts/build-data-zips.sh` — no exe build
 needed; it packs the folders `data_manifest.py --list-entries` names, backups beside them
 excluded, and writes `Reader Files/data-pack.json` into both: data pack N, the newest
 `data-vN` on GitHub plus one or `--version N`, with the build date and each folder's

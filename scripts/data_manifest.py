@@ -49,6 +49,12 @@ prints the folders, so the build script packs the same list). When
 names each folder that has changed since - a new data pack is due - and exits 3. The
 plain check does the same on the main PC (the machine the manifest was written on)
 after its own comparison, so the overnight ``data`` stage there warns too.
+
+The wiki copy is the exception: the packs carry it, and their version file records it,
+but it is held to neither the manifest nor the published pack. It is a work in progress
+that changes most days, so neither a changed copy nor a copy another machine lacks is
+news. ``check_wiki_copy.py`` looks after it, and ``build-data-zips.sh`` refuses a stale
+one, so each pack still ships the wiki as it stands.
 """
 
 from __future__ import annotations
@@ -74,9 +80,10 @@ CACHE_PATH = REPO_ROOT / "build" / "data-manifest-cache.json"
 DIFFER_EXIT = 3
 
 # The folders the app reads under Reader Files (core/system_file_paths.py), and its panels zip.
+WIKI_ENTRY = "Carl Barks Wiki"
 READER_FILES_ENTRIES = (
     "Barks Panels.zip",
-    "Carl Barks Wiki",
+    WIKI_ENTRY,
     "Fantagraphics Volumes Overrides",
     "Fantagraphics-panel-segments",
     "Indexes",
@@ -84,6 +91,8 @@ READER_FILES_ENTRIES = (
     "Statistics",
     "Various",
 )
+# What the manifest and the published pack hold a machine to: all but the wiki copy.
+TRACKED_READER_FILES_ENTRIES = tuple(name for name in READER_FILES_ENTRIES if name != WIKI_ENTRY)
 PREBUILT_ENTRY = "prebuilt comics"
 PNG_PANELS_ENTRY = "PNG panels"
 # Read where a machine has them (validate and the GUI tests then use them too), and not
@@ -180,7 +189,9 @@ def data_roots() -> dict[str, Path | None]:
 
     cfg_info = ConfigInfo()
     reader_files = cfg_info.app_data_dir / READER_FILES_DIR
-    roots: dict[str, Path | None] = {name: reader_files / name for name in READER_FILES_ENTRIES}
+    roots: dict[str, Path | None] = {
+        name: reader_files / name for name in TRACKED_READER_FILES_ENTRIES
+    }
 
     config = ConfigParser()
     config.read(cfg_info.app_config_path)
@@ -276,7 +287,7 @@ def compare(manifest: dict, found: dict[str, Fingerprint | None]) -> list[str]:
 
 
 def compare_pack(pack: DataPackInfo, found: dict[str, Fingerprint | None]) -> list[str]:
-    """Each Reader Files entry that differs from the published data pack.
+    """Each tracked Reader Files entry that differs from the published data pack.
 
     Args:
         pack: The published pack's version file.
@@ -288,7 +299,7 @@ def compare_pack(pack: DataPackInfo, found: dict[str, Fingerprint | None]) -> li
 
     """
     differing = []
-    for name in READER_FILES_ENTRIES:
+    for name in TRACKED_READER_FILES_ENTRIES:
         have = found.get(name)
         want = pack.entries.get(name)
         if want is None or have is None or asdict(have) != want:
