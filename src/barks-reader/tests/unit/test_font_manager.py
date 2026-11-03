@@ -7,13 +7,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.comics_consts import FONT_DIR, SPEECH_FONT
-from barks_reader.core.font_sizes import HI_RES_WINDOW_HEIGHT_CUTOFF, FontGroup
+from barks_reader.core.font_sizes import (
+    HI_RES_WINDOW_HEIGHT_CUTOFF,
+    TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF,
+    FontGroup,
+)
 from barks_reader.ui.font_manager import HI_RES_FONTS, LOW_RES_FONTS, FontManager
 from fontTools.ttLib import TTFont
 from kivy.core.text import LabelBase
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from barks_reader.core.font_sizes import FontTheme
 
 
 @pytest.fixture
@@ -58,6 +64,33 @@ def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
     assert font_manager._previous_font_group == FontGroup.HI_RES
 
 
+def _assert_title_text_sizes(font_manager: FontManager, sizes: FontTheme) -> None:
+    assert font_manager.title_info_font_size == sizes.title_info
+    assert font_manager.title_extra_info_font_size == sizes.title_extra_info
+
+
+def test_the_title_text_keeps_the_low_res_sizes_above_the_font_groups_cutoff(
+    font_manager: FontManager,
+) -> None:
+    font_manager.update_font_sizes(HI_RES_WINDOW_HEIGHT_CUTOFF + 1)
+
+    assert font_manager.main_title_font_size == HI_RES_FONTS.main_title
+    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
+
+
+def test_the_title_text_changes_size_inside_the_hi_res_font_group(
+    font_manager: FontManager,
+) -> None:
+    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF)
+    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
+
+    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF + 1)
+    _assert_title_text_sizes(font_manager, HI_RES_FONTS)
+
+    font_manager.update_font_sizes(TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF)
+    _assert_title_text_sizes(font_manager, LOW_RES_FONTS)
+
+
 def test_update_font_sizes_optimization(font_manager: FontManager) -> None:
     # 1. Set to Low Res
     font_manager.update_font_sizes(1000)
@@ -82,8 +115,6 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme = MagicMock()
     mock_theme.main_title = 10
     mock_theme.main_title_footnote = 11
-    mock_theme.title_info = 12
-    mock_theme.title_extra_info = 13
     mock_theme.playlist_intro = 38
     mock_theme.index_menu = 14
     mock_theme.index_prefix = 37
@@ -110,8 +141,6 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
 
     assert font_manager.main_title_font_size == 10
     assert font_manager.main_title_footnote_font_size == 11
-    assert font_manager.title_info_font_size == 12
-    assert font_manager.title_extra_info_font_size == 13
     assert font_manager.tree_view_playlist_intro_font_size == 38
     assert font_manager.index_menu_font_size == 14
     assert font_manager.index_prefix_font_size == 37

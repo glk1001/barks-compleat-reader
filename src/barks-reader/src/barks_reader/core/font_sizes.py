@@ -11,6 +11,10 @@ from enum import Enum, auto
 
 # A window taller than this takes the high-resolution sizes.
 HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
+# The title panel's publication info and notes keep the low-resolution sizes up to this
+# height. Just above the cutoff the window is still narrow, and at the high-resolution sizes
+# 27 of the 77 notes ran past the panel at 1091 tall, 9 at this height.
+TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF = 1250
 
 
 class FontGroup(Enum):
@@ -24,6 +28,13 @@ class FontGroup(Enum):
 def font_group_for_height(window_height: int) -> FontGroup:
     """Return the set of sizes a window of `window_height` takes."""
     if window_height <= HI_RES_WINDOW_HEIGHT_CUTOFF:
+        return FontGroup.LOW_RES
+    return FontGroup.HI_RES
+
+
+def title_text_font_group_for_height(window_height: int) -> FontGroup:
+    """Return the set of sizes the title panel's info and notes take at `window_height`."""
+    if window_height <= TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF:
         return FontGroup.LOW_RES
     return FontGroup.HI_RES
 
@@ -85,7 +96,7 @@ class FontTheme:
 LOW_RES_FONT_SIZES = FontTheme(
     main_title=30,
     main_title_footnote=12,
-    title_info=16,
+    title_info=15,
     title_extra_info=13,
     playlist_intro=14,
     index_menu=13,
@@ -115,7 +126,7 @@ LOW_RES_FONT_SIZES = FontTheme(
 HI_RES_FONT_SIZES = FontTheme(
     main_title=40,
     main_title_footnote=14,
-    title_info=20,
+    title_info=19,
     title_extra_info=17,
     playlist_intro=18,
     index_menu=17,

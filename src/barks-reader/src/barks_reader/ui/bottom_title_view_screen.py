@@ -144,7 +144,7 @@ class BottomTitleViewScreen(FloatLayout):
     EXTRA_INFO_TEXT_LEADING = 0.4
     # The notes' font's line height, as a share of its size: its ascent plus its descent.
     EXTRA_INFO_LINE_HEIGHT = 1.371
-    TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
+    TITLE_EXTRA_INFO_LABEL_COLOR = TITLE_INFO_LABEL_COLOR
     # Dark text outline for the left-column info text, for the same reason.
     TITLE_INFO_OUTLINE_COLOR = (0, 0, 0, 1)
     # Background scrim behind the main info label. One-pagers use a darker scrim because their

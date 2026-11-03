@@ -231,6 +231,9 @@ Numbered, in the order it actually happens:
   you cross that threshold. The cutoff (`HI_RES_WINDOW_HEIGHT_CUTOFF`), the
   choice (`font_group_for_height`) and both size tables live in the Kivy-free
   `core/font_sizes.py`; the manager only scales them and holds the properties.
+  The title panel's publication info and notes have their own, taller cutoff
+  (`TITLE_TEXT_HI_RES_WINDOW_HEIGHT_CUTOFF`), since a window just above 1090 is still
+  narrow and long notes would run past the panel.
 
 ---
 

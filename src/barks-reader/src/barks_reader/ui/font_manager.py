@@ -19,6 +19,7 @@ from barks_reader.core.font_sizes import (
     FontGroup,
     FontTheme,
     font_group_for_height,
+    title_text_font_group_for_height,
 )
 
 # Set up custom fonts.
@@ -31,10 +32,10 @@ LabelBase.register(
 )
 LabelBase.register(
     name=EXTRA_INFO_FONT,
-    fn_regular=str(FONT_DIR / "SourceSerif4-Regular.ttf"),
-    fn_bold=str(FONT_DIR / "SourceSerif4-Bold.ttf"),
-    fn_italic=str(FONT_DIR / "SourceSerif4-It.ttf"),
-    fn_bolditalic=str(FONT_DIR / "SourceSerif4-BoldIt.ttf"),
+    fn_regular=str(FONT_DIR / "SourceSerif4SmText-Regular.ttf"),
+    fn_bold=str(FONT_DIR / "SourceSerif4SmText-Bold.ttf"),
+    fn_italic=str(FONT_DIR / "SourceSerif4SmText-It.ttf"),
+    fn_bolditalic=str(FONT_DIR / "SourceSerif4SmText-BoldIt.ttf"),
 )
 
 
@@ -103,6 +104,15 @@ class FontManager(EventDispatcher):
 
     def update_font_sizes(self, window_height: int) -> None:
         """Calculate and set all font sizes based on window height."""
+        # Before the check below: this cutoff is inside the high-resolution group.
+        title_text_theme = (
+            LOW_RES_FONTS
+            if title_text_font_group_for_height(window_height) == FontGroup.LOW_RES
+            else HI_RES_FONTS
+        )
+        self.title_info_font_size = title_text_theme.title_info
+        self.title_extra_info_font_size = title_text_theme.title_extra_info
+
         required_font_group = font_group_for_height(window_height)
 
         if required_font_group == self._previous_font_group:
@@ -127,8 +137,6 @@ class FontManager(EventDispatcher):
         """Assign all font sizes from a theme object."""
         self.main_title_font_size = theme.main_title
         self.main_title_footnote_font_size = theme.main_title_footnote
-        self.title_info_font_size = theme.title_info
-        self.title_extra_info_font_size = theme.title_extra_info
         self.index_menu_font_size = theme.index_menu
         self.index_prefix_font_size = theme.index_prefix
         self.main_index_item_font_size = theme.main_index_item

@@ -742,7 +742,9 @@ def test_extra_info_line_height_is_the_fonts_own() -> None:
     # The panel divides its height by this to end the notes at a whole line. Too small a
     # share, after a change of font, and the last line runs off the foot of the panel.
     size = 1000
-    ascent, descent = ImageFont.truetype(FONT_DIR / "SourceSerif4-Regular.ttf", size).getmetrics()
+    ascent, descent = ImageFont.truetype(
+        FONT_DIR / "SourceSerif4SmText-Regular.ttf", size
+    ).getmetrics()
     assert pytest.approx((ascent + descent) / size) == BottomTitleViewScreen.EXTRA_INFO_LINE_HEIGHT
 
 
@@ -753,7 +755,7 @@ def test_extra_info_line_pitch_is_the_one_kivy_lays_out(font_size: int) -> None:
     lines = 10
     label = MarkupLabel(
         text="\n".join(["Hg"] * lines),
-        font_name=str(FONT_DIR / "SourceSerif4-Regular.ttf"),
+        font_name=str(FONT_DIR / "SourceSerif4SmText-Regular.ttf"),
         font_size=font_size,
         markup=True,
     )
