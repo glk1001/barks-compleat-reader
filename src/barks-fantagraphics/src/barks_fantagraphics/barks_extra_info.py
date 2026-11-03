@@ -1,5 +1,5 @@
 # ruff: noqa: ERA001, RUF001
-# cspell:ignore humoristically strzyz stylised vlottes
+# cspell:ignore brittanica humoristically strzyz stylised vlottes
 
 from .barks_titles import Titles
 
@@ -171,11 +171,11 @@ BARKS_EXTRA_INFO = {
     " his first story, and so the second time I used him, I thought of what particular"
     " thing can make that guy [i]lastingly[/i] obnoxious. And so I thought of this lucky angle."
     ' He was the kind of guy who who got all the breaks, and poor old Donald never got anywhere."',
-    Titles.IN_ANCIENT_PERSIA: 'From a June 9, 1968 letter to Michael Barrier: [i]"About my'
-    " 'morgue' of reference material. I have four filing bins of clippings of every sort of"
-    " subject and type of drawing. Also have many years of Nat'l Geographics, and an Encyclopaedia"
-    " Britannica. The rock of Gibraltar picture in 'Ancient Persia' and the authentic-looking"
-    " background props and frescoes are from Nat'l Geo. I simplified such material,"
+    Titles.IN_ANCIENT_PERSIA: 'From a June 9, 1966 letter to Michael Barrier: [i]"About my'
+    " 'morgue' of reference material. I have four files full of clippings of every sort of subject"
+    " and type of drawing. Also have many years of Nat'l. Geographics, and an Encyclopedia"
+    " Brittanica. The rock of gibraltar picture in 'Ancient Persia' and the authentic-looking"
+    " background props and frescoes are from Nat'l Geo. I simplify such material,"
     ' naturally."[/i]',
     Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] interview Barks said this about"
     " [i]In Old California:[/i]"
