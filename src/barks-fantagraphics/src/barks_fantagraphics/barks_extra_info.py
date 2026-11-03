@@ -1,4 +1,5 @@
 # ruff: noqa: ERA001, RUF001
+# cspell:ignore humoristically strzyz stylised
 
 from .barks_titles import Titles
 
@@ -76,6 +77,14 @@ BARKS_EXTRA_INFO = {
     '-cupboard. In a letter to Michael Barrier, Barks wrote: "As for the can of dog food with'
     " Barks on it..., I probably put the name on it myself just to see if the editors would white"
     ' it out."',
+    Titles.ADVENTURE_DOWN_UNDER: "Asked by Klaus Strzyz in 1980 whether he researched the countries"
+    ' he sent the Ducks to, Barks said he couldn\'t do it [i]"on a grand scale"[/i]: he had no'
+    " reference books at home and no access to the Disney studio's libraries, so errors slipped"
+    " by. He did check encyclopedias and [i]National Geographic[/i] for the landscape, plants,"
+    ' rivers, climate and peoples, though he drew the people [i]"a little primitively and of'
+    ' course also humoristically stylised."[/i] When Strzyz said the Aboriginal Australians in'
+    ' this story looked typical of their country, Barks answered: [i]"Yes, well I always'
+    ' tried."[/i]',
     Titles.GHOST_OF_THE_GROTTO_THE: "This was Garé Barks' favorite story, because, "
     ' as she said: [i]"It\'s got pathos."[/i]\n'
     'Barks commented: [i]"I can remember the first idea I had on that was just trying to figure'
