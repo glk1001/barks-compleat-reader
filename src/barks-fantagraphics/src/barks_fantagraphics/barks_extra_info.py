@@ -267,6 +267,10 @@ BARKS_EXTRA_INFO = {
     " June 2021 to the London stamp dealer Stanley Gibbons for $8,307,000. Barks' rendering departs"
     " from the original: the real stamp is octagonal, with black text on magenta paper, where he"
     " drew it rectangular on white paper.",
+    Titles.HYPNO_GUN_THE: 'Barks said this about the story: [i]"the sort of story that only Donald'
+    " can portray convincingly. Mickey could never be 'hypnotized' by such a simple gadget and"
+    " Goofy could be hypnotized too easily. A good example of Donald's versatility as an"
+    " 'actor'.\"[/i]",
     Titles.TRICK_OR_TREAT: "In the original edition, ten and a half pages were cut from what may"
     " be the most pages Barks ever drew for one story (at least 33 and a half). Editor Alice Cobb"
     " had given him photostats of the cartoon's storyboards,"
