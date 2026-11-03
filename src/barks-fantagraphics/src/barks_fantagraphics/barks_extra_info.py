@@ -5,7 +5,7 @@
 from .barks_titles import Titles
 
 BARKS_EXTRA_INFO = {
-    Titles.VICTORY_GARDEN_THE: " This was Barks's first comic-book work after leaving the Disney"
+    Titles.VICTORY_GARDEN_THE: "This was Barks's first comic-book work after leaving the Disney"
     " studio. In a 1967 letter to Michael Barrier, Barks wrote that he"
     ' [i]"noticed some bad errors in the plot"[/i] of the script Western sent him, and got the'
     ' editor\'s permission to [i]"change things around"[/i], though carefully:'
