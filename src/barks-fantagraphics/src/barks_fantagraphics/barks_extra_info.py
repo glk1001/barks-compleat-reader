@@ -194,7 +194,7 @@ BARKS_EXTRA_INFO = {
     " that go out under the Golden Gate and swim around on New Year's Day."
     " And I just thought of Donald: how in the summertime he would get very rash and boast"
     " that he would go into the water in the wintertime. And so that's how Gladstone got into it."
-    '" He had to be somebody that Donald was trying to outdo."[/i]',
+    ' He had to be somebody that Donald was trying to outdo."[/i]',
     Titles.RACE_TO_THE_SOUTH_SEAS: "The first appearance of [b][i]Gladstone Gander[/i][/b] in "
     "a long Donald Duck story.\n\n"
     "David Gerstein on the version in this digital edition: [i]\"Fantagraphics'"
