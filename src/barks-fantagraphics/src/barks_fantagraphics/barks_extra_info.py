@@ -245,6 +245,15 @@ BARKS_EXTRA_INFO = {
     " June 2021 to the London stamp dealer Stanley Gibbons for $8,307,000. Barks' rendering departs"
     " from the original: the real stamp is octagonal, with black text on magenta paper, where he"
     " drew it rectangular on white paper.",
+    Titles.TRICK_OR_TREAT: "In the original edition, ten and a half pages were cut from what may"
+    " be the most pages Barks ever drew for one story (at least 33 and a half). Editor Alice Cobb"
+    " had given him photostats of the cartoon's storyboards,"
+    ' [i]"sort of open end as to length."[/i] Where Hazel tries to break into Donald\'s closet,'
+    " Barks recalled:"
+    ' [i]"I departed from the movie script and added some business with an ogre that Hazel summons.'
+    " Alice Cobb deleted the extra business and didn't pay me for the unwanted pages. She was that"
+    ' mad."[/i]'
+    "\n\nThis digital edition has the restored 32-page version.",
     Titles.FINANCIAL_FABLE_A: "In a letter from October 14, 1969, Barks wrote:"
     " [i]\"...I have no favorite 10-pager anymore. The issue of March 1951 I've always considered"
     ' technically well done. It had a rhythm that could almost have been set to music."[/i]',
