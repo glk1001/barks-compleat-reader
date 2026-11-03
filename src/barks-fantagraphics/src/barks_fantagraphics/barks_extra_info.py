@@ -78,6 +78,10 @@ BARKS_EXTRA_INFO = {
     " CBDL Volume 3 without comment. It is restored in this digital edition from"
     " [i]The Fine Art of Donald Duck.[/i] Barks's opening half-page is lost, so this one is new:"
     " art by Daan Jippes, script by David Gerstein and Unn Printz-Påhlson.",
+    Titles.TERROR_OF_THE_RIVER_THE: 'Barks said this about the Scarer: [i]"I felt that if I made'
+    " the Scarer totally nutty, it would get by the editors a great deal more easily than if I made"
+    " him murderous. I created a guy that didn't leave any bad taste in people's mouths, didn't"
+    ' cause children any nightmares afterward."[/i]',
     Titles.SMUGSNORKLE_SQUATTIE_THE: "Last appearance of [b][i]Herbert[/i][/b].",
     Titles.HIGH_WIRE_DAREDEVILS: "First mention of [b][i]Duckburg.[/i][/b]"
     " (Last panel of last page.)",
