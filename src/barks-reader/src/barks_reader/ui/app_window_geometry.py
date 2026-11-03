@@ -208,6 +208,14 @@ class AppWindowGeometryHelper:
         """
         monitor = self._current_monitor
         width, height = self._minimum_size()
+        # A window opened smaller (--win-height, a saved height) goes up through Kivy first.
+        # Left to the minimum, SDL enlarges it with no resize event: Kivy goes on laying out
+        # and placing touches for the old size, and every click lands off. A guarded resize
+        # already on its way does the same job, so it is left to.
+        if self._resize_event is None:
+            raised = self._no_smaller_than_minimum(*Window.system_size)
+            if raised != tuple(Window.system_size):
+                Window.size = raised
         _set_window_minimum_size(width, height)
         logger.info(
             log_markers.WINDOW_MINIMUM_SET.format(

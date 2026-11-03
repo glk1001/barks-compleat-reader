@@ -884,6 +884,60 @@ def test_a_rotation_fit_below_the_minimum_asks_for_the_minimum_and_centres_it(
     )
 
 
+def test_a_window_opened_below_the_minimum_goes_up_through_kivy_first(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    """Enlarged only by SDL's minimum, Kivy gets no event and every click lands off."""
+    fake_window.size = (619, 980)
+    size_when_set: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        geometry_module,
+        "_set_window_minimum_size",
+        lambda _w, _h: size_when_set.append(tuple(fake_window.size)),
+    )
+
+    _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    screen = fake_metrics.get_primary_screen_info.return_value
+    assert size_when_set == [_minimum_on(screen.width_pixels, screen.height_pixels)]
+
+
+def test_a_window_at_or_above_the_minimum_is_left_its_size(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    screen = fake_metrics.get_primary_screen_info.return_value
+    minimum = _minimum_on(screen.width_pixels, screen.height_pixels)
+    fake_window.size = minimum
+
+    _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    assert tuple(fake_window.size) == minimum
+
+
+def test_a_guarded_resize_on_its_way_is_left_to_raise_the_window(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    fake_window.size = (619, 980)
+    h._schedule_guarded_resize(700, 1100)  # noqa: SLF001
+
+    h.apply_minimum_size()
+
+    assert tuple(fake_window.size) == (619, 980)
+
+
 def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -> None:
     """Kivy's handler warns if run with one side still 0: it runs once, after both."""
     seen: list[tuple[int, int]] = []
