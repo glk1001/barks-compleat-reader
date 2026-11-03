@@ -162,10 +162,11 @@ BARKS_EXTRA_INFO = {
     " stories of the same era. So, in this digital edition, the Southern accents have been restored"
     " to what Barks (likely) intended, using [i]Dis, Dat, Dey, D', De,[/i] and [i]Deah.[/i] (Pages"
     " 20-24, 26-29, and 31, reconstructed by GLK, October 2026)",
-    Titles.VOODOO_HOODOO: "From 'www.seriesam.com:' [i]\"Barks originally drew 'Bombie the"
-    " Zombie' with blank eyeballs. The editors at Western Publishing feared that the vacant eyes"
-    ' might frighten children and so they added pupils and half-closed lids."[/i] In this digital'
-    " edition, Bombie has been changed back to having blank eyeballs.",
+    Titles.VOODOO_HOODOO: "Barks originally drew Bombie the Zombie with blank eyeballs and no"
+    " eyelids. An editor at Western feared the vacant eyes might frighten children, and had a staff"
+    " artist add pupils and half-closed lids. Barks went back to the blank eyes in his 1972"
+    " painting of Bombie. In this digital edition, Bombie has been changed back to having blank"
+    " eyeballs, 38 panels in all.",
     Titles.WINTERTIME_WAGER: "The first appearance of [b][i]Gladstone Gander.[/i][/b]"
     " In the [i]Duck Man[/i] interview Barks said this about Gladstone:"
     ' [i]"Well, I think the reason for bringing in Gladstone was that I thought of this'
