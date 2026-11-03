@@ -159,6 +159,12 @@ BARKS_EXTRA_INFO = {
     " the old Disney studio's story gag-fests where the guys used to draw of each other and"
     " circulate around. Some of the guys took to drawing me with this tremendous big schnoz,"
     ' so I just copied that old caricature."[/i]',
+    Titles.TRUANT_OFFICER_DONALD: "This story was inspired by the 1941 animated cartoon"
+    " [i]Truant Officer Donald,[/i] which Barks worked on, with Donald as a tyrannical cop and the"
+    " boys as his defenseless victims — he bags them like fish,"
+    " imprisons them in his paddy wagon, batters into their clubhouse and tries to smoke them out,"
+    " until they retaliate by planting three roasted chickens in their bed to make it look as if"
+    " Donald has killed them.",
     Titles.DONALD_DUCKS_WORST_NIGHTMARE: "In 2017 the Canadian cartoonist Chester Brown reworked"
     " this story as [i]The Third Remedy,[/i] an unofficial 37-page minicomic offered as a premium"
     " to his Patreon supporters — recasting Donald, the nephews and Daisy as Batman, Robin and"
