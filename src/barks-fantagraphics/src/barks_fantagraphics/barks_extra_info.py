@@ -235,9 +235,9 @@ BARKS_EXTRA_INFO = {
     Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE: "The first appearance of the [b][i]Money Bin.[/i][/b]",
     Titles.ROUND_MONEY_BIN_THE: "The first appearance of [b][i]Number One Dime.[/i][/b]\n\n"
     "In 1953, a twelve-year-old fan named Richard Greenberg wrote to the studio asking permission"
-    " to form a national Beagle Boys fan club — the idea sparked by a scene in this story. A"
-    " Disney fan club for criminals, inspired by an almost-successful robbery, was anathema to"
-    ' the studio: Frank Reilly, head of its comic-strip department, wrote back that "the Beagle'
+    " to form a national Beagle Boys fan club, after a scene in this story. A fan club for"
+    " criminals was anathema to the studio: Frank Reilly, head of its comic-strip department,"
+    ' wrote back that "the Beagle'
     " Boys represent the wrong; they are the villains… We believe it would be wrong for you and"
     " your friends to identify yourselves with wrongdoers, even though they are merely comic"
     ' creations." Carl Buettner sent Barks copies of both letters with'
