@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes
+# cspell:ignore stylised vlottes batgirl minicomic
 
 from .barks_titles import Titles
 
@@ -159,6 +159,10 @@ BARKS_EXTRA_INFO = {
     " the old Disney studio's story gag-fests where the guys used to draw of each other and"
     " circulate around. Some of the guys took to drawing me with this tremendous big schnoz,"
     ' so I just copied that old caricature."[/i]',
+    Titles.DONALD_DUCKS_WORST_NIGHTMARE: "In 2017 the Canadian cartoonist Chester Brown reworked"
+    " this story as [i]The Third Remedy,[/i] an unofficial 37-page minicomic offered as a premium"
+    " to his Patreon supporters — recasting Donald, the nephews and Daisy as Batman, Robin and"
+    " Batgirl, with Batman now the one plagued by nightmares and prescribed crocheting.",
     Titles.LOST_IN_THE_ANDES: 'In a 1962 interview, Barks agreed that [i]"my best story,'
     ' technically, is probably the square egg one."[/i]\n\n'
     "David Gerstein noted in the Disney Comics Mailing List (9th July 1997 and 7 May 2012) that"
