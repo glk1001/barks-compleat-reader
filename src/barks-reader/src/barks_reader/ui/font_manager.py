@@ -2,6 +2,7 @@ from dataclasses import fields, replace
 
 from barks_fantagraphics.comics_consts import (
     CARL_BARKS_FONT_FILE,
+    EXTRA_INFO_FONT,
     FONT_DIR,
     ROBOTO_FONT,
     SPEECH_FONT,
@@ -27,6 +28,13 @@ LabelBase.register(
     fn_bold=str(FONT_DIR / "DejaVuSansCondensed-Bold.ttf"),
     fn_italic=str(FONT_DIR / "DejaVuSansCondensed-Oblique.ttf"),
     fn_bolditalic=str(FONT_DIR / "DejaVuSansCondensed-BoldOblique.ttf"),
+)
+LabelBase.register(
+    name=EXTRA_INFO_FONT,
+    fn_regular=str(FONT_DIR / "SourceSerif4-Regular.ttf"),
+    fn_bold=str(FONT_DIR / "SourceSerif4-Bold.ttf"),
+    fn_italic=str(FONT_DIR / "SourceSerif4-It.ttf"),
+    fn_bolditalic=str(FONT_DIR / "SourceSerif4-BoldIt.ttf"),
 )
 
 
@@ -76,6 +84,7 @@ class FontManager(EventDispatcher):
     tree_view_tag_title_spinner_font_size = NumericProperty()
 
     main_title_font_name = str(CARL_BARKS_FONT_FILE)
+    title_extra_info_font_name = EXTRA_INFO_FONT
     main_index_item_font_name = ROBOTO_FONT
     speech_index_item_font_name = SPEECH_FONT  # Allows for words like H2O and music notes
     speech_bubble_text_font_name = SPEECH_FONT
@@ -147,7 +156,7 @@ class FontManager(EventDispatcher):
         self.tree_view_title_label_font_size = theme.default
         self.tree_view_issue_label_font_size = theme.default
         # Prose, not a tree label: sized like the bottom view's extra-info paragraph.
-        self.tree_view_playlist_intro_font_size = theme.title_extra_info
+        self.tree_view_playlist_intro_font_size = theme.playlist_intro
         self.tree_view_title_search_label_font_size = theme.default
         self.tree_view_title_search_box_font_size = theme.default
         self.tree_view_title_spinner_font_size = theme.default

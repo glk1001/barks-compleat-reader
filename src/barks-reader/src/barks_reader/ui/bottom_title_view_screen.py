@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -139,6 +140,10 @@ class BottomTitleViewScreen(FloatLayout):
     # The share of a label's font size between its texture's top and its glyphs' tops
     # (the font's ascent over its cap height): what lines the portal up with the text.
     TEXT_LEADING = 0.25
+    # The same for the notes' font, whose ascent stands further above its capitals.
+    EXTRA_INFO_TEXT_LEADING = 0.4
+    # The notes' font's line height, as a share of its size: its ascent plus its descent.
+    EXTRA_INFO_LINE_HEIGHT = 1.371
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     # Dark text outline for the left-column info text, for the same reason.
     TITLE_INFO_OUTLINE_COLOR = (0, 0, 0, 1)
@@ -187,6 +192,19 @@ class BottomTitleViewScreen(FloatLayout):
     goto_page_text = StringProperty()
     use_overrides_active = BooleanProperty(default=True)
     use_overrides_description = StringProperty()
+
+    @staticmethod
+    def extra_info_line_pitch(font_size: float) -> int:
+        """Return the pixels from one line of the notes to the next.
+
+        Args:
+            font_size: The notes' font size, in pixels.
+
+        Returns:
+            The font's line height, which Kivy rounds up to a whole pixel.
+
+        """
+        return ceil(max(font_size, 1) * BottomTitleViewScreen.EXTRA_INFO_LINE_HEIGHT)
 
     def __init__(
         self, reader_settings: ReaderSettings, font_manager: FontManager, **kwargs: str

@@ -229,6 +229,7 @@
                     ExtraInfoLabel:
                         id: title_extra_info_label
                         source_text: root.title_extra_info_text
+                        font_name: fm.title_extra_info_font_name
                         font_size: fm.title_extra_info_font_size
                         color: root.TITLE_EXTRA_INFO_LABEL_COLOR
                         opacity: 1 if root.title_extra_info_text else 0
@@ -249,7 +250,7 @@
                         padding: [dp(1), 0, 0, 0]
                         # Only the lines that fit under the title info: the text ends at a
                         # line, not cut through one at the panel's edge.
-                        shown_lines: max(1, int((title_info_box.height - title_info_label.height - title_info_box.spacing) / (max(self.font_size, 1) * 1.3)))
+                        shown_lines: max(1, int((title_info_box.height - title_info_label.height - title_info_box.spacing) / root.extra_info_line_pitch(self.font_size)))
 
                     # IMPORTANT: This filler widget pushes the labels above it to the top.
                     Widget:
@@ -279,7 +280,7 @@
                         # margin at the bottom roughly that of the space on the right,
                         # and a compact colophon lifts it a little clear of the page's foot.
                         top:
-                            min(title_extra_info_label.top - root.TEXT_LEADING * title_extra_info_label.font_size, \
+                            min(title_extra_info_label.top - root.EXTRA_INFO_TEXT_LEADING * title_extra_info_label.font_size, \
                             title_info_label.y - (goto_page_layout.height + use_overrides_layout.height \
                             + wiki_page_button.height + 1.15 * fm.check_box_font_size)) \
                             if (root.layout_mode == 'spread' and not root.compact_colophon) else \

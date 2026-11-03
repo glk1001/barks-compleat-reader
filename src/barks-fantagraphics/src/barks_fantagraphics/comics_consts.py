@@ -72,6 +72,8 @@ ROBOTO_FONT = "Roboto"  # Kivy's default font
 # DejaVu Sans Condensed has them all, every character OpenSans has (H₂O's subscripts, Greek) but
 # four rare Latin letters, and about OpenSans's width.
 SPEECH_FONT = "DejaVuSansCondensed"
+# The title panel's notes, which are read like a page of a book.
+EXTRA_INFO_FONT = "SourceSerif4"
 
 
 class PageType(Enum):

@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+# cspell:ignore getmetrics
 
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comics_consts import FONT_DIR
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
@@ -18,6 +20,8 @@ from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
+from kivy.core.text.markup import MarkupLabel
+from PIL import ImageFont
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -732,3 +736,26 @@ class TestInsetImageEdges(ScreenFixtureBase):
         )
         with pytest.raises(RuntimeError, match=r"inset\.png is gone"):
             self.screen._set_title_inset_image(Path("inset.png"))
+
+
+def test_extra_info_line_height_is_the_fonts_own() -> None:
+    # The panel divides its height by this to end the notes at a whole line. Too small a
+    # share, after a change of font, and the last line runs off the foot of the panel.
+    size = 1000
+    ascent, descent = ImageFont.truetype(FONT_DIR / "SourceSerif4-Regular.ttf", size).getmetrics()
+    assert pytest.approx((ascent + descent) / size) == BottomTitleViewScreen.EXTRA_INFO_LINE_HEIGHT
+
+
+@pytest.mark.parametrize("font_size", [12, 13, 14, 17, 18, 24, 34])
+def test_extra_info_line_pitch_is_the_one_kivy_lays_out(font_size: int) -> None:
+    # Kivy rounds a line up to whole pixels: at 17 the font's 23.3 is laid out as 24, and
+    # dividing by the 23.3 allows a line more than the panel holds.
+    lines = 10
+    label = MarkupLabel(
+        text="\n".join(["Hg"] * lines),
+        font_name=str(FONT_DIR / "SourceSerif4-Regular.ttf"),
+        font_size=font_size,
+        markup=True,
+    )
+    _width, height = label.render()
+    assert BottomTitleViewScreen.extra_info_line_pitch(font_size) == height / lines

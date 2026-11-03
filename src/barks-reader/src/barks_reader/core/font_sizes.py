@@ -54,6 +54,7 @@ class FontTheme:
     main_title_footnote: float
     title_info: float
     title_extra_info: float
+    playlist_intro: float
     index_menu: float
     index_prefix: float
     main_index_item: float
@@ -85,7 +86,8 @@ LOW_RES_FONT_SIZES = FontTheme(
     main_title=30,
     main_title_footnote=12,
     title_info=16,
-    title_extra_info=14,
+    title_extra_info=13,
+    playlist_intro=14,
     index_menu=13,
     index_prefix=12,
     main_index_item=12,
@@ -114,7 +116,8 @@ HI_RES_FONT_SIZES = FontTheme(
     main_title=40,
     main_title_footnote=14,
     title_info=20,
-    title_extra_info=18,
+    title_extra_info=17,
+    playlist_intro=18,
     index_menu=17,
     index_prefix=15,
     main_index_item=16,
