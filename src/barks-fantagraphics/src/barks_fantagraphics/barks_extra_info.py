@@ -246,6 +246,13 @@ BARKS_EXTRA_INFO = {
     Titles.TERROR_OF_THE_BEAGLE_BOYS: "The first appearance of [b][i]The Beagle Boys.[/i][/b]"
     " And first mention of the [b][i]Money Bin.[/i][/b]",
     Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE: "The first appearance of the [b][i]Money Bin.[/i][/b]",
+    Titles.STATUESQUE_SPENDTHRIFTS: "This story had a reader complaint (via the publisher): the"
+    " jeweled-statue contest was a gross misuse of money. Barks' rebuttal, given in a 1975"
+    ' interview, was that she "missed the point entirely" — the money "had created a tremendous'
+    " amount of work: work for jewelers and goldsmiths and concrete men and the hydraulics experts"
+    '" and "had gone into circulation, much better than if it had continued lying in the'
+    " Maharajah's money bin or in Uncle Scrooge's money bin\"; a never-spending Scrooge, by"
+    ' contrast, would "freeze all the stuff that keeps capitalism going."',
     Titles.ROUND_MONEY_BIN_THE: "The first appearance of [b][i]Number One Dime.[/i][/b]\n\n"
     "In 1953, a twelve-year-old fan named Richard Greenberg wrote to the studio asking permission"
     " to form a national Beagle Boys fan club, after a scene in this story. A fan club for"
