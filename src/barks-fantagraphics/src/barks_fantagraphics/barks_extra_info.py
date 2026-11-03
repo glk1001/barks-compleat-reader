@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic
+# cspell:ignore stylised vlottes batgirl minicomic willits
 
 from .barks_titles import Titles
 
@@ -355,6 +355,12 @@ BARKS_EXTRA_INFO = {
     ' "because Donald was too mean to the villain."',
     Titles.TERRIBLE_TOURIST: "This is a new version of the 1945 censored story "
     '[b][i]"Silent Night."[/i][/b]',
+    Titles.STRANGER_THAN_FICTION: "In this story Donald explodes at the nephews reading a science"
+    ' fiction story, "Ten Seconds to Mars," by "Spicer Willits" — a nod to John and Bill Spicer and'
+    " Malcolm Willits, among the very first comics fans to track Barks down and write to him."
+    " Willits himself adds the personal motive: he had told Barks of his lifelong love of science"
+    " fiction and how his parents forbade it in the house — so in this June-1961 story the very"
+    ' book Donald throws in the trash is the pulp SF novel credited to "Spicer Willits."',
     Titles.YOICKS_THE_FOX: "This is a new version of [b][i]WDCS #98.[/i][/b]",
     Titles.NOBLE_PORPOISES: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
     Titles.WAX_MUSEUM_THE: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
