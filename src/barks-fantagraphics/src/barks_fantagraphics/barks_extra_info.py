@@ -45,6 +45,10 @@ BARKS_EXTRA_INFO = {
     Titles.THREE_DIRTY_LITTLE_DUCKS: "The first appearance of [b][i]Herbert[/i][/b]"
     " and [b][i]Bolivar[/i][/b] the dog."
     "\n\nAnd the first Barks Duck story drawn in a four tier layout.",
+    Titles.FROZEN_GOLD: 'The Fantagraphics edition replaced the story\'s "Eskimo" references (for'
+    ' example, "ESKIMOS" became "VILLAGERS" and "ESKIMO HOUSE" became "BUILDING"), and on page 17'
+    ' it also changed "QUEER GUY" to "ODD FELLA" and "USED TO WHITE MEN" to "USED TO VISITORS".'
+    " This digital edition restores Barks' original dialogue on pages 5, 16, 17 and 24.",
     Titles.MYSTERY_OF_THE_SWAMP: "From the [i]Duck Man[/i] interview:"
     "[i]\"I'd been struggling for days trying to think of something"
     " that I could use for a long story plot ... I just sat by myself out on the lawn in the"
