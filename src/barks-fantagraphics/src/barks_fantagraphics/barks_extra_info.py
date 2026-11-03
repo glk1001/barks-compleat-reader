@@ -90,6 +90,9 @@ BARKS_EXTRA_INFO = {
     " him murderous. I created a guy that didn't leave any bad taste in people's mouths, didn't"
     ' cause children any nightmares afterward."[/i]',
     Titles.SMUGSNORKLE_SQUATTIE_THE: "Last appearance of [b][i]Herbert[/i][/b].",
+    Titles.SWIMMING_SWINDLERS: "In the original edition, Butch was drawn with a cigarette, but it"
+    " was painted out of later reprints including the Fantagraphics edition. This is restored in"
+    " the digital edition on pages 1, 2, and 7.",
     Titles.HIGH_WIRE_DAREDEVILS: "First mention of [b][i]Duckburg.[/i][/b]"
     " (Last panel of last page.)",
     Titles.BILL_COLLECTORS_THE: "Fantagraphics left page 3, the Wild Woman of Borneo sequence, out"
