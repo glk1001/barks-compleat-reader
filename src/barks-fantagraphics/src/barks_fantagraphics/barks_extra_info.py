@@ -271,6 +271,8 @@ BARKS_EXTRA_INFO = {
     " water. You can't dive into a pile of money like you would into a snowdrift. So he had to"
     " have a trick by which he did it, and I don't explain that trick because I don't understand"
     ' it myself."[/i]',
+    Titles.THINK_BOX_BOLLIX_THE: "Although Gyro's first appearance was a month earlier in WDCS"
+    " #140, this is the first story built around him.",
     Titles.GOLDEN_HELMET_THE: "This story began with a coastline in Hal Foster's [i]Prince"
     ' Valiant.[/i] Barks recalled: [i]"Valiant was beautifully illustrated. Each panel was a work'
     " of art. I was very much taken with one of the coastal scenes... I wanted to work with the"
