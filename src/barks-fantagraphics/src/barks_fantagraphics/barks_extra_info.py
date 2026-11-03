@@ -1,5 +1,5 @@
 # ruff: noqa: ERA001, RUF001
-# cspell:ignore humoristically strzyz stylised
+# cspell:ignore humoristically strzyz stylised vlottes
 
 from .barks_titles import Titles
 
@@ -112,6 +112,13 @@ BARKS_EXTRA_INFO = {
     " of the idea and have a rich uncle for Donald. And all these situations of the bear and"
     " Donald having to go to this cabin in the wintertime to prove his bravery and so on."
     ' It just came out of the situation of bringing in a rich uncle."[/i]',
+    Titles.DARKEST_AFRICA: "Fantagraphics restored Barks's original art for this story. The Carl"
+    " Barks Library reprint had been censored for its racial caricatures: the natives' \"thick"
+    ' lips and pointed teeth" were removed, a panel of cannibals was cut, and their bribe of "two'
+    ' false teeth" became "confederate dollars". The art there was redrawn, pages 1-5 and 10 by'
+    " Daan Jippes and the rest by Dick Vlottes. The redrawing had a practical cause: according to"
+    " Byron Erickson, who worked on the Library, this was a banned story whose proofs Disney had"
+    " ordered destroyed years earlier.",
     Titles.GOLDEN_CHRISTMAS_TREE_THE: "In a letter to a fan dated March 22, 1961, Barks mentions"
     ' "The Golden Christmas Tree." [i]"I felt surly about the finished story because the editors'
     " had made me do some changes in the fight sequence between Don and the witch that I thought"
