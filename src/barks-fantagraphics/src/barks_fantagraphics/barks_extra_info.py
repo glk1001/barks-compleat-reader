@@ -240,6 +240,11 @@ BARKS_EXTRA_INFO = {
     ' coastline, so I tried to think of what would happen to Donald to bring him up there."[/i]'
     " Reading about how the Norsemen discovered America centuries before Columbus then gave him"
     " the plot.",
+    Titles.GILDED_MAN_THE: "The MacGuffin of this story is the 1856 British Guiana one-cent"
+    " magenta, regarded by many philatelists as the world's most famous rare stamp. It was sold in"
+    " June 2021 to the London stamp dealer Stanley Gibbons for $8,307,000. Barks' rendering departs"
+    " from the original: the real stamp is octagonal, with black text on magenta paper, where he"
+    " drew it rectangular on white paper.",
     Titles.FINANCIAL_FABLE_A: "In a letter from October 14, 1969, Barks wrote:"
     " [i]\"...I have no favorite 10-pager anymore. The issue of March 1951 I've always considered"
     ' technically well done. It had a rhythm that could almost have been set to music."[/i]',
