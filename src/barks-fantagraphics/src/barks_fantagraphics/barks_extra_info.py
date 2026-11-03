@@ -16,6 +16,13 @@ BARKS_EXTRA_INFO = {
     " plot, and wrote the editor for permission to change things around. The result was they"
     " invited me to see if I could do a whole original story myself. The story of the kids and"
     " their 'rabbit foot' was my answer to the opportunity.\"[/i]",
+    Titles.DONALD_DUCK_AND_THE_MUMMYS_RING: "This was Barks's first long Donald Duck story both"
+    " written and drawn by him. It is also one of the rare stories for which he submitted a script"
+    " for editorial approval. Editor Eleanor Packer asked for big changes to the climax: Barks"
+    ' recalled that she [i]"thought I had gotten too darned involved there toward the last"[/i].'
+    ' He sketched up the changes and sent them in, but she then [i]"sent back word to go ahead'
+    " with my original version; my original version was better. So after that, I never had any"
+    ' trouble."[/i]',
     Titles.TOO_MANY_PETS: "In a June 9, 1968 letter to Michael Barrier, Barks wrote:"
     " [i]\"In the Sept. 1943 D.D. the story 'Too Many Pets' was a sort of collaboration. The script"
     " was started by a writer at the Disney Studio who found himself so overloaded with work on"
