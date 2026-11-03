@@ -23,6 +23,8 @@ from barks_reader.core.fantagraphics_volumes import (
     has_archive_extension,
 )
 
+_ARCHIVE = Path("03 - Volume.cbz")
+
 
 def _make_volume_zip(path: Path, image_names: list[str], subdir: str = "images") -> Path:
     """Write a minimal cbz at `path` containing `subdir/<name>` for each image."""
@@ -76,29 +78,37 @@ class TestExtractImageInt:
 class TestCheckImageNames:
     def test_raises_when_first_is_negative(self, archives: FantagraphicsVolumeArchives) -> None:
         with pytest.raises(ValueError, match="First page should be >= 0"):
-            archives._check_image_names(["page-1.png"], first=-1, last=5, img_ext=".png")
+            archives._check_image_names(_ARCHIVE, ["page-1.png"], first=-1, last=5, img_ext=".png")
 
     def test_raises_when_first_equals_last(self, archives: FantagraphicsVolumeArchives) -> None:
         with pytest.raises(ValueError, match=r"First page .* should be <"):
-            archives._check_image_names(["page5.png"], first=5, last=5, img_ext=".png")
+            archives._check_image_names(_ARCHIVE, ["page5.png"], first=5, last=5, img_ext=".png")
 
     def test_raises_when_first_greater_than_last(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
         with pytest.raises(ValueError, match=r"First page .* should be <"):
-            archives._check_image_names(["page10.png"], first=10, last=5, img_ext=".png")
+            archives._check_image_names(_ARCHIVE, ["page10.png"], first=10, last=5, img_ext=".png")
 
     def test_raises_on_page_number_mismatch(self, archives: FantagraphicsVolumeArchives) -> None:
-        with pytest.raises(PageNumError, match="Expecting page 1 but got 2"):
-            archives._check_image_names(["page2.png", "page3.png"], first=1, last=2, img_ext=".png")
+        with pytest.raises(PageNumError) as exc_info:
+            archives._check_image_names(
+                _ARCHIVE, ["page2.png", "page3.png"], first=1, last=2, img_ext=".png"
+            )
+
+        message = str(exc_info.value)
+        assert f'"{_ARCHIVE}"' in message
+        assert 'expecting page 1 but image "page2.png" is numbered 2' in message
 
     def test_raises_on_extension_mismatch(self, archives: FantagraphicsVolumeArchives) -> None:
         with pytest.raises(RuntimeError, match=r'expecting extension "\.png" but got "\.jpg"'):
-            archives._check_image_names(["page1.jpg", "page2.jpg"], first=1, last=2, img_ext=".png")
+            archives._check_image_names(
+                _ARCHIVE, ["page1.jpg", "page2.jpg"], first=1, last=2, img_ext=".png"
+            )
 
     def test_passes_for_valid_images(self, archives: FantagraphicsVolumeArchives) -> None:
         archives._check_image_names(
-            ["page1.png", "page2.png", "page3.png"], first=1, last=3, img_ext=".png"
+            _ARCHIVE, ["page1.png", "page2.png", "page3.png"], first=1, last=3, img_ext=".png"
         )
 
     def test_accepts_a_zero_based_first_page(self, archives: FantagraphicsVolumeArchives) -> None:
@@ -107,7 +117,9 @@ class TestCheckImageNames:
         Volumes whose images start at 000 exist (see `_get_archive_image_page_map`'s
         `page_inc`), so the guard must be `< 0`, not `<= 0`.
         """
-        archives._check_image_names(["page0.png", "page1.png"], first=0, last=1, img_ext=".png")
+        archives._check_image_names(
+            _ARCHIVE, ["page0.png", "page1.png"], first=0, last=1, img_ext=".png"
+        )
 
 
 class TestCheckCorrectVolumeNumbers:

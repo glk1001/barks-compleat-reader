@@ -1214,7 +1214,9 @@ def _process_one_archive(
         raise PageExtError(msg)
 
     first_page, last_page = archives_mgr._get_first_and_last_page_nums(image_filenames)  # noqa: SLF001
-    archives_mgr._check_image_names(image_filenames, first_page, last_page, image_ext)  # noqa: SLF001
+    archives_mgr._check_image_names(  # noqa: SLF001
+        archive_filename, image_filenames, first_page, last_page, image_ext
+    )
 
     archive_images_page_map = archives_mgr._get_archive_image_page_map(  # noqa: SLF001
         image_subdir, image_filenames, first_page, last_page

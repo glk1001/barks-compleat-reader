@@ -255,7 +255,9 @@ class FantagraphicsVolumeArchives:
                 raise PageExtError(msg)
 
             first_page, last_page = self._get_first_and_last_page_nums(image_filenames)
-            self._check_image_names(image_filenames, first_page, last_page, image_ext)
+            self._check_image_names(
+                archive_filename, image_filenames, first_page, last_page, image_ext
+            )
 
             archive_images_page_map = self._get_archive_image_page_map(
                 archive_image_subdir, image_filenames, first_page, last_page
@@ -480,7 +482,9 @@ class FantagraphicsVolumeArchives:
         msg = f'Image name does not have an integer suffix: "{image_name}".'
         raise ValueError(msg)
 
-    def _check_image_names(self, img_files: list[str], first: int, last: int, img_ext: str) -> None:
+    def _check_image_names(
+        self, archive_filename: Path, img_files: list[str], first: int, last: int, img_ext: str
+    ) -> None:
         if first < 0:
             msg = f"First page should be >= 0 not {first}"
             raise ValueError(msg)
@@ -495,7 +499,11 @@ class FantagraphicsVolumeArchives:
             page_ext = Path(img_files[index]).suffix
 
             if page != page_num:
-                msg = f"Expecting page {page} but got {page_num}"
+                msg = (
+                    f'Fantagraphics archive "{archive_filename}": expecting page {page} but'
+                    f' image "{img_files[index]}" is numbered {page_num}. Replace it from the'
+                    f" library and retry."
+                )
                 raise PageNumError(msg)
             if img_ext != page_ext:
                 msg = f'For page "{page}", expecting extension "{img_ext}" but got "{page_ext}"'
