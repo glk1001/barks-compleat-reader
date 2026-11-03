@@ -7,9 +7,9 @@ from .barks_titles import Titles
 BARKS_EXTRA_INFO = {
     Titles.VICTORY_GARDEN_THE: " This was Barks's first comic-book work after leaving the Disney"
     " studio. In a 1967 letter to Michael Barrier, Barks wrote that he"
-    ' "noticed some bad errors in the plot" of the script Western sent him, and got the editor\'s'
-    ' permission to "change things around", though carefully: "I wasn\'t going to make myself an'
-    ' obnoxious character right away."',
+    ' [i]"noticed some bad errors in the plot"[/i] of the script Western sent him, and got the'
+    ' editor\'s permission to [i]"change things around"[/i], though carefully:'
+    ' [i]"I wasn\'t going to make myself an obnoxious character right away."[/i]',
     Titles.RABBITS_FOOT_THE: "The first Donald Duck story both written and drawn by Barks."
     "\n\nFrom a letter from Barks to Michael Barrier:"
     '[i]"They sent me a ready-written script to draw for story #1 several weeks after I left the'
@@ -99,9 +99,9 @@ BARKS_EXTRA_INFO = {
     " of CBDL Volume 4 without comment. It is restored in this digital edition from the Carl Barks"
     " Library.",
     Titles.TURKEY_RAFFLE: 'On page 4, a can of "Barks Dog Soup" is shown in Donald\'s kitchen'
-    '-cupboard. In a letter to Michael Barrier, Barks wrote: "As for the can of dog food with'
+    '-cupboard. In a letter to Michael Barrier, Barks wrote: [i]"As for the can of dog food with'
     " Barks on it..., I probably put the name on it myself just to see if the editors would white"
-    ' it out."',
+    ' it out."[/i]',
     Titles.VOLCANO_VALLEY: 'This story grew out of the "Little Pedro" sequence of Disney\'s'
     " [i]Saludos Amigos,[/i] in which a baby airplane flies the mail over the Andes through a"
     " terrifying storm. It became Donald's hair-raising flight to Volcanovia, with pilot Pablo"
@@ -156,7 +156,7 @@ BARKS_EXTRA_INFO = {
     ' But the rest of the tale was robust enough."[/i] In a more recent letter (October 3, 1973),'
     " Barks says, [i]\"About the last two pages of 'The Golden Christmas Tree'-only the last"
     " four panels are mine as they were in the original. I still wince at the preachy stuff I"
-    " had to put in about the 'spirit of Christmas.'[/i]",
+    " had to put in about the 'spirit of Christmas.'\"[/i]",
     Titles.SHERIFF_OF_BULLET_VALLEY: "Barks caricatured himself on a wanted poster on the last"
     ' page of this story. He said in the 1971 interview: [i]"That caricature originated in'
     " the old Disney studio's story gag-fests where the guys used to draw of each other and"
@@ -194,7 +194,7 @@ BARKS_EXTRA_INFO = {
     " that go out under the Golden Gate and swim around on New Year's Day."
     " And I just thought of Donald: how in the summertime he would get very rash and boast"
     " that he would go into the water in the wintertime. And so that's how Gladstone got into it."
-    '" He had to be somebody that Donald was trying to outdo.[/i]"',
+    '" He had to be somebody that Donald was trying to outdo."[/i]',
     Titles.RACE_TO_THE_SOUTH_SEAS: "The first appearance of [b][i]Gladstone Gander[/i][/b] in "
     "a long Donald Duck story.\n\n"
     "David Gerstein on the version in this digital edition: [i]\"Fantagraphics'"
@@ -211,8 +211,8 @@ BARKS_EXTRA_INFO = {
     ' luck: [i]"Well, that came the second time I was using him [actually, the second time'
     " in a long Donald story]. I established him as an obnoxious character in"
     " his first story, and so the second time I used him, I thought of what particular"
-    " thing can make that guy [i]lastingly[/i] obnoxious. And so I thought of this lucky angle."
-    ' He was the kind of guy who who got all the breaks, and poor old Donald never got anywhere."',
+    " thing can make that guy lastingly obnoxious. And so I thought of this lucky angle."
+    ' He was the kind of guy who got all the breaks, and poor old Donald never got anywhere."[/i]',
     Titles.IN_ANCIENT_PERSIA: "This is one of Barks' bleakest tales, so it's no surprise that it"
     " was banned in several countries and not published in Denmark until 1987."
     '\n\nFrom a June 9, 1966 letter to Michael Barrier: [i]"About my'
@@ -248,30 +248,32 @@ BARKS_EXTRA_INFO = {
     Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE: "The first appearance of the [b][i]Money Bin.[/i][/b]",
     Titles.STATUESQUE_SPENDTHRIFTS: "This story had a reader complaint (via the publisher): the"
     " jeweled-statue contest was a gross misuse of money. Barks' rebuttal, given in a 1975"
-    ' interview, was that she "missed the point entirely" — the money "had created a tremendous'
-    " amount of work: work for jewelers and goldsmiths and concrete men and the hydraulics experts"
-    '" and "had gone into circulation, much better than if it had continued lying in the'
-    " Maharajah's money bin or in Uncle Scrooge's money bin\"; a never-spending Scrooge, by"
-    ' contrast, would "freeze all the stuff that keeps capitalism going."',
+    ' interview, was that she [i]"missed the point entirely"[/i] — the money [i]"had created a'
+    " tremendous amount of work: work for jewelers and goldsmiths and concrete men and the"
+    ' hydraulics experts"[/i] and [i]"had gone into circulation, much better than if it had'
+    " continued lying in the Maharajah's money bin or in Uncle Scrooge's money bin\"[/i]; a"
+    ' never-spending Scrooge, by contrast, would [i]"freeze all the stuff that keeps capitalism'
+    ' going."[/i]',
     Titles.ROUND_MONEY_BIN_THE: "The first appearance of [b][i]Number One Dime.[/i][/b]\n\n"
     "In 1953, a twelve-year-old fan named Richard Greenberg wrote to the studio asking permission"
     " to form a national Beagle Boys fan club, after a scene in this story. A fan club for"
     " criminals was anathema to the studio: Frank Reilly, head of its comic-strip department,"
-    ' wrote back that "the Beagle'
+    ' wrote back that [i]"the Beagle'
     " Boys represent the wrong; they are the villains… We believe it would be wrong for you and"
     " your friends to identify yourselves with wrongdoers, even though they are merely comic"
-    ' creations." Carl Buettner sent Barks copies of both letters with'
-    ' the comment, "I am considering writing Master Greenberg myself, applying for membership."',
+    ' creations."[/i] Carl Buettner sent Barks copies of both letters with'
+    ' the comment, [i]"I am considering writing Master Greenberg myself, applying for'
+    ' membership."[/i]',
     Titles.GLADSTONES_TERRIBLE_SECRET: "The first appearance of [b][i]Gyro Gearloose.[/i][/b]"
     " From the [i]Duck Man[/i] interview:"
-    ' "I think that every cartoonist that ever ran anything in comic strips and newspapers'
+    ' [i]"I think that every cartoonist that ever ran anything in comic strips and newspapers'
     " always had a crazy inventor at some time in their strips. So I was in need of a crazy"
     " inventor, so I just deliberately invented Gyro as a crazy inventor, but I had only"
     " figured on using him once in a great while. So I just made him a big, awkward-looking"
     " chicken. If I'd known I was going to have to do a book of Gyro stories and so on,"
     " I would have made him about the same size as Donald and Uncle Scrooge so that he could"
     " have been handled much easier. That he was this big, tall, gawky chicken and very"
-    ' difficult to work him in the same panels with the Ducks all the time."',
+    ' difficult to work him in the same panels with the Ducks all the time."[/i]',
     Titles.ONLY_A_POOR_OLD_MAN: "In the [i]Duck Man[/i] interview Barks said this about Scrooge"
     " playing with money:"
     "[i]\"And I don't know how I got on that idea, but it ... it just seemed like a ridiculous"
@@ -359,7 +361,7 @@ BARKS_EXTRA_INFO = {
     " in a June 1956 letter to one of his editors at Western Publishing.)",
     Titles.ROCKET_RACE_AROUND_THE_WORLD: "This is a new version of [b][i]WDCS #93.[/i][/b]",
     Titles.MILKMAN_THE: "This story was rejected by Western, Barks says,"
-    ' "because Donald was too mean to the villain."',
+    ' [i]"because Donald was too mean to the villain."[/i]',
     Titles.TERRIBLE_TOURIST: "This is a new version of the 1945 censored story "
     '[b][i]"Silent Night."[/i][/b]',
     Titles.STRANGER_THAN_FICTION: "In this story Donald explodes at the nephews reading a science"
@@ -371,7 +373,7 @@ BARKS_EXTRA_INFO = {
     Titles.YOICKS_THE_FOX: "This is a new version of [b][i]WDCS #98.[/i][/b]",
     Titles.NOBLE_PORPOISES: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
     Titles.WAX_MUSEUM_THE: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
-    Titles.LAND_OF_THE_PYGMY_INDIANS: "Barks commented: \"[i]On comparison with 'Mystery of"
+    Titles.LAND_OF_THE_PYGMY_INDIANS: "Barks commented: [i]\"On comparison with 'Mystery of"
     " the Swamp:' I realized that only the plotline was similar; all other elements were"
     " breaking new ground. Besides, the pygmy Indians were more believable and interesting"
     " than the Gneezles, so I went ahead with the story and let the gags fall where they might."
@@ -381,7 +383,7 @@ BARKS_EXTRA_INFO = {
     " from Longfellow's epic 'The Song of Hiawatha:']"
     ' [i]"About the 8th grade, I had to read it and recite it in school. I thought it was a'
     " tiresome way of telling a story back then, but the meter lends itself very well to"
-    " the comments of the Peeweegahs when they talk about what they're going to do.[/i]\"",
+    " the comments of the Peeweegahs when they talk about what they're going to do.\"[/i]",
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented: [i]"I guess among the very best ones is'
     " a 10-page story of Donald, where he got to complaining about everything being too noisy"
     " and he moves to a very quiet place, and he was not satisfied until everything was"
