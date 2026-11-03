@@ -1,5 +1,6 @@
 # ruff: noqa: ERA001, RUF001
-# cspell:ignore brittanica humoristically pince saludos strzyz stylised vlottes
+# cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
+# cspell:ignore stylised vlottes
 
 from .barks_titles import Titles
 
@@ -133,6 +134,12 @@ BARKS_EXTRA_INFO = {
     " Daan Jippes and the rest by Dick Vlottes. The redrawing had a practical cause: according to"
     " Byron Erickson, who worked on the Library, this was a banned story whose proofs Disney had"
     " ordered destroyed years earlier.",
+    Titles.OLD_CASTLES_SECRET_THE: 'Barks said of Uncle Scrooge in this story: [i]"He had turned'
+    " out to be an interesting character in that first story [Christmas on Bear Mountain], so I"
+    " began thinking of a way to use him again. The Old Castle established more of Scrooge's"
+    ' character, showed where he came from originally."[/i]'
+    "\n\nBarks modelled the castle's architecture on [i]National Geographic[/i] photographs of real"
+    " castles: Harlech, Glamis, Cawdor.",
     Titles.GOLDEN_CHRISTMAS_TREE_THE: "In a letter to a fan dated March 22, 1961, Barks mentions"
     ' "The Golden Christmas Tree." [i]"I felt surly about the finished story because the editors'
     " had made me do some changes in the fight sequence between Don and the witch that I thought"
