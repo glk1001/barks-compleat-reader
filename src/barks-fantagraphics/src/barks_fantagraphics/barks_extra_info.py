@@ -1,5 +1,5 @@
 # ruff: noqa: ERA001, RUF001
-# cspell:ignore brittanica humoristically pince strzyz stylised vlottes
+# cspell:ignore brittanica humoristically pince saludos strzyz stylised vlottes
 
 from .barks_titles import Titles
 
@@ -92,6 +92,12 @@ BARKS_EXTRA_INFO = {
     '-cupboard. In a letter to Michael Barrier, Barks wrote: "As for the can of dog food with'
     " Barks on it..., I probably put the name on it myself just to see if the editors would white"
     ' it out."',
+    Titles.VOLCANO_VALLEY: 'This story grew out of the "Little Pedro" sequence of Disney\'s'
+    " [i]Saludos Amigos,[/i] in which a baby airplane flies the mail over the Andes through a"
+    " terrifying storm. It became Donald's hair-raising flight to Volcanovia, with pilot Pablo"
+    " Mañana taking a siesta on the way. The film's artists also drew Aconcagua, the highest"
+    " mountain in the Western Hemisphere, with the face of a scowling monster among its snowy"
+    " crags, and Barks gave the same glowering face to Old Ferocio, Volcanovia's giant volcano.",
     Titles.ADVENTURE_DOWN_UNDER: "Asked by Klaus Strzyz in 1980 whether he researched the countries"
     ' he sent the Ducks to, Barks said he couldn\'t do it [i]"on a grand scale"[/i]: he had no'
     " reference books at home and no access to the Disney studio's libraries, so errors slipped"
