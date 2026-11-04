@@ -213,6 +213,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._reader_settings = reader_settings
         self._texture_loader = PanelTextureLoader()
         self._formatter = ReaderFormatter(font_manager)
+        font_manager.bind(title_info_font_size=self._on_title_info_font_size)
         self._special_fanta_overrides: SpecialFantaOverrides | None = None
         self._fanta_info: FantaComicBookInfo | None = None
         self._goto_offer = GotoPageOffer()
@@ -250,9 +251,7 @@ class BottomTitleViewScreen(FloatLayout):
         title_text = self._get_main_title_str(fanta_info)
         add_footnote = title_needs_footnote(fanta_info)
         self.main_title_text = self._formatter.get_main_title(title_text, add_footnote)
-        self.title_info_text = self._formatter.get_title_info(
-            fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN, add_footnote
-        )
+        self._set_title_info_text(fanta_info)
         self.main_title_footnote = "" if not add_footnote else self._get_footnote_text()
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
         self.wiki_button_visible = self._title_has_wiki_page(fanta_info.comic_book_info.title)
@@ -264,6 +263,17 @@ class BottomTitleViewScreen(FloatLayout):
         logger.debug(f'Using title image source "{inset_image_source}".')
 
         self._set_title_inset_image(inset_image_source)
+
+    def _set_title_info_text(self, fanta_info: FantaComicBookInfo) -> None:
+        self.title_info_text = self._formatter.get_title_info(
+            fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN, title_needs_footnote(fanta_info)
+        )
+
+    def _on_title_info_font_size(self, *_args: object) -> None:
+        # The footnote star's size is written into the text, and the rows' size changes
+        # with the window's height: left alone, it stretched or shrank against them.
+        if self._fanta_info is not None:
+            self._set_title_info_text(self._fanta_info)
 
     def _get_footnote_text(self) -> str:
         assert self._fanta_info is not None

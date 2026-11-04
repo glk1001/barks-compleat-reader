@@ -232,8 +232,9 @@ Numbered, in the order it actually happens:
   choice (`font_group_for_height`) and both size tables live in the Kivy-free
   `core/font_sizes.py`; the manager only scales them and holds the properties.
   The title panel's publication info and notes are the exception: they scale with the
-  window's height (`title_text_sizes_for_height`), so a note that fits at 2560x1440
-  fits at 1920x1080 too.
+  window's height (`title_text_sizes_for_height`), so the lines break much the same at
+  any size. Only much the same: sizes and line pitches round to whole pixels, so a note
+  that just fits at 2560x1440 can lose a line at another height.
 
 ---
 

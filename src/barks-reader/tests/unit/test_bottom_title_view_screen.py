@@ -152,6 +152,23 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         args, _ = self.mock_loader.load_texture.call_args
         assert args[0] == "inset.png"
 
+    def test_the_title_info_is_rebuilt_when_its_font_size_changes(self) -> None:
+        """The footnote star's size is in the text, and the rows' size follows the window."""
+        on_font_size = self.mock_font_manager.bind.call_args.kwargs["title_info_font_size"]
+        self.screen.set_title_view(MagicMock())
+        self.mock_formatter.get_title_info.return_value = "Title Info, a larger star"
+
+        on_font_size(self.mock_font_manager, 38)
+
+        assert self.screen.title_info_text == "Title Info, a larger star"
+
+    def test_a_font_size_change_before_any_title_builds_nothing(self) -> None:
+        on_font_size = self.mock_font_manager.bind.call_args.kwargs["title_info_font_size"]
+
+        on_font_size(self.mock_font_manager, 38)
+
+        self.mock_formatter.get_title_info.assert_not_called()
+
     def test_set_title_view_with_footnote(self) -> None:
         self.mock_needs_footnote.return_value = True
         mock_info = MagicMock()

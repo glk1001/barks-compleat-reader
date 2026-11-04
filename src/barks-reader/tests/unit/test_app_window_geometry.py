@@ -782,6 +782,21 @@ def test_a_retina_window_booted_in_proportion_is_left_alone(
     assert window.system_size == (width, height)
 
 
+def test_the_fonts_follow_the_window_in_pixels_once_it_is_ready(
+    monkeypatch: pytest.MonkeyPatch, fake_clock: FakeClock
+) -> None:
+    """Sized from its points at boot, a Retina window's title text came out half size."""
+    height = 1365
+    width, _ = get_win_dimensions(height - CHROME, 2560)
+    window = _RetinaWindow((width, height))
+
+    helper = _make_retina_helper(monkeypatch, window, fake_clock)
+
+    update_fonts = helper._update_fonts  # noqa: SLF001
+    assert isinstance(update_fonts, MagicMock)
+    update_fonts.assert_called_once_with(2 * height)
+
+
 def test_a_retina_correction_is_set_in_points_and_settles(
     monkeypatch: pytest.MonkeyPatch, fake_clock: FakeClock
 ) -> None:

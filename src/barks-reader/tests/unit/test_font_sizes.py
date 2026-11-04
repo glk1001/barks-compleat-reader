@@ -27,7 +27,8 @@ def test_a_window_taller_than_the_cutoff_takes_the_hi_res_sizes() -> None:
         (1360, TitleTextSizes(info=19, notes=17)),  # 2560x1440, on Windows
         (1365, TitleTextSizes(info=19, notes=17)),  # 2560x1440, elsewhere
         (1359, TitleTextSizes(info=18, notes=16)),
-        (1005, TitleTextSizes(info=14, notes=12)),  # 1920x1080
+        (1000, TitleTextSizes(info=14, notes=12)),  # 1920x1080, on Windows
+        (1005, TitleTextSizes(info=14, notes=12)),  # 1920x1080, elsewhere
         (2720, TitleTextSizes(info=38, notes=34)),
     ],
 )

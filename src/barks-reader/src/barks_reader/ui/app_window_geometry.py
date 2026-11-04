@@ -106,6 +106,9 @@ class AppWindowGeometryHelper:
         self._window_ready = True
         self.evaluate_layout("boot")
         self.apply_minimum_size()
+        # A size event before now was dropped, so the fonts may be for an earlier size.
+        assert self._update_fonts is not None
+        self._update_fonts(Window.height)
 
     @property
     def current_monitor(self) -> ScreenInfo:

@@ -20,8 +20,10 @@ HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
 TITLE_TEXT_REFERENCE_WINDOW_HEIGHT = 1360
 TITLE_INFO_REFERENCE_SIZE = 19
 TITLE_EXTRA_INFO_REFERENCE_SIZE = 17
-# A window shorter than a 1080p screen's keeps this height's sizes, to stay readable.
-TITLE_TEXT_SMALLEST_WINDOW_HEIGHT = 1000
+# A window shorter than a 1080p screen's keeps this height's sizes, to stay readable. That
+# window is 1000 tall on Windows and 1005 elsewhere, and both take 1005's sizes: rounded
+# down, 1000 gave a smaller info size on the same screen.
+TITLE_TEXT_SMALLEST_WINDOW_HEIGHT = 1005
 
 
 class FontGroup(Enum):

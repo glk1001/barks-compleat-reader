@@ -437,7 +437,8 @@ class BarksReaderApp(App):
         )
         assert self._main_screen is not None
         self._set_custom_title_bar()
-        self._main_screen.update_fonts(Config.getint("graphics", "height"))  # ty: ignore[unresolved-attribute]
+        # In pixels, as the sizes take it: Config's height is in points on a Retina Mac.
+        self._main_screen.update_fonts(Window.height)
 
         logger.debug("Instantiating comic reader screen...")
         comic_reader_screen = get_barks_comic_reader_screen(
