@@ -57,7 +57,7 @@ BARKS_EXTRA_INFO = {
     ' example, "ESKIMOS" became "VILLAGERS" and "ESKIMO HOUSE" became "BUILDING"), and on page 17'
     ' it also changed "QUEER GUY" to "ODD FELLA" and "USED TO WHITE MEN" to "USED TO VISITORS".'
     " This digital edition restores Barks' original dialogue on pages 5, 16, 17 and 24.",
-    Titles.MYSTERY_OF_THE_SWAMP: "From the [i]Duck Man[/i] interview:"
+    Titles.MYSTERY_OF_THE_SWAMP: "From the [i]Duck Man[/i] 1975 interview:"
     "[i]\"I'd been struggling for days trying to think of something"
     " that I could use for a long story plot ... I just sat by myself out on the lawn in the"
     " swing ... And all of a sudden I got to thinking of the Everglades, and what could Donald"
@@ -129,7 +129,7 @@ BARKS_EXTRA_INFO = {
     " thought of it in a whole bucketful of writing at once. It had to come out one thing"
     ' after another."[/i]',
     Titles.CHRISTMAS_ON_BEAR_MOUNTAIN: "The first appearance of [b][i]Uncle Scrooge.[/i][/b]"
-    " In the [i]Duck Man[/i] interview Barks said: "
+    " In the [i]Duck Man[/i] 1975 interview Barks said: "
     '[i]"The office, I think, wanted me to do a Christmas story, and so I cast around for'
     " Christmas stories. I began to think of the great Dickens Christmas story about Scrooge;"
     " it is the classic of all Christmas stories. I just was thief enough to sort of steal some"
@@ -187,7 +187,7 @@ BARKS_EXTRA_INFO = {
     " painting of Bombie. In this digital edition, Bombie has been changed back to having blank"
     " eyeballs, 38 panels in all.",
     Titles.WINTERTIME_WAGER: "The first appearance of [b][i]Gladstone Gander.[/i][/b]"
-    " In the [i]Duck Man[/i] interview Barks said this about Gladstone:"
+    " In the [i]Duck Man[/i] 1975 interview Barks said this about Gladstone:"
     ' [i]"Well, I think the reason for bringing in Gladstone was that I thought of this'
     " situation of Donald having to take a midwinter swim in a lake of ice-cold water."
     " It was something, I guess, from reading of the Polar Bear Club up in San Francisco"
@@ -207,7 +207,8 @@ BARKS_EXTRA_INFO = {
     ' everything works out, it will make its way into a later printing of Donald V1."[/i]',
     Titles.LETTER_TO_SANTA: "The first story with the classic [b][i]Uncle Scrooge:[/i][/b] a"
     " full-dress appearance, except that he wears glasses rather than his later pince-nez.",
-    Titles.LUCK_OF_THE_NORTH: "In the [i]Duck Man[/i] interview Barks said this about Gladstone's"
+    Titles.LUCK_OF_THE_NORTH: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
+    " Gladstone's"
     ' luck: [i]"Well, that came the second time I was using him [actually, the second time'
     " in a long Donald story]. I established him as an obnoxious character in"
     " his first story, and so the second time I used him, I thought of what particular"
@@ -221,7 +222,7 @@ BARKS_EXTRA_INFO = {
     " Brittanica. The rock of gibraltar picture in 'Ancient Persia' and the authentic-looking"
     " background props and frescoes are from Nat'l Geo. I simplify such material,"
     ' naturally."[/i]',
-    Titles.VACATION_TIME: "In the [i]Duck Man[/i] interview, Barks said this about"
+    Titles.VACATION_TIME: "In the [i]Duck Man[/i] 1975 interview, Barks said this about"
     " [i]Vacation Time:[/i]"
     " [i]\"I couldn't create suspense without having them in real danger, and real danger means"
     " the fear of death. So all of the times these ducks got in bad situations they did have that"
@@ -229,13 +230,13 @@ BARKS_EXTRA_INFO = {
     " up against these impossible situations in which they could lose their lives if they didn't"
     " win. And in the forest fire sequence, you bet they were in danger. It made the story"
     ' memorable."[/i]',
-    Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] interview Barks said this about"
+    Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
     " [i]In Old California:[/i]"
     ' [i]"I was able to present a little love story in that, and also'
     ' got in a great deal of nostalgia and a little history, and a little bit of villainy."[/i]'
     "\n\n"
     "And the first pig villain: Don Porko de Lardo.",
-    Titles.DANGEROUS_DISGUISE: "In the [i]Duck Man[/i] interview Barks said this about"
+    Titles.DANGEROUS_DISGUISE: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
     " his use of humans in [i]Dangerous Disguise:[/i]"
     " [i]\"Well, that was a situation which I somehow couldn't visualize all these"
     " master spies from all the different nations as being dog-faces or pig-faces;"
@@ -273,7 +274,7 @@ BARKS_EXTRA_INFO = {
     ' the comment, [i]"I am considering writing Master Greenberg myself, applying for'
     ' membership."[/i]',
     Titles.GLADSTONES_TERRIBLE_SECRET: "The first appearance of [b][i]Gyro Gearloose.[/i][/b]"
-    " From the [i]Duck Man[/i] interview:"
+    " From the [i]Duck Man[/i] 1975 interview:"
     ' [i]"I think that every cartoonist that ever ran anything in comic strips and newspapers'
     " always had a crazy inventor at some time in their strips. So I was in need of a crazy"
     " inventor, so I just deliberately invented Gyro as a crazy inventor, but I had only"
@@ -282,8 +283,8 @@ BARKS_EXTRA_INFO = {
     " I would have made him about the same size as Donald and Uncle Scrooge so that he could"
     " have been handled much easier. That he was this big, tall, gawky chicken and very"
     ' difficult to work him in the same panels with the Ducks all the time."[/i]',
-    Titles.ONLY_A_POOR_OLD_MAN: "In the [i]Duck Man[/i] interview Barks said this about Scrooge"
-    " playing with money:"
+    Titles.ONLY_A_POOR_OLD_MAN: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
+    " Scrooge playing with money:"
     "[i]\"And I don't know how I got on that idea, but it ... it just seemed like a ridiculous"
     " thing for him – to play with his money, physically play with it. And those were things"
     " that he could do with it that make a good picture in a comic book. We know when you stack"
