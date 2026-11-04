@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import pytest
 from barks_reader.core.hyphen_break_engine import (
     MAX_ITERS,
     REF_PREFIX,
@@ -92,11 +93,12 @@ class TestBuildMarkup:
         parsed = parse_marked_text("[i]word[/i] plain")
         assert build_markup(parsed, EMPTY, EMPTY) == "[i]word[/i] plain"
 
-    def test_hyphen_not_doubled_after_existing_dash(self) -> None:
-        # pyphen can mark a break right beside a literal hyphen, as in "e-mail".
-        parsed = parse_marked_text(f"e-{SHY}mail")
+    @pytest.mark.parametrize("dash", ["-", "\u2010", "\u2011", "\u2013", "\u2014"])
+    def test_hyphen_not_doubled_after_a_words_own_dash(self, dash: str) -> None:
+        # A word's own hyphen or dash is its natural break, as in "full-dress".
+        parsed = parse_marked_text(f"full{dash}{SHY}dress")
         markup = build_markup(parsed, frozenset({0}), EMPTY)
-        assert markup == f"[ref={ref(0)}]e-[/ref][ref={ref(1)}]mail[/ref]"
+        assert markup == f"[ref={ref(0)}]full{dash}[/ref][ref={ref(1)}]dress[/ref]"
 
     def test_single_fragment_token_does_not_stop_later_tokens(self) -> None:
         """A plain word is skipped, not treated as the end of the text."""

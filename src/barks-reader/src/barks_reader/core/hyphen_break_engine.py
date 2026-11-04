@@ -35,9 +35,9 @@ REF_PREFIX = "brk:f"
 # a hyphen (or a run split) inside a tag like [i] would corrupt the markup.
 NO_BREAK_CHARS = ("\n", "[", "]", "&")
 
-# Existing trailing dashes (hyphen-minus, Unicode hyphen, non-breaking hyphen) that a
-# line-break hyphen must not be doubled onto.
-HYPHEN_CHARS = ("-", "\u2010", "\u2011")
+# Existing trailing dashes (hyphen-minus, Unicode hyphen, non-breaking hyphen, en and em
+# dash) that a line-break hyphen must not be doubled onto.
+HYPHEN_CHARS = ("-", "\u2010", "\u2011", "\u2013", "\u2014")
 
 MAX_ITERS = 8
 TOGGLE_LIMIT = 2
@@ -153,8 +153,8 @@ def build_markup(parsed: ParsedText, hyphens: frozenset[int], disabled: frozense
         pieces: list[str] = []
         for i, (first_id, run_text) in enumerate(runs):
             breaks_here = i < len(runs) - 1 and (runs[i + 1][0] - 1) in hyphens
-            # Don't double a hyphen when the fragment already ends in one (e.g. the
-            # pyphen point sits right beside the literal hyphen in "e-mail").
+            # Don't double a hyphen when the fragment already ends in one (a word's own
+            # hyphen or dash is its natural break, as in "full-dress").
             hyphen = "-" if breaks_here and not run_text.endswith(HYPHEN_CHARS) else ""
             pieces.append(f"[ref={REF_PREFIX}{first_id}]{run_text}{hyphen}[/ref]")
         parts.append("".join(pieces))

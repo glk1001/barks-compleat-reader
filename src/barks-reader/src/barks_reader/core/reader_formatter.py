@@ -97,17 +97,24 @@ class FontManagerProtocol(Protocol):
     title_info_font_size: int | float
 
 
-# A break point right before a word's own hyphen, or one letter away from it: "ful-l-dress"
-# strands a letter, and "three--tier" doubles the hyphen. A break right after the hyphen,
-# "full-dress" at the end of a line, is the natural one and stays.
+# Pyphen counts every character as a letter, so its two-letter minimum is miscounted beside
+# punctuation or a hyphen ("al-l.", "ful-l-dress"). It sees only a word's letters: an inner
+# apostrophe stays with them ("could-n't"), a possessive "'s" does not ("Bark-s's").
+_LETTER = r"[^\W\d_]"
+_LETTER_RUN = re.compile(rf"{_LETTER}+(?:['\u2019](?!s\b){_LETTER}+)*")
+
+# A word's own hyphen or dash is its natural break, with two letters on each side:
+# "full-dress" and "time\u2014so" break there, "e-mail" and "10-page" do not.
+_TWO_LETTERS = rf"{_LETTER}['\u2019]?{_LETTER}"
 _HYPHEN_CLASS = "".join(re.escape(char) for char in HYPHEN_CHARS)
-_BREAK_BY_OWN_HYPHEN = re.compile(
-    rf"{SOFT_HYPHEN}(?=\w?[{_HYPHEN_CLASS}])|(?<=[{_HYPHEN_CLASS}]\w){SOFT_HYPHEN}"
-)
+_OWN_HYPHEN = re.compile(rf"({_TWO_LETTERS}[{_HYPHEN_CLASS}])(?={_TWO_LETTERS})")
 
 
 def _hyphenate_word(word: str) -> str:
-    return _BREAK_BY_OWN_HYPHEN.sub("", PYPHEN_DICT.inserted(word, hyphen=SOFT_HYPHEN))
+    return _LETTER_RUN.sub(
+        lambda run: PYPHEN_DICT.inserted(run[0], hyphen=SOFT_HYPHEN),
+        _OWN_HYPHEN.sub(rf"\g<1>{SOFT_HYPHEN}", word),
+    )
 
 
 def hyphenate_text(text: str) -> str:

@@ -1,4 +1,4 @@
-# cspell:ignore duckin pered
+# cspell:ignore duckin pered tles
 from __future__ import annotations
 
 from typing import Any
@@ -29,20 +29,50 @@ def test_hyphenate_text_skips_markup_and_paragraph_tokens() -> None:
 @pytest.mark.parametrize(
     ("word", "expected"),
     [
-        # A break one letter before the word's own hyphen would strand the letter.
-        ("full-dress", f"full-{SOFT_HYPHEN}dress"),
-        ("all-Barks", "all-Barks"),
-        ("ill-tempered", f"ill-tem{SOFT_HYPHEN}pered"),
-        # A break right before the hyphen would double it.
-        ("three-tier", f"three-ti{SOFT_HYPHEN}er"),
-        # A break right after the hyphen is the natural one.
-        ("half-closed", f"half-{SOFT_HYPHEN}closed"),
-        # Away from a hyphen, nothing changes.
-        ("after", f"af{SOFT_HYPHEN}ter"),
+        # No letter is stranded before the word's own hyphen, even with a dictionary break
+        # beside it, and the hyphen is not doubled.
+        ("full-dress", "full-|dress"),
+        ("small-town", "small-|town"),
+        ("small-minded", "small-|mind|ed"),
+        ("all-Barks", "all-|Barks"),
+        ("three-tier", "three-|tier"),
+        # Nor after it.
+        ("well-stocked", "well-|stocked"),
+        ("self-standing", "self-|stand|ing"),
+        # Each part keeps its own dictionary breaks.
+        ("ill-tempered", "ill-|tem|pered"),
+        ("twelve-year-old", "twelve-|year-|old"),
+        # Every hyphen and dash is the natural break, never the letter before it.
+        ("half\u2010closed", "half\u2010|closed"),
+        ("half\u2011closed", "half\u2011|closed"),
+        ("Duck\u2014and", "Duck\u2014|and"),
+        ("time\u2013so", "time\u2013|so"),
+        ("couldn't\u2014just", "could|n't\u2014|just"),
+        # A one-letter or numeric side does not get a break.
+        ("e-mail", "e-mail"),
+        ("x-ray", "x-ray"),
+        ("10-page", "10-page"),
+        ("1942-43", "1942-43"),
+        # Punctuation does not count as a letter.
+        ("all.", "all."),
+        ("storm.", "storm."),
+        ("Carl,", "Carl,"),
+        ('"two', '"two'),
+        ("(Mr.", "(Mr."),
+        ('"VILLAGERS"', '"VIL|LAGERS"'),
+        ("castles:", "cas|tles:"),
+        # Nor does a possessive's "s", though a contraction's letters stay together.
+        ("Barks's", "Barks's"),
+        ("Barks\u2019s", "Barks\u2019s"),
+        ("Barks'", "Barks'"),
+        ("writer's", "writ|er's"),
+        ("couldn't", "could|n't"),
+        # Away from any of that, nothing changes.
+        ("after", "af|ter"),
     ],
 )
-def test_hyphenate_text_keeps_breaks_clear_of_a_words_own_hyphen(word: str, expected: str) -> None:
-    assert reader_formatter.hyphenate_text(word) == expected
+def test_hyphenate_text_breaks_only_between_a_words_letters(word: str, expected: str) -> None:
+    assert reader_formatter.hyphenate_text(word).replace(SOFT_HYPHEN, "|") == expected
 
 
 # `escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.
