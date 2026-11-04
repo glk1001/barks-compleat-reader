@@ -394,13 +394,13 @@ BARKS_EXTRA_INFO = {
     ' [i]"About the 8th grade, I had to read it and recite it in school. I thought it was a'
     " tiresome way of telling a story back then, but the meter lends itself very well to"
     " the comments of the Peeweegahs when they talk about what they're going to do.\"[/i]",
-    Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented: [i]"I guess among the very best ones is'
-    " a 10-page story of Donald, where he got to complaining about everything being too noisy"
-    " and he moves to a very quiet place, and he was not satisfied until everything was"
-    " absolutely silent around him. He went around everywhere seeing if there was any noise"
-    " he could pick up. Donald is naturally the loudest one of all. That's really good, and"
-    " even the secondary figures are well done, for example the cheese-taster who blows"
-    ' his alpenhorn."[/i]',
+    Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
+    " Donald, where he got to complaining about everything being too noisy and he moves to a very"
+    " quiet place and he was not satisfied until everything was absolutely silent around him. He"
+    ' went around everywhere seeing if there was any noise he could pick up."[/i] In 1980 he named'
+    ' [i]"the one where the ducks move into a quiet neighborhood and Donald is naturally the'
+    " loudest one of all. That's really good, and even the secondary figures are well done, for"
+    ' example the cheese-taster who blows his alpenhorn."[/i]',
     Titles.CAT_BOX_THE: "The first appearance of [b][i]Little Helper.[/i][/b]",
     Titles.MIDAS_TOUCH_THE: "The first appearance of [b][i]Magica De Spell.[/i][/b]",
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
