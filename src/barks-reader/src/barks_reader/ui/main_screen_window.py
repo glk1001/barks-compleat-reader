@@ -115,7 +115,7 @@ class MainScreenWindowHelper:
             logger.info(
                 f"New height too low: adjusted new fullscreen height = {self._host.height}."
             )
-        self._update_fonts(Window.height)
+        self._update_fonts_for_fullscreen_box()
         # The actual mode, not an assumed True: if the transition failed, the
         # button label must keep matching the real window.
         set_fullscreen_button(
@@ -149,6 +149,7 @@ class MainScreenWindowHelper:
         if not WindowManager.is_fullscreen_now():
             return
         self._change_fullscreen_win_size(Window.height)
+        self._update_fonts_for_fullscreen_box()
 
     def _change_fullscreen_win_size(self, height: int) -> None:
         logger.info(f"New fullscreen height = {height}.")
@@ -156,10 +157,7 @@ class MainScreenWindowHelper:
             height = Window.height
             logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
         self._host.size_hint = None, None
-        width, content_h = get_win_dimensions(
-            height - ACTION_BAR_SIZE_Y, Window.width, self._content_aspect_ratio()
-        )
-        self._host.size = width, content_h + ACTION_BAR_SIZE_Y
+        self._host.size = self._fullscreen_box_size(height)
         assert WindowManager.is_fullscreen_now()
         logger.info(
             f"New fullscreen window settings:"
@@ -169,6 +167,17 @@ class MainScreenWindowHelper:
             f" Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._action_bar.height = {self._action_bar.height}"
         )
+
+    def _fullscreen_box_size(self, height: int) -> tuple[int, int]:
+        width, content_h = get_win_dimensions(
+            height - ACTION_BAR_SIZE_Y, Window.width, self._content_aspect_ratio()
+        )
+        return width, content_h + ACTION_BAR_SIZE_Y
+
+    def _update_fonts_for_fullscreen_box(self) -> None:
+        # The box's height, not the window's: on a screen narrower than the content the box
+        # stops short of the window, and the title text must fit the panel inside the box.
+        self._update_fonts(self._fullscreen_box_size(Window.height)[1])
 
     def resize_binding(self) -> None:
         self._main_layout.bind(size=self.on_main_layout_size_changed)

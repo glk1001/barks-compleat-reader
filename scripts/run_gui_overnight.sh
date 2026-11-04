@@ -20,7 +20,8 @@
 #                  spread on a 1920x1080 screen, where comics open two-up)
 #   screen-1080p   the suite on a landscape 1920x1080 nested screen
 #   notes-fit      test_notes_fit.py: every story's notes show all their lines, single
-#                  page on 1080p, 1440 and 4K screens, the spread on 1080p and 1440
+#                  page on 1080p, 1440 and 4K screens, the spread on 1080p and 1440,
+#                  and fullscreen on a portrait 1440x2560
 #   touch          the tap tests by real touch (--touch); skipped, and said so,
 #                  when the machine lacks the udev rule (scripts/udev/)
 #   soak           the random walk, SOAK_STEPS keys from each of SOAK_SEEDS
@@ -158,6 +159,9 @@ run_stage() {
             BARKS_GUI_INI="main_screen_layout=Two-page spread" \
                 "${gui[@]}" --notes-fit --screen "$screen" || status=1
         done
+        echo "notes-fit: fullscreen, portrait 1440x2560"
+        BARKS_GUI_NOTES_FULLSCREEN=1 \
+            "${gui[@]}" --notes-fit --screen 1440x2560 || status=1
         return "$status"
         ;;
     touch)

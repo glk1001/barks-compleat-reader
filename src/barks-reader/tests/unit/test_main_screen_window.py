@@ -111,6 +111,7 @@ class TestOnFinishedGotoFullscreenMode:
             patch.object(window_module, "log_window_geometry") as mock_log_geometry,
         ):
             mock_window.height = 1080
+            mock_window.width = 1920
             hf.helper._host.height = 1080
             hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
@@ -125,12 +126,55 @@ class TestOnFinishedGotoFullscreenMode:
     def test_adjusts_host_height_when_too_small(self, hf: HelperFixture) -> None:
         with patch.object(window_module, "Window") as mock_window:
             mock_window.height = 1080
+            mock_window.width = 1920
             hf.helper._host.height = 500
             hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
             hf.helper._on_finished_goto_fullscreen_mode()
 
             assert hf.helper._host.height == 1080
+
+    def test_a_screen_narrower_than_a_page_sizes_the_fonts_from_the_box(
+        self, hf: HelperFixture
+    ) -> None:
+        with (
+            patch.object(window_module, "Window") as mock_window,
+            patch.object(window_module, "log_window_geometry"),
+        ):
+            mock_window.height = 2560
+            mock_window.width = 1440
+            hf.helper._host.height = 2219
+            hf.mock_wm_cls.is_fullscreen_now.return_value = True
+
+            hf.helper._on_finished_goto_fullscreen_mode()
+
+            box_height = round(1440 * COMIC_PAGE_ASPECT_RATIO) + window_module.ACTION_BAR_SIZE_Y
+            assert box_height < 2560
+            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[unresolved-attribute]
+
+
+class TestRefitFullscreen:
+    def test_the_box_and_the_fonts_follow_a_new_layout(self, hf: HelperFixture) -> None:
+        with patch.object(window_module, "Window") as mock_window:
+            mock_window.height = 1024
+            mock_window.width = 1280
+            hf.mock_wm_cls.is_fullscreen_now.return_value = True
+            hf.mock_wm_cls.get_screen_mode_now.return_value = "fullscreen"
+            hf.helper._content_aspect_ratio = lambda: 0.75
+
+            hf.helper.refit_fullscreen()
+
+            box_height = round(1280 * 0.75) + window_module.ACTION_BAR_SIZE_Y
+            assert box_height < 1024
+            assert hf.helper._host.size == (1280, box_height)
+            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[unresolved-attribute]
+
+    def test_a_windowed_screen_is_left_alone(self, hf: HelperFixture) -> None:
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+
+        hf.helper.refit_fullscreen()
+
+        hf.helper._update_fonts.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
 class TestOnMainLayoutSizeChanged:

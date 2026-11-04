@@ -8,8 +8,9 @@ in the Chronological branch on the remote's Down key and reading what the label 
 The walk takes minutes and says nothing about any other screen, so the default run skips
 it: ``run_gui_tests.sh --notes-fit`` selects it alone, with ``--screen WxH`` and
 ``--ini main_screen_layout=...`` for the screen and layout, and the overnight ``notes-fit``
-stage runs it on each. ``BARKS_GUI_NOTES_FULLSCREEN=1`` walks in fullscreen instead (on a
-portrait screen narrower than a page, 2026-11-04, nine notes lose up to three lines).
+stage runs it on each. ``BARKS_GUI_NOTES_FULLSCREEN=1`` walks in fullscreen instead: on a
+portrait screen narrower than a page the panel's box stops short of the window, so the
+stage runs that too.
 """
 
 from __future__ import annotations
@@ -74,6 +75,11 @@ def _enter_fullscreen(d: Driver) -> None:
         d.key_then_wait(d.MENU_EXITED, "Escape")
 
 
+def _leave_fullscreen(d: Driver) -> None:
+    with d.expect(pattern(markers.ENTERED_WINDOWED, screen="MainScreen"), FULLSCREEN_TIMEOUT):
+        d.main_menu_button("fullscreen")
+
+
 @pytest.mark.notes_fit
 def test_every_note_shows_all_its_lines(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
@@ -85,6 +91,8 @@ def test_every_note_shows_all_its_lines(boot: AppBoot) -> None:
     for year_range in CHRONO_YEAR_RANGES:
         d.open_branch(FilteredTitleLists.get_range_str(year_range))
         seen |= _walk_stories(d)
+    if FULLSCREEN:
+        _leave_fullscreen(d)
 
     in_the_tree = {
         info.comic_book_info.title.name
