@@ -147,7 +147,6 @@ class BarksReaderApp(App):
             WindowSizeConstraints(
                 aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
                 chrome_height=ACTION_BAR_SIZE_Y,
-                min_window_width=900,
             ),
             # The setting is read in build(), which then gives the helper the real one.
             layout_setting=MATCH_THE_SCREEN,

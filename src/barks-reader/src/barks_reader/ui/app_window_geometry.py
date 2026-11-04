@@ -47,9 +47,6 @@ class WindowSizeConstraints:
     chrome_height: int
     """Pixels of non-content chrome below the content (e.g. action bar)."""
 
-    min_window_width: int
-    """Floor for the window width before the helper falls back to a minimum size."""
-
 
 class AppWindowGeometryHelper:
     """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding.
@@ -435,7 +432,7 @@ class AppWindowGeometryHelper:
     # --- Private helpers ---
 
     def _enforce_aspect_ratio(self, width: int, height: int) -> None:
-        """Enforce a fixed aspect ratio (height drives width) with a minimum width floor.
+        """Enforce a fixed aspect ratio (height drives width), no smaller than the minimum.
 
         Args:
             width: Current window width reported by the resize event, in pixels.
@@ -443,7 +440,6 @@ class AppWindowGeometryHelper:
 
         """
         chrome = self._chrome_in_size_units()
-        min_width = self._constraints.min_window_width
 
         # Bail out on degenerate transient sizes (e.g. ``(0, 45)`` events that fire during
         # the Windows fullscreen-exit resize storm). Without this guard we would compute
@@ -458,17 +454,9 @@ class AppWindowGeometryHelper:
         aspect_ratio = self.content_aspect_ratio
         correct_width, content_h = get_win_dimensions(unit_height - chrome, monitor_w, aspect_ratio)
         correct_height = content_h + chrome
-        if correct_width < min_width:
-            min_height = round(min_width * aspect_ratio) + chrome
-            monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
-            monitor_max_h = get_best_window_height_fit(monitor.height_pixels) if monitor else 0
-            if min_height <= monitor_max_h:
-                correct_width = min_width
-                correct_height = min_height
 
         # Refuse to schedule a degenerate correction. Can happen when ``Window.left``/``top``
-        # is off-screen (monitor lookup returns ``None``) and the recovery branch above
-        # was unable to fall back to a valid (min_width, min_height) pair.
+        # is off-screen (monitor lookup returns ``None``): there is no width to correct to.
         if correct_width <= 0 or correct_height <= chrome:
             logger.debug(
                 f"Skipping aspect-ratio correction:"
@@ -477,6 +465,8 @@ class AppWindowGeometryHelper:
                 f" Window.left/top = ({Window.left}, {Window.top})."
             )
             return
+
+        correct_width, correct_height = self._no_smaller_than_minimum(correct_width, correct_height)
 
         if (correct_width, correct_height) != (unit_width, unit_height):
             # User resize: debounce so only one correction fires after the drag settles.

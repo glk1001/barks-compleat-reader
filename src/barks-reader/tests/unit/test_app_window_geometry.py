@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 CHROME = 45
-MIN_WIDTH = 900
 
 
 def _make_screen_info(width: int = 2560, height: int = 2400, display: int = 0) -> ScreenInfo:
@@ -117,7 +116,6 @@ def constraints() -> WindowSizeConstraints:
     return WindowSizeConstraints(
         aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
         chrome_height=CHROME,
-        min_window_width=MIN_WIDTH,
     )
 
 
@@ -335,20 +333,57 @@ def test_correction_not_scheduled_when_already_correct(
     update_fonts.assert_called_once_with(height)
 
 
-def test_min_width_fallback_when_height_is_too_small(
+def test_a_correction_stays_at_the_height_the_user_chose_on_a_tall_screen(
     helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
-    # Pick an input that produces a correct_width below MIN_WIDTH so the
-    # fallback branch fires. The fixture monitor is tall enough to accommodate
-    # the fallback height, so it should be applied.
+    """Above the minimum, however narrow: a tall screen's window can be a 1080p one's size."""
+    height = 1200
+    min_width, min_height = helper._minimum_size()  # noqa: SLF001
+    correct_width, content_h = get_win_dimensions(height - CHROME, 2560)
+    assert correct_width > min_width
+    assert height > min_height
+
+    fake_window.size = (correct_width - 100, height)
+    helper._enforce_aspect_ratio(correct_width - 100, height)  # noqa: SLF001
+    fake_clock.fire_last()
+
+    assert fake_window.size == (correct_width, content_h + CHROME)
+
+
+def test_a_correction_is_never_below_the_minimum(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    """SDL would enlarge the window with no resize event, and every click would land off."""
     fake_window.size = (1000, 800)  # the event reports the window's size
     helper._enforce_aspect_ratio(1000, 800)  # noqa: SLF001
 
-    assert len(fake_clock.calls) == 1
     fake_clock.fire_last()
 
-    expected_height = round(MIN_WIDTH * COMIC_PAGE_ASPECT_RATIO) + CHROME
-    assert fake_window.size == (MIN_WIDTH, expected_height)
+    assert fake_window.size == helper._minimum_size()  # noqa: SLF001
+
+
+def test_a_correction_stays_within_a_narrow_screen(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    screen_width = 800
+    width, height = 700, 1200
+    fake_window.size = (width, height)
+    h, _ = _make_helper_on(
+        monkeypatch,
+        constraints,
+        fake_window,
+        fake_clock,
+        _make_screen_info(width=screen_width, height=1600),
+        SINGLE_PAGE,
+    )
+
+    h._enforce_aspect_ratio(width, height)  # noqa: SLF001
+    fake_clock.fire_last()
+
+    assert fake_window.size[0] <= screen_width
 
 
 # --- Suppression context-management ---
@@ -597,8 +632,8 @@ def test_correction_skipped_when_monitor_lookup_fails_after_construction(
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
-    # Trigger _enforce_aspect_ratio with a tiny height that will, combined with
-    # monitor_w=0, push correct_width below MIN_WIDTH and prevent the fallback.
+    # With no monitor there is no width to correct to, and the minimum must not stand in
+    # for one: monitor_w=0 gives a correct_width of 0.
     h._enforce_aspect_ratio(800, 100)  # noqa: SLF001
 
     # No correction scheduled — the second degenerate guard should have fired.
@@ -758,7 +793,6 @@ def _make_retina_helper(
         WindowSizeConstraints(
             aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
             chrome_height=2 * CHROME,
-            min_window_width=MIN_WIDTH,
         ),
         layout_setting=SINGLE_PAGE,
     )
