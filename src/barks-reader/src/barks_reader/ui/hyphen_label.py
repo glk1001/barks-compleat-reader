@@ -15,6 +15,7 @@ from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unreso
 from kivy.uix.label import Label
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN, BreakRefinement, RefinementStatus
 
 if TYPE_CHECKING:
@@ -22,6 +23,9 @@ if TYPE_CHECKING:
 
 _MIN_USABLE_WIDTH = 2
 _LOG_SNIPPET_LEN = 60
+# Seconds of quiet before the lines are reported: the text, its width and the lines shown
+# each settle on a frame of their own, and only where they end up says anything.
+_LINES_REPORT_DELAY = 0.25
 
 
 class HyphenatingLabel(Label):
@@ -44,6 +48,10 @@ class HyphenatingLabel(Label):
         self._refining = False
         self._applied_key: tuple[str, int, float] | None = None
         self._refine_trigger = Clock.create_trigger(self._refine, 0)
+        self._line_count = 0
+        self._counted_text = ""
+        self._reported_lines: tuple[str, int, int] | None = None
+        self._lines_report_trigger = Clock.create_trigger(self._report_lines, _LINES_REPORT_DELAY)
 
         self.bind(
             source_text=self._request_refine,
@@ -63,6 +71,38 @@ class HyphenatingLabel(Label):
     def _apply_shown_lines(self, *_args: object) -> None:
         if not self._refining:
             self.max_lines = int(self.shown_lines)
+            self._request_lines_report()
+
+    def _request_lines_report(self) -> None:
+        self._lines_report_trigger.cancel()
+        self._lines_report_trigger()
+
+    def _count_lines(self) -> None:
+        """Count the lines with every one rendered, before the cut to `shown_lines`."""
+        if self.shown_lines:
+            self.texture_update()
+            core_label = self._label
+            self._line_count = len(core_label._cached_lines) if core_label else 0  # noqa: SLF001
+            self._counted_text = self.source_text
+
+    def _report_lines(self, *_args: object) -> None:
+        shown = int(self.shown_lines)
+        # A count is for the text it was made from: the text can change before the next one.
+        if not shown or not self.source_text or self._counted_text != self.source_text:
+            return
+        report = (self.source_text, self._line_count, shown)
+        if report == self._reported_lines:
+            return
+        self._reported_lines = report
+        logger.debug(log_markers.TEXT_LAID_OUT.format(lines=self._line_count, shown=shown))
+        if self._line_count > shown:
+            logger.info(
+                log_markers.TEXT_CUT_SHORT.format(
+                    lines=self._line_count,
+                    shown=shown,
+                    snippet=self.source_text.replace(SOFT_HYPHEN, "")[:_LOG_SNIPPET_LEN],
+                )
+            )
 
     def _refine(self, *_args: object) -> None:
         if self._refining:
@@ -73,6 +113,7 @@ class HyphenatingLabel(Label):
             return
 
         self._refining = True
+        self._counted_text = ""
         try:
             self.max_lines = 0  # every line renders, so every fragment has a ref to read
             if not self.source_text or self.width < _MIN_USABLE_WIDTH:
@@ -86,9 +127,11 @@ class HyphenatingLabel(Label):
                 logger.exception("Hyphen refinement error; showing text without break points.")
                 self.text = self.source_text.replace(SOFT_HYPHEN, "")
                 self._applied_key = key
+            self._count_lines()
         finally:
             self.max_lines = int(self.shown_lines)
             self._refining = False
+        self._request_lines_report()
 
     def _run_refinement(self, key: tuple[str, int, float]) -> None:
         refinement = BreakRefinement(self.source_text)

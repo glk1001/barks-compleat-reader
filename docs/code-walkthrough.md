@@ -234,7 +234,8 @@ Numbered, in the order it actually happens:
   The title panel's publication info and notes are the exception: they scale with the
   window's height (`title_text_sizes_for_height`), so the lines break much the same at
   any size. Only much the same: sizes and line pitches round to whole pixels, so a note
-  that just fits at 2560x1440 can lose a line at another height.
+  that just fits at 2560x1440 can lose a line at another height. The notes label logs
+  any cut (`TEXT_CUT_SHORT`), and `tests/gui/test_notes_fit.py` walks every note.
 
 ---
 

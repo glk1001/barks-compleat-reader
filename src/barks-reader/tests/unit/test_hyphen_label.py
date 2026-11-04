@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import REF_PREFIX, SOFT_HYPHEN
+from barks_reader.core.log_markers import pattern
 from barks_reader.ui import hyphen_label
 from barks_reader.ui.hyphen_label import HyphenatingLabel
 
@@ -197,6 +200,108 @@ class TestHyphenatingLabel:
 
 _SHOWN_LINES = 3
 _FEWER_LINES = 2
+
+
+class TestLinesReport:
+    """The lines a held-down label lays out, and any it cuts, reach the log at rest."""
+
+    LAID_OUT = pattern(log_markers.TEXT_LAID_OUT)
+    CUT = pattern(log_markers.TEXT_CUT_SHORT)
+
+    @staticmethod
+    def _laid_out(lines: int, shown: int, text: str = f"hy{SHY}phen") -> HyphenatingLabel:
+        label = _make_label(text)
+        label.shown_lines = shown
+
+        def fake_texture_update(instance: HyphenatingLabel) -> None:
+            instance.refs = _refs_from_markup(instance.text, {})
+            instance._label._cached_lines = [object()] * lines
+
+        with patch.object(
+            HyphenatingLabel, "texture_update", autospec=True, side_effect=fake_texture_update
+        ):
+            label._refine()
+        return label
+
+    def _matching(self, sink: list[str], marker: str) -> list[str]:
+        return [line for line in sink if re.search(marker, line)]
+
+    def test_text_that_fits_is_laid_out_and_not_cut(self, loguru_sink: list[str]) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+
+        label._report_lines()
+
+        assert len(self._matching(loguru_sink, self.LAID_OUT)) == 1
+        assert self._matching(loguru_sink, self.CUT) == []
+
+    def test_a_line_too_many_is_cut_and_says_which_text(self, loguru_sink: list[str]) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES + 1, shown=_SHOWN_LINES)
+
+        label._report_lines()
+
+        cut = self._matching(loguru_sink, self.CUT)
+        assert len(cut) == 1
+        assert f"{_SHOWN_LINES + 1} lines, {_SHOWN_LINES} shown" in cut[0]
+        assert "hyphen" in cut[0]
+
+    def test_the_same_layout_is_reported_once(self, loguru_sink: list[str]) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+
+        label._report_lines()
+        label._report_lines()
+
+        assert len(self._matching(loguru_sink, self.LAID_OUT)) == 1
+
+    def test_fewer_lines_shown_at_rest_are_reported_again(self, loguru_sink: list[str]) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+        label._report_lines()
+
+        label.shown_lines = _FEWER_LINES
+        label._report_lines()
+
+        assert len(self._matching(loguru_sink, self.LAID_OUT)) == 2  # noqa: PLR2004
+        assert len(self._matching(loguru_sink, self.CUT)) == 1
+
+    def test_a_label_not_held_to_a_number_of_lines_reports_nothing(
+        self, loguru_sink: list[str]
+    ) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=0)
+
+        label._report_lines()
+
+        assert self._matching(loguru_sink, self.LAID_OUT) == []
+
+    def test_clearing_the_text_does_not_report_the_last_texts_lines(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """A title with no notes follows one with: its panel was reported as cut short."""
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+        label._report_lines()
+        loguru_sink.clear()
+
+        label.source_text = ""
+        label._refine()
+        label.shown_lines = 1
+        label._report_lines()
+
+        assert loguru_sink == []
+
+    def test_new_text_is_not_reported_until_it_is_counted(self, loguru_sink: list[str]) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+        loguru_sink.clear()
+
+        label.source_text = "Another note, not yet refined"
+        label._report_lines()
+
+        assert loguru_sink == []
+
+    def test_the_report_waits_for_a_quiet_moment(self) -> None:
+        label = _make_label("plain")
+        with patch.object(label, "_lines_report_trigger") as trigger:
+            label.shown_lines = _SHOWN_LINES
+            label.shown_lines = _FEWER_LINES
+
+        assert trigger.cancel.call_count == trigger.call_count == 2  # noqa: PLR2004
 
 
 class TestShownLines:

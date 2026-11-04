@@ -19,6 +19,8 @@
 #                  virtual keyboard, title info off, censorship fixes, the two-page
 #                  spread on a 1920x1080 screen, where comics open two-up)
 #   screen-1080p   the suite on a landscape 1920x1080 nested screen
+#   notes-fit      test_notes_fit.py: every story's notes show all their lines, single
+#                  page on 1080p, 1440 and 4K screens, the spread on 1080p and 1440
 #   touch          the tap tests by real touch (--touch); skipped, and said so,
 #                  when the machine lacks the udev rule (scripts/udev/)
 #   soak           the random walk, SOAK_STEPS keys from each of SOAK_SEEDS
@@ -58,7 +60,7 @@ cd "$REPO_ROOT"
 
 SOAK_STEPS="${BARKS_OVERNIGHT_SOAK_STEPS:-500}"
 SOAK_SEEDS="${BARKS_OVERNIGHT_SOAK_SEEDS:-1 2 3}"
-STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p touch soak spread-soak
+STAGES=(suite png-panels jpg-panels volumes prebuilt matrix screen-1080p notes-fit touch soak spread-soak
     built-app built-app-matrix built-app-soak)
 
 only=""
@@ -145,6 +147,19 @@ run_stage() {
     prebuilt) "${gui[@]}" --prebuilt 1 ;;
     matrix) bash "${SCRIPT_DIR}/run_gui_matrix.sh" --progress ;;
     screen-1080p) "${gui[@]}" --screen 1920x1080 ;;
+    notes-fit)
+        local screen status=0
+        for screen in 1920x1080 2560x1440 3840x2160; do
+            echo "notes-fit: single page, ${screen}"
+            "${gui[@]}" --notes-fit --screen "$screen" || status=1
+        done
+        for screen in 1920x1080 2560x1440; do
+            echo "notes-fit: two-page spread, ${screen}"
+            BARKS_GUI_INI="main_screen_layout=Two-page spread" \
+                "${gui[@]}" --notes-fit --screen "$screen" || status=1
+        done
+        return "$status"
+        ;;
     touch)
         if ! BARKS_PROBE_TOUCH=1 BARKS_PROBE_HEADLESS=1 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null 2>&1; then
             echo "touch: skipped - this machine is not set up for touch mode;"

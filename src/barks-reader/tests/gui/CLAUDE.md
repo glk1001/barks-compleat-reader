@@ -10,7 +10,9 @@ macOS plan: `docs/plans/macos-gui-tests.md`.
 The marker text is written once, in `barks_reader.core.log_markers`
 (`okf_reader.core.log_markers` for the wiki viewer): the app logs it with `.format`, a
 GUI test waits on it with `pattern()`. Plan and status: `docs/plans/gui-test-suite.md`.
-`--soak` runs the random walk instead (off by default); `--app PATH` runs the suite
+`--soak` runs the random walk instead (off by default); `--notes-fit` runs the walk that
+checks every story's notes show all their lines, also off by default (`test_notes_fit.py`;
+about 2.5 minutes a screen, and the overnight `notes-fit` stage does five); `--app PATH` runs the suite
 against a Nuitka build; `--prebuilt`, `--png-images` and `--ini` move a run to other
 settings; `--screen WxH` picks another nested screen size; `--keep-logs` saves every
 passing test's artifacts too (logs, profile, final frame), as a failure's;

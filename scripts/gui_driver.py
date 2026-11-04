@@ -498,7 +498,7 @@ class Driver:
         """
         before = self.match_count(pattern)
         yield
-        self._await_new(pattern, timeout, before)
+        self.await_new(pattern, timeout, before)
 
     def key_then_wait(self, pattern: str, *keys: str, timeout: float = 15) -> None:
         """Press keys, then block until a NEW occurrence of `pattern` is logged.
@@ -531,7 +531,15 @@ class Driver:
         with self.expect(pattern, timeout):
             self.click(x, y)
 
-    def _await_new(self, pattern: str, timeout: float, before: int) -> None:
+    def await_new(self, pattern: str, timeout: float, before: int) -> None:
+        """Block until `pattern` matches more than the `before` times counted earlier.
+
+        For a wait only known to be wanted after the key: `expect`, split in two.
+
+        Raises:
+            DriverError: If no new match arrives within `timeout` seconds.
+
+        """
         deadline = time.monotonic() + timeout
         while self.match_count(pattern) <= before:
             if time.monotonic() > deadline:

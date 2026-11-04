@@ -166,6 +166,10 @@ EXITING_FULLSCREEN: Final = "{screen}: Exiting fullscreen mode."
 # fullscreen round trip is a defect whatever the test asserted.
 WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
 MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
+# A label holding its text to the lines that fit (the title panel's notes), once its
+# layout has come to rest, and when that leaves some of the text out.
+TEXT_LAID_OUT: Final = "Text laid out: {lines} lines, {shown} shown."
+TEXT_CUT_SHORT: Final = 'Text cut short: {lines} lines, {shown} shown: "{snippet}".'
 # The window's minimum size, set for the monitor it is on (core.window_minimum).
 WINDOW_MINIMUM_SET: Final = "Window minimum size: {width}x{height}, on a {screen} screen."
 # The main screen's layout, single page or two-page spread, each time the rule is

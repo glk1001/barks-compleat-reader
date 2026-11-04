@@ -60,6 +60,9 @@ def _parse(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     )
     parser.add_argument("--quiet", action="store_true", help="print failures and the summary")
     parser.add_argument("--soak", action="store_true", help="run only the random walk")
+    parser.add_argument(
+        "--notes-fit", action="store_true", help="run only the walk over every story's notes"
+    )
     parser.add_argument("--calibrate", action="store_true", help="record the timing budgets")
     parser.add_argument(
         "--keep-logs", action="store_true", help="save passing tests' artifacts too, as failures'"
@@ -187,7 +190,14 @@ def main(argv: list[str]) -> int:
         print("run_gui_tests: this machine is not ready (see above)", file=sys.stderr)  # noqa: T201
         return 1
 
-    select = ["-m", "soak" if options.soak else "not soak"]
+    select = [
+        "-m",
+        "soak"
+        if options.soak
+        else "notes_fit"
+        if options.notes_fit
+        else "not soak and not notes_fit",
+    ]
     cmd = [sys.executable, "-m", "pytest", GUI_TESTS, *select, *pytest_args]
     pytest_log = REPO_ROOT / "build" / "gui-tests" / stamp / "pytest.log"
     status = _run_pytest(cmd, env, quiet=options.quiet, log=pytest_log)

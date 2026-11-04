@@ -14,6 +14,8 @@
 # "STRAY INPUT" line in the report (the app logs every key press, and the report
 # counts them against the probe's input log).
 #
+# --notes-fit runs only the walk over every story's notes (test_notes_fit.py, marker
+# "notes_fit"), which the default run also skips.
 # --soak runs only the random walk (test_random_walk.py, marker "soak"), which the
 # default run skips; BARKS_GUI_WALK_STEPS and BARKS_GUI_WALK_SEED set its length
 # and seed. --app PATH runs the suite against a built executable instead of
@@ -87,6 +89,7 @@ export BARKS_PROBE_SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 workers="${BARKS_GUI_WORKERS:-}"
 quiet=""
 soak=""
+notes_fit=""
 calibrate=""
 # Run-wide settings, handed to the harness as "key=value;key=value".
 add_ini() {
@@ -128,6 +131,10 @@ while [[ "${1:-}" == --* ]]; do
         ;;
     --soak)
         soak=1
+        shift
+        ;;
+    --notes-fit)
+        notes_fit=1
         shift
         ;;
     --calibrate)
@@ -220,9 +227,10 @@ bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
 # warns from every worker that it disables itself under xdist. Nothing here
 # benchmarks, so drop that one warning by its message.
 export PYTHONWARNINGS="${PYTHONWARNINGS:+$PYTHONWARNINGS,}ignore:Benchmarks are automatically disabled"
-# The soak walk is long and aimless; it runs only when asked for, and then alone.
-select=(-m "not soak")
+# The two long walks run only when asked for, and then alone.
+select=(-m "not soak and not notes_fit")
 [[ -n "$soak" ]] && select=(-m soak)
+[[ -n "$notes_fit" ]] && select=(-m notes_fit)
 [[ -n "${BARKS_PROBE_APP:-}" ]] && echo "run_gui_tests: running the built executable ${BARKS_PROBE_APP}"
 cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "${select[@]}" "$@")
 # shellcheck source=scripts/_show_cmd.sh
