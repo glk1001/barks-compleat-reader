@@ -113,9 +113,8 @@ class FontManager(EventDispatcher):
 
         if required_font_group == self._previous_font_group:
             logger.debug(
-                f"Updating font sizes requested but the required font group"
-                f" {required_font_group.name}, is the same as the previously"
-                f" requested font group. So nothing to do!"
+                f"Font group {required_font_group.name} is unchanged:"
+                f" only the title text sizes follow this height."
             )
             return
 
@@ -159,7 +158,7 @@ class FontManager(EventDispatcher):
         self.tree_view_num_label_font_size = theme.default
         self.tree_view_title_label_font_size = theme.default
         self.tree_view_issue_label_font_size = theme.default
-        # Prose, not a tree label: sized like the bottom view's extra-info paragraph.
+        # Prose, not a tree label.
         self.tree_view_playlist_intro_font_size = theme.playlist_intro
         self.tree_view_title_search_label_font_size = theme.default
         self.tree_view_title_search_box_font_size = theme.default

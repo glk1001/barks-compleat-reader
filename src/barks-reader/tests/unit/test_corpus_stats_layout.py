@@ -25,6 +25,11 @@ from barks_reader.core.corpus_stats import (
     compute_static_stats,
     compute_text_stats,
 )
+from barks_reader.core.font_sizes import (
+    LOW_RES_FONT_SIZES,
+    TITLE_TEXT_SMALLEST_WINDOW_HEIGHT,
+    title_text_sizes_for_height,
+)
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 # The page box is as tall as the comic-page aspect ratio makes it.
@@ -224,22 +229,13 @@ class TestDesignMatchesTheAppScale:
     _MIN_FOOTNOTE_RATIO = 0.55
 
     def test_design_sizes_stay_in_the_apps_ballpark(self) -> None:
-        from barks_reader.core.font_sizes import (  # noqa: PLC0415
-            HI_RES_WINDOW_HEIGHT_CUTOFF,
-            title_text_sizes_for_height,
-        )
-        from barks_reader.ui.font_manager import LOW_RES_FONTS  # noqa: PLC0415
-        from kivy.metrics import sp  # noqa: PLC0415
-
-        one_sp = sp(1)
-        low_res_title_info = title_text_sizes_for_height(HI_RES_WINDOW_HEIGHT_CUTOFF).info
+        title_info = title_text_sizes_for_height(TITLE_TEXT_SMALLEST_WINDOW_HEIGHT).info
         for ours, theirs in (
-            (layout.DESIGN.standfirst, low_res_title_info * one_sp),
-            (layout.DESIGN.heading, LOW_RES_FONTS.text_block_heading),
-            (layout.DESIGN.footnote, LOW_RES_FONTS.popup_text),  # About's fine print
+            (layout.DESIGN.standfirst, title_info),
+            (layout.DESIGN.heading, LOW_RES_FONT_SIZES.text_block_heading),
+            (layout.DESIGN.footnote, LOW_RES_FONT_SIZES.popup_text),  # About's fine print
         ):
-            role = theirs / one_sp
-            assert abs(ours - role) / role < self._MAX_DRIFT
+            assert abs(ours - theirs) / theirs < self._MAX_DRIFT
 
     def test_the_type_hierarchy_holds(self) -> None:
         # Section headings are deliberately not the largest thing in their column -

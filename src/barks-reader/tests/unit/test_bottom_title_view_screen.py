@@ -1,5 +1,5 @@
 # ruff: noqa: SLF001
-# cspell:ignore getmetrics
+# cspell:ignore getbbox getmetrics
 
 from __future__ import annotations
 
@@ -755,14 +755,24 @@ class TestInsetImageEdges(ScreenFixtureBase):
             self.screen._set_title_inset_image(Path("inset.png"))
 
 
+_NOTES_FONT_FILE = FONT_DIR / "SourceSerif4SmText-Regular.ttf"
+
+
 def test_extra_info_line_height_is_the_fonts_own() -> None:
     # The panel divides its height by this to end the notes at a whole line. Too small a
     # share, after a change of font, and the last line runs off the foot of the panel.
     size = 1000
-    ascent, descent = ImageFont.truetype(
-        FONT_DIR / "SourceSerif4SmText-Regular.ttf", size
-    ).getmetrics()
+    ascent, descent = ImageFont.truetype(_NOTES_FONT_FILE, size).getmetrics()
     assert pytest.approx((ascent + descent) / size) == BottomTitleViewScreen.EXTRA_INFO_LINE_HEIGHT
+
+
+def test_extra_info_text_leading_is_the_fonts_own() -> None:
+    # The portal lines up with the glyphs of the notes' first line by this share of the size.
+    size = 1000
+    _left, capital_top, _right, _bottom = ImageFont.truetype(_NOTES_FONT_FILE, size).getbbox(
+        "H", anchor="la"
+    )
+    assert pytest.approx(capital_top / size) == BottomTitleViewScreen.EXTRA_INFO_TEXT_LEADING
 
 
 @pytest.mark.parametrize("font_size", [12, 13, 14, 17, 18, 24, 34])
@@ -772,7 +782,7 @@ def test_extra_info_line_pitch_is_the_one_kivy_lays_out(font_size: int) -> None:
     lines = 10
     label = MarkupLabel(
         text="\n".join(["Hg"] * lines),
-        font_name=str(FONT_DIR / "SourceSerif4SmText-Regular.ttf"),
+        font_name=str(_NOTES_FONT_FILE),
         font_size=font_size,
         markup=True,
     )

@@ -19,6 +19,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
     ListProperty,
+    NumericProperty,
     ObjectProperty,
     StringProperty,
 )
@@ -141,7 +142,7 @@ class BottomTitleViewScreen(FloatLayout):
     # (the font's ascent over its cap height): what lines the portal up with the text.
     TEXT_LEADING = 0.25
     # The same for the notes' font, whose ascent stands further above its capitals.
-    EXTRA_INFO_TEXT_LEADING = 0.4
+    EXTRA_INFO_TEXT_LEADING = 0.366
     # The notes' font's line height, as a share of its size: its ascent plus its descent.
     EXTRA_INFO_LINE_HEIGHT = 1.371
     TITLE_EXTRA_INFO_LABEL_COLOR = TITLE_INFO_LABEL_COLOR
@@ -155,6 +156,9 @@ class BottomTitleViewScreen(FloatLayout):
     is_one_pager_title = BooleanProperty(defaultvalue=False)
     title_info_text = StringProperty()
     title_extra_info_text = StringProperty()
+    # The height left for the notes in the info box, under its info rows: what ends the
+    # notes at a whole line and what places them must agree, so the kv rule writes it once.
+    space_under_title_info = NumericProperty(0)
     title_inset_image_texture = ObjectProperty()
 
     is_visible = BooleanProperty(defaultvalue=False)

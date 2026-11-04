@@ -26,6 +26,7 @@
 <BottomTitleViewScreen>:
     size_hint: 1, 1
     opacity: 1 if root.is_visible else 0
+    space_under_title_info: title_info_box.height - title_info_label.height - title_info_box.spacing
 
     # This is the main container for the title view.
     AnchorLayout:
@@ -236,7 +237,7 @@
                         height:
                             title_extra_info_label.height + ( \
                             0 if (root.layout_mode == 'spread' or root.compact_colophon or not root.title_extra_info_text) else \
-                            max(0, title_info_box.top - title_info_label.height - title_info_box.spacing - max( \
+                            max(0, title_info_box.y + root.space_under_title_info - max( \
                             title_portal_image_button.top + root.EXTRA_INFO_TEXT_LEADING * title_extra_info_label.font_size, \
                             title_portal_image_button.y + title_extra_info_label.height)))
 
@@ -267,7 +268,7 @@
                             padding: [dp(1), 0, 0, 0]
                             # Only the lines that fit under the title info: the text ends at a
                             # line, not cut through one at the panel's edge.
-                            shown_lines: max(1, int((title_info_box.height - title_info_label.height - title_info_box.spacing) / root.extra_info_line_pitch(self.font_size)))
+                            shown_lines: max(1, int(root.space_under_title_info / root.extra_info_line_pitch(self.font_size)))
 
                     # IMPORTANT: This filler widget pushes the labels above it to the top.
                     Widget:
