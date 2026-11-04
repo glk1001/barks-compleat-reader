@@ -12,6 +12,7 @@ an OpenGL context without a display).
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -80,6 +81,23 @@ class _RetinaWindow:
     @property
     def height(self) -> int:
         return self.size[1]
+
+
+class _SizeRecordingRetinaWindow(_RetinaWindow):
+    """A `_RetinaWindow` that keeps every size set on it, so a needless one is seen."""
+
+    def __init__(self, system_size: tuple[int, int]) -> None:
+        super().__init__(system_size)
+        self.sizes_set: list[tuple[int, int]] = []
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return self.system_size[0] * 2, self.system_size[1] * 2
+
+    @size.setter
+    def size(self, value: tuple[int, int]) -> None:
+        self.sizes_set.append(value)
+        self.system_size = value
 
 
 @pytest.fixture(autouse=True)
@@ -906,20 +924,163 @@ def test_a_window_opened_below_the_minimum_goes_up_through_kivy_first(
     assert size_when_set == [_minimum_on(screen.width_pixels, screen.height_pixels)]
 
 
-def test_a_window_at_or_above_the_minimum_is_left_its_size(
+@pytest.mark.parametrize(
+    ("extra_width", "extra_height"),
+    [(0, 0), (100, 0), (0, 100), (100, 100)],
+)
+def test_a_window_at_or_above_the_minimum_is_not_resized(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_clock: FakeClock,
+    extra_width: int,
+    extra_height: int,
+) -> None:
+    """Compared in points: in pixels, a Retina window at the minimum reads as above it."""
+    min_width, min_height = _minimum_on(2560, 1440)
+    window = _SizeRecordingRetinaWindow((min_width + extra_width, min_height + extra_height))
+
+    _make_retina_helper(monkeypatch, window, fake_clock)
+
+    assert window.sizes_set == []
+
+
+def test_a_retina_window_below_the_minimum_is_raised_in_points(
+    monkeypatch: pytest.MonkeyPatch, fake_clock: FakeClock
+) -> None:
+    """Below the minimum in points, above it in pixels: read in pixels, it stayed too small."""
+    window = _SizeRecordingRetinaWindow((400, 800))
+
+    _make_retina_helper(monkeypatch, window, fake_clock)
+
+    assert window.sizes_set == [_minimum_on(2560, 1440)]
+
+
+@pytest.mark.parametrize(
+    ("size", "keeps_width"),
+    [((1500, 900), True), ((500, 1500), False)],
+)
+def test_a_window_short_on_one_side_goes_up_on_that_side_alone(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+    size: tuple[int, int],
+    keeps_width: bool,
+) -> None:
+    """Raised to the whole minimum, its long side was cut by hundreds of pixels."""
+    fake_window.size = size
+    screen = fake_metrics.get_primary_screen_info.return_value
+    min_width, min_height = _minimum_on(screen.width_pixels, screen.height_pixels)
+
+    _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    assert tuple(fake_window.size) == (
+        (size[0], min_height) if keeps_width else (min_width, size[1])
+    )
+
+
+def test_a_spread_window_short_on_one_side_keeps_its_height(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    width, height = 1000, 1365
+    fake_window.size = (width, height)
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), TWO_PAGE_SPREAD
+    )
+
+    h.set_window_ready()
+
+    min_width, min_height = h._minimum_size()  # noqa: SLF001
+    assert min_width > width
+    assert min_height < height
+    assert tuple(fake_window.size) == (min_width, height)
+
+
+def test_a_raised_window_past_its_monitors_bottom_is_centred_on_that_side(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
     fake_window: MagicMock,
     fake_clock: FakeClock,
     fake_metrics: MagicMock,
 ) -> None:
-    screen = fake_metrics.get_primary_screen_info.return_value
-    minimum = _minimum_on(screen.width_pixels, screen.height_pixels)
-    fake_window.size = minimum
+    """A saved height of 900 at a top of 150 on a 1080p screen ran 75 pixels off it."""
+    screen = _make_screen_info(width=1920, height=1080)
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    saved_top = 150
+    fake_window.size = (619, 900)
+    fake_window.top = saved_top
 
     _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
 
-    assert tuple(fake_window.size) == minimum
+    min_width, min_height = _minimum_on(1920, 1080)
+    assert tuple(fake_window.size) == (min_width, min_height)
+    assert fake_window.top == saved_top, "Moved before the resize settles."
+    ((move, delay),) = fake_clock.calls
+    assert delay == RESIZE_CORRECTION_DELAY
+    move(0.0)
+    assert (fake_window.left, fake_window.top) == (100, (screen.height_pixels - min_height) // 2)
+    assert fake_window.top + min_height <= screen.height_pixels
+
+
+def test_a_raised_window_centres_on_a_second_monitor_not_the_first(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    screen = replace(_make_screen_info(width=1920, height=1080), monitor_x=1920, monitor_y=200)
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    fake_window.size = (619, 900)
+    fake_window.left = 1920 + 1500
+    fake_window.top = 200 + 150
+
+    _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    min_width, min_height = _minimum_on(1920, 1080)
+    fake_clock.fire_last()
+    assert (fake_window.left, fake_window.top) == (
+        1920 + (1920 - min_width) // 2,
+        200 + (1080 - min_height) // 2,
+    )
+
+
+def test_a_raised_window_still_on_its_monitor_is_not_moved(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    fake_window.size = (619, 980)
+
+    _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+
+    assert fake_clock.calls == []
+    assert (fake_window.left, fake_window.top) == (100, 100)
+
+
+def test_a_raised_window_on_no_known_monitor_is_not_moved(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    fake_metrics.get_monitor_for_pos.return_value = None
+    fake_window.size = (619, 980)
+
+    h.apply_minimum_size()
+
+    screen = fake_metrics.get_primary_screen_info.return_value
+    assert tuple(fake_window.size) == _minimum_on(screen.width_pixels, screen.height_pixels)
+    assert fake_clock.calls == []
 
 
 def test_a_guarded_resize_on_its_way_is_left_to_raise_the_window(
@@ -938,6 +1099,45 @@ def test_a_guarded_resize_on_its_way_is_left_to_raise_the_window(
     assert tuple(fake_window.size) == (619, 980)
 
 
+def test_a_guard_too_small_for_the_minimum_is_armed_again_at_the_raised_size(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    """The guard outlives its resize by seconds, and would force the window back down."""
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    screen = fake_metrics.get_primary_screen_info.return_value
+    minimum = _minimum_on(screen.width_pixels, screen.height_pixels)
+    fake_window.size = (600, 950)
+    h._schedule_guarded_resize(600, 950)  # noqa: SLF001
+
+    h.apply_minimum_size()
+
+    assert h._resize_requested_size == minimum  # noqa: SLF001
+    h.on_window_resize(fake_window, *fake_window.size)
+    assert tuple(fake_window.size) == minimum
+
+
+def test_a_new_guard_is_not_dropped_by_the_reset_of_the_one_before(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    h._schedule_guarded_resize(700, 1100)  # noqa: SLF001
+    first_reset = fake_clock.pending[-1]
+
+    h._schedule_guarded_resize(800, 1200)  # noqa: SLF001
+
+    assert first_reset not in fake_clock.pending
+    assert h._resize_event is not None  # noqa: SLF001
+    assert h._resize_requested_size == (800, 1200)  # noqa: SLF001
+
+
 def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -> None:
     """Kivy's handler warns if run with one side still 0: it runs once, after both."""
     seen: list[tuple[int, int]] = []
@@ -952,6 +1152,38 @@ def test_the_window_minimum_is_set_once_both_sides_are(fake_window: MagicMock) -
 
 
 # --- The main screen's layout: single page or two-page spread ---
+
+
+def test_a_move_at_the_same_height_that_changes_the_layout_refits_the_window(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """The spread's width was kept on a monitor narrower than the window, with no resize."""
+    wide = _landscape_screen()
+    narrow = replace(_make_screen_info(width=1000, height=1440, display=1), monitor_x=2560)
+    fake_window.size = (1800, 1300)
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, wide, MATCH_THE_SCREEN
+    )
+    h.set_window_ready()
+    assert h.layout_mode is MainLayoutMode.SPREAD
+    assert fake_clock.calls == []
+    moved_metrics = MagicMock()
+    moved_metrics.get_monitor_for_pos.return_value = narrow
+    moved_metrics.get_primary_screen_info.return_value = wide
+    monkeypatch.setattr(geometry_module, "SCREEN_METRICS", moved_metrics)
+    fake_window.left = 2560 + 900
+
+    h.on_window_pos_change(fake_window)
+
+    assert h.layout_mode is MainLayoutMode.SINGLE
+    new_width, _ = h._resize_requested_size  # noqa: SLF001
+    assert 0 < new_width <= narrow.width_pixels
+    _, (move, _), _ = fake_clock.calls
+    move(0.0)
+    assert fake_window.left == narrow.monitor_x + (narrow.width_pixels - new_width) // 2
 
 
 def _landscape_screen(display: int = 0) -> ScreenInfo:

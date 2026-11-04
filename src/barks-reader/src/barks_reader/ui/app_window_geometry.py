@@ -208,14 +208,7 @@ class AppWindowGeometryHelper:
         """
         monitor = self._current_monitor
         width, height = self._minimum_size()
-        # A window opened smaller (--win-height, a saved height) goes up through Kivy first.
-        # Left to the minimum, SDL enlarges it with no resize event: Kivy goes on laying out
-        # and placing touches for the old size, and every click lands off. A guarded resize
-        # already on its way does the same job, so it is left to.
-        if self._resize_event is None:
-            raised = self._no_smaller_than_minimum(*Window.system_size)
-            if raised != tuple(Window.system_size):
-                Window.size = raised
+        self._raise_to_minimum(width, height)
         _set_window_minimum_size(width, height)
         logger.info(
             log_markers.WINDOW_MINIMUM_SET.format(
@@ -224,6 +217,52 @@ class AppWindowGeometryHelper:
                 screen=f"{monitor.width_pixels}x{monitor.height_pixels}",
             )
         )
+
+    def _raise_to_minimum(self, min_width: int, min_height: int) -> None:
+        """Raise the window, or the guarded resize on its way, to the minimum.
+
+        A window opened smaller (--win-height, a saved height) goes up through Kivy first.
+        Left to the minimum, SDL enlarges it with no resize event: Kivy goes on laying out
+        and placing touches for the old size, and every click lands off. Only a short side
+        goes up, as the other is still wanted: the aspect correction then settles the shape.
+
+        A guarded resize does the same job if its size is large enough. A guard can outlive
+        its resize and an older monitor's minimum, and it would force the window back, so
+        one too small is armed again at the raised size.
+        """
+        if self._resize_event is not None:
+            guarded_width, guarded_height = self._resize_requested_size
+            raised = max(guarded_width, min_width), max(guarded_height, min_height)
+            if raised != self._resize_requested_size:
+                self._schedule_guarded_resize(
+                    *raised, reposition=self._on_monitor_position(*raised)
+                )
+            return
+
+        system_width, system_height = Window.system_size
+        raised = max(system_width, min_width), max(system_height, min_height)
+        if raised == (system_width, system_height):
+            return
+        position = self._on_monitor_position(*raised)
+        Window.size = raised
+        if position is not None:
+            Clock.schedule_once(lambda _dt: _move_window(position), RESIZE_CORRECTION_DELAY)
+
+    @staticmethod
+    def _on_monitor_position(width: int, height: int) -> tuple[int, int] | None:
+        """Return where a window this size stays on its monitor, or None if it need not move.
+
+        Raised or refitted where it stands, its far edge can pass the monitor's. Only a
+        side that does is centred, as a rotation and a layout refit centre the window.
+        """
+        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        if monitor is None:
+            return None
+        position = (
+            _centred_if_over(Window.left, width, monitor.monitor_x, monitor.width_pixels),
+            _centred_if_over(Window.top, height, monitor.monitor_y, monitor.height_pixels),
+        )
+        return None if position == (Window.left, Window.top) else position
 
     # --- Window units ---
     #
@@ -294,7 +333,8 @@ class AppWindowGeometryHelper:
         )
 
         self._current_monitor = monitor
-        self.evaluate_layout("monitor change", refit=False)  # the resize below is the refit
+        # The resize below is the refit.
+        layout_changed = self.evaluate_layout("monitor change", refit=False)
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
         new_height = min(round(scale_factor * new_max_height), new_max_height)
@@ -304,7 +344,12 @@ class AppWindowGeometryHelper:
         )
         new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
 
-        if new_height != old_height:
+        # A new layout wants its own width, at the same height too.
+        if layout_changed:
+            self._schedule_guarded_resize(
+                new_width, new_height, reposition=self._on_monitor_position(new_width, new_height)
+            )
+        elif new_height != old_height:
             self._schedule_guarded_resize(new_width, new_height)
         # After the guard is armed: a window the new minimum enlarges gets a resize
         # event, which the guard answers, not the aspect-ratio correction.
@@ -529,6 +574,9 @@ class AppWindowGeometryHelper:
             reposition: Optional (x, y) to also reposition the window.
 
         """
+        # An earlier guard's reset would otherwise drop this guard before its time.
+        if self._resize_event is not None:
+            self._resize_event.cancel()
         self._resize_requested_size = new_width, new_height
 
         def do_resize(_dt: float) -> None:
@@ -537,8 +585,7 @@ class AppWindowGeometryHelper:
 
         def do_reposition(_dt: float) -> None:
             if reposition is not None:
-                logger.debug(f"Repositioning window to {reposition}.")
-                Window.left, Window.top = reposition
+                _move_window(reposition)
 
         def do_reset_resize(_dt: float) -> None:
             logger.debug("Clearing resize guard.")
@@ -548,6 +595,18 @@ class AppWindowGeometryHelper:
         Clock.schedule_once(do_resize, 0)
         Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY)
         self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
+
+
+def _move_window(position: tuple[int, int]) -> None:
+    logger.debug(f"Repositioning window to {position}.")
+    Window.left, Window.top = position
+
+
+def _centred_if_over(position: int, size: int, monitor_start: int, monitor_size: int) -> int:
+    """Return `position`, or the centred one if a window of `size` passes the monitor's end."""
+    if position + size <= monitor_start + monitor_size:
+        return position
+    return max(monitor_start, monitor_start + (monitor_size - size) // 2)
 
 
 def _set_window_minimum_size(width: int, height: int) -> None:
