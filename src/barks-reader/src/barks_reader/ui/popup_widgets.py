@@ -152,10 +152,8 @@ def _logged_frame(
     """Return a frame whose buttons, ok (if it has a label) then cancel, log their press.
 
     The closing line is logged once the frame has left the window, not when its
-    dismissal began: Kivy fades a dismissed popup out before removing it, and the
-    main screen ignores every key while a modal is still on the window, so a driver
-    that pressed its next key on the dismissal line lost it whenever the fade
-    outlasted the key gap.
+    dismissal began: Kivy fades a dismissed popup out before removing it, so a driver
+    that wants the window clear of it waits on this line.
     """
     ok_text, on_ok = ok
     cancel_text, on_cancel = cancel

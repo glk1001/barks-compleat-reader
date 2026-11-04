@@ -75,6 +75,7 @@ def test_the_dots_menu_looks_for_packs_and_says_when_there_are_none(boot: AppBoo
     _open_dots_menu(d, downs=UPDATE_DATA_DOWNS)
     with d.expect(NOTHING_TO_INSTALL), d.expect(d.DROPDOWN_DISMISSED):
         d.key("Return")
+    # No wait for the popup to close: a key pressed during its fade must not be lost.
     with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
         d.key_then_wait(DISMISSED, "Escape")
     d.key_then_wait(d.MENU_EXITED, "Escape")

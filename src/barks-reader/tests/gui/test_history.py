@@ -89,7 +89,7 @@ def test_clear_asks_first_and_then_empties_the_history(boot: AppBoot) -> None:
     _to_bar(d)
     d.move_focus("Right", "Right")  # Journal -> Titles -> Clear
     d.key_then_wait(pattern(markers.CONFIRM_POPUP_OPENED, title=CLEAR_TITLE), "Return")
-    # The popup owns the keys until it has closed, so wait for that too.
+    # Closed too, so the popup opened next is not opened over this one's fade.
     with (
         d.expect(pattern(markers.CONFIRM_POPUP_CANCELLED, title=CLEAR_TITLE)),
         d.expect(pattern(markers.CONFIRM_POPUP_CLOSED, title=CLEAR_TITLE)),

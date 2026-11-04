@@ -409,6 +409,15 @@ class TestPopupFrame:
         frame._on_parent(frame, None)  # noqa: SLF001
         on_closed.assert_called_once_with()
 
+    def test_it_is_closing_from_its_dismissal_until_it_has_left_the_window(self) -> None:
+        frame = _frame()
+        assert not frame.is_closing
+        with patch.object(popup_frame, "Window"):
+            frame.dispatch("on_dismiss")
+        assert frame.is_closing
+        frame._on_parent(frame, None)  # noqa: SLF001  (removed after the fade)
+        assert not frame.is_closing
+
     def test_the_keys_are_taken_before_the_fade_in(self) -> None:
         # The screen beneath yields keys to any modal on the window, fading in or not.
         frame = _frame()

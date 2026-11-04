@@ -198,6 +198,7 @@ class PopupFrame(ModalView):
         self.fit_body_height = fit_body_height
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
+        self._closing = False
         self._focused_idx = first_focus
         self._wrap_focus = wrap_focus
         self._close_button: Button | None = None
@@ -220,6 +221,11 @@ class PopupFrame(ModalView):
         self.bind(
             on_pre_open=self._on_pre_open, on_dismiss=self._on_dismiss, parent=self._on_parent
         )
+
+    @property
+    def is_closing(self) -> bool:
+        """Whether the frame is fading out: on the window still, with the keys let go."""
+        return self._closing
 
     @property
     def button_widgets(self) -> list[Button]:
@@ -419,6 +425,7 @@ class PopupFrame(ModalView):
             self._show_focus()
 
     def _on_dismiss(self, *_args: object) -> bool:
+        self._closing = True
         Window.unbind(on_key_down=self._on_key_down, size=self._follow_window)
         # A text box gone with the popup must let the keyboard go: still focused, the
         # screen beneath would leave every key to it (Return, closing the settings).
@@ -428,7 +435,10 @@ class PopupFrame(ModalView):
         return False
 
     def _on_parent(self, _frame: object, parent: object) -> None:
-        if parent is None and self._on_closed is not None:
+        if parent is not None:
+            return
+        self._closing = False
+        if self._on_closed is not None:
             self._on_closed()
 
     def _on_key_down(

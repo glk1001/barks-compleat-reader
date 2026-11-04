@@ -54,6 +54,7 @@ from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .main_screen_components import build_main_screen_components
 from .platform_window_utils import WindowManager, set_titlebar_drag_region
+from .popup_frame import PopupFrame
 from .popup_widgets import open_confirm_popup, open_message_popup
 from .reader_keyboard_nav import (
     MENU_FOCUS_HIGHLIGHT_GROUP,
@@ -156,8 +157,15 @@ def _install_keyboard_request_hook(window: Any, after: Callable[[], None]) -> No
 
 
 def _modal_popup_is_open() -> bool:
-    """Report whether a modal popup (`ModalView`) is currently on the window."""
-    return any(isinstance(widget, ModalView) for widget in Window.children)
+    """Report whether a modal popup (`ModalView`) on the window still has the keys.
+
+    Not a frame fading out: it let them go when its dismissal began, so a key pressed
+    during the fade would otherwise reach no one.
+    """
+    return any(
+        isinstance(widget, ModalView) and not (isinstance(widget, PopupFrame) and widget.is_closing)
+        for widget in Window.children
+    )
 
 
 # The main screen's popups, one function each, so the popup gallery

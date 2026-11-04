@@ -92,9 +92,8 @@ def show_standalone_popup(
 
     def _show(*_args: object) -> None:
         # All of it once the popup has left the window, not when its dismissal began:
-        # Kivy fades a dismissed popup out first, and the main screen ignores every key
-        # while a modal is still on the window, so a caller that logs "dismissed" in
-        # `on_dismiss` can be waited on for the next key. The temporary loop stops last:
+        # Kivy fades a dismissed popup out first, and a caller's `on_dismiss` (the About
+        # box's return to menu mode) must find the window clear. The temporary loop stops last:
         # stopped at the dismissal, as it once was, it never ran the removal, and the
         # closed line was never logged.
         def on_closed() -> None:

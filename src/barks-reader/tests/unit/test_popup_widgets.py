@@ -110,8 +110,7 @@ class TestConfirmPopup:
     ) -> None:
         """A driver waits on this line before its next key.
 
-        The main screen ignores keys while a modal is still on the window, and
-        Kivy keeps a dismissed popup there through its fade-out, so the
+        Kivy keeps a dismissed popup on the window through its fade-out, so the
         dismissal itself is too early to log it.
         """
         frame = _confirm(MagicMock())

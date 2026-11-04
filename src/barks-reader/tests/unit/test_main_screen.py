@@ -27,9 +27,11 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
+from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import ImageThemesChange
 from kivy.metrics import dp
+from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
 
@@ -555,6 +557,23 @@ class TestMainScreenEdges:
             assert main_screen._on_key_down(None, KEY_DOWN, 0, "", []) is False
 
         main_screen._nav.handle_key.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("widget", "keeps_the_keys"),
+        [
+            (MagicMock(spec=PopupFrame, is_closing=False), True),
+            (MagicMock(spec=PopupFrame, is_closing=True), False),
+            (MagicMock(spec=ModalView), True),
+            (MagicMock(), False),
+        ],
+        ids=["open frame", "frame fading out", "other modal", "not a modal"],
+    )
+    def test_a_popup_fading_out_no_longer_keeps_the_keys(
+        self, widget: MagicMock, *, keeps_the_keys: bool
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "Window") as window:
+            window.children = [widget]
+            assert barks_reader.ui.main_screen._modal_popup_is_open() is keeps_the_keys
 
     def test_settings_already_on_the_window_are_not_added_again(
         self, main_screen: MainScreen
