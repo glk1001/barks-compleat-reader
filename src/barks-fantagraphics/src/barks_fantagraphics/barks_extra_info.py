@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits
+# cspell:ignore stylised vlottes batgirl minicomic willits creem
 
 from .barks_titles import Titles
 
@@ -426,6 +426,16 @@ BARKS_EXTRA_INFO = {
     ' example the cheese-taster who blows his alpenhorn."[/i]',
     Titles.CAT_BOX_THE: "The first appearance of [b][i]Little Helper.[/i][/b]",
     Titles.MIDAS_TOUCH_THE: "The first appearance of [b][i]Magica De Spell.[/i][/b]",
+    Titles.SPICY_TALE_A: "Barks told Donald Ault in 1973 that Scrooge's one-story traits were"
+    ' devices: [i]"Each was a gimmick, each was the vehicle or the running gag of the story. Like'
+    " the story in which he was addicted to nutmeg tea. I'm beginning to get some clippings out of"
+    " some underground comic called Creem that implies that he was a drug addict because he was"
+    " addicted to nutmeg and that nutmeg taken in sufficient quantities can have an effect on your"
+    ' mind."[/i]'
+    "\n\nHe chose nutmeg because"
+    ' [i]"it was something that grew in the tropics and gave him an excuse to go to the tropics.'
+    " God, otherwise I could have said, 'codfish tails,' and sent him to Iceland.\"[/i]"
+    ' The craving never came back: [i]"It was just a gimmick to make a story."[/i]',
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
     " that I had touched on something that was a little different than just about any other"
     " space-type story that's come around. Creatures from outer space are villainous"
