@@ -1,6 +1,7 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
 # cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf hunza shor
+# cspell:ignore quadruplatillion umtuplatillion multuplatillion fantasticatillion centrifugalillion
 
 from .barks_titles import Titles
 
@@ -455,6 +456,12 @@ BARKS_EXTRA_INFO = {
     " Ship of the Desert legend. He knew the legend was bogus, and moved an earthquake back two"
     " hundred years to make it work:"
     ' [i]"I figured I could go to town on that idea because nobody could say I was wrong."[/i]',
+    Titles.MYSTERIOUS_STONE_RAY_THE: "This story may first have been planned at 32 pages and cut"
+    " to 28. In a 1974 interview Barks had no specific memory of that, but said:"
+    ' [i]"I think the reason there was some cutting on that was that I had decided I had gotten a'
+    ' little repetitious with my stuff."[/i]'
+    '\n\nScrooge counts his fortune on page 1: "Five billion quadruplatillion umtuplatillion'
+    ' multuplatillion fantasticatillion centrifugalillion dollars and sixteen cents!"',
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
