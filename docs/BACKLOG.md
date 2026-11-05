@@ -555,6 +555,14 @@ in the OCR repo, which is read-only from here:
       after "Exiting fullscreen mode". At the saved size, delete `move_now` (the Win32
       backend's, the Kivy backend's no-op and its call in
       `WindowManager.goto_windowed_mode`); still 16x39 bigger, keep it.
+- [ ] **Kivy 3.0: recheck the justified-line repair** (`core/justified_lines.py`,
+      `_keep_justified_lines_inside` in `ui/hyphen_label.py`; Kivy 2.3.1's `MarkupLabel`
+      measures a pushed line end in another run's font, so it could run past the edge).
+      It leans on Kivy's privates: `_pre_render`, `_cached_lines`, `Label`'s exact class
+      check, and a split's halves sharing one options object.
+      `TestJustifiedLinesInTheRealFont` in `test_hyphen_label.py` says which way it went:
+      if Kivy alone keeps its lines inside, delete the repair and those tests; if the
+      label overruns, the repair no longer finds the split runs, so fix that.
 
 ---
 

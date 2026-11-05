@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import REF_PREFIX, SOFT_HYPHEN
 from barks_reader.core.log_markers import pattern
-from barks_reader.ui import hyphen_label
+from barks_reader.ui import font_manager, hyphen_label
 from barks_reader.ui.hyphen_label import HyphenatingLabel
 from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 
@@ -263,6 +263,64 @@ class TestJustifiedLinesRepair:
 
         assert seen[-1] is True  # the word's font, while it was measured
         assert not core.options["italic"]
+
+
+class TestJustifiedLinesInTheRealFont:
+    """Real layouts, in the notes' real font, of lines mixing roman and italic.
+
+    The first test catches the repair silently ceasing to work, should Kivy change how it
+    lays out a line. The second is a tripwire for Kivy fixing its bug: when it fails, on an
+    upgrade, the repair and these tests can go (docs/BACKLOG.md, "Kivy 3.0").
+    """
+
+    TEXT = (
+        'Barks told Edward Summer: [i]"I liked stories that gave me a chance to draw water and'
+        ' ships sailing into storms and big pictorial panels."[/i] His example, which could be'
+        ' a page or two of this story, is [i]"a whole page in which I have a ship wallowing'
+        " around in the waves. A hurricane is tearing the ship apart, and the villain turns on"
+        ' his own helper."[/i] It made a story and [i]"it was just a gimmick"[/i] after that.'
+    )
+    WIDTHS = range(250, 500, 2)
+    PADDING = (1, 0, 0, 0)
+    FONT_SIZE = 17
+    # Rounding can leave a line a pixel or two over; Kivy's bug leaves it tens of pixels over.
+    ROUNDING = 4
+
+    def _worst_overrun(self, core: CoreMarkupLabel) -> float:
+        worst = 0.0
+        core.text = self.TEXT
+        for width in self.WIDTHS:
+            core.text_size = (width, None)
+            core.render()
+            for line in core._cached_lines:
+                run_start = sum(word.lw for word in line.words[:-1]) + self.PADDING[0]
+                last = line.words[-1]
+                options = core.options
+                core.options = last.options
+                worst = max(worst, run_start + core.get_extents(last.text)[0] - width)
+                core.options = options
+        return worst
+
+    def test_the_label_keeps_every_line_inside_its_width(self) -> None:
+        label = HyphenatingLabel(
+            markup=True,
+            font_name=font_manager.EXTRA_INFO_FONT,
+            font_size=self.FONT_SIZE,
+            halign="justify",
+            padding=list(self.PADDING),
+        )
+
+        assert self._worst_overrun(label._label) < self.ROUNDING
+
+    def test_kivy_on_its_own_still_runs_some_lines_past_their_width(self) -> None:
+        core = CoreMarkupLabel(
+            font_name=font_manager.EXTRA_INFO_FONT,
+            font_size=self.FONT_SIZE,
+            halign="justify",
+            padding=list(self.PADDING),
+        )
+
+        assert self._worst_overrun(core) > self.ROUNDING
 
 
 class TestLinesReport:
