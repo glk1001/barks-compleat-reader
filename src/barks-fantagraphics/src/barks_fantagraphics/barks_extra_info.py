@@ -441,6 +441,16 @@ BARKS_EXTRA_INFO = {
     "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir of"
     " Hunza says gold was the only thing that ever worried his people, and a Hunza man walked eight"
     " miles to return Shor's lost watch, as the honest rice farmer returns Scrooge's bottle cap.",
+    Titles.SEVEN_CITIES_OF_CIBOLA_THE: "The plot started in Indio, California, where welfare"
+    " director Al Koch (seen in the story kicking the Beagle Boys out of the welfare office) showed"
+    " Barks an ancient Indian trail near Thousand Palms. Barks wrote in a 1968 letter to Michael"
+    " Barrier:"
+    " [i]\"Al and I 'developed' the plot that evening over copious draughts of bourbon and"
+    ' ale."[/i]'
+    "\n\nBarks thought it only a ten-page idea until he overheard a rancher describing the Lost"
+    " Ship of the Desert legend. He knew the legend was bogus, and moved an earthquake back two"
+    " hundred years to make it work:"
+    ' [i]"I figured I could go to town on that idea because nobody could say I was wrong."[/i]',
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
