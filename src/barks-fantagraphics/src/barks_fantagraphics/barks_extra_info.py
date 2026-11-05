@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits creem
+# cspell:ignore stylised vlottes batgirl minicomic willits creem coty
 
 from .barks_titles import Titles
 
@@ -214,6 +214,10 @@ BARKS_EXTRA_INFO = {
     " his first story, and so the second time I used him, I thought of what particular"
     " thing can make that guy lastingly obnoxious. And so I thought of this lucky angle."
     ' He was the kind of guy who got all the breaks, and poor old Donald never got anywhere."[/i]',
+    Titles.TRAIL_OF_THE_UNICORN: "In his 1969 list of work for Western, Barks wrote about this"
+    ' story: [i]"Paid Dana Coty $30 for the idea."[/i]'
+    '\n\nIn this story Gladstone develops his code of honor: "Anyone, as lucky as I, should just'
+    ' sit around and let Dame Fortune dump a bale of mazuma in his lap!"',
     Titles.IN_ANCIENT_PERSIA: "This is one of Barks' bleakest tales, so it's no surprise that it"
     " was banned in several countries and not published in Denmark until 1987."
     '\n\nFrom a June 9, 1966 letter to Michael Barrier: [i]"About my'
