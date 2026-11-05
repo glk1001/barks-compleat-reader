@@ -187,6 +187,9 @@ class ComicReaderManager:
         assert self._fanta_info
         assert self._fanta_info.comic_book_info
 
+        # This read supersedes an earlier one's error: its close would shut this comic.
+        self._cancel_pending_error_close()
+
         self._layout, comic_book_image_builder = prepare_comic_for_reading(
             comic, self._reader_settings, self._layout_builder
         )
@@ -250,6 +253,7 @@ class ComicReaderManager:
         self._pending_tracking = None
         self._user_error_handler.handle_error(error_type, error_info)
         assert self._comic_book_reader_screen is not None
+        self._cancel_pending_error_close()
         reader_screen = self._comic_book_reader_screen
         self._pending_error_close = self._scheduler.schedule_once(
             reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS

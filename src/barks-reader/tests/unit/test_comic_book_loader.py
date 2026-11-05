@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 import threading
 import time
@@ -490,9 +491,9 @@ def test_prioritize_page_is_noop_when_page_already_loaded(
     if loader._thread:
         loader._thread.join(timeout=2.0)
 
-    assert loader._priority_keys.empty()
+    assert loader._load.priority_keys.empty()
     loader.prioritize_page("p1")  # already loaded
-    assert loader._priority_keys.empty()
+    assert loader._load.priority_keys.empty()
 
 
 def test_prioritize_page_ignores_a_page_not_in_the_comic(
@@ -506,7 +507,7 @@ def test_prioritize_page_ignores_a_page_not_in_the_comic(
         loader._thread.join(timeout=2.0)
 
     loader.prioritize_page("")
-    assert loader._priority_keys.empty()
+    assert loader._load.priority_keys.empty()
 
 
 def test_stop_now(loader: ComicBookLoader) -> None:
@@ -514,7 +515,7 @@ def test_stop_now(loader: ComicBookLoader) -> None:
     stop_event = threading.Event()
 
     def dummy_worker() -> None:
-        while not loader._stop and not stop_event.is_set():
+        while not loader._load.stop and not stop_event.is_set():
             pass
 
     t = threading.Thread(target=dummy_worker)
@@ -523,7 +524,7 @@ def test_stop_now(loader: ComicBookLoader) -> None:
 
     loader.stop_now()
 
-    assert loader._stop is True
+    assert loader._load.stop is True
     assert not t.is_alive()
 
     stop_event.set()
@@ -562,7 +563,7 @@ class _StopGatedPageImageSource(FakePageImageSource):
     def load_page_image(self, page_info: PageInfo) -> PageImage:
         self.started.set()
         deadline = time.monotonic() + 5.0
-        while not self._loader._stop and time.monotonic() < deadline:
+        while not self._loader._load.stop and time.monotonic() < deadline:
             time.sleep(0.001)
         return super().load_page_image(page_info)
 
@@ -1025,13 +1026,13 @@ class TestOverrideArchiveOpening:
 class TestLoaderInitialState:
     def test_a_fresh_loader_holds_no_comic(self, loader: ComicBookLoader) -> None:
         """Nothing is loaded until `set_comic`, and loading is *not* pre-stopped."""
-        assert loader._stop is False
+        assert loader._load.stop is False
         assert loader._current_comic_desc == ""
         assert loader._image_source is None
         assert loader._images == []
-        assert loader._image_load_order == []
+        assert loader._load.image_load_order == []
         assert loader._page_map == OrderedDict()
-        assert loader._priority_keys.empty()
+        assert loader._load.priority_keys.empty()
         assert loader._fanta_volume_archives is None
 
     def test_the_window_size_is_kept_for_page_resizing(self, loader: ComicBookLoader) -> None:
@@ -1042,7 +1043,7 @@ class TestLoaderInitialState:
         loader.close_comic()
 
         assert loader._current_comic_desc == ""
-        assert loader._stop is False
+        assert loader._load.stop is False
 
 
 class TestCachedImageAccess:
@@ -1279,8 +1280,8 @@ class TestLoadErrorReporting:
     ) -> None:
         """Tearing down mid-load races the indexing; that is expected, not a failure."""
 
-        def raise_after_stop() -> int:
-            loader._stop = True
+        def raise_after_stop(_load: object) -> int:
+            loader._load.stop = True
             msg = "list index out of range"
             raise IndexError(msg)
 
@@ -1343,8 +1344,8 @@ class TestLoadErrorReporting:
     ) -> None:
         """Stopping is not a failure — and the all-loaded callback must not fire."""
 
-        def stop_then_report_partial() -> int:
-            loader._stop = True
+        def stop_then_report_partial(_load: object) -> int:
+            loader._load.stop = True
             return 1
 
         with patch.object(ComicBookLoader, "_load_pages", side_effect=stop_then_report_partial):
@@ -1365,7 +1366,7 @@ class TestLoadErrorReporting:
             _run_load(loader, page_map_and_order, source)
 
         assert source.closed
-        assert loader._stop is True
+        assert loader._load.stop is True
         assert loader._current_comic_desc == ""
         mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
 
@@ -1428,7 +1429,7 @@ class TestLoadErrorClose:
         assert loader._current_comic_desc == "failing.cbz"
         assert len(loader._images) == 2  # noqa: PLR2004
         mock_callbacks["on_load_error"].assert_not_called()
-        assert loader._stop is True
+        assert loader._load.stop is True
 
         scheduler.run_pending()
 
@@ -1783,15 +1784,15 @@ class TestLoaderLifecycle:
         loader.stop_now()
 
         assert loguru_sink == []
-        assert loader._stop is True
+        assert loader._load.stop is True
 
     def test_a_thread_still_alive_after_a_stop_is_joined(self, loader: ComicBookLoader) -> None:
-        """Regression: the loader thread stops itself on a load error, with `_stop` set.
+        """Regression: the loader thread stops itself on a load error, with its stop flag raised.
 
         A stop that returned early on the flag never joined that thread, and the next
         comic's load was refused as "already in progress" with no error reported.
         """
-        loader._stop = True
+        loader._load.stop = True
         thread = MagicMock()
         thread.is_alive.side_effect = [True, False]
         loader._thread = thread
@@ -1819,13 +1820,13 @@ class TestLoaderLifecycle:
         """Reusing the loader after a stop must actually re-enable loading."""
         page_map, load_order = page_map_and_order
         loader.stop_now()
-        assert loader._stop is True
+        assert loader._load.stop is True
 
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="second.cbz")
         assert loader._thread is not None
         loader._thread.join(timeout=3.0)
 
-        assert loader._stop is False
+        assert loader._load.stop is False
         assert all(entry is not None for entry in loader._images)
 
     def test_close_comic_resets_the_description_to_empty(
@@ -2057,7 +2058,7 @@ class TestPrefetchLoop:
         """Closing the comic the moment it becomes readable: nothing more is fetched."""
 
         def close_on_first_page() -> None:
-            loader._stop = True
+            loader._load.stop = True
 
         mock_callbacks["on_first_image_loaded"].side_effect = close_on_first_page
         source = FakePageImageSource()
@@ -2075,3 +2076,191 @@ class TestPrefetchLoop:
         assert any(
             m.startswith("Image loading stopped before all images loaded.") for m in loguru_sink
         )
+
+
+class _GatedSource(FakePageImageSource):
+    """A source whose every page waits for the test, then gives this source's own page."""
+
+    def __init__(self, *, error: Exception | None = None) -> None:
+        super().__init__()
+        self.page = _fake_page()
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self._error = error
+
+    def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
+        self.entered.set()
+        self.release.wait(timeout=5.0)
+        if self._error is not None:
+            raise self._error
+        return self.page
+
+
+class TestAThreadThatOutlivesItsStop:
+    """A decode slower than the join leaves the old thread running beside the next comic's.
+
+    Regression: every load shared one stop flag and read the loader's current comic, so
+    opening the next comic cleared the flag and brought the old thread back to life.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _short_join(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(loader_module, "_LOADER_JOIN_TIMEOUT_SECS", 0.05)
+
+    @staticmethod
+    def _open_over_a_stuck_load(
+        loader: ComicBookLoader, old: _GatedSource, new: _GatedSource
+    ) -> tuple[threading.Thread, threading.Thread]:
+        """Open *new* while *old*'s page is still decoding, past the join's patience."""
+        page_map, load_order = _make_indexed_page_map(3)
+        loader.set_comic(old, load_order, page_map, archive_desc="old.cbz")
+        assert old.entered.wait(2.0)
+        old_thread = loader._thread
+        assert old_thread is not None
+
+        loader.set_comic(new, load_order, page_map, archive_desc="new.cbz")
+        assert new.entered.wait(2.0)
+        new_thread = loader._thread
+        assert new_thread is not None
+        assert new_thread is not old_thread
+        assert old_thread.is_alive()
+        return old_thread, new_thread
+
+    def test_its_pages_never_reach_the_next_comic(
+        self,
+        loader: ComicBookLoader,
+        mock_callbacks: dict[str, MagicMock],
+        recording_cursor: RecordingCursor,
+    ) -> None:
+        old, new = _GatedSource(), _GatedSource()
+        old_thread, new_thread = self._open_over_a_stuck_load(loader, old, new)
+
+        old.release.set()
+        old_thread.join(timeout=3.0)
+        assert not old_thread.is_alive()
+        # The next comic is still loading: the old thread leaving must not say otherwise.
+        assert recording_cursor.states[-1] == "busy"
+
+        new.release.set()
+        new_thread.join(timeout=3.0)
+        assert not new_thread.is_alive()
+
+        assert [page is new.page for page in loader._images] == [True, True, True]
+        mock_callbacks["on_first_image_loaded"].assert_called_once_with()
+        mock_callbacks["on_all_images_loaded"].assert_called_once_with()
+        mock_callbacks["on_load_error"].assert_not_called()
+
+    def test_its_failure_does_not_close_the_next_comic(
+        self,
+        loader: ComicBookLoader,
+        mock_callbacks: dict[str, MagicMock],
+    ) -> None:
+        old = _GatedSource(error=zipfile.BadZipFile("truncated"))
+        new = _GatedSource()
+        old_thread, new_thread = self._open_over_a_stuck_load(loader, old, new)
+
+        old.release.set()
+        old_thread.join(timeout=3.0)
+        assert not old_thread.is_alive()
+
+        mock_callbacks["on_load_error"].assert_not_called()
+        assert loader._current_comic_desc == "new.cbz"
+
+        new.release.set()
+        new_thread.join(timeout=3.0)
+        assert [page is new.page for page in loader._images] == [True, True, True]
+        mock_callbacks["on_all_images_loaded"].assert_called_once_with()
+
+
+def test_a_regrown_window_fills_at_once(loader: ComicBookLoader) -> None:
+    """Regression: one submit per landed page left in-flight loads stuck at their lowest."""
+    page_map, load_order = _make_indexed_page_map(5)
+    # Down to one for page 1, then back up to three for pages 2 to 4.
+    windows = iter([1, 3])
+    barrier = threading.Barrier(3)
+    lock = threading.Lock()
+    in_flight = 0
+    peak = 0
+
+    class BarrierSource(FakePageImageSource):
+        def load_page_image(self, page_info: PageInfo) -> PageImage:
+            nonlocal in_flight, peak
+            if page_info.page_index >= 2:  # noqa: PLR2004
+                with lock:
+                    in_flight += 1
+                    peak = max(peak, in_flight)
+                with contextlib.suppress(threading.BrokenBarrierError):
+                    barrier.wait(timeout=1.0)
+                with lock:
+                    in_flight -= 1
+            return _fake_page()
+
+    loader._max_worker_count = 3
+    with patch.object(loader_module, get_prefetch_tuning.__name__) as get_tuning:
+        tuning = get_tuning.return_value
+        tuning.get_initial_dynamic_window.return_value = 2
+        tuning.get_new_dynamic_window.side_effect = lambda _window: (50.0, next(windows, 3))
+        tuning.get_peak_memory_growth_mib.return_value = 1.0
+
+        loader.set_comic(BarrierSource(), load_order, page_map, archive_desc="t.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=5.0)
+
+    assert peak == 3  # noqa: PLR2004
+    assert all(page is not None for page in loader._images)
+
+
+class _FailingPageSource(FakePageImageSource):
+    """A source that opens, then fails every page with the error it was given."""
+
+    def __init__(self, error: Exception) -> None:
+        super().__init__()
+        self._error = error
+
+    def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
+        raise self._error
+
+
+class TestAFailedPageKeepsItsErrorType:
+    """Regression: a worker's error was rewrapped as CancelledError and lost its handler."""
+
+    @pytest.fixture
+    def fake_scheduler(self) -> _DeferringScheduler:
+        return _DeferringScheduler()
+
+    @pytest.mark.parametrize(
+        ("error", "logged"),
+        [
+            (FileNotFoundError("gone"), 'Comic file not found: "t.cbz".'),
+            (zipfile.BadZipFile("bad"), 'Bad zip file: "t.cbz".'),
+            (KeyError("p1"), 'A page is missing from its archive or page map in "t.cbz".'),
+        ],
+        ids=["file-not-found", "bad-zip", "key-error"],
+    )
+    def test_the_typed_handler_reports_it(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        loguru_sink: list[str],
+        error: Exception,
+        logged: str,
+    ) -> None:
+        _run_load(loader, page_map_and_order, _FailingPageSource(error))
+
+        # A logged exception's record goes on to hold its traceback.
+        assert any(line.startswith(logged) for line in loguru_sink)
+        assert "Error loading page 0." in loguru_sink
+        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+
+    def test_the_catch_all_names_the_failing_code_not_the_rewrap(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        loguru_sink: list[str],
+    ) -> None:
+        _run_load(loader, page_map_and_order, _FailingPageSource(ValueError("bad pixels")))
+
+        reports = [line for line in loguru_sink if line.startswith("Error loading comic at")]
+        assert len(reports) == 1
+        assert 'in "load_page_image"' in reports[0]

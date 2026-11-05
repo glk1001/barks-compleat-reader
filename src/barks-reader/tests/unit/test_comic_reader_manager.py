@@ -755,3 +755,39 @@ class TestErrorCloseDelay:
             comic_reader_manager_module._CLOSE_READER_ON_ERROR_DELAY_SECS,
         )
         assert comic_reader_manager_module._CLOSE_READER_ON_ERROR_DELAY_SECS > 0
+
+
+class TestANewReadSupersedesAnErrorClose:
+    """Regression: only a close or a new screen cancelled the delayed error close."""
+
+    def test_opening_another_title_within_the_delay_keeps_it_open(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """The user dismisses a missing-volume notice and opens the next title at once."""
+        scheduler = FakeScheduler()
+        manager, mock_screen = _read_a_missing_volume(mock_dependencies, scheduler)
+        mock_screen.comic_book_reader.read_comic.side_effect = None
+
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Next Title"
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+        scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
+
+        mock_screen.close_comic_book_reader.assert_not_called()
+
+    def test_a_second_error_leaves_one_close_pending(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager, mock_screen = _read_a_missing_volume(mock_dependencies, scheduler)
+
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Next Title"
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+        scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
+
+        mock_screen.close_comic_book_reader.assert_called_once_with()
