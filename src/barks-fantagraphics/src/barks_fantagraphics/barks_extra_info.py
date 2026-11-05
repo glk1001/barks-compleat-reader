@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie
+# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf
 
 from .barks_titles import Titles
 
@@ -239,6 +239,8 @@ BARKS_EXTRA_INFO = {
     " up against these impossible situations in which they could lose their lives if they didn't"
     " win. And in the forest fire sequence, you bet they were in danger. It made the story"
     ' memorable."[/i]',
+    Titles.APRIL_FOOLERS_THE: "A copy of Hitler's Mein Kampf appears as refuse in the city dump on"
+    " page 2, panel 1.",
     Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
     " [i]In Old California:[/i]"
     ' [i]"I was able to present a little love story in that, and also'
