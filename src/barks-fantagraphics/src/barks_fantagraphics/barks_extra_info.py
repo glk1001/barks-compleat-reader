@@ -269,8 +269,8 @@ BARKS_EXTRA_INFO = {
     Titles.BILLIONS_TO_SNEEZE_AT: "The first of Scrooge's [b][i]money swims:[/i][/b]\n"
     '\n[i]"I like to dive around in it like a porpoise!\n'
     'And bore through it like a gopher!"[/i]'
-    "\n\nAnd another first appearance: the [b][i]depth gauge[/i][/b] in the money bin (at 17"
-    " feet)!",
+    "\n\nAnd another first appearance: the [b][i]depth gauge[/i][/b] in Money Barn No. 68 — at 17"
+    " feet! (And still standing in the empty barn on page 10.)",
     Titles.OPERATION_ST_BERNARD: "The first appearance of [b][i]The Junior Woodchucks.[/i][/b]",
     Titles.PIXILATED_PARROT_THE: "The first appearance of what looks like the"
     " [b][i]Money Bin[/i][/b] but in this story is called the Safe.",
