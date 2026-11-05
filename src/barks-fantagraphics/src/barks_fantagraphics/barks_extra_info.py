@@ -329,6 +329,14 @@ BARKS_EXTRA_INFO = {
     Titles.SOMETHIN_FISHY_HERE: 'With five pages censored from the original publication of "Back'
     ' to the Klondike," Barks had to write a replacement filler. A strange story about a new type'
     " of coinage.",
+    Titles.BACK_TO_THE_KLONDIKE: "Barks drew this story at 32 pages, but it was first printed at"
+    " 27, with a five-page barroom sequence cut. In a 1972 letter, he wrote:"
+    ' [i]"I was a little skeptical of whether I could get by with such a bar room atmosphere but I'
+    ' did it anyway for fun."[/i]'
+    "\n\nIn a 1974 interview, asked whether he was paid for the five cut pages, he answered:"
+    " [i]\"Evidently I wasn't. I think they figured I should have had sense enough to know you"
+    " couldn't get involved in fights in a barroom.\"[/i] Only later did he learn why: he had"
+    ' [i]"violated a lot of their taboos"[/i].',
     Titles.WORM_WEARY: 'Garé Barks said this about inking the story: [i]"For quite a while I just'
     " did some of the blacking. I remember one of the first stories I worked on was a Gyro"
     " Gearloose in which he caught some mammoth fish. Carl left all the scales for me to put on! I"
