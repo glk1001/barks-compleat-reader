@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits creem coty
+# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie
 
 from .barks_titles import Titles
 
@@ -218,6 +218,11 @@ BARKS_EXTRA_INFO = {
     ' story: [i]"Paid Dana Coty $30 for the idea."[/i]'
     '\n\nIn this story Gladstone develops his code of honor: "Anyone, as lucky as I, should just'
     ' sit around and let Dame Fortune dump a bale of mazuma in his lap!"',
+    Titles.LAND_OF_THE_TOTEM_POLES: 'In a 1960 letter to Larry Ivie, Barks wrote: [i]"The stories I'
+    " consider best of the long-lengths were 'Lost in the Andes' (the one about the square eggs),"
+    " 'Land of the Totem Poles,' 'In Old California.'\"[/i]"
+    "\n\nBarks reworked this plot eight years later as the Uncle Scrooge story City of Golden"
+    " Roofs.",
     Titles.IN_ANCIENT_PERSIA: "This is one of Barks' bleakest tales, so it's no surprise that it"
     " was banned in several countries and not published in Denmark until 1987."
     '\n\nFrom a June 9, 1966 letter to Michael Barrier: [i]"About my'
