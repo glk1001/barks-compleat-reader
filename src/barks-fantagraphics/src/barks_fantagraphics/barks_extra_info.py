@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf hunza shor
+# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf hunza shor gjetost
 # cspell:ignore quadruplatillion umtuplatillion multuplatillion fantasticatillion centrifugalillion
 
 from .barks_titles import Titles
@@ -464,6 +464,15 @@ BARKS_EXTRA_INFO = {
     ' little repetitious with my stuff."[/i]'
     '\n\nScrooge counts his fortune on page 1: "Five billion quadruplatillion umtuplatillion'
     ' multuplatillion fantasticatillion centrifugalillion dollars and sixteen cents!"',
+    Titles.LEMMING_WITH_THE_LOCKET_THE: "Barks read about a big lemming migration in the paper,"
+    " then in the National Geographic. He recalled:"
+    " [i]\"From that, I hit upon the idea for a big climax situation of having Uncle Scrooge's safe"
+    " combination being on the neck of one lemming in a migration of millions of lemmings. I built"
+    ' backward to a beginning and then moved forward with the panel breakdowns."[/i]'
+    "\n\nNorwegian readers were sure Barks must have visited their country. He recalled:"
+    " [i]\"When they found out that I'd never been there and had only read about them in geographic"
+    " magazines, it seemed that I disappointed them a great deal. They send me some Gjetost by"
+    ' airmail."[/i]',
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
