@@ -354,7 +354,7 @@ BARKS_EXTRA_INFO = {
     ' deciding it looked too impossible to be real..."[/i]',
     Titles.HORSERADISH_STORY_THE: 'Barks told Edward Summer: [i]"I liked stories that gave me a'
     ' chance to draw water and ships sailing into storms and big pictorial panels."[/i] His'
-    " example, which the printed interview places in Uncle Scrooge #3, is"
+    " example, which could be page 14 or page 18 of this story, is"
     ' [i]"a whole page in which I have a ship wallowing around in the waves. A hurricane is'
     " tearing the ship apart, and the villain, who is a real dirty skunk, turns on his own helper."
     ' It was a hard-boiled story! I think that might have been one of its charms."[/i]',
