@@ -449,9 +449,9 @@ BARKS_EXTRA_INFO = {
     " reputed to live extraordinarily long and healthy lives. He wrote in a 1987 letter:"
     ' [i]"It was fairly common fare in the media that all us stupid stuffers of junk food and'
     ' breathers of carbon monoxide were missing the good life."[/i]'
-    "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir of"
-    " Hunza says gold was the only thing that ever worried his people, and a Hunza man walked eight"
-    " miles to return Shor's lost watch, as the honest rice farmer returns Scrooge's bottle cap."
+    "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir says"
+    " gold was his people's only worry, and a man walked eight miles to return Shor's lost watch,"
+    " as the rice farmer returns Scrooge's bottle cap."
     "\n\nAnd on page 7 is the first mention of the [b][i]Junior Woodchucks' Guidebook.[/i][/b]",
     Titles.SEVEN_CITIES_OF_CIBOLA_THE: "The plot started in Indio, California, where welfare"
     " director Al Koch (seen in the story kicking the Beagle Boys out of the welfare office) showed"
