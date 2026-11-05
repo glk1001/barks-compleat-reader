@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-11-01.
+Last updated: 2026-11-05.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -275,6 +275,22 @@ in the OCR repo, which is read-only from here:
       too little width; that is the likely cause, not yet confirmed. To reproduce: boot
       the probe with `BARKS_PROBE_SCREEN=700x1300` onto any story. No GUI test runs that
       size.
+
+## Tree view
+
+- [ ] **Revisit: should a closed sibling forget its open sub-branches?** — from a talk on
+      2026-11-05; the user is to judge this from using the app on the TV. Opening a node
+      collapses its open siblings and nothing else (`TreeViewManager._close_siblings`), which
+      looks right for a six-key remote and is to stay. But only the sibling itself closes:
+      what was open under it stays marked open, so reopening the sibling should bring its old
+      sub-branch back, and a remote then steps through those rows to get past it. Collapse,
+      go-to-title and Go Back instead close everything underneath
+      (`TreeViewScreen.deselect_and_close_open_nodes`), so a group can reopen long or clean
+      depending on how it was last closed. For keeping it: you return to where you were, which
+      helps when moving between a few years or series. Read from the code, not yet seen in the
+      running app. If it is to go, the change is small: `_close_siblings` also closes each
+      sibling's open descendants. The rule itself has mock-only unit tests, and any change
+      should come with a GUI test.
 
 ## Architecture / testability
 
