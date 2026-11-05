@@ -242,7 +242,7 @@ class TestFantagraphicsSourceResolution:
         info = source.get_image_info_str(_make_page_info("200.jpg"))
 
         assert "extra/200.png" in info
-        assert "from override" in info  # "from override" == not from the main archive
+        assert "from extra" in info
 
     def test_title_page_resolves_to_empty_placeholder(self) -> None:
         """A title page short-circuits to the empty-page placeholder, off-archive."""
@@ -261,7 +261,7 @@ class TestFantagraphicsSourceResolution:
         info = source.get_image_info_str(page_info)
 
         assert "__empty_page__" in info
-        assert "from override" in info
+        assert "from placeholder" in info
 
 
 def _title_page_info(filename: str, page_type: PageType = PageType.TITLE) -> PageInfo:
@@ -322,7 +322,7 @@ class TestSourceDescription:
             _title_page_info("empty_page.jpg", page_type=PageType.BLANK_PAGE)
         )
 
-        assert info == '"__empty_page__" (from override)'
+        assert info == '"__empty_page__" (from placeholder)'
 
 
 class TestReadImageDelegation:

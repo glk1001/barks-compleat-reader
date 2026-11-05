@@ -373,7 +373,7 @@ class TestComicBookReader:
         self._stub_current_page(reader, 3)
         reader._all_loaded = True
         reader._page_manager.page_map = {"3": MagicMock(page_type=PageType.BLANK_PAGE)}
-        image = f'"{log_markers.EMPTY_PAGE_IMAGE}" (from override)'
+        image = f'"{log_markers.EMPTY_PAGE_IMAGE}" (from placeholder)'
         reader._comic_book_loader.get_image_info_str.return_value = image
 
         with patch.object(reader, "_render_page"):

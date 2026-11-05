@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import re
 import zipfile
 from collections import Counter
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book import get_page_str
@@ -12,6 +16,12 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT, JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
+
+from .log_markers import EMPTY_PAGE_IMAGE
+from .reader_utils import is_blank_page, is_title_page
+
+if TYPE_CHECKING:
+    from .comic_book_page_info import PageInfo
 
 _VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
 
@@ -116,6 +126,27 @@ def _is_macos_junk(zip_entry_name: str) -> bool:
     return entry.parts[0] == _MACOS_JUNK_DIR or entry.name.startswith(_MACOS_JUNK_PREFIX)
 
 
+class PageSourceKind(Enum):
+    """Where a page's image comes from. The value names it in the logs."""
+
+    PLACEHOLDER = "placeholder"
+    EXTRA = "extra"
+    OVERRIDE = "override"
+    ARCHIVE = "archive"
+
+
+@dataclass(frozen=True, slots=True)
+class PageSource:
+    """A page's image: the kind of source, and its path in that source.
+
+    The path is ``None`` for a page no source holds: the volume's archive would have
+    to, and it does not.
+    """
+
+    kind: PageSourceKind
+    path: Path | None
+
+
 @dataclass(slots=True)
 class FantagraphicsArchive:
     """Represents a single Fantagraphics volume archive and its metadata."""
@@ -139,18 +170,44 @@ class FantagraphicsArchive:
     def has_overrides(self) -> bool:
         return (len(self.extra_images_page_map) > 0) or (len(self.override_images_page_map) > 0)
 
-    def needs_real_archive_for(self, page_str: str, *, use_overrides: bool) -> bool:
-        """Return whether the given page can only come from the (library) archive.
+    def page_source(self, page_str: str, *, use_overrides: bool) -> PageSource:
+        """Return where the volume page numbered *page_str* comes from.
 
-        A page backed by a bundled extra image can be shown without the user's
-        Fantagraphics library, and so can one backed by a bundled override image while
-        *use_overrides* is on; any other page requires the real volume archive. This
-        is the resolution the image source makes for the page, so the two must agree.
+        A bundled extra image first, whatever the setting; then a bundled override
+        image while *use_overrides* is on; otherwise the library archive, which with
+        overrides off means an overridden page needs the archive too.
+
+        Args:
+            page_str: The page's number, as the page maps are keyed.
+            use_overrides: Whether the pages are being read with their overrides.
+
+        Returns:
+            The page's source. ``ARCHIVE`` is what cannot be shown without the library.
+
         """
-        bundled = page_str in self.extra_images_page_map or (
-            use_overrides and page_str in self.override_images_page_map
-        )
-        return not bundled
+        if page_str in self.extra_images_page_map:
+            return PageSource(PageSourceKind.EXTRA, self.extra_images_page_map[page_str])
+        if use_overrides and page_str in self.override_images_page_map:
+            return PageSource(PageSourceKind.OVERRIDE, self.override_images_page_map[page_str])
+        return PageSource(PageSourceKind.ARCHIVE, self.archive_images_page_map.get(page_str))
+
+    def page_source_for(self, page_info: PageInfo, *, use_overrides: bool) -> PageSource:
+        """Return where a comic's page comes from: title and blank pages have no scan.
+
+        Args:
+            page_info: The comic's page.
+            use_overrides: Whether the pages are being read with their overrides.
+
+        Returns:
+            The page's source, for the reader and for the missing-volume check alike.
+
+        """
+        if is_title_page(page_info.srce_page) or is_blank_page(
+            page_info.srce_page.page_filename, page_info.page_type
+        ):
+            return PageSource(PageSourceKind.PLACEHOLDER, Path(EMPTY_PAGE_IMAGE))
+        page_str = Path(page_info.srce_page.page_filename).stem
+        return self.page_source(page_str, use_overrides=use_overrides)
 
 
 class FantagraphicsVolumeArchives:

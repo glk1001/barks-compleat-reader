@@ -13,8 +13,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comics_consts import IMAGES_SUBDIR
+from comic_utils.comic_consts import JPG_FILE_EXT
 from loguru import logger
 
+from .fantagraphics_volumes import PageSourceKind
 from .image_pipeline import (
     decode_pil,
     decode_pil_for,
@@ -22,9 +24,7 @@ from .image_pipeline import (
     read_raw_bytes,
     resize_contain,
 )
-from .log_markers import EMPTY_PAGE_IMAGE
 from .page_image import PageImage
-from .reader_utils import is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
@@ -115,14 +115,14 @@ class ArchivePageImageSource:
             The page as the pixels a texture takes.
 
         """
-        image_path, is_from_archive = self._get_image_path(page_info)
+        image_path, kind = self._get_image_path(page_info)
 
         logger.debug(
             f'Loading page index {page_info.page_index} (page "{page_info.display_page_num}"):'
-            f' image_path = "{image_path}", is_from_archive = {is_from_archive}.'
+            f' image_path = "{image_path}", source = {kind.value}.'
         )
 
-        pil_image, srce_scale = self._read_image(page_info, image_path, is_from_archive)
+        pil_image, srce_scale = self._read_image(page_info, image_path, kind)
 
         if self._fanta_volume_archive:
             assert self._comic_book_image_builder
@@ -139,9 +139,8 @@ class ArchivePageImageSource:
 
     def get_image_info_str(self, page_info: PageInfo) -> str:
         """Return a human-readable description of the image source for *page_info*."""
-        image_path, is_from_archive = self._get_image_path(page_info)
-        file_source = "from archive" if is_from_archive else "from override"
-        return f'"{image_path!s}" ({file_source})'
+        image_path, kind = self._get_image_path(page_info)
+        return f'"{image_path}" (from {kind.value})'
 
     # ------------------------------------------------------------------
     # Internals
@@ -150,37 +149,23 @@ class ArchivePageImageSource:
     def _window_box(self) -> tuple[int, int]:
         return self._max_width, self._max_height
 
-    def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
+    def _get_image_path(self, page_info: PageInfo) -> tuple[str, PageSourceKind]:
         if not self._fanta_volume_archive:
-            raw = Path(IMAGES_SUBDIR) / page_info.dest_page.page_filename, True
+            path = Path(IMAGES_SUBDIR) / page_info.dest_page.page_filename
+            kind = PageSourceKind.ARCHIVE
         else:
-            raw = self._get_fanta_volume_image_path(page_info)
+            source = self._fanta_volume_archive.page_source_for(
+                page_info, use_overrides=self._use_fantagraphics_overrides
+            )
+            if source.path is None:
+                raise KeyError(page_info.srce_page.page_filename)
+            path, kind = source.path, source.kind
 
         # ZIP files always use '/' as a separator (even on Windows).
-        return str(raw[0]).replace("\\", "/"), raw[1]
-
-    def _get_fanta_volume_image_path(self, page_info: PageInfo) -> tuple[Path, bool]:
-        if is_title_page(page_info.srce_page) or is_blank_page(
-            page_info.srce_page.page_filename, page_info.page_type
-        ):
-            return Path(EMPTY_PAGE_IMAGE), False
-
-        page_str = Path(page_info.srce_page.page_filename).stem
-
-        assert self._fanta_volume_archive
-
-        if page_str in self._fanta_volume_archive.extra_images_page_map:
-            return Path(self._fanta_volume_archive.extra_images_page_map[page_str]), False
-
-        if self._use_fantagraphics_overrides and (
-            page_str in self._fanta_volume_archive.override_images_page_map
-        ):
-            return Path(self._fanta_volume_archive.override_images_page_map[page_str]), False
-
-        return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
+        return path.as_posix(), kind
 
     def _read_image(
-        self, page_info: PageInfo, image_path: str, is_from_archive: bool
+        self, page_info: PageInfo, image_path: str, kind: PageSourceKind
     ) -> tuple[Image, float]:
         """Decode the page's source image, and say what scale of itself it was decoded at.
 
@@ -191,11 +176,11 @@ class ArchivePageImageSource:
         with the image, so the panels box can follow. Override pages are decoded whole,
         and so is every page when the reader is set to decode pages whole.
         """
-        if is_from_archive:
+        if kind is PageSourceKind.ARCHIVE:
             assert self._archive is not None, (
                 "Page requires the Fantagraphics library archive, but it is not available."
             )
-            raw = read_raw_bytes(zipfile.Path(self._archive, at=str(image_path)))
+            raw = read_raw_bytes(zipfile.Path(self._archive, at=image_path))
             ext = Path(image_path).suffix
             if self._decode_whole:
                 return decode_pil(raw, ext=ext), 1.0
@@ -211,16 +196,16 @@ class ArchivePageImageSource:
                 ),
             )
 
-        if image_path == EMPTY_PAGE_IMAGE:
+        if kind is PageSourceKind.PLACEHOLDER:
             # The resolver's verdict decides, not the page type: a TITLE-typed page that
             # resolved to a real override file is read like any other override page.
             # Nothing in any zip backs the placeholder; its bundled bytes are a JPEG.
-            return decode_pil(self._empty_page_image, ext=".jpg"), 1.0
+            return decode_pil(self._empty_page_image, ext=JPG_FILE_EXT), 1.0
 
         assert self._fanta_volume_archive is not None
         assert self._fanta_volume_archive.override_archive is not None
         return load_pil(
-            zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path)),
+            zipfile.Path(self._fanta_volume_archive.override_archive, at=image_path),
             encrypted_zip=True,
             use_ext_hint=True,
         ), 1.0

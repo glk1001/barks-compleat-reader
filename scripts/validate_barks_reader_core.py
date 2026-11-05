@@ -64,6 +64,7 @@ from barks_reader.core.fantagraphics_volumes import (
     MissingArchiveFilesError,
     PageExtError,
     PageNumError,
+    PageSourceKind,
     has_archive_extension,
 )
 from barks_reader.core.image_pipeline import load_pil as reader_load_pil
@@ -1675,20 +1676,17 @@ def _resolve_page_source(
     archive: FantagraphicsArchive,
     page_str: str,
 ) -> tuple[Path, str, bool] | None:
-    """Mirror :meth:`ArchivePageImageSource._get_fanta_volume_image_path`.
+    """Return where the reader would read the page from, overrides on.
 
     Returns ``(zip_member_path, source_label, is_encrypted)`` or ``None``
     if the page number isn't present in any of the page maps (which means
     the volume archive itself is missing this page — Phase 6 should have
     surfaced this, but the title-level loader would still raise here).
     """
-    if page_str in archive.extra_images_page_map:
-        return archive.extra_images_page_map[page_str], "extra", True
-    if archive.has_overrides() and page_str in archive.override_images_page_map:
-        return archive.override_images_page_map[page_str], "override", True
-    if page_str in archive.archive_images_page_map:
-        return archive.archive_images_page_map[page_str], "archive", False
-    return None
+    source = archive.page_source(page_str, use_overrides=True)
+    if source.path is None:
+        return None
+    return source.path, source.kind.value, source.kind is not PageSourceKind.ARCHIVE
 
 
 @dataclass(slots=True)

@@ -5,11 +5,14 @@ from pathlib import Path
 
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     NUM_VOLUMES,
 )
+from barks_fantagraphics.page_classes import CleanPage
+from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     EmptyArchiveError,
@@ -20,8 +23,11 @@ from barks_reader.core.fantagraphics_volumes import (
     MixedImageFoldersError,
     PageExtError,
     PageNumError,
+    PageSource,
+    PageSourceKind,
     has_archive_extension,
 )
+from barks_reader.core.log_markers import EMPTY_PAGE_IMAGE
 
 _ARCHIVE = Path("03 - Volume.cbz")
 
@@ -792,8 +798,8 @@ class TestLoadEndToEnd:
         vol1 = archives.get_fantagraphics_archive(1)
         assert vol1.is_missing is True
         assert set(vol1.extra_images_page_map) == {"258", "259", "267"}
-        assert vol1.needs_real_archive_for("258", use_overrides=True) is False
-        assert vol1.needs_real_archive_for("999", use_overrides=True) is True
+        assert (vol1.page_source("258", use_overrides=True).kind is PageSourceKind.ARCHIVE) is False
+        assert (vol1.page_source("999", use_overrides=True).kind is PageSourceKind.ARCHIVE) is True
 
         vol3 = archives.get_fantagraphics_archive(3)
         assert set(vol3.extra_images_page_map) == {"250", "260"}
@@ -801,7 +807,7 @@ class TestLoadEndToEnd:
         # A missing volume with no bundled override has no extra pages.
         vol2 = archives.get_fantagraphics_archive(2)
         assert vol2.extra_images_page_map == {}
-        assert vol2.needs_real_archive_for("258", use_overrides=True) is True
+        assert (vol2.page_source("258", use_overrides=True).kind is PageSourceKind.ARCHIVE) is True
 
     def test_an_override_page_needs_the_archive_once_overrides_are_off(self) -> None:
         """What the image source does: extras always bundled, overrides only when in use.
@@ -824,11 +830,19 @@ class TestLoadEndToEnd:
             is_missing=True,
         )
 
-        assert archive.needs_real_archive_for("258", use_overrides=True) is False
-        assert archive.needs_real_archive_for("258", use_overrides=False) is True
+        assert (
+            archive.page_source("258", use_overrides=True).kind is PageSourceKind.ARCHIVE
+        ) is False
+        assert (
+            archive.page_source("258", use_overrides=False).kind is PageSourceKind.ARCHIVE
+        ) is True
         # An extra page is bundled whatever the overrides setting.
-        assert archive.needs_real_archive_for("300", use_overrides=False) is False
-        assert archive.needs_real_archive_for("999", use_overrides=True) is True
+        assert (
+            archive.page_source("300", use_overrides=False).kind is PageSourceKind.ARCHIVE
+        ) is False
+        assert (
+            archive.page_source("999", use_overrides=True).kind is PageSourceKind.ARCHIVE
+        ) is True
 
     def test_raises_page_ext_error_for_uppercase_extension(self, tmp_path: Path) -> None:
         """`_get_archive_contents` accepts case-insensitively; `load()` then rejects non-canonical exts."""  # noqa: E501
@@ -1022,3 +1036,80 @@ def test_an_override_zip_with_a_foreign_image_type_is_rejected(tmp_path: Path) -
 
     with pytest.raises(PageExtError, match="expecting extension to be in"):
         FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps(override, {})
+
+
+def _page(filename: str, page_type: PageType = PageType.BODY) -> PageInfo:
+    page = CleanPage(filename, page_type)
+    return PageInfo(
+        page_index=0, display_page_num="1", page_type=page_type, srce_page=page, dest_page=page
+    )
+
+
+class TestPageSourceFor:
+    """The one rule for where a comic's page comes from: the reader and the gate share it."""
+
+    @staticmethod
+    def _archive() -> FantagraphicsArchive:
+        return FantagraphicsArchive(
+            fanta_volume=7,
+            archive_filename=Path("07.cbz"),
+            archive_image_subdir=None,
+            image_ext=".jpg",
+            first_page=1,
+            last_page=400,
+            archive_images_page_map={"100": Path("arch/100.jpg"), "258": Path("arch/258.jpg")},
+            override_images_page_map={"258": Path("over/258.png"), "300": Path("over/300.png")},
+            extra_images_page_map={"300": Path("extra/300.png")},
+            override_archive_filename=None,
+        )
+
+    @pytest.mark.parametrize(
+        ("page", "use_overrides", "kind", "path"),
+        [
+            (_page("empty_page.jpg", PageType.TITLE), True, PageSourceKind.PLACEHOLDER, None),
+            (_page("empty_page.jpg", PageType.BLANK_PAGE), True, PageSourceKind.PLACEHOLDER, None),
+            (_page("empty_page.jpg", PageType.BODY), True, PageSourceKind.PLACEHOLDER, None),
+            (_page("100.jpg"), True, PageSourceKind.ARCHIVE, "arch/100.jpg"),
+            (_page("258.jpg"), True, PageSourceKind.OVERRIDE, "over/258.png"),
+            (_page("258.jpg"), False, PageSourceKind.ARCHIVE, "arch/258.jpg"),
+            (_page("300.jpg"), True, PageSourceKind.EXTRA, "extra/300.png"),
+            (_page("300.jpg"), False, PageSourceKind.EXTRA, "extra/300.png"),
+            (_page("999.jpg"), True, PageSourceKind.ARCHIVE, None),
+        ],
+        ids=[
+            "title",
+            "blank",
+            "empty-body",
+            "archive",
+            "override",
+            "override-off",
+            "extra-beats-override",
+            "extra-with-overrides-off",
+            "in-no-map",
+        ],
+    )
+    def test_the_source_of_a_page(
+        self, page: PageInfo, use_overrides: bool, kind: PageSourceKind, path: str | None
+    ) -> None:
+        source = self._archive().page_source_for(page, use_overrides=use_overrides)
+
+        assert source.kind is kind
+        if kind is PageSourceKind.PLACEHOLDER:
+            assert source.path == Path(EMPTY_PAGE_IMAGE)
+        else:
+            assert source.path == (None if path is None else Path(path))
+
+    def test_a_title_typed_page_whose_scan_is_not_title_typed_is_looked_up(self) -> None:
+        """`is_title_page` reads the scan's own type: only the page type says blank here."""
+        page = _page("empty_page.jpg", PageType.TITLE)
+        page = PageInfo(
+            page_index=0,
+            display_page_num="1",
+            page_type=PageType.TITLE,
+            srce_page=CleanPage("empty_page.jpg", PageType.BODY),
+            dest_page=page.dest_page,
+        )
+
+        source = self._archive().page_source_for(page, use_overrides=True)
+
+        assert source == PageSource(PageSourceKind.ARCHIVE, None)
