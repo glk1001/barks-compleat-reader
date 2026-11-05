@@ -218,8 +218,8 @@ BARKS_EXTRA_INFO = {
     ' He was the kind of guy who got all the breaks, and poor old Donald never got anywhere."[/i]',
     Titles.TRAIL_OF_THE_UNICORN: "In his 1969 list of work for Western, Barks wrote about this"
     ' story: [i]"Paid Dana Coty $30 for the idea."[/i]'
-    '\n\nIn this story Gladstone develops his code of honor: "Anyone, as lucky as I, should just'
-    ' sit around and let Dame Fortune dump a bale of mazuma in his lap!"',
+    '\n\nIn this story Gladstone develops his code of honor: [i]"Anyone, as lucky as I, should'
+    ' just sit around and let Dame Fortune dump a bale of mazuma in his lap!"[/i]',
     Titles.LAND_OF_THE_TOTEM_POLES: 'In a 1960 letter to Larry Ivie, Barks wrote: [i]"The stories I'
     " consider best of the long-lengths were 'Lost in the Andes' (the one about the square eggs),"
     " 'Land of the Totem Poles,' 'In Old California.'\"[/i]"
@@ -249,8 +249,9 @@ BARKS_EXTRA_INFO = {
     ' got in a great deal of nostalgia and a little history, and a little bit of villainy."[/i]'
     "\n\n"
     "And the first pig villain: Don Porko de Lardo.",
-    Titles.MAGIC_HOURGLASS_THE: "Peter Schilling says Scrooge's line, \"I can't go on like this—"
-    "losing a billion dollars a minute! I'll be broke in 600 years!\", is a joke stolen from"
+    Titles.MAGIC_HOURGLASS_THE: "Peter Schilling says Scrooge's line,"
+    " [i]\"I can't go on like this—losing a billion dollars a minute! I'll be broke in 600"
+    ' years!"[/i], is a joke stolen from'
     " Citizen Kane, where Kane says that losing a million dollars a year will close his"
     " newspaper in sixty years."
     "\n\nAt that rate, Scrooge's fortune comes to about 315 quadrillion dollars (a quadrillion is"
@@ -466,8 +467,8 @@ BARKS_EXTRA_INFO = {
     " to 28. In a 1974 interview Barks had no specific memory of that, but said:"
     ' [i]"I think the reason there was some cutting on that was that I had decided I had gotten a'
     ' little repetitious with my stuff."[/i]'
-    '\n\nScrooge counts his fortune on page 1: "Five billion quadruplatillion umtuplatillion'
-    ' multuplatillion fantasticatillion centrifugalillion dollars and sixteen cents!"',
+    '\n\nScrooge counts his fortune on page 1: [i]"Five billion quadruplatillion umtuplatillion'
+    ' multuplatillion fantasticatillion centrifugalillion dollars and sixteen cents!"[/i]',
     Titles.LEMMING_WITH_THE_LOCKET_THE: "Barks read about a big lemming migration in the paper,"
     " then in the National Geographic. He recalled:"
     " [i]\"From that, I hit upon the idea for a big climax situation of having Uncle Scrooge's safe"
@@ -480,8 +481,8 @@ BARKS_EXTRA_INFO = {
     Titles.FABULOUS_PHILOSOPHERS_STONE_THE: "The philosopher's stone was an alchemists' legend,"
     " said to turn base metals into gold and often to give long life. Nicolas Flamel, a"
     " 14th-century Parisian, was later said to have made one. Here it nearly kills Scrooge instead."
-    "\n\nThe nephews declare the Guidebook infallible: \"The Junior Woodchucks' Guide Book says the"
-    " Labyrinth existed, and the Junior Woodchucks' Guide Book is never wrong!\"",
+    "\n\nThe nephews declare the Guidebook infallible: [i]\"The Junior Woodchucks' Guide Book says"
+    " the Labyrinth existed, and the Junior Woodchucks' Guide Book is never wrong!\"[/i]",
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
