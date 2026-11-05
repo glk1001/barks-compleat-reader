@@ -43,12 +43,15 @@ class ComicBookReaderPort(Protocol):
         layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
         on_comic_opened: Callable[[], None] | None = None,
+        on_load_failed: Callable[[], None] | None = None,
     ) -> None:
         """Load *fanta_info*'s comic, laid out as *layout*, and read from *page_to_first_goto*.
 
         *tagged_pages* are the pages a tag marks, when the comic was opened through it.
         *on_comic_opened* is called once, when the comic's first page has drawn; a comic
         that fails before that, on the loader thread included, never calls it.
+        *on_load_failed* is called once if the comic's pages cannot be read, on the UI
+        thread and after the reader has closed the comic, so the user can be told.
         """
         ...
 

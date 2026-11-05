@@ -310,6 +310,26 @@ def _build_volume_not_available(
     return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=title, text=text)
 
 
+def _build_comic_load_failed(
+    error_info: ErrorInfo | None,
+    _reader_settings: ReaderSettings,
+    _popup_title: str,
+) -> ErrorPresentation:
+    """Compose the message for a title whose comic could not be read."""
+    assert error_info is not None
+    assert error_info.title is not None
+
+    title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
+    text = (
+        f'Cannot show the title [b]"{title_str}."[/b]\n\n'
+        f"Its pages could not be read: the comic's file may be damaged."
+    )
+
+    return ErrorPresentation(
+        kind=ErrorDialogKind.NOTICE, title="Comic Could Not Be Read", text=text
+    )
+
+
 _BUILDERS: dict[
     ErrorTypes,
     Callable[[ErrorInfo | None, ReaderSettings, str], ErrorPresentation],
@@ -320,4 +340,5 @@ _BUILDERS: dict[
     ErrorTypes.MissingArchiveVolumes: _build_missing_volumes,
     ErrorTypes.MissingVolumeCannotShowTitle: _build_cannot_show_title,
     ErrorTypes.ArchiveVolumeNotAvailable: _build_volume_not_available,
+    ErrorTypes.ComicLoadFailed: _build_comic_load_failed,
 }

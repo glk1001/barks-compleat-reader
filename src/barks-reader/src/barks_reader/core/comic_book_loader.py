@@ -270,12 +270,6 @@ class ComicBookLoader:
                 fanta_info.comic_book_info.title,
             )
 
-        if fanta_volume_archive.has_overrides():
-            assert fanta_volume_archive.override_archive_filename
-            fanta_volume_archive.override_archive = zipfile.ZipFile(
-                fanta_volume_archive.override_archive_filename, "r"
-            )
-
         return fanta_volume_archive.archive_filename, fanta_volume_archive
 
     # ------------------------------------------------------------------

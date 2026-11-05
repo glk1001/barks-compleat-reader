@@ -514,8 +514,9 @@ def stray_key_presses(app_log: str, input_log: str) -> int:
 
 _LEVEL_RE = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ \| (ERROR|CRITICAL)\b")
 # Text no line of a clean run carries, whatever its level.
+_TRACEBACK_TEXT = "Traceback (most recent call last)"
 _PROBLEM_TEXTS = (
-    "Traceback (most recent call last)",
+    _TRACEBACK_TEXT,
     "Unable to load image",
     "Error loading texture",
     "Error reading file",
@@ -528,7 +529,9 @@ _SCREEN_LEFT_RE = re.compile(pattern(markers.SCREEN_LEFT, name=re.compile(r"([^'
 PROBLEMS_SHOWN = 12
 
 
-def log_problems(app_log: str, expected_errors: Sequence[str] = ()) -> list[str]:
+def log_problems(
+    app_log: str, expected_errors: Sequence[str] = (), expected_tracebacks: int = 0
+) -> list[str]:
     """Return what a passing test must not leave in the app log.
 
     Error-level lines and tracebacks; Kivy's image-load failures, which it logs
@@ -540,18 +543,23 @@ def log_problems(app_log: str, expected_errors: Sequence[str] = ()) -> list[str]
         app_log: The app log's text.
         expected_errors: Regexes of error lines a test provoked on purpose
             (`AppBoot.expect_error`); only error-level lines are excused.
+        expected_tracebacks: How many tracebacks a test provoked on purpose
+            (`AppBoot.expect_tracebacks`); one more is still a problem.
 
     Returns:
         One short line per problem, in log order.
 
     """
     excused = [re.compile(expected) for expected in expected_errors]
-    problems: list[str] = [
-        line.strip()[:200]
-        for line in app_log.splitlines()
-        if (_LEVEL_RE.match(line) and not any(e.search(line) for e in excused))
-        or any(text in line for text in _PROBLEM_TEXTS)
-    ]
+    problems: list[str] = []
+    tracebacks_left = expected_tracebacks
+    for line in app_log.splitlines():
+        if tracebacks_left > 0 and _TRACEBACK_TEXT in line:
+            tracebacks_left -= 1
+        elif (_LEVEL_RE.match(line) and not any(e.search(line) for e in excused)) or any(
+            text in line for text in _PROBLEM_TEXTS
+        ):
+            problems.append(line.strip()[:200])
     entered = [found[1] for found in _SCREEN_ENTERED_RE.finditer(app_log)]
     left = [found[1] for found in _SCREEN_LEFT_RE.finditer(app_log)]
     showing = 0
@@ -828,6 +836,7 @@ class AppBoot:
     expect_boot_size: bool = True
     # Error lines this test provokes on purpose (`expect_error`).
     expected_errors: list[str] = field(default_factory=list)
+    expected_tracebacks: int = 0
     _shots: list[Path] = field(default_factory=list)
     # Set before the probe is asked to start, not after the Driver exists: a
     # boot that fails part-way (the app never logs its ready line, say) has
@@ -842,6 +851,14 @@ class AppBoot:
         library, say); every other error line still fails it.
         """
         self.expected_errors.append(regex)
+
+    def expect_tracebacks(self, count: int) -> None:
+        """Excuse exactly `count` tracebacks from the clean-log check.
+
+        For a test that provokes an error the app logs with its traceback (a corrupt
+        comic, say). A count, not a pattern: one traceback more still fails the test.
+        """
+        self.expected_tracebacks = count
 
     @property
     def booted(self) -> bool:
@@ -1187,7 +1204,7 @@ class AppBoot:
             app_log = self.driver.log_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
-        problems = log_problems(app_log, self.expected_errors)
+        problems = log_problems(app_log, self.expected_errors, self.expected_tracebacks)
         stray = self.stray_key_note()
         if stray:
             problems.append(stray)

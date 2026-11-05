@@ -79,7 +79,13 @@ class ArchivePageImageSource:
         self._decode_whole = decode_whole
 
     def open(self) -> None:
-        """Open the backing ZIP archive. Must be called before :meth:`load_page_image`."""
+        """Open the backing ZIP archives. Must be called before :meth:`load_page_image`."""
+        if self._fanta_volume_archive is not None and self._fanta_volume_archive.has_overrides():
+            assert self._fanta_volume_archive.override_archive_filename
+            self._fanta_volume_archive.override_archive = zipfile.ZipFile(
+                self._fanta_volume_archive.override_archive_filename, "r"
+            )
+
         if self._fanta_volume_archive is not None and self._fanta_volume_archive.is_missing:
             # The library volume is absent; this comic is served entirely from bundled
             # override/extra pages. There is no real archive to open (its filename is a

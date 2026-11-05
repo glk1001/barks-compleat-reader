@@ -541,6 +541,12 @@ class TestLogProblems:
         excused = [r"Cannot show the title .* is missing"]
         assert harness.log_problems(text, excused) == [other, traceback]
 
+    def test_only_the_expected_number_of_tracebacks_is_excused(self) -> None:
+        traceback = self._line("DEBUG", "Traceback (most recent call last):")
+        text = f"{traceback}\n{traceback}\n{traceback}"
+        assert harness.log_problems(text, expected_tracebacks=3) == []
+        assert harness.log_problems(text, expected_tracebacks=2) == [traceback]
+
     def test_a_traceback_and_an_image_failure_are_problems_at_any_level(self) -> None:
         text = "\n".join(
             [

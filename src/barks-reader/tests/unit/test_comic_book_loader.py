@@ -16,6 +16,7 @@ import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import comic_book_loader as loader_module
 from barks_reader.core import log_markers
+from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_book_loader_platform_settings import (
     get_max_worker_count,
@@ -973,42 +974,17 @@ class TestPageNeedsRealArchive:
 
 
 class TestOverrideArchiveOpening:
-    def test_the_override_zip_is_opened_for_reading(
+    """The override zip opens with the rest on the loader thread, inside its error handling."""
+
+    def test_resolving_does_not_touch_the_override_zip(
         self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
     ) -> None:
-        """A volume with overrides gets its bundled zip opened and attached."""
+        """Regression: it opened on the UI thread, where a bad zip took the app down."""
         mock_reader_settings.use_prebuilt_archives = False
-        override_zip = tmp_path / "07-overrides.zip"
-        with zipfile.ZipFile(override_zip, "w") as zf:
-            zf.writestr("258.png", b"x")
-
         fake_archive = MagicMock()
         fake_archive.is_missing = False
         fake_archive.has_overrides.return_value = True
-        fake_archive.override_archive_filename = override_zip
-        fake_archive.archive_filename = tmp_path / "07.cbz"
-
-        archives = MagicMock()
-        archives.get_fantagraphics_archive.return_value = fake_archive
-        loader._fanta_volume_archives = archives
-
-        loader.resolve_archive_for_comic(
-            _make_fanta_info(volume="FANTA_07"), _make_page_map(), use_fantagraphics_overrides=True
-        )
-
-        opened = fake_archive.override_archive
-        assert isinstance(opened, zipfile.ZipFile)
-        assert opened.filename == str(override_zip)
-        assert opened.namelist() == ["258.png"]
-        opened.close()
-
-    def test_no_override_zip_is_opened_when_the_volume_has_none(
-        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
-    ) -> None:
-        mock_reader_settings.use_prebuilt_archives = False
-        fake_archive = MagicMock()
-        fake_archive.is_missing = False
-        fake_archive.has_overrides.return_value = False
+        fake_archive.override_archive_filename = tmp_path / "not-there.zip"
         fake_archive.archive_filename = tmp_path / "07.cbz"
         fake_archive.override_archive = None
 
@@ -1021,6 +997,37 @@ class TestOverrideArchiveOpening:
         )
 
         assert fake_archive.override_archive is None
+
+    def test_a_corrupt_override_zip_reports_a_load_error(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        tmp_path: Path,
+    ) -> None:
+        override_zip = tmp_path / "07-overrides.zip"
+        override_zip.write_bytes(b"not a zip")
+        fake_archive = MagicMock()
+        fake_archive.is_missing = False
+        fake_archive.has_overrides.return_value = True
+        fake_archive.override_archive_filename = override_zip
+        fake_archive.override_archive = None
+        source = ArchivePageImageSource(
+            archive_path=tmp_path / "07.cbz",
+            fanta_volume_archive=fake_archive,
+            comic_book_image_builder=None,
+            empty_page_image=b"",
+            use_fantagraphics_overrides=True,
+            max_width=100,
+            max_height=100,
+        )
+
+        # The failed load's close and report are the UI thread's to run, as in the app.
+        loader._scheduler = _DeferringScheduler()
+        _run_load(loader, page_map_and_order, source)
+
+        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_all_images_loaded"].assert_not_called()
 
 
 class TestLoaderInitialState:

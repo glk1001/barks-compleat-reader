@@ -193,6 +193,9 @@ class ComicBookReader(FloatLayout):
         # Told once, when page one of the comic just opened has drawn, then dropped: a
         # comic closed before that (a load error) never opened. See read_comic.
         self._on_comic_opened: Callable[[], None] | None = None
+        # Told if the comic's pages cannot be read: the user hears why from whoever
+        # opened it. See _load_error.
+        self._on_load_failed: Callable[[], None] | None = None
         self._goto_page_dropdown: ReaderDropDown | None = None
         self._goto_page_buttons: list[Button] = []
         self._tagged_pages: frozenset[str] = frozenset()
@@ -346,11 +349,13 @@ class ComicBookReader(FloatLayout):
         layout: ComicLayout,
         tagged_pages: Sequence[str] = (),
         on_comic_opened: Callable[[], None] | None = None,
+        on_load_failed: Callable[[], None] | None = None,
     ) -> None:
         page_map = layout.page_map
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
         self._tagged_pages = frozenset(tagged_pages)
         self._on_comic_opened = on_comic_opened
+        self._on_load_failed = on_load_failed
 
         self._current_title_str = self.get_reader_comic_title(fanta_info)
 
@@ -427,6 +432,7 @@ class ComicBookReader(FloatLayout):
         # reveal an empty reader when its timeout fires, and never opened.
         self._cancel_reveal()
         self._on_comic_opened = None
+        self._on_load_failed = None
         self._stop_pending_poll()
         self._comic_book_loader.stop_now()
         self._comic_book_loader.close_comic()
@@ -456,10 +462,12 @@ class ComicBookReader(FloatLayout):
 
     def _load_error(self, load_warning_only: bool) -> None:
         self._all_loaded = False
-        if not load_warning_only:
-            msg = "There was a comic book load error."
-            raise RuntimeError(msg)
+        on_load_failed = self._on_load_failed
+        # Closed now, whatever follows: the loader has dropped the pages, so a reveal, a
+        # page poll or a page turn from here on would ask it for one that is gone.
         self.close_comic_book_reader()
+        if not load_warning_only and on_load_failed is not None:
+            on_load_failed()
 
     def _show_loading_page(self) -> None:
         self._comic_image.texture = None  # Clear previous texture

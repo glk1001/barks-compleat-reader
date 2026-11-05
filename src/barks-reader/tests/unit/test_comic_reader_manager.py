@@ -791,3 +791,71 @@ class TestANewReadSupersedesAnErrorClose:
         scheduler.advance(_CLOSE_READER_ON_ERROR_DELAY_SECS)
 
         mock_screen.close_comic_book_reader.assert_called_once_with()
+
+
+def _a_readable_title() -> MagicMock:
+    fanta_info = MagicMock(spec=FantaComicBookInfo)
+    fanta_info.comic_book_info = MagicMock()
+    fanta_info.comic_book_info.get_title_str.return_value = "Lost in the Andes"
+    fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
+    return fanta_info
+
+
+class TestUnreadableComic:
+    """A comic that cannot be read tells the user and closes, as a missing volume does.
+
+    Regression: a corrupt comic raised RuntimeError from a Clock callback (the app's
+    crash popup), and a disk error preparing one escaped the UI thread.
+    """
+
+    @staticmethod
+    def _assert_told_and_closing(
+        mock_dependencies: dict[str, MagicMock],
+        scheduler: FakeScheduler,
+        mock_screen: MagicMock,
+    ) -> None:
+        handle_error = mock_dependencies["user_error_handler"].handle_error
+        handle_error.assert_called_once()
+        error_type, error_info = handle_error.call_args.args
+        assert error_type is ErrorTypes.ComicLoadFailed
+        assert error_info.title is Titles.LOST_IN_THE_ANDES
+        assert scheduler.one_shots == [
+            (mock_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS)
+        ]
+
+    @pytest.mark.parametrize("error", [FileNotFoundError("gone"), PermissionError("denied")])
+    def test_a_disk_error_preparing_the_comic_is_reported(
+        self, mock_dependencies: dict[str, MagicMock], error: OSError
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.side_effect = error
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                _a_readable_title(), MagicMock(), "1", use_overrides_active=True
+            )
+
+        mock_reader.read_comic.assert_not_called()
+        self._assert_told_and_closing(mock_dependencies, scheduler, mock_screen)
+        assert manager.comic_closed() is None
+
+    def test_a_load_failing_on_the_loader_thread_is_reported(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                _a_readable_title(), MagicMock(), "1", use_overrides_active=True
+            )
+        mock_reader.read_comic.call_args.kwargs["on_load_failed"]()
+
+        self._assert_told_and_closing(mock_dependencies, scheduler, mock_screen)
+        # It never drew a page, so there is no read to record.
+        assert manager.comic_closed() is None
+        mock_dependencies["reading_history_tracker"].begin.assert_not_called()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
@@ -190,9 +191,17 @@ class ComicReaderManager:
         # This read supersedes an earlier one's error: its close would shut this comic.
         self._cancel_pending_error_close()
 
-        self._layout, comic_book_image_builder = prepare_comic_for_reading(
-            comic, self._reader_settings, self._layout_builder
-        )
+        title = self._fanta_info.comic_book_info.title
+        try:
+            self._layout, comic_book_image_builder = prepare_comic_for_reading(
+                comic, self._reader_settings, self._layout_builder
+            )
+        except OSError:
+            # The layout and the panel dimensions come off the disk, here on the UI thread.
+            logger.exception(f'Could not prepare "{title}" for reading.')
+            self._report_load_failed(title)
+            return
+
         if collection_page_range is not None:
             # Open only the member's year-range group, not the whole collection.
             self._layout = slice_comic_layout(self._layout, *collection_page_range)
@@ -215,6 +224,7 @@ class ComicReaderManager:
                 self._layout,
                 tagged_pages=tagged_pages,
                 on_comic_opened=self._begin_tracking,
+                on_load_failed=partial(self._report_load_failed, title),
             )
         except MissingVolumeError as e:
             logger.error(e)
@@ -258,6 +268,10 @@ class ComicReaderManager:
         self._pending_error_close = self._scheduler.schedule_once(
             reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS
         )
+
+    def _report_load_failed(self, title: Titles) -> None:
+        """Show the user that *title*'s pages could not be read, then close the reader."""
+        self._report_unreadable(ErrorTypes.ComicLoadFailed, ErrorInfo(title=title))
 
     def _cancel_pending_error_close(self) -> None:
         """Drop a deferred error close: the reader it was for is closed or gone."""

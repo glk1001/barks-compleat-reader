@@ -78,6 +78,41 @@ def test_reading_a_story_from_a_missing_volume_explains_and_returns(
     d.key_then_wait(_closed(VOLUME_MISSING), "Return")
 
 
+COULD_NOT_READ = "Comic Could Not Be Read"
+
+
+def test_a_corrupt_comic_explains_and_returns(boot: AppBoot, tmp_path: Path) -> None:
+    """A story whose prebuilt comic is not a zip: the popup, the main screen, and again."""
+    real = harness.expand_path(
+        harness.read_ini_value(boot.scratch / "barks-reader.ini", "prebuilt_dir")
+    )
+    if not real.is_dir():
+        pytest.skip(f"no prebuilt comics at {real}")
+    prebuilt = tmp_path / "prebuilt"
+    prebuilt.mkdir()
+    comic = next(real.glob(f"*{nodes.GHOST_OF_THE_GROTTO_TITLE}*"), None)
+    if comic is None:
+        pytest.skip(f"no prebuilt comic of {nodes.GHOST_OF_THE_GROTTO_TITLE} in {real}")
+    (prebuilt / comic.name).write_bytes(b"not a zip")
+    d = boot(
+        nodes.GHOST_OF_THE_GROTTO,
+        cues={nodes.GHOST_OF_THE_GROTTO_TITLE: None},
+        ini={"prebuilt_dir": str(prebuilt), "use_prebuilt_comics": "1"},
+    )
+    # The loader logs each failed read with its traceback, and this reads it twice.
+    boot.expect_error(r"Bad zip file: ")
+    boot.expect_tracebacks(2)
+    d.focus_portal()
+    with d.expect(_opened(COULD_NOT_READ)):
+        d.key("Return")
+    d.key_then_wait(_closed(COULD_NOT_READ), "Return")
+    d.wait_for(pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_COMIC_READER))
+    # Back where it was, and the failed comic can be asked for again.
+    with d.expect(_opened(COULD_NOT_READ)):
+        d.key("Return")
+    d.key_then_wait(_closed(COULD_NOT_READ), "Return")
+
+
 DIR_NOT_FOUND = "Fantagraphics Directory Not Found"
 WRONG_ARCHIVE = "Wrong Fantagraphics Archive File"
 

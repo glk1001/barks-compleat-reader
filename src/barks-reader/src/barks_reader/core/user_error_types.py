@@ -38,6 +38,7 @@ class ErrorTypes(Enum):
     MissingArchiveVolumes = auto()
     MissingVolumeCannotShowTitle = auto()
     ArchiveVolumeNotAvailable = auto()
+    ComicLoadFailed = auto()
 
 
 @dataclass(frozen=True, slots=True)

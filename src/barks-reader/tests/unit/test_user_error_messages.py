@@ -30,6 +30,7 @@ _SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
     ErrorTypes.MissingArchiveVolumes: ErrorInfo(missing_volumes=[5, 9, 14]),
     ErrorTypes.MissingVolumeCannotShowTitle: ErrorInfo(title=_A_TITLE, missing_volumes=[7]),
     ErrorTypes.ArchiveVolumeNotAvailable: ErrorInfo(title=_A_TITLE, file_volume=7),
+    ErrorTypes.ComicLoadFailed: ErrorInfo(title=_A_TITLE),
 }
 
 
@@ -264,3 +265,16 @@ def test_every_error_type_has_a_sample() -> None:
 def test_unconfigured_error_type_raises(reader_settings: MagicMock) -> None:
     with pytest.raises(ValueError, match="No handler configured"):
         build_error_presentation(MagicMock(), None, reader_settings)
+
+
+def test_comic_load_failed_names_the_title_and_the_likely_cause(
+    reader_settings: MagicMock,
+) -> None:
+    presentation = build_error_presentation(
+        ErrorTypes.ComicLoadFailed, ErrorInfo(title=_A_TITLE), reader_settings
+    )
+
+    assert presentation.kind is ErrorDialogKind.NOTICE
+    assert presentation.title == "Comic Could Not Be Read"
+    assert _A_TITLE_STR in presentation.text
+    assert "may be damaged" in presentation.text

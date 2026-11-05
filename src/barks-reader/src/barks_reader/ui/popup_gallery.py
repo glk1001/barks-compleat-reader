@@ -161,6 +161,7 @@ _ERROR_SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
         missing_volumes=[7], title=Titles.LOST_IN_THE_ANDES
     ),
     ErrorTypes.ArchiveVolumeNotAvailable: ErrorInfo(file_volume=7, title=Titles.LOST_IN_THE_ANDES),
+    ErrorTypes.ComicLoadFailed: ErrorInfo(title=Titles.LOST_IN_THE_ANDES),
 }
 
 

@@ -645,3 +645,54 @@ class TestOverrideArchiveLifecycle:
         source.close()
 
         assert fanta.override_archive is None
+
+
+class TestOverrideArchiveOpening:
+    """`open` opens the override zip too: the loader thread's error handling covers it."""
+
+    @staticmethod
+    def _fanta_with_override_zip(override_zip: Path) -> FantagraphicsArchive:
+        fanta = _make_fanta_archive(archive={}, overrides={"258": "258.png"})
+        fanta.override_archive_filename = override_zip
+        fanta.is_missing = True  # no library archive to open
+        return fanta
+
+    def test_a_volume_with_overrides_gets_its_zip_opened(self, tmp_path: Path) -> None:
+        override_zip = tmp_path / "07-overrides.zip"
+        with zipfile.ZipFile(override_zip, "w") as zf:
+            zf.writestr("258.png", b"x")
+        fanta = self._fanta_with_override_zip(override_zip)
+        source = _fanta_source(fanta, use_overrides=True)
+
+        source.open()
+
+        opened = fanta.override_archive
+        assert isinstance(opened, zipfile.ZipFile)
+        assert opened.namelist() == ["258.png"]
+        source.close()
+        assert fanta.override_archive is None
+
+    def test_no_override_zip_is_opened_when_the_volume_has_none(self) -> None:
+        fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
+        fanta.is_missing = True
+        source = _fanta_source(fanta, use_overrides=True)
+
+        source.open()
+
+        assert fanta.override_archive is None
+
+    @pytest.mark.parametrize(
+        ("contents", "error"),
+        [(b"not a zip", zipfile.BadZipFile), (None, FileNotFoundError)],
+        ids=["corrupt", "missing"],
+    )
+    def test_a_bad_override_zip_raises_for_the_loader_to_report(
+        self, tmp_path: Path, contents: bytes | None, error: type[Exception]
+    ) -> None:
+        override_zip = tmp_path / "07-overrides.zip"
+        if contents is not None:
+            override_zip.write_bytes(contents)
+        source = _fanta_source(self._fanta_with_override_zip(override_zip), use_overrides=True)
+
+        with pytest.raises(error):
+            source.open()
