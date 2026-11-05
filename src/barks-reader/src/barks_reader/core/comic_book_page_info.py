@@ -87,14 +87,17 @@ class ComicLayout:
 
     @property
     def page_map(self) -> OrderedDict[str, PageInfo]:
+        """The comic's pages by name, in reading order."""
         return self._page_map
 
     @property
     def last_body_page(self) -> str:
+        """The name of the story's last body page."""
         return self._last_body_page
 
     @property
     def display_units(self) -> list[DisplayUnit]:
+        """The units double-page mode shows, in reading order."""
         return self._display_units
 
     def page_by_display(self, display_page_num: str) -> PageInfo:

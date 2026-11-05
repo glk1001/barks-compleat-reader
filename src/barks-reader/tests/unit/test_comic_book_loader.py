@@ -534,6 +534,23 @@ def test_prioritize_page_is_noop_when_page_already_loaded(
     assert loader._load.priority_keys.empty()
 
 
+def test_prioritize_page_is_noop_with_no_comic(loader: ComicBookLoader) -> None:
+    loader.prioritize_page("1")
+
+    assert loader._load.priority_keys.empty()
+
+
+def test_prioritize_page_is_noop_after_the_comic_closes(
+    loader: ComicBookLoader, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]
+) -> None:
+    _run_load(loader, page_map_and_order, FakePageImageSource())
+    loader.close_comic()
+
+    loader.prioritize_page("p1")
+
+    assert loader._load.priority_keys.empty()
+
+
 def test_prioritize_page_ignores_a_page_not_in_the_comic(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
@@ -942,17 +959,15 @@ class TestOverrideArchiveOpening:
         fake_archive.has_overrides.return_value = True
         fake_archive.override_archive_filename = tmp_path / "not-there.zip"
         fake_archive.archive_filename = tmp_path / "07.cbz"
-        fake_archive.override_archive = None
 
         archives = MagicMock()
         archives.get_fantagraphics_archive.return_value = fake_archive
         loader._fanta_volume_archives = archives
 
+        # Would raise FileNotFoundError if it opened the zip.
         loader.resolve_archive_for_comic(
             _make_fanta_info(volume="FANTA_07"), _make_page_map(), use_fantagraphics_overrides=True
         )
-
-        assert fake_archive.override_archive is None
 
     def test_a_corrupt_override_zip_reports_a_load_error(
         self,
@@ -967,7 +982,6 @@ class TestOverrideArchiveOpening:
         fake_archive.is_missing = False
         fake_archive.has_overrides.return_value = True
         fake_archive.override_archive_filename = override_zip
-        fake_archive.override_archive = None
         source = ArchivePageImageSource(
             archive_path=tmp_path / "07.cbz",
             fanta_volume_archive=fake_archive,
@@ -2039,6 +2053,41 @@ class TestAThreadThatOutlivesItsStop:
         mock_callbacks["on_all_images_loaded"].assert_called_once_with()
         mock_callbacks["on_load_error"].assert_not_called()
 
+    def test_a_source_that_finishes_opening_after_the_close_is_closed_again(
+        self, loader: ComicBookLoader
+    ) -> None:
+        """The close found nothing to close yet, so the thread must not leave it open."""
+
+        class SlowToOpenSource(FakePageImageSource):
+            def __init__(self) -> None:
+                super().__init__()
+                self.entered = threading.Event()
+                self.release = threading.Event()
+                self.holds_a_file = False
+
+            def open(self) -> None:
+                self.entered.set()
+                self.release.wait(timeout=5.0)
+                self.holds_a_file = True
+
+            def close(self) -> None:
+                self.holds_a_file = False
+
+        source = SlowToOpenSource()
+        page_map, load_order = _make_indexed_page_map(2)
+        loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")
+        assert source.entered.wait(2.0)
+        thread = loader._thread
+        assert thread is not None
+
+        loader.close_comic()
+        source.release.set()
+        thread.join(timeout=3.0)
+
+        assert not thread.is_alive()
+        assert source.holds_a_file is False
+        assert source.load_count == 0  # and it did not go on to load the closed comic
+
     def test_its_failure_does_not_close_the_next_comic(
         self,
         loader: ComicBookLoader,
@@ -2369,6 +2418,34 @@ def test_asking_for_a_page_with_no_comic_open_queues_nothing(loader: ComicBookLo
     loader.prioritize_page("1")
 
     assert loader._load.priority_keys.empty()
+
+
+def test_a_stop_landing_with_a_finished_page_drops_that_page(
+    loader: ComicBookLoader,
+    mock_callbacks: dict[str, MagicMock],
+    loguru_sink: list[str],
+) -> None:
+    """The stop arrives between the page finishing and the loader handing it over."""
+    page_map, load_order = _make_indexed_page_map(3)
+    real_wait = loader_module.wait
+
+    def stopping_wait(
+        futures: Collection[Future[PageImage]], return_when: str
+    ) -> tuple[set[Future[PageImage]], set[Future[PageImage]]]:
+        finished = real_wait(futures, return_when=return_when)
+        loader._load.stop = True
+        return finished
+
+    with patch.object(loader_module, real_wait.__name__, stopping_wait):
+        loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+
+    assert "Stop flag set while handling page index 0." in loguru_sink
+    assert loader._images == [None, None, None]
+    mock_callbacks["on_first_image_loaded"].assert_not_called()
+    mock_callbacks["on_all_images_loaded"].assert_not_called()
+    mock_callbacks["on_load_error"].assert_not_called()
 
 
 def test_a_page_landing_beside_a_failed_one_is_not_lost_to_the_report(

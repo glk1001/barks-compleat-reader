@@ -532,6 +532,13 @@ class ComicBookLoader:
                 # loaded.
                 load.image_source.open()
 
+                if load.stop:
+                    # An open slower than the join finishes after the close, which found
+                    # nothing to close: nothing else will close what it has just opened.
+                    logger.warning(f'Stopped while opening "{load.desc}": closing it again.')
+                    load.image_source.close()
+                    return
+
                 num_loaded = self._load_pages(load)
 
                 if load.stop:

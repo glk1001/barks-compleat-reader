@@ -7,8 +7,10 @@ Uses real ZIP archives with real PNG bytes on disk to exercise the prebuilt
 from __future__ import annotations
 
 import io
+import threading
 import zipfile
 from pathlib import Path
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -485,7 +487,7 @@ class TestReadImageDelegation:
             patch.object(apis_module, "resize_contain"),
             patch.object(apis_module, "PageImage"),
         ):
-            fanta.override_archive = override_archive
+            source._override_archive = override_archive  # noqa: SLF001
             source.load_page_image(_make_page_info("101.jpg"))
 
         zip_path = mock_load.call_args.args[0]
@@ -562,7 +564,7 @@ class TestReadImageDelegation:
             patch.object(apis_module, "resize_contain"),
             patch.object(apis_module, "PageImage"),
         ):
-            fanta.override_archive = override_archive
+            source._override_archive = override_archive  # noqa: SLF001
             source.load_page_image(_title_page_info("101.jpg"))
 
         mock_decode.assert_not_called()
@@ -628,14 +630,14 @@ class TestOverrideArchiveLifecycle:
             archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
         )
         override_archive = MagicMock()
-        fanta.override_archive = override_archive
         source = _fanta_source(fanta, use_overrides=True)
+        source._override_archive = override_archive  # noqa: SLF001
 
         source.close()
 
         # Nulling alone would leave the zip's file descriptor to the garbage collector.
         override_archive.close.assert_called_once_with()
-        assert fanta.override_archive is None
+        assert source._override_archive is None  # noqa: SLF001
 
     def test_close_without_an_override_archive_is_a_no_op(self) -> None:
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
@@ -644,7 +646,7 @@ class TestOverrideArchiveLifecycle:
         source.close()
         source.close()
 
-        assert fanta.override_archive is None
+        assert source._override_archive is None  # noqa: SLF001
 
 
 class TestOverrideArchiveOpening:
@@ -666,11 +668,57 @@ class TestOverrideArchiveOpening:
 
         source.open()
 
-        opened = fanta.override_archive
+        opened = source._override_archive  # noqa: SLF001
         assert isinstance(opened, zipfile.ZipFile)
         assert opened.namelist() == ["258.png"]
         source.close()
-        assert fanta.override_archive is None
+        assert source._override_archive is None  # noqa: SLF001
+        assert opened.fp is None
+
+    def test_a_late_open_leaves_the_next_comics_override_zip_alone(self, tmp_path: Path) -> None:
+        """Two comics of one volume share its archive record, but not its open zip.
+
+        The old comic's open stalls past the close, the next comic of the volume opens,
+        then the old open finishes and the old source is closed again. Each zip must
+        end up closed by its own source, and none may be left to the garbage collector.
+        """
+        override_zip = tmp_path / "07-overrides.zip"
+        with zipfile.ZipFile(override_zip, "w") as zf:
+            zf.writestr("258.png", b"x")
+        fanta = self._fanta_with_override_zip(override_zip)
+        old, new = (_fanta_source(fanta, use_overrides=True) for _ in range(2))
+
+        real_zip_file = zipfile.ZipFile
+        entered, release = threading.Event(), threading.Event()
+        handles: dict[str, zipfile.ZipFile] = {}
+
+        def stalling_zip_file(file: Path, mode: Literal["r"]) -> zipfile.ZipFile:
+            name = threading.current_thread().name
+            if name == "old-open":
+                entered.set()
+                release.wait(timeout=5.0)
+            handles[name] = real_zip_file(file, mode)
+            return handles[name]
+
+        with patch.object(apis_module.zipfile, "ZipFile", stalling_zip_file):
+            old_open = threading.Thread(target=old.open, name="old-open")
+            old_open.start()
+            assert entered.wait(2.0)
+            old.close()  # finds nothing to close: the open has not finished
+
+            new_open = threading.Thread(target=new.open, name="new-open")
+            new_open.start()
+            new_open.join(timeout=3.0)
+
+            release.set()
+            old_open.join(timeout=3.0)
+            old.close()  # what the loader thread does for a source opened after its close
+
+        assert handles["old-open"].fp is None
+        assert handles["new-open"].fp is not None  # the next comic is still reading it
+
+        new.close()
+        assert handles["new-open"].fp is None
 
     def test_no_override_zip_is_opened_when_the_volume_has_none(self) -> None:
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
@@ -679,7 +727,7 @@ class TestOverrideArchiveOpening:
 
         source.open()
 
-        assert fanta.override_archive is None
+        assert source._override_archive is None  # noqa: SLF001
 
     @pytest.mark.parametrize(
         ("contents", "error"),

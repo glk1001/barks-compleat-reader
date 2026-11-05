@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,6 +13,9 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class TestComicPageManager:
@@ -284,6 +288,42 @@ def _layout(page_map: OrderedDict[str, PageInfo]) -> ComicLayout:
 # Units (0), (1, 2), (3), (4), (5, 6): a solo page stands alone, and so does the page
 # before one; the last two pair.
 _SEVEN_PAGES = (True, False, False, False, True, False, False)
+
+
+class TestWhileTheComicLoads:
+    """A layout is set but no page is current: the first page's arrival decides."""
+
+    @pytest.mark.parametrize("double_page_mode", [False, True])
+    @pytest.mark.parametrize(
+        "move",
+        [ComicPageManager.goto_start_page, ComicPageManager.goto_last_page],
+        ids=["start", "last"],
+    )
+    def test_a_jump_to_either_end_goes_nowhere(
+        self, move: Callable[[ComicPageManager], None], double_page_mode: bool
+    ) -> None:
+        on_change = MagicMock()
+        pm = ComicPageManager(on_change)
+        pm.double_page_mode = double_page_mode
+        pages = [
+            PageInfo(
+                page_index=i,
+                page_type=PageType.BODY,
+                display_page_num=str(i + 1),
+                srce_page=MagicMock(),
+                dest_page=MagicMock(),
+            )
+            for i in range(4)
+        ]
+        pm.set_layout(_layout(OrderedDict((p.display_page_num, p) for p in pages)), "3")
+
+        move(pm)
+
+        assert pm.get_current_page_index() == -1
+        on_change.assert_not_called()
+
+        pm.set_to_first_page_to_read()
+        assert pm.get_current_page_str() == "3"  # where it opens, in either mode
 
 
 class TestBeforeAComic:

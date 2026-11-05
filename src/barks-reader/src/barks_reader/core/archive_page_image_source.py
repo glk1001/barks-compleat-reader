@@ -70,6 +70,9 @@ class ArchivePageImageSource:
     ) -> None:
         self._archive_path = archive_path
         self._archive: zipfile.ZipFile | None = None
+        # This source's own, not on the volume's archive record: that is shared with
+        # every comic of the volume, and a source closing must close only what it opened.
+        self._override_archive: zipfile.ZipFile | None = None
         self._fanta_volume_archive = fanta_volume_archive
         self._comic_book_image_builder = comic_book_image_builder
         self._empty_page_image = empty_page_image
@@ -82,7 +85,7 @@ class ArchivePageImageSource:
         """Open the backing ZIP archives. Must be called before :meth:`load_page_image`."""
         if self._fanta_volume_archive is not None and self._fanta_volume_archive.has_overrides():
             assert self._fanta_volume_archive.override_archive_filename
-            self._fanta_volume_archive.override_archive = zipfile.ZipFile(
+            self._override_archive = zipfile.ZipFile(
                 self._fanta_volume_archive.override_archive_filename, "r"
             )
 
@@ -95,15 +98,13 @@ class ArchivePageImageSource:
         self._archive = zipfile.ZipFile(self._archive_path, "r")
 
     def close(self) -> None:
-        """Close the backing ZIP archive and release override resources."""
-        if self._archive:
-            self._archive.close()
-            self._archive = None
-        if self._fanta_volume_archive:
-            override_archive = self._fanta_volume_archive.override_archive
-            if override_archive is not None:
-                override_archive.close()
-            self._fanta_volume_archive.override_archive = None
+        """Close the backing ZIP archives. Safe to call again: the loader thread may."""
+        archive, self._archive = self._archive, None
+        if archive:
+            archive.close()
+        override_archive, self._override_archive = self._override_archive, None
+        if override_archive:
+            override_archive.close()
 
     def load_page_image(self, page_info: PageInfo) -> PageImage:
         """Load, transform and resize a page image.
@@ -202,10 +203,9 @@ class ArchivePageImageSource:
             # Nothing in any zip backs the placeholder; its bundled bytes are a JPEG.
             return decode_pil(self._empty_page_image, ext=JPG_FILE_EXT), 1.0
 
-        assert self._fanta_volume_archive is not None
-        assert self._fanta_volume_archive.override_archive is not None
+        assert self._override_archive is not None
         return load_pil(
-            zipfile.Path(self._fanta_volume_archive.override_archive, at=image_path),
+            zipfile.Path(self._override_archive, at=image_path),
             encrypted_zip=True,
             use_ext_hint=True,
         ), 1.0

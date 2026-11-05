@@ -110,26 +110,34 @@ class ComicPageManager:
         self._current_page_index = self._page_to_show_for(self._first_page_to_read_index)
 
     def goto_start_page(self) -> None:
-        """Make the first page current, logging when it already is."""
+        """Make the first page current, logging when it already is.
+
+        With no page current yet there is nowhere to move from: the comic is still
+        loading, and its first page's arrival would override the move.
+        """
         first_idx = (
             self._display_units[0].left_page_index
             if self.double_page_mode and self._display_units
             else self._first_page_index
         )
-        if self._current_page_index == first_idx:
+        if self._current_page_index in (-1, first_idx):
             logger.debug(log_markers.ALREADY_ON_FIRST_PAGE.format(index=self._current_page_index))
         else:
             logger.debug(log_markers.GOTO_START_PAGE.format(index=first_idx))
             self._current_page_index = first_idx
 
     def goto_last_page(self) -> None:
-        """Make the last page (or page pair) current, logging when it already is."""
+        """Make the last page (or page pair) current, logging when it already is.
+
+        With no page current yet there is nowhere to move from: the comic is still
+        loading, and its first page's arrival would override the move.
+        """
         last_idx = (
             self._display_units[-1].left_page_index
             if self.double_page_mode and self._display_units
             else self._last_page_index
         )
-        if self._current_page_index == last_idx:
+        if self._current_page_index in (-1, last_idx):
             logger.debug(log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index))
         else:
             logger.debug(log_markers.GOTO_LAST_PAGE.format(index=last_idx))

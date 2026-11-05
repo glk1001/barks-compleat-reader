@@ -161,7 +161,6 @@ class FantagraphicsArchive:
     override_images_page_map: dict[str, Path]
     extra_images_page_map: dict[str, Path]
     override_archive_filename: Path | None
-    override_archive: zipfile.ZipFile | None = None
     is_missing: bool = False
 
     def get_num_pages(self) -> int:
