@@ -249,8 +249,8 @@ BARKS_EXTRA_INFO = {
     "losing a billion dollars a minute! I'll be broke in 600 years!\", is a joke stolen from"
     " Citizen Kane, where Kane says that losing a million dollars a year will close his"
     " newspaper in sixty years."
-    "\n\nAt that rate, Scrooge's fortune comes to about 315 quadrillion dollars. A quadrillion is a"
-    " thousand trillion, a 1 followed by 15 zeros.",
+    "\n\nAt that rate, Scrooge's fortune comes to about 315 quadrillion dollars (a quadrillion is"
+    " a thousand trillion).",
     Titles.DANGEROUS_DISGUISE: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
     " his use of humans in [i]Dangerous Disguise:[/i]"
     " [i]\"Well, that was a situation which I somehow couldn't visualize all these"
