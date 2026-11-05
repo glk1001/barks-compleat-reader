@@ -17,7 +17,7 @@ from barks_reader.core.collection_page_groups import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 _RANGES = [(1948, 1952), (1953, 1955), (1956, 1959), (1960, 1965)]
 
@@ -82,11 +82,22 @@ class TestGroupRanges:
 
     def test_cover_group_ranges_tile_the_collection(self) -> None:
         ranges = get_cover_collection_group_ranges()
-        assert ranges == [(1, 56), (57, 96), (97, 151), (152, 192)]
+        assert ranges == ((1, 56), (57, 96), (97, 151), (152, 192))
+
+    @pytest.mark.parametrize(
+        "get_ranges",
+        [get_cover_collection_group_ranges, get_one_pager_collection_group_ranges],
+        ids=["covers", "one-pagers"],
+    )
+    def test_the_cached_ranges_cannot_be_changed_by_a_caller(
+        self, get_ranges: Callable[[], tuple[tuple[int, int], ...]]
+    ) -> None:
+        """Regression: a list from the cache, sorted or added to, stayed that way."""
+        assert isinstance(get_ranges(), tuple)
 
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
-        assert ranges == [(1, 43), (44, 92), (93, 147)]
+        assert ranges == ((1, 43), (44, 92), (93, 147))
 
 
 class TestGroupRangesOnSyntheticData:

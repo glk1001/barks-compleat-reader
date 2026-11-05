@@ -112,17 +112,17 @@ def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "") ->
 
 
 @cache
-def get_cover_collection_group_ranges() -> list[tuple[int, int]]:
+def get_cover_collection_group_ranges() -> tuple[tuple[int, int], ...]:
     """Contiguous page ranges of the cover collection's year-range groups."""
     located = [get_cover_title(cover) for cover in get_located_covers()]
-    return _group_ranges(located, COVER_YEAR_RANGES, _COVER_TILING_HINT)
+    return tuple(_group_ranges(located, COVER_YEAR_RANGES, _COVER_TILING_HINT))
 
 
 @cache
-def get_one_pager_collection_group_ranges() -> list[tuple[int, int]]:
+def get_one_pager_collection_group_ranges() -> tuple[tuple[int, int], ...]:
     """Contiguous page ranges of the one-pager collection's year-range groups."""
-    return _group_ranges(
-        list(get_located_one_pagers()), ONE_PAGER_YEAR_RANGES, _ONE_PAGER_TILING_HINT
+    return tuple(
+        _group_ranges(list(get_located_one_pagers()), ONE_PAGER_YEAR_RANGES, _ONE_PAGER_TILING_HINT)
     )
 
 

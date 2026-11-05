@@ -10,6 +10,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     PrefetchParams,
     PrefetchTuning,
     SystemProfile,
+    SystemTier,
     available_memory_mib,
     get_max_worker_count,
     get_prefetch_tuning,
@@ -21,8 +22,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
 @pytest.fixture(autouse=True)
 def _reset_platform_caches() -> None:
     """Reset module-level caches between tests so each test starts clean."""
-    platform_settings_module._SYSTEM_PROFILE = None  # noqa: SLF001
-    platform_settings_module._PREFETCH_PARAMS = None  # noqa: SLF001
+    platform_settings_module._get_prefetch_params.cache_clear()  # noqa: SLF001
 
 
 def _detect_profile(cpu_count: int, ram_gb: int | None) -> SystemProfile:
@@ -36,7 +36,10 @@ def _detect_profile(cpu_count: int, ram_gb: int | None) -> SystemProfile:
             return_value=MagicMock(total=ram_gb * 1024**3),
         )
     )
-    with patch.object(platform_settings_module.os, "cpu_count", return_value=cpu_count), vm_patch:
+    with (
+        patch.object(platform_settings_module.os, "process_cpu_count", return_value=cpu_count),
+        vm_patch,
+    ):
         return PrefetchTuning.detect_system_profile()
 
 
@@ -48,32 +51,36 @@ class TestSystemProfile:
     @pytest.mark.parametrize(
         ("cpu_count", "ram_gb", "expected_tier"),
         [
-            pytest.param(2, 3, "low", id="low_end_few_cpus_low_ram"),
-            pytest.param(8, 4, "low", id="low_ram_boundary_is_low_end"),
-            pytest.param(8, 5, "mid", id="just_above_low_ram_boundary_is_mid"),
-            pytest.param(2, 64, "low", id="cpu_boundary_is_low_end_whatever_the_ram"),
-            pytest.param(3, 64, "mid", id="just_above_low_cpu_boundary_is_mid"),
-            pytest.param(4, 8, "mid", id="mid_range"),
-            pytest.param(4, 64, "mid", id="mid_cpu_boundary_is_mid_whatever_the_ram"),
-            pytest.param(5, 64, "high", id="just_above_mid_cpu_boundary_is_high"),
-            pytest.param(64, 8, "mid", id="mid_ram_boundary_is_mid_range"),
-            pytest.param(64, 9, "high", id="just_above_mid_ram_boundary_is_high"),
-            pytest.param(16, 32, "high", id="high_end"),
-            pytest.param(2, None, "low", id="ram_unknown_few_cpus_is_low_end"),
-            pytest.param(3, None, "mid", id="ram_unknown_just_above_low_cpu_boundary"),
-            pytest.param(8, None, "high", id="ram_unknown_many_cpus_is_high_end"),
-            pytest.param(4, None, "mid", id="ram_unknown_mid_cpus_is_mid_range"),
-            pytest.param(5, None, "high", id="ram_unknown_just_above_mid_cpu_boundary"),
+            pytest.param(2, 3, SystemTier.LOW, id="low_end_few_cpus_low_ram"),
+            pytest.param(8, 4, SystemTier.LOW, id="low_ram_boundary_is_low_end"),
+            pytest.param(8, 5, SystemTier.MID, id="just_above_low_ram_boundary_is_mid"),
+            pytest.param(2, 64, SystemTier.LOW, id="cpu_boundary_is_low_end_whatever_the_ram"),
+            pytest.param(3, 64, SystemTier.MID, id="just_above_low_cpu_boundary_is_mid"),
+            pytest.param(4, 8, SystemTier.MID, id="mid_range"),
+            pytest.param(4, 64, SystemTier.MID, id="mid_cpu_boundary_is_mid_whatever_the_ram"),
+            pytest.param(5, 64, SystemTier.HIGH, id="just_above_mid_cpu_boundary_is_high"),
+            pytest.param(64, 8, SystemTier.MID, id="mid_ram_boundary_is_mid_range"),
+            pytest.param(64, 9, SystemTier.HIGH, id="just_above_mid_ram_boundary_is_high"),
+            pytest.param(16, 32, SystemTier.HIGH, id="high_end"),
+            pytest.param(2, None, SystemTier.LOW, id="ram_unknown_few_cpus_is_low_end"),
+            pytest.param(3, None, SystemTier.MID, id="ram_unknown_just_above_low_cpu_boundary"),
+            pytest.param(8, None, SystemTier.MID, id="ram_unknown_many_cpus_is_no_more_than_mid"),
+            pytest.param(4, None, SystemTier.MID, id="ram_unknown_mid_cpus_is_mid_range"),
+            pytest.param(5, None, SystemTier.MID, id="ram_unknown_just_above_mid_cpu_boundary"),
         ],
     )
-    def test_profile_tier(self, cpu_count: int, ram_gb: int | None, expected_tier: str) -> None:
-        profile = _detect_profile(cpu_count, ram_gb)
+    def test_profile_tier(
+        self, cpu_count: int, ram_gb: int | None, expected_tier: SystemTier
+    ) -> None:
+        assert _detect_profile(cpu_count, ram_gb).tier is expected_tier
 
-        assert (profile.is_low_end, profile.is_mid_range, profile.is_high_end) == (
-            expected_tier == "low",
-            expected_tier == "mid",
-            expected_tier == "high",
-        )
+    def test_the_cores_counted_are_the_ones_this_process_may_use(self) -> None:
+        """Regression: limited to two cores, a 32-core host read as 32 workers."""
+        with (
+            patch.object(platform_settings_module.os, "process_cpu_count", return_value=2),
+            patch.object(platform_settings_module.os, "cpu_count", return_value=32),
+        ):
+            assert get_max_worker_count() == 1
 
     def test_profile_reports_the_detected_cpu_count_and_ram(self) -> None:
         profile = _detect_profile(cpu_count=12, ram_gb=32)
@@ -318,20 +325,14 @@ class TestReleaseFreedMemory:
 # ---------------------------------------------------------------------------
 
 
-def _profile(*, low: bool = False, mid: bool = False, high: bool = False) -> SystemProfile:
-    return SystemProfile(
-        cpu_count=4,
-        ram_gb=8.0,
-        is_low_end=low,
-        is_mid_range=mid,
-        is_high_end=high,
-    )
+def _profile(tier: SystemTier) -> SystemProfile:
+    return SystemProfile(cpu_count=4, ram_gb=8.0, tier=tier)
 
 
 class TestGetPrefetchTuning:
     def test_num_pages_caps_the_initial_window(self) -> None:
         with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(high=True)
+            PrefetchTuning, "detect_system_profile", return_value=_profile(SystemTier.HIGH)
         ):
             tuning = get_prefetch_tuning(worker_count=8, num_pages=3)
 
@@ -341,7 +342,7 @@ class TestGetPrefetchTuning:
     def test_base_max_window_uses_the_profile_factor(self) -> None:
         """Low-end caps the window at half the worker count (factor 0.5)."""
         with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(low=True)
+            PrefetchTuning, "detect_system_profile", return_value=_profile(SystemTier.LOW)
         ):
             tuning = get_prefetch_tuning(worker_count=8, num_pages=100)
 
@@ -358,13 +359,13 @@ class TestGetPrefetchTuning:
         ),
         [
             pytest.param(
-                _profile(low=True), 2, 1, 0.5, 384.0, 768.0, id="low_end_conservative_params"
+                _profile(SystemTier.LOW), 2, 1, 0.5, 384.0, 768.0, id="low_end_conservative_params"
             ),
             pytest.param(
-                _profile(mid=True), 4, 2, 0.75, 512.0, 1024.0, id="mid_range_modest_params"
+                _profile(SystemTier.MID), 4, 2, 0.75, 512.0, 1024.0, id="mid_range_modest_params"
             ),
             pytest.param(
-                _profile(high=True), 8, 2, 1.0, 768.0, 1536.0, id="high_end_generous_params"
+                _profile(SystemTier.HIGH), 8, 2, 1.0, 768.0, 1536.0, id="high_end_generous_params"
             ),
         ],
     )
@@ -377,7 +378,7 @@ class TestGetPrefetchTuning:
         expected_shrink_below: float,
         expected_grow_above: float,
     ) -> None:
-        with patch.object(platform_settings_module, "_get_system_profile", return_value=profile):
+        with patch.object(PrefetchTuning, "detect_system_profile", return_value=profile):
             tuning = get_prefetch_tuning(worker_count=worker_count, num_pages=10)
 
         assert tuning.prefetch_min == expected_min
@@ -393,7 +394,7 @@ class TestGetPrefetchTuning:
         once; the window is built for each load's worker and page counts.
         """
         with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(high=True)
+            PrefetchTuning, "detect_system_profile", return_value=_profile(SystemTier.HIGH)
         ) as mock_profile:
             one_pager = get_prefetch_tuning(worker_count=2, num_pages=2)
             long_comic = get_prefetch_tuning(worker_count=16, num_pages=186)
@@ -411,17 +412,17 @@ class TestGetPrefetchTuning:
 
 
 # ---------------------------------------------------------------------------
-# _get_system_profile — caching
+# _get_prefetch_params — caching
 # ---------------------------------------------------------------------------
 
 
-class TestGetSystemProfile:
-    def test_caches_and_returns_same_instance(self) -> None:
+class TestGetPrefetchParams:
+    def test_the_machine_is_profiled_once(self) -> None:
         with patch.object(
-            PrefetchTuning, "detect_system_profile", return_value=_profile(mid=True)
+            PrefetchTuning, "detect_system_profile", return_value=_profile(SystemTier.MID)
         ) as mock_detect:
-            first = platform_settings_module._get_system_profile()  # noqa: SLF001
-            second = platform_settings_module._get_system_profile()  # noqa: SLF001
+            first = platform_settings_module._get_prefetch_params()  # noqa: SLF001
+            second = platform_settings_module._get_prefetch_params()  # noqa: SLF001
 
         assert first is second
         mock_detect.assert_called_once()
@@ -455,11 +456,11 @@ class TestGetMaxWorkerCount:
     def test_a_worker_per_core_past_two_cores_up_to_the_cap(
         self, cpu_count: int, expected: int
     ) -> None:
-        with patch.object(platform_settings_module.os, "cpu_count", return_value=cpu_count):
+        with patch.object(platform_settings_module.os, "process_cpu_count", return_value=cpu_count):
             assert get_max_worker_count() == expected
 
     def test_an_unknown_cpu_count_is_one_worker(self) -> None:
-        with patch.object(platform_settings_module.os, "cpu_count", return_value=None):
+        with patch.object(platform_settings_module.os, "process_cpu_count", return_value=None):
             assert get_max_worker_count() == 1
 
     def test_the_cap_is_sixteen(self) -> None:

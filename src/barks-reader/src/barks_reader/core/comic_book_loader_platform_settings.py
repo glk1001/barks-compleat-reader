@@ -4,6 +4,8 @@ import ctypes
 import os
 import sys
 from dataclasses import dataclass
+from enum import Enum, auto
+from functools import cache
 
 import psutil
 from loguru import logger
@@ -13,13 +15,19 @@ from loguru import logger
 MAX_WORKER_COUNT = 16
 
 
+class SystemTier(Enum):
+    """Roughly how much the machine can take."""
+
+    LOW = auto()
+    MID = auto()
+    HIGH = auto()
+
+
 @dataclass(frozen=True, slots=True)
 class SystemProfile:
     cpu_count: int
     ram_gb: float | None
-    is_low_end: bool
-    is_mid_range: bool
-    is_high_end: bool
+    tier: SystemTier
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,7 +145,7 @@ class PrefetchTuning:
     @staticmethod
     def detect_system_profile() -> SystemProfile:
         """Roughly classify the machine as low / mid / high end."""
-        cpu_count = os.cpu_count() or 1
+        cpu_count = os.process_cpu_count() or 1
 
         # noinspection PyBroadException
         try:
@@ -146,47 +154,44 @@ class PrefetchTuning:
         except Exception:  # noqa: BLE001
             ram_gb = None
 
-        # Conservative defaults if RAM unknown.
-        if ram_gb is None:
-            if cpu_count <= 2:  # noqa: PLR2004
-                is_low_end = True
-                is_mid_range = False
-                is_high_end = False
-            elif cpu_count <= 4:  # noqa: PLR2004
-                is_low_end = False
-                is_mid_range = True
-                is_high_end = False
-            else:
-                is_low_end = False
-                is_mid_range = False
-                is_high_end = True
-        # Simple classification based on both cores and RAM.
-        elif cpu_count <= 2 or ram_gb <= 4:  # noqa: PLR2004
-            is_low_end = True
-            is_mid_range = False
-            is_high_end = False
-        elif cpu_count <= 4 or ram_gb <= 8:  # noqa: PLR2004
-            is_low_end = False
-            is_mid_range = True
-            is_high_end = False
+        # Classified on both cores and RAM. Unknown RAM is not assumed to be plenty: the
+        # cores can still make the machine low-end, but it stops at mid-range.
+        if cpu_count <= 2 or (ram_gb is not None and ram_gb <= 4):  # noqa: PLR2004
+            tier = SystemTier.LOW
+        elif cpu_count <= 4 or ram_gb is None or ram_gb <= 8:  # noqa: PLR2004
+            tier = SystemTier.MID
         else:
-            is_low_end = False
-            is_mid_range = False
-            is_high_end = True
+            tier = SystemTier.HIGH
 
-        return SystemProfile(
-            cpu_count=cpu_count,
-            ram_gb=ram_gb,
-            is_low_end=is_low_end,
-            is_mid_range=is_mid_range,
-            is_high_end=is_high_end,
-        )
+        return SystemProfile(cpu_count=cpu_count, ram_gb=ram_gb, tier=tier)
 
 
-# The profile and the limits drawn from it are read once per process; the tuning
-# built from them is per load, as the worker and page counts are.
-_SYSTEM_PROFILE: SystemProfile | None = None
-_PREFETCH_PARAMS: PrefetchParams | None = None
+# The floors are on the machine's available memory. A worker decoding a page holds
+# some 45 MiB (the full-size decode and its resize), so they sit a window's worth
+# above where swapping would start, lower where the window is smaller anyway.
+_PARAMS_BY_TIER = {
+    # Old laptops / tiny RAM: a smaller window, backing off sooner.
+    SystemTier.LOW: PrefetchParams(
+        prefetch_min=1,
+        prefetch_max_factor=0.5,
+        shrink_below_mib=384.0,
+        grow_above_mib=768.0,
+    ),
+    # Modest PCs / mid-laptops:
+    SystemTier.MID: PrefetchParams(
+        prefetch_min=2,
+        prefetch_max_factor=0.75,
+        shrink_below_mib=512.0,
+        grow_above_mib=1024.0,
+    ),
+    # High-end desktop / modern Ryzen / big RAM:
+    SystemTier.HIGH: PrefetchParams(
+        prefetch_min=2,
+        prefetch_max_factor=1.0,
+        shrink_below_mib=768.0,
+        grow_above_mib=1536.0,
+    ),
+}
 
 
 def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
@@ -203,43 +208,17 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
     return PrefetchTuning(_get_prefetch_params(), worker_count=worker_count, num_pages=num_pages)
 
 
+@cache
 def _get_prefetch_params() -> PrefetchParams:
-    global _PREFETCH_PARAMS  # noqa: PLW0603
-    if _PREFETCH_PARAMS is not None:
-        return _PREFETCH_PARAMS
+    """Return the machine's limits: read once per process, unlike each load's tuning."""
+    profile = PrefetchTuning.detect_system_profile()
+    ram = f"{profile.ram_gb:.1f}" if profile.ram_gb else "unknown"
+    logger.debug(
+        f"System profile detected: cpu_count={profile.cpu_count}, ram_gb={ram},"
+        f" tier={profile.tier.name}."
+    )
 
-    profile = _get_system_profile()
-
-    # The floors are on the machine's available memory. A worker decoding a page holds
-    # some 45 MiB (the full-size decode and its resize), so they sit a window's worth
-    # above where swapping would start, lower where the window is smaller anyway.
-    if profile.is_low_end:
-        # Old laptops / tiny RAM: a smaller window, backing off sooner.
-        params = PrefetchParams(
-            prefetch_min=1,
-            prefetch_max_factor=0.5,
-            shrink_below_mib=384.0,
-            grow_above_mib=768.0,
-        )
-    elif profile.is_mid_range:
-        # Modest PCs / mid-laptops:
-        params = PrefetchParams(
-            prefetch_min=2,
-            prefetch_max_factor=0.75,
-            shrink_below_mib=512.0,
-            grow_above_mib=1024.0,
-        )
-    else:
-        # High-end desktop / modern Ryzen / big RAM:
-        params = PrefetchParams(
-            prefetch_min=2,
-            prefetch_max_factor=1.0,
-            shrink_below_mib=768.0,
-            grow_above_mib=1536.0,
-        )
-
-    _PREFETCH_PARAMS = params
-
+    params = _PARAMS_BY_TIER[profile.tier]
     logger.debug(
         f"Prefetch tuning: min={params.prefetch_min}, max_factor={params.prefetch_max_factor},"
         f" shrink below {params.shrink_below_mib:.0f} MiB available,"
@@ -249,28 +228,10 @@ def _get_prefetch_params() -> PrefetchParams:
     return params
 
 
-def _get_system_profile() -> SystemProfile:
-    global _SYSTEM_PROFILE  # noqa: PLW0603
-    profile = _SYSTEM_PROFILE
-    if profile is None:
-        profile = PrefetchTuning.detect_system_profile()
-        _SYSTEM_PROFILE = profile
-    logger.debug(
-        "System profile detected: cpu_count={cpu}, ram_gb={ram}, "
-        "low={low}, mid={mid}, high={high}".format(
-            cpu=profile.cpu_count,
-            ram=f"{profile.ram_gb:.1f}" if profile.ram_gb else "unknown",
-            low=profile.is_low_end,
-            mid=profile.is_mid_range,
-            high=profile.is_high_end,
-        )
-    )
-    return profile
-
-
 def get_max_worker_count() -> int:
     """Return the page-decode worker count for this machine.
 
+    The cores are those this process may use, which an affinity mask or container can limit.
     One worker on two cores or fewer, where a pool would only add switching; otherwise
     a worker per core, capped at :data:`MAX_WORKER_COUNT`. This replaces a boot-time
     benchmark that decoded four sample pages per candidate count: with only four
@@ -281,7 +242,7 @@ def get_max_worker_count() -> int:
         The worker count.
 
     """
-    cpu_count = os.cpu_count() or 1
+    cpu_count = os.process_cpu_count() or 1
     if cpu_count <= 2:  # noqa: PLR2004
         return 1
     return min(cpu_count, MAX_WORKER_COUNT)
