@@ -2,6 +2,7 @@
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
 # cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf hunza shor gjetost
 # cspell:ignore quadruplatillion umtuplatillion multuplatillion fantasticatillion centrifugalillion
+# cspell:ignore flamel
 
 from .barks_titles import Titles
 
@@ -476,6 +477,11 @@ BARKS_EXTRA_INFO = {
     " [i]\"When they found out that I'd never been there and had only read about them in geographic"
     " magazines, it seemed that I disappointed them a great deal. They send me some Gjetost by"
     ' airmail."[/i]',
+    Titles.FABULOUS_PHILOSOPHERS_STONE_THE: "The philosopher's stone was an alchemists' legend,"
+    " said to turn base metals into gold and often to give long life. Nicolas Flamel, a"
+    " 14th-century Parisian, was later said to have made one. Here it nearly kills Scrooge instead."
+    "\n\nOn page 9 the nephews declare: \"The Junior Woodchucks' Guide Book says the Labyrinth"
+    " existed, and the Junior Woodchucks' Guide Book is never wrong!\"",
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
