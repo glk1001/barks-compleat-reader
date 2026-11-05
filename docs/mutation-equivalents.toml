@@ -1817,15 +1817,6 @@ change = """
 reason = "is_missing defaults to False."
 
 [[equivalent]]
-module = "barks_reader.core.fantagraphics_volumes"
-function = "FantagraphicsVolumeArchives.get_all_volume_override_archives"
-change = """
-- continue
-+ break
-"""
-reason = "Needs an unparseable file name iterated before a valid one, and Path.iterdir() order is the filesystem's: a test relying on it would be flaky."
-
-[[equivalent]]
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """

@@ -448,7 +448,10 @@ class ComicBookReader(FloatLayout):
         self._closed = True
 
     def _first_image_loaded(self) -> None:
-        self._page_manager.set_to_first_page_to_read()
+        # Past the reveal timeout the reader is up on the loading page, and the user may
+        # have picked a page from the goto list: that is where they want to be.
+        if self._current_page_index == -1:
+            self._page_manager.set_to_first_page_to_read()
         logger.debug(f"First image loaded: current page index = {self._current_page_index}.")
 
     def _all_images_loaded(self) -> None:

@@ -598,6 +598,37 @@ class TestComicBookReader:
             reader.on_page_selected(MagicMock(), "12")
         assert 'Goto page selected: "12".' in loguru_sink
 
+    @staticmethod
+    def _four_page_layout() -> ComicLayout:
+        pages = [PageInfo(i, str(i + 1), PageType.BODY, MagicMock(), MagicMock()) for i in range(4)]
+        return ComicLayout(OrderedDict((page.display_page_num, page) for page in pages), "4")
+
+    @pytest.mark.parametrize("double_page_mode", [False, True])
+    def test_a_page_picked_while_loading_survives_the_first_page(
+        self, reader: ComicBookReader, double_page_mode: bool
+    ) -> None:
+        """Past the reveal timeout the bar is up on the loading page, and its list works."""
+        reader._page_manager.double_page_mode = double_page_mode
+        reader._page_manager.set_layout(self._four_page_layout(), "1")
+        with (
+            patch.object(reader, "_show_page"),
+            patch.object(reader, "_hide_action_bar_if_fullscreen"),
+        ):
+            reader.on_page_selected(MagicMock(), "3")
+            reader._first_image_loaded()
+
+        assert reader._page_manager.get_current_page_str() == "3"
+
+    def test_with_no_page_picked_the_first_page_opens_where_it_should(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._page_manager.set_layout(self._four_page_layout(), "2")
+        with patch.object(reader, "_show_page") as show_page:
+            reader._first_image_loaded()
+
+        assert reader._page_manager.get_current_page_str() == "2"
+        show_page.assert_called_once_with()
+
     def test_goto_page_off_screen_opens_nothing(
         self, reader: ComicBookReader, loguru_sink: list[str]
     ) -> None:
