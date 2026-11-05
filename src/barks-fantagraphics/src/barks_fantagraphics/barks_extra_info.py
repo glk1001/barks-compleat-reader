@@ -480,8 +480,8 @@ BARKS_EXTRA_INFO = {
     Titles.FABULOUS_PHILOSOPHERS_STONE_THE: "The philosopher's stone was an alchemists' legend,"
     " said to turn base metals into gold and often to give long life. Nicolas Flamel, a"
     " 14th-century Parisian, was later said to have made one. Here it nearly kills Scrooge instead."
-    "\n\nOn page 9 the nephews declare: \"The Junior Woodchucks' Guide Book says the Labyrinth"
-    " existed, and the Junior Woodchucks' Guide Book is never wrong!\"",
+    "\n\nThe nephews declare the Guidebook infallible: \"The Junior Woodchucks' Guide Book says the"
+    " Labyrinth existed, and the Junior Woodchucks' Guide Book is never wrong!\"",
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
