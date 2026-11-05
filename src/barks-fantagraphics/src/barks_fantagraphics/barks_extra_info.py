@@ -352,6 +352,12 @@ BARKS_EXTRA_INFO = {
     ' on the ending to [i]"The Money Stairs": "...it was quite likely changed to a dream ending'
     " by me. I believe I recall looking at the panel of Uncle Scrooge's money ramp and"
     ' deciding it looked too impossible to be real..."[/i]',
+    Titles.HORSERADISH_STORY_THE: 'Barks told Edward Summer: [i]"I liked stories that gave me a'
+    ' chance to draw water and ships sailing into storms and big pictorial panels."[/i] His'
+    " example, which the printed interview places in Uncle Scrooge #3, is"
+    ' [i]"a whole page in which I have a ship wallowing around in the waves. A hurricane is'
+    " tearing the ship apart, and the villain, who is a real dirty skunk, turns on his own helper."
+    ' It was a hard-boiled story! I think that might have been one of its charms."[/i]',
     Titles.MENEHUNE_MYSTERY_THE: "[i]\"The Menehune Mystery had become Garé's story; we see"
     ' that in every leaf and flower she inked. She was the authority for all that moolamoola,"'
     ' chuckled Carl, "I still don\'t believe that those damned Menehunes ever existed."[/i]',
