@@ -484,17 +484,17 @@ class TestBuildPageMap:
             is_solo=True,
         )
 
-    def test_extra_srce_pages_are_dropped_rather_than_raising(self) -> None:
-        # The zip is deliberately non-strict: a srce list longer than the dest
-        # list truncates to the dest pages instead of failing the whole open.
+    def test_mismatched_page_lists_are_refused_rather_than_truncated(self) -> None:
+        # The two lists are built side by side, so a mismatch is a bug. Dropping the
+        # extra pages would open a comic short of them and say nothing; refused, the
+        # reader tells the user the comic could not be read.
         srce = [CleanPage(page_filename=f"srce-{i}.jpg", page_type=PageType.BODY) for i in range(3)]
         dest = [CleanPage(page_filename="dest-1.png", page_type=PageType.BODY)]
         port = FakeSortedPagesPort(SrceAndDestPages(srce_pages=srce, dest_pages=dest))
         builder = ComicLayoutBuilder(sorted_pages_port=port)
 
-        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
-
-        assert list(layout.page_map.keys()) == ["1"]
+        with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is shorter than argument 1$"):
+            builder.build(_comic())  # ty: ignore[invalid-argument-type]
 
     def test_marks_solo_for_comic_solo_keys(self) -> None:
         pages = _srce_dest(

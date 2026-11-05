@@ -109,6 +109,7 @@ class PrefetchTuning:
         return self._peak_growth_mib
 
     def get_initial_dynamic_window(self) -> int:
+        """Return the window a load starts with: its ceiling, or its page count if fewer."""
         return min(self.base_max_window, self._num_pages)
 
     def get_new_dynamic_window(self, dynamic_window: int) -> tuple[float, int]:

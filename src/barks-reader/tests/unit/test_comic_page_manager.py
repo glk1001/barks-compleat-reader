@@ -21,6 +21,41 @@ class TestComicPageManager:
         pm = ComicPageManager(callback)
         return pm, callback
 
+    def test_a_page_off_the_comic_leaves_the_layout_as_it_was(
+        self, page_manager: tuple[ComicPageManager, MagicMock]
+    ) -> None:
+        pm, _ = page_manager
+        old_page = PageInfo(
+            page_index=0,
+            page_type=PageType.BODY,
+            display_page_num="1",
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+        new_page = PageInfo(
+            page_index=0,
+            page_type=PageType.BODY,
+            display_page_num="9",
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+        old_layout = _layout(OrderedDict([("1", old_page)]))
+        pm.set_layout(old_layout, "1")
+
+        with pytest.raises(KeyError, match=r"^'off-the-comic'$"):
+            pm.set_layout(_layout(OrderedDict([("9", new_page)])), "off-the-comic")
+
+        assert pm._layout is old_layout
+        assert pm.get_first_pages_to_read() == [0]
+
+    def test_no_comic_has_no_first_or_last_page(
+        self, page_manager: tuple[ComicPageManager, MagicMock]
+    ) -> None:
+        pm, _ = page_manager
+
+        assert pm._first_page_index == -1
+        assert pm._last_page_index == -1
+
     def test_set_layout(self, page_manager: tuple[ComicPageManager, MagicMock]) -> None:
         pm, _ = page_manager
 

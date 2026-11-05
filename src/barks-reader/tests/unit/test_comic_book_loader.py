@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import queue
 import re
 import threading
 import time
@@ -36,7 +37,8 @@ from barks_reader.core.log_markers import pattern
 from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Collection, Generator
+    from concurrent.futures import Future
 
     from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.page_image import PageImage
@@ -164,20 +166,41 @@ def loader(
 
 
 @pytest.fixture
+def in_flight_at_each_wait() -> Generator[queue.Queue[int]]:
+    """How many pages the loader has in flight each time it goes to wait on them.
+
+    It waits only once it has submitted all it is going to, so each number is exact
+    when it arrives: a page that should not have been let in shows up here, with no
+    sleep to hope it would have started by.
+    """
+    in_flight: queue.Queue[int] = queue.Queue()
+    real_wait = loader_module.wait
+
+    def recording_wait(
+        futures: Collection[Future[PageImage]], return_when: str
+    ) -> tuple[set[Future[PageImage]], set[Future[PageImage]]]:
+        in_flight.put(len(futures))
+        return real_wait(futures, return_when=return_when)
+
+    with patch.object(loader_module, real_wait.__name__, recording_wait):
+        yield in_flight
+
+
+@pytest.fixture
 def page_map_and_order() -> tuple[OrderedDict[str, Any], list[str]]:
     """Create a sample page map and load order."""
     p1 = MagicMock()
     p1.page_index = 0
     p1.dest_page.page_filename = "page_1.png"
     p1.srce_page.page_filename = "page_1.png"
-    p1.display_page_num = "1"
+    p1.display_page_num = "p1"
     p1.page_type = PageType.BODY
 
     p2 = MagicMock()
     p2.page_index = 1
     p2.dest_page.page_filename = "page_2.png"
     p2.srce_page.page_filename = "page_2.png"
-    p2.display_page_num = "2"
+    p2.display_page_num = "p2"
     p2.page_type = PageType.BODY
 
     page_map = OrderedDict([("p1", p1), ("p2", p2)])
@@ -375,7 +398,9 @@ def test_prioritize_page_loads_navigated_page_before_later_pages(
     assert order.index(4) < order.index(3)
 
 
-def test_the_first_page_loads_alone_before_the_window_opens(loader: ComicBookLoader) -> None:
+def test_the_first_page_loads_alone_before_the_window_opens(
+    loader: ComicBookLoader, in_flight_at_each_wait: queue.Queue[int]
+) -> None:
     """Nothing else is submitted while the page the reader waits for is in flight.
 
     Four workers and a window of two: primed all at once, page 1 would load beside
@@ -390,7 +415,7 @@ def test_the_first_page_loads_alone_before_the_window_opens(loader: ComicBookLoa
     loader.set_comic(source, load_order, page_map, archive_desc="first.cbz")
 
     assert started.wait(2.0)  # page 0 is in flight
-    time.sleep(0.2)  # time enough for any companion to have loaded
+    assert in_flight_at_each_wait.get(timeout=2.0) == 1
     assert source.load_order == []
 
     release.set()
@@ -402,7 +427,9 @@ def test_the_first_page_loads_alone_before_the_window_opens(loader: ComicBookLoa
 
 
 def test_the_awaited_pair_loads_together_and_alone(
-    loader: ComicBookLoader, mock_callbacks: dict[str, MagicMock]
+    loader: ComicBookLoader,
+    mock_callbacks: dict[str, MagicMock],
+    in_flight_at_each_wait: queue.Queue[int],
 ) -> None:
     """In double-page mode the reader waits on two pages: both go at once, nothing else.
 
@@ -419,7 +446,9 @@ def test_the_awaited_pair_loads_together_and_alone(
     loader.set_comic(source, load_order, page_map, archive_desc="pair.cbz", num_pages_awaited=2)
 
     assert started.wait(2.0)  # page 1 is in flight
-    time.sleep(0.2)  # time enough for page 0, and for any stranger, to have loaded
+    assert in_flight_at_each_wait.get(timeout=2.0) == 2  # noqa: PLR2004
+    # The next wait comes after page 0 has been handled: only its partner is left.
+    assert in_flight_at_each_wait.get(timeout=2.0) == 1
     assert source.load_order == [0]
     # The first page's callback does not wait for its pair: the reader polls for both.
     mock_callbacks["on_first_image_loaded"].assert_called_once()
@@ -1478,32 +1507,29 @@ class TestPrefetchWindow:
         assert source.load_count == 6  # noqa: PLR2004
         assert all(entry is not None for entry in loader._images)
 
-    def test_the_window_caps_how_many_loads_are_in_flight(self, loader: ComicBookLoader) -> None:
-        """With a window of 2, a third page cannot start until one completes."""
+    def test_the_window_caps_how_many_loads_are_in_flight(
+        self, loader: ComicBookLoader, in_flight_at_each_wait: queue.Queue[int]
+    ) -> None:
+        """With a window of 2 and workers to spare, exactly 2 pages load at once."""
         page_map, load_order = _make_indexed_page_map(5)
-        inflight = 0
-        peak = 0
-        lock = threading.Lock()
-        release = threading.Event()
+        # Page 0 goes alone; the rest cannot finish unless they have company, so a
+        # window that let in only one at a time would break the barrier and the load.
+        together = threading.Barrier(2, timeout=5.0)
 
-        class CountingSource(FakePageImageSource):
-            def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
-                nonlocal inflight, peak
-                with lock:
-                    inflight += 1
-                    peak = max(peak, inflight)
-                release.wait(timeout=0.05)
-                with lock:
-                    inflight -= 1
+        class TwoAtATimeSource(FakePageImageSource):
+            def load_page_image(self, page_info: PageInfo) -> PageImage:
+                if page_info.page_index > 0:
+                    together.wait()
                 return _fake_page()
 
-        # Two workers so the window, not the pool, is the binding constraint.
-        loader._max_worker_count = 2
-        loader.set_comic(CountingSource(), load_order, page_map, archive_desc="t.cbz")
+        # More workers than the window, so the window is the binding constraint.
+        loader._max_worker_count = 4
+        loader.set_comic(TwoAtATimeSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=5.0)
+        loader._thread.join(timeout=10.0)
 
-        assert peak <= 2  # noqa: PLR2004
+        assert not together.broken
+        assert max(in_flight_at_each_wait.queue) == 2  # noqa: PLR2004
         assert all(entry is not None for entry in loader._images)
 
     def test_a_page_is_delivered_while_a_slower_one_is_still_loading(

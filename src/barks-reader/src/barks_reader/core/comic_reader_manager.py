@@ -80,15 +80,12 @@ class ComicReaderManager:
         self._user_error_handler = user_error_handler
         self._scheduler = scheduler
 
-        self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._last_read_page_tracker = last_read_page_tracker
         self._reading_history_tracker = reading_history_tracker
         self._layout_builder = layout_builder
-        self._layout: ComicLayout | None = None
 
         self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
         self._comic_book_reader: ComicBookReaderPort | None = None
-        self._fanta_info: FantaComicBookInfo | None = None
         # The close an unreadable-comic error deferred, until it fires or no longer applies.
         self._pending_error_close: CancelHandle | None = None
         # The trackers' inputs for the comic now opening, until its first page draws.
@@ -121,7 +118,6 @@ class ComicReaderManager:
 
         """
         article_title_str = ENUM_TO_STR_TITLE[article_title]
-        self._fanta_info = self.all_fanta_titles[article_title]
         article_as_comic = self._comics_database.get_comic_book(article_title_str)
 
         # Set for the read, not restored after it: the screen reads the flag when it
@@ -129,7 +125,12 @@ class ComicReaderManager:
         # returns. Restored on the way out, every article still opened fullscreen.
         assert self._comic_book_reader_screen
         self._comic_book_reader_screen.can_benefit_from_fullscreen = False
-        self._read_comic_book(article_as_comic, page_to_first_goto, save_last_page=False)
+        self._read_comic_book(
+            ALL_FANTA_COMIC_BOOK_INFO[article_title],
+            article_as_comic,
+            page_to_first_goto,
+            save_last_page=False,
+        )
 
     def read_barks_comic_book(
         self,
@@ -159,10 +160,10 @@ class ComicReaderManager:
                 through the tag: the goto-page list shows them in their own colour.
 
         """
-        self._fanta_info = fanta_info
         assert self._comic_book_reader_screen
         self._comic_book_reader_screen.can_benefit_from_fullscreen = True
         self._read_comic_book(
+            fanta_info,
             comic,
             page_to_first_goto,
             save_last_page=True,
@@ -174,6 +175,7 @@ class ComicReaderManager:
 
     def _read_comic_book(
         self,
+        fanta_info: FantaComicBookInfo,
         comic: ComicBook,
         page_to_first_goto: str,
         *,
@@ -185,15 +187,13 @@ class ComicReaderManager:
     ) -> None:
         assert page_to_first_goto
         assert self._comic_book_reader
-        assert self._fanta_info
-        assert self._fanta_info.comic_book_info
 
         # This read supersedes an earlier one's error: its close would shut this comic.
         self._cancel_pending_error_close()
 
-        title = self._fanta_info.comic_book_info.title
+        title = fanta_info.comic_book_info.title
         try:
-            self._layout, comic_book_image_builder = prepare_comic_for_reading(
+            layout, comic_book_image_builder = prepare_comic_for_reading(
                 comic, self._reader_settings, self._layout_builder
             )
         except (OSError, ValueError):
@@ -205,24 +205,24 @@ class ComicReaderManager:
 
         if collection_page_range is not None:
             # Open only the member's year-range group, not the whole collection.
-            self._layout = slice_comic_layout(self._layout, *collection_page_range)
+            layout = slice_comic_layout(layout, *collection_page_range)
 
-        title_str = self._fanta_info.comic_book_info.get_title_str()
+        title_str = fanta_info.comic_book_info.get_title_str()
         logger.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
 
         # Only a comic that opened is tracked: a failed open has no page to save, and
         # is not a read for the history. The reader says when page one has drawn; a
         # load that fails before then, on the loader thread included, never says so.
         self._pending_tracking = _PendingTracking(
-            title_str, self._layout, save_last_page, history_title_str or title_str
+            title_str, layout, save_last_page, history_title_str or title_str
         )
         try:
             self._comic_book_reader.read_comic(
-                self._fanta_info,
+                fanta_info,
                 use_overrides_active,
                 comic_book_image_builder,
                 page_to_first_goto,
-                self._layout,
+                layout,
                 tagged_pages=tagged_pages,
                 on_comic_opened=self._begin_tracking,
                 on_load_failed=partial(self._report_load_failed, title),
@@ -233,22 +233,19 @@ class ComicReaderManager:
                 ErrorTypes.MissingVolumeCannotShowTitle,
                 ErrorInfo(missing_volumes=[e.missing_vol], title=e.title),
             )
-            return
         except VolumeScanError as e:
             logger.error(e)
             self._report_load_failed(title)
-            return
         except FileNotFoundError as e:
             # Prebuilt archives: the title's own comic file is absent.
             logger.error(e)
             self._report_unreadable(
                 ErrorTypes.ArchiveVolumeNotAvailable,
                 ErrorInfo(
-                    file_volume=get_fanta_volume_from_str(self._fanta_info.fantagraphics_volume),
-                    title=self._fanta_info.comic_book_info.title,
+                    file_volume=get_fanta_volume_from_str(fanta_info.fantagraphics_volume),
+                    title=title,
                 ),
             )
-            return
 
     def _begin_tracking(self) -> None:
         """Begin the trackers for the comic whose first page has just drawn."""

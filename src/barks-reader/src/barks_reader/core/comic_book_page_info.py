@@ -10,7 +10,6 @@ from barks_fantagraphics.comics_consts import SOLO_PAGE_TYPES, PageType
 from barks_fantagraphics.pages import FRONT_MATTER_PAGES, ROMAN_NUMERALS
 
 from .display_unit import DisplayUnit, build_display_units
-from .reader_consts_and_types import FIRST_BODY_PAGE
 from .saved_page_info import SavedPageInfo
 
 if TYPE_CHECKING:
@@ -99,21 +98,23 @@ class ComicLayout:
         return self._display_units
 
     def page_by_display(self, display_page_num: str) -> PageInfo:
+        """Return the page named *display_page_num*; a name off the comic is a ``KeyError``."""
         return self._page_map[display_page_num]
 
     def page_by_index(self, page_index: int) -> PageInfo | None:
+        """Return the page at *page_index*, or None for an index off the comic."""
         return self._index_to_page.get(page_index)
 
     def unit_idx_for(self, page_index: int) -> int | None:
+        """Return the index of the display unit holding *page_index*, or None off the comic."""
         return self._unit_idx_for_index.get(page_index)
 
     def is_inside_body(self, page: PageInfo) -> bool:
-        return page.page_type == PageType.BODY and page.display_page_num not in (
-            FIRST_BODY_PAGE,
-            self._last_body_page,
-        )
+        """Return whether *page* is a body page other than the story's first or last."""
+        return self.to_saved(page).is_inside_body()
 
     def to_saved(self, page: PageInfo) -> SavedPageInfo:
+        """Return *page* as the last-read record kept between sessions."""
         return SavedPageInfo(
             page.page_index,
             page.display_page_num,
@@ -140,12 +141,9 @@ class ComicLayout:
             and current_display_unit is not None
             and current_display_unit.right_page_index is not None
         ):
-            left = self.page_by_index(current_display_unit.left_page_index)
-            right = self.page_by_index(current_display_unit.right_page_index)
-            if left is not None and not self.is_inside_body(left):
-                last_read = left
-            elif right is not None:
-                last_read = right
+            left = self._index_to_page[current_display_unit.left_page_index]
+            right = self._index_to_page[current_display_unit.right_page_index]
+            last_read = right if self.is_inside_body(left) else left
         return self.to_saved(last_read)
 
 
@@ -157,6 +155,15 @@ def slice_comic_layout(layout: ComicLayout, first_page_num: int, last_page_num: 
     last-read-page tracker consume this one layout, so slicing here keeps their
     page indices consistent. Those collections are all body/cover pages, so the
     slice's last body page is simply its last page.
+
+    Args:
+        layout: The whole collection's layout.
+        first_page_num: Inclusive first global page number to keep.
+        last_page_num: Inclusive last global page number to keep.
+
+    Returns:
+        A new layout of just those pages, indexed from 0.
+
     """
     sliced_map = slice_page_map(layout.page_map, first_page_num, last_page_num)
     assert sliced_map, f"empty collection slice for page range [{first_page_num}, {last_page_num}]"
@@ -169,8 +176,9 @@ class ComicLayoutBuilder:
 
     Takes a :class:`SortedPagesPort` (required) and an optional
     :class:`RequiredDimensionsPort`. The dimensions port is queried via
-    :meth:`get_required_dimensions` and is split out so prebuilt-comic flows
-    can skip the panel-segment I/O entirely by omitting the port.
+    :meth:`get_required_dimensions` and is split out so a caller that only builds
+    layouts, as the corpus validator does, can skip the panel-segment I/O by omitting
+    it. The reader always wires it, prebuilt archives included.
     """
 
     def __init__(
@@ -182,11 +190,18 @@ class ComicLayoutBuilder:
         self._required_dimensions_port = required_dimensions_port
 
     def build(self, comic: ComicBook) -> ComicLayout:
+        """Return the layout of *comic*'s pages, from the sorted-pages port."""
         srce_and_dest_pages = self._sorted_pages_port.get_sorted_pages(comic)
         page_map, last_body_page = _build_page_map(comic, srce_and_dest_pages)
         return ComicLayout(page_map, last_body_page)
 
     def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions:
+        """Return the rendering dimensions of *comic*, from the dimensions port.
+
+        Raises:
+            RuntimeError: If this builder was made without that port.
+
+        """
         if self._required_dimensions_port is None:
             msg = "RequiredDimensionsPort was not wired"
             raise RuntimeError(msg)
@@ -208,7 +223,7 @@ def _build_page_map(
     is_covers = is_covers_collection(comic.fanta_info.comic_book_info.title)
 
     for index, (srce_page, dest_page) in enumerate(
-        zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
+        zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=True)
     ):
         page_starts_body = is_covers or dest_page.page_type not in FRONT_MATTER_PAGES
         if page_starts_body and body_start_page_num == -1:

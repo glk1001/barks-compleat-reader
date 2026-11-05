@@ -30,6 +30,14 @@ def year_range_group_index(submitted_year: int, year_ranges: list[tuple[int, int
     Undated (``-1``) or otherwise out-of-range years fold into the **final**
     group. This is the single source of truth for the fold rule, shared by the
     tree goto-navigation and the collection page-group slicing.
+
+    Args:
+        submitted_year: The member's submitted year, or ``-1`` if undated.
+        year_ranges: The groups' inclusive ``(start, end)`` years, in order.
+
+    Returns:
+        The index in *year_ranges* of the member's group.
+
     """
     for index, (start, end) in enumerate(year_ranges):
         if start <= submitted_year <= end:

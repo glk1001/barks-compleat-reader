@@ -40,9 +40,6 @@ class ComicPageManager:
         self._layout: ComicLayout | None = None
         self._first_page_to_read_index = -1
 
-        self._first_page_index = -1
-        self._last_page_index = -1
-
         self.double_page_mode: bool = False
 
     @property
@@ -54,8 +51,25 @@ class ComicPageManager:
     def _display_units(self) -> list[DisplayUnit]:
         return [] if self._layout is None else self._layout.display_units
 
+    @property
+    def _first_page_index(self) -> int:
+        return -1 if self._layout is None else 0
+
+    @property
+    def _last_page_index(self) -> int:
+        return -1 if self._layout is None else len(self._layout.page_map) - 1
+
     def _unit_idx_for(self, page_index: int) -> int | None:
         return None if self._layout is None else self._layout.unit_idx_for(page_index)
+
+    def _unit_of(self, page_index: int) -> DisplayUnit | None:
+        unit_idx = self._unit_idx_for(page_index)
+        return None if unit_idx is None else self._display_units[unit_idx]
+
+    def _page_to_show_for(self, page_index: int) -> int:
+        """Return the page that shows *page_index*: in double-page mode, its pair's left page."""
+        unit = self._unit_of(page_index) if self.double_page_mode else None
+        return page_index if unit is None else unit.left_page_index
 
     def get_current_page_index(self) -> int:
         """Return the current page's index, or -1 with no page current."""
@@ -78,11 +92,7 @@ class ComicPageManager:
 
     def get_current_display_unit(self) -> DisplayUnit | None:
         """Return the display unit that contains the current page index."""
-        unit_idx = self._unit_idx_for(self._current_page_index)
-        if unit_idx is None:
-            return None
-
-        return self._display_units[unit_idx]
+        return self._unit_of(self._current_page_index)
 
     def set_current_page_index_from_str(self, page_str: str) -> None:
         """Make the page named `page_str` current: in double-page mode, its pair's left page.
@@ -93,24 +103,11 @@ class ComicPageManager:
         """
         assert self._layout is not None
         page_index = self._layout.page_by_display(page_str).page_index
-
-        if self.double_page_mode:
-            unit_idx = self._unit_idx_for(page_index)
-            if unit_idx is not None:
-                self._current_page_index = self._display_units[unit_idx].left_page_index
-                return
-
-        self._current_page_index = page_index
+        self._current_page_index = self._page_to_show_for(page_index)
 
     def set_to_first_page_to_read(self) -> None:
         """Make the page the comic opens at current (its pair's left page in double-page mode)."""
-        if self.double_page_mode:
-            unit_idx = self._unit_idx_for(self._first_page_to_read_index)
-            if unit_idx is not None:
-                self._current_page_index = self._display_units[unit_idx].left_page_index
-                return
-
-        self._current_page_index = self._first_page_to_read_index
+        self._current_page_index = self._page_to_show_for(self._first_page_to_read_index)
 
     def goto_start_page(self) -> None:
         """Make the first page current, logging when it already is."""
@@ -184,20 +181,18 @@ class ComicPageManager:
             page_to_first_goto: The name of the page to open at, or the comic's beginning.
 
         """
-        self._layout = layout
         page_map = layout.page_map
+        assert next(iter(page_map.values())).page_index == 0
+        assert next(reversed(page_map.values())).page_index == len(page_map) - 1
 
-        self._first_page_to_read_index = (
+        # Worked out first: a page off this comic must not leave its layout half taken.
+        first_page_to_read_index = (
             0
             if page_to_first_goto == COMIC_BEGIN_PAGE
             else layout.page_by_display(page_to_first_goto).page_index
         )
-
-        self._first_page_index = next(iter(page_map.values())).page_index
-        self._last_page_index = next(reversed(page_map.values())).page_index
-
-        assert self._first_page_index == 0
-        assert (self._last_page_index + 1) == len(page_map)
+        self._layout = layout
+        self._first_page_to_read_index = first_page_to_read_index
 
     def get_first_pages_to_read(self) -> list[int]:
         """Return the indices of the pages the comic opens on, in reading order.
@@ -206,15 +201,12 @@ class ComicPageManager:
         in: the reader shows nothing until every one of them has loaded.
         """
         assert self._layout is not None
-        if self.double_page_mode:
-            unit_idx = self._unit_idx_for(self._first_page_to_read_index)
-            if unit_idx is not None:
-                unit = self._display_units[unit_idx]
-                if unit.right_page_index is not None:
-                    return [unit.left_page_index, unit.right_page_index]
-                return [unit.left_page_index]
-
-        return [self._first_page_to_read_index]
+        unit = self._unit_of(self._first_page_to_read_index) if self.double_page_mode else None
+        if unit is None:
+            return [self._first_page_to_read_index]
+        if unit.right_page_index is None:
+            return [unit.left_page_index]
+        return [unit.left_page_index, unit.right_page_index]
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience.

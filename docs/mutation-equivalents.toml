@@ -586,32 +586,14 @@ change = """
 reason = "ZipFile's mode defaults to \"r\"."
 
 [[equivalent]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.resolve_archive_for_comic"
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource.open"
 change = """
-- fanta_volume_archive.override_archive_filename, "r"
+- self._fanta_volume_archive.override_archive_filename, "r"
 - )
-+ fanta_volume_archive.override_archive_filename, )
++ self._fanta_volume_archive.override_archive_filename, )
 """
 reason = "ZipFile's mode defaults to \"r\"."
-
-[[equivalent]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.__init__"
-change = """
-- self._num_pages_awaited = 1
-+ self._num_pages_awaited = None
-"""
-reason = "Assigned before any read: set_comic sets it before it starts the loader thread, its only reader."
-
-[[equivalent]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.__init__"
-change = """
-- self._num_pages_awaited = 1
-+ self._num_pages_awaited = 2
-"""
-reason = "Assigned before any read: set_comic sets it before it starts the loader thread, its only reader."
 
 [[equivalent]]
 module = "barks_reader.core.comic_book_loader"
@@ -689,26 +671,8 @@ reason = "Assigned before any read, and only ever asserted or tested for truth, 
 module = "barks_reader.core.comic_reader_manager"
 function = "ComicReaderManager.__init__"
 change = """
-- self._layout: ComicLayout | None = None
-+ self._layout: ComicLayout | None = ""
-"""
-reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
-
-[[equivalent]]
-module = "barks_reader.core.comic_reader_manager"
-function = "ComicReaderManager.__init__"
-change = """
 - self._comic_book_reader: ComicBookReaderPort | None = None
 + self._comic_book_reader: ComicBookReaderPort | None = ""
-"""
-reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
-
-[[equivalent]]
-module = "barks_reader.core.comic_reader_manager"
-function = "ComicReaderManager.__init__"
-change = """
-- self._fanta_info: FantaComicBookInfo | None = None
-+ self._fanta_info: FantaComicBookInfo | None = ""
 """
 reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
 
@@ -1571,19 +1535,19 @@ reason = "It guards a logger.debug only; the window is computed before it."
 module = "barks_reader.core.comic_book_loader_platform_settings"
 function = "get_max_worker_count"
 change = """
-- cpu_count = os.cpu_count() or 1
-+ cpu_count = os.cpu_count() or 2
+- cpu_count = os.process_cpu_count() or 1
++ cpu_count = os.process_cpu_count() or 2
 """
-reason = "Reached only when cpu_count() is None; 1 and 2 both take the <= 2 branch after it, which returns 1."
+reason = "Reached only when process_cpu_count() is None; 1 and 2 both take the <= 2 branch after it, which returns 1."
 
 [[equivalent]]
 module = "barks_reader.core.comic_book_loader_platform_settings"
 function = "PrefetchTuning.detect_system_profile"
 change = """
-- cpu_count = os.cpu_count() or 1
-+ cpu_count = os.cpu_count() or 2
+- cpu_count = os.process_cpu_count() or 1
++ cpu_count = os.process_cpu_count() or 2
 """
-reason = "Reached only when cpu_count() is None; 1 and 2 both take the <= 2 branch after it, which returns 1."
+reason = "Reached only when process_cpu_count() is None; 1 and 2 are both the low tier, and the count is otherwise only logged."
 
 [[equivalent]]
 module = "barks_reader.core.comic_book_loader_platform_settings"
@@ -2529,22 +2493,6 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.comic_book_page_info"
-function = "_build_page_map"
-change = """
-- zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
-+ zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_page_info"
-function = "_build_page_map"
-change = """
-- zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
-+ zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, )
-"""
-
-[[untriaged]]
 module = "barks_reader.core.wiki_integration"
 function = "migrate_wiki_session"
 change = """
@@ -2828,14 +2776,6 @@ change = """
 module = "barks_reader.core.comic_book_loader"
 function = "ComicBookLoader._load_pages"
 change = """
-- raise CancelledError(e) from e
-+ raise CancelledError(None) from e
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=None)
 """
@@ -2971,30 +2911,6 @@ function = "ArchivePageImageSource.__init__"
 change = """
 - self._empty_page_image = empty_page_image
 + self._empty_page_image = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource._get_image_path"
-change = """
-- return str(raw[0]).replace("\\\\", "/"), raw[1]
-+ return str(raw[0]).replace("XX\\\\XX", "/"), raw[1]
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource._get_image_path"
-change = """
-- return str(raw[0]).replace("\\\\", "/"), raw[1]
-+ return str(raw[0]).replace("\\\\", "XX/XX"), raw[1]
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource._get_fanta_volume_image_path"
-change = """
-- page_info.srce_page.page_filename, page_info.page_type
-+ page_info.srce_page.page_filename, None
 """
 
 [[untriaged]]

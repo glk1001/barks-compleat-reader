@@ -231,7 +231,7 @@ class ComicBookLoader:
 
         assert self._fanta_volume_archives
         fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
-            int(fanta_info.fantagraphics_volume[-2:])
+            get_fanta_volume_from_str(fanta_info.fantagraphics_volume)
         )
         # A missing volume can still be read if every page is bundled (a title/blank
         # page, or an override/extra image) - e.g. the fully hand-restored censored
@@ -501,7 +501,7 @@ class ComicBookLoader:
     def _log_retained_image_memory(self, rss_before_mib: float) -> None:
         """Log how much RAM the fully-loaded comic's retained pages occupy.
 
-        Makes the cost of large collections (e.g. the 186-page "All Covers")
+        Makes the cost of large collections (e.g. "All Covers")
         visible in the logs.
         """
         stats = self._retained_image_stats(rss_before_mib)
@@ -596,7 +596,7 @@ class ComicBookLoader:
         Uses system profile (CPU, RAM) to pick prefetch and memory thresholds.
         Worker threads call ``load.image_source.load_page_image()``.
         Maintains a sliding window of in-flight tasks, adjusting size based
-        on memory.  Ensures ordered delivery and early first-page callback.
+        on memory. Pages are delivered as they land, in whatever order that is.
         """
         assert load.image_source is not None
         image_source = load.image_source
@@ -675,7 +675,6 @@ class ComicBookLoader:
 
             def submit_next() -> bool:
                 """Submit the next page if window not full."""
-                nonlocal dynamic_window
                 window = dynamic_window if window_open else len(pages_awaited)
                 if len(futures) >= window:
                     return False

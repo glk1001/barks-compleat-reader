@@ -19,8 +19,8 @@ class SortedPagesPort(Protocol):
 class RequiredDimensionsPort(Protocol):
     """Computes rendering dimensions for a comic.
 
-    Separate from SortedPagesPort so prebuilt-comic flows can skip the
-    panel-segment I/O entirely by wiring ``None`` in place of an adapter.
+    Separate from SortedPagesPort so a caller that only builds layouts can skip
+    the panel-segment I/O by wiring ``None`` in place of an adapter.
     """
 
     def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions: ...

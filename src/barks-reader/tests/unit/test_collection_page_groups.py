@@ -4,17 +4,21 @@ from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import patch
 
 import pytest
+from barks_fantagraphics.barks_covers import get_cover_title, get_located_covers
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import get_located_one_pagers
 from barks_reader.core import collection_page_groups as cpg_module
 from barks_reader.core.collection_page_groups import (
     _assert_tiling,
     _group_ranges,
+    _submitted_year,
     get_collection_group_page_range,
     get_cover_collection_group_ranges,
     get_one_pager_collection_group_ranges,
     year_range_group,
     year_range_group_index,
 )
+from barks_reader.core.reader_consts_and_types import COVER_YEAR_RANGES, ONE_PAGER_YEAR_RANGES
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -98,6 +102,54 @@ class TestGroupRanges:
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
         assert ranges == ((1, 43), (44, 92), (93, 147))
+
+
+class TestAGroupHoldsItsYears:
+    """Each group's pages really are the members of its years.
+
+    The snapshots above fix where the groups fall; this says why they are right, so a
+    data change that moves a title across a boundary fails here on the title itself.
+    """
+
+    @pytest.mark.parametrize(
+        ("get_members", "year_ranges", "get_ranges"),
+        [
+            pytest.param(
+                lambda: [get_cover_title(cover) for cover in get_located_covers()],
+                COVER_YEAR_RANGES,
+                get_cover_collection_group_ranges,
+                id="covers",
+            ),
+            pytest.param(
+                lambda: list(get_located_one_pagers()),
+                ONE_PAGER_YEAR_RANGES,
+                get_one_pager_collection_group_ranges,
+                id="one-pagers",
+            ),
+        ],
+    )
+    def test_every_member_is_in_a_group_of_its_year(
+        self,
+        get_members: Callable[[], list[Titles]],
+        year_ranges: list[tuple[int, int]],
+        get_ranges: Callable[[], tuple[tuple[int, int], ...]],
+    ) -> None:
+        members = get_members()
+        groups_seen = []
+        for first, last in get_ranges():
+            years = {_submitted_year(title) for title in members[first - 1 : last]}
+            groups = {year_range_group(year, year_ranges) for year in years}
+            assert len(groups) == 1, f"pages {first}-{last} span {sorted(groups)}"
+
+            group = groups.pop()
+            groups_seen.append(group)
+            start, end = group
+            for year in years:
+                undated_in_final_group = year == -1 and group == year_ranges[-1]
+                assert start <= year <= end or undated_in_final_group, (year, group)
+
+        # No group is split across two slices: each slice is a whole group, in order.
+        assert groups_seen == sorted(set(groups_seen))
 
 
 class TestGroupRangesOnSyntheticData:
