@@ -305,7 +305,11 @@ BARKS_EXTRA_INFO = {
     " magenta, regarded by many philatelists as the world's most famous rare stamp. It was sold in"
     " June 2021 to the London stamp dealer Stanley Gibbons for $8,307,000. Barks' rendering departs"
     " from the original: the real stamp is octagonal, with black text on magenta paper, where he"
-    " drew it rectangular on white paper.",
+    " drew it rectangular on white paper."
+    "\n\nThe Smithsonian's National Postal Museum exhibited the stamp from June 4, 2015 to"
+    " December 2, 2018. Its website for the exhibition gave this comic an entry of its own, as"
+    " Walt Disney's Donald Duck and the Gilded Man, saying it"
+    ' [i]"introduced a generation of young readers to the story of the One-Cent Magenta."[/i]',
     Titles.HYPNO_GUN_THE: 'Barks said this about the story: [i]"the sort of story that only Donald'
     " can portray convincingly. Mickey could never be 'hypnotized' by such a simple gadget and"
     " Goofy could be hypnotized too easily. A good example of Donald's versatility as an"
