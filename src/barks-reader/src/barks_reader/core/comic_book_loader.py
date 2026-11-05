@@ -1,5 +1,3 @@
-# ruff: noqa: ERA001
-
 from __future__ import annotations
 
 import queue
@@ -36,6 +34,7 @@ from .fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
     MissingArchiveFilesError,
     MissingVolumeError,
+    VolumeScanError,
 )
 from .page_image import PageImage
 from .reader_utils import is_blank_page, is_title_page
@@ -50,7 +49,6 @@ if TYPE_CHECKING:
     from .reader_settings import ReaderSettings
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
-# ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
 _LOADER_JOIN_TIMEOUT_SECS = 2.0
 
@@ -126,7 +124,7 @@ class ComicBookLoader:
         reader_settings: ReaderSettings,
         on_first_image_loaded: Callable[[], None],
         on_all_images_loaded: Callable[[], None],
-        on_load_error: Callable[[bool], None],
+        on_load_error: Callable[[], None],
         max_window_width: int,
         max_window_height: int,
         *,
@@ -136,6 +134,8 @@ class ComicBookLoader:
         self._reader_settings = reader_settings
         self._sys_file_paths = self._reader_settings.sys_file_paths
         self._fanta_volume_archives: FantagraphicsVolumeArchives | None = None
+        # The folder those archives were scanned from: the setting can change after boot.
+        self._volumes_dir_scanned: Path | None = None
         self._max_window_width = max_window_width
         self._max_window_height = max_window_height
         self._scheduler = scheduler
@@ -192,8 +192,9 @@ class ComicBookLoader:
             timing = Timing()
 
             logger.info(log_markers.USING_VOLUME_ARCHIVES)
+            volumes_dir = self._reader_settings.fantagraphics_volumes_dir
             fanta_volume_archives = FantagraphicsVolumeArchives(
-                self._reader_settings.fantagraphics_volumes_dir,
+                volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
                 ALL_FANTA_VOLUMES,
             )
@@ -205,8 +206,10 @@ class ComicBookLoader:
                 # the restored censored stories) before the caller records the state.
                 # Without this, a later resolve would re-init and re-raise uncaught.
                 self._fanta_volume_archives = fanta_volume_archives
+                self._volumes_dir_scanned = volumes_dir
                 raise
             self._fanta_volume_archives = fanta_volume_archives
+            self._volumes_dir_scanned = volumes_dir
 
             logger.info(
                 log_markers.VOLUMES_LOADED.format(elapsed=timing.get_elapsed_time_with_unit())
@@ -242,13 +245,13 @@ class ComicBookLoader:
                 comic can only come from the (missing) library archive.
             FileNotFoundError: If prebuilt archives are in use and the comic's own
                 archive file is absent.
+            VolumeScanError: If the volumes had to be scanned here, and that failed.
 
         """
         if self._reader_settings.use_prebuilt_archives:
             return self._get_prebuilt_comic_path(fanta_info), None
 
-        if not self._fanta_volume_archives:
-            self.init_data()
+        self._scan_volumes_if_needed()
 
         assert self._fanta_volume_archives
         fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
@@ -303,6 +306,7 @@ class ComicBookLoader:
         if self._thread and self._thread.is_alive():
             self.stop_now()
 
+        self._close_image_source()
         self._image_source = image_source
         self._page_map = page_map
         self._current_comic_desc = archive_desc
@@ -396,16 +400,14 @@ class ComicBookLoader:
         poll reads, so the loader thread hands its own close here through the
         scheduler (:meth:`_close_and_report_load_error`).
         """
-        if not self._current_comic_desc:
+        if self._image_source is None:
             return
 
         logger.debug(f'Close the comic: "{self._current_comic_desc}".')
 
         self.stop_now()
 
-        if self._image_source and hasattr(self._image_source, "close"):
-            self._image_source.close()  # ty: ignore[call-non-callable]
-        self._image_source = None
+        self._close_image_source()
         self._images.clear()
         self._image_loaded_events.clear()
         self._current_comic_desc = ""
@@ -413,6 +415,11 @@ class ComicBookLoader:
         # The pages just dropped, and whatever the load's workers freed, go back to
         # the system now rather than sitting in the allocator's arenas.
         release_freed_memory()
+
+    def _close_image_source(self) -> None:
+        if self._image_source is not None:
+            self._image_source.close()
+            self._image_source = None
 
     def stop_now(self) -> None:
         """Signal the background thread to stop and wait for it to terminate.
@@ -442,6 +449,23 @@ class ComicBookLoader:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    def _scan_volumes_if_needed(self) -> None:
+        """Scan the volumes if boot did not, or the setting's folder has changed since.
+
+        Boot reports a bad library itself. Here a comic is being opened, so a volume
+        missing is left to that comic's own check, and any other failure is one error
+        for the caller to report.
+        """
+        volumes_dir = self._reader_settings.fantagraphics_volumes_dir
+        if self._fanta_volume_archives and self._volumes_dir_scanned in (None, volumes_dir):
+            return
+        try:
+            self.init_data()
+        except MissingArchiveFilesError as e:
+            logger.warning(e)
+        except Exception as e:
+            raise VolumeScanError(str(e)) from e
 
     def _get_prebuilt_comic_path(self, fanta_info: FantaComicBookInfo) -> Path:
         comic_file_stem = get_dest_comic_zip_file_stem(
@@ -517,22 +541,21 @@ class ComicBookLoader:
         logger.debug(f'Load comic: "{load.desc}"')
 
         load_error = False
-        load_warning_only = False
-        rss_before_mib = process_rss_mib()
-        self._cursor.set_busy()
 
         try:
             assert load.image_source is not None
 
             # noinspection PyBroadException
             try:
+                rss_before_mib = process_rss_mib()
+                self._cursor.set_busy()
+
                 # Opening is inside the try: it is where the archive is actually
                 # touched, so a missing or truncated volume raises FileNotFoundError
                 # or BadZipFile here. Outside, those escaped the loader thread
                 # entirely - no error callback, no dialog, just a comic that never
                 # loaded.
-                if hasattr(load.image_source, "open"):
-                    load.image_source.open()  # ty: ignore[call-non-callable]
+                load.image_source.open()
 
                 num_loaded = self._load_pages(load)
 
@@ -553,7 +576,7 @@ class ComicBookLoader:
                 release_freed_memory()
                 self._log_retained_image_memory(rss_before_mib)
 
-                self._scheduler.schedule_once(self._on_all_images_loaded)
+                self._schedule_for_load(load, self._on_all_images_loaded)
 
             except FileNotFoundError:
                 logger.exception(f'Comic file not found: "{load.desc}".')
@@ -567,18 +590,12 @@ class ComicBookLoader:
                 )
                 load_error = True
             except IndexError:
-                # Either way the load failed and the caller must hear about it;
-                # only the severity differs. Setting load_error in the stop branch
-                # alone meant the *unexpected* index error - the one worth
-                # surfacing - was logged and then silently swallowed.
-                load_error = True
-                if not load.stop:
-                    logger.exception(f'Unexpected index error reading comic: stop = "{load.stop}".')
+                # A close empties the page slots under a stopping load: expected then.
+                if load.stop:
+                    logger.warning("Index error reading comic: it was being stopped.")
                 else:
-                    logger.warning(
-                        f'Index error reading comic: probably because stop = "{load.stop}".'
-                    )
-                    load_warning_only = True
+                    logger.exception("Unexpected index error reading comic.")
+                    load_error = True
             except Exception:  # noqa: BLE001
                 _, _, tb = sys.exc_info()
                 tb_info = traceback.extract_tb(tb)
@@ -589,14 +606,14 @@ class ComicBookLoader:
                 load_error = True
 
         finally:
-            self._finish_load(load, load_error=load_error, load_warning_only=load_warning_only)
+            self._finish_load(load, load_error=load_error)
 
-    def _finish_load(self, load: _Load, *, load_error: bool, load_warning_only: bool) -> None:
+    def _finish_load(self, load: _Load, *, load_error: bool) -> None:
         # A thread outliving its stop must not call off the next comic's busy cursor.
         if load is self._load:
             self._cursor.set_normal()
         if load_error:
-            self._close_and_report_load_error(load, load_warning_only)
+            self._close_and_report_load_error(load)
 
     def _load_pages(self, load: _Load) -> int:  # noqa: C901, PLR0912, PLR0915
         """Platform-aware dynamic prefetch window implementation.
@@ -753,7 +770,7 @@ class ComicBookLoader:
                                 f"First page index to display, {page_index}, was loaded "
                                 f"after {timing.get_elapsed_time_with_unit()}."
                             )
-                            self._scheduler.schedule_once(self._on_first_image_loaded)
+                            self._schedule_for_load(load, self._on_first_image_loaded)
                             # The comic is now readable; don't keep the busy cursor
                             # for the rest of the background prefetch. (Scheduled
                             # after the first-page display callback above.)
@@ -792,7 +809,22 @@ class ComicBookLoader:
         """Return the worker thread count to use for *num_pages* pages."""
         return min(self._max_worker_count, num_pages)
 
-    def _close_and_report_load_error(self, load: _Load, load_warning_only: bool) -> None:
+    def _schedule_for_load(self, load: _Load, callback: Callable[[], None]) -> None:
+        """Run *callback* on the UI thread, unless *load*'s comic has gone by then.
+
+        A close or the next comic can land between the post and the callback, which
+        would then speak for a comic it knows nothing of.
+        """
+
+        def if_still_current() -> None:
+            if load.generation == self._load_generation:
+                callback()
+            else:
+                logger.debug("Dropped a callback of a comic since superseded or closed.")
+
+        self._scheduler.schedule_once(if_still_current)
+
+    def _close_and_report_load_error(self, load: _Load) -> None:
         """Hand the failed load's close and its report to the UI thread.
 
         This runs on the loader thread. The close clears the page lists the UI
@@ -808,6 +840,6 @@ class ComicBookLoader:
                 logger.warning("Dropped the load error of a comic since superseded or closed.")
                 return
             self.close_comic()
-            self._on_load_error(load_warning_only)
+            self._on_load_error()
 
         self._scheduler.schedule_once(close_and_report)

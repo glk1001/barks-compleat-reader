@@ -268,6 +268,7 @@ def _build_cli_app_class(
                 comic_book_image_builder=image_builder,
                 page_to_first_goto=begin_page,
                 layout=layout,
+                on_load_failed=self._on_close,
             )
 
         def _set_custom_title_bar(self) -> None:

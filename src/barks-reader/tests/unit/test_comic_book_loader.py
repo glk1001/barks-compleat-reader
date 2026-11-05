@@ -9,6 +9,7 @@ import time
 import zipfile
 from collections import OrderedDict
 from concurrent.futures import CancelledError, ThreadPoolExecutor
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -22,13 +23,18 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     get_max_worker_count,
     get_prefetch_tuning,
 )
-from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
+from barks_reader.core.fantagraphics_volumes import (
+    DuplicateArchiveFilesError,
+    EmptyArchiveError,
+    FantagraphicsVolumeArchives,
+    MissingArchiveFilesError,
+    VolumeScanError,
+)
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from pathlib import Path
 
     from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.page_image import PageImage
@@ -1026,7 +1032,7 @@ class TestOverrideArchiveOpening:
         loader._scheduler = _DeferringScheduler()
         _run_load(loader, page_map_and_order, source)
 
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
         mock_callbacks["on_all_images_loaded"].assert_not_called()
 
 
@@ -1195,11 +1201,6 @@ def _run_load(
         loader._scheduler.run_pending()
 
 
-# `on_load_error`'s only argument is a severity flag; name it at the call sites.
-GENUINE_FAILURE = False
-WARNING_ONLY = True
-
-
 class ExplodingOpenSource(FakePageImageSource):
     """A source whose `open()` fails, as a missing or truncated archive would."""
 
@@ -1212,11 +1213,7 @@ class ExplodingOpenSource(FakePageImageSource):
 
 
 class TestLoadErrorReporting:
-    """Every failure path must reach `on_load_error` with the right severity.
-
-    The second argument is *warning-only*: True means "expected during a stop",
-    which the UI reports more quietly than a genuine failure.
-    """
+    """Every failure path must reach `on_load_error`, but for one expected during a stop."""
 
     @pytest.fixture
     def fake_scheduler(self) -> _DeferringScheduler:
@@ -1231,7 +1228,7 @@ class TestLoadErrorReporting:
     ) -> None:
         _run_load(loader, page_map_and_order, FakePageImageSource(fail=True))
 
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
     @pytest.mark.parametrize(
         "error",
@@ -1253,7 +1250,7 @@ class TestLoadErrorReporting:
         """
         _run_load(loader, page_map_and_order, ExplodingOpenSource(error))
 
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
         mock_callbacks["on_all_images_loaded"].assert_not_called()
 
     @pytest.mark.parametrize(
@@ -1276,10 +1273,10 @@ class TestLoadErrorReporting:
         with patch.object(ComicBookLoader, "_load_pages", side_effect=error):
             _run_load(loader, page_map_and_order)
 
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
         mock_callbacks["on_all_images_loaded"].assert_not_called()
 
-    def test_an_index_error_during_a_stop_is_only_a_warning(
+    def test_an_index_error_during_a_stop_is_not_a_failure(
         self,
         loader: ComicBookLoader,
         page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
@@ -1295,7 +1292,7 @@ class TestLoadErrorReporting:
         with patch.object(ComicBookLoader, "_load_pages", side_effect=raise_after_stop):
             _run_load(loader, page_map_and_order)
 
-        mock_callbacks["on_load_error"].assert_called_once_with(WARNING_ONLY)
+        mock_callbacks["on_load_error"].assert_not_called()
 
     def test_an_unexpected_error_is_reported_as_a_failure(
         self,
@@ -1307,7 +1304,7 @@ class TestLoadErrorReporting:
         with patch.object(ComicBookLoader, "_load_pages", side_effect=RuntimeError("boom")):
             _run_load(loader, page_map_and_order)
 
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
     def test_a_successful_load_reports_no_error(
         self,
@@ -1375,7 +1372,7 @@ class TestLoadErrorReporting:
         assert source.closed
         assert loader._load.stop is True
         assert loader._current_comic_desc == ""
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
 
 class TestLoadErrorClose:
@@ -1444,7 +1441,7 @@ class TestLoadErrorClose:
         assert loader._current_comic_desc == ""
         assert loader._images == []
         assert loader._thread is None
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
     def test_the_error_of_a_comic_since_replaced_is_dropped(
         self,
@@ -1809,18 +1806,6 @@ class TestLoaderLifecycle:
         thread.join.assert_called_once_with(timeout=2.0)
         assert loader._thread is None
 
-    def test_set_comic_defaults_to_an_empty_archive_description(
-        self, loader: ComicBookLoader, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]
-    ) -> None:
-        """An empty description is what makes `close_comic` a no-op."""
-        page_map, load_order = page_map_and_order
-
-        loader.set_comic(FakePageImageSource(), load_order, page_map)
-        assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
-
-        assert loader._current_comic_desc == ""
-
     def test_set_comic_clears_a_previous_stop(
         self, loader: ComicBookLoader, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]
     ) -> None:
@@ -1852,33 +1837,6 @@ class TestLoaderLifecycle:
         assert loader._image_source is None
         assert loader._images == []
         assert loader._image_loaded_events == []
-
-    def test_close_comic_tolerates_a_source_with_no_close_method(
-        self, loader: ComicBookLoader, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]
-    ) -> None:
-        """The `hasattr` guard is the reason a minimal source is allowed."""
-        page_map, load_order = page_map_and_order
-
-        class NoCloseSource:
-            def load_page_image(self, page_info: PageInfo) -> PageImage:  # noqa: ARG002
-                return _fake_page()
-
-            @staticmethod
-            def get_image_info_str(page_info: PageInfo) -> str:  # noqa: ARG004
-                return "x"
-
-        loader.set_comic(NoCloseSource(), load_order, page_map, archive_desc="t.cbz")
-        assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
-
-        loader.close_comic()  # must not raise
-
-        assert loader._image_source is None
-
-
-# ---------------------------------------------------------------------------
-# init_data wiring
-# ---------------------------------------------------------------------------
 
 
 class TestInitDataWiring:
@@ -2054,7 +2012,7 @@ class TestPrefetchLoop:
 
         assert "Page 1 cancelled." in loguru_sink
         mock_callbacks["on_all_images_loaded"].assert_not_called()
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
     def test_a_stop_as_the_first_page_shows_loads_no_more(
         self,
@@ -2258,7 +2216,7 @@ class TestAFailedPageKeepsItsErrorType:
         # A logged exception's record goes on to hold its traceback.
         assert any(line.startswith(logged) for line in loguru_sink)
         assert "Error loading page 0." in loguru_sink
-        mock_callbacks["on_load_error"].assert_called_once_with(GENUINE_FAILURE)
+        mock_callbacks["on_load_error"].assert_called_once_with()
 
     def test_the_catch_all_names_the_failing_code_not_the_rewrap(
         self,
@@ -2271,3 +2229,244 @@ class TestAFailedPageKeepsItsErrorType:
         reports = [line for line in loguru_sink if line.startswith("Error loading comic at")]
         assert len(reports) == 1
         assert 'in "load_page_image"' in reports[0]
+
+
+class TestAStaleCallbackIsDropped:
+    """Regression: a callback posted just before a close ran on the closed or next comic."""
+
+    @pytest.fixture
+    def fake_scheduler(self) -> _DeferringScheduler:
+        return _DeferringScheduler()
+
+    def test_the_first_page_and_all_loaded_after_a_close_say_nothing(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        fake_scheduler: _DeferringScheduler,
+    ) -> None:
+        page_map, load_order = page_map_and_order
+        loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+        assert len(fake_scheduler.pending) == 2  # noqa: PLR2004
+
+        loader.close_comic()
+        fake_scheduler.run_pending()
+
+        mock_callbacks["on_first_image_loaded"].assert_not_called()
+        mock_callbacks["on_all_images_loaded"].assert_not_called()
+
+    def test_the_old_comics_callbacks_do_not_speak_for_the_next(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        fake_scheduler: _DeferringScheduler,
+    ) -> None:
+        page_map, load_order = page_map_and_order
+        _ = fake_scheduler
+        loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="old.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+        stale = list(fake_scheduler.pending)
+        fake_scheduler.pending.clear()
+
+        loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="new.cbz")
+        loader._thread.join(timeout=3.0)
+        for callback in stale:
+            callback()
+
+        mock_callbacks["on_first_image_loaded"].assert_not_called()
+        mock_callbacks["on_all_images_loaded"].assert_not_called()
+
+        fake_scheduler.run_pending()
+        mock_callbacks["on_first_image_loaded"].assert_called_once_with()
+        mock_callbacks["on_all_images_loaded"].assert_called_once_with()
+
+
+class TestTheSourceIsClosed:
+    def test_a_new_comic_closes_the_source_it_replaces(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    ) -> None:
+        """Regression: only a close closed it, leaving the zips to the garbage collector."""
+        page_map, load_order = page_map_and_order
+        old, new = FakePageImageSource(), FakePageImageSource()
+        loader.set_comic(old, load_order, page_map, archive_desc="old.cbz")
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+
+        loader.set_comic(new, load_order, page_map, archive_desc="new.cbz")
+        loader._thread.join(timeout=3.0)
+
+        assert old.closed
+        assert not new.closed
+
+    def test_a_comic_set_with_no_description_still_closes(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    ) -> None:
+        """Regression: the log description doubled as the "a comic is open" flag."""
+        page_map, load_order = page_map_and_order
+        source = FakePageImageSource()
+        loader.set_comic(source, load_order, page_map)
+        assert loader._thread is not None
+        loader._thread.join(timeout=3.0)
+
+        loader.close_comic()
+
+        assert source.closed
+        assert loader._images == []
+
+
+class TestLazyVolumeLoading:
+    """Resolving with prebuilt comics turned off since boot scans the volumes then and there."""
+
+    @staticmethod
+    def _archives_with_nothing_missing() -> MagicMock:
+        fake_archive = MagicMock()
+        fake_archive.is_missing = False
+        fake_archive.has_overrides.return_value = False
+        archives = MagicMock()
+        archives.get_fantagraphics_archive.return_value = fake_archive
+        return archives
+
+    def test_a_partial_library_does_not_stop_a_title_it_holds(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        """Regression: MissingArchiveFilesError escaped the UI thread uncaught."""
+        mock_reader_settings.use_prebuilt_archives = False
+        archives = self._archives_with_nothing_missing()
+
+        def load_with_a_volume_missing() -> None:
+            loader._fanta_volume_archives = archives
+            raise MissingArchiveFilesError([5], tmp_path)
+
+        with patch.object(loader, "init_data", side_effect=load_with_a_volume_missing):
+            _, volume = loader.resolve_archive_for_comic(
+                _make_fanta_info(volume="FANTA_07"),
+                _make_page_map(),
+                use_fantagraphics_overrides=True,
+            )
+
+        assert volume is archives.get_fantagraphics_archive.return_value
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            DuplicateArchiveFilesError([5], Path("/volumes")),
+            EmptyArchiveError(Path("/volumes/05.cbz")),
+            RuntimeError("bad volume"),
+        ],
+        ids=["duplicate", "empty", "other"],
+    )
+    def test_any_other_scan_failure_says_the_scan_failed(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, error: Exception
+    ) -> None:
+        """Regression: these reached the UI thread as whatever the scan happened to raise."""
+        mock_reader_settings.use_prebuilt_archives = False
+        with (
+            patch.object(loader, "init_data", side_effect=error),
+            pytest.raises(VolumeScanError, match=re.escape(str(error))),
+        ):
+            loader.resolve_archive_for_comic(
+                _make_fanta_info(volume="FANTA_07"),
+                _make_page_map(),
+                use_fantagraphics_overrides=True,
+            )
+
+    def test_a_changed_volumes_folder_is_scanned_again(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        """Regression: the settings' new folder was ignored until the app restarted."""
+        mock_reader_settings.use_prebuilt_archives = False
+        mock_reader_settings.fantagraphics_volumes_dir = tmp_path / "old"
+        archives = self._archives_with_nothing_missing()
+        with patch.object(
+            loader_module, "FantagraphicsVolumeArchives", return_value=archives
+        ) as made:
+            loader.init_data()
+            mock_reader_settings.fantagraphics_volumes_dir = tmp_path / "new"
+            loader.resolve_archive_for_comic(
+                _make_fanta_info(volume="FANTA_07"),
+                _make_page_map(),
+                use_fantagraphics_overrides=True,
+            )
+
+        assert [call.args[0] for call in made.call_args_list] == [
+            tmp_path / "old",
+            tmp_path / "new",
+        ]
+
+    def test_the_same_folder_is_not_scanned_twice(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_reader_settings.use_prebuilt_archives = False
+        mock_reader_settings.fantagraphics_volumes_dir = tmp_path / "volumes"
+        archives = self._archives_with_nothing_missing()
+        with patch.object(
+            loader_module, "FantagraphicsVolumeArchives", return_value=archives
+        ) as made:
+            loader.init_data()
+            loader.resolve_archive_for_comic(
+                _make_fanta_info(volume="FANTA_07"),
+                _make_page_map(),
+                use_fantagraphics_overrides=True,
+            )
+
+        made.assert_called_once()
+
+
+class TestFailuresBeforeThePagesLoad:
+    @pytest.fixture
+    def fake_scheduler(self) -> _DeferringScheduler:
+        return _DeferringScheduler()
+
+    @pytest.mark.parametrize("failing", ["process_rss_mib", "set_busy"])
+    def test_a_failure_starting_the_load_is_reported(
+        self,
+        loader: ComicBookLoader,
+        page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+        mock_callbacks: dict[str, MagicMock],
+        failing: str,
+    ) -> None:
+        """Regression: they ran outside the try, so the thread died with no error callback."""
+        target = loader_module if failing == "process_rss_mib" else RecordingCursor
+        with patch.object(target, failing, side_effect=PermissionError("denied")):
+            _run_load(loader, page_map_and_order)
+
+        mock_callbacks["on_load_error"].assert_called_once()
+
+
+def test_asking_for_a_page_with_no_comic_open_queues_nothing(loader: ComicBookLoader) -> None:
+    loader.prioritize_page("1")
+
+    assert loader._load.priority_keys.empty()
+
+
+def test_a_page_landing_beside_a_failed_one_is_not_lost_to_the_report(
+    loader: ComicBookLoader,
+    mock_callbacks: dict[str, MagicMock],
+) -> None:
+    """Several workers: two pages done in one wait, the first failing, still one report."""
+    loader._scheduler = _DeferringScheduler()
+    page_map, load_order = _make_indexed_page_map(4)
+    barrier = threading.Barrier(2)
+
+    class TwoAtOnceSource(FakePageImageSource):
+        def load_page_image(self, page_info: PageInfo) -> PageImage:
+            if page_info.page_index in {1, 2}:
+                barrier.wait(timeout=2.0)
+            if page_info.page_index == 2:  # noqa: PLR2004
+                msg = "gone"
+                raise FileNotFoundError(msg)
+            return _fake_page()
+
+    loader._max_worker_count = 2
+    _run_load(loader, (page_map, load_order), TwoAtOnceSource())
+
+    mock_callbacks["on_load_error"].assert_called_once()
+    mock_callbacks["on_all_images_loaded"].assert_not_called()

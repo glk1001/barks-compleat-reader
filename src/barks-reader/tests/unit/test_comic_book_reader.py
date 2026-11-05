@@ -635,18 +635,6 @@ class TestComicBookReader:
 
     # --- a load error ---
 
-    def test_a_load_warning_closes_the_reader_and_tells_no_one(
-        self, reader: ComicBookReader
-    ) -> None:
-        reader._all_loaded = True
-        on_load_failed = MagicMock()
-        reader._on_load_failed = on_load_failed
-        with patch.object(reader, "close_comic_book_reader") as close:
-            reader._load_error(load_warning_only=True)
-        close.assert_called_once()
-        on_load_failed.assert_not_called()
-        assert reader._all_loaded is False
-
     def test_a_load_error_closes_the_reader_then_says_so(self, reader: ComicBookReader) -> None:
         """Regression: it raised from the Clock callback, and the app went down with it."""
         reader._all_loaded = True
@@ -654,7 +642,7 @@ class TestComicBookReader:
         calls = MagicMock()
         reader._on_load_failed = calls.on_load_failed
         with patch.object(reader, "close_comic_book_reader", calls.close):
-            reader._load_error(load_warning_only=False)
+            reader._load_error()
         assert [call[0] for call in calls.mock_calls] == ["close", "on_load_failed"]
         assert reader._all_loaded is False
 
@@ -670,7 +658,7 @@ class TestComicBookReader:
         on_load_failed = MagicMock()
         reader._on_load_failed = on_load_failed
 
-        reader._load_error(load_warning_only=False)
+        reader._load_error()
 
         reveal.cancel.assert_called_once_with()
         on_comic_opened.assert_not_called()
@@ -681,7 +669,7 @@ class TestComicBookReader:
     def test_a_load_error_with_no_one_to_tell_only_closes(self, reader: ComicBookReader) -> None:
         reader._on_load_failed = None
         with patch.object(reader, "close_comic_book_reader") as close:
-            reader._load_error(load_warning_only=False)
+            reader._load_error()
         close.assert_called_once()
 
     # --- the collections' titles: the cover or one-pager on show names the bar ---

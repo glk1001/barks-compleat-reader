@@ -12,7 +12,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from loguru import logger
 
 from .comic_book_page_info import slice_comic_layout
-from .fantagraphics_volumes import MissingVolumeError
+from .fantagraphics_volumes import MissingVolumeError, VolumeScanError
 from .reader_setup import prepare_comic_for_reading
 from .user_error_types import ErrorInfo, ErrorTypes
 
@@ -196,8 +196,9 @@ class ComicReaderManager:
             self._layout, comic_book_image_builder = prepare_comic_for_reading(
                 comic, self._reader_settings, self._layout_builder
             )
-        except OSError:
-            # The layout and the panel dimensions come off the disk, here on the UI thread.
+        except (OSError, ValueError):
+            # The layout and the panel dimensions come off the disk, here on the UI thread:
+            # a file missing or unreadable, or a JSON that no longer parses.
             logger.exception(f'Could not prepare "{title}" for reading.')
             self._report_load_failed(title)
             return
@@ -232,6 +233,10 @@ class ComicReaderManager:
                 ErrorTypes.MissingVolumeCannotShowTitle,
                 ErrorInfo(missing_volumes=[e.missing_vol], title=e.title),
             )
+            return
+        except VolumeScanError as e:
+            logger.error(e)
+            self._report_load_failed(title)
             return
         except FileNotFoundError as e:
             # Prebuilt archives: the title's own comic file is absent.

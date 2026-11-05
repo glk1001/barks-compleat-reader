@@ -460,13 +460,13 @@ class ComicBookReader(FloatLayout):
             )
         )
 
-    def _load_error(self, load_warning_only: bool) -> None:
+    def _load_error(self) -> None:
         self._all_loaded = False
         on_load_failed = self._on_load_failed
         # Closed now, whatever follows: the loader has dropped the pages, so a reveal, a
         # page poll or a page turn from here on would ask it for one that is gone.
         self.close_comic_book_reader()
-        if not load_warning_only and on_load_failed is not None:
+        if on_load_failed is not None:
             on_load_failed()
 
     def _show_loading_page(self) -> None:

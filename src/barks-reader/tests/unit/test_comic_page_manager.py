@@ -437,3 +437,18 @@ class TestSinglePageMode:
         loguru_sink.clear()
         pm.prev_page()
         assert loguru_sink == ["Already on the first page: current index = 0."]
+
+
+def test_next_page_with_pages_but_none_current_stays_put_in_single_page_mode(
+    loguru_sink: list[str],
+) -> None:
+    """Regression: from -1 it went to page 0, where double-page mode rightly stays put."""
+    on_page_change = MagicMock()
+    pm = ComicPageManager(on_page_change)
+    pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
+
+    pm.next_page()
+
+    assert pm.get_current_page_index() == -1
+    on_page_change.assert_not_called()
+    assert loguru_sink == ["Already on the last page: current index = -1."]

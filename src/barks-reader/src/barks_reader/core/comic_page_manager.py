@@ -150,7 +150,8 @@ class ComicPageManager:
                 next_unit = self._display_units[unit_idx + 1]
                 logger.debug(f"Next unit: left_page_index = {next_unit.left_page_index}.")
                 self._current_page_index = next_unit.left_page_index
-        elif self._current_page_index >= self._last_page_index:
+        elif not 0 <= self._current_page_index < self._last_page_index:
+            # With no page current there is no next one, as in double-page mode above.
             logger.debug(log_markers.ALREADY_ON_LAST_PAGE.format(index=self._current_page_index))
         else:
             logger.debug(f"Next page: requested index = {self._current_page_index + 1}")

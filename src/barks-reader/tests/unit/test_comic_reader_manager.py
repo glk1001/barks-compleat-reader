@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import OrderedDict
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +14,7 @@ from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_reader.core import comic_reader_manager as comic_reader_manager_module
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.comic_reader_manager import ComicReaderManager
-from barks_reader.core.fantagraphics_volumes import MissingVolumeError
+from barks_reader.core.fantagraphics_volumes import MissingVolumeError, VolumeScanError
 from barks_reader.core.testing import FakeScheduler
 from barks_reader.core.user_error_types import ErrorTypes
 
@@ -823,9 +824,17 @@ class TestUnreadableComic:
             (mock_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS)
         ]
 
-    @pytest.mark.parametrize("error", [FileNotFoundError("gone"), PermissionError("denied")])
-    def test_a_disk_error_preparing_the_comic_is_reported(
-        self, mock_dependencies: dict[str, MagicMock], error: OSError
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FileNotFoundError("gone"),
+            PermissionError("denied"),
+            json.JSONDecodeError("bad panel segments", "{", 0),
+        ],
+        ids=["missing", "denied", "corrupt-json"],
+    )
+    def test_a_file_error_preparing_the_comic_is_reported(
+        self, mock_dependencies: dict[str, MagicMock], error: Exception
     ) -> None:
         scheduler = FakeScheduler()
         manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
@@ -838,6 +847,24 @@ class TestUnreadableComic:
             )
 
         mock_reader.read_comic.assert_not_called()
+        self._assert_told_and_closing(mock_dependencies, scheduler, mock_screen)
+        assert manager.comic_closed() is None
+
+    def test_a_bad_library_met_while_opening_is_reported(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """Regression: scanning the volumes on first use escaped the UI thread uncaught."""
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        mock_reader.read_comic.side_effect = VolumeScanError("duplicate volumes")
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                _a_readable_title(), MagicMock(), "1", use_overrides_active=True
+            )
+
         self._assert_told_and_closing(mock_dependencies, scheduler, mock_screen)
         assert manager.comic_closed() is None
 

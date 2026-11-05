@@ -19,6 +19,14 @@ if TYPE_CHECKING:
 class PageImageSource(Protocol):
     """Resolves, loads, and transforms a single page image for display."""
 
+    def open(self) -> None:
+        """Get ready to load pages. Called on the loader thread, so it may raise and block."""
+        ...
+
+    def close(self) -> None:
+        """Release what :meth:`open` took. Safe before open, and when called twice."""
+        ...
+
     def load_page_image(self, page_info: PageInfo) -> PageImage:
         """Load and return a display-ready image for the given page.
 

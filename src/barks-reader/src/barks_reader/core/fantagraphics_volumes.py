@@ -45,6 +45,10 @@ class MissingVolumeError(Exception):
         self.title = title
 
 
+class VolumeScanError(Exception):
+    """Scanning the volumes failed when a comic needed them, after boot's scan had not run."""
+
+
 class DuplicateArchiveFilesError(Exception):
     def __init__(self, duplicates: list[int], archive_root: Path) -> None:
         super().__init__(
