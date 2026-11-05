@@ -4,16 +4,20 @@
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import REF_PREFIX, SOFT_HYPHEN
 from barks_reader.core.log_markers import pattern
 from barks_reader.ui import hyphen_label
 from barks_reader.ui.hyphen_label import HyphenatingLabel
+from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from barks_reader.core.hyphen_break_engine import Box
 
 SHY = SOFT_HYPHEN
@@ -200,6 +204,65 @@ class TestHyphenatingLabel:
 
 _SHOWN_LINES = 3
 _FEWER_LINES = 2
+
+
+class TestJustifiedLinesRepair:
+    """A justified line's end is brought back after each layout, in the word's own font."""
+
+    @staticmethod
+    def _lay_out(label: HyphenatingLabel) -> MagicMock:
+        core = label._label
+        with patch.object(hyphen_label, "repair_justified_lines") as repair:
+            core._pre_render()
+        return repair
+
+    def test_the_core_label_stays_the_class_kivy_hands_refs_to(self) -> None:
+        assert type(_make_label()._label) is CoreMarkupLabel
+
+    def test_a_justified_label_is_repaired_to_its_width_less_padding(self) -> None:
+        label = HyphenatingLabel(markup=True, halign="justify", padding=[3, 0, 4, 0])
+        label._label.text = "some words"
+        label._label.text_size = (200, None)
+
+        repair = self._lay_out(label)
+
+        repair.assert_called_once()
+        assert repair.call_args.args[1] == 200 - 3 - 4
+
+    def test_a_label_with_no_width_or_another_alignment_is_not(self) -> None:
+        unsized = HyphenatingLabel(markup=True, halign="justify")
+        unsized._label.text = "some words"
+        unsized._label.text_size = (None, None)
+        left = HyphenatingLabel(markup=True, halign="left")
+        left._label.text = "some words"
+        left._label.text_size = (200, None)
+
+        assert not self._lay_out(unsized).called
+        assert not self._lay_out(left).called
+
+    def test_measuring_a_word_leaves_the_label_on_its_own_options(self) -> None:
+        label = HyphenatingLabel(markup=True, halign="justify")
+        core = label._label
+        core.text = "some words"
+        core.text_size = (200, None)
+        word_options = {**core.options, "italic": True}
+        seen: list[bool] = []
+
+        def get_extents(_text: str) -> tuple[int, int]:
+            seen.append(core.options["italic"])
+            return (12, 10)
+
+        def fake_repair(_lines: object, _width: float, measure: Callable[..., float]) -> None:
+            assert measure(SimpleNamespace(text="in", options=word_options)) == 12  # noqa: PLR2004
+
+        with (
+            patch.object(hyphen_label, "repair_justified_lines", side_effect=fake_repair),
+            patch.object(core, "get_extents", side_effect=get_extents),
+        ):
+            core._pre_render()
+
+        assert seen[-1] is True  # the word's font, while it was measured
+        assert not core.options["italic"]
 
 
 class TestLinesReport:

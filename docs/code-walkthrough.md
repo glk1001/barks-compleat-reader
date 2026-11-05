@@ -1224,6 +1224,8 @@ always pulled in via `from .adapters import …`.
   `filtered_title_lists.py` (builds the `title_lists` the tree spec consumes),
   `collection_page_groups.py` (the *All One-Pagers* and *All Covers*
   collections), `hyphen_break_engine.py` (soft hyphenation for long titles),
+  `justified_lines.py` (brings back the end of a justified line Kivy pushes
+  past its edge),
   `log_markers.py` (every log line the GUI tests wait on; §7.8),
   `memory_census.py` and `tap_targets.py` (what the app reports to the GUI
   tests about its live widgets), `linux_desktop_entry.py` (the `.desktop` file

@@ -11,12 +11,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
+from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.label import Label
 from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN, BreakRefinement, RefinementStatus
+from barks_reader.core.justified_lines import JustifiedWord, repair_justified_lines
 
 if TYPE_CHECKING:
     from kivy.input import MotionEvent
@@ -26,6 +28,37 @@ _LOG_SNIPPET_LEN = 60
 # Seconds of quiet before the lines are reported: the text, its width and the lines shown
 # each settle on a frame of their own, and only where they end up says anything.
 _LINES_REPORT_DELAY = 0.25
+
+
+def _keep_justified_lines_inside(core_label: CoreMarkupLabel) -> None:
+    """Have this core label repair its justified lines after each layout.
+
+    On the instance rather than by a subclass: Kivy's `Label` checks that its core label's
+    class is exactly `MarkupLabel`, and hands over no refs otherwise.
+    """
+    lay_out = core_label._pre_render  # noqa: SLF001
+
+    def measure(word: JustifiedWord) -> float:
+        options = core_label.options
+        core_label.options = word.options
+        try:
+            return core_label.get_extents(word.text)[0]
+        finally:
+            core_label.options = options
+
+    def lay_out_and_repair() -> tuple[int, int]:
+        size = lay_out()
+        width = core_label.text_size[0]
+        if core_label.options["halign"] == "justify" and width is not None:
+            padding = core_label.options["padding"]
+            repair_justified_lines(
+                core_label._cached_lines,  # noqa: SLF001
+                width - padding[0] - padding[2],
+                measure,
+            )
+        return size
+
+    core_label._pre_render = lay_out_and_repair  # noqa: SLF001  # ty: ignore[invalid-assignment]
 
 
 class HyphenatingLabel(Label):
@@ -59,6 +92,12 @@ class HyphenatingLabel(Label):
             font_size=self._request_refine,
             shown_lines=self._apply_shown_lines,
         )
+
+    def _create_label(self) -> None:
+        previous = self._label
+        super()._create_label()
+        if self._label is not previous and isinstance(self._label, CoreMarkupLabel):
+            _keep_justified_lines_inside(self._label)
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
         # The refs in this label are layout scaffolding, not links: skip Label's
