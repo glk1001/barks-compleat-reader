@@ -1,6 +1,6 @@
 # ruff: noqa: ERA001, RUF001
 # cspell:ignore brittanica cawdor glamis harlech humoristically pince saludos strzyz
-# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf
+# cspell:ignore stylised vlottes batgirl minicomic willits creem coty ivie kampf hunza shor
 
 from .barks_titles import Titles
 
@@ -434,6 +434,13 @@ BARKS_EXTRA_INFO = {
     ' [i]"About the 8th grade, I had to read it and recite it in school. I thought it was a'
     " tiresome way of telling a story back then, but the meter lends itself very well to"
     " the comments of the Peeweegahs when they talk about what they're going to do.\"[/i]",
+    Titles.TRALLA_LA: "Barks based Tralla La on the real-life kingdom of Hunza, whose people were"
+    " reputed to live extraordinarily long and healthy lives. He wrote in a 1987 letter:"
+    ' [i]"It was fairly common fare in the media that all us stupid stuffers of junk food and'
+    ' breathers of carbon monoxide were missing the good life."[/i]'
+    "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir of"
+    " Hunza says gold was the only thing that ever worried his people, and a Hunza man walked eight"
+    " miles to return Shor's lost watch, as the honest rice farmer returns Scrooge's bottle cap.",
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
