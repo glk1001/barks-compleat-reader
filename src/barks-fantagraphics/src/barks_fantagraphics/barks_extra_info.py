@@ -386,7 +386,11 @@ BARKS_EXTRA_INFO = {
     ' I managed to save the story by renaming the old girls Larkies."[/i] Therefore, in this'
     " digital edition, 'Larkie' has been changed to 'Harpie'. (Pages 6, 7, 9, 13-16, and 18-26,"
     " re-lettered by GLK, December 2023)",
-    Titles.SECRET_OF_ATLANTIS_THE: "The first appearance of the [b][i]Worry Room[/i][/b].",
+    Titles.SECRET_OF_ATLANTIS_THE: "The first appearance of the [b][i]Worry Room[/i][/b]."
+    "\n\nBarks expanded this story from a planned ten-pager to 32 pages. The initial idea came"
+    " from his editor Chase Craig, who suggested"
+    ' [i]"a way that Uncle Scrooge could inflate the value of a very common coin by obliterating'
+    ' all but one of a whole issue."[/i]',
     Titles.FORBIDDEN_VALLEY: 'This is a new version of [b][i]"Darkest Africa".[/i][/b]\n'
     '\nBarks wrote this is in a letter to John Spicer in 1960: [i]"If in the future you notice a'
     " dropping off in quality of my stories, don't be surprised. The mind is not a bottomless"
