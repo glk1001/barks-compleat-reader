@@ -436,6 +436,8 @@ BARKS_EXTRA_INFO = {
     ' [i]"it was something that grew in the tropics and gave him an excuse to go to the tropics.'
     " God, otherwise I could have said, 'codfish tails,' and sent him to Iceland.\"[/i]"
     ' The craving never came back: [i]"It was just a gimmick to make a story."[/i]',
+    Titles.ODDBALL_ODYSSEY: "This story was published without panel borders of any kind, a strange"
+    " experiment by Western that, for Uncle Scrooge, was abandoned after this issue.",
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
     " that I had touched on something that was a little different than just about any other"
     " space-type story that's come around. Creatures from outer space are villainous"
