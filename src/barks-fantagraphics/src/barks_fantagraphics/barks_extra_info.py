@@ -343,6 +343,11 @@ BARKS_EXTRA_INFO = {
     " was so nervous because I'd never done anything that thousands and thousands of people would"
     " look at. I kept having visions of people opening these books and looking at all these"
     ' scales on the fish to see if they were in just the right places."[/i]',
+    Titles.MASTER_RAINMAKER_THE: "In his 1983 notes for The Carl Barks Library, Barks said the"
+    ' inspiration for this story [i]"grew out of the news events of the period. Rainmaking by'
+    " seeding clouds was getting a lot of publicity, and who could perfect the technique better"
+    " than Donald Duck -"
+    ' and overdo it more disastrously?"[/i]',
     Titles.MONEY_STAIRS_THE: "In a letter from October 3, 1973, to Kim Weston, Barks commented"
     ' on the ending to [i]"The Money Stairs": "...it was quite likely changed to a dream ending'
     " by me. I believe I recall looking at the panel of Uncle Scrooge's money ramp and"
