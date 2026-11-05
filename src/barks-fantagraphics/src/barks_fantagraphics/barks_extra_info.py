@@ -393,7 +393,9 @@ BARKS_EXTRA_INFO = {
     "\n\nBarks expanded this story from a planned ten-pager to 32 pages. The initial idea came"
     " from his editor Chase Craig, who suggested"
     ' [i]"a way that Uncle Scrooge could inflate the value of a very common coin by obliterating'
-    ' all but one of a whole issue."[/i]',
+    ' all but one of a whole issue."[/i]'
+    "\n\nAnd on page 15 is the first mention of the [b][i]Junior Woodchucks' Book of"
+    " Knowledge[/i][/b], the precursor of the Guidebook.",
     Titles.FORBIDDEN_VALLEY: 'This is a new version of [b][i]"Darkest Africa".[/i][/b]\n'
     '\nBarks wrote this is in a letter to John Spicer in 1960: [i]"If in the future you notice a'
     " dropping off in quality of my stories, don't be surprised. The mind is not a bottomless"
@@ -447,7 +449,8 @@ BARKS_EXTRA_INFO = {
     ' breathers of carbon monoxide were missing the good life."[/i]'
     "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir of"
     " Hunza says gold was the only thing that ever worried his people, and a Hunza man walked eight"
-    " miles to return Shor's lost watch, as the honest rice farmer returns Scrooge's bottle cap.",
+    " miles to return Shor's lost watch, as the honest rice farmer returns Scrooge's bottle cap."
+    "\n\nAnd on page 7 is the first mention of the [b][i]Junior Woodchucks' Guidebook.[/i][/b]",
     Titles.SEVEN_CITIES_OF_CIBOLA_THE: "The plot started in Indio, California, where welfare"
     " director Al Koch (seen in the story kicking the Beagle Boys out of the welfare office) showed"
     " Barks an ancient Indian trail near Thousand Palms. Barks wrote in a 1968 letter to Michael"
