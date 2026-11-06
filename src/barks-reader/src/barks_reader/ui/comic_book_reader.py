@@ -1013,9 +1013,10 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
             f" self._action_bar.height = {self._action_bar.height}."
         )
 
-    # In fullscreen with the action bar hidden, a click in the top margin reveals the bar.
-    # When the action bar is visible, top-region clicks pass through to the action bar buttons
-    # (which sit naturally above the image area thanks to the BoxLayout reflow).
+    # In fullscreen a click in the top margin toggles the action bar: it reveals a hidden
+    # bar, and a click in the strip of the margin left below a shown bar hides it again.
+    # Clicks on the bar itself go to its buttons (which sit above the image area thanks
+    # to the BoxLayout reflow). Windowed, the bar is always up and the margin does nothing.
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:
@@ -1026,9 +1027,17 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
             # Another button has been pressed.
             return True
 
-        if self._is_action_bar_hidden() and self.comic_book_reader.is_click_in_top_margin(touch):
+        if not self.comic_book_reader.is_click_in_top_margin(touch):
+            return False
+
+        if self._is_action_bar_hidden():
             logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
             self._show_action_bar()
+            return True
+
+        if WindowManager.is_fullscreen_now() and not self._action_bar.collide_point(*touch.pos):
+            logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
+            self._hide_action_bar()
             return True
 
         return False

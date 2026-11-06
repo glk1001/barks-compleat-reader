@@ -275,10 +275,16 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         if self.ids.doc_action_bar.collide_point(*touch.pos):
             return bool(super().on_touch_down(touch))
 
-        # A hidden bar (fullscreen) comes back on a tap along the top, where it was.
-        if self._is_action_bar_hidden() and self._is_touch_in_top_margin(touch):
-            logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
-            self._show_action_bar()
+        # A hidden bar (fullscreen) comes back on a tap along the top, where it was, and
+        # goes again on a tap in the strip just below it, as in the comic reader.
+        if self._is_action_bar_hidden():
+            if self._is_touch_in_top_margin(touch):
+                logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
+                self._show_action_bar()
+                return True
+        elif self.is_fullscreen and self._is_touch_just_below_the_bar(touch):
+            logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
+            self._hide_action_bar()
             return True
 
         if self.ids.doc_page.collide_point(*touch.pos):
@@ -293,6 +299,10 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
     def _is_touch_in_top_margin(self, touch: MotionEvent) -> bool:
         return touch.y > self.top - self.ACTION_BAR_HEIGHT
+
+    def _is_touch_just_below_the_bar(self, touch: MotionEvent) -> bool:
+        # A strip as tall as the bar, under it: taps on the bar itself went to it above.
+        return touch.y > self.top - 2 * self.ACTION_BAR_HEIGHT
 
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]

@@ -198,8 +198,8 @@ def test_a_tap_leaves_keyboard_menu_mode(boot: AppBoot) -> None:
     d.close_reader()
 
 
-def test_in_fullscreen_a_top_tap_shows_the_hidden_bar(boot: AppBoot) -> None:
-    """Tap Fullscreen, and the bar hides; a top-margin tap brings it back to tap again."""
+def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
+    """Tap Fullscreen, and the bar hides; top-margin taps show it, hide it, show it again."""
     d = _open_the_ghost_of_the_grotto(boot)
     taps.tap_then_wait(
         d,
@@ -211,6 +211,15 @@ def test_in_fullscreen_a_top_tap_shows_the_hidden_bar(boot: AppBoot) -> None:
     _, shown = taps.targets(d)
     assert not [t for t in shown if t.id == "fullscreen_button"], "the bar hides in fullscreen"
     try:
+        taps.tap_then_wait(
+            d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
+        )
+        # The margin toggles: its strip left under the shown bar hides it, and shows it again.
+        d.settle()
+        taps.tap_then_wait(
+            d, markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
+        )
+        d.settle()
         taps.tap_then_wait(
             d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
         )

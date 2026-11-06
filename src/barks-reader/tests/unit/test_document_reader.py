@@ -577,6 +577,40 @@ class TestFullscreen:
         assert "Showing action bar on top margin press." in loguru_sink
         assert screen._current_page_index == 0  # not a page turn
 
+    @pytest.mark.parametrize(
+        ("fullscreen", "y", "hidden"),
+        [(True, 530, True), (False, 530, False), (True, 400, False)],
+        ids=["fullscreen-strip", "windowed-strip", "fullscreen-page"],
+    )
+    def test_a_tap_just_below_a_shown_bar_hides_it_in_fullscreen(
+        self,
+        screen: DocumentReaderScreen,
+        tmp_path: Path,
+        loguru_sink: list[str],
+        *,
+        fullscreen: bool,
+        y: int,
+        hidden: bool,
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        (tmp_path / "page-002.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.is_fullscreen = fullscreen
+        screen._update_widget_states()
+        bar = screen.ids["doc_action_bar"]
+        screen._show_action_bar()  # as a top-margin tap left it
+        bar.collide_point.return_value = False
+        page = MagicMock()
+        page.collide_point.return_value = True
+        page.center_x = 400
+        screen.ids["doc_page"] = page
+        screen.size = (800, 600)
+        with patch.object(screen, "_clear_menu_on_touch"):
+            assert screen.on_touch_down(MagicMock(pos=(500, y), x=500, y=y)) is True
+        assert bar.disabled is hidden
+        assert ("Hiding action bar on top margin press." in loguru_sink) is hidden
+        assert screen._current_page_index == (0 if hidden else 1)  # a page turn, or not
+
     def test_a_close_in_the_entry_mode_leaves_at_once(
         self, screen: DocumentReaderScreen, tmp_path: Path
     ) -> None:

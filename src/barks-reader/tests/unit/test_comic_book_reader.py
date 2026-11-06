@@ -989,13 +989,54 @@ class TestComicBookReaderScreen:
                 assert handled is True
                 mock_show.assert_called_once()
 
-        # Case: action bar visible -> top margin click is NOT consumed (passes through to
-        # the action bar buttons).
-        with patch.object(screen, "_is_action_bar_hidden", return_value=False):  # noqa: SIM117
-            with patch.object(screen, "_show_action_bar") as mock_show:
-                handled = screen.on_touch_down(touch)
-                assert handled is False
-                mock_show.assert_not_called()
+        # Case: windowed, action bar visible -> top margin click is NOT consumed (the bar is
+        # always up windowed).
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=False),
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(screen, "_show_action_bar") as mock_show,
+            patch.object(screen, "_hide_action_bar") as mock_hide,
+        ):
+            window_manager.is_fullscreen_now.return_value = False
+            handled = screen.on_touch_down(touch)
+            assert handled is False
+            mock_show.assert_not_called()
+            mock_hide.assert_not_called()
+
+    def test_a_top_margin_tap_below_a_shown_bar_hides_it_in_fullscreen(
+        self, screen: ComicBookReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        """The margin toggles in fullscreen: the strip left under the shown bar hides it."""
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = True
+        screen._action_bar = MagicMock()
+        screen._action_bar.collide_point.return_value = False
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=False),
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(screen, "_hide_action_bar") as mock_hide,
+        ):
+            window_manager.is_fullscreen_now.return_value = True
+            assert screen.on_touch_down(MagicMock(pos=(400, 900))) is True
+        mock_hide.assert_called_once_with()
+        assert log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN in loguru_sink
+
+    def test_a_tap_on_a_shown_bar_off_its_buttons_leaves_it_up(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """A tap on the bar's own title, say, is not the margin under it."""
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = True
+        screen._action_bar = MagicMock()
+        screen._action_bar.collide_point.return_value = True
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=False),
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(screen, "_hide_action_bar") as mock_hide,
+        ):
+            window_manager.is_fullscreen_now.return_value = True
+            assert screen.on_touch_down(MagicMock(pos=(400, 1000))) is False
+        mock_hide.assert_not_called()
 
     def test_the_menu_over_a_visible_action_bar_leaves_it_as_it_is(
         self, screen: ComicBookReaderScreen
