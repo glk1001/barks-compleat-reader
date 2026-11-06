@@ -269,6 +269,9 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
+        # Read before the tap leaves menu mode, which hides a bar the menu showed: the
+        # margin must not then bring it straight back.
+        bar_was_hidden = self._is_action_bar_hidden()
         self._clear_menu_on_touch()
 
         # Let action bar buttons handle their own touches first.
@@ -277,7 +280,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
         # A hidden bar (fullscreen) comes back on a tap along the top, where it was, and
         # goes again on a tap in the strip just below it, as in the comic reader.
-        if self._is_action_bar_hidden():
+        if bar_was_hidden:
             if self._is_touch_in_top_margin(touch):
                 logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
                 self._show_action_bar()

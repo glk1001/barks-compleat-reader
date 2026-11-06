@@ -15,6 +15,7 @@ from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui import reader_close_mixin as reader_close_mixin_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
+from barks_reader.ui.reader_keyboard_nav import ActionBarNavMixin
 from barks_reader.ui.reader_screens import ReaderScreen
 
 if TYPE_CHECKING:
@@ -575,6 +576,32 @@ class TestFullscreen:
             assert screen.on_touch_down(MagicMock(pos=(400, 590), x=400, y=590)) is True
         assert bar.disabled is False
         assert "Showing action bar on top margin press." in loguru_sink
+        assert screen._current_page_index == 0  # not a page turn
+
+    def test_a_tap_below_a_bar_the_menu_showed_leaves_it_hidden(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """Leaving the menu hides its bar; the margin under it must not bring it back."""
+        (tmp_path / "page-001.png").write_bytes(b"")
+        (tmp_path / "page-002.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.is_fullscreen = True
+        screen._update_widget_states()
+        bar = screen.ids["doc_action_bar"]
+        bar.collide_point.return_value = False
+        # The fixture leaves the bar's menu out; this test needs it, over stand-in buttons.
+        ActionBarNavMixin._setup_action_bar_nav(screen, [MagicMock() for _ in range(3)], 2)
+        screen._enter_menu_mode()  # Escape: the menu shows the bar
+        assert bar.disabled is False
+        page = MagicMock()
+        page.collide_point.return_value = True
+        page.center_x = 400
+        screen.ids["doc_page"] = page
+        screen.size = (800, 600)
+        assert screen.on_touch_down(MagicMock(pos=(500, 530), x=500, y=530)) is True
+        assert screen._menu_mode is False
+        assert bar.disabled is True
+        assert "Showing action bar on top margin press." not in loguru_sink
         assert screen._current_page_index == 0  # not a page turn
 
     @pytest.mark.parametrize(

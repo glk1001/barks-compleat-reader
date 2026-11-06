@@ -1017,10 +1017,13 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
     # bar, and a click in the strip of the margin left below a shown bar hides it again.
     # Clicks on the bar itself go to its buttons (which sit above the image area thanks
     # to the BoxLayout reflow). Windowed, the bar is always up and the margin does nothing.
+    # The bar's state is read before the tap leaves menu mode: a bar the menu showed is
+    # hidden again by that, and the margin under it must not then bring it straight back.
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
+        bar_was_hidden = self._is_action_bar_hidden()
         self._clear_menu_on_touch()
 
         if super().on_touch_down(touch):
@@ -1030,7 +1033,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         if not self.comic_book_reader.is_click_in_top_margin(touch):
             return False
 
-        if self._is_action_bar_hidden():
+        if bar_was_hidden:
             logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
             self._show_action_bar()
             return True
