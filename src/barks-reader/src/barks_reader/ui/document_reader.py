@@ -258,13 +258,24 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             self._update_page_source()
 
     def tap_target_regions(self) -> dict[str, Rect]:
-        """Return the page box's two halves, back and forward, for a GUI test to tap."""
+        """Return the page box's two halves, back and forward, for a GUI test to tap.
+
+        In fullscreen the top margin too, the page box wide: where the hidden bar was,
+        which a tap shows it from, or the strip just under the shown bar, which a tap
+        hides it from (``on_touch_down``). Windowed, a tap there turns the page.
+        """
         page = self.ids.doc_page
         half = page.width / 2
-        return {
+        regions = {
             "left half": window_rect(page, page.x, page.y, half, page.height),
             "right half": window_rect(page, page.x + half, page.y, page.width - half, page.height),
         }
+        if self.is_fullscreen:
+            # In the space of the page box's position: the screen's own, its top its height.
+            bar = self.ACTION_BAR_HEIGHT
+            bottom = self.height - (bar if self._is_action_bar_hidden() else 2 * bar)
+            regions["top margin"] = window_rect(page, page.x, bottom, page.width, bar)
+        return regions
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:

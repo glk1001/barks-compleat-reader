@@ -48,6 +48,7 @@ GOTO_TITLES = frozenset(
     indexable_title(title) for title in Titles if get_fanta_info(title) is not None
 )
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
+DOCUMENT_READER = "DocumentReaderScreen"
 ANY_REVEAL = pattern(markers.TREE_CHILDREN_REVEALED)
 # The pinner leaves a drift under half a pixel alone, which a row's rounded top can
 # show as one.
@@ -198,10 +199,17 @@ def test_a_tap_leaves_keyboard_menu_mode(boot: AppBoot) -> None:
     d.close_reader()
 
 
+def _bar_is_hidden(d: Driver) -> bool:
+    """Whether the reader's bar is hidden: its Fullscreen button is not tappable."""
+    _, shown = taps.targets(d)
+    return not [t for t in shown if t.id == "fullscreen_button"]
+
+
 def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
     """Tap Fullscreen, and the bar hides; top-margin taps show and hide it, as Escape does.
 
-    A tap on a button of the bar Escape showed for the menu presses it.
+    A tap under the bar Escape showed for the menu leaves the menu and the bar hidden;
+    a tap on one of that bar's buttons presses it.
     """
     d = _open_the_ghost_of_the_grotto(boot)
     taps.tap_then_wait(
@@ -211,8 +219,7 @@ def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
         timeout=FULLSCREEN_TIMEOUT,
     )
     d.settle()
-    _, shown = taps.targets(d)
-    assert not [t for t in shown if t.id == "fullscreen_button"], "the bar hides in fullscreen"
+    assert _bar_is_hidden(d), "the bar hides in fullscreen"
     try:
         taps.tap_then_wait(
             d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
@@ -231,9 +238,22 @@ def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
         with d.expect(markers.ACTION_BAR_HIDDEN_ON_ESCAPE):
             d.key("Escape")
         assert not d.in_menu_mode(), "Escape on a tap-shown bar dismisses it"
-        # Escape again brings the bar back for the menu; a tap on one of its buttons
-        # leaves the menu and presses that button, the bar kept up under the tap.
+        # Escape again brings the bar back for the menu; a tap under it leaves the
+        # menu, which hides the bar, and the margin must not bring it straight back.
         d.settle()
+        d.key_then_wait(markers.MENU_ENTERED, "Escape")
+        d.settle()
+        with d.expect(markers.MENU_EXITED):
+            taps.tap_then_wait(
+                d,
+                markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN,
+                kind="ComicBookReader",
+                text="top margin",
+            )
+        d.settle()
+        assert _bar_is_hidden(d), "a tap under the menu's bar leaves it hidden"
+        # Into the menu once more; a tap on one of its bar's buttons leaves the menu
+        # and presses that button, the bar kept up under the tap.
         d.key_then_wait(markers.MENU_ENTERED, "Escape")
         d.settle()
         taps.tap_then_wait(
@@ -335,6 +355,70 @@ def test_document_halves_turn_its_pages(boot: AppBoot) -> None:
         d, pattern(markers.DOCUMENT_PAGE, page=1), kind="DocumentReaderScreen", text="left half"
     )
     assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1", str(turned_to), "1"]
+    with d.expect(markers.DOCUMENT_CLOSING):
+        taps.tap(d, text="Close")
+
+
+def _tap_document_top_margin(d: Driver, then: str) -> None:
+    taps.tap_then_wait(d, then, kind=DOCUMENT_READER, text="top margin")
+
+
+def test_in_fullscreen_a_document_top_tap_toggles_the_bar(boot: AppBoot) -> None:
+    """The comic reader's fullscreen bar, in the document reader: taps and Escape alike.
+
+    Top-margin taps show and hide the bar, and Escape hides one a tap showed; a tap
+    under the bar Escape showed for the menu leaves it hidden, and a tap on one of that
+    bar's buttons presses it. None of these taps turns a page.
+    """
+    d = _boot(boot, nodes.APPENDIX)
+    with d.expect(pattern(markers.DOCUMENT_PAGE, page=1)), d.expect(DOCUMENT_ENTERED):
+        taps.tap(d, text=nodes.CENSORSHIP_DOCUMENT)
+    taps.tap_then_wait(
+        d,
+        pattern(markers.ENTERED_FULLSCREEN, screen=DOCUMENT_READER),
+        kv_id="fullscreen_button",
+        timeout=FULLSCREEN_TIMEOUT,
+    )
+    d.settle()
+    assert _bar_is_hidden(d), "the bar hides in fullscreen"
+    try:
+        _tap_document_top_margin(d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
+        d.settle()
+        _tap_document_top_margin(d, markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
+        d.settle()
+        _tap_document_top_margin(d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
+        d.settle()
+        with d.expect(markers.ACTION_BAR_HIDDEN_ON_ESCAPE):
+            d.key("Escape")
+        assert not d.in_menu_mode(), "Escape on a tap-shown bar dismisses it"
+        d.settle()
+        d.key_then_wait(markers.MENU_ENTERED, "Escape")
+        d.settle()
+        with d.expect(markers.MENU_EXITED):
+            _tap_document_top_margin(d, markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
+        d.settle()
+        assert _bar_is_hidden(d), "a tap under the menu's bar leaves it hidden"
+        d.key_then_wait(markers.MENU_ENTERED, "Escape")
+        d.settle()
+        taps.tap_then_wait(
+            d,
+            pattern(markers.ENTERED_WINDOWED, screen=DOCUMENT_READER),
+            kv_id="fullscreen_button",
+            timeout=FULLSCREEN_TIMEOUT,
+        )
+    except taps.TapOutsideWindowError as exc:
+        # As in the comic reader's: fullscreen is not real on a nested display with no
+        # window manager. Back to windowed by the bar's key path, then close.
+        with d.expect(
+            pattern(markers.ENTERED_WINDOWED, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT
+        ):
+            d.press_document_menu_button("fullscreen")
+        d.settle()
+        with d.expect(markers.DOCUMENT_CLOSING):
+            d.press_document_menu_button("close")
+        pytest.skip(f"fullscreen is not real on this nested screen: {exc}")
+    assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1"], "no tap turned a page"
+    d.settle()
     with d.expect(markers.DOCUMENT_CLOSING):
         taps.tap(d, text="Close")
 

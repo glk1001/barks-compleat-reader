@@ -580,6 +580,37 @@ class TestFullscreen:
         assert screen._current_page_index == 0  # not a page turn
 
     @pytest.mark.parametrize(
+        ("fullscreen", "bar_shown", "top_margin_bottom"),
+        [(False, True, None), (True, False, 600 - 45), (True, True, 600 - 2 * 45)],
+        ids=["windowed", "fullscreen-hidden", "fullscreen-shown"],
+    )
+    def test_the_tap_targets_are_the_halves_and_in_fullscreen_the_top_margin(
+        self,
+        screen: DocumentReaderScreen,
+        *,
+        fullscreen: bool,
+        bar_shown: bool,
+        top_margin_bottom: int | None,
+    ) -> None:
+        """The top margin is where the hidden bar was, or the strip under the shown one."""
+        screen.ACTION_BAR_HEIGHT = 45
+        screen.is_fullscreen = fullscreen
+        screen._update_widget_states()
+        if bar_shown:
+            screen._show_action_bar()
+        page = MagicMock(x=100, y=0, width=600, height=600)
+        page.to_window.side_effect = lambda x, y: (x + 5, y + 7)
+        screen.ids["doc_page"] = page
+        screen.size = (800, 600)
+        regions = screen.tap_target_regions()
+        assert regions["left half"] == (105, 7, 300, 600)
+        assert regions["right half"] == (405, 7, 300, 600)
+        if top_margin_bottom is None:
+            assert "top margin" not in regions
+        else:
+            assert regions["top margin"] == (105, top_margin_bottom + 7, 600, 45)
+
+    @pytest.mark.parametrize(
         ("fullscreen", "bar_shown", "dismissed"),
         [(True, True, True), (True, False, False), (False, True, False)],
         ids=["fullscreen-tap-shown", "fullscreen-hidden", "windowed"],
