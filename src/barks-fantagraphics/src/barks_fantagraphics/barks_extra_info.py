@@ -452,7 +452,7 @@ BARKS_EXTRA_INFO = {
     "\n\nDetails come from Jean and Franc Shor's 1953 National Geographic article: the Mir says"
     " gold was his people's only worry, and a man walked eight miles to return Shor's lost watch,"
     " as the rice farmer returns Scrooge's bottle cap."
-    "\n\nAnd on page 7 is the first mention of the [b][i]Junior Woodchucks' Guidebook.[/i][/b]",
+    " And on page 7 is the first mention of the [b][i]Junior Woodchucks' Guidebook.[/i][/b]",
     Titles.SEVEN_CITIES_OF_CIBOLA_THE: "The plot started in Indio, California, where welfare"
     " director Al Koch (seen in the story kicking the Beagle Boys out of the welfare office) showed"
     " Barks an ancient Indian trail near Thousand Palms. Barks wrote in a 1968 letter to Michael"
