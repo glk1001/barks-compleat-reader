@@ -199,7 +199,7 @@ def test_a_tap_leaves_keyboard_menu_mode(boot: AppBoot) -> None:
 
 
 def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
-    """Tap Fullscreen, and the bar hides; top-margin taps show it, hide it, show it again."""
+    """Tap Fullscreen, and the bar hides; top-margin taps show and hide it, as Escape hides it."""
     d = _open_the_ghost_of_the_grotto(boot)
     taps.tap_then_wait(
         d,
@@ -219,6 +219,15 @@ def test_in_fullscreen_a_top_tap_toggles_the_bar(boot: AppBoot) -> None:
         taps.tap_then_wait(
             d, markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
         )
+        d.settle()
+        taps.tap_then_wait(
+            d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"
+        )
+        # Escape dismisses a bar a tap showed, without entering the menu on it.
+        d.settle()
+        with d.expect(markers.ACTION_BAR_HIDDEN_ON_ESCAPE):
+            d.key("Escape")
+        assert not d.in_menu_mode(), "Escape on a tap-shown bar dismisses it"
         d.settle()
         taps.tap_then_wait(
             d, markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN, kind="ComicBookReader", text="top margin"

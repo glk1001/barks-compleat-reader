@@ -304,6 +304,7 @@ GOTO_PAGE_DROPDOWN_OPENED: Final = "Goto page dropdown opened."
 GOTO_PAGE_SELECTED: Final = 'Goto page selected: "{page}".'
 ACTION_BAR_SHOWN_ON_TOP_MARGIN: Final = "Showing action bar on top margin press."
 ACTION_BAR_HIDDEN_ON_TOP_MARGIN: Final = "Hiding action bar on top margin press."
+ACTION_BAR_HIDDEN_ON_ESCAPE: Final = "Hiding action bar on Escape."
 
 # ------------------------------------------------------------ the fun view --
 FUN_OPTIONS_PRESSED: Final = "Fun view options button pressed. New state is '{state}'."

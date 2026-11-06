@@ -5,7 +5,14 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.core.keys import KEY_LEFT, KEY_PAGE_DOWN, KEY_PAGE_UP, KEY_RIGHT
+from barks_reader.core.keys import (
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_UP,
+)
 from barks_reader.ui import reader_keyboard_nav as nav_module
 from barks_reader.ui.reader_keyboard_nav import (
     _FOCUS_BINDING_ATTR,
@@ -235,6 +242,33 @@ class TestOpenDropdown:
         dropdown.open_if_shown.return_value = True
         assert open_dropdown(dropdown, _make_widget()) is True
         assert not any("Dropdown not opened" in line for line in loguru_sink)
+
+
+class TestEscapeOnAShownBar:
+    """Escape dismisses a bar a tap showed, when the screen says so; else it opens the menu."""
+
+    def test_escape_opens_the_menu_by_default(self) -> None:
+        screen = _StubScreen([MagicMock()])
+        with patch.object(nav_module, "update_focus_in_list"):
+            assert screen._handle_reader_key(KEY_ESCAPE)
+        assert screen._menu_mode is True
+
+    def test_escape_on_a_bar_the_screen_dismisses_does_not_open_the_menu(self) -> None:
+        screen = _StubScreen([MagicMock()])
+        with patch.object(screen, "_dismiss_shown_bar_on_escape", return_value=True) as dismiss:
+            assert screen._handle_reader_key(KEY_ESCAPE)
+        dismiss.assert_called_once_with()
+        assert screen._menu_mode is False
+
+    def test_up_opens_the_menu_on_a_bar_escape_would_dismiss(self) -> None:
+        screen = _StubScreen([MagicMock()])
+        with (
+            patch.object(screen, "_dismiss_shown_bar_on_escape", return_value=True) as dismiss,
+            patch.object(nav_module, "update_focus_in_list"),
+        ):
+            assert screen._handle_reader_key(KEY_UP)
+        dismiss.assert_not_called()
+        assert screen._menu_mode is True
 
 
 class TestPageTurnHooks:

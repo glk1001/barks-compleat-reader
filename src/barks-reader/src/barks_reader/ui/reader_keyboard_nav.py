@@ -169,6 +169,14 @@ class ActionBarNavMixin:
     def _on_action_bar_hidden_after_menu(self) -> None:
         """Hide the action bar again when leaving menu mode."""
 
+    def _dismiss_shown_bar_on_escape(self) -> bool:
+        """Hide a bar a tap showed (fullscreen) on Escape; return whether it did.
+
+        Outside menu mode a bar that can hide is up only because a tap showed it:
+        Escape dismisses it, as it leaves a menu, instead of entering the menu on it.
+        """
+        return False
+
     # --- Menu mode lifecycle ---
 
     def _enter_menu_mode(self) -> None:
@@ -212,6 +220,8 @@ class ActionBarNavMixin:
             self._reading_next_page()
         elif key == KEY_LEFT:
             self._reading_prev_page()
+        elif is_escape_key(key) and self._dismiss_shown_bar_on_escape():
+            pass
         elif key == KEY_UP or is_escape_key(key):
             self._enter_menu_mode()
         else:

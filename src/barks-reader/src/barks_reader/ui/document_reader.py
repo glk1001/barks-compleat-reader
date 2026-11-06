@@ -369,6 +369,14 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         if self.is_fullscreen:
             self._hide_action_bar()
 
+    @override
+    def _dismiss_shown_bar_on_escape(self) -> bool:
+        if not self.is_fullscreen or self._is_action_bar_hidden():
+            return False
+        logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_ESCAPE)
+        self._hide_action_bar()
+        return True
+
     def _reading_next_page(self) -> None:
         self.next_page()
 

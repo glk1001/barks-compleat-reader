@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import barks_reader.ui.comic_book_reader
 import barks_reader.ui.reader_close_mixin
+import barks_reader.ui.reader_keyboard_nav
 import pytest
 from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.barks_titles import Titles
@@ -1037,6 +1038,32 @@ class TestComicBookReaderScreen:
         assert screen._menu_mode is False
         assert screen._action_bar.disabled is True
         assert log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN not in loguru_sink
+
+    @pytest.mark.parametrize(
+        ("fullscreen", "bar_shown", "dismissed"),
+        [(True, True, True), (True, False, False), (False, True, False)],
+        ids=["fullscreen-tap-shown", "fullscreen-hidden", "windowed"],
+    )
+    def test_escape_dismisses_a_bar_a_tap_showed_in_fullscreen(
+        self,
+        screen: ComicBookReaderScreen,
+        loguru_sink: list[str],
+        *,
+        fullscreen: bool,
+        bar_shown: bool,
+        dismissed: bool,
+    ) -> None:
+        """Else Escape opens the menu on the bar, showing it first if it was hidden."""
+        screen._action_bar = MagicMock(disabled=not bar_shown)
+        with (
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(barks_reader.ui.reader_keyboard_nav, "update_focus_in_list"),
+        ):
+            window_manager.is_fullscreen_now.return_value = fullscreen
+            assert screen._handle_reader_key(27)  # Escape
+        assert screen._menu_mode is not dismissed
+        assert screen._action_bar.disabled is dismissed
+        assert (log_markers.ACTION_BAR_HIDDEN_ON_ESCAPE in loguru_sink) is dismissed
 
     def test_a_tap_on_a_shown_bar_off_its_buttons_leaves_it_up(
         self, screen: ComicBookReaderScreen

@@ -14,6 +14,7 @@ from barks_reader.core.document_links import StoryLink
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui import reader_close_mixin as reader_close_mixin_module
+from barks_reader.ui import reader_keyboard_nav as reader_keyboard_nav_module
 from barks_reader.ui.document_reader import DocumentReaderScreen
 from barks_reader.ui.reader_keyboard_nav import ActionBarNavMixin
 from barks_reader.ui.reader_screens import ReaderScreen
@@ -577,6 +578,35 @@ class TestFullscreen:
         assert bar.disabled is False
         assert "Showing action bar on top margin press." in loguru_sink
         assert screen._current_page_index == 0  # not a page turn
+
+    @pytest.mark.parametrize(
+        ("fullscreen", "bar_shown", "dismissed"),
+        [(True, True, True), (True, False, False), (False, True, False)],
+        ids=["fullscreen-tap-shown", "fullscreen-hidden", "windowed"],
+    )
+    def test_escape_dismisses_a_bar_a_tap_showed_in_fullscreen(
+        self,
+        screen: DocumentReaderScreen,
+        tmp_path: Path,
+        loguru_sink: list[str],
+        *,
+        fullscreen: bool,
+        bar_shown: bool,
+        dismissed: bool,
+    ) -> None:
+        """Else Escape opens the menu on the bar, showing it first if it was hidden."""
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.is_fullscreen = fullscreen
+        screen._update_widget_states()
+        if bar_shown:
+            screen._show_action_bar()  # as a top-margin tap left it
+        ActionBarNavMixin._setup_action_bar_nav(screen, [MagicMock() for _ in range(3)], 2)
+        with patch.object(reader_keyboard_nav_module, "update_focus_in_list"):
+            assert screen._handle_reader_key(27)  # Escape
+        assert screen._menu_mode is not dismissed
+        assert screen.ids["doc_action_bar"].disabled is dismissed
+        assert ("Hiding action bar on Escape." in loguru_sink) is dismissed
 
     def test_a_tap_below_a_bar_the_menu_showed_leaves_it_hidden(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]

@@ -1075,6 +1075,14 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         if not self._is_action_bar_hidden():
             self._hide_action_bar()
 
+    @override
+    def _dismiss_shown_bar_on_escape(self) -> bool:
+        if not WindowManager.is_fullscreen_now() or self._is_action_bar_hidden():
+            return False
+        logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_ESCAPE)
+        self._hide_action_bar()
+        return True
+
     def close_comic_book_reader(self) -> None:
         self._is_closing = True
         self.comic_book_reader.close_comic_book_reader()
