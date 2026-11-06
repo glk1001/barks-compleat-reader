@@ -144,8 +144,11 @@ Open a comic by clicking its **title portal button** in the bottom comic view pa
 
 ### Top Menu Bar (in the Reader)
 
-The reader's menu bar is hidden by default in fullscreen mode. **Click near the top of the
-screen** or use the **up arrow key** to make it appear. It contains:
+In fullscreen mode the reader's menu bar is hidden. **Click near the top of the screen** to
+show it, and click just below it, or press **Esc**, to hide it again. From the keyboard, the
+**up arrow key** or **Esc** shows the bar with a button highlighted: **Left | Right** move
+between the buttons, **Enter** presses one, and **Esc** puts the bar away again. In windowed
+mode the bar is always shown. It contains:
 
 - <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
@@ -248,6 +251,10 @@ On the bottom title panel, press **Right** to move focus into the panel; **Up | 
 cycle through its widgets — the title portal, the *Goto page* and censorship-fixes
 checkboxes, the *Goto wiki page* link, and the peek eye — with **Enter** activating the
 focused one and **Esc** returning to the tree.
+
+In the **comic reader**, **Left | Right** turn the pages, and **Up** or **Esc** lift focus to the
+top menu bar, where **Left | Right** move between its buttons, **Enter** presses one and **Esc**
+returns to the page.
 
 In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Carl Barks Wiki* index),
 **Up | Down** read the page and step through its links while **Left | Right** move between the
