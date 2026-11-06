@@ -1065,6 +1065,28 @@ class TestComicBookReaderScreen:
         assert screen._action_bar.disabled is dismissed
         assert (log_markers.ACTION_BAR_HIDDEN_ON_ESCAPE in loguru_sink) is dismissed
 
+    def test_a_tap_on_a_bar_the_menu_showed_keeps_it_for_its_buttons(
+        self, screen: ComicBookReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        """Esc shows the bar for the menu; a tap on it leaves the menu, the bar still up."""
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = True
+        screen._action_bar = MagicMock(disabled=True)  # hidden, as in fullscreen
+        screen._action_bar.collide_point.return_value = True
+        with (
+            patch.object(_reader_module, "WindowManager") as window_manager,
+            patch.object(barks_reader.ui.reader_keyboard_nav, "update_focus_in_list"),
+            patch.object(FloatLayout, "on_touch_down", return_value=True) as to_children,
+        ):
+            window_manager.is_fullscreen_now.return_value = True
+            assert screen._handle_reader_key(27)  # Escape: the menu shows the bar
+            assert screen._action_bar.disabled is False
+            assert screen.on_touch_down(MagicMock(pos=(800, 1280))) is True
+        to_children.assert_called_once()  # the bar's buttons get the tap
+        assert screen._menu_mode is False
+        assert screen._action_bar.disabled is False
+        assert log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN not in loguru_sink
+
     def test_a_tap_on_a_shown_bar_off_its_buttons_leaves_it_up(
         self, screen: ComicBookReaderScreen
     ) -> None:

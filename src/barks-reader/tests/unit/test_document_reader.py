@@ -608,6 +608,27 @@ class TestFullscreen:
         assert screen.ids["doc_action_bar"].disabled is dismissed
         assert ("Hiding action bar on Escape." in loguru_sink) is dismissed
 
+    def test_a_tap_on_a_bar_the_menu_showed_keeps_it_for_its_buttons(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """Esc shows the bar for the menu; a tap on it leaves the menu, the bar still up."""
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen.is_fullscreen = True
+        screen._update_widget_states()
+        bar = screen.ids["doc_action_bar"]
+        bar.collide_point.return_value = True
+        ActionBarNavMixin._setup_action_bar_nav(screen, [MagicMock() for _ in range(3)], 2)
+        with patch.object(reader_keyboard_nav_module, "update_focus_in_list"):
+            assert screen._handle_reader_key(27)  # Escape: the menu shows the bar
+        assert bar.disabled is False
+        with patch.object(ReaderScreen, "on_touch_down", return_value=True) as to_children:
+            assert screen.on_touch_down(MagicMock(pos=(500, 590), x=500, y=590)) is True
+        to_children.assert_called_once()  # the bar's buttons get the tap
+        assert screen._menu_mode is False
+        assert bar.disabled is False
+        assert "Hiding action bar on top margin press." not in loguru_sink
+
     def test_a_tap_below_a_bar_the_menu_showed_leaves_it_hidden(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
     ) -> None:

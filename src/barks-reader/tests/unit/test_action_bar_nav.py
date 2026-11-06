@@ -131,6 +131,24 @@ class TestMenuActionByKeyboardFlag:
         assert screen._menu_action_by_keyboard is False
 
 
+class TestATouchOnABarTheMenuShowed:
+    """A tap leaves the menu; on the bar it keeps a bar the menu showed, for its buttons."""
+
+    @pytest.mark.parametrize(("on_bar", "hidden"), [(True, False), (False, True)])
+    def test_the_bar_stays_only_for_a_tap_on_it(self, *, on_bar: bool, hidden: bool) -> None:
+        screen = _StubScreen([MagicMock()], action_bar_hidden=True)
+        with (
+            patch.object(nav_module, "update_focus_in_list"),
+            patch.object(nav_module, "clear_focus_in_list"),
+            patch.object(screen, "_on_action_bar_hidden_after_menu") as hide_after_menu,
+        ):
+            screen._enter_menu_mode()  # shows the hidden bar
+            screen._clear_menu_on_touch(on_bar=on_bar)
+        assert screen._menu_mode is False
+        assert hide_after_menu.called is hidden
+        assert screen._showed_action_bar_for_menu is False
+
+
 class TestFocusHighlightBinding:
     """Verify that draw_focus_highlight installs a pos/size binding and clear removes it."""
 

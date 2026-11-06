@@ -270,9 +270,10 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
         # Read before the tap leaves menu mode, which hides a bar the menu showed: the
-        # margin must not then bring it straight back.
+        # margin must not then bring it straight back. A tap on that bar keeps it, for
+        # the button under the tap to take the press.
         bar_was_hidden = self._is_action_bar_hidden()
-        self._clear_menu_on_touch()
+        self._clear_menu_on_touch(on_bar=self.ids.doc_action_bar.collide_point(*touch.pos))
 
         # Let action bar buttons handle their own touches first.
         if self.ids.doc_action_bar.collide_point(*touch.pos):

@@ -1019,12 +1019,13 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
     # to the BoxLayout reflow). Windowed, the bar is always up and the margin does nothing.
     # The bar's state is read before the tap leaves menu mode: a bar the menu showed is
     # hidden again by that, and the margin under it must not then bring it straight back.
+    # A tap on such a bar keeps it, for the button under the tap to take the press.
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
         bar_was_hidden = self._is_action_bar_hidden()
-        self._clear_menu_on_touch()
+        self._clear_menu_on_touch(on_bar=self._action_bar.collide_point(*touch.pos))
 
         if super().on_touch_down(touch):
             # Another button has been pressed.

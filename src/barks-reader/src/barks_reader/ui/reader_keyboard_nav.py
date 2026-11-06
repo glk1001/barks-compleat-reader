@@ -253,11 +253,20 @@ class ActionBarNavMixin:
     def _clear_menu_focus(self) -> None:
         clear_focus_in_list(self._menu_buttons, MENU_FOCUS_HIGHLIGHT_GROUP)
 
-    def _clear_menu_on_touch(self) -> None:
-        """Call from on_touch_down to exit menu mode on any mouse interaction."""
+    def _clear_menu_on_touch(self, *, on_bar: bool = False) -> None:
+        """Call from on_touch_down to exit menu mode on any mouse interaction.
+
+        Args:
+            on_bar: Whether the touch is on the action bar. A bar the menu showed is
+                then kept, as a tap-shown one: hiding it now would take the button
+                away from under the very tap that is pressing it.
+
+        """
         # A real pointer press means the next button action is mouse-driven.
         self._menu_action_by_keyboard = False
         if self._menu_mode:
+            if on_bar:
+                self._showed_action_bar_for_menu = False
             self._exit_menu_mode()
             self._last_used_btn_idx = self._default_btn_idx
 
