@@ -562,9 +562,9 @@ def test_a_kept_row_s_scroll_y_is_a_share_or_none_for_content_that_does_not_scro
 def test_a_leading_article_moves_to_the_end_and_nothing_else_changes(text: str) -> None:
     sortable = sortable_string(text)
     if text.upper().startswith("THE "):
-        assert sortable == text[4:] + ", The"
+        assert sortable == f"{text[4:]}, {text[:3]}"
     elif text.upper().startswith("A "):
-        assert sortable == text[2:] + ", A"
+        assert sortable == f"{text[2:]}, {text[:1]}"
     else:
         assert sortable == text
     assert sortable_string(sortable) in {sortable, sortable_string(sortable)}
@@ -576,6 +576,8 @@ def test_a_shortened_term_fits_its_row(text: str) -> None:
     assert len(shortened) <= 30  # noqa: PLR2004
     if len(text) <= 30:  # noqa: PLR2004
         assert shortened == text
+    elif text.strip():
+        assert shortened != "...", "A term is never shown as just an ellipsis."
 
 
 _TERMS = st.text(alphabet=string.ascii_lowercase + "'-.", min_size=1, max_size=8).filter(

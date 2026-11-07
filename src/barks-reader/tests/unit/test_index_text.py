@@ -22,6 +22,8 @@ from barks_reader.core.index_text import (
         ("A Christmas for Shacktown", "Christmas for Shacktown, A"),
         ("Lost in the Andes!", "Lost in the Andes!"),
         ("Theatre Trouble", "Theatre Trouble"),  # "The" only as a word of its own
+        ("THE END", "END, THE"),  # The article keeps its case.
+        ("a day at the beach", "day at the beach, a"),
     ],
 )
 def test_a_leading_article_moves_to_the_end(text: str, listed: str) -> None:
@@ -32,6 +34,11 @@ def test_a_long_title_is_shortened_to_fit_a_row() -> None:
     listed = indexable_title_from_str("The " + "word " * 20)
     assert len(listed) <= MAX_TITLE_AND_PAGES_LEN + len(", The")
     assert "..." in listed
+
+
+def test_a_title_of_one_long_word_is_cut_not_dropped() -> None:
+    listed = indexable_title_from_str("X" * (MAX_TITLE_AND_PAGES_LEN + 5))
+    assert listed == "X" * (MAX_TITLE_AND_PAGES_LEN - 3) + "..."
 
 
 def test_a_title_enum_is_listed_by_its_title() -> None:
@@ -64,6 +71,24 @@ class TestShortenIfNecessary:
     def test_an_ordinary_number_starting_like_the_huge_one_is_kept(self, term: str) -> None:
         """Only the 77-zero number is written out: one that merely starts "500,000" was refused."""
         assert shorten_if_necessary(term) == term
+
+    @pytest.mark.parametrize(
+        ("term", "shown"),
+        [
+            pytest.param(
+                "500,000,000,000,000,000,000,000,000,000,000",
+                "500,000,000,000,000,000,000...",
+                id="a number",
+            ),
+            pytest.param("Duck" * 10 + " too", "Duck" * 6 + "Duc...", id="a word"),
+        ],
+    )
+    def test_a_first_word_too_long_for_the_row_is_cut_not_dropped(
+        self, term: str, shown: str
+    ) -> None:
+        """`textwrap.shorten` dropped such a word whole, and the row showed only "..."."""
+        assert shorten_if_necessary(term) == shown
+        assert len(shown) == INDEX_ITEM_MAX_TEXT_WIDTH
 
     def test_a_long_term_starting_like_the_huge_number_is_shortened(self) -> None:
         term = "500,000 dollars in a bag on the bank's back step"

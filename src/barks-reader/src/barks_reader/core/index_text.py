@@ -25,19 +25,18 @@ def sortable_string(text: str) -> str:
         The text as the index lists it, so it sorts by its first real word.
 
     """
+    # The article keeps its case: "THE END" lists as "END, THE".
     text_upper = text.upper()
     if text_upper.startswith("THE "):
-        return text[4:] + ", The"
+        return f"{text[4:]}, {text[:3]}"
     if text_upper.startswith("A "):
-        return text[2:] + ", A"
+        return f"{text[2:]}, {text[:1]}"
     return text
 
 
 def indexable_title_from_str(title_str: str) -> str:
     """Return a title as an index row shows it: shortened to fit, then made sortable."""
-    return sortable_string(
-        textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
-    )
+    return sortable_string(_shortened(title_str, MAX_TITLE_AND_PAGES_LEN))
 
 
 def indexable_title(title: Titles) -> str:
@@ -68,7 +67,22 @@ def shorten_if_necessary(text: str) -> str:
 
     if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
         return text
-    return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
+    return _shortened(text, INDEX_ITEM_MAX_TEXT_WIDTH)
+
+
+_ELLIPSIS = "..."
+
+
+def _shortened(text: str, width: int) -> str:
+    """Return `text` cut at a word to `width`, with an ellipsis; mid-word if it must be.
+
+    `textwrap.shorten` drops a first word longer than `width` whole, leaving just the
+    ellipsis ("500,000,000,...,000" showed as "..."), so that word is cut instead.
+    """
+    shortened = textwrap.shorten(text, width=width, placeholder=_ELLIPSIS)
+    if shortened != _ELLIPSIS or not text.strip():
+        return shortened
+    return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
 
 
 def stacked_prefix_label(prefix: str, terms: list[str]) -> str:
