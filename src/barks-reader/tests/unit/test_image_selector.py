@@ -454,6 +454,28 @@ class TestImageSelector:
         image_selector._never_crop_images = frozenset({"012-3.png"})
         assert not image_selector._is_never_crop(Path("/comics/x-012-3.png"))
 
+    def test_never_crop_covers_the_edited_copy_in_either_format(
+        self, image_selector: ImageSelector
+    ) -> None:
+        image_selector._never_crop_images = frozenset({"Lost in the Andes/012-3.png"})
+
+        assert image_selector._is_never_crop(Path("/comics/Lost in the Andes/edited/012-3.png"))
+        assert image_selector._is_never_crop(Path("/comics/Lost in the Andes/edited/012-3.jpg"))
+        assert image_selector._is_never_crop(Path("/comics/Lost in the Andes/012-3.jpg"))
+        assert not image_selector._is_never_crop(Path("/comics/Lost in the Andes/edited/012-4.png"))
+
+    def test_a_never_crop_line_naming_the_edited_copy_covers_the_original(
+        self, image_selector: ImageSelector
+    ) -> None:
+        image_selector._never_crop_images = frozenset({"Lost in the Andes/edited/012-3.png"})
+
+        assert image_selector._is_never_crop(Path("/comics/Lost in the Andes/012-3.jpg"))
+
+    def test_a_stray_slash_line_matches_nothing(self, image_selector: ImageSelector) -> None:
+        image_selector._never_crop_images = frozenset({"/"})
+
+        assert not image_selector._is_never_crop(Path("/comics/Lost in the Andes/012-3.png"))
+
     def test_load_never_crop_images_parses_file(
         self,
         image_selector: ImageSelector,
@@ -802,6 +824,19 @@ class TestSelectBestCandidateImage:
             "042-7",
         )
 
+    def test_an_edited_copy_is_its_panel_not_a_folder_named_edited(self) -> None:
+        """An edited image lives in `<title>/edited/`: it is still that title's panel."""
+        assert ImageSelector._panel_key(Path("Splash/You Can't Win/edited/172-2.png")) == (
+            ImageSelector._panel_key(Path("Splash/You Can't Win/172-2-water.jpg"))
+        )
+        assert ImageSelector._panel_key(Path("Covers/edited/Lost in the Andes.png")) == (
+            ImageSelector._panel_key(Path("Covers/Lost in the Andes.jpg"))
+        )
+        # Two titles' edited copies of one panel number are different panels.
+        assert ImageSelector._panel_key(Path("Splash/A/edited/172-2.png")) != (
+            ImageSelector._panel_key(Path("Splash/B/edited/172-2.png"))
+        )
+
     def test_falls_back_to_every_file_when_all_are_filtered_out(
         self, image_selector: ImageSelector
     ) -> None:
@@ -1007,6 +1042,15 @@ class TestGetRandomComicFile:
         assert choice.call_args.args[0] == [Path("a.png"), Path("b.png")]
         assert result == Path("a.png")
 
+    def test_draws_from_the_files_in_path_order(self) -> None:
+        """A folder lists in its filesystem's order; a seeded draw needs one order."""
+        get_files = MagicMock(return_value=[Path("c.png"), Path("a.png"), Path("b.png")])
+
+        with patch.object(random, random.choice.__name__) as choice:
+            ImageSelector._get_random_comic_file("Some Title", get_files, False)  # noqa: FBT003
+
+        assert choice.call_args.args[0] == [Path("a.png"), Path("b.png"), Path("c.png")]
+
 
 class _ArrivalOrderSet(set[tuple["PanelPath", bool]]):
     """A set that iterates in the order its items were given, whatever the hash seed."""
@@ -1155,6 +1199,27 @@ class TestMruAndIconCycling:
             selector = ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
 
         mock_shuffle.assert_called_once_with(selector._all_reader_icon_files)
+
+    def test_icons_and_nontitle_files_are_in_path_order_whatever_the_listing(
+        self, fake_resolver: FakeResolver, mock_settings: MagicMock
+    ) -> None:
+        """A seeded shuffle or draw needs the same list on any filesystem."""
+        fake_resolver.nontitle_files = [Path("n2.png"), Path("n1.png")]
+        with (
+            patch.object(
+                is_module,
+                get_all_files_in_dir.__name__,
+                return_value=[Path("icon2.png"), Path("icon1.png")],
+            ),
+            patch.object(random, random.shuffle.__name__),
+        ):
+            selector = ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
+
+        assert selector._all_reader_icon_files == [Path("icon1.png"), Path("icon2.png")]
+        assert selector._nontitle_files == [
+            (Path("n1.png"), FileTypes.NONTITLE),
+            (Path("n2.png"), FileTypes.NONTITLE),
+        ]
 
     def test_icons_are_listed_from_the_settings_icon_dir(
         self, fake_resolver: FakeResolver, mock_settings: MagicMock

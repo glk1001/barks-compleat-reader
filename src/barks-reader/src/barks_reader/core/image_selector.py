@@ -4,7 +4,7 @@ import random
 import re
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath
 from random import randrange
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -15,7 +15,7 @@ from barks_fantagraphics.barks_titles import (
 from comic_utils.pil_image_utils import get_image_size
 from loguru import logger
 
-from .reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
+from .reader_file_paths import ALL_TYPES, EDITED_SUBDIR, EMERGENCY_INSET_FILE, FileTypes
 from .reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
@@ -52,7 +52,9 @@ FIT_COVER_MAX_ASPECT_RATIO = 1.60
 # that must never be cropped: each listed image is always shown letterboxed
 # (contain), whatever its aspect ratio. One posix path per line, e.g.
 # "Lost in the Andes/012-3.png"; blank lines and "#" comments are ignored, and a
-# line matches any image path ending with that "<title>/<file>" suffix.
+# line matches any image path ending with that "<title>/<file>" suffix. The extension
+# does not count, and a line covers the file's edited copy too
+# ("Lost in the Andes/edited/012-3.jpg"): see `_never_crop_key`.
 NEVER_CROP_FILENAME = "never-crop.txt"
 
 type PossibleFiles = list[tuple[PanelPath, FileTypes]]
@@ -119,6 +121,32 @@ class ImageFileResolver(Protocol):
         ...
 
 
+def _by_path(files: list[PanelPath]) -> list[PanelPath]:
+    """Return `files` in path order, which is the same on any filesystem.
+
+    A folder lists its files in an order its filesystem chooses, so a list drawn from
+    by index must be sorted for a pinned `BARKS_READER_RANDOM_SEED` to draw the same
+    files on every machine (`ImageSelector._get_possible_files_for_title` says more).
+    `str()` the paths: `PanelPath` spans `Path` and `zipfile.Path`, which do not order
+    against each other.
+    """
+    return sorted(files, key=str)
+
+
+def _never_crop_key(image_path: str) -> str:
+    """Return the posix path a never-crop line and an image are matched by.
+
+    The extension is dropped, and so is an ``edited`` folder: a line names a panel, and
+    its edited copy, often in the other format, is the same panel.
+    """
+    path = PurePosixPath(image_path.replace("\\", "/"))
+    if not path.name:  # A stray "/" line: `with_suffix` refuses a path with no name.
+        return str(path)
+    if path.parent.name == EDITED_SUBDIR:
+        path = path.parent.parent / path.name
+    return str(path.with_suffix(""))
+
+
 def resolve_all_title_image_files(
     resolver: ImageFileResolver, title_str: str
 ) -> dict[FileTypes, set[tuple[PanelPath, bool]]]:
@@ -179,8 +207,10 @@ class ImageSelector:
         self._last_title_image: dict[str, PanelPath] = {}
         self._nontitle_files = self._get_nontitle_files()
 
-        self._all_reader_icon_files = get_all_files_in_dir(
-            self._reader_settings.sys_file_paths.get_reader_icon_files_dir()
+        # Sorted before the shuffle, as every list drawn from is (`_by_path`), so a
+        # pinned seed shuffles them the same way on any filesystem.
+        self._all_reader_icon_files = _by_path(
+            get_all_files_in_dir(self._reader_settings.sys_file_paths.get_reader_icon_files_dir())
         )
         random.shuffle(self._all_reader_icon_files)
         self._next_reader_icon_file = 0
@@ -197,11 +227,13 @@ class ImageSelector:
 
         Every treatment of a panel shares the key ("You Can't Win", "172-2"), so a
         panel shown lately is not shown again in another treatment: the spread's two
-        tiers held the photo and the watercolor of one panel (2026-10-30).
+        tiers held the photo and the watercolor of one panel (2026-10-30). An edited
+        copy ("You Can't Win/edited/172-2.png") is a treatment of its panel too.
         """
         path = PurePath(str(filename))  # A zip member's parent is typed as a bare PathLike.
+        folder = path.parent.parent if path.parent.name == EDITED_SUBDIR else path.parent
         number = _PANEL_NUMBER.match(path.stem)
-        return path.parent.name, number.group(0) if number else path.stem
+        return folder.name, number.group(0) if number else path.stem
 
     def _get_fallback_image_info(self) -> ImageInfo:
         return ImageInfo(
@@ -476,10 +508,10 @@ class ImageSelector:
         if not self._never_crop_images:
             return False
 
-        image_posix = str(image_filename).replace("\\", "/")
+        image_key = _never_crop_key(str(image_filename))
         return any(
-            image_posix == entry or image_posix.endswith(f"/{entry}")
-            for entry in self._never_crop_images
+            image_key == entry_key or image_key.endswith(f"/{entry_key}")
+            for entry_key in map(_never_crop_key, self._never_crop_images)
         )
 
     def _load_never_crop_images(self) -> frozenset[str]:
@@ -554,7 +586,9 @@ class ImageSelector:
         return possible_files
 
     def _get_nontitle_files(self) -> PossibleFiles:
-        return [(file, FileTypes.NONTITLE) for file in self._resolver.get_nontitle_files()]
+        return [
+            (file, FileTypes.NONTITLE) for file in _by_path(self._resolver.get_nontitle_files())
+        ]
 
     def _update_comic_files(self, title_str: str) -> None:
         if title_str in self._title_image_files:
@@ -578,7 +612,7 @@ class ImageSelector:
         """
         title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
-            return random.choice(title_files)
+            return random.choice(_by_path(title_files))
 
         logger.warning(f'No files for title "{title_str}". Using emergency image.')
         return None
