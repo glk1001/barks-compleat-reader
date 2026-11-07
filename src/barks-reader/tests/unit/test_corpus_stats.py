@@ -309,7 +309,7 @@ class TestPaymentSection:
     def test_footnote_states_the_averaged_years(self, stats: CorpusStats) -> None:
         footnote = _section(stats, "Payment").footnote
         assert footnote is not None
-        assert "1942-1966" in footnote
+        assert "1942\u20131966" in footnote  # An en dash, as in the headline.
 
     def test_footnote_states_the_coverage(self, stats: CorpusStats) -> None:
         footnote = _section(stats, "Payment").footnote

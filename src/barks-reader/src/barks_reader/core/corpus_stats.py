@@ -12,12 +12,12 @@ Two figures here are easy to get wrong, so they are computed deliberately:
   (``BibEntry.effective_qualifier``: his mark, or its correction where he left one
   out or other evidence overrules it), never from ``ComicBookInfo.is_barks_title``
   - that flag means "Barks himself titled it", not "Barks made it".
-* The payment ledger records an unknown amount two ways: ``-1`` (277 records,
-  nearly all covers, ten of them with an unknown accepted date as well) and ``0``
-  (106 records, nearly all stories accepted from 1954 on) - 383 of its 947 records
-  in all. Summing the column blindly *subtracts* a dollar per ``-1``, so every
-  payment figure here is computed over the records with a positive amount and a
-  known date only, and the footnote says how many that is.
+* The payment ledger records an unknown amount two ways: ``-1`` (nearly all
+  covers, a few with an unknown accepted date as well) and ``0`` (nearly all
+  stories accepted from 1954 on) - some two in five of its records in all.
+  Summing the column blindly *subtracts* a dollar per ``-1``, so every payment
+  figure here is computed over the records with a positive amount and a known
+  date only, and the footnote says how many that is.
 
 The text section is separate because it needs the optional Whoosh speech index:
 ``compute_static_stats`` is instant and always available, while
@@ -150,7 +150,7 @@ def get_stories() -> list[ComicBookInfo]:
     """Return every Barks comic story, excluding covers, articles and collections.
 
     Returns:
-        The ``ComicBookInfo`` records for all 683 stories, in chronological order.
+        The ``ComicBookInfo`` record of every story, in chronological order.
 
     """
     return [info for info in BARKS_TITLE_INFO if info.title not in _NON_STORY_TITLES]
@@ -416,7 +416,7 @@ def _payment_section(
         footnote=(
             f"From the {len(paid_records):,} of {len(BARKS_PAYMENTS):,} payment records with an"
             f" amount; the rest, mostly covers, have none. Yearly average runs"
-            f" {first_year}-{_RETIREMENT_YEAR}."
+            f" {first_year}–{_RETIREMENT_YEAR}."  # noqa: RUF001  (an en dash, as in the headline)
         ),
     )
 
