@@ -1,14 +1,17 @@
-"""Tests for `font_group_for_height`, the font group a window's height picks."""
+"""Tests for the font group, and the sizes, a window's height picks."""
 
 from __future__ import annotations
 
 import pytest
 from barks_reader.core.font_sizes import (
+    HI_RES_FONT_SIZES,
     HI_RES_WINDOW_HEIGHT_CUTOFF,
+    LOW_RES_FONT_SIZES,
     TITLE_TEXT_SMALLEST_WINDOW_HEIGHT,
     FontGroup,
     TitleTextSizes,
     font_group_for_height,
+    font_sizes_for_height,
     title_text_sizes_for_height,
 )
 
@@ -19,6 +22,13 @@ def test_a_window_at_the_cutoff_takes_the_low_res_sizes() -> None:
 
 def test_a_window_taller_than_the_cutoff_takes_the_hi_res_sizes() -> None:
     assert font_group_for_height(HI_RES_WINDOW_HEIGHT_CUTOFF + 1) == FontGroup.HI_RES
+
+
+def test_the_sizes_for_a_height_are_its_font_group_s() -> None:
+    """The sizes a popup window or the popup frame takes before the font manager exists."""
+    assert font_sizes_for_height(HI_RES_WINDOW_HEIGHT_CUTOFF) is LOW_RES_FONT_SIZES
+    assert font_sizes_for_height(HI_RES_WINDOW_HEIGHT_CUTOFF + 1) is HI_RES_FONT_SIZES
+    assert LOW_RES_FONT_SIZES != HI_RES_FONT_SIZES
 
 
 @pytest.mark.parametrize(
