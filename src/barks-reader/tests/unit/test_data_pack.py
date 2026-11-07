@@ -143,6 +143,26 @@ class TestReading:
         with pytest.raises(PackUnreadableError, match="not a data pack version file"):
             read_from_pack(tmp_path / "broken.barkspack")
 
+    @pytest.mark.parametrize(
+        "error",
+        [
+            pytest.param(NotImplementedError("compression type 9 (deflate64)"), id="compression"),
+            pytest.param(RuntimeError("File is encrypted, password required"), id="encrypted"),
+            pytest.param(EOFError(), id="member cut short"),
+        ],
+    )
+    def test_zipfiles_other_errors_are_unreadable_too(
+        self, tmp_path: Path, error: Exception
+    ) -> None:
+        """What zipfile raises for a member it cannot read, besides `BadZipFile`."""
+        pack = _write_pack(tmp_path / "p.barkspack", _info())
+
+        with (
+            patch.object(ZipFile, ZipFile.read.__name__, side_effect=error),
+            pytest.raises(PackUnreadableError, match=r'p\.barkspack" could not be read'),
+        ):
+            read_from_pack(pack)
+
     def test_a_pack_whose_entry_has_no_byte_count_is_unreadable(self, tmp_path: Path) -> None:
         """Caught here, it cannot crash `verify_extracted` formatting a missing size."""
         with ZipFile(tmp_path / "no-bytes.barkspack", "w") as pack:
@@ -239,7 +259,23 @@ class TestFindUpdate:
 
         assert check.status is UpdateStatus.PACKS_NOT_VERSIONED
         assert check.missing == (DATA_PACK_FILE_NAMES[0],)
-        assert "carry no version" in check.no_update_message()
+        # The old pack is named: the other is current, and need not be downloaded again.
+        assert check.no_update_message() == (
+            f'The data pack "{DATA_PACK_FILE_NAMES[0]}" in "{tmp_path}" carries no version:'
+            " it is older than the first versioned pack. Download the current packs."
+        )
+
+    def test_two_packs_from_before_the_version_file(self, tmp_path: Path) -> None:
+        _write_packs(tmp_path, None, None)
+
+        check = find_update(tmp_path, None)
+
+        assert check.status is UpdateStatus.PACKS_NOT_VERSIONED
+        assert check.no_update_message() == (
+            f'The data packs "{DATA_PACK_FILE_NAMES[0]}" and "{DATA_PACK_FILE_NAMES[1]}" in'
+            f' "{tmp_path}" carry no version: they are older than the first versioned pack.'
+            " Download the current packs."
+        )
 
     def test_a_pack_that_cannot_be_read_says_so_not_that_it_is_old(
         self, tmp_path: Path, loguru_sink: list[str]
@@ -258,7 +294,7 @@ class TestFindUpdate:
             f'The data pack "{DATA_PACK_FILE_NAMES[1]}" in "{tmp_path}" could not be read ('
         )
         assert "SHA256SUMS.txt" in message
-        assert "carry no version" not in message
+        assert "no version" not in message
         assert any("could not be read" in line for line in loguru_sink)
 
     def test_packs_of_different_versions(self, tmp_path: Path) -> None:

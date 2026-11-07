@@ -226,7 +226,10 @@ def read_from_pack(zip_path: Path) -> DataPackInfo | None:
     except KeyError:
         logger.info(f'No data pack version in "{zip_path}".')
         return None
-    except (OSError, BadZipFile, zlib.error) as exc:
+    # Besides a missing file and one that is no zip, zipfile has its own ways to say a
+    # member cannot be read: `NotImplementedError` (a compression it lacks),
+    # `RuntimeError` (an encrypted member) and `EOFError` (member data cut short).
+    except (OSError, BadZipFile, zlib.error, NotImplementedError, RuntimeError, EOFError) as exc:
         raise PackUnreadableError(zip_path, str(exc)) from exc
     try:
         return DataPackInfo.from_json(member.decode("utf-8"))
@@ -295,10 +298,13 @@ class UpdateCheck:
                     f" check it against the release's SHA256SUMS.txt."
                 )
             case UpdateStatus.PACKS_NOT_VERSIONED:
-                return (
-                    f'The data packs in "{self.pack_dir}" carry no version: they are older'
-                    f" than the first versioned pack. Download the current packs."
-                )
+                # Name the old ones: one may be a current pack beside an old one.
+                names = " and ".join(f'"{name}"' for name in self.missing)
+                if len(self.missing) == 1:
+                    old = f'The data pack {names} in "{self.pack_dir}" carries no version: it is'
+                else:
+                    old = f'The data packs {names} in "{self.pack_dir}" carry no version: they are'
+                return f"{old} older than the first versioned pack. Download the current packs."
             case UpdateStatus.PACKS_DISAGREE:
                 versions = " and ".join(
                     _UNVERSIONED if pack is None else pack.short() for pack in self.packs
