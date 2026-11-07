@@ -135,39 +135,12 @@ class FilteredTitleLists:
         # grouping, which folds the same way (collection_page_groups.year_range_group).
         # Covers have undated (submitted_year == -1) entries; one-pagers currently
         # do not, but fold for symmetry and to stay robust to future data.
-        one_pager_years = set(self.one_pager_years)
-        last_one_pager_year = ONE_PAGER_YEAR_RANGES[-1][1]
-        for year in self.one_pager_years:
-            if year == last_one_pager_year:
-                filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
-                    (info.series_name == SERIES_ONE_PAGERS)
-                    and (
-                        (info.comic_book_info.submitted_year == y)
-                        or (info.comic_book_info.submitted_year not in one_pager_years)
-                    )
-                )
-            else:
-                filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
-                    (info.series_name == SERIES_ONE_PAGERS)
-                    and (info.comic_book_info.submitted_year == y)
-                )
-
-        cover_years = set(self.cover_years)
-        last_cover_year = COVER_YEAR_RANGES[-1][1]
-        for year in self.cover_years:
-            if year == last_cover_year:
-                filters[self.get_cover_year_key_from_year(year)] = lambda info, y=year: (
-                    (info.series_name == SERIES_COVERS)
-                    and (
-                        (info.comic_book_info.submitted_year == y)
-                        or (info.comic_book_info.submitted_year not in cover_years)
-                    )
-                )
-            else:
-                filters[self.get_cover_year_key_from_year(year)] = lambda info, y=year: (
-                    (info.series_name == SERIES_COVERS)
-                    and (info.comic_book_info.submitted_year == y)
-                )
+        self._add_folded_year_filters(
+            filters, SERIES_ONE_PAGERS, self.one_pager_years, self.get_one_pager_year_key_from_year
+        )
+        self._add_folded_year_filters(
+            filters, SERIES_COVERS, self.cover_years, self.get_cover_year_key_from_year
+        )
 
         for category in self.categories:
             filters[category.value] = lambda info, c=category: (
@@ -183,6 +156,25 @@ class FilteredTitleLists:
         self.add_year_ranges(CHRONO_YEARS_KEY_PREFIX, RANDOM_TITLE_YEAR_RANGES, title_lists)
 
         return title_lists
+
+    @staticmethod
+    def _add_folded_year_filters(
+        filters: dict[str, Callable[[FantaComicBookInfo], bool]],
+        series_name: str,
+        years: range,
+        year_key: Callable[[int], str],
+    ) -> None:
+        """Add a filter per year of a series, the last year taking every year outside them."""
+        in_range = set(years)
+        last_year = years[-1]
+        for year in years:
+            filters[year_key(year)] = lambda info, y=year: (
+                info.series_name == series_name
+                and (
+                    info.comic_book_info.submitted_year == y
+                    or (y == last_year and info.comic_book_info.submitted_year not in in_range)
+                )
+            )
 
     def add_year_ranges(
         self,

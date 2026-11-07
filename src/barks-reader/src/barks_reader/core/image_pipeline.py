@@ -53,10 +53,7 @@ def read_raw_bytes(panel_path: PanelPath) -> bytes:
         TypeError: If *panel_path* is neither ``Path`` nor ``zipfile.Path``.
 
     """
-    if isinstance(panel_path, zipfile.Path):
-        return panel_path.read_bytes()
-
-    if isinstance(panel_path, Path):
+    if isinstance(panel_path, (zipfile.Path, Path)):
         return panel_path.read_bytes()
 
     msg = f"Unsupported PanelPath type: {type(panel_path)}"
