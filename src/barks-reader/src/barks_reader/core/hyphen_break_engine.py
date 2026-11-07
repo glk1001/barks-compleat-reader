@@ -213,6 +213,7 @@ class BreakRefinement:
 
     @property
     def has_gaps(self) -> bool:
+        """Whether the text has any place a word may break: if not, one render is final."""
         return bool(self._parsed.gaps)
 
     def markup(self) -> str:

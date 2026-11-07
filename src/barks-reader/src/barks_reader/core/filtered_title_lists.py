@@ -44,6 +44,8 @@ INCLUDE_ONE_PAGERS_IN_CHRONO = False
 
 
 class FilteredTitleLists:
+    """The title lists behind the tree's year, series and category nodes, keyed by node."""
+
     def __init__(
         self, *, include_one_pagers_in_chrono: bool = INCLUDE_ONE_PAGERS_IN_CHRONO
     ) -> None:
@@ -68,33 +70,47 @@ class FilteredTitleLists:
 
     @staticmethod
     def get_range_str(year_range: tuple[int, int]) -> str:
+        """Return a span of years as its node names it: "1942-1949"."""
         return f"{year_range[0]}-{year_range[1]}"
 
     @staticmethod
     def get_cs_year_key_from_year(year: int) -> str:
+        """Return the title-list key of a year's Comics and Stories titles."""
         return f"{CS_YEARS_KEY_PREFIX}{year}"
 
     @staticmethod
     def get_cs_year_range_key_from_range(year_range_str: str) -> str:
+        """Return the title-list key of a span of years' Comics and Stories titles."""
         return f"{CS_YEARS_KEY_PREFIX}{year_range_str}"
 
     @staticmethod
     def get_us_year_key_from_year(year: int) -> str:
+        """Return the title-list key of a year's Uncle Scrooge titles."""
         return f"{US_YEARS_KEY_PREFIX}{year}"
 
     @staticmethod
     def get_us_year_range_key_from_range(year_range_str: str) -> str:
+        """Return the title-list key of a span of years' Uncle Scrooge titles."""
         return f"{US_YEARS_KEY_PREFIX}{year_range_str}"
 
     @staticmethod
     def get_one_pager_year_key_from_year(year: int) -> str:
+        """Return the title-list key of a year's one-pagers."""
         return f"{ONE_PAGER_YEARS_KEY_PREFIX}{year}"
 
     @staticmethod
     def get_cover_year_key_from_year(year: int) -> str:
+        """Return the title-list key of a year's covers."""
         return f"{COVER_YEARS_KEY_PREFIX}{year}"
 
     def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
+        """Return every node's titles: by year, series, category, and span of years.
+
+        Returns:
+            The titles, keyed by the node's year, series name, category or span of years
+            (the keys the ``get_*_key_*`` methods give).
+
+        """
         filters: dict[str, Callable[[FantaComicBookInfo], bool]] = {}
 
         exclude_one_pagers = not self.include_one_pagers_in_chrono
@@ -182,6 +198,14 @@ class FilteredTitleLists:
         year_ranges: list[tuple[int, int]],
         title_lists: dict[str, list[FantaComicBookInfo]],
     ) -> None:
+        """Add a list for each span of years: the titles of every year in it, in year order.
+
+        Args:
+            key_prefix: The prefix of the years' keys, and of the spans' keys.
+            year_ranges: The spans, first and last year, both included.
+            title_lists: The title lists by year, which the spans' lists are added to.
+
+        """
         for year_range in year_ranges:
             year_range_key = f"{key_prefix}{self.get_range_str(year_range)}"
             title_lists[year_range_key] = []

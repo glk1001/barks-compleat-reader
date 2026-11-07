@@ -158,6 +158,7 @@ class ConfigInfo:
         self.app_log_path = log_dir / (self._app_name + ".log")
 
     def get_executable_name(self) -> str:
+        """Return the standalone build's file name: app name and platform, ".exe" on Windows."""
         executable_name = self._app_name + "-" + PLATFORM.value
 
         if PLATFORM == Platform.WIN:
@@ -237,19 +238,23 @@ def seed_random_from_env() -> int | None:
 
 
 def barks_reader_installer_failed() -> bool:
+    """Return whether the last run of the installer left its failed flag beside the executable."""
     return get_barks_reader_installer_failed_flag_file().is_file()
 
 
 def set_barks_reader_installer_failed_flag() -> None:
+    """Leave the installer's failed flag beside the executable, for the next run to find."""
     with get_barks_reader_installer_failed_flag_file().open("w"):
         pass
 
 
 def remove_barks_reader_installer_failed_flag() -> None:
+    """Remove the installer's failed flag, if it is there."""
     get_barks_reader_installer_failed_flag_file().unlink(missing_ok=True)
 
 
 def get_barks_reader_installer_failed_flag_file() -> Path:
+    """Return where the installer's failed flag goes: beside the executable."""
     # Put the flag file in the same directory as the executable.
     return get_app_exe_dir() / BARKS_READER_INSTALLER_FAILED_FLAG_FILE
 
@@ -262,14 +267,23 @@ log_path = None
 
 
 def get_log_level() -> str:
+    """Return the app's log level, as `setup_loguru` set it (for loguru-config)."""
     return log_level
 
 
 def get_log_path() -> Path | None:
+    """Return the app's log file, as `setup_loguru` set it, or None before that."""
     return log_path
 
 
 def setup_loguru(cfg_info: ConfigInfo, log_lvl: str) -> None:
+    """Configure loguru from the app's ``log-config.yaml``, or fall back to an emergency log.
+
+    Args:
+        cfg_info: The app's folders: the config file's, and the log file's.
+        log_lvl: The level to log at, which the config reads through `get_log_level`.
+
+    """
     global log_path  # noqa: PLW0603
     log_path = cfg_info.app_log_path
 
@@ -303,6 +317,16 @@ def _run_loguru_config(cfg_info: ConfigInfo) -> None:
 
 
 def find_fanta_volumes_dirpath(config_info: ConfigInfo, fanta_volumes_dirname: str) -> Path | None:
+    """Look for the Fantagraphics library folder: in the app's data folder, then the platform's.
+
+    Args:
+        config_info: The app's folders, the data folder first on the search path.
+        fanta_volumes_dirname: The library folder's name.
+
+    Returns:
+        The folder, or None, with a warning naming the search path, if it is nowhere on it.
+
+    """
     if PLATFORM == Platform.WIN:
         search_path = WINDOWS_FANTA_VOLUMES_SEARCH_PATH
     elif IS_MACOS:

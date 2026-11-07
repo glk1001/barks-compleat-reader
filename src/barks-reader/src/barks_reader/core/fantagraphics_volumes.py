@@ -164,9 +164,11 @@ class FantagraphicsArchive:
     is_missing: bool = False
 
     def get_num_pages(self) -> int:
+        """Return how many pages the volume's archive holds, first to last."""
         return self.last_page - self.first_page + 1
 
     def has_overrides(self) -> bool:
+        """Return whether the bundled override zip replaces or adds any of the volume's pages."""
         return (len(self.extra_images_page_map) > 0) or (len(self.override_images_page_map) > 0)
 
     def page_source(self, page_str: str, *, use_overrides: bool) -> PageSource:
@@ -220,9 +222,11 @@ class FantagraphicsVolumeArchives:
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
 
     def get_volume_list(self) -> list[int]:
+        """Return the volume numbers these archives are for."""
         return self._volume_list
 
     def get_fantagraphics_archive(self, volume: int) -> FantagraphicsArchive:
+        """Return a volume's archive as `load` found it, or its placeholder if it is missing."""
         return self._fantagraphics_archive_dict[volume]
 
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
