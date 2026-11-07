@@ -41,16 +41,21 @@ def _load(store_path: Path) -> dict[str, dict[str, Any]]:
 
     A file that is not a JSON object (cut short, or overwritten) once stopped the app
     booting. It is moved aside to `<name>.corrupt` instead, and the settings start
-    empty: the next save writes a good file in its place.
+    empty: the next save writes a good file in its place. A file that cannot be read
+    at all (its permissions, a folder in its place, a lock) is left where it is, as
+    it may be whole, and the settings start empty too.
     """
     if not store_path.exists():
         return {}
 
     try:
         contents = store_path.read_text(encoding="utf-8").strip()
-        if not contents:
-            return {}
-        data = json.loads(contents)
+        data = json.loads(contents) if contents else {}
+    except OSError as e:
+        logger.error(
+            f'Settings file "{store_path}" could not be read: {e}. Starting with empty settings.'
+        )
+        return {}
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         reason = f"not valid JSON ({e})"
     else:
@@ -90,16 +95,24 @@ class SettingsManager:
     def _sync(self) -> None:
         # Written whole to a file beside it, then swapped in: a write cut short (a
         # crash, a kill, power lost mid page-turn) leaves the old file, not half of one.
+        # A save comes with every page turn, so one that fails (a full disk, a file an
+        # antivirus holds for a moment) is logged and the reading goes on: the settings
+        # in memory are whole, and the next save writes them.
         temp_path = self._store_path.with_name(self._store_path.name + _TEMP_SUFFIX)
-        temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
-        temp_path.replace(self._store_path)
+        try:
+            temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
+            temp_path.replace(self._store_path)
+        except OSError as e:
+            logger.error(f'Could not save the settings to "{self._store_path}": {e}.')
+            temp_path.unlink(missing_ok=True)
 
     def get_last_selected_node_path(self) -> tuple[list[str] | None, dict[str, Any]]:
         """Retrieve the path of the last selected node."""
-        if _READER_SETTINGS not in self._data:
+        saved_node_settings = self._data.get(_READER_SETTINGS)
+        # A hand-edited file may hold anything here: then nothing was selected.
+        if not isinstance(saved_node_settings, dict):
             return None, {}
 
-        saved_node_settings = self._data[_READER_SETTINGS]
         raw_path = saved_node_settings.get(_READER_SETTING_LAST_SELECTED_NODE)
         saved_state = saved_node_settings.get(_READER_SETTING_LAST_SELECTED_NODE_STATE, {})
 
@@ -128,9 +141,11 @@ class SettingsManager:
 
     def get_last_read_page(self, title_str: str) -> SavedPageInfo | None:
         """Retrieve the last read page information for a specific title."""
-        if title_str not in self._data:
+        title_settings = self._data.get(title_str)
+        # A hand-edited file may hold anything here: then the title has no saved page.
+        if not isinstance(title_settings, dict):
             return None
-        json_info = self._data[title_str].get(_TITLE_SETTING_LAST_READ_PAGE)
+        json_info = title_settings.get(_TITLE_SETTING_LAST_READ_PAGE)
         return SavedPageInfo.from_json(json_info) if json_info else None
 
     def save_last_read_page(self, title_str: str, page_info: SavedPageInfo) -> None:

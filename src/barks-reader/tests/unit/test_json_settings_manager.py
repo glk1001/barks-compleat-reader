@@ -90,6 +90,40 @@ class TestCorruptStore:
 
         assert (tmp_path / f"store.json{CORRUPT_SUFFIX}").exists()
 
+    def test_a_file_that_cannot_be_read_is_left_in_place(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """A folder where the file should be: reading it fails, but it is not corrupt."""
+        store_path = tmp_path / "store.json"
+        store_path.mkdir()
+
+        manager = SettingsManager(store_path)
+
+        assert manager.get_last_selected_node_path() == (None, {})
+        assert store_path.is_dir()
+        assert not (tmp_path / f"store.json{CORRUPT_SUFFIX}").exists()
+        assert any("could not be read" in line for line in loguru_sink)
+
+    @pytest.mark.parametrize(
+        "contents",
+        [
+            pytest.param({"AAA_Settings": []}, id="settings a list"),
+            pytest.param({"AAA_Settings": "x", "Lost in the Andes!": "x"}, id="strings"),
+            pytest.param({"Lost in the Andes!": [1]}, id="title a list"),
+        ],
+    )
+    def test_a_section_that_is_not_an_object_counts_as_unset(
+        self, tmp_path: Path, contents: dict[str, Any]
+    ) -> None:
+        """A hand-edited file: the top level is an object, a section in it is not."""
+        store_path = tmp_path / "store.json"
+        store_path.write_text(json.dumps(contents), encoding="utf-8")
+
+        manager = SettingsManager(store_path)
+
+        assert manager.get_last_selected_node_path() == (None, {})
+        assert manager.get_last_read_page("Lost in the Andes!") is None
+
     def test_the_next_save_writes_a_good_file(self, tmp_path: Path) -> None:
         store_path = tmp_path / "store.json"
         store_path.write_text("{", encoding="utf-8")
@@ -125,10 +159,34 @@ class TestAtomicSave:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, Path.write_text.__name__, write_half_then_fail)
-        with pytest.raises(OSError, match="disk full"):
-            manager.save_last_read_page("Trail of the Unicorn", _a_saved_page())
+        manager.save_last_read_page("Trail of the Unicorn", _a_saved_page())
 
         assert store_path.read_text(encoding="utf-8") == before
+
+    def test_a_save_that_fails_is_logged_and_the_reading_goes_on(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        """A save comes with every page turn: one that fails must not stop the reader."""
+        store_path = tmp_path / "store.json"
+        manager = SettingsManager(store_path)
+        manager.save_last_read_page("Lost in the Andes!", _a_saved_page())
+
+        def held_by_an_antivirus(_self: Path, _target: Path) -> Path:
+            msg = "the file is in use"
+            raise PermissionError(msg)
+
+        monkeypatch.setattr(Path, Path.replace.__name__, held_by_an_antivirus)
+        manager.save_last_read_page("Trail of the Unicorn", _a_saved_page())
+        monkeypatch.undo()
+
+        assert [p.name for p in tmp_path.iterdir()] == ["store.json"]
+        assert any("Could not save the settings" in line for line in loguru_sink)
+        # The settings in memory are whole, and the next save writes them.
+        assert manager.get_last_read_page("Trail of the Unicorn") == _a_saved_page()
+        manager.save_last_read_page("Lost in the Andes!", _a_saved_page())
+        assert SettingsManager(store_path).get_last_read_page("Trail of the Unicorn") == (
+            _a_saved_page()
+        )
 
 
 class TestLastSelectedNode:
