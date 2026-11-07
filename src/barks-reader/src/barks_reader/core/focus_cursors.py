@@ -19,18 +19,18 @@ def clamped(index: int, count: int) -> int:
 
 
 def wrapped(index: int, delta: int, count: int) -> int:
-    """Return `index` moved by `delta` round a ring of `count` items."""
-    return (index + delta) % count
+    """Return `index` moved by `delta` round a ring of `count` items; 0 for an empty ring."""
+    return (index + delta) % count if count else 0
 
 
 def next_index_toward(count: int, selected: int | None, delta: int) -> int:
     """Return the item a step of `delta` lands on, in a list of `count` items.
 
     With nothing selected, a step forward lands on the first item and a step back on
-    the last; otherwise the step is held within the list.
+    the last; otherwise the step is held within the list. 0 for an empty list.
     """
     if selected is None:
-        return 0 if delta > 0 else count - 1
+        return 0 if delta > 0 else max(0, count - 1)
     return clamped(selected + delta, count)
 
 

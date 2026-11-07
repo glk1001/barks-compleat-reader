@@ -6,9 +6,10 @@ folder names itself in a ``document.json`` beside its pages, ``{"title": "Learni
 Medium"}``, so a new part needs no code change. The barks-wiki illustrated history writes
 these folders (``barks-wiki/scripts/history_reader.py``).
 
-The parts come in folder-name order. A folder with no page images is left out; one with no
-readable ``document.json`` is titled by its folder name, with a warning. A missing root
-means no parts: the folder is optional, so it is not among the reader's required directories.
+The parts come in folder-name order. A folder with no page images is left out, and so, with
+a warning, is one that cannot be listed; one with no readable ``document.json`` is titled by
+its folder name, with a warning. A missing root, or one that cannot be listed, means no
+parts: the folder is optional, so it is not among the reader's required directories.
 """
 
 from __future__ import annotations
@@ -61,9 +62,19 @@ def find_document_chapters(root: Path) -> list[DocumentChapter]:
     """
     if not root.is_dir():
         return []
+    try:
+        doc_dirs = sorted(p for p in root.iterdir() if p.is_dir())
+    except OSError as e:
+        logger.warning(log_markers.DOCUMENT_FOLDER_UNREADABLE.format(path=root, error=e))
+        return []
     chapters = []
-    for doc_dir in sorted(p for p in root.iterdir() if p.is_dir()):
-        if not has_page_images(doc_dir):
+    for doc_dir in doc_dirs:
+        try:
+            has_pages = has_page_images(doc_dir)
+        except OSError as e:
+            logger.warning(log_markers.DOCUMENT_FOLDER_UNREADABLE.format(path=doc_dir, error=e))
+            continue
+        if not has_pages:
             logger.debug(log_markers.DOCUMENT_CHAPTER_NO_PAGES.format(path=doc_dir))
             continue
         chapters.append(DocumentChapter(doc_dir, _chapter_title(doc_dir)))

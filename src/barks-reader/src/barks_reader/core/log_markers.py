@@ -246,6 +246,7 @@ DOCUMENT_CHAPTER_NO_PAGES: Final = 'Document chapter "{path}" has no pages: left
 DOCUMENT_CHAPTER_UNTITLED: Final = (
     'Document chapter info "{path}" unreadable ({error}): titled by its folder.'
 )
+DOCUMENT_FOLDER_UNREADABLE: Final = 'Document folder "{path}" cannot be listed ({error}): left out.'
 CORPUS_STATS_OPENED: Final = "CorpusStats: opened."
 CORPUS_STATS_CLOSING: Final = "CorpusStats: closing."
 

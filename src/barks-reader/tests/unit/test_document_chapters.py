@@ -3,14 +3,30 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.document_chapters import DocumentChapter, find_document_chapters
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Callable, Iterator
+
+_REAL_ITERDIR = Path.iterdir
+
+
+def _listing_refused_for(locked: Path) -> Callable[[Path], Iterator[Path]]:
+    """Return a `Path.iterdir` that refuses `locked`, as bad permissions after a copy do."""
+
+    def iterdir(path: Path) -> Iterator[Path]:
+        if path == locked:
+            msg = f"Permission denied: '{path}'"
+            raise PermissionError(msg)
+        return _REAL_ITERDIR(path)
+
+    return iterdir
 
 
 def _chapter(root: Path, name: str, info: object | None, *, pages: bool = True) -> Path:
@@ -44,6 +60,31 @@ def test_a_folder_without_pages_is_left_out_and_the_rest_kept(
     later = _chapter(tmp_path, "06-later", {"title": "Later"})
     assert find_document_chapters(tmp_path) == [DocumentChapter(later, "Later")]
     assert log_markers.DOCUMENT_CHAPTER_NO_PAGES.format(path=not_yet) in loguru_sink
+
+
+def test_a_folder_that_cannot_be_listed_is_left_out_and_the_rest_kept(
+    tmp_path: Path, loguru_sink: list[str]
+) -> None:
+    locked = _chapter(tmp_path, "03-locked", {"title": "Locked"})
+    later = _chapter(tmp_path, "04-later", {"title": "Later"})
+
+    with patch.object(Path, Path.iterdir.__name__, _listing_refused_for(locked)):
+        chapters = find_document_chapters(tmp_path)
+
+    assert chapters == [DocumentChapter(later, "Later")]
+    assert any(
+        line.startswith(f'Document folder "{locked}" cannot be listed') for line in loguru_sink
+    )
+
+
+def test_a_root_that_cannot_be_listed_has_no_chapters(
+    tmp_path: Path, loguru_sink: list[str]
+) -> None:
+    _chapter(tmp_path, "00-introduction", {"title": "Introduction"})
+
+    with patch.object(Path, Path.iterdir.__name__, _listing_refused_for(tmp_path)):
+        assert find_document_chapters(tmp_path) == []
+    assert any("cannot be listed" in line for line in loguru_sink)
 
 
 def test_a_chapter_without_a_title_is_named_by_its_folder(

@@ -25,6 +25,13 @@ def test_wrapped_goes_round_the_ring_both_ways() -> None:
     assert wrapped(0, -1, 3) == 2
 
 
+def test_an_empty_ring_or_list_gives_0_not_an_error() -> None:
+    """An index with no letters, say: a step must not divide by zero or land on -1."""
+    assert wrapped(0, 1, 0) == 0
+    assert next_index_toward(0, None, -1) == 0
+    assert next_index_toward(0, None, 1) == 0
+
+
 def test_a_step_with_nothing_selected_lands_on_an_end() -> None:
     assert next_index_toward(5, None, 1) == 0
     assert next_index_toward(5, None, -1) == 4
