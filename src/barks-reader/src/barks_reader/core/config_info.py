@@ -4,6 +4,7 @@
 import os
 import random
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from loguru import logger
@@ -164,17 +165,21 @@ class ConfigInfo:
 
         return executable_name
 
-    def _get_app_config_dir(self) -> Path:
-        # The env var is how a development run finds its config, and how a test
-        # harness points a build at a scratch profile; a user's build has it unset.
-        app_env_var = f"{self._app_name.upper().replace('-', '_')}_CONFIG_DIR"
+    def _get_dir_from_env(self, kind: str, build_dir: Callable[[], Path]) -> Path:
+        # The env var is how a development run finds its config and data, and how a
+        # test harness points a build at a scratch profile: set, it wins in a build
+        # too. A user's build has it unset, and takes `build_dir`.
+        app_env_var = f"{self._app_name.upper().replace('-', '_')}_{kind.upper()}_DIR"
         if app_env_var in os.environ:
             return Path(os.environ[app_env_var])
         if not self.is_running_compiled:
-            msg = f'Not a compiled standalone build. Expected config env var "{app_env_var}".'
+            msg = f'Not a compiled standalone build. Expected {kind} env var "{app_env_var}".'
             raise RuntimeError(msg)
 
-        return self._get_user_app_config_dir()
+        return build_dir()
+
+    def _get_app_config_dir(self) -> Path:
+        return self._get_dir_from_env("config", self._get_user_app_config_dir)
 
     def _get_user_app_config_dir(self) -> Path:
         # Determine and return the user_data_dir.
@@ -197,15 +202,7 @@ class ConfigInfo:
         return config_dir
 
     def _get_app_data_dir(self) -> Path:
-        # As for the config dir: set, the env var wins in a build too.
-        app_env_var = f"{self._app_name.upper().replace('-', '_')}_DATA_DIR"
-        if app_env_var in os.environ:
-            return Path(os.environ[app_env_var])
-        if not self.is_running_compiled:
-            msg = f'Not a compiled standalone build. Expected data env var "{app_env_var}".'
-            raise RuntimeError(msg)
-
-        return self.app_dir
+        return self._get_dir_from_env("data", lambda: self.app_dir)
 
 
 def seed_random_from_env() -> int | None:
@@ -287,17 +284,20 @@ def _run_loguru_config(cfg_info: ConfigInfo) -> None:
     try:
         LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
     except Exception:  # noqa: BLE001
+        # loguru's own stderr handler goes first, or every line is printed twice.
+        logger.remove()
         logger.add(sys.stderr, level=log_level, backtrace=True, diagnose=True)
         logger.add(str(cfg_info.app_log_path), level=log_level, backtrace=True, diagnose=True)
     else:
         return  # all is well!
 
     # Failed but try again. Should fail again but at least the exception will be properly
-    # logged with the above emergency config.
+    # logged with the above emergency config. Should it load, it replaces those handlers
+    # (`logger.configure` removes every handler first). A Ctrl-C is not a bad config.
     # noinspection PyBroadException
     try:
         LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
-    except:  # noqa: E722
+    except Exception:  # noqa: BLE001
         logger.exception("LoguruConfig failed: ")
         sys.exit(1)
 

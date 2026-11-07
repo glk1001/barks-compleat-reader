@@ -417,10 +417,13 @@ class TestLoguruSetup:
             patch.object(
                 config_info.LoguruConfig, "load", side_effect=[ValueError("bad"), None]
             ) as load,
+            patch.object(config_info.logger, "remove") as remove,
             patch.object(config_info.logger, "add") as add,
         ):
             _run_loguru_config(cfg)
 
+        # loguru's own stderr handler is removed, or every line would print twice.
+        remove.assert_called_once_with()
         assert [(c.args, c.kwargs) for c in add.call_args_list] == [
             ((sink,), {"level": "WARNING", "backtrace": True, "diagnose": True})
             for sink in (sys.stderr, str(cfg.app_log_path))
@@ -432,6 +435,7 @@ class TestLoguruSetup:
     def test_a_config_that_fails_twice_is_logged_and_exits(self, cfg: ConfigInfo) -> None:
         with (
             patch.object(config_info.LoguruConfig, "load", side_effect=ValueError("bad")),
+            patch.object(config_info.logger, "remove"),
             patch.object(config_info.logger, "add"),
             patch.object(config_info.logger, "exception") as logged,
             pytest.raises(SystemExit) as exited,
@@ -440,6 +444,17 @@ class TestLoguruSetup:
 
         assert exited.value.code == 1
         logged.assert_called_once_with("LoguruConfig failed: ")
+
+    def test_a_ctrl_c_during_the_retry_is_not_taken_for_a_bad_config(self, cfg: ConfigInfo) -> None:
+        with (
+            patch.object(
+                config_info.LoguruConfig, "load", side_effect=[ValueError("bad"), KeyboardInterrupt]
+            ),
+            patch.object(config_info.logger, "remove"),
+            patch.object(config_info.logger, "add"),
+            pytest.raises(KeyboardInterrupt),
+        ):
+            _run_loguru_config(cfg)
 
 
 # ---------------------------------------------------------------------------
