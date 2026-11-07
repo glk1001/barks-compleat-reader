@@ -306,13 +306,9 @@ class FantagraphicsVolumeArchives:
             # letting it surface as a bare IndexError from the next line.
             if not image_filenames:
                 raise EmptyArchiveError(archive_filename)
-            image_ext = Path(image_filenames[0]).suffix
-            if image_ext not in _VALID_IMAGE_EXTENSION:
-                msg = (
-                    f'For image "{image_filenames[0]}",'
-                    f' expecting extension to be in "{_VALID_IMAGE_EXTENSION}".'
-                )
-                raise PageExtError(msg)
+            # `_get_archive_contents` keeps only page images, matching their extension
+            # whatever its case ("001.JPG" is a page), so this is one of the valid ones.
+            image_ext = Path(image_filenames[0]).suffix.lower()
 
             first_page, last_page = self._get_first_and_last_page_nums(image_filenames)
             self._check_image_names(
@@ -505,32 +501,28 @@ class FantagraphicsVolumeArchives:
 
         with zipfile.ZipFile(override_archive_filename, "r") as archive:
             for filename in archive.namelist():
+                # A folder entry, and the junk Finder's Compress adds, are not pages: the
+                # volume's own contents skip them too (`_get_archive_contents`).
+                if filename.endswith("/") or _is_macos_junk(filename):
+                    continue
                 file = Path(filename)
                 page = file.stem
-                ext = file.suffix
-                if ext not in _VALID_IMAGE_EXTENSION:
+                if file.suffix.lower() not in _VALID_IMAGE_EXTENSION:
                     msg = (
                         f'For image "{file}" in "{override_archive_filename}",'
                         f' expecting extension to be in "{_VALID_IMAGE_EXTENSION}".'
                     )
                     raise PageExtError(msg)
 
-                if page in archive_page_map:
-                    if page in override_pages_map:
-                        msg = (
-                            f'Cannot have jpg and png override in "{override_archive_filename}":'
-                            f' "{file}" and "{override_pages_map[page]}".'
-                        )
-                        raise RuntimeError(msg)
-                    override_pages_map[page] = file
-                else:
-                    if page in extra_pages_map:
-                        msg = (
-                            f'Cannot have jpg and png override in "{override_archive_filename}":'
-                            f' "{file}" and "{extra_pages_map[page]}".'
-                        )
-                        raise RuntimeError(msg)
-                    extra_pages_map[page] = file
+                # A page the volume has is overridden; any other is an extra page.
+                pages_map = override_pages_map if page in archive_page_map else extra_pages_map
+                if page in pages_map:
+                    msg = (
+                        f'Cannot have jpg and png override in "{override_archive_filename}":'
+                        f' "{file}" and "{pages_map[page]}".'
+                    )
+                    raise RuntimeError(msg)
+                pages_map[page] = file
 
         return override_pages_map, extra_pages_map
 
@@ -556,7 +548,7 @@ class FantagraphicsVolumeArchives:
             index = page - first
 
             page_num = self._extract_image_int(Path(img_files[index]).stem)
-            page_ext = Path(img_files[index]).suffix
+            page_ext = Path(img_files[index]).suffix.lower()
 
             if page != page_num:
                 msg = (

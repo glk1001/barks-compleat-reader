@@ -127,6 +127,12 @@ class TestCheckImageNames:
             _ARCHIVE, ["page0.png", "page1.png"], first=0, last=1, img_ext=".png"
         )
 
+    def test_an_upper_case_extension_matches(self, archives: FantagraphicsVolumeArchives) -> None:
+        """`_get_archive_contents` picks pages out whatever their case, so this check must too."""
+        archives._check_image_names(
+            _ARCHIVE, ["page1.JPG", "page2.jpg"], first=1, last=2, img_ext=".jpg"
+        )
+
 
 class TestCheckCorrectVolumeNumbers:
     def test_last_volume_number_is_accepted(self, archives: FantagraphicsVolumeArchives) -> None:
@@ -600,8 +606,69 @@ class TestOverrideAndExtraMap:
                 archive_page_map={"003": Path("images/page003.png")},
             )
 
+    def test_skips_folder_entries_and_the_junk_finder_compress_adds(self, tmp_path: Path) -> None:
+        override_zip = tmp_path / "01-ov.cbz"
+        with zipfile.ZipFile(override_zip, "w") as zf:
+            zf.writestr("overrides/", b"")
+            zf.writestr("overrides/003.png", b"\x89PNG\r\n")
+            zf.writestr("__MACOSX/", b"")
+            zf.writestr("__MACOSX/overrides/._003.png", b"junk")
+            zf.writestr("overrides/._099.png", b"junk")
+
+        overrides, extras = FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps(
+            override_archive_filename=override_zip,
+            archive_page_map={"003": Path("images/page003.png")},
+        )
+
+        assert overrides == {"003": Path("overrides/003.png")}
+        assert extras == {}
+
+    def test_accepts_an_upper_case_extension(self, tmp_path: Path) -> None:
+        override_zip = _make_override_zip(tmp_path / "01-ov.cbz", image_names=["003.PNG"])
+
+        overrides, _extras = FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps(
+            override_archive_filename=override_zip,
+            archive_page_map={"003": Path("images/page003.png")},
+        )
+
+        assert overrides == {"003": Path("003.PNG")}
+
+    def test_still_rejects_a_file_that_is_not_an_image(self, tmp_path: Path) -> None:
+        override_zip = _make_override_zip(tmp_path / "01-ov.cbz", image_names=["notes.txt"])
+
+        with pytest.raises(PageExtError, match=r"notes\.txt"):
+            FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps(
+                override_archive_filename=override_zip,
+                archive_page_map={"003": Path("images/page003.png")},
+            )
+
 
 class TestLoadEndToEnd:
+    def test_loads_a_volume_whose_pages_have_upper_case_extensions(self, tmp_path: Path) -> None:
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+        for vol in range(1, NUM_VOLUMES + 1):
+            _make_volume_zip(
+                archive_root / f"{vol:02d}-vol.cbz", image_names=["page001.JPG", "page002.JPG"]
+            )
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+        archives.load()
+
+        entry = archives.get_fantagraphics_archive(1)
+        assert entry.image_ext == ".jpg"
+        # The page map keeps the names as the zip has them: they are what is read.
+        assert entry.archive_images_page_map == {
+            "001": Path("images/page001.JPG"),
+            "002": Path("images/page002.JPG"),
+        }
+
     def test_populates_archive_dict_for_complete_volume_set(self, tmp_path: Path) -> None:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
@@ -844,30 +911,6 @@ class TestLoadEndToEnd:
             archive.page_source("999", use_overrides=True).kind is PageSourceKind.ARCHIVE
         ) is True
 
-    def test_raises_page_ext_error_for_uppercase_extension(self, tmp_path: Path) -> None:
-        """`_get_archive_contents` accepts case-insensitively; `load()` then rejects non-canonical exts."""  # noqa: E501
-        archive_root = tmp_path / "archive"
-        override_root = tmp_path / "override"
-        archive_root.mkdir()
-        override_root.mkdir()
-        # .PNG passes the case-insensitive endswith filter but Path.suffix preserves case,
-        # so the resulting ".PNG" is not in _VALID_IMAGE_EXTENSION = [".png", ".jpg"].
-        _make_volume_zip(
-            archive_root / "01-vol.cbz",
-            image_names=["page001.PNG", "page002.PNG"],
-        )
-
-        archives = FantagraphicsVolumeArchives(
-            archive_root=archive_root,
-            override_root=override_root,
-            volume_list=[1],
-        )
-        # Suppress missing-volume validation so the load reaches the extension check.
-        archives.check_correct_volume_numbers = lambda _filenames: None  # ty: ignore[invalid-assignment]
-
-        with pytest.raises(PageExtError, match="expecting extension to be in"):
-            archives.load()
-
 
 class TestErrorsIdentifyTheArchiveRoot:
     """Every validation error names the directory the user has to go and fix."""
@@ -986,14 +1029,6 @@ class TestLoadErrorMessages:
         message = str(exc_info.value)
         assert "01-vol.cbz" in message
         assert "contains no page images" in message
-
-    def test_page_ext_error_names_the_offending_first_image(self, tmp_path: Path) -> None:
-        archives = self._single_volume_archives(tmp_path, ["page001.PNG", "page002.PNG"])
-
-        with pytest.raises(PageExtError) as exc_info:
-            archives.load()
-
-        assert "page001.PNG" in str(exc_info.value)
 
     def test_the_expected_extension_comes_from_the_first_image(self, tmp_path: Path) -> None:
         """A mixed-extension archive is judged against page 1's extension."""
