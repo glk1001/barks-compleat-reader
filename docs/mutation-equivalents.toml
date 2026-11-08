@@ -2007,6 +2007,24 @@ change = """
 reason = "textwrap.shorten returns a text that fits its width as it is, but for runs of whitespace, which no index term has: a term of exactly the width comes out the same either way."
 
 [[equivalent]]
+module = "barks_reader.core.index_text"
+function = "_shortened"
+change = """
+- return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
++ return " ".join(text.split())[: width - len(_ELLIPSIS)].lstrip() + _ELLIPSIS
+"""
+reason = "The cut is taken only when textwrap leaves just the ellipsis, i.e. the first word alone overflows, so the slice ends inside that word: no space is reached to join or strip (checked over 41,770 random cut cases)."
+
+[[equivalent]]
+module = "barks_reader.core.index_text"
+function = "_shortened"
+change = """
+- return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
++ return "XX XX".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
+"""
+reason = "The cut is taken only when textwrap leaves just the ellipsis, i.e. the first word alone overflows, so the slice ends inside that word: no space is reached to join or strip (checked over 41,770 random cut cases)."
+
+[[equivalent]]
 module = "barks_reader.core.key_repeat"
 function = "KeyRepeatDetector.__init__"
 change = """
@@ -2269,22 +2287,6 @@ function = "_assert_tiling"
 change = """
 - def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "") -> None:
 + def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "XXXX") -> None:
-"""
-
-[[untriaged]]
-module = "barks_reader.core.index_text"
-function = "indexable_title_from_str"
-change = """
-- textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
-+ textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.index_text"
-function = "indexable_title_from_str"
-change = """
-- textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
-+ textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="XX...XX")
 """
 
 [[untriaged]]
