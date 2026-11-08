@@ -5,7 +5,8 @@ from __future__ import annotations
 import gc
 import re
 import weakref
-from typing import TYPE_CHECKING
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from barks_reader.core import log_markers
@@ -18,9 +19,6 @@ from barks_reader.core.memory_census import (
 from barks_reader.ui import memory_census as ui_memory_census
 from kivy.cache import Cache
 from kivy.uix.widget import Widget
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class _Thing:
@@ -72,6 +70,34 @@ class TestTakeRequest:
         request.write_text("", encoding="utf-8")
         assert take_request(request) is None
         assert request.exists()
+
+    def test_a_request_renamed_in_after_the_read_is_the_one_answered(self, tmp_path: Path) -> None:
+        """The take is a rename, so a newer request is answered, never deleted unread."""
+        request = tmp_path / "census-request"
+        request.write_text("7", encoding="utf-8")
+        real_read_text = Path.read_text
+        reads = 0
+
+        def read_then_probe_writes_the_next(path: Path, encoding: str) -> str:
+            nonlocal reads
+            text = real_read_text(path, encoding=encoding)
+            reads += 1
+            if reads == 1:  # the probe's next request lands between the look and the take
+                newer = tmp_path / "census-request.tmp"
+                newer.write_text("8", encoding="utf-8")
+                newer.replace(request)
+            return text
+
+        with patch.object(Path, Path.read_text.__name__, read_then_probe_writes_the_next):
+            assert take_request(request) == "8"
+        assert not request.exists()
+        assert list(tmp_path.iterdir()) == []
+
+    def test_a_request_gone_before_the_take_is_no_request(self, tmp_path: Path) -> None:
+        request = tmp_path / "census-request"
+        request.write_text("7", encoding="utf-8")
+        with patch.object(Path, Path.replace.__name__, side_effect=FileNotFoundError):
+            assert take_request(request) is None
 
 
 class TestAnswer:

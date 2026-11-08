@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 MEMORY_CENSUS_FILE_ENV_VAR = "BARKS_READER_MEMORY_CENSUS_FILE"
 
 _MIB = 1024 * 1024
+# A request is moved to this name before it is read; the probe writes ".tmp".
+_TAKEN_SUFFIX = ".taken"
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,7 +89,9 @@ def take_request(request_file: Path) -> str | None:
     """Return the request id waiting in `request_file` and remove it, or None.
 
     The probe writes the file whole and renames it into place, so one that is
-    there holds a whole id; an empty one is left for the next look.
+    there holds a whole id; an empty one is left for the next look. The request
+    is moved aside before it is read, so one renamed into place meanwhile waits
+    for the next look rather than being deleted unread.
 
     Args:
         request_file: The file a test writes a request id into.
@@ -96,11 +100,22 @@ def take_request(request_file: Path) -> str | None:
         The request id, or None when no request is waiting.
 
     """
+    if not _read_request(request_file):
+        return None
+    taken = request_file.with_name(request_file.name + _TAKEN_SUFFIX)
     try:
-        request = request_file.read_text(encoding="utf-8").strip()
+        request_file.replace(taken)
     except OSError:
         return None
-    if not request:
-        return None
-    request_file.unlink(missing_ok=True)
-    return request
+    try:
+        # What was moved, which may be a newer request than the one first read.
+        return _read_request(taken) or None
+    finally:
+        taken.unlink(missing_ok=True)
+
+
+def _read_request(request_file: Path) -> str:
+    try:
+        return request_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
