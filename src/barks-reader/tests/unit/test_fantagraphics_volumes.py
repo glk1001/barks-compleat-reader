@@ -202,6 +202,34 @@ class TestCheckFirstPage:
 
 
 class TestCheckCorrectVolumeNumbers:
+    @staticmethod
+    def _for_volumes(volume_list: list[int]) -> FantagraphicsVolumeArchives:
+        return FantagraphicsVolumeArchives(
+            archive_root=Path("/fake/archives"),
+            override_root=Path("/fake/overrides"),
+            volume_list=volume_list,
+        )
+
+    def test_a_few_volumes_with_their_files_are_not_missing_the_rest(self) -> None:
+        archives = self._for_volumes([3, 5, 7])
+        archives.check_correct_volume_numbers([Path(f"{i}-vol.cbz") for i in (3, 5, 7)])
+
+    def test_a_few_volumes_report_only_their_own_gaps(self) -> None:
+        archives = self._for_volumes([7, 3, 5])
+
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers([Path("3-vol.cbz"), Path("7-vol.cbz")])
+
+        assert exc_info.value.missing_file_vols == [5]
+
+    def test_a_few_volumes_with_no_files_report_just_those(self) -> None:
+        archives = self._for_volumes([7, 3, 5])
+
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers([])
+
+        assert exc_info.value.missing_file_vols == [3, 5, 7]
+
     def test_last_volume_number_is_accepted(self, archives: FantagraphicsVolumeArchives) -> None:
         """The valid range is inclusive of `LAST_VOLUME_NUMBER`."""
         filenames = [Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, NUM_VOLUMES + 1)]
@@ -750,6 +778,23 @@ class TestLoadEndToEnd:
         assert "01-vol.cbz" in message
         assert 'volume 1 numbers its pages from 0, but its first image, "page001.png"' in message
 
+    def test_archives_made_for_one_volume_load_just_that_one(self, tmp_path: Path) -> None:
+        """The other 29 are neither scanned nor reported missing."""
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+        for vol in (2, 3):
+            _make_volume_zip(archive_root / f"{vol:02d}-vol.cbz", image_names=_volume_pages(vol, 2))
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root, override_root=override_root, volume_list=[2]
+        )
+        archives.load()
+
+        assert list(archives._fantagraphics_archive_dict) == [2]
+        assert archives.get_fantagraphics_archive(2).is_missing is False
+
     def test_loads_a_volume_whose_pages_have_upper_case_extensions(self, tmp_path: Path) -> None:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
@@ -1110,12 +1155,10 @@ class TestLoadErrorMessages:
         override_root.mkdir()
         _make_volume_zip(archive_root / "02-vol.cbz", image_names=image_names)
 
-        archives = FantagraphicsVolumeArchives(
+        # Made for volume 2 alone, which is not then missing the other 29.
+        return FantagraphicsVolumeArchives(
             archive_root=archive_root, override_root=override_root, volume_list=[2]
         )
-        # Suppress missing-volume validation so the load reaches the per-image checks.
-        archives.check_correct_volume_numbers = lambda _filenames: None  # ty: ignore[invalid-assignment]
-        return archives
 
     def test_an_archive_with_no_images_names_the_file(self, tmp_path: Path) -> None:
         """A truncated/partial volume copy must say which file, not raise IndexError.

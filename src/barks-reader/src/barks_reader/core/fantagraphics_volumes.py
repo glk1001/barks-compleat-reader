@@ -238,8 +238,9 @@ class FantagraphicsVolumeArchives:
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
         """Raise if the library's volume files have duplicates or gaps.
 
-        A file numbered outside the volume range never gets here:
-        `get_all_volume_filenames` keeps only the volumes in the volume list.
+        A gap is a volume in the volume list with no file, so archives made for a few
+        volumes do not report the rest missing. A file for a volume outside the list
+        never gets here: `get_all_volume_filenames` keeps only the volumes in the list.
         """
         file_vols = sorted([self._get_fanta_volume(f) for f in archive_filenames])
 
@@ -247,9 +248,7 @@ class FantagraphicsVolumeArchives:
         # is missing. Route it through the normal all-missing path rather than indexing
         # into an empty list below.
         if not file_vols:
-            raise MissingArchiveFilesError(
-                list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)), self._archive_root
-            )
+            raise MissingArchiveFilesError(sorted(self._volume_list), self._archive_root)
 
         # Check there are no duplicates.
         counts = Counter(file_vols)
@@ -257,11 +256,8 @@ class FantagraphicsVolumeArchives:
         if duplicates:
             raise DuplicateArchiveFilesError(duplicates, self._archive_root)
 
-        # Check for missing volumes.
-        full_vol_set = set(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
-        file_vols_set = set(file_vols)
-        # The difference between the full set and the actual set are the gaps.
-        file_vol_gaps = sorted(full_vol_set - file_vols_set)
+        # Check for missing volumes: those in the volume list with no file.
+        file_vol_gaps = sorted(set(self._volume_list) - set(file_vols))
         if file_vol_gaps:
             raise MissingArchiveFilesError(file_vol_gaps, self._archive_root)
 
