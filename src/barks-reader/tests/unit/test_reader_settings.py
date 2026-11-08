@@ -15,7 +15,9 @@ from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePa
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     FANTA_DIR,
+    PREBUILT_COMICS_DIR,
     UNSET_WIKI_BUNDLE_DIR_MARKER,
+    USE_PREBUILT_COMICS,
     ReaderSettings,
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
@@ -206,6 +208,65 @@ class TestReaderSettings:
             assert (
                 reader_settings.is_valid_fantagraphics_volumes_dir(Path("/invalid/path")) is False
             )
+
+    @staticmethod
+    def _set_prebuilt(mock_config: MagicMock, *, use_prebuilt: bool, prebuilt_dir: Path) -> None:
+        """Make the config hold these two prebuilt-comics settings, as the panel leaves it."""
+        mock_config.getboolean.side_effect = lambda _section, key: (
+            use_prebuilt if key == USE_PREBUILT_COMICS else False
+        )
+        mock_config.get.side_effect = lambda _section, key: (
+            str(prebuilt_dir) if key == PREBUILT_COMICS_DIR else "/mock/path"
+        )
+
+    @pytest.mark.parametrize(
+        ("use_prebuilt", "dir_exists", "expected"),
+        [
+            pytest.param(False, False, True, id="off_any_path_will_do"),
+            pytest.param(True, True, True, id="on_and_a_folder"),
+            pytest.param(True, False, False, id="on_and_missing"),
+        ],
+    )
+    def test_is_valid_prebuilt_comics_dir(
+        self,
+        reader_settings: ReaderSettings,
+        mock_config: MagicMock,
+        tmp_path: Path,
+        use_prebuilt: bool,
+        dir_exists: bool,
+        expected: bool,
+    ) -> None:
+        prebuilt_dir = tmp_path / "prebuilt"
+        if dir_exists:
+            prebuilt_dir.mkdir()
+        self._set_prebuilt(mock_config, use_prebuilt=use_prebuilt, prebuilt_dir=prebuilt_dir)
+
+        assert reader_settings._is_valid_prebuilt_comics_dir(prebuilt_dir) is expected
+
+    @pytest.mark.parametrize(
+        ("use_prebuilt", "dir_exists", "expected"),
+        [
+            pytest.param(False, False, True, id="turning_it_off_is_always_valid"),
+            pytest.param(True, True, True, id="on_with_the_folder_there"),
+            pytest.param(True, False, False, id="on_with_the_folder_missing"),
+        ],
+    )
+    def test_is_valid_use_prebuilt_archives(
+        self,
+        reader_settings: ReaderSettings,
+        mock_config: MagicMock,
+        tmp_path: Path,
+        use_prebuilt: bool,
+        dir_exists: bool,
+        expected: bool,
+    ) -> None:
+        """Turning prebuilt comics on checks the prebuilt-comics folder setting."""
+        prebuilt_dir = tmp_path / "prebuilt"
+        if dir_exists:
+            prebuilt_dir.mkdir()
+        self._set_prebuilt(mock_config, use_prebuilt=use_prebuilt, prebuilt_dir=prebuilt_dir)
+
+        assert reader_settings._is_valid_use_prebuilt_archives(use_prebuilt) is expected
 
     def test_is_valid_use_png_images(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
