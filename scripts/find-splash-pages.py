@@ -32,6 +32,7 @@ from barks_fantagraphics.comic_book import get_num_splashes
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.core.reader_file_paths import PanelDirNames
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.system_file_paths import SystemFilePaths
 from loguru import logger
@@ -69,7 +70,7 @@ def _get_panel_segments_root(reader_settings: ReaderSettings) -> Path:
 def _get_splash_dir(reader_settings: ReaderSettings) -> Path:
     """Return the Splash folder of the reader's PNG Barks panels."""
     reader_settings.force_barks_panels_dir(use_png_images=True)
-    splash_dir = reader_settings.file_paths.get_comic_splash_files_dir()
+    splash_dir = reader_settings.file_paths.get_panel_dir(PanelDirNames.SPLASH)
     assert isinstance(splash_dir, Path), "PNG panels are a directory, not a zip."
     return splash_dir
 

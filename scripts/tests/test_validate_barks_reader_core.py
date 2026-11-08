@@ -213,29 +213,13 @@ class TestPhase10Layout:
         assert _kinds(phase) == ["kind=missing_segments_dir"]
 
 
-_DIR_GETTERS = (
-    "get_comic_inset_files_dir",
-    "get_comic_cover_files_dir",
-    "get_comic_bw_files_dir",
-    "get_comic_ai_files_dir",
-    "get_comic_censorship_files_dir",
-    "get_comic_closeup_files_dir",
-    "get_comic_favourite_files_dir",
-    "get_comic_original_art_files_dir",
-    "get_comic_search_files_dir",
-    "get_comic_silhouette_files_dir",
-    "get_comic_splash_files_dir",
-)
-
-
 def _check_title_files(
     tmp_path: Path, title: Titles, known_missing: frozenset[str] = frozenset()
 ) -> tuple[core.PhaseResult, core._TitleCounts | None]:
     """Run one title's panel-file check against a panel source rooted at ``tmp_path``."""
     file_paths = MagicMock(barks_panels_are_encrypted=False)
-    file_paths.get_inset_file_ext.return_value = ".png"
-    for getter in _DIR_GETTERS:
-        getattr(file_paths, getter).return_value = tmp_path
+    file_paths.get_file_ext.return_value = ".png"
+    file_paths.get_panel_dir.return_value = tmp_path
     phase = core.PhaseResult(name="Per-title Panel Files")
     ctx = core._AuditCtx(panel_source=tmp_path, is_zip=False)  # noqa: SLF001
     counts = core._validate_title_files(  # noqa: SLF001

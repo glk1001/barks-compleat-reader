@@ -95,16 +95,15 @@ A `TagGroups | Tags | Titles | str` (or similar) value flows into a narrower slo
       operand in `Path(...)` before `/`.
 - [ ] `core/reader_setup.py:41` — `zipfile.Path | pathlib.Path` passed as `inset_dir` (`pathlib.Path`)
       to `ComicsDatabase.set_inset_info`. Narrow to `pathlib.Path` (the inset dir is real-FS).
-- [ ] `core/reader_setup.py:37` — `configparser.ConfigParser` vs the local `ConfigParser`
-      Protocol (`core/reader_settings.py`; `.write` signature mismatch). Adjust the Protocol
-      or cast. (Already `# ty: ignore`-ed in four scripts: `check_random_title_images`,
-      `find-splash-pages`, `copy-reader-pngs-to-jpgs`, `panels-info`.)
+- [x] `core/reader_setup.py` — `configparser.ConfigParser` vs the local `ConfigParser`
+      Protocol (`core/reader_settings.py`; `.write` signature mismatch). Gone: `a84024fb`
+      split the Protocol into `WritableConfig` and `SavableConfig`, and the four scripts'
+      `# ty: ignore`s went with it.
 - [x] `ui/comic_book_reader.py` — a value typed `object` passed as `page_index`. Gone:
       `70071147` replaced the `filter(None.__ne__, ...)` with the typed `_needed_indices()`.
-- [ ] `core/reader_file_paths_resolver.py:48` + `:55` — getter union return (`PanelPath | list | None`)
-      vs `list[tuple[PanelPath, bool]]`. Already `# ty: ignore[not-iterable]`. Real fix = give the
-      `FILE_TYPE_FILE_GETTERS` getters precise per-category return types so the COVER/other split
-      narrows. Larger refactor; low priority.
+- [x] `core/reader_file_paths_resolver.py` — getter union return (`PanelPath | list | None`)
+      vs `list[tuple[PanelPath, bool]]`. Gone: the per-type getter table became
+      `ReaderFilePaths.get_title_files`, which returns a list for every type.
 - [ ] `ui/tree_view_manager.py:283` + `:286` — `Literal[True]` assigned to attribute
       `populated` inferred as `Never`. `populated` is already a Kivy `BooleanProperty`
       (`tree_view_nodes.py`), so this is the Kivy stub gap, not a missing annotation. The

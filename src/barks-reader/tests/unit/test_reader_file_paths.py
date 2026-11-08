@@ -167,7 +167,7 @@ class TestReaderFilePaths:
         (bw_dir / "page1.png").touch()
         (bw_dir / "page2.png").touch()
 
-        files = reader_file_paths.get_comic_bw_files(title)
+        files = reader_file_paths.get_title_files(FileTypes.BLACK_AND_WHITE, title)
         assert len(files) == 2  # noqa: PLR2004
 
         # Test edited
@@ -175,7 +175,9 @@ class TestReaderFilePaths:
         edited_dir.mkdir()
         (edited_dir / "page1.png").touch()
 
-        files_edited = reader_file_paths.get_comic_bw_files(title, use_only_edited_if_possible=True)
+        files_edited = reader_file_paths.get_title_files(
+            FileTypes.BLACK_AND_WHITE, title, use_only_edited_if_possible=True
+        )
         assert len(files_edited) == 1
         assert files_edited[0].parent.name == EDITED_SUBDIR  # ty:ignore[unresolved-attribute]
 
@@ -214,7 +216,7 @@ class TestSwitchingThePanelsSource:
 
         assert reader_file_paths._barks_panels_zip is None
         assert reader_file_paths.barks_panels_are_encrypted is False
-        assert reader_file_paths.get_inset_file_ext() == ".png"
+        assert reader_file_paths.get_file_ext() == ".png"
 
     def test_a_folder_missing_after_the_zip_is_still_found_missing(
         self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
@@ -242,7 +244,7 @@ class TestSwitchingThePanelsSource:
     ) -> None:
         """An image on screen may hold one: the old zip is dropped, not closed."""
         self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
-        old_member = reader_file_paths.get_comic_inset_files_dir() / "placeholder.txt"
+        old_member = reader_file_paths.get_panel_dir(PanelDirNames.INSETS) / "placeholder.txt"
 
         self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
@@ -255,8 +257,8 @@ class TestSwitchingThePanelsSource:
         reader_file_paths.add_panels_source_listener(
             lambda: seen.append(
                 (
-                    reader_file_paths.get_comic_inset_files_dir().name,
-                    reader_file_paths.get_inset_file_ext(),
+                    reader_file_paths.get_panel_dir(PanelDirNames.INSETS).name,
+                    reader_file_paths.get_file_ext(),
                 )
             )
         )
@@ -326,8 +328,7 @@ class TestPanelsSourceSetup:
         with patch("os.path.expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, ext_type)
 
-        assert reader_file_paths._inset_files_ext == expected_ext
-        assert reader_file_paths._edited_files_ext == expected_ext
+        assert reader_file_paths.get_file_ext() == expected_ext
 
 
 class TestInsetFileLookup:
@@ -547,6 +548,67 @@ class TestDefaultSources:
         assert ReaderFilePaths.get_default_png_barks_panels_source() == barks / "Barks Panels Pngs"
 
 
+class TestTitleFiles:
+    """``get_title_files`` finds each image type in its own folder."""
+
+    TITLE = "Some Title"
+
+    @pytest.fixture
+    def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
+        with patch("os.path.expandvars", return_value=str(panels_dir)):
+            reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+        return reader_file_paths
+
+    @pytest.mark.parametrize(
+        ("file_type", "panel_dir"),
+        [
+            (FileTypes.AI, PanelDirNames.AI),
+            (FileTypes.BLACK_AND_WHITE, PanelDirNames.BW),
+            (FileTypes.CENSORSHIP, PanelDirNames.CENSORSHIP),
+            (FileTypes.CLOSEUP, PanelDirNames.CLOSEUPS),
+            (FileTypes.FAVOURITE, PanelDirNames.FAVOURITES),
+            (FileTypes.ORIGINAL_ART, PanelDirNames.ORIGINAL_ART),
+            (FileTypes.SILHOUETTE, PanelDirNames.SILHOUETTES),
+            (FileTypes.SPLASH, PanelDirNames.SPLASH),
+        ],
+    )
+    def test_a_title_folder_type_lists_its_own_folder(
+        self,
+        paths: ReaderFilePaths,
+        panels_dir: Path,
+        file_type: FileTypes,
+        panel_dir: PanelDirNames,
+    ) -> None:
+        title_dir = panels_dir / panel_dir.value / self.TITLE
+        title_dir.mkdir()
+        (title_dir / "page1.png").touch()
+
+        assert paths.get_title_files(file_type, self.TITLE) == [title_dir / "page1.png"]
+        assert paths.get_panel_dir(panel_dir) == panels_dir / panel_dir.value
+
+    def test_a_cover_is_one_file(self, paths: ReaderFilePaths, panels_dir: Path) -> None:
+        cover = panels_dir / PanelDirNames.COVERS.value / f"{self.TITLE}.jpg"
+        cover.touch()
+
+        assert paths.get_title_files(FileTypes.COVER, self.TITLE) == [cover]
+
+    def test_no_cover_is_no_files(self, paths: ReaderFilePaths) -> None:
+        assert paths.get_title_files(FileTypes.COVER, self.TITLE) == []
+
+    def test_an_inset_is_its_inset_files(self, paths: ReaderFilePaths, panels_dir: Path) -> None:
+        inset = panels_dir / PanelDirNames.INSETS.value / "Donald Duck Finds Pirate Gold.png"
+        inset.touch()
+
+        assert paths.get_title_files(FileTypes.INSET, "Donald Duck Finds Pirate Gold") == [inset]
+
+    def test_nontitle_images_belong_to_no_title(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        (panels_dir / PanelDirNames.NONTITLES.value / "page1.png").touch()
+
+        assert paths.get_title_files(FileTypes.NONTITLE, self.TITLE) == []
+
+
 class TestEditedFilesAreOptIn:
     """`use_only_edited_if_possible` defaults to False across the file getters.
 
@@ -592,11 +654,11 @@ class TestEditedFilesAreOptIn:
         (edited / "page1.png").touch()
 
         # Every page is offered, edited and unedited alike.
-        assert len(paths.get_comic_bw_files(title)) == 3  # noqa: PLR2004
+        assert len(paths.get_title_files(FileTypes.BLACK_AND_WHITE, title)) == 3  # noqa: PLR2004
         # Opting in narrows it to the edited copies only.
-        assert paths.get_comic_bw_files(title, use_only_edited_if_possible=True) == [
-            edited / "page1.png"
-        ]
+        assert paths.get_title_files(
+            FileTypes.BLACK_AND_WHITE, title, use_only_edited_if_possible=True
+        ) == [edited / "page1.png"]
 
 
 class TestEditedVersionIfPossible:

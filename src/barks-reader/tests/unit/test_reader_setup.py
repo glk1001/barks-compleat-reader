@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from barks_reader.core import reader_setup
+from barks_reader.core.reader_file_paths import PanelDirNames
 from barks_reader.core.reader_setup import (
     bootstrap_reader_environment,
     prepare_comic_for_reading,
@@ -13,8 +14,8 @@ from comic_utils.get_panel_bytes import get_decrypted_bytes
 class TestBootstrapReaderEnvironment:
     def test_wires_config_and_inset_info(self) -> None:
         reader_settings = MagicMock()
-        reader_settings.file_paths.get_comic_inset_files_dir.return_value = "/inset/dir"
-        reader_settings.file_paths.get_inset_file_ext.return_value = ".png"
+        reader_settings.file_paths.get_panel_dir.return_value = "/inset/dir"
+        reader_settings.file_paths.get_file_ext.return_value = ".png"
         reader_settings.reader_files_dir = "/reader/files"
 
         comics_database = MagicMock()
@@ -28,6 +29,7 @@ class TestBootstrapReaderEnvironment:
         reader_settings.set_config.assert_called_once_with(parser, "/cfg/app.ini", "/data")
         reader_settings.set_barks_panels_dir.assert_called_once_with()
         comics_database.set_inset_info.assert_called_once_with("/inset/dir", ".png")
+        reader_settings.file_paths.get_panel_dir.assert_called_once_with(PanelDirNames.INSETS)
         reader_settings.sys_file_paths.set_barks_reader_files_dir.assert_called_once_with(
             "/reader/files"
         )
@@ -36,8 +38,8 @@ class TestBootstrapReaderEnvironment:
         """The settings panel can switch PNG folders and the JPG zip after boot."""
         reader_settings = MagicMock()
         file_paths = reader_settings.file_paths
-        file_paths.get_comic_inset_files_dir.return_value = "/png/Insets"
-        file_paths.get_inset_file_ext.return_value = ".png"
+        file_paths.get_panel_dir.return_value = "/png/Insets"
+        file_paths.get_file_ext.return_value = ".png"
         comics_database = MagicMock()
 
         bootstrap_reader_environment(reader_settings, comics_database, MagicMock(), MagicMock())
@@ -45,8 +47,8 @@ class TestBootstrapReaderEnvironment:
         file_paths.add_panels_source_listener.assert_called_once()
         listener = file_paths.add_panels_source_listener.call_args.args[0]
 
-        file_paths.get_comic_inset_files_dir.return_value = "/zip/Insets"
-        file_paths.get_inset_file_ext.return_value = ".jpg"
+        file_paths.get_panel_dir.return_value = "/zip/Insets"
+        file_paths.get_file_ext.return_value = ".jpg"
         listener()
 
         assert comics_database.set_inset_info.call_args_list[-1].args == ("/zip/Insets", ".jpg")
@@ -59,7 +61,7 @@ class TestBootstrapReaderEnvironment:
 
         call_order: list[str] = []
         reader_settings.set_config.side_effect = lambda *_a, **_k: call_order.append("set_config")
-        reader_settings.file_paths.get_comic_inset_files_dir.side_effect = lambda: (
+        reader_settings.file_paths.get_panel_dir.side_effect = lambda _dir: (
             call_order.append("get_inset_dir") or "/x"
         )
 

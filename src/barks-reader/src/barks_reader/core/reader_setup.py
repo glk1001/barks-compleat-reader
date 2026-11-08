@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from comic_utils.get_panel_bytes import get_decrypted_bytes
 
+from .reader_file_paths import PanelDirNames
+
 if TYPE_CHECKING:
     from configparser import ConfigParser
 
@@ -48,8 +50,8 @@ def bootstrap_reader_environment(
 
 def _set_inset_info(comics_database: ComicsDatabase, file_paths: ReaderFilePaths) -> None:
     comics_database.set_inset_info(
-        file_paths.get_comic_inset_files_dir(),  # ty: ignore[invalid-argument-type]
-        file_paths.get_inset_file_ext(),
+        file_paths.get_panel_dir(PanelDirNames.INSETS),  # ty: ignore[invalid-argument-type]
+        file_paths.get_file_ext(),
     )
 
 

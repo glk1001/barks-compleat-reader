@@ -72,6 +72,22 @@ class FileTypes(Enum):
 
 ALL_TYPES = set(FileTypes)
 
+# The panel folder each image type's files are in.
+_FILE_TYPE_DIRS: dict[FileTypes, PanelDirNames] = {
+    FileTypes.AI: PanelDirNames.AI,
+    FileTypes.BLACK_AND_WHITE: PanelDirNames.BW,
+    FileTypes.CENSORSHIP: PanelDirNames.CENSORSHIP,
+    FileTypes.CLOSEUP: PanelDirNames.CLOSEUPS,
+    FileTypes.COVER: PanelDirNames.COVERS,
+    FileTypes.FAVOURITE: PanelDirNames.FAVOURITES,
+    FileTypes.INSET: PanelDirNames.INSETS,
+    FileTypes.NONTITLE: PanelDirNames.NONTITLES,
+    FileTypes.ORIGINAL_ART: PanelDirNames.ORIGINAL_ART,
+    FileTypes.SILHOUETTE: PanelDirNames.SILHOUETTES,
+    FileTypes.SPLASH: PanelDirNames.SPLASH,
+}
+assert set(_FILE_TYPE_DIRS) == ALL_TYPES
+
 
 class BarksPanelsExtType(Enum):
     JPG = auto()
@@ -88,40 +104,12 @@ class ReaderFilePaths:
         self._panel_dirs: dict[PanelDirNames, PanelPath] = {}
         self._inset_edited_files_dir: PanelPath | None = None
 
-        self._inset_files_ext = ""
-        self._edited_files_ext = ""
+        # The panels' image extension: an edited copy, or an inset, has it. (A plain
+        # cover is always a JPG.)
+        self._panel_file_ext = ""
 
         self._titles_cache: dict[FileTypes, list[str]] = {}
         self._panels_source_listeners: list[Callable[[], None]] = []
-
-        self.FILE_TYPE_FILE_GETTERS: dict[
-            FileTypes, Callable[[str, bool], PanelPath | list[PanelPath] | None]
-        ] = {
-            # COVER special case: returns single string or None
-            FileTypes.COVER: self.get_comic_cover_file,
-            FileTypes.AI: self.get_comic_ai_files,
-            FileTypes.BLACK_AND_WHITE: self.get_comic_bw_files,
-            FileTypes.CENSORSHIP: self.get_comic_censorship_files,
-            FileTypes.CLOSEUP: self.get_comic_closeup_files,
-            FileTypes.FAVOURITE: self.get_comic_favourite_files,
-            FileTypes.INSET: self.get_comic_inset_files,
-            FileTypes.ORIGINAL_ART: self.get_comic_original_art_files,
-            FileTypes.SILHOUETTE: self.get_comic_silhouette_files,
-            FileTypes.SPLASH: self.get_comic_splash_files,
-        }
-
-        self._FILE_TYPE_DIR_GETTERS: dict[FileTypes, Callable[[], PanelPath]] = {
-            FileTypes.COVER: self.get_comic_cover_files_dir,
-            FileTypes.AI: self.get_comic_ai_files_dir,
-            FileTypes.BLACK_AND_WHITE: self.get_comic_bw_files_dir,
-            FileTypes.CENSORSHIP: self.get_comic_censorship_files_dir,
-            FileTypes.CLOSEUP: self.get_comic_closeup_files_dir,
-            FileTypes.FAVOURITE: self.get_comic_favourite_files_dir,
-            FileTypes.INSET: self.get_comic_inset_files_dir,
-            FileTypes.ORIGINAL_ART: self.get_comic_original_art_files_dir,
-            FileTypes.SILHOUETTE: self.get_comic_silhouette_files_dir,
-            FileTypes.SPLASH: self.get_comic_splash_files_dir,
-        }
 
     def add_panels_source_listener(self, listener: Callable[[], None]) -> None:
         """Call ``listener`` after every later ``set_barks_panels_source``.
@@ -176,10 +164,7 @@ class ReaderFilePaths:
 
         self._check_panels_dirs()
 
-        self._inset_files_ext = (
-            JPG_FILE_EXT if self._panels_ext_type == BarksPanelsExtType.JPG else PNG_FILE_EXT
-        )
-        self._edited_files_ext = (
+        self._panel_file_ext = (
             JPG_FILE_EXT if self._panels_ext_type == BarksPanelsExtType.JPG else PNG_FILE_EXT
         )
 
@@ -224,15 +209,13 @@ class ReaderFilePaths:
                 )
                 raise FileNotFoundError(msg)
 
-    def get_inset_file_ext(self) -> str:
-        return self._inset_files_ext
-
     def get_file_ext(self) -> str:
-        return self._inset_files_ext
+        """Return the panels' image extension, ".jpg" or ".png", as insets and edits have."""
+        return self._panel_file_ext
 
     def get_emergency_inset_file(self) -> PanelPath:
         return self._panel_dirs[PanelDirNames.INSETS] / (
-            BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + self._inset_files_ext
+            BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + self._panel_file_ext
         )
 
     @staticmethod
@@ -247,41 +230,38 @@ class ReaderFilePaths:
     def get_default_prebuilt_comic_zips_dir() -> Path:
         return Path(expand_path_vars(_DEFAULT_THE_COMIC_ZIPS_DIR))
 
-    def get_comic_bw_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.BW]
+    def get_panel_dir(self, panel_dir: PanelDirNames) -> PanelPath:
+        """Return a panel folder of the current source (a folder, or one in the zip)."""
+        return self._panel_dirs[panel_dir]
 
-    def get_comic_ai_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.AI]
+    def get_title_files(
+        self, file_type: FileTypes, title_str: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        """Return a title's images of one type, its edited ones first.
 
-    def get_comic_censorship_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.CENSORSHIP]
+        Args:
+            file_type: The image type. NONTITLE images belong to no title: none.
+            title_str: The title whose images to list.
+            use_only_edited_if_possible: Only the edited images, when the title has any.
 
-    def get_comic_closeup_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.CLOSEUPS]
+        Returns:
+            The images found; a cover or inset lookup gives at most its own one or two.
 
-    def get_comic_cover_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.COVERS]
-
-    def get_comic_favourite_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.FAVOURITES]
-
-    def get_comic_inset_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.INSETS]
-
-    def get_nontitle_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.NONTITLES]
-
-    def get_comic_original_art_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.ORIGINAL_ART]
-
-    def get_comic_search_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.SEARCH]
-
-    def get_comic_silhouette_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.SILHOUETTES]
-
-    def get_comic_splash_files_dir(self) -> PanelPath:
-        return self._panel_dirs[PanelDirNames.SPLASH]
+        """
+        match file_type:
+            case FileTypes.COVER:
+                cover = self.get_comic_cover_file(title_str, use_only_edited_if_possible)
+                return [] if cover is None else [cover]
+            case FileTypes.INSET:
+                return self.get_comic_inset_files(title_str, use_only_edited_if_possible)
+            case FileTypes.NONTITLE:
+                return []
+            case _:
+                return self._get_files(
+                    self._panel_dirs[_FILE_TYPE_DIRS[file_type]],
+                    title_str,
+                    use_only_edited_if_possible,
+                )
 
     def get_comic_inset_file(
         self, title: Titles, use_only_edited_if_possible: bool = False
@@ -329,7 +309,7 @@ class ReaderFilePaths:
     def _find_edited_inset_file(self, title: Titles) -> PanelPath | None:
         assert self._inset_edited_files_dir
         edited_file = self._inset_edited_files_dir / get_filename_from_title(
-            title, self._inset_files_ext
+            title, self._panel_file_ext
         )
         if edited_file.is_file():
             return edited_file
@@ -338,7 +318,7 @@ class ReaderFilePaths:
 
     def _find_plain_inset_file(self, title: Titles) -> PanelPath | None:
         main_file = self._panel_dirs[PanelDirNames.INSETS] / get_filename_from_title(
-            title, self._inset_files_ext
+            title, self._panel_file_ext
         )
         return main_file if main_file.is_file() else None
 
@@ -347,77 +327,29 @@ class ReaderFilePaths:
     ) -> PanelPath | None:
         if use_only_edited_if_possible:
             edited_file = (
-                self.get_comic_cover_files_dir() / EDITED_SUBDIR / (title + self._edited_files_ext)
+                self._panel_dirs[PanelDirNames.COVERS]
+                / EDITED_SUBDIR
+                / (title + self._panel_file_ext)
             )
             if edited_file.is_file():
                 return edited_file
 
-        cover_file = self.get_comic_cover_files_dir() / (title + JPG_FILE_EXT)
+        cover_file = self._panel_dirs[PanelDirNames.COVERS] / (title + JPG_FILE_EXT)
         if not cover_file.is_file():
             return None
 
         return cover_file
 
-    def get_comic_bw_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_bw_files_dir(), title, use_only_edited_if_possible)
-
-    def get_comic_ai_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_ai_files_dir(), title, use_only_edited_if_possible)
-
-    def get_comic_censorship_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_censorship_files_dir(), title, use_only_edited_if_possible
-        )
-
-    def get_comic_closeup_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_closeup_files_dir(), title, use_only_edited_if_possible
-        )
-
-    def get_comic_favourite_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_favourite_files_dir(), title, use_only_edited_if_possible
-        )
-
     def get_nontitle_files(self) -> list[PanelPath]:
-        return self._get_all_files(self.get_nontitle_files_dir())
-
-    def get_comic_original_art_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_original_art_files_dir(), title, use_only_edited_if_possible
-        )
+        """Return every image that belongs to no title."""
+        return self._get_all_files(self._panel_dirs[PanelDirNames.NONTITLES])
 
     def get_comic_search_files(
         self, title: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
+        """Return a title's search-screen images, its edited ones first."""
         return self._get_files(
-            self.get_comic_search_files_dir(), title, use_only_edited_if_possible
-        )
-
-    def get_comic_silhouette_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_silhouette_files_dir(), title, use_only_edited_if_possible
-        )
-
-    def get_comic_splash_files(
-        self, title: str, use_only_edited_if_possible: bool = False
-    ) -> list[PanelPath]:
-        return self._get_files(
-            self.get_comic_splash_files_dir(), title, use_only_edited_if_possible
+            self._panel_dirs[PanelDirNames.SEARCH], title, use_only_edited_if_possible
         )
 
     def _get_files(
@@ -457,7 +389,7 @@ class ReaderFilePaths:
         if file_type in self._titles_cache:
             all_titles = self._titles_cache[file_type]
         else:
-            parent_image_dir = self._FILE_TYPE_DIR_GETTERS[file_type]()
+            parent_image_dir = self._panel_dirs[_FILE_TYPE_DIRS[file_type]]
 
             all_titles = []
             for file in parent_image_dir.iterdir():
@@ -493,7 +425,7 @@ class ReaderFilePaths:
             return image_file, True
 
         edited_image_file = (
-            image_file.parent / Path(EDITED_SUBDIR) / (image_file.stem + self._edited_files_ext)
+            image_file.parent / Path(EDITED_SUBDIR) / (image_file.stem + self._panel_file_ext)
         )
         if edited_image_file.is_file():
             return edited_image_file, True

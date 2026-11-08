@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .image_selector import resolve_all_title_image_files
-from .reader_file_paths import FileTypes, is_edited_file
+from .reader_file_paths import FileTypes, PanelDirNames, is_edited_file
 
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
@@ -38,22 +38,10 @@ class ReaderFilePathsResolver:
             returns the plain files).
 
         """
-        getter = self._file_paths.FILE_TYPE_FILE_GETTERS.get(category)
-        if getter is None:
-            return []
-
-        if category == FileTypes.COVER:
-            # COVER getter returns a single PanelPath or None.
-            cover_file = getter(title_str, prefer_edited)
-            if not cover_file:
-                return []
-            assert not isinstance(cover_file, list)
-            return [(cover_file, is_edited_file(cover_file))]
-
-        # Other getters return list[PanelPath].
-        path_list = getter(title_str, prefer_edited)
-        assert isinstance(path_list, list)
-        return [(f, is_edited_file(f)) for f in path_list]
+        return [
+            (f, is_edited_file(f))
+            for f in self._file_paths.get_title_files(category, title_str, prefer_edited)
+        ]
 
     def get_nontitle_files(self) -> list[PanelPath]:
         """Return all non-title image files."""
@@ -69,7 +57,7 @@ class ReaderFilePathsResolver:
 
     def get_comic_favourite_files_dir(self) -> PanelPath:
         """Return the directory containing favourite image files."""
-        return self._file_paths.get_comic_favourite_files_dir()
+        return self._file_paths.get_panel_dir(PanelDirNames.FAVOURITES)
 
     def get_file_ext(self) -> str:
         """Return the file extension used for panel images."""

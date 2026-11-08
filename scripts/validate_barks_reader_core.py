@@ -863,7 +863,7 @@ def _validate_title_files(
     is_one_pager = title in ONE_PAGERS
     is_cover = title in COVERS_SET
     encrypted = file_paths.barks_panels_are_encrypted
-    inset_ext = file_paths.get_inset_file_ext()
+    inset_ext = file_paths.get_file_ext()
 
     counts = _TitleCounts()
 
@@ -892,7 +892,7 @@ def _validate_title_files(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_inset_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.INSETS),
         encrypted,
         label="inset",
         main_filename=inset_filename,
@@ -903,7 +903,7 @@ def _validate_title_files(
     # A known-missing entry that no longer holds fails, so the list is pruned as
     # the insets land and cannot hide a title that later loses its inset again.
     if known_missing:
-        inset_path = file_paths.get_comic_inset_files_dir() / inset_filename
+        inset_path = file_paths.get_panel_dir(PanelDirNames.INSETS) / inset_filename
         if inset_path.is_file():
             phase.add(f"Title:{title_str} kind=known_missing_inset_present path={inset_path}")
         elif not inset_required:
@@ -916,7 +916,7 @@ def _validate_title_files(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_cover_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.COVERS),
         encrypted,
         label="cover",
         main_filename=title_str + JPG_FILE_EXT,
@@ -926,27 +926,32 @@ def _validate_title_files(
 
     # Per-category subdirs.
     counts.bw = _check_subdir_title(
-        phase, ctx, title_str, file_paths.get_comic_bw_files_dir(), encrypted, label="bw"
+        phase, ctx, title_str, file_paths.get_panel_dir(PanelDirNames.BW), encrypted, label="bw"
     )
     counts.ai = _check_subdir_title(
-        phase, ctx, title_str, file_paths.get_comic_ai_files_dir(), encrypted, label="ai"
+        phase, ctx, title_str, file_paths.get_panel_dir(PanelDirNames.AI), encrypted, label="ai"
     )
     counts.censorship = _check_subdir_title(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_censorship_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.CENSORSHIP),
         encrypted,
         label="censorship",
     )
     counts.closeups = _check_subdir_title(
-        phase, ctx, title_str, file_paths.get_comic_closeup_files_dir(), encrypted, label="closeup"
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_panel_dir(PanelDirNames.CLOSEUPS),
+        encrypted,
+        label="closeup",
     )
     counts.favourites = _check_subdir_title(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_favourite_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.FAVOURITES),
         encrypted,
         label="favourite",
     )
@@ -954,23 +959,33 @@ def _validate_title_files(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_original_art_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.ORIGINAL_ART),
         encrypted,
         label="original_art",
     )
     counts.search = _check_subdir_title(
-        phase, ctx, title_str, file_paths.get_comic_search_files_dir(), encrypted, label="search"
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_panel_dir(PanelDirNames.SEARCH),
+        encrypted,
+        label="search",
     )
     counts.silhouettes = _check_subdir_title(
         phase,
         ctx,
         title_str,
-        file_paths.get_comic_silhouette_files_dir(),
+        file_paths.get_panel_dir(PanelDirNames.SILHOUETTES),
         encrypted,
         label="silhouette",
     )
     counts.splash = _check_subdir_title(
-        phase, ctx, title_str, file_paths.get_comic_splash_files_dir(), encrypted, label="splash"
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_panel_dir(PanelDirNames.SPLASH),
+        encrypted,
+        label="splash",
     )
 
     # One-pagers and covers carry no Closeups/Favourites/Silhouettes/Splash files of
