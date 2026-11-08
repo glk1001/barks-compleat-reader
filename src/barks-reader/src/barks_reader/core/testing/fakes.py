@@ -229,9 +229,15 @@ class FakeClock:
         return False
 
     def fire_last(self) -> None:
-        """Fire the most recently scheduled callback, unless it was cancelled."""
+        """Fire the most recently scheduled callback, unless it was cancelled or has fired.
+
+        Raises:
+            AssertionError: Nothing has been scheduled.
+
+        """
+        assert self._scheduled, "fire_last() with nothing scheduled"
         last = self._scheduled[-1]
-        if not last.cancelled:
+        if not last.fired and not last.cancelled:
             self._fire(last)
 
     def drain(self) -> None:

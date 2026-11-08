@@ -10,7 +10,7 @@ implementation iterated the live list and recursed forever.
 from __future__ import annotations
 
 import pytest
-from barks_reader.core.testing import FakeScheduler
+from barks_reader.core.testing import FakeClock, FakeScheduler
 
 
 class TestFakeSchedulerAdvance:
@@ -220,3 +220,76 @@ class TestFakeSchedulerOneShots:
         assert order == ["outer"]
         scheduler.advance(0.5)
         assert order == ["outer", "inner"]
+
+
+class TestFakeClock:
+    def test_fire_last_fires_the_newest_callback_once(self) -> None:
+        clock = FakeClock()
+        fired: list[str] = []
+        clock.schedule_once(lambda _dt: fired.append("old"))
+        clock.schedule_once(lambda _dt: fired.append("new"))
+
+        clock.fire_last()
+        clock.fire_last()
+
+        assert fired == ["new"]
+        assert len(clock.pending) == 1
+
+    def test_fire_last_does_not_refire_what_immediate_mode_ran(self) -> None:
+        clock = FakeClock(immediate=True)
+        fired: list[int] = []
+        clock.schedule_once(lambda _dt: fired.append(1))
+
+        clock.fire_last()
+
+        assert fired == [1]
+
+    def test_fire_last_does_not_refire_what_drain_ran(self) -> None:
+        clock = FakeClock()
+        fired: list[int] = []
+        clock.schedule_once(lambda _dt: fired.append(1))
+        clock.drain()
+
+        clock.fire_last()
+
+        assert fired == [1]
+
+    def test_fire_last_skips_a_cancelled_callback(self) -> None:
+        clock = FakeClock()
+        fired: list[int] = []
+        clock.schedule_once(lambda _dt: fired.append(1)).cancel()
+
+        clock.fire_last()
+
+        assert fired == []
+
+    def test_fire_last_with_nothing_scheduled_says_so(self) -> None:
+        with pytest.raises(AssertionError, match="nothing scheduled"):
+            FakeClock().fire_last()
+
+    def test_drain_runs_what_the_callbacks_schedule(self) -> None:
+        clock = FakeClock()
+        fired: list[str] = []
+
+        def outer(_dt: float) -> None:
+            fired.append("outer")
+            clock.schedule_once(lambda _dt: fired.append("inner"))
+
+        clock.schedule_once(outer)
+        clock.drain()
+
+        assert fired == ["outer", "inner"]
+        assert clock.pending == []
+
+    def test_run_next_fires_oldest_first_and_reports_when_empty(self) -> None:
+        clock = FakeClock()
+        fired: list[str] = []
+        clock.schedule_once(lambda _dt: fired.append("a"))
+        clock.schedule_once(lambda _dt: fired.append("b"), 2.0)
+
+        assert clock.run_next() is True
+        assert fired == ["a"]
+        assert clock.calls[1][1] == 2.0  # noqa: PLR2004
+        assert clock.run_next() is True
+        assert clock.run_next() is False
+        assert fired == ["a", "b"]
