@@ -94,6 +94,7 @@ def get_win_dimensions(
 
 
 def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
+    """Return the title an icon file is named for, less its "-flipped" and numeric suffixes."""
     stem = icon_path.stem.removesuffix("-flipped")
 
     # Use a regular expression to split the stem at the beginning of the
@@ -105,6 +106,7 @@ def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
 
 
 def title_needs_footnote(fanta_info: FantaComicBookInfo) -> bool:
+    """Return whether the title gets the footnote: rejected by Western but meant for C&S."""
     return (
         (not fanta_info.comic_book_info.is_barks_title)
         and (fanta_info.comic_book_info.issue_name == Issues.CS)
@@ -113,10 +115,12 @@ def title_needs_footnote(fanta_info: FantaComicBookInfo) -> bool:
 
 
 def is_title_page(page: CleanPage) -> bool:
+    """Return whether ``page`` is a title page made from the empty page."""
     return (Path(page.page_filename).stem == EMPTY_PAGE_KEY) and (page.page_type == PageType.TITLE)
 
 
 def is_blank_page(page_filename: str, page_type: PageType) -> bool:
+    """Return whether the page is the empty page standing in as a blank, not a title page."""
     return (Path(page_filename).stem == EMPTY_PAGE_KEY) and (page_type != PageType.TITLE)
 
 
@@ -211,6 +215,20 @@ def get_paths_from_zip(zip_path: Path) -> set[str]:
 
 
 def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
+    """Return page numbers as one short string: roman numerals first, then runs.
+
+    Args:
+        page_nums_str: Page numbers, as the reader numbers them.
+
+    Returns:
+        "i,ii,1-3,7" style: each roman numeral in page order, then the other pages
+        with each run of consecutive pages as a range.
+
+    Raises:
+        ValueError: A page number is neither a roman numeral nor a whole number.
+
+    """
+
     def get_abbrev_page_list(pg_list: list[str]) -> str:
         try:
             page_nums = [int(p) for p in pg_list]
@@ -305,14 +323,17 @@ def get_page_sort_key(page_num_str: str) -> tuple[int, int]:
 
 
 def quote_and_join_with_and(items: list[Any]) -> str:
+    """Return the items in double quotes, joined as `join_with_and` joins them."""
     return join_with_and(get_quoted_items(items))
 
 
 def get_quoted_items(items: list[Any]) -> list[str]:
+    """Return each item in double quotes."""
     return [f'"{item}"' for item in items]
 
 
 def join_with_and(items: list[Any]) -> str:
+    """Return the items as a list in a sentence: "a", "a and b", "a, b, and c"."""
     if not items:
         return ""
     if len(items) == 1:
