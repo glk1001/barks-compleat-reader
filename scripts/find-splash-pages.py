@@ -55,7 +55,7 @@ def _get_reader_settings() -> ReaderSettings:
     config = ConfigParser()
     config.read(config_info.app_config_path)
     reader_settings = ReaderSettings()
-    reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
+    reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)
     return reader_settings
 
 

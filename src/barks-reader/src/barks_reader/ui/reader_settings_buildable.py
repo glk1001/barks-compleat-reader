@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 from loguru import logger
 
@@ -13,6 +13,7 @@ from barks_reader.core.reader_settings import (
     USE_PNG_IMAGES,
     BuildableConfigParser,
     ReaderSettings,
+    SavableConfig,
     Settings,
     _get_reader_settings_json,
     _resolve_default,
@@ -54,11 +55,16 @@ class BuildableReaderSettings(ReaderSettings):
         )
 
     def build_settings(self, settings: Settings) -> None:
-        assert self._config
         settings.add_json_panel(
-            SETTINGS_PANEL_TITLE, self._config, data=_get_reader_settings_json()
+            SETTINGS_PANEL_TITLE, self._kivy_config(), data=_get_reader_settings_json()
         )
         self._settings = settings
+
+    def _kivy_config(self) -> SavableConfig:
+        # The settings panel and saving need Kivy's parser: the stdlib's write takes a
+        # file. Only the app builds the panel or saves, and it sets Kivy's.
+        assert self._config
+        return cast("SavableConfig", self._config)
 
     def validate_settings(self) -> None:
         for key in self._VALIDATION_METHODS:
@@ -95,8 +101,7 @@ class BuildableReaderSettings(ReaderSettings):
 
     @override
     def _save_settings(self) -> None:
-        assert self._config
-        self._config.write()
+        self._kivy_config().write()
         self._update_settings_panel()
 
     def _update_settings_panel(self) -> None:

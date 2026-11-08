@@ -64,8 +64,8 @@ if __name__ == "__main__":
     barks_config.read(config_info.app_config_path)
     settings = BuildableReaderSettings()
 
-    # ConfigParser is Protocol - ty should be OK with this.
-    settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
+    # The stdlib parser can be read and set but does not save itself; nothing here saves.
+    settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)
     settings.set_barks_panels_dir()
 
     # --- Test the Class ---

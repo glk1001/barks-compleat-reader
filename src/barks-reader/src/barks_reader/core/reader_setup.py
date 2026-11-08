@@ -36,7 +36,7 @@ def bootstrap_reader_environment(
     *not* perform main-app-specific steps (alt-escape key, virtual keyboard,
     ``validate_settings``) — those stay in ``BarksReaderApp``.
     """
-    reader_settings.set_config(parser, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
+    reader_settings.set_config(parser, config_info.app_config_path, config_info.app_data_dir)
     reader_settings.set_barks_panels_dir()
 
     file_paths = reader_settings.file_paths

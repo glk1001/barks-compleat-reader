@@ -63,7 +63,7 @@ def main(
         config = ConfigParser()
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
+        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)
         reader_settings.force_barks_panels_dir(use_png_images=True)
 
         comics_database = ComicsDatabase(for_building_comics=True)

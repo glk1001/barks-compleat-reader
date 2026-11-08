@@ -109,8 +109,15 @@ class ConfigReader(Protocol):
     def getint(self, section: str, key: str, *args: Any, **kwargs: Any) -> int: ...  # noqa: ANN401
 
 
-class ConfigParser(ConfigReader, Protocol):
+class WritableConfig(ConfigReader, Protocol):
+    """A config the settings can read and change: Kivy's parser, or the stdlib one."""
+
     def set(self, section: str, option: str, value: Any) -> None: ...  # noqa: ANN401
+
+
+class SavableConfig(WritableConfig, Protocol):
+    """A config that saves itself: Kivy's parser. The stdlib's ``write`` takes a file."""
+
     def write(self) -> None: ...
 
 
@@ -177,7 +184,7 @@ def _path_value(spec: FieldSpec, text: str) -> Path:
 
 class ReaderSettings:
     def __init__(self) -> None:
-        self._config: ConfigParser | None = None
+        self._config: WritableConfig | None = None
         self._app_settings_path: Path | None = None
         self._app_data_dir: Path | None = None
         self._user_data_path: Path | None = None
@@ -188,7 +195,9 @@ class ReaderSettings:
     def _save_settings(self) -> None:
         pass
 
-    def set_config(self, config: ConfigParser, app_settings_path: Path, app_data_dir: Path) -> None:
+    def set_config(
+        self, config: WritableConfig, app_settings_path: Path, app_data_dir: Path
+    ) -> None:
         self._config = config
         self._app_settings_path = app_settings_path
         self._app_data_dir = app_data_dir
@@ -703,11 +712,11 @@ def _get_reader_settings_json() -> str:
     return json.dumps(items)
 
 
-class BuildableConfigParser(ConfigParser):
+class BuildableConfigParser(SavableConfig, Protocol):
     def setdefaults(self, section: str, defaults: dict[str, Any]) -> None: ...
 
 
 class Settings(Protocol):
-    def add_json_panel(self, section: str, config: ConfigParser, data: str) -> None: ...
+    def add_json_panel(self, section: str, config: SavableConfig, data: str) -> None: ...
 
     interface: Any
