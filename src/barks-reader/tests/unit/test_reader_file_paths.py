@@ -7,9 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_reader.core.reader_file_paths import (
     EDITED_SUBDIR,
+    EMERGENCY_INSET_FILE,
     BarksPanelsExtType,
     FileTypes,
     PanelDirNames,
@@ -334,6 +336,33 @@ class TestInsetFileLookup:
         with patch("os.path.expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
         return reader_file_paths
+
+    def test_the_emergency_titles_own_insets_are_both_listed(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        """Its plain inset is the emergency file, but it is still the title's own."""
+        name = BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + ".png"
+        plain = panels_dir / "Insets" / name
+        edited = panels_dir / "Insets" / EDITED_SUBDIR / name
+        plain.touch()
+        edited.touch()
+
+        insets = paths.get_comic_inset_files(ENUM_TO_STR_TITLE[EMERGENCY_INSET_FILE])
+
+        assert insets == [edited, plain]
+
+    def test_a_title_with_no_inset_lists_none_not_the_emergency_one(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        name = BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + ".png"
+        (panels_dir / "Insets" / name).touch()
+
+        title_str = ENUM_TO_STR_TITLE[Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+        assert paths.get_comic_inset_files(title_str) == []
+        # The single-file lookup still falls back to the emergency inset.
+        assert paths.get_comic_inset_file(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) == (
+            panels_dir / "Insets" / name
+        )
 
     def test_edited_insets_are_ignored_unless_asked_for(
         self, paths: ReaderFilePaths, panels_dir: Path

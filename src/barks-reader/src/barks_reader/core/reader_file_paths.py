@@ -282,47 +282,61 @@ class ReaderFilePaths:
     def get_comic_inset_file(
         self, title: Titles, use_only_edited_if_possible: bool = False
     ) -> PanelPath:
-        if use_only_edited_if_possible:
-            assert self._inset_edited_files_dir
-            edited_file = self._inset_edited_files_dir / get_filename_from_title(
-                title, self._inset_files_ext
-            )
-            if edited_file.is_file():
-                return edited_file
-            logger.debug(f'No edited inset file "{edited_file}".')
+        """Return the title's inset, or the emergency inset when it has none.
 
-        main_file = self._panel_dirs[PanelDirNames.INSETS] / get_filename_from_title(
-            title, self._inset_files_ext
-        )
-        # TODO: Fix this when all titles are configured.
-        # assert os.path.isfile(edited_file)
-        if main_file.is_file():
-            return main_file
+        Args:
+            title: The title whose inset to find.
+            use_only_edited_if_possible: Prefer the edited inset when there is one.
 
-        return self.get_emergency_inset_file()
+        Returns:
+            The edited inset (if asked for and there is one), else the plain one, else
+            the emergency title's.
+
+        """
+        if use_only_edited_if_possible and (edited := self._find_edited_inset_file(title)):
+            return edited
+        return self._find_plain_inset_file(title) or self.get_emergency_inset_file()
 
     def get_comic_inset_files(
         self, title_str: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
+        """Return the title's own insets: the edited one first, then the plain one.
+
+        Never the emergency inset: a title with no inset of its own lists none.
+
+        Args:
+            title_str: The title whose insets to list.
+            use_only_edited_if_possible: List only the edited inset when there is one;
+                with none, the plain one.
+
+        Returns:
+            The insets found, the edited one first, as every other file getter lists them.
+
+        """
         title = STR_TITLE_TO_ENUM[title_str]
 
-        inset_list = []
+        edited = self._find_edited_inset_file(title)
+        if edited and use_only_edited_if_possible:
+            return [edited]
 
-        # The edited inset where there is one, as every other file getter lists it first;
-        # the plain one after it unless only edited ones were asked for.
-        edited_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible=True)
-        if edited_inset_file != self.get_emergency_inset_file():
-            inset_list.append(edited_inset_file)
-        if use_only_edited_if_possible:
-            return inset_list
+        plain = self._find_plain_inset_file(title)
+        return [inset for inset in (edited, plain) if inset is not None]
 
-        main_inset_file = self.get_comic_inset_file(title)
-        if (main_inset_file != self.get_emergency_inset_file()) and (
-            main_inset_file not in inset_list
-        ):
-            inset_list.append(main_inset_file)
+    def _find_edited_inset_file(self, title: Titles) -> PanelPath | None:
+        assert self._inset_edited_files_dir
+        edited_file = self._inset_edited_files_dir / get_filename_from_title(
+            title, self._inset_files_ext
+        )
+        if edited_file.is_file():
+            return edited_file
+        logger.debug(f'No edited inset file "{edited_file}".')
+        return None
 
-        return inset_list
+    def _find_plain_inset_file(self, title: Titles) -> PanelPath | None:
+        main_file = self._panel_dirs[PanelDirNames.INSETS] / get_filename_from_title(
+            title, self._inset_files_ext
+        )
+        return main_file if main_file.is_file() else None
 
     def get_comic_cover_file(
         self, title: str, use_only_edited_if_possible: bool = False
