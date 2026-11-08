@@ -84,7 +84,6 @@ class _Asset(Enum):
     EYE_OPEN_ICON_PATH = ("Various/icon-eye-open.png", _Need.REQUIRED_FILE)
     EYE_OFF_ICON_PATH = ("Various/icon-eye-off.png", _Need.REQUIRED_FILE)
     GOTO_TITLE_BUTTON_PATH = ("Various/goto-title-button.png", _Need.REQUIRED_FILE)
-    TRANSPARENT_BLANK_PATH = ("Various/transparent-blank.png", _Need.REQUIRED_FILE)
     EMPTY_PAGE_PATH = ("Various/empty-page.jpg", _Need.REQUIRED_FILE)
     FAVOURITE_TITLES_PATH = ("Various/favourite-titles.txt", _Need.REQUIRED_FILE)
     BY_THE_NUMBERS_BACKGROUND_PATH = ("Various/by-the-numbers-background.jpg", _Need.REQUIRED_FILE)
@@ -276,10 +275,6 @@ class SystemFilePaths:
     def get_hamburger_menu_icon_path(self) -> Path:
         """Return the hamburger menu icon, three bars."""
         return self._path(_Asset.HAMBURGER_MENU_ICON_PATH)
-
-    def get_transparent_blank_file(self) -> Path:
-        """Return a fully transparent image."""
-        return self._path(_Asset.TRANSPARENT_BLANK_PATH)
 
     def get_empty_page_file(self) -> Path:
         """Return the placeholder image for a blank or title page."""

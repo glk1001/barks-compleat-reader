@@ -40,7 +40,6 @@ _EXPECTED_PATHS: tuple[tuple[str, str], ...] = (
     ("get_eye_open_icon_file", "Various/icon-eye-open.png"),
     ("get_eye_off_icon_file", "Various/icon-eye-off.png"),
     ("get_goto_title_button_file", "Various/goto-title-button.png"),
-    ("get_transparent_blank_file", "Various/transparent-blank.png"),
     ("get_empty_page_file", "Various/empty-page.jpg"),
     ("get_favourite_titles_path", "Various/favourite-titles.txt"),
     ("get_by_the_numbers_background_path", "Various/by-the-numbers-background.jpg"),
