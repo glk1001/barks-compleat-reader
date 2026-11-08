@@ -32,8 +32,16 @@ def _kivy_record(msg: str, *, with_exception: bool) -> logging.LogRecord:
     )
 
 
-def _log_through_a_queued_sink(record: logging.LogRecord) -> list[str]:
-    """Emit `record` into a sink queued as the app log's is (``enqueue: True``)."""
+def _log_through_a_queued_sink(record: logging.LogRecord) -> tuple[list[str], str]:
+    """Emit `record` into a sink queued as the app log's is (``enqueue: True``).
+
+    Returns:
+        The lines the sink got, and how loguru heads a logging error in that sink.
+        Only that sink's errors are the handler's: another sink can fail on its own,
+        as the default one does when a second pytest run in the process (mutmut's)
+        finds the stderr it holds was the first run's, now closed.
+
+    """
     lines: list[str] = []
     handle = logger.add(
         lambda message: lines.append(str(message)),
@@ -46,7 +54,7 @@ def _log_through_a_queued_sink(record: logging.LogRecord) -> list[str]:
         logger.complete()
     finally:
         logger.remove(handle)
-    return lines
+    return lines, f"Logging error in Loguru Handler #{handle} "
 
 
 def test_an_exception_reaches_a_queued_sink_with_its_traceback(
@@ -58,17 +66,17 @@ def test_an_exception_reaches_a_queued_sink_with_its_traceback(
     which Kivy shows as warnings, and the line never reached the log.
     """
     record = _kivy_record(f"Unable to open directory <{DENIED}>", with_exception=True)
-    lines = _log_through_a_queued_sink(record)
+    lines, sink_error = _log_through_a_queued_sink(record)
     assert len(lines) == 1
     assert "kivy: _generate_file_entries:855 - Unable to open directory" in lines[0]
     assert "PermissionError: [Errno 13] Access is denied" in lines[0]
-    assert "Logging error" not in capsys.readouterr().err
+    assert sink_error not in capsys.readouterr().err
 
 
 def test_a_plain_line_keeps_its_level_and_braces(capsys: pytest.CaptureFixture[str]) -> None:
     record = _kivy_record("Modules: Start <inspector> with config {}", with_exception=False)
     record.levelno, record.levelname = logging.INFO, "INFO"
-    lines = _log_through_a_queued_sink(record)
+    lines, sink_error = _log_through_a_queued_sink(record)
     assert len(lines) == 1
     assert "_generate_file_entries:855 - Modules: Start <inspector> with config {}" in lines[0]
-    assert "Logging error" not in capsys.readouterr().err
+    assert sink_error not in capsys.readouterr().err
