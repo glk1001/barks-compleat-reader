@@ -2087,6 +2087,33 @@ change = """
 """
 reason = "_seen is read only by the unreachable cycle backstop, so what is added to it is never looked at."
 
+[[equivalent]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", None)
+"""
+reason = "kivy_build is only compared with \"ios\" and \"android\", which \"\", None and \"XXXX\" all fail alike."
+
+[[equivalent]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", )
+"""
+reason = "kivy_build is only compared with \"ios\" and \"android\", which \"\", None and \"XXXX\" all fail alike."
+
+[[equivalent]]
+module = "barks_reader.core.platform_info"
+function = "_get_platform"
+change = """
+- kivy_build = os.environ.get("KIVY_BUILD", "")
++ kivy_build = os.environ.get("KIVY_BUILD", "XXXX")
+"""
+reason = "kivy_build is only compared with \"ios\" and \"android\", which \"\", None and \"XXXX\" all fail alike."
+
 [[untriaged]]
 module = "barks_reader.core.corpus_stats"
 function = "compute_text_stats"
@@ -2485,30 +2512,6 @@ function = "ComicBookLoader._load_pages"
 change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.platform_info"
-function = "_get_platform"
-change = """
-- kivy_build = os.environ.get("KIVY_BUILD", "")
-+ kivy_build = os.environ.get("KIVY_BUILD", None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.platform_info"
-function = "_get_platform"
-change = """
-- kivy_build = os.environ.get("KIVY_BUILD", "")
-+ kivy_build = os.environ.get("KIVY_BUILD", )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.platform_info"
-function = "_get_platform"
-change = """
-- kivy_build = os.environ.get("KIVY_BUILD", "")
-+ kivy_build = os.environ.get("KIVY_BUILD", "XXXX")
 """
 
 [[untriaged]]
