@@ -448,6 +448,33 @@ module = "barks_reader.core.reader_tree_view_utils"
 function = "find_tree_view_title_node"
 change = """
 - nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("XXlist[TitleTreeViewNodeProtocol]XX", current_node.nodes))
+"""
+reason = "typing.cast returns its value untouched and never reads the type string."
+
+[[equivalent]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("list[titletreeviewnodeprotocol]", current_node.nodes))
+"""
+reason = "typing.cast returns its value untouched and never reads the type string."
+
+[[equivalent]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
++ nodes_to_visit.extend(cast("LIST[TITLETREEVIEWNODEPROTOCOL]", current_node.nodes))
+"""
+reason = "typing.cast returns its value untouched and never reads the type string."
+
+[[equivalent]]
+module = "barks_reader.core.reader_tree_view_utils"
+function = "find_tree_view_title_node"
+change = """
+- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
 + nodes_to_visit.extend(cast(None, current_node.nodes))
 """
 reason = "cast() does nothing at run time; its type is for the type checkers."
@@ -2508,30 +2535,6 @@ function = "ArchivePageImageSource._read_image"
 change = """
 - "Page requires the Fantagraphics library archive, but it is not available."
 + "XXPage requires the Fantagraphics library archive, but it is not available.XX"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_tree_view_utils"
-function = "find_tree_view_title_node"
-change = """
-- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
-+ nodes_to_visit.extend(cast("XXlist[TitleTreeViewNodeProtocol]XX", current_node.nodes))
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_tree_view_utils"
-function = "find_tree_view_title_node"
-change = """
-- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
-+ nodes_to_visit.extend(cast("list[titletreeviewnodeprotocol]", current_node.nodes))
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_tree_view_utils"
-function = "find_tree_view_title_node"
-change = """
-- nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
-+ nodes_to_visit.extend(cast("LIST[TITLETREEVIEWNODEPROTOCOL]", current_node.nodes))
 """
 
 [[untriaged]]
