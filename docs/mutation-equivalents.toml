@@ -11,6 +11,24 @@
 
 [[equivalent]]
 module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths._path"
+change = """
+- assert self._barks_reader_files_dir, "set_barks_reader_files_dir has not been called."
++ assert self._barks_reader_files_dir, "XXset_barks_reader_files_dir has not been called.XX"
+"""
+reason = "An assert's message, shown only when the assert fails: no path is computed either way."
+
+[[equivalent]]
+module = "barks_reader.core.system_file_paths"
+function = "SystemFilePaths._path"
+change = """
+- assert self._barks_reader_files_dir, "set_barks_reader_files_dir has not been called."
++ assert self._barks_reader_files_dir, "SET_BARKS_READER_FILES_DIR HAS NOT BEEN CALLED."
+"""
+reason = "An assert's message, shown only when the assert fails: no path is computed either way."
+
+[[equivalent]]
+module = "barks_reader.core.system_file_paths"
 function = "SystemFilePaths.__init__"
 change = """
 - self._barks_reader_files_dir: Path | None = None

@@ -140,6 +140,18 @@ class TestSystemFilePaths:
     def test_resolved_path(self, sys_paths: SystemFilePaths, getter: str, relative: str) -> None:
         assert getattr(sys_paths, getter)() == _ASSETS_ROOT / relative
 
+    def test_the_required_lists_carry_the_validator_s_labels(
+        self, sys_paths: SystemFilePaths
+    ) -> None:
+        """The validator reports a missing entry by these names, lower-case."""
+        dirs = sys_paths.required_dirs()
+        files = dict(sys_paths.required_files())
+
+        assert dirs[0] == ("barks_reader_files_dir", _ASSETS_ROOT)
+        assert ("indexes_dir", _ASSETS_ROOT / "Indexes") in dirs
+        assert files["eye_open_icon_path"] == _ASSETS_ROOT / "Various/icon-eye-open.png"
+        assert all(label == label.lower() for label, _ in dirs + list(files.items()))
+
     def test_every_getter_is_covered_by_the_expected_paths_table(self) -> None:
         """Guard against a new getter landing without an entry in `_EXPECTED_PATHS`."""
         getters = {name for name in dir(SystemFilePaths) if name.startswith("get_")}
