@@ -2150,6 +2150,15 @@ change = """
 """
 reason = "kivy_build is only compared with \"ios\" and \"android\", which \"\", None and \"XXXX\" all fail alike."
 
+[[equivalent]]
+module = "barks_reader.core.navigation.tree_spec"
+function = "_SpecBuilder._tag_or_group_specs"
+change = """
+- assert_never(tag_or_group)
++ assert_never(None)
+"""
+reason = "assert_never raises AssertionError whatever it is given; only the value named in its message differs, and the branch is reached only by malformed tag data."
+
 [[untriaged]]
 module = "barks_reader.core.corpus_stats"
 function = "compute_text_stats"
@@ -2574,10 +2583,3 @@ change = """
 + "XXPage requires the Fantagraphics library archive, but it is not available.XX"
 """
 
-[[untriaged]]
-module = "barks_reader.core.navigation.tree_spec"
-function = "_SpecBuilder._tag_or_group_specs"
-change = """
-- assert_never(tag_or_group)
-+ assert_never(None)
-"""
