@@ -25,6 +25,12 @@ if TYPE_CHECKING:
 
 _VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
 
+# The volumes whose page images are numbered from 000; the rest are numbered from 001. The
+# first image alone cannot say which: a zero-based volume that lost its 000 image would
+# look like a whole one-based volume and be read one page off throughout. Taken from the
+# Fantagraphics volumes on the main PC (2026-11-08).
+ZERO_BASED_VOLUMES = frozenset({1, *range(19, 30)})
+
 
 class MissingArchiveFilesError(Exception):
     def __init__(self, missing_file_vols: list[int], archive_root: Path) -> None:
@@ -315,6 +321,7 @@ class FantagraphicsVolumeArchives:
             image_ext = Path(image_filenames[0]).suffix.lower()
 
             first_page, last_page = self._get_first_and_last_page_nums(image_filenames)
+            self._check_first_page(archive_filename, fanta_volume, first_page, image_filenames[0])
             self._check_image_names(
                 archive_filename, image_filenames, first_page, last_page, image_ext
             )
@@ -482,9 +489,30 @@ class FantagraphicsVolumeArchives:
         return first_page_num, last_page_num
 
     @staticmethod
+    def _check_first_page(
+        archive_filename: Path, fanta_volume: int, first_page: int, first_image: str
+    ) -> None:
+        """Raise unless the first image is numbered where the volume's pages start.
+
+        Raises:
+            PageNumError: The volume has lost pages from the front, or is numbered other
+                than the Fantagraphics volume is (`ZERO_BASED_VOLUMES`).
+
+        """
+        expected = 0 if fanta_volume in ZERO_BASED_VOLUMES else 1
+        if first_page != expected:
+            msg = (
+                f'Fantagraphics archive "{archive_filename}": volume {fanta_volume} numbers its'
+                f' pages from {expected}, but its first image, "{first_image}", is numbered'
+                f" {first_page}. Replace it from the library and retry."
+            )
+            raise PageNumError(msg)
+
+    @staticmethod
     def _get_archive_image_page_map(
         image_subdir: Path, img_filenames: list[str], first: int, last: int
     ) -> dict[str, Path]:
+        # `_check_first_page` has made `first` 0 or 1: a zero-based volume's 000 is page 001.
         page_inc = 0 if first == 1 else 1
         archive_page_map = {}
         for page in range(first, last + 1):

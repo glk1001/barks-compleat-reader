@@ -14,6 +14,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.page_classes import CleanPage
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.fantagraphics_volumes import (
+    ZERO_BASED_VOLUMES,
     DuplicateArchiveFilesError,
     EmptyArchiveError,
     FantagraphicsArchive,
@@ -38,6 +39,12 @@ def _make_volume_zip(path: Path, image_names: list[str], subdir: str = "images")
         for name in image_names:
             zf.writestr(f"{subdir}/{name}", b"\x89PNG\r\n")
     return path
+
+
+def _volume_pages(vol: int, count: int, ext: str = ".png") -> list[str]:
+    """`count` page names numbered as the volume's are: from 000 or from 001."""
+    first = 0 if vol in ZERO_BASED_VOLUMES else 1
+    return [f"page{page:03d}{ext}" for page in range(first, first + count)]
 
 
 def _make_override_zip(path: Path, image_names: list[str]) -> Path:
@@ -156,6 +163,42 @@ class TestCheckImageNames:
         archives._check_image_names(
             _ARCHIVE, ["page1.JPG", "page2.jpg"], first=1, last=2, img_ext=".jpg"
         )
+
+
+class TestCheckFirstPage:
+    @pytest.mark.parametrize(
+        ("vol", "first_page"), [(1, 0), (19, 0), (29, 0), (2, 1), (18, 1), (30, 1)]
+    )
+    def test_a_volume_numbered_as_fantagraphics_numbers_it_passes(
+        self, vol: int, first_page: int
+    ) -> None:
+        FantagraphicsVolumeArchives._check_first_page(
+            _ARCHIVE, vol, first_page, f"page{first_page:03d}.jpg"
+        )
+
+    def test_a_zero_based_volume_that_lost_its_000_is_refused(self) -> None:
+        """It would pass every other check, and be read one page off throughout."""
+        with pytest.raises(PageNumError) as exc_info:
+            FantagraphicsVolumeArchives._check_first_page(_ARCHIVE, 1, 1, "page001.jpg")
+
+        assert str(exc_info.value) == (
+            f'Fantagraphics archive "{_ARCHIVE}": volume 1 numbers its pages from 0, but its'
+            ' first image, "page001.jpg", is numbered 1. Replace it from the library and retry.'
+        )
+
+    @pytest.mark.parametrize(
+        ("vol", "first_page"),
+        [
+            pytest.param(2, 2, id="a one-based volume that lost its 001"),
+            pytest.param(19, 2, id="a zero-based volume that lost two pages"),
+            pytest.param(2, 0, id="a one-based volume numbered from 000"),
+        ],
+    )
+    def test_a_volume_starting_elsewhere_is_refused(self, vol: int, first_page: int) -> None:
+        with pytest.raises(PageNumError, match=f"volume {vol} numbers its pages from"):
+            FantagraphicsVolumeArchives._check_first_page(
+                _ARCHIVE, vol, first_page, f"page{first_page:03d}.jpg"
+            )
 
 
 class TestCheckCorrectVolumeNumbers:
@@ -668,6 +711,45 @@ class TestOverrideAndExtraMap:
 
 
 class TestLoadEndToEnd:
+    @staticmethod
+    def _every_volume(
+        tmp_path: Path, pages_for: dict[int, list[str]]
+    ) -> FantagraphicsVolumeArchives:
+        """Every volume numbered as Fantagraphics numbers it, but those in `pages_for`."""
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+        for vol in range(1, NUM_VOLUMES + 1):
+            _make_volume_zip(
+                archive_root / f"{vol:02d}-vol.cbz",
+                image_names=pages_for.get(vol, _volume_pages(vol, 2)),
+            )
+        return FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+
+    def test_a_zero_based_volume_s_000_is_its_page_001(self, tmp_path: Path) -> None:
+        archives = self._every_volume(tmp_path, {})
+        archives.load()
+
+        assert archives.get_fantagraphics_archive(1).archive_images_page_map == {
+            "001": Path("images/page000.png"),
+            "002": Path("images/page001.png"),
+        }
+
+    def test_a_zero_based_volume_that_lost_its_000_is_refused(self, tmp_path: Path) -> None:
+        archives = self._every_volume(tmp_path, {1: ["page001.png", "page002.png"]})
+
+        with pytest.raises(PageNumError) as exc_info:
+            archives.load()
+
+        message = str(exc_info.value)
+        assert "01-vol.cbz" in message
+        assert 'volume 1 numbers its pages from 0, but its first image, "page001.png"' in message
+
     def test_loads_a_volume_whose_pages_have_upper_case_extensions(self, tmp_path: Path) -> None:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
@@ -675,7 +757,7 @@ class TestLoadEndToEnd:
         override_root.mkdir()
         for vol in range(1, NUM_VOLUMES + 1):
             _make_volume_zip(
-                archive_root / f"{vol:02d}-vol.cbz", image_names=["page001.JPG", "page002.JPG"]
+                archive_root / f"{vol:02d}-vol.cbz", image_names=_volume_pages(vol, 2, ".JPG")
             )
 
         archives = FantagraphicsVolumeArchives(
@@ -685,7 +767,7 @@ class TestLoadEndToEnd:
         )
         archives.load()
 
-        entry = archives.get_fantagraphics_archive(1)
+        entry = archives.get_fantagraphics_archive(2)
         assert entry.image_ext == ".jpg"
         # The page map keeps the names as the zip has them: they are what is read.
         assert entry.archive_images_page_map == {
@@ -702,7 +784,7 @@ class TestLoadEndToEnd:
         for vol in range(1, NUM_VOLUMES + 1):
             _make_volume_zip(
                 archive_root / f"{vol:02d}-vol.cbz",
-                image_names=["page001.png", "page002.png"],
+                image_names=_volume_pages(vol, 2),
             )
 
         archives = FantagraphicsVolumeArchives(
@@ -716,8 +798,9 @@ class TestLoadEndToEnd:
             entry = archives.get_fantagraphics_archive(vol)
             assert entry.is_missing is False
             assert entry.fanta_volume == vol
-            assert entry.first_page == 1
-            assert entry.last_page == 2
+            first_page = 0 if vol in ZERO_BASED_VOLUMES else 1
+            assert entry.first_page == first_page
+            assert entry.last_page == first_page + 1
 
     def test_loaded_archive_carries_every_field(self, tmp_path: Path) -> None:
         """The whole `FantagraphicsArchive` for one volume, field by field.
@@ -733,7 +816,7 @@ class TestLoadEndToEnd:
         for vol in range(1, NUM_VOLUMES + 1):
             _make_volume_zip(
                 archive_root / f"{vol:02d}-vol.cbz",
-                image_names=["page001.png", "page002.png", "page003.png"],
+                image_names=_volume_pages(vol, 3),
             )
         # Volume 2 gets an override zip: one page that shadows an archive page, and one
         # that doesn't exist in the archive at all.
@@ -782,9 +865,7 @@ class TestLoadEndToEnd:
         for vol in range(1, NUM_VOLUMES + 1):
             if vol == 2:
                 continue
-            _make_volume_zip(
-                archive_root / f"{vol:02d}-vol.cbz", image_names=["page001.png", "page002.png"]
-            )
+            _make_volume_zip(archive_root / f"{vol:02d}-vol.cbz", image_names=_volume_pages(vol, 2))
 
         archives = FantagraphicsVolumeArchives(
             archive_root=archive_root,
@@ -819,9 +900,7 @@ class TestLoadEndToEnd:
         override_root.mkdir()
 
         for vol in range(1, NUM_VOLUMES + 1):
-            _make_volume_zip(
-                archive_root / f"{vol}-vol.cbz", image_names=["page001.png", "page002.png"]
-            )
+            _make_volume_zip(archive_root / f"{vol}-vol.cbz", image_names=_volume_pages(vol, 2))
 
         archives = FantagraphicsVolumeArchives(
             archive_root=archive_root,
@@ -846,7 +925,7 @@ class TestLoadEndToEnd:
                 continue
             _make_volume_zip(
                 archive_root / f"{vol:02d}-vol.cbz",
-                image_names=["page001.png", "page002.png"],
+                image_names=_volume_pages(vol, 2),
             )
 
         archives = FantagraphicsVolumeArchives(
@@ -1029,10 +1108,10 @@ class TestLoadErrorMessages:
         override_root = tmp_path / "override"
         archive_root.mkdir()
         override_root.mkdir()
-        _make_volume_zip(archive_root / "01-vol.cbz", image_names=image_names)
+        _make_volume_zip(archive_root / "02-vol.cbz", image_names=image_names)
 
         archives = FantagraphicsVolumeArchives(
-            archive_root=archive_root, override_root=override_root, volume_list=[1]
+            archive_root=archive_root, override_root=override_root, volume_list=[2]
         )
         # Suppress missing-volume validation so the load reaches the per-image checks.
         archives.check_correct_volume_numbers = lambda _filenames: None  # ty: ignore[invalid-assignment]
@@ -1051,7 +1130,7 @@ class TestLoadErrorMessages:
             archives.load()
 
         message = str(exc_info.value)
-        assert "01-vol.cbz" in message
+        assert "02-vol.cbz" in message
         assert "contains no page images" in message
 
     def test_the_expected_extension_comes_from_the_first_image(self, tmp_path: Path) -> None:
