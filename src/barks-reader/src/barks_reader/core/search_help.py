@@ -12,6 +12,8 @@ from typing import Final
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues, get_shortest_issue_name
 from barks_fantagraphics.search_query import NEAR_DEFAULT_DISTANCE
 
+from .reader_utils import join_with_and
+
 type HelpExamples = tuple[tuple[str, str], ...]
 
 TITLE_HELP_HEADING: Final = "Type words from a title, or an issue:"
@@ -49,7 +51,7 @@ TITLE_SERIES_HEADING: Final = "Issue to type:"
 TITLE_SERIES: Final[HelpExamples] = tuple(
     (get_shortest_issue_name(issue), ISSUE_NAME[issue]) for issue in _MAIN_SERIES
 )
-TITLE_SERIES_NOTE: Final = f"Also {', '.join(_OTHER_CODES[:-1])}, and {_OTHER_CODES[-1]}."
+TITLE_SERIES_NOTE: Final = f"Also {join_with_and(_OTHER_CODES)}."
 
 WORD_HELP_HEADING: Final = "Type a word, or combine them:"
 WORD_HELP: Final[HelpExamples] = (
