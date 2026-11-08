@@ -374,9 +374,10 @@ class ViewPipeline:
 
         The pipeline keeps its own copy: the caller's set is the one the user's theme
         choices change in place, and the pool only follows them at a render. A switch of
-        panels source rebuilds the pool through its own listener.
+        panels source rebuilds the pool through its own listener. An empty set is no
+        theme picked, which is all of them, as None is.
         """
-        themes = None if image_themes is None else set(image_themes)
+        themes = set(image_themes) if image_themes else None
         if self._cached_fun_titles is not None and themes == self._fun_image_themes:
             return
         logger.debug(f"Set self._fun_image_themes = {themes}.")
@@ -847,8 +848,8 @@ class ViewPipeline:
             )
 
     def _get_file_types_to_use(self) -> set[FileTypes]:
-        if self._fun_image_themes is None:
-            return ALL_TYPES
+        if not self._fun_image_themes:
+            return ALL_TYPES.copy()
 
         file_types_to_use = set()
 

@@ -621,16 +621,28 @@ class TestThemeChanges:
 
         assert get_titles.call_count > calls
 
-    def test_no_themes_after_an_empty_set_rebuilds_the_pool(self) -> None:
-        """None (every theme) and an empty set are different choices."""
+    def test_an_empty_set_is_every_theme_as_none_is(self) -> None:
+        """With every custom theme cleared, the fun view shows what All shows, nontitles too."""
         pipeline = make_pipeline()
         pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=set()))
         empty_set_pool = pipeline._cached_fun_titles
 
+        assert pipeline.current_request().fun_image_themes is None
+        assert empty_set_pool is not None
+        assert empty_set_pool[1] == ALL_TYPES
+
         pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=None))
 
-        assert pipeline.current_request().fun_image_themes is None
-        assert pipeline._cached_fun_titles is not empty_set_pool
+        assert pipeline._cached_fun_titles is empty_set_pool  # the same choice: no rebuild
+
+    def test_no_themes_hand_out_a_copy_of_every_type(self) -> None:
+        pipeline = make_pipeline()
+        pipeline._fun_image_themes = None
+
+        file_types = pipeline._get_file_types_to_use()
+
+        assert file_types == ALL_TYPES
+        assert file_types is not ALL_TYPES
 
 
 # ---------------------------------------------------------------------------
