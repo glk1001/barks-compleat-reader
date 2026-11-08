@@ -112,6 +112,22 @@ def test_a_changed_icon_of_the_same_size_is_copied(data_home: Path, icon: Path) 
     assert installed.read_bytes() == b"PNG BYTES"
 
 
+@pytest.mark.parametrize(
+    ("source_name", "installed_name"),
+    [("app-icon.svg", f"{APP_NAME}.svg"), ("app-icon", f"{APP_NAME}.png")],
+)
+def test_the_installed_icon_keeps_its_suffix_or_is_taken_for_a_png(
+    data_home: Path, tmp_path: Path, source_name: str, installed_name: str
+) -> None:
+    source = tmp_path / source_name
+    source.write_bytes(b"icon bytes")
+
+    lde.write_linux_desktop_entry(source, "Barks Reader")
+
+    apps = data_home / "icons" / "hicolor" / "128x128" / "apps"
+    assert [p.name for p in apps.iterdir()] == [installed_name]
+
+
 def test_a_missing_icon_is_referenced_by_its_path(data_home: Path, tmp_path: Path) -> None:
     missing = tmp_path / "no-such-icon.png"
 
@@ -248,6 +264,13 @@ class TestExecCommand:
         with (
             patch.object(lde, "IS_COMPILED", False),  # noqa: FBT003
             patch.object(sys, "argv", [""]),
+        ):
+            assert lde._resolve_exec_command() == lde._exec_arg(sys.executable)
+
+    def test_with_no_argv_at_all_the_interpreter_alone(self) -> None:
+        with (
+            patch.object(lde, "IS_COMPILED", False),  # noqa: FBT003
+            patch.object(sys, "argv", []),
         ):
             assert lde._resolve_exec_command() == lde._exec_arg(sys.executable)
 

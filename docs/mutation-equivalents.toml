@@ -2139,38 +2139,6 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.linux_desktop_entry"
-function = "_install_hicolor_icon"
-change = """
-- suffix = source_icon_path.suffix or ".png"
-+ suffix = source_icon_path.suffix and ".png"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.linux_desktop_entry"
-function = "_install_hicolor_icon"
-change = """
-- suffix = source_icon_path.suffix or ".png"
-+ suffix = source_icon_path.suffix or "XX.pngXX"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.linux_desktop_entry"
-function = "_install_hicolor_icon"
-change = """
-- suffix = source_icon_path.suffix or ".png"
-+ suffix = source_icon_path.suffix or ".PNG"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.linux_desktop_entry"
-function = "_resolve_exec_command"
-change = """
-- script = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
-+ script = Path(sys.argv[0]).resolve() if sys.argv or sys.argv[0] else None
-"""
-
-[[untriaged]]
 module = "barks_reader.core.index_text"
 function = "indexable_title_from_str"
 change = """
