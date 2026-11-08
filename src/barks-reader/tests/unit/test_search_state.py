@@ -256,6 +256,19 @@ class TestTagScope:
         assert only[1].endswith("…")
         assert len(only[1]) <= MAX_SCOPE_LABEL
 
+    def test_one_tag_word_too_long_for_the_chip_is_cut_not_dropped(self) -> None:
+        """Whole-word shortening would leave "Only in:…", naming no tag at all."""
+        scope = TagScope("Supercalifragilisticexpialidocious-and-more-words")
+
+        label = scope.label()
+
+        assert label.startswith("Only in: Supercalifragilistic")
+        assert label.endswith("…")
+        assert len(label) == MAX_SCOPE_LABEL
+
+    def test_a_label_that_fits_is_left_whole(self) -> None:
+        assert TagScope("Gold").label() == "Only in: Gold"
+
     def test_the_filter_is_the_era_s_years_and_the_scope_s_stories_in_force(self) -> None:
         era = EraChoice(ranges=((1951, 1954),))
         scope = TagScope("Gold", frozenset({"A"}))

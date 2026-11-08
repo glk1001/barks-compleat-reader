@@ -346,7 +346,14 @@ class TagScope:
 
     def label(self) -> str:
         """Return the scope chip's text, "Only in: <tags>", cut to fit its row."""
-        return textwrap.shorten(f"Only in: {self.tags}", MAX_SCOPE_LABEL, placeholder="\u2026")
+        prefix = "Only in:"
+        text = f"{prefix} {self.tags}"
+        shortened = textwrap.shorten(text, MAX_SCOPE_LABEL, placeholder="\u2026")
+        if shortened.removesuffix("\u2026").rstrip() != prefix:
+            return shortened
+        # One word too long for the row: shorten drops whole words, which would leave
+        # no tag at all, so cut that word instead.
+        return text[: MAX_SCOPE_LABEL - 1] + "\u2026"
 
     def options(self) -> list[tuple[str, str]]:
         """Return the scope row's two chips: everywhere, and only in the tags' stories."""
