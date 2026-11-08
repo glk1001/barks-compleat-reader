@@ -158,33 +158,43 @@ class SystemFilePaths:
         return self._path(_Asset.STATISTICS_DIR)
 
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> Path:
+        """Return the folder of page overrides for the Fantagraphics volumes."""
         return self._path(_Asset.FANTAGRAPHICS_OVERRIDES_ROOT_DIR)
 
     def get_barks_reader_fantagraphics_panel_segments_root_dir(self) -> Path:
+        """Return the folder of each volume's panel-segment JSONs, which may not exist."""
         return self._path(_Asset.FANTAGRAPHICS_PANEL_SEGMENTS_ROOT_DIR)
 
     def get_barks_reader_indexes_dir(self) -> Path:
+        """Return the folder of search indexes and their sidecars."""
         return self._path(_Asset.INDEXES_DIR)
 
     def get_reader_icon_files_dir(self) -> Path:
+        """Return the folder of the app's icons."""
         return self._path(_Asset.READER_ICON_FILES_DIR)
 
     def get_barks_reader_app_window_icon_path(self) -> Path:
+        """Return the app window's icon."""
         return self._path(_Asset.APP_WINDOW_ICON_PATH)
 
     def get_error_background_path(self) -> Path:
+        """Return the background of the boot error screen."""
         return self._path(_Asset.ERROR_BACKGROUND_PATH)
 
     def get_success_background_path(self) -> Path:
+        """Return the background shown once the boot succeeds."""
         return self._path(_Asset.SUCCESS_BACKGROUND_PATH)
 
     def get_speech_bubble_icon_file(self) -> Path:
+        """Return the speech-bubble icon of an index row's show-the-speech button."""
         return self._path(_Asset.SPEECH_BUBBLE_ICON_PATH)
 
     def get_eye_open_icon_file(self) -> Path:
+        """Return the open-eye icon: the bottom title view is showing."""
         return self._path(_Asset.EYE_OPEN_ICON_PATH)
 
     def get_eye_off_icon_file(self) -> Path:
+        """Return the struck-out eye icon: the bottom title view is hidden."""
         return self._path(_Asset.EYE_OFF_ICON_PATH)
 
     def get_goto_title_button_file(self) -> Path:
@@ -196,6 +206,7 @@ class SystemFilePaths:
         return self._path(_Asset.APP_IDENTITY_IMAGE_PATH)
 
     def get_barks_reader_close_icon_file(self) -> Path:
+        """Return the close icon: leave this screen."""
         return self._path(_Asset.CLOSE_ICON_PATH)
 
     def get_barks_reader_power_icon_file(self) -> Path:
@@ -203,66 +214,87 @@ class SystemFilePaths:
         return self._path(_Asset.POWER_ICON_PATH)
 
     def get_barks_reader_go_back_icon_file(self) -> Path:
+        """Return the back-arrow icon."""
         return self._path(_Asset.GO_BACK_ICON_PATH)
 
     def get_barks_reader_collapse_icon_file(self) -> Path:
+        """Return the collapse icon of the main action bar and the tree's collapse bar."""
         return self._path(_Asset.COLLAPSE_ICON_PATH)
 
     def get_barks_reader_refresh_arrow_icon_file(self) -> Path:
+        """Return the refresh-arrow icon of the main action bar's Change Pics button."""
         return self._path(_Asset.REFRESH_ARROW_ICON_PATH)
 
     def get_barks_reader_settings_icon_file(self) -> Path:
+        """Return the action bar's settings icon."""
         return self._path(_Asset.SETTINGS_ICON_PATH)
 
     def get_barks_reader_menu_dots_icon_file(self) -> Path:
+        """Return the action bar's menu icon, three dots."""
         return self._path(_Asset.MENU_DOTS_ICON_PATH)
 
     def get_barks_reader_fullscreen_icon_file(self) -> Path:
+        """Return the action bar's icon for going fullscreen."""
         return self._path(_Asset.FULLSCREEN_ICON_PATH)
 
     def get_barks_reader_fullscreen_exit_icon_file(self) -> Path:
+        """Return the action bar's icon for leaving fullscreen."""
         return self._path(_Asset.FULLSCREEN_EXIT_ICON_PATH)
 
     def get_barks_reader_single_page_icon_file(self) -> Path:
+        """Return the comic reader's one-page-at-a-time icon."""
         return self._path(_Asset.SINGLE_PAGE_ICON_PATH)
 
     def get_barks_reader_double_page_icon_file(self) -> Path:
+        """Return the comic reader's two-pages-at-a-time icon."""
         return self._path(_Asset.DOUBLE_PAGE_ICON_PATH)
 
     def get_barks_reader_goto_icon_file(self) -> Path:
+        """Return the comic reader's go-to-page icon."""
         return self._path(_Asset.GOTO_ICON_PATH)
 
     def get_barks_reader_contrast_on_icon_file(self) -> Path:
+        """Return the wiki viewer's icon for raising the section bands' contrast."""
         return self._path(_Asset.CONTRAST_ON_ICON_PATH)
 
     def get_barks_reader_contrast_off_icon_file(self) -> Path:
+        """Return the wiki viewer's icon for lowering the section bands' contrast again."""
         return self._path(_Asset.CONTRAST_OFF_ICON_PATH)
 
     def get_barks_reader_goto_title_icon_file(self) -> Path:
+        """Return the go-to-title icon, as on the document reader's Go to Story button."""
         return self._path(_Asset.GOTO_TITLE_ICON_PATH)
 
     def get_barks_reader_goto_start_icon_file(self) -> Path:
+        """Return the comic reader's go-to-first-page icon."""
         return self._path(_Asset.GOTO_START_ICON_PATH)
 
     def get_barks_reader_goto_end_icon_file(self) -> Path:
+        """Return the comic reader's go-to-last-page icon."""
         return self._path(_Asset.GOTO_END_ICON_PATH)
 
     def get_hamburger_menu_icon_path(self) -> Path:
+        """Return the hamburger menu icon, three bars."""
         return self._path(_Asset.HAMBURGER_MENU_ICON_PATH)
 
     def get_transparent_blank_file(self) -> Path:
+        """Return a fully transparent image."""
         return self._path(_Asset.TRANSPARENT_BLANK_PATH)
 
     def get_empty_page_file(self) -> Path:
+        """Return the placeholder image for a blank or title page."""
         return self._path(_Asset.EMPTY_PAGE_PATH)
 
     def get_intro_doc_dir(self) -> Path:
+        """Return the folder of the Introduction's pages."""
         return self._path(_Asset.INTRO_DOC_DIR)
 
     def get_censorship_fixes_doc_dir(self) -> Path:
+        """Return the folder of the censorship-fixes document's pages."""
         return self._path(_Asset.CENSORSHIP_FIXES_DOC_DIR)
 
     def get_how_to_doc_dir(self) -> Path:
+        """Return the folder of the how-to guide's pages."""
         return self._path(_Asset.HOW_TO_DOC_DIR)
 
     def get_illustrated_history_doc_dir(self) -> Path:
@@ -274,6 +306,7 @@ class SystemFilePaths:
         return self._path(_Asset.ILLUSTRATED_HISTORY_DOC_DIR)
 
     def get_favourite_titles_path(self) -> Path:
+        """Return the text file of favourite titles, one to a line."""
         return self._path(_Asset.FAVOURITE_TITLES_PATH)
 
     def get_by_the_numbers_background_path(self) -> Path:
