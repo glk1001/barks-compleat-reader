@@ -18,12 +18,14 @@ class SavedPageInfo:
     last_body_page: str
 
     def is_inside_body(self) -> bool:
+        """Return whether the page is a body page other than the first or the last."""
         return self.page_type == PageType.BODY and self.display_page_num not in (
             FIRST_BODY_PAGE,
             self.last_body_page,
         )
 
     def to_json(self) -> JsonSavedPageInfo:
+        """Return the page as a JSON-ready dict, its page type by name."""
         return {
             "page_index": self.page_index,
             "display_page_num": self.display_page_num,
@@ -33,6 +35,7 @@ class SavedPageInfo:
 
     @classmethod
     def from_json(cls, json_page_info: JsonSavedPageInfo) -> Self:
+        """Return the page a `to_json` dict describes."""
         return cls(
             json_page_info["page_index"],
             json_page_info["display_page_num"],
