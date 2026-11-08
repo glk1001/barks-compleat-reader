@@ -129,6 +129,25 @@ class TestTitlesForLetter:
             None, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE
         )
 
+    @pytest.mark.parametrize("title_first", [True, False])
+    def test_a_title_listed_directly_and_under_a_tag_is_its_title_alone(
+        self, *, title_first: bool
+    ) -> None:
+        """Whichever the page lists first, the title listed directly is not labelled a tag's."""
+        title = IndexItem(Titles.BACK_TO_THE_KLONDIKE, "Back to the Klondike")
+        tag = IndexItem(Tags.ALASKA, "Alaska")
+        _, hierarchies = titles_for_letter([title, tag] if title_first else [tag, title])
+        assert hierarchies[Titles.BACK_TO_THE_KLONDIKE] == TitleHierarchy(
+            None, None, Titles.BACK_TO_THE_KLONDIKE
+        )
+
+    def test_a_title_under_two_tags_is_labelled_by_the_first(self) -> None:
+        items = [IndexItem(Tags.CANADA, "Canada"), IndexItem(Tags.CLASSICS, "Classics")]
+        _, hierarchies = titles_for_letter(items)
+        assert hierarchies[Titles.BACK_TO_THE_KLONDIKE].tag is Tags.CANADA
+        _, hierarchies = titles_for_letter(reversed(items))
+        assert hierarchies[Titles.BACK_TO_THE_KLONDIKE].tag is Tags.CLASSICS
+
     def test_a_tag_groups_titles_name_the_group(self) -> None:
         _, hierarchies = titles_for_letter([IndexItem(TagGroups.PIG_VILLAINS, "pig villains")])
         assert hierarchies

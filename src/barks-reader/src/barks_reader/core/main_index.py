@@ -147,13 +147,15 @@ def _collect_titles(
     hierarchies: dict[Titles, TitleHierarchy],
     parent_tag_group: TagGroups | None = None,
 ) -> None:
+    # A title reached two ways is labelled by one rule, not by the page's sort order:
+    # listed directly, it is the title alone; otherwise the first tag that leads to it.
     if type(item_id) is Titles:
         all_titles.add(item_id)
         hierarchies[item_id] = TitleHierarchy(None, None, item_id)
     elif type(item_id) is Tags:
         tag_titles = get_tag_titles(item_id)
         for title in tag_titles:
-            hierarchies[title] = TitleHierarchy(parent_tag_group, item_id, title)
+            hierarchies.setdefault(title, TitleHierarchy(parent_tag_group, item_id, title))
         all_titles.update(tag_titles)
     elif type(item_id) is TagGroups:
         for tag in BARKS_TAG_GROUPS[item_id]:
