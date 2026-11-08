@@ -4,7 +4,6 @@ from .fakes import (
     FakeClock,
     FakeScheduler,
     RecordingCursor,
-    RecordingSink,
     ScriptedColorSource,
     fake_fanta_info,
 )
@@ -13,7 +12,6 @@ __all__ = [
     "FakeClock",
     "FakeScheduler",
     "RecordingCursor",
-    "RecordingSink",
     "ScriptedColorSource",
     "fake_fanta_info",
 ]

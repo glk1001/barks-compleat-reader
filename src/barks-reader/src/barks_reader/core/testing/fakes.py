@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
     from barks_reader.core.ports import PaletteId
     from barks_reader.core.reader_colors import Color
-    from barks_reader.core.view_snapshot import ViewSnapshot
 
 
 # ----------------------------------------------------------------------
@@ -330,19 +329,3 @@ class RecordingCursor:
     def set_normal(self) -> None:
         """Record a normal-cursor state change."""
         self.states.append("normal")
-
-
-# ----------------------------------------------------------------------
-# Snapshot sink
-# ----------------------------------------------------------------------
-
-
-@dataclass(slots=True)
-class RecordingSink:
-    """A `SnapshotSink` that records every `apply()` call to a list."""
-
-    applied: list[ViewSnapshot] = field(default_factory=list)
-
-    def apply(self, snapshot: ViewSnapshot) -> None:
-        """Append *snapshot* to the `applied` list."""
-        self.applied.append(snapshot)

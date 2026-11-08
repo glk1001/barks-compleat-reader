@@ -1127,7 +1127,7 @@ no Kivy — that's the whole point.
 | `Scheduler` (`ports/scheduler.py`) | Marshal a callback onto the UI thread (one-shot + repeating) | `KivyClockScheduler` (`ui/adapters/kivy_scheduler.py`) | `FakeScheduler` |
 | `Cursor` (`ports/cursor.py`) | Busy/normal cursor for long loads | `KivyCursor` (`ui/adapters/kivy_cursor.py`) | `RecordingCursor` |
 | `ColorSource` (`ports/color_source.py`) | `next_color(palette)` → background scrim per view | `FixedColorSource` (`core/reader_colors.py`, Kivy-free) | `ScriptedColorSource` |
-| `SnapshotSink` (`ports/snapshot_sink.py`) | `apply(ViewSnapshot)` | `SnapshotApplicator` (`ui/snapshot_applicator.py`) | `RecordingSink` |
+| `SnapshotSink` (`ports/snapshot_sink.py`) | `apply(ViewSnapshot)` | `SnapshotApplicator` (`ui/snapshot_applicator.py`) | — |
 | `ComicBookReaderPort` (`ports/comic_reader.py`) | The reader widget's API | `ComicBookReader` | — |
 | `ComicBookReaderScreenPort` (`ports/comic_reader.py`) | The reader host screen | `ComicBookReaderScreen` | — |
 
