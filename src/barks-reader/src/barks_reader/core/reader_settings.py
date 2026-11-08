@@ -104,21 +104,33 @@ class ConfigReader(Protocol):
     # `*args`/`**kwargs` so both Kivy's ConfigParser and stdlib's
     # ``configparser.ConfigParser`` (with extra optional ``raw``/``vars``/``fallback``
     # kwargs) satisfy the protocol structurally.
-    def get(self, section: str, key: str, *args: Any, **kwargs: Any) -> str: ...  # noqa: ANN401
-    def getboolean(self, section: str, key: str, *args: Any, **kwargs: Any) -> bool: ...  # noqa: ANN401
-    def getint(self, section: str, key: str, *args: Any, **kwargs: Any) -> int: ...  # noqa: ANN401
+    def get(self, section: str, key: str, *args: Any, **kwargs: Any) -> str:  # noqa: ANN401
+        """Return the setting's text."""
+        ...
+
+    def getboolean(self, section: str, key: str, *args: Any, **kwargs: Any) -> bool:  # noqa: ANN401
+        """Return the setting as a bool."""
+        ...
+
+    def getint(self, section: str, key: str, *args: Any, **kwargs: Any) -> int:  # noqa: ANN401
+        """Return the setting as an int."""
+        ...
 
 
 class WritableConfig(ConfigReader, Protocol):
     """A config the settings can read and change: Kivy's parser, or the stdlib one."""
 
-    def set(self, section: str, option: str, value: Any) -> None: ...  # noqa: ANN401
+    def set(self, section: str, option: str, value: Any) -> None:  # noqa: ANN401
+        """Change the setting, in memory."""
+        ...
 
 
 class SavableConfig(WritableConfig, Protocol):
     """A config that saves itself: Kivy's parser. The stdlib's ``write`` takes a file."""
 
-    def write(self) -> None: ...
+    def write(self) -> None:
+        """Save the config to its file."""
+        ...
 
 
 def read_setting_from_config(config: ConfigReader, key: str) -> Any:  # noqa: ANN401
@@ -198,6 +210,14 @@ class ReaderSettings:
     def set_config(
         self, config: WritableConfig, app_settings_path: Path, app_data_dir: Path
     ) -> None:
+        """Give the settings their config and where the app keeps its files.
+
+        Args:
+            config: The parsed settings, read and changed in place.
+            app_settings_path: The settings file; the user data and history files are beside it.
+            app_data_dir: The app's data folder, which holds Reader Files.
+
+        """
         self._config = config
         self._app_settings_path = app_settings_path
         self._app_data_dir = app_data_dir
@@ -205,23 +225,28 @@ class ReaderSettings:
         self._user_history_path = app_settings_path.parent / "barks-reader-history.json"
 
     def get_app_settings_path(self) -> Path:
+        """Return the settings file."""
         assert self._app_settings_path
         return self._app_settings_path
 
     def get_user_data_path(self) -> Path:
+        """Return the user data file, beside the settings file."""
         assert self._user_data_path
         return self._user_data_path
 
     def get_user_history_path(self) -> Path:
+        """Return the reading history file, beside the settings file."""
         assert self._user_history_path
         return self._user_history_path
 
     @property
     def file_paths(self) -> ReaderFilePaths:
+        """The panel image lookups."""
         return self._reader_file_paths
 
     @property
     def sys_file_paths(self) -> SystemFilePaths:
+        """The lookups of the app's own folders and files in Reader Files."""
         return self._reader_sys_file_paths
 
     def _read(self, key: str) -> Any:  # noqa: ANN401
@@ -232,9 +257,11 @@ class ReaderSettings:
     # -- Panel image sources (derived; not direct config reads) --
 
     def set_barks_panels_dir(self) -> None:
+        """Point the panel lookups at the PNG folders or the JPG zip, as the setting says."""
         self.force_barks_panels_dir(self._read(USE_PNG_IMAGES))
 
     def force_barks_panels_dir(self, use_png_images: bool) -> None:
+        """Point the panel lookups at the PNG folders or the JPG zip, whatever the setting."""
         if use_png_images:
             self._reader_file_paths.set_barks_panels_source(
                 self._read(PNG_BARKS_PANELS_DIR), BarksPanelsExtType.MOSTLY_PNG
@@ -258,23 +285,28 @@ class ReaderSettings:
 
     @property
     def fantagraphics_volumes_dir(self) -> Path:
+        """The Fantagraphics comic zips folder."""
         return self._read(FANTA_DIR)
 
     @property
     def reader_files_dir(self) -> Path:
+        """The Reader Files folder, in the app's data folder."""
         assert self._app_data_dir
         return self.get_reader_files_dir(self._app_data_dir)
 
     @staticmethod
     def get_reader_files_dir(app_data_dir: Path) -> Path:
+        """Return the Reader Files folder in ``app_data_dir``."""
         return app_data_dir / READER_FILES_DIR
 
     @property
     def prebuilt_comics_dir(self) -> Path:
+        """The prebuilt comics folder."""
         return self._read(PREBUILT_COMICS_DIR)
 
     @property
     def use_prebuilt_archives(self) -> bool:
+        """Read comics from the prebuilt comics folder."""
         return self._read(USE_PREBUILT_COMICS)
 
     @property
@@ -304,30 +336,37 @@ class ReaderSettings:
 
     @property
     def goto_saved_node_on_start(self) -> bool:
+        """When the app starts, go to the tree's last selection."""
         return self._read(GOTO_SAVED_NODE_ON_START)
 
     @property
     def record_reading_history(self) -> bool:
+        """Record every comic read in the Reading History view."""
         return self._read(RECORD_READING_HISTORY)
 
     @property
     def confirm_quit(self) -> bool:
+        """Ask before quitting."""
         return self._read(CONFIRM_QUIT)
 
     @property
     def color_theme(self) -> str:
+        """The colour theme's name."""
         return self._read(COLOR_THEME)
 
     @property
     def goto_fullscreen_on_app_start(self) -> bool:
+        """Go straight to fullscreen when the app starts."""
         return self._read(GOTO_FULLSCREEN_ON_APP_START)
 
     @property
     def goto_fullscreen_on_comic_read(self) -> bool:
+        """Go straight to fullscreen when a comic is opened."""
         return self._read(GOTO_FULLSCREEN_ON_COMIC_READ)
 
     @property
     def decode_pages_whole(self) -> bool:
+        """Decode each page image whole before fitting it to the window."""
         return self._read(DECODE_PAGES_WHOLE)
 
     @property
@@ -336,21 +375,27 @@ class ReaderSettings:
         return self._read(MAIN_SCREEN_LAYOUT)
 
     def get_use_harpies_instead_of_larkies(self) -> bool:
+        """Return whether 'The Golden Fleecing' says 'Harpies', not 'Larkies'."""
         return self._read(USE_HARPIES_INSTEAD_OF_LARKIES)
 
     def get_use_deah_instead_of_theah(self) -> bool:
+        """Return whether 'Lost in the Andes!' says 'Deah', not 'Theah'."""
         return self._read(USE_DEAH_INSTEAD_OF_THEAH)
 
     def get_use_blank_eyeballs_for_bombie(self) -> bool:
+        """Return whether Bombie the Zombie has blank eyeballs in 'Voodoo Hoodoo'."""
         return self._read(USE_BLANK_EYEBALLS_FOR_BOMBIE)
 
     def get_use_glk_firebug_ending(self) -> bool:
+        """Return whether 'The Firebug' ends without the Fantagraphics ending."""
         return self._read(USE_GLK_FIREBUG_ENDING)
 
     def get_alt_escape_key(self) -> int:
+        """Return the extra key that acts as Escape, or 0 when there is none."""
         return self._read(ALT_ESCAPE_KEY)
 
     def set_alt_escape_key(self, keycode: int) -> None:
+        """Make ``keycode`` the extra key that acts as Escape, and save the settings."""
         logger.info(f"Setting alt_escape_key = {keycode}.")
         assert self._config
         self._config.set(BARKS_READER_SECTION, ALT_ESCAPE_KEY, int(keycode))
@@ -358,22 +403,27 @@ class ReaderSettings:
 
     @property
     def show_top_view_title_info(self) -> bool:
+        """Show the title the top image is from."""
         return self._read(SHOW_TOP_VIEW_TITLE_INFO)
 
     @property
     def show_fun_view_title_info(self) -> bool:
+        """Show the title the bottom image is from."""
         return self._read(SHOW_FUN_VIEW_TITLE_INFO)
 
     @property
     def is_first_use_of_reader(self) -> bool:
+        """Whether the reader is on its first use; setting it saves the settings."""
         return self._read(IS_FIRST_USE_OF_READER)
 
     @property
     def log_level(self) -> str:
+        """The log level's name."""
         return self._read(LOG_LEVEL)
 
     @property
     def use_virtual_keyboard(self) -> bool:
+        """Always show an on-screen keyboard for the search fields."""
         return self._read(USE_VIRTUAL_KEYBOARD)
 
     @is_first_use_of_reader.setter
@@ -386,6 +436,7 @@ class ReaderSettings:
     # -- Validators (only non-trivial ones; trivial ones are absent and treated as always-valid) --
 
     def is_valid_fantagraphics_volumes_dir(self, dir_path: Path) -> bool:
+        """Return whether ``dir_path`` will do: any path with prebuilt comics, else a folder."""
         if self.use_prebuilt_archives:
             return True
         return self._is_valid_dir(dir_path)
@@ -713,10 +764,14 @@ def _get_reader_settings_json() -> str:
 
 
 class BuildableConfigParser(SavableConfig, Protocol):
-    def setdefaults(self, section: str, defaults: dict[str, Any]) -> None: ...
+    def setdefaults(self, section: str, defaults: dict[str, Any]) -> None:
+        """Give the section's unset settings these values."""
+        ...
 
 
 class Settings(Protocol):
-    def add_json_panel(self, section: str, config: SavableConfig, data: str) -> None: ...
+    def add_json_panel(self, section: str, config: SavableConfig, data: str) -> None:
+        """Add a panel titled ``section`` of the settings ``data`` lists, as JSON, on ``config``."""
+        ...
 
     interface: Any
