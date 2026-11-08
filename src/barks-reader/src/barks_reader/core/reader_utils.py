@@ -191,9 +191,8 @@ def get_paths_from_directory(root_path: Path) -> set[str]:
 
     for path in root_path.rglob("*"):
         if path.is_file():
-            # Normalize path separators and remove extension
-            relative_path = path.relative_to(root_path)
-            paths.add(str(relative_path.with_suffix("")).replace("\\", "/"))
+            # Without its extension, and with "/" between folders as a zip names them.
+            paths.add(path.relative_to(root_path).with_suffix("").as_posix())
 
     return paths
 

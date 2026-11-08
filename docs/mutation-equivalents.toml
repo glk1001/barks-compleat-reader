@@ -2285,22 +2285,6 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.reader_utils"
-function = "get_paths_from_directory"
-change = """
-- paths.add(str(relative_path.with_suffix("")).replace("\\\\", "/"))
-+ paths.add(str(relative_path.with_suffix("")).replace("XX\\\\XX", "/"))
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_utils"
-function = "get_paths_from_directory"
-change = """
-- paths.add(str(relative_path.with_suffix("")).replace("\\\\", "/"))
-+ paths.add(str(relative_path.with_suffix("")).replace("\\\\", "XX/XX"))
-"""
-
-[[untriaged]]
 module = "barks_reader.core.fantagraphics_volumes"
 function = "EmptyArchiveError.__init__"
 change = """
