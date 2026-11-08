@@ -306,10 +306,14 @@ def _year_range_node(
     )
 
 
-def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
-    """Make title rows for tagged titles, skipping any not in the Fanta info."""
-    title_infos = (get_fanta_info(title) for title in titles)
-    return _title_rows(info for info in title_infos if info is not None)
+def _fanta_infos(titles: Iterable[Titles]) -> list[FantaComicBookInfo]:
+    """Return the titles' Fanta infos, in order, skipping titles outside the collection.
+
+    Tag lists (and so tag categories) can hold titles outside the Fanta collection;
+    every tree list of tagged titles is made through here, so they all skip the same
+    titles and a tag's count agrees with its rows.
+    """
+    return [info for title in titles if (info := get_fanta_info(title)) is not None]
 
 
 # Tags with titles enough to split into year groups in the tree, by submitted year as
@@ -319,9 +323,8 @@ TAG_YEAR_RANGES: dict[Tags, tuple[tuple[int, int], ...]] = {
 }
 
 
-def _tag_year_range_specs(tag: Tags, titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
+def _tag_year_range_specs(tag: Tags, title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
     """Make a tag's year-range groups, each deferring its title rows."""
-    title_infos = [info for info in map(get_fanta_info, titles) if info is not None]
     specs: list[NodeSpec] = []
     grouped_count = 0
     for start, end in TAG_YEAR_RANGES[tag]:
@@ -633,13 +636,7 @@ class _SpecBuilder:
         )
 
     def _character_random_titles_spec(self, text: str, tag: Tags) -> NodeSpec:
-        # Tag lists can contain titles outside the Fanta collection — skip those,
-        # as _tagged_title_rows does.
-        title_list = [
-            info
-            for title in get_sorted_tagged_titles(tag)
-            if (info := get_fanta_info(title)) is not None
-        ]
+        title_list = _fanta_infos(get_sorted_tagged_titles(tag))
         assert len(title_list) >= MIN_CHARACTER_TITLES, (
             f'"{tag.value}" has too few titles for a random node:'
             f" {len(title_list)} < {MIN_CHARACTER_TITLES}"
@@ -656,15 +653,10 @@ class _SpecBuilder:
         # A category aggregates every tag/group it contains (e.g. FAVOURITES spans
         # Barks', EveryGeek, personal, and Peter Schilling picks). The category's title
         # list is built at import, when the personal picks are still unread: reading
-        # them puts them in it. As with the character nodes, skip titles outside the
-        # Fanta collection.
+        # them puts them in it.
         if Tags.PERSONAL_FAVOURITES in get_all_tags_in_tag_category(category):
             self._get_favourite_titles()
-        title_list = [
-            info
-            for title in BARKS_TAG_CATEGORIES_TITLES[category]
-            if (info := get_fanta_info(title)) is not None
-        ]
+        title_list = _fanta_infos(BARKS_TAG_CATEGORIES_TITLES[category])
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
             text=text,
@@ -969,24 +961,23 @@ class _SpecBuilder:
         )
 
     def _tag_spec(self, tag: Tags) -> NodeSpec:
-        # Tag lists can hold titles outside the Fanta collection; the rows skip
-        # them, so the count in the label must too.
-        titles = [t for t in self._get_tagged_titles(tag) if get_fanta_info(t) is not None]
+        # The count in the label is of the rows: titles in the Fanta collection.
+        title_infos = _fanta_infos(self._get_tagged_titles(tag))
         if tag in TAG_YEAR_RANGES:
             # The year groups are made now, so a title outside every range fails at
             # startup (as the series' year groups do) rather than on the node's first
             # expansion; each group's title rows are still deferred.
             return NodeSpec(
                 kind=NodeKind.STORY_GROUP,
-                text=get_markup_text_with_num_titles(tag.value, len(titles)),
+                text=get_markup_text_with_num_titles(tag.value, len(title_infos)),
                 destination=TagDestination(tag=tag),
-                children=_tag_year_range_specs(tag, titles),
+                children=_tag_year_range_specs(tag, title_infos),
             )
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
-            text=get_markup_text_with_num_titles(tag.value, len(titles)),
+            text=get_markup_text_with_num_titles(tag.value, len(title_infos)),
             destination=TagDestination(tag=tag),
-            lazy_children=partial(_tagged_title_rows, titles),
+            lazy_children=partial(_title_rows, title_infos),
         )
 
     def _get_tagged_titles(self, tag: Tags) -> list[Titles]:

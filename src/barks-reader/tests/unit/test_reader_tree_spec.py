@@ -66,6 +66,7 @@ from barks_reader.core.navigation.tree_spec import (
     MIN_CHARACTER_TITLES,
     NUM_RANDOM_TITLES,
     TAG_YEAR_RANGES,
+    _fanta_infos,
     _get_count_extra_text,
     _get_cs_year_range_extra_text,
     _get_us_year_range_extra_text,
@@ -599,7 +600,7 @@ class TestTagYearRanges:
             patch.dict(TAG_YEAR_RANGES, {Tags.SPLASH: ((1947, 1952),)}),
             pytest.raises(AssertionError, match="year-range groups hold"),
         ):
-            _tag_year_range_specs(Tags.SPLASH, titles)
+            _tag_year_range_specs(Tags.SPLASH, _fanta_infos(titles))
 
     def test_any_other_tag_lists_its_titles_directly(self, specs: tuple[NodeSpec, ...]) -> None:
         assert Tags.AWFULTONIANS not in TAG_YEAR_RANGES
@@ -1116,3 +1117,13 @@ def _all_category_tags() -> set[Tags]:
         collect(list(category_items))
 
     return tags
+
+
+def test_fanta_infos_skips_titles_outside_the_collection_and_keeps_the_order() -> None:
+    titles = [Titles.VICTORY_GARDEN_THE, Titles.HALL_OF_THE_MERMAID_QUEEN, Titles.MIXED_UP_MIXER]
+    assert get_fanta_info(Titles.HALL_OF_THE_MERMAID_QUEEN) is None
+    infos = _fanta_infos(titles)
+    assert [info.comic_book_info.title for info in infos] == [
+        Titles.VICTORY_GARDEN_THE,
+        Titles.MIXED_UP_MIXER,
+    ]
