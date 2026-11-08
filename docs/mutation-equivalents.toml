@@ -19,6 +19,42 @@ change = """
 reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
 
 [[equivalent]]
+module = "barks_reader.core.kivy_log_handler"
+function = "LoguruKivyHandler.emit"
+change = """
+- self.logr.exception("Error in LoguruKivyHandler.emit: ")
++ self.logr.exception(None)
+"""
+reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+
+[[equivalent]]
+module = "barks_reader.core.kivy_log_handler"
+function = "LoguruKivyHandler.emit"
+change = """
+- self.logr.exception("Error in LoguruKivyHandler.emit: ")
++ self.logr.exception("XXError in LoguruKivyHandler.emit: XX")
+"""
+reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+
+[[equivalent]]
+module = "barks_reader.core.kivy_log_handler"
+function = "LoguruKivyHandler.emit"
+change = """
+- self.logr.exception("Error in LoguruKivyHandler.emit: ")
++ self.logr.exception("error in logurukivyhandler.emit: ")
+"""
+reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+
+[[equivalent]]
+module = "barks_reader.core.kivy_log_handler"
+function = "LoguruKivyHandler.emit"
+change = """
+- self.logr.exception("Error in LoguruKivyHandler.emit: ")
++ self.logr.exception("ERROR IN LOGURUKIVYHANDLER.EMIT: ")
+"""
+reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+
+[[equivalent]]
 module = "barks_reader.core.json_settings_manager"
 function = "SettingsManager.__init__"
 change = """
