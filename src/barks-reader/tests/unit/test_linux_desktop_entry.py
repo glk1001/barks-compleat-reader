@@ -17,6 +17,13 @@ from barks_reader.core.platform_info import Platform
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+# These compare the Exec= line with a POSIX path written as it is. On Windows the path
+# resolves to "D:\opt\..." and Exec= escapes each backslash, so they cannot match;
+# the entry is only ever written on Linux.
+_POSIX_PATHS_ONLY = pytest.mark.skipif(
+    sys.platform == "win32", reason="a Linux .desktop entry; Windows paths are escaped"
+)
+
 
 @pytest.fixture
 def data_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path]:
@@ -199,6 +206,7 @@ def test_the_data_home_defaults_to_local_share(monkeypatch: pytest.MonkeyPatch) 
 
 
 class TestExecCommand:
+    @_POSIX_PATHS_ONLY
     def test_a_compiled_build_launches_itself(self) -> None:
         with (
             patch.object(lde, "IS_COMPILED", True),  # noqa: FBT003
@@ -208,6 +216,7 @@ class TestExecCommand:
                 Path("/opt/barks-reader/barks-reader").resolve()
             )
 
+    @_POSIX_PATHS_ONLY
     def test_a_path_with_a_space_is_double_quoted(self) -> None:
         """Only double quotes quote in Exec=: a shell's single quotes would split the path."""
         with (
@@ -236,6 +245,7 @@ class TestExecCommand:
         ):
             assert lde._resolve_exec_command() == lde._exec_arg(sys.executable)
 
+    @_POSIX_PATHS_ONLY
     def test_the_entry_holds_the_real_exec_line(self) -> None:
         """Unpatched, as the dock reads it: a quoted path on the Exec= line."""
         with (
