@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
-from screeninfo import get_monitors
+from screeninfo import ScreenInfoError, get_monitors
 
 from .platform_info import IS_MACOS, PLATFORM, Platform
 from .reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
@@ -99,6 +99,24 @@ class ScreenInfo:
     is_primary: bool
 
 
+# Stands in for the monitors when screeninfo finds none. 1920x1080 is the screen the
+# reader is laid out for (core.window_minimum, which imports this module, so the size is
+# not taken from there). The physical size is unknown, as screeninfo reports it for some.
+_FALLBACK_SCREEN = ScreenInfo(
+    display=0,
+    monitor_x=0,
+    monitor_y=0,
+    width_pixels=1920,
+    height_pixels=1080,
+    width_mm=0,
+    height_mm=0,
+    width_in=0,
+    height_in=0,
+    dpi=0,
+    is_primary=True,
+)
+
+
 class ScreenMetrics:
     def __init__(self) -> None:
         self.SCREEN_INFO = self._get_screen_info()
@@ -106,10 +124,21 @@ class ScreenMetrics:
 
     @staticmethod
     def _get_screen_info() -> list[ScreenInfo]:
-        monitors = get_monitors()
+        """Return each monitor screeninfo finds, or one assumed 1080p screen if none.
+
+        Never empty: callers index the list and ask for its primary screen, and this runs
+        at import. screeninfo raises when no enumerator finds a monitor (a headless or
+        remote session, a monitor unplugged during a refresh); the screen the reader is
+        laid out for (core.window_minimum) stands in for it.
+        """
+        try:
+            monitors = get_monitors()
+        except ScreenInfoError as exc:
+            logger.warning(f"No monitors found by screeninfo ({exc}). Assuming a 1080p screen.")
+            return [_FALLBACK_SCREEN]
         if not monitors:
-            logger.warning("No monitors found by screeninfo.")
-            return []
+            logger.warning("No monitors found by screeninfo. Assuming a 1080p screen.")
+            return [_FALLBACK_SCREEN]
 
         inch_in_mm = 25.4
         screens = []

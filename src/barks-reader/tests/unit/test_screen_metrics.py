@@ -6,14 +6,16 @@ import pytest
 from barks_reader.core import screen_metrics as screen_metrics_module
 from barks_reader.core.platform_info import Platform
 from barks_reader.core.screen_metrics import (
+    _FALLBACK_SCREEN,
     ScreenInfo,
     ScreenMetrics,
     calculate_fitted_window_height,
     get_approximate_taskbar_height,
     get_best_window_height_fit,
 )
+from barks_reader.core.window_minimum import SUPPORTED_SCREEN_HEIGHT, SUPPORTED_SCREEN_WIDTH
 from loguru import logger
-from screeninfo import get_monitors
+from screeninfo import ScreenInfoError, get_monitors
 
 
 def _mock_monitor(
@@ -109,12 +111,46 @@ class TestScreenMetrics:
             assert get_best_window_height_fit(1000) == 940  # noqa: PLR2004
 
     def test_init_no_monitors(self, loguru_sink: list[str]) -> None:
-        """Test initialization when no monitors are found."""
+        """No monitors gives one assumed 1080p screen, so nothing indexes an empty list."""
         with patch.object(screen_metrics_module, get_monitors.__name__, return_value=[]):
             metrics = ScreenMetrics()
-            assert metrics.SCREEN_INFO == []
-            assert metrics.NUM_MONITORS == 0
-        assert "No monitors found by screeninfo." in loguru_sink
+            assert metrics.SCREEN_INFO == [_FALLBACK_SCREEN]
+            assert metrics.NUM_MONITORS == 1
+        assert any("No monitors found by screeninfo" in line for line in loguru_sink)
+
+    def test_screeninfo_finding_no_monitor_is_not_a_crash(self, loguru_sink: list[str]) -> None:
+        """Screeninfo raises, not returns [], when no enumerator finds a monitor.
+
+        SCREEN_METRICS is built at import, so the raise would stop the app booting.
+        """
+        with patch.object(
+            screen_metrics_module,
+            get_monitors.__name__,
+            side_effect=ScreenInfoError("No enumerators available"),
+        ):
+            metrics = ScreenMetrics()
+
+        assert metrics.get_primary_screen_info() == _FALLBACK_SCREEN
+        assert any("No enumerators available" in line for line in loguru_sink)
+
+    def test_a_refresh_that_loses_every_monitor_keeps_a_primary_screen(self) -> None:
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, return_value=[_mock_monitor()]
+        ):
+            metrics = ScreenMetrics()
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, side_effect=ScreenInfoError("gone")
+        ):
+            metrics.refresh()
+
+        assert metrics.get_primary_screen_info() == _FALLBACK_SCREEN
+
+    def test_the_fallback_screen_is_the_supported_screen(self) -> None:
+        assert (_FALLBACK_SCREEN.width_pixels, _FALLBACK_SCREEN.height_pixels) == (
+            SUPPORTED_SCREEN_WIDTH,
+            SUPPORTED_SCREEN_HEIGHT,
+        )
+        assert _FALLBACK_SCREEN.is_primary
 
     def test_init_valid_monitors(self) -> None:
         """Test initialization with valid monitors."""
