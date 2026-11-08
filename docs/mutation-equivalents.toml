@@ -2033,53 +2033,59 @@ change = """
 """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - disabled = disabled | (hyphens ^ self._hyphens)
 + disabled = None
 """
+reason = "Inside the cycle backstop, which the toggle limit makes unreachable (an exhaustive search of one- to three-gap texts never enters it; see the comment there and docs/mutation-testing.md)."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - disabled = disabled | (hyphens ^ self._hyphens)
 + disabled = disabled & (hyphens ^ self._hyphens)
 """
+reason = "Inside the cycle backstop, which the toggle limit makes unreachable (an exhaustive search of one- to three-gap texts never enters it; see the comment there and docs/mutation-testing.md)."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - disabled = disabled | (hyphens ^ self._hyphens)
 + disabled = disabled | (hyphens & self._hyphens)
 """
+reason = "Inside the cycle backstop, which the toggle limit makes unreachable (an exhaustive search of one- to three-gap texts never enters it; see the comment there and docs/mutation-testing.md)."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - hyphens = hyphens - disabled
 + hyphens = None
 """
+reason = "Inside the cycle backstop, which the toggle limit makes unreachable (an exhaustive search of one- to three-gap texts never enters it; see the comment there and docs/mutation-testing.md)."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - hyphens = hyphens - disabled
 + hyphens = hyphens + disabled
 """
+reason = "Inside the cycle backstop, which the toggle limit makes unreachable (an exhaustive search of one- to three-gap texts never enters it; see the comment there and docs/mutation-testing.md)."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.hyphen_break_engine"
 function = "BreakRefinement.observe"
 change = """
 - self._seen.add((hyphens, disabled))
 + self._seen.add(None)
 """
+reason = "_seen is read only by the unreachable cycle backstop, so what is added to it is never looked at."
 
 [[untriaged]]
 module = "barks_reader.core.corpus_stats"
