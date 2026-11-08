@@ -116,6 +116,7 @@ class LastReadPageMachine(RuleBasedStateMachine):
         reader.get_current_display_unit.return_value = unit
 
         result = self.tracker.end(reader)
+        self.session = None  # end() closes the session, whatever it saved
 
         if not save_enabled or page is None:
             assert result is None

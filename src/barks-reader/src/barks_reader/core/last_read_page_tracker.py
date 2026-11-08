@@ -40,40 +40,47 @@ class LastReadPageTracker:
         self._save_enabled = save_enabled
 
     def end(self, comic_book_reader: ComicBookReaderPort) -> SavedPageInfo | None:
-        """Persist progress for the current session if saving is enabled.
+        """Persist progress for the current session if saving is enabled, and close it.
+
+        A second ``end()`` without a ``begin()`` saves nothing: the session is closed,
+        so a later close path cannot save the old title from whatever page the
+        reader shows by then.
 
         Returns the saved page (with display-page-num normalised to
         ``COMIC_BEGIN_PAGE`` when the user finished the comic), or ``None``
         if saving was disabled or no valid page was read.
         """
-        if not self._save_enabled:
+        title, layout = self._current_title, self._current_layout
+        save_enabled = self._save_enabled
+        self._save_enabled = False
+        self._current_title = None
+        self._current_layout = None
+
+        if not save_enabled:
             return None
 
-        assert self._current_title is not None
-        assert self._current_layout is not None
+        assert title is not None
+        assert layout is not None
 
         last_read_page_str = comic_book_reader.get_last_read_page()
         if not last_read_page_str:
-            logger.warning(f'"{self._current_title}": There was no valid last read page.')
+            logger.warning(f'"{title}": There was no valid last read page.')
             return None
 
-        last_read_page = self._current_layout.resolve_last_read(
+        last_read_page = layout.resolve_last_read(
             last_read_page_str,
             comic_book_reader.get_current_display_unit(),
             comic_book_reader.double_page_mode,
         )
 
-        self._json_settings_manager.save_last_read_page(self._current_title, last_read_page)
+        self._json_settings_manager.save_last_read_page(title, last_read_page)
         logger.debug(
             log_markers.LAST_READ_PAGE_SAVED.format(
-                title=self._current_title, page=last_read_page.display_page_num
+                title=title, page=last_read_page.display_page_num
             )
         )
 
-        if not last_read_page.is_inside_body():
-            last_read_page.display_page_num = COMIC_BEGIN_PAGE
-
-        return last_read_page
+        return _from_the_beginning_if_finished(last_read_page)
 
     def get_last_read_page(self, title_str: str) -> SavedPageInfo | None:
         """Retrieve the persisted last-read page for a title.
@@ -85,8 +92,13 @@ class LastReadPageTracker:
         if not last_read_page_info:
             return None
 
-        if not last_read_page_info.is_inside_body():
-            last_read_page_info.display_page_num = COMIC_BEGIN_PAGE
-
+        _from_the_beginning_if_finished(last_read_page_info)
         logger.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
         return last_read_page_info
+
+
+def _from_the_beginning_if_finished(page: SavedPageInfo) -> SavedPageInfo:
+    """Send a page outside the body (a finished comic) back to ``COMIC_BEGIN_PAGE``, in place."""
+    if not page.is_inside_body():
+        page.display_page_num = COMIC_BEGIN_PAGE
+    return page

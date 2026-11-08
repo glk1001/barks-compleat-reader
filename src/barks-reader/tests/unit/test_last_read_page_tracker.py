@@ -49,6 +49,22 @@ class TestEndWithoutBegin:
         tracker.begin("Title", layout, save_enabled=False)
         assert tracker.end(MagicMock()) is None
 
+    def test_a_second_end_saves_nothing(
+        self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock
+    ) -> None:
+        """end() closes the session: a later close path cannot save the old title again."""
+        reader = MagicMock()
+        reader.get_last_read_page.return_value = "5"
+        reader.double_page_mode = False
+        reader.get_current_display_unit.return_value = None
+        layout = _make_layout(OrderedDict([("5", _body_page(4, "5"))]), last_body_page="10")
+        tracker.begin("My Title", layout, save_enabled=True)
+        assert tracker.end(reader) is not None
+
+        reader.get_last_read_page.return_value = "1"  # the reader shows another page by now
+        assert tracker.end(reader) is None
+        mock_settings_manager.save_last_read_page.assert_called_once()
+
 
 class TestEnd:
     def test_saves_mid_body_position(
