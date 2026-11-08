@@ -22,6 +22,8 @@ from .user_error_types import ErrorTypes
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.barks_titles import Titles
+
     from .reader_settings import ReaderSettings
     from .user_error_types import ErrorInfo
 
@@ -256,6 +258,12 @@ def _build_missing_volumes(
     return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=popup_title or title, text=text)
 
 
+def _cannot_show_title(title: Titles) -> str:
+    """Return the opening line of a popup about a title that cannot be shown."""
+    title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[title])
+    return f'Cannot show the title [b]"{title_str}."[/b]'
+
+
 def _build_cannot_show_title(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
@@ -267,9 +275,8 @@ def _build_cannot_show_title(
     assert len(error_info.missing_volumes) == 1
     assert error_info.title is not None
 
-    title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
     text = (
-        f'Cannot show the title "{title_str}".\n\n'
+        f"{_cannot_show_title(error_info.title)}\n\n"
         f"Fantagraphics volume '{error_info.missing_volumes[0]}' is missing."
     )
 
@@ -293,8 +300,7 @@ def _build_volume_not_available(
         # source image has no originating title.
         cannot_show = "Cannot show this title."
     else:
-        title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
-        cannot_show = f'Cannot show the title [b]"{title_str}."[/b]'
+        cannot_show = _cannot_show_title(error_info.title)
 
     if error_info.file_volume == -1:
         title = "Fantagraphics Volume Not Available"
@@ -321,9 +327,8 @@ def _build_comic_load_failed(
     assert error_info is not None
     assert error_info.title is not None
 
-    title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
     text = (
-        f'Cannot show the title [b]"{title_str}."[/b]\n\n'
+        f"{_cannot_show_title(error_info.title)}\n\n"
         f"Its pages could not be read: the comic's file may be damaged."
     )
 

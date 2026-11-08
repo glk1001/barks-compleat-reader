@@ -166,7 +166,7 @@ class TestNoticeErrors:
 
         assert pres.kind is ErrorDialogKind.NOTICE
         assert pres.title == "Fantagraphics Volume Missing"
-        assert f'Cannot show the title "{_A_TITLE_STR}"' in pres.text
+        assert f'Cannot show the title [b]"{_A_TITLE_STR}."[/b]' in pres.text
         assert "volume '7' is missing" in pres.text
 
     def test_volume_not_available_yet(self, reader_settings: MagicMock) -> None:
