@@ -88,6 +88,7 @@ class ReaderFilePaths:
         self._edited_files_ext = ""
 
         self._titles_cache: dict[FileTypes, list[str]] = {}
+        self._panels_source_listeners: list[Callable[[], None]] = []
 
         self.FILE_TYPE_FILE_GETTERS: dict[
             FileTypes, Callable[[str, bool], PanelPath | list[PanelPath] | None]
@@ -118,7 +119,35 @@ class ReaderFilePaths:
             FileTypes.SPLASH: self.get_comic_splash_files_dir,
         }
 
+    def add_panels_source_listener(self, listener: Callable[[], None]) -> None:
+        """Call ``listener`` after every later ``set_barks_panels_source``.
+
+        For state kept outside this class that follows the panels source, such as the
+        comics database's inset folder and extension.
+
+        Args:
+            listener: Called with no arguments once the new source is fully set.
+
+        """
+        self._panels_source_listeners.append(listener)
+
     def set_barks_panels_source(self, panels_source: Path, ext_type: BarksPanelsExtType) -> None:
+        """Point every panel lookup at ``panels_source``, a folder or a zip.
+
+        The settings panel calls this again when the source changes, so nothing from
+        the previous source is kept: its zip is dropped and the titles cache is cleared.
+
+        Args:
+            panels_source: The panels folder or zip; ``$VAR``s in it are expanded.
+            ext_type: Whether the source holds JPGs or (mostly) PNGs.
+
+        Raises:
+            FileNotFoundError: If a required panel folder is missing from the source.
+
+        """
+        self._drop_panels_zip()
+        self._titles_cache.clear()
+
         source = Path(expand_path_vars(panels_source))
         self._barks_panels_source = source
         self._panels_ext_type = ext_type
@@ -149,6 +178,15 @@ class ReaderFilePaths:
         self._edited_files_ext = (
             JPG_FILE_EXT if self._panels_ext_type == BarksPanelsExtType.JPG else PNG_FILE_EXT
         )
+
+        for listener in self._panels_source_listeners:
+            listener()
+
+    def _drop_panels_zip(self) -> None:
+        # Dropped, not closed: an image already on screen may hold a zip path from the
+        # old source, and reading it from a closed zip raises. The zip closes itself
+        # once nothing refers to it any more.
+        self._barks_panels_zip = None
 
     def _check_panels_dirs(self) -> None:
         dirs_to_check = list(self._panel_dirs.values())

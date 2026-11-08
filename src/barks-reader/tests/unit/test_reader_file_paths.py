@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
@@ -194,6 +194,87 @@ class TestReaderFilePaths:
         assert "Title1" in titles
         assert "Title2" in titles
         assert "Title3-no-overrides" not in titles
+
+
+class TestSwitchingThePanelsSource:
+    """The settings panel switches between the JPG zip and the PNG folders at runtime."""
+
+    @staticmethod
+    def _set(paths: ReaderFilePaths, source: Path, ext_type: BarksPanelsExtType) -> None:
+        with patch("os.path.expandvars", return_value=str(source)):
+            paths.set_barks_panels_source(source, ext_type)
+
+    def test_from_the_zip_to_folders_forgets_the_zip(
+        self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
+    ) -> None:
+        self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
+        self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+        assert reader_file_paths._barks_panels_zip is None
+        assert reader_file_paths.barks_panels_are_encrypted is False
+        assert reader_file_paths.get_inset_file_ext() == ".png"
+
+    def test_a_folder_missing_after_the_zip_is_still_found_missing(
+        self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
+    ) -> None:
+        """The folders are checked on disk, not against the old zip's names."""
+        self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
+        (panels_dir / PanelDirNames.SPLASH.value).rmdir()
+
+        with pytest.raises(FileNotFoundError, match="Splash"):
+            self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+    def test_the_titles_cache_is_cleared(
+        self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
+    ) -> None:
+        self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
+        assert reader_file_paths.get_file_type_titles(FileTypes.COVER) == []
+
+        (panels_dir / PanelDirNames.COVERS.value / "Title1.png").touch()
+        self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+        assert reader_file_paths.get_file_type_titles(FileTypes.COVER) == ["Title1"]
+
+    def test_a_zip_path_from_the_old_source_still_reads(
+        self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
+    ) -> None:
+        """An image on screen may hold one: the old zip is dropped, not closed."""
+        self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
+        old_member = reader_file_paths.get_comic_inset_files_dir() / "placeholder.txt"
+
+        self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+        assert old_member.read_bytes() == b""
+
+    def test_listeners_run_after_each_source_is_fully_set(
+        self, reader_file_paths: ReaderFilePaths, panels_zip: Path, panels_dir: Path
+    ) -> None:
+        seen: list[tuple[str, str]] = []
+        reader_file_paths.add_panels_source_listener(
+            lambda: seen.append(
+                (
+                    reader_file_paths.get_comic_inset_files_dir().name,
+                    reader_file_paths.get_inset_file_ext(),
+                )
+            )
+        )
+
+        self._set(reader_file_paths, panels_zip, BarksPanelsExtType.JPG)
+        self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+        assert seen == [("Insets", ".jpg"), ("Insets", ".png")]
+
+    def test_a_source_that_fails_its_check_calls_no_listener(
+        self, reader_file_paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        listener = MagicMock()
+        reader_file_paths.add_panels_source_listener(listener)
+        (panels_dir / PanelDirNames.SPLASH.value).rmdir()
+
+        with pytest.raises(FileNotFoundError):
+            self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
+
+        listener.assert_not_called()
 
 
 class TestPanelsSourceSetup:

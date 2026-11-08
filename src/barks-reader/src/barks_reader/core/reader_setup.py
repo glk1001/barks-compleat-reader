@@ -6,6 +6,7 @@ CLI entry points (e.g. ``scripts/read_comic.py``) can share the wiring.
 
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING
 
 from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 
     from .comic_book_page_info import ComicLayout, ComicLayoutBuilder
     from .config_info import ConfigInfo
+    from .reader_file_paths import ReaderFilePaths
     from .reader_settings import ReaderSettings
 
 
@@ -37,11 +39,18 @@ def bootstrap_reader_environment(
     reader_settings.set_config(parser, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
     reader_settings.set_barks_panels_dir()
 
-    comics_database.set_inset_info(
-        reader_settings.file_paths.get_comic_inset_files_dir(),  # ty: ignore[invalid-argument-type]
-        reader_settings.file_paths.get_inset_file_ext(),
-    )
+    file_paths = reader_settings.file_paths
+    _set_inset_info(comics_database, file_paths)
+    # The settings panel can switch the panels source (PNG folders or the JPG zip).
+    file_paths.add_panels_source_listener(partial(_set_inset_info, comics_database, file_paths))
     reader_settings.sys_file_paths.set_barks_reader_files_dir(reader_settings.reader_files_dir)
+
+
+def _set_inset_info(comics_database: ComicsDatabase, file_paths: ReaderFilePaths) -> None:
+    comics_database.set_inset_info(
+        file_paths.get_comic_inset_files_dir(),  # ty: ignore[invalid-argument-type]
+        file_paths.get_inset_file_ext(),
+    )
 
 
 def prepare_comic_for_reading(

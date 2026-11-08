@@ -32,6 +32,25 @@ class TestBootstrapReaderEnvironment:
             "/reader/files"
         )
 
+    def test_a_later_panels_source_change_resets_the_inset_info(self) -> None:
+        """The settings panel can switch PNG folders and the JPG zip after boot."""
+        reader_settings = MagicMock()
+        file_paths = reader_settings.file_paths
+        file_paths.get_comic_inset_files_dir.return_value = "/png/Insets"
+        file_paths.get_inset_file_ext.return_value = ".png"
+        comics_database = MagicMock()
+
+        bootstrap_reader_environment(reader_settings, comics_database, MagicMock(), MagicMock())
+
+        file_paths.add_panels_source_listener.assert_called_once()
+        listener = file_paths.add_panels_source_listener.call_args.args[0]
+
+        file_paths.get_comic_inset_files_dir.return_value = "/zip/Insets"
+        file_paths.get_inset_file_ext.return_value = ".jpg"
+        listener()
+
+        assert comics_database.set_inset_info.call_args_list[-1].args == ("/zip/Insets", ".jpg")
+
     def test_set_config_called_before_inset_dir_lookup(self) -> None:
         # The config must be wired before file_paths is read, otherwise the
         # inset lookup runs against an unconfigured ReaderSettings.
