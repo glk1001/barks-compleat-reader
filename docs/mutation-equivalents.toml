@@ -199,6 +199,51 @@ change = """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[equivalent]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_theme_spec"
+change = """
+- title_hex = color_to_markup_hex(theme().text_title).lstrip("#")
++ title_hex = color_to_markup_hex(theme().text_title).lstrip("XX#XX")
+"""
+reason = "lstrip takes a set of characters: \"XX#XX\" strips \"X\" too, and a hex color has no \"X\" to strip."
+
+[[equivalent]]
+module = "barks_reader.core.wiki_integration"
+function = "wiki_theme_spec"
+change = """
+- crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("#"),
++ crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("XX#XX"),
+"""
+reason = "lstrip takes a set of characters: \"XX#XX\" strips \"X\" too, and a hex color has no \"X\" to strip."
+
+[[equivalent]]
+module = "barks_reader.core.wiki_integration"
+function = "story_slug"
+change = """
+- return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
++ return re.sub(r"[^a-z0-9]+", "-", lowered).strip("XX-XX")
+"""
+reason = "strip takes a set of characters: \"XX-XX\" strips \"X\" too, and the slug is lowercased first, so it has none."
+
+[[equivalent]]
+module = "barks_reader.core.wiki_integration"
+function = "canonical_title"
+change = """
+- title_enum = STR_TITLE_TO_ENUM.get(text)
++ title_enum = None
+"""
+reason = "Skipping the first lookup leaves it to the fallback, which strips quotes and edge spaces and looks again; no canonical title has either (checked over STR_TITLE_TO_ENUM), so the fallback finds the same title."
+
+[[equivalent]]
+module = "barks_reader.core.wiki_integration"
+function = "canonical_title"
+change = """
+- title_enum = STR_TITLE_TO_ENUM.get(text)
++ title_enum = STR_TITLE_TO_ENUM.get(None)
+"""
+reason = "Skipping the first lookup leaves it to the fallback, which strips quotes and edge spaces and looks again; no canonical title has either (checked over STR_TITLE_TO_ENUM), so the fallback finds the same title."
+
+[[equivalent]]
 module = "barks_reader.core.reader_utils"
 function = "get_paths_from_zip"
 change = """
@@ -2203,118 +2248,6 @@ change = """
 + get_adjusted_usd(payment.payment, payment.accepted_year, )
 """
 reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(parents=None, exist_ok=True)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(parents=True, exist_ok=None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(exist_ok=True)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(parents=True, )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(parents=False, exist_ok=True)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "migrate_wiki_session"
-change = """
-- target.parent.mkdir(parents=True, exist_ok=True)
-+ target.parent.mkdir(parents=True, exist_ok=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_top_bar_spec"
-change = "- bg_color=ACTION_BAR_BG_COLOR,"
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_top_bar_spec"
-change = "- separator_color=ACTION_BAR_SEPARATOR_COLOR,"
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_top_bar_spec"
-change = "- icon_width=RAW_ACTION_BAR_ICON_WIDTH,"
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_top_bar_spec"
-change = """
-- quit_fence_width=RAW_QUIT_FENCE_WIDTH,
-- )
-+ )
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_theme_spec"
-change = """
-- title_hex = color_to_markup_hex(theme().text_title).lstrip("#")
-+ title_hex = color_to_markup_hex(theme().text_title).lstrip("XX#XX")
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "wiki_theme_spec"
-change = """
-- crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("#"),
-+ crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("XX#XX"),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "story_slug"
-change = """
-- return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
-+ return re.sub(r"[^a-z0-9]+", "-", lowered).strip("XX-XX")
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "canonical_title"
-change = """
-- title_enum = STR_TITLE_TO_ENUM.get(text)
-+ title_enum = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.wiki_integration"
-function = "canonical_title"
-change = """
-- title_enum = STR_TITLE_TO_ENUM.get(text)
-+ title_enum = STR_TITLE_TO_ENUM.get(None)
-"""
 
 [[untriaged]]
 module = "barks_reader.core.comic_book_loader"

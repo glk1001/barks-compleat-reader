@@ -428,6 +428,22 @@ class TestWikiTopBarSpec:
         assert spec.quit_fence_width == RAW_QUIT_FENCE_WIDTH
         assert spec.height == RAW_ACTION_BAR_SIZE_Y
 
+    def test_the_style_is_whatever_the_shared_constants_say(
+        self, mock_font_manager: MagicMock
+    ) -> None:
+        """Passed on, not left to the viewer's own defaults, which match them today."""
+        with (
+            patch.object(wiki_integration, "ACTION_BAR_BG_COLOR", (0.5, 0.0, 0.0, 1)),
+            patch.object(wiki_integration, "ACTION_BAR_SEPARATOR_COLOR", (0.0, 0.5, 0.0, 1)),
+            patch.object(wiki_integration, "RAW_ACTION_BAR_ICON_WIDTH", 71),
+            patch.object(wiki_integration, "RAW_QUIT_FENCE_WIDTH", 18),
+        ):
+            spec = wiki_top_bar_spec(mock_font_manager, MagicMock())
+        assert spec.bg_color == (0.5, 0.0, 0.0, 1)
+        assert spec.separator_color == (0.0, 0.5, 0.0, 1)
+        assert spec.icon_width == 71  # noqa: PLR2004
+        assert spec.quit_fence_width == 18  # noqa: PLR2004
+
     def test_title_is_the_wiki_name_in_the_carl_barks_font(
         self, mock_font_manager: MagicMock
     ) -> None:
@@ -515,6 +531,26 @@ class TestMigrateWikiSession:
         assert moved == wiki_session_path(profile_dir, bundle)
         assert moved.read_text() == '{"page": "index.md"}'
         assert legacy.is_file(), "copied, not moved: a throwaway profile must not take it away"
+
+    def test_copies_into_a_profile_folder_that_already_exists(self, tmp_path: Path) -> None:
+        """The usual case: the profile holds the settings already, only not the session."""
+        legacy_dir, profile_dir, bundle = tmp_path / "data", tmp_path / "profile", tmp_path / "okf"
+        legacy_dir.mkdir()
+        profile_dir.mkdir()
+        wiki_session_path(legacy_dir, bundle).write_text("old")
+
+        assert migrate_wiki_session(legacy_dir, profile_dir, bundle) is not None
+        assert wiki_session_path(profile_dir, bundle).read_text() == "old"
+
+    def test_copies_into_a_profile_folder_not_made_yet(self, tmp_path: Path) -> None:
+        """Every folder down to the profile is made, not only the last."""
+        legacy_dir, bundle = tmp_path / "data", tmp_path / "okf"
+        profile_dir = tmp_path / "config" / "profile"
+        legacy_dir.mkdir()
+        wiki_session_path(legacy_dir, bundle).write_text("old")
+
+        assert migrate_wiki_session(legacy_dir, profile_dir, bundle) is not None
+        assert wiki_session_path(profile_dir, bundle).read_text() == "old"
 
     def test_leaves_an_existing_profile_session_alone(self, tmp_path: Path) -> None:
         legacy_dir, profile_dir, bundle = tmp_path / "data", tmp_path / "profile", tmp_path / "okf"
