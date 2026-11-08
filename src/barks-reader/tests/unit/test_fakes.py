@@ -222,6 +222,55 @@ class TestFakeSchedulerOneShots:
         assert order == ["outer", "inner"]
 
 
+class TestFakeSchedulerTimeOrder:
+    """Within one advance, callbacks fire in the order of their virtual times, as Kivy's do."""
+
+    def test_an_earlier_one_shot_fires_before_later_ticks(self) -> None:
+        scheduler = FakeScheduler()
+        order: list[str] = []
+        scheduler.schedule_interval(lambda: order.append("tick"), 1.0)
+        scheduler.schedule_once(lambda: order.append("one-shot"), 1.5)
+
+        scheduler.advance(3.0)
+
+        assert order == ["tick", "one-shot", "tick", "tick"]
+
+    def test_a_one_shot_scheduled_by_a_tick_is_due_from_the_tick(self) -> None:
+        scheduler = FakeScheduler()
+        fired: list[str] = []
+
+        def first_tick_only() -> None:
+            handle.cancel()
+            scheduler.schedule_once(lambda: fired.append("five after the tick"), 5.0)
+
+        handle = scheduler.schedule_interval(first_tick_only, 1.0)
+        scheduler.advance(3.0)  # the tick is at 1.0, so the one-shot is due at 6.0
+        scheduler.advance(2.0)
+        assert fired == []
+
+        scheduler.advance(1.0)
+
+        assert fired == ["five after the tick"]
+
+    def test_a_tick_cancelled_by_an_earlier_one_shot_does_not_fire(self) -> None:
+        scheduler = FakeScheduler()
+        ticks: list[int] = []
+        handle = scheduler.schedule_interval(lambda: ticks.append(1), 1.0)
+        scheduler.schedule_once(handle.cancel, 1.5)
+
+        scheduler.advance(5.0)
+
+        assert ticks == [1]
+
+    @pytest.mark.parametrize("secs", [-0.5, -1.0])
+    def test_a_negative_advance_is_refused(self, secs: float) -> None:
+        scheduler = FakeScheduler()
+        scheduler.schedule_interval(lambda: None, 1.0)
+
+        with pytest.raises(ValueError, match="negative time"):
+            scheduler.advance(secs)
+
+
 class TestFakeClock:
     def test_fire_last_fires_the_newest_callback_once(self) -> None:
         clock = FakeClock()

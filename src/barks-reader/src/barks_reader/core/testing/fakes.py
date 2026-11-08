@@ -128,33 +128,63 @@ class FakeScheduler:
         scheduled.callback()
 
     def advance(self, secs: float) -> None:
-        """Advance virtual time by *secs* seconds, firing scheduled callbacks.
+        """Advance virtual time by *secs* seconds, firing scheduled callbacks in time order.
 
-        Each interval active at the *start* of the call fires once per whole
-        period of virtual time it has accumulated, so ``advance(0.5)`` twice ticks a
-        one-second interval once, as Kivy would; then every delayed one-shot whose
-        time has come fires, oldest first. Callbacks scheduled by callbacks during
-        this advance do not fire — they wait for the next `advance()` call. This
-        avoids runaway recursion when a callback reschedules itself.
+        Each interval active at the *start* of the call fires once per whole period
+        of virtual time it has accumulated, so ``advance(0.5)`` twice ticks a
+        one-second interval once, as Kivy would, and every delayed one-shot whose time
+        has come fires. They fire in the order of their virtual times, an interval's
+        tick before a one-shot due at the same moment, and otherwise in the order they
+        were scheduled; a callback sees the time it fires at, so a one-shot it
+        schedules is due from then. Callbacks scheduled by callbacks during this
+        advance do not fire — they wait for the next `advance()` call. This avoids
+        runaway recursion when a callback reschedules itself.
+
+        Raises:
+            ValueError: For a negative *secs*: virtual time does not run backwards.
+
         """
-        self._now += secs
-        snapshot = list(self._intervals)
-        for interval in snapshot:
+        if secs < 0:
+            msg = f"A FakeScheduler cannot advance by a negative time, not {secs!r}"
+            raise ValueError(msg)
+
+        start = self._now
+        events: list[tuple[float, int, int, Callable[[], None]]] = []
+        for order, interval in enumerate(list(self._intervals)):
             if interval.cancelled:
                 continue
-            interval.elapsed_secs += secs
-            ticks = math.floor(
-                round(interval.elapsed_secs / interval.period_secs, _PERIOD_QUOTIENT_PLACES)
+            elapsed = interval.elapsed_secs + secs
+            ticks = math.floor(round(elapsed / interval.period_secs, _PERIOD_QUOTIENT_PLACES))
+            interval.elapsed_secs = elapsed - ticks * interval.period_secs
+            first_due = start + interval.period_secs - (elapsed - secs)
+            events.extend(
+                (first_due + tick * interval.period_secs, 0, order, self._ticker(interval))
+                for tick in range(ticks)
             )
-            interval.elapsed_secs -= ticks * interval.period_secs
-            for _ in range(ticks):
-                if interval.cancelled:
-                    break
-                interval.callback()
-        for one_shot in list(self._one_shots):
-            if one_shot.fired or one_shot.cancelled or one_shot.due_at > self._now:
+        for order, one_shot in enumerate(list(self._one_shots)):
+            if one_shot.fired or one_shot.cancelled or one_shot.due_at > start + secs:
                 continue
-            self._fire_one_shot(one_shot)
+            events.append((max(one_shot.due_at, start), 1, order, self._firer(one_shot)))
+
+        for due_at, _kind, _order, fire in sorted(events, key=lambda event: event[:3]):
+            self._now = min(due_at, start + secs)
+            fire()
+        self._now = start + secs
+
+    @staticmethod
+    def _ticker(interval: _ScheduledInterval) -> Callable[[], None]:
+        def tick() -> None:
+            if not interval.cancelled:
+                interval.callback()
+
+        return tick
+
+    def _firer(self, one_shot: _ScheduledOneShot) -> Callable[[], None]:
+        def fire() -> None:
+            if not one_shot.fired and not one_shot.cancelled:
+                self._fire_one_shot(one_shot)
+
+        return fire
 
 
 # ----------------------------------------------------------------------
