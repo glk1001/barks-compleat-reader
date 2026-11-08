@@ -241,6 +241,18 @@ class TestSetBarksReaderFilesDirValidation:
         paths.set_barks_reader_files_dir(tmp_path, check_files=True)
 
     @pytest.mark.parametrize(
+        "missing", [relative for _getter, relative in _EXPECTED_PATHS if Path(relative).suffix]
+    )
+    def test_every_file_a_getter_names_is_required(self, tmp_path: Path, missing: str) -> None:
+        """A file the app loads but the check skips passes boot, then shows a broken icon."""
+        _build_asset_tree(tmp_path)
+        (tmp_path / missing).unlink()
+
+        paths = SystemFilePaths()
+        with pytest.raises(FileNotFoundError, match="Required file not found"):
+            paths.set_barks_reader_files_dir(tmp_path, check_files=True)
+
+    @pytest.mark.parametrize(
         "missing",
         [
             pytest.param("Indexes", id="dir"),

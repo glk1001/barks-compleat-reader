@@ -160,6 +160,8 @@ class SystemFilePaths:
             self._go_back_icon_path,
             self._app_identity_image_path,
             self._speech_bubble_icon_path,
+            self._eye_open_icon_path,
+            self._eye_off_icon_path,
             self._goto_title_button_path,
             self._transparent_blank_path,
             self._empty_page_path,
