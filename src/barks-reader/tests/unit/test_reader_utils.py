@@ -526,6 +526,20 @@ class TestReaderUtils:
         with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
             assert get_concat_page_nums_str(["ii", "i"]) == "i,ii"
 
+    @pytest.mark.parametrize(
+        ("pages", "expected"),
+        [
+            # As strings, "ix" < "v" < "viii": the pages must go in numeral order.
+            (["viii", "ix", "v", "1", "2"], "v,viii,ix,1-2"),
+            (["ix", "vi", "x"], "vi,ix,x"),
+        ],
+    )
+    def test_get_concat_page_nums_str_orders_the_real_numerals_by_value(
+        self, pages: list[str], expected: str
+    ) -> None:
+        """Unpatched: the real numerals, up to x, where string order goes wrong."""
+        assert get_concat_page_nums_str(pages) == expected
+
     def test_get_concat_page_nums_str_multiple_romans_then_arabic(self) -> None:
         """Several roman pages are comma-joined among themselves before the arabic run."""
         with (
