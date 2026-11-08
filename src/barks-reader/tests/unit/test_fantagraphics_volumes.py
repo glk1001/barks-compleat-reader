@@ -982,6 +982,7 @@ class TestLoadEndToEnd:
             archives.load()
 
         assert 2 in exc_info.value.missing_file_vols
+        assert f'missing in "{archive_root}"' in str(exc_info.value)
         # The placeholder entry for the missing volume was registered before raising.
         missing_entry = archives.get_fantagraphics_archive(2)
         assert missing_entry.is_missing is True
@@ -1175,6 +1176,7 @@ class TestLoadErrorMessages:
         message = str(exc_info.value)
         assert "02-vol.cbz" in message
         assert "contains no page images" in message
+        assert "(looked for .png, .jpg)" in message
 
     def test_the_expected_extension_comes_from_the_first_image(self, tmp_path: Path) -> None:
         """A mixed-extension archive is judged against page 1's extension."""
@@ -1184,6 +1186,15 @@ class TestLoadErrorMessages:
             archives.load()
 
         assert 'expecting extension ".png" but got ".jpg"' in str(exc_info.value)
+
+    def test_a_gap_in_the_page_numbers_names_the_archive(self, tmp_path: Path) -> None:
+        """Found through load, the error still says which archive to replace."""
+        archives = self._single_volume_archives(tmp_path, ["page001.png", "page003.png"])
+
+        with pytest.raises(
+            PageNumError, match=r'Fantagraphics archive ".*02-vol\.cbz": expecting page 2'
+        ):
+            archives.load()
 
 
 def test_missing_volume_records_its_override_archive(tmp_path: Path) -> None:

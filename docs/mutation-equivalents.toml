@@ -2317,30 +2317,6 @@ change = """
 """
 
 [[untriaged]]
-module = "barks_reader.core.fantagraphics_volumes"
-function = "EmptyArchiveError.__init__"
-change = """
-- exts = ", ".join(_VALID_IMAGE_EXTENSION)
-+ exts = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.fantagraphics_volumes"
-function = "EmptyArchiveError.__init__"
-change = """
-- exts = ", ".join(_VALID_IMAGE_EXTENSION)
-+ exts = "XX, XX".join(_VALID_IMAGE_EXTENSION)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.fantagraphics_volumes"
-function = "FantagraphicsVolumeArchives.load"
-change = """
-- raise MissingArchiveFilesError(missing_volumes, self._archive_root)
-+ raise MissingArchiveFilesError(missing_volumes, None)
-"""
-
-[[untriaged]]
 module = "barks_reader.core.comic_book_loader"
 function = "ComicBookLoader.init_data"
 change = """
