@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Self
 
 from loguru import logger
@@ -88,12 +88,32 @@ class ReadingHistoryStore:
         self._store_path = store_path
         self._events: list[ReadEvent] = []
         self._revision = 0
+        self._can_write = True
 
         if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
             try:
                 self._events = [ReadEvent.from_json(e) for e in json.loads(contents)["events"]]
             except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-                logger.error(f'History: Could not load "{store_path}": {e}. Starting empty.')
+                self._set_aside_unreadable_file(str(e))
+
+    def _set_aside_unreadable_file(self, error: str) -> None:
+        # Start empty, but never write over a history that could not be read: it may
+        # be recoverable by hand. Move it aside, or failing that, do not save at all.
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        aside_path = self._store_path.with_name(f"{self._store_path.name}.corrupt-{stamp}")
+        try:
+            self._store_path.replace(aside_path)
+        except OSError as move_error:
+            self._can_write = False
+            logger.error(
+                f'History: Could not load "{self._store_path}": {error}. Could not move it'
+                f" aside either ({move_error}), so this session's history is not saved."
+            )
+        else:
+            logger.error(
+                f'History: Could not load "{self._store_path}": {error}.'
+                f' Moved it to "{aside_path}"; starting empty.'
+            )
 
     @property
     def revision(self) -> int:
@@ -102,8 +122,14 @@ class ReadingHistoryStore:
 
     def _sync(self) -> None:
         self._revision += 1
+        if not self._can_write:
+            return
         json_data = {"version": _STORE_VERSION, "events": [e.to_json() for e in self._events]}
-        self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
+        # Written beside the file and moved over it, so a crash mid-write leaves the
+        # old history whole rather than a truncated file that will not load.
+        temp_path = self._store_path.with_name(f"{self._store_path.name}.tmp")
+        temp_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
+        temp_path.replace(self._store_path)
 
     def get_events(self) -> list[ReadEvent]:
         """Return all events in chronological (oldest-first) order."""

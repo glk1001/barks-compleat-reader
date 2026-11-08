@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics.comics_consts import PageType
@@ -23,9 +24,6 @@ from barks_reader.core.reading_history import (
     summarize_titles,
 )
 from barks_reader.core.saved_page_info import SavedPageInfo
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _TODAY = date(2026, 7, 17)
 
@@ -68,6 +66,57 @@ class TestReadingHistoryStore:
         store_path.write_text("not json at all", encoding="utf-8")
         store = ReadingHistoryStore(store_path)
         assert store.get_events() == []
+
+    def test_an_unreadable_file_is_moved_aside_not_overwritten(self, tmp_path: Path) -> None:
+        """A history that will not load may be recoverable by hand; saving must not end it."""
+        store_path = tmp_path / "history.json"
+        store_path.write_text('{"version": 1, "events": [{"trunc', encoding="utf-8")
+
+        store = ReadingHistoryStore(store_path)
+        store.add_event(_make_event())
+
+        (aside,) = tmp_path.glob("history.json.corrupt-*")
+        assert aside.read_text(encoding="utf-8") == '{"version": 1, "events": [{"trunc'
+        assert ReadingHistoryStore(store_path).get_events() == [_make_event()]
+
+    def test_an_unreadable_file_that_cannot_be_moved_is_never_written(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        store_path = tmp_path / "history.json"
+        store_path.write_text("not json at all", encoding="utf-8")
+
+        with patch.object(Path, Path.replace.__name__, side_effect=PermissionError("locked")):
+            store = ReadingHistoryStore(store_path)
+            store.add_event(_make_event())
+
+        assert store_path.read_text(encoding="utf-8") == "not json at all"
+        assert store.get_events() == [_make_event()]  # still kept for this session
+        assert any("not saved" in line for line in loguru_sink)
+
+    def test_a_crash_mid_write_leaves_the_old_history_whole(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "history.json"
+        first = _make_event(event_id="first")
+        ReadingHistoryStore(store_path).add_event(first)
+        real_write_text = Path.write_text
+
+        def write_half_then_die(path: Path, data: str, encoding: str) -> int:
+            real_write_text(path, data[: len(data) // 2], encoding=encoding)
+            raise OSError(28, "No space left on device")
+
+        store = ReadingHistoryStore(store_path)
+        with (
+            patch.object(Path, Path.write_text.__name__, write_half_then_die),
+            pytest.raises(OSError, match="No space"),
+        ):
+            store.add_event(_make_event(event_id="second"))
+
+        assert ReadingHistoryStore(store_path).get_events() == [first]
+
+    def test_a_save_leaves_no_temporary_file(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "history.json"
+        ReadingHistoryStore(store_path).add_event(_make_event())
+
+        assert [p.name for p in tmp_path.iterdir()] == ["history.json"]
 
     def test_add_event_persists_across_reload(self, tmp_path: Path) -> None:
         store_path = tmp_path / "history.json"
