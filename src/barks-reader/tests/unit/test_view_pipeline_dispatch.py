@@ -518,6 +518,28 @@ class TestThemeExpansion:
             FileTypes.AI, set()
         )
 
+    def test_a_panels_source_switch_rebuilds_the_themed_pool(self) -> None:
+        """The fun view's timer draws from the pool before the next render rebuilds it."""
+        pipeline = make_pipeline()
+        file_paths = settings_of(pipeline).file_paths
+        file_paths.add_panels_source_listener.assert_called_once()
+        on_source_switch = file_paths.add_panels_source_listener.call_args.args[0]
+        pipeline._fun_image_themes = {ImageThemes.AI}
+        self._serve_per_type(pipeline, {FileTypes.AI: [Titles.LOST_IN_THE_ANDES]})
+        on_source_switch()
+        assert pipeline._cached_fun_titles is not None
+        assert [t.comic_book_info.title for t in pipeline._cached_fun_titles[0]] == [
+            Titles.LOST_IN_THE_ANDES
+        ]
+
+        # The new source has AI images for another title.
+        self._serve_per_type(pipeline, {FileTypes.AI: [Titles.BICEPS_BLUES]})
+        on_source_switch()
+
+        assert [t.comic_book_info.title for t in pipeline._cached_fun_titles[0]] == [
+            Titles.BICEPS_BLUES
+        ]
+
     def test_get_file_types_to_use_none_themes_returns_all_types(self) -> None:
         pipeline = make_pipeline()
         pipeline._fun_image_themes = None

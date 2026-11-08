@@ -255,6 +255,10 @@ class ViewPipeline:
         self._fun_image_themes: set[ImageThemes] | None = None
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
         self._set_fun_image_themes(None)
+        # A themed pool lists the titles the panels source has images for, so a switch of
+        # source (PNG folders or JPG zip) rebuilds it now, not at the next render: the
+        # fun view's timer picks from it in between.
+        reader_settings.file_paths.add_panels_source_listener(self._rebuild_fun_titles)
 
         self._view_state = ViewStates.PRE_INIT
 
@@ -342,6 +346,9 @@ class ViewPipeline:
         """Set the active fun-image themes; resets the cached title list."""
         logger.debug(f"Set self._fun_image_themes = {image_themes}.")
         self._fun_image_themes = image_themes
+        self._rebuild_fun_titles()
+
+    def _rebuild_fun_titles(self) -> None:
         self._cached_fun_titles = self._get_fun_image_titles()
 
     def _compute_snapshot(self) -> ViewSnapshot:
