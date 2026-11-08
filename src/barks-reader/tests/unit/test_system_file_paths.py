@@ -141,21 +141,9 @@ class TestSystemFilePaths:
     def test_resolved_path(self, sys_paths: SystemFilePaths, getter: str, relative: str) -> None:
         assert getattr(sys_paths, getter)() == _ASSETS_ROOT / relative
 
-    def test_get_stat_image_path_joins_onto_the_statistics_dir(
-        self, sys_paths: SystemFilePaths
-    ) -> None:
-        assert sys_paths.get_stat_image_path("titles-per-year.png") == (
-            _ASSETS_ROOT / "Statistics" / "titles-per-year.png"
-        )
-
     def test_every_getter_is_covered_by_the_expected_paths_table(self) -> None:
         """Guard against a new getter landing without an entry in `_EXPECTED_PATHS`."""
-        # `get_stat_image_path` takes an argument, so it is asserted separately above.
-        getters = {
-            name
-            for name in dir(SystemFilePaths)
-            if name.startswith("get_") and name != "get_stat_image_path"
-        }
+        getters = {name for name in dir(SystemFilePaths) if name.startswith("get_")}
         assert getters == {getter for getter, _ in _EXPECTED_PATHS}
 
 

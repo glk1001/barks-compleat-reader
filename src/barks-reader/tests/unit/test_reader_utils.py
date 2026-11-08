@@ -4,7 +4,6 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
-from random import randrange
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -29,7 +28,6 @@ from barks_reader.core.reader_utils import (
     get_paths_from_directory,
     get_paths_from_zip,
     get_quoted_items,
-    get_rand_int,
     get_tagged_pages,
     get_title_str_from_reader_icon_file,
     get_win_dimensions,
@@ -37,13 +35,10 @@ from barks_reader.core.reader_utils import (
     is_blank_page,
     is_title_page,
     join_with_and,
-    prob_rand_less_equal,
     quote_and_join_with_and,
-    read_text_paragraphs,
     read_title_list,
     safe_import_check,
     title_needs_footnote,
-    unique_extend,
 )
 from intspan import intspan
 
@@ -133,36 +128,6 @@ class TestReaderUtils:
         with patch.object(utils_module, "US_CENSORED_TITLE_ENUMS", [dummy_title]):
             assert title_needs_footnote(fanta_info) is False
 
-    def test_prob_rand_less_equal(self) -> None:
-        """Test probability check."""
-        with patch.object(utils_module, randrange.__name__) as mock_rand:
-            mock_rand.return_value = 50
-            # 50 < 60 -> True
-            assert prob_rand_less_equal(60) is True
-            # 50 < 40 -> False
-            assert prob_rand_less_equal(40) is False
-
-    def test_prob_rand_less_equal_draws_from_1_to_100_inclusive(self) -> None:
-        """The draw is 1..100, so percent=100 is always true and percent=0 never is."""
-        with patch.object(utils_module, randrange.__name__) as mock_rand:
-            mock_rand.return_value = 50
-            prob_rand_less_equal(60)
-            mock_rand.assert_called_with(1, 101)
-
-    def test_prob_rand_less_equal_is_strict_at_the_boundary(self) -> None:
-        """Despite the name, the comparison is strict: draw == percent is False."""
-        with patch.object(utils_module, randrange.__name__) as mock_rand:
-            mock_rand.return_value = 50
-            assert prob_rand_less_equal(50) is False
-            assert prob_rand_less_equal(51) is True
-
-    def test_get_rand_int(self) -> None:
-        """Test random integer generation."""
-        with patch.object(utils_module, randrange.__name__) as mock_rand:
-            mock_rand.return_value = 5
-            assert get_rand_int((1, 10)) == 5  # noqa: PLR2004
-            mock_rand.assert_called_with(1, 11)
-
     def test_is_title_page(self) -> None:
         """Test title page detection."""
         page = MagicMock()
@@ -234,46 +199,6 @@ class TestReaderUtils:
 
         assert [p.name for p in get_all_files_in_dir(d)] == ["f1.txt"]
 
-    def test_read_text_paragraphs(self, tmp_path: Path) -> None:
-        """Test reading and formatting text paragraphs."""
-        f = tmp_path / "test.txt"
-        # "Line 1\n" -> "Line 1 "
-        # "Line 2\n" -> "Line 2 "
-        # "\n" -> "\n\n"
-        # "Line 3" -> "Line 3"
-        content = "Line 1\nLine 2\n\nLine 3"
-        f.write_text(content, encoding="utf-8")
-
-        res = read_text_paragraphs(f)
-        assert "Line 1 Line 2" in res
-        assert "\n\n" in res
-        assert res.endswith("Line 3")
-
-    def test_read_text_paragraphs_exact_output(self, tmp_path: Path) -> None:
-        r"""Pin the whole transform, not just fragments of it.
-
-        Per line: newlines become spaces so wrapped source lines rejoin into one
-        paragraph, a blank line becomes a real paragraph break, and a line ending in a
-        backslash keeps its newline (the backslash itself is dropped) - that is the
-        only way to force a hard break inside a paragraph.
-        """
-        f = tmp_path / "test.txt"
-        f.write_text(
-            "Line 1\n"
-            "  Indented\n"  # leading whitespace is preserved (only trailing is stripped)
-            "\n"  # blank line -> paragraph break
-            "a\n"  # a two-character line still joins
-            "ab\\cd\n"  # a backslash mid-line is not a continuation marker
-            "x\\y\n"  # nor is one in the second-to-last position
-            "Hard break\\\n"  # trailing backslash -> keep the newline, drop the backslash
-            "Next",
-            encoding="utf-8",
-        )
-
-        # Per source line, in order: "Line 1 ", "  Indented ", a paragraph break, "a ",
-        # "ab\cd ", "x\y ", "Hard break" plus its kept newline, then "Next".
-        assert read_text_paragraphs(f) == "Line 1   Indented \n\na ab\\cd x\\y Hard break\nNext"
-
     def test_read_title_list(self, tmp_path: Path) -> None:
         """Test reading title list from file."""
         f = tmp_path / "titles.txt"
@@ -329,18 +254,6 @@ class TestReaderUtils:
 
         with pytest.raises(RuntimeError, match='Unknown title "Not A Barks Title"'):
             read_title_list(f)
-
-    def test_unique_extend(self) -> None:
-        """Test extending list with unique items."""
-        l1 = [Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, Titles.DONALD_DUCK_AND_THE_MUMMYS_RING]
-        l2 = [Titles.DONALD_DUCK_AND_THE_MUMMYS_RING, Titles.ADVENTURE_DOWN_UNDER, Titles.CUBE_THE]
-        unique_extend(l1, l2)
-        assert l1 == [
-            Titles.DONALD_DUCK_FINDS_PIRATE_GOLD,
-            Titles.DONALD_DUCK_AND_THE_MUMMYS_RING,
-            Titles.ADVENTURE_DOWN_UNDER,
-            Titles.CUBE_THE,
-        ]
 
     def test_get_paths_from_directory(self, tmp_path: Path) -> None:
         """Test getting relative paths from directory."""

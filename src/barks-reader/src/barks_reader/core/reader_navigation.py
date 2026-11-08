@@ -95,16 +95,6 @@ class ReaderNavigation:
 
         return self._fullscreen_left_margin < x <= self._fullscreen_right_margin
 
-    def is_in_bottom_margin(self, x: int, y: int) -> bool:
-        """Return whether (x, y) is in the bottom margin."""
-        if self._y_bottom_margin < y:
-            return False
-
-        if not self._is_fullscreen():
-            return True
-
-        return self._fullscreen_left_margin < x <= self._fullscreen_right_margin
-
     def is_in_left_margin(self, x: int, y: int) -> bool:
         """Return whether (x, y) is left of the middle, between the top and bottom margins."""
         return (x < self._x_mid) and self._is_between_the_bars(x, y)

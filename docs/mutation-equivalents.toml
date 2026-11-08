@@ -2597,14 +2597,6 @@ change = """
 
 [[untriaged]]
 module = "barks_reader.core.reader_utils"
-function = "read_text_paragraphs"
-change = """
-- line = ln.rstrip(" ")
-+ line = ln.rstrip("XX XX")
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_utils"
 function = "get_paths_from_directory"
 change = """
 - paths.add(str(relative_path.with_suffix("")).replace("\\\\", "/"))

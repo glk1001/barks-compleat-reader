@@ -66,27 +66,6 @@ class TestReaderNavigation:
         assert not self.nav.is_in_top_margin(400, 950)
         assert not self.nav.is_in_top_margin(1600, 950)
 
-    def test_is_in_bottom_margin(self) -> None:
-        self.nav.update_regions(1000, 1000, 0, 0)
-        # y_bottom_margin is 100
-
-        # Case 1: Not fullscreen
-        self.mode.fullscreen = False
-
-        assert self.nav.is_in_bottom_margin(500, 50)
-        assert self.nav.is_in_bottom_margin(500, 100)
-        assert not self.nav.is_in_bottom_margin(500, 150)
-
-        # Case 2: Fullscreen
-        self.mode.fullscreen = True
-
-        # Inside horizontal center area AND below bottom margin
-        assert self.nav.is_in_bottom_margin(600, 50)
-
-        # Outside horizontal center area
-        assert not self.nav.is_in_bottom_margin(400, 50)
-        assert not self.nav.is_in_bottom_margin(1600, 50)
-
     def test_is_in_left_margin(self) -> None:
         self.nav.update_regions(1000, 1000, 0, 0)
         # x_mid = 500, y_bottom = 100, y_top = 900
@@ -240,8 +219,6 @@ class TestEdges:
         mode.fullscreen = True  # the band is (500, 1500]
         assert nav.is_in_top_margin(1500, 950)
         assert not nav.is_in_top_margin(500, 950)
-        assert nav.is_in_bottom_margin(1500, 50)
-        assert not nav.is_in_bottom_margin(500, 50)
 
     def test_no_bottom_margin_by_default(self) -> None:
         nav = ReaderNavigation(2000, 0.1, is_fullscreen=lambda: False)

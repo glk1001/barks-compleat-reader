@@ -8,7 +8,6 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_tree_view_utils import (
     ancestor_paths,
     find_and_expand_node_by_path,
-    find_tree_view_node,
     find_tree_view_title_node,
     get_tree_view_node_path,
 )
@@ -82,17 +81,6 @@ class TestReaderTreeViewUtils:
 
         # Test finding a non-existent node
         assert find_and_expand_node_by_path(tree, ["root", "Child 2", "Non-existent"]) is None
-
-    def test_find_tree_view_node(self, mock_tree: tuple[Any, Any, Any, Any]) -> None:
-        """Test finding a node by its text recursively."""
-        _, root, _, grandchild1 = mock_tree
-
-        # Test finding a nested node
-        found_node = find_tree_view_node(root, "Grandchild 1")
-        assert found_node == grandchild1
-
-        # Test finding a non-existent node
-        assert find_tree_view_node(root, "Non-existent") is None
 
     def test_find_tree_view_title_node(self) -> None:
         """Test finding a title node by its title enum."""

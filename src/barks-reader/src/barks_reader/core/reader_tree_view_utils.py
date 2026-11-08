@@ -80,20 +80,6 @@ def find_and_expand_node_by_path(
     return found_node
 
 
-def find_tree_view_node(
-    start_node: BaseTreeViewNodeProtocol, node_text: str
-) -> BaseTreeViewNodeProtocol | None:
-    nodes_to_visit = start_node.nodes.copy()
-
-    while nodes_to_visit:
-        current_node = nodes_to_visit.pop()
-        if current_node.get_name() == node_text:
-            return current_node
-        nodes_to_visit.extend(current_node.nodes)
-
-    return None
-
-
 def find_tree_view_title_node(
     nodes: list[TitleTreeViewNodeProtocol], target_title: Titles
 ) -> BaseTreeViewNodeProtocol | None:

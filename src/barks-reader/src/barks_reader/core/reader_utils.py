@@ -9,7 +9,6 @@ import sys
 import textwrap
 import zipfile
 from pathlib import Path, PurePosixPath
-from random import randrange
 from typing import TYPE_CHECKING, Any
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES
@@ -113,14 +112,6 @@ def title_needs_footnote(fanta_info: FantaComicBookInfo) -> bool:
     )
 
 
-def prob_rand_less_equal(percent: int) -> bool:
-    return randrange(1, 101) < percent
-
-
-def get_rand_int(min_max: tuple[int, int]) -> int:
-    return randrange(min_max[0], min_max[1] + 1)
-
-
 def is_title_page(page: CleanPage) -> bool:
     return (Path(page.page_filename).stem == EMPTY_PAGE_KEY) and (page.page_type == PageType.TITLE)
 
@@ -150,26 +141,6 @@ def get_all_files_in_dir(dir_path: PanelPath, recurse: bool = False) -> list[Pan
             files.extend(get_all_files_in_dir(filename, recurse=True))
 
     return files
-
-
-def read_text_paragraphs(filepath: Path) -> str:
-    with filepath.open("r", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    text = ""
-    for ln in lines:
-        line = ln.rstrip(" ")
-        if len(line) > 1 and line[-2] != "\\":
-            line = line.replace("\n", " ")
-        else:
-            line = line.replace("\\", "")
-
-        if len(line.strip()) == 0:
-            line = "\n\n"
-
-        text += line
-
-    return text
 
 
 def read_title_list(filepath: PanelPath) -> list[Titles]:
@@ -203,13 +174,6 @@ def read_title_list(filepath: PanelPath) -> list[Titles]:
 
     # Now sort these in enum order (which is guaranteed to be submission date order).
     return sorted(titles)
-
-
-# Assumes 'original_list' and 'extra_list' have no duplicates.
-def unique_extend(original_list: list[Titles], extras_list: list[Titles]) -> None:
-    seen = set(original_list)
-
-    original_list.extend([item for item in extras_list if item not in seen])
 
 
 def get_paths_from_directory(root_path: Path) -> set[str]:

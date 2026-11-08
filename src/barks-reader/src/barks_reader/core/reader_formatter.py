@@ -157,10 +157,6 @@ def get_text_with_markup_stripped(text: str) -> str:
     return MARKUP_TAG_PATTERN.sub("", text)
 
 
-def text_includes_num_titles(text: str) -> bool:
-    return text.endswith(")[/i]")
-
-
 def get_action_bar_title(font_manager: FontManagerProtocol, title: str) -> str:
     return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
 

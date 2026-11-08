@@ -1,5 +1,3 @@
-# ruff: noqa: ERA001
-
 from __future__ import annotations
 
 import zipfile
@@ -501,13 +499,3 @@ class ReaderFilePaths:
             return edited_image_file, True
 
         return image_file, False
-
-
-if __name__ == "__main__":
-    barks_panels_source = _DEFAULT_JPG_BARKS_PANELS_SOURCE
-    barks_panels_zip = zipfile.ZipFile(barks_panels_source)
-    non_titles_dir = zipfile.Path(barks_panels_zip, "Nontitles")
-    # assert non_titles_dir.is_dir()
-    print(non_titles_dir.name)  # noqa: T201
-    for f in non_titles_dir.iterdir():
-        print(f)  # noqa: T201

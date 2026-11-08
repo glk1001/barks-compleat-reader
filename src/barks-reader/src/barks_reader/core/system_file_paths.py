@@ -191,11 +191,6 @@ class SystemFilePaths:
         assert self._statistics_dir
         return self._statistics_dir
 
-    def get_stat_image_path(self, filename: str) -> Path:
-        """Return the full path to a statistics PNG image by filename."""
-        assert self._statistics_dir
-        return self._statistics_dir / filename
-
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> Path:
         assert self._fantagraphics_overrides_root_dir
         return self._fantagraphics_overrides_root_dir

@@ -156,11 +156,6 @@ def test_get_text_with_markup_stripped() -> None:
     assert reader_formatter.get_text_with_markup_stripped(text_complex) == "Red Big Bold"
 
 
-def test_text_includes_num_titles() -> None:
-    assert reader_formatter.text_includes_num_titles("Something (5)[/i]")
-    assert not reader_formatter.text_includes_num_titles("Something")
-
-
 def test_get_action_bar_title() -> None:
     mock_font_manager: Any = MagicMock()
     mock_font_manager.app_title_font_size = 20.5
