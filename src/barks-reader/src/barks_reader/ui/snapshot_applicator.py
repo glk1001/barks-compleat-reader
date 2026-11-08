@@ -59,7 +59,18 @@ class SnapshotApplicator:
         self._apply_title_view(snapshot.title_view)
         self._apply_screen_visibility(snapshot)
         self._apply_search_view(snapshot.search_view)
+        self._update_goto_title_button()
 
+    def apply_top_view_rotation(self, top: TopViewSnapshot) -> None:
+        """Apply a top view whose image a rotation timer changed, and nothing else."""
+        self._apply_top_view(top)
+
+    def apply_fun_view_rotation(self, fun: FunViewSnapshot) -> None:
+        """Apply a fun view whose image a rotation timer changed, and its Goto Title button."""
+        self._apply_fun_view(fun)
+        self._update_goto_title_button()
+
+    def _update_goto_title_button(self) -> None:
         self._screens.fun_image_view.goto_title_button_active = (
             self._screens.fun_image_view.fun_view_from_title
             and (not self._screens.bottom_title_view.is_visible)

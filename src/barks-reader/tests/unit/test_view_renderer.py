@@ -78,6 +78,18 @@ def renderer(
     return ViewRenderer(**deps), deps
 
 
+class TestRotationWiring:
+    def test_the_pipelines_rotations_go_to_the_applicator(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        _, deps = renderer
+
+        deps["pipeline"].set_rotation_listeners.assert_called_once_with(
+            on_top_view=deps["applicator"].apply_top_view_rotation,
+            on_fun_view=deps["applicator"].apply_fun_view_rotation,
+        )
+
+
 class TestRenderState:
     def test_render_state_drives_pipeline_and_applies(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]

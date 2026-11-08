@@ -89,6 +89,10 @@ class ViewRenderer:
         screens.fun_image_view.set_load_image_func(self._load_new_fun_view_image)
         screens.fun_image_view.set_load_texture_func(applicator.load_fun_view_texture)
         screens.fun_image_view.set_pick_image_func(self._pipeline.pick_fun_view_image)
+        pipeline.set_rotation_listeners(
+            on_top_view=applicator.apply_top_view_rotation,
+            on_fun_view=applicator.apply_fun_view_rotation,
+        )
 
     # ------------------------------------------------------------------
     # Last-applied image info (used by main_screen for goto-title flow)

@@ -1,10 +1,11 @@
 """Kivy-free view-rendering pipeline.
 
 `ViewPipeline` owns the navigation-context state, the view-state → image
-dispatch, the fun-image theme policy, and the periodic image-rotation timer.
+dispatch, the fun-image theme policy, and the periodic image-rotation timers.
 It produces a `ViewSnapshot` describing the desired UI; an external
 `SnapshotSink` (e.g. `ui.snapshot_applicator.SnapshotApplicator`) then pushes
-that snapshot into the actual Kivy widgets.
+that snapshot into the actual Kivy widgets. A timer's new image goes out on its
+own, to the listeners `set_rotation_listeners` names.
 
 External dependencies arrive as ports (`Scheduler`, `ColorSource`) so
 the pipeline can be tested end-to-end without Kivy.
@@ -238,6 +239,10 @@ class ViewPipeline:
         self._bottom_view_fun_image_info: ImageInfo | None = None
         self._bottom_view_fun_image_color: Color = (0, 0, 0, 0)
         self._bottom_view_change_fun_image_event: CancelHandle | None = None
+        # Where a rotation timer's new image goes: a render's images go out in its
+        # snapshot, a timer's only through these.
+        self._on_top_view_rotated: Callable[[TopViewSnapshot], None] | None = None
+        self._on_fun_view_rotated: Callable[[FunViewSnapshot], None] | None = None
 
         self._bottom_view_title_image_info: ImageInfo = ImageInfo()
         self._bottom_view_title_image_color: Color = (0, 0, 0, 0)
@@ -302,6 +307,25 @@ class ViewPipeline:
         # The provided title image file is one-shot - clear it now it's been used.
         self._set_bottom_view_title_image_file(None)
         return snapshot
+
+    def set_rotation_listeners(
+        self,
+        *,
+        on_top_view: Callable[[TopViewSnapshot], None],
+        on_fun_view: Callable[[FunViewSnapshot], None],
+    ) -> None:
+        """Say where the rotation timers send the images they pick.
+
+        Each timer passes on only its own view, and only when its image changed: the
+        rest of the screen is not re-applied between renders.
+
+        Args:
+            on_top_view: Given the top view with its new image.
+            on_fun_view: Given the fun view with its new image.
+
+        """
+        self._on_top_view_rotated = on_top_view
+        self._on_fun_view_rotated = on_fun_view
 
     def current_request(self) -> ViewRequest:
         """Return a `ViewRequest` describing the live navigation context.
@@ -374,16 +398,8 @@ class ViewPipeline:
 
         return ViewSnapshot(
             view_state=self._view_state,
-            top_view=TopViewSnapshot(
-                image_info=self._top_view_image_info,
-                image_opacity=self._top_view_image_opacity,
-                image_color=self._top_view_image_color,
-            ),
-            fun_view=FunViewSnapshot(
-                is_visible=self._bottom_view_fun_image_opacity > 0.0,
-                image_info=self._bottom_view_fun_image_info,
-                image_color=self._bottom_view_fun_image_color,
-            ),
+            top_view=self._top_view_snapshot(),
+            fun_view=self._fun_view_snapshot(),
             title_view=TitleViewSnapshot(
                 is_visible=self._bottom_view_title_opacity > 0.0,
                 image_info=self._bottom_view_title_image_info,
@@ -402,6 +418,20 @@ class ViewPipeline:
                 mode=search_mode,
                 image_info=self._search_screen_image_info if search_visible else None,
             ),
+        )
+
+    def _top_view_snapshot(self) -> TopViewSnapshot:
+        return TopViewSnapshot(
+            image_info=self._top_view_image_info,
+            image_opacity=self._top_view_image_opacity,
+            image_color=self._top_view_image_color,
+        )
+
+    def _fun_view_snapshot(self) -> FunViewSnapshot:
+        return FunViewSnapshot(
+            is_visible=self._bottom_view_fun_image_opacity > 0.0,
+            image_info=self._bottom_view_fun_image_info,
+            image_color=self._bottom_view_fun_image_color,
         )
 
     def _update_views(
@@ -922,7 +952,7 @@ class ViewPipeline:
             self._top_view_change_event.cancel()
 
         self._top_view_change_event = self._scheduler.schedule_interval(
-            self._set_next_top_view_image, self.TOP_VIEW_EVENT_TIMEOUT_SECS
+            self._rotate_top_view, self.TOP_VIEW_EVENT_TIMEOUT_SECS
         )
 
     def _schedule_bottom_view_fun_image_event(self) -> None:
@@ -930,5 +960,18 @@ class ViewPipeline:
             self._bottom_view_change_fun_image_event.cancel()
 
         self._bottom_view_change_fun_image_event = self._scheduler.schedule_interval(
-            self._set_next_bottom_view_fun_image, self.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
+            self._rotate_fun_view, self.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
         )
+
+    def _rotate_top_view(self) -> None:
+        shown = self._top_view_image_info
+        self._set_next_top_view_image()
+        if self._on_top_view_rotated and self._top_view_image_info != shown:
+            self._on_top_view_rotated(self._top_view_snapshot())
+
+    def _rotate_fun_view(self) -> None:
+        # In a state with no fun view, or one that keeps its image, nothing is picked.
+        shown = self._bottom_view_fun_image_info
+        self._set_next_bottom_view_fun_image()
+        if self._on_fun_view_rotated and self._bottom_view_fun_image_info != shown:
+            self._on_fun_view_rotated(self._fun_view_snapshot())

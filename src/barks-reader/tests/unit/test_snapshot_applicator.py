@@ -236,6 +236,39 @@ class TestSnapshotApplicator:
         assert screen_mocks["fun_image_view"].goto_title_button_active is not None
 
 
+class TestRotation:
+    """A rotation timer's image goes to its own view; the rest of the screen is left alone."""
+
+    def test_a_rotated_top_view_is_applied_alone(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        top = _make_snapshot(top_filename="rotated.png").top_view
+
+        applicator.apply_top_view_rotation(top)
+
+        assert screen_mocks["tree_view"].top_view_image_texture is not None
+        assert applicator.get_prev_top_view_image_info() == top.image_info
+        assert screen_mocks["search"].method_calls == []
+        assert screen_mocks["bottom_title_view"].method_calls == []
+        assert screen_mocks["fun_image_view"].method_calls == []
+
+    def test_a_rotated_fun_view_is_applied_with_its_goto_title_button(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        fun_view = screen_mocks["fun_image_view"]
+        fun_view.fun_view_from_title = Titles.GIFT_LION
+        screen_mocks["bottom_title_view"].is_visible = False
+        fun = _make_snapshot(fun_visible=True).fun_view
+
+        applicator.apply_fun_view_rotation(fun)
+
+        assert fun_view.image_texture is not None
+        fun_view.set_last_loaded_image_info.assert_called_once_with(fun.image_info)
+        assert fun_view.goto_title_button_active is True
+        assert screen_mocks["search"].method_calls == []
+        assert screen_mocks["tree_view"].method_calls == []
+
+
 class TestWhatIsLeftAlone:
     """A snapshot with nothing to show for a view leaves that view's widgets as they are."""
 
