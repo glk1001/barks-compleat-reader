@@ -214,20 +214,24 @@ class ReaderFilePaths:
         return self._panel_file_ext
 
     def get_emergency_inset_file(self) -> PanelPath:
+        """Return the inset shown for a title with none of its own (Biceps Blues')."""
         return self._panel_dirs[PanelDirNames.INSETS] / (
             BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + self._panel_file_ext
         )
 
     @staticmethod
     def get_default_png_barks_panels_source() -> Path:
+        """Return where the PNG panel folders are by default."""
         return Path(expand_path_vars(_DEFAULT_PNG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_jpg_barks_panels_source() -> Path:
+        """Return where the JPG panels zip is by default, in Reader Files."""
         return Path(expand_path_vars(_DEFAULT_JPG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_prebuilt_comic_zips_dir() -> Path:
+        """Return where the prebuilt comic zips are by default."""
         return Path(expand_path_vars(_DEFAULT_THE_COMIC_ZIPS_DIR))
 
     def get_panel_dir(self, panel_dir: PanelDirNames) -> PanelPath:
@@ -242,7 +246,8 @@ class ReaderFilePaths:
         Args:
             file_type: The image type. NONTITLE images belong to no title: none.
             title_str: The title whose images to list.
-            use_only_edited_if_possible: Only the edited images, when the title has any.
+            use_only_edited_if_possible: Only the edited images, when the title has an
+                edited folder.
 
         Returns:
             The images found; a cover or inset lookup gives at most its own one or two.
@@ -325,6 +330,17 @@ class ReaderFilePaths:
     def get_comic_cover_file(
         self, title: str, use_only_edited_if_possible: bool = False
     ) -> PanelPath | None:
+        """Return the title's cover, a JPG, or ``None`` when it has none.
+
+        Args:
+            title: The title whose cover to find.
+            use_only_edited_if_possible: The edited cover, which has the panels'
+                extension, when there is one.
+
+        Returns:
+            The edited cover when asked for and there is one, else the plain JPG.
+
+        """
         if use_only_edited_if_possible:
             edited_file = (
                 self._panel_dirs[PanelDirNames.COVERS]
@@ -418,9 +434,18 @@ class ReaderFilePaths:
         return get_all_files_in_dir(image_dir)
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
+        """Return the edited copy of ``image_file`` if it has one, and whether it is edited.
+
+        Args:
+            image_file: A panel image, plain or already edited.
+
+        Returns:
+            The edited copy (``edited/<stem><panel ext>`` beside it) and ``True``, or
+            ``image_file`` itself and whether it is already an edited copy.
+
+        """
         # Already the edited one: there is no "edited/edited/" copy to look for, and an
         # edited cover was once letterboxed for not finding one.
-        # PurePath: a zip member's parent is typed as a bare PathLike.
         if is_edited_file(image_file):
             return image_file, True
 
