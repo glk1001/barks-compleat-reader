@@ -44,3 +44,14 @@ def test_without_libx11_nothing_is_set_and_it_is_logged(loguru_sink: list[str]) 
     with patch.object(ctypes, "CDLL", side_effect=OSError("no libX11")):
         assert set_x11_wm_class(1, 2, "barks-reader") is False
     assert any(line.startswith("Could not load libX11") for line in loguru_sink)
+
+
+def test_a_failed_class_hint_is_not_reported_as_set(loguru_sink: list[str]) -> None:
+    libx11 = MagicMock()
+    libx11.XSetClassHint.return_value = 0
+    with patch.object(ctypes, "CDLL", return_value=libx11):
+        assert set_x11_wm_class(1, 2, "barks-reader") is False
+
+    libx11.XFlush.assert_not_called()
+    assert "XSetClassHint failed: WM_CLASS not set to 'barks-reader'." in loguru_sink
+    assert not any(line.startswith("Forced X11 WM_CLASS") for line in loguru_sink)

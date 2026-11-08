@@ -26,7 +26,9 @@ def set_x11_wm_class(display: int, window: int, name: str) -> bool:
         name: Value to set for both ``res_name`` and ``res_class``.
 
     Returns:
-        Whether it was set; False when libX11 cannot be loaded.
+        Whether it was set; False when libX11 cannot be loaded or ``XSetClassHint``
+        fails (its zero status: it could not allocate). An X error on the request
+        itself comes back later, asynchronously, and is not seen here.
 
     """
     try:
@@ -46,7 +48,9 @@ def set_x11_wm_class(display: int, window: int, name: str) -> bool:
 
     encoded = name.encode("utf-8")
     hint = _XClassHint(res_name=encoded, res_class=encoded)
-    libx11.XSetClassHint(display, window, ctypes.byref(hint))
+    if not libx11.XSetClassHint(display, window, ctypes.byref(hint)):
+        logger.warning(f"XSetClassHint failed: WM_CLASS not set to '{name}'.")
+        return False
     libx11.XFlush(display)
 
     logger.info(f"Forced X11 WM_CLASS to '{name}'.")
