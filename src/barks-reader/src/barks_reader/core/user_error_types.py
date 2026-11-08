@@ -44,7 +44,8 @@ class ErrorTypes(Enum):
 @dataclass(frozen=True, slots=True)
 class ErrorInfo:
     file: str = ""
-    file_volume: int = 0
+    # The title's Fantagraphics volume; -1 when it is in none (not available yet).
+    file_volume: int = -1
     expected_volume: int = 0
     duplicate_volumes: list[int] | None = None
     missing_volumes: list[int] | None = None
@@ -74,6 +75,16 @@ class UserErrorHandlerPort(Protocol):
 
 
 def get_volume_not_available_error_info(image_info: ImageInfo) -> ErrorInfo:
+    """Describe a title that cannot be shown because its volume is not available.
+
+    Args:
+        image_info: The image whose title was asked for.
+
+    Returns:
+        The image's title and its Fantagraphics volume: -1 when the image has no
+        title, or its title is in no Fantagraphics volume.
+
+    """
     fanta_volume = (
         -1
         if image_info.from_title is None or image_info.from_title not in ALL_FANTA_COMIC_BOOK_INFO
