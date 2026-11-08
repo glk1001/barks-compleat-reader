@@ -106,6 +106,30 @@ class TestCheckImageNames:
         assert f'"{_ARCHIVE}"' in message
         assert 'expecting page 1 but image "page2.png" is numbered 2' in message
 
+    def test_raises_when_the_numbering_resets_partway(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        """Pages 1-3 then a second run 1-2: the last image says 2, so only two were checked."""
+        images = ["page1.png", "page2.png", "page3.png", "scan1.png", "scan2.png"]
+
+        with pytest.raises(PageNumError) as exc_info:
+            archives._check_image_names(_ARCHIVE, images, first=1, last=2, img_ext=".png")
+
+        assert str(exc_info.value) == (
+            f'Fantagraphics archive "{_ARCHIVE}": its pages are numbered 1 to 2, but it holds'
+            ' 5 page images, the first one past page 2 being "page3.png". Replace it from the'
+            " library and retry."
+        )
+
+    def test_a_missing_page_is_named_not_counted(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        """A short volume fails at the page that is missing, the more useful message."""
+        with pytest.raises(PageNumError, match=r'expecting page 2 but image "page3\.png"'):
+            archives._check_image_names(
+                _ARCHIVE, ["page1.png", "page3.png"], first=1, last=3, img_ext=".png"
+            )
+
     def test_raises_on_extension_mismatch(self, archives: FantagraphicsVolumeArchives) -> None:
         with pytest.raises(RuntimeError, match=r'expecting extension "\.png" but got "\.jpg"'):
             archives._check_image_names(

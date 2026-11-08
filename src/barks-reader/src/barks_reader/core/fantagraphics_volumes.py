@@ -564,3 +564,16 @@ class FantagraphicsVolumeArchives:
             if img_ext != page_ext:
                 msg = f'For page "{page}", expecting extension "{img_ext}" but got "{page_ext}"'
                 raise RuntimeError(msg)
+
+        # The loop reads only as many images as the last one's number says. A volume with
+        # fewer has already failed there (its numbers must skip one), so what is left is a
+        # volume with more: its numbering reset, and the images past it would never load.
+        num_pages = last - first + 1
+        if len(img_files) > num_pages:
+            msg = (
+                f'Fantagraphics archive "{archive_filename}": its pages are numbered {first}'
+                f" to {last}, but it holds {len(img_files)} page images, the first one past"
+                f' page {last} being "{img_files[num_pages]}". Replace it from the library'
+                f" and retry."
+            )
+            raise PageNumError(msg)
