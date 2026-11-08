@@ -233,7 +233,7 @@ def _format_volume_list(volumes: list[int]) -> str:
 def _build_missing_volumes(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
-    _popup_title: str,
+    popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for missing Fantagraphics volumes."""
     assert error_info is not None
@@ -253,13 +253,13 @@ def _build_missing_volumes(
             f"You won't be able to read any titles from these volumes."
         )
 
-    return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=title, text=text)
+    return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=popup_title or title, text=text)
 
 
 def _build_cannot_show_title(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
-    _popup_title: str,
+    popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for a title whose volume is missing."""
     assert error_info is not None
@@ -274,14 +274,16 @@ def _build_cannot_show_title(
     )
 
     return ErrorPresentation(
-        kind=ErrorDialogKind.NOTICE, title="Fantagraphics Volume Missing", text=text
+        kind=ErrorDialogKind.NOTICE,
+        title=popup_title or "Fantagraphics Volume Missing",
+        text=text,
     )
 
 
 def _build_volume_not_available(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
-    _popup_title: str,
+    popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for a title whose volume is unavailable or not found."""
     assert error_info is not None
@@ -307,13 +309,13 @@ def _build_volume_not_available(
             f" which could not be found."
         )
 
-    return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=title, text=text)
+    return ErrorPresentation(kind=ErrorDialogKind.NOTICE, title=popup_title or title, text=text)
 
 
 def _build_comic_load_failed(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
-    _popup_title: str,
+    popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for a title whose comic could not be read."""
     assert error_info is not None
@@ -326,7 +328,7 @@ def _build_comic_load_failed(
     )
 
     return ErrorPresentation(
-        kind=ErrorDialogKind.NOTICE, title="Comic Could Not Be Read", text=text
+        kind=ErrorDialogKind.NOTICE, title=popup_title or "Comic Could Not Be Read", text=text
     )
 
 

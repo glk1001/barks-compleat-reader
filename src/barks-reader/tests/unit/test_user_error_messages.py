@@ -258,6 +258,21 @@ def test_a_message_is_paragraphs_the_popup_wraps(
     assert all(paragraph == paragraph.strip() for paragraph in paragraphs)
 
 
+@pytest.mark.parametrize("error_type", list(ErrorTypes))
+def test_every_error_takes_the_popup_title_it_is_given(
+    error_type: ErrorTypes, reader_settings: MagicMock
+) -> None:
+    default = build_error_presentation(error_type, _SAMPLES[error_type], reader_settings)
+
+    given = build_error_presentation(
+        error_type, _SAMPLES[error_type], reader_settings, popup_title="Given Title"
+    )
+
+    assert given.title == "Given Title"
+    assert default.title
+    assert default.title != "Given Title"
+
+
 def test_every_error_type_has_a_sample() -> None:
     assert set(_SAMPLES) == set(ErrorTypes)
 
