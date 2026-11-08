@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -16,81 +17,103 @@ class _Need(Enum):
     OPTIONAL = auto()
 
 
+@dataclass(frozen=True, slots=True)
+class _Where:
+    relative_path: str
+    need: _Need
+
+
 class _Asset(Enum):
     """A folder or file in Reader Files: its path there, and whether boot needs it.
 
-    A member's name, lower-cased, is its label in the validator's report.
+    A member's name, lower-cased, is its label in the validator's report. Its value is
+    a dataclass, not a tuple an ``__init__`` unpacks: an Enum runs ``__init__`` as the
+    class is made, before mutmut can wrap it, so that broke every mutation run.
     """
 
-    def __init__(self, relative_path: str, need: _Need) -> None:
-        self.relative_path = relative_path
-        self.need = need
-
     # Required folders.
-    READER_ICON_FILES_DIR = ("Reader Icons", _Need.REQUIRED_DIR)
-    ACTION_BAR_ICONS_DIR = ("Reader Icons/ActionBar Icons", _Need.REQUIRED_DIR)
-    VARIOUS_FILES_DIR = ("Various", _Need.REQUIRED_DIR)
-    INDEXES_DIR = ("Indexes", _Need.REQUIRED_DIR)
-    FANTAGRAPHICS_OVERRIDES_ROOT_DIR = ("Fantagraphics Volumes Overrides", _Need.REQUIRED_DIR)
-    INTRO_DOC_DIR = ("Various/documents/intro-to-barks-reader", _Need.REQUIRED_DIR)
-    CENSORSHIP_FIXES_DOC_DIR = ("Various/documents/censorship-fixes", _Need.REQUIRED_DIR)
-    HOW_TO_DOC_DIR = ("Various/documents/how-to", _Need.REQUIRED_DIR)
+    READER_ICON_FILES_DIR = _Where("Reader Icons", _Need.REQUIRED_DIR)
+    ACTION_BAR_ICONS_DIR = _Where("Reader Icons/ActionBar Icons", _Need.REQUIRED_DIR)
+    VARIOUS_FILES_DIR = _Where("Various", _Need.REQUIRED_DIR)
+    INDEXES_DIR = _Where("Indexes", _Need.REQUIRED_DIR)
+    FANTAGRAPHICS_OVERRIDES_ROOT_DIR = _Where("Fantagraphics Volumes Overrides", _Need.REQUIRED_DIR)
+    INTRO_DOC_DIR = _Where("Various/documents/intro-to-barks-reader", _Need.REQUIRED_DIR)
+    CENSORSHIP_FIXES_DOC_DIR = _Where("Various/documents/censorship-fixes", _Need.REQUIRED_DIR)
+    HOW_TO_DOC_DIR = _Where("Various/documents/how-to", _Need.REQUIRED_DIR)
     # Required files.
-    APP_WINDOW_ICON_PATH = ("Various/app-icon.png", _Need.REQUIRED_FILE)
-    ERROR_BACKGROUND_PATH = ("Various/error-background.png", _Need.REQUIRED_FILE)
-    SUCCESS_BACKGROUND_PATH = ("Various/success-background.png", _Need.REQUIRED_FILE)
+    APP_WINDOW_ICON_PATH = _Where("Various/app-icon.png", _Need.REQUIRED_FILE)
+    ERROR_BACKGROUND_PATH = _Where("Various/error-background.png", _Need.REQUIRED_FILE)
+    SUCCESS_BACKGROUND_PATH = _Where("Various/success-background.png", _Need.REQUIRED_FILE)
     # The app's identity image: shown behind the quit-confirmation and about popups.
-    APP_IDENTITY_IMAGE_PATH = ("Various/app-identity-image.png", _Need.REQUIRED_FILE)
-    CLOSE_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-close.png", _Need.REQUIRED_FILE)
-    POWER_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-power.png", _Need.REQUIRED_FILE)
-    GO_BACK_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-back-arrow.png", _Need.REQUIRED_FILE)
-    COLLAPSE_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-collapse.png", _Need.REQUIRED_FILE)
-    REFRESH_ARROW_ICON_PATH = (
+    APP_IDENTITY_IMAGE_PATH = _Where("Various/app-identity-image.png", _Need.REQUIRED_FILE)
+    CLOSE_ICON_PATH = _Where("Reader Icons/ActionBar Icons/icon-close.png", _Need.REQUIRED_FILE)
+    POWER_ICON_PATH = _Where("Reader Icons/ActionBar Icons/icon-power.png", _Need.REQUIRED_FILE)
+    GO_BACK_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-back-arrow.png", _Need.REQUIRED_FILE
+    )
+    COLLAPSE_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-collapse.png", _Need.REQUIRED_FILE
+    )
+    REFRESH_ARROW_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-refresh-arrow.png",
         _Need.REQUIRED_FILE,
     )
-    SETTINGS_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-settings.png", _Need.REQUIRED_FILE)
-    MENU_DOTS_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-menu-dots.png", _Need.REQUIRED_FILE)
-    FULLSCREEN_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-fullscreen.png", _Need.REQUIRED_FILE)
-    FULLSCREEN_EXIT_ICON_PATH = (
+    SETTINGS_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-settings.png", _Need.REQUIRED_FILE
+    )
+    MENU_DOTS_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-menu-dots.png", _Need.REQUIRED_FILE
+    )
+    FULLSCREEN_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-fullscreen.png", _Need.REQUIRED_FILE
+    )
+    FULLSCREEN_EXIT_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-fullscreen-exit.png",
         _Need.REQUIRED_FILE,
     )
-    SINGLE_PAGE_ICON_PATH = (
+    SINGLE_PAGE_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-single-page.png",
         _Need.REQUIRED_FILE,
     )
-    DOUBLE_PAGE_ICON_PATH = (
+    DOUBLE_PAGE_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-double-page.png",
         _Need.REQUIRED_FILE,
     )
-    GOTO_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-goto.png", _Need.REQUIRED_FILE)
-    GOTO_START_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-goto-start.png", _Need.REQUIRED_FILE)
-    GOTO_END_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-goto-end.png", _Need.REQUIRED_FILE)
-    CONTRAST_ON_ICON_PATH = (
+    GOTO_ICON_PATH = _Where("Reader Icons/ActionBar Icons/icon-goto.png", _Need.REQUIRED_FILE)
+    GOTO_START_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-goto-start.png", _Need.REQUIRED_FILE
+    )
+    GOTO_END_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-goto-end.png", _Need.REQUIRED_FILE
+    )
+    CONTRAST_ON_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-contrast-on.png",
         _Need.REQUIRED_FILE,
     )
-    CONTRAST_OFF_ICON_PATH = (
+    CONTRAST_OFF_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-contrast-off.png",
         _Need.REQUIRED_FILE,
     )
-    GOTO_TITLE_ICON_PATH = ("Reader Icons/ActionBar Icons/icon-goto-title.png", _Need.REQUIRED_FILE)
-    HAMBURGER_MENU_ICON_PATH = (
+    GOTO_TITLE_ICON_PATH = _Where(
+        "Reader Icons/ActionBar Icons/icon-goto-title.png", _Need.REQUIRED_FILE
+    )
+    HAMBURGER_MENU_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/menu-hamburger-icon.png",
         _Need.REQUIRED_FILE,
     )
-    SPEECH_BUBBLE_ICON_PATH = ("Various/speech-bubble-icon.png", _Need.REQUIRED_FILE)
-    EYE_OPEN_ICON_PATH = ("Various/icon-eye-open.png", _Need.REQUIRED_FILE)
-    EYE_OFF_ICON_PATH = ("Various/icon-eye-off.png", _Need.REQUIRED_FILE)
-    GOTO_TITLE_BUTTON_PATH = ("Various/goto-title-button.png", _Need.REQUIRED_FILE)
-    EMPTY_PAGE_PATH = ("Various/empty-page.jpg", _Need.REQUIRED_FILE)
-    FAVOURITE_TITLES_PATH = ("Various/favourite-titles.txt", _Need.REQUIRED_FILE)
-    BY_THE_NUMBERS_BACKGROUND_PATH = ("Various/by-the-numbers-background.jpg", _Need.REQUIRED_FILE)
+    SPEECH_BUBBLE_ICON_PATH = _Where("Various/speech-bubble-icon.png", _Need.REQUIRED_FILE)
+    EYE_OPEN_ICON_PATH = _Where("Various/icon-eye-open.png", _Need.REQUIRED_FILE)
+    EYE_OFF_ICON_PATH = _Where("Various/icon-eye-off.png", _Need.REQUIRED_FILE)
+    GOTO_TITLE_BUTTON_PATH = _Where("Various/goto-title-button.png", _Need.REQUIRED_FILE)
+    EMPTY_PAGE_PATH = _Where("Various/empty-page.jpg", _Need.REQUIRED_FILE)
+    FAVOURITE_TITLES_PATH = _Where("Various/favourite-titles.txt", _Need.REQUIRED_FILE)
+    BY_THE_NUMBERS_BACKGROUND_PATH = _Where(
+        "Various/by-the-numbers-background.jpg", _Need.REQUIRED_FILE
+    )
     # Optional: the app shows what needs them only when they are there.
-    ILLUSTRATED_HISTORY_DOC_DIR = ("Various/documents/illustrated-history", _Need.OPTIONAL)
-    FANTAGRAPHICS_PANEL_SEGMENTS_ROOT_DIR = ("Fantagraphics-panel-segments", _Need.OPTIONAL)
-    STATISTICS_DIR = ("Statistics", _Need.OPTIONAL)
+    ILLUSTRATED_HISTORY_DOC_DIR = _Where("Various/documents/illustrated-history", _Need.OPTIONAL)
+    FANTAGRAPHICS_PANEL_SEGMENTS_ROOT_DIR = _Where("Fantagraphics-panel-segments", _Need.OPTIONAL)
+    STATISTICS_DIR = _Where("Statistics", _Need.OPTIONAL)
 
 
 class SystemFilePaths:
@@ -131,11 +154,13 @@ class SystemFilePaths:
         return self._labelled(_Need.REQUIRED_FILE)
 
     def _labelled(self, need: _Need) -> list[tuple[str, Path]]:
-        return [(asset.name.lower(), self._path(asset)) for asset in _Asset if asset.need is need]
+        return [
+            (asset.name.lower(), self._path(asset)) for asset in _Asset if asset.value.need is need
+        ]
 
     def _path(self, asset: _Asset) -> Path:
         assert self._barks_reader_files_dir, "set_barks_reader_files_dir has not been called."
-        return self._barks_reader_files_dir / asset.relative_path
+        return self._barks_reader_files_dir / asset.value.relative_path
 
     @staticmethod
     def _check_dirs(dirs_to_check: Iterable[Path]) -> None:
