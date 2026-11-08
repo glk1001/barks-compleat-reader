@@ -345,6 +345,16 @@ reason = "ZipFile's mode defaults to \"r\"."
 
 [[equivalent]]
 module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline._set_top_view_image_fixed"
+change = """
+- self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+- )
++ self._reader_settings.file_paths.get_comic_inset_file(title), title, )
+"""
+reason = "ImageInfo.fit_mode defaults to FIT_MODE_COVER."
+
+[[equivalent]]
+module = "barks_reader.core.view_pipeline"
 function = "ViewPipeline.__init__"
 change = """
 - self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
@@ -2442,15 +2452,6 @@ function = "ComicBookLoader._load_pages"
 change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.view_pipeline"
-function = "ViewPipeline._set_top_view_image_fixed"
-change = """
-- self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-- )
-+ self._reader_settings.file_paths.get_comic_inset_file(title), title, )
 """
 
 [[untriaged]]
