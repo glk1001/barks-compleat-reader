@@ -310,9 +310,7 @@ def format_unfinished_page(summary: TitleSummary) -> str:
     A finished comic's position is normalised to ``COMIC_BEGIN_PAGE``, so
     only genuinely mid-comic positions produce a fragment.
     """
-    if summary.last_display_page and summary.last_display_page != COMIC_BEGIN_PAGE:
-        return f"at p {summary.last_display_page}"
-    return ""
+    return _mid_comic_page_fragment("at", summary.last_display_page)
 
 
 def format_event_time(event: ReadEvent) -> str:
@@ -342,6 +340,11 @@ def format_event_page(event: ReadEvent) -> str:
     A finished comic's position is normalised to ``COMIC_BEGIN_PAGE``, so
     only genuinely mid-comic positions produce a fragment.
     """
-    if event.last_display_page and event.last_display_page != COMIC_BEGIN_PAGE:
-        return f"to p {event.last_display_page}"
+    return _mid_comic_page_fragment("to", event.last_display_page)
+
+
+def _mid_comic_page_fragment(preposition: str, display_page: str | None) -> str:
+    # A finished comic's position is normalised to COMIC_BEGIN_PAGE: no fragment for it.
+    if display_page and display_page != COMIC_BEGIN_PAGE:
+        return f"{preposition} p {display_page}"
     return ""
