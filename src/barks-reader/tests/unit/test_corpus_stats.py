@@ -157,6 +157,18 @@ class TestAttributionSection:
         rows = {row.label: row.value for row in _attribution_section(stories).rows}
         assert (rows["Script and art"], rows["Art only"]) == ("0", "1")
 
+    def test_a_bucket_no_story_falls_in_counts_zero(self) -> None:
+        """Built from one story Barks wholly made, so four of the five buckets are empty."""
+        stories = [info for info in get_stories() if info.title is Titles.VACATION_TIME]
+        rows = {row.label: row.value for row in _attribution_section(stories).rows}
+        assert rows == {
+            "Script and art": "1",
+            "Art only": "0",
+            "Script only": "0",
+            "Art, script rewritten": "0",
+            "Not in the bibliography": "0",
+        }
+
     def test_is_barks_title_would_have_given_a_different_answer(self) -> None:
         # Guards the trap the module docstring warns about: is_barks_title means
         # "Barks titled it", not "Barks made it", and is nowhere near 558.
@@ -227,6 +239,15 @@ class TestLongestScriptAndArtStory:
             and entry.effective_qualifier is None
         )
         assert _value(stats, "Length", "Longest (script and art)").endswith(f"{longest} pages")
+
+    def test_a_tie_for_the_longest_goes_to_the_title_first_alphabetically(self) -> None:
+        """Listed later in the ledger, so only the tie-break can put it first."""
+        pages = {Titles.VACATION_TIME: 33, Titles.LOST_IN_THE_ANDES: 33}
+        section = _length_section(
+            pages, total_pages=66, num_stories=2, script_and_art=frozenset(pages)
+        )
+        longest = next(r.value for r in section.rows if r.label == "Longest (script and art)")
+        assert longest == "Lost in the Andes!, 33 pages"
 
 
 class TestPaymentSection:
@@ -359,8 +380,9 @@ class TestTextStats:
             cleaned_terms=["a", "b", "c"],
             entity_terms={EntityType.PERSON: ["Donald", "Scrooge"]},
         )
-        with patch.object(corpus_stats_module, "ComicSearch", return_value=fake):
+        with patch.object(corpus_stats_module, "ComicSearch", return_value=fake) as search:
             section = compute_text_stats(tmp_path)
+        search.assert_called_once_with(tmp_path)
         assert section is not None
         assert section.heading == "The words"
         assert [(r.label, r.value) for r in section.rows] == [

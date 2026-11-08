@@ -2177,85 +2177,32 @@ change = """
 """
 reason = "assert_never raises AssertionError whatever it is given; only the value named in its message differs, and the branch is reached only by malformed tag data."
 
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "compute_text_stats"
-change = """
-- search = ComicSearch(indexes_dir)
-+ search = ComicSearch(None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
-+ _row("Art only", counts.get(Qualifier.ART_ONLY, None)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
-+ _row("Art only", counts.get(Qualifier.ART_ONLY, )),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
-+ _row("Art only", counts.get(Qualifier.ART_ONLY, 1)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
-+ _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 1)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_attribution_section"
-change = """
-- _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
-+ _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 1)),
-"""
-
-[[untriaged]]
-module = "barks_reader.core.corpus_stats"
-function = "_length_section"
-change = """
-- key=lambda item: (-item[1], ENUM_TO_STR_TITLE[item[0]]),
-+ key=lambda item: (-item[1], ENUM_TO_STR_TITLE[item[1]]),
-"""
-
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.corpus_stats"
 function = "_adjusted_payment_total"
 change = """
 - latest_year = get_latest_year()
 + latest_year = None
 """
+reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.corpus_stats"
 function = "_adjusted_payment_total"
 change = """
 - get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
 + get_adjusted_usd(payment.payment, payment.accepted_year, None)
 """
+reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
 
-[[untriaged]]
+[[equivalent]]
 module = "barks_reader.core.corpus_stats"
 function = "_adjusted_payment_total"
 change = """
 - get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
 + get_adjusted_usd(payment.payment, payment.accepted_year, )
 """
+reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
 
 [[untriaged]]
 module = "barks_reader.core.wiki_integration"
