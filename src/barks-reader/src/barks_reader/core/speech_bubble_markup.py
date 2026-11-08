@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.speech_markup import escape_markup
 from barks_fantagraphics.speech_speakers import speaker_display_name
 
+from .hyphen_break_engine import SOFT_HYPHEN
 from .reader_formatter import mark_terms_in_text
 from .reader_palette import color_to_markup_hex, theme
 
@@ -108,4 +109,5 @@ def format_page_speech_bubbles(
             )
             text = f"{markup}{gap}\n{text}"
         bubbles.append(text)
-    return "\n\n".join(bubbles).replace("­", "-").strip()
+    # Shown as the hyphen the lettering has where a word breaks across a bubble's lines.
+    return "\n\n".join(bubbles).replace(SOFT_HYPHEN, "-").strip()
