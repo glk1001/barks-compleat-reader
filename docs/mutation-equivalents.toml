@@ -361,6 +361,123 @@ change = """
 reason = "Only ever tested for truth, where None and False are alike."
 
 [[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = None
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "XXLoad cancelled before starting work.XX"
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "load cancelled before starting work."
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled before starting work."
++ msg = "LOAD CANCELLED BEFORE STARTING WORK."
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- raise CancelledError(msg)
++ raise CancelledError(None)
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = None
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "XXLoad cancelled during work.XX"
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "load cancelled during work."
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- msg = "Load cancelled during work."
++ msg = "LOAD CANCELLED DURING WORK."
+"""
+reason = "The CancelledError's message is never read: the one handler for it logs its own words for the page."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_pages"
+change = """
+- break
++ return
+"""
+reason = "Every one of these breaks is on a stop (load.stop is set, or a page was cancelled because it was), and then the caller only logs the count returned: None instead of the count, and the finally's shutdown runs either way."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader._load_comic_in_thread"
+change = """
+- load_error = False
++ load_error = None
+"""
+reason = "load_error is only tested for truth, where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.__init__"
+change = """
+- self._image_loaded_events: list[threading.Event] = []
++ self._image_loaded_events: list[threading.Event] = None
+"""
+reason = "set_comic replaces the list before anything reads it: wait_load_event and prioritize_page return early with no pages, and close_comic with no image source."
+
+[[equivalent]]
+module = "barks_reader.core.comic_book_loader"
+function = "ComicBookLoader.set_comic"
+change = """
+- archive_desc: str = "",
++ archive_desc: str = "XXXX",
+"""
+reason = "The default is never used: the one caller, the comic reader, always passes a description, and it only ever goes into log lines."
+
+[[equivalent]]
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """
@@ -2247,140 +2364,4 @@ change = """
 + get_adjusted_usd(payment.payment, payment.accepted_year, )
 """
 reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.init_data"
-change = """
-- log_markers.VOLUMES_LOADED.format(elapsed=timing.get_elapsed_time_with_unit())
-+ log_markers.VOLUMES_LOADED.format(elapsed=None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader.wait_load_event"
-change = """
-- assert 0 <= page_index < len(self._images)
-+ assert 0 <= page_index <= len(self._images)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_comic_in_thread"
-change = """
-- load_error = False
-+ load_error = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled before starting work."
-+ msg = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled before starting work."
-+ msg = "XXLoad cancelled before starting work.XX"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled before starting work."
-+ msg = "load cancelled before starting work."
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled before starting work."
-+ msg = "LOAD CANCELLED BEFORE STARTING WORK."
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- raise CancelledError(msg)
-+ raise CancelledError(None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled during work."
-+ msg = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled during work."
-+ msg = "XXLoad cancelled during work.XX"
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled during work."
-+ msg = "load cancelled during work."
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- msg = "Load cancelled during work."
-+ msg = "LOAD CANCELLED DURING WORK."
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- continue
-+ break
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- return True
-+ return False
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- break
-+ return
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- executor.shutdown(cancel_futures=True)
-+ executor.shutdown(cancel_futures=None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.comic_book_loader"
-function = "ComicBookLoader._load_pages"
-change = """
-- executor.shutdown(cancel_futures=True)
-+ executor.shutdown(cancel_futures=False)
-"""
 
