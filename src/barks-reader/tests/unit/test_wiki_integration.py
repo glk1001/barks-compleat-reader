@@ -122,6 +122,20 @@ class TestCanonicalTitle:
         curly = canonical.replace("Down Under", "“Down Under”")
         assert canonical_title(curly) == Titles.ADVENTURE_DOWN_UNDER
 
+    def test_a_curly_apostrophe_reads_as_straight(self) -> None:
+        """The slug drops either apostrophe, so the title join takes either too."""
+        curly = "The Rabbit\u2019s Foot"
+
+        assert canonical_title(curly) == Titles.RABBITS_FOOT_THE
+        assert story_slug(curly) == story_slug("The Rabbit's Foot")
+
+    def test_a_curly_apostrophe_page_is_a_story_page(self, tmp_path: Path) -> None:
+        page = tmp_path / "okf" / "concept" / "stories" / "misc" / "x.md"
+
+        assert story_page_title({"title": "The Rabbit\u2019s Foot"}, page) == (
+            Titles.RABBITS_FOOT_THE
+        )
+
 
 class TestStoryPageTitle:
     def test_story_page_maps_to_enum(self, tmp_path: Path) -> None:

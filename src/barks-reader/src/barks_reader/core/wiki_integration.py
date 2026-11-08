@@ -176,6 +176,10 @@ SERIES_TO_STORY_DIRS = {
 }
 
 
+# U+2019 RIGHT SINGLE QUOTATION MARK: the wiki's curly apostrophe, as in its book sources.
+_CURLY_APOSTROPHE = chr(0x2019)
+
+
 def story_slug(title: str) -> str:
     """Return a canonical title's wiki filename slug (CLAUDE.md wiki title convention).
 
@@ -184,8 +188,7 @@ def story_slug(title: str) -> str:
     E.g. "You Can't Guess!" -> "you-cant-guess", 'Adventure "Down Under"' ->
     "adventure-down-under".
     """
-    curly_apostrophe = chr(0x2019)  # U+2019 RIGHT SINGLE QUOTATION MARK
-    lowered = title.lower().replace("'", "").replace(curly_apostrophe, "")
+    lowered = title.lower().replace("'", "").replace(_CURLY_APOSTROPHE, "")
     return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
 
 
@@ -193,10 +196,12 @@ def canonical_title(text: str) -> Titles | None:
     """Map a display title to its Titles enum, tolerating quoted display forms.
 
     Canonical titles are quote-free; the wiki pages show forms like
-    'Adventure "Down Under"'.
+    'Adventure "Down Under"'. Their apostrophes are straight, and a curly one reads as
+    straight, as `story_slug` drops both.
     """
     title_enum = STR_TITLE_TO_ENUM.get(text)
     if title_enum is None:
+        text = text.replace(_CURLY_APOSTROPHE, "'")
         for quote in ('"', chr(0x201C), chr(0x201D)):  # straight/curly double quotes
             text = text.replace(quote, "")
         title_enum = STR_TITLE_TO_ENUM.get(text.strip())
