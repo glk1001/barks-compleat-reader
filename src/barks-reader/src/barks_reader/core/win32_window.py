@@ -27,49 +27,86 @@ class RECT(ctypes.Structure):
     ]
 
 
-def find_app_hwnd() -> Any:  # noqa: ANN401
-    """Return the app's window: the active one, else the first SDL window of this process."""
-    found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
+_CLASS_NAME_LENGTH = 256
+
+
+def _typed_user32() -> Any:  # noqa: ANN401
+    """Load a fresh ``user32`` with the lookup's calls typed for 64-bit handles.
+
+    Untyped, a handle above 2**31 cannot be passed in (ctypes converts a Python int
+    to a C int) and ``GetActiveWindow`` returns it truncated. A fresh load leaves the
+    shared ``ctypes.windll.user32`` that Kivy calls as it is.
+    """
+    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+
+    user32.GetActiveWindow.argtypes = []
+    user32.GetActiveWindow.restype = wintypes.HWND
+    user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    user32.IsWindowVisible.restype = wintypes.BOOL
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetClassNameW.restype = ctypes.c_int
+    user32.EnumWindows.argtypes = [ctypes.c_void_p, wintypes.LPARAM]
+    user32.EnumWindows.restype = wintypes.BOOL
+
+    return user32
+
+
+def find_app_hwnd() -> int:
+    """Return the app's window: the active one, else the first SDL window of this process.
+
+    Returns:
+        The window handle, or 0 when there is none.
+
+    """
+    found_hwnd = _typed_user32().GetActiveWindow()
     if found_hwnd:
         logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
         return found_hwnd
     return find_hwnd_by_enum_windows()
 
 
-def find_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
-    """Find our SDL window by enumerating all top-level windows and matching PID."""
-    GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806  # ty: ignore[unresolved-attribute]
-    EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806  # ty: ignore[unresolved-attribute]
-    IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806  # ty: ignore[unresolved-attribute]
-    GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806  # ty: ignore[unresolved-attribute]
+def _sdl_class_name(user32: Any, hwnd: int, pid: int) -> str | None:  # noqa: ANN401
+    """Return the window's class name if it is a visible SDL window of process `pid`."""
+    if not user32.IsWindowVisible(hwnd):
+        return None
 
+    window_pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
+    if window_pid.value != pid:
+        return None
+
+    # Kivy's window is SDL's.
+    class_name = ctypes.create_unicode_buffer(_CLASS_NAME_LENGTH)
+    user32.GetClassNameW(hwnd, class_name, _CLASS_NAME_LENGTH)
+    return class_name.value if class_name.value.startswith("SDL") else None
+
+
+def find_hwnd_by_enum_windows() -> int:
+    """Find our SDL window by enumerating all top-level windows and matching PID.
+
+    Returns:
+        The window handle, or 0 when there is none.
+
+    """
+    user32 = _typed_user32()
     current_pid = os.getpid()
     found_hwnd = 0
 
-    def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
+    def enum_callback(hwnd_candidate: int | None, _lparam: int) -> bool:
         nonlocal found_hwnd
-        if IsWindowVisible(hwnd_candidate):
-            pid = wintypes.DWORD()
-            GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
+        if not hwnd_candidate:
+            return True
+        class_name = _sdl_class_name(user32, hwnd_candidate, current_pid)
+        if class_name is None:
+            return True  # Continue enumeration
+        found_hwnd = hwnd_candidate
+        logger.info(f"Found SDL window: HWND = {hex(hwnd_candidate)}, class = {class_name}.")
+        return False  # Stop enumeration
 
-            if pid.value == current_pid:
-                # Check if it's an SDL window (Kivy uses SDL2).
-                class_name = ctypes.create_unicode_buffer(256)
-                GetClassNameW(hwnd_candidate, class_name, 256)
-
-                if class_name.value.startswith("SDL"):
-                    found_hwnd = hwnd_candidate
-                    logger.info(
-                        f"Found SDL window:"
-                        f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
-                    )
-                    return False  # Stop enumeration
-        return True  # Continue enumeration
-
-    # Create callback and enumerate windows.
-    ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806  # ty: ignore[unresolved-attribute]
-    callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
-    EnumWindows(callback_ptr, 0)
+    enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # ty: ignore[unresolved-attribute]
+    user32.EnumWindows(enum_windows_proc(enum_callback), 0)
 
     if found_hwnd:
         logger.info(f"Found window via EnumWindows: {hex(found_hwnd)}.")

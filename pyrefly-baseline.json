@@ -64,38 +64,10 @@
       "severity": "error"
     },
     {
-      "column": 18,
+      "column": 14,
       "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
       "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 32,
-      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 19,
-      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 23,
-      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 21,
-      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `windll` in module `ctypes`",
+      "concise_description": "No attribute `WinDLL` in module `ctypes`",
       "severity": "error"
     },
     {
