@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import shlex
 import shutil
 import sys
 from pathlib import Path
@@ -18,6 +17,10 @@ _DESKTOP_ENTRY_FILENAME = f"{APP_NAME}.desktop"
 # 128x128 matches our app-icon.png (close enough — the spec only requires the
 # nominal directory size to bracket the actual icon size).
 _HICOLOR_ICON_REL = Path("icons") / "hicolor" / "128x128" / "apps"
+# The Desktop Entry spec's reserved characters: an Exec= argument holding one must be
+# double-quoted, and inside the quotes these four take a backslash.
+_EXEC_RESERVED_CHARS = frozenset(" \t\n\"'\\><~|&;$*?#()`")
+_EXEC_ESCAPED_IN_QUOTES = frozenset('"`$\\')
 
 
 def write_linux_desktop_entry(source_icon_path: Path, app_title: str) -> None:
@@ -90,7 +93,7 @@ def _install_desktop_file(icon_ref: str, app_title: str) -> None:
     desktop_file = desktop_dir / _DESKTOP_ENTRY_FILENAME
     content = _build_entry_content(icon_ref, app_title)
 
-    if desktop_file.is_file() and desktop_file.read_text(encoding="utf-8") == content:
+    if _entry_is_current(desktop_file, content):
         return
 
     try:
@@ -100,6 +103,21 @@ def _install_desktop_file(icon_ref: str, app_title: str) -> None:
         return
 
     logger.info(f"Wrote desktop entry: {desktop_file}")
+
+
+def _entry_is_current(desktop_file: Path, content: str) -> bool:
+    """Return whether the installed entry already holds `content`.
+
+    An entry that cannot be read, or is not UTF-8 (another tool edited it), is not
+    current: it is rewritten, and if it cannot be written either, that is logged.
+    """
+    if not desktop_file.is_file():
+        return False
+    try:
+        return desktop_file.read_text(encoding="utf-8") == content
+    except (OSError, UnicodeDecodeError) as exc:
+        logger.warning(f"Could not read desktop entry {desktop_file}: {exc}")
+        return False
 
 
 def _xdg_data_home() -> Path:
@@ -143,9 +161,23 @@ def _resolve_exec_command() -> str:
         # argument that aborts the Typer CLI). Use sys.argv[0]: Nuitka onefile guarantees
         # it is the absolute path of the launched binary, whereas sys.executable is the
         # version-specific EXTRACTED binary inside the onefile cache dir.
-        return shlex.quote(str(Path(sys.argv[0]).resolve()))
+        return _exec_arg(str(Path(sys.argv[0]).resolve()))
 
     script = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
     if script and script.is_file():
-        return f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
-    return shlex.quote(sys.executable)
+        return f"{_exec_arg(sys.executable)} {_exec_arg(str(script))}"
+    return _exec_arg(sys.executable)
+
+
+def _exec_arg(arg: str) -> str:
+    """Quote one ``Exec=`` argument as the Desktop Entry spec reads it.
+
+    The spec's quoting is not a shell's: only double quotes quote, a literal ``%``
+    is ``%%`` (or it is a field code), and the string-value escapes apply before
+    the quoting, so every backslash is doubled again on its way into the file.
+    """
+    arg = arg.replace("%", "%%")
+    if any(c in _EXEC_RESERVED_CHARS for c in arg):
+        escaped = "".join(f"\\{c}" if c in _EXEC_ESCAPED_IN_QUOTES else c for c in arg)
+        arg = f'"{escaped}"'
+    return arg.replace("\\", "\\\\").replace("\n", "\\n")

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import shlex
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -140,6 +139,35 @@ def test_an_entry_that_cannot_be_written_is_logged_not_raised(
     assert any("Could not write desktop entry" in line for line in loguru_sink)
 
 
+def test_an_entry_that_is_not_utf8_is_rewritten(
+    data_home: Path, icon: Path, loguru_sink: list[str]
+) -> None:
+    """Another tool's non-UTF-8 entry does not stop the app starting: it is replaced."""
+    _desktop_file(data_home).parent.mkdir(parents=True)
+    _desktop_file(data_home).write_bytes(b"[Desktop Entry]\nName=Caf\xe9\n")
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
+    assert "Name=Barks Reader\n" in _desktop_file(data_home).read_text(encoding="utf-8")
+    assert any("Could not read desktop entry" in line for line in loguru_sink)
+
+
+@pytest.mark.usefixtures("data_home")
+def test_an_entry_that_cannot_be_read_is_logged_not_raised(
+    icon: Path, loguru_sink: list[str]
+) -> None:
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
+    with (
+        patch.object(Path, Path.read_text.__name__, side_effect=PermissionError("denied")),
+        patch.object(Path, Path.write_text.__name__, side_effect=PermissionError("denied")),
+    ):
+        lde.write_linux_desktop_entry(icon, "Barks Reader")  # the app starts all the same
+
+    assert any("Could not read desktop entry" in line for line in loguru_sink)
+    assert any("Could not write desktop entry" in line for line in loguru_sink)
+
+
 def test_an_icon_whose_size_cannot_be_read_does_not_match(tmp_path: Path) -> None:
     target = tmp_path / "installed.png"
     target.write_bytes(b"png bytes")
@@ -163,11 +191,21 @@ class TestExecCommand:
     def test_a_compiled_build_launches_itself(self) -> None:
         with (
             patch.object(lde, "IS_COMPILED", True),  # noqa: FBT003
+            patch.object(sys, "argv", ["/opt/barks-reader/barks-reader"]),
+        ):
+            assert lde._resolve_exec_command() == str(
+                Path("/opt/barks-reader/barks-reader").resolve()
+            )
+
+    def test_a_path_with_a_space_is_double_quoted(self) -> None:
+        """Only double quotes quote in Exec=: a shell's single quotes would split the path."""
+        with (
+            patch.object(lde, "IS_COMPILED", True),  # noqa: FBT003
             patch.object(sys, "argv", ["/opt/barks reader/barks-reader"]),
         ):
-            assert lde._resolve_exec_command() == shlex.quote(
-                str(Path("/opt/barks reader/barks-reader").resolve())
-            )
+            exec_cmd = lde._resolve_exec_command()
+        assert exec_cmd == f'"{Path("/opt/barks reader/barks-reader").resolve()}"'
+        assert "'" not in exec_cmd
 
     def test_from_source_the_interpreter_runs_the_script(self, tmp_path: Path) -> None:
         script = tmp_path / "main.py"
@@ -177,7 +215,7 @@ class TestExecCommand:
             patch.object(sys, "argv", [str(script)]),
         ):
             assert lde._resolve_exec_command() == (
-                f"{shlex.quote(sys.executable)} {shlex.quote(str(script.resolve()))}"
+                f"{lde._exec_arg(sys.executable)} {lde._exec_arg(str(script.resolve()))}"
             )
 
     def test_with_no_script_the_interpreter_alone(self) -> None:
@@ -185,4 +223,48 @@ class TestExecCommand:
             patch.object(lde, "IS_COMPILED", False),  # noqa: FBT003
             patch.object(sys, "argv", [""]),
         ):
-            assert lde._resolve_exec_command() == shlex.quote(sys.executable)
+            assert lde._resolve_exec_command() == lde._exec_arg(sys.executable)
+
+    def test_the_entry_holds_the_real_exec_line(self) -> None:
+        """Unpatched, as the dock reads it: a quoted path on the Exec= line."""
+        with (
+            patch.object(lde, "IS_COMPILED", True),  # noqa: FBT003
+            patch.object(sys, "argv", ["/opt/barks reader/barks-reader"]),
+        ):
+            content = lde._build_entry_content(APP_NAME, "Barks Reader")
+        expected = Path("/opt/barks reader/barks-reader").resolve()
+        assert f'Exec="{expected}"\n' in content
+
+
+class TestExecArg:
+    """One Exec= argument, quoted as the Desktop Entry spec reads it."""
+
+    def test_a_plain_path_is_left_bare(self) -> None:
+        assert lde._exec_arg("/usr/bin/python3.13") == "/usr/bin/python3.13"
+
+    def test_a_percent_is_doubled_so_it_is_no_field_code(self) -> None:
+        assert lde._exec_arg("/opt/100%/app") == "/opt/100%%/app"
+
+    def test_a_percent_in_a_quoted_argument_is_doubled_too(self) -> None:
+        assert lde._exec_arg("/opt/100% sure/app") == '"/opt/100%% sure/app"'
+
+    @pytest.mark.parametrize(
+        ("arg", "expected"),
+        [
+            ("/opt/a b", '"/opt/a b"'),
+            ("/opt/it's", '"/opt/it\'s"'),
+            ("/opt/(x)", '"/opt/(x)"'),
+            ('/opt/say "hi"', '"/opt/say \\\\"hi\\\\""'),
+            ("/opt/$HOME", '"/opt/\\\\$HOME"'),
+            ("/opt/`x`", '"/opt/\\\\`x\\\\`"'),
+        ],
+    )
+    def test_a_reserved_character_double_quotes_the_argument(self, arg: str, expected: str) -> None:
+        assert lde._exec_arg(arg) == expected
+
+    def test_a_backslash_takes_four_in_the_file(self) -> None:
+        """Escaped once for the quotes, then each backslash doubled as a string value."""
+        assert lde._exec_arg("/opt/a\\b") == '"/opt/a\\\\\\\\b"'
+
+    def test_a_newline_is_written_as_its_escape(self) -> None:
+        assert lde._exec_arg("/opt/a\nb") == '"/opt/a\\nb"'
