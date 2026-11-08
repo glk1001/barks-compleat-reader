@@ -201,8 +201,19 @@ class TestGroupRangesOnSyntheticData:
 
     def test_non_chronological_order_trips_the_tiling_assert(self) -> None:
         """Interleaved groups can't be sliced contiguously, so the assert must fire."""
-        with pytest.raises(AssertionError, match="not contiguous"):
+        # Anchored at the end: with no hint given, nothing follows the full stop.
+        with pytest.raises(AssertionError, match=r"not contiguous: 3 -> 2\.$"):
             self._grouped([1948, 1950, 1948, 1950])
+
+    def test_a_tiling_failure_ends_with_the_hint_it_was_given(self) -> None:
+        """The hint names the ordering source to repair, so it must reach the message."""
+        located = self._TITLES[:4]
+        by_title = dict(zip(located, [1948, 1950, 1948, 1950], strict=True))
+        with (
+            patch.object(cpg_module, "_submitted_year", by_title.__getitem__),
+            pytest.raises(AssertionError, match=r"not contiguous: 3 -> 2\. Fix the list\.$"),
+        ):
+            _group_ranges(located, self._YEAR_RANGES, " Fix the list.")
 
 
 class TestAssertTiling:
@@ -220,7 +231,8 @@ class TestAssertTiling:
             _assert_tiling([], 0)
 
     def test_not_starting_at_page_one_rejected(self) -> None:
-        with pytest.raises(AssertionError, match="groups must start at page 1, got 2"):
+        # Anchored at the end: with no hint given, nothing follows the full stop.
+        with pytest.raises(AssertionError, match=r"groups must start at page 1, got 2\.$"):
             _assert_tiling([(2, 5), (6, 20)], 20)
 
     def test_not_ending_at_total_rejected(self) -> None:
