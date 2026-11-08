@@ -203,7 +203,8 @@ class ChipRow:
         return RowKey.UNHANDLED
 
     def _move(self, step: int) -> RowKey:
-        target = (self._focused or 0) + step
+        # No focus is just before the first chip: Right lands on it, Left is the way out.
+        target = (-1 if self._focused is None else self._focused) + step
         if 0 <= target < len(self._chips):
             self._focused = target
             self._draw_focus()

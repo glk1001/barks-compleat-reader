@@ -157,6 +157,18 @@ def test_left_and_right_walk_and_the_ends_behave(row: ChipRow) -> None:
     assert row.focused == 0  # the screen decides whether it is taken
 
 
+def test_right_with_no_chip_focused_lands_on_the_first(row: ChipRow) -> None:
+    """Not the second: there is no focused chip to step on from."""
+    assert row.focused is None
+    assert row.handle_key(KEY_RIGHT) is RowKey.HANDLED
+    assert row.focused == 0
+
+
+def test_left_with_no_chip_focused_is_the_way_out(row: ChipRow) -> None:
+    assert row.handle_key(KEY_LEFT) is RowKey.EXIT_LEFT
+    assert row.focused is None
+
+
 def test_right_off_the_last_chip_does_not_refocus_it(row: ChipRow, loguru_sink: list[str]) -> None:
     row.enter_focus(2)
     loguru_sink.clear()
