@@ -387,9 +387,17 @@ class ReaderFilePaths:
     def get_file_type_titles(
         self, file_type: FileTypes, allowed_titles: set[str] | None = None
     ) -> list[str]:
-        if allowed_titles is None:
-            allowed_titles = set()
+        """Return the titles that have an image of ``file_type``.
 
+        Args:
+            file_type: The panel type whose folder is listed (cached after the first scan).
+            allowed_titles: Keep only these titles. ``None`` keeps every title; an empty
+                set keeps none.
+
+        Returns:
+            The titles, in the folder's listing order.
+
+        """
         if file_type in self._titles_cache:
             all_titles = self._titles_cache[file_type]
         else:
@@ -412,7 +420,7 @@ class ReaderFilePaths:
 
             self._titles_cache[file_type] = all_titles
 
-        if not allowed_titles:
+        if allowed_titles is None:
             return all_titles
 
         return [title for title in all_titles if title in allowed_titles]

@@ -349,11 +349,16 @@ class TestFileTypeTitles:
 
         assert titles == ["Title2"]
 
-    def test_an_empty_allowed_list_is_treated_as_no_filter(
-        self, paths_with_covers: ReaderFilePaths
-    ) -> None:
-        """`set()` means "nothing specified", not "allow nothing"."""
-        titles = paths_with_covers.get_file_type_titles(FileTypes.COVER, allowed_titles=set())
+    def test_an_empty_allowed_list_allows_nothing(self, paths_with_covers: ReaderFilePaths) -> None:
+        """`None` means "no filter"; `set()` is a filter that nothing passes.
+
+        The fun-image pool narrows by a decade's titles, and a decade with none must
+        narrow to nothing rather than widen to every title.
+        """
+        assert paths_with_covers.get_file_type_titles(FileTypes.COVER, allowed_titles=set()) == []
+
+    def test_no_allowed_list_keeps_every_title(self, paths_with_covers: ReaderFilePaths) -> None:
+        titles = paths_with_covers.get_file_type_titles(FileTypes.COVER, allowed_titles=None)
 
         assert sorted(titles) == ["Title1", "Title2", "Title4"]
 

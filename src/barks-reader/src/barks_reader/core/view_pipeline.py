@@ -761,12 +761,16 @@ class ViewPipeline:
         return self._get_themed_fun_image_titles()
 
     def _get_themed_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        file_types = self._get_file_types_to_use()
+        """Return the themed pool and the image types to draw from.
 
-        theme_titles: set[Titles] = set()
+        The pool is every title with an image of any picked type. When a decade or
+        Classics theme is also picked, it keeps only the titles in those as well.
+        """
+        file_types = self._get_file_types_to_use()
 
         assert self._fun_image_themes
 
+        theme_titles: set[Titles] = set()
         for theme, year_range in {
             ImageThemes.FORTIES: (1942, 1949),
             ImageThemes.FIFTIES: (1950, 1959),
@@ -778,18 +782,25 @@ class ViewPipeline:
         if ImageThemes.CLASSICS in self._fun_image_themes:
             theme_titles.update(BARKS_TAGGED_TITLES[Tags.CLASSICS])
 
+        # `get_file_type_titles` works in filesystem title strings: project the theme
+        # titles to strings for the filter, and convert what comes back. A decade with
+        # no titles narrows to nothing, so the filter is set by the themes picked, not
+        # by whether they found any titles.
+        narrows = not IMAGE_THEMES_WITH_NO_FILES.isdisjoint(self._fun_image_themes)
+        allowed_title_strs = (
+            {ENUM_TO_STR_TITLE[title] for title in theme_titles} if narrows else None
+        )
+
+        pool: set[Titles] = set()
         for file_type in file_types:
-            # `get_file_type_titles` works in filesystem title strings, so project the
-            # accumulated enum set to strings for filtering and convert the result back.
-            allowed_title_strs = {ENUM_TO_STR_TITLE[title] for title in theme_titles}
-            theme_titles.update(
+            pool.update(
                 STR_TITLE_TO_ENUM[title_str]
                 for title_str in self._reader_settings.file_paths.get_file_type_titles(
                     file_type, allowed_title_strs
                 )
             )
 
-        return [ALL_FANTA_COMIC_BOOK_INFO[title] for title in theme_titles], file_types
+        return [ALL_FANTA_COMIC_BOOK_INFO[title] for title in pool], file_types
 
     def _update_titles(self, title_set: set[Titles], year_range: tuple[int, int]) -> None:
         # Theme year ranges are decade buckets that may extend past the years

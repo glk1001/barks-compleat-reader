@@ -294,6 +294,15 @@ class TestTopViewSetters:
 # ---------------------------------------------------------------------------
 
 
+def _serve_file_type_titles(pipeline: ViewPipeline, title_strs: list[str]) -> None:
+    """Have every file type list *title_strs*, filtered as the real resolver filters."""
+
+    def get_file_type_titles(_file_type: FileTypes, allowed: set[str] | None) -> list[str]:
+        return [t for t in title_strs if allowed is None or t in allowed]
+
+    settings_of(pipeline).file_paths.get_file_type_titles.side_effect = get_file_type_titles
+
+
 def _fake_fcbi(title_enum: Titles) -> MagicMock:
     """Build a FantaComicBookInfo stub with the comic_book_info.title field set."""
     m = MagicMock()
@@ -319,7 +328,7 @@ class TestThemeExpansion:
         # Populate title lists for each year in the FORTIES range.
         for year in range(1942, 1950):
             title_lists_of(pipeline)[str(year)] = [_fake_fcbi(Titles.ATTIC_ANTICS)]
-        settings_of(pipeline).file_paths.get_file_type_titles.return_value = set()
+        _serve_file_type_titles(pipeline, ["Attic Antics"])
 
         with (
             patch.object(vp_module, "ENUM_TO_STR_TITLE", {Titles.ATTIC_ANTICS: "Attic Antics"}),
@@ -342,7 +351,7 @@ class TestThemeExpansion:
         for year in range(1950, 1960):
             title_lists_of(pipeline)[str(year)] = [_fake_fcbi(Titles.LOST_IN_THE_ANDES)]
             years_populated.append(year)
-        settings_of(pipeline).file_paths.get_file_type_titles.return_value = set()
+        _serve_file_type_titles(pipeline, ["Lost in the Andes"])
 
         lita = Titles.LOST_IN_THE_ANDES
         with (
@@ -364,7 +373,7 @@ class TestThemeExpansion:
         pipeline._fun_image_themes = {ImageThemes.SIXTIES}
         title_lists_of(pipeline)["1960"] = [_fake_fcbi(Titles.ATTIC_ANTICS)]
         title_lists_of(pipeline)["1961"] = [_fake_fcbi(Titles.ATTIC_ANTICS)]
-        settings_of(pipeline).file_paths.get_file_type_titles.return_value = set()
+        _serve_file_type_titles(pipeline, ["Attic Antics"])
 
         with (
             patch.object(vp_module, "ENUM_TO_STR_TITLE", {Titles.ATTIC_ANTICS: "Attic Antics"}),
@@ -382,7 +391,7 @@ class TestThemeExpansion:
     def test_themed_titles_classics_includes_tag(self) -> None:
         pipeline = make_pipeline()
         pipeline._fun_image_themes = {ImageThemes.CLASSICS}
-        settings_of(pipeline).file_paths.get_file_type_titles.return_value = set()
+        _serve_file_type_titles(pipeline, ["Lost in the Andes"])
 
         with (
             patch.object(
@@ -417,7 +426,7 @@ class TestThemeExpansion:
             title_lists_of(pipeline)[str(year)] = []
         title_lists_of(pipeline)["1960"] = [_fake_fcbi(Titles.LOST_IN_THE_ANDES)]
         title_lists_of(pipeline)["1961"] = []
-        settings_of(pipeline).file_paths.get_file_type_titles.return_value = set()
+        _serve_file_type_titles(pipeline, ["Attic Antics", "Lost in the Andes"])
 
         with (
             patch.object(
@@ -449,6 +458,65 @@ class TestThemeExpansion:
 
         title_enums = {t.comic_book_info.title for t in titles}
         assert title_enums == {Titles.ATTIC_ANTICS, Titles.LOST_IN_THE_ANDES}
+
+    @staticmethod
+    def _serve_per_type(pipeline: ViewPipeline, by_type: dict[FileTypes, list[Titles]]) -> None:
+        def get_file_type_titles(file_type: FileTypes, allowed: set[str] | None) -> list[str]:
+            strs = [ENUM_TO_STR_TITLE[t] for t in by_type.get(file_type, [])]
+            return [t for t in strs if allowed is None or t in allowed]
+
+        settings_of(pipeline).file_paths.get_file_type_titles.side_effect = get_file_type_titles
+
+    def test_image_type_themes_alone_pool_every_picked_types_titles(self) -> None:
+        """AI + Black and White is the union of both, whichever type is listed first."""
+        pipeline = make_pipeline()
+        pipeline._fun_image_themes = {ImageThemes.AI, ImageThemes.BLACK_AND_WHITE}
+        self._serve_per_type(
+            pipeline,
+            {
+                FileTypes.AI: [Titles.LOST_IN_THE_ANDES],
+                FileTypes.BLACK_AND_WHITE: [Titles.BICEPS_BLUES],
+            },
+        )
+
+        titles, file_types = pipeline._get_themed_fun_image_titles()
+
+        assert file_types == {FileTypes.AI, FileTypes.BLACK_AND_WHITE}
+        assert {t.comic_book_info.title for t in titles} == {
+            Titles.LOST_IN_THE_ANDES,
+            Titles.BICEPS_BLUES,
+        }
+        for call in settings_of(pipeline).file_paths.get_file_type_titles.call_args_list:
+            assert call.args[1] is None  # nothing narrows, so nothing is filtered
+
+    def test_a_decade_narrows_the_image_type_pool(self) -> None:
+        pipeline = make_pipeline()
+        pipeline._fun_image_themes = {ImageThemes.FORTIES, ImageThemes.AI}
+        title_lists_of(pipeline)["1949"] = [
+            _fake_fcbi(Titles.LOST_IN_THE_ANDES),
+            _fake_fcbi(Titles.BICEPS_BLUES),
+        ]
+        # An AI title outside the forties, and a forties title with no AI image.
+        self._serve_per_type(
+            pipeline, {FileTypes.AI: [Titles.LOST_IN_THE_ANDES, Titles.ATTIC_ANTICS]}
+        )
+
+        titles, _ = pipeline._get_themed_fun_image_titles()
+
+        assert [t.comic_book_info.title for t in titles] == [Titles.LOST_IN_THE_ANDES]
+
+    def test_a_decade_with_no_titles_narrows_to_nothing(self) -> None:
+        """An empty decade is not 'no decade': it must not widen to every AI title."""
+        pipeline = make_pipeline()
+        pipeline._fun_image_themes = {ImageThemes.SIXTIES, ImageThemes.AI}
+        self._serve_per_type(pipeline, {FileTypes.AI: [Titles.LOST_IN_THE_ANDES]})
+
+        titles, _ = pipeline._get_themed_fun_image_titles()
+
+        assert titles == []
+        settings_of(pipeline).file_paths.get_file_type_titles.assert_called_once_with(
+            FileTypes.AI, set()
+        )
 
     def test_get_file_types_to_use_none_themes_returns_all_types(self) -> None:
         pipeline = make_pipeline()
