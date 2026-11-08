@@ -184,8 +184,8 @@ reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 module = "barks_reader.core.reading_history"
 function = "ReadingHistoryStore._sync"
 change = """
-- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(json_data, indent=4), encoding=None)
+- temp_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
++ temp_path.write_text(json.dumps(json_data, indent=4), encoding=None)
 """
 reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
 
@@ -193,19 +193,19 @@ reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linu
 module = "barks_reader.core.reading_history"
 function = "ReadingHistoryStore._sync"
 change = """
-- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(json_data, indent=4), )
-"""
-reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
-
-[[equivalent]]
-module = "barks_reader.core.reading_history"
-function = "ReadingHistoryStore._sync"
-change = """
-- self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(json_data, indent=4), encoding="UTF-8")
+- temp_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
++ temp_path.write_text(json.dumps(json_data, indent=4), encoding="UTF-8")
 """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.reading_history"
+function = "ReadingHistoryStore._set_aside_unreadable_file"
+change = """
+- self._can_write = False
++ self._can_write = None
+"""
+reason = "Only ever read as `if not self._can_write`, where None and False are alike."
 
 [[equivalent]]
 module = "barks_reader.core.fantagraphics_volumes"

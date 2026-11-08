@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+import re
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -78,6 +79,22 @@ class TestReadingHistoryStore:
         (aside,) = tmp_path.glob("history.json.corrupt-*")
         assert aside.read_text(encoding="utf-8") == '{"version": 1, "events": [{"trunc'
         assert ReadingHistoryStore(store_path).get_events() == [_make_event()]
+
+    def test_the_moved_file_is_stamped_with_the_utc_time_and_the_log_says_why(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """The stamp orders the copies and the logged parse error says what went wrong."""
+        store_path = tmp_path / "history.json"
+        store_path.write_text('{"version": 1, "events": [{"trunc', encoding="utf-8")
+
+        ReadingHistoryStore(store_path)
+
+        (aside,) = tmp_path.glob("history.json.corrupt-*")
+        match = re.fullmatch(r"history\.json\.corrupt-(\d{8}T\d{6}Z)", aside.name)
+        assert match is not None, aside.name
+        stamped = datetime.strptime(match[1], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+        assert abs(datetime.now(UTC) - stamped) < timedelta(minutes=1)
+        assert any("Unterminated string" in line for line in loguru_sink)
 
     def test_an_unreadable_file_that_cannot_be_moved_is_never_written(
         self, tmp_path: Path, loguru_sink: list[str]
@@ -356,6 +373,8 @@ class TestFormatting:
         [
             (datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 14, 25), "25 min"),
             (datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 14, 0, 20), "< 1 min"),
+            # Closed the moment it opened: no time is not a clock-change "before".
+            (datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 14, 0), "< 1 min"),
             (datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 15, 0), "1 hr"),
             (datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 16, 5), "2 hr 5 min"),
         ],
