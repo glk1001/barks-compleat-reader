@@ -128,6 +128,7 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     set(ViewStates)
     - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
     - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
+    - _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
     - _BOTTOM_VIEW_HISTORY_OPACITY_1_STATES
     - _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
@@ -649,19 +650,7 @@ class ViewPipeline:
         return self._get_next_fun_view_image_info()
 
     def _set_next_bottom_view_fun_image(self) -> None:
-        if self._view_state in [
-            ViewStates.ON_TITLE_NODE,
-            ViewStates.ON_INDEX_MAIN_NODE,
-            ViewStates.ON_INDEX_SPEECH_NODE,
-            ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
-            ViewStates.ON_INDEX_NAMES_NODE,
-            ViewStates.ON_INDEX_LOCATIONS_NODE,
-            ViewStates.ON_APPENDIX_STATISTICS_NODE,
-            ViewStates.ON_HISTORY_NODE,
-            ViewStates.ON_TITLE_SEARCH_NODE,
-            ViewStates.ON_TAG_SEARCH_NODE,
-            ViewStates.ON_WORD_SEARCH_NODE,
-        ]:
+        if self._view_state not in _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES:
             return
 
         if (self._view_state == ViewStates.INITIAL) and self._bottom_view_fun_image_info:

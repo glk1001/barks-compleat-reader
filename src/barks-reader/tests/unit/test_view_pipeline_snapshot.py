@@ -82,18 +82,21 @@ class TestRenderSnapshot:
 
         assert snap.screen_visibility.speech_index is True
         assert snap.screen_visibility.main_index is False
+        assert snap.fun_view.is_visible is False
 
     def test_names_index_state(self) -> None:
         pipeline = make_pipeline()
         snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_INDEX_NAMES_NODE))
 
         assert snap.screen_visibility.names_index is True
+        assert snap.fun_view.is_visible is False
 
     def test_locations_index_state(self) -> None:
         pipeline = make_pipeline()
         snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_INDEX_LOCATIONS_NODE))
 
         assert snap.screen_visibility.locations_index is True
+        assert snap.fun_view.is_visible is False
 
     def test_statistics_state(self) -> None:
         pipeline = make_pipeline()
@@ -264,6 +267,7 @@ class TestScreenVisibility:
         snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_INDEX_SPEECH_WORDS_NODE))
 
         assert snap.screen_visibility == ScreenVisibility(speech_index=True)
+        assert snap.fun_view.is_visible is False
 
 
 class TestViewOpacities:
