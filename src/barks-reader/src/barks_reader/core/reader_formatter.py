@@ -240,7 +240,6 @@ class ReaderFormatter:
     def get_title_info(
         self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int, add_footnote: bool
     ) -> str:
-        # TODO: Clean this up.
         issue_info = get_formatted_first_published_str(
             fanta_info.comic_book_info, self._title_info_issue_name, max_len_before_shorten
         )
@@ -261,19 +260,15 @@ class ReaderFormatter:
             source += f", p. {fanta_page}"
         payment_info = BARKS_PAYMENTS.get(fanta_info.comic_book_info.title, None)
 
-        if (not payment_info) or (payment_info.payment < CLOSE_TO_ZERO):
-            return (
-                f"[i]1st Issue:[/i]   [b]{issue_info}[/b]\n"
-                f"[i]Submitted:[/i] [b]{submitted_info}[/b]\n"
-                f"[i]Source:[/i]       [b]{source}[/b]"
-            )
-
-        return (
-            f"[i]1st Issue:[/i]   [b]{issue_info}[/b]\n"
-            f"[i]Submitted:[/i] [b]{submitted_info}[/b]\n"
-            f"[i]Payslip:[/i]      [b]{get_formatted_payment_info(payment_info)}[/b]\n"
-            f"[i]Source:[/i]       [b]{source}[/b]"
-        )
+        # The spaces after each label line the values up in the info box's font.
+        lines = [
+            f"[i]1st Issue:[/i]   [b]{issue_info}[/b]",
+            f"[i]Submitted:[/i] [b]{submitted_info}[/b]",
+        ]
+        if payment_info and payment_info.payment >= CLOSE_TO_ZERO:
+            lines.append(f"[i]Payslip:[/i]      [b]{get_formatted_payment_info(payment_info)}[/b]")
+        lines.append(f"[i]Source:[/i]       [b]{source}[/b]")
+        return "\n".join(lines)
 
     @staticmethod
     def get_title_extra_info(fanta_info: FantaComicBookInfo) -> str:
