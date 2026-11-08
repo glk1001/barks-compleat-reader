@@ -178,13 +178,17 @@ def _make_fanta_archive(
 
 
 def _fanta_source(
-    fanta_archive: FantagraphicsArchive, *, use_overrides: bool
+    fanta_archive: FantagraphicsArchive,
+    *,
+    use_overrides: bool,
+    builder: MagicMock | None = None,
+    empty_page_image: bytes = b"",
 ) -> ArchivePageImageSource:
     return ArchivePageImageSource(
         archive_path=Path("vol1.zip"),
         fanta_volume_archive=fanta_archive,
-        comic_book_image_builder=None,
-        empty_page_image=b"",
+        comic_book_image_builder=builder,
+        empty_page_image=empty_page_image,
         use_fantagraphics_overrides=use_overrides,
         max_width=100,
         max_height=100,
@@ -500,10 +504,11 @@ class TestReadImageDelegation:
 
     def test_the_placeholder_page_is_decoded_as_a_jpeg(self) -> None:
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
-        source = _fanta_source(fanta, use_overrides=False)
         builder = MagicMock()
-        source._comic_book_image_builder = builder  # noqa: SLF001
-        source._empty_page_image = b"placeholder-bytes"  # noqa: SLF001
+        # Given to the constructor, as the loader does, so it is the source's own.
+        source = _fanta_source(
+            fanta, use_overrides=False, builder=builder, empty_page_image=b"placeholder-bytes"
+        )
 
         with (
             patch.object(apis_module, "decode_pil") as mock_decode,
@@ -576,10 +581,9 @@ class TestReadImageDelegation:
         volume_zip = tmp_path / "vol1.zip"
         _write_cbz(volume_zip, {"arch/101.jpg": _make_png_bytes((4, 4))})
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
-        source = _fanta_source(fanta, use_overrides=False)
-        source._archive_path = volume_zip  # noqa: SLF001
         builder = MagicMock()
-        source._comic_book_image_builder = builder  # noqa: SLF001
+        source = _fanta_source(fanta, use_overrides=False, builder=builder)
+        source._archive_path = volume_zip  # noqa: SLF001
         source.open()
         page_info = _make_page_info("101.jpg")
 
@@ -606,6 +610,13 @@ class TestReadImageDelegation:
             srce_scale=1.0,
         )
         mock_resize.assert_called_once_with(builder.get_dest_page_image.return_value, 100, 100)
+
+    def test_a_page_in_neither_map_names_its_file(self) -> None:
+        """The loader logs the KeyError as the missing page: it must say which."""
+        source = _fanta_source(_make_fanta_archive(archive={}), use_overrides=False)
+
+        with pytest.raises(KeyError, match=r"999\.jpg"):
+            source.get_image_info_str(_make_page_info("999.jpg"))
 
     def test_a_page_needing_the_library_archive_fails_loudly_when_it_is_absent(self) -> None:
         """A missing volume leaves `_archive` unopened.

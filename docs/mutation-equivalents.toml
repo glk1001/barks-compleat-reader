@@ -325,16 +325,6 @@ change = """
 reason = "ZipFile's mode defaults to \"r\"."
 
 [[equivalent]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.open"
-change = """
-- self._fanta_volume_archive.override_archive_filename, "r"
-- )
-+ self._fanta_volume_archive.override_archive_filename, )
-"""
-reason = "ZipFile's mode defaults to \"r\"."
-
-[[equivalent]]
 module = "barks_reader.core.comic_book_loader"
 function = "ComicBookLoader.__init__"
 change = """
@@ -487,6 +477,15 @@ change = """
 + return decode_pil(raw, ext=ext, fit_within=self._window_box()), 2.0
 """
 reason = "The scale goes only to the volume page builder: a prebuilt page, with no volume archive, never reads it."
+
+[[equivalent]]
+module = "barks_reader.core.archive_page_image_source"
+function = "ArchivePageImageSource._read_image"
+change = """
+- "Page requires the Fantagraphics library archive, but it is not available."
++ "XXPage requires the Fantagraphics library archive, but it is not available.XX"
+"""
+reason = "Only the wording of an assert message: the assert fires the same, and the test matches the words it is about."
 
 [[equivalent]]
 module = "barks_reader.core.reader_tree_view_utils"
@@ -2383,29 +2382,5 @@ function = "ComicBookLoader._load_pages"
 change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.__init__"
-change = """
-- self._comic_book_image_builder = comic_book_image_builder
-+ self._comic_book_image_builder = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource.__init__"
-change = """
-- self._empty_page_image = empty_page_image
-+ self._empty_page_image = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.archive_page_image_source"
-function = "ArchivePageImageSource._read_image"
-change = """
-- "Page requires the Fantagraphics library archive, but it is not available."
-+ "XXPage requires the Fantagraphics library archive, but it is not available.XX"
 """
 
