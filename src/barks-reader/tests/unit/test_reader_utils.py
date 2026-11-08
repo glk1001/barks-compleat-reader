@@ -198,6 +198,32 @@ class TestReaderUtils:
         files_rec = get_all_files_in_dir(d, recurse=True)
         assert len(files_rec) == 3  # noqa: PLR2004
 
+    def test_get_all_files_in_dir_recurses_at_every_depth(self, tmp_path: Path) -> None:
+        """Two levels down: one level would pass with the flag dropped on the way down."""
+        d = tmp_path / "subdir"
+        (d / "a" / "b" / "c").mkdir(parents=True)
+        (d / "f1.txt").touch()
+        (d / "a" / "f2.txt").touch()
+        (d / "a" / "b" / "f3.txt").touch()
+        (d / "a" / "b" / "c" / "f4.txt").touch()
+
+        names = sorted(p.name for p in get_all_files_in_dir(d, recurse=True))
+
+        assert names == ["f1.txt", "f2.txt", "f3.txt", "f4.txt"]
+
+    def test_get_all_files_in_dir_recurses_in_a_zip(self, tmp_path: Path) -> None:
+        zip_path = tmp_path / "panels.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("Top/f1.jpg", "")
+            zf.writestr("Top/a/f2.jpg", "")
+            zf.writestr("Top/a/b/f3.jpg", "")
+
+        with zipfile.ZipFile(zip_path) as zf:
+            top = zipfile.Path(zf) / "Top/"
+            names = sorted(p.name for p in get_all_files_in_dir(top, recurse=True))
+
+        assert names == ["f1.jpg", "f2.jpg", "f3.jpg"]
+
     def test_get_all_files_in_dir_does_not_recurse_by_default(self, tmp_path: Path) -> None:
         """Omitting `recurse` must behave like recurse=False, not silently walk the tree."""
         d = tmp_path / "subdir"

@@ -130,6 +130,16 @@ def is_blank_page(page_filename: str, page_type: PageType) -> bool:
 
 
 def get_all_files_in_dir(dir_path: PanelPath, recurse: bool = False) -> list[PanelPath]:
+    """Return the files in ``dir_path``, a folder or a folder in a zip.
+
+    Args:
+        dir_path: The folder to list.
+        recurse: Also list the files in its sub-folders, at every depth.
+
+    Returns:
+        The files, in listing order (a sub-folder's files where the sub-folder is listed).
+
+    """
     assert dir_path.is_dir()
 
     files = []
@@ -137,7 +147,7 @@ def get_all_files_in_dir(dir_path: PanelPath, recurse: bool = False) -> list[Pan
         if filename.is_file():
             files.append(filename)
         elif recurse:
-            files.extend(get_all_files_in_dir(filename))
+            files.extend(get_all_files_in_dir(filename, recurse=True))
 
     return files
 
