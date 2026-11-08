@@ -91,3 +91,34 @@ def test_every_quoted_field_closes_its_quote() -> None:
         assert template.count('"') % 2 == 0, f"{name} has an unclosed double quote"
         for quote, field, after in re.findall(r"""(['"])\{(\w+)\}(.?)""", template):
             assert after == quote, f"{name} opens {quote}{{{field}}} without closing it"
+
+
+class TestAFieldAtAnEdge:
+    """A value at the template's start or end has no literal text there to stop it."""
+
+    def test_a_value_at_the_end_does_not_match_a_longer_one(self) -> None:
+        regex = pattern(log_markers.INDEX_ITEM_PRESSED, item="A")
+        assert re.search(regex, "12:00 | INFO | x - Index item pressed: A\n")
+        assert not re.search(regex, "12:00 | INFO | x - Index item pressed: Abbey\n")
+
+    def test_a_value_at_the_start_does_not_match_a_longer_one(self) -> None:
+        regex = pattern(log_markers.ENTERING_FULLSCREEN, screen="1")
+        assert re.search(regex, "x - 1: Entering fullscreen mode.")
+        assert not re.search(regex, "x - 21: Entering fullscreen mode.")
+
+    def test_a_value_ending_in_punctuation_still_matches(self) -> None:
+        regex = pattern(log_markers.INDEX_ITEM_PRESSED, item="Lost in the Andes!")
+        assert re.search(regex, "x - Index item pressed: Lost in the Andes!")
+
+    def test_a_value_inside_the_template_is_not_bounded(self) -> None:
+        """Literal text on both sides already stops it: no boundary is added."""
+        assert r"\b" not in pattern(log_markers.SHOWED_PAGE, index=3)
+
+    def test_a_regex_field_is_spliced_as_written(self) -> None:
+        regex = pattern(log_markers.INDEX_ITEM_PRESSED, item=re.compile("Ab.*"))
+        assert regex.endswith("Ab.*")
+
+
+def test_capturing_a_field_also_given_a_value_is_refused() -> None:
+    with pytest.raises(KeyError, match="cannot also be given"):
+        log_markers.capture(log_markers.SHOWED_PAGE, "index", index=3)

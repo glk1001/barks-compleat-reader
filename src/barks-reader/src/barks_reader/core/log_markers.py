@@ -424,6 +424,7 @@ WIKI_STRIP: Final = "Wiki strip: {size} in fullscreen on the {layout} layout."
 
 
 _FIELD_RE = re.compile(r"\{(\w+)\}")
+_WORD_CHAR_RE = re.compile(r"\w")
 
 
 def pattern(template: str, **fields: object) -> str:
@@ -434,6 +435,12 @@ def pattern(template: str, **fields: object) -> str:
     matches anything. So ``pattern(SHOWED_PAGE, index=3)`` matches "Showed page 3
     in 12ms." but not "Showed page 34 in 12ms.", and ``pattern(NEW_SELECTED_NODE,
     name=re.compile(r"19\\d\\d-19\\d\\d"))`` matches any year-range node.
+
+    A value given for a field at the template's very start or end has no literal
+    text on that side to stop it, so it is held there by a word boundary (when its
+    edge character is a word character): ``pattern(INDEX_ITEM_PRESSED, item="A")``
+    does not match "Index item pressed: Abbey". ``\\b`` is in both Python's regexes
+    and GNU ``grep -E``.
 
     Args:
         template: A marker from this module.
@@ -452,16 +459,28 @@ def pattern(template: str, **fields: object) -> str:
         msg = f"{sorted(unknown)} not in template {template!r}"
         raise KeyError(msg)
 
-    # split() alternates literal text and field name, starting with a literal.
+    # split() alternates literal text and field name, starting and ending with a
+    # literal, which is empty when the template starts or ends with a field.
+    parts = _FIELD_RE.split(template)
     out: list[str] = []
-    for i, part in enumerate(_FIELD_RE.split(template)):
+    for i, part in enumerate(parts):
         if i % 2 == 0:
             out.append(re.escape(part))
         elif part not in fields:
             out.append(".*")
         else:
             value = fields[part]
-            out.append(value.pattern if isinstance(value, re.Pattern) else re.escape(str(value)))
+            if isinstance(value, re.Pattern):
+                out.append(value.pattern)
+                continue
+            text = str(value)
+            at_start = i == 1 and not parts[0]
+            at_end = i == len(parts) - 2 and not parts[-1]
+            out.append(
+                (r"\b" if at_start and _WORD_CHAR_RE.match(text[:1]) else "")
+                + re.escape(text)
+                + (r"\b" if at_end and _WORD_CHAR_RE.match(text[-1:]) else "")
+            )
     return "".join(out)
 
 
@@ -481,10 +500,14 @@ def capture(template: str, field: str, **fields: object) -> str:
         A regex for ``re.search`` over one log line.
 
     Raises:
-        KeyError: If `field` (or a field named here) is not in the template.
+        KeyError: If `field` (or a field named here) is not in the template, or
+            `field` is also given a value.
 
     """
     if field not in set(_FIELD_RE.findall(template)):
         msg = f"{field!r} not in template {template!r}"
+        raise KeyError(msg)
+    if field in fields:
+        msg = f"{field!r} is captured, so it cannot also be given a value"
         raise KeyError(msg)
     return pattern(template, **fields, **{field: re.compile(f"(?P<{field}>.*)")})
