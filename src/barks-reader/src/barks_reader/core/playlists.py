@@ -69,7 +69,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
         heading="The Brittle Mastery Stories",
         intro=(
             "[i]Stories where Donald is an unbelievably brilliant master craftsman. But"
-            "\u2014arrogance\u2014or jealously bring him crashing down. The first four titles are"
+            "\u2014arrogance\u2014or jealousy bring him crashing down. The first four titles are"
             " not the true 'Brittle Mastery' stories but rather stories where Donald is very, very"
             " good at something. The final five titles are truly brittle mastery.[/i]"
         ),
