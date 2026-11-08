@@ -39,15 +39,29 @@ class SpecialFantaOverrides:
         }
 
     def is_title_where_overrides_are_optional(self, title: Titles) -> bool:
+        """Return whether a setting chooses between Fantagraphics' version and an override."""
         return title in self._FANTA_OVERRIDES_SETTINGS
 
     def get_description(self, title: Titles) -> str:
+        """Return the label of the title's override setting."""
         return self._FANTA_OVERRIDES_SETTINGS[title][0]
 
     def get_overrides_setting(self, title: Titles) -> bool:
+        """Return the title's override setting as it is now."""
         return self._FANTA_OVERRIDES_SETTINGS[title][1]()
 
     def get_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
+        """Return the title's inset, or its no-overrides copy when overrides are off.
+
+        Args:
+            title: One of the titles whose overrides are optional.
+            use_overrides: Keep the standard inset, which shows the overrides.
+
+        Returns:
+            The ``-no-overrides`` inset when ``use_overrides`` is off and it exists, else
+            the standard one.
+
+        """
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
             title, use_only_edited_if_possible=False
         )
@@ -55,6 +69,7 @@ class SpecialFantaOverrides:
         return self._get_special_inset_file(std_inset_file, use_overrides)
 
     def get_title_page_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
+        """Return the title page's inset: as `get_inset_file`, preferring the edited inset."""
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
             title, use_only_edited_if_possible=True
         )
