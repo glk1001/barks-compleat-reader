@@ -1719,6 +1719,42 @@ change = """
 reason = "begin() sets it with _current_title; end() before begin() fails the other's assert first either way."
 
 [[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.__init__"
+change = """
+- self._save_enabled = False
++ self._save_enabled = None
+"""
+reason = "The flag is only tested for truth, where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.end"
+change = """
+- self._save_enabled = False
++ self._save_enabled = None
+"""
+reason = "The flag is only tested for truth, where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.end"
+change = """
+- self._current_title = None
++ self._current_title = ""
+"""
+reason = "Read only after the save flag passes, and end has just turned it off: begin sets the title and layout before anything reads them again."
+
+[[equivalent]]
+module = "barks_reader.core.last_read_page_tracker"
+function = "LastReadPageTracker.end"
+change = """
+- self._current_layout = None
++ self._current_layout = ""
+"""
+reason = "Read only after the save flag passes, and end has just turned it off: begin sets the title and layout before anything reads them again."
+
+[[equivalent]]
 module = "barks_reader.core.reader_navigation"
 function = "ReaderNavigation.__init__"
 change = """
@@ -2512,14 +2548,6 @@ function = "ComicBookLoader._load_pages"
 change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.last_read_page_tracker"
-function = "LastReadPageTracker.__init__"
-change = """
-- self._save_enabled = False
-+ self._save_enabled = None
 """
 
 [[untriaged]]
