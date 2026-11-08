@@ -5,6 +5,7 @@ import sys
 import zipfile
 from pathlib import Path
 from random import randrange
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -45,6 +46,9 @@ from barks_reader.core.reader_utils import (
     unique_extend,
 )
 from intspan import intspan
+
+if TYPE_CHECKING:
+    from typing import IO, Any
 
 
 class TestReaderUtils:
@@ -261,6 +265,44 @@ class TestReaderUtils:
             assert len(titles) == 2  # noqa: PLR2004
             assert Titles.DONALD_DUCK_FINDS_PIRATE_GOLD in titles
             assert Titles.DONALD_DUCK_AND_THE_MUMMYS_RING in titles
+
+    def test_read_title_list_skips_blank_lines(self, tmp_path: Path) -> None:
+        """A blank line (an editor's extra newline) is not an unknown title."""
+        f = tmp_path / "titles.txt"
+        f.write_text("\nLost in the Andes!\n\n   \nVacation Time\n\n", encoding="utf-8")
+
+        titles = read_title_list(f)
+
+        assert titles == sorted([Titles.LOST_IN_THE_ANDES, Titles.VACATION_TIME])
+
+    def test_read_title_list_drops_a_byte_order_mark(self, tmp_path: Path) -> None:
+        f = tmp_path / "titles.txt"
+        f.write_text("Lost in the Andes!\n", encoding="utf-8-sig")
+
+        assert read_title_list(f) == [Titles.LOST_IN_THE_ANDES]
+
+    def test_read_title_list_reads_utf8_whatever_the_locale(self, tmp_path: Path) -> None:
+        """Windows' default codec (cp1252) would misread a UTF-8 title."""
+        f = tmp_path / "titles.txt"
+        f.write_bytes("Caf\u00e9 Title\n".encode())
+
+        with patch.object(utils_module, "STR_TITLE_TO_ENUM", {"Caf\u00e9 Title": Titles.CUBE_THE}):
+            real_open = Path.open
+
+            def open_with_cp1252_default(
+                path: Path, mode: str = "r", encoding: str = "cp1252"
+            ) -> IO[Any]:
+                return real_open(path, mode, encoding=encoding)
+
+            with patch.object(Path, Path.open.__name__, open_with_cp1252_default):
+                assert read_title_list(f) == [Titles.CUBE_THE]
+
+    def test_read_title_list_names_an_unknown_title(self, tmp_path: Path) -> None:
+        f = tmp_path / "titles.txt"
+        f.write_text("Not A Barks Title\n", encoding="utf-8")
+
+        with pytest.raises(RuntimeError, match='Unknown title "Not A Barks Title"'):
+            read_title_list(f)
 
     def test_unique_extend(self) -> None:
         """Test extending list with unique items."""

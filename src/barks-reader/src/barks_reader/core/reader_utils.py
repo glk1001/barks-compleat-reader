@@ -143,7 +143,7 @@ def get_all_files_in_dir(dir_path: PanelPath, recurse: bool = False) -> list[Pan
 
 
 def read_text_paragraphs(filepath: Path) -> str:
-    with filepath.open("r") as f:
+    with filepath.open("r", encoding="utf-8") as f:
         lines = f.readlines()
 
     text = ""
@@ -163,14 +163,29 @@ def read_text_paragraphs(filepath: Path) -> str:
 
 
 def read_title_list(filepath: PanelPath) -> list[Titles]:
-    # Return the list of titles in 'filepath', in submission date order.
+    """Return the titles listed in ``filepath``, one a line, in submission date order.
 
-    with filepath.open("r") as f:
+    Blank lines are skipped. The file is read as UTF-8 whatever the platform's default
+    encoding, and a byte-order mark (which Windows Notepad can write) is dropped.
+
+    Args:
+        filepath: The title list, such as the personal favourites file.
+
+    Returns:
+        The titles, sorted in enum (submission date) order.
+
+    Raises:
+        RuntimeError: If a line is not a known title.
+
+    """
+    with filepath.open("r", encoding="utf-8-sig") as f:
         lines = f.readlines()
 
     titles = []
     for line in lines:
         title_str = line.strip()
+        if not title_str:
+            continue
         if title_str not in STR_TITLE_TO_ENUM:
             msg = f'Unknown title "{title_str}" in favourites file "{filepath}".'
             raise RuntimeError(msg)
