@@ -28,9 +28,15 @@ def describe_widget(widget: object) -> str:
     """
     # Widgets reached through `ids` arrive as Kivy WeakProxy objects; name what
     # they stand for.
+    # A proxy whose widget is gone raises ReferenceError on any attribute, which
+    # getattr's default does not catch: name the proxy alone.
     ref = getattr(widget, "__ref__", None)
-    target = ref() if callable(ref) else None
-    name = type(widget if target is None else target).__name__
+    if callable(ref):
+        target = ref()
+        if target is None:
+            return f"{type(widget).__name__} (dead)"
+        widget = target
+    name = type(widget).__name__
     text = getattr(widget, "text", None)
     if not isinstance(text, str) or not text.strip():
         return name

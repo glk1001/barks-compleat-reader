@@ -35,6 +35,20 @@ class TestDescribeWidget:
         proxy.text = real.text
         assert describe_widget(proxy) == '_RealButton "Goto wiki page"'
 
+    def test_a_dead_kivy_weak_proxy_is_named_without_touching_it(self) -> None:
+        """A proxy whose widget is gone raises on every attribute; naming it must not."""
+
+        class _DeadProxy:
+            def __ref__(self) -> None:
+                return None
+
+            @property
+            def text(self) -> str:
+                msg = "weakly-referenced object no longer exists"
+                raise ReferenceError(msg)
+
+        assert describe_widget(_DeadProxy()) == "_DeadProxy (dead)"
+
     def test_a_widget_without_text_is_its_class_alone(self) -> None:
         assert describe_widget(MagicMock()) == "MagicMock"  # its .text is no str
 
