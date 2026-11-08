@@ -343,7 +343,7 @@ def format_event_page(event: ReadEvent) -> str:
     return _mid_comic_page_fragment("to", event.last_display_page)
 
 
-def _mid_comic_page_fragment(preposition: str, display_page: str | None) -> str:
+def _mid_comic_page_fragment(preposition: str, display_page: str) -> str:
     # A finished comic's position is normalised to COMIC_BEGIN_PAGE: no fragment for it.
     if display_page and display_page != COMIC_BEGIN_PAGE:
         return f"{preposition} p {display_page}"
