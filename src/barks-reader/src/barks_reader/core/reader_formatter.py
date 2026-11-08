@@ -63,7 +63,8 @@ LONG_TITLE_SPLITS = {
 # build, where pyphen's bundled dictionaries sit alongside the package.
 _PYPHEN_DICT_FILE = Path(pyphen.__file__).parent / "dictionaries" / "hyph_en_US.dic"
 PYPHEN_DICT = pyphen.Pyphen(filename=str(_PYPHEN_DICT_FILE))
-BOLD_TAG_PATTERN = re.compile(r"\[b](.*)\[/b]")
+# Non-greedy: the first bold run, not everything from the first [b] to the last [/b].
+BOLD_TAG_PATTERN = re.compile(r"\[b](.*?)\[/b]")
 MARKUP_TAG_PATTERN = re.compile(r"\[/?[^]]+]")
 
 # The only real Kivy markup tags in BARKS_EXTRA_INFO; every other square-bracket run
@@ -144,6 +145,7 @@ def get_markup_text_with_extra(text: str, extra: str) -> str:
 
 
 def get_clean_text_without_extra(markup_text: str) -> str:
+    """Return a node's name: its text's first bold run, or the text when none is bold."""
     match = BOLD_TAG_PATTERN.search(markup_text)
     if match:
         return match.group(1)

@@ -137,9 +137,14 @@ def test_get_clean_text_without_extra() -> None:
     assert reader_formatter.get_clean_text_without_extra("[b]foo[/b]") == "foo"
     assert reader_formatter.get_clean_text_without_extra("foo") == "foo"
 
-    # Test greedy matching behavior
     text = "[b]Title[/b] [i](Info)[/i]"
     assert reader_formatter.get_clean_text_without_extra(text) == "Title"
+
+
+def test_get_clean_text_without_extra_takes_the_first_bold_run_only() -> None:
+    """A greedy match ran from the first [b] to the last [/b], tags and all."""
+    text = "[b]Donald Duck[/b] in [b]Lost in the Andes![/b]"
+    assert reader_formatter.get_clean_text_without_extra(text) == "Donald Duck"
 
 
 def test_get_text_with_markup_stripped() -> None:
