@@ -310,7 +310,7 @@ ACTION_BAR_HIDDEN_ON_ESCAPE: Final = "Hiding action bar on Escape."
 # ------------------------------------------------------------ the fun view --
 FUN_OPTIONS_PRESSED: Final = "Fun view options button pressed. New state is '{state}'."
 FUN_VIEW_TITLE_SET: Final = 'Set fun view title to "{title}".'
-FUN_IMAGE_LOADED: Final = 'Set last loaded fun image file "{filename} and title: "{title}".'
+FUN_IMAGE_LOADED: Final = 'Set last loaded fun image file "{filename}" and title: "{title}".'
 # The spread's fun page: the image before the one on show, in the lower tier, or none.
 FUN_VIEW_LOWER_TIER: Final = 'Fun view lower tier: "{filename}" from "{title}".'
 FUN_VIEW_LOWER_TIER_EMPTY: Final = "Fun view lower tier: empty."
@@ -344,7 +344,7 @@ INDEX_SUB_ITEMS_REVEALED: Final = "Index scrolled to show the sub-items under '{
 # A "See" cross-reference pressed: the index goes to its target's entry and opens it.
 INDEX_SEE_FOLLOWED: Final = 'Following "{name}" to "{see}".'
 INDEX_TERM_HANDLED: Final = 'Handling index term: "{term}".'
-INDEX_PREFIX_PRESSED: Final = "Pressed prefix button: '{prefix}."
+INDEX_PREFIX_PRESSED: Final = "Pressed prefix button: '{prefix}'."
 SHOW_BUBBLES_FOR_INDEX_TERMS: Final = (
     'Show speech bubbles for: "{title}" and index terms "{terms}".'
 )

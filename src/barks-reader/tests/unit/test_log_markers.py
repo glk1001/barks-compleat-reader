@@ -65,17 +65,29 @@ class TestCapture:
             log_markers.capture(log_markers.SHOWED_PAGE, "no_such_field")
 
 
-def test_every_marker_formats_with_its_named_fields_only() -> None:
-    """A template must use only ``{name}`` fields, so ``pattern`` and ``format`` agree."""
+def _templates() -> dict[str, str]:
     templates = {
         name: value
         for name, value in vars(log_markers).items()
         if name.isupper() and isinstance(value, str)
     }
     assert templates, "no markers found"
-    for name, template in templates.items():
+    return templates
+
+
+def test_every_marker_formats_with_its_named_fields_only() -> None:
+    """A template must use only ``{name}`` fields, so ``pattern`` and ``format`` agree."""
+    for name, template in _templates().items():
         fields = re.findall(r"\{(\w*)\}", template)
         assert all(fields), f"{name} has a positional {{}} field"
         # The braces a template contains must all be fields: a stray one would
         # make .format raise at the call site.
         assert template.count("{") == template.count("}") == len(fields), name
+
+
+def test_every_quoted_field_closes_its_quote() -> None:
+    """A field opened with a quote is closed with it, so a value's end is plain in the log."""
+    for name, template in _templates().items():
+        assert template.count('"') % 2 == 0, f"{name} has an unclosed double quote"
+        for quote, field, after in re.findall(r"""(['"])\{(\w+)\}(.?)""", template):
+            assert after == quote, f"{name} opens {quote}{{{field}}} without closing it"
