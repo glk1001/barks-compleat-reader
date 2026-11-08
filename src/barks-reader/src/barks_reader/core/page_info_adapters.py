@@ -32,9 +32,27 @@ class FantagraphicsPanelSegmentsAdapter:
         self._cached: tuple[SrceAndDestPages, RequiredDimensions] | None = None
 
     def get_sorted_pages(self, comic: ComicBook) -> SrceAndDestPages:
+        """Return the comic's source and destination pages, read once per comic.
+
+        Args:
+            comic: The comic to lay out.
+
+        Returns:
+            The comic's source/destination page pairs.
+
+        """
         return self._load(comic)[0]
 
     def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions:
+        """Return the dimensions the comic's pages are rendered at, read once per comic.
+
+        Args:
+            comic: The comic to lay out.
+
+        Returns:
+            The comic's required rendering dimensions.
+
+        """
         return self._load(comic)[1]
 
     def _load(self, comic: ComicBook) -> tuple[SrceAndDestPages, RequiredDimensions]:

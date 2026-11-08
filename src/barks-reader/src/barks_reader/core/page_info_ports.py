@@ -12,7 +12,17 @@ class SortedPagesPort(Protocol):
     fantagraphics sorted-pages helper from core layout logic.
     """
 
-    def get_sorted_pages(self, comic: ComicBook) -> SrceAndDestPages: ...
+    def get_sorted_pages(self, comic: ComicBook) -> SrceAndDestPages:
+        """Return the comic's source and destination pages, in reading order.
+
+        Args:
+            comic: The comic to lay out.
+
+        Returns:
+            The comic's source/destination page pairs.
+
+        """
+        ...
 
 
 @runtime_checkable
@@ -23,4 +33,14 @@ class RequiredDimensionsPort(Protocol):
     the panel-segment I/O by wiring ``None`` in place of an adapter.
     """
 
-    def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions: ...
+    def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions:
+        """Return the dimensions the comic's pages are rendered at.
+
+        Args:
+            comic: The comic to lay out.
+
+        Returns:
+            The comic's required rendering dimensions.
+
+        """
+        ...
