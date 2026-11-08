@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import filecmp
 import os
 import shutil
 import sys
@@ -37,7 +38,7 @@ def write_linux_desktop_entry(source_icon_path: Path, app_title: str) -> None:
     especially when the path contains spaces.
 
     Idempotent: rewrites the file only when its contents would change, copies the
-    icon only when source/dest sizes differ.
+    icon only when source and dest differ.
 
     Args:
         source_icon_path: Absolute path to the PNG icon Kivy uses for the app window.
@@ -129,7 +130,8 @@ def _files_match(a: Path, b: Path) -> bool:
     if not b.is_file():
         return False
     try:
-        return a.stat().st_size == b.stat().st_size
+        # By content: an updated icon of the same byte size must still be copied.
+        return filecmp.cmp(a, b, shallow=False)
     except OSError:
         return False
 

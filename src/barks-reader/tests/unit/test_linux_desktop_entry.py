@@ -79,13 +79,24 @@ def test_a_changed_entry_is_rewritten(data_home: Path, icon: Path) -> None:
 
 
 @pytest.mark.usefixtures("data_home")
-def test_an_icon_of_the_same_size_is_not_copied_again(icon: Path) -> None:
+def test_an_unchanged_icon_is_not_copied_again(icon: Path) -> None:
     lde.write_linux_desktop_entry(icon, "Barks Reader")
 
     with patch.object(lde.shutil, lde.shutil.copyfile.__name__) as copyfile:
         lde.write_linux_desktop_entry(icon, "Barks Reader")
 
     copyfile.assert_not_called()
+
+
+def test_a_changed_icon_of_the_same_size_is_copied(data_home: Path, icon: Path) -> None:
+    """An app update can change the icon without changing its byte size."""
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+    icon.write_bytes(b"PNG BYTES")  # the same nine bytes, different content
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
+    installed = data_home / "icons" / "hicolor" / "128x128" / "apps" / f"{APP_NAME}.png"
+    assert installed.read_bytes() == b"PNG BYTES"
 
 
 def test_a_missing_icon_is_referenced_by_its_path(data_home: Path, tmp_path: Path) -> None:
