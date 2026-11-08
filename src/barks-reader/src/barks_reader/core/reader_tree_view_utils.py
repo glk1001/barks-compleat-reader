@@ -16,20 +16,27 @@ class BaseTreeViewNodeProtocol(Protocol):
     level: int
     is_open: bool
 
-    def get_name(self) -> str: ...
+    def get_name(self) -> str:
+        """Return the node's name, its step in a saved tree path."""
+        ...
 
 
 class TitleTreeViewNodeProtocol(BaseTreeViewNodeProtocol, Protocol):
-    def get_title(self) -> Titles: ...
+    def get_title(self) -> Titles:
+        """Return the title the node is for."""
+        ...
 
 
 class ReaderTreeViewProtocol(Protocol):
     root: BaseTreeViewNodeProtocol
 
-    def toggle_node(self, node: BaseTreeViewNodeProtocol) -> None: ...
+    def toggle_node(self, node: BaseTreeViewNodeProtocol) -> None:
+        """Open ``node`` if it is closed, close it if it is open."""
+        ...
 
 
 def get_tree_view_node_path(node: BaseTreeViewNodeProtocol) -> list[str]:
+    """Return the names from ``node`` up to the root, ``node``'s first and "root" last."""
     node_path = [node.get_name()]
     current = node.parent_node
     while current:
@@ -83,6 +90,7 @@ def find_and_expand_node_by_path(
 def find_tree_view_title_node(
     nodes: list[TitleTreeViewNodeProtocol], target_title: Titles
 ) -> BaseTreeViewNodeProtocol | None:
+    """Return a node for ``target_title`` among ``nodes`` and their descendants, or ``None``."""
     nodes_to_visit = nodes.copy()
 
     while nodes_to_visit:
