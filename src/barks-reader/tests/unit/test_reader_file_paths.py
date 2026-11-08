@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -267,6 +268,15 @@ class TestSwitchingThePanelsSource:
         self._set(reader_file_paths, panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         assert seen == [("Insets", ".jpg"), ("Insets", ".png")]
+
+    def test_a_missing_panels_folder_is_named_before_the_folders_in_it(
+        self, reader_file_paths: ReaderFilePaths, tmp_path: Path
+    ) -> None:
+        missing = tmp_path / "No Panels Here"
+        expected = re.escape(f'Required directory not found: "{missing}".')
+
+        with pytest.raises(FileNotFoundError, match=expected):
+            self._set(reader_file_paths, missing, BarksPanelsExtType.MOSTLY_PNG)
 
     def test_a_source_that_fails_its_check_calls_no_listener(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path

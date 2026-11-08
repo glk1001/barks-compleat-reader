@@ -1532,6 +1532,24 @@ reason = "is_missing defaults to False."
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """
+- self.barks_panels_are_encrypted: bool = False
++ self.barks_panels_are_encrypted: bool = None
+"""
+reason = "set_barks_panels_source sets the flag before its only readers, reader_setup's comic prep and the wiki's panel load, can run."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
+- self.barks_panels_are_encrypted: bool = False
++ self.barks_panels_are_encrypted: bool = True
+"""
+reason = "set_barks_panels_source sets the flag before its only readers, reader_setup's comic prep and the wiki's panel load, can run."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
 - self._barks_panels_zip: zipfile.ZipFile | None = None
 + self._barks_panels_zip: zipfile.ZipFile | None = ""
 """
@@ -2440,30 +2458,6 @@ function = "ComicBookLoader._load_pages"
 change = """
 - executor.shutdown(cancel_futures=True)
 + executor.shutdown(cancel_futures=False)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self.barks_panels_are_encrypted: bool = False
-+ self.barks_panels_are_encrypted: bool = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.__init__"
-change = """
-- self.barks_panels_are_encrypted: bool = False
-+ self.barks_panels_are_encrypted: bool = True
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths._check_panels_dirs"
-change = """
-- dirs_to_check.insert(0, self._barks_panels_source)
-+ dirs_to_check.insert(1, self._barks_panels_source)
 """
 
 [[untriaged]]
