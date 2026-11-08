@@ -133,14 +133,17 @@ def hyphenate_text(text: str) -> str:
 
 
 def get_bold_markup_text(text: str) -> str:
+    """Return ``text`` in Kivy bold markup."""
     return f"[b]{text}[/b]"
 
 
 def get_markup_text_with_num_titles(text: str, num_titles: int) -> str:
+    """Return ``text`` in bold with its title count after it, in brackets and italics."""
     return get_markup_text_with_extra(text, str(num_titles))
 
 
 def get_markup_text_with_extra(text: str, extra: str) -> str:
+    """Return ``text`` in bold with ``extra`` after it, in brackets and italics."""
     return f"[b]{text}[/b] [i]({extra})[/i]"
 
 
@@ -154,14 +157,17 @@ def get_clean_text_without_extra(markup_text: str) -> str:
 
 
 def get_text_with_markup_stripped(text: str) -> str:
+    """Return ``text`` without its Kivy markup tags."""
     return MARKUP_TAG_PATTERN.sub("", text)
 
 
 def get_action_bar_title(font_manager: FontManagerProtocol, title: str) -> str:
+    """Return ``title`` as an action bar shows it: in the Carl Barks font, at title size."""
     return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
 
 
 def get_formatted_color(color: Color) -> str:
+    """Return ``color`` as a bracketed list of its channels, two decimals each."""
     color_strings = [f"{c:04.2f}" for c in color]
     return f"({', '.join(color_strings)})"
 
@@ -197,6 +203,7 @@ class ReaderFormatter:
 
     @staticmethod
     def get_main_title(title_str: str, add_footnote: bool) -> str:
+        """Return the bottom title view's title, with a footnote star if asked for."""
         if not add_footnote:
             return title_str
 
@@ -206,6 +213,18 @@ class ReaderFormatter:
     def get_issue_info(
         fanta_info: FantaComicBookInfo, add_footnote: bool, sup_font_size: int, color: str
     ) -> str:
+        """Return a tree node's issue line: first issue and submitted date, in italics.
+
+        Args:
+            fanta_info: The title.
+            add_footnote: End the line with a footnote star.
+            sup_font_size: The footnote star's font size.
+            color: The submitted year's colour, as Kivy markup takes it.
+
+        Returns:
+            The line, in Kivy markup.
+
+        """
         first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
         submitted_date = ReaderFormatter.get_formatted_submitted_str(
             fanta_info.comic_book_info, color
@@ -220,6 +239,7 @@ class ReaderFormatter:
 
     @staticmethod
     def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
+        """Return " [day month year]" with the year in ``color``, or "" with no submitted date."""
         if comic_book_info.submitted_month == -1:
             # No recorded submitted date (e.g. some covers) - omit the bracket.
             return ""
@@ -240,6 +260,18 @@ class ReaderFormatter:
     def get_title_info(
         self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int, add_footnote: bool
     ) -> str:
+        """Return the title info box's lines: first issue, submitted, payslip and source.
+
+        Args:
+            fanta_info: The title.
+            max_len_before_shorten: The first-issue text's length past which its month
+                is abbreviated; 0 never abbreviates it.
+            add_footnote: End the first-issue text with a footnote star.
+
+        Returns:
+            The lines, in Kivy markup; the payslip line only when Barks was paid for it.
+
+        """
         issue_info = get_formatted_first_published_str(
             fanta_info.comic_book_info, self._title_info_issue_name, max_len_before_shorten
         )
@@ -272,6 +304,7 @@ class ReaderFormatter:
 
     @staticmethod
     def get_title_extra_info(fanta_info: FantaComicBookInfo) -> str:
+        """Return the title's extra-info note, hyphenated for display, or "" with none."""
         title = fanta_info.comic_book_info.title
         if title not in BARKS_EXTRA_INFO:
             return ""
