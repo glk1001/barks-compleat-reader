@@ -11,6 +11,21 @@ from .main_layout import MATCH_THE_SCREEN
 
 @dataclass(frozen=True, slots=True)
 class MinimalConfigOptions:
+    """The few settings read before the app is up: the window, the log level, the layout.
+
+    The defaults are what a boot gets when the ini cannot be read.
+
+    Attributes:
+        error_background_path: The background of the boot error screen.
+        success_background_path: The background shown once the boot succeeds.
+        win_height: The saved window height; 0 for none.
+        win_left: The saved window's left edge; -1 for none.
+        win_top: The saved window's top edge; -1 for none.
+        log_level: The log level name.
+        main_screen_layout: The "Layout" setting: single page, spread, or match the screen.
+
+    """
+
     error_background_path: Path | None = None
     success_background_path: Path | None = None
     win_height: int = 0
@@ -21,6 +36,18 @@ class MinimalConfigOptions:
 
 
 def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
+    """Read the settings the boot needs before the app is up, from the app's ini.
+
+    Any error reading them (a bad ini, a missing background) is logged, and the boot
+    goes on with the defaults.
+
+    Args:
+        cfg_info: Where the app's ini and data are.
+
+    Returns:
+        The settings read, or the defaults on any error.
+
+    """
     from .reader_settings import (  # noqa: PLC0415
         BARKS_READER_SECTION,
         LOG_LEVEL,
@@ -65,28 +92,18 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
             log_lvl,
             main_screen_layout,
         )
-
-        logger.debug(
-            f"Minimal config options: "
-            f'"{min_options.error_background_path}",'
-            f'"{min_options.success_background_path}",'
-            f" {min_options.win_height},"
-            f" ({min_options.win_left}, {min_options.win_top}),"
-            f" '{min_options.log_level}',"
-            f" '{min_options.main_screen_layout}'."
-        )
-
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Ini error: {e}.")
         min_options = MinimalConfigOptions()
-        logger.debug(
-            f"Minimal config options: "
-            f'"{min_options.error_background_path}",'
-            f'"{min_options.success_background_path}",'
-            f" {min_options.win_height},"
-            f" ({min_options.win_left}, {min_options.win_top}),"
-            f" '{min_options.log_level}'."
-        )
-        return min_options
-    else:
-        return min_options
+
+    # One line for both outcomes, so a fallback boot logs every option a read one does.
+    logger.debug(
+        f"Minimal config options: "
+        f'"{min_options.error_background_path}",'
+        f'"{min_options.success_background_path}",'
+        f" {min_options.win_height},"
+        f" ({min_options.win_left}, {min_options.win_top}),"
+        f" '{min_options.log_level}',"
+        f" '{min_options.main_screen_layout}'."
+    )
+    return min_options

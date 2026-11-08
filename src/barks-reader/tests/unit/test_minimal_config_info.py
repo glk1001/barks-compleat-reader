@@ -164,3 +164,26 @@ class TestGetMinimalConfigOptions:
         opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
 
         assert opts == MinimalConfigOptions()
+
+
+class TestTheOptionsLine:
+    """A read boot and a fallback boot log the same options, layout included."""
+
+    def test_a_read_boot_logs_the_layout(self, tmp_path: Path, loguru_sink: list[str]) -> None:
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "app.ini"
+        _write_ini(ini, main_screen_layout="Two-page spread")
+
+        get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        [line] = [m for m in loguru_sink if m.startswith("Minimal config options:")]
+        assert line.endswith(" 'Two-page spread'.")
+
+    def test_a_fallback_boot_logs_the_layout_too(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        get_minimal_config_options(_make_cfg_info(tmp_path, tmp_path / "does_not_exist.ini"))
+
+        assert any(m.startswith("Ini error:") for m in loguru_sink)
+        [line] = [m for m in loguru_sink if m.startswith("Minimal config options:")]
+        assert line.endswith(f" '{MATCH_THE_SCREEN}'.")
