@@ -19,8 +19,8 @@ class BaseTreeViewNodeProtocol(Protocol):
     def get_name(self) -> str: ...
 
 
-class TitleTreeViewNodeProtocol(BaseTreeViewNodeProtocol):
-    def get_title(self) -> Titles: ...  # ty:ignore[empty-body]
+class TitleTreeViewNodeProtocol(BaseTreeViewNodeProtocol, Protocol):
+    def get_title(self) -> Titles: ...
 
 
 class ReaderTreeViewProtocol(Protocol):
