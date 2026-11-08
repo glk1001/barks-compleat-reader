@@ -33,6 +33,9 @@ _DEFAULT_PNG_BARKS_PANELS_SOURCE = _DEFAULT_BARKS_DIR + "/Barks Panels Pngs"
 
 EDITED_SUBDIR = "edited"
 
+# The files whose names are titles in a panel-type folder.
+_TITLE_IMAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
+
 
 class PanelDirNames(Enum):
     AI = "AI"
@@ -394,11 +397,17 @@ class ReaderFilePaths:
 
             all_titles = []
             for file in parent_image_dir.iterdir():
+                # Hidden OS files (.DS_Store, ._ resource forks) are not titles.
+                if file.name.startswith("."):
+                    continue
                 title = get_title_str_from_filename(file)
                 if file.is_dir():
                     if title != EDITED_SUBDIR:
                         all_titles.append(title)
-                elif not title.endswith(NO_OVERRIDES_SUFFIX):
+                elif file.suffix.lower() in _TITLE_IMAGE_EXTS and not title.endswith(
+                    NO_OVERRIDES_SUFFIX
+                ):
+                    # Only an image names a title: not Thumbs.db or a stray text file.
                     all_titles.append(title)
 
             self._titles_cache[file_type] = all_titles

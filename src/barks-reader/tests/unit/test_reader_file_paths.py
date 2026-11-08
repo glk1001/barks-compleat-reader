@@ -357,6 +357,46 @@ class TestFileTypeTitles:
 
         assert sorted(titles) == ["Title1", "Title2", "Title4"]
 
+    def test_hidden_os_files_and_folders_are_not_titles(
+        self, paths_with_covers: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        covers = panels_dir / "Covers"
+        (covers / ".DS_Store").touch()
+        (covers / "._Title1.png").touch()  # a macOS resource fork, image suffix and all
+        (covers / ".hidden-dir").mkdir()
+
+        titles = paths_with_covers.get_file_type_titles(FileTypes.COVER)
+
+        assert sorted(titles) == ["Title1", "Title2", "Title4"]
+
+    def test_only_image_files_name_titles(
+        self, paths_with_covers: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        covers = panels_dir / "Covers"
+        (covers / "Thumbs.db").touch()
+        (covers / "notes.txt").touch()
+        (covers / "Title5.JPG").touch()  # the suffix is matched without case
+
+        titles = paths_with_covers.get_file_type_titles(FileTypes.COVER)
+
+        assert sorted(titles) == ["Title1", "Title2", "Title4", "Title5"]
+
+    def test_a_zip_source_lists_only_its_image_titles(
+        self, reader_file_paths: ReaderFilePaths, tmp_path: Path
+    ) -> None:
+        zip_path = tmp_path / "Barks Panels.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for dir_enum in PanelDirNames:
+                zf.writestr(f"{dir_enum.value}/placeholder.txt", "")
+            zf.writestr(f"{PanelDirNames.INSETS.value}/{EDITED_SUBDIR}/placeholder.txt", "")
+            zf.writestr(f"{PanelDirNames.COVERS.value}/Title1.jpg", "")
+            zf.writestr(f"{PanelDirNames.COVERS.value}/.DS_Store", "")
+
+        with patch("os.path.expandvars", return_value=str(zip_path)):
+            reader_file_paths.set_barks_panels_source(zip_path, BarksPanelsExtType.JPG)
+
+        assert reader_file_paths.get_file_type_titles(FileTypes.COVER) == ["Title1"]
+
     def test_the_directory_is_scanned_once_and_then_cached(
         self, paths_with_covers: ReaderFilePaths, panels_dir: Path
     ) -> None:
