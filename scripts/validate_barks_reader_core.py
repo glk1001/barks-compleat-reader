@@ -374,67 +374,16 @@ def phase2_system_file_paths(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
 ) -> None:
-    """Verify every directory and file populated by ``set_barks_reader_files_dir``.
+    """Verify every directory and file the app's own required-files check covers.
 
-    Replicates the dir + file lists from
-    ``SystemFilePaths._check_reader_files_dirs`` (kept in sync manually) and
-    appends each missing entry to the collector instead of raising.
+    The lists are the app's (``SystemFilePaths.required_dirs`` and ``required_files``),
+    but each missing entry is appended to the collector instead of raising.
     """
     phase = collector.start_phase("System File Paths", "2")
 
-    # Mirror the lists in SystemFilePaths._check_reader_files_dirs (private but
-    # intentionally duplicated here so this script stays decoupled from the
-    # raise-on-first-error path used by the running app).
-    dirs_to_check: list[tuple[str, Path | None]] = [
-        ("barks_reader_files_dir", sys_paths._barks_reader_files_dir),  # noqa: SLF001
-        ("reader_icon_files_dir", sys_paths._reader_icon_files_dir),  # noqa: SLF001
-        ("action_bar_icons_dir", sys_paths._action_bar_icons_dir),  # noqa: SLF001
-        ("various_files_dir", sys_paths._various_files_dir),  # noqa: SLF001
-        ("indexes_dir", sys_paths._indexes_dir),  # noqa: SLF001
-        (
-            "fantagraphics_overrides_root_dir",
-            sys_paths._fantagraphics_overrides_root_dir,  # noqa: SLF001
-        ),
-        ("intro_doc_dir", sys_paths._intro_doc_dir),  # noqa: SLF001
-        ("censorship_fixes_doc_dir", sys_paths._censorship_fixes_doc_dir),  # noqa: SLF001
-        ("how_to_doc_dir", sys_paths._how_to_doc_dir),  # noqa: SLF001
-    ]
-    for label, dir_path in dirs_to_check:
-        assert dir_path is not None
+    for label, dir_path in sys_paths.required_dirs():
         _check_dir(phase, label, dir_path)
-
-    files_to_check: list[tuple[str, Path | None]] = [
-        ("app_window_icon_path", sys_paths._app_window_icon_path),  # noqa: SLF001
-        ("error_background_path", sys_paths._error_background_path),  # noqa: SLF001
-        ("success_background_path", sys_paths._success_background_path),  # noqa: SLF001
-        ("app_identity_image_path", sys_paths._app_identity_image_path),  # noqa: SLF001
-        ("close_icon_path", sys_paths._close_icon_path),  # noqa: SLF001
-        ("power_icon_path", sys_paths._power_icon_path),  # noqa: SLF001
-        ("collapse_icon_path", sys_paths._collapse_icon_path),  # noqa: SLF001
-        ("refresh_arrow_icon_path", sys_paths._refresh_arrow_icon_path),  # noqa: SLF001
-        ("settings_icon_path", sys_paths._settings_icon_path),  # noqa: SLF001
-        ("menu_dots_icon_path", sys_paths._menu_dots_icon_path),  # noqa: SLF001
-        ("fullscreen_icon_path", sys_paths._fullscreen_icon_path),  # noqa: SLF001
-        ("fullscreen_exit_icon_path", sys_paths._fullscreen_exit_icon_path),  # noqa: SLF001
-        ("single_page_icon_path", sys_paths._single_page_icon_path),  # noqa: SLF001
-        ("double_page_icon_path", sys_paths._double_page_icon_path),  # noqa: SLF001
-        ("goto_icon_path", sys_paths._goto_icon_path),  # noqa: SLF001
-        ("goto_start_icon_path", sys_paths._goto_start_icon_path),  # noqa: SLF001
-        ("goto_end_icon_path", sys_paths._goto_end_icon_path),  # noqa: SLF001
-        ("hamburger_menu_icon_path", sys_paths._hamburger_menu_icon_path),  # noqa: SLF001
-        ("go_back_icon_path", sys_paths._go_back_icon_path),  # noqa: SLF001
-        ("speech_bubble_icon_path", sys_paths._speech_bubble_icon_path),  # noqa: SLF001
-        ("goto_title_button_path", sys_paths._goto_title_button_path),  # noqa: SLF001
-        ("transparent_blank_path", sys_paths._transparent_blank_path),  # noqa: SLF001
-        ("empty_page_path", sys_paths._empty_page_path),  # noqa: SLF001
-        ("favourite_titles_path", sys_paths._favourite_titles_path),  # noqa: SLF001
-        (
-            "by_the_numbers_background_path",
-            sys_paths._by_the_numbers_background_path,  # noqa: SLF001
-        ),
-    ]
-    for label, file_path in files_to_check:
-        assert file_path is not None
+    for label, file_path in sys_paths.required_files():
         _check_file(phase, label, file_path)
 
     # Plan extras.

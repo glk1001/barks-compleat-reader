@@ -229,6 +229,22 @@ class TestSetBarksReaderFilesDirValidation:
         paths.set_barks_reader_files_dir(tmp_path, check_files=True)
 
     @pytest.mark.parametrize(
+        "optional",
+        [
+            "Statistics",
+            "Fantagraphics-panel-segments",
+            "Various/documents/illustrated-history",
+        ],
+    )
+    def test_an_optional_dir_may_be_absent(self, tmp_path: Path, optional: str) -> None:
+        _build_asset_tree(tmp_path)
+        (tmp_path / optional).rmdir()
+
+        paths = SystemFilePaths()
+        # No exception expected.
+        paths.set_barks_reader_files_dir(tmp_path, check_files=True)
+
+    @pytest.mark.parametrize(
         "missing", [relative for _getter, relative in _EXPECTED_PATHS if Path(relative).suffix]
     )
     def test_every_file_a_getter_names_is_required(self, tmp_path: Path, missing: str) -> None:

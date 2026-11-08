@@ -49,6 +49,7 @@ from barks_reader.core.statistics_series import (
     all_series,
     dump_series,
 )
+from barks_reader.core.system_file_paths import SystemFilePaths
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -65,6 +66,27 @@ def _only_phase(collector: core.ErrorCollector) -> core.PhaseResult:
 
 def _kinds(phase: core.PhaseResult) -> list[str]:
     return [word for msg in phase.errors for word in msg.split() if word.startswith("kind=")]
+
+
+# ---------------------------------------------------------------------------
+# Phase 2
+# ---------------------------------------------------------------------------
+
+
+class TestPhase2SystemFilePaths:
+    def test_every_file_the_app_requires_is_checked(self, tmp_path: Path) -> None:
+        """The app's own list, not a copy: a copy had missed the eye and contrast icons."""
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        collector = core.ErrorCollector()
+
+        core.phase2_system_file_paths(collector, sys_paths)
+
+        errors = set(_only_phase(collector).errors)
+        for label, path in sys_paths.required_files():
+            assert f"{label}: missing file {path}" in errors
+        eye_icon = tmp_path / "Various" / "icon-eye-open.png"
+        assert f"eye_open_icon_path: missing file {eye_icon}" in errors
 
 
 # ---------------------------------------------------------------------------
