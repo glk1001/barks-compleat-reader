@@ -10,6 +10,7 @@ by exercising the individual private helpers in isolation.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -564,6 +565,72 @@ class TestThemeExpansion:
         result = pipeline._get_file_types_to_use()
 
         assert result == {FileTypes.SPLASH}
+
+
+class TestThemeChanges:
+    """The themes a render brings in, and when the pool is rebuilt for them."""
+
+    def test_a_change_to_the_callers_set_waits_for_the_next_render(self) -> None:
+        pipeline = make_pipeline()
+        themes = {ImageThemes.FORTIES}
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=themes))
+
+        themes.add(ImageThemes.SIXTIES)
+
+        assert pipeline.current_request().fun_image_themes == {ImageThemes.FORTIES}
+
+    def test_the_request_handed_out_is_a_copy(self) -> None:
+        pipeline = make_pipeline()
+        pipeline.render(
+            ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes={ImageThemes.AI})
+        )
+        handed_out = pipeline.current_request().fun_image_themes
+        assert handed_out is not None
+
+        handed_out.add(ImageThemes.SPLASHES)
+
+        assert pipeline.current_request().fun_image_themes == {ImageThemes.AI}
+
+    def test_unchanged_themes_do_not_rebuild_the_pool(self) -> None:
+        pipeline = make_pipeline()
+        get_titles = settings_of(pipeline).file_paths.get_file_type_titles
+        request = ViewRequest(
+            view_state=ViewStates.ON_INTRO_NODE, fun_image_themes={ImageThemes.AI}
+        )
+        pipeline.render(request)
+        calls = get_titles.call_count
+
+        pipeline.render(request)
+        pipeline.render(replace(request, fun_image_themes={ImageThemes.AI}))
+
+        assert get_titles.call_count == calls
+
+    def test_changed_themes_rebuild_the_pool(self) -> None:
+        pipeline = make_pipeline()
+        get_titles = settings_of(pipeline).file_paths.get_file_type_titles
+        pipeline.render(
+            ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes={ImageThemes.AI})
+        )
+        calls = get_titles.call_count
+
+        pipeline.render(
+            ViewRequest(
+                view_state=ViewStates.ON_INTRO_NODE, fun_image_themes={ImageThemes.SPLASHES}
+            )
+        )
+
+        assert get_titles.call_count > calls
+
+    def test_no_themes_after_an_empty_set_rebuilds_the_pool(self) -> None:
+        """None (every theme) and an empty set are different choices."""
+        pipeline = make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=set()))
+        empty_set_pool = pipeline._cached_fun_titles
+
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=None))
+
+        assert pipeline.current_request().fun_image_themes is None
+        assert pipeline._cached_fun_titles is not empty_set_pool
 
 
 # ---------------------------------------------------------------------------

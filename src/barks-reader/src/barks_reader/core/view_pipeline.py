@@ -319,7 +319,9 @@ class ViewPipeline:
             tag=self._current_tag,
             playlist_id=self._current_playlist_id,
             title_str=self._current_bottom_view_title,
-            fun_image_themes=self._fun_image_themes,
+            fun_image_themes=(
+                None if self._fun_image_themes is None else set(self._fun_image_themes)
+            ),
         )
 
     def set_title(self, title_str: str, title_image_file: PanelPath | None) -> None:
@@ -344,9 +346,17 @@ class ViewPipeline:
     # Internal
     # ------------------------------------------------------------------
     def _set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
-        """Set the active fun-image themes; resets the cached title list."""
-        logger.debug(f"Set self._fun_image_themes = {image_themes}.")
-        self._fun_image_themes = image_themes
+        """Set the active fun-image themes, rebuilding the cached title list if they changed.
+
+        The pipeline keeps its own copy: the caller's set is the one the user's theme
+        choices change in place, and the pool only follows them at a render. A switch of
+        panels source rebuilds the pool through its own listener.
+        """
+        themes = None if image_themes is None else set(image_themes)
+        if self._cached_fun_titles is not None and themes == self._fun_image_themes:
+            return
+        logger.debug(f"Set self._fun_image_themes = {themes}.")
+        self._fun_image_themes = themes
         self._rebuild_fun_titles()
 
     def _rebuild_fun_titles(self) -> None:
