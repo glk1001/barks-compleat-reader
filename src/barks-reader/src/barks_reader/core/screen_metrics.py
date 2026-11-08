@@ -54,6 +54,7 @@ def _macos_reserved_height() -> int | None:
 
 
 def get_best_window_height_fit(screen_height: int) -> int:
+    """Return the tallest a window can be on a screen this high, clear of the taskbar."""
     return screen_height - get_approximate_taskbar_height()
 
 
@@ -180,6 +181,7 @@ class ScreenMetrics:
         return screens
 
     def get_primary_screen_info(self) -> ScreenInfo:
+        """Return the primary monitor, or the first one when none is marked primary."""
         for info in self.SCREEN_INFO:
             if info.is_primary:
                 return info
@@ -187,6 +189,7 @@ class ScreenMetrics:
         return self.SCREEN_INFO[0]
 
     def get_monitor_for_pos(self, x: int, y: int) -> ScreenInfo | None:
+        """Return the monitor that (x, y), in desktop pixels, is on, or ``None`` if none."""
         for info in self.SCREEN_INFO:
             if (
                 info.monitor_x <= x < info.monitor_x + info.width_pixels
