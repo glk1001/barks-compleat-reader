@@ -187,11 +187,16 @@ EOF
 echo "mutmut: mutating against $(echo "${selection}" | grep -c .) Kivy-free test files"
 rm -rf mutants
 # mutmut exits non-zero when mutants survive, so its status says nothing; what it
-# prints does. When the test run itself breaks (a collection error, no tests), it
-# tests no mutant, and a summary of zero survivors would read as a clean slice.
+# prints does. When the test run itself breaks (a collection error, no tests, a test
+# failing on the unmutated code), it tests no mutant, and a summary of zero survivors
+# would read as a clean slice. These are mutmut 3.6's messages for that; missing
+# "Failed to run clean test" let the nightly stage pass for a week (2026-11-03 to
+# 2026-11-08) having tested nothing.
 run_log="$(mktemp)"
 uv run mutmut run "$@" 2>&1 | tee "${run_log}" || true
-if grep -qE '^failed to collect stats|^Stopping early, because' "${run_log}"; then
+stopped='^(failed to collect stats|Failed to collect list of tests|Failed to run clean test'
+stopped+='|FAILED: Unable to force test failures|Failed to load stats|Stopping early, because)'
+if grep -aqE "${stopped}" "${run_log}"; then
     rm -f "${run_log}"
     echo "mutmut: the test run failed, so no mutant was tested (see above)" >&2
     exit 1
