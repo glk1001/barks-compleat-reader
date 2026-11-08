@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
+import pytest
 from barks_reader.core.index_text import MAX_TITLE_AND_PAGES_LEN
 from barks_reader.core.speech_hits import (
     MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN,
@@ -81,6 +82,25 @@ def test_the_count_comes_out_of_the_title_and_pages_room() -> None:
     )
     # "A Title, 1,3,5,7,9,11" fits 24 alone, but with " (4)" the title is cut to make room.
     assert rows[0].text == "Title, 1,3,5,7,9,11 (4)"
+
+
+@pytest.mark.parametrize("title", ["The Old Castle's Secret", "A Christmas for Shacktown"])
+def test_a_sortable_row_fitted_exactly_stays_within_its_length(title: str) -> None:
+    """Moving the article to the end adds a character; the row is fitted again for it.
+
+    Fitted one shorter, the fitter's first step drops the leading article itself.
+    """
+    pages = ["5", "9", "12", "13", "14", "20"]
+    exact = len(f"{title}, 5,9,12-14,20")
+
+    rows = speech_hit_rows({title: _info(*pages)}, max_len=exact, sortable=True)
+
+    assert len(rows[0].text) <= exact
+
+
+def test_a_sortable_row_with_room_to_spare_is_not_shortened() -> None:
+    rows = speech_hit_rows({"The Apple Tree": _info("1")}, max_len=50, sortable=True)
+    assert rows[0].text == "Apple Tree, 1, The"
 
 
 def test_rows_sort_by_their_text_not_their_title() -> None:

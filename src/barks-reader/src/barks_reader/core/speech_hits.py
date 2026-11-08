@@ -57,11 +57,16 @@ def speech_hit_rows(
     rows: list[SpeechHitRow] = []
     for title_str, info in found.items():
         count = "" if hit_counts is None else f" ({hit_counts.get(title_str, 0)})"
-        first_page, text = get_fitted_title_with_page_nums(
-            title_str, list(comic_pages(info)), max_len - len(count)
-        )
+        room = max_len - len(count)
+        pages = list(comic_pages(info))
+        first_page, text = get_fitted_title_with_page_nums(title_str, pages, room)
         if sortable:
+            # Moving "The" or "A" to the end adds a character ("The X" to "X, The"),
+            # so a row fitted exactly is fitted again one shorter.
             text = sortable_string(text)
+            if len(text) > room:
+                first_page, text = get_fitted_title_with_page_nums(title_str, pages, room - 1)
+                text = sortable_string(text)
         rows.append(SpeechHitRow(title_str, first_page, text + count, info))
     rows.sort(key=lambda row: row.text)
     return rows
