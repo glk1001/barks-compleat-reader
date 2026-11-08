@@ -1514,6 +1514,15 @@ reason = "is_missing defaults to False."
 module = "barks_reader.core.reader_file_paths"
 function = "ReaderFilePaths.__init__"
 change = """
+- self._barks_panels_zip: zipfile.ZipFile | None = None
++ self._barks_panels_zip: zipfile.ZipFile | None = ""
+"""
+reason = "set_barks_panels_source drops the zip (sets None) before anything reads it, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.reader_file_paths"
+function = "ReaderFilePaths.__init__"
+change = """
 - self._barks_panels_source: Path | None = None
 + self._barks_panels_source: Path | None = ""
 """
@@ -2469,30 +2478,6 @@ function = "ReaderFilePaths._check_panels_dirs"
 change = """
 - dirs_to_check.insert(0, self._barks_panels_source)
 + dirs_to_check.insert(1, self._barks_panels_source)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths._check_dirs"
-change = """
-- msg = f'Required directory not found: "{dir_path}".'
-+ msg = None
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths._check_dirs"
-change = """
-- raise FileNotFoundError(msg)
-+ raise FileNotFoundError(None)
-"""
-
-[[untriaged]]
-module = "barks_reader.core.reader_file_paths"
-function = "ReaderFilePaths.get_file_type_titles"
-change = """
-- allowed_titles = set()
-+ allowed_titles = None
 """
 
 [[untriaged]]

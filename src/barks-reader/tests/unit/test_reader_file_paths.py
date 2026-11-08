@@ -604,9 +604,39 @@ class TestTitleFiles:
     def test_nontitle_images_belong_to_no_title(
         self, paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        (panels_dir / PanelDirNames.NONTITLES.value / "page1.png").touch()
+        """Not even a folder there named for the title: nontitle images have no title."""
+        nontitles = panels_dir / PanelDirNames.NONTITLES.value
+        (nontitles / "page1.png").touch()
+        (nontitles / self.TITLE).mkdir()
+        (nontitles / self.TITLE / "page2.png").touch()
 
         assert paths.get_title_files(FileTypes.NONTITLE, self.TITLE) == []
+
+    def test_the_edited_cover_is_asked_for_as_the_caller_asks(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        covers = panels_dir / PanelDirNames.COVERS.value
+        plain = covers / f"{self.TITLE}.jpg"
+        plain.touch()
+        (covers / EDITED_SUBDIR).mkdir()
+        edited = covers / EDITED_SUBDIR / f"{self.TITLE}.png"
+        edited.touch()
+
+        assert paths.get_title_files(FileTypes.COVER, self.TITLE) == [plain]
+        assert paths.get_title_files(FileTypes.COVER, self.TITLE, True) == [edited]  # noqa: FBT003
+
+    def test_the_edited_inset_alone_is_asked_for_as_the_caller_asks(
+        self, paths: ReaderFilePaths, panels_dir: Path
+    ) -> None:
+        title = "Donald Duck Finds Pirate Gold"
+        insets = panels_dir / PanelDirNames.INSETS.value
+        plain = insets / f"{title}.png"
+        plain.touch()
+        edited = insets / EDITED_SUBDIR / f"{title}.png"
+        edited.touch()
+
+        assert paths.get_title_files(FileTypes.INSET, title) == [edited, plain]
+        assert paths.get_title_files(FileTypes.INSET, title, True) == [edited]  # noqa: FBT003
 
 
 class TestEditedFilesAreOptIn:
