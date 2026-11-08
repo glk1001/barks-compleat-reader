@@ -65,21 +65,30 @@ reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[equivalent]]
 module = "barks_reader.core.linux_desktop_entry"
-function = "_install_desktop_file"
+function = "_entry_is_current"
 change = """
-- if desktop_file.is_file() and desktop_file.read_text(encoding="utf-8") == content:
-+ if desktop_file.is_file() and desktop_file.read_text(encoding=None) == content:
+- return desktop_file.read_text(encoding="utf-8") == content
++ return desktop_file.read_text(encoding=None) == content
 """
 reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
 
 [[equivalent]]
 module = "barks_reader.core.linux_desktop_entry"
-function = "_install_desktop_file"
+function = "_entry_is_current"
 change = """
-- if desktop_file.is_file() and desktop_file.read_text(encoding="utf-8") == content:
-+ if desktop_file.is_file() and desktop_file.read_text(encoding="UTF-8") == content:
+- return desktop_file.read_text(encoding="utf-8") == content
++ return desktop_file.read_text(encoding="UTF-8") == content
 """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.linux_desktop_entry"
+function = "_files_match"
+change = """
+- return filecmp.cmp(a, b, shallow=False)
++ return filecmp.cmp(a, b, shallow=None)
+"""
+reason = "filecmp takes the shallow path only when shallow is true, and None is not: it compares the bytes, as False does."
 
 [[equivalent]]
 module = "barks_reader.core.linux_desktop_entry"

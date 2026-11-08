@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -96,13 +97,18 @@ def test_an_unchanged_icon_is_not_copied_again(icon: Path) -> None:
 
 
 def test_a_changed_icon_of_the_same_size_is_copied(data_home: Path, icon: Path) -> None:
-    """An app update can change the icon without changing its byte size."""
-    lde.write_linux_desktop_entry(icon, "Barks Reader")
-    icon.write_bytes(b"PNG BYTES")  # the same nine bytes, different content
+    """An app update can change the icon without changing its byte size, or its mtime.
 
+    The same size and mtime are what a shallow compare goes by: only the bytes differ.
+    """
     lde.write_linux_desktop_entry(icon, "Barks Reader")
-
     installed = data_home / "icons" / "hicolor" / "128x128" / "apps" / f"{APP_NAME}.png"
+    icon.write_bytes(b"PNG BYTES")  # the same nine bytes, different content
+    installed_stat = installed.stat()
+    os.utime(icon, ns=(installed_stat.st_atime_ns, installed_stat.st_mtime_ns))
+
+    lde.write_linux_desktop_entry(icon, "Barks Reader")
+
     assert installed.read_bytes() == b"PNG BYTES"
 
 
