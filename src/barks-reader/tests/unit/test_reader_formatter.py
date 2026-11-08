@@ -555,7 +555,7 @@ class TestReaderFormatterClass:
             fanta_info, add_footnote=True, sup_font_size=12, color="red"
         )
         assert res_foot == (
-            "[i]PubDate ESC_[SubDate [color=red]1950[/color]ESC_][size=12][sup]*[/sup][/i]"
+            "[i]PubDate ESC_[SubDate [color=red]1950[/color]ESC_][size=12][sup]*[/sup][/size][/i]"
         )
 
     @patch.object(reader_formatter, "escape_kivy_markup")

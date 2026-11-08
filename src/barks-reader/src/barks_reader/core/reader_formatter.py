@@ -218,7 +218,7 @@ class ReaderFormatter:
         if not add_footnote:
             return f"[i]{issue_info}[/i]"
 
-        return f"[i]{issue_info}[size={sup_font_size}][sup]*[/sup][/i]"
+        return f"[i]{issue_info}[size={sup_font_size}][sup]*[/sup][/size][/i]"
 
     @staticmethod
     def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
