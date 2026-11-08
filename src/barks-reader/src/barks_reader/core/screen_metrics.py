@@ -239,15 +239,10 @@ def calculate_fitted_window_height(
     max_total_h = int(fit_fraction * screen_height)
     max_total_w = int(fit_fraction * screen_width)
 
-    # Try height-limited: use max_total_h, derive width.
-    content_h = max_total_h - action_bar_height
-    content_w = round(content_h / aspect_ratio)
-
-    if content_w <= max_total_w:
-        return max_total_h
-
-    # Width-limited: use max_total_w, derive height.
-    content_h = round(max_total_w * aspect_ratio)
+    # The tallest content that fits, or the content the width allows when that is less.
+    _width, content_h = get_win_dimensions(
+        max_total_h - action_bar_height, max_total_w, aspect_ratio
+    )
     return content_h + action_bar_height
 
 
