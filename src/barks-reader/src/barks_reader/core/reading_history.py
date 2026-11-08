@@ -321,8 +321,12 @@ def format_event_time(event: ReadEvent) -> str:
 
 
 def format_event_duration(event: ReadEvent) -> str:
-    """Return the session's duration, e.g. "25 min", "1 hr 5 min", "" (crash)."""
-    if event.closed_at is None:
+    """Return the session's duration, e.g. "25 min", "1 hr 5 min", "" (crash).
+
+    "" too when the close is before the open: the times are naive local ones, so a
+    session across the autumn clock change can end "before" it began.
+    """
+    if event.closed_at is None or event.closed_at < event.opened_at:
         return ""
 
     total_mins = round((event.closed_at - event.opened_at).total_seconds() / 60)

@@ -363,6 +363,13 @@ class TestFormatting:
     def test_format_event_duration(self, opened: datetime, closed: datetime, expected: str) -> None:
         assert format_event_duration(_make_event(opened_at=opened, closed_at=closed)) == expected
 
+    def test_a_session_across_the_autumn_clock_change_shows_no_duration(self) -> None:
+        """Naive local times: 30 minutes from 02:50 can close at 02:20 the same night."""
+        event = _make_event(
+            opened_at=datetime(2026, 4, 5, 2, 50), closed_at=datetime(2026, 4, 5, 2, 20)
+        )
+        assert format_event_duration(event) == ""
+
     def test_format_event_duration_crash_during_read(self) -> None:
         assert format_event_duration(_make_event()) == ""
 
