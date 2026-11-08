@@ -107,11 +107,18 @@ class ReaderNavigation:
 
     def is_in_left_margin(self, x: int, y: int) -> bool:
         """Return whether (x, y) is left of the middle, between the top and bottom margins."""
-        return (x < self._x_mid) and (self._y_bottom_margin <= y <= self._y_top_margin)
+        return (x < self._x_mid) and self._is_between_the_bars(x, y)
 
     def is_in_right_margin(self, x: int, y: int) -> bool:
         """Return whether (x, y) is right of the middle, between the top and bottom margins."""
-        return (x >= self._x_mid) and (self._y_bottom_margin <= y <= self._y_top_margin)
+        return (x >= self._x_mid) and self._is_between_the_bars(x, y)
+
+    def _is_between_the_bars(self, x: int, y: int) -> bool:
+        # The top margin's own line is the top margin's: a press on it shows the bar and
+        # must not turn the page as well. Off the fullscreen band it still turns.
+        return (self._y_bottom_margin <= y <= self._y_top_margin) and not (
+            y == self._y_top_margin and self.is_in_top_margin(x, y)
+        )
 
     def tap_regions(self, width: int, height: int) -> dict[str, tuple[int, int, int, int]]:
         """Return the margins a press acts on, as rectangles a GUI test can tap.

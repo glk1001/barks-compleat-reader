@@ -203,13 +203,36 @@ class TestEdges:
         nav.update_regions(1000, 1000, 0, 0)  # x_mid 500, bottom 100, top 900
         return nav
 
-    def test_the_middle_is_the_right_pages_and_the_top_line_turns_too(
-        self, nav: ReaderNavigation
-    ) -> None:
+    def test_the_middle_is_the_right_pages(self, nav: ReaderNavigation) -> None:
         assert not nav.is_in_left_margin(500, 500)
         assert nav.is_in_right_margin(500, 500)
+
+    def test_the_top_line_is_the_top_margins_alone(self, nav: ReaderNavigation) -> None:
+        """A press on it shows the bar; it must not turn the page as well."""
+        assert nav.is_in_top_margin(400, 900)
+        assert not nav.is_in_left_margin(400, 900)
+        assert not nav.is_in_right_margin(600, 900)
+        assert nav.is_in_left_margin(400, 899)
+        assert nav.is_in_right_margin(600, 899)
+
+    def test_off_the_fullscreen_band_the_top_line_still_turns(
+        self, mode: _Mode, nav: ReaderNavigation
+    ) -> None:
+        mode.fullscreen = True  # the band is (500, 1500]
+        assert not nav.is_in_top_margin(400, 900)
         assert nav.is_in_left_margin(400, 900)
-        assert nav.is_in_right_margin(600, 900)
+        assert nav.is_in_top_margin(600, 900)
+        assert not nav.is_in_right_margin(600, 900)
+
+    @pytest.mark.parametrize("fullscreen", [False, True])
+    def test_no_press_is_both_the_top_margin_and_a_page_turn(
+        self, mode: _Mode, nav: ReaderNavigation, *, fullscreen: bool
+    ) -> None:
+        mode.fullscreen = fullscreen
+        for x in range(0, 1000, 50):
+            for y in range(880, 921):
+                turns = nav.is_in_left_margin(x, y) or nav.is_in_right_margin(x, y)
+                assert not (turns and nav.is_in_top_margin(x, y)), (x, y)
 
     def test_in_fullscreen_the_bars_band_takes_its_right_edge_not_its_left(
         self, mode: _Mode, nav: ReaderNavigation
