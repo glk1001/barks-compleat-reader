@@ -440,6 +440,14 @@ class TestGetFittedTitleWithPageNumsBoundaries:
         )
         assert (first_page, row) == ("", "Lost in the Andes!")
 
+    def test_a_room_as_wide_as_the_ellipsis_is_left_to_textwrap(self) -> None:
+        """Three characters is width enough for textwrap, which leaves only its "..."."""
+        assert self._fit("Lost in the Andes!", [], 3) == "..."
+
+    @pytest.mark.parametrize("max_len", [0, -1])
+    def test_no_room_at_all_leaves_no_title(self, max_len: int) -> None:
+        assert self._fit("Lost in the Andes!", [], max_len) == ""
+
     def test_no_pages_still_fits_the_title(self) -> None:
         _first_page, row = reader_formatter.get_fitted_title_with_page_nums(
             "Lost in the Andes!", [], 12

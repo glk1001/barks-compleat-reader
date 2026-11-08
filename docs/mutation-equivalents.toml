@@ -1385,12 +1385,12 @@ reason = "text[None:n] slices as text[0:n] does."
 
 [[equivalent]]
 module = "barks_reader.core.reader_formatter"
-function = "get_formatted_payment_info"
+function = "_shortened_title"
 change = """
-- current_year = datetime.now(UTC).year
-+ current_year = datetime.now(None).year
+- if len(title_str) <= max_len:
++ if len(title_str) < max_len:
 """
-reason = "Only the year is used."
+reason = "A title exactly max_len long then goes to textwrap.shorten (or the bare cut, under three), which gives a title that fits back as it is; only a doubled or edge space would change, and no title has one."
 
 [[equivalent]]
 module = "barks_reader.core.reader_formatter"
