@@ -54,7 +54,7 @@ def minimum_window_size(
 def is_screen_too_small(screen_width: int, screen_height: int) -> bool:
     """Return whether a screen is smaller than the reader is laid out for.
 
-    The window is portrait and about 660 wide, so only the height counts: any screen
+    The window is portrait and about 650 wide, so only the height counts: any screen
     1080 tall holds it, portrait monitors and all.
 
     Args:

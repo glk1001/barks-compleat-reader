@@ -1,13 +1,13 @@
 """Immutable input to the view-rendering pipeline.
 
 `ViewRequest` bundles the navigation context (category, year ranges, tag, tag
-group, current title), the fun-image theme policy, the target view state, the
-one-shot provided title-image file, and the preserve-top-view flag into a single
-immutable value. `NavigationModel.view_state_for()` builds one from a
+group, playlist, current title), the fun-image theme policy, the target view state,
+the one-shot provided title-image file, and the flags that keep the top and fun
+images into a single immutable value. `NavigationModel.view_state_for()` builds one from a
 `Destination`; `ui.view_renderer.ViewRenderer` layers on the renderer-owned
 fields and passes it to `ViewPipeline.render()`.
 
-`ImageThemes` lives here (rather than in the 797-line `view_pipeline`) so that
+`ImageThemes` lives here (rather than in the much larger `view_pipeline`) so that
 `NavigationModel` and other lightweight callers can reference the request type
 without importing the whole pipeline. `view_pipeline` re-exports `ImageThemes`
 for back-compat.

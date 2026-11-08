@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .image_selector import ImageInfo
+    from .navigation.view_states import ViewStates
     from .reader_colors import Color
 
 
@@ -70,7 +71,7 @@ class ViewSnapshot:
     ``SnapshotApplicator.apply()`` to drive all screen-widget updates.
     """
 
-    view_state: int  # ViewStates IntEnum value — kept as int to avoid ui import
+    view_state: ViewStates
     top_view: TopViewSnapshot
     fun_view: FunViewSnapshot
     title_view: TitleViewSnapshot
