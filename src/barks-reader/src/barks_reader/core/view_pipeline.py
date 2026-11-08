@@ -66,7 +66,7 @@ from .view_snapshot import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     from comic_utils.comic_consts import PanelPath
 
@@ -117,11 +117,13 @@ _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
 _BOTTOM_VIEW_HISTORY_OPACITY_1_STATES = {
     ViewStates.ON_HISTORY_NODE,
 }
-_BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = {
-    ViewStates.ON_TITLE_SEARCH_NODE,
-    ViewStates.ON_TAG_SEARCH_NODE,
-    ViewStates.ON_WORD_SEARCH_NODE,
+# Each search screen's state and the mode it opens the screen in.
+_SEARCH_MODE_MAP: dict[ViewStates, str] = {
+    ViewStates.ON_TITLE_SEARCH_NODE: "Title",
+    ViewStates.ON_TAG_SEARCH_NODE: "Tag",
+    ViewStates.ON_WORD_SEARCH_NODE: "Word",
 }
+_BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = set(_SEARCH_MODE_MAP)
 _BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
 }
@@ -136,11 +138,6 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     - _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES
 )
-_SEARCH_MODE_MAP: dict[ViewStates, str] = {
-    ViewStates.ON_TITLE_SEARCH_NODE: "Title",
-    ViewStates.ON_TAG_SEARCH_NODE: "Tag",
-    ViewStates.ON_WORD_SEARCH_NODE: "Word",
-}
 
 
 class ViewPipeline:
@@ -189,9 +186,7 @@ class ViewPipeline:
 
     _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {
         ViewStates.ON_SEARCH_NODE,
-        ViewStates.ON_TITLE_SEARCH_NODE,
-        ViewStates.ON_TAG_SEARCH_NODE,
-        ViewStates.ON_WORD_SEARCH_NODE,
+        *_BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES,
     }
 
     _APPENDIX_VIEW_STATES: ClassVar[set[ViewStates]] = {
@@ -267,6 +262,7 @@ class ViewPipeline:
         reader_settings.file_paths.add_panels_source_listener(self._rebuild_fun_titles)
 
         self._view_state = ViewStates.PRE_INIT
+        self._top_view_handlers = self._make_top_view_handlers()
 
     # ------------------------------------------------------------------
     # Public interface
@@ -462,88 +458,65 @@ class ViewPipeline:
         self._set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
-    def _set_next_top_view_image(self) -> None:
-        # Dispatch table: (predicate, handler) pairs checked in order.
-        dispatch: list[tuple[bool, Callable[[], None]]] = [
+    def _make_top_view_handlers(self) -> dict[ViewStates, Callable[[], None]]:
+        """Map each view state to the handler that picks its top-view image.
+
+        Raises:
+            AssertionError: A state is given two handlers.
+
+        """
+        groups: list[tuple[Iterable[ViewStates], Callable[[], None]]] = [
+            (self._SERIES_VIEW_STATES, self._set_top_view_image_for_series),
             (
-                self._view_state in self._SERIES_VIEW_STATES,
-                self._set_top_view_image_for_series,
-            ),
-            (
-                self._view_state in {ViewStates.PRE_INIT, ViewStates.INITIAL},
+                {ViewStates.PRE_INIT, ViewStates.INITIAL},
                 lambda: self._set_top_view_image_fixed(Titles.COLD_BARGAIN_A),
             ),
             (
-                self._view_state in self._INTRO_VIEW_STATES,
+                self._INTRO_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.ADVENTURE_DOWN_UNDER),
             ),
+            (self._STORIES_VIEW_STATES, self._set_top_view_image_for_stories),
+            ({ViewStates.ON_CS_YEAR_RANGE_NODE}, self._set_top_view_image_for_cs_year_range),
+            ({ViewStates.ON_US_YEAR_RANGE_NODE}, self._set_top_view_image_for_us_year_range),
+            ({ViewStates.ON_YEAR_RANGE_NODE}, self._set_top_view_image_for_year_range),
+            ({ViewStates.ON_CATEGORY_NODE}, self._set_top_view_image_for_category),
+            ({ViewStates.ON_TAG_GROUP_NODE}, self._set_top_view_image_for_tag_group),
+            ({ViewStates.ON_TAG_NODE}, self._set_top_view_image_for_tag),
+            (self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
             (
-                self._view_state in self._STORIES_VIEW_STATES,
-                self._set_top_view_image_for_stories,
-            ),
-            (
-                self._view_state == ViewStates.ON_CS_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_cs_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_US_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_us_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_CATEGORY_NODE,
-                self._set_top_view_image_for_category,
-            ),
-            (
-                self._view_state == ViewStates.ON_TAG_GROUP_NODE,
-                self._set_top_view_image_for_tag_group,
-            ),
-            (self._view_state == ViewStates.ON_TAG_NODE, self._set_top_view_image_for_tag),
-            (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
-            (
-                self._view_state in {ViewStates.ON_HISTORY_NODE, ViewStates.ON_READING_NODE},
+                {ViewStates.ON_HISTORY_NODE, ViewStates.ON_READING_NODE},
                 self._set_top_view_image_for_reading_history,
             ),
+            ({ViewStates.ON_CHOOSE_FOR_ME_NODE}, self._set_top_view_image_for_stories),
+            ({ViewStates.ON_RANDOM_TITLES_NODE}, self._set_top_view_image_for_random_titles),
+            ({ViewStates.ON_PLAYLISTS_NODE}, self._set_top_view_image_for_stories),
+            ({ViewStates.ON_PLAYLIST_NODE}, self._set_top_view_image_for_playlist),
             (
-                self._view_state == ViewStates.ON_CHOOSE_FOR_ME_NODE,
-                self._set_top_view_image_for_stories,
-            ),
-            (
-                self._view_state == ViewStates.ON_RANDOM_TITLES_NODE,
-                self._set_top_view_image_for_random_titles,
-            ),
-            (
-                self._view_state == ViewStates.ON_PLAYLISTS_NODE,
-                self._set_top_view_image_for_stories,
-            ),
-            (
-                self._view_state == ViewStates.ON_PLAYLIST_NODE,
-                self._set_top_view_image_for_playlist,
-            ),
-            (
-                self._view_state in self._APPENDIX_VIEW_STATES,
+                self._APPENDIX_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
             ),
             (
-                self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+                {ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE},
                 self._set_top_view_image_for_appendix_censorship_fixes,
             ),
             (
-                self._view_state in self._INDEX_VIEW_STATES,
+                self._INDEX_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.TRUANT_OFFICER_DONALD),
             ),
         ]
+        handlers: dict[ViewStates, Callable[[], None]] = {}
+        for states, handler in groups:
+            for state in states:
+                assert state not in handlers, f"Two top-view handlers for {state}"
+                handlers[state] = handler
+        return handlers
 
-        for predicate, handler in dispatch:
-            if predicate:
-                handler()
-                break
-        else:
+    def _set_next_top_view_image(self) -> None:
+        handler = self._top_view_handlers.get(self._view_state)
+        if handler is None:
             msg = f"Unhandled view state: {self._view_state}"
             raise AssertionError(msg)
+        handler()
 
         self._set_top_view_image_color()
         self._schedule_top_view_event()
@@ -723,9 +696,7 @@ class ViewPipeline:
             return
         # Avoid showing the same artwork twice: the top view (chosen just before
         # this) draws from the same small search-image pool.
-        top_view_filename = (
-            self._top_view_image_info.filename if self._top_view_image_info else None
-        )
+        top_view_filename = self._top_view_image_info.filename
         image_info = self._image_selector.get_random_search_image()
         for _ in range(5):
             if image_info.filename != top_view_filename:
@@ -754,7 +725,7 @@ class ViewPipeline:
                 self._get_playlist_fanta_title_list(self._current_playlist_id)
             )
 
-        assert self._cached_fun_titles
+        assert self._cached_fun_titles is not None
         titles, file_types = self._cached_fun_titles
 
         return self._image_selector.get_random_image(
@@ -868,6 +839,8 @@ class ViewPipeline:
 
     @staticmethod
     def _get_fanta_title_list(titles: list[Titles]) -> list[FantaComicBookInfo]:
+        # Imported here, not at the top: the tests stand get_fanta_info in on its own
+        # module, which reaches only a lookup made at the call.
         from barks_fantagraphics.fanta_comics_info import get_fanta_info  # noqa: PLC0415
 
         fanta_title_list = [get_fanta_info(title) for title in titles]
