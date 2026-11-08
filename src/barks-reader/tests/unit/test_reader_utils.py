@@ -513,6 +513,15 @@ class TestReaderUtils:
             "timeout": 5.0,
         }
 
+    def test_safe_import_check_timeout_is_false_not_a_raise(self) -> None:
+        """A slow first import (a cold Windows VM) must not kill the first-run installer."""
+        with patch.object(
+            utils_module.subprocess,
+            subprocess.run.__name__,
+            side_effect=subprocess.TimeoutExpired(cmd="python", timeout=5.0),
+        ):
+            assert safe_import_check("slow_module") is False
+
     def test_safe_import_check_when_compiled_imports_in_process(self) -> None:
         """In a Nuitka build sys.executable is the app binary, so import directly."""
         with (

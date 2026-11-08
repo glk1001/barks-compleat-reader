@@ -377,13 +377,17 @@ def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
         sys.exit(2)
     """)
 
-    proc = subprocess.run(  # noqa: S603
-        [sys.executable, "-c", check_code],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        proc = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", check_code],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        # A hung (or just slow) import is a failed check, not a crash of the caller.
+        return False
 
     ok = False
     if proc.returncode == 0:
