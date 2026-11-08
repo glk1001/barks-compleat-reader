@@ -424,6 +424,28 @@ class TestGetFittedTitleWithPageNumsBoundaries:
     def _fit(title: str, page_nums: list[str], max_len: int) -> str:
         return reader_formatter.get_fitted_title_with_page_nums(title, page_nums, max_len)[1]
 
+    @pytest.mark.parametrize("max_len", [1, 2, 3])
+    def test_a_room_narrower_than_the_ellipsis_cuts_the_title_bare(self, max_len: int) -> None:
+        """textwrap.shorten raises below its placeholder's width; the row must not."""
+        pages = ["1"]
+        room = max_len + len(", 1")
+        row = self._fit("Lost in the Andes!", pages, room)
+
+        assert len(row) <= room
+        assert row.endswith(", 1")
+
+    def test_no_pages_gives_the_title_alone_and_no_first_page(self) -> None:
+        first_page, row = reader_formatter.get_fitted_title_with_page_nums(
+            "Lost in the Andes!", [], 50
+        )
+        assert (first_page, row) == ("", "Lost in the Andes!")
+
+    def test_no_pages_still_fits_the_title(self) -> None:
+        _first_page, row = reader_formatter.get_fitted_title_with_page_nums(
+            "Lost in the Andes!", [], 12
+        )
+        assert len(row) <= 12  # noqa: PLR2004
+
     def test_exact_fit_keeps_the_leading_article(self) -> None:
         """At exactly max_len nothing is over-long, so "A " must survive."""
         assert self._fit("A Title", ["1", "2", "3", "4", "5"], 12) == "A Title, 1-5"
@@ -451,15 +473,9 @@ class TestGetFittedTitleWithPageNumsBoundaries:
         """With zero chars to spare the title is returned whole rather than truncated."""
         assert self._fit("My Title", ["7"], 3) == "My Title, 7"
 
-    def test_room_for_less_than_the_ellipsis_is_rejected(self) -> None:
-        """Pins a rough edge: 1-2 spare chars can't hold "..." and textwrap raises.
-
-        Callers size max_title_with_pages_len from window geometry, so this is not
-        reachable in practice - but the boundary is exactly one char away from the
-        untruncated case above, so it is worth having nailed down.
-        """
-        with pytest.raises(ValueError, match="placeholder too large"):
-            self._fit("My Title", ["7"], 4)
+    def test_room_for_less_than_the_ellipsis_cuts_bare_one_char_past_the_fit(self) -> None:
+        """One char short of the untruncated case above: too little for "...", so cut."""
+        assert self._fit("My Title", ["7"], 4) == "M, 7"
 
 
 class TestReaderFormatterClass:

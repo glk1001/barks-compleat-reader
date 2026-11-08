@@ -364,6 +364,23 @@ LEN_PAGE_NUM_SEPARATOR_STR = len(TITLE_PAGE_NUM_SEPARATOR_STR)
 def get_fitted_title_with_page_nums(
     title_str: str, page_nums: list[str], max_title_with_pages_len: int
 ) -> tuple[str, str]:
+    """Return a story's first page and its row, "Title, 3,5-7", fitted to a length.
+
+    The row is shortened in steps: a leading "A" or "The" dropped when that is enough,
+    then a long page list cut to its first page, then the title shortened.
+
+    Args:
+        title_str: The story's title.
+        page_nums: The pages, as the comic numbers them.
+        max_title_with_pages_len: The longest the row may be.
+
+    Returns:
+        The first page ("" when there are none) and the row (the title alone then).
+
+    """
+    if not page_nums:
+        return "", _shortened_title(title_str, max_title_with_pages_len)
+
     page_nums_str = get_concat_page_nums_str(page_nums)
     len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPARATOR_STR
 
@@ -387,6 +404,18 @@ def get_fitted_title_with_page_nums(
         # Shorten the title.
         max_title_len = max_title_with_pages_len - len(page_nums_str) - LEN_PAGE_NUM_SEPARATOR_STR
         if max_title_len > 0:
-            title_str = textwrap.shorten(title_str, width=max_title_len, placeholder="...")
+            title_str = _shortened_title(title_str, max_title_len)
 
     return page_nums[0], title_str + TITLE_PAGE_NUM_SEPARATOR_STR + page_nums_str
+
+
+_TITLE_SHORTENED_PLACEHOLDER = "..."
+
+
+def _shortened_title(title_str: str, max_len: int) -> str:
+    if len(title_str) <= max_len:
+        return title_str
+    # textwrap.shorten refuses a width narrower than its placeholder: cut it bare.
+    if max_len < len(_TITLE_SHORTENED_PLACEHOLDER):
+        return title_str[: max(max_len, 0)]
+    return textwrap.shorten(title_str, width=max_len, placeholder=_TITLE_SHORTENED_PLACEHOLDER)
