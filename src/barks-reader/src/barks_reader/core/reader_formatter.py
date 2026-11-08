@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 import textwrap
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -22,7 +21,7 @@ from barks_fantagraphics.comics_utils import (
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from barks_fantagraphics.speech_markup import escape_markup, transform_lettering_only
-from comic_utils.cpi_calculator import get_adjusted_usd
+from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 
 from .hyphen_break_engine import HYPHEN_CHARS, NO_BREAK_CHARS, SOFT_HYPHEN
 from .reader_consts_and_types import CLOSE_TO_ZERO
@@ -170,10 +169,17 @@ def get_formatted_color(color: Color) -> str:
 
 
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
-    current_year = datetime.now(UTC).year
-    cpi_adjusted_payment = get_adjusted_usd(payment_info.payment, payment_info.accepted_year)
+    """Return a payment and its worth in the CPI table's latest year, e.g. "$100 ($1300 in 2026)".
 
-    return f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"
+    The year shown is the year the amount is converted to, not today's: the table lags
+    the calendar until it is next updated.
+    """
+    to_year = get_latest_year()
+    cpi_adjusted_payment = get_adjusted_usd(
+        payment_info.payment, payment_info.accepted_year, to_year
+    )
+
+    return f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {to_year})"
 
 
 class ReaderFormatter:

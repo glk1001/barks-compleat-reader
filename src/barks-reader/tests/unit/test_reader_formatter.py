@@ -9,6 +9,8 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_reader.core import reader_formatter
 from barks_reader.core.reader_formatter import SOFT_HYPHEN
+from comic_utils.cpi_calculator import get_adjusted_usd
+from comic_utils.cpi_table import ANNUAL_CPI
 
 
 def test_hyphenate_text() -> None:
@@ -170,23 +172,31 @@ def test_get_formatted_color() -> None:
     assert result == "(0.10, 0.50, 0.90, 1.00)"
 
 
-@patch.object(reader_formatter, reader_formatter.get_adjusted_usd.__name__)
-@patch.object(reader_formatter, reader_formatter.datetime.__name__)
-def test_get_formatted_payment_info(mock_datetime: MagicMock, mock_inflate: MagicMock) -> None:
-    # Setup mocks
-    mock_now = MagicMock()
-    mock_now.year = 2023
-    mock_datetime.now.return_value = mock_now
-
+@patch.object(reader_formatter, reader_formatter.get_latest_year.__name__, return_value=2026)
+@patch.object(reader_formatter, reader_formatter.get_adjusted_usd.__name__, return_value=1000.0)
+def test_get_formatted_payment_info(mock_inflate: MagicMock, mock_latest: MagicMock) -> None:
     mock_payment_info = MagicMock()
     mock_payment_info.payment = 100.0
     mock_payment_info.accepted_year = 1950
 
-    # Case 1: Normal inflation
-    mock_inflate.return_value = 1000.0
     result = reader_formatter.get_formatted_payment_info(mock_payment_info)
-    assert result == "$100 ($1000 in 2023)"
-    mock_inflate.assert_called_with(100.0, 1950)
+
+    assert result == "$100 ($1000 in 2026)"
+    mock_latest.assert_called_once_with()
+    mock_inflate.assert_called_once_with(100.0, 1950, 2026)
+
+
+def test_the_payment_is_labelled_with_the_year_it_is_converted_to() -> None:
+    """Not today's year: in January the CPI table still ends at the year before."""
+    payment_info = MagicMock()
+    payment_info.payment = 100.0
+    payment_info.accepted_year = 1950
+    latest = max(ANNUAL_CPI)
+    expected = get_adjusted_usd(100.0, 1950, latest)
+
+    result = reader_formatter.get_formatted_payment_info(payment_info)
+
+    assert result == f"$100 (${expected:.0f} in {latest})"
 
 
 def _mark_one(term: str, target_text: str, start_tag: str, end_tag: str) -> str:
