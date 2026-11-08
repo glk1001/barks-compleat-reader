@@ -37,6 +37,19 @@ class TestReaderFilePathsResolver:
             False,  # noqa: FBT003
         )
 
+    def test_an_edited_cover_is_flagged_edited_whichever_pass_found_it(
+        self, mock_file_paths: MagicMock
+    ) -> None:
+        edited_cover = Path("Covers/edited/cover.png")
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {
+            FileTypes.COVER: MagicMock(return_value=edited_cover)
+        }
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        assert resolver.resolve("Title", FileTypes.COVER, prefer_edited=False) == [
+            (edited_cover, True)
+        ]
+
     def test_resolve_cover_not_found(self, mock_file_paths: MagicMock) -> None:
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.COVER: MagicMock(return_value=None)}
         resolver = ReaderFilePathsResolver(mock_file_paths)
@@ -46,14 +59,15 @@ class TestReaderFilePathsResolver:
         assert result == []
 
     def test_resolve_list_type(self, mock_file_paths: MagicMock) -> None:
-        files = [Path("splash1.png"), Path("splash2.png")]
+        """The flag is whether each file is an edited copy, not which pass asked."""
+        files = [Path("Splash/edited/splash1.png"), Path("Splash/splash2.png")]
         getter = MagicMock(return_value=files)
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.SPLASH: getter}
         resolver = ReaderFilePathsResolver(mock_file_paths)
 
         result = resolver.resolve("Title", FileTypes.SPLASH, prefer_edited=True)
 
-        assert result == [(files[0], True), (files[1], True)]
+        assert result == [(files[0], True), (files[1], False)]
         getter.assert_called_once_with(
             "Title",
             True,  # noqa: FBT003

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .image_selector import resolve_all_title_image_files
-from .reader_file_paths import FileTypes
+from .reader_file_paths import FileTypes, is_edited_file
 
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
@@ -33,7 +33,9 @@ class ReaderFilePathsResolver:
             prefer_edited: If True, return only edited versions when available.
 
         Returns:
-            List of (path, is_edited) tuples.
+            List of (path, is_edited) tuples: is_edited says whether the file is an
+            edited copy, not which pass found it (with no edited copy, the edited pass
+            returns the plain files).
 
         """
         getter = self._file_paths.FILE_TYPE_FILE_GETTERS.get(category)
@@ -45,14 +47,13 @@ class ReaderFilePathsResolver:
             cover_file = getter(title_str, prefer_edited)
             if not cover_file:
                 return []
-            return [(cover_file, prefer_edited)]  # ty: ignore[invalid-return-type]
+            assert not isinstance(cover_file, list)
+            return [(cover_file, is_edited_file(cover_file))]
 
         # Other getters return list[PanelPath].
         path_list = getter(title_str, prefer_edited)
-        assert path_list is not None
-        if not path_list:
-            return []
-        return [(f, prefer_edited) for f in path_list]  # ty: ignore[not-iterable]
+        assert isinstance(path_list, list)
+        return [(f, is_edited_file(f)) for f in path_list]
 
     def get_nontitle_files(self) -> list[PanelPath]:
         """Return all non-title image files."""

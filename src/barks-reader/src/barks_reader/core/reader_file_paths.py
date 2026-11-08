@@ -37,6 +37,12 @@ EDITED_SUBDIR = "edited"
 _TITLE_IMAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
 
 
+def is_edited_file(image_file: PanelPath) -> bool:
+    """Return whether ``image_file`` is an edited copy: one in an ``edited`` folder."""
+    # PurePath: a zip member's parent is typed as a bare PathLike.
+    return PurePath(str(image_file)).parent.name == EDITED_SUBDIR
+
+
 class PanelDirNames(Enum):
     AI = "AI"
     BW = "BW"
@@ -485,7 +491,7 @@ class ReaderFilePaths:
         # Already the edited one: there is no "edited/edited/" copy to look for, and an
         # edited cover was once letterboxed for not finding one.
         # PurePath: a zip member's parent is typed as a bare PathLike.
-        if PurePath(str(image_file)).parent.name == EDITED_SUBDIR:
+        if is_edited_file(image_file):
             return image_file, True
 
         edited_image_file = (
