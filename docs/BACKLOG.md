@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-11-05.
+Last updated: 2026-11-09.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -294,6 +294,16 @@ in the OCR repo, which is read-only from here:
 
 ## Architecture / testability
 
+- [ ] **`ViewPipeline` never removes its panels-source listener** — from the code review
+      of 2026-11-08; left as a note on 2026-11-09. The constructor registers
+      `_rebuild_fun_titles` with `file_paths.add_panels_source_listener` and nothing
+      removes it, so a pipeline stays alive as long as the shared `ReaderFilePaths` and
+      rebuilds its pool on every source change. Harmless today: the app builds one
+      pipeline (`ui/main_screen_components.py`). It matters if a pipeline is ever rebuilt
+      over the same settings, or tests share real settings: then give the pipeline a
+      `close()` that removes it (the file paths need a remover). The listener also
+      rebuilds only the fun pool, so the top, fun, title and search images already picked
+      still point into the old source until the next render picks again.
 - [ ] **Architecture deep-dive** — run the `improve-codebase-architecture`
       exploration to find shallow modules to deepen and untested seams to
       surface across the codebase. A first survey (2026-10-21: file size, radon
