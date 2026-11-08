@@ -96,6 +96,23 @@ def test_a_sortable_row_fitted_exactly_stays_within_its_length(title: str) -> No
     rows = speech_hit_rows({title: _info(*pages)}, max_len=exact, sortable=True)
 
     assert len(rows[0].text) <= exact
+    # Fitted again with its pages: the row still opens at, and lists, them.
+    assert rows[0].first_page == "5"
+    assert rows[0].text == f"{title.split(' ', 1)[1]}, 5,9,12-14,20"
+
+
+def test_a_sortable_row_with_no_article_fitted_exactly_is_kept_whole() -> None:
+    """Without an article nothing moves, so a row exactly max_len long is not fitted again."""
+    row = "Lost in the Andes!, 3,5"
+    rows = speech_hit_rows({"Lost in the Andes!": _info("3", "5")}, max_len=len(row), sortable=True)
+    assert rows[0].text == row
+
+
+def test_a_sortable_row_fitted_again_gives_up_one_character_not_two() -> None:
+    """The article's move adds one character, so the second fit is one shorter: no more."""
+    pages = ["5", "9", "12", "13", "14", "20"]
+    rows = speech_hit_rows({"The Riddle of the Red Hat": _info(*pages)}, max_len=32, sortable=True)
+    assert rows[0].text == "Riddle of the Red..., 5,..., The"
 
 
 def test_a_sortable_row_with_room_to_spare_is_not_shortened() -> None:
