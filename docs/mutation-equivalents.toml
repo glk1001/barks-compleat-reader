@@ -374,8 +374,8 @@ reason = "Assigned before any read, and only ever asserted or tested for truth, 
 module = "barks_reader.core.reader_settings"
 function = "ReaderSettings.__init__"
 change = """
-- self._config: ConfigParser | None = None
-+ self._config: ConfigParser | None = ""
+- self._config: WritableConfig | None = None
++ self._config: WritableConfig | None = ""
 """
 reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
 
@@ -1391,6 +1391,24 @@ change = """
 + if len(title_str) < max_len:
 """
 reason = "A title exactly max_len long then goes to textwrap.shorten (or the bare cut, under three), which gives a title that fits back as it is; only a doubled or edge space would change, and no title has one."
+
+[[equivalent]]
+module = "barks_reader.core.reader_utils"
+function = "read_title_list"
+change = """
+- with filepath.open("r", encoding="utf-8-sig") as f:
++ with filepath.open(encoding="utf-8-sig") as f:
+"""
+reason = "open's mode defaults to \"r\"."
+
+[[equivalent]]
+module = "barks_reader.core.reader_utils"
+function = "read_title_list"
+change = """
+- with filepath.open("r", encoding="utf-8-sig") as f:
++ with filepath.open("r", encoding="UTF-8-SIG") as f:
+"""
+reason = "Codec names are not case-sensitive."
 
 [[equivalent]]
 module = "barks_reader.core.reader_formatter"
