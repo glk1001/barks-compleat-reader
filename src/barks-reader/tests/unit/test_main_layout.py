@@ -13,6 +13,7 @@ from barks_reader.core.main_layout import (
     choose_main_layout,
     content_aspect_ratio,
     page_width,
+    page_width_at,
     spread_fits,
 )
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -41,6 +42,17 @@ def test_the_spread_fits_when_two_full_height_pages_do(
     name: str, width: int, height: int, fits: bool
 ) -> None:
     assert spread_fits(width, height, BAR) is fits, name
+
+
+def test_a_page_is_its_height_over_the_page_aspect() -> None:
+    assert page_width_at(1000) == pytest.approx(1000 / COMIC_PAGE_ASPECT_RATIO)
+    assert page_width_at(1500, 1.5) == pytest.approx(1000)
+
+
+@pytest.mark.parametrize(("width", "height"), [(0, 0), (1920, BAR), (1920, BAR - 1)])
+def test_a_screen_with_no_height_for_a_page_is_no_spread(width: int, height: int) -> None:
+    """A monitor that reports 0x0 (headless, mid hot-plug) is not known to fit two pages."""
+    assert not spread_fits(width, height, BAR)
 
 
 def test_the_boundary_is_the_pair_exactly_as_wide_as_the_screen() -> None:

@@ -69,6 +69,23 @@ def content_aspect_ratio(
     return page_aspect_ratio
 
 
+def page_width_at(height: float, page_aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO) -> float:
+    """Return a page's width at a height: the height over the page aspect.
+
+    The spread lays its pages out at this width, and a popup is measured in pages
+    of it (``core/popup_frame.py``), so the two keep in step.
+
+    Args:
+        height: The page's height.
+        page_aspect_ratio: A page's height over its width.
+
+    Returns:
+        The page's width, in the height's units.
+
+    """
+    return height / page_aspect_ratio
+
+
 def spread_fits(
     screen_width: int,
     screen_height: int,
@@ -85,11 +102,14 @@ def spread_fits(
 
     Returns:
         True when a pair of pages as tall as the screen allows is no wider than the
-        screen.
+        screen; False when the screen leaves no height for a page (a monitor that
+        reports 0x0 is not known to fit two).
 
     """
-    page_width = (screen_height - chrome_height) / page_aspect_ratio
-    return page_width * SPREAD_WIDTH_IN_PAGES <= screen_width
+    usable_height = screen_height - chrome_height
+    if usable_height <= 0:
+        return False
+    return page_width_at(usable_height, page_aspect_ratio) * SPREAD_WIDTH_IN_PAGES <= screen_width
 
 
 def choose_main_layout(

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from .main_layout import page_width_at
 from .reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 if TYPE_CHECKING:
@@ -79,6 +80,6 @@ def popup_size(
 
     """
     size_class = SIZE_CLASSES[size]
-    page_width = window_height / page_aspect_ratio
+    page_width = page_width_at(window_height, page_aspect_ratio)
     width = min(size_class.pages_wide * page_width, MAX_WINDOW_WIDTH_FRACTION * window_width)
     return width, size_class.window_high * window_height
