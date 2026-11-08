@@ -49,14 +49,17 @@ class ReaderNavigation:
 
     @property
     def x_mid(self) -> int:
+        """The x that splits the left margin from the right; -1 until `update_regions`."""
         return self._x_mid
 
     @property
     def y_bottom_margin(self) -> int:
+        """The y the bottom margin ends at, origin bottom-left; -1 until `update_regions`."""
         return self._y_bottom_margin
 
     @property
     def y_top_margin(self) -> int:
+        """The y the top margin starts at, origin bottom-left; -1 until `update_regions`."""
         return self._y_top_margin
 
     def update_regions(
