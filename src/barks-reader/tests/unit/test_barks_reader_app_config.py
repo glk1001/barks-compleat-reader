@@ -14,7 +14,11 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.barks_reader_app as app_module
 import pytest
-from barks_reader.core.reader_settings import ALT_ESCAPE_KEY, BARKS_READER_SECTION
+from barks_reader.core.reader_settings import (
+    ALT_ESCAPE_KEY,
+    BARKS_READER_SECTION,
+    MAIN_SCREEN_LAYOUT,
+)
 from barks_reader.ui.barks_reader_app import BarksReaderApp
 
 
@@ -43,6 +47,19 @@ def test_a_new_alt_escape_key_takes_effect_at_once() -> None:
 def test_an_alt_escape_value_that_is_no_key_code_turns_it_off(value: object) -> None:
     set_key, _ = _change(ALT_ESCAPE_KEY, value)
     set_key.assert_called_once_with(0)
+
+
+def test_a_new_layout_goes_to_the_window_geometry_and_is_announced() -> None:
+    reader_settings = MagicMock()
+    reader_settings.on_changed_setting.return_value = True
+    window_geometry = MagicMock()
+    stand_in = SimpleNamespace(reader_settings=reader_settings, _window_geometry=window_geometry)
+    with patch.object(app_module, "settings_notifier") as notifier:
+        BarksReaderApp.on_config_change(
+            cast("Any", stand_in), MagicMock(), BARKS_READER_SECTION, MAIN_SCREEN_LAYOUT, "spread"
+        )
+    window_geometry.set_layout_setting.assert_called_once_with("spread")
+    notifier.notify.assert_called_once_with(BARKS_READER_SECTION, MAIN_SCREEN_LAYOUT)
 
 
 def test_a_rejected_change_does_nothing() -> None:

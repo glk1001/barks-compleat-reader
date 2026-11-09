@@ -9,7 +9,10 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.fanta_volumes_state import FantaVolumesState
-from barks_reader.core.fantagraphics_volumes import DuplicateArchiveFilesError
+from barks_reader.core.fantagraphics_volumes import (
+    DuplicateArchiveFilesError,
+    MissingArchiveFilesError,
+)
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
@@ -289,6 +292,22 @@ class TestAppInitializer:
         assert mock_dependencies["tree_view_screen"].main_files_not_loaded is True
 
 
+def test_missing_volumes_get_no_second_notice_after_the_first(
+    app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+) -> None:
+    mock_dependencies[
+        "comic_reader_manager"
+    ].init_comic_book_data.side_effect = MissingArchiveFilesError([2, 5], Path("/some/dir"))
+    with (
+        patch.object(app_initializer, AppInitializer._handle_error_ui.__name__) as handle_error,
+        patch.object(app_initializer, AppInitializer._show_no_library_notice.__name__) as notice,
+    ):
+        assert app_initializer._init_comic_book_data(library_notice_shown=True) is True
+    handle_error.assert_not_called()
+    notice.assert_not_called()
+    assert app_initializer._fanta_volumes_state == FantaVolumesState.SOME_VOLUMES_MISSING
+
+
 class TestSavedNodeOnStart:
     """Going to the node saved last time, when there is one and it is still in the tree."""
 
@@ -322,6 +341,43 @@ class TestSavedNodeOnStart:
             ["gone", "root"]
         )
         mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
+
+    def test_a_library_that_cannot_be_read_restores_no_saved_node(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        mock_dependencies["reader_settings"].use_prebuilt_archives = True
+        mock_dependencies["reader_settings"].goto_saved_node_on_start = True
+        with patch.object(
+            app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=False
+        ):
+            app_initializer._post_build_setup()
+        mock_dependencies["json_settings_manager"].get_last_selected_node_path.assert_not_called()
+        mock_dependencies["tree_view_manager"].setup_and_select_node.assert_not_called()
+
+    def test_the_search_goes_past_an_ancestor_that_is_gone_too(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        grandparent = MagicMock(spec=BaseTreeViewNode)
+        paths: list[list[str]] = []
+
+        def find(path: list[str]) -> MagicMock | None:
+            paths.append(list(path))
+            return grandparent if path == ["Tags", "root"] else None
+
+        mock_dependencies["tree_view_screen"].find_node_by_path.side_effect = find
+        self._setup(
+            app_initializer,
+            mock_dependencies,
+            (["Title", "Tag", "Tags", "root"], {"state": "x"}),
+        )
+        assert paths == [
+            ["Title", "Tag", "Tags", "root"],
+            ["Tag", "Tags", "root"],
+            ["Tags", "root"],
+        ]
+        mock_dependencies["tree_view_manager"].setup_and_select_node.assert_called_once_with(
+            grandparent
+        )
 
     def test_a_saved_node_that_is_gone_lands_on_its_nearest_ancestor(
         self,

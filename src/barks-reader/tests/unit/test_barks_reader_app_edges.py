@@ -239,6 +239,27 @@ class TestAppFailure:
             "background_image_file": config_info.error_background_path,
         }
 
+    def test_a_clean_run_runs_the_app_and_reports_the_final_window(
+        self, loguru_sink: list[str]
+    ) -> None:
+        config_info = MagicMock()
+        with (
+            patch.object(app_module, "log_screen_metrics"),
+            patch.object(app_module, "ComicsDatabase") as database,
+            patch.object(app_module, "Config") as config,
+            patch.object(app_module, "BarksReaderApp") as app_class,
+            patch.object(app_module, "_handle_app_exception") as handle,
+            patch.object(app_module, "Window"),
+        ):
+            config.getint.return_value = 0
+            app_module.reader_main(config_info)
+
+        database.assert_called_once_with(for_building_comics=False)
+        app_class.assert_called_once_with(config_info, database.return_value)
+        app_class.return_value.run.assert_called_once_with()
+        handle.assert_not_called()
+        assert any(line.startswith("Final window size = ") for line in loguru_sink)
+
     def test_an_error_while_running_is_logged_and_handled(self, loguru_sink: list[str]) -> None:
         config_info = MagicMock()
         with (
