@@ -287,7 +287,9 @@ class BottomTitleViewScreen(FloatLayout):
 
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
         logger.debug(log_markers.USE_OVERRIDES_CHANGED.format(value=use_overrides))
+        self._show_title_inset_for_overrides(use_overrides)
 
+    def _show_title_inset_for_overrides(self, use_overrides: bool) -> None:
         if not self._fanta_info:
             return
 
@@ -376,8 +378,17 @@ class BottomTitleViewScreen(FloatLayout):
         self.goto_page_text = offer.text
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
+        # The kv rule's checkbox is ticked unless there is a description and this is off.
+        box_was_off = bool(self.use_overrides_description) and not self.use_overrides_active
+        box_stays_off = box_was_off and bool(description) and not active
+
         self.use_overrides_active = active
         self.use_overrides_description = description
+
+        # The box swaps the inset only when it changes, and set_title_view has just put the
+        # standard one back: left at that, a title with its overrides off would show them.
+        if box_stays_off:
+            self._show_title_inset_for_overrides(use_overrides=False)
 
     def on_title_portal_image_pressed(self) -> None:
         assert self.on_title_portal_image_pressed_func is not None

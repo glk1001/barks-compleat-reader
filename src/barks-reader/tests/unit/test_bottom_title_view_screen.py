@@ -252,6 +252,48 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         assert self.screen.use_overrides_description == "Description"
         assert not self.screen.use_overrides_active
 
+    def test_a_title_with_its_overrides_off_after_another_shows_its_no_overrides_inset(
+        self,
+    ) -> None:
+        """The checkbox stays off, so no change event: the screen must swap the inset itself."""
+        self.screen.set_title_view(MagicMock())
+        self.screen.set_overrides_state("Use GLK alternate ending", active=False)
+
+        next_title = MagicMock()
+        next_title.comic_book_info.title = Titles.LOST_IN_THE_ANDES
+        self.mock_overrides.get_title_page_inset_file.return_value = "no-overrides.png"
+        self.screen.set_title_view(next_title)
+        assert self.mock_loader.load_texture.call_args.args[0] == "inset.png"
+
+        self.screen.set_overrides_state("Use 'deah' instead of 'theah'", active=False)
+
+        self.mock_overrides.get_title_page_inset_file.assert_called_once_with(
+            Titles.LOST_IN_THE_ANDES,
+            False,  # noqa: FBT003
+        )
+        assert self.mock_loader.load_texture.call_args.args[0] == "no-overrides.png"
+
+    @pytest.mark.parametrize(
+        ("was_description", "was_active", "description", "active"),
+        [
+            pytest.param("", True, "Use GLK alternate ending", False, id="on-to-off"),
+            pytest.param("Use GLK alternate ending", False, "Use GLK", True, id="off-to-on"),
+            pytest.param("Use GLK alternate ending", False, "", True, id="off-to-no-setting"),
+            pytest.param("Use GLK alternate ending", True, "Use GLK", True, id="on-to-on"),
+            pytest.param("", True, "", True, id="no-setting"),
+        ],
+    )
+    def test_a_box_that_changes_or_stays_on_leaves_the_inset_to_its_own_event(
+        self, was_description: str, was_active: bool, description: str, active: bool
+    ) -> None:
+        self.screen.set_title_view(MagicMock())
+        self.screen.use_overrides_description = was_description
+        self.screen.use_overrides_active = was_active
+
+        self.screen.set_overrides_state(description, active=active)
+
+        self.mock_overrides.get_title_page_inset_file.assert_not_called()
+
     def test_on_title_portal_image_pressed(self) -> None:
         mock_callback = MagicMock()
         self.screen.on_title_portal_image_pressed_func = mock_callback
