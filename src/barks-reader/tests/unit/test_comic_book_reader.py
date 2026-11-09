@@ -37,6 +37,8 @@ from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from kivy.core.image import Texture
 
 _reader_module = barks_reader.ui.comic_book_reader
@@ -517,6 +519,37 @@ class TestComicBookReader:
         reader.prev_page()
         reader._page_manager.next_page.assert_not_called()
         reader._page_manager.prev_page.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "action",
+        [
+            pytest.param(ComicBookReader.goto_start_page, id="goto-start"),
+            pytest.param(ComicBookReader.goto_last_page, id="goto-last"),
+            pytest.param(ComicBookReader.toggle_double_page_mode, id="double-page"),
+            pytest.param(
+                lambda reader: reader.on_page_selected(MagicMock(), "7"), id="goto-selected"
+            ),
+        ],
+    )
+    def test_no_bar_action_reaches_the_loader_once_the_comic_is_closed(
+        self,
+        reader: ComicBookReader,
+        action: Callable[[ComicBookReader], None],
+        loguru_sink: list[str],
+    ) -> None:
+        """A load error closes the comic about a second before the screen leaves."""
+        reader._page_manager = MagicMock()
+        reader._closed = True
+        with (
+            patch.object(reader, "_show_page") as show_page,
+            patch.object(reader, "_hide_action_bar_if_fullscreen") as hide_bar,
+        ):
+            action(reader)
+
+        assert reader._page_manager.mock_calls == []
+        show_page.assert_not_called()
+        hide_bar.assert_not_called()
+        assert any(line.endswith("ignored: the comic is closed.") for line in loguru_sink)
 
     def test_no_margin_turns_once_the_comic_is_closed(self, reader: ComicBookReader) -> None:
         reader._page_manager = MagicMock()

@@ -691,11 +691,26 @@ class ComicBookReader(FloatLayout):
         if WindowManager.is_fullscreen_now():
             self._toggle_action_bar_visibility()
 
+    def _ignored_once_closed(self, action: str) -> bool:
+        """Return whether the comic is closed, so that *action* must not go ahead.
+
+        A closed loader has no pages: a move would ask it for one, which is an assertion
+        and the app down. A load error closes the comic about a second before the screen
+        leaves, with the bar's buttons still live.
+        """
+        if self._closed:
+            logger.debug(f"{action} ignored: the comic is closed.")
+        return self._closed
+
     def goto_start_page(self) -> None:
+        if self._ignored_once_closed("Goto start page"):
+            return
         self._page_manager.goto_start_page()
         self._hide_action_bar_if_fullscreen()
 
     def goto_last_page(self) -> None:
+        if self._ignored_once_closed("Goto last page"):
+            return
         self._page_manager.goto_last_page()
         self._hide_action_bar_if_fullscreen()
 
@@ -719,19 +734,19 @@ class ComicBookReader(FloatLayout):
         return self._is_one_pager_collection or self._is_covers_collection
 
     def next_page(self) -> None:
-        if self._closed:
-            logger.debug("Next page ignored: the comic is closed.")
+        if self._ignored_once_closed("Next page"):
             return
         self._page_manager.next_page()
 
     def prev_page(self) -> None:
-        if self._closed:
-            logger.debug("Prev page ignored: the comic is closed.")
+        if self._ignored_once_closed("Prev page"):
             return
         self._page_manager.prev_page()
 
     def toggle_double_page_mode(self) -> None:
         """Toggle double-page mode on/off for the current comic only (does not change config)."""
+        if self._ignored_once_closed("Double page toggle"):
+            return
         if self.is_single_page_only_collection:
             # The collections are always single-page - ignore the toggle.
             logger.debug(log_markers.DOUBLE_PAGE_IGNORED)
@@ -773,6 +788,8 @@ class ComicBookReader(FloatLayout):
         return True
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
+        if self._ignored_once_closed("Goto page selection"):
+            return
         logger.info(log_markers.GOTO_PAGE_SELECTED.format(page=page))
         self._page_manager.set_current_page_index_from_str(page)
         self._hide_action_bar_if_fullscreen()
