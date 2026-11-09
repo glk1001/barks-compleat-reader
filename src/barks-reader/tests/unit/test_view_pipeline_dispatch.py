@@ -220,6 +220,22 @@ class TestTopViewSetters:
         args, _kwargs = selector_of(pipeline).get_random_image.call_args
         assert args[0] is year_titles
 
+    def test_set_top_view_image_for_random_titles_uses_category_when_no_tag_or_year(
+        self,
+    ) -> None:
+        # 'From favourites' carries a category and neither a tag nor a year range.
+        pipeline = make_pipeline()
+        pipeline._current_tag = None
+        pipeline._current_year_range = ""
+        pipeline._current_category = "Favourites"
+        category_titles = [MagicMock()]
+        title_lists_of(pipeline)["Favourites"] = category_titles
+
+        pipeline._set_top_view_image_for_random_titles()
+
+        args, _kwargs = selector_of(pipeline).get_random_image.call_args
+        assert args[0] is category_titles
+
     def test_set_top_view_image_for_random_titles_falls_back_to_stories(self) -> None:
         # 'Surprise me' carries neither tag nor year range.
         pipeline = make_pipeline()

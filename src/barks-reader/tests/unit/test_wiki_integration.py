@@ -28,6 +28,7 @@ from barks_reader.core.reader_file_paths import ALL_TYPES
 from barks_reader.core.reader_formatter import escape_kivy_markup, get_action_bar_title
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.wiki_integration import (
+    SERIES_TO_STORY_DIRS,
     WIKI_TITLE,
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -220,6 +221,28 @@ class TestWikiPageForTitle:
         """A known title whose wiki page does not exist yet yields None."""
         assert wiki_page_for_title(tmp_path, Titles.LOST_IN_THE_ANDES) is None
 
+    def test_a_title_outside_the_collection_has_no_page(self, tmp_path: Path) -> None:
+        outside = next(t for t in Titles if t not in ALL_FANTA_COMIC_BOOK_INFO)
+
+        assert wiki_page_for_title(tmp_path, outside) is None
+
+    def test_a_series_with_no_story_pages_has_no_page(self, tmp_path: Path) -> None:
+        """Covers and Extras have no directory under concept/stories."""
+        cover = Titles.FOUR_COLOR_189_COVER
+        assert ALL_FANTA_COMIC_BOOK_INFO[cover].series_name not in SERIES_TO_STORY_DIRS
+        for story_dir in {d for dirs in SERIES_TO_STORY_DIRS.values() for d in dirs}:
+            page = (
+                tmp_path
+                / "concept"
+                / "stories"
+                / story_dir
+                / f"{story_slug(ENUM_TO_STR_TITLE[cover])}.md"
+            )
+            page.parent.mkdir(parents=True, exist_ok=True)
+            page.write_text("x", encoding="utf-8")
+
+        assert wiki_page_for_title(tmp_path, cover) is None
+
     def test_gyro_title_found_in_fallback_misc_dir(self, tmp_path: Path) -> None:
         """A Gyro title filed under the second candidate dir ("misc") is still found."""
         # Gyro Gearloose story dirs are ("gyro-gearloose-stories", "misc"); the
@@ -297,6 +320,15 @@ class TestBarksTableRewriter:
         )
         assert header == ["Title", "Date"]
         assert body == [["Story A", "1944-06"]]
+
+    def test_a_table_with_no_title_column_keeps_its_cells(self) -> None:
+        rewriter = BarksTableRewriter()
+        non_barks = next(c.get_title_str() for c in BARKS_TITLE_INFO if not c.is_barks_title)
+
+        header, body = rewriter.rewrite(["Name", "Barks?"], [[non_barks, "no"]])
+
+        assert header == ["Name"]
+        assert body == [[non_barks]]
 
     def test_wrap_widths_align_with_header(self) -> None:
         """Per-column wrap overrides align positionally; unknown columns get None."""
