@@ -734,6 +734,8 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.VACATION_TIME,
         Titles.DANGEROUS_DISGUISE,
         Titles.BILLIONS_TO_SNEEZE_AT,
+        Titles.GOPHER_GOOF_UPS,
+        Titles.BACK_TO_LONG_AGO,
     ],
     Tags.CLASSICS: [
         # As chosen by GLK
