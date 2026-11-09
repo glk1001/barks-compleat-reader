@@ -480,6 +480,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
             # A background thread must not take the app down, and the page is
             # perfectly usable with that one section left empty.
             logger.exception("CorpusStats: dialogue statistics scan failed.")
+            self._text_scan_started = False  # say, the index being replaced: try on next open
             return
 
         if section is None:

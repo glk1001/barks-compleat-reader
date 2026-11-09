@@ -237,6 +237,21 @@ class TestTheReservedDialogueSlot:
             screen._scan_text_stats()
         assert screen._text_section is None
 
+    def test_a_failed_scan_is_tried_again_on_the_next_open(self, screen: CorpusStatsScreen) -> None:
+        """Say the index was being replaced: the section must not stay empty for the session."""
+        with patch.object(corpus_stats_screen_module.threading, "Thread") as thread:
+            screen._start_text_scan()
+            screen._start_text_scan()
+            assert thread.call_count == 1  # one scan at a time
+
+            with patch.object(
+                corpus_stats_screen_module, "compute_text_stats", side_effect=RuntimeError("boom")
+            ):
+                screen._scan_text_stats()
+            screen._start_text_scan()
+
+        assert thread.call_count == 2
+
     def test_no_index_leaves_the_section_empty(self, screen: CorpusStatsScreen) -> None:
         with patch.object(corpus_stats_screen_module, "compute_text_stats", return_value=None):
             screen._scan_text_stats()
