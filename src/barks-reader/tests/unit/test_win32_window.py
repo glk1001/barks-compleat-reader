@@ -144,11 +144,19 @@ class TestTyping:
         user32 = win32_window._typed_user32()
 
         assert user32 is fresh_user32
-        assert user32.GetActiveWindow.argtypes == []
-        assert user32.GetActiveWindow.restype is wintypes.HWND
-        for call in ("IsWindowVisible", "GetWindowThreadProcessId", "GetClassNameW"):
-            assert getattr(user32, call).argtypes[0] is wintypes.HWND, call
-        assert user32.EnumWindows.argtypes == [ctypes.c_void_p, wintypes.LPARAM]
+        typing = {
+            "GetActiveWindow": ([], wintypes.HWND),
+            "IsWindowVisible": ([wintypes.HWND], wintypes.BOOL),
+            "GetWindowThreadProcessId": (
+                [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)],
+                wintypes.DWORD,
+            ),
+            "GetClassNameW": ([wintypes.HWND, wintypes.LPWSTR, ctypes.c_int], ctypes.c_int),
+            "EnumWindows": ([ctypes.c_void_p, wintypes.LPARAM], wintypes.BOOL),
+        }
+        for call, (argtypes, restype) in typing.items():
+            assert getattr(user32, call).argtypes == argtypes, call
+            assert getattr(user32, call).restype is restype, call
 
     def test_the_windows_calls_are_typed(self, fresh_user32: MagicMock) -> None:
         window = win32_window.Win32Window(HIGH_HWND)
@@ -159,3 +167,4 @@ class TestTyping:
             assert call.argtypes[0] is wintypes.HWND
             assert call.restype is wintypes.BOOL
         assert window.get_window_rect.argtypes[1] is ctypes.POINTER(win32_window.RECT)
+        assert window.get_client_rect.argtypes[1] is ctypes.POINTER(win32_window.RECT)
