@@ -122,6 +122,8 @@ class SectionShape:
 # The shape of the section `compute_text_stats` returns. Pinned by a test, since a
 # row added there without updating this would silently overflow the page.
 TEXT_SECTION_SHAPE = SectionShape(num_rows=6, footnote_lines=2)
+# Its heading, which the page shows from the start: it must not change when the scan lands.
+TEXT_SECTION_HEADING = "The words"
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,7 +248,7 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
         f" Text figures cover {totals.num_titles:,} of {num_stories:,} stories currently indexed."
     )
 
-    return StatSection(heading="The words", rows=rows, footnote=footnote)
+    return StatSection(heading=TEXT_SECTION_HEADING, rows=rows, footnote=footnote)
 
 
 def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:

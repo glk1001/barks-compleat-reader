@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core.corpus_stats import (
+    TEXT_SECTION_HEADING,
     TEXT_SECTION_SHAPE,
     CorpusStats,
     Opening,
@@ -232,6 +233,19 @@ class TestTheReservedDialogueSlot:
         )
         # Heading, six rows and a footnote, rather than the placeholder heading.
         assert len(slot.children) == 1 + TEXT_SECTION_SHAPE.num_rows + 1
+
+    def test_the_placeholder_shows_the_heading_the_scan_will(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        _open(screen)
+        screen._text_section = None
+        _rebuild(screen)
+
+        reserved = corpus_stats_screen_module.layout.reserved_height(TEXT_SECTION_SHAPE)
+        slot = next(
+            c for c in screen.ids["stats_right"].children if getattr(c, "height", 0.0) == reserved
+        )
+        assert TEXT_SECTION_HEADING in slot.children[-1].text
 
     def test_a_failing_scan_does_not_escape_the_thread(self, screen: CorpusStatsScreen) -> None:
         with patch.object(

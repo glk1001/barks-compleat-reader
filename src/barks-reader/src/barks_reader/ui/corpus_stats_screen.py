@@ -44,6 +44,7 @@ from loguru import logger
 from barks_reader.core import corpus_stats_layout as layout
 from barks_reader.core import log_markers
 from barks_reader.core.corpus_stats import (
+    TEXT_SECTION_HEADING,
     TEXT_SECTION_SHAPE,
     compute_static_stats,
     compute_text_stats,
@@ -285,7 +286,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         if self._text_section is not None:
             self._fill_section(slot, self._text_section, scale)
         else:
-            slot.add_widget(self._heading("The words", scale))
+            slot.add_widget(self._heading(TEXT_SECTION_HEADING, scale))
             slot.add_widget(Widget())
         return slot
 
