@@ -335,6 +335,19 @@ class TestAppFailure:
             for line in loguru_sink
         )
 
+    def test_with_no_window_the_failure_ends_without_a_second_traceback(
+        self, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(app_module, "log_screen_metrics", side_effect=RuntimeError("no screen")),
+            patch.object(app_module, "_handle_app_exception") as handle,
+            patch.object(app_module, "Window", None),
+        ):
+            app_module.reader_main(MagicMock())
+
+        handle.assert_called_once()
+        assert not any(line.startswith("Final window size") for line in loguru_sink)
+
 
 class TestOnStop:
     """Closing saves the main screen's and the wiki's state, whichever of them exists."""

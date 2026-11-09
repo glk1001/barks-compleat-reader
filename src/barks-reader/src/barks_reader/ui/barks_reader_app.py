@@ -739,6 +739,8 @@ def reader_main(config_info: ConfigInfo) -> None:
         _handle_app_exception(config_info, *sys.exc_info())
 
     logger.debug("Terminating...")
+    if Window is None:  # no window provider: the failure above is the whole story
+        return
     logger.info(
         f"Final window size = {Window.size}, dpi = {Window.dpi}, pos = {Window.left},{Window.top}."
     )
