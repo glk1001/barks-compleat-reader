@@ -349,7 +349,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         # module; this is the visible failure mode if it is ever violated.
         label.shorten = True
         label.shorten_from = "right"
-        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        _fit_text_to_widget(label)
         return label
 
     def _value_cell(self, text: str, scale: float) -> Label:
@@ -382,12 +382,12 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
             scale,
             height=layout.DESIGN.row_height * scale,
         )
-        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        _fit_text_to_widget(label)
         box.add_widget(label)
 
         value = self._cell(stat_row.value, theme().text_title, "left", scale, bold=True)
         value.valign = "top"
-        value.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        _fit_text_to_widget(value)
         box.add_widget(value)
         return box
 
@@ -401,14 +401,14 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         bold: bool = False,
         height: float | None = None,
     ) -> Label:
-        label = Label(
-            text=f"[b]{text}[/b]" if bold else text,
-            markup=True,
+        label = _make_label(
+            text,
             color=color,
             font_name=_FONT_NAME,
             font_size=layout.DESIGN.row * scale,
             halign=halign,
             valign="middle",
+            bold=bold,
         )
         if height is not None:
             label.size_hint_y = None
@@ -445,24 +445,19 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         italic: bool = False,
     ) -> Label:
         """Build a full-width, left-aligned line of text."""
-        markup_text = text
-        if bold:
-            markup_text = f"[b]{markup_text}[/b]"
-        if italic:
-            markup_text = f"[i]{markup_text}[/i]"
-
-        label = Label(
-            text=markup_text,
-            markup=True,
+        label = _make_label(
+            text,
             color=color,
             font_name=font_name,
             font_size=font_size,
             halign="left",
             valign=valign,
-            size_hint_y=None,
-            height=height,
+            bold=bold,
+            italic=italic,
         )
-        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        label.size_hint_y = None
+        label.height = height
+        _fit_text_to_widget(label)
         return label
 
     # --- Background text scan --------------------------------------------
@@ -528,6 +523,39 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         return bool(super().on_touch_down(touch))
 
 
+def _make_label(
+    text: str,
+    *,
+    color: tuple,
+    font_name: str,
+    font_size: float,
+    halign: str,
+    valign: str,
+    bold: bool = False,
+    italic: bool = False,
+) -> Label:
+    """Build a markup label of the page, its text bold or italic as asked."""
+    markup_text = text
+    if bold:
+        markup_text = f"[b]{markup_text}[/b]"
+    if italic:
+        markup_text = f"[i]{markup_text}[/i]"
+    return Label(
+        text=markup_text,
+        markup=True,
+        color=color,
+        font_name=font_name,
+        font_size=font_size,
+        halign=halign,
+        valign=valign,
+    )
+
+
+def _fit_text_to_widget(label: Label) -> None:
+    """Keep a label's text wrapping and aligning within the label's own size."""
+    label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+
+
 def _add_share_bar(row: BoxLayout, share: float) -> None:
     """Draw a row's share of its section's whole as a bar behind it.
 
@@ -536,23 +564,19 @@ def _add_share_bar(row: BoxLayout, share: float) -> None:
         share: The fraction of the whole, in ``[0.0, 1.0]``.
 
     """
-    track_rgb = tuple(theme().row_stripe_even[:3])
-    fill_rgb = tuple(theme().row_stripe_odd[:3])
     fraction = min(1.0, max(0.0, share))
 
     canvas = row.canvas
     assert canvas is not None  # Kivy populates this on widget construction.
     with canvas.before:
-        track_color = Color(*track_rgb, _BAR_TRACK_ALPHA)
+        Color(*theme().row_stripe_even[:3], _BAR_TRACK_ALPHA)
         track = Rectangle()
-        fill_color = Color(*fill_rgb, _BAR_FILL_ALPHA)
+        Color(*theme().row_stripe_odd[:3], _BAR_FILL_ALPHA)
         fill = Rectangle()
 
     def _update(*_args: object) -> None:
-        track_color.rgba = (*track_rgb, _BAR_TRACK_ALPHA)
         track.pos = row.pos
         track.size = row.size
-        fill_color.rgba = (*fill_rgb, _BAR_FILL_ALPHA)
         fill.pos = row.pos
         fill.size = (row.width * fraction, row.height)
 

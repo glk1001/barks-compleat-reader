@@ -360,6 +360,46 @@ class TestRowShapes:
         assert footnote.text == "[i]From 564 of 947 records.[/i]"
 
 
+class TestLabels:
+    def test_a_label_text_follows_the_size_of_its_label(self) -> None:
+        label = corpus_stats_screen_module._make_label(
+            "Text",
+            color=(1, 1, 1, 1),
+            font_name=corpus_stats_screen_module._FONT_NAME,
+            font_size=20,
+            halign="left",
+            valign="middle",
+        )
+        corpus_stats_screen_module._fit_text_to_widget(label)
+        label.size = (300, 40)
+        assert tuple(label.text_size) == (300, 40)
+
+    @pytest.mark.parametrize(
+        ("bold", "italic", "expected"),
+        [
+            (False, False, "Text"),
+            (True, False, "[b]Text[/b]"),
+            (False, True, "[i]Text[/i]"),
+            (True, True, "[i][b]Text[/b][/i]"),
+        ],
+    )
+    def test_a_label_is_bold_or_italic_as_asked(
+        self, *, bold: bool, italic: bool, expected: str
+    ) -> None:
+        label = corpus_stats_screen_module._make_label(
+            "Text",
+            color=(1, 1, 1, 1),
+            font_name=corpus_stats_screen_module._FONT_NAME,
+            font_size=20,
+            halign="left",
+            valign="middle",
+            bold=bold,
+            italic=italic,
+        )
+        assert label.text == expected
+        assert label.markup
+
+
 class TestScaling:
     def test_type_scales_with_the_page(self, screen: CorpusStatsScreen) -> None:
         with patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()):
