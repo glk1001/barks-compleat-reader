@@ -510,13 +510,32 @@ class AppWindowGeometryHelper:
         self._update_fonts(height)
 
     def _check_for_rotation(self, _dt: float) -> None:
-        """Poll screeninfo for dimension changes indicating rotation."""
+        """Poll screeninfo for a change of monitors the window has to follow."""
         if Window.fullscreen:
             return
         if SCREEN_METRICS.refresh():
-            logger.info("Screen rotation detected -- resizing window to fit new dimensions.")
-            self._handle_rotation()
+            self._on_monitors_changed()
         self._refit_if_pending()
+
+    def _on_monitors_changed(self) -> None:
+        """Refit the window if its own monitor changed, not when only another did.
+
+        The window's monitor is looked up again even so: another one coming or going can
+        renumber it, and a move compares monitors by number.
+        """
+        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        current = self._current_monitor
+        if monitor is not None and (monitor.width_pixels, monitor.height_pixels) == (
+            current.width_pixels,
+            current.height_pixels,
+        ):
+            logger.info(
+                f"Monitors changed; the window's is as it was, now monitor {monitor.display}."
+            )
+            self._current_monitor = monitor
+            return
+        logger.info("The window's monitor changed -- resizing window to fit new dimensions.")
+        self._handle_rotation()
 
     def _refit_if_pending(self) -> None:
         """Refit the window to a layout decided while it was fullscreen, once it has settled.

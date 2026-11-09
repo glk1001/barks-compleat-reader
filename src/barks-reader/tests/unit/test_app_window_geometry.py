@@ -578,12 +578,10 @@ def test_rotation_detected_triggers_guarded_resize(
     fake_window: MagicMock,
     fake_clock: FakeClock,
 ) -> None:
-    screen = _make_screen_info()
+    screen = _make_screen_info(width=2560, height=1440)
     fake_metrics = MagicMock()
     fake_metrics.get_monitor_for_pos.return_value = screen
     fake_metrics.get_primary_screen_info.return_value = screen
-    # First call (during construction) returns False; subsequent call (during
-    # rotation check) returns True to indicate rotation was detected.
     fake_metrics.refresh.return_value = True
 
     monkeypatch.setattr(geometry_module, "Window", fake_window)
@@ -594,12 +592,62 @@ def test_rotation_detected_triggers_guarded_resize(
     h.set_main_screen_callbacks(MagicMock())
     h.set_window_ready()
 
+    fake_metrics.get_monitor_for_pos.return_value = _make_screen_info(width=1440, height=2560)
     h._check_for_rotation(0.0)  # noqa: SLF001
 
     # Rotation handler schedules: do_resize, do_reposition, do_reset_resize.
     assert len(fake_clock.calls) >= 1
     # Resize guard should be set with the new requested size.
     assert h._resize_requested_size != (0, 0)  # noqa: SLF001
+
+
+def test_another_monitor_coming_leaves_the_window_alone_but_its_number_is_kept_up(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    """Plugged in to the left, the new one is monitor 0, and the window's is monitor 1."""
+    same_size_renumbered = _make_screen_info(display=1)
+    fake_metrics.get_monitor_for_pos.return_value = same_size_renumbered
+    fake_metrics.refresh.return_value = True
+    size_before = fake_window.size
+    position_before = fake_window.left, fake_window.top
+    scheduled_before = len(fake_clock.calls)
+
+    helper._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before
+    assert fake_window.size == size_before
+    assert (fake_window.left, fake_window.top) == position_before
+    assert helper.current_monitor is same_size_renumbered
+
+
+def test_the_windows_own_monitor_going_moves_it_to_the_primary(
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock, fake_metrics: MagicMock
+) -> None:
+    primary = _make_screen_info(width=1920, height=1200)
+    fake_metrics.get_monitor_for_pos.return_value = None
+    fake_metrics.get_primary_screen_info.return_value = primary
+    fake_metrics.refresh.return_value = True
+    scheduled_before = len(fake_clock.calls)
+
+    helper._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before + 3
+    assert helper.current_monitor is primary
+
+
+def test_the_windows_own_monitor_changing_resolution_refits_it(
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock, fake_metrics: MagicMock
+) -> None:
+    fake_metrics.get_monitor_for_pos.return_value = _make_screen_info(width=1920, height=1200)
+    fake_metrics.refresh.return_value = True
+    scheduled_before = len(fake_clock.calls)
+
+    helper._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before + 3
 
 
 # --- Second degenerate guard (after correct_width computation) ---
