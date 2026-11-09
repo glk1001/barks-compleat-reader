@@ -37,8 +37,8 @@ from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
-from barks_reader.core.reader_consts_and_types import ARTICLE_TITLE_TEXTS, COMIC_BEGIN_PAGE
-from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_formatter import get_action_bar_title, get_comic_display_title
 from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
@@ -352,7 +352,7 @@ class ComicBookReader(FloatLayout):
         self._on_comic_opened = on_comic_opened
         self._on_load_failed = on_load_failed
 
-        self._current_title_str = self.get_reader_comic_title(fanta_info)
+        self._current_title_str = get_comic_display_title(fanta_info.comic_book_info)
 
         # For the collections the window title is per-page (set in _show_page); for
         # everything else it is the comic's title, set once here.
@@ -411,15 +411,6 @@ class ComicBookReader(FloatLayout):
         # inside the frame would be wiped by a clear arriving after it.
         self._show_loading_page()
         self._arm_reveal()
-
-    @staticmethod
-    def get_reader_comic_title(fanta_info: FantaComicBookInfo) -> str:
-        comic_book_info = fanta_info.comic_book_info
-        if (article_text := ARTICLE_TITLE_TEXTS.get(comic_book_info.title)) is not None:
-            return article_text
-        if comic_book_info.is_barks_title:
-            return comic_book_info.get_title_str()
-        return comic_book_info.get_title_from_issue_name()
 
     def close_comic_book_reader(self) -> None:
         if self._closed:

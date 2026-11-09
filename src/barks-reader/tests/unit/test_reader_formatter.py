@@ -7,10 +7,31 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import reader_formatter
 from barks_reader.core.reader_formatter import SOFT_HYPHEN
 from comic_utils.cpi_calculator import get_adjusted_usd
 from comic_utils.cpi_table import ANNUAL_CPI
+
+
+def test_an_article_goes_by_the_name_of_its_tree_node() -> None:
+    """An article is a non-Barks title: named by its issue, it would read "Extras ... #1"."""
+    article = ALL_FANTA_COMIC_BOOK_INFO[Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION]
+    assert not article.comic_book_info.is_barks_title
+    title = reader_formatter.get_comic_display_title(article.comic_book_info)
+    assert title == "Don Ault: Fantagraphics Introduction"
+    assert title != article.comic_book_info.get_title_from_issue_name()
+
+
+def test_a_barks_comic_goes_by_its_title() -> None:
+    comic = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+    assert reader_formatter.get_comic_display_title(comic.comic_book_info) == "Lost in the Andes!"
+
+
+def test_a_non_barks_comic_goes_by_its_issue() -> None:
+    info = MagicMock(title=Titles.LOST_IN_THE_ANDES, is_barks_title=False)
+    info.get_title_from_issue_name.return_value = "Issue Title"
+    assert reader_formatter.get_comic_display_title(info) == "Issue Title"
 
 
 def test_hyphenate_text() -> None:

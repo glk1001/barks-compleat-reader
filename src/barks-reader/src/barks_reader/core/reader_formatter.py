@@ -24,7 +24,7 @@ from barks_fantagraphics.speech_markup import escape_markup, transform_lettering
 from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 
 from .hyphen_break_engine import HYPHEN_CHARS, NO_BREAK_CHARS, SOFT_HYPHEN
-from .reader_consts_and_types import CLOSE_TO_ZERO
+from .reader_consts_and_types import ARTICLE_TITLE_TEXTS, CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
@@ -164,6 +164,24 @@ def get_text_with_markup_stripped(text: str) -> str:
 def get_action_bar_title(font_manager: FontManagerProtocol, title: str) -> str:
     """Return ``title`` as an action bar shows it: in the Carl Barks font, at title size."""
     return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
+
+
+def get_comic_display_title(comic_book_info: ComicBookInfo) -> str:
+    """Return the name a comic goes by, on the reader's bar and the title page alike.
+
+    Args:
+        comic_book_info: The comic to name.
+
+    Returns:
+        An article's name as on its tree node (an article is a non-Barks title, which the
+        issue would otherwise name), a Barks title itself, else the issue's name.
+
+    """
+    if (article_text := ARTICLE_TITLE_TEXTS.get(comic_book_info.title)) is not None:
+        return article_text
+    if comic_book_info.is_barks_title:
+        return comic_book_info.get_title_str()
+    return comic_book_info.get_title_from_issue_name()
 
 
 def get_formatted_color(color: Color) -> str:
