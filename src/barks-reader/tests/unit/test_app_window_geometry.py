@@ -142,6 +142,7 @@ def fake_metrics() -> MagicMock:
     """Screen metrics with one screen, wherever the window is."""
     screen = _make_screen_info()
     metrics = MagicMock()
+    metrics.NUM_MONITORS = 1
     metrics.get_monitor_for_pos.return_value = screen
     metrics.get_primary_screen_info.return_value = screen
     return metrics
@@ -428,6 +429,8 @@ def _make_helper_two_monitors(
     )
 
     fake_metrics = MagicMock()
+
+    fake_metrics.NUM_MONITORS = 2
     # Start on monitor_a.
     fake_metrics.get_monitor_for_pos.return_value = monitor_a
     fake_metrics.get_primary_screen_info.return_value = monitor_a
@@ -473,6 +476,23 @@ def test_on_window_pos_change_skipped_when_fullscreen(
     assert fake_clock.calls == []
 
 
+def test_on_window_pos_change_skipped_with_one_monitor(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    """No lookup: a window part off a lone monitor would log "could not find" at every step."""
+    fake_metrics.NUM_MONITORS = 1
+    fake_metrics.get_monitor_for_pos.reset_mock()
+    scheduled_before = len(fake_clock.calls)
+
+    helper.on_window_pos_change(fake_window)
+
+    fake_metrics.get_monitor_for_pos.assert_not_called()
+    assert len(fake_clock.calls) == scheduled_before
+
+
 def test_on_window_pos_change_skipped_when_same_monitor(
     monkeypatch: pytest.MonkeyPatch,
     constraints: WindowSizeConstraints,
@@ -482,6 +502,7 @@ def test_on_window_pos_change_skipped_when_same_monitor(
     # Keep returning monitor_a so display stays the same.
     screen = _make_screen_info()
     fake_metrics = MagicMock()
+    fake_metrics.NUM_MONITORS = 2
     fake_metrics.get_monitor_for_pos.return_value = screen
     fake_metrics.get_primary_screen_info.return_value = screen
     monkeypatch.setattr(geometry_module, "Window", fake_window)
@@ -504,6 +525,7 @@ def test_on_window_pos_change_skipped_when_monitor_is_none(
 ) -> None:
     screen = _make_screen_info()
     fake_metrics = MagicMock()
+    fake_metrics.NUM_MONITORS = 2
     fake_metrics.get_primary_screen_info.return_value = screen
     # First call (constructor) returns a monitor; subsequent calls return None.
     fake_metrics.get_monitor_for_pos.side_effect = [screen, None]
@@ -764,6 +786,7 @@ def test_a_move_to_a_monitor_of_the_same_height_keeps_the_size(
 ) -> None:
     monitor_a, monitor_b = _make_screen_info(display=0), _make_screen_info(display=1)
     fake_metrics = MagicMock()
+    fake_metrics.NUM_MONITORS = 2
     fake_metrics.get_monitor_for_pos.return_value = monitor_a
     fake_metrics.get_primary_screen_info.return_value = monitor_a
     fake_window.height = 2000
@@ -1268,6 +1291,7 @@ def test_a_move_at_the_same_height_that_changes_the_layout_refits_the_window(
     assert h.layout_mode is MainLayoutMode.SPREAD
     assert fake_clock.calls == []
     moved_metrics = MagicMock()
+    moved_metrics.NUM_MONITORS = 2
     moved_metrics.get_monitor_for_pos.return_value = narrow
     moved_metrics.get_primary_screen_info.return_value = wide
     monkeypatch.setattr(geometry_module, "SCREEN_METRICS", moved_metrics)
@@ -1545,6 +1569,7 @@ def test_a_move_to_a_landscape_monitor_changes_the_layout_with_the_resize(
     portrait = _make_screen_info(width=1200, height=1920, display=0)
     landscape = _landscape_screen(display=1)
     fake_metrics = MagicMock()
+    fake_metrics.NUM_MONITORS = 2
     fake_metrics.get_monitor_for_pos.return_value = portrait
     fake_metrics.get_primary_screen_info.return_value = portrait
     monkeypatch.setattr(geometry_module, "Window", fake_window)

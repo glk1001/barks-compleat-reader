@@ -317,7 +317,7 @@ class AppWindowGeometryHelper:
 
     def on_window_pos_change(self, _window: WindowBase) -> None:
         """Handle window move events — detect monitor changes and rescale."""
-        if Window.fullscreen:
+        if Window.fullscreen or SCREEN_METRICS.NUM_MONITORS <= 1:
             return
 
         # On Windows, on_move can fire with a position that doesn't map to any monitor

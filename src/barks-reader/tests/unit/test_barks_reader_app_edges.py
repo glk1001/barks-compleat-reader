@@ -104,27 +104,29 @@ class TestFinalizeWindowSetup:
             icon=None,
         )
 
-    def _finalize(self, app: Any, *, monitors: int) -> tuple[MagicMock, MagicMock]:  # noqa: ANN401
+    def _finalize(self, app: Any) -> tuple[MagicMock, MagicMock]:  # noqa: ANN401
         with (
             patch.object(app_module, "Window") as window,
             patch.object(app_module, "Config") as config,
             patch.object(app_module, "Clock") as clock,
             patch.object(app_module, "write_linux_desktop_entry"),
             patch.object(app_module, "force_x11_wm_class"),
-            patch.object(app_module.SCREEN_METRICS, "NUM_MONITORS", monitors),
         ):
             config.getint.side_effect = lambda _section, key: {"left": 40, "top": 30}[key]
             BarksReaderApp._finalize_window_setup(app)
         return window, clock
 
-    def test_with_several_monitors_a_move_is_followed_too(self, app: Any) -> None:  # noqa: ANN401
-        window, _ = self._finalize(app, monitors=2)
+    @pytest.mark.parametrize("monitors", [1, 2])
+    def test_a_move_and_a_resize_are_followed_however_many_monitors_there_are_at_boot(
+        self,
+        app: Any,  # noqa: ANN401
+        monitors: int,
+    ) -> None:
+        """One plugged in later has to be followed too."""
+        with patch.object(app_module.SCREEN_METRICS, "NUM_MONITORS", monitors):
+            window, _ = self._finalize(app)
         window.bind.assert_any_call(on_move=app._window_geometry.on_window_pos_change)
         window.bind.assert_any_call(on_resize=app._window_geometry.on_window_resize)
-
-    def test_with_one_monitor_only_a_resize_is(self, app: Any) -> None:  # noqa: ANN401
-        window, _ = self._finalize(app, monitors=1)
-        window.bind.assert_called_once_with(on_resize=app._window_geometry.on_window_resize)
 
     def test_full_screen_at_start_when_set_and_shown_after_the_delay(
         self,
@@ -132,7 +134,7 @@ class TestFinalizeWindowSetup:
     ) -> None:
         app.reader_settings.goto_fullscreen_on_app_start = True
 
-        window, clock = self._finalize(app, monitors=1)
+        window, clock = self._finalize(app)
 
         app._main_screen.force_fullscreen.assert_called_once_with()
         assert app.icon == str(Path("/icons/app.png"))
@@ -141,13 +143,13 @@ class TestFinalizeWindowSetup:
 
     def test_not_full_screen_when_not_set(self, app: Any) -> None:  # noqa: ANN401
         app.reader_settings.goto_fullscreen_on_app_start = False
-        self._finalize(app, monitors=1)
+        self._finalize(app)
         app._main_screen.force_fullscreen.assert_not_called()
 
     def test_once_shown_a_too_small_screen_is_warned_of(self, app: Any) -> None:  # noqa: ANN401
         app._window_geometry.current_monitor.width_pixels = 1366
         app._window_geometry.current_monitor.height_pixels = 768
-        _, clock = self._finalize(app, monitors=1)
+        _, clock = self._finalize(app)
         show_the_window = clock.schedule_once.call_args.args[0]
 
         with patch.object(app_module, "_show_main_window") as show:

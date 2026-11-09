@@ -542,8 +542,8 @@ class BarksReaderApp(App):
         write_linux_desktop_entry(icon_path, APP_TITLE)
         force_x11_wm_class(APP_NAME)
 
-        if SCREEN_METRICS.NUM_MONITORS > 1:
-            Window.bind(on_move=self._window_geometry.on_window_pos_change)
+        # Whatever the monitors now: one can be plugged in later.
+        Window.bind(on_move=self._window_geometry.on_window_pos_change)
         Window.bind(on_resize=self._window_geometry.on_window_resize)
 
         # On Windows the DPI scaling artifacts in the SDL2 backend make the aspect-ratio
