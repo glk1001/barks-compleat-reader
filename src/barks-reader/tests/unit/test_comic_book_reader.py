@@ -67,7 +67,7 @@ class TestComicBookReader:
         settings = MagicMock()
         font_manager = MagicMock()
         on_ready = MagicMock()
-        on_toggle = MagicMock()
+        on_hide_bar = MagicMock()
 
         # Mocking Kivy widgets and properties that might be instantiated
         with (
@@ -83,13 +83,7 @@ class TestComicBookReader:
             mock_nav_instance = MagicMock()
             mock_nav_cls.return_value = mock_nav_instance
 
-            reader = ComicBookReader(settings, font_manager, on_ready, on_toggle)
-
-            # Ensure the attribute exists (it should, but just in case of weird Kivy behavior)
-            if not hasattr(reader, "_on_toggle_action_bar_visibility"):
-                reader._on_toggle_action_bar_visibility = on_toggle
-
-            return reader
+            return ComicBookReader(settings, font_manager, on_ready, on_hide_bar)
 
     @staticmethod
     def _place_page(reader: ComicBookReader, texture: object) -> None:
@@ -785,6 +779,17 @@ class TestComicBookReader:
         with patch.object(reader, "close_comic_book_reader") as close:
             reader._load_error()
         close.assert_called_once()
+
+    @pytest.mark.parametrize("fullscreen", [True, False])
+    def test_the_bar_is_hidden_after_a_move_only_in_fullscreen(
+        self, reader: ComicBookReader, *, fullscreen: bool
+    ) -> None:
+        reader._hide_action_bar = MagicMock()
+        with patch.object(
+            _reader_module.WindowManager, "is_fullscreen_now", return_value=fullscreen
+        ):
+            reader._hide_action_bar_if_fullscreen()
+        assert reader._hide_action_bar.called is fullscreen
 
     # --- the collections' titles: the cover or one-pager on show names the bar ---
 

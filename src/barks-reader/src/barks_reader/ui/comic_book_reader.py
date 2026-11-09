@@ -147,7 +147,7 @@ class ComicBookReader(FloatLayout):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         on_comic_is_ready_to_read: Callable[[], None],
-        toggle_action_bar_visibility: Callable[[], None],
+        hide_action_bar: Callable[[], None],
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -158,7 +158,7 @@ class ComicBookReader(FloatLayout):
         self.opens_two_up = False
         self._font_manager = font_manager
         self._on_comic_is_ready_to_read = on_comic_is_ready_to_read
-        self._toggle_action_bar_visibility = toggle_action_bar_visibility
+        self._hide_action_bar = hide_action_bar
         self._goto_page_widget: Widget | None = None
 
         self._current_comic_path = ""
@@ -659,7 +659,7 @@ class ComicBookReader(FloatLayout):
 
     def _hide_action_bar_if_fullscreen(self) -> None:
         if WindowManager.is_fullscreen_now():
-            self._toggle_action_bar_visibility()
+            self._hide_action_bar()
 
     def _ignored_once_closed(self, action: str) -> bool:
         """Return whether the comic is closed, so that *action* must not go ahead.

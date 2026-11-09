@@ -8,7 +8,6 @@ from kivy.metrics import dp
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
-    from kivy.uix.actionbar import ActionBar
     from kivy.uix.widget import Widget
 
 ACTION_BAR_SIZE_Y = round(dp(RAW_ACTION_BAR_SIZE_Y))
@@ -43,7 +42,7 @@ class ActionBarVisibility(Enum):
     HIDDEN = "hidden"
 
 
-def set_action_bar_visibility(action_bar: ActionBar, state: ActionBarVisibility) -> None:
+def set_action_bar_visibility(action_bar: Widget, state: ActionBarVisibility) -> None:
     """Set action bar visibility atomically (height, opacity, disabled)."""
     if state is ActionBarVisibility.VISIBLE:
         action_bar.height = ACTION_BAR_SIZE_Y
@@ -55,6 +54,6 @@ def set_action_bar_visibility(action_bar: ActionBar, state: ActionBarVisibility)
         action_bar.disabled = True
 
 
-def is_action_bar_visible(action_bar: ActionBar) -> bool:
+def is_action_bar_visible(action_bar: Widget) -> bool:
     """Return True if the action bar is currently visible."""
     return not action_bar.disabled
