@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import gc
 import io
+import re
 import sys
 import types
 import weakref
@@ -24,6 +25,7 @@ from barks_fantagraphics.comic_book_info import get_located_one_pagers, get_one_
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.core.page_image import PageImage
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -34,6 +36,7 @@ from barks_reader.ui.comic_book_reader import (
     ComicBookReader,
     ComicBookReaderScreen,
 )
+from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
 
@@ -825,6 +828,169 @@ class TestComicBookReader:
         assert covers[0] == get_cover_display_title(get_located_covers()[0])
         assert _reader_module._get_collection_titles(Titles.LOST_IN_THE_ANDES) is None
 
+    # --- the reader's own small jobs, with a comic open ---
+
+    def test_the_page_turn_margins_are_set_for_where_the_reader_is(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader.pos = (10, 20)
+        reader.set_reader_navigation_regions(800, 600)
+        reader._navigation.update_regions.assert_called_once_with(800, 600, 10, 20)
+
+    def test_the_top_margin_is_asked_about_relative_to_the_reader(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader.pos = (10, 20)
+        reader._navigation.is_in_top_margin.return_value = True
+        assert reader.is_click_in_top_margin(MagicMock(x=110, y=220))
+        reader._navigation.is_in_top_margin.assert_called_once_with(100, 200)
+
+    def test_the_last_page_read_is_the_page_on_show(self, reader: ComicBookReader) -> None:
+        reader._page_manager = MagicMock()
+        reader._page_manager.get_current_page_str.return_value = "12"
+        assert reader.get_last_read_page() == "12"
+
+    def test_a_tap_in_the_right_margin_turns_to_the_next_page(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._closed = False
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_left_margin.return_value = False
+        reader._navigation.is_in_right_margin.return_value = True
+        with patch.object(FloatLayout, "on_touch_down", return_value=False):
+            assert reader.on_touch_down(MagicMock(x=100, y=100, button="left")) is True
+        reader._page_manager.next_page.assert_called_once_with()
+
+    def test_a_tap_between_the_margins_turns_no_page(self, reader: ComicBookReader) -> None:
+        reader._closed = False
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_left_margin.return_value = False
+        reader._navigation.is_in_right_margin.return_value = False
+        with patch.object(FloatLayout, "on_touch_down", return_value=False):
+            assert reader.on_touch_down(MagicMock(x=100, y=100, button="left")) is False
+        reader._page_manager.next_page.assert_not_called()
+        reader._page_manager.prev_page.assert_not_called()
+
+    def test_all_images_loaded_is_noted_and_logged(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader._page_manager = MagicMock()
+        reader._all_loaded = False
+        reader._all_images_loaded()
+        assert reader._all_loaded is True
+        assert any(re.search(pattern(log_markers.ALL_IMAGES_LOADED), m) for m in loguru_sink)
+
+    def test_no_page_is_shown_before_there_is_a_current_page(self, reader: ComicBookReader) -> None:
+        reader = self._bare_reader(reader)
+        reader._page_manager.get_current_page_index.return_value = -1
+        with patch.object(reader, "_render_page") as render:
+            reader._show_page()
+        render.assert_not_called()
+
+    def test_double_page_mode_shows_both_pages_of_the_unit(self, reader: ComicBookReader) -> None:
+        reader._page_manager = MagicMock(double_page_mode=True)
+        reader._page_manager.get_current_display_unit.return_value = MagicMock(
+            left_page_index=4, right_page_index=5
+        )
+        assert reader._get_current_display_indices() == (4, 5)
+
+    def test_a_pair_of_pages_is_drawn_from_the_pair_the_loader_makes(
+        self, reader: ComicBookReader
+    ) -> None:
+        self._stub_current_page(reader, 4)
+        with patch.object(_reader_module, "page_texture", return_value="pair") as texture:
+            reader._render_page(4, 5)
+        loader = reader._comic_book_loader
+        loader.get_double_page_image_ready_for_reading.assert_called_once_with(4, 5)
+        texture.assert_called_once_with(loader.get_double_page_image_ready_for_reading.return_value)
+        assert reader._comic_image.texture == "pair"
+
+    @pytest.mark.parametrize(
+        ("move", "page_manager_call"),
+        [
+            (ComicBookReader.goto_start_page, "goto_start_page"),
+            (ComicBookReader.goto_last_page, "goto_last_page"),
+        ],
+    )
+    def test_a_jump_goes_there_and_hides_the_bar_if_fullscreen(
+        self,
+        reader: ComicBookReader,
+        move: Callable[[ComicBookReader], None],
+        page_manager_call: str,
+    ) -> None:
+        reader._closed = False
+        reader._page_manager = MagicMock()
+        with patch.object(reader, "_hide_action_bar_if_fullscreen") as hide_bar:
+            move(reader)
+        getattr(reader._page_manager, page_manager_call).assert_called_once_with()
+        hide_bar.assert_called_once_with()
+
+    def test_next_and_previous_go_there(self, reader: ComicBookReader) -> None:
+        reader._closed = False
+        reader._page_manager = MagicMock()
+        reader.next_page()
+        reader._page_manager.next_page.assert_called_once_with()
+        reader.prev_page()
+        reader._page_manager.prev_page.assert_called_once_with()
+
+    def test_the_double_page_mode_is_the_page_managers(self, reader: ComicBookReader) -> None:
+        reader._page_manager = MagicMock(double_page_mode=True)
+        assert reader.double_page_mode is True
+
+    # --- the goto-page list ---
+
+    def test_the_list_has_a_button_a_page_and_a_press_goes_there(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader._closed = False
+        reader._page_manager = MagicMock()
+        reader._page_manager.page_map = {
+            "i": MagicMock(page_index=0, page_type=PageType.FRONT),
+            "1": MagicMock(page_index=1, page_type=PageType.BODY),
+        }
+        reader._create_goto_page_dropdown()
+
+        buttons = reader.get_goto_page_buttons()
+        assert [button.text for button in buttons] == ["i", "1"]
+        assert [button.bold for button in buttons] == [False, True]
+
+        with patch.object(reader, "_hide_action_bar_if_fullscreen") as hide_bar:
+            buttons[1].dispatch("on_press")
+        reader._page_manager.set_current_page_index_from_str.assert_called_once_with("1")
+        hide_bar.assert_called_once_with()
+        assert 'Goto page selected: "1".' in loguru_sink
+
+    def test_opening_the_list_the_first_time_builds_it(self, reader: ComicBookReader) -> None:
+        reader._goto_page_dropdown = None
+        reader._goto_page_widget = MagicMock()
+        reader._tagged_pages = frozenset()
+        reader._page_manager = MagicMock()
+        reader._page_manager.page_map = {
+            "1": MagicMock(page_index=0, page_type=PageType.BODY),
+        }
+        reader._page_manager.get_current_page_index.return_value = 0
+        with patch.object(_reader_module, "open_dropdown", return_value=True):
+            assert reader.goto_page()
+        assert reader._goto_page_dropdown is not None
+        assert len(reader.get_goto_page_buttons()) == 1
+
+    def test_with_no_list_yet_the_list_calls_do_nothing(self, reader: ComicBookReader) -> None:
+        reader._goto_page_dropdown = None
+        reader.scroll_goto_page_to(MagicMock())
+        reader.dismiss_goto_page_dropdown()
+        reader.unbind_goto_page_dismiss(MagicMock())
+
+    def test_the_list_calls_reach_the_list(self, reader: ComicBookReader) -> None:
+        dropdown = MagicMock()
+        reader._goto_page_dropdown = dropdown
+        button, callback = MagicMock(), MagicMock()
+        reader.scroll_goto_page_to(button)
+        reader.dismiss_goto_page_dropdown()
+        reader.unbind_goto_page_dismiss(callback)
+        dropdown.scroll_to.assert_called_once_with(button)
+        dropdown.dismiss.assert_called_once_with()
+        dropdown.unbind.assert_called_once_with(on_dismiss=callback)
+
     # --- edges ---
 
     def test_a_touch_a_child_widget_takes_turns_no_page(self, reader: ComicBookReader) -> None:
@@ -1096,6 +1262,178 @@ class TestComicBookReaderScreen:
         with patch.object(screen, "_clear_menu_on_touch") as clear_menu:
             assert screen.on_touch_down(MagicMock())
         clear_menu.assert_not_called()
+
+    def test_the_bar_inside_the_screen_takes_the_window_drag(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        ids = MagicMock()
+        with patch.object(
+            ComicBookReaderScreen, "ids", new_callable=PropertyMock, return_value=ids
+        ):
+            assert screen.drag_region is ids.action_bar_inner.drag_region
+
+    @pytest.mark.parametrize(("mode", "two_up"), [("spread", True), ("single", False)])
+    def test_the_layout_decides_how_the_next_comic_opens(
+        self, screen: ComicBookReaderScreen, mode: str, *, two_up: bool
+    ) -> None:
+        screen.comic_book_reader = MagicMock()
+        screen.on_layout_mode(screen, mode)
+        assert screen.comic_book_reader.opens_two_up is two_up
+
+    def test_the_goto_page_list_calls_reach_the_reader(self, screen: ComicBookReaderScreen) -> None:
+        screen.comic_book_reader = MagicMock()
+        button = Button()
+
+        assert (
+            screen._get_dropdown_buttons()
+            is screen.comic_book_reader.get_goto_page_buttons.return_value
+        )
+        screen._dismiss_dropdown()
+        screen._scroll_to_dropdown_button(button)
+
+        screen.comic_book_reader.dismiss_goto_page_dropdown.assert_called_once_with()
+        screen.comic_book_reader.scroll_goto_page_to.assert_called_once_with(button)
+
+    def test_a_closed_goto_page_list_stops_calling_back_and_hands_the_keys_on(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        screen.comic_book_reader = MagicMock()
+        instance = MagicMock()
+        with patch.object(screen, "_on_dropdown_dismissed") as dismissed:
+            screen._on_goto_page_dropdown_dismissed(instance)
+        screen.comic_book_reader.unbind_goto_page_dismiss.assert_called_once_with(
+            screen._on_goto_page_dropdown_dismissed
+        )
+        dismissed.assert_called_once_with(instance)
+
+    def test_a_comic_ready_to_read_is_passed_on_and_syncs_the_button(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        with patch.object(screen, "_sync_double_page_button") as sync:
+            screen._on_comic_is_ready_to_read()
+        screen._on_comic_is_ready_to_read_func.assert_called_once_with()
+        sync.assert_called_once_with()
+
+    def test_keys_go_to_the_reader_unless_it_is_closing(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        with patch.object(screen, "_handle_reader_key", return_value=False) as handle:
+            screen._is_closing = True
+            assert screen._on_key_down(MagicMock(), 275, 0, "", []) is True
+            handle.assert_not_called()
+
+            screen._is_closing = False
+            assert screen._on_key_down(MagicMock(), 275, 0, "", []) is False
+            handle.assert_called_once_with(275)
+
+    def test_reading_keys_turn_the_readers_pages(self, screen: ComicBookReaderScreen) -> None:
+        screen.comic_book_reader = MagicMock()
+        screen._reading_next_page()
+        screen.comic_book_reader.next_page.assert_called_once_with()
+        screen._reading_prev_page()
+        screen.comic_book_reader.prev_page.assert_called_once_with()
+
+    @pytest.mark.parametrize(("hidden", "hides"), [(True, False), (False, True)])
+    def test_leaving_the_menu_hides_a_bar_still_up(
+        self, screen: ComicBookReaderScreen, *, hidden: bool, hides: bool
+    ) -> None:
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=hidden),
+            patch.object(screen, "_hide_action_bar") as hide_bar,
+        ):
+            screen._on_action_bar_hidden_after_menu()
+        assert hide_bar.called is hides
+
+    @pytest.mark.parametrize(
+        ("fullscreen_now", "goes_fullscreen", "goes"),
+        [(False, True, True), (False, False, False), (True, True, False)],
+    )
+    def test_a_comic_goes_fullscreen_only_from_the_window_when_set_to(
+        self,
+        screen: ComicBookReaderScreen,
+        *,
+        fullscreen_now: bool,
+        goes_fullscreen: bool,
+        goes: bool,
+    ) -> None:
+        screen._mode = MagicMock()
+        with (
+            patch.object(
+                _reader_module.WindowManager, "is_fullscreen_now", return_value=fullscreen_now
+            ),
+            patch.object(
+                ComicBookReaderScreen,
+                "_goto_fullscreen_on_comic_read",
+                new_callable=PropertyMock,
+                return_value=goes_fullscreen,
+            ),
+        ):
+            screen._update_window_mode()
+        assert screen._mode.goto_fullscreen.called is goes
+        assert screen.is_fullscreen is fullscreen_now
+
+    @pytest.mark.parametrize("fullscreen", [True, False])
+    def test_toggling_double_page_syncs_the_button_and_hides_the_bar_if_fullscreen(
+        self, screen: ComicBookReaderScreen, *, fullscreen: bool
+    ) -> None:
+        screen.comic_book_reader = MagicMock()
+        with (
+            patch.object(screen, "_sync_double_page_button") as sync,
+            patch.object(screen, "_hide_action_bar") as hide_bar,
+            patch.object(
+                _reader_module.WindowManager, "is_fullscreen_now", return_value=fullscreen
+            ),
+        ):
+            screen.toggle_double_page_mode()
+        screen.comic_book_reader.toggle_double_page_mode.assert_called_once_with()
+        sync.assert_called_once_with()
+        assert hide_bar.called is fullscreen
+
+    @pytest.mark.parametrize(
+        ("double_page", "single_only", "icon", "opacity"),
+        [
+            (True, False, "single.png", 1.0),
+            (False, False, "double.png", 1.0),
+            (False, True, "double.png", ComicBookReaderScreen._GREYED_BUTTON_OPACITY),
+        ],
+    )
+    def test_the_double_page_button_shows_what_it_would_do_and_greys_for_a_collection(
+        self,
+        screen: ComicBookReaderScreen,
+        *,
+        double_page: bool,
+        single_only: bool,
+        icon: str,
+        opacity: float,
+    ) -> None:
+        paths = screen._reader_settings.sys_file_paths
+        paths.get_barks_reader_single_page_icon_file.return_value = "single.png"
+        paths.get_barks_reader_double_page_icon_file.return_value = "double.png"
+        screen.comic_book_reader = MagicMock(
+            double_page_mode=double_page, is_single_page_only_collection=single_only
+        )
+        ids = MagicMock()
+        with patch.object(
+            ComicBookReaderScreen, "ids", new_callable=PropertyMock, return_value=ids
+        ):
+            screen._sync_double_page_button()
+        assert ids.double_page_button.icon == icon
+        assert ids.double_page_button.opacity == opacity
+
+    def test_a_window_resize_matters_only_while_the_screen_is_active(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        with (
+            patch.object(_reader_module, "Window"),
+            patch.object(screen, "_update_window_state") as update,
+        ):
+            screen._active = False
+            screen._on_window_resize(MagicMock(), 800, 600)
+            update.assert_not_called()
+
+            screen._active = True
+            screen._on_window_resize(MagicMock(), 800, 600)
+            update.assert_called_once_with()
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
         # The toggle scaffolding lives in WindowModeController now; the screen just
@@ -1434,6 +1772,29 @@ class TestComicBookReaderScreen:
             screen.open_goto_page_from_bar()
         enter_menu.assert_not_called()
         exit_menu.assert_not_called()
+
+
+def test_the_reader_screen_is_built_after_its_kv_file_loads() -> None:
+    settings, font_manager, window_manager = MagicMock(), MagicMock(), MagicMock()
+    on_ready, on_close = MagicMock(), MagicMock()
+    calls = MagicMock()
+    with (
+        patch.object(_reader_module.Builder, "load_file", calls.load_file),
+        patch.object(_reader_module, "ComicBookReaderScreen", calls.screen),
+    ):
+        screen = _reader_module.get_barks_comic_reader_screen(
+            "reader", settings, "icon.png", font_manager, window_manager, on_ready, on_close
+        )
+    assert screen is calls.screen.return_value
+    assert [call[0] for call in calls.mock_calls] == ["load_file", "screen"]
+    calls.load_file.assert_called_once_with(str(_reader_module.COMIC_BOOK_READER_KV_FILE))
+    assert calls.screen.call_args.kwargs["name"] == "reader"
+
+
+def test_an_image_on_disk_is_read_from_its_file(tmp_path: Path) -> None:
+    file = tmp_path / "page.png"
+    PilImage.new("RGB", (6, 4), (200, 100, 50)).save(file)
+    assert tuple(_reader_module.file_texture(file).size) == (6, 4)
 
 
 def test_an_image_in_a_zip_is_read_from_its_bytes(tmp_path: Path) -> None:
