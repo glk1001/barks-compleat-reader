@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.app import App
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
 
     from .tree_view_nodes import ButtonTreeViewNode
-
-COLLAPSE_PARENT_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
 
 _OVERLAY_HEIGHT = dp(28)
 _OVERLAY_MARGIN_TOP = dp(5)
@@ -47,7 +44,6 @@ class CollapseParentOverlay(FloatLayout):
         self._tracked_node: ButtonTreeViewNode | None = None
         self._scroll_view: ScrollView | None = None
         self._bar_widget: _CollapseBar | None = None
-        self._bar_built = False
         self._suppress_checks = False
 
     def setup(self, scroll_view: ScrollView) -> None:
@@ -61,8 +57,7 @@ class CollapseParentOverlay(FloatLayout):
         The overlay won't appear until the user scrolls past the node
         (detected via the scroll_y binding).
         """
-        if not self._bar_built:
-            self._bar_built = True
+        if self._bar_widget is None:
             self._build_bar()
         self._tracked_node = node
         self.parent_name = node.get_name()

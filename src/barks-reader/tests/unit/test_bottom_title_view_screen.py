@@ -754,7 +754,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
         self._offer()
         assert self.screen.goto_pages == ["7", "13", "16"]
         assert self.screen.tagged_pages == _TAGGED_PAGES
-        assert self.screen.goto_page_position == " (1 of 3)"
+        assert self.screen.goto_page_text == "Goto page 7 (1 of 3):"
 
     def test_stepping_wraps_round_both_ways(self) -> None:
         self._offer()
@@ -765,7 +765,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert pages == ["13", "16", "7"]
         self.screen.step_goto_page(-1)
         assert self.screen.goto_page_num == "16"
-        assert self.screen.goto_page_position == " (3 of 3)"
+        assert self.screen.goto_page_text == "Goto pages 16-23 (3 of 3):"
 
     def test_stepping_ticks_the_box_and_is_logged(self, loguru_sink: list[str]) -> None:
         self._offer(active=False)
@@ -810,14 +810,12 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.handle_key(KEY_RIGHT) is False
         self.screen.step_goto_page(1)
         assert self.screen.goto_page_num == "4"
-        assert self.screen.goto_page_position == ""
+        assert self.screen.goto_page_text == "Goto pages 4-6:"
 
     def test_a_run_reads_as_its_pages_and_a_lone_page_as_one(self) -> None:
         self._offer()
-        assert self.screen.goto_page_run_end == ""
         assert self.screen.goto_page_text == "Goto page 7 (1 of 3):"
         self.screen.step_goto_page(-1)
-        assert self.screen.goto_page_run_end == "23"
         assert self.screen.goto_page_text == "Goto pages 16-23 (3 of 3):"
 
     def test_one_run_reads_as_its_pages(self) -> None:
@@ -827,12 +825,11 @@ class TestGotoPageSteps(ScreenFixtureBase):
 
     def test_a_page_inside_a_run_names_no_run(self) -> None:
         _show(self.screen, "18", active=True, tagged_pages=_TAGGED_PAGES)
-        assert self.screen.goto_page_run_end == ""
+        assert self.screen.goto_page_text == "Goto page 18 (4 of 4):"
 
     def test_an_offer_with_no_tag_names_no_run(self) -> None:
         self._offer()
         _show(self.screen, "16", active=True)
-        assert self.screen.goto_page_run_end == ""
         assert self.screen.goto_page_text == "Goto page 16:"
 
     def test_a_page_among_none_of_the_runs_is_a_stop_of_its_own(self) -> None:
@@ -840,7 +837,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
         _show(self.screen, "9", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_pages == ["7", "9", "13", "16"]
         assert self.screen.tagged_pages == _TAGGED_PAGES
-        assert self.screen.goto_page_position == " (2 of 4)"
+        assert self.screen.goto_page_text == "Goto page 9 (2 of 4):"
         self.screen.step_goto_page(1)
         assert self.screen.goto_page_num == "13"
 
@@ -851,14 +848,14 @@ class TestGotoPageSteps(ScreenFixtureBase):
     def test_a_runs_first_page_is_no_extra_stop(self) -> None:
         _show(self.screen, "13", active=True, tagged_pages=_TAGGED_PAGES)
         assert self.screen.goto_pages == ["7", "13", "16"]
-        assert self.screen.goto_page_position == " (2 of 3)"
+        assert self.screen.goto_page_text == "Goto page 13 (2 of 3):"
 
     def test_a_kept_page_is_a_stop_though_the_tags_page_is_offered(self) -> None:
         # E.g. the page last read, when the title is reached under the tag.
         _show(self.screen, "7", active=True, tagged_pages=_TAGGED_PAGES, kept_page="9")
         assert self.screen.goto_page_num == "7"
         assert self.screen.goto_pages == ["7", "9", "13", "16"]
-        assert self.screen.goto_page_position == " (1 of 4)"
+        assert self.screen.goto_page_text == "Goto page 7 (1 of 4):"
         self.screen.step_goto_page(1)
         assert self.screen.goto_page_num == "9"
 
@@ -876,7 +873,7 @@ class TestGotoPageSteps(ScreenFixtureBase):
         _show(self.screen, "12", active=True)  # E.g. the last page read.
         assert self.screen.goto_pages == []
         assert self.screen.tagged_pages == []
-        assert self.screen.goto_page_position == ""
+        assert self.screen.goto_page_text == "Goto page 12:"
 
 
 class TestInsetImageEdges(ScreenFixtureBase):

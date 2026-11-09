@@ -7,11 +7,9 @@ from unittest.mock import MagicMock
 from barks_reader.ui.action_bar_helpers import (
     ACTION_BAR_SIZE_Y,
     ActionBarVisibility,
-    hide_action_bar,
     is_action_bar_visible,
     set_action_bar_visibility,
     set_fullscreen_button,
-    show_action_bar,
 )
 
 
@@ -82,25 +80,3 @@ class TestSetFullscreenButton:
 
         assert button.text == "Fullscreen"
         assert button.icon == "fs.png"
-
-
-class TestConvenienceWrappers:
-    def test_show_action_bar_makes_visible(self) -> None:
-        bar = _make_action_bar()
-        show_action_bar(bar)
-
-        assert bar.height == ACTION_BAR_SIZE_Y
-        assert bar.opacity == 1
-        assert bar.disabled is False
-
-    def test_hide_action_bar_makes_hidden(self) -> None:
-        bar = _make_action_bar()
-        bar.height = ACTION_BAR_SIZE_Y
-        bar.opacity = 1
-        bar.disabled = False
-
-        hide_action_bar(bar)
-
-        assert bar.height == 0
-        assert bar.opacity == 0
-        assert bar.disabled is True

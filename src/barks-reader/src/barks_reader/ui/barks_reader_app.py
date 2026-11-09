@@ -50,7 +50,6 @@ from .bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
 )
-from .collapse_parent_overlay import COLLAPSE_PARENT_OVERLAY_KV_FILE
 from .comic_book_reader import ComicBookReaderScreen, get_barks_comic_reader_screen
 from .corpus_stats_screen import CorpusStatsScreen, get_corpus_stats_screen
 from .document_reader import DocumentReaderScreen, get_document_reader_screen
@@ -321,7 +320,6 @@ class BarksReaderApp(App):
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
         Builder.load_file(str(GOTO_TITLE_OVERLAY_KV_FILE))
-        Builder.load_file(str(COLLAPSE_PARENT_OVERLAY_KV_FILE))
 
         root = self._build_screens()
 
@@ -547,16 +545,6 @@ class BarksReaderApp(App):
         # Whatever the monitors now: one can be plugged in later.
         Window.bind(on_move=self._window_geometry.on_window_pos_change)
         Window.bind(on_resize=self._window_geometry.on_window_resize)
-
-        # On Windows the DPI scaling artifacts in the SDL2 backend make the aspect-ratio
-        # correction converge unreliably, causing erratic resize oscillations whenever the
-        # user drags the window border.  Locking the window prevents that entirely while
-        # still allowing programmatic resizes (monitor changes, comic open/close).
-        # NOTE: Kivy 2.3.1's Window has no `resizable` property, so this only sets a stray
-        # Python attribute. Edge-drag resizing is actually disabled everywhere by the
-        # `custom_titlebar_border = 0` Config line in main.py.
-        if PLATFORM == Platform.WIN:
-            Window.resizable = False
 
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements

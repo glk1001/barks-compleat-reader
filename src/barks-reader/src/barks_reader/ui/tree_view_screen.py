@@ -19,6 +19,9 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIE
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
 
+# CollapseParentOverlay must be imported (Factory-registered) before tree_view_screen.kv's
+# rule that instantiates it is loaded: it has no kv file of its own to bring it in.
+from .collapse_parent_overlay import CollapseParentOverlay  # noqa: F401
 from .reader_keyboard_nav import clear_focus_highlight, draw_focus_highlight
 from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 

@@ -1040,7 +1040,6 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
 
     def _on_comic_is_ready_to_read(self) -> None:
         self._on_comic_is_ready_to_read_func()
-        self.action_bar_title = self.comic_book_reader.action_bar_title
         self._sync_double_page_button()
 
     def _on_key_down(

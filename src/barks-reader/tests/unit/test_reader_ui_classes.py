@@ -7,7 +7,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_nodes
-from barks_reader.ui.action_bar_helpers import hide_action_bar, show_action_bar
 from barks_reader.ui.tree_view_nodes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
@@ -16,22 +15,6 @@ from barks_reader.ui.tree_view_nodes import (
     ReaderTreeView,
     TitleTreeViewNode,
 )
-
-
-class TestHelperFunctions:
-    def test_show_action_bar(self) -> None:
-        mock_bar = MagicMock()
-        show_action_bar(mock_bar)
-        assert mock_bar.opacity == 1
-        assert mock_bar.disabled is False
-        assert mock_bar.height > 0
-
-    def test_hide_action_bar(self) -> None:
-        mock_bar = MagicMock()
-        hide_action_bar(mock_bar)
-        assert mock_bar.opacity == 0
-        assert mock_bar.disabled is True
-        assert mock_bar.height == 0
 
 
 class TestReaderTreeView:

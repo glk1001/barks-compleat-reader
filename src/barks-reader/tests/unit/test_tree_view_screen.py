@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
+from barks_reader.ui import collapse_parent_overlay
 from barks_reader.ui import tree_view_screen as tree_view_screen_module
 from barks_reader.ui.tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 from barks_reader.ui.tree_view_screen import TreeViewScreen
@@ -280,3 +281,11 @@ class TestTreeViewScreen:
         mock_settings.show_top_view_title_info = False
         tree_view_screen.on_change_show_current_title()
         assert tree_view_screen.show_current_title is False
+
+
+def test_the_screen_module_registers_the_overlay_its_kv_file_instantiates() -> None:
+    """Nothing else imports the class at run time: without this the app fails to boot."""
+    assert (
+        tree_view_screen_module.CollapseParentOverlay
+        is collapse_parent_overlay.CollapseParentOverlay
+    )

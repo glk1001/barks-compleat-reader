@@ -2,13 +2,13 @@
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     # Vertical BoxLayout reflow pattern (matches MainScreen): the action bar is a fixed-height
-    # row that collapses to height 0 when hidden via hide_action_bar(). The image_layout fills
+    # row that collapses to height 0 when hidden via set_action_bar_visibility(). The image_layout fills
     # whatever space is left, so no padding/opacity cascade is needed.
     BoxLayout:
         id: main_layout
         orientation: "vertical"
 
-        # Action bar row. Visibility is driven from Python via show_action_bar/hide_action_bar
+        # Action bar row. Visibility is driven from Python via set_action_bar_visibility
         # (height + opacity + disabled). Do NOT bind opacity here.
         # The outer FloatLayout fills the row full-width so the height-collapse trick works.
         # The inner FloatLayout (action_bar_inner) is centered and sized to match the comic

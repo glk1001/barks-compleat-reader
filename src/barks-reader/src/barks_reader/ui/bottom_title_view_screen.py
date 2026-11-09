@@ -196,11 +196,6 @@ class BottomTitleViewScreen(FloatLayout):
     # Whether the goto-page row has more than one page to step through.
     can_step_goto_page = AliasProperty(_get_can_step_goto_page, None, bind=("goto_pages",))
 
-    # " (2 of 3)" while stepping through several goto pages, else empty.
-    goto_page_position = StringProperty()
-    # The last page of the run of tagged pages the offered page starts ("3" for 1-3),
-    # else empty.
-    goto_page_run_end = StringProperty()
     # The row's label: "Goto page 7 (1 of 3):", or "Goto pages 16-23 (3 of 3):" for a
     # run, so a run shows as one.
     goto_page_text = StringProperty()
@@ -348,7 +343,7 @@ class BottomTitleViewScreen(FloatLayout):
         self.goto_page_num = offer.page
         self.goto_pages = list(offer.pages)
         self.goto_page_active = offer.active
-        self._set_goto_page_position()
+        self.goto_page_text = offer.text
         if offer.page:
             logger.debug(
                 log_markers.GOTO_PAGE_OFFERED.format(
@@ -369,7 +364,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._goto_offer = offer
         self.goto_page_num = offer.page
         self.goto_page_active = True  # Choosing a page means wanting to go there.
-        self._set_goto_page_position()
+        self.goto_page_text = offer.text
         assert offer.index is not None
         logger.debug(
             log_markers.GOTO_PAGE_STEPPED.format(
@@ -379,12 +374,6 @@ class BottomTitleViewScreen(FloatLayout):
                 text=self.goto_page_text,
             )
         )
-
-    def _set_goto_page_position(self) -> None:
-        offer = self._goto_offer
-        self.goto_page_run_end = offer.run_end
-        self.goto_page_position = offer.position
-        self.goto_page_text = offer.text
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
         # The kv rule's checkbox is ticked unless there is a description and this is off.
