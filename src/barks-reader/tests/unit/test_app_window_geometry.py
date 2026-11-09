@@ -264,6 +264,110 @@ def test_resize_skipped_when_suppression_active(
     assert len(fake_clock.calls) == baseline
 
 
+def _end_suppression(fake_clock: FakeClock) -> None:
+    """Fire the clear that `suppress_aspect_ratio_correction` scheduled last."""
+    fake_clock.fire_last()
+
+
+def test_a_resize_during_suppression_is_corrected_when_it_ends(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    fake_window.size = (1500, 2000)  # out of proportion
+    helper.on_window_resize(fake_window, 1500, 2000)
+    assert helper._correction_event is None  # noqa: SLF001
+
+    _end_suppression(fake_clock)
+
+    assert helper._suppress_correction is False  # noqa: SLF001
+    assert helper._correction_event is not None  # noqa: SLF001
+    fake_clock.fire_last()
+    width, height = get_win_dimensions(2000 - CHROME, 2560, COMIC_PAGE_ASPECT_RATIO)
+    assert fake_window.size == (width, height + CHROME)
+
+
+def test_a_resize_during_suppression_gets_its_fonts_when_it_ends(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    """Already in proportion: nothing to correct, but the fonts were for the old height."""
+    width, height = get_win_dimensions(1800 - CHROME, 2560, COMIC_PAGE_ASPECT_RATIO)
+    fake_window.size = (width, height + CHROME)
+    fake_window.height = height + CHROME
+    update_fonts = MagicMock()
+    helper.set_main_screen_callbacks(update_fonts)
+
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    helper.on_window_resize(fake_window, width, height + CHROME)
+    update_fonts.assert_not_called()
+
+    _end_suppression(fake_clock)
+
+    update_fonts.assert_called_once_with(height + CHROME)
+    assert helper._correction_event is None  # noqa: SLF001
+
+
+def test_with_no_resize_during_suppression_its_end_does_nothing(
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock
+) -> None:
+    update_fonts = MagicMock()
+    helper.set_main_screen_callbacks(update_fonts)
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    scheduled_before = len(fake_clock.calls)
+
+    _end_suppression(fake_clock)
+
+    assert len(fake_clock.calls) == scheduled_before
+    update_fonts.assert_not_called()
+
+
+def test_a_suppressed_resize_is_caught_up_on_only_once(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    helper.on_window_resize(fake_window, 1500, 2000)
+    _end_suppression(fake_clock)
+    scheduled_after_first = len(fake_clock.calls)
+
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    scheduled_before = len(fake_clock.calls)
+    assert scheduled_before == scheduled_after_first + 1
+    _end_suppression(fake_clock)
+
+    assert len(fake_clock.calls) == scheduled_before
+
+
+def test_a_second_suppression_keeps_the_resize_the_first_held_back(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    helper.on_window_resize(fake_window, 1500, 2000)
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+
+    _end_suppression(fake_clock)
+
+    assert helper._correction_event is not None  # noqa: SLF001
+
+
+@pytest.mark.parametrize("why", ["fullscreen", "guarded"])
+def test_no_catch_up_when_suppression_ends_in_fullscreen_or_under_a_guard(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock, why: str
+) -> None:
+    helper.suppress_aspect_ratio_correction(duration=2.0)
+    helper.on_window_resize(fake_window, 1500, 2000)
+    clear = fake_clock.pending[-1]
+    if why == "fullscreen":
+        fake_window.fullscreen = True
+    else:
+        helper._schedule_guarded_resize(1200, 1800)  # noqa: SLF001
+    scheduled_before = len(fake_clock.calls)
+
+    clear(0.0)
+
+    assert helper._suppress_correction is False  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before
+    assert helper._correction_event is None  # noqa: SLF001
+
+
 # --- Aspect-ratio correction ---
 
 

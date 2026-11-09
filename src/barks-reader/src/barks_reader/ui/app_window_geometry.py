@@ -80,6 +80,7 @@ class AppWindowGeometryHelper:
         self._window_ready = False
         self._correction_event: Any = None
         self._suppress_correction = False
+        self._correction_suppressed_a_resize = False
         self._suppress_correction_event: Any = None
         self._rotation_poll_event: Any = None
 
@@ -394,6 +395,7 @@ class AppWindowGeometryHelper:
         # Suppress corrections during/after comic reader close to avoid DPI-scaling
         # feedback loops on Windows where spurious resize events fire during the transition.
         if self._suppress_correction:
+            self._correction_suppressed_a_resize = True
             return
 
         self._enforce_aspect_ratio(width, height)
@@ -418,8 +420,15 @@ class AppWindowGeometryHelper:
         def clear_suppress(_dt: float) -> None:
             self._suppress_correction = False
             self._suppress_correction_event = None
+            self._catch_up_on_suppressed_resize()
 
         self._suppress_correction_event = Clock.schedule_once(clear_suppress, duration)
+
+    def _catch_up_on_suppressed_resize(self) -> None:
+        """Give the size the window settled at the fonts and shape its resize events missed."""
+        resized, self._correction_suppressed_a_resize = self._correction_suppressed_a_resize, False
+        if resized and not (Window.fullscreen or self._resize_event):
+            self._enforce_aspect_ratio(*Window.size)
 
     # --- Rotation polling ---
 
