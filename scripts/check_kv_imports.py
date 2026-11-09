@@ -8,6 +8,12 @@ directive dangling and only crashes when the screen is first built. This check
 imports each dotted path (as a module, or as an attribute of its parent module)
 and fails on anything that no longer resolves.
 
+It imports ``barks_reader.core.config_info`` first, as ``main.py`` does: that module's
+guard refuses to load once Kivy is in, so a target that imports Kivy (any ``ui`` module)
+would otherwise break every later target that reaches it. The mutation stage's
+gitignored copy of the tree, ``src/barks-reader/mutants/``, is left out: it is as old as
+the last mutation run, and its files, sorting first, decided what the real ones saw.
+
 Run directly (``uv run scripts/check_kv_imports.py``) or via ``full-lint.sh``.
 """
 
@@ -24,6 +30,20 @@ _KV_IMPORT_RE = re.compile(r"^\s*#:\s*import\s+(\S+)\s+(\S+)\s*$")
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _KV_SEARCH_ROOT = _REPO_ROOT / "src"
+
+# What the app imports before anything else (main.py), so the check does too.
+_APP_FIRST_IMPORT = "barks_reader.core.config_info"
+# The mutation stage's copy of the tree (src/barks-reader/mutants/), not the source.
+_SKIPPED_DIR_NAMES = frozenset({"mutants"})
+
+
+def _kv_files(root: Path) -> list[Path]:
+    """Return the ``.kv`` files under *root*, sorted, leaving out the mutation copy."""
+    return sorted(
+        path
+        for path in root.rglob("*.kv")
+        if _SKIPPED_DIR_NAMES.isdisjoint(path.relative_to(root).parts)
+    )
 
 
 def _resolve_dotted_path(dotted: str) -> str | None:  # noqa: PLR0911 - flat error branches
@@ -69,8 +89,9 @@ def _iter_kv_imports(kv_file: Path) -> list[tuple[int, str]]:
 def main() -> int:
     """Check every ``.kv`` import directive; return a process exit code."""
     os.environ.setdefault("KIVY_NO_ARGS", "1")  # Keep Kivy quiet if a target imports it.
+    importlib.import_module(_APP_FIRST_IMPORT)
 
-    kv_files = sorted(_KV_SEARCH_ROOT.rglob("*.kv"))
+    kv_files = _kv_files(_KV_SEARCH_ROOT)
     errors: list[str] = []
     checked = 0
 
