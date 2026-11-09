@@ -134,6 +134,15 @@ class TestMainScreen:
         assert main_screen._active is True
         assert main_screen._renderer is not None
 
+    def test_closing_the_app_saves_the_place_in_a_comic_still_open(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen._tree_view_screen = MagicMock()
+
+        main_screen.app_closing()
+
+        main_screen._comic_reader_manager.comic_closed.assert_called_once_with()
+
     def test_on_key_down_ignored_when_not_current_screen(self, main_screen: MainScreen) -> None:
         # While another screen (e.g. the wiki reader with its search field) is on
         # top, the still-bound main-screen handler must yield the keyboard.

@@ -665,6 +665,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def app_closing(self) -> None:
         logger.debug(log_markers.CLOSING_APP)
 
+        # A comic still open never reaches the reader's own close: save where it got to.
+        self._comic_reader_manager.comic_closed()
+
         self._window_helper.exit_fullscreen()
 
         if not self._tree_view_screen.get_selected_node():

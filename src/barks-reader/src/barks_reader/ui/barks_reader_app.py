@@ -175,9 +175,9 @@ class BarksReaderApp(App):
         """Persist state that otherwise only flushes on screen exit.
 
         This is the one hook that runs on every exit path (Quit button or
-        window-manager close), so the last-selected node and the wiki resume
-        point are both saved here — the same guarantee the standalone
-        okf-reader app gives via its own `on_stop`.
+        window-manager close), so the last-selected node, the place in any comic
+        still open and the wiki resume point are all saved here — the same
+        guarantee the standalone okf-reader app gives via its own `on_stop`.
         """
         if self._on_stop_done:
             return
