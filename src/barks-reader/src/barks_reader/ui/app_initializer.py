@@ -76,6 +76,7 @@ class AppInitializer:
         Clock.schedule_once(lambda _dt: tree_builder.build_main_screen_tree(), 0)
 
     def on_tree_build_finished(self, _instance: Widget) -> None:
+        """Finish starting up once the tree is built, which hands over to the callback last."""
         logger.debug("Received the 'on_finished_building_event' - dismiss the loading popup.")
 
         self._post_build_setup()
@@ -140,6 +141,13 @@ class AppInitializer:
                 return
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:
+        """Return whether a comic can load from the Fantagraphics volumes, saying so if not.
+
+        Returns:
+            True and an empty string if it can. If not, False and the reason, which
+            has already been shown to the user.
+
+        """
         if self._fanta_volumes_state not in BAD_STATES:
             return True, ""
 
@@ -154,6 +162,15 @@ class AppInitializer:
         return False, reason
 
     def get_bad_fanta_volumes_reason(self) -> tuple[str, ErrorTypes]:
+        """Return what is wrong with the Fantagraphics volumes.
+
+        Returns:
+            The reason as text, and the type of error it is.
+
+        Raises:
+            RuntimeError: If the volumes' state is not a known bad one.
+
+        """
         if self._fanta_volumes_state in STATE_ERRORS:
             return STATE_ERRORS[self._fanta_volumes_state]
 

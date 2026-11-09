@@ -519,6 +519,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         """No-op: the fact sheet is a single page."""
 
     def on_touch_down(self, touch: object) -> bool:
+        """Clear the action bar's menu on a touch, then handle the touch as usual."""
         self._clear_menu_on_touch()
         return bool(super().on_touch_down(touch))
 

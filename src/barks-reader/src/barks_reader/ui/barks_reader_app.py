@@ -165,6 +165,7 @@ class BarksReaderApp(App):
         self._window_geometry.suppress_aspect_ratio_correction(duration)
 
     def close_app(self) -> None:
+        """Stop the app and close its window."""
         # All persistence happens in on_stop, which Kivy runs on every exit
         # path — this quit-button path and a window-manager close alike.
         App.get_running_app().stop()
@@ -662,6 +663,12 @@ def _handle_app_exception(
 
 
 def reader_main(config_info: ConfigInfo) -> None:
+    """Run the app until it quits, showing the error popup if it fails.
+
+    Args:
+        config_info: Where the app's configuration and logs live.
+
+    """
     # noinspection PyBroadException
     try:
         log_screen_metrics()

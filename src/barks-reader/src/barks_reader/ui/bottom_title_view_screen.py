@@ -244,9 +244,11 @@ class BottomTitleViewScreen(FloatLayout):
         self.ids.use_overrides_checkbox.bind(active=self._on_use_overrides_checkbox_changed)
 
     def set_special_fanta_overrides(self, special_fanta_overrides: SpecialFantaOverrides) -> None:
+        """Set where the view finds the overrides it offers for a title."""
         self._special_fanta_overrides = special_fanta_overrides
 
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
+        """Show *fanta_info*'s title in the view."""
         # A remembered nav position belongs to the previous title's widgets.
         self._last_nav_focused_widget = None
         self._fanta_info = fanta_info
@@ -308,6 +310,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._set_title_inset_image(inset_image_source)
 
     def fade_in_bottom_view_title(self) -> None:
+        """Fade the panel in from nothing, over a short random time."""
         # Stepping through titles starts a fade over one still running. Left going, the old
         # one drags the opacity back down after a shorter new one has finished, and the
         # panel, with no fade on record, reads as peeked away.
@@ -376,6 +379,13 @@ class BottomTitleViewScreen(FloatLayout):
         )
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
+        """Set the use-overrides row for the title in view.
+
+        Args:
+            description: The row's text, empty for a title with no overrides.
+            active: Whether the overrides are in use.
+
+        """
         # The kv rule's checkbox is ticked unless there is a description and this is off.
         box_was_off = bool(self.use_overrides_description) and not self.use_overrides_active
         box_stays_off = box_was_off and bool(description) and not active
@@ -389,10 +399,12 @@ class BottomTitleViewScreen(FloatLayout):
             self._show_title_inset_for_overrides(use_overrides=False)
 
     def on_title_portal_image_pressed(self) -> None:
+        """Pass a press of the title portal on to its handler."""
         assert self.on_title_portal_image_pressed_func is not None
         self.on_title_portal_image_pressed_func()
 
     def on_wiki_page_button_pressed(self) -> None:
+        """Pass a press of the wiki page button on to its handler."""
         assert self.on_wiki_page_button_pressed_func is not None
         self.on_wiki_page_button_pressed_func()
 

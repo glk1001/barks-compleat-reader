@@ -148,7 +148,7 @@ class ComicBookReader(FloatLayout):
         font_manager: FontManager,
         on_comic_is_ready_to_read: Callable[[], None],
         hide_action_bar: Callable[[], None],
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
 
@@ -261,9 +261,11 @@ class ComicBookReader(FloatLayout):
         self._last_page_placement = log_page_placement(placement, self._last_page_placement)
 
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
+        """Set the widget the goto-page list opens from."""
         self._goto_page_widget = goto_page_widget
 
     def set_reader_navigation_regions(self, width: int, height: int) -> None:
+        """Work out the page-turn margins for a reader of the given size."""
         self._navigation.update_regions(width, height, self.x, self.y)
 
     @property
@@ -281,6 +283,7 @@ class ComicBookReader(FloatLayout):
         return page_map
 
     def get_last_read_page(self) -> str:
+        """Return the page on show, to keep as the last one read."""
         return self._current_page_str
 
     def get_current_display_unit(self) -> DisplayUnit | None:
@@ -288,6 +291,7 @@ class ComicBookReader(FloatLayout):
         return self._page_manager.get_current_display_unit()
 
     def is_click_in_top_margin(self, touch: MotionEvent) -> bool:
+        """Return whether a touch falls in the reader's top margin."""
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
         return self._navigation.is_in_top_margin(x_rel, y_rel)
@@ -337,6 +341,7 @@ class ComicBookReader(FloatLayout):
         return False
 
     def init_data(self) -> None:
+        """Have the loader preload what it needs, ahead of the first comic."""
         self._comic_book_loader.init_data()
 
     def read_comic(
@@ -350,6 +355,20 @@ class ComicBookReader(FloatLayout):
         on_comic_opened: Callable[[], None] | None = None,
         on_load_failed: Callable[[], None] | None = None,
     ) -> None:
+        """Open a comic, showing the loading page until its first page is ready.
+
+        Args:
+            fanta_info: The comic to read.
+            use_fantagraphics_overrides: Whether to read it with its override pages.
+            comic_book_image_builder: What builds the comic's pages.
+            page_to_first_goto: The page to open at, ``COMIC_BEGIN_PAGE`` for its start.
+            layout: The comic's pages.
+            tagged_pages: The pages of the tag it was reached under, picked out in the
+                goto-page list.
+            on_comic_opened: Called once, when page one has been drawn.
+            on_load_failed: Called if the comic cannot be opened.
+
+        """
         page_map = layout.page_map
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
         self._tagged_pages = frozenset(tagged_pages)
@@ -412,6 +431,7 @@ class ComicBookReader(FloatLayout):
         self._arm_reveal()
 
     def close_comic_book_reader(self) -> None:
+        """Stop reading the comic: nothing pending goes on, and the loader stops."""
         if self._closed:
             return
 
@@ -429,6 +449,7 @@ class ComicBookReader(FloatLayout):
         self._closed = True
 
     def reset_comic_book_reader(self) -> None:
+        """Forget the comic just read, leaving the reader closed."""
         self._page_manager.reset_current_page_index()
         self._goto_page_dropdown = None
         self._goto_page_buttons.clear()
@@ -672,12 +693,14 @@ class ComicBookReader(FloatLayout):
         return self._closed
 
     def goto_start_page(self) -> None:
+        """Go to the comic's start page."""
         if self._ignored_once_closed("Goto start page"):
             return
         self._page_manager.goto_start_page()
         self._hide_action_bar_if_fullscreen()
 
     def goto_last_page(self) -> None:
+        """Go to the comic's last page."""
         if self._ignored_once_closed("Goto last page"):
             return
         self._page_manager.goto_last_page()
@@ -698,11 +721,13 @@ class ComicBookReader(FloatLayout):
         return self._collection_titles is not None
 
     def next_page(self) -> None:
+        """Go to the next page."""
         if self._ignored_once_closed("Next page"):
             return
         self._page_manager.next_page()
 
     def prev_page(self) -> None:
+        """Go to the previous page."""
         if self._ignored_once_closed("Prev page"):
             return
         self._page_manager.prev_page()
@@ -761,6 +786,7 @@ class ComicBookReader(FloatLayout):
         return None
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
+        """Go to the page chosen from the goto-page list."""
         if self._ignored_once_closed("Goto page selection"):
             return
         logger.info(log_markers.GOTO_PAGE_SELECTED.format(page=page))
@@ -781,17 +807,21 @@ class ComicBookReader(FloatLayout):
         return self._get_current_page_button_index() or 0
 
     def get_goto_page_buttons(self) -> list[Button]:
+        """Return the goto-page list's buttons, in list order."""
         return self._goto_page_buttons
 
     def scroll_goto_page_to(self, button: Button) -> None:
+        """Scroll the goto-page list to *button*, if the list exists."""
         if self._goto_page_dropdown:
             self._goto_page_dropdown.scroll_to(button)
 
     def dismiss_goto_page_dropdown(self) -> None:
+        """Close the goto-page list, if it exists."""
         if self._goto_page_dropdown:
             self._goto_page_dropdown.dismiss()
 
     def unbind_goto_page_dismiss(self, callback: Callable) -> None:
+        """Stop calling *callback* when the goto-page list closes."""
         if self._goto_page_dropdown:
             self._goto_page_dropdown.unbind(on_dismiss=callback)
 
@@ -838,6 +868,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
     comic_book_reader: ComicBookReader
 
     def on_enter(self, *args: object) -> None:
+        """Log the page's placement afresh, now that the screen has come up."""
         super().on_enter(*args)
         self.comic_book_reader.log_page_placement_afresh()
 
@@ -860,7 +891,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         window_manager: WindowManager,
         on_comic_is_ready_to_read_func: Callable[[], None],
         on_close_reader_func: Callable[[], None],
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
 
@@ -1075,6 +1106,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         return True
 
     def close_comic_book_reader(self) -> None:
+        """Close the comic and leave fullscreen."""
         self._is_closing = True
         self.comic_book_reader.close_comic_book_reader()
         self._exit_fullscreen()
@@ -1098,6 +1130,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         self.is_fullscreen = self._was_fullscreen_on_entry
 
     def toggle_screen_mode(self) -> None:
+        """Switch between fullscreen and the window."""
         self._mode.toggle()
 
     def toggle_double_page_mode(self) -> None:
@@ -1258,6 +1291,21 @@ def get_barks_comic_reader_screen(
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ) -> ComicBookReaderScreen:
+    """Load the screen's kv file and build the screen.
+
+    Args:
+        screen_name: The name of the screen.
+        reader_settings: The reader's settings.
+        reader_app_icon_file: The icon for the screen's action bar.
+        font_manager: The app's fonts.
+        window_manager: What moves the window in and out of fullscreen.
+        on_comic_is_ready_to_read: Called when a comic is ready to read.
+        on_close_reader: Called when the reader closes.
+
+    Returns:
+        The comic reader screen.
+
+    """
     Builder.load_file(str(COMIC_BOOK_READER_KV_FILE))
 
     return ComicBookReaderScreen(

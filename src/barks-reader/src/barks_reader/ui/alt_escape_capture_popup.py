@@ -50,6 +50,16 @@ if TYPE_CHECKING:
 
 
 def keycode_to_name(keycode: int) -> str:
+    """Return what to call a key in the settings, for a person to read.
+
+    Args:
+        keycode: The key's Kivy keycode, 0 for no key.
+
+    Returns:
+        The key's capitalized name, ``<unset>`` for no key, or ``key N`` for one Kivy
+        has no name for.
+
+    """
     if keycode == 0:
         return "<unset>"
     name = KEY_NAMES.get(keycode)

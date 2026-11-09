@@ -39,7 +39,7 @@ class CollapseParentOverlay(FloatLayout):
     is_visible = BooleanProperty(defaultvalue=False)
     on_collapse_request = ObjectProperty(None, allownone=True)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._tracked_node: ButtonTreeViewNode | None = None
         self._scroll_view: ScrollView | None = None
@@ -162,7 +162,7 @@ class _CollapseBar(RelativeLayout):
 
     icon_source = StringProperty("")
 
-    def __init__(self, overlay: CollapseParentOverlay, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, overlay: CollapseParentOverlay, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._overlay = overlay
         self.size_hint = (None, None)
