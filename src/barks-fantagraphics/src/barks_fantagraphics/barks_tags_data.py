@@ -1844,9 +1844,11 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.CHEMICAL_FORMULA, Titles.MAD_CHEMIST_THE): ["1", "2"],
     (Tags.CHEMICAL_FORMULA, Titles.MIXED_UP_MIXER): ["3"],
     (Tags.CHEMICAL_FORMULA, Titles.PIED_PIPER_OF_DUCKBURG_THE): ["2"],
+    (Tags.CIGARETTES, Titles.BACK_TO_LONG_AGO): ["2"],
     (Tags.CIGARETTES, Titles.BILLIONS_TO_SNEEZE_AT): ["8"],
     (Tags.CIGARETTES, Titles.DANGEROUS_DISGUISE): ["3"],
     (Tags.CIGARETTES, Titles.GOING_BUGGY): ["3"],
+    (Tags.CIGARETTES, Titles.GOPHER_GOOF_UPS): ["2"],
     (Tags.CIGARETTES, Titles.JAM_ROBBERS): ["7"],
     (Tags.CIGARETTES, Titles.MAD_CHEMIST_THE): ["10"],
     (Tags.CIGARETTES, Titles.SHERIFF_OF_BULLET_VALLEY): [
