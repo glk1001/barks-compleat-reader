@@ -159,7 +159,7 @@ class BottomTitleViewScreen(FloatLayout):
     # The height left for the notes in the info box, under its info rows: what ends the
     # notes at a whole line and what places them must agree, so the kv rule writes it once.
     space_under_title_info = NumericProperty(0)
-    title_inset_image_texture = ObjectProperty()
+    title_inset_image_texture = ObjectProperty(allownone=True)
 
     is_visible = BooleanProperty(defaultvalue=False)
     title_image_texture = ObjectProperty(allownone=True)
@@ -585,7 +585,11 @@ class BottomTitleViewScreen(FloatLayout):
 
         def on_ready(tex: Texture | None, err: Exception | None) -> None:
             if err:
-                raise RuntimeError(err)
+                # It costs the portal its picture, not the app: the title can still be read,
+                # or say why not, and the previous title's inset must not stay up as this one's.
+                logger.error(f'Could not load the title inset "{inset_image_source}": {err}')
+                self.title_inset_image_texture = None
+                return
 
             self.title_inset_image_texture = tex
             logger.debug(

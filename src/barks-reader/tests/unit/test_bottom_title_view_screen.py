@@ -816,12 +816,19 @@ class TestInsetImageEdges(ScreenFixtureBase):
         self.mock_overrides.get_title_page_inset_file.assert_not_called()
         self.mock_loader.load_texture.assert_not_called()
 
-    def test_an_inset_image_that_failed_to_load_is_raised(self) -> None:
+    def test_an_inset_image_that_failed_to_load_leaves_the_portal_blank_and_says_why(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """It must not end the app, nor leave the previous title's inset up as this one's."""
+        self.screen.title_inset_image_texture = MagicMock()
         self.mock_loader.load_texture.side_effect = lambda _src, on_ready: on_ready(
             None, OSError("inset.png is gone")
         )
-        with pytest.raises(RuntimeError, match=r"inset\.png is gone"):
-            self.screen._set_title_inset_image(Path("inset.png"))
+
+        self.screen._set_title_inset_image(Path("inset.png"))
+
+        assert self.screen.title_inset_image_texture is None
+        assert 'Could not load the title inset "inset.png": inset.png is gone' in loguru_sink
 
 
 _NOTES_FONT_FILE = FONT_DIR / "SourceSerif4SmText-Regular.ttf"
