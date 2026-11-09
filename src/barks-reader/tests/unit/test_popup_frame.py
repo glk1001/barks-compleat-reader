@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core import popup_frame as core_frame
 from barks_reader.core.font_sizes import HI_RES_FONT_SIZES, LOW_RES_FONT_SIZES, FontTheme
-from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT
+from barks_reader.core.keys import (
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
+    set_alt_escape_key,
+)
 from barks_reader.core.popup_frame import (
     MAX_WINDOW_WIDTH_FRACTION,
     SIZE_CLASSES,
@@ -68,8 +74,8 @@ def _frame(buttons: tuple[FrameButton, ...] = (), **kwargs: object) -> PopupFram
         return PopupFrame(title="A Title", body=Label(), buttons=buttons, **kwargs)  # ty: ignore[invalid-argument-type]
 
 
-def _press(frame: PopupFrame, key: int) -> bool:
-    return frame._on_key_down(None, key, 0, "", [])  # noqa: SLF001
+def _press(frame: PopupFrame, key: int, codepoint: str = "") -> bool:
+    return frame._on_key_down(None, key, 0, codepoint, [])  # noqa: SLF001
 
 
 def _buttons(frame: PopupFrame) -> list[Button]:
@@ -380,6 +386,30 @@ class TestPopupFrame:
             assert _press(frame, KEY_ESCAPE) is True
         cancel.assert_called_once_with()
         box.focus = False
+
+    @pytest.mark.parametrize(
+        ("codepoint", "typed"),
+        [pytest.param("r", True, id="a-keyboard-types-it"), pytest.param("", False, id="a-remote")],
+    )
+    def test_a_letter_set_as_the_alternate_escape_is_typed_not_a_cancel(
+        self, codepoint: str, typed: bool
+    ) -> None:
+        box = TextInput()
+        cancel = MagicMock()
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            frame = PopupFrame(title="T", body=box, buttons=(FrameButton("Cancel", cancel),))
+        box.focus = True
+        set_alt_escape_key(ord("r"))
+        try:
+            with patch.object(frame, "dismiss"):
+                handled = _press(frame, ord("r"), codepoint)
+        finally:
+            set_alt_escape_key(0)
+            box.focus = False
+
+        assert handled is not typed
+        assert cancel.call_count == (0 if typed else 1)
 
     def test_closing_lets_a_focused_text_box_go(self) -> None:
         box = TextInput()

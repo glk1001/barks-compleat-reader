@@ -41,7 +41,14 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 from barks_reader.core.font_sizes import font_sizes_for_height
-from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
+from barks_reader.core.keys import (
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    is_escape_key,
+    is_escape_key_for_text_input,
+)
 from barks_reader.core.popup_frame import FrameButton, PopupSize, popup_size
 from barks_reader.core.reader_palette import theme
 
@@ -442,11 +449,11 @@ class PopupFrame(ModalView):
             self._on_closed()
 
     def _on_key_down(
-        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
+        self, _win: object, key: int, _scancode: int, codepoint: str, _modifiers: list[str]
     ) -> bool:
         if self.key_handler is not None and self.key_handler(key):
             return True
-        if not is_escape_key(key) and self._typing():
+        if self._typing() and not is_escape_key_for_text_input(key, codepoint):
             return False  # the text box's key; Escape is still the frame's, to cancel
         if not self._frame_buttons:
             if is_escape_key(key):
