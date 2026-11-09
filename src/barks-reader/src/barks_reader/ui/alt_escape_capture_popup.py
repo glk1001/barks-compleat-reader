@@ -19,6 +19,7 @@ from barks_reader.core.keys import (
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 
 from .popup_frame import PopupFrame, message_body
+from .ui_helpers import KEY_NAMES
 
 ALT_ESCAPE_POPUP_TITLE = "Alternate Escape Key"
 # The keys the frame works the buttons with: never captured, each having its own work.
@@ -51,10 +52,8 @@ if TYPE_CHECKING:
 def keycode_to_name(keycode: int) -> str:
     if keycode == 0:
         return "<unset>"
-    for name, code in Keyboard.keycodes.items():
-        if code == keycode:
-            return name.capitalize()
-    return f"key {keycode}"
+    name = KEY_NAMES.get(keycode)
+    return name.capitalize() if name is not None else f"key {keycode}"
 
 
 class AltEscapeCapturePopup(PopupFrame):

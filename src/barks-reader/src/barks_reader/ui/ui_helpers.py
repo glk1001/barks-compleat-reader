@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 # kivy_helpers.kv's rule and the screen kv files that instantiate them are loaded.
 from barks_kivy_ui.scrolling import ReaderDropDown, ReaderScrollView  # noqa: F401
 from kivy.clock import Clock
-from kivy.core.window import Window
+from kivy.core.window import Keyboard, Window
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from kivy.input import MotionEvent
 
 KIVY_HELPERS_KV_FILE = Path(__file__).parent / "kivy_helpers.kv"
+
+# What to call a keycode. Two names can share one ("/" and "?" are both 47): the first
+# Kivy lists is the one used.
+KEY_NAMES: dict[int, str] = {code: name for name, code in reversed(Keyboard.keycodes.items())}
 
 
 def is_tap(touch: MotionEvent) -> bool:

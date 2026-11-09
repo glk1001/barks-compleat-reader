@@ -12,7 +12,7 @@ from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
 from kivy.config import Config
-from kivy.core.window import Keyboard, Window  # can take ~1s in VM Windows
+from kivy.core.window import Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from loguru import logger
 
@@ -92,7 +92,7 @@ from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
 from .tap_targets import install_tap_targets_service
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
-from .ui_helpers import KIVY_HELPERS_KV_FILE
+from .ui_helpers import KEY_NAMES, KIVY_HELPERS_KV_FILE
 from .user_error_handler import UserErrorHandler
 from .wiki_reader import WikiReaderScreen, get_wiki_reader_screen
 from .x11_wm_class import force_x11_wm_class
@@ -585,9 +585,6 @@ class BarksReaderApp(App):
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
 
 
-_KEY_NAMES: dict[int, str] = {code: name for name, code in Keyboard.keycodes.items()}
-
-
 def _configure_virtual_keyboard(window: Any) -> None:  # noqa: ANN401
     """Put the window in Kivy's "systemanddock" keyboard mode.
 
@@ -621,7 +618,7 @@ def _install_key_press_log(window: Any) -> None:  # noqa: ANN401
     def dispatch(event_name: str, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         if event_name == "on_key_down" and args:
             key = args[0]
-            logger.debug(log_markers.KEY_PRESSED.format(key=key, name=_KEY_NAMES.get(key, "?")))
+            logger.debug(log_markers.KEY_PRESSED.format(key=key, name=KEY_NAMES.get(key, "?")))
         return original(event_name, *args, **kwargs)
 
     window.dispatch = dispatch

@@ -21,6 +21,7 @@ from barks_reader.core.keys import (
 )
 from barks_reader.ui import popup_frame
 from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
+from barks_reader.ui.ui_helpers import KEY_NAMES
 from kivy.core.window import Keyboard
 
 
@@ -168,3 +169,9 @@ def test_unset_and_unknown_keys_are_named() -> None:
     assert keycode_to_name(0) == "<unset>"
     assert keycode_to_name(KEY_LEFT) == "Left"
     assert keycode_to_name(987654) == "key 987654"
+
+
+def test_a_keycode_with_two_names_goes_by_the_first_everywhere() -> None:
+    assert Keyboard.keycodes["/"] == Keyboard.keycodes["?"]
+    assert KEY_NAMES[Keyboard.keycodes["/"]] == "/"
+    assert keycode_to_name(Keyboard.keycodes["/"]) == "/"
