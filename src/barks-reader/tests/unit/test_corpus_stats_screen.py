@@ -7,6 +7,7 @@ Kivy internals are patched out (the base screen's ``__init__`` injects a fake
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -23,10 +24,12 @@ from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_screens import ReaderScreen
+from kivy.lang.parser import Parser
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
+
+    from kivy.lang.parser import ParserRule
 
 _STATS = CorpusStats(
     opening=Opening(headline="683 stories, 1942-1973", standfirst="6,591 pages."),
@@ -264,6 +267,21 @@ class TestResizing:
     ) -> None:
         """A timeout of 0 would only merge the calls within one frame."""
         assert screen._rebuild_trigger.timeout > 0
+
+
+class TestTheCloseButton:
+    def test_it_acts_on_release_as_the_readers_bar_buttons_do(self) -> None:
+        """So the screen does not change under a held press, which can slide off to cancel."""
+        kv_file = Path(corpus_stats_screen_module.__file__).with_suffix(".kv")
+
+        def close_button(rule: ParserRule) -> ParserRule | None:
+            if rule.id == "close_button":
+                return rule
+            return next(filter(None, map(close_button, rule.children)), None)
+
+        parser = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
+        button = next(filter(None, (close_button(rule) for _, rule in parser.rules)))
+        assert {handler.name for handler in button.handlers} == {"on_release"}
 
 
 class TestBackgroundArt:
