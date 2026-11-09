@@ -461,9 +461,6 @@ class ComicBookReader(FloatLayout):
             on_load_failed()
 
     def _show_loading_page(self) -> None:
-        self._comic_image.texture = None  # Clear previous texture
-        self._comic_image.source = ""  # Clear previous source
-        self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
 
     def _set_collection_action_bar_title(self, titles: list[str], page_str: str) -> None:
@@ -632,10 +629,6 @@ class ComicBookReader(FloatLayout):
 
         # noinspection PyBroadException
         try:
-            self._comic_image.texture = None  # Clear previous texture
-            self._comic_image.source = ""  # Clear previous source
-            self._comic_image.reload()
-
             if right_page_index is not None:
                 page = self._comic_book_loader.get_double_page_image_ready_for_reading(
                     left_page_index, right_page_index
