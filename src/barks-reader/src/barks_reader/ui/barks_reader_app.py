@@ -108,10 +108,7 @@ if TYPE_CHECKING:
     from barks_reader.core.config_info import ConfigInfo
 
 
-DEFAULT_WINDOW_HEIGHT_PERCENT = 0.96
 WINDOW_SHOW_DELAY = 2.0
-DEFAULT_WINDOW_LEFT = 2400
-DEFAULT_WINDOW_TOP = 50
 
 
 class BarksReaderApp(App):
@@ -208,23 +205,7 @@ class BarksReaderApp(App):
     @override
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
-        # Set default window geometry if not already present in the config file
         logger.debug("Building application config...")
-        primary_monitor = SCREEN_METRICS.get_primary_screen_info()
-        default_height = round(DEFAULT_WINDOW_HEIGHT_PERCENT * primary_monitor.height_pixels)
-        default_width = round(default_height / COMIC_PAGE_ASPECT_RATIO)
-        default_height_incl_action_bar = default_height + ACTION_BAR_SIZE_Y
-
-        config.setdefaults(
-            "graphics",
-            {
-                "width": default_width,
-                "height": default_height_incl_action_bar,
-                "left": DEFAULT_WINDOW_LEFT,
-                "top": DEFAULT_WINDOW_TOP,
-            },
-        )
-
         # Delegate to the settings class to set its own defaults
         self.reader_settings.build_config(config)
 

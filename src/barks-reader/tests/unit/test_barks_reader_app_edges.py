@@ -77,18 +77,13 @@ class TestCustomTitleBar:
         assert "Window: setting custom titlebar not allowed on this system." in loguru_sink
 
 
-class TestDefaultWindowSize:
-    def test_it_is_worked_out_from_the_primary_monitor(self) -> None:
-        """The primary, by what the metrics say of it, whichever the system lists first."""
-        primary = SimpleNamespace(height_pixels=2000)
-        config = MagicMock()
-        with patch.object(
-            app_module.SCREEN_METRICS, "get_primary_screen_info", return_value=primary
-        ):
-            BarksReaderApp.build_config(_app(reader_settings=MagicMock()), config)
-
-        graphics = config.setdefaults.call_args.args[1]
-        assert graphics["height"] == 1920 + app_module.ACTION_BAR_SIZE_Y
+def test_the_app_config_holds_the_settings_and_no_window_geometry() -> None:
+    """The window comes from main.py, through Kivy's own config rather than this one."""
+    reader_settings = MagicMock()
+    config = MagicMock()
+    BarksReaderApp.build_config(_app(reader_settings=reader_settings), config)
+    reader_settings.build_config.assert_called_once_with(config)
+    config.setdefaults.assert_not_called()
 
 
 class TestFinalizeWindowSetup:
