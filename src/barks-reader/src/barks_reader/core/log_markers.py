@@ -31,6 +31,8 @@ NODE_EXPANDED: Final = "Node expanded: '{name}'."
 NODE_OPENED_ON_CHILD: Final = "Node '{name}' opened on its child '{child}'."
 SAVED_NODE_ANCESTOR_SELECTED: Final = "Saved node gone: selected its ancestor '{name}'."
 NODE_COLLAPSED: Final = "Node collapsed: '{name}'."
+COLLAPSE_OVERLAY_SHOWN: Final = "Collapse overlay shown for '{name}'."
+COLLAPSE_OVERLAY_HIDDEN: Final = "Collapse overlay hidden."
 # The tree scrolling, after a node expands, so its children show below its row.
 TREE_CHILDREN_REVEALED: Final = "Tree scrolled to show the children of '{name}'."
 NODE_COLLAPSED_NO_STATE_CHANGE: Final = "Node collapsed but not allowing state change: '{name}'."
@@ -256,6 +258,7 @@ TITLE_VIEW_ENTERED_AT_PORTAL: Final = "BottomTitleViewScreen: entered nav focus 
 TITLE_VIEW_EXITED_NAV: Final = "BottomTitleViewScreen: exited nav focus."
 TITLE_FADE_STARTED: Final = "Title view fade started: {duration}s."
 TITLE_FADE_FINISHED: Final = "Title view fade finished."
+TITLE_PANEL_PEEK_TOGGLED: Final = "Title view panel toggled by the eye: shown = {shown}."
 USE_OVERRIDES_CHANGED: Final = "Use overrides checkbox changed: use_overrides = {value}."
 GOTO_PAGE_CHECKBOX_TOGGLED: Final = "Goto page checkbox toggled: active = {value}."
 # The title view offers its "Goto page n" box: a last-read page, or a tag's page. The row

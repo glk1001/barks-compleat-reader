@@ -250,6 +250,24 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.screen._on_panel_fade_finished(self.screen._panel_fade_anim, MagicMock())
         assert "Title view fade finished." in loguru_sink
 
+    def test_the_eye_hides_the_panel_and_brings_it_back_and_says_so(
+        self, loguru_sink: list[str]
+    ) -> None:
+        box = self.screen.ids.bottom_view_box
+        box.opacity = 1
+        self.screen.toggle_panel_peek()
+        assert box.opacity == 0
+        assert "Title view panel toggled by the eye: shown = False." in loguru_sink
+        self.screen.toggle_panel_peek()
+        assert box.opacity == 1
+        assert "Title view panel toggled by the eye: shown = True." in loguru_sink
+
+    def test_the_eye_brings_back_a_panel_still_fading_in(self) -> None:
+        box = self.screen.ids.bottom_view_box
+        box.opacity = bottom_title_view_screen.PANEL_VISIBLE_OPACITY
+        self.screen.toggle_panel_peek()
+        assert box.opacity == 1
+
     def test_show_goto_page(self) -> None:
         # Active with page
         _show(self.screen, "5", active=True)

@@ -398,6 +398,13 @@ class BottomTitleViewScreen(FloatLayout):
         if box_stays_off:
             self._show_title_inset_for_overrides(use_overrides=False)
 
+    def toggle_panel_peek(self) -> None:
+        """Hide the panel to see the art behind it, or bring it back."""
+        box = self.ids.bottom_view_box
+        shown = box.opacity <= PANEL_VISIBLE_OPACITY
+        box.opacity = 1 if shown else 0
+        logger.debug(log_markers.TITLE_PANEL_PEEK_TOGGLED.format(shown=shown))
+
     def on_title_portal_image_pressed(self) -> None:
         """Pass a press of the title portal on to its handler."""
         assert self.on_title_portal_image_pressed_func is not None
@@ -578,7 +585,7 @@ class BottomTitleViewScreen(FloatLayout):
         elif widget is ids.wiki_page_button:
             ids.wiki_page_button.trigger_action()
         elif widget is ids.title_show_button:
-            # The kv on_press toggles the panel peek synchronously; focus stays on the eye,
+            # Its on_press toggles the panel peek synchronously; focus stays on the eye,
             # the only focusable widget while the panel is peeked away.
             ids.title_show_button.trigger_action()
             self._update_nav_focus()

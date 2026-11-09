@@ -487,8 +487,7 @@
         size_hint: None, None
         size: dp(26), dp(26)
         pos_hint: {'right': 1 - 0.007, 'top': 0.988}
-        on_press:
-            bottom_view_box.opacity = 0 if bottom_view_box.opacity > PANEL_VISIBLE_OPACITY else 1
+        on_press: root.toggle_panel_peek()
 
         canvas.before:
             # A subtle dark pill so the tinted glyph reads over bright art too.

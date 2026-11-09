@@ -198,6 +198,22 @@ class TestTheBar:
         assert _bar(overlay) is None
 
 
+class TestLogging:
+    def test_showing_and_hiding_the_bar_are_logged(
+        self,
+        overlay: CollapseParentOverlay,
+        scroll_view: MagicMock,
+        loguru_sink: list[str],
+    ) -> None:
+        node = _node("Uncle Scrooge")
+        _tracking(overlay, scroll_view, node)
+
+        overlay.is_visible = True
+        assert "Collapse overlay shown for 'Uncle Scrooge'." in loguru_sink
+        overlay.is_visible = False
+        assert "Collapse overlay hidden." in loguru_sink
+
+
 class TestTapping:
     def _shown(
         self, overlay: CollapseParentOverlay, scroll_view: MagicMock, node: MagicMock

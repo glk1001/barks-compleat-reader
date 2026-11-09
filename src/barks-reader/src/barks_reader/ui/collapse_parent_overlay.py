@@ -14,6 +14,8 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.relativelayout import RelativeLayout
 from loguru import logger
 
+from barks_reader.core import log_markers
+
 from .ui_helpers import is_tap
 
 if TYPE_CHECKING:
@@ -133,7 +135,7 @@ class CollapseParentOverlay(FloatLayout):
 
         self.bind(pos=lambda *_a: self._update_bar_pos())
         self.bind(size=lambda *_a: self._update_bar_pos())
-        self.bind(is_visible=lambda *_a: self._update_bar_visibility())
+        self.bind(is_visible=lambda *_a: self._on_is_visible_changed())
 
         self.add_widget(bar)
         self._update_bar_pos()
@@ -145,6 +147,13 @@ class CollapseParentOverlay(FloatLayout):
         self._bar_widget.x = self.x
         self._bar_widget.width = self.width
         self._bar_widget.y = self.y + self.height - _OVERLAY_HEIGHT - _OVERLAY_MARGIN_TOP
+
+    def _on_is_visible_changed(self) -> None:
+        self._update_bar_visibility()
+        if self.is_visible:
+            logger.debug(log_markers.COLLAPSE_OVERLAY_SHOWN.format(name=self.parent_name))
+        else:
+            logger.debug(log_markers.COLLAPSE_OVERLAY_HIDDEN)
 
     def _update_bar_visibility(self) -> None:
         if self._bar_widget is None:
