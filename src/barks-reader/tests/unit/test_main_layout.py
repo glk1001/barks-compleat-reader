@@ -62,6 +62,25 @@ def test_the_boundary_is_the_pair_exactly_as_wide_as_the_screen() -> None:
     assert not spread_fits(round(pair - 1), 1080, BAR)
 
 
+def test_a_pair_exactly_as_wide_as_the_screen_fits() -> None:
+    # Pages 3:2 tall, 300 high: each 200 wide, the pair 400.
+    assert spread_fits(400, 300 + BAR, BAR, 1.5)
+    assert not spread_fits(399, 300 + BAR, BAR, 1.5)
+
+
+def test_a_screen_with_a_pixel_of_height_to_spare_is_measured() -> None:
+    """Only a screen with no height left for a page is refused unmeasured."""
+    assert spread_fits(10, BAR + 1, BAR)
+
+
+def test_the_page_shape_given_is_the_one_measured() -> None:
+    # Square pages 300 high pair to 600 wide; the comic page's shape would pair to 398.
+    assert not spread_fits(500, 300 + BAR, BAR, 1.0)
+    assert spread_fits(500, 300 + BAR, BAR)
+    assert choose_main_layout(MATCH_THE_SCREEN, 500, 300 + BAR, BAR, 1.0) is MainLayoutMode.SINGLE
+    assert choose_main_layout(MATCH_THE_SCREEN, 500, 300 + BAR, BAR) is MainLayoutMode.SPREAD
+
+
 @pytest.mark.parametrize(
     ("setting", "width", "height", "mode"),
     [

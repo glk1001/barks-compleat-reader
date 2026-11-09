@@ -2501,3 +2501,12 @@ change = """
 """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
+[[equivalent]]
+module = "barks_reader.core.justified_lines"
+function = "repair_justified_lines"
+change = """
+- if split or past_edge > 0:
++ if split or past_edge >= 0:
+"""
+reason = "At past_edge == 0, the one value the mutant moves, the run giving way is set to max(0, lw - 0): the width it already has."
+

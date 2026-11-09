@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import pytest
 from barks_reader.core.justified_lines import JustifiedWord, repair_justified_lines
 
 ROMAN: dict[str, object] = {"italic": False}
@@ -152,3 +153,40 @@ class TestRepairJustifiedLines:
         repair_justified_lines([Line([Word("b", 90.0), left, right])], WIDTH, _measure_by_text)
 
         assert left.lw == 0
+
+    def test_a_line_with_no_runs_is_left_alone(self) -> None:
+        _repair(Line([]))
+
+    def test_a_line_whose_only_spaced_run_comes_first_and_opens_with_its_space_is_left_alone(
+        self,
+    ) -> None:
+        """Nothing is before that space to give way, and the run after it has no space."""
+        spaced = Word(" wal", 60.0)
+        fragment = Word("rus", 60.0)
+
+        _repair(Line([spaced, fragment]))
+
+        assert (spaced.lw, fragment.lw) == (60.0, 60.0)
+
+    def test_a_line_past_the_edge_by_less_than_a_pixel_comes_back(self) -> None:
+        before = Word("cause", 57.5, ITALIC)
+        last = Word(" I had", 42.0, ROMAN)  # measured at 43: half a pixel past the edge
+
+        _repair(Line([before, last]))
+
+        assert before.lw == 57.0  # noqa: PLR2004
+
+    @pytest.mark.parametrize(
+        "first",
+        [
+            pytest.param([Word("wal", 20.0)], id="no spaced run"),
+            pytest.param([Word("a  ship", 50.0), Word("wal", 30.0)], id="spaces inside a run"),
+        ],
+    )
+    def test_a_line_left_alone_does_not_stop_the_lines_after_it(self, first: list[Word]) -> None:
+        right = Word("  in", 25.0)
+        lines = [Line(first), Line([Word("a", 10.0), right])]
+
+        repair_justified_lines(lines, WIDTH, _measure_by_text)
+
+        assert right.lw == 18.0  # noqa: PLR2004
