@@ -313,7 +313,7 @@ class BottomTitleViewScreen(FloatLayout):
         anim = Animation(opacity=1, duration=duration)
         anim.bind(on_complete=self._on_panel_fade_finished)
         anim.start(self.ids.bottom_view_box)
-        logger.debug(log_markers.TITLE_FADE_STARTED.format(duration=duration))
+        logger.debug(log_markers.TITLE_FADE_STARTED.format(duration=f"{duration:.2f}"))
         # Recorded after start(), so this is the animation that actually ended up
         # running; the guard in _on_panel_fade_finished then knows it from any other.
         self._panel_fade_anim = anim
@@ -328,8 +328,8 @@ class BottomTitleViewScreen(FloatLayout):
             logger.debug(log_markers.TITLE_FADE_FINISHED)
 
     @staticmethod
-    def _get_title_portal_opening_animation_duration_secs() -> int:
-        return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
+    def _get_title_portal_opening_animation_duration_secs() -> float:
+        return random.uniform(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS)
 
     def show_goto_page(self, offer: GotoPageOffer) -> None:
         """Show `offer` on the goto-page row: its page, ticked or not, and the pages to step."""

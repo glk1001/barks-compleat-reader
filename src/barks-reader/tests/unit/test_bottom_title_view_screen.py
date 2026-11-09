@@ -460,6 +460,13 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         assert not self.screen._is_panel_content_visible()
         assert self.screen._focusable_widgets() == [self.screen.ids.title_show_button]
 
+    def test_the_length_of_a_fade_varies_within_its_maximum(self) -> None:
+        """Not all or nothing: most lengths lie strictly between no fade and the longest."""
+        get_duration = self.screen._get_title_portal_opening_animation_duration_secs
+        durations = [get_duration() for _ in range(50)]
+        assert all(0 <= duration <= 1 for duration in durations)
+        assert any(0 < duration < 1 for duration in durations)
+
     def test_a_new_fade_stops_the_one_still_running(self) -> None:
         """Else the old one drags a shorter new one's finished panel back down to hidden."""
         self.screen.fade_in_bottom_view_title()

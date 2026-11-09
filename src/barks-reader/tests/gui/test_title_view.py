@@ -114,7 +114,7 @@ def test_the_fade_is_logged_from_start_to_finish(boot: AppBoot) -> None:
     """Both ends of the random-length fade are logged, so nothing waits on the clock."""
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
     d.wait_title_fade()
-    assert d.match_count(pattern(markers.TITLE_FADE_STARTED, duration=re.compile(r"\d+"))) >= 1
+    assert d.match_count(pattern(markers.TITLE_FADE_STARTED, duration=re.compile(r"[\d.]+"))) >= 1
     assert d.match_count(markers.TITLE_FADE_FINISHED) >= 1
 
 
