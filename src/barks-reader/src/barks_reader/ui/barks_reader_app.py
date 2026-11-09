@@ -19,7 +19,7 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
-from barks_reader.core.keys import get_alt_escape_key, is_escape_key, set_alt_escape_key
+from barks_reader.core.keys import get_alt_escape_key, set_alt_escape_key
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode
 from barks_reader.core.platform_info import PLATFORM, Platform
@@ -66,6 +66,7 @@ from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from .memory_census import install_memory_census_service
 from .platform_window_utils import WindowManager, log_screen_metrics, log_window_geometry
+from .popup_frame import PopupFrame
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     CORPUS_STATS_SCREEN,
@@ -641,22 +642,23 @@ def _install_popup_gallery(app: BarksReaderApp) -> None:
 def _dismiss_top_popup_on_alt_escape(
     _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
 ) -> bool:
-    """Dismiss the top Kivy Popup/ModalView when the user-configured alt Escape key fires.
+    """Dismiss a plain ModalView on top, such as the wiki's footnote, on the alternate Escape.
 
     Real Escape is already handled by Kivy's own ModalView dispatch, so only the alt key
-    needs manual forwarding.
+    needs manual forwarding. A `PopupFrame` answers the alt key itself: one it passes on
+    is a letter typed into its text box. A popup under the top one is never the target.
     """
     alt = get_alt_escape_key()
-    if alt == 0 or key != alt or not is_escape_key(key):
+    if alt == 0 or key != alt:
         return False
     # Import lazily — kivy's ModalView import is cheap but keeps module top short.
     from kivy.uix.modalview import ModalView  # noqa: PLC0415
 
-    for child in Window.children:
-        if isinstance(child, ModalView) and getattr(child, "auto_dismiss", False):
-            child.dismiss()
-            return True
-    return False
+    top = next((child for child in Window.children if isinstance(child, ModalView)), None)
+    if top is None or isinstance(top, PopupFrame) or not top.auto_dismiss:
+        return False
+    top.dismiss()
+    return True
 
 
 def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> None:  # noqa: ANN401

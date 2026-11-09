@@ -20,6 +20,7 @@ from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.popup_gallery import POPUP_GALLERY_ENV_VAR
 from barks_reader.ui import popup_gallery
 from barks_reader.ui.barks_reader_app import BarksReaderApp
+from barks_reader.ui.popup_frame import PopupFrame
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen, SwapTransition, TransitionBase
 
@@ -182,7 +183,6 @@ class TestAltEscapeDismissesTheTopPopup:
     def _press(self, children: list[object], key: int = ALT_KEY) -> bool:
         with (
             patch.object(app_module, "get_alt_escape_key", return_value=self.ALT_KEY),
-            patch.object(app_module, "is_escape_key", return_value=True),
             patch.object(app_module, "Window") as window,
         ):
             window.children = children
@@ -194,14 +194,37 @@ class TestAltEscapeDismissesTheTopPopup:
         popup.auto_dismiss = auto_dismiss
         return popup
 
-    def test_the_first_popup_that_closes_on_its_own_is_closed(self) -> None:
-        held = self._popup(auto_dismiss=False)
-        closes = self._popup(auto_dismiss=True)
+    def test_the_top_popup_is_closed_not_one_beneath_it(self) -> None:
+        top = self._popup(auto_dismiss=True)
+        beneath = self._popup(auto_dismiss=True)
 
-        assert self._press([object(), held, closes]) is True
+        assert self._press([object(), top, beneath]) is True
 
-        held.dismiss.assert_not_called()
-        closes.dismiss.assert_called_once_with()
+        top.dismiss.assert_called_once_with()
+        beneath.dismiss.assert_not_called()
+
+    def test_a_top_popup_that_stays_up_keeps_one_beneath_it_from_closing(self) -> None:
+        top = self._popup(auto_dismiss=False)
+        beneath = self._popup(auto_dismiss=True)
+
+        assert self._press([top, beneath]) is False
+
+        beneath.dismiss.assert_not_called()
+
+    def test_a_popup_frame_is_left_to_answer_the_key_itself(self) -> None:
+        """What a frame passes on is a letter typed into its text box: not a request to close."""
+        frame = MagicMock(spec=PopupFrame)
+        frame.auto_dismiss = True
+
+        assert self._press([frame]) is False
+
+        frame.dismiss.assert_not_called()
+
+    def test_with_no_alternate_key_set_the_key_is_left_alone(self) -> None:
+        popup = self._popup(auto_dismiss=True)
+        with patch.object(app_module, "get_alt_escape_key", return_value=0):
+            assert app_module._dismiss_top_popup_on_alt_escape(None, 0, 0, "", []) is False
+        popup.dismiss.assert_not_called()
 
     def test_with_no_such_popup_the_key_is_left_alone(self) -> None:
         assert self._press([object(), self._popup(auto_dismiss=False)]) is False
