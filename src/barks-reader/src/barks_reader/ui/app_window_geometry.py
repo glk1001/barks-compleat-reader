@@ -73,6 +73,7 @@ class AppWindowGeometryHelper:
         # position on a second monitor of another shape, 2026-10-30).
         self._layout_mode = self._decide_layout_on(SCREEN_METRICS.get_primary_screen_info())
         self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
+        self._refit_pending = False
         self._resize_event: Any = None
         self._resize_requested_size = 0, 0
         self._window_ready = False
@@ -167,8 +168,11 @@ class AppWindowGeometryHelper:
         self._layout_mode = mode
         if self._layout_mode_changed is not None:
             self._layout_mode_changed(mode)
-        if refit and not Window.fullscreen:
-            self._refit_to_layout()
+        if refit:
+            if Window.fullscreen:
+                self._refit_pending = True  # the window's own shape waits till it is back
+            else:
+                self._refit_to_layout()
         return True
 
     def _decide_layout(self) -> MainLayoutMode:
@@ -185,6 +189,7 @@ class AppWindowGeometryHelper:
 
     def _refit_to_layout(self) -> None:
         """Give the window the layout's width at its height, centred on its monitor."""
+        self._refit_pending = False
         monitor = self._current_monitor
         chrome = self._chrome_in_size_units()
         height = Window.system_size[1]
@@ -511,6 +516,19 @@ class AppWindowGeometryHelper:
         if SCREEN_METRICS.refresh():
             logger.info("Screen rotation detected -- resizing window to fit new dimensions.")
             self._handle_rotation()
+        self._refit_if_pending()
+
+    def _refit_if_pending(self) -> None:
+        """Refit the window to a layout decided while it was fullscreen, once it has settled.
+
+        Left to this poll, not the first resize out of fullscreen: on the way back a window
+        passes through transient sizes and, on Windows, a position off every monitor.
+        """
+        if not self._refit_pending or self._resize_event or self._suppress_correction:
+            return
+        if SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top) is None:
+            return
+        self._refit_to_layout()
 
     def _handle_rotation(self) -> None:
         """Resize and reposition the window after a screen rotation."""
@@ -519,7 +537,8 @@ class AppWindowGeometryHelper:
             monitor = SCREEN_METRICS.get_primary_screen_info()
 
         self._current_monitor = monitor
-        self.evaluate_layout("rotation", refit=False)  # the resize below is the refit
+        self._refit_pending = False  # the resize below is the refit
+        self.evaluate_layout("rotation", refit=False)
 
         chrome = self._chrome_in_size_units()
         aspect_ratio = self.content_aspect_ratio

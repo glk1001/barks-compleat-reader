@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1387,6 +1387,104 @@ def test_a_change_of_layout_in_fullscreen_tells_the_main_screen_but_leaves_the_w
 
     layout_changed.assert_called_once_with(MainLayoutMode.SPREAD)
     assert len(fake_clock.calls) == scheduled_before  # the main screen resizes its own box
+
+
+@pytest.fixture
+def layout_changed_in_fullscreen(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> AppWindowGeometryHelper:
+    """Return a helper whose layout changed while the window was fullscreen."""
+    fake_window.fullscreen = True
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), SINGLE_PAGE
+    )
+    cast("MagicMock", geometry_module.SCREEN_METRICS).refresh.return_value = False
+    h.set_window_ready()
+    h.set_layout_setting(TWO_PAGE_SPREAD)
+    return h
+
+
+def test_fullscreen_holds_the_refit_back_for_as_long_as_it_lasts(
+    layout_changed_in_fullscreen: AppWindowGeometryHelper, fake_clock: FakeClock
+) -> None:
+    scheduled_before = len(fake_clock.calls)
+    layout_changed_in_fullscreen._check_for_rotation(0.0)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before
+
+
+def test_leaving_fullscreen_refits_the_window_to_the_layout_it_missed_once(
+    layout_changed_in_fullscreen: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """The new layout's shape, position and minimum, none of which fullscreen could take."""
+    h = layout_changed_in_fullscreen
+    fake_window.fullscreen = False
+    scheduled_before = len(fake_clock.calls)
+
+    h._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before + 3  # a guarded resize's three steps
+    requested_width, requested_height = h._resize_requested_size  # noqa: SLF001
+    assert requested_width / (requested_height - CHROME) == pytest.approx(
+        1 / content_aspect_ratio(MainLayoutMode.SPREAD), rel=0.01
+    )
+    assert (
+        fake_window.minimum_width,
+        fake_window.minimum_height,
+    ) == geometry_module.minimum_window_size(
+        2560, 1440, CHROME, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+
+    h._resize_event = None  # noqa: SLF001  # the guard over
+    h._check_for_rotation(0.0)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before + 3
+
+
+@pytest.mark.parametrize("settling", ["off every monitor", "suppressed", "guarded"])
+def test_the_refit_waits_for_a_window_still_settling_out_of_fullscreen(
+    layout_changed_in_fullscreen: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    settling: str,
+) -> None:
+    h = layout_changed_in_fullscreen
+    metrics = cast("MagicMock", geometry_module.SCREEN_METRICS)
+    on_a_monitor = metrics.get_monitor_for_pos.return_value
+    fake_window.fullscreen = False
+    if settling == "off every monitor":
+        metrics.get_monitor_for_pos.return_value = None
+    elif settling == "suppressed":
+        h.suppress_aspect_ratio_correction()
+    else:
+        h._schedule_guarded_resize(1200, 1800)  # noqa: SLF001
+    scheduled_before = len(fake_clock.calls)
+
+    h._check_for_rotation(0.0)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before
+
+    metrics.get_monitor_for_pos.return_value = on_a_monitor
+    h._suppress_correction = False  # noqa: SLF001
+    h._resize_event = None  # noqa: SLF001
+    h._check_for_rotation(0.0)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before + 3
+
+
+def test_a_rotation_out_of_fullscreen_is_the_refit_it_missed(
+    layout_changed_in_fullscreen: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    fake_window.fullscreen = False
+    cast("MagicMock", geometry_module.SCREEN_METRICS).refresh.return_value = True
+    scheduled_before = len(fake_clock.calls)
+
+    layout_changed_in_fullscreen._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before + 3  # one fit, not a fit and a refit
 
 
 def test_a_move_to_a_landscape_monitor_changes_the_layout_with_the_resize(
