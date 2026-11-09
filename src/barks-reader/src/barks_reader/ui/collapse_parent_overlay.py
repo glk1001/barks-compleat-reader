@@ -61,10 +61,6 @@ class CollapseParentOverlay(FloatLayout):
         The overlay won't appear until the user scrolls past the node
         (detected via the scroll_y binding).
         """
-        from .tree_view_nodes import ButtonTreeViewNode  # noqa: PLC0415
-
-        if not isinstance(node, ButtonTreeViewNode):
-            return
         if not self._bar_built:
             self._bar_built = True
             self._build_bar()

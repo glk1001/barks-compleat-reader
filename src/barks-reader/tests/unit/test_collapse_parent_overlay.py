@@ -165,11 +165,6 @@ class TestShowing:
         _scroll(scroll_view)
         assert not overlay.is_visible
 
-    def test_only_a_tree_node_is_tracked(self, overlay: CollapseParentOverlay) -> None:
-        overlay.track_node(MagicMock())
-        assert overlay.parent_name == ""
-        assert _bar(overlay) is None
-
 
 class TestTheBar:
     def test_it_is_built_once_with_the_apps_icon(
