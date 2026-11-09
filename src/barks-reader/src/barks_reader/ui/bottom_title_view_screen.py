@@ -181,7 +181,7 @@ class BottomTitleViewScreen(FloatLayout):
     wiki_button_visible = BooleanProperty(defaultvalue=False)
 
     goto_page_num = StringProperty()
-    goto_page_active = BooleanProperty(default=False)
+    goto_page_active = BooleanProperty(defaultvalue=False)
     # A tag's pages in this title: every one (handed on to the comic), and the start of
     # each run of them, which the goto-page row steps through.
     tagged_pages = ListProperty()
@@ -194,7 +194,7 @@ class BottomTitleViewScreen(FloatLayout):
     # The row's label: "Goto page 7 (1 of 3):", or "Goto pages 16-23 (3 of 3):" for a
     # run, so a run shows as one.
     goto_page_text = StringProperty()
-    use_overrides_active = BooleanProperty(default=True)
+    use_overrides_active = BooleanProperty(defaultvalue=True)
     use_overrides_description = StringProperty()
 
     @staticmethod

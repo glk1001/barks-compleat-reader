@@ -140,6 +140,11 @@ class ScreenFixtureBase:
 
 
 class TestBottomTitleViewScreen(ScreenFixtureBase):
+    def test_before_any_title_the_goto_box_is_off_and_the_overrides_box_on(self) -> None:
+        """Ticked with no page in it, the goto box would fail `assert page_to_first_goto`."""
+        assert self.screen.goto_page_active is False
+        assert self.screen.use_overrides_active is True
+
     def test_the_colophon_is_compact_on_the_spread_for_a_title_without_notes(self) -> None:
         seen: list[bool] = []
         self.screen.bind(compact_colophon=lambda _instance, compact: seen.append(compact))
