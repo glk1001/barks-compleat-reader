@@ -10,7 +10,9 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_display_title
 from barks_fantagraphics.comics_consts import FONT_DIR
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
@@ -404,8 +406,40 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         assert not article.comic_book_info.is_barks_title
         assert self.screen._get_main_title_str(article) == "Don Ault: Fantagraphics Introduction"
 
+    def test_a_one_pager_shows_its_issue_and_page_rather_than_its_gag(self) -> None:
+        one_pager = ONE_PAGERS[0]
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = one_pager
+        assert self.screen._get_main_title_str(mock_info) == get_one_pager_display_title(one_pager)
+
+    def test_a_cover_shows_its_issue_and_date(self) -> None:
+        title, cover = next(iter(COVER_BY_TITLE.items()))
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = title
+        assert self.screen._get_main_title_str(mock_info) == get_cover_display_title(cover)
+
+    @pytest.mark.parametrize(
+        ("name", "default"),
+        [
+            ("is_first_use_of_reader", False),
+            ("is_one_pager_title", False),
+            ("is_visible", False),
+            ("wiki_button_visible", False),
+            ("goto_page_active", False),
+            ("use_overrides_active", True),
+        ],
+    )
+    def test_the_flags_start_as_the_kv_rules_expect(self, name: str, *, default: bool) -> None:
+        assert getattr(BottomTitleViewScreen, name).defaultvalue is default
+
 
 class TestBottomTitleViewNav(ScreenFixtureBase):
+    def test_an_exit_with_no_one_listening_still_forgets_the_position(self) -> None:
+        self.screen._nav_on_exit_request = None
+        self.screen._last_nav_focused_widget = MagicMock()
+        self.screen._request_nav_exit()
+        assert self.screen._last_nav_focused_widget is None
+
     def _make_all_widgets_visible(self) -> None:
         self.screen.wiki_button_visible = True
         self.screen.use_overrides_description = "Use censorship fixes"
