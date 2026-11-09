@@ -1,4 +1,3 @@
-import textwrap
 from collections.abc import Callable
 from pathlib import Path
 
@@ -31,6 +30,10 @@ def _fitted(label: Label) -> Label:
     """Return `label` as tall as its text, so the box (and the popup) are as tall as theirs."""
     label.bind(texture_size=_fit_height_to_text)
     return label
+
+
+def _wrap_text_to_width(label: Label, width: float) -> None:
+    label.text_size = (width, None)
 
 
 def show_about_box(
@@ -115,27 +118,17 @@ def show_about_box(
     source_code_font_size = round(text_font_size)
     fan_font_size = round(text_font_size - 1)
 
-    source_licence_text = textwrap.fill(
-        textwrap.dedent(
-            """
-        Source code is open and available under the Apache 2.0 License.
-        However, artwork, images, characters, and story data included within or
-        displayed by this application are the proprietary intellectual property
-        of their respective owners and are STRICTLY EXCLUDED from the open-source license.
-        """
-        ),
-        width=80,
+    source_licence_text = (
+        "Source code is open and available under the Apache 2.0 License."
+        " However, artwork, images, characters, and story data included within or"
+        " displayed by this application are the proprietary intellectual property"
+        " of their respective owners and are STRICTLY EXCLUDED from the open-source license."
     )
-    fan_project_text = textwrap.fill(
-        textwrap.dedent(
-            f"""
-        This project is a fan-made reader utility for the "{FANTAGRAPHICS_BARKS_LIBRARY}."
-        It is not affiliated with, endorsed by, or sponsored by The Walt Disney Company or
-        Fantagraphics Books. Donald Duck, Uncle Scrooge, and related characters are trademarks of
-        The Walt Disney Company.
-        """
-        ),
-        width=80,
+    fan_project_text = (
+        f'This project is a fan-made reader utility for the "{FANTAGRAPHICS_BARKS_LIBRARY}."'
+        " It is not affiliated with, endorsed by, or sponsored by The Walt Disney Company or"
+        " Fantagraphics Books. Donald Duck, Uncle Scrooge, and related characters are"
+        " trademarks of The Walt Disney Company."
     )
 
     licence_text = (
@@ -144,20 +137,21 @@ def show_about_box(
         f"[size={source_code_font_size}]{source_licence_text}[/size][/b]\n\n\n"
         f"[size={fan_font_size}][i]{fan_project_text}[/i][/size]"
     )
-    content.add_widget(
-        _fitted(
-            Label(
-                text=licence_text,
-                color=other_text_color,
-                markup=True,
-                font_size=text_font_size,
-                halign="center",
-                valign="top",
-                size_hint=(1, None),
-                padding=(0, HEADING_GAP, 0, 0),
-            )
+    licence_label = _fitted(
+        Label(
+            text=licence_text,
+            color=other_text_color,
+            markup=True,
+            font_size=text_font_size,
+            halign="center",
+            valign="top",
+            size_hint=(1, None),
+            padding=(0, HEADING_GAP, 0, 0),
         )
     )
+    # Broken to the popup's width, whatever that is: no line of it fixed at a length.
+    licence_label.bind(width=_wrap_text_to_width)
+    content.add_widget(licence_label)
 
     # --- Give the content to the popup ---
     logger.debug(log_markers.ABOUT_BOX_OPENED)

@@ -69,6 +69,30 @@ def test_its_lines_are_as_tall_as_their_text_and_the_box_as_its_lines() -> None:
     assert content.height == content.minimum_height
 
 
+def test_the_licence_text_wraps_to_the_width_of_the_box() -> None:
+    with (
+        patch.object(about_box, "theme") as theme,
+        patch.object(about_box, "show_standalone_popup") as show,
+    ):
+        theme.return_value = MagicMock(
+            text_display=(1, 1, 0, 1), app_title=(1, 0.8, 0, 1), text_secondary=(1, 1, 1, 1)
+        )
+        font_manager = MagicMock(
+            about_box_title_font_size=30,
+            about_box_title_font_name="Roboto",
+            about_box_version_font_size=20,
+        )
+        about_box.show_about_box(font_manager, Path("/art/about.png"))
+    licence = show.call_args.kwargs["content"].children[0]
+
+    licence.width = 300
+    assert licence.text_size == [300, None]
+    licence.width = 500
+    assert licence.text_size == [500, None]
+    # No line of it broken at a fixed length, which would run wider than a narrow box.
+    assert "intellectual property of their respective owners" in licence.text
+
+
 def _label_texts(label: MagicMock) -> list[str]:
     return [call.kwargs["text"] for call in label.call_args_list]
 
