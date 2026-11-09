@@ -2365,3 +2365,139 @@ change = """
 """
 reason = "get_adjusted_usd converts to get_latest_year() when to_year is None or left out, the year passed here."
 
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "_rename_with_retries"
+change = """
+- for attempt in range(1, attempts + 1):
++ for attempt in range(1, attempts + 2):
+"""
+reason = "Every try that fails either raises (at attempt == attempts, or for good) or waits and goes on, and one that works returns: the loop never reaches a try past `attempts`. Only attempts=0 would tell, and swap_reader_files is never given it (its default is 30)."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "find_update"
+change = """
+- unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=True) if pack is None)
++ unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=None) if pack is None)
+"""
+reason = "`packs` gets one entry for each of `paths` (an unreadable pack returns before the zip), so the two are always the same length and strict= is never put to the test."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "find_update"
+change = """
+- unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=True) if pack is None)
++ unversioned = tuple(path.name for path, pack in zip(paths, packs, ) if pack is None)
+"""
+reason = "`packs` gets one entry for each of `paths` (an unreadable pack returns before the zip), so the two are always the same length and strict= is never put to the test."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "find_update"
+change = """
+- unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=True) if pack is None)
++ unversioned = tuple(path.name for path, pack in zip(paths, packs, strict=False) if pack is None)
+"""
+reason = "`packs` gets one entry for each of `paths` (an unreadable pack returns before the zip), so the two are always the same length and strict= is never put to the test."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "pack_dir_for_update"
+change = """
+- named = env.get(DATA_PACK_DIR_ENV_VAR, "")
++ named = env.get(DATA_PACK_DIR_ENV_VAR, None)
+"""
+reason = "The value is only tested for truth (`if named:`), where an unset variable's None and \"\" are alike."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "pack_dir_for_update"
+change = """
+- named = env.get(DATA_PACK_DIR_ENV_VAR, "")
++ named = env.get(DATA_PACK_DIR_ENV_VAR, )
+"""
+reason = "The value is only tested for truth (`if named:`), where an unset variable's None and \"\" are alike."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "read_from_pack"
+change = """
+- return DataPackInfo.from_json(member.decode("utf-8"))
++ return DataPackInfo.from_json(member.decode("UTF-8"))
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "read_installed"
+change = """
+- return DataPackInfo.from_json(path.read_text(encoding="utf-8"))
++ return DataPackInfo.from_json(path.read_text(encoding=None))
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "read_installed"
+change = """
+- return DataPackInfo.from_json(path.read_text(encoding="utf-8"))
++ return DataPackInfo.from_json(path.read_text(encoding="UTF-8"))
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
++ flags = getattr(subprocess, "DETACHED_PROCESS", None) | getattr(
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
++ flags = getattr(subprocess, "DETACHED_PROCESS", ) | getattr(
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
++ flags = getattr(subprocess, "DETACHED_PROCESS", 1) | getattr(
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- subprocess, "CREATE_NEW_PROCESS_GROUP", 0
++ subprocess, "CREATE_NEW_PROCESS_GROUP", None
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- subprocess, "CREATE_NEW_PROCESS_GROUP", 0
+- )
++ subprocess, "CREATE_NEW_PROCESS_GROUP", )
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.data_pack"
+function = "spawn_detached"
+change = """
+- subprocess, "CREATE_NEW_PROCESS_GROUP", 0
++ subprocess, "CREATE_NEW_PROCESS_GROUP", 1
+"""
+reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+

@@ -1,9 +1,11 @@
-# cspell:ignore ENOTEMPTY
+# cspell:ignore ENOTEMPTY geteuid
 """The data pack version file, the search for newer packs, and the folder swap."""
 
 from __future__ import annotations
 
 import errno
+import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -90,6 +92,10 @@ class TestDataPackInfo:
         with pytest.raises(ValueError, match="not a data pack version file"):
             DataPackInfo.from_json(text)
 
+    def test_entries_that_are_not_a_map_are_shown_as_found(self) -> None:
+        with pytest.raises(ValueError, match=r"version file: entries is not a map: \[\]$"):
+            DataPackInfo.from_json(_FIELDS.replace('"entries": {}', '"entries": []'))
+
     def test_displays_as_the_about_box_names_it(self) -> None:
         assert _info().display() == "Data pack 6 (29 Oct 2026)"
         assert _info().short() == "data pack 6"
@@ -127,8 +133,12 @@ class TestReading:
         self, tmp_path: Path
     ) -> None:
         (tmp_path / "junk.barkspack").write_text("not a zip")
-        with pytest.raises(PackUnreadableError, match=r'junk\.barkspack" could not be read: File'):
+        with pytest.raises(
+            PackUnreadableError, match=r'junk\.barkspack" could not be read: File'
+        ) as junk:
             read_from_pack(tmp_path / "junk.barkspack")
+        assert junk.value.zip_path == tmp_path / "junk.barkspack"
+        assert junk.value.reason == "File is not a zip file"
         with pytest.raises(PackUnreadableError, match="absent"):
             read_from_pack(tmp_path / "absent.barkspack")
 
@@ -140,8 +150,12 @@ class TestReading:
 
         with ZipFile(tmp_path / "broken.barkspack", "w") as pack:
             pack.writestr(PACK_MEMBER, "{}")
-        with pytest.raises(PackUnreadableError, match="not a data pack version file"):
+        with pytest.raises(
+            PackUnreadableError,
+            match=r'broken\.barkspack" could not be read: not a data pack version file',
+        ) as broken:
             read_from_pack(tmp_path / "broken.barkspack")
+        assert broken.value.zip_path == tmp_path / "broken.barkspack"
 
     @pytest.mark.parametrize(
         "error",
@@ -228,6 +242,7 @@ class TestFindUpdate:
         check = find_update(None, _info(5))
 
         assert check.status is UpdateStatus.NO_PACK_DIR
+        assert check.installed == _info(5)
         assert check.available is None
         assert DATA_PACK_DIR_ENV_VAR in check.no_update_message()
 
@@ -288,6 +303,8 @@ class TestFindUpdate:
 
         assert check.status is UpdateStatus.PACK_UNREADABLE
         assert check.missing == (DATA_PACK_FILE_NAMES[1],)
+        assert check.installed == _info(5)
+        assert check.problem == "File is not a zip file"
         assert check.available is None
         message = check.no_update_message()
         assert message.startswith(
@@ -304,6 +321,33 @@ class TestFindUpdate:
 
         assert check.status is UpdateStatus.PACKS_DISAGREE
         assert "(data pack 6 and data pack 7)" in check.no_update_message()
+
+    @pytest.mark.parametrize(
+        ("first", "second", "status"),
+        [
+            pytest.param(_info(6), _info(6), UpdateStatus.UPDATE_AVAILABLE, id="update"),
+            pytest.param(None, _info(6), UpdateStatus.PACKS_NOT_VERSIONED, id="not versioned"),
+            pytest.param(_info(6), _info(7), UpdateStatus.PACKS_DISAGREE, id="disagree"),
+            pytest.param(_info(5), _info(5), UpdateStatus.NOT_NEWER, id="not newer"),
+        ],
+    )
+    def test_the_result_carries_the_folder_the_install_and_both_packs(
+        self,
+        tmp_path: Path,
+        first: DataPackInfo | None,
+        second: DataPackInfo,
+        status: UpdateStatus,
+    ) -> None:
+        _write_packs(tmp_path, first, second)
+
+        check = find_update(tmp_path, _info(5))
+
+        assert check.status is status
+        assert (check.pack_dir, check.installed, check.packs) == (
+            tmp_path,
+            _info(5),
+            (first, second),
+        )
 
     @pytest.mark.parametrize("installed", [5, 6])
     def test_packs_no_newer_than_the_install(self, tmp_path: Path, installed: int) -> None:
@@ -403,6 +447,34 @@ class TestSwap:
         assert (reader_files / "new.txt").exists()
         assert sum("try 1 of 5" in line for line in loguru_sink) == 1
 
+    def test_the_new_folders_rename_waits_between_tries_too(self, reader_files: Path) -> None:
+        new_dir_failures = iter([True, False])
+        waits: list[float] = []
+
+        def rename(source: Path, target: Path) -> None:
+            if source.name.endswith(".new") and next(new_dir_failures, False):
+                raise PermissionError(13, "in use")
+            source.rename(target)
+
+        swap_reader_files(reader_files, attempts=5, delay=0.5, sleep=waits.append, rename=rename)
+
+        assert waits == [0.5]
+        assert (reader_files / "new.txt").exists()
+
+    def test_by_default_a_rename_is_tried_30_times_2_seconds_apart(
+        self, reader_files: Path
+    ) -> None:
+        """About a minute: long enough for the reader that spawned the installer to close."""
+        waits: list[float] = []
+
+        def rename(_source: Path, _target: Path) -> None:
+            raise PermissionError(13, "in use")
+
+        with pytest.raises(PermissionError):
+            swap_reader_files(reader_files, sleep=waits.append, rename=rename)
+
+        assert waits == [2.0] * 29
+
     def test_a_rename_blocked_for_good_gives_up_with_the_folders_as_they_were(
         self, reader_files: Path
     ) -> None:
@@ -421,6 +493,7 @@ class TestSwap:
     def test_the_put_back_is_retried_too(self, reader_files: Path, loguru_sink: list[str]) -> None:
         # The .new rename fails for good; the put-back fails once, then goes through.
         put_back_failures = iter([True, False])
+        waits: list[float] = []
 
         def rename(source: Path, target: Path) -> None:
             if source.name.endswith(".new"):
@@ -430,8 +503,11 @@ class TestSwap:
             source.rename(target)
 
         with pytest.raises(OSError, match="sharing violation"):
-            swap_reader_files(reader_files, attempts=2, sleep=lambda _s: None, rename=rename)
+            swap_reader_files(
+                reader_files, attempts=2, delay=0.5, sleep=waits.append, rename=rename
+            )
 
+        assert waits == [0.5, 0.5]  # one wait for the .new rename, one for the put-back
         assert (reader_files / "old.txt").read_text() == "old"
         assert not reader_files.with_name("Reader Files.old").exists()
         retried = [line for line in loguru_sink if "try 1 of 2" in line]
@@ -454,7 +530,9 @@ class TestSwap:
         assert info.value.old_dir == old
         assert info.value.reader_files_dir == reader_files
         assert isinstance(info.value.__cause__, PermissionError)
-        assert f'Putting "{old}" back as "{reader_files}" failed' in str(info.value)
+        assert f'Putting "{old}" back as "{reader_files}" failed ([Errno 13] in use)' in str(
+            info.value
+        )
         assert not reader_files.exists()
         assert (old / "old.txt").read_text() == "old"
 
@@ -492,6 +570,27 @@ class TestSwap:
 
         assert not old.exists()
         assert not reader_files.with_name("Reader Files.new").exists()
+        assert (reader_files / "old.txt").exists()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="a read-only folder is still removable")
+    @pytest.mark.skipif(
+        sys.platform != "win32" and os.geteuid() == 0, reason="root removes anything"
+    )
+    def test_a_leftover_that_cannot_be_removed_does_not_stop_the_update(
+        self, reader_files: Path
+    ) -> None:
+        """What is left is tried again next time; the install itself can go on."""
+        old = reader_files.with_name("Reader Files.old")
+        locked = old / "locked"
+        locked.mkdir(parents=True)
+        (locked / "page.jpg").write_bytes(b"")
+        locked.chmod(0o500)
+        try:
+            data_pack.clear_leftovers(reader_files)
+
+            assert (locked / "page.jpg").exists()
+        finally:
+            locked.chmod(0o700)
         assert (reader_files / "old.txt").exists()
 
     def test_a_stranded_old_folder_is_put_back_not_removed(
