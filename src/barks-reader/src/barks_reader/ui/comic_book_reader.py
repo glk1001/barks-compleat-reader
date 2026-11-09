@@ -759,6 +759,10 @@ class ComicBookReader(FloatLayout):
         if not self._goto_page_dropdown:
             self._create_goto_page_dropdown()
             assert self._goto_page_dropdown
+        # Made once per comic, and the window may have been resized since.
+        max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
+        logger.debug(f"Goto page dropdown: max_dropdown_height = {max_dropdown_height}.")
+        self._goto_page_dropdown.max_height = max_dropdown_height
 
         selected_button = None
         # Update button colors to highlight the current page before opening
@@ -823,14 +827,12 @@ class ComicBookReader(FloatLayout):
             self._goto_page_dropdown.unbind(on_dismiss=callback)
 
     def _create_goto_page_dropdown(self) -> None:
-        max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
-        logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")
+        logger.debug("Creating goto page dropdown.")
 
         self._goto_page_dropdown = ReaderDropDown(
             auto_dismiss=True,
             dismiss_on_select=True,
             on_select=self.on_page_selected,
-            max_height=max_dropdown_height,
         )
         assert self._goto_page_dropdown is not None
         self._goto_page_buttons.clear()

@@ -861,6 +861,26 @@ class TestComicBookReader:
             cbr.GOTO_PAGE_BUTTON_BODY_COLOR,
         ]
 
+    def test_the_goto_page_list_fits_the_window_as_it_is_each_time_it_opens(
+        self, reader: ComicBookReader
+    ) -> None:
+        """It is made once per comic: a window grown or shrunk since must not leave it behind."""
+        cbr = barks_reader.ui.comic_book_reader
+        dropdown = MagicMock()
+        reader._goto_page_dropdown = dropdown
+        reader._goto_page_widget = MagicMock()
+        reader._goto_page_buttons = []
+        reader._page_manager = MagicMock()
+        reader._page_manager.page_map = {}
+        with patch.object(cbr, "open_dropdown", return_value=True):
+            reader.height = 1000
+            assert reader.goto_page()
+            assert dropdown.max_height == round(cbr.GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * 1000)
+
+            reader.height = 2000
+            assert reader.goto_page()
+            assert dropdown.max_height == round(cbr.GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * 2000)
+
     def test_the_goto_page_dropdown_is_dismissed_only_once_made(
         self, reader: ComicBookReader
     ) -> None:
