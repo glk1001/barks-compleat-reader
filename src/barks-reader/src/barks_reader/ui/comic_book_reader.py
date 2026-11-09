@@ -732,13 +732,12 @@ class ComicBookReader(FloatLayout):
         logger.debug(f"Goto page dropdown: max_dropdown_height = {max_dropdown_height}.")
         self._goto_page_dropdown.max_height = max_dropdown_height
 
-        selected_button = None
+        selected_index = self._get_current_page_button_index()
         # Update button colors to highlight the current page before opening
-        for button in self._goto_page_buttons:
+        for index, button in enumerate(self._goto_page_buttons):
             page_info = self._page_map[button.text]
-            if page_info.page_index == self._current_page_index:
+            if index == selected_index:
                 button.background_color = GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR
-                selected_button = button
             elif button.text in self._tagged_pages:
                 button.background_color = GOTO_PAGE_BUTTON_TAGGED_COLOR
             else:
@@ -751,10 +750,16 @@ class ComicBookReader(FloatLayout):
         assert self._goto_page_widget is not None
         if not open_dropdown(self._goto_page_dropdown, self._goto_page_widget):
             return False
-        if selected_button:
-            self._goto_page_dropdown.scroll_to(selected_button)
+        if selected_index is not None:
+            self._goto_page_dropdown.scroll_to(self._goto_page_buttons[selected_index])
         logger.debug(log_markers.GOTO_PAGE_DROPDOWN_OPENED)
         return True
+
+    def _get_current_page_button_index(self) -> int | None:
+        for index, button in enumerate(self._goto_page_buttons):
+            if self._page_map[button.text].page_index == self._current_page_index:
+                return index
+        return None
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
         if self._ignored_once_closed("Goto page selection"):
@@ -774,10 +779,7 @@ class ComicBookReader(FloatLayout):
             return None
         assert self._goto_page_dropdown is not None  # goto_page made it, to open it
         self._goto_page_dropdown.bind(on_dismiss=on_dismiss)
-        for i, btn in enumerate(self._goto_page_buttons):
-            if self._page_map[btn.text].page_index == self._current_page_index:
-                return i
-        return 0
+        return self._get_current_page_button_index() or 0
 
     def get_goto_page_buttons(self) -> list[Button]:
         return self._goto_page_buttons
