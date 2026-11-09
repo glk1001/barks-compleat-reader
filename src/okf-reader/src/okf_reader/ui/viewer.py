@@ -160,6 +160,11 @@ BLOCK_BG_CONTRAST_ALPHA = 0.9
 # The alpha is the article panel's see-through knob: 0 shows the art at full
 # strength under the text, 1 hides it.
 READING_PANE_SCRIM = (0.0, 0.0, 0.0, 0.76)
+# A light scrim over the art at the sides: left of the sidebar and right of the
+# reading column, below the top bar, so the panels stand out from the art beside
+# them while it still shows (2026-11-09). Near-black, so a page with no background
+# image is unchanged.
+SIDE_SCRIM = (0.0, 0.0, 0.0, 0.30)
 READING_PANE_SCRIM_CONTRAST_ALPHA = 0.955
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
@@ -576,7 +581,7 @@ class OKFViewer(RelativeLayout):
             padding=BODY_PADDING,
         )
         self.body.bind(minimum_height=self.body.setter("height"))
-        self._add_reading_pane_scrim()
+        self._add_scrims()
         # The scroll child is a full-width anchor holding the body column against
         # the sidebar, its width capped at BODY_MAX_WIDTH so the measure stays
         # readable on wide windows (below the cap the column just fills the pane).
@@ -2109,6 +2114,11 @@ class OKFViewer(RelativeLayout):
             return READING_PANE_SCRIM_CONTRAST_ALPHA
         return READING_PANE_SCRIM[3]
 
+    def _add_scrims(self) -> None:
+        """Draw the scrims over the background art: the reading pane's and the sides'."""
+        self._add_reading_pane_scrim()
+        self._add_side_scrims()
+
     def _add_reading_pane_scrim(self) -> None:
         """Draw the continuous scrim behind the reading column (see READING_PANE_SCRIM).
 
@@ -2134,6 +2144,34 @@ class OKFViewer(RelativeLayout):
         self.body.bind(x=fit_scrim, width=fit_scrim)
         self.body_scroll.bind(pos=fit_scrim, size=fit_scrim)
         fit_scrim()
+
+    def _add_side_scrims(self) -> None:
+        """Draw SIDE_SCRIM over the art left of the sidebar and right of the column.
+
+        On the content row's canvas, under both panels, from the row's foot to its
+        top: the top bar is left as it is. The left strip ends at the sidebar, the
+        right one starts at the reading column's edge, which on a wide pane is short
+        of the pane's own (the column is capped and held against the sidebar).
+        """
+        with self._content.canvas.before:
+            Color(rgba=SIDE_SCRIM)
+            self._left_side_scrim = Rectangle()
+            self._right_side_scrim = Rectangle()
+
+        def fit_side_scrims(*_args: object) -> None:
+            row = self._content
+            sidebar_x = self._left_column.x
+            self._left_side_scrim.pos = (row.x, row.y)
+            self._left_side_scrim.size = (max(0.0, sidebar_x - row.x), row.height)
+            column_end = self.body_scroll.x + self.body.x + self.body.width
+            self._right_side_scrim.pos = (column_end, row.y)
+            self._right_side_scrim.size = (max(0.0, row.x + row.width - column_end), row.height)
+
+        self._content.bind(pos=fit_side_scrims, size=fit_side_scrims)
+        self._left_column.bind(x=fit_side_scrims)
+        self.body.bind(x=fit_side_scrims, width=fit_side_scrims)
+        self.body_scroll.bind(x=fit_side_scrims)
+        fit_side_scrims()
 
     def set_contrast(self, on: bool) -> None:
         """Set the Contrast toggle, as a press on it would: a darker article panel when on."""

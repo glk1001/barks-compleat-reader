@@ -1030,3 +1030,38 @@ class TestTheReadingPaneScrim:
     def test_the_scrim_is_the_columns_width(self, viewer: OKFViewer) -> None:
         viewer.body_scroll.width = 5000
         assert viewer._pane_scrim_rect.size[0] == viewer_module.dp(viewer_module.BODY_MAX_WIDTH)
+
+
+class TestTheSideScrims:
+    """The art beside the panels is dimmed a little; the panels' own scrims are not changed."""
+
+    def test_the_left_strip_runs_from_the_rows_edge_to_the_sidebar(self, viewer: OKFViewer) -> None:
+        viewer._content.pos = (0, 20)
+        viewer._content.size = (2000, 900)
+        viewer._left_column.x = 300
+
+        assert viewer._left_side_scrim.pos == (0, 20)
+        assert viewer._left_side_scrim.size == (300, 900)
+
+    def test_the_right_strip_starts_at_the_columns_edge(self, viewer: OKFViewer) -> None:
+        viewer._content.pos = (0, 20)
+        viewer._content.size = (2000, 900)
+        viewer.body_scroll.x = 500
+        viewer.body.x = 0
+        viewer.body.width = 760
+
+        assert viewer._right_side_scrim.pos == (1260, 20)
+        assert viewer._right_side_scrim.size == (740, 900)
+
+    def test_no_room_at_a_side_draws_nothing_there(self, viewer: OKFViewer) -> None:
+        viewer._content.pos = (0, 0)
+        viewer._content.size = (1000, 900)
+        viewer._left_column.x = 0
+        viewer.body_scroll.x = 300
+        viewer.body.width = 800
+
+        assert viewer._left_side_scrim.size[0] == 0
+        assert viewer._right_side_scrim.size[0] == 0
+
+    def test_the_side_scrims_are_light(self) -> None:
+        assert viewer_module.SIDE_SCRIM[3] < viewer_module.READING_PANE_SCRIM[3]
