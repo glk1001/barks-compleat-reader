@@ -182,7 +182,7 @@ class TestComicReaderLoadTime:
         with (
             patch.object(barks_reader.ui.comic_book_reader, "Image"),
             patch.object(barks_reader.ui.comic_book_reader, "ReaderNavigation"),
-            patch.object(barks_reader.ui.comic_book_reader, "get_image_stream"),
+            patch.object(barks_reader.ui.comic_book_reader, "file_texture"),
             patch.object(FloatLayout, "add_widget"),
             patch.object(barks_reader.ui.comic_book_reader, "Clock") as mock_reader_clock,
             # The loader signals first/all-images-loaded via its injected Scheduler port

@@ -32,8 +32,8 @@
     # This is the main container for the title view.
     AnchorLayout:
         id: bottom_title_view
-        # The anchor_y is now 'top' to prevent the content from being centered vertically.
-        # This is the primary fix for the layout being pushed down.
+        # The anchor_y is 'bottom', not the default 'center', so the content is not centered
+        # vertically. This is the primary fix for the layout being pushed down.
         anchor_x: "center"
         anchor_y: "bottom"
         # The opacity controls this entire container.

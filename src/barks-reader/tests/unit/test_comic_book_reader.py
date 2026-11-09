@@ -75,7 +75,7 @@ class TestComicBookReader:
             patch.object(barks_reader.ui.comic_book_reader, "ComicBookLoader"),
             # Use patch.object to be sure we are patching the right module attribute
             patch.object(barks_reader.ui.comic_book_reader, "ReaderNavigation") as mock_nav_cls,
-            patch.object(barks_reader.ui.comic_book_reader, "get_image_stream"),
+            patch.object(barks_reader.ui.comic_book_reader, "file_texture"),
             # Patch FloatLayout.add_widget to avoid Kivy widget tree logic
             patch.object(FloatLayout, "add_widget"),
         ):
@@ -1444,7 +1444,7 @@ def test_an_image_in_a_zip_is_read_from_its_bytes(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive, "w") as zf:
         zf.writestr("Insets/Story.png", png.getvalue())
 
-    texture = _reader_module.get_image_stream(zipfile.Path(archive, "Insets/Story.png"))
+    texture = _reader_module.file_texture(zipfile.Path(archive, "Insets/Story.png"))
 
     assert tuple(texture.size) == (6, 4)
 

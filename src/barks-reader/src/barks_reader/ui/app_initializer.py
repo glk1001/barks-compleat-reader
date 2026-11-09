@@ -80,10 +80,10 @@ class AppInitializer:
 
         self._post_build_setup()
 
-        # After the post-build setup, whose no-library notice must come first: a popup
-        # the callback opens (the data pack offer) binds the window's keys, and Kivy
-        # hands a key to the earliest binding, so a notice opened after it would sit on
-        # top while the hidden offer answered the keys.
+        # After the post-build setup, which may open the no-library notice. The order
+        # decides which popup is dealt with first: one the callback opens (the data pack
+        # offer) binds the window's keys too, and Kivy hands a key to the newest binding,
+        # so the later popup is on top and answers the keys.
         assert self._on_tree_build_finished is not None
         self._on_tree_build_finished()
 

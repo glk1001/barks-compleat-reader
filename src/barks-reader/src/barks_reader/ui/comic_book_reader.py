@@ -211,8 +211,7 @@ class ComicBookReader(FloatLayout):
         self._time_to_load_comic = Timing()
 
     def _add_reader_widgets(self) -> None:
-        # Don't mess with this. Using CoreImage will result in a 25% slowdown.
-        self._loading_page_texture = get_image_stream(
+        self._loading_page_texture = file_texture(
             self._reader_settings.sys_file_paths.get_empty_page_file()
         )
 
@@ -1285,6 +1284,7 @@ def page_texture(page: PageImage) -> Texture:
         A texture showing the page the right way up.
 
     """
+    # Don't mess with this. Using CoreImage will result in a 25% slowdown.
     color_format = page.mode.lower()
     texture = Texture.create(size=(page.width, page.height), colorfmt=color_format)
     texture.blit_buffer(page.pixels, colorfmt=color_format, bufferfmt="ubyte")
@@ -1292,11 +1292,17 @@ def page_texture(page: PageImage) -> Texture:
     return texture
 
 
-def get_image_stream(file: PanelPath) -> Texture:
+def file_texture(file: PanelPath) -> Texture:
+    """Load an image file into a texture, through Kivy's own image loaders.
+
+    Args:
+        file: The image, on disk or inside a zip file.
+
+    Returns:
+        A texture showing the image.
+
+    """
     if isinstance(file, Path):
         return CoreImage(str(file)).texture
 
-    zip_bytes = file.read_bytes()
-    image_stream = io.BytesIO(zip_bytes)
-    image_stream.seek(0)
-    return CoreImage(image_stream, ext=PNG_EXT_FOR_KIVY).texture
+    return CoreImage(io.BytesIO(file.read_bytes()), ext=PNG_EXT_FOR_KIVY).texture

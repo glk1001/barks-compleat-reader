@@ -515,7 +515,7 @@ class BottomTitleViewScreen(FloatLayout):
 
         Opacity is the panel's only state: the eye toggle peeks the content away by
         setting ``bottom_view_box.opacity`` to 0 (in the kv rule), and the title
-        fade-in animates that same property up from 0 over a random 0-4s. Opacity
+        fade-in animates that same property up from 0 over a short random time. Opacity
         alone therefore cannot tell "the user hid this" from "this is still arriving",
         and mid-fade it reads as hidden - which left only the eye toggle focusable, so
         an Enter after a *mouse*-driven goto-title toggled the panel instead of opening

@@ -555,8 +555,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if self._settings_nav is not None:
             return self._handle_settings_key(key)
         # A modal popup (e.g. the quit confirmation) owns the keyboard. Window.bind
-        # dispatches observers in binding order, so this earlier-bound handler must
-        # yield for the popup's later-bound key handler to ever see the key.
+        # dispatches observers newest-first, so the popup's later-bound handler hears a
+        # key before this one; a key it lets through must move nothing behind the popup.
         if _modal_popup_is_open():
             return False
         if self._menu_dots_open_without_the_keys():
