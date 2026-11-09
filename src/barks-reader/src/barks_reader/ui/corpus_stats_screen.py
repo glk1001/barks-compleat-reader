@@ -83,6 +83,9 @@ _DISPLAY_FONT_NAME = FontManager.main_title_font_name
 # convention the rest of the app uses - grey dims without shifting hue); the veil
 # is the page ground laid over the top. Raise the veil alpha if a busier or
 # lighter picture makes the figures harder to read.
+# How long a resize drag has to pause for before the page is rebuilt at its new width.
+_REBUILD_AFTER_RESIZE_SECS = 0.1
+
 _BACKGROUND_SCRIM = (0.55, 0.55, 0.55, 1.0)
 _BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.55)
 
@@ -140,8 +143,11 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
         self._setup_action_bar_nav([self.ids.close_button])
 
-        # A resize drag would otherwise rebuild the page on every frame.
-        self._rebuild_trigger = Clock.create_trigger(lambda _dt: self._rebuild(), 0)
+        # A resize drag would otherwise rebuild the page on every frame: this waits for a
+        # gap in it, as a timeout of 0 would only merge the calls within one frame.
+        self._rebuild_trigger = Clock.create_trigger(
+            lambda _dt: self._rebuild(), _REBUILD_AFTER_RESIZE_SECS
+        )
         self.ids.stats_page.bind(width=lambda *_args: self._rebuild_trigger())
 
     # --- Lifecycle -------------------------------------------------------

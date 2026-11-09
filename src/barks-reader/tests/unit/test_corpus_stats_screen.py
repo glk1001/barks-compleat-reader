@@ -243,6 +243,14 @@ class TestTheReservedDialogueSlot:
         assert screen._text_section is None
 
 
+class TestResizing:
+    def test_a_resize_drag_waits_for_a_pause_before_the_page_is_rebuilt(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        """A timeout of 0 would only merge the calls within one frame."""
+        assert screen._rebuild_trigger.timeout > 0
+
+
 class TestBackgroundArt:
     def test_a_real_image_becomes_the_background(self, screen: CorpusStatsScreen) -> None:
         screen._background_path.write_bytes(b"not really a jpg, but it is a file")
