@@ -77,6 +77,9 @@
             orientation: 'vertical'
             padding: 0
             spacing: 0
+            # Hidden to peek at the art: its invisible portal and checkboxes take no touch.
+            # Only at exactly 0, so a fade-in is live and does not draw in disabled colors.
+            disabled: self.opacity == 0
 
             # --- Main Title (Full Width) ---
             FloatLayout:

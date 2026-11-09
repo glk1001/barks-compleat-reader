@@ -21,12 +21,33 @@ from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
 from kivy.core.text.markup import MarkupLabel
+from kivy.lang import Builder
+from kivy.lang.parser import Parser
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from PIL import ImageFont
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from kivy.lang.parser import ParserRule
     from kivy.uix.widget import Widget
+
+_KV_FILE = Path(bottom_title_view_screen.__file__).with_suffix(".kv")
+
+
+def _kv_expression(prop: str, widget_id: str | None = None) -> str:
+    """Return the expression the screen's real kv rule gives `prop`, on the widget `widget_id`."""
+
+    def found_in(rule: ParserRule) -> str | None:
+        if prop in rule.properties and widget_id in (None, rule.id):
+            return rule.properties[prop].value
+        return next(filter(None, map(found_in, rule.children)), None)
+
+    parser = Parser(content=_KV_FILE.read_text(encoding="utf-8"), filename=str(_KV_FILE))
+    expression = next(filter(None, (found_in(rule) for _, rule in parser.rules)), None)
+    assert expression is not None
+    return expression
 
 
 def _show(
@@ -830,3 +851,48 @@ def test_extra_info_line_pitch_is_the_one_kivy_lays_out(font_size: int) -> None:
     )
     _width, height = label.render()
     assert BottomTitleViewScreen.extra_info_line_pitch(font_size) == height / lines
+
+
+class _PeekedPanel(BoxLayout):
+    """The title panel's box, given the `disabled` expression of the screen's real kv rule."""
+
+
+class TestPeekingAtTheArt:
+    KV_FILE = "test_peeked_panel.kv"
+
+    @pytest.fixture
+    def panel(self) -> Generator[_PeekedPanel]:
+        expression = _kv_expression("disabled", "bottom_view_box")
+        Builder.load_string(f"<_PeekedPanel>:\n    disabled: {expression}\n", filename=self.KV_FILE)
+        try:
+            yield _PeekedPanel(size=(100, 100))
+        finally:
+            Builder.unload_file(self.KV_FILE)
+
+    @pytest.mark.parametrize(
+        ("opacity", "presses"),
+        [
+            pytest.param(0, 0, id="hidden"),
+            pytest.param(0.5, 1, id="fading-in"),
+            pytest.param(1, 1, id="shown"),
+        ],
+    )
+    def test_only_a_hidden_panel_keeps_its_widgets_from_a_touch(
+        self, panel: _PeekedPanel, opacity: float, presses: int
+    ) -> None:
+        pressed = MagicMock()
+        portal = Button(size=(100, 100), on_press=pressed)
+        panel.add_widget(portal)
+        panel.opacity = opacity
+
+        panel.on_touch_down(
+            MagicMock(x=50, y=50, pos=(50, 50), ud={}, is_mouse_scrolling=False),
+        )
+
+        assert pressed.call_count == presses
+
+    def test_showing_the_panel_again_gives_its_widgets_back(self, panel: _PeekedPanel) -> None:
+        panel.opacity = 0
+        assert panel.disabled
+        panel.opacity = 1
+        assert not panel.disabled
