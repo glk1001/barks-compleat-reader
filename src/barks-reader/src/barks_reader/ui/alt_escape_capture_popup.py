@@ -1,3 +1,4 @@
+# cspell:ignore lctrl rctrl capslock numlock screenlock
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -22,6 +23,24 @@ from .popup_frame import PopupFrame, message_body
 ALT_ESCAPE_POPUP_TITLE = "Alternate Escape Key"
 # The keys the frame works the buttons with: never captured, each having its own work.
 _FRAME_KEYS = (KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_NUMPAD_ENTER)
+# Pressed on the way to something else (Alt+Tab, a capital letter): never captured, or every
+# later press of it would act as Escape across the app.
+_MODIFIER_KEYS = frozenset(
+    Keyboard.keycodes[name]
+    for name in (
+        "shift",
+        "rshift",
+        "lctrl",
+        "rctrl",
+        "alt",
+        "alt-gr",
+        "super",
+        "compose",
+        "capslock",
+        "numlock",
+        "screenlock",
+    )
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -91,7 +110,7 @@ class AltEscapeCapturePopup(PopupFrame):
         self._on_clear()
 
     def _capture(self, key: int) -> bool:
-        """Capture any key but the frame's own; Up and Down do nothing.
+        """Capture any key but the frame's own; Up, Down and modifier keys do nothing.
 
         Asked before the frame, so the alternate Escape set now is captured again
         rather than cancelling: only the real Escape cancels.
@@ -100,6 +119,8 @@ class AltEscapeCapturePopup(PopupFrame):
             return False
         if key in (KEY_UP, KEY_DOWN):
             return True  # the remote's keys are not for capture: each has its own work
+        if key in _MODIFIER_KEYS:
+            return True  # still waiting for the key itself
         self._captured = True
         logger.info(log_markers.ALT_ESCAPE_CAPTURED.format(name=keycode_to_name(key), keycode=key))
         self._on_capture(key)

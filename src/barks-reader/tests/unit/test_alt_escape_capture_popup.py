@@ -1,3 +1,4 @@
+# cspell:ignore lctrl rctrl capslock numlock screenlock
 """The alternate-Escape capture popup: what each key does, and the line it logs.
 
 It is on the popup frame (``ui.popup_frame``): its buttons and Escape are the frame's.
@@ -20,6 +21,7 @@ from barks_reader.core.keys import (
 )
 from barks_reader.ui import popup_frame
 from barks_reader.ui.alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
+from kivy.core.window import Keyboard
 
 
 @pytest.fixture
@@ -70,6 +72,36 @@ def test_any_other_key_is_captured_once(
     assert f"Alternate Escape captured: {keycode_to_name(KEY_TAB)} ({KEY_TAB})." in loguru_sink
     _press(made, KEY_TAB)  # once captured, a key is not captured again
     on_capture.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "shift",
+        "rshift",
+        "lctrl",
+        "rctrl",
+        "alt",
+        "alt-gr",
+        "super",
+        "compose",
+        "capslock",
+        "numlock",
+        "screenlock",
+    ],
+)
+def test_a_modifier_key_is_not_captured_and_the_popup_waits_for_a_real_one(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock], name: str
+) -> None:
+    """Alt on the way to Alt+Tab must not become Escape across the app."""
+    made, on_capture, _ = popup
+
+    assert _press(made, Keyboard.keycodes[name]) is True
+
+    on_capture.assert_not_called()
+    cast("MagicMock", made.dismiss).assert_not_called()
+    _press(made, KEY_TAB)
+    on_capture.assert_called_once_with(KEY_TAB)
 
 
 @pytest.mark.parametrize("key", [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER])
