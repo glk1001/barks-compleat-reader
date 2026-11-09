@@ -49,8 +49,14 @@ class TestGotoSettingsErrors:
 
         assert pres.kind is ErrorDialogKind.GOTO_SETTINGS
         assert pres.title == "Fantagraphics Directory Not Set"
-        assert "has not been set" in pres.text
-        assert "browse" in pres.text  # the app stays usable without the library
+        # The app stays usable without the library, and the message says so.
+        assert pres.text == (
+            "The Fantagraphics comic zips directory has not been set in the app settings."
+            "\n\n"
+            "You can still browse the whole library, search, read the wiki, and read the"
+            " hand-restored censored stories. To read the full comics, go to settings, enter"
+            " the zips directory, then restart the app."
+        )
         assert pres.close_message == FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG
 
     def test_fanta_root_not_found_includes_configured_dir(self, reader_settings: MagicMock) -> None:
@@ -60,7 +66,13 @@ class TestGotoSettingsErrors:
 
         assert pres.kind is ErrorDialogKind.GOTO_SETTINGS
         assert pres.title == "Fantagraphics Directory Not Found"
-        assert '[b]"/some/fanta/dir"[/b]' in pres.text
+        assert pres.text == (
+            "In app settings, the Fantagraphics comic zips directory is"
+            '\n\n[b]"/some/fanta/dir"[/b]\n\n'
+            "But this directory could not be found. You can still browse the library, search,"
+            " read the wiki, and read the hand-restored censored stories. To read the full"
+            " comics, go to settings, enter the correct directory, then restart the app."
+        )
         assert pres.close_message == FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG
 
     def test_fanta_root_not_found_escapes_kivy_markup(self, reader_settings: MagicMock) -> None:
