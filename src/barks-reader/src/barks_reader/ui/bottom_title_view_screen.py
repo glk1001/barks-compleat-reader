@@ -303,6 +303,11 @@ class BottomTitleViewScreen(FloatLayout):
         self._set_title_inset_image(inset_image_source)
 
     def fade_in_bottom_view_title(self) -> None:
+        # Stepping through titles starts a fade over one still running. Left going, the old
+        # one drags the opacity back down after a shorter new one has finished, and the
+        # panel, with no fade on record, reads as peeked away.
+        if self._panel_fade_anim is not None:
+            self._panel_fade_anim.cancel(self.ids.bottom_view_box)
         self.ids.bottom_view_box.opacity = 0
         duration = self._get_title_portal_opening_animation_duration_secs()
         anim = Animation(opacity=1, duration=duration)
@@ -310,8 +315,7 @@ class BottomTitleViewScreen(FloatLayout):
         anim.start(self.ids.bottom_view_box)
         logger.debug(log_markers.TITLE_FADE_STARTED.format(duration=duration))
         # Recorded after start(), so this is the animation that actually ended up
-        # running. Kivy's start() only stops its own instance and cancel() does not
-        # fire on_complete, so the guard in _on_panel_fade_finished does the rest.
+        # running; the guard in _on_panel_fade_finished then knows it from any other.
         self._panel_fade_anim = anim
         self.ids.title_show_button.opacity = 1
 

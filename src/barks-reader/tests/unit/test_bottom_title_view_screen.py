@@ -460,6 +460,23 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         assert not self.screen._is_panel_content_visible()
         assert self.screen._focusable_widgets() == [self.screen.ids.title_show_button]
 
+    def test_a_new_fade_stops_the_one_still_running(self) -> None:
+        """Else the old one drags a shorter new one's finished panel back down to hidden."""
+        self.screen.fade_in_bottom_view_title()
+        self.mock_anim.cancel.assert_not_called()
+
+        self.screen.fade_in_bottom_view_title()
+
+        self.mock_anim.cancel.assert_called_once_with(self.screen.ids.bottom_view_box)
+
+    def test_a_fade_already_over_is_not_stopped_again(self) -> None:
+        self.screen.fade_in_bottom_view_title()
+        self.screen._on_panel_fade_finished(self.mock_anim, self.screen.ids.bottom_view_box)
+
+        self.screen.fade_in_bottom_view_title()
+
+        self.mock_anim.cancel.assert_not_called()
+
     def test_an_earlier_fade_finishing_does_not_clear_a_later_one(self) -> None:
         """Kivy's cancel() fires no on_complete, so a stale finish must not win."""
         self.screen.fade_in_bottom_view_title()
