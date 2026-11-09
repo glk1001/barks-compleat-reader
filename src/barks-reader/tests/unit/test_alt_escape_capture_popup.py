@@ -1,4 +1,4 @@
-# cspell:ignore lctrl rctrl capslock numlock screenlock
+# cspell:ignore lctrl rctrl capslock numlock
 """The alternate-Escape capture popup: what each key does, and the line it logs.
 
 It is on the popup frame (``ui.popup_frame``): its buttons and Escape are the frame's.
@@ -87,7 +87,6 @@ def test_any_other_key_is_captured_once(
         "compose",
         "capslock",
         "numlock",
-        "screenlock",
     ],
 )
 def test_a_modifier_key_is_not_captured_and_the_popup_waits_for_a_real_one(
@@ -102,6 +101,18 @@ def test_a_modifier_key_is_not_captured_and_the_popup_waits_for_a_real_one(
     cast("MagicMock", made.dismiss).assert_not_called()
     _press(made, KEY_TAB)
     on_capture.assert_called_once_with(KEY_TAB)
+
+
+def test_the_right_hand_windows_key_is_not_captured_either(
+    popup: tuple[AltEscapeCapturePopup, MagicMock, MagicMock],
+) -> None:
+    """Not in Kivy's key map, it arrives as SDL's raw code, read off a real window."""
+    made, on_capture, _ = popup
+
+    assert _press(made, 1073742055) is True
+
+    on_capture.assert_not_called()
+    cast("MagicMock", made.dismiss).assert_not_called()
 
 
 @pytest.mark.parametrize("key", [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER])

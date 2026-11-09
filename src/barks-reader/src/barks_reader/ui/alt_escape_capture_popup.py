@@ -1,4 +1,4 @@
-# cspell:ignore lctrl rctrl capslock numlock screenlock
+# cspell:ignore lctrl rctrl capslock numlock
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -23,6 +23,9 @@ from .popup_frame import PopupFrame, message_body
 ALT_ESCAPE_POPUP_TITLE = "Alternate Escape Key"
 # The keys the frame works the buttons with: never captured, each having its own work.
 _FRAME_KEYS = (KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_NUMPAD_ENTER)
+# The right-hand Windows key: not in Kivy's key map, so its keyboard event carries SDL's raw
+# keycode (the scancode 231, flagged as having no character).
+_SDL_RIGHT_SUPER = 0x40000000 | 231
 # Pressed on the way to something else (Alt+Tab, a capital letter): never captured, or every
 # later press of it would act as Escape across the app.
 _MODIFIER_KEYS = frozenset(
@@ -38,9 +41,8 @@ _MODIFIER_KEYS = frozenset(
         "compose",
         "capslock",
         "numlock",
-        "screenlock",
     )
-)
+) | {_SDL_RIGHT_SUPER}
 
 if TYPE_CHECKING:
     from collections.abc import Callable
