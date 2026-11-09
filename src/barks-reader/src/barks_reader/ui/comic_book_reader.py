@@ -65,6 +65,7 @@ from .reader_close_mixin import ReaderCloseMixin
 from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
+from .ui_helpers import is_tap
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -317,6 +318,8 @@ class ComicBookReader(FloatLayout):
             return True
         if self._closed:
             return False  # closing: no page to turn to
+        if not is_tap(touch):
+            return False  # a wheel tick's position says nothing of which way to turn
 
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
@@ -1030,6 +1033,15 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
             f" self._action_bar.height = {self._action_bar.height}."
         )
 
+    @override
+    def on_touch_down(self, touch: MotionEvent) -> bool:
+        if self._is_closing:
+            return True  # as for keys (_on_key_down): nothing left to act on
+        if is_tap(touch):
+            return self._on_tap_down(touch)
+        # A wheel tick or another button: not a tap on the margin, nor one leaving the menu.
+        return bool(super().on_touch_down(touch))
+
     # In fullscreen a click in the top margin toggles the action bar: it reveals a hidden
     # bar, and a click in the strip of the margin left below a shown bar hides it again.
     # Clicks on the bar itself go to its buttons (which sit above the image area thanks
@@ -1037,10 +1049,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
     # The bar's state is read before the tap leaves menu mode: a bar the menu showed is
     # hidden again by that, and the margin under it must not then bring it straight back.
     # A tap on such a bar keeps it, for the button under the tap to take the press.
-    @override
-    def on_touch_down(self, touch: MotionEvent) -> bool:
-        if self._is_closing:
-            return True  # as for keys (_on_key_down): nothing left to act on
+    def _on_tap_down(self, touch: MotionEvent) -> bool:
         bar_was_hidden = self._is_action_bar_hidden()
         self._clear_menu_on_touch(on_bar=self._action_bar.collide_point(*touch.pos))
 

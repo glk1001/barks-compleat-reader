@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # ReaderScrollView/ReaderDropDown must be imported (Factory-registered) before
 # kivy_helpers.kv's rule and the screen kv files that instantiate them are loaded.
@@ -16,7 +17,23 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 
+if TYPE_CHECKING:
+    from kivy.input import MotionEvent
+
 KIVY_HELPERS_KV_FILE = Path(__file__).parent / "kivy_helpers.kv"
+
+
+def is_tap(touch: MotionEvent) -> bool:
+    """Return whether a touch is a tap, rather than a wheel tick or another mouse button.
+
+    Args:
+        touch: The touch, whose ``button`` is None on a touchscreen.
+
+    Returns:
+        True for a left click or a touchscreen touch.
+
+    """
+    return touch.button in (None, "left")
 
 
 def set_kivy_busy_cursor() -> None:

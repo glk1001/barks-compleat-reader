@@ -15,6 +15,8 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.relativelayout import RelativeLayout
 from loguru import logger
 
+from .ui_helpers import is_tap
+
 if TYPE_CHECKING:
     from kivy.input import MotionEvent
     from kivy.uix.scrollview import ScrollView
@@ -180,9 +182,9 @@ class _CollapseBar(RelativeLayout):
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self.disabled or self.opacity < 0.1:  # noqa: PLR2004
             return False
-        # Only a tap collapses (a touchscreen's touch has no button). A wheel tick is left
-        # to the tree: the bar appears under a pointer scrolling near the top of the view.
-        if touch.button not in (None, "left"):
+        # A wheel tick is left to the tree: the bar appears under a pointer scrolling near
+        # the top of the view.
+        if not is_tap(touch):
             return False
         if self.collide_point(*touch.pos):
             self._overlay._on_bar_pressed()  # noqa: SLF001

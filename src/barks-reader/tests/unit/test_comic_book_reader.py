@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+# cspell:ignore scrollup scrolldown scrollleft scrollright
 
 from __future__ import annotations
 
@@ -465,7 +466,7 @@ class TestComicBookReader:
         mock_nav.is_in_left_margin.return_value = False
         mock_nav.is_in_right_margin.return_value = False
 
-        touch = MagicMock()
+        touch = MagicMock(button="left")
         touch.x = 100
         touch.y = 100
         reader.x = 0
@@ -492,7 +493,7 @@ class TestComicBookReader:
     ) -> None:
         mock_nav = reader._navigation
         mock_nav.is_in_top_margin.return_value = False
-        touch = MagicMock(x=100, y=60)
+        touch = MagicMock(x=100, y=60, button="left")
         reader.x, reader.y = 0, 0
         reader._page_manager = MagicMock()
 
@@ -505,6 +506,31 @@ class TestComicBookReader:
 
         assert log_markers.LEFT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
         assert log_markers.RIGHT_MARGIN_PRESSED.format(x=100, y=60) in loguru_sink
+
+    @pytest.mark.parametrize(
+        "button", ["scrollup", "scrolldown", "scrollleft", "scrollright", "right", "middle"]
+    )
+    def test_only_a_tap_turns_a_page(self, reader: ComicBookReader, button: str) -> None:
+        """A wheel tick's position says nothing of which way to turn."""
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_top_margin.return_value = False
+        reader._navigation.is_in_left_margin.return_value = True
+        reader._navigation.is_in_right_margin.return_value = True
+
+        assert not reader.on_touch_down(MagicMock(x=100, y=60, button=button))
+
+        assert reader._page_manager.mock_calls == []
+
+    def test_a_touchscreen_touch_has_no_button_and_turns_a_page(
+        self, reader: ComicBookReader
+    ) -> None:
+        reader._page_manager = MagicMock()
+        reader._navigation.is_in_left_margin.return_value = False
+        reader._navigation.is_in_right_margin.return_value = True
+
+        assert reader.on_touch_down(MagicMock(x=100, y=60, button=None))
+
+        reader._page_manager.next_page.assert_called_once_with()
 
     def test_no_page_turns_once_the_comic_is_closed(self, reader: ComicBookReader) -> None:
         """Leaving fullscreen after Close takes a moment: a turn then must not reach the loader."""
@@ -555,7 +581,7 @@ class TestComicBookReader:
         reader._page_manager = MagicMock()
         reader._navigation.is_in_left_margin.return_value = True
         reader._closed = True
-        assert not reader.on_touch_down(MagicMock(x=10, y=10))
+        assert not reader.on_touch_down(MagicMock(x=10, y=10, button="left"))
         reader._page_manager.prev_page.assert_not_called()
 
     def test_tap_target_regions_are_the_margins_in_window_pixels(
@@ -775,7 +801,7 @@ class TestComicBookReader:
         reader._page_manager = MagicMock()
         reader._navigation.is_in_right_margin.return_value = True
         with patch.object(FloatLayout, "on_touch_down", return_value=True):
-            assert reader.on_touch_down(MagicMock(x=100, y=100)) is True
+            assert reader.on_touch_down(MagicMock(x=100, y=100, button="left")) is True
         reader._page_manager.next_page.assert_not_called()
 
     def test_closing_twice_closes_once(self, reader: ComicBookReader) -> None:
@@ -1039,7 +1065,7 @@ class TestComicBookReaderScreen:
         screen._mode.toggle.assert_called_once_with()
 
     def test_on_touch_down_top_margin(self, screen: ComicBookReaderScreen) -> None:
-        touch = MagicMock()
+        touch = MagicMock(button="left")
 
         # Mock comic_book_reader
         screen.comic_book_reader = MagicMock()
@@ -1066,6 +1092,24 @@ class TestComicBookReaderScreen:
             mock_show.assert_not_called()
             mock_hide.assert_not_called()
 
+    @pytest.mark.parametrize("button", ["scrollup", "scrolldown", "right", "middle"])
+    def test_only_a_tap_shows_the_bar_or_leaves_the_menu(
+        self, screen: ComicBookReaderScreen, button: str
+    ) -> None:
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = True
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=True),
+            patch.object(screen, "_show_action_bar") as mock_show,
+            patch.object(screen, "_clear_menu_on_touch") as clear_menu,
+            patch.object(FloatLayout, "on_touch_down", return_value=False) as to_children,
+        ):
+            assert screen.on_touch_down(MagicMock(pos=(400, 900), button=button)) is False
+
+        mock_show.assert_not_called()
+        clear_menu.assert_not_called()
+        to_children.assert_called_once()
+
     def test_a_top_margin_tap_below_a_shown_bar_hides_it_in_fullscreen(
         self, screen: ComicBookReaderScreen, loguru_sink: list[str]
     ) -> None:
@@ -1080,7 +1124,7 @@ class TestComicBookReaderScreen:
             patch.object(screen, "_hide_action_bar") as mock_hide,
         ):
             window_manager.is_fullscreen_now.return_value = True
-            assert screen.on_touch_down(MagicMock(pos=(400, 900))) is True
+            assert screen.on_touch_down(MagicMock(pos=(400, 900), button="left")) is True
         mock_hide.assert_called_once_with()
         assert log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN in loguru_sink
 
@@ -1096,7 +1140,7 @@ class TestComicBookReaderScreen:
         assert screen._action_bar.disabled is False
         with patch.object(_reader_module, "WindowManager") as window_manager:
             window_manager.is_fullscreen_now.return_value = True
-            assert screen.on_touch_down(MagicMock(pos=(400, 900))) is True
+            assert screen.on_touch_down(MagicMock(pos=(400, 900), button="left")) is True
         assert screen._menu_mode is False
         assert screen._action_bar.disabled is True
         assert log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN not in loguru_sink
@@ -1143,7 +1187,7 @@ class TestComicBookReaderScreen:
             window_manager.is_fullscreen_now.return_value = True
             assert screen._handle_reader_key(27)  # Escape: the menu shows the bar
             assert screen._action_bar.disabled is False
-            assert screen.on_touch_down(MagicMock(pos=(800, 1280))) is True
+            assert screen.on_touch_down(MagicMock(pos=(800, 1280), button="left")) is True
         to_children.assert_called_once()  # the bar's buttons get the tap
         assert screen._menu_mode is False
         assert screen._action_bar.disabled is False
@@ -1163,7 +1207,7 @@ class TestComicBookReaderScreen:
             patch.object(screen, "_hide_action_bar") as mock_hide,
         ):
             window_manager.is_fullscreen_now.return_value = True
-            assert screen.on_touch_down(MagicMock(pos=(400, 1000))) is False
+            assert screen.on_touch_down(MagicMock(pos=(400, 1000), button="left")) is False
         mock_hide.assert_not_called()
 
     def test_the_menu_over_a_visible_action_bar_leaves_it_as_it_is(
