@@ -75,6 +75,7 @@ class AppWindowGeometryHelper:
         self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
         self._refit_pending = False
         self._resize_event: Any = None
+        self._resize_steps: tuple[Any, Any] | None = None
         self._resize_requested_size = 0, 0
         self._window_ready = False
         self._correction_event: Any = None
@@ -605,9 +606,13 @@ class AppWindowGeometryHelper:
             reposition: Optional (x, y) to also reposition the window.
 
         """
-        # An earlier guard's reset would otherwise drop this guard before its time.
+        # An earlier guard's reset would otherwise drop this guard before its time, and its
+        # resize and move, still to come, undo this one's.
         if self._resize_event is not None:
             self._resize_event.cancel()
+        if self._resize_steps is not None:
+            for step in self._resize_steps:
+                step.cancel()
         self._resize_requested_size = new_width, new_height
 
         def do_resize(_dt: float) -> None:
@@ -621,10 +626,13 @@ class AppWindowGeometryHelper:
         def do_reset_resize(_dt: float) -> None:
             logger.debug("Clearing resize guard.")
             self._resize_event = None
+            self._resize_steps = None
             self._resize_requested_size = 0, 0
 
-        Clock.schedule_once(do_resize, 0)
-        Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY)
+        self._resize_steps = (
+            Clock.schedule_once(do_resize, 0),
+            Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY),
+        )
         self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
 
 

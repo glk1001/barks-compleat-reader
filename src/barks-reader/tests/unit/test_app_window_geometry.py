@@ -733,6 +733,23 @@ def test_a_guarded_resize_sizes_then_moves_the_window_then_drops_its_guard(
     assert helper._resize_requested_size == (0, 0)  # noqa: SLF001
 
 
+def test_a_new_guarded_resize_cancels_all_of_the_one_before(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    """The older resize and move, still to run, would undo the newer: the last one stands."""
+    helper._schedule_guarded_resize(1200, 1800, reposition=(30, 40))  # noqa: SLF001
+    helper._schedule_guarded_resize(1400, 2000, reposition=(50, 60))  # noqa: SLF001
+    assert len(fake_clock.pending) == 3  # noqa: PLR2004
+
+    while fake_clock.run_next():
+        pass
+
+    assert fake_window.size == (1400, 2000)
+    assert (fake_window.left, fake_window.top) == (50, 60)
+    assert helper._resize_event is None  # noqa: SLF001
+    assert helper._resize_steps is None  # noqa: SLF001
+
+
 def test_a_guarded_resize_with_nowhere_to_go_leaves_the_window_where_it_is(
     helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
 ) -> None:
