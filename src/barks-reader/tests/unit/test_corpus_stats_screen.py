@@ -25,7 +25,9 @@ from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_screens import ReaderScreen
+from kivy.graphics import Color, Rectangle
 from kivy.lang.parser import Parser
+from kivy.uix.boxlayout import BoxLayout
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -131,6 +133,53 @@ def _open(screen: CorpusStatsScreen) -> None:
 def _rebuild(screen: CorpusStatsScreen) -> None:
     with patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()):
         screen._rebuild()
+
+
+class TestTheShareBar:
+    """Drawn for real here: the screen's fixture stands it in for a mock."""
+
+    @staticmethod
+    def _bar_rectangles(share: float) -> tuple[Rectangle, Rectangle, BoxLayout]:
+        row = BoxLayout(size_hint=(None, None), pos=(10, 20), size=(400, 30))
+        with patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()):
+            corpus_stats_screen_module._add_share_bar(row, share)
+        track, fill = TestTheShareBar._canvas_items(row, Rectangle)
+        return track, fill, row
+
+    @staticmethod
+    def _canvas_items[T](row: BoxLayout, kind: type[T]) -> list[T]:
+        canvas = row.canvas
+        assert canvas is not None  # Kivy populates this on widget construction.
+        return [i for i in canvas.before.children if isinstance(i, kind)]
+
+    def test_the_track_fills_the_row_and_the_fill_its_share(self) -> None:
+        track, fill, _ = self._bar_rectangles(0.25)
+        assert tuple(track.pos) == (10, 20)
+        assert tuple(track.size) == (400, 30)
+        assert tuple(fill.pos) == (10, 20)
+        assert tuple(fill.size) == (100, 30)
+
+    def test_the_bar_follows_the_row(self) -> None:
+        track, fill, row = self._bar_rectangles(0.5)
+        row.pos = (50, 60)
+        row.size = (800, 40)
+        assert tuple(track.pos) == (50, 60)
+        assert tuple(track.size) == (800, 40)
+        assert tuple(fill.pos) == (50, 60)
+        assert tuple(fill.size) == (400, 40)
+
+    @pytest.mark.parametrize(("share", "width"), [(1.5, 400), (-0.5, 0)])
+    def test_a_share_out_of_range_stays_within_the_row(self, share: float, width: float) -> None:
+        _, fill, _ = self._bar_rectangles(share)
+        assert fill.size[0] == width
+
+    def test_track_and_fill_have_their_own_alphas(self) -> None:
+        _, _, row = self._bar_rectangles(0.5)
+        colors = self._canvas_items(row, Color)
+        assert [color.a for color in colors] == [
+            corpus_stats_screen_module._BAR_TRACK_ALPHA,
+            corpus_stats_screen_module._BAR_FILL_ALPHA,
+        ]
 
 
 class TestTheSpreadBar:
@@ -246,6 +295,34 @@ class TestTheReservedDialogueSlot:
             c for c in screen.ids["stats_right"].children if getattr(c, "height", 0.0) == reserved
         )
         assert TEXT_SECTION_HEADING in slot.children[-1].text
+
+    def test_a_scan_that_lands_fills_the_slot_without_moving_the_page(
+        self, screen: CorpusStatsScreen, loguru_sink: list[str]
+    ) -> None:
+        _open(screen)
+        screen._text_section = None
+        _rebuild(screen)
+        reserved = corpus_stats_screen_module.layout.reserved_height(TEXT_SECTION_SHAPE)
+        heights_before = [c.height for c in screen.ids["stats_right"].children]
+
+        with (
+            patch.object(
+                corpus_stats_screen_module, "compute_text_stats", return_value=_TEXT_SECTION
+            ),
+            patch.object(corpus_stats_screen_module.Clock, "schedule_once") as schedule_once,
+        ):
+            screen._scan_text_stats()
+            assert screen._text_section is None, "applied on the main thread, not this one"
+            apply_it = schedule_once.call_args.args[0]
+            apply_it(0)
+
+        assert screen._text_section is _TEXT_SECTION
+        assert [c.height for c in screen.ids["stats_right"].children] == heights_before
+        slot = next(
+            c for c in screen.ids["stats_right"].children if getattr(c, "height", 0.0) == reserved
+        )
+        assert len(slot.children) == 1 + TEXT_SECTION_SHAPE.num_rows + 1
+        assert "CorpusStats: dialogue statistics applied." in loguru_sink
 
     def test_a_failing_scan_does_not_escape_the_thread(self, screen: CorpusStatsScreen) -> None:
         with patch.object(
