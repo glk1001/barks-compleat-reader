@@ -194,9 +194,9 @@ class TestDirectoryEnvOverrides:
         cfg.is_running_compiled = False
         monkeypatch.delenv("BARKS_READER_CONFIG_DIR", raising=False)
         monkeypatch.delenv("BARKS_READER_DATA_DIR", raising=False)
-        with pytest.raises(RuntimeError, match="BARKS_READER_CONFIG_DIR"):
+        with pytest.raises(RuntimeError, match='Expected config env var "BARKS_READER_CONFIG_DIR"'):
             cfg._get_app_config_dir()  # noqa: SLF001
-        with pytest.raises(RuntimeError, match="BARKS_READER_DATA_DIR"):
+        with pytest.raises(RuntimeError, match='Expected data env var "BARKS_READER_DATA_DIR"'):
             cfg._get_app_data_dir()  # noqa: SLF001
 
 

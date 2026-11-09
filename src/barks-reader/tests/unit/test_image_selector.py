@@ -697,16 +697,19 @@ class TestNonTitleBias:
             _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, f"T{i}") for i in range(count)
         ]
 
-    def test_draws_from_a_range_widened_by_the_bias(self, image_selector: ImageSelector) -> None:
-        """10 titles are drawn against a bound of 11, giving nontitles a ~9% share."""
+    @pytest.mark.parametrize(("count", "bound"), [(10, 11), (30, 33)])
+    def test_draws_from_a_range_widened_by_the_bias(
+        self, image_selector: ImageSelector, count: int, bound: int
+    ) -> None:
+        """10 titles are drawn against a bound of 11, giving nontitles a ~9% share; 30, 33."""
         with patch.object(is_module, randrange.__name__, return_value=0) as mock_randrange:
             image_selector._select_random_title_or_nontitle(
-                self._titles(10),  # ty: ignore[invalid-argument-type]
+                self._titles(count),  # ty: ignore[invalid-argument-type]
                 {FileTypes.NONTITLE},
                 use_only_edited_if_possible=False,
             )
 
-        mock_randrange.assert_called_once_with(0, 11)
+        mock_randrange.assert_called_once_with(0, bound)
 
     @pytest.mark.parametrize("count", [1, 3, 9])
     def test_a_short_title_list_still_has_a_nontitle_slot(
@@ -1167,6 +1170,20 @@ class TestPossibleFilesForTitle:
 
         # ".../b.png" sorts before ".../panels.zip/a.png".
         assert [f for f, _t in possible] == [on_disk, in_zip]
+
+    def test_nontitle_files_from_a_zip_and_the_filesystem_sort_together_by_name(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver, tmp_path: Path
+    ) -> None:
+        panels_zip = tmp_path / "panels.zip"
+        with zipfile.ZipFile(panels_zip, "w") as zf:
+            zf.writestr("a.png", b"image")
+        in_zip = zipfile.Path(panels_zip, "a.png")
+        on_disk = tmp_path / "b.png"
+        fake_resolver.nontitle_files = [in_zip, on_disk]
+
+        nontitle_files = image_selector._get_nontitle_files()
+
+        assert nontitle_files == [(on_disk, FileTypes.NONTITLE), (in_zip, FileTypes.NONTITLE)]
 
 
 class TestMruAndIconCycling:

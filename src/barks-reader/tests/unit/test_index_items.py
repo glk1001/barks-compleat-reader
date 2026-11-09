@@ -30,6 +30,10 @@ class TestEntityIndex:
             "D": ["Donald Duck", "daisy duck"],
         }
 
+    def test_a_first_letter_that_unfolds_into_two_files_under_the_first(self) -> None:
+        """A ligature ("ﬁ") comes apart into two letters when its accents are taken off."""
+        assert list(entity_index(["ﬁsh Island"])) == ["F"]
+
     def test_a_row_shows_its_term(self) -> None:
         (item,) = entity_index(["Gladstone Gander"])["G"]
         assert item.id == "Gladstone Gander"

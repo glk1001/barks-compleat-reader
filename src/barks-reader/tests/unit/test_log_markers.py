@@ -114,6 +114,11 @@ class TestAFieldAtAnEdge:
         """Literal text on both sides already stops it: no boundary is added."""
         assert r"\b" not in pattern(log_markers.SHOWED_PAGE, index=3)
 
+    def test_a_value_inside_a_template_ending_in_a_field_is_not_bounded(self) -> None:
+        """Only the last field is at the end: "800" runs straight on into the "x" after it."""
+        regex = pattern(log_markers.TAP_TARGETS, width=800)
+        assert re.search(regex, "x - Tap targets #3: 800x600 [ok]")
+
     def test_a_regex_field_is_spliced_as_written(self) -> None:
         regex = pattern(log_markers.INDEX_ITEM_PRESSED, item=re.compile("Ab.*"))
         assert regex.endswith("Ab.*")

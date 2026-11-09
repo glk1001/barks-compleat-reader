@@ -72,8 +72,11 @@ def test_a_folder_that_cannot_be_listed_is_left_out_and_the_rest_kept(
         chapters = find_document_chapters(tmp_path)
 
     assert chapters == [DocumentChapter(later, "Later")]
-    assert any(
-        line.startswith(f'Document folder "{locked}" cannot be listed') for line in loguru_sink
+    assert (
+        log_markers.DOCUMENT_FOLDER_UNREADABLE.format(
+            path=locked, error=f"Permission denied: '{locked}'"
+        )
+        in loguru_sink
     )
 
 
@@ -84,7 +87,12 @@ def test_a_root_that_cannot_be_listed_has_no_chapters(
 
     with patch.object(Path, Path.iterdir.__name__, _listing_refused_for(tmp_path)):
         assert find_document_chapters(tmp_path) == []
-    assert any("cannot be listed" in line for line in loguru_sink)
+    assert (
+        log_markers.DOCUMENT_FOLDER_UNREADABLE.format(
+            path=tmp_path, error=f"Permission denied: '{tmp_path}'"
+        )
+        in loguru_sink
+    )
 
 
 def test_a_chapter_without_a_title_is_named_by_its_folder(

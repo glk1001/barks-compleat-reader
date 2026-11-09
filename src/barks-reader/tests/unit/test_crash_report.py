@@ -41,6 +41,20 @@ def test_a_traceback_becomes_the_message_and_the_details() -> None:
     assert details.endswith("  - Time: 2026-10-21 01:02:03\n")
 
 
+def test_the_system_section_is_one_line_per_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    probes = (("System", lambda: "Linux"), ("Release", lambda: "7.0"))
+    monkeypatch.setattr(crash_report_module, "_SYSTEM_PROBES", probes)
+
+    with patch.object(crash_report_module, "datetime") as clock:
+        clock.now.return_value = datetime(2026, 10, 21, 1, 2, 3, tzinfo=UTC)
+        _message, details = crash_report(*_raised())
+
+    assert details.endswith(
+        "\n\nSystem Information:\n  - System: Linux\n  - Release: 7.0\n"
+        "  - Time: 2026-10-21 01:02:03\n"
+    )
+
+
 def _raised() -> tuple[type[BaseException], BaseException, TracebackType | None]:
     try:
         msg = "boom"

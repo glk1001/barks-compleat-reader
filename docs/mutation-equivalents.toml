@@ -461,15 +461,6 @@ change = """
 reason = "ImageInfo.fit_mode defaults to FIT_MODE_COVER."
 
 [[equivalent]]
-module = "barks_reader.core.view_pipeline"
-function = "ViewPipeline.__init__"
-change = """
-- self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
-+ self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = ""
-"""
-reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
-
-[[equivalent]]
 module = "barks_reader.core.page_info_adapters"
 function = "FantagraphicsPanelSegmentsAdapter.__init__"
 change = """
@@ -1417,16 +1408,6 @@ reason = "FIT_MODE_COVER is ImageInfo's default fit mode."
 
 [[equivalent]]
 module = "barks_reader.core.image_selector"
-function = "ImageSelector.get_random_search_image"
-change = """
-- FIT_MODE_COVER,
-- )
-+ )
-"""
-reason = "FIT_MODE_COVER is ImageInfo's default fit mode."
-
-[[equivalent]]
-module = "barks_reader.core.image_selector"
 function = "ImageSelector.get_search_image_for_title"
 change = """
 - FIT_MODE_COVER,
@@ -1454,33 +1435,6 @@ change = """
 + )
 """
 reason = "FIT_MODE_COVER is ImageInfo's default fit mode."
-
-[[equivalent]]
-module = "barks_reader.core.image_selector"
-function = "ImageSelector.get_random_image_for_title"
-change = """
-- if image_info[0] != self._last_title_image.get(title_str, "")
-+ if image_info[0] != self._last_title_image.get(title_str, None)
-"""
-reason = "The value is compared with a PanelPath, which never equals \"\", None or \"XXXX\": the default cannot be seen."
-
-[[equivalent]]
-module = "barks_reader.core.image_selector"
-function = "ImageSelector.get_random_image_for_title"
-change = """
-- if image_info[0] != self._last_title_image.get(title_str, "")
-+ if image_info[0] != self._last_title_image.get(title_str, )
-"""
-reason = "The value is compared with a PanelPath, which never equals \"\", None or \"XXXX\": the default cannot be seen."
-
-[[equivalent]]
-module = "barks_reader.core.image_selector"
-function = "ImageSelector.get_random_image_for_title"
-change = """
-- if image_info[0] != self._last_title_image.get(title_str, "")
-+ if image_info[0] != self._last_title_image.get(title_str, "XXXX")
-"""
-reason = "The value is compared with a PanelPath, which never equals \"\", None or \"XXXX\": the default cannot be seen."
 
 [[equivalent]]
 module = "barks_reader.core.image_selector"
@@ -1526,6 +1480,24 @@ change = """
 + if (cleaned := line.split("#", 2)[0].strip())
 """
 reason = "Only [0] is used: the text before the first # is the same at any maxsplit."
+
+[[equivalent]]
+module = "barks_reader.core.image_selector"
+function = "ImageSelector.get_random_search_image"
+change = """
+- return ImageInfo(search_file, title, FIT_MODE_COVER)
++ return ImageInfo(search_file, title, )
+"""
+reason = "FIT_MODE_COVER is ImageInfo's default fit mode."
+
+[[equivalent]]
+module = "barks_reader.core.image_selector"
+function = "_never_crop_key"
+change = """
+- return str(path)
++ return str(None)
+"""
+reason = "A stray \"/\" line's key only has to match no image, and an image's key always has a name in a folder: neither \"/\" nor \"None\" is ever one."
 
 [[equivalent]]
 module = "barks_reader.core.reader_formatter"
@@ -1752,6 +1724,24 @@ change = """
 + self._fun_image_themes: set[ImageThemes] | None = ""
 """
 reason = "Overwritten on the next line of __init__ by _set_fun_image_themes(None)."
+
+[[equivalent]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline.__init__"
+change = """
+- self._on_top_view_rotated: Callable[[TopViewSnapshot], None] | None = None
++ self._on_top_view_rotated: Callable[[TopViewSnapshot], None] | None = ""
+"""
+reason = "Only ever tested for truth before it is called (`if self._on_top_view_rotated and ...`), where \"\" and None are alike."
+
+[[equivalent]]
+module = "barks_reader.core.view_pipeline"
+function = "ViewPipeline.__init__"
+change = """
+- self._on_fun_view_rotated: Callable[[FunViewSnapshot], None] | None = None
++ self._on_fun_view_rotated: Callable[[FunViewSnapshot], None] | None = ""
+"""
+reason = "Only ever tested for truth before it is called (`if self._on_top_view_rotated and ...`), where \"\" and None are alike."
 
 [[equivalent]]
 module = "barks_reader.core.page_info_adapters"
@@ -2079,15 +2069,6 @@ reason = "Reached only with the target off the row; it is 0 only on an empty row
 
 [[equivalent]]
 module = "barks_reader.core.focus_cursors"
-function = "next_index_toward"
-change = """
-- return 0 if delta > 0 else count - 1
-+ return 0 if delta >= 0 else count - 1
-"""
-reason = "Its one caller, the tree's Up and Down, steps by -1 or 1: a step of 0, the one value the mutant moves, never comes."
-
-[[equivalent]]
-module = "barks_reader.core.focus_cursors"
 function = "stripe_indexes"
 change = """
 - group: object = None
@@ -2112,6 +2093,15 @@ change = """
 + row_index = 1
 """
 reason = "The first row always restarts the stripe at 0 (the 'not indexes' clause), so the starting index is never used."
+
+[[equivalent]]
+module = "barks_reader.core.focus_cursors"
+function = "next_index_toward"
+change = """
+- return 0 if delta > 0 else max(0, count - 1)
++ return 0 if delta >= 0 else max(0, count - 1)
+"""
+reason = "Its one caller, the tree's Up and Down, steps by -1 or 1: a step of 0, the one value the mutant moves, never comes."
 
 [[equivalent]]
 module = "barks_reader.core.index_text"
@@ -2509,4 +2499,22 @@ change = """
 + if split or past_edge >= 0:
 """
 reason = "At past_edge == 0, the one value the mutant moves, the run giving way is set to max(0, lw - 0): the width it already has."
+
+[[equivalent]]
+module = "barks_reader.core.display_unit"
+function = "build_document_units"
+change = """
+- return _pair_off(page_count, lambda _i: False)
++ return _pair_off(page_count, lambda _i: None)
+"""
+reason = "The predicate is only tested for truth (`or stands_alone(i)`), where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.log_markers"
+function = "pattern"
+change = """
+- (r"\\b" if at_start and _WORD_CHAR_RE.match(text[:1]) else "")
++ (r"\\b" if at_start and _WORD_CHAR_RE.match(text[:2]) else "")
+"""
+reason = "re.match anchors at the start, and the pattern is one character long: it tests the first character whether it is given one or two."
 
