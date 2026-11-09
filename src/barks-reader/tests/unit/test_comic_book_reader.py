@@ -20,6 +20,7 @@ import barks_reader.ui.reader_keyboard_nav
 import pytest
 from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import get_located_one_pagers, get_one_pager_display_title
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
@@ -252,8 +253,7 @@ class TestComicBookReader:
         reader._page_manager.get_current_page_str.return_value = str(page_index)
         reader._page_manager.get_page_str.return_value = str(page_index)
         reader._page_manager.get_current_display_unit.return_value = None
-        reader._is_one_pager_collection = False
-        reader._is_covers_collection = False
+        reader._collection_titles = None
 
     def test_first_page_drawn_reveals_the_reader_screen(self, reader: ComicBookReader) -> None:
         self._stub_current_page(reader, 0)
@@ -623,8 +623,7 @@ class TestComicBookReader:
     @staticmethod
     def _bare_reader(reader: ComicBookReader) -> ComicBookReader:
         reader._page_manager = MagicMock(double_page_mode=False)
-        reader._is_one_pager_collection = False
-        reader._is_covers_collection = False
+        reader._collection_titles = None
         return reader
 
     @pytest.mark.parametrize(
@@ -668,7 +667,7 @@ class TestComicBookReader:
         self, reader: ComicBookReader, loguru_sink: list[str]
     ) -> None:
         reader = self._bare_reader(reader)
-        reader._is_one_pager_collection = True
+        reader._collection_titles = ["The only item"]
         with patch.object(reader, "_show_page") as show:
             reader.toggle_double_page_mode()
         show.assert_not_called()
@@ -792,8 +791,7 @@ class TestComicBookReader:
     def test_the_covers_collection_names_the_cover_on_show(self, reader: ComicBookReader) -> None:
         reader = self._bare_reader(reader)
         covers = get_located_covers()[:3]
-        reader._is_covers_collection = True
-        reader._collection_covers = covers
+        reader._collection_titles = [get_cover_display_title(cover) for cover in covers]
         reader._page_manager.get_current_page_index.return_value = 1
         reader._page_manager.get_current_page_str.return_value = "2"
         with (
@@ -806,17 +804,21 @@ class TestComicBookReader:
         assert reader.action_bar_title == get_cover_display_title(covers[1])
 
     @pytest.mark.parametrize("page_str", ["4", "0x"])
-    @pytest.mark.parametrize(
-        "setter", ["_set_cover_action_bar_title", "_set_one_pager_action_bar_title"]
-    )
     def test_a_page_with_no_collection_item_leaves_the_title(
-        self, reader: ComicBookReader, setter: str, page_str: str
+        self, reader: ComicBookReader, page_str: str
     ) -> None:
-        reader._collection_covers = get_located_covers()[:3]
-        reader._collection_one_pagers = [MagicMock()] * 3
         reader.action_bar_title = "as before"
-        getattr(reader, setter)(page_str)
+        reader._set_collection_action_bar_title(["a", "b", "c"], page_str)
         assert reader.action_bar_title == "as before"
+
+    def test_only_the_collections_name_each_page(self) -> None:
+        one_pagers = _reader_module._get_collection_titles(Titles.ALL_ONE_PAGERS)
+        assert one_pagers is not None
+        assert one_pagers[0] == get_one_pager_display_title(get_located_one_pagers()[0])
+        covers = _reader_module._get_collection_titles(Titles.ALL_COVERS)
+        assert covers is not None
+        assert covers[0] == get_cover_display_title(get_located_covers()[0])
+        assert _reader_module._get_collection_titles(Titles.LOST_IN_THE_ANDES) is None
 
     # --- edges ---
 
@@ -833,14 +835,6 @@ class TestComicBookReader:
         with patch.object(reader, "_cancel_reveal") as cancel:
             reader.close_comic_book_reader()
         cancel.assert_not_called()
-
-    def test_it_says_whether_the_comic_is_the_one_pager_collection(
-        self, reader: ComicBookReader
-    ) -> None:
-        reader._is_one_pager_collection = True
-        assert reader.is_one_pager_collection is True
-        reader._is_one_pager_collection = False
-        assert reader.is_one_pager_collection is False
 
     def test_goto_page_focuses_the_first_button_when_none_is_the_page_on_show(
         self, reader: ComicBookReader

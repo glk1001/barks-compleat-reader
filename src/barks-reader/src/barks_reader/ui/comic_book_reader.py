@@ -72,7 +72,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
-    from barks_fantagraphics.barks_covers import BarksCover
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
@@ -123,6 +122,15 @@ def _call_if_alive[T](owner: weakref.ref[T], method_name: str) -> None:
         getattr(obj, method_name)()
 
 
+def _get_collection_titles(title: Titles) -> list[str] | None:
+    """Return the name of each page's item in a one-item-a-page collection, else None."""
+    if is_one_pager_collection(title):
+        return [get_one_pager_display_title(one_pager) for one_pager in get_located_one_pagers()]
+    if is_covers_collection(title):
+        return [get_cover_display_title(cover) for cover in get_located_covers()]
+    return None
+
+
 class ComicBookReader(FloatLayout):
     """Main layout for the comic reader."""
 
@@ -159,11 +167,8 @@ class ComicBookReader(FloatLayout):
 
         # When reading the "All One-Pagers" or "All Covers" collection, the window
         # title tracks the item on the current page (updated per page turn in
-        # _show_page).
-        self._is_one_pager_collection = False
-        self._collection_one_pagers: list[Titles] = []
-        self._is_covers_collection = False
-        self._collection_covers: list[BarksCover] = []
+        # _show_page). None for any other comic.
+        self._collection_titles: list[str] | None = None
 
         self._add_reader_widgets()
 
@@ -356,12 +361,7 @@ class ComicBookReader(FloatLayout):
 
         # For the collections the window title is per-page (set in _show_page); for
         # everything else it is the comic's title, set once here.
-        self._is_one_pager_collection = is_one_pager_collection(fanta_info.comic_book_info.title)
-        self._collection_one_pagers = (
-            get_located_one_pagers() if self._is_one_pager_collection else []
-        )
-        self._is_covers_collection = is_covers_collection(fanta_info.comic_book_info.title)
-        self._collection_covers = get_located_covers() if self._is_covers_collection else []
+        self._collection_titles = _get_collection_titles(fanta_info.comic_book_info.title)
 
         self._stop_pending_poll()
         self._all_loaded = False
@@ -466,30 +466,16 @@ class ComicBookReader(FloatLayout):
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
 
-    def _set_one_pager_action_bar_title(self, page_str: str) -> None:
-        """Set the window title to the one-pager shown on the collection's *page_str*.
+    def _set_collection_action_bar_title(self, titles: list[str], page_str: str) -> None:
+        """Set the window title to the item shown on the collection's *page_str*.
 
-        Collection display pages are ``1..N`` in ``get_located_one_pagers()`` order,
-        so page ``N`` maps to ``self._collection_one_pagers[N - 1]``.
+        Collection display pages are ``1..N`` in the order of *titles*, so page ``N``
+        maps to ``titles[N - 1]``.
         """
         try:
-            one_pager = self._collection_one_pagers[int(page_str) - 1]
+            title = titles[int(page_str) - 1]
         except (ValueError, IndexError):
             return
-        title = get_one_pager_display_title(one_pager)
-        self.action_bar_title = get_action_bar_title(self._font_manager, title)
-
-    def _set_cover_action_bar_title(self, page_str: str) -> None:
-        """Set the window title to the cover shown on the collection's *page_str*.
-
-        Collection display pages are ``1..N`` in ``get_located_covers()`` order,
-        so page ``N`` maps to ``self._collection_covers[N - 1]``.
-        """
-        try:
-            cover = self._collection_covers[int(page_str) - 1]
-        except (ValueError, IndexError):
-            return
-        title = get_cover_display_title(cover)
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
 
     def _show_page(self) -> None:
@@ -515,10 +501,8 @@ class ComicBookReader(FloatLayout):
             )
         )
 
-        if self._is_one_pager_collection:
-            self._set_one_pager_action_bar_title(page_str)
-        elif self._is_covers_collection:
-            self._set_cover_action_bar_title(page_str)
+        if self._collection_titles is not None:
+            self._set_collection_action_bar_title(self._collection_titles, page_str)
 
         left_idx, right_idx = self._get_current_display_indices()
 
@@ -717,14 +701,9 @@ class ComicBookReader(FloatLayout):
         self.two_up = on
 
     @property
-    def is_one_pager_collection(self) -> bool:
-        """Whether the comic currently being read is the All One-Pagers collection."""
-        return self._is_one_pager_collection
-
-    @property
     def is_single_page_only_collection(self) -> bool:
         """Whether the current comic is a collection that is always single-page."""
-        return self._is_one_pager_collection or self._is_covers_collection
+        return self._collection_titles is not None
 
     def next_page(self) -> None:
         if self._ignored_once_closed("Next page"):
