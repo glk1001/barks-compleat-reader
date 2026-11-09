@@ -862,6 +862,35 @@ class TestComicBookReaderScreen:
         assert not screen._active
 
     @pytest.mark.parametrize(
+        ("active", "on_entry", "fullscreen_now", "expected"),
+        [
+            pytest.param(False, False, True, "goto_fullscreen", id="never-shown-keeps-fullscreen"),
+            pytest.param(False, False, False, "goto_windowed", id="never-shown-keeps-windowed"),
+            pytest.param(True, True, False, "goto_fullscreen", id="shown-restores-fullscreen"),
+            pytest.param(True, False, True, "goto_windowed", id="shown-restores-windowed"),
+        ],
+    )
+    def test_closing_goes_back_to_the_entry_mode_or_stays_if_never_shown(
+        self,
+        screen: ComicBookReaderScreen,
+        active: bool,
+        on_entry: bool,
+        fullscreen_now: bool,
+        expected: str,
+    ) -> None:
+        """A comic failing before its reader came up must not change the main screen's mode."""
+        screen.comic_book_reader = MagicMock()
+        screen._mode = MagicMock()
+        screen._active = active
+        screen._was_fullscreen_on_entry = on_entry
+
+        with patch.object(barks_reader.ui.comic_book_reader, "WindowManager") as window_manager:
+            window_manager.is_fullscreen_now.return_value = fullscreen_now
+            screen.close_comic_book_reader()
+
+        assert [call[0] for call in screen._mode.method_calls] == [expected]
+
+    @pytest.mark.parametrize(
         ("finish", "reason"),
         [
             ("_on_finished_goto_windowed_mode", "ComicBookReaderScreen windowed"),

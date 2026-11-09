@@ -1158,7 +1158,12 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         # the target mode the manager skips the transition but still fires the
         # finish callback, so the closing logic in the callbacks runs on the
         # same single completion path either way.
-        if self._was_fullscreen_on_entry:
+        # A comic that failed before its reader came up never ran is_active(True), so
+        # there is no entry mode to restore: the window stays as the main screen has it.
+        restore_fullscreen = (
+            self._was_fullscreen_on_entry if self._active else WindowManager.is_fullscreen_now()
+        )
+        if restore_fullscreen:
             logger.debug("Fullscreen is required.")
             self._mode.goto_fullscreen()
         else:
