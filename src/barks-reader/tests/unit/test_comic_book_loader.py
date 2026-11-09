@@ -156,8 +156,6 @@ def loader(
             on_first_image_loaded=mock_callbacks["on_first_image_loaded"],
             on_all_images_loaded=mock_callbacks["on_all_images_loaded"],
             on_load_error=mock_callbacks["on_load_error"],
-            max_window_width=800,
-            max_window_height=600,
             scheduler=fake_scheduler,
             cursor=recording_cursor,
         )
@@ -1070,10 +1068,6 @@ class TestLoaderInitialState:
         assert loader._load.priority_keys.empty()
         assert loader._fanta_volume_archives is None
 
-    def test_the_window_size_is_kept_for_page_resizing(self, loader: ComicBookLoader) -> None:
-        assert loader._max_window_width == 800  # noqa: PLR2004
-        assert loader._max_window_height == 600  # noqa: PLR2004
-
     def test_closing_without_a_comic_is_a_no_op(self, loader: ComicBookLoader) -> None:
         loader.close_comic()
 
@@ -1420,8 +1414,6 @@ class TestLoadErrorClose:
                 on_first_image_loaded=mock_callbacks["on_first_image_loaded"],
                 on_all_images_loaded=mock_callbacks["on_all_images_loaded"],
                 on_load_error=mock_callbacks["on_load_error"],
-                max_window_width=800,
-                max_window_height=600,
                 scheduler=scheduler,
                 cursor=recording_cursor,
             )

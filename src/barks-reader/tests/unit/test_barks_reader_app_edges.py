@@ -76,6 +76,20 @@ class TestCustomTitleBar:
         assert "Window: setting custom titlebar not allowed on this system." in loguru_sink
 
 
+class TestDefaultWindowSize:
+    def test_it_is_worked_out_from_the_primary_monitor(self) -> None:
+        """The primary, by what the metrics say of it, whichever the system lists first."""
+        primary = SimpleNamespace(height_pixels=2000)
+        config = MagicMock()
+        with patch.object(
+            app_module.SCREEN_METRICS, "get_primary_screen_info", return_value=primary
+        ):
+            BarksReaderApp.build_config(_app(reader_settings=MagicMock()), config)
+
+        graphics = config.setdefaults.call_args.args[1]
+        assert graphics["height"] == 1920 + app_module.ACTION_BAR_SIZE_Y
+
+
 class TestFinalizeWindowSetup:
     @pytest.fixture
     def app(self) -> Any:  # noqa: ANN401

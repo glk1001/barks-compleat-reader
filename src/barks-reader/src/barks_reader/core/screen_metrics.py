@@ -188,6 +188,17 @@ class ScreenMetrics:
 
         return self.SCREEN_INFO[0]
 
+    def largest_screen_size(self) -> tuple[int, int]:
+        """Return the widest and the tallest any monitor is, as (width, height).
+
+        Each side on its own: a page made to this size is sharp on any of the monitors,
+        a rotated one among them.
+        """
+        return (
+            max(info.width_pixels for info in self.SCREEN_INFO),
+            max(info.height_pixels for info in self.SCREEN_INFO),
+        )
+
     def get_monitor_for_pos(self, x: int, y: int) -> ScreenInfo | None:
         """Return the monitor that (x, y), in desktop pixels, is on, or ``None`` if none."""
         for info in self.SCREEN_INFO:

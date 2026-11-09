@@ -13,7 +13,6 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
-from screeninfo import get_monitors
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_history import ImageHistory
@@ -98,9 +97,6 @@ class FunImageViewScreen(BoxLayout):
           a parent FloatLayout.
     """
 
-    # TODO: What happens if monitor changes??
-    MAX_WINDOW_WIDTH = get_monitors()[0].width
-
     goto_title_button_active = BooleanProperty(defaultvalue=True)
     # The lower tier's goto: stacked, and the image there comes from a story.
     lower_goto_title_button_active = BooleanProperty(defaultvalue=False)
@@ -141,7 +137,6 @@ class FunImageViewScreen(BoxLayout):
         # changes before the new texture arrives.
         self._shown_previous: ImageInfo | None = None
         self._navigation = ReaderNavigation(
-            self.MAX_WINDOW_WIDTH,
             _TOP_MARGIN_FRAC_OF_HEIGHT,
             _BOTTOM_MARGIN_FRAC_OF_HEIGHT,
             is_fullscreen=WindowManager.is_fullscreen_now,

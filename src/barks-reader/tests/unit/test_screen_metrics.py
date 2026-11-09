@@ -563,6 +563,37 @@ class TestFittedWindowHeightBranches:
         assert result == 500  # noqa: PLR2004
 
 
+class TestLargestScreenSize:
+    def test_each_side_is_the_largest_any_monitor_has(self) -> None:
+        monitors = [
+            _mock_monitor(width=1920, height=1080),
+            _mock_monitor(x=1920, width=1440, height=2560, is_primary=False),
+        ]
+        with patch.object(screen_metrics_module, get_monitors.__name__, return_value=monitors):
+            metrics = ScreenMetrics()
+        assert metrics.largest_screen_size() == (1920, 2560)
+
+    def test_a_monitor_plugged_in_later_counts_once_refreshed(self) -> None:
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, return_value=[_mock_monitor()]
+        ):
+            metrics = ScreenMetrics()
+        larger = [_mock_monitor(), _mock_monitor(x=1920, width=3840, height=2160)]
+        with patch.object(screen_metrics_module, get_monitors.__name__, return_value=larger):
+            metrics.refresh()
+        assert metrics.largest_screen_size() == (3840, 2160)
+
+    def test_with_no_monitor_found_it_is_the_stand_in_screens(self) -> None:
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, side_effect=ScreenInfoError("none")
+        ):
+            metrics = ScreenMetrics()
+        assert metrics.largest_screen_size() == (
+            _FALLBACK_SCREEN.width_pixels,
+            _FALLBACK_SCREEN.height_pixels,
+        )
+
+
 class TestRefreshUpdatesCounts:
     def test_monitor_count_tracks_the_new_monitor_list(self) -> None:
         with patch.object(

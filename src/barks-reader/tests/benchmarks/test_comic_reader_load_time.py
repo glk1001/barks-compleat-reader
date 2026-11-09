@@ -183,7 +183,6 @@ class TestComicReaderLoadTime:
             patch.object(barks_reader.ui.comic_book_reader, "Image"),
             patch.object(barks_reader.ui.comic_book_reader, "ReaderNavigation"),
             patch.object(barks_reader.ui.comic_book_reader, "get_image_stream"),
-            patch.object(barks_reader.ui.comic_book_reader, "get_monitors") as mock_monitors,
             patch.object(FloatLayout, "add_widget"),
             patch.object(barks_reader.ui.comic_book_reader, "Clock") as mock_reader_clock,
             # The loader signals first/all-images-loaded via its injected Scheduler port
@@ -192,8 +191,6 @@ class TestComicReaderLoadTime:
             patch.object(barks_reader.ui.comic_book_reader, "KivyClockScheduler", FakeScheduler),
             patch.object(Path, "open", new_callable=MagicMock) as mock_open,
         ):
-            mock_monitors.return_value = [MagicMock(width=1920, height=1080)]
-
             mock_reader_clock.schedule_once.side_effect = mock_schedule_once
 
             mock_file = MagicMock()

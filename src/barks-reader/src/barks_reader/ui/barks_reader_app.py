@@ -15,7 +15,6 @@ from kivy.config import Config
 from kivy.core.window import Keyboard, Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from loguru import logger
-from screeninfo import get_monitors
 
 from barks_reader.core import log_markers
 from barks_reader.core.config_info import APP_NAME
@@ -210,8 +209,8 @@ class BarksReaderApp(App):
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
         logger.debug("Building application config...")
-        primary_monitor = get_monitors()[0]
-        default_height = round(DEFAULT_WINDOW_HEIGHT_PERCENT * primary_monitor.height)
+        primary_monitor = SCREEN_METRICS.get_primary_screen_info()
+        default_height = round(DEFAULT_WINDOW_HEIGHT_PERCENT * primary_monitor.height_pixels)
         default_width = round(default_height / COMIC_PAGE_ASPECT_RATIO)
         default_height_incl_action_bar = default_height + ACTION_BAR_SIZE_Y
 

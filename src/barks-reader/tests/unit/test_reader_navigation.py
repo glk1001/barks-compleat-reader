@@ -19,13 +19,10 @@ class _Mode:
 class TestReaderNavigation:
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
-        self.max_width = 2000
         self.top_frac = 0.1
         self.bottom_frac = 0.9
         self.mode = _Mode()
-        self.nav = ReaderNavigation(
-            self.max_width, self.top_frac, self.bottom_frac, is_fullscreen=self.mode
-        )
+        self.nav = ReaderNavigation(self.top_frac, self.bottom_frac, is_fullscreen=self.mode)
 
     def test_update_regions(self) -> None:
         win_width = 1000
@@ -57,14 +54,14 @@ class TestReaderNavigation:
 
         # Case 2: Fullscreen
         self.mode.fullscreen = True
-        # Fullscreen margins: left = 2000/4 = 500. right = 2000 - 500 = 1500.
+        # Fullscreen margins: left = 1000/4 = 250. right = 250 + 500 = 750.
 
-        # Inside horizontal center area (500 < x <= 1500) AND above top margin
+        # Inside horizontal center area (250 < x <= 750) AND above top margin
         assert self.nav.is_in_top_margin(600, 950)
 
         # Outside horizontal center area
-        assert not self.nav.is_in_top_margin(400, 950)
-        assert not self.nav.is_in_top_margin(1600, 950)
+        assert not self.nav.is_in_top_margin(200, 950)
+        assert not self.nav.is_in_top_margin(800, 950)
 
     def test_is_in_left_margin(self) -> None:
         self.nav.update_regions(1000, 1000, 0, 0)
@@ -122,7 +119,7 @@ class TestTapRegions:
 
     @pytest.fixture
     def nav(self, mode: _Mode) -> ReaderNavigation:
-        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=mode)
+        nav = ReaderNavigation(0.1, 0.9, is_fullscreen=mode)
         nav.update_regions(self.WIDTH, self.HEIGHT, 0, 0)
         return nav
 
@@ -157,13 +154,13 @@ class TestTapRegions:
     ) -> None:
         mode.fullscreen = True
         x, _, w, _ = nav.tap_regions(self.WIDTH, self.HEIGHT)["top margin"]
-        # The fullscreen band is (500, 1500]: in a 1000-wide widget, 501 to the edge.
-        assert (x, x + w) == (501, self.WIDTH)
+        # The fullscreen band is (250, 750].
+        assert (x, x + w) == (251, 751)
         assert not nav.is_in_top_margin(x - 1, 950)
 
     def test_no_regions_before_the_sizes_are_known(self) -> None:
         # Before update_regions every margin is -1: nothing to press yet.
-        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=lambda: False)
+        nav = ReaderNavigation(0.1, 0.9, is_fullscreen=lambda: False)
         regions = nav.tap_regions(self.WIDTH, self.HEIGHT)
         assert "left margin" not in regions
         assert "right margin" not in regions
@@ -178,7 +175,7 @@ class TestEdges:
 
     @pytest.fixture
     def nav(self, mode: _Mode) -> ReaderNavigation:
-        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=mode)
+        nav = ReaderNavigation(0.1, 0.9, is_fullscreen=mode)
         nav.update_regions(1000, 1000, 0, 0)  # x_mid 500, bottom 100, top 900
         return nav
 
@@ -197,9 +194,9 @@ class TestEdges:
     def test_off_the_fullscreen_band_the_top_line_still_turns(
         self, mode: _Mode, nav: ReaderNavigation
     ) -> None:
-        mode.fullscreen = True  # the band is (500, 1500]
-        assert not nav.is_in_top_margin(400, 900)
-        assert nav.is_in_left_margin(400, 900)
+        mode.fullscreen = True  # the band is (250, 750]
+        assert not nav.is_in_top_margin(200, 900)
+        assert nav.is_in_left_margin(200, 900)
         assert nav.is_in_top_margin(600, 900)
         assert not nav.is_in_right_margin(600, 900)
 
@@ -216,17 +213,34 @@ class TestEdges:
     def test_in_fullscreen_the_bars_band_takes_its_right_edge_not_its_left(
         self, mode: _Mode, nav: ReaderNavigation
     ) -> None:
-        mode.fullscreen = True  # the band is (500, 1500]
-        assert nav.is_in_top_margin(1500, 950)
-        assert not nav.is_in_top_margin(500, 950)
+        mode.fullscreen = True  # the band is (250, 750]
+        assert nav.is_in_top_margin(750, 950)
+        assert not nav.is_in_top_margin(250, 950)
+
+    @pytest.mark.parametrize(
+        ("window_width", "first_in", "last_in"),
+        [
+            pytest.param(1920, 481, 1440, id="a 1080p screen"),
+            pytest.param(3840, 961, 2880, id="a 4K screen"),
+        ],
+    )
+    def test_the_fullscreen_band_is_the_middle_half_of_the_window_on_whichever_monitor(
+        self, mode: _Mode, nav: ReaderNavigation, window_width: int, first_in: int, last_in: int
+    ) -> None:
+        mode.fullscreen = True
+        nav.update_regions(window_width, 1000, 0, 0)
+        assert not nav.is_in_top_margin(first_in - 1, 950)
+        assert nav.is_in_top_margin(first_in, 950)
+        assert nav.is_in_top_margin(last_in, 950)
+        assert not nav.is_in_top_margin(last_in + 1, 950)
 
     def test_no_bottom_margin_by_default(self) -> None:
-        nav = ReaderNavigation(2000, 0.1, is_fullscreen=lambda: False)
+        nav = ReaderNavigation(0.1, is_fullscreen=lambda: False)
         nav.update_regions(1000, 1000, 0, 0)
         assert nav.y_bottom_margin == 0
 
     def test_every_margin_is_unknown_until_the_sizes_are(self) -> None:
-        nav = ReaderNavigation(2000, 0.1, 0.9, is_fullscreen=lambda: True)
+        nav = ReaderNavigation(0.1, 0.9, is_fullscreen=lambda: True)
         assert (nav.x_mid, nav.y_bottom_margin, nav.y_top_margin) == (-1, -1, -1)
         assert nav.tap_regions(1000, 1000) == {}
 
@@ -304,9 +318,17 @@ _L, _R, _T = "left margin", "right margin", "top margin"
         pytest.param(
             0.1,
             0.9,
-            (400, 1000, 0, 0),
+            (1000, 1000, 600, 0),
             True,
-            {_L: (0, 100, 200, 800), _R: (200, 100, 200, 800)},
+            {_R: (0, 100, 1000, 800), _T: (0, 900, 151, 100)},
+            id="fullscreen-band-moved-with-the-widget",
+        ),
+        pytest.param(
+            0.1,
+            0.9,
+            (1000, 1000, 800, 0),
+            True,
+            {_R: (0, 100, 1000, 800)},
             id="fullscreen-band-off-the-widget",
         ),
     ],
@@ -319,6 +341,6 @@ def test_the_tap_regions_are_exactly_the_margins(
     *,
     fullscreen: bool,
 ) -> None:
-    nav = ReaderNavigation(2000, top_frac, bottom_frac, is_fullscreen=lambda: fullscreen)
+    nav = ReaderNavigation(top_frac, bottom_frac, is_fullscreen=lambda: fullscreen)
     nav.update_regions(*win)
     assert nav.tap_regions(win[0], win[1]) == expected

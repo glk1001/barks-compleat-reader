@@ -76,12 +76,9 @@ class TestComicBookReader:
             # Use patch.object to be sure we are patching the right module attribute
             patch.object(barks_reader.ui.comic_book_reader, "ReaderNavigation") as mock_nav_cls,
             patch.object(barks_reader.ui.comic_book_reader, "get_image_stream"),
-            patch.object(barks_reader.ui.comic_book_reader, "get_monitors") as mock_monitors,
             # Patch FloatLayout.add_widget to avoid Kivy widget tree logic
             patch.object(FloatLayout, "add_widget"),
         ):
-            mock_monitors.return_value = [MagicMock(width=1920, height=1080)]
-
             # Setup ReaderNavigation mock instance
             mock_nav_instance = MagicMock()
             mock_nav_cls.return_value = mock_nav_instance
@@ -219,8 +216,6 @@ class TestComicBookReader:
             None,
         )
         reader._comic_book_loader.empty_page_image = b"fake"
-        reader._comic_book_loader.max_window_width = 800
-        reader._comic_book_loader.max_window_height = 600
 
         with (
             patch.object(
@@ -228,6 +223,11 @@ class TestComicBookReader:
             ) as _mock_get_title,
             patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
             patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource") as source,
+            patch.object(
+                barks_reader.ui.comic_book_reader.SCREEN_METRICS,
+                "largest_screen_size",
+                return_value=(3840, 2160),
+            ),
         ):
             # action_bar_title is a StringProperty, so the formatter must yield a str.
             _mock_get_title.return_value = "Title"
@@ -241,6 +241,9 @@ class TestComicBookReader:
             )
 
             assert reader._current_title_str == "Title"
+            # Pages are sized for the largest monitor as the comic opens, not one at import.
+            assert source.call_args.kwargs["max_width"] == 3840  # noqa: PLR2004
+            assert source.call_args.kwargs["max_height"] == 2160  # noqa: PLR2004
             # The page source takes the reader's decode-whole setting as it is.
             assert (
                 source.call_args.kwargs["decode_whole"]

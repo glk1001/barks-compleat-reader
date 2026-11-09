@@ -30,7 +30,6 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from loguru import logger
-from screeninfo import get_monitors
 
 from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
@@ -46,6 +45,7 @@ from barks_reader.core.reader_utils import (
     PNG_EXT_FOR_KIVY,
     get_win_dimensions,
 )
+from barks_reader.core.screen_metrics import SCREEN_METRICS
 
 from .action_bar_helpers import (
     ACTION_BAR_SIZE_Y,
@@ -126,10 +126,6 @@ def _call_if_alive[T](owner: weakref.ref[T], method_name: str) -> None:
 class ComicBookReader(FloatLayout):
     """Main layout for the comic reader."""
 
-    # TODO: What happens if monitor changes??
-    MAX_WINDOW_WIDTH = get_monitors()[0].width
-    MAX_WINDOW_HEIGHT = get_monitors()[0].height
-
     # The window/action-bar title. A Kivy property so the screen can bind to it and
     # reflect per-page title changes (e.g. the "All One-Pagers" collection).
     action_bar_title = StringProperty()
@@ -176,8 +172,6 @@ class ComicBookReader(FloatLayout):
             self._first_image_loaded,
             self._all_images_loaded,
             self._load_error,
-            self.MAX_WINDOW_WIDTH,
-            self.MAX_WINDOW_HEIGHT,
             scheduler=KivyClockScheduler(),
             cursor=KivyCursor(),
         )
@@ -207,9 +201,7 @@ class ComicBookReader(FloatLayout):
         reader = weakref.ref(self)
         self._page_manager = ComicPageManager(lambda: _call_if_alive(reader, "_show_page"))
 
-        self._navigation = ReaderNavigation(
-            self.MAX_WINDOW_WIDTH, 0.09, is_fullscreen=WindowManager.is_fullscreen_now
-        )
+        self._navigation = ReaderNavigation(0.09, is_fullscreen=WindowManager.is_fullscreen_now)
 
         self._time_to_load_comic = Timing()
 
@@ -389,14 +381,16 @@ class ComicBookReader(FloatLayout):
         archive_path, fanta_volume_archive = self._comic_book_loader.resolve_archive_for_comic(
             fanta_info, page_map, use_fantagraphics_overrides=use_fantagraphics_overrides
         )
+        # Asked at each open: a monitor plugged in since the last comic counts.
+        max_width, max_height = SCREEN_METRICS.largest_screen_size()
         image_source = ArchivePageImageSource(
             archive_path=archive_path,
             fanta_volume_archive=fanta_volume_archive,
             comic_book_image_builder=comic_book_image_builder,
             empty_page_image=self._comic_book_loader.empty_page_image,
             use_fantagraphics_overrides=use_fantagraphics_overrides,
-            max_width=self._comic_book_loader.max_window_width,
-            max_height=self._comic_book_loader.max_window_height,
+            max_width=max_width,
+            max_height=max_height,
             decode_whole=self._reader_settings.decode_pages_whole,
         )
         archive_desc = str(archive_path)

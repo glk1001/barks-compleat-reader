@@ -101,8 +101,6 @@ class ComicBookLoader:
         on_first_image_loaded: Callable[[], None],
         on_all_images_loaded: Callable[[], None],
         on_load_error: Callable[[], None],
-        max_window_width: int,
-        max_window_height: int,
         *,
         scheduler: Scheduler,
         cursor: Cursor,
@@ -112,8 +110,6 @@ class ComicBookLoader:
         self._fanta_volume_archives: FantagraphicsVolumeArchives | None = None
         # The folder those archives were scanned from: the setting can change after boot.
         self._volumes_dir_scanned: Path | None = None
-        self._max_window_width = max_window_width
-        self._max_window_height = max_window_height
         self._scheduler = scheduler
         self._cursor = cursor
 
@@ -148,16 +144,6 @@ class ComicBookLoader:
     def empty_page_image(self) -> bytes:
         """Raw bytes for the blank/title page placeholder image."""
         return self._empty_page_image
-
-    @property
-    def max_window_width(self) -> int:
-        """Maximum display width for image resizing."""
-        return self._max_window_width
-
-    @property
-    def max_window_height(self) -> int:
-        """Maximum display height for image resizing."""
-        return self._max_window_height
 
     def init_data(self) -> None:
         """Preload Fantagraphics volume metadata (if not using prebuilt archives)."""

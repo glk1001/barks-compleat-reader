@@ -20,7 +20,6 @@ class ReaderNavigation:
 
     def __init__(
         self,
-        max_window_width: int,
         top_margin_frac_of_height: float,
         bottom_margin_frac_of_height: float = 1.0,
         *,
@@ -29,7 +28,6 @@ class ReaderNavigation:
         """Make the regions, empty until `update_regions`.
 
         Args:
-            max_window_width: The widest the window gets, which fullscreen fills.
             top_margin_frac_of_height: The top margin's share of the height.
             bottom_margin_frac_of_height: Where the bottom margin ends, as a share of
                 the height from the top; 1.0 leaves no bottom margin.
@@ -37,7 +35,6 @@ class ReaderNavigation:
 
         """
         self._is_fullscreen = is_fullscreen
-        self._max_window_width = max_window_width
         self._top_margin_frac_of_height = top_margin_frac_of_height
         self._bottom_margin_frac_of_height = bottom_margin_frac_of_height
 
@@ -81,8 +78,8 @@ class ReaderNavigation:
             f" y_top_margin = {self._y_top_margin}."
         )
 
-        self._fullscreen_left_margin = round(self._max_window_width / 4.0)
-        self._fullscreen_right_margin = self._max_window_width - self._fullscreen_left_margin
+        self._fullscreen_left_margin = round((win_width / 4.0) - win_left)
+        self._fullscreen_right_margin = self._fullscreen_left_margin + round(win_width / 2.0)
         logger.debug(
             f"Reader navigation: fullscreen_left_margin = {self._fullscreen_left_margin},"
             f" fullscreen_right_margin = {self._fullscreen_right_margin}."
