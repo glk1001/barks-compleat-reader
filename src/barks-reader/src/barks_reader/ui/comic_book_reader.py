@@ -670,7 +670,12 @@ class ComicBookReader(FloatLayout):
             self._comic_image.texture = page_texture(page)
         except Exception:  # noqa: BLE001
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
-            # Optionally display a placeholder image or error message
+            # Page one is what opening the comic waited for: it did not open, and is no read.
+            if self._on_comic_opened is not None:
+                self._load_error()
+                return
+            # One bad page further in need not end the read: the next may turn up fine.
+            self._comic_image.texture = self._loading_page_texture
 
         logger.info(
             log_markers.SHOWED_PAGE.format(

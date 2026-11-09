@@ -327,11 +327,45 @@ class TestComicBookReader:
         on_comic_opened = MagicMock()
         reader._on_comic_opened = on_comic_opened
 
-        reader._render_page(0, None)
-        reader._render_page(1, None)
+        with patch.object(barks_reader.ui.comic_book_reader, "page_texture"):
+            reader._render_page(0, None)
+            reader._render_page(1, None)
 
         on_comic_opened.assert_called_once_with()
         assert reader._on_comic_opened is None
+
+    def test_a_first_page_that_will_not_render_is_a_failed_open(
+        self, reader: ComicBookReader
+    ) -> None:
+        """Not a blank reader recorded as read: the failed-open popup, and no opening."""
+        on_comic_opened = MagicMock()
+        on_load_failed = MagicMock()
+        reader._on_comic_opened = on_comic_opened
+        reader._on_load_failed = on_load_failed
+        reader._comic_book_loader.get_image_ready_for_reading.side_effect = ValueError("bad page")
+
+        with patch.object(reader, "_reveal_reader") as reveal:
+            reader._render_page(0, None)
+
+        on_comic_opened.assert_not_called()
+        on_load_failed.assert_called_once_with()
+        reveal.assert_not_called()
+        assert reader._closed
+
+    def test_a_later_page_that_will_not_render_shows_the_empty_page_and_stays_open(
+        self, reader: ComicBookReader
+    ) -> None:
+        on_load_failed = MagicMock()
+        reader._on_comic_opened = None
+        reader._on_load_failed = on_load_failed
+        reader._closed = False
+        reader._comic_book_loader.get_image_ready_for_reading.side_effect = ValueError("bad page")
+
+        reader._render_page(5, None)
+
+        assert reader._comic_image.texture is reader._loading_page_texture
+        on_load_failed.assert_not_called()
+        assert not reader._closed
 
     def test_a_timed_out_reveal_does_not_say_the_comic_opened(
         self, reader: ComicBookReader
