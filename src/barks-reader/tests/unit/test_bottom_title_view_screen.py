@@ -792,6 +792,18 @@ class TestGotoPageSteps(ScreenFixtureBase):
         assert self.screen.handle_key(KEY_RIGHT) is False
         assert self.screen.goto_page_num == "7"
 
+    def test_the_row_can_step_only_with_more_than_one_stop_and_says_so_when_that_changes(
+        self,
+    ) -> None:
+        heard: list[bool] = []
+        self.screen.bind(can_step_goto_page=lambda _s, can_step: heard.append(can_step))
+        assert self.screen.can_step_goto_page is False
+        self.screen.goto_pages = ["7", "13"]
+        assert self.screen.can_step_goto_page is True
+        self.screen.goto_pages = ["7"]
+        assert self.screen.can_step_goto_page is False
+        assert heard == [True, False]
+
     def test_one_run_has_nothing_to_step_through(self) -> None:
         _show(self.screen, "4", active=True, tagged_pages=["4", "5", "6"])
         self._focus_goto_row()

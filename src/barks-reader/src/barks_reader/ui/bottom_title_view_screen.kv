@@ -1,4 +1,5 @@
 #:import reader_palette barks_reader.core.reader_palette
+#:import PANEL_VISIBLE_OPACITY barks_reader.ui.bottom_title_view_screen.PANEL_VISIBLE_OPACITY
 
 # Steps the goto-page row through a tag's pages: drawn, not typed (the font has no
 # arrow glyph), with a dark halo like the row's label so it shows on bright pages.
@@ -378,17 +379,17 @@
                             id: goto_page_previous_button
                             direction: -1
                             size_hint_x: None
-                            width: (title_portal_image_button.width / 12) if len(root.goto_pages) > 1 else 0
-                            opacity: 1 if len(root.goto_pages) > 1 else 0
-                            disabled: len(root.goto_pages) < 2
+                            width: (title_portal_image_button.width / 12) if root.can_step_goto_page else 0
+                            opacity: 1 if root.can_step_goto_page else 0
+                            disabled: not root.can_step_goto_page
                             on_release: root.step_goto_page(-1)
                         GotoPageArrowButton:
                             id: goto_page_next_button
                             direction: 1
                             size_hint_x: None
-                            width: (title_portal_image_button.width / 12) if len(root.goto_pages) > 1 else 0
-                            opacity: 1 if len(root.goto_pages) > 1 else 0
-                            disabled: len(root.goto_pages) < 2
+                            width: (title_portal_image_button.width / 12) if root.can_step_goto_page else 0
+                            opacity: 1 if root.can_step_goto_page else 0
+                            disabled: not root.can_step_goto_page
                             on_release: root.step_goto_page(1)
                         CheckBox:
                             id: goto_page_checkbox
@@ -487,7 +488,7 @@
         size: dp(26), dp(26)
         pos_hint: {'right': 1 - 0.007, 'top': 0.988}
         on_press:
-            bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
+            bottom_view_box.opacity = 0 if bottom_view_box.opacity > PANEL_VISIBLE_OPACITY else 1
 
         canvas.before:
             # A subtle dark pill so the tinted glyph reads over bright art too.
@@ -501,7 +502,7 @@
         Image:
             source:
                 str(sys_paths.get_eye_open_icon_file()) \
-                if bottom_view_box.opacity > 0.9 else \
+                if bottom_view_box.opacity > PANEL_VISIBLE_OPACITY else \
                 str(sys_paths.get_eye_off_icon_file())
             color: reader_palette.theme().icon_tint
             fit_mode: "contain"
@@ -509,4 +510,4 @@
             pos: self.parent.x + dp(2), self.parent.y + dp(2)
             size: self.parent.width - dp(4), self.parent.height - dp(4)
             # Fainter when the panel is hidden — subtle, but still findable.
-            opacity: 0.9 if bottom_view_box.opacity > 0.9 else 0.6
+            opacity: 0.9 if bottom_view_box.opacity > PANEL_VISIBLE_OPACITY else 0.6

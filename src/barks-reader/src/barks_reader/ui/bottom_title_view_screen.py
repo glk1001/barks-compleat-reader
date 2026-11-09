@@ -74,8 +74,8 @@ BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS = 1
 
 _NAV_FOCUS_GROUP = "title_view_nav_focus"
-# Matches the `bottom_view_box.opacity > 0.9` threshold the kv rules use for the peek toggle.
-_PANEL_VISIBLE_OPACITY = 0.9
+# Above this the panel counts as shown, for the peek toggle's eye and for keyboard nav.
+PANEL_VISIBLE_OPACITY = 0.9
 
 
 def _make_title_banner_texture(
@@ -189,6 +189,13 @@ class BottomTitleViewScreen(FloatLayout):
     # each run of them, which the goto-page row steps through.
     tagged_pages = ListProperty()
     goto_pages = ListProperty()
+
+    def _get_can_step_goto_page(self) -> bool:
+        return len(self.goto_pages) > 1
+
+    # Whether the goto-page row has more than one page to step through.
+    can_step_goto_page = AliasProperty(_get_can_step_goto_page, None, bind=("goto_pages",))
+
     # " (2 of 3)" while stepping through several goto pages, else empty.
     goto_page_position = StringProperty()
     # The last page of the run of tagged pages the offered page starts ("3" for 1-3),
@@ -348,11 +355,6 @@ class BottomTitleViewScreen(FloatLayout):
                     page=offer.page, active=offer.active, text=self.goto_page_text
                 )
             )
-
-    @property
-    def can_step_goto_page(self) -> bool:
-        """Return whether the goto-page row has more than one page to step through."""
-        return len(self.goto_pages) > 1
 
     def step_goto_page(self, delta: int) -> None:
         """Offer the next (or previous) of a tag's goto pages, wrapping round, and tick it.
@@ -536,7 +538,7 @@ class BottomTitleViewScreen(FloatLayout):
         """
         if self._panel_fade_anim is not None:
             return True
-        return self.ids.bottom_view_box.opacity > _PANEL_VISIBLE_OPACITY
+        return self.ids.bottom_view_box.opacity > PANEL_VISIBLE_OPACITY
 
     def _focus_eye_if_focus_is_gone(self, focusable: list[Widget]) -> bool:
         """Move the focus to the eye if its widget has gone, and return whether it had.
