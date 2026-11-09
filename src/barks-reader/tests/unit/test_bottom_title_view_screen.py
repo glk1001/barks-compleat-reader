@@ -525,6 +525,42 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         assert self.screen.handle_key(KEY_ENTER) is True
         callback.assert_called_once()
 
+    def test_enter_on_a_portal_peeked_away_only_moves_the_focus_to_the_eye(self) -> None:
+        callback = MagicMock()
+        self.screen.on_title_portal_image_pressed_func = callback
+        self.screen.enter_nav_focus(MagicMock())
+        self.screen.ids.bottom_view_box.opacity = 0  # the mouse hid the panel
+
+        assert self.screen.handle_key(KEY_ENTER) is True
+
+        callback.assert_not_called()
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+        self.screen.ids.title_show_button.trigger_action.assert_not_called()
+
+    def test_enter_on_a_row_peeked_away_leaves_its_checkbox_alone(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.ids.goto_page_checkbox.active = True
+        self.screen.enter_nav_focus(MagicMock())
+        self.screen.handle_key(KEY_UP)  # Portal -> goto-page row.
+        self.screen.ids.bottom_view_box.opacity = 0
+
+        self.screen.handle_key(KEY_ENTER)
+
+        assert self.screen.ids.goto_page_checkbox.active is True
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+    def test_enter_on_the_portal_during_a_fade_still_opens_the_comic(self) -> None:
+        """Right after a goto-title the panel is fading in: Enter is the read gesture."""
+        callback = MagicMock()
+        self.screen.on_title_portal_image_pressed_func = callback
+        self.screen.fade_in_bottom_view_title()
+        self.screen.ids.bottom_view_box.opacity = 0  # still early in the fade
+        self.screen.enter_nav_focus_at_portal(MagicMock())
+
+        self.screen.handle_key(KEY_ENTER)
+
+        callback.assert_called_once_with()
+
     def test_enter_toggles_goto_page_checkbox(self) -> None:
         self._make_all_widgets_visible()
         self.screen.ids.goto_page_checkbox.active = True
@@ -669,6 +705,7 @@ class TestGotoPageToggleLog(ScreenFixtureBase):
     def test_return_on_the_goto_page_row_logs_the_toggle(self, loguru_sink: list[str]) -> None:
         ids = self.screen.ids
         ids.goto_page_checkbox.active = True
+        self.screen.goto_page_num = "5"  # the row is only there with a page in it
         self.screen._nav_focused_widget = ids.goto_page_layout
         self.screen._activate_focused_widget()
         assert ids.goto_page_checkbox.active is False

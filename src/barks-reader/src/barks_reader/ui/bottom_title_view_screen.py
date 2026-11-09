@@ -531,17 +531,29 @@ class BottomTitleViewScreen(FloatLayout):
             return True
         return self.ids.bottom_view_box.opacity > _PANEL_VISIBLE_OPACITY
 
+    def _focus_eye_if_focus_is_gone(self, focusable: list[Widget]) -> bool:
+        """Move the focus to the eye if its widget has gone, and return whether it had.
+
+        E.g. the panel was mouse-peeked away under the focus.
+        """
+        if self._nav_focused_widget in focusable:
+            return False
+        self._nav_focused_widget = focusable[0]
+        self._update_nav_focus()
+        return True
+
     def _move_nav_focus(self, delta: int) -> None:
         focusable = self._focusable_widgets()
-        if self._nav_focused_widget not in focusable:
-            # E.g. the panel was mouse-peeked away under the focus: fall back to the eye.
-            self._nav_focused_widget = focusable[0]
-        else:
-            idx = (focusable.index(self._nav_focused_widget) + delta) % len(focusable)
-            self._nav_focused_widget = focusable[idx]
+        if self._focus_eye_if_focus_is_gone(focusable):
+            return
+        idx = (focusable.index(self._nav_focused_widget) + delta) % len(focusable)
+        self._nav_focused_widget = focusable[idx]
         self._update_nav_focus()
 
     def _activate_focused_widget(self) -> None:
+        # Enter on a widget no longer on screen must not act on what cannot be seen.
+        if self._focus_eye_if_focus_is_gone(self._focusable_widgets()):
+            return
         widget = self._nav_focused_widget
         ids = self.ids
         if widget is ids.title_portal_image_button:
