@@ -361,6 +361,22 @@ class TestOnStop:
         if wiki is not None:
             wiki.save_session.assert_called_once_with()
 
+    def test_a_failed_save_does_not_cost_the_one_after_it(self, loguru_sink: list[str]) -> None:
+        main = MagicMock()
+        main.app_closing.side_effect = OSError("disk full")
+        wiki = MagicMock()
+        app = _app(
+            _on_stop_done=False,
+            _window_geometry=MagicMock(),
+            _main_screen=main,
+            _wiki_reader_screen=wiki,
+        )
+
+        BarksReaderApp.on_stop(app)
+
+        wiki.save_session.assert_called_once_with()
+        assert any(line.startswith("Could not save the main screen state") for line in loguru_sink)
+
 
 def test_a_second_build_leaves_the_swap_transition_patch_alone() -> None:
     class _StopBuildError(Exception):

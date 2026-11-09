@@ -98,6 +98,7 @@ from .wiki_reader import WikiReaderScreen, get_wiki_reader_screen
 from .x11_wm_class import force_x11_wm_class
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import TracebackType
 
     from kivy.config import ConfigParser
@@ -186,10 +187,10 @@ class BarksReaderApp(App):
         self._window_geometry.stop_polling()
 
         if self._main_screen is not None:
-            self._main_screen.app_closing()
+            _save_on_stop("main screen", self._main_screen.app_closing)
 
         if self._wiki_reader_screen is not None:
-            self._wiki_reader_screen.save_session()
+            _save_on_stop("wiki", self._wiki_reader_screen.save_session)
 
     @override
     def display_settings(self, settings: Widget) -> bool:
@@ -637,6 +638,14 @@ def _install_popup_gallery(app: BarksReaderApp) -> None:
     from .popup_gallery import install_popup_gallery_service  # noqa: PLC0415
 
     install_popup_gallery_service(app)
+
+
+def _save_on_stop(state: str, save: Callable[[], None]) -> None:
+    """Run one of the saves made on closing: a failure must not cost the ones after it."""
+    try:
+        save()
+    except Exception:  # noqa: BLE001
+        logger.exception(f"Could not save the {state} state on closing: ")
 
 
 def _dismiss_top_popup_on_alt_escape(
