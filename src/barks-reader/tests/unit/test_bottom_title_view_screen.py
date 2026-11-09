@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -896,3 +897,29 @@ class TestPeekingAtTheArt:
         assert panel.disabled
         panel.opacity = 1
         assert not panel.disabled
+
+
+class TestTitleBoxGaps:
+    @pytest.mark.parametrize(
+        ("prop", "layout_mode", "share"),
+        [
+            ("title_box_padding", MainLayoutMode.SPREAD, 0.044),
+            ("title_box_padding", MainLayoutMode.SINGLE, 0.03),
+            ("title_box_spacing", MainLayoutMode.SPREAD, 0.0275),
+            ("title_box_spacing", MainLayoutMode.SINGLE, 0.055),
+        ],
+    )
+    @pytest.mark.parametrize("density", [1, 2])
+    def test_they_are_shares_of_the_view_whatever_the_density(
+        self, prop: str, layout_mode: MainLayoutMode, share: float, density: int
+    ) -> None:
+        """The parent's size is already in pixels: `dp` here would apply the density twice."""
+        namespace = {
+            "dp": lambda value: value * density,
+            "root": SimpleNamespace(layout_mode=layout_mode.value),
+            "self": SimpleNamespace(parent=SimpleNamespace(width=1000, height=1000)),
+        }
+
+        value = eval(_kv_expression(prop), namespace)  # noqa: S307
+
+        assert value == pytest.approx(share * 1000)

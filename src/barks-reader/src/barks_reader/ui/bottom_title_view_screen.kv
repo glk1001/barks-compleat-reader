@@ -41,8 +41,8 @@
         # On the spread the text's left margin is the portal's right one (a tenth of
         # its 0.44 column), and the gap under the info rows is a paragraph's, not a
         # break's: the rows and the notes read as one block.
-        title_box_padding: dp((0.044 if root.layout_mode == 'spread' else 0.03) * self.parent.width)
-        title_box_spacing: dp((0.0275 if root.layout_mode == 'spread' else 0.055) * self.parent.height)
+        title_box_padding: (0.044 if root.layout_mode == 'spread' else 0.03) * self.parent.width
+        title_box_spacing: (0.0275 if root.layout_mode == 'spread' else 0.055) * self.parent.height
 
         # The background image is now a direct child, simplifying the structure.
         Image:
