@@ -674,7 +674,8 @@ directly. Base archive pages are read unencrypted; **override-archive pages are
 encrypted**. This is exactly the trap behind commit 605788f ("wiki background
 decryption"): the wiki's image provider called `image_pipeline.load_pil`
 directly, wasn't allow-listed, got empty bytes, and raised `DecryptionError` —
-fixed by routing it through the allow-listed `panel_image_loader.load_panel_pil`.
+fixed by routing it through the allow-listed `panel_image_loader` (now
+`load_panel_bytes`, which hands the decrypted file on for Kivy to decode once).
 
 ### 6.3 Threading
 

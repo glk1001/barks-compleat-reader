@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import zipfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -10,8 +11,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import panel_image_loader as loader_module
-from barks_reader.core.panel_image_loader import PanelImageLoader, load_panel_pil
+from barks_reader.core.panel_image_loader import (
+    PanelImageLoader,
+    load_panel_bytes,
+    load_panel_pil,
+)
 from barks_reader.core.testing import FakeScheduler
+from comic_utils.decryption import DecryptionError
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -61,6 +67,43 @@ class TestLoadPanelPil:
             load_panel_pil(mock_path, encrypted_zip=False)
 
         mock_load_pil.assert_called_once_with(mock_path, encrypted_zip=False)
+
+
+class TestLoadPanelBytes:
+    @staticmethod
+    def _panel(tmp_path: Path, data: bytes) -> zipfile.Path:
+        zip_file = tmp_path / "panels.zip"
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("Favourites/x.jpg", data)
+        return zipfile.Path(zip_file, "Favourites/x.jpg")
+
+    def test_an_encrypted_member_is_decrypted_here(self, tmp_path: Path) -> None:
+        """The panel loader calls the decryptor itself: it is on the allow-list."""
+        panel = self._panel(tmp_path, b"encrypted")
+
+        with patch.object(
+            loader_module, "get_decrypted_bytes", return_value=b"jpeg"
+        ) as mock_decrypt:
+            assert load_panel_bytes(panel) == b"jpeg"
+
+        mock_decrypt.assert_called_once_with(b"encrypted")
+
+    def test_a_plain_member_is_read_as_it_is(self, tmp_path: Path) -> None:
+        panel = self._panel(tmp_path, b"jpeg")
+
+        with patch.object(loader_module, "get_decrypted_bytes") as mock_decrypt:
+            assert load_panel_bytes(panel, encrypted_zip=False) == b"jpeg"
+
+        mock_decrypt.assert_not_called()
+
+    def test_nothing_back_from_the_decryptor_is_an_error(self, tmp_path: Path) -> None:
+        panel = self._panel(tmp_path, b"encrypted")
+
+        with (
+            patch.object(loader_module, "get_decrypted_bytes", return_value=None),
+            pytest.raises(DecryptionError, match="empty bytes"),
+        ):
+            load_panel_bytes(panel)
 
 
 class TestPanelImageLoader:

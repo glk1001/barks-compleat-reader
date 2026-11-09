@@ -3,12 +3,15 @@ from __future__ import annotations
 from threading import Thread
 from typing import TYPE_CHECKING
 
+from comic_utils.decryption import DecryptionError
+from comic_utils.get_panel_bytes import get_decrypted_bytes
 from loguru import logger
 from PIL import Image
 
 from .image_pipeline import convert_mode, load_pil
 
 if TYPE_CHECKING:
+    import zipfile
     from collections.abc import Callable
 
     from comic_utils.comic_consts import PanelPath
@@ -34,6 +37,34 @@ def load_panel_pil(panel_path: PanelPath, *, encrypted_zip: bool = True) -> Imag
 
     """
     return load_pil(panel_path, encrypted_zip=encrypted_zip)
+
+
+def load_panel_bytes(panel_path: zipfile.Path, *, encrypted_zip: bool = True) -> bytes:
+    """Read a zipped panel's image file, decrypted (allow-listed decrypt entry point).
+
+    For a caller that hands the image on still encoded, as the wiki does its page
+    background, which Kivy decodes from the bytes.
+
+    Args:
+        panel_path: The panel's member in the panels zip.
+        encrypted_zip: Whether zip members are encrypted.
+
+    Returns:
+        The image file's bytes, in the format its extension names.
+
+    Raises:
+        DecryptionError: When the decryptor gives back nothing.
+
+    """
+    data = panel_path.read_bytes()
+    if not encrypted_zip:
+        return data
+    # The decryptor checks its caller's module, and this one is on its allow-list.
+    decrypted = get_decrypted_bytes(data)
+    if not decrypted:
+        msg = f'Image decryption failed with empty bytes: "{panel_path}".'
+        raise DecryptionError(msg)
+    return decrypted
 
 
 class PanelImageLoader:

@@ -45,8 +45,8 @@ from barks_reader.core.wiki_integration import (
 )
 from hypothesis import given
 from hypothesis import strategies as st
+from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.theme import ViewerThemeSpec
-from PIL import Image
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -355,8 +355,8 @@ class TestBarksPanelsImageProvider:
         selector = MagicMock()
         return BarksPanelsImageProvider(settings, selector), selector
 
-    def test_zip_panel_decoded_via_allow_listed_loader(self, tmp_path: Path) -> None:
-        """A zip-member panel is decrypted through load_panel_pil and re-encoded to PNG.
+    def test_zip_panel_decrypted_via_allow_listed_loader(self, tmp_path: Path) -> None:
+        """A zip-member panel's decrypted file is handed on as it is, for Kivy to decode.
 
         The decrypt must go through panel_image_loader (the compiled decryptor's
         caller allow-list), with the encrypted flag taken from the file paths.
@@ -370,16 +370,13 @@ class TestBarksPanelsImageProvider:
         selector.get_random_image.return_value.filename = panel
 
         page = tmp_path / "okf" / "reference" / "x.md"
-        pil = Image.new("RGB", (1, 1))
-        with patch.object(wiki_integration, "load_panel_pil", return_value=pil) as mock_load:
+        with patch.object(
+            wiki_integration, "load_panel_bytes", return_value=b"jpeg-bytes"
+        ) as mock_load:
             bg = provider.background_for({}, page)
 
         mock_load.assert_called_once_with(panel, encrypted_zip=True)
-        assert bg is not None
-        assert bg.ext == ".png"
-        assert bg.path is None
-        assert bg.data is not None
-        assert bg.data.startswith(b"\x89PNG")
+        assert bg == PageBackground(ext=".jpg", data=b"jpeg-bytes")
 
     def test_filesystem_panel_passed_through_by_path(self, tmp_path: Path) -> None:
         """A plain filesystem panel is handed to kivy by path, never decoded here."""
@@ -387,7 +384,7 @@ class TestBarksPanelsImageProvider:
         provider, selector = self._make_provider(encrypted=False)
         selector.get_random_image.return_value.filename = panel
 
-        with patch.object(wiki_integration, "load_panel_pil") as mock_load:
+        with patch.object(wiki_integration, "load_panel_bytes") as mock_load:
             bg = provider.background_for({}, tmp_path / "okf" / "reference" / "x.md")
 
         mock_load.assert_not_called()

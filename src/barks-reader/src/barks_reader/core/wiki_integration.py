@@ -36,9 +36,8 @@ from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
 
-from .image_pipeline import encode_png_stream
 from .image_selector import ImageSelector
-from .panel_image_loader import load_panel_pil
+from .panel_image_loader import load_panel_bytes
 from .reader_consts_and_types import (
     ACTION_BAR_BG_COLOR,
     ACTION_BAR_SEPARATOR_COLOR,
@@ -282,9 +281,9 @@ class BarksPanelsImageProvider:
     splash, silhouettes, closeups, original art, B/W, AI, censorship); any other
     page gets a random image across all Fantagraphics titles, with the
     selector's recently-used tracking avoiding repeats. Panels may live in an
-    encrypted zip, whose members kivy cannot open by filename — those are
-    decrypted and re-encoded to PNG bytes here (``panel_image_loader.
-    load_panel_pil`` is the allow-listed decrypt path).
+    encrypted zip, whose members kivy cannot open by filename — those are read
+    and decrypted here and handed on as the image file's bytes, for Kivy to decode
+    once (``panel_image_loader.load_panel_bytes`` is the allow-listed decrypt path).
 
     Pass the app's existing ``ImageSelector`` when embedding, so the wiki
     shares its no-repeat memory; the standalone launcher lets one be built.
@@ -311,8 +310,10 @@ class BarksPanelsImageProvider:
         if panel is None:
             return None
         if isinstance(panel, zipfile.Path):
-            pil = load_panel_pil(panel, encrypted_zip=self._file_paths.barks_panels_are_encrypted)
-            return PageBackground(ext=".png", data=encode_png_stream(pil).getvalue())
+            data = load_panel_bytes(
+                panel, encrypted_zip=self._file_paths.barks_panels_are_encrypted
+            )
+            return PageBackground(ext=panel.suffix, data=data)
         return PageBackground(ext=panel.suffix, path=panel)
 
 
