@@ -11,7 +11,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.barks_reader_app as app_module
@@ -22,12 +22,6 @@ from barks_reader.ui import popup_gallery
 from barks_reader.ui.barks_reader_app import BarksReaderApp
 from barks_reader.ui.popup_frame import PopupFrame
 from kivy.uix.modalview import ModalView
-from kivy.uix.screenmanager import Screen, SwapTransition, TransitionBase
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-_WORKAROUND_FLAG = "_kivy_workaround_applied"
 
 
 def _app(**attrs: object) -> Any:  # noqa: ANN401
@@ -230,73 +224,6 @@ class TestAltEscapeDismissesTheTopPopup:
         popup.dismiss.assert_not_called()
 
 
-class TestSwapTransitionWorkaround:
-    """Kivy 2.3.1's SwapTransition ends by calling a canvas method that does not exist.
-
-    The app patches it in build(): that one AttributeError is caught and the
-    transition finished by hand, and any other is raised.
-    """
-
-    @pytest.fixture
-    def patched(self) -> Iterator[MagicMock]:
-        """Run build() just as far as installing the patch, over a failing original.
-
-        Returns the original on_complete the patch wraps; Kivy's own is put back after.
-        """
-        had_flag = _WORKAROUND_FLAG in SwapTransition.__dict__
-        if had_flag:
-            delattr(SwapTransition, _WORKAROUND_FLAG)
-
-        class _StopBuildError(Exception):
-            pass
-
-        original = MagicMock(name="SwapTransition.on_complete")
-        app = _app(_initialize_settings_and_db=MagicMock(side_effect=_StopBuildError))
-        try:
-            with (
-                patch.object(SwapTransition, "on_complete", original),
-                patch.object(app_module, "apply_text_input_remove_group_patch"),
-            ):
-                with pytest.raises(_StopBuildError):
-                    BarksReaderApp.build(app)
-                assert SwapTransition.on_complete is not original
-                yield original
-        finally:
-            if had_flag:
-                setattr(SwapTransition, _WORKAROUND_FLAG, True)
-            elif _WORKAROUND_FLAG in SwapTransition.__dict__:
-                delattr(SwapTransition, _WORKAROUND_FLAG)
-
-    @staticmethod
-    def _transition() -> SwapTransition:
-        transition = SwapTransition()
-        transition.screen_in = Screen()
-        transition.screen_out = Screen()
-        return transition
-
-    def test_the_missing_canvas_method_is_worked_around(self, patched: MagicMock) -> None:
-        patched.side_effect = AttributeError("'Canvas' object has no attribute '_remove_group'")
-        transition = self._transition()
-
-        with patch.object(TransitionBase, "on_complete") as finish:
-            transition.on_complete()
-
-        patched.assert_called_once_with(transition)
-        finish.assert_called_once_with()
-
-    def test_any_other_attribute_error_is_raised(self, patched: MagicMock) -> None:
-        patched.side_effect = AttributeError("something else")
-        with pytest.raises(AttributeError, match="something else"):
-            self._transition().on_complete()
-
-    def test_without_an_error_the_original_does_it_all(self, patched: MagicMock) -> None:
-        transition = self._transition()
-        with patch.object(TransitionBase, "on_complete") as finish:
-            transition.on_complete()
-        patched.assert_called_once_with(transition)
-        finish.assert_not_called()
-
-
 class TestAppFailure:
     def test_an_uncaught_error_shows_the_apps_error_popup(self) -> None:
         config_info = MagicMock()
@@ -386,20 +313,19 @@ class TestOnStop:
         assert any(line.startswith("Could not save the main screen state") for line in loguru_sink)
 
 
-def test_a_second_build_leaves_the_swap_transition_patch_alone() -> None:
+def test_build_applies_the_kivy_patches() -> None:
     class _StopBuildError(Exception):
         pass
 
-    original = MagicMock(name="SwapTransition.on_complete")
     app = _app(_initialize_settings_and_db=MagicMock(side_effect=_StopBuildError))
     with (
-        patch.object(SwapTransition, _WORKAROUND_FLAG, True, create=True),  # noqa: FBT003
-        patch.object(SwapTransition, "on_complete", original),
-        patch.object(app_module, "apply_text_input_remove_group_patch"),
+        patch.object(app_module, "apply_text_input_remove_group_patch") as text_input,
+        patch.object(app_module, "apply_swap_transition_remove_group_patch") as swap,
+        pytest.raises(_StopBuildError),
     ):
-        with pytest.raises(_StopBuildError):
-            BarksReaderApp.build(app)
-        assert SwapTransition.on_complete is original
+        BarksReaderApp.build(app)
+    text_input.assert_called_once_with()
+    swap.assert_called_once_with()
 
 
 # Everything _build_screens makes before the wiki screen, stood in for.

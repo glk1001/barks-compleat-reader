@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.entity_types import EntityType
-from barks_kivy_ui.kivy_patches import apply_text_input_remove_group_patch
+from barks_kivy_ui.kivy_patches import (
+    apply_swap_transition_remove_group_patch,
+    apply_text_input_remove_group_patch,
+)
 from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
@@ -251,33 +254,8 @@ class BarksReaderApp(App):
 
         assert Window is not None
 
-        # Kivy 2.3.1 bug: several methods call canvas._remove_group() but the
-        # Canvas Cython extension only exposes the public remove_group().
-        # Patch the Python-level methods that make the bad call instead.
-        # TODO: Remove when Kivy fixes canvas._remove_group (broken in Kivy 2.3.1).
-        from kivy.uix.screenmanager import SwapTransition  # noqa: PLC0415
-
         apply_text_input_remove_group_patch()
-
-        if not hasattr(SwapTransition, "_kivy_workaround_applied"):
-            _orig_st = SwapTransition.on_complete
-
-            # noinspection PyShadowingNames
-            def _patched_swap_on_complete(self: SwapTransition) -> None:
-                try:
-                    _orig_st(self)
-                except AttributeError as exc:
-                    if "_remove_group" in str(exc):
-                        for screen in self.screen_in, self.screen_out:
-                            for canvas in screen.canvas.before, screen.canvas.after:
-                                # noinspection SpellCheckingInspection
-                                canvas.remove_group("swaptransition_scale")
-                        super(SwapTransition, self).on_complete()  # ty:ignore[invalid-super-argument]
-                    else:
-                        raise
-
-            SwapTransition.on_complete = _patched_swap_on_complete
-            SwapTransition._kivy_workaround_applied = True  # noqa: SLF001
+        apply_swap_transition_remove_group_patch()
 
         self._initialize_settings_and_db()
         self._window_geometry.set_layout_setting(self.reader_settings.main_screen_layout)
