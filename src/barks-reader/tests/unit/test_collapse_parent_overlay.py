@@ -1,3 +1,4 @@
+# cspell:ignore scrollup scrolldown
 """The collapse bar over the tree: when it shows, and what tapping it does.
 
 It shows once an expanded parent's top has scrolled above the tree's view, and
@@ -95,9 +96,10 @@ def _bar(overlay: CollapseParentOverlay) -> collapse_parent_overlay._CollapseBar
     return overlay._bar_widget  # noqa: SLF001
 
 
-def _touch_at(x: float, y: float) -> MagicMock:
+def _touch_at(x: float, y: float, button: str | None = "left") -> MagicMock:
     touch = MagicMock()
     touch.pos = (x, y)
+    touch.button = button
     return touch
 
 
@@ -224,6 +226,31 @@ class TestTapping:
         assert "Collapse overlay tapped: collapsing 'Gyro Gearloose'." in loguru_sink
         assert not overlay.is_visible
         assert overlay.parent_name == ""
+
+    def test_a_touchscreen_tap_has_no_button_and_still_collapses(
+        self, overlay: CollapseParentOverlay, scroll_view: MagicMock
+    ) -> None:
+        node = _node()
+        on_collapse = MagicMock()
+        overlay.on_collapse_request = on_collapse
+        bar = self._shown(overlay, scroll_view, node)
+
+        assert bar.on_touch_down(_touch_at(bar.x + 50, bar.y + 10, button=None))
+
+        on_collapse.assert_called_once_with(node)
+
+    @pytest.mark.parametrize("button", ["scrollup", "scrolldown", "right", "middle"])
+    def test_only_a_tap_collapses_so_a_wheel_tick_keeps_scrolling_the_tree(
+        self, overlay: CollapseParentOverlay, scroll_view: MagicMock, button: str
+    ) -> None:
+        on_collapse = MagicMock()
+        overlay.on_collapse_request = on_collapse
+        bar = self._shown(overlay, scroll_view, _node())
+
+        assert not bar.on_touch_down(_touch_at(bar.x + 50, bar.y + 10, button=button))
+
+        on_collapse.assert_not_called()
+        assert overlay.is_visible
 
     def test_a_tap_with_no_one_listening_still_hides_it(
         self, overlay: CollapseParentOverlay, scroll_view: MagicMock
