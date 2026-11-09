@@ -61,15 +61,17 @@ class TestCorruptStore:
     """A settings file that is not a JSON object once stopped the app booting."""
 
     @pytest.mark.parametrize(
-        "contents",
+        ("contents", "reason"),
         [
-            pytest.param('{"AAA_Settings": {"last_selected_node": ["Hi', id="cut short"),
-            pytest.param("[1, 2, 3]", id="a list"),
-            pytest.param('"text"', id="a string"),
+            pytest.param(
+                '{"AAA_Settings": {"last_selected_node": ["Hi', "not valid JSON (", id="cut short"
+            ),
+            pytest.param("[1, 2, 3]", "a JSON list, not an object.", id="a list"),
+            pytest.param('"text"', "a JSON str, not an object.", id="a string"),
         ],
     )
     def test_a_corrupt_file_is_moved_aside_and_settings_start_empty(
-        self, tmp_path: Path, contents: str, loguru_sink: list[str]
+        self, tmp_path: Path, contents: str, reason: str, loguru_sink: list[str]
     ) -> None:
         store_path = tmp_path / "store.json"
         store_path.write_text(contents, encoding="utf-8")
@@ -81,6 +83,8 @@ class TestCorruptStore:
         corrupt_path = tmp_path / f"store.json{CORRUPT_SUFFIX}"
         assert corrupt_path.read_text(encoding="utf-8") == contents
         assert any("starting with empty settings" in line for line in loguru_sink)
+        # The log says what is wrong with the file, for whoever looks at the .corrupt copy.
+        assert any(f'"{store_path}" is {reason}' in line for line in loguru_sink)
 
     def test_a_file_that_is_not_utf8_is_moved_aside(self, tmp_path: Path) -> None:
         store_path = tmp_path / "store.json"
@@ -162,6 +166,24 @@ class TestAtomicSave:
         manager.save_last_read_page("Trail of the Unicorn", _a_saved_page())
 
         assert store_path.read_text(encoding="utf-8") == before
+
+    def test_a_save_that_fails_before_writing_anything_is_logged_too(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        """A full disk refuses the temp file itself: there is then none to clean up."""
+        store_path = tmp_path / "store.json"
+        manager = SettingsManager(store_path)
+
+        def disk_full(_path: Path, *_args: object, **_kwargs: object) -> int:
+            msg = "No space left on device"
+            raise OSError(msg)
+
+        monkeypatch.setattr(Path, Path.write_text.__name__, disk_full)
+        manager.save_last_read_page("Lost in the Andes!", _a_saved_page())
+        monkeypatch.undo()
+
+        assert list(tmp_path.iterdir()) == []
+        assert any("Could not save the settings" in line for line in loguru_sink)
 
     def test_a_save_that_fails_is_logged_and_the_reading_goes_on(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]

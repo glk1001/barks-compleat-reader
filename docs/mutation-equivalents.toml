@@ -73,51 +73,6 @@ change = """
 reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
 
 [[equivalent]]
-module = "barks_reader.core.json_settings_manager"
-function = "SettingsManager.__init__"
-change = """
-- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
-+ if store_path.exists() and (contents := store_path.read_text(encoding=None).strip()):
-"""
-reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
-
-[[equivalent]]
-module = "barks_reader.core.json_settings_manager"
-function = "SettingsManager.__init__"
-change = """
-- if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
-+ if store_path.exists() and (contents := store_path.read_text(encoding="UTF-8").strip()):
-"""
-reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
-
-[[equivalent]]
-module = "barks_reader.core.json_settings_manager"
-function = "SettingsManager._sync"
-change = """
-- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(self._data, indent=4), encoding=None)
-"""
-reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
-
-[[equivalent]]
-module = "barks_reader.core.json_settings_manager"
-function = "SettingsManager._sync"
-change = """
-- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(self._data, indent=4), )
-"""
-reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
-
-[[equivalent]]
-module = "barks_reader.core.json_settings_manager"
-function = "SettingsManager._sync"
-change = """
-- self._store_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
-+ self._store_path.write_text(json.dumps(self._data, indent=4), encoding="UTF-8")
-"""
-reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
-
-[[equivalent]]
 module = "barks_reader.core.linux_desktop_entry"
 function = "_entry_is_current"
 change = """
@@ -2500,4 +2455,49 @@ change = """
 + subprocess, "CREATE_NEW_PROCESS_GROUP", 1
 """
 reason = "The branch runs on Windows only, where subprocess has both flags, so getattr's default is never read; it is there for the type checkers on other platforms."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ temp_path.write_text(json.dumps(self._data, indent=4), encoding=None)
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ temp_path.write_text(json.dumps(self._data, indent=4), )
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager._sync"
+change = """
+- temp_path.write_text(json.dumps(self._data, indent=4), encoding="utf-8")
++ temp_path.write_text(json.dumps(self._data, indent=4), encoding="UTF-8")
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "_load"
+change = """
+- contents = store_path.read_text(encoding="utf-8").strip()
++ contents = store_path.read_text(encoding=None).strip()
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "_load"
+change = """
+- contents = store_path.read_text(encoding="utf-8").strip()
++ contents = store_path.read_text(encoding="UTF-8").strip()
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
