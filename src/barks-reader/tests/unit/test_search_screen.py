@@ -2699,6 +2699,12 @@ class TestBackgroundAndGoto:
         screen.on_goto_background_title()
         screen.on_goto_background_title_func.assert_called_once_with(info)
 
+    def test_the_background_caption_is_the_titles_display_form(self, screen: SearchScreen) -> None:
+        screen.set_background_image(ImageInfo(from_title=Titles.VICTORY_GARDEN_THE, filename=None))
+        assert screen.current_title_str == "(The Victory Garden)"
+        screen.set_background_image(ImageInfo(from_title=None, filename=None))
+        assert screen.current_title_str == ""
+
     def test_a_word_result_goes_to_its_story_at_its_page(self, screen: SearchScreen) -> None:
         goto = cast("MagicMock", screen.on_goto_title_with_page)
         row = _SearchResultButton(text="The Golden Helmet, 3-5,12")

@@ -58,7 +58,13 @@ class TestTreeViewScreen:
 
         # Test with Title
         tree_view_screen.set_title(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
-        assert tree_view_screen.current_title_str != ""
+        assert tree_view_screen.current_title_str == "Donald Duck Finds Pirate Gold"
+
+    def test_a_title_barks_did_not_name_is_captioned_in_parentheses(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        tree_view_screen.set_title(Titles.VICTORY_GARDEN_THE)
+        assert tree_view_screen.current_title_str == "(The Victory Garden)"
 
     def test_is_top_goto_active_tracks_title(self, tree_view_screen: TreeViewScreen) -> None:
         tree_view_screen.set_title(None)

@@ -10,7 +10,12 @@ from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_location
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS, get_one_pager_fanta_page
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_INFO,
+    COVERS_SET,
+    ONE_PAGERS,
+    get_one_pager_fanta_page,
+)
 from barks_fantagraphics.comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
@@ -182,6 +187,19 @@ def get_comic_display_title(comic_book_info: ComicBookInfo) -> str:
     if comic_book_info.is_barks_title:
         return comic_book_info.get_title_str()
     return comic_book_info.get_title_from_issue_name()
+
+
+def get_display_title_str(title: Titles | None) -> str:
+    """Return a title as a caption shows it.
+
+    Args:
+        title: The title to show, or None for no title.
+
+    Returns:
+        A title Barks gave as it is, any other in parentheses, and "" for no title.
+
+    """
+    return "" if title is None else BARKS_TITLE_INFO[title].get_display_title()
 
 
 def get_formatted_color(color: Color) -> str:

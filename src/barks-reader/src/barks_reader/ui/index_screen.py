@@ -6,7 +6,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.speech_markup import escape_markup
 from barks_fantagraphics.speech_speakers import speaker_display_name
 from barks_kivy_ui.scrolling import ReaderScrollView
@@ -43,6 +43,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.popup_frame import PopupSize
+from barks_reader.core.reader_formatter import get_display_title_str
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.speech_bubble_markup import (
     SPEAKER_LABEL_SCALE,
@@ -917,7 +918,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
     def _get_background_title_str(self, title: Titles) -> str:
         """Return the caption for the current background image."""
-        return ENUM_TO_STR_TITLE[title]
+        return get_display_title_str(title)
 
     @abstractmethod
     def _create_index_button(self, item: Any) -> IndexItemButton:  # noqa: ANN401

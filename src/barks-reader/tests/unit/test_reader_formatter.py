@@ -913,6 +913,20 @@ def test_mark_one_term_matches_a_compound_broken_at_its_real_hyphen() -> None:
     assert marked == "DEEP\nIN\nTHE\n<NEVER-\nNEVER>!"
 
 
+@pytest.mark.parametrize(
+    ("title", "shown"),
+    [
+        (Titles.LOST_IN_THE_ANDES, "Lost in the Andes!"),
+        (Titles.VICTORY_GARDEN_THE, "(The Victory Garden)"),
+        (None, ""),
+    ],
+)
+def test_a_caption_puts_only_a_title_barks_did_not_name_in_parentheses(
+    title: Titles | None, shown: str
+) -> None:
+    assert reader_formatter.get_display_title_str(title) == shown
+
+
 def test_mark_one_term_still_matches_an_unbroken_compound() -> None:
     marked = _mark_one("never-never", "BUSH OF\nNEVER-NEVER\nLAND!", "<", ">")
 

@@ -1111,6 +1111,12 @@ class TestSetBackgroundImage:
         assert index_screen._current_image_info is info
         assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
 
+    def test_a_title_barks_did_not_name_is_captioned_in_parentheses(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        caption = index_screen._get_background_title_str(Titles.VICTORY_GARDEN_THE)
+        assert caption == "(The Victory Garden)"
+
     def test_an_image_with_no_file_clears_the_background(
         self, index_screen: ConcreteIndexScreen
     ) -> None:

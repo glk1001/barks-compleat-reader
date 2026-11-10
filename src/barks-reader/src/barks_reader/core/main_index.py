@@ -19,7 +19,7 @@ from barks_fantagraphics.barks_tags import (
     get_all_tags_in_tag_group,
     get_tag_titles,
 )
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.speech_markup import escape_markup
@@ -33,6 +33,7 @@ from .index_headings import (
 )
 from .index_items import IndexItem
 from .index_text import indexable_title
+from .reader_formatter import get_display_title_str
 from .reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
@@ -99,9 +100,12 @@ class TitleHierarchy:
     title: Titles | None
 
     def get_title_with_hierarchy(self) -> str:
-        """Return the title, with the group and tag it was found under: "Title (group/tag) "."""
+        """Return the title as shown, with the group and tag it was found under.
+
+        "Title (group/tag) ", and "(Title) (group/tag) " for a title Barks did not give.
+        """
         assert self.title is not None
-        title_str = ENUM_TO_STR_TITLE[self.title]
+        title_str = get_display_title_str(self.title)
 
         if not self.tag_group and not self.tag:
             return title_str

@@ -45,6 +45,7 @@ from barks_reader.core.keys import (
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
+from barks_reader.core.reader_formatter import get_display_title_str
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.reader_utils import get_concat_page_nums_str, get_tagged_pages
@@ -1899,9 +1900,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def set_background_image(self, image_info: ImageInfo) -> None:
         self._current_image_info = image_info
-        self.current_title_str = (
-            "" if image_info.from_title is None else ENUM_TO_STR_TITLE[image_info.from_title]
-        )
+        self.current_title_str = get_display_title_str(image_info.from_title)
 
     def on_goto_background_title(self) -> None:
         if self.on_goto_background_title_func and self._current_image_info:

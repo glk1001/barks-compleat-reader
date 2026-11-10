@@ -111,6 +111,13 @@ class TestTitleHierarchy:
         hierarchy = TitleHierarchy(None, Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE)
         assert hierarchy.get_title_with_hierarchy() == "Back to the Klondike (Alaska) "
 
+    def test_a_title_barks_did_not_name_is_in_parentheses_before_its_tag(self) -> None:
+        assert TitleHierarchy(None, None, Titles.VICTORY_GARDEN_THE).get_title_with_hierarchy() == (
+            "(The Victory Garden)"
+        )
+        hierarchy = TitleHierarchy(None, Tags.ALASKA, Titles.VICTORY_GARDEN_THE)
+        assert hierarchy.get_title_with_hierarchy() == "(The Victory Garden) (Alaska) "
+
 
 class TestTitlesForLetter:
     def test_a_titles_entry_is_found_directly_and_a_tags_under_the_tag(self) -> None:

@@ -778,6 +778,22 @@ class TestTheSpreadsTwoTiers:
         )
         assert any(re.search(marker, line) for line in loguru_sink)
 
+    def test_the_lower_caption_of_a_title_barks_did_not_name_is_in_parentheses(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        screen.set_last_loaded_image_info(_info("a.png", Titles.VICTORY_GARDEN_THE))
+        screen.set_last_loaded_image_info(_info("b.png", Titles.GIFT_LION))
+
+        loader.call_args.args[1](_texture(400, 300))
+
+        assert screen.previous_title_str == "(The Victory Garden)"
+        marker = pattern(
+            log_markers.FUN_VIEW_LOWER_TIER, filename="a.png", title="The Victory Garden"
+        )
+        assert any(re.search(marker, line) for line in loguru_sink)
+
     def test_a_texture_that_arrives_after_another_step_is_dropped(
         self, screen_setup: _Setup
     ) -> None:
@@ -1340,3 +1356,29 @@ def test_the_title_shows_as_the_setting_says(screen_setup: _Setup) -> None:
     settings.show_fun_view_title_info = False
     screen.on_change_show_current_title()
     assert screen.show_current_title is False
+
+
+def test_the_caption_of_a_title_barks_did_not_name_is_in_parentheses_and_the_log_plain(
+    screen_setup: _Setup, loguru_sink: list[str]
+) -> None:
+    screen, _, _ = screen_setup
+
+    screen.set_last_loaded_image_info(_info("a.png", Titles.VICTORY_GARDEN_THE))
+
+    assert screen.current_title_str == "(The Victory Garden)"
+    assert screen.fun_view_from_title is True
+    assert log_markers.FUN_VIEW_TITLE_SET.format(title="The Victory Garden") in loguru_sink
+    assert (
+        log_markers.FUN_IMAGE_LOADED.format(filename="a.png", title="The Victory Garden")
+        in loguru_sink
+    )
+
+
+def test_an_image_from_no_title_has_no_caption_and_no_goto(screen_setup: _Setup) -> None:
+    screen, _, _ = screen_setup
+
+    screen.set_last_loaded_image_info(ImageInfo(Path("a.png"), None, FIT_MODE_COVER))
+
+    assert screen.current_title_str == ""
+    assert screen.fun_view_from_title is False
+    assert screen.goto_title_button_active is False

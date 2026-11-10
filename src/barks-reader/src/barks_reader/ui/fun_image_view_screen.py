@@ -28,6 +28,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.reader_formatter import get_display_title_str
 from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
@@ -88,6 +89,7 @@ class _FunFocus(Enum):
 
 
 def _title_str(title: Titles | None) -> str:
+    """Return a title's plain name for the log, where the caption has its display form."""
     return "" if title is None else ENUM_TO_STR_TITLE[title]
 
 
@@ -452,14 +454,14 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
             if self._wanted_previous is not previous:
                 return  # Another step overtook this load.
             self.previous_image_fit_mode = previous.fit_mode
-            self.previous_title_str = _title_str(previous.from_title)
+            self.previous_title_str = get_display_title_str(previous.from_title)
             self.previous_image_texture = texture
             self._shown_previous = previous
             self._update_tiered()  # a texture the same as the last fires no change
             assert previous.filename
             logger.debug(
                 log_markers.FUN_VIEW_LOWER_TIER.format(
-                    filename=previous.filename.name, title=self.previous_title_str
+                    filename=previous.filename.name, title=_title_str(previous.from_title)
                 )
             )
 
@@ -491,16 +493,16 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         assert image_info.filename
         logger.debug(
             log_markers.FUN_IMAGE_LOADED.format(
-                filename=image_info.filename.name, title=self.current_title_str
+                filename=image_info.filename.name, title=_title_str(image_info.from_title)
             )
         )
         self._refresh_lower_tier()
 
     def _set_title(self, title: Titles | None) -> None:
-        self.current_title_str = _title_str(title)
-        self.fun_view_from_title = self.current_title_str != ""
+        self.current_title_str = get_display_title_str(title)
+        self.fun_view_from_title = title is not None
         self.goto_title_button_active = self.fun_view_from_title
-        logger.debug(log_markers.FUN_VIEW_TITLE_SET.format(title=self.current_title_str))
+        logger.debug(log_markers.FUN_VIEW_TITLE_SET.format(title=_title_str(title)))
 
     def on_goto_title(self, *, from_keyboard: bool = False) -> None:
         """Fire the goto-title button of the image on show.

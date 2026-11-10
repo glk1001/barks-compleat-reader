@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
@@ -15,6 +14,7 @@ from kivy.uix.boxlayout import BoxLayout
 
 from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.reader_formatter import get_display_title_str
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
@@ -27,6 +27,8 @@ from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from barks_fantagraphics.barks_titles import Titles
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -72,7 +74,8 @@ class TreeViewScreen(BoxLayout):
         overlay.on_collapse_request = on_collapse
 
     def set_title(self, title: Titles | None) -> None:
-        self.current_title_str = "" if title is None else ENUM_TO_STR_TITLE[title]
+        """Caption the top view with the title its image is from, or with nothing."""
+        self.current_title_str = get_display_title_str(title)
 
     # --- Top-view "Goto Title" keyboard nav ---
     # A thin API driven by MainScreenNavigation: the top-view goto arrow is a focus
