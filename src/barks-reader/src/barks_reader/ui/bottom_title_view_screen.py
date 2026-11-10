@@ -255,6 +255,7 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
         )
 
         self.ids.use_overrides_checkbox.bind(active=self._on_use_overrides_checkbox_changed)
+        self.bind(layout_mode=self._on_layout_mode)
 
     def set_special_fanta_overrides(self, special_fanta_overrides: SpecialFantaOverrides) -> None:
         """Set where the view finds the overrides it offers for a title."""
@@ -339,7 +340,7 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
         # Recorded after start(), so this is the animation that actually ended up
         # running; the guard in _on_panel_fade_finished then knows it from any other.
         self._panel_fade_anim = anim
-        self.ids.title_show_button.opacity = 1
+        self.ids.title_show_button.opacity = 1 if self._is_peek_available() else 0
 
     def _on_panel_fade_finished(self, anim: Animation, _widget: Widget) -> None:
         """Forget a finished fade, so opacity alone decides visibility again."""
@@ -412,8 +413,32 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
         if box_stays_off:
             self._show_title_inset_for_overrides(use_overrides=False)
 
+    def _is_peek_available(self) -> bool:
+        """Return whether the eye has something to do: only where the panel covers the art.
+
+        On a single page the art is the panel's background, and the eye clears the title,
+        info and notes off it. On the two-page spread the art is a picture of its own with
+        nothing over it, and hiding the panel only swapped it for a cropped copy: there
+        the eye is not drawn, not focusable, and the panel is never peeked away.
+        """
+        return self.layout_mode != MainLayoutMode.SPREAD.value
+
+    def _on_layout_mode(self, _instance: Widget, _layout_mode: str) -> None:
+        """Bring a peeked-away panel back on the spread, which has no eye to do it."""
+        if self._is_peek_available():
+            return
+        box = self.ids.bottom_view_box
+        if self._panel_fade_anim is None and box.opacity <= PANEL_VISIBLE_OPACITY:
+            box.opacity = 1
+            logger.debug(log_markers.TITLE_PANEL_PEEK_TOGGLED.format(shown=True))
+        if self._nav_active and self._nav_focused_widget is self.ids.title_show_button:
+            self._nav_focused_widget = self.ids.title_portal_image_button
+            self._update_nav_focus()
+
     def toggle_panel_peek(self) -> None:
         """Hide the panel to see the art behind it, or bring it back."""
+        if not self._is_peek_available():
+            return
         box = self.ids.bottom_view_box
         shown = box.opacity <= PANEL_VISIBLE_OPACITY
         box.opacity = 1 if shown else 0
@@ -530,10 +555,14 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     def _focusable_widgets(self) -> list[Widget]:
         """Return the currently visible nav widgets, in visual top-to-bottom order."""
         ids = self.ids
-        widgets: list[Widget] = [ids.title_show_button]
-        if not self._is_panel_content_visible():
-            # The panel is peeked away: only the eye toggle is visible.
-            return widgets
+        if not self._is_peek_available():
+            # The spread: no eye, and so a panel that is never peeked away.
+            widgets: list[Widget] = []
+        else:
+            widgets = [ids.title_show_button]
+            if not self._is_panel_content_visible():
+                # The panel is peeked away: only the eye toggle is visible.
+                return widgets
         if self.wiki_button_visible:
             widgets.append(ids.wiki_page_button)
         if self.use_overrides_description:
@@ -565,7 +594,8 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     def _focus_eye_if_focus_is_gone(self, focusable: list[Widget]) -> bool:
         """Move the focus to the eye if its widget has gone, and return whether it had.
 
-        E.g. the panel was mouse-peeked away under the focus.
+        E.g. the panel was mouse-peeked away under the focus. On the spread, which has no
+        eye, the focus goes to the first widget the panel shows.
         """
         if self._nav_focused_widget in focusable:
             return False

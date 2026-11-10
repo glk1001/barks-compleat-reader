@@ -118,8 +118,9 @@ the comic reader's top bar shows the same two lines. Contains:
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
 - A **peek toggle**
   <img src="icon-eye-peek-black.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  (top right of the bottom view) — a themed eye that hides the title info to reveal just the art
-  behind it. The eye is open while the info panel is showing and slashed once it is hidden, and it
+  (top right of the bottom view, on the single page) — a themed eye that hides the title info to
+  reveal just the art behind it. The two-page spread has no eye: there the art is a picture of
+  its own, with nothing over it. The eye is open while the info panel is showing and slashed once it is hidden, and it
   stays visible in both states so you can always bring the panel back. The portal button remains
   clickable even when the panel is hidden.
 

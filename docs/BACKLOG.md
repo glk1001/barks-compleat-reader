@@ -282,7 +282,8 @@ in the OCR repo, which is read-only from here:
       under the heading (centred, and larger, for a title without notes) with the notes
       level with the portal's top. What was made before then still shows the old view:
   - [ ] **The in-app How To pages** — `docs/how-to-use.md` gained two passages on untitled
-        stories. Regenerate the text pages (`uv run scripts/generate_how_to_pdfs.py`),
+        stories, and its peek-toggle entry says the eye is on the single page only (the
+        spread lost it the same day). Regenerate the text pages (`uv run scripts/generate_how_to_pdfs.py`),
         export the composited `page-N.png` files from the GIMP how-to project to
         `Various/documents/how-to`, and ship them in the next data pack.
   - [ ] **The README screenshots** — `website/screenshot-selecting-a-title.jpg` and

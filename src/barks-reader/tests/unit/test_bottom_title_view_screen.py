@@ -302,6 +302,64 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.screen.toggle_panel_peek()
         assert box.opacity == 1
 
+    def test_the_spread_has_no_peek(self, loguru_sink: list[str]) -> None:
+        """Its art is a picture of its own: hiding the panel only showed a cropped copy."""
+        box = self.screen.ids.bottom_view_box
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        loguru_sink.clear()
+
+        self.screen.toggle_panel_peek()
+
+        assert box.opacity == 1
+        assert loguru_sink == []
+
+    def test_a_fade_on_the_spread_leaves_the_eye_hidden(self) -> None:
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        self.screen.fade_in_bottom_view_title()
+        assert self.screen.ids.title_show_button.opacity == 0
+
+    def test_a_panel_peeked_away_comes_back_when_the_layout_becomes_the_spread(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """The spread has no eye to bring it back with."""
+        box = self.screen.ids.bottom_view_box
+        self.screen.toggle_panel_peek()
+        assert box.opacity == 0
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        assert box.opacity == 1
+        assert loguru_sink[-1] == "Title view panel toggled by the eye: shown = True."
+
+    def test_a_panel_fading_in_is_left_to_its_fade_when_the_layout_becomes_the_spread(
+        self, loguru_sink: list[str]
+    ) -> None:
+        self.screen.fade_in_bottom_view_title()
+        box = self.screen.ids.bottom_view_box
+        box.opacity = 0.2  # early in the fade
+        loguru_sink.clear()
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        assert box.opacity == 0.2  # noqa: PLR2004
+        assert loguru_sink == []
+
+    def test_a_panel_on_show_is_left_alone_when_the_layout_becomes_the_spread(
+        self, loguru_sink: list[str]
+    ) -> None:
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        assert self.screen.ids.bottom_view_box.opacity == 1
+        assert loguru_sink == []
+
+    def test_the_single_page_keeps_its_peeked_panel_when_the_layout_comes_back(self) -> None:
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        self.screen.layout_mode = MainLayoutMode.SINGLE.value
+        box = self.screen.ids.bottom_view_box
+
+        self.screen.toggle_panel_peek()
+
+        assert box.opacity == 0
+
     def test_show_goto_page(self) -> None:
         # Active with page
         _show(self.screen, "5", active=True)
@@ -557,6 +615,52 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
 
         assert not self.screen._is_panel_content_visible()
         assert self.screen._focusable_widgets() == [self.screen.ids.title_show_button]
+
+    def test_the_spread_leaves_the_eye_out_of_the_focus_order(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        ids = self.screen.ids
+        assert self.screen._focusable_widgets() == [
+            ids.wiki_page_button,
+            ids.use_overrides_layout,
+            ids.goto_page_layout,
+            ids.title_portal_image_button,
+        ]
+
+    def test_the_spread_always_has_the_portal_to_focus(self) -> None:
+        """Even at no opacity and no fade on record: there the panel is never peeked away."""
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+        self.screen.ids.bottom_view_box.opacity = 0
+        assert self.screen._focusable_widgets() == [self.screen.ids.title_portal_image_button]
+
+    def test_focus_on_the_eye_moves_to_the_portal_when_the_layout_becomes_the_spread(
+        self,
+    ) -> None:
+        self.screen.toggle_panel_peek()
+        self.screen.enter_nav_focus(MagicMock())
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+
+    def test_focus_off_the_eye_stays_put_when_the_layout_becomes_the_spread(self) -> None:
+        self.screen.wiki_button_visible = True
+        self.screen.enter_nav_focus(MagicMock())
+        self.screen._nav_focused_widget = self.screen.ids.wiki_page_button
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        assert self.screen._nav_focused_widget is self.screen.ids.wiki_page_button
+
+    def test_no_focus_is_made_when_the_layout_becomes_the_spread_out_of_nav(self) -> None:
+        self.screen._nav_focused_widget = self.screen.ids.title_show_button
+        self.mock_update_focus.reset_mock()
+
+        self.screen.layout_mode = MainLayoutMode.SPREAD.value
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+        self.mock_update_focus.assert_not_called()
 
     def test_the_length_of_a_fade_varies_within_its_maximum(self) -> None:
         """Not all or nothing: most lengths lie strictly between no fade and the longest."""

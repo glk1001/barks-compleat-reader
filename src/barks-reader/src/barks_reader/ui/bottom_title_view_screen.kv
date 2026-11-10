@@ -529,8 +529,8 @@
                                 radius: [dp(4)]
         # --- END: bottom view title container ---
 
-    # Peek toggle: hide the title-info panel to see the art behind it, then
-    # bring it back. A themed eye reflects the panel's state (open = info
+    # Peek toggle (the single page only): hide the title-info panel to see the art
+    # behind it, then bring it back. A themed eye reflects the panel's state (open = info
     # showing, slashed = hidden) and stays visible in BOTH states so it is
     # always findable. Declared LAST so it draws on top of the title content
     # (earlier it was the first child, buried under the content banner, and it
@@ -542,6 +542,10 @@
         size_hint: None, None
         size: dp(26), dp(26)
         pos_hint: {'right': 1 - 0.007, 'top': 0.988}
+        # Only where the panel covers the art: on the spread the art is a picture of
+        # its own, so there is no eye, and nothing here to press or to focus.
+        opacity: 0 if root.layout_mode == 'spread' else 1
+        disabled: root.layout_mode == 'spread'
         on_press: root.toggle_panel_peek()
 
         canvas.before:
