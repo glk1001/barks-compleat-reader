@@ -42,6 +42,7 @@ from .reader_close_mixin import ReaderCloseMixin
 from .reader_keyboard_nav import ActionBarNavMixin, DropdownNavMixin, open_dropdown
 from .reader_screens import ReaderScreen
 from .tap_targets import Rect, window_rect
+from .ui_helpers import is_tap
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -243,6 +244,9 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self.has_story_links = bool(self._story_links)
 
     def next_page(self) -> None:
+        """Show the page after those showing, if there is one."""
+        if not self._page_paths:
+            return  # an empty document has no unit to step on from
         unit = self._current_unit()
         last_shown = (
             unit.left_page_index if unit.right_page_index is None else unit.right_page_index
@@ -280,6 +284,9 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
+        if not is_tap(touch):
+            # A wheel tick's position says nothing of which way to turn.
+            return bool(super().on_touch_down(touch))
         # Read before the tap leaves menu mode, which hides a bar the menu showed: the
         # margin must not then bring it straight back. A tap on that bar keeps it, for
         # the button under the tap to take the press.
@@ -292,14 +299,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
         # A hidden bar (fullscreen) comes back on a tap along the top, where it was, and
         # goes again on a tap in the strip just below it, as in the comic reader.
-        if bar_was_hidden:
-            if self._is_touch_in_top_margin(touch):
-                logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
-                self._show_action_bar()
-                return True
-        elif self.is_fullscreen and self._is_touch_just_below_the_bar(touch):
-            logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
-            self._hide_action_bar()
+        if self._bar_shown_or_hidden_by_tap(touch, bar_was_hidden):
             return True
 
         if self.ids.doc_page.collide_point(*touch.pos):
@@ -311,6 +311,18 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             return True
 
         return bool(super().on_touch_down(touch))
+
+    def _bar_shown_or_hidden_by_tap(self, touch: MotionEvent, bar_was_hidden: bool) -> bool:
+        if bar_was_hidden:
+            if self._is_touch_in_top_margin(touch):
+                logger.debug(log_markers.ACTION_BAR_SHOWN_ON_TOP_MARGIN)
+                self._show_action_bar()
+                return True
+        elif self.is_fullscreen and self._is_touch_just_below_the_bar(touch):
+            logger.debug(log_markers.ACTION_BAR_HIDDEN_ON_TOP_MARGIN)
+            self._hide_action_bar()
+            return True
+        return False
 
     def _is_touch_in_top_margin(self, touch: MotionEvent) -> bool:
         return touch.y > self.top - self.ACTION_BAR_HEIGHT

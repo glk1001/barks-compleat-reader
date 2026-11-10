@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+# cspell:ignore scrollup scrolldown
 """The document reader: page paths, turning, and the log lines that mark each step."""
 
 from __future__ import annotations
@@ -126,6 +127,39 @@ class TestEdges:
         assert screen.page_source == ""
         assert 'Document reader opened "How To" with 0 pages.' in loguru_sink
 
+    def test_on_the_spread_a_document_with_no_pages_has_no_next_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _open(screen, tmp_path)
+        _spread(screen)
+        screen.next_page()
+        screen.prev_page()
+        assert screen.page_source == ""
+
+    @pytest.mark.parametrize("button", ["scrollup", "scrolldown", "right", "middle"])
+    def test_a_wheel_tick_or_another_mouse_button_turns_no_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path, button: str
+    ) -> None:
+        """A wheel tick's position says nothing of which way to turn."""
+        for name in PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _open(screen, tmp_path)
+        on_the_page = _bar()
+        on_the_page.collide_point.return_value = True
+        on_the_page.center_x = 0  # the touch is on the right half: a tap would turn the page
+        off_the_bar = _bar()
+        off_the_bar.collide_point.return_value = False
+        screen.ids = {"doc_action_bar": off_the_bar, "doc_page": on_the_page}
+        touch = MagicMock(button=button, pos=(5, 5), x=5, y=5)
+        with (
+            patch.object(screen, "_clear_menu_on_touch") as clear_menu,
+            patch.object(ReaderScreen, "on_touch_down", return_value=False) as screen_press,
+        ):
+            assert screen.on_touch_down(touch) is False
+        screen_press.assert_called_once_with(touch)
+        clear_menu.assert_not_called()
+        assert screen._current_page_index == 0
+
     def test_a_touch_off_the_bar_and_the_page_goes_on_to_the_screen(
         self, screen: DocumentReaderScreen, tmp_path: Path
     ) -> None:
@@ -139,7 +173,7 @@ class TestEdges:
             patch.object(screen, "_clear_menu_on_touch"),
             patch.object(ReaderScreen, "on_touch_down", return_value=True) as screen_press,
         ):
-            assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5, y=5)) is True
+            assert screen.on_touch_down(MagicMock(button="left", pos=(5, 5), x=5, y=5)) is True
         screen_press.assert_called_once()
         assert screen._current_page_index == 0
 
@@ -574,7 +608,9 @@ class TestFullscreen:
         screen.ids["doc_page"] = page
         screen.size = (800, 600)
         with patch.object(screen, "_clear_menu_on_touch"):
-            assert screen.on_touch_down(MagicMock(pos=(400, 590), x=400, y=590)) is True
+            assert (
+                screen.on_touch_down(MagicMock(button="left", pos=(400, 590), x=400, y=590)) is True
+            )
         assert bar.disabled is False
         assert "Showing action bar on top margin press." in loguru_sink
         assert screen._current_page_index == 0  # not a page turn
@@ -654,7 +690,9 @@ class TestFullscreen:
             assert screen._handle_reader_key(27)  # Escape: the menu shows the bar
         assert bar.disabled is False
         with patch.object(ReaderScreen, "on_touch_down", return_value=True) as to_children:
-            assert screen.on_touch_down(MagicMock(pos=(500, 590), x=500, y=590)) is True
+            assert (
+                screen.on_touch_down(MagicMock(button="left", pos=(500, 590), x=500, y=590)) is True
+            )
         to_children.assert_called_once()  # the bar's buttons get the tap
         assert screen._menu_mode is False
         assert bar.disabled is False
@@ -680,7 +718,7 @@ class TestFullscreen:
         page.center_x = 400
         screen.ids["doc_page"] = page
         screen.size = (800, 600)
-        assert screen.on_touch_down(MagicMock(pos=(500, 530), x=500, y=530)) is True
+        assert screen.on_touch_down(MagicMock(button="left", pos=(500, 530), x=500, y=530)) is True
         assert screen._menu_mode is False
         assert bar.disabled is True
         assert "Showing action bar on top margin press." not in loguru_sink
@@ -715,7 +753,7 @@ class TestFullscreen:
         screen.ids["doc_page"] = page
         screen.size = (800, 600)
         with patch.object(screen, "_clear_menu_on_touch"):
-            assert screen.on_touch_down(MagicMock(pos=(500, y), x=500, y=y)) is True
+            assert screen.on_touch_down(MagicMock(button="left", pos=(500, y), x=500, y=y)) is True
         assert bar.disabled is hidden
         assert ("Hiding action bar on top margin press." in loguru_sink) is hidden
         assert screen._current_page_index == (0 if hidden else 1)  # a page turn, or not
@@ -746,7 +784,7 @@ class TestFullscreen:
         # Keys stay bound, to be swallowed, and taps have nothing left to act on.
         window.unbind.assert_not_called()
         assert screen._on_key_down(None, 0, 0, "", []) is True
-        assert screen.on_touch_down(MagicMock(pos=(5, 5), x=5, y=5)) is True
+        assert screen.on_touch_down(MagicMock(button="left", pos=(5, 5), x=5, y=5)) is True
         # Then the window lands, and the screen leaves once laid out for it.
         windowed.is_fullscreen_now.return_value = False
         with (
