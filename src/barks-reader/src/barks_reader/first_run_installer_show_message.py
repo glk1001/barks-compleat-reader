@@ -1,5 +1,6 @@
 # ruff: noqa: PLC0415
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,14 @@ def show_installer_message(
     app_log_path: Path,
     size: tuple[int, int] = DEFAULT_INSTALLER_POPUP_SIZE,
     background_image_file: Path | None = None,
+    on_dismiss: Callable[[], None] | None = None,
+    in_running_loop: bool = False,
 ) -> None:
+    """Show the installer's report, with its Start button.
+
+    ``in_running_loop`` and ``on_dismiss`` are for the installer's progress window, whose
+    Kivy loop this is then shown in (``show_standalone_popup``).
+    """
     x, y = get_centred_position_on_primary_monitor(*size)
 
     # Set the window pos and size now to avoid moving window flicker.
@@ -38,6 +46,8 @@ def show_installer_message(
         fill_window=True,
         buttons=(FrameButton("Start Barks Reader", lambda: None),),  # closing it starts it
         background_image_file=background_image_file,
+        on_dismiss=on_dismiss,
+        in_running_loop=in_running_loop,
     )
 
 

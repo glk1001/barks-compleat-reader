@@ -17,10 +17,18 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _saved_excepthook = sys.excepthook
-from barks_reader import first_run_installer, first_run_installer_show_message  # noqa: E402
+from barks_reader import (  # noqa: E402
+    first_run_installer,
+    first_run_installer_show_message,
+    installer_progress,
+)
 from barks_reader.core import config_info as config_info_module  # noqa: E402
 from barks_reader.core import reader_utils  # noqa: E402
-from barks_reader.installer_support import InstallerDataError, extract_subdir  # noqa: E402
+from barks_reader.installer_support import (  # noqa: E402
+    InstallerDataError,
+    extract_subdir,
+    subdir_bytes,
+)
 from barks_reader.ui import kivy_standalone_error_popup  # noqa: E402
 
 # Importing the installer module installs its own excepthook; keep pytest's.
@@ -55,6 +63,18 @@ class TestExtractSubdir:
         assert (out_dir / "barks-reader.ini").read_text() == _INI_TEXT
         assert (out_dir / "kivy" / "config.ini").read_text() == "[kivy]\n"
         assert not (out_dir / "readme.txt").exists()
+
+    def test_the_bytes_reported_as_written_add_up_to_the_subdirs_size(self, tmp_path: Path) -> None:
+        zip_path = _make_zip(
+            tmp_path / "pack.zip",
+            {"Reader Files/a.txt": "abc", "Reader Files/deep/b.txt": "de", "Configs/c.ini": "x"},
+        )
+        written: list[int] = []
+
+        extract_subdir(zip_path, "Reader Files/", tmp_path / "out", written.append)
+
+        assert sum(written) == subdir_bytes(zip_path, "Reader Files/") == len("abc") + len("de")
+        assert subdir_bytes(zip_path, "Nothing/") == 0
 
     def test_re_zipped_pack_with_nested_top_level_folder_fails_loudly(self, tmp_path: Path) -> None:
         # What Safari + Finder produce: the real contents one folder deeper, plus __MACOSX.
@@ -144,6 +164,7 @@ class _Install:
     fanta_dir: Path | None
     error_popup: MagicMock
     success_message: MagicMock
+    progress: MagicMock
 
     @property
     def failed_flag(self) -> Path:
@@ -193,8 +214,14 @@ def install(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[_Instal
         patch.object(reader_utils, "safe_import_check", return_value=True),
         patch.object(kivy_standalone_error_popup, "show_error_popup") as error_popup,
         patch.object(first_run_installer_show_message, "show_installer_message") as success,
+        # No window: the work runs where it is called, as on a machine with none.
+        patch.object(
+            installer_progress,
+            "run_showing_progress",
+            side_effect=lambda work, *_args, **_kwargs: (work(), False),
+        ) as progress,
     ):
-        yield _Install(exe_dir, config_info, fanta_dir, error_popup, success)
+        yield _Install(exe_dir, config_info, fanta_dir, error_popup, success, progress)
     for sink in sinks:
         logger.remove(sink)
 
@@ -226,6 +253,40 @@ class TestMain:
         )
         log = (install.exe_dir / "installer.log").read_text()
         assert "Finished installing config and data files." in log
+
+    def test_the_data_is_unpacked_behind_a_window_that_follows_its_bytes(
+        self, install: _Install
+    ) -> None:
+        install.write_packs()
+
+        first_run_installer.main()
+
+        _work, progress = install.progress.call_args.args
+        assert progress.total == len("1") + len("2")
+        assert progress.fraction == 1.0
+        assert install.progress.call_args.kwargs["title"] == "Installing the Barks Reader"
+
+    def test_the_success_message_is_shown_in_the_progress_windows_loop(
+        self, install: _Install
+    ) -> None:
+        """With the window up, the report follows in it, and is not shown a second time."""
+        install.write_packs()
+        end_loop = MagicMock()
+
+        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            result = work()
+            show_next(result, end_loop)
+            return result, True
+
+        install.progress.side_effect = with_a_window
+
+        first_run_installer.main()
+
+        install.success_message.assert_called_once()
+        kwargs = install.success_message.call_args.kwargs
+        assert kwargs["in_running_loop"] is True
+        assert kwargs["on_dismiss"] is end_loop
+        assert install.success_message.call_args.args[1] == install.fanta_dir
 
     def test_without_the_library_it_still_installs(
         self, install: _Install, monkeypatch: pytest.MonkeyPatch

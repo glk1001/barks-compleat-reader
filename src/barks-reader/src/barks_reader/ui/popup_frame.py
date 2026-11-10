@@ -160,6 +160,7 @@ class PopupFrame(ModalView):
         first_focus: int | None = 0,
         fit_body_height: bool = False,
         wrap_focus: bool = True,
+        closable: bool = True,
     ) -> None:
         """Build the frame; `open()` shows it.
 
@@ -187,6 +188,9 @@ class PopupFrame(ModalView):
             wrap_focus: Whether Left and Right go round from one end of the row to the
                 other, rather than stopping there, as they must where one button at an
                 end would cost something to land on by mistake (Clear).
+            closable: Whether a frame with no buttons has its close X and closes on a
+                key. One that reports work in progress has neither: it is closed by
+                what opened it, when the work is done.
 
         """
         super().__init__(
@@ -209,6 +213,7 @@ class PopupFrame(ModalView):
         self._first_focus = first_focus
         self._focused_idx = first_focus
         self._wrap_focus = wrap_focus
+        self._closable = closable
         self._close_button: Button | None = None
         self._close_focused = False
         # Asked first about every key, by a body that takes keys of its own (a list's
@@ -329,11 +334,11 @@ class PopupFrame(ModalView):
             title_label.font_name = font_name
         title_label.bind(size=_wrap_to_size)
         self.bind(title=title_label.setter("text"), title_font_size=title_label.setter("font_size"))
-        if not self._frame_buttons:
+        if not self._frame_buttons and self._closable:
             # The X's width on the left too, so the title is centred on the bar.
             bar.add_widget(Widget(size_hint_x=None, width=CLOSE_BUTTON_WIDTH))
         bar.add_widget(title_label)
-        if not self._frame_buttons:
+        if not self._frame_buttons and self._closable:
             close = Button(
                 text="X",
                 size_hint_x=None,
@@ -474,10 +479,7 @@ class PopupFrame(ModalView):
         if self._typing() and not is_escape_key_for_text_input(key, codepoint):
             return False  # the text box's key; Escape is still the frame's, to cancel
         if not self._frame_buttons:
-            if is_escape_key(key):
-                self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
-            elif closes_popup(key):
-                self.dismiss()
+            self._on_key_down_with_no_buttons(key)
         elif key in (KEY_RIGHT, KEY_LEFT):
             self._move_focus(1 if key == KEY_RIGHT else -1)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
@@ -486,6 +488,14 @@ class PopupFrame(ModalView):
         elif is_escape_key(key):
             self._press_cancel()
         return True  # the frame is modal: no key reaches the screen beneath it
+
+    def _on_key_down_with_no_buttons(self, key: int) -> None:
+        if not self._closable:
+            return  # no key closes it: what opened it does
+        if is_escape_key(key):
+            self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
+        elif closes_popup(key):
+            self.dismiss()
 
     def _move_focus(self, step: int) -> None:
         count = len(self._frame_buttons)

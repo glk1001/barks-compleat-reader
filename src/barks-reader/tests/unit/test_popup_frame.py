@@ -186,6 +186,15 @@ class TestPopupFrame:
         cancel.assert_called_once_with()
         ok.assert_not_called()
 
+    def test_a_frame_that_cannot_be_closed_has_no_x_and_takes_no_key(self) -> None:
+        """One that reports work in progress is closed by what opened it."""
+        frame = _frame(closable=False)
+        assert _texts(frame) == []
+        with patch.object(frame, "dismiss") as dismiss:
+            assert _press(frame, KEY_ENTER) is True
+            assert _press(frame, KEY_ESCAPE) is True
+        dismiss.assert_not_called()
+
     def test_with_no_buttons_return_closes_it(self) -> None:
         frame = _frame()
         with patch.object(frame, "dismiss") as dismiss:

@@ -115,6 +115,11 @@ def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path:
     assert f'"{_FANTA}"' in _texts(content)
     kwargs = dict(show.call_args.kwargs)
     (start,) = kwargs.pop("buttons")
-    assert kwargs == {"fill_window": True, "background_image_file": background}
+    assert kwargs == {
+        "fill_window": True,
+        "background_image_file": background,
+        "on_dismiss": None,
+        "in_running_loop": False,
+    }
     assert (start.text, start.closes) == ("Start Barks Reader", True)
     start.on_press()  # the frame closes it; the installer goes on to start the app

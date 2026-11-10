@@ -445,8 +445,9 @@ Use 'barks-reader-win.exe'.
 1. Place `barks-reader-data-1.barkspack` and `barks-reader-data-2.barkspack` in that same folder, next
    to the `.exe`. They are zip archives under another name; don't unzip them — the app does
    that itself.
-1. Launch the app. The first run unpacks the data packs, writes the config, and shows a
-   success popup; subsequent launches go straight to the reader.
+1. Launch the app. The first run writes the config and unpacks the data packs behind a
+   window that shows its progress (about half a minute), then shows a success message in
+   that window; subsequent launches go straight to the reader.
 
 ## Installing the Standalone App on macOS
 
@@ -476,8 +477,9 @@ Macs.
       ```
       xattr -dr com.apple.quarantine ~/BarksReader/barks-reader-macos.app
       ```
-1. Launch the app. The first run unpacks the data packs, writes the config, and shows a
-   success popup; subsequent launches go straight to the reader. If the install fails, the
+1. Launch the app. The first run writes the config and unpacks the data packs behind a
+   window that shows its progress (about half a minute), then shows a success message in
+   that window; subsequent launches go straight to the reader. If the install fails, the
    log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 
 **On a macOS VM** (an Intel VirtualBox guest, with no GPU driver), launching the `.app` from

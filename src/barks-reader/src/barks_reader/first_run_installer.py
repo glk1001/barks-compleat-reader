@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Callable
 from configparser import ConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from barks_reader.installer_support import (
     ZIP_READER_FILES_SUBDIR,
     InstallerDataError,
     extract_subdir,
+    subdir_bytes,
 )
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
 
@@ -21,6 +23,15 @@ _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
+
+# The window the installer works behind, and then reports in.
+_WINDOW_SIZE = (800, 950)
+_PROGRESS_TITLE = "Installing the Barks Reader"
+_PROGRESS_MESSAGE = (
+    "[b]Setting up the Barks Reader.[/b]\n\n"
+    "Its pictures and other files are being unpacked beside the app. This happens"
+    " once, and takes a minute or so."
+)
 
 _CONFIG_UNREADABLE_DETAILS = (
     "The config file was just extracted from the installer data pack, so it should be"
@@ -86,8 +97,7 @@ def main() -> None:
         logger.info("Checking that the installer zips are OK.")
         installer_zip_paths = _check_installer_zips()
 
-        fanta_volumes_dir = _run_installer(config_info, installer_zip_paths)
-        logger.info("Finished installing config and data files.")
+        fanta_volumes_dir, success_shown = _run_installer(config_info, installer_zip_paths)
 
     except InstallerDataError as e:
         logger.error(f"An installer data error occurred: {e.message} {e.details}")
@@ -96,10 +106,16 @@ def main() -> None:
         logger.exception("An installer error occurred:")
         _handle_installer_exception(*sys.exc_info())
     else:
-        _show_success_message(config_info, fanta_volumes_dir)
+        if not success_shown:
+            _show_success_message(config_info, fanta_volumes_dir)
 
 
-def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | None) -> None:
+def _show_success_message(
+    config_info: ConfigInfo,
+    fanta_volumes_dir: Path | None,
+    on_dismiss: Callable[[], None] | None = None,
+    in_running_loop: bool = False,
+) -> None:
     from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
     from barks_reader.first_run_installer_show_message import (  # noqa: PLC0415
         show_installer_message,
@@ -116,8 +132,10 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
         data_zips,
         config_info.app_config_dir,
         config_info.app_log_path,
-        size=(800, 950),
+        size=_WINDOW_SIZE,
         background_image_file=minimal_config_options.success_background_path,
+        on_dismiss=on_dismiss,
+        in_running_loop=in_running_loop,
     )
 
 
@@ -155,7 +173,21 @@ def _check_installer_zips() -> list[Path]:
     return installer_zip_paths
 
 
-def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> Path | None:
+def _run_installer(
+    config_info: ConfigInfo, installer_zip_paths: list[Path]
+) -> tuple[Path | None, bool]:
+    """Install the configs, then the data behind a window showing its progress.
+
+    Returns:
+        The Fantagraphics volumes folder, if one was found, and whether the success
+        message has been shown already (in the progress window).
+
+    """
+    from barks_reader.installer_progress import (  # noqa: PLC0415
+        ByteProgress,
+        run_showing_progress,
+    )
+
     assert len(installer_zip_paths) == 2  # noqa: PLR2004
 
     logger.info(
@@ -166,14 +198,36 @@ def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> 
     logger.info(
         f'Installing Barks Reader and Kivy configs to directory "{config_info.app_config_dir}".'
     )
+    # The configs first, and before the window: they are small, and Kivy's own are
+    # among them, so the window opens as the packs set it up.
     extract_subdir(installer_zip_paths[0], ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
 
     reader_files_dir = config_info.app_data_dir / ZIP_READER_FILES_SUBDIR
-    logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
-    extract_subdir(installer_zip_paths[0], ZIP_READER_FILES_SUBDIR, reader_files_dir)
-    extract_subdir(installer_zip_paths[1], ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    progress = ByteProgress(
+        sum(subdir_bytes(zip_path, ZIP_READER_FILES_SUBDIR) for zip_path in installer_zip_paths)
+    )
 
-    return _configure_fanta_volumes_for_platform(config_info)
+    def install_data() -> Path | None:
+        logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
+        for zip_path in installer_zip_paths:
+            extract_subdir(zip_path, ZIP_READER_FILES_SUBDIR, reader_files_dir, progress.add)
+        fanta_volumes_dir = _configure_fanta_volumes_for_platform(config_info)
+        logger.info("Finished installing config and data files.")
+        return fanta_volumes_dir
+
+    def show_success(fanta_volumes_dir: Path | None, end_loop: Callable[[], None]) -> None:
+        _show_success_message(
+            config_info, fanta_volumes_dir, on_dismiss=end_loop, in_running_loop=True
+        )
+
+    return run_showing_progress(
+        install_data,
+        progress,
+        title=_PROGRESS_TITLE,
+        message=_PROGRESS_MESSAGE,
+        window_size=_WINDOW_SIZE,
+        show_next=show_success,
+    )
 
 
 def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | None:

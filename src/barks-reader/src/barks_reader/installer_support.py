@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
@@ -11,11 +10,16 @@ from loguru import logger
 from barks_reader.core.reader_utils import quote_and_join_with_and
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 # The two top-level folders inside the packs (build-data-zips.sh).
 ZIP_CONFIGS_SUBDIR = "Configs/"
 ZIP_READER_FILES_SUBDIR = "Reader Files/"
+
+# How much of a file is copied at a time: small enough for a progress bar to move
+# through the panels zip, large enough not to slow the copy.
+_COPY_CHUNK_BYTES = 1024 * 1024
 
 
 class InstallerDataError(Exception):
@@ -32,8 +36,26 @@ class InstallerDataError(Exception):
         self.details = details
 
 
-def extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> int:
+def subdir_bytes(installer_zip: Path, subdir: str) -> int:
+    """Return how many bytes ``extract_subdir`` writes for ``subdir`` in ``installer_zip``."""
+    with ZipFile(installer_zip, "r") as installer_files:
+        return sum(
+            member.file_size
+            for member in installer_files.infolist()
+            if not member.is_dir() and member.filename.startswith(subdir)
+        )
+
+
+def extract_subdir(
+    installer_zip: Path,
+    subdir: str,
+    extract_to_dir: Path,
+    on_bytes: Callable[[int], None] | None = None,
+) -> int:
     """Extract every file under ``subdir`` in ``installer_zip`` into ``extract_to_dir``.
+
+    ``on_bytes``, if given, is called with the size of each piece as it is written, for
+    a progress bar (``subdir_bytes`` is their total).
 
     Returns the number of files extracted. Raises ``InstallerDataError`` if no zip entry
     starts with ``subdir`` - the usual cause is a data pack that was unzipped and
@@ -57,7 +79,10 @@ def extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> in
             # Stream the member out: the panels zip alone is over a gigabyte, and reading
             # it whole would need that much memory on the user's machine.
             with installer_files.open(member) as source, target_path.open("wb") as target:
-                shutil.copyfileobj(source, target)
+                while chunk := source.read(_COPY_CHUNK_BYTES):
+                    target.write(chunk)
+                    if on_bytes is not None:
+                        on_bytes(len(chunk))
 
         if num_extracted == 0:
             top_level = sorted({m.filename.split("/")[0] for m in installer_files.infolist()})

@@ -170,6 +170,20 @@ class TestWithoutAnApp:
 
         assert handler in [c.kwargs.get("on_key_down") for c in unbind.call_args_list]
 
+    def test_in_a_loop_already_running_it_starts_none_and_leaves_that_one_running(
+        self, no_app: _Loop
+    ) -> None:
+        """An installer's progress window has a loop and no app: its caller ends it."""
+        on_dismiss = MagicMock()
+        popup = _open(no_app, in_running_loop=True, on_dismiss=on_dismiss)
+
+        no_app.run.assert_not_called()
+        no_app.window_show.assert_not_called()
+        popup.dismiss()
+        no_app.finish_closing()
+        on_dismiss.assert_called_once_with()
+        no_app.stop.assert_not_called()
+
     def test_a_loop_that_fails_is_logged_and_raised(
         self, no_app: _Loop, loguru_sink: list[str]
     ) -> None:

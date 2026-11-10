@@ -62,11 +62,12 @@ def show_standalone_popup(
     timeout: float = 0,
     background_image_file: Path | None = None,
     on_dismiss: Callable[[], None] | None = None,
+    in_running_loop: bool = False,
 ) -> None:
     """Show a popup on the shared frame (``ui.popup_frame``), even if no Kivy app is running.
 
     With no app running (the installers, the error popup), it runs a Kivy loop of its own
-    until the popup has closed.
+    until the popup has closed, unless the caller is in one already.
 
     Args:
         title: Text for the popup's title bar.
@@ -82,6 +83,9 @@ def show_standalone_popup(
         background_image_file: Optional art drawn behind the content, under the scrim.
         on_dismiss: Called once the popup has closed and left the window, however
             it was closed.
+        in_running_loop: Whether the caller is in a Kivy loop with no app (an
+            installer's progress window): the popup is shown in that loop, which the
+            caller's ``on_dismiss`` ends.
 
     """
     from kivy.app import App
@@ -91,7 +95,9 @@ def show_standalone_popup(
 
     from .popup_frame import PopupFrame
 
-    app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
+    app_already_running = in_running_loop or (
+        (App.get_running_app() is not None) and (EventLoop.status == "started")
+    )
 
     def _show(*_args: object) -> None:
         # All of it once the popup has left the window, not when its dismissal began:
