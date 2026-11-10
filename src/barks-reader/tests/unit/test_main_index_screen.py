@@ -14,6 +14,9 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.index_items import IndexItem
 from barks_reader.ui.main_index_screen import MainIndexScreen
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
@@ -426,3 +429,98 @@ class TestSeeReferences:
             tag_button = main_index_screen._create_index_button(tag_item)
             main_index_screen._create_index_button(see_item)
         assert main_index_screen._tag_entries == {Tags.BLACK_PETE: (tag_button, tag_item)}
+
+
+class TestTitleRowBackground:
+    """A title row draws its own background, inset by most of its left padding."""
+
+    @pytest.mark.parametrize(
+        ("state", "colour"), [("normal", [0.1, 0.2, 0.3, 1.0]), ("down", [0.9, 0.8, 0.7, 1.0])]
+    )
+    def test_the_background_is_the_colour_of_the_rows_state(
+        self, state: str, colour: list[float]
+    ) -> None:
+        button = barks_reader.ui.main_index_screen._MainIndexTitleItemButton(
+            text="A title",
+            background_color_normal=(0.1, 0.2, 0.3, 1.0),
+            background_color_down=(0.9, 0.8, 0.7, 1.0),
+        )
+        button.padding = [50, 0, 0, 0]
+        button.pos = (10, 20)
+        button.size = (300, 25)
+
+        button.state = state  # bound: the canvas is redrawn as the state changes
+
+        canvas = button.canvas
+        assert canvas is not None
+        drawn_colour, rectangle = (
+            instruction
+            for instruction in canvas.before.children
+            if isinstance(instruction, (Color, Rectangle))
+        )
+        assert drawn_colour.rgba == pytest.approx(colour)
+        assert rectangle.pos == (10 + 40, 20)
+        assert rectangle.size == (300 - 40, 25)
+
+
+class TestSubItemsUnderTheirRow:
+    def test_an_opened_tags_sub_items_go_in_directly_under_its_row(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        column = BoxLayout(orientation="vertical")
+        above, tag_row, below = Button(text="A"), Button(text="Tag"), Button(text="Z")
+        for row in (above, tag_row, below):
+            column.add_widget(row)
+        main_index_screen._open_tag_button = tag_row
+        sub_items = BoxLayout()
+
+        main_index_screen._insert_tag_sub_items_layout(sub_items)
+
+        # A layout's children run last-added first: the rows read top to bottom reversed.
+        assert list(reversed(column.children)) == [above, tag_row, sub_items, below]
+        assert sub_items.owner_button is tag_row
+        assert main_index_screen._open_tag_widgets == [sub_items]
+
+
+class TestSmallPaths:
+    def test_a_title_row_has_nothing_under_it_to_open(
+        self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(Clock, "schedule_once") as schedule:
+            main_index_screen._handle_item_expansion(
+                MagicMock(), IndexItem(Titles.GIFT_LION, "Gift Lion")
+            )
+
+        schedule.assert_not_called()
+        assert not any(line.startswith("Handling tag") for line in loguru_sink)
+
+    def test_a_new_letter_forgets_the_last_letters_background_titles(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        main_index_screen._cached_all_titles_for_letter = [MagicMock()]
+        main_index_screen._cached_hierarchies = {Titles.GIFT_LION: MagicMock()}
+
+        main_index_screen._reset_background_image_caches()
+
+        assert main_index_screen._cached_all_titles_for_letter == []
+        assert main_index_screen._cached_hierarchies == {}
+
+    def test_a_backgrounds_caption_is_the_title_with_what_it_is_listed_under(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        hierarchy = MagicMock()
+        hierarchy.get_title_with_hierarchy.return_value = "Africa / Gift Lion"
+        main_index_screen._cached_hierarchies = {Titles.GIFT_LION: hierarchy}
+
+        assert main_index_screen._get_background_title_str(Titles.GIFT_LION) == "Africa / Gift Lion"
+
+    def test_a_letter_with_no_entries_says_so_in_its_one_row(
+        self, main_index_screen: MainIndexScreen, mock_font_manager: MagicMock
+    ) -> None:
+        mock_font_manager.main_index_item_font_name = "Roboto"
+        mock_font_manager.main_index_item_font_size = 14
+        main_index_screen.index_theme.MENU_TEXT = (1, 1, 1, 1)
+
+        button = main_index_screen._get_no_items_button("X")
+
+        assert button.text == "*** No index items for 'X' ***"
