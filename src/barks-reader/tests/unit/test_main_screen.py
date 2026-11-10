@@ -30,6 +30,7 @@ from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import ImageThemesChange, ImageThemesToUse
+from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
@@ -130,9 +131,23 @@ def main_screen(
 
 
 class TestMainScreen:
-    def test_init(self, main_screen: MainScreen) -> None:
+    def test_the_screen_starts_active_holding_the_collaborators_built_for_it(
+        self,
+        main_screen: MainScreen,
+        mock_components: MainScreenComponents,
+        mock_dependencies: dict[str, Any],
+    ) -> None:
         assert main_screen._active is True
-        assert main_screen._renderer is not None
+        assert main_screen._menu_mode is False
+        assert main_screen._renderer is mock_components.renderer
+        assert main_screen._nav_coord is mock_components.nav_coord
+        assert main_screen._nav is mock_components.nav
+        assert main_screen._window_helper is mock_components.window_helper
+        assert main_screen.image_selector is mock_components.random_title_images
+        assert main_screen._screens is mock_dependencies["screens"]
+        selector = cast("MagicMock", mock_components.random_title_images)
+        icon_file = selector.get_random_reader_app_icon_file
+        assert main_screen.app_icon_filepath == str(icon_file.return_value)
 
     def test_closing_the_app_saves_the_place_in_a_comic_still_open(
         self, main_screen: MainScreen
@@ -299,6 +314,41 @@ class TestMainScreen:
         _Window.request_keyboard.assert_called_once_with("callback", "target")
         first.assert_not_called()
         second.assert_called_once()
+
+    def test_after_a_keyboard_request_the_main_screen_still_sees_a_key_first(
+        self, main_screen: MainScreen
+    ) -> None:
+        """The hook and the rebind together, on a window that dispatches as Kivy's does."""
+        from barks_reader.ui.main_screen import _install_keyboard_request_hook  # noqa: PLC0415
+
+        seen: list[str] = []
+
+        def docked_keyboard(*_args: object) -> None:
+            seen.append("docked keyboard")
+
+        class _KeyWindow(EventDispatcher):
+            __events__ = ("on_key_down",)
+
+            def on_key_down(self, *_args: object) -> None:
+                """Kivy's default handler: nothing."""
+
+            def request_keyboard(self, *_args: object) -> None:
+                self.bind(on_key_down=docked_keyboard)  # as Kivy binds one, per request
+
+        window = _KeyWindow()
+        with (
+            patch.object(barks_reader.ui.main_screen, "Window", window),
+            patch.object(
+                main_screen, "_on_key_down", side_effect=lambda *_: seen.append("main screen")
+            ) as main_handler,
+        ):
+            window.bind(on_key_down=main_handler)
+            _install_keyboard_request_hook(window, main_screen._put_key_handler_first)
+
+            window.request_keyboard("callback", "target")
+            window.dispatch("on_key_down", KEY_DOWN, 0, "", [])
+
+        assert seen == ["main screen", "docked keyboard"]
 
     def test_putting_the_key_handler_first_rebinds_it_while_active(
         self, main_screen: MainScreen
@@ -1322,3 +1372,235 @@ class TestTheFunViewsGoto:
         main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
             keyboard_initiated=True
         )
+
+
+class TestWhatTheMainScreenHandsOn:
+    """Presses and closes the main screen passes to a collaborator, with what it passes."""
+
+    @pytest.mark.parametrize(
+        ("choice", "opener"), [("how-to", "open_how_to"), ("about", "open_about")]
+    )
+    def test_a_dots_menu_choice_opens_its_page(
+        self, main_screen: MainScreen, choice: str, opener: str
+    ) -> None:
+        with patch.object(main_screen, opener) as open_page:
+            main_screen.on_action_bar_menu_dots_selected(MagicMock(), choice)
+
+        open_page.assert_called_once_with()
+
+    def test_the_dots_menus_settings_choice_opens_the_apps_settings(
+        self, main_screen: MainScreen
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "App") as app:
+            main_screen.on_action_bar_menu_dots_selected(MagicMock(), "settings")
+
+        app.get_running_app.return_value.open_settings.assert_called_once_with()
+
+    def test_the_dots_menus_data_pack_choice_checks_as_asked_for_not_as_at_boot(
+        self, main_screen: MainScreen
+    ) -> None:
+        with patch.object(main_screen, "check_for_data_pack_update") as check:
+            main_screen.on_action_bar_menu_dots_selected(MagicMock(), "update-data-pack")
+
+        check.assert_called_once_with(at_boot=False)
+
+    def test_how_to_opens_the_how_to_document(self, main_screen: MainScreen) -> None:
+        main_screen.open_how_to()
+
+        main_screen._nav_coord.open_document.assert_called_once_with(
+            main_screen._reader_settings.sys_file_paths.get_how_to_doc_dir.return_value,
+            "How To Use the Barks Reader",
+        )
+
+    def test_building_the_tree_gives_the_coordinator_its_nodes_and_starts_the_app(
+        self, main_screen: MainScreen
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "ReaderTreeBuilder") as builder_class:
+            main_screen.build_tree_view()
+
+        builder = builder_class.return_value
+        builder_class.assert_called_once_with(
+            main_screen._reader_settings,
+            main_screen._tree_view_screen.ids.reader_tree_view,
+            main_screen._reader_tree_events,
+            main_screen._tree_view_manager,
+            main_screen._title_lists,
+            include_one_pagers_in_chrono=main_screen._include_one_pagers_in_chrono,
+        )
+        coordinator = main_screen._nav_coord
+        coordinator.set_year_range_nodes.assert_called_once_with(builder.chrono_year_range_nodes)
+        coordinator.set_one_pager_year_range_nodes.assert_called_once_with(
+            builder.one_pager_year_range_nodes
+        )
+        coordinator.set_cover_year_range_nodes.assert_called_once_with(
+            builder.cover_year_range_nodes
+        )
+        coordinator.set_series_nodes.assert_called_once_with(builder.series_nodes)
+        main_screen._app_initializer.start.assert_called_once_with(
+            builder, main_screen._on_tree_build_finished
+        )
+
+    @pytest.mark.parametrize("by_keyboard", [True, False])
+    def test_the_app_icon_goes_to_the_title_its_file_names(
+        self, main_screen: MainScreen, by_keyboard: bool
+    ) -> None:
+        main_screen.app_icon_filepath = "/icons/gift-lion.png"
+        main_screen._menu_action_by_keyboard = by_keyboard
+        title_str = next(
+            name
+            for name, title in barks_reader.ui.main_screen.STR_TITLE_TO_ENUM.items()
+            if title is Titles.GIFT_LION
+        )
+
+        with patch.object(
+            barks_reader.ui.main_screen,
+            "get_title_str_from_reader_icon_file",
+            return_value=title_str,
+        ) as title_of:
+            main_screen.goto_reader_icon_title()
+
+        title_of.assert_called_once_with(Path("/icons/gift-lion.png"))
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
+            ImageInfo(Path("/icons/gift-lion.png"), Titles.GIFT_LION)
+        )
+        main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
+            keyboard_initiated=by_keyboard
+        )
+
+    @pytest.mark.parametrize("closed", ["on_wiki_reader_closed", "on_corpus_stats_closed"])
+    def test_a_reader_closing_makes_the_screen_active_and_puts_its_focus_back(
+        self, main_screen: MainScreen, closed: str
+    ) -> None:
+        main_screen._active = False
+
+        getattr(main_screen, closed)()
+
+        assert main_screen._active is True
+        main_screen._nav.restore_focus_after_reader.assert_called_once_with()
+        main_screen._nav_coord.on_comic_closed.assert_not_called()
+
+    def test_a_title_chosen_in_the_wiki_is_gone_to_with_focus_on_its_portal(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.goto_title_from_wiki(Titles.GIFT_LION)
+
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
+            ImageInfo(from_title=Titles.GIFT_LION, filename=None)
+        )
+        main_screen._nav.focus_title_view_portal_after_wiki_goto.assert_called_once_with()
+
+    def test_the_wiki_page_button_saves_the_focus_and_opens_the_titles_page(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = Titles.GIFT_LION
+        main_screen._nav_coord.current_fanta_info = fanta_info
+
+        main_screen.on_wiki_page_button_pressed()
+
+        main_screen._nav.save_focus_before_reader.assert_called_once_with()
+        main_screen._nav_coord.open_wiki_page_for_title.assert_called_once_with(Titles.GIFT_LION)
+        assert log_markers.WIKI_PAGE_BUTTON_PRESSED in loguru_sink
+
+    def test_toggling_the_screen_mode_goes_to_the_window_helper(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.toggle_screen_mode()
+        main_screen._window_helper.toggle_screen_mode.assert_called_once_with()
+
+    def test_new_font_sizes_redraw_the_bars_title(self, main_screen: MainScreen) -> None:
+        with patch.object(
+            barks_reader.ui.main_screen, "get_action_bar_title", return_value="The Title"
+        ) as bar_title:
+            main_screen.update_fonts(1080)
+
+        main_screen._font_manager.update_font_sizes.assert_called_once_with(1080)
+        bar_title.assert_called_once_with(
+            main_screen._font_manager, barks_reader.ui.main_screen.APP_TITLE
+        )
+        assert main_screen.app_title == "The Title"
+
+    @pytest.mark.parametrize("from_keyboard", [True, False])
+    def test_the_top_views_goto_takes_the_image_on_show(
+        self, main_screen: MainScreen, from_keyboard: bool
+    ) -> None:
+        main_screen._on_goto_top_view_title(from_keyboard=from_keyboard)
+
+        main_screen._nav_coord.navigate_to_chrono_title.assert_called_once_with(
+            main_screen._renderer.get_top_view_image_info.return_value
+        )
+        main_screen._nav.focus_title_portal_after_goto.assert_called_once_with(
+            keyboard_initiated=from_keyboard
+        )
+
+    def test_the_backdrop_of_the_history_is_picked_from_its_titles_in_the_library(
+        self, main_screen: MainScreen
+    ) -> None:
+        in_library = MagicMock()
+        with patch.object(
+            barks_reader.ui.main_screen, "get_fanta_info", side_effect=[in_library, None]
+        ) as fanta_info:
+            image = main_screen._get_history_background_image(
+                [Titles.GIFT_LION, Titles.BACK_TO_THE_KLONDIKE]
+            )
+
+        assert fanta_info.call_args_list == [
+            call(Titles.GIFT_LION),
+            call(Titles.BACK_TO_THE_KLONDIKE),
+        ]
+        selector = main_screen._random_title_images
+        selector.get_random_image.assert_called_once_with([in_library])
+        assert image is selector.get_random_image.return_value
+
+    def test_a_reader_already_used_is_not_marked_used_again(self, main_screen: MainScreen) -> None:
+        main_screen.is_first_use_of_reader = False
+        setting_before = main_screen._reader_settings.is_first_use_of_reader
+
+        main_screen._set_no_longer_first_use()
+
+        assert main_screen._reader_settings.is_first_use_of_reader is setting_before
+
+    def test_closing_the_app_with_no_node_selected_saves_none(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._tree_view_screen.get_selected_node.return_value = None
+
+        main_screen.app_closing()
+
+        main_screen._json_settings_manager.save_last_selected_node_path.assert_called_once_with(
+            None
+        )
+        assert "Settings: No selected node to save." in loguru_sink
+
+    def test_a_layout_the_screen_is_already_in_refits_nothing(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.set_layout_mode(MainLayoutMode.SINGLE)  # the layout it starts in
+
+        main_screen._window_helper.refit_fullscreen.assert_not_called()
+
+    def test_the_comic_reader_screen_is_passed_to_the_reader_manager(
+        self, main_screen: MainScreen
+    ) -> None:
+        reader_screen = MagicMock()
+
+        main_screen.set_comic_book_reader_screen(reader_screen)
+
+        main_screen._comic_reader_manager.set_comic_book_reader_screen.assert_called_once_with(
+            reader_screen
+        )
+
+    def test_a_screen_going_inactive_in_menu_mode_leaves_menu_mode(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen._nav.is_in_bottom_focus = False
+        main_screen._menu_mode = True
+
+        with (
+            patch.object(barks_reader.ui.main_screen, "Window", MagicMock(height=1000)) as window,
+            patch.object(main_screen, "_exit_menu_mode") as exit_menu_mode,
+        ):
+            main_screen._is_active(active=False)
+
+        exit_menu_mode.assert_called_once_with()
+        window.unbind.assert_called_once_with(on_key_down=main_screen._on_key_down)
