@@ -18,28 +18,20 @@ is every normal run, the app never looks.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import ClearBuffers, ClearColor, Fbo
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.memory_census import take_request
+
+from .request_service import install_request_service
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from pathlib import Path
 
 FRAME_CAPTURE_FILE_ENV_VAR = "BARKS_READER_FRAME_CAPTURE_FILE"
-
-# A test asks, then waits: four looks a second answer well inside its timeout.
-POLL_SECS = 0.25
-
-# The installed poll, held here because Kivy's clock only holds it weakly.
-_SERVICE: list[Callable[[float], None]] = []
 
 
 def capture_window(path: Path) -> tuple[int, int]:
@@ -82,17 +74,9 @@ def install_frame_capture_service() -> bool:
         Whether the service is running (the request file's variable is set).
 
     """
-    request_file = os.environ.get(FRAME_CAPTURE_FILE_ENV_VAR, "")
-    if not request_file:
-        return False
-    path = Path(request_file)
-
-    def poll(_dt: float) -> None:
-        request = take_request(path)
-        if request is not None:
-            answer(request, path.parent)
-
-    _SERVICE.append(poll)
-    Clock.schedule_interval(poll, POLL_SECS)
-    logger.info(f"Frame capture: answering requests in {request_file}.")
-    return True
+    return install_request_service(
+        FRAME_CAPTURE_FILE_ENV_VAR,
+        "Frame capture",
+        # Looked up at each request, not bound now.
+        lambda request, out_dir: answer(request, out_dir),  # noqa: PLW0108
+    )

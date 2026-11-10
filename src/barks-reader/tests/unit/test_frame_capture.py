@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from barks_reader.core import log_markers
-from barks_reader.ui import frame_capture
+from barks_reader.ui import frame_capture, request_service
 from barks_reader.ui.frame_capture import FRAME_CAPTURE_FILE_ENV_VAR
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -54,7 +54,7 @@ class TestService:
         with patch.object(Clock, "schedule_interval") as schedule:
             assert frame_capture.install_frame_capture_service() is True
         poll = schedule.call_args.args[0]
-        assert schedule.call_args.args[1] == frame_capture.POLL_SECS
+        assert schedule.call_args.args[1] == request_service.POLL_SECS
 
         request_file.write_text("7\n", encoding="utf-8")
         with patch.object(frame_capture, "answer") as answer:
