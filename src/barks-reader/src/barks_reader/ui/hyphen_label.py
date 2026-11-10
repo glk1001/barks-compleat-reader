@@ -92,6 +92,9 @@ class HyphenatingLabel(Label):
             font_size=self._request_refine,
             shown_lines=self._apply_shown_lines,
         )
+        # A text given to the constructor was set before the bindings were made.
+        if self.source_text:
+            self._request_refine()
 
     def _create_label(self) -> None:
         previous = self._label
@@ -110,6 +113,11 @@ class HyphenatingLabel(Label):
     def _apply_shown_lines(self, *_args: object) -> None:
         if not self._refining:
             self.max_lines = int(self.shown_lines)
+            if self.shown_lines and self.source_text and self._counted_text != self.source_text:
+                # Refined while every line was shown, the text was never counted
+                # (`_count_lines`): refine it again, for a count to report.
+                self._applied_key = None
+                self._request_refine()
             self._request_lines_report()
 
     def _request_lines_report(self) -> None:

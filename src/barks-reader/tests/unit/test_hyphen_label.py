@@ -206,6 +206,16 @@ _SHOWN_LINES = 3
 _FEWER_LINES = 2
 
 
+def test_a_text_given_to_the_constructor_is_refined() -> None:
+    """Set before the bindings were made, it asked for no refinement of its own."""
+    with patch.object(HyphenatingLabel, "_request_refine", autospec=True) as request_refine:
+        HyphenatingLabel(markup=True)
+        request_refine.assert_not_called()
+
+        label = HyphenatingLabel(source_text=f"hy{SHY}phen", markup=True)
+        request_refine.assert_called_once_with(label)
+
+
 class TestJustifiedLinesRepair:
     """A justified line's end is brought back after each layout, in the word's own font."""
 
@@ -415,6 +425,35 @@ class TestLinesReport:
         label._report_lines()
 
         assert loguru_sink == []
+
+    def test_lines_first_held_after_the_refinement_are_counted_and_reported(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """Refined with every line shown, the text had no count: no report ever came."""
+        label = self._laid_out(lines=_SHOWN_LINES, shown=0)
+
+        def fake_texture_update(instance: HyphenatingLabel) -> None:
+            instance.refs = _refs_from_markup(instance.text, {})
+            instance._label._cached_lines = [object()] * _SHOWN_LINES
+
+        with (
+            patch.object(
+                HyphenatingLabel, "texture_update", autospec=True, side_effect=fake_texture_update
+            ),
+            patch.object(label, "_refine_trigger", side_effect=label._refine) as refine,
+        ):
+            label.shown_lines = _FEWER_LINES
+        label._report_lines()
+
+        refine.assert_called_once_with()
+        assert len(self._matching(loguru_sink, self.LAID_OUT)) == 1
+        assert len(self._matching(loguru_sink, self.CUT)) == 1
+
+    def test_lines_changed_for_a_counted_text_do_not_refine_it_again(self) -> None:
+        label = self._laid_out(lines=_SHOWN_LINES, shown=_SHOWN_LINES)
+        with patch.object(label, "_refine_trigger") as refine:
+            label.shown_lines = _FEWER_LINES
+        refine.assert_not_called()
 
     def test_the_report_waits_for_a_quiet_moment(self) -> None:
         label = _make_label("plain")
