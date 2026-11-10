@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, call, patch
 import barks_reader.ui.main_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core import data_pack, window_minimum
+from barks_reader.core import data_pack, log_markers, window_minimum
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import (
     KEY_DOWN,
@@ -1027,6 +1027,71 @@ def test_settings_open_with_their_first_item_focused(main_screen: MainScreen) ->
     ):
         assert main_screen.display_settings(app_window, settings) is True
     first.assert_called_once_with()
+
+
+def _open_settings(main_screen: MainScreen, settings: Widget) -> Widget:
+    """Open `settings` as the app does, and return the close X made for it."""
+    close_button = Widget(size_hint=(None, None), size=(45, 45))
+    with (
+        patch.object(barks_reader.ui.main_screen, "SettingsKeyboardNav"),
+        patch.object(barks_reader.ui.main_screen, "set_titlebar_drag_region"),
+        patch.object(
+            barks_reader.ui.main_screen.Factory, "SettingsCloseButton", return_value=close_button
+        ),
+    ):
+        assert main_screen.display_settings(MagicMock(children=[]), settings) is True
+    return close_button
+
+
+class _Settings(Widget):
+    """A settings panel as far as the main screen knows one: a widget that can close."""
+
+    interface = MagicMock()
+
+    def __init__(self, **kwargs: object) -> None:
+        self.register_event_type("on_close")
+        super().__init__(**kwargs)
+
+    def on_close(self, *_args: object) -> None:
+        """Do nothing: the event's default handler."""
+
+
+def test_the_open_settings_follow_the_screen_when_the_window_refits(
+    main_screen: MainScreen,
+) -> None:
+    """The layout setting refits the window: the panel kept the height it opened at."""
+    main_screen.size = (874, 1365)
+    settings = _Settings()
+    _open_settings(main_screen, settings)
+    assert tuple(settings.size) == (874, 1365)
+
+    main_screen.size = (874, 1100)
+
+    assert tuple(settings.size) == (874, 1100)
+
+
+def test_settings_closed_leave_nothing_bound_to_the_panel_kivy_keeps(
+    main_screen: MainScreen, loguru_sink: list[str]
+) -> None:
+    """Kivy keeps the panel between opens: each open left its X's placing bound to it."""
+    main_screen.size = (874, 1365)
+    settings = _Settings()
+    first_x = _open_settings(main_screen, settings)
+    with patch.object(barks_reader.ui.main_screen, "set_titlebar_drag_region"):
+        settings.dispatch("on_close")
+    second_x = _open_settings(main_screen, settings)
+
+    settings.pos = (300, 0)
+    main_screen.size = (874, 1100)
+
+    assert first_x.x == pytest.approx(874 - dp(7) - 45)  # where the first open left it
+    assert second_x.x == pytest.approx(300 + 874 - dp(7) - 45)
+    loguru_sink.clear()
+    with patch.object(barks_reader.ui.main_screen, "set_titlebar_drag_region"):
+        settings.dispatch("on_close")
+    assert sum(log_markers.SETTINGS_CLOSED in line for line in loguru_sink) == 1
+    main_screen.size = (874, 900)
+    assert tuple(settings.size) == (874, 1100)  # closed, it no longer follows
 
 
 class TestHistoryGoto:

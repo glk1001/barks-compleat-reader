@@ -334,6 +334,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._settings_nav: SettingsKeyboardNav | None = None
         self._settings_x_focused: bool = False  # Escape put the keys on the settings' X
         self._settings_close_button: Widget | None = None
+        self._settings_panel: Widget | None = None
+        self._place_settings_close_button: Callable[..., None] | None = None
         self._action_bar_hide_event: ClockEvent | None = None
         self._active = True
 
@@ -733,9 +735,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         app_window.add_widget(settings)
 
         settings.size_hint = (None, None)
-        # A page's size: the whole screen on a single page, one page of the spread.
-        settings.size = self.page_width(), self.height
         settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        # Sized now, and again whenever the screen is while the panel is open: the
+        # layout setting refits the window under it, and a panel left at the height
+        # it opened at stood above the window's top, its title bar and X with it.
+        self._settings_panel = settings
+        self._fit_settings_panel()
+        self.bind(size=self._fit_settings_panel, layout_mode=self._fit_settings_panel)
 
         self._settings_nav = SettingsKeyboardNav(settings)
         self._settings_nav.focus_first()
@@ -781,9 +787,30 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             close_button.center_y = settings.y + settings.height - ACTION_BAR_SIZE_Y / 2
 
         settings.bind(pos=_place, size=_place)
+        self._place_settings_close_button = _place
         app_window.add_widget(close_button)
         _place()
         self._settings_close_button = close_button
+
+    def _fit_settings_panel(self, *_args: object) -> None:
+        """Give the open settings panel a page's size: the screen's, or a page of the spread's."""
+        if self._settings_panel is not None:
+            self._settings_panel.size = self.page_width(), self.height
+
+    def _unbind_settings_panel(self) -> None:
+        """Take this open's bindings off the settings panel, which Kivy keeps for the next.
+
+        Left on, every open added another: the X's placing ran once for each open
+        there had been, each on a button long removed, and the close was heard as often.
+        """
+        self.unbind(size=self._fit_settings_panel, layout_mode=self._fit_settings_panel)
+        panel, self._settings_panel = self._settings_panel, None
+        place, self._place_settings_close_button = self._place_settings_close_button, None
+        if panel is None:
+            return
+        panel.unbind(on_close=self._on_settings_closed)
+        if place is not None:
+            panel.unbind(pos=place, size=place)
 
     def _remove_settings_close_button(self) -> None:
         if self._settings_close_button is not None:
@@ -803,6 +830,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Both ways out of the settings panel (its close button, or Escape) funnel
         # here; Kivy's close_settings() itself announces nothing.
         self._remove_settings_close_button()
+        self._unbind_settings_panel()
         set_titlebar_drag_region(self.ids.action_bar.drag_region)
         self._settings_x_focused = False
         if self._settings_nav is not None:
