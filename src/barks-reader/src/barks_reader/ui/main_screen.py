@@ -568,6 +568,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return self._adopt_open_menu_dots(key)
         if is_escape_key_for_text_input(key, codepoint):
             self._leave_the_focused_text_box()
+        elif _text_input_has_focus():
+            # Only a key leaving a one-line box gets here with a box focused.
+            self._nav.take_keys_to_a_pressed_search_box()
         return self._nav.handle_key(key)
 
     @staticmethod

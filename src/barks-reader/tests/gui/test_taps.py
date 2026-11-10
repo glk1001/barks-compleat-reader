@@ -569,6 +569,14 @@ def test_escape_takes_the_keys_from_a_pressed_search_box(boot: AppBoot) -> None:
     d.key_then_wait(d.DROPDOWN_DISMISSED, "Escape")
 
 
+def test_down_leaves_a_pressed_search_box_for_the_search_screen(boot: AppBoot) -> None:
+    """Down in a pressed box moved the tree's selection: the keys were still on the tree."""
+    d = _boot(boot, nodes.TITLE_SEARCH)
+    taps.tap_then_wait(d, search.SEARCH_BOX_FOCUSED, kv_id="title_search_input")
+    with d.expect(BOX_LEFT):
+        d.key_then_wait(pattern(markers.ENTERED_BOTTOM_FOCUS_FOR_SEARCH), "Down")
+
+
 # ------------------------------------------------------------ the search chips --
 
 SAID_BY_QUERY = "money"

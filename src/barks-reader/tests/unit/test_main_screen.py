@@ -593,6 +593,9 @@ class TestMainScreenEdges:
             main_screen._on_key_down(None, key, 0, "", [])
 
         assert box.focus is not left
+        # Down leaves the box for the search screen's results, so the keys go there
+        # first: left on the tree, Down moved the tree's selection instead.
+        assert main_screen._nav.take_keys_to_a_pressed_search_box.called is not left
         main_screen._nav.handle_key.assert_called_once_with(key)
 
     def test_an_open_modal_popup_keeps_the_keys(self, main_screen: MainScreen) -> None:

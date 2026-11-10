@@ -319,6 +319,17 @@ class MainScreenNavigation:
         self._search_screen.adopt_nav_focus(self.exit_bottom_focus)
         logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_FOR_SEARCH)
 
+    def take_keys_to_a_pressed_search_box(self) -> None:
+        """Move the keys to the search screen for a key leaving a box a mouse pressed.
+
+        A box pressed by mouse or touch is focused with the keys still on the tree, so
+        the Down that leaves it for the results moved the tree's selection instead.
+        The keys already on the bottom screen, or on the menu, stay where they are.
+        """
+        if self._focus_region == _FocusRegion.BOTTOM or self._is_in_menu_mode():
+            return
+        self._claim_bottom_focus_for_search()
+
     def _claim_bottom_focus(self) -> None:
         """Make the bottom screen the keys' region, its own focus state left to it."""
         self._auto_exited_bottom_focus = False

@@ -862,6 +862,41 @@ class TestClaimBottomFocusForSearch:
         assert not nav.is_in_bottom_focus
         nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
 
+    def test_a_key_leaving_a_pressed_search_box_goes_to_the_search_screen(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """Down in a box a mouse pressed moved the tree: the keys were still on it."""
+        for screen in (
+            nav._main_index_screen,
+            nav._speech_index_screen,
+            nav._names_index_screen,
+            nav._locations_index_screen,
+            nav._statistics_screen,
+            nav._history_screen,
+        ):
+            screen.is_visible = False
+        nav._search_screen.is_visible = True
+        nav._search_screen.has_list_open_without_the_keys.return_value = False  # ty: ignore[unresolved-attribute]
+        assert not nav.is_in_bottom_focus
+
+        nav.take_keys_to_a_pressed_search_box()
+        nav.handle_key(KEY_DOWN)
+
+        assert nav.is_in_bottom_focus
+        nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[unresolved-attribute]
+        nav._search_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
+
+    def test_the_keys_already_on_the_search_screen_are_not_claimed_again(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        nav._search_screen.is_visible = True
+        nav._search_screen.on_request_nav_focus()
+        nav._search_screen.adopt_nav_focus.reset_mock()  # ty: ignore[unresolved-attribute]
+
+        nav.take_keys_to_a_pressed_search_box()
+
+        nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+
 
 class TestExitBottomFocus:
     def test_exits_title_view_nav_focus(self, nav: MainScreenNavigation) -> None:
