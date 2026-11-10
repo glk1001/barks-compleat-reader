@@ -628,6 +628,22 @@ class TestExpansionStateMachine:
         assert index_screen._open_tag_widgets == [outer]
         assert inner.parent is None
 
+    def test_a_press_inside_a_nested_container_keeps_the_one_it_is_in(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """As the screens nest them: a tag's list goes into the group's list above it."""
+        outer = _FakeWidget(parent=_FakeWidget())
+        inner = _FakeWidget(parent=outer)
+        deeper = _FakeWidget(parent=inner)
+        index_screen._open_tag_widgets = [outer, inner, deeper]
+        button_in_inner = _FakeWidget(parent=inner)
+
+        index_screen._handle_expand_or_switch(cast("Button", button_in_inner))
+
+        assert index_screen._open_tag_widgets == [outer, inner]
+        assert inner.parent is outer
+        assert deeper.parent is None
+
 
 class TestOnIndexItemPress:
     def test_terminal_item_short_circuits_before_any_expansion(

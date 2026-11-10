@@ -1144,14 +1144,21 @@ class IndexScreen(FloatLayout):
         return False, -1
 
     def _get_level_of_click_for_expand_or_switch(self, button: Button) -> int:
-        if self._open_tag_widgets:
-            for i, container in enumerate(self._open_tag_widgets):
-                # Walk up a maximum of 20 parents as a safety measure against infinite loops.
-                current = button
-                for _ in range(20):
-                    if not current:
-                        break
-                    if current == container:
-                        return i
-                    current = current.parent
+        """Return the level of the innermost open container holding ``button``, or -1.
+
+        A container opened under an item of another lies inside it, so a button in the
+        inner one is under both: the first found, the outermost, would close the
+        container the button is in.
+        """
+        # Walk up a maximum of 20 parents as a safety measure against infinite loops.
+        ancestors = []
+        current = button
+        for _ in range(20):
+            if not current:
+                break
+            ancestors.append(current)
+            current = current.parent
+        for i in reversed(range(len(self._open_tag_widgets))):
+            if any(ancestor == self._open_tag_widgets[i] for ancestor in ancestors):
+                return i
         return -1
