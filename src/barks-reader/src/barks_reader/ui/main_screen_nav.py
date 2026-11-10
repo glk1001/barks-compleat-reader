@@ -140,6 +140,15 @@ class MainScreenNavigation:
         self._focus_region_before_reader = self._focus_region
         logger.debug(f"Saved focus before reader screen: {self._focus_region_before_reader}.")
 
+    def forget_focus_before_reader(self) -> None:
+        """Drop the focus region saved for a reader that did not open after all.
+
+        Its close never comes, so the region stayed saved, and was put back on the
+        close of whichever reader opened next without saving one (the wiki from the
+        tree): the keys on the bottom view, where they had not been.
+        """
+        self._focus_region_before_reader = None
+
     def restore_focus_after_reader(self) -> None:
         """Restore the focus region saved before a reader screen (comic or wiki) opened."""
         logger.debug(f"Focus after reader screen: {self._focus_region_before_reader}.")

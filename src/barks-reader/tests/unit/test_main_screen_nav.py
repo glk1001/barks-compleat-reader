@@ -792,6 +792,20 @@ class TestFocusSaveRestore:
         nav.restore_focus_after_reader()
         assert nav.is_in_bottom_focus
 
+    def test_a_focus_forgotten_is_not_put_back_after_a_later_reader(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """Saved for a comic that did not open, it came back on the close of the wiki."""
+        nav._fun_image_view_screen.is_visible = True
+        nav.enter_bottom_focus()
+        nav.save_focus_before_reader()
+        nav.forget_focus_before_reader()
+        nav.exit_bottom_focus()
+
+        nav.restore_focus_after_reader()
+
+        assert not nav.is_in_bottom_focus
+
 
 class TestEnterBottomFocus:
     def test_nothing_visible_stays_in_tree(self, nav: MainScreenNavigation) -> None:

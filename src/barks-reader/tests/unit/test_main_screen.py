@@ -388,6 +388,20 @@ class TestMainScreen:
 
         main_screen._nav.save_focus_before_reader.assert_called_once()
         main_screen._nav_coord.read_comic.assert_called_once()
+        main_screen._nav.forget_focus_before_reader.assert_not_called()
+
+    def test_a_comic_that_did_not_open_leaves_no_focus_saved_for_its_close(
+        self, main_screen: MainScreen
+    ) -> None:
+        """Its close never comes: the focus saved was put back after some later reader."""
+        main_screen._nav_coord.current_fanta_info = MagicMock()
+        main_screen._app_initializer.is_fanta_volumes_state_ok.return_value = (True, "")
+        main_screen._nav_coord.read_comic.return_value = False
+
+        main_screen.on_title_portal_image_pressed()
+
+        main_screen._nav.save_focus_before_reader.assert_called_once()
+        main_screen._nav.forget_focus_before_reader.assert_called_once_with()
 
     def test_on_comic_closed_delegates_to_coordinator(self, main_screen: MainScreen) -> None:
         main_screen._active = False

@@ -1023,6 +1023,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav.save_focus_before_reader()
         if self._nav_coord.read_comic():
             self._set_no_longer_first_use()
+        else:
+            self._nav.forget_focus_before_reader()
 
     def on_wiki_page_button_pressed(self) -> None:
         """Open the wiki at the current title's story page (the "Goto wiki page" chip)."""
