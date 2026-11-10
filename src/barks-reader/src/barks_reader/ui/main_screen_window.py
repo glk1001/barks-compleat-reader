@@ -109,7 +109,7 @@ class MainScreenWindowHelper:
         if self._host.height < Window.height:
             logger.info(
                 f"Finishing goto fullscreen on MainScreen but self.height"
-                f" = {self._host.height} < Window.height = {Window.height} = Window.height."
+                f" = {self._host.height} < Window.height = {Window.height}."
             )
             self._host.height = Window.height
             logger.info(

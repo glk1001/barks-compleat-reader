@@ -709,9 +709,7 @@ class TestMainScreenEdges:
 
         main_screen._nav_coord.read_comic.assert_not_called()
         main_screen._nav.save_focus_before_reader.assert_not_called()
-        assert (
-            "Title portal image pressed pressed. But the volumes are still loading." in loguru_sink
-        )
+        assert "Title portal image pressed. But the volumes are still loading." in loguru_sink
 
     def test_the_wiki_page_button_with_no_title_opens_nothing(
         self, main_screen: MainScreen, loguru_sink: list[str]

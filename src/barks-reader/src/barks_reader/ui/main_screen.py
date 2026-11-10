@@ -552,8 +552,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ) -> bool:
         # Ignore keys while another screen is on top (comic/document/wiki reader).
         # Its own handler owns the keyboard; in particular the wiki reader's search
-        # field must receive keystrokes rather than have them drive this tree. The
-        # main-screen handler stays bound throughout, so this guard is what yields.
+        # field must receive keystrokes rather than have them drive this tree. This
+        # handler is unbound while the screen is inactive, but a reader is on top for
+        # a moment either side of that, and this guard is what yields then.
         if self.manager is not None and self.manager.current != self.name:
             return False
         # When a text field holds the keyboard (e.g. editing a directory path in a
@@ -1051,15 +1052,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def on_title_portal_image_pressed(self) -> None:
         if self._nav_coord.current_fanta_info is None:
-            logger.error("Title portal image pressed pressed. But no title selected.")
+            logger.error("Title portal image pressed. But no title selected.")
             return
 
         volumes_state_ok, err_msg = self._app_initializer.is_fanta_volumes_state_ok()
         if not volumes_state_ok:
-            logger.error(f"Title portal image pressed pressed. But {err_msg}.")
+            logger.error(f"Title portal image pressed. But {err_msg}.")
             return
 
-        logger.debug("Title portal image pressed pressed.")
+        logger.debug("Title portal image pressed.")
 
         self._nav.save_focus_before_reader()
         if self._nav_coord.read_comic():
