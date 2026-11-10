@@ -1157,7 +1157,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         logger.debug(log_markers.WIKI_PAGE_BUTTON_PRESSED)
         self._nav.save_focus_before_reader()
-        self._nav_coord.open_wiki_page_for_title(fanta_info.comic_book_info.title)
+        if not self._nav_coord.open_wiki_page_for_title(fanta_info.comic_book_info.title):
+            # No wiki opened, so none will close: the focus saved for its close would
+            # be put back by the next reader to close, as the portal's was.
+            self._nav.forget_focus_before_reader()
 
     @override
     def on_comic_closed(self) -> None:

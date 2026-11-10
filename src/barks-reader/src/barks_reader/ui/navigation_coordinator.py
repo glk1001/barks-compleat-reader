@@ -505,7 +505,7 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._screen_switchers.switch_to_corpus_stats()
 
-    def open_wiki_page_for_title(self, title: Titles) -> None:
+    def open_wiki_page_for_title(self, title: Titles) -> bool:
         """Open the Carl Barks Wiki at ``title``'s story page.
 
         A no-op when no valid bundle is configured or the title's page is not
@@ -515,17 +515,22 @@ class NavigationCoordinator:
         Args:
             title: The canonical title whose wiki story page to open.
 
+        Returns:
+            True if the wiki opened; False if there was nothing to open, so the
+            caller knows no reader will close and call it back.
+
         """
         bundle = self._reader_settings.wiki_bundle_dir
         if bundle is None:
             logger.error("Wiki page requested but no valid wiki bundle is configured.")
-            return
+            return False
         page = wiki_page_for_title(bundle, title)
         if page is None:
             logger.error(f'Wiki page requested but none exists for "{ENUM_TO_STR_TITLE[title]}".')
-            return
+            return False
         self._on_active_changed(False)  # noqa: FBT003
         self._screen_switchers.switch_to_wiki_reader(bundle, page)
+        return True
 
     # === Return paths ===
 

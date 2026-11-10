@@ -1566,7 +1566,20 @@ class TestWhatTheMainScreenHandsOn:
 
         main_screen._nav.save_focus_before_reader.assert_called_once_with()
         main_screen._nav_coord.open_wiki_page_for_title.assert_called_once_with(Titles.GIFT_LION)
+        main_screen._nav.forget_focus_before_reader.assert_not_called()
         assert log_markers.WIKI_PAGE_BUTTON_PRESSED in loguru_sink
+
+    def test_a_wiki_page_that_does_not_open_leaves_no_focus_saved_for_its_close(
+        self, main_screen: MainScreen
+    ) -> None:
+        """A later reader's close put the stale focus back, as the portal's once did."""
+        main_screen._nav_coord.current_fanta_info = MagicMock()
+        main_screen._nav_coord.open_wiki_page_for_title.return_value = False
+
+        main_screen.on_wiki_page_button_pressed()
+
+        main_screen._nav.save_focus_before_reader.assert_called_once_with()
+        main_screen._nav.forget_focus_before_reader.assert_called_once_with()
 
     def test_toggling_the_screen_mode_goes_to_the_window_helper(
         self, main_screen: MainScreen
