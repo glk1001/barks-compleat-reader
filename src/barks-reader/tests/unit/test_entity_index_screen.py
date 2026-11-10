@@ -247,10 +247,12 @@ class TestEntityIndexScreen:
         self, person_index_screen: EntityIndexScreen
     ) -> None:
         """There is no prefix bar between the items and the A-Z menu to land on."""
+        person_index_screen._nav_panel = _IndexNavPanel.ITEMS
         with (
             patch.object(person_index_screen, "_clear_all_item_focus") as clear_focus,
-            patch.object(person_index_screen, "_enter_alphabet_panel") as enter_alphabet,
+            patch.object(person_index_screen, "_draw_letter_focus") as draw_letter,
         ):
             person_index_screen._on_up_from_first_item()
-        clear_focus.assert_called_once_with()
-        enter_alphabet.assert_called_once_with()
+        assert person_index_screen._nav_panel is _IndexNavPanel.ALPHABET
+        clear_focus.assert_called()
+        draw_letter.assert_called_once_with()

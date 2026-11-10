@@ -207,11 +207,17 @@ class TestIndexScreen:
             index_screen.on_is_visible(index_screen, value=True)
             mock_press.assert_called_with(index_screen._alphabet_buttons["B"])
 
-        # Case 3: Already selected button
-        index_screen._selected_letter_button = index_screen._alphabet_buttons["C"]
-        with patch.object(index_screen, "_new_index_image") as mock_new_image:
+        # Case 3: Already selected button: its letter stays, only the image is new.
+        selected = index_screen._alphabet_buttons["C"]
+        index_screen._selected_letter_button = selected
+        with (
+            patch.object(index_screen, "_new_index_image") as mock_new_image,
+            patch.object(index_screen, "on_letter_press") as mock_press,
+        ):
             index_screen.on_is_visible(index_screen, value=True)
-            mock_new_image.assert_called_once()
+            mock_new_image.assert_called_once_with()
+            mock_press.assert_not_called()
+        assert index_screen._selected_letter_button is selected
 
     def test_a_saved_letter_this_index_does_not_have_shows_a(
         self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
