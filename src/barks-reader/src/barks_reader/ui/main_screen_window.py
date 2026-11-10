@@ -157,7 +157,7 @@ class MainScreenWindowHelper:
             height = Window.height
             logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
         self._host.size_hint = None, None
-        self._host.size = self._fullscreen_box_size(height)
+        self._host.size = self.box_size(height)
         assert WindowManager.is_fullscreen_now()
         logger.info(
             f"New fullscreen window settings:"
@@ -168,7 +168,17 @@ class MainScreenWindowHelper:
             f" self._action_bar.height = {self._action_bar.height}"
         )
 
-    def _fullscreen_box_size(self, height: int) -> tuple[int, int]:
+    def box_size(self, height: int) -> tuple[int, int]:
+        """Return the size of the box the main screen fills in a window `height` high.
+
+        Args:
+            height: The window's height, the action bar included.
+
+        Returns:
+            The box's width, and its height with the action bar: narrower than the
+            window where the window is wider than the content.
+
+        """
         width, content_h = get_win_dimensions(
             height - ACTION_BAR_SIZE_Y, Window.width, self._content_aspect_ratio()
         )
@@ -177,7 +187,7 @@ class MainScreenWindowHelper:
     def _update_fonts_for_fullscreen_box(self) -> None:
         # The box's height, not the window's: on a screen narrower than the content the box
         # stops short of the window, and the title text must fit the panel inside the box.
-        self._update_fonts(self._fullscreen_box_size(Window.height)[1])
+        self._update_fonts(self.box_size(Window.height)[1])
 
     def resize_binding(self) -> None:
         self._main_layout.bind(size=self.on_main_layout_size_changed)

@@ -74,7 +74,7 @@ def mock_components() -> MainScreenComponents:
         json_settings_manager=MagicMock(),
         special_fanta_overrides=MagicMock(),
         comic_reader_manager=MagicMock(),
-        window_helper=MagicMock(),
+        window_helper=MagicMock(**{"box_size.return_value": (0, ACTION_BAR_SIZE_Y)}),
         renderer=MagicMock(),
         nav_coord=MagicMock(),
         tree_view_manager=MagicMock(),
@@ -740,10 +740,21 @@ class TestMainScreenQuietPaths:
         main_screen.size = (782, 1225)
         with (
             patch.object(barks_reader.ui.main_screen, "Window"),
-            patch.object(barks_reader.ui.main_screen, "get_win_dimensions", return_value=(0, 0)),
         ):
             main_screen._is_active(active=False)
         assert tuple(main_screen.size) == (782, 1225)
+
+    def test_the_screen_takes_the_window_helpers_box_as_its_state_changes(
+        self, main_screen: MainScreen
+    ) -> None:
+        """One rule for the box: the helper's, which sizes the fullscreen screen too."""
+        main_screen._window_helper.box_size.return_value = (874, 1365)
+        with patch.object(barks_reader.ui.main_screen, "Window") as window:
+            window.height = 1365
+            main_screen._is_active(active=False)
+
+        main_screen._window_helper.box_size.assert_called_once_with(1365)
+        assert tuple(main_screen.size) == (874, 1365)
 
     def test_the_screen_back_within_a_second_keeps_its_action_bar(
         self, main_screen: MainScreen
@@ -751,7 +762,6 @@ class TestMainScreenQuietPaths:
         """The delayed hide of a reader's opening fired after a quick return, on the bar."""
         with (
             patch.object(barks_reader.ui.main_screen, "Window"),
-            patch.object(barks_reader.ui.main_screen, "get_win_dimensions", return_value=(0, 0)),
             patch.object(barks_reader.ui.main_screen, "Clock") as clock,
         ):
             main_screen._is_active(active=False)

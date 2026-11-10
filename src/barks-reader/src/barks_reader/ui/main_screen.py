@@ -41,7 +41,6 @@ from barks_reader.core.reader_consts_and_types import APP_TITLE, COMIC_BEGIN_PAG
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
-    get_win_dimensions,
 )
 from barks_reader.core.window_minimum import (
     is_screen_too_small,
@@ -501,11 +500,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._exit_menu_mode()
             Window.unbind(on_key_down=self._on_key_down)
 
-        width, content_h = get_win_dimensions(
-            Window.height - ACTION_BAR_SIZE_Y, Window.width, self.content_aspect_ratio()
-        )
-        if width > 0 and content_h > 0:
-            self.size = width, content_h + ACTION_BAR_SIZE_Y
+        # A minimized window on Windows reports a size of nothing: the screen keeps its own.
+        width, height = self._window_helper.box_size(Window.height)
+        if width > 0 and height > ACTION_BAR_SIZE_Y:
+            self.size = width, height
 
         logger.debug(
             f"Main screen self._active = {self._active}:"
