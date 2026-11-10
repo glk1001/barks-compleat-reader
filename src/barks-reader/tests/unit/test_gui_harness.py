@@ -645,6 +645,57 @@ class TestMissingDirsFromSettingChanges:
         assert harness.missing_dirs_from_setting_changes(app_log) == []
 
 
+class TestMissingVolumesFromFantaDirChanges:
+    STAMP = "2026-11-11 03:00:25.923"
+    CHANGE = (
+        f"{STAMP} | INFO     | app : barks_reader.ui.barks_reader_app:on_config_change:243 - "
+        + markers.CONFIG_CHANGE.format(section="Barks Reader", key="fanta_dir", value="C:\\Users")
+    )
+    OTHER_CHANGE = (
+        f"{STAMP} | INFO     | app : barks_reader.ui.barks_reader_app:on_config_change:243 - "
+        + markers.CONFIG_CHANGE.format(section="Barks Reader", key="use_prebuilt_comics", value="0")
+    )
+    DEBUG = f"{STAMP} | DEBUG    | app : barks_reader.ui.popup_widgets:_open:136 - Popup opened."
+    MISSING = (
+        f"{STAMP} | ERROR    | app : barks_reader.core.comic_reader_manager:_read_comic_book:231"
+        ' - Cannot show the title "The Hard Loser". The Fantagraphics volume 2 is missing.'
+    )
+    LATER_MISSING = (
+        f"{STAMP} | ERROR    | app : barks_reader.core.comic_reader_manager:_read_comic_book:231"
+        ' - Cannot show the title "Rants About Ants". The Fantagraphics volume 15 is missing.'
+    )
+    OTHER_ERROR = f"{STAMP} | ERROR    | app : barks_reader.ui.wiki:open:10 - Wiki failed."
+
+    def test_each_one_after_the_folder_changed_is_the_walks_doing(self) -> None:
+        app_log = (
+            f"{self.CHANGE}\n{self.DEBUG}\n{self.MISSING}\n{self.DEBUG}\n{self.LATER_MISSING}\n"
+        )
+        assert harness.missing_volumes_from_fanta_dir_changes(app_log) == [
+            self.MISSING,
+            self.LATER_MISSING,
+        ]
+
+    def test_excused_they_leave_the_log_clean(self) -> None:
+        app_log = f"{self.CHANGE}\n{self.MISSING}\n{self.LATER_MISSING}\n"
+        excused = [
+            re.escape(line) for line in harness.missing_volumes_from_fanta_dir_changes(app_log)
+        ]
+        assert harness.log_problems(app_log, excused) == []
+
+    def test_one_before_the_folder_changed_is_not(self) -> None:
+        """A volume missing with the folder as the machine set it is the machine's."""
+        app_log = f"{self.MISSING}\n{self.CHANGE}\n"
+        assert harness.missing_volumes_from_fanta_dir_changes(app_log) == []
+
+    def test_one_after_another_setting_changed_is_not(self) -> None:
+        app_log = f"{self.OTHER_CHANGE}\n{self.MISSING}\n"
+        assert harness.missing_volumes_from_fanta_dir_changes(app_log) == []
+
+    def test_another_error_after_the_folder_changed_is_not(self) -> None:
+        app_log = f"{self.CHANGE}\n{self.OTHER_ERROR}\n"
+        assert harness.missing_volumes_from_fanta_dir_changes(app_log) == []
+
+
 class TestAssertLogClean:
     class _Driver:
         def __init__(self, log_path: Path) -> None:

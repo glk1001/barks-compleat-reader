@@ -125,5 +125,8 @@ def test_a_random_walk_leaves_the_app_answering_and_clean(boot: AppBoot, start: 
     d.settle()
     assert d.match_count(KEY_PRESSED) >= STEPS
     app_log = d.log_path.read_text(encoding="utf-8", errors="replace")
-    for line in harness.missing_dirs_from_setting_changes(app_log):
+    for line in (
+        *harness.missing_dirs_from_setting_changes(app_log),
+        *harness.missing_volumes_from_fanta_dir_changes(app_log),
+    ):
         boot.expect_error(re.escape(line))

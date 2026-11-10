@@ -605,6 +605,41 @@ def missing_dirs_from_setting_changes(app_log: str) -> list[str]:
     ]
 
 
+# The walk's own change of the Fantagraphics folder, and the app's error for a story it
+# then cannot open (fantagraphics_volumes.MissingVolumeError).
+_FANTA_DIR_CHANGE_RE = re.compile(r"Config change: section = '[^']*', key = 'fanta_dir', ")
+_MISSING_VOLUME_RE = re.compile(
+    r'Cannot show the title ".*"\. The Fantagraphics volume \d+ is missing\.'
+)
+
+
+def missing_volumes_from_fanta_dir_changes(app_log: str) -> list[str]:
+    """Return the missing-volume error lines that follow a change of the Fantagraphics folder.
+
+    The random walk presses Return in the Settings panel's folder chooser too: on
+    greg-dell, win_vm and mac_vm on 2026-11-11 it set the Fantagraphics folder to one
+    with no volumes in it, and every story opened after that was reported missing its
+    volume, as it should be for a user who does that. Only a line after the app's own
+    "Config change" line for `fanta_dir` counts; the same error before it, or with the
+    folder never changed, is a machine short of a volume.
+
+    Args:
+        app_log: The app log's text.
+
+    Returns:
+        Each such line, stripped, in log order.
+
+    """
+    lines: list[str] = []
+    folder_changed = False
+    for line in app_log.splitlines():
+        if _FANTA_DIR_CHANGE_RE.search(line):
+            folder_changed = True
+        elif folder_changed and _LEVEL_RE.match(line) and _MISSING_VOLUME_RE.search(line):
+            lines.append(line.strip())
+    return lines
+
+
 def resize_events(log_text: str) -> list[tuple[int, int]]:
     """Return every window size the app logged a resize event for, in order."""
     return [(int(w), int(h)) for w, h in _RESIZE_RE.findall(log_text)]
