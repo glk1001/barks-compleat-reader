@@ -1246,3 +1246,97 @@ class TestTheLowerTiersGotoButton:
         assert screen.lower_goto_title_button_active
         screen.on_goto_lower_title()
         goto.assert_called_once_with(from_keyboard=False, image_info=wanted)
+
+
+@pytest.mark.usefixtures("_no_focus_draw")
+class TestTheButtonKeysEdges:
+    @pytest.mark.parametrize(
+        ("key", "stepped"), [(KEY_LEFT, "prev_image"), (KEY_RIGHT, "next_image")]
+    )
+    def test_left_and_right_on_a_button_step_the_images_and_the_focus_follows(
+        self, screen_setup: _Setup, key: int, stepped: str
+    ) -> None:
+        """The new image may have no title: its goto button is then no place to be."""
+        screen, _, _ = screen_setup
+        screen.goto_title_button_active = True
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        assert screen._nav_focus is _FunFocus.GOTO
+
+        def to_an_image_with_no_title() -> None:
+            screen.goto_title_button_active = False
+
+        with patch.object(screen, stepped, side_effect=to_an_image_with_no_title) as step:
+            assert screen.handle_key(key) is True
+
+        step.assert_called_once_with()
+        assert screen._nav_focus is _FunFocus.FILTER
+
+    def test_a_lower_button_gone_inactive_hands_the_focus_to_the_upper_one(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        screen.goto_title_button_active = True
+        screen.lower_goto_title_button_active = False
+        screen._nav_focus = _FunFocus.LOWER_GOTO
+
+        screen._reconcile_button_focus()
+
+        assert screen._nav_focus is _FunFocus.GOTO
+
+    @pytest.mark.parametrize("focus", [_FunFocus.GOTO, _FunFocus.LOWER_GOTO])
+    def test_enter_on_a_goto_button_gone_inactive_goes_nowhere(
+        self, screen_setup: _Setup, focus: _FunFocus
+    ) -> None:
+        screen, _, _ = screen_setup
+        screen.on_goto_title_func = MagicMock()
+        screen.goto_title_button_active = False
+        screen.lower_goto_title_button_active = False
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        screen._nav_focus = focus
+
+        assert screen.handle_key(KEY_ENTER) is True
+
+        screen.on_goto_title_func.assert_not_called()
+        assert screen.fun_options_enabled is False  # nor does it open the menu
+
+    def test_leaving_the_focus_when_not_in_it_changes_nothing(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        with patch.object(screen, "_clear_nav_focus") as clear:
+            screen.exit_nav_focus()
+        clear.assert_not_called()
+
+    def test_enter_on_the_custom_radio_selects_it(self, screen_setup: _Setup) -> None:
+        screen, _, _ = screen_setup
+        screen._activate_menu_widget(screen.ids["checkbox_custom_image_types"])
+        assert screen.ids["checkbox_custom_image_types"].active is True
+
+
+def test_an_inactive_lower_goto_button_is_given_no_focus_ring(screen_setup: _Setup) -> None:
+    screen, _, _ = screen_setup
+    screen.lower_goto_title_button_active = False
+    screen._nav_focus = _FunFocus.LOWER_GOTO
+    with (
+        patch.object(barks_reader.ui.fun_image_view_screen, "draw_focus_highlight") as draw,
+        patch.object(barks_reader.ui.fun_image_view_screen, "clear_focus_highlight"),
+        patch.object(barks_reader.ui.fun_image_view_screen, "clear_focus_in_list"),
+    ):
+        screen._draw_nav_focus()
+    draw.assert_not_called()
+
+
+def test_a_new_lower_texture_looks_again_at_whether_the_tiers_stack(
+    screen_setup: _Setup,
+) -> None:
+    screen, _, _ = screen_setup
+    with patch.object(screen, "_update_stacked") as update_stacked:
+        screen.on_previous_image_texture(screen, None)
+    update_stacked.assert_called_once_with()
+
+
+def test_the_title_shows_as_the_setting_says(screen_setup: _Setup) -> None:
+    screen, _, settings = screen_setup
+    settings.show_fun_view_title_info = False
+    screen.on_change_show_current_title()
+    assert screen.show_current_title is False
