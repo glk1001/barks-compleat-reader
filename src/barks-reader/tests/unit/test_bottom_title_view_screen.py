@@ -440,6 +440,20 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         self.screen._request_nav_exit()
         assert self.screen._last_nav_focused_widget is None
 
+    def test_an_exit_leaves_the_focus_says_so_and_forgets_the_position(self) -> None:
+        on_exit = MagicMock()
+        self.screen._nav_active = True
+        self.screen._nav_on_exit_request = on_exit
+        self.screen._nav_focused_widget = MagicMock()
+
+        with patch.object(self.screen, "_clear_nav_focus"):
+            self.screen._request_nav_exit()
+
+        on_exit.assert_called_once_with()
+        assert self.screen._nav_active is False
+        # Left by Escape, not by a goto: the next entry starts at the portal.
+        assert self.screen._last_nav_focused_widget is None
+
     def _make_all_widgets_visible(self) -> None:
         self.screen.wiki_button_visible = True
         self.screen.use_overrides_description = "Use censorship fixes"

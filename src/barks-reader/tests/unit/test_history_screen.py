@@ -250,6 +250,16 @@ class TestHistoryScreenNav:
         assert nav_screen.handle_key(KEY_ENTER) is True
         select_view.assert_not_called()
 
+    def test_escape_leaves_the_focus_before_it_says_so(self, nav_screen: HistoryScreen) -> None:
+        """As on every bottom screen (`NavExitMixin`): cleared first, then handed back."""
+        active_when_called = []
+        nav_screen.enter_nav_focus(lambda: active_when_called.append(nav_screen._nav_active))
+
+        nav_screen._request_nav_exit()
+
+        assert active_when_called == [False]
+        assert nav_screen._nav_on_exit_request is None
+
     def test_escape_calls_exit_request(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 1)
         on_exit_request = MagicMock()

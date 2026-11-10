@@ -37,6 +37,7 @@ from barks_reader.core.settings_notifier import settings_notifier
 
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
+    NavExitMixin,
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
@@ -90,7 +91,7 @@ def _title_str(title: Titles | None) -> str:
     return "" if title is None else ENUM_TO_STR_TITLE[title]
 
 
-class FunImageViewScreen(BoxLayout):
+class FunImageViewScreen(NavExitMixin, BoxLayout):
     """Screen for displaying a fun image.
 
     NOTE: This is a child layout that should be added over
@@ -695,12 +696,6 @@ class FunImageViewScreen(BoxLayout):
             ids.clear_all_button,
             *reversed(ids.custom_options_box.children),
         ]
-
-    def _request_nav_exit(self) -> None:
-        callback = self._nav_on_exit_request
-        self.exit_nav_focus()
-        if callback is not None:
-            callback()
 
     def _draw_nav_focus(self) -> None:
         self._clear_nav_focus()

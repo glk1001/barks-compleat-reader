@@ -56,6 +56,7 @@ from barks_reader.core.user_error_types import (
 
 from .popup_frame import PopupFrame
 from .reader_keyboard_nav import (
+    NavExitMixin,
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
@@ -346,7 +347,7 @@ class Theme:
 
 
 # noinspection PyAbstractClass
-class IndexScreen(FloatLayout):
+class IndexScreen(NavExitMixin, FloatLayout):
     # A press made by the keys, from `_activate_focused_item`: a press made otherwise (the
     # mouse) moves the keyboard focus to the item pressed first. A class default: a screen
     # built bare, without __init__, presses items too.
@@ -407,7 +408,7 @@ class IndexScreen(FloatLayout):
         self._nav_focused_letter_idx: int = 0
         self._nav_focused_col: int = 0
         self._nav_focused_item_idx: int = 0
-        self._nav_on_exit_request: Callable | None = None
+        self._nav_on_exit_request: Callable[[], None] | None = None
         self._grid_version: int = 0  # Incremented on every items grid repopulation.
         self._nav_saved_grid_version: int = -1  # Version when ITEMS nav state was last saved.
         self._nav_focused_btn: Button | None = None  # Button ref for robust position restore.
@@ -534,11 +535,7 @@ class IndexScreen(FloatLayout):
         elif key == KEY_RIGHT:
             self._on_right_from_alphabet()
         elif is_escape_key(key):
-            callback = self._nav_on_exit_request
-            self.exit_nav_focus()
-            if callback is not None:
-                # noinspection PyCallingNonCallable
-                callback()
+            self._request_nav_exit()
         else:
             return False
         return True

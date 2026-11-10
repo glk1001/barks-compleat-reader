@@ -53,7 +53,7 @@ from barks_reader.core.wiki_integration import wiki_page_for_title
 # rule instantiates the ExtraInfoLabel dynamic class.
 from .hyphen_label import HyphenatingLabel  # noqa: F401
 from .panel_texture_loader import PanelTextureLoader
-from .reader_keyboard_nav import clear_focus_in_list, update_focus_in_list
+from .reader_keyboard_nav import NavExitMixin, clear_focus_in_list, update_focus_in_list
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -111,7 +111,7 @@ def _make_title_banner_texture(
     return texture
 
 
-class BottomTitleViewScreen(FloatLayout):
+class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     """Screen for displaying title information.
 
     NOTE: This is a parent container (FloatLayout).
@@ -600,8 +600,7 @@ class BottomTitleViewScreen(FloatLayout):
         clear_focus_in_list(self._all_nav_widgets(), _NAV_FOCUS_GROUP)
 
     def _request_nav_exit(self) -> None:
-        if self._nav_on_exit_request is not None:
-            self._nav_on_exit_request()
+        super()._request_nav_exit()
         # A deliberate Escape forgets the position: the next entry starts at the portal.
         self._last_nav_focused_widget = None
 

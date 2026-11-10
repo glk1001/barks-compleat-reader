@@ -78,6 +78,28 @@ def _draw_highlight(
         )
 
 
+class NavExitMixin:
+    """A bottom screen's way out of keyboard focus: clear its own focus, then say so.
+
+    The screen is entered with the callback that hands the keys back (to the tree) and
+    keeps it in ``_nav_on_exit_request``; ``_request_nav_exit`` is what its Escape, at
+    the top level, calls. The screen's own ``exit_nav_focus`` clears the callback, so it
+    is read first.
+    """
+
+    _nav_on_exit_request: Callable[[], None] | None = None
+
+    def exit_nav_focus(self) -> None:
+        """Exit keyboard focus and clear every focus ring; each screen has its own."""
+        raise NotImplementedError
+
+    def _request_nav_exit(self) -> None:
+        callback = self._nav_on_exit_request
+        self.exit_nav_focus()
+        if callback is not None:
+            callback()
+
+
 def draw_focus_highlight(
     widget: Widget,
     group: str,

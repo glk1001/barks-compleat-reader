@@ -68,6 +68,7 @@ from .panel_texture_loader import PanelTextureLoader
 from .popup_widgets import open_confirm_popup
 from .reader_keyboard_nav import (
     MENU_FOCUS_HIGHLIGHT_GROUP,
+    NavExitMixin,
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
@@ -271,7 +272,7 @@ class HistoryViewButton(ToggleButton):
             super()._do_press(*args)
 
 
-class HistoryScreen(FloatLayout):
+class HistoryScreen(NavExitMixin, FloatLayout):
     """Screen that shows the reading-history event log.
 
     The store is injected after construction via `set_history_store`. The
@@ -748,10 +749,6 @@ class HistoryScreen(FloatLayout):
         else:
             return False
         return True
-
-    def _request_nav_exit(self) -> None:
-        if self._nav_on_exit_request is not None:
-            self._nav_on_exit_request()
 
     # --- Top-bar zone (Journal | Titles | Clear History) ---
 
