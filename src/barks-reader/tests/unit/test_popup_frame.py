@@ -461,6 +461,33 @@ class TestPopupFrame:
         install.assert_called_once_with()
         dismiss.assert_called_once_with()
 
+    def test_a_frame_shown_again_starts_on_its_first_focus(self) -> None:
+        """It came back on the button last focused: Clear, not the Cancel it starts on."""
+        clear, cancel = MagicMock(), MagicMock()
+        frame = _frame((FrameButton("Clear", clear), FrameButton("Cancel", cancel)), first_focus=1)
+        with patch.object(popup_frame, "update_focus_in_list"):
+            _press(frame, KEY_LEFT)  # onto Clear
+        frame._on_parent(frame, None)  # noqa: SLF001  (closed, and off the window)
+
+        with patch.object(frame, "dismiss"):
+            _press(frame, KEY_ENTER)
+
+        cancel.assert_called_once_with()
+        clear.assert_not_called()
+
+    def test_a_frame_shown_again_has_no_ring_left_on_its_close_x(self) -> None:
+        frame = _frame()
+        with (
+            patch.object(popup_frame, "draw_focus_highlight"),
+            patch.object(popup_frame, "clear_focus_highlight") as clear,
+        ):
+            _press(frame, KEY_ESCAPE)  # the ring onto the X
+            assert frame._close_focused  # noqa: SLF001
+            frame._on_parent(frame, None)  # noqa: SLF001
+
+        assert not frame._close_focused  # noqa: SLF001
+        clear.assert_called_once()
+
     def test_the_keys_are_taken_before_the_fade_in(self) -> None:
         # The screen beneath yields keys to any modal on the window, fading in or not.
         frame = _frame()

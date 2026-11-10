@@ -206,6 +206,7 @@ class PopupFrame(ModalView):
         self._frame_buttons = tuple(buttons)
         self._on_closed = on_closed
         self._closing = False
+        self._first_focus = first_focus
         self._focused_idx = first_focus
         self._wrap_focus = wrap_focus
         self._close_button: Button | None = None
@@ -449,8 +450,21 @@ class PopupFrame(ModalView):
         if parent is not None:
             return
         self._closing = False
+        self._forget_focus()
         if self._on_closed is not None:
             self._on_closed()
+
+    def _forget_focus(self) -> None:
+        """Put the focus back where a frame starts, for a frame shown again.
+
+        Kept, it came back with the ring on the button last focused (the destructive
+        one a `first_focus` keeps it off), or still on the close X, its toggle inverted.
+        """
+        if self._close_focused:
+            self._toggle_close_focus()
+        self._focused_idx = self._first_focus
+        if self._focused_idx is None and self._button_widgets:
+            clear_focus_in_list(self._button_widgets, _FOCUS_GROUP)
 
     def _on_key_down(
         self, _win: object, key: int, _scancode: int, codepoint: str, _modifiers: list[str]
