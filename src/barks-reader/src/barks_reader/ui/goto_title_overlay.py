@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.speech_markup import escape_markup
 from kivy.app import App
@@ -20,7 +20,8 @@ from barks_reader.core.reader_palette import theme
 from .action_bar_helpers import ARROW_WIDTH
 from .ui_helpers import TouchExpandedButton
 
-GOTO_TITLE_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 OVERLAY_BUTTON_WIDTH = ARROW_WIDTH
 
@@ -57,9 +58,9 @@ class GotoTitleOverlay(FloatLayout):
 
     def on_kv_post(self, base_widget) -> None:  # noqa: ANN001, ARG002
         if self.position == "top-right":
-            self._build_top_right()
+            self._build(lambda: self.height - OVERLAY_BUTTON_WIDTH - dp(10))
         else:
-            self._build_bottom_right()
+            self._build(lambda: 0.4 * OVERLAY_BUTTON_WIDTH)
 
     def on_goto_press(self) -> None:
         pass
@@ -106,35 +107,20 @@ class GotoTitleOverlay(FloatLayout):
     def _update_label_opacity(self, label: Factory.BgColorLabel) -> None:
         label.opacity = self.label_opacity if self.show_title else 0
 
-    def _build_bottom_right(self) -> None:
+    def _build(self, disc_bottom: Callable[[], float]) -> None:
+        """Add the button and its label, in the right-hand corner the position names.
+
+        Args:
+            disc_bottom: Returns how far above the overlay's bottom the button's disc
+                sits, read at each layout.
+
+        """
         button = self._create_button()
         label = self._create_label()
 
         def update_button_pos(*_args: object) -> None:
             button.x = self.x + self.width - (1.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
-            button.y = self.y + (0.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
-
-        self.bind(pos=update_button_pos, size=update_button_pos)
-
-        def update_label_pos(*_args: object) -> None:
-            # Level with the disc (centred on the button, whose padding is symmetric),
-            # a sliver short of its touch padding.
-            label.x = button.x - label.width - dp(2)
-            label.y = button.y + (button.height - label.height) / 2
-
-        button.bind(pos=update_label_pos, size=update_label_pos)
-        label.bind(size=update_label_pos)
-
-        self.add_widget(label)
-        self.add_widget(button)
-
-    def _build_top_right(self) -> None:
-        button = self._create_button()
-        label = self._create_label()
-
-        def update_button_pos(*_args: object) -> None:
-            button.x = self.x + self.width - (1.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
-            button.y = self.y + self.height - OVERLAY_BUTTON_WIDTH - button.touch_padding - dp(10)
+            button.y = self.y + disc_bottom() - button.touch_padding
 
         self.bind(pos=update_button_pos, size=update_button_pos)
 

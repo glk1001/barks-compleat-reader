@@ -61,7 +61,10 @@ from .error_handling import handle_app_fail_with_traceback
 from .font_manager import FontManager
 from .frame_capture import install_frame_capture_service
 from .fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
-from .goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
+
+# GotoTitleOverlay must be imported (Factory-registered) before the kv files that
+# place it are loaded; it has no kv file of its own.
+from .goto_title_overlay import GotoTitleOverlay  # noqa: F401
 from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
@@ -279,7 +282,6 @@ class BarksReaderApp(App):
         Builder.load_file(str(HISTORY_SCREEN_KV_FILE))
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
-        Builder.load_file(str(GOTO_TITLE_OVERLAY_KV_FILE))
 
         root = self._build_screens()
 
