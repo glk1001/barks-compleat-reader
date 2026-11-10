@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
 import pytest
-from barks_reader import data_pack_installer
+from barks_reader import data_pack_installer, installer_progress
 from barks_reader.core import data_pack
 from barks_reader.core import minimal_config_info as minimal_config_info_module
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, PACK_MEMBER, DataPackInfo
@@ -42,6 +42,7 @@ class _Update:
     error_popup: MagicMock
     success: MagicMock
     spawn: MagicMock
+    progress: MagicMock
 
     @property
     def reader_files(self) -> Path:
@@ -96,8 +97,16 @@ def update(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[_Update]
         patch.object(kivy_standalone_error_popup, "show_error_popup") as error_popup,
         patch.object(data_pack_installer, "_show_success_message") as success,
         patch.object(data_pack, "spawn_detached") as spawn,
+        # No window: the work runs where it is called, as on a machine with none.
+        patch.object(
+            installer_progress,
+            "run_showing_progress",
+            side_effect=lambda work, *_args, **_kwargs: (work(), False),
+        ) as progress,
     ):
-        yield _Update(exe_dir, data_pack_installer.ConfigInfo(), error_popup, success, spawn)
+        yield _Update(
+            exe_dir, data_pack_installer.ConfigInfo(), error_popup, success, spawn, progress
+        )
     for sink in sinks:
         logger.remove(sink)
 
@@ -125,6 +134,56 @@ class TestMain:
         logs = list(update.exe_dir.glob("barks-reader-data-pack-update-*.log"))
         assert len(logs) == 1
         assert "Installed Data pack 6 (29 Oct 2026)." in logs[0].read_text()
+
+    def test_the_packs_are_unpacked_behind_a_window_that_follows_their_bytes(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs()
+
+        assert data_pack_installer.main() == 0
+
+        _work, progress = update.progress.call_args.args
+        assert progress.total > len("new") + len(b"zip")  # and each pack's version file
+        assert progress.fraction == 1.0  # every byte promised was written
+        kwargs = update.progress.call_args.kwargs
+        assert kwargs["title"] == "Updating the Barks Reader's Data"
+        assert kwargs["borderless"] is True  # as the success popup that follows in it is
+
+    def test_the_success_message_is_shown_in_the_progress_windows_loop(
+        self, update: _Update
+    ) -> None:
+        """With the window up, the message follows in it: closed, the reader starts."""
+        update.install_old_data()
+        update.write_packs()
+        end_loop = MagicMock()
+
+        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            result = work()
+            show_next(result, end_loop)
+            return result, True
+
+        update.progress.side_effect = with_a_window
+
+        assert data_pack_installer.main() == 0
+
+        update.success.assert_called_once()
+        assert update.success.call_args.args[1] == _info(6)
+        kwargs = update.success.call_args.kwargs
+        assert kwargs["in_running_loop"] is True
+        update.spawn.assert_not_called()
+        kwargs["on_dismiss"]()
+        update.spawn.assert_called_once()
+        end_loop.assert_called_once_with()
+
+    def test_no_newer_pack_is_reported_before_any_window_opens(self, update: _Update) -> None:
+        update.install_old_data(version=6)
+        update.write_packs(version=6)
+
+        with pytest.raises(SystemExit):
+            data_pack_installer.main()
+
+        update.progress.assert_not_called()
 
     def test_an_unversioned_install_takes_the_packs(self, update: _Update) -> None:
         update.install_old_data(version=None)

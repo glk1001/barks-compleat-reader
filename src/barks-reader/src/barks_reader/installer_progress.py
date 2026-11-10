@@ -93,6 +93,7 @@ def run_showing_progress[T](
     message: str,
     window_size: tuple[int, int],
     show_next: Callable[[T, Callable[[], None]], None],
+    borderless: bool = False,
 ) -> tuple[T, bool]:
     """Run `work` on another thread behind a window that shows its progress.
 
@@ -109,6 +110,8 @@ def run_showing_progress[T](
         show_next: Called in the window's Kivy loop with what `work` returned and a
             function that ends the loop: it shows what follows (a popup opened with
             ``in_running_loop``), and ends the loop when that has closed.
+        borderless: Whether the window has no frame of the desktop's, as one has
+            whose popup's own title bar is its top.
 
     Returns:
         What `work` returned, and whether `show_next` was called. False means the
@@ -120,7 +123,7 @@ def run_showing_progress[T](
     """
     run = _Run(work)
     try:
-        _run_window_loop(run, progress, title, message, window_size, show_next)
+        _run_window_loop(run, progress, title, message, window_size, show_next, borderless)
     except Exception as e:  # any Kivy failure: the install matters more than its window
         if run.started:
             run.thread.join()
@@ -140,6 +143,7 @@ def _run_window_loop[T](
     message: str,
     window_size: tuple[int, int],
     show_next: Callable[[T, Callable[[], None]], None],
+    borderless: bool,
 ) -> None:
     from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
 
@@ -152,6 +156,8 @@ def _run_window_loop[T](
     Config.set("graphics", "top", y)  # ty:ignore[unresolved-attribute]
     Config.set("graphics", "width", window_size[0])  # ty:ignore[unresolved-attribute]
     Config.set("graphics", "height", window_size[1])  # ty:ignore[unresolved-attribute]
+    if borderless:
+        Config.set("graphics", "borderless", "1")  # ty:ignore[unresolved-attribute]
 
     from kivy.base import runTouchApp, stopTouchApp
     from kivy.clock import Clock

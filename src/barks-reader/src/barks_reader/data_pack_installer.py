@@ -34,6 +34,7 @@ from barks_reader.installer_support import (
     ZIP_READER_FILES_SUBDIR,
     InstallerDataError,
     extract_subdir,
+    subdir_bytes,
 )
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
 
@@ -47,6 +48,12 @@ _APP_NAME = "Barks Reader Data Pack Update"
 # content below the 56 px title bar keeps the success art's 1184 x 864 shape, so the art
 # fills it with no bands at the sides.
 _POPUP_SIZE = (900, 720)
+_PROGRESS_TITLE = "Updating the Barks Reader's Data"
+_PROGRESS_MESSAGE = (
+    "[b]Installing the new data pack.[/b]\n\n"
+    "It is being unpacked in place of the old one. This takes a minute or so, and then"
+    " the Barks Reader starts again."
+)
 PREVIEW_ARG = "--preview"
 
 
@@ -69,7 +76,7 @@ def main() -> int:
 
     config_info = ConfigInfo()
     try:
-        installed = _install(config_info, exe_dir)
+        installed, success_shown = _install_behind_a_window(config_info, exe_dir)
     except InstallerDataError as e:
         logger.error(f"The data pack update stopped: {e.message} {e.details}")
         handle_app_fail(
@@ -93,12 +100,59 @@ def main() -> int:
             background_image_file=None,
         )
     else:
-        logger.info(f"Installed {installed.display()}.")
-        _show_success_message(config_info, installed)
+        if not success_shown:
+            _show_success_message(config_info, installed)
     return 0
 
 
-def _install(config_info: ConfigInfo, exe_dir: Path) -> DataPackInfo:
+def _install_behind_a_window(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, bool]:
+    """Find the newer packs, then install them behind a window showing its progress.
+
+    Returns:
+        The pack installed, and whether the success message has been shown already (in
+        the progress window).
+
+    """
+    from barks_reader.installer_progress import (  # noqa: PLC0415
+        ByteProgress,
+        run_showing_progress,
+    )
+
+    available, pack_dir, reader_files = _find_update(config_info, exe_dir)
+    progress = ByteProgress(
+        sum(
+            subdir_bytes(pack_dir / pack_name, ZIP_READER_FILES_SUBDIR)
+            for pack_name in DATA_PACK_FILE_NAMES
+        )
+    )
+
+    def install() -> DataPackInfo:
+        installed = _install(available, pack_dir, reader_files, progress.add)
+        logger.info(f"Installed {installed.display()}.")
+        return installed
+
+    def show_success(installed: DataPackInfo, end_loop: Callable[[], None]) -> None:
+        def restart_and_end() -> None:
+            _restart_reader()
+            end_loop()
+
+        _show_success_message(
+            config_info, installed, on_dismiss=restart_and_end, in_running_loop=True
+        )
+
+    return run_showing_progress(
+        install,
+        progress,
+        title=_PROGRESS_TITLE,
+        message=_PROGRESS_MESSAGE,
+        window_size=_POPUP_SIZE,
+        show_next=show_success,
+        borderless=True,
+    )
+
+
+def _find_update(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, Path, Path]:
+    """Return the newer pack beside the executable, its folder and the installed data's."""
     reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
     check = data_pack.look_for_update(
         exe_dir, reader_files, is_compiled=IS_COMPILED, env=os.environ
@@ -110,11 +164,19 @@ def _install(config_info: ConfigInfo, exe_dir: Path) -> DataPackInfo:
     pack_dir = check.pack_dir
     assert pack_dir is not None
     logger.info(f'Installing {available.display()} from "{pack_dir}" over "{reader_files}".')
+    return available, pack_dir, reader_files
 
+
+def _install(
+    available: DataPackInfo,
+    pack_dir: Path,
+    reader_files: Path,
+    on_bytes: Callable[[int], None],
+) -> DataPackInfo:
     data_pack.clear_leftovers(reader_files)
     new_dir = data_pack.new_dir_for(reader_files)
     for pack_name in DATA_PACK_FILE_NAMES:
-        extract_subdir(pack_dir / pack_name, ZIP_READER_FILES_SUBDIR, new_dir)
+        extract_subdir(pack_dir / pack_name, ZIP_READER_FILES_SUBDIR, new_dir, on_bytes)
 
     problems = data_pack.verify_extracted(new_dir, available)
     if problems:
@@ -174,6 +236,7 @@ def _show_success_message(
     installed: DataPackInfo,
     *,
     on_dismiss: Callable[[], None] | None = None,
+    in_running_loop: bool = False,
 ) -> None:
     # Kivy only now: config_info must be constructed before any kivy import (its guard).
     from kivy import Config  # noqa: PLC0415
@@ -207,6 +270,7 @@ def _show_success_message(
         buttons=(FrameButton("OK", lambda: None),),  # closing it restarts the reader
         background_image_file=background,
         on_dismiss=on_dismiss or _restart_reader,
+        in_running_loop=in_running_loop,
     )
 
 
