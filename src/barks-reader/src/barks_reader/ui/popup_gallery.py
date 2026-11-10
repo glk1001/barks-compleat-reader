@@ -79,10 +79,12 @@ class GalleryApp(Protocol):
     """What the gallery's openers need from the running app."""
 
     @property
-    def reader_settings(self) -> ReaderSettings: ...
+    def reader_settings(self) -> ReaderSettings:
+        """The app's settings."""
 
     @property
-    def font_manager(self) -> FontManager: ...
+    def font_manager(self) -> FontManager:
+        """The app's font manager."""
 
 
 @dataclass(frozen=True, slots=True)

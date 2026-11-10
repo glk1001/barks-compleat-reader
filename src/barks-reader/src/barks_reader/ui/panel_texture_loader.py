@@ -29,9 +29,18 @@ class PanelTextureLoader:
         )
 
     def cancel(self) -> None:
+        """Cancel the load in flight, if any."""
         self._pil_loader.cancel()
 
     def load_texture(self, panel_path: PanelPath, callback: TextureLoaderCallback) -> None:
+        """Load a panel image off the UI thread and hand back its texture.
+
+        Args:
+            panel_path: The image's path, on disk or inside a zip.
+            callback: Called on the UI thread with the texture, or with None and the error.
+
+        """
+
         def pil_callback(img: Image.Image | None, err: Exception | None) -> None:
             if err is not None:
                 callback(None, err)

@@ -73,6 +73,7 @@ class MainScreenWindowHelper:
         )
 
     def toggle_screen_mode(self) -> None:
+        """Switch between fullscreen and windowed."""
         self._log_frames_drawn()
         self._mode.toggle()
 
@@ -121,6 +122,7 @@ class MainScreenWindowHelper:
         Clock.schedule_once(stop, _FRAME_LOG_SECONDS)
 
     def force_fullscreen(self) -> None:
+        """Go fullscreen whatever the window's mode is now."""
         self._mode.force_fullscreen()
 
     def exit_fullscreen(self) -> None:
@@ -179,6 +181,13 @@ class MainScreenWindowHelper:
         log_window_geometry("MainScreen fullscreen")
 
     def on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
+        """Refit the fullscreen box when the main layout is resized.
+
+        Args:
+            _instance: The layout, unused.
+            size: The layout's new size.
+
+        """
         logger.info(
             f"Main layout size changed: size = {size},"
             f" fullscreen = '{WindowManager.get_screen_mode_now()}'."
@@ -241,15 +250,18 @@ class MainScreenWindowHelper:
         self._update_fonts(self.box_size(Window.height)[1])
 
     def resize_binding(self) -> None:
+        """Follow the main layout's size from now on."""
         self._main_layout.bind(size=self.on_main_layout_size_changed)
 
     def hide_action_bar(self) -> None:
+        """Hide the main screen's action bar."""
         set_action_bar_visibility(self._action_bar, ActionBarVisibility.HIDDEN)
         logger.debug(
             f"MainScreen actionbar is hidden: self._action_bar.height = {self._action_bar.height}"
         )
 
     def show_action_bar(self) -> None:
+        """Show the main screen's action bar."""
         set_action_bar_visibility(self._action_bar, ActionBarVisibility.VISIBLE)
         logger.debug(
             f"MainScreen actionbar is visible: self.action_bar.height = {self._action_bar.height}"

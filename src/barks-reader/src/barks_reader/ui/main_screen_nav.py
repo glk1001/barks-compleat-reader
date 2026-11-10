@@ -49,9 +49,11 @@ _TITLE_RENDER_DEBOUNCE_SECS: Final = 0.2
 class TriggerEvent(Protocol):
     """A restartable one-shot timer (matches `kivy.clock.ClockEvent`)."""
 
-    def __call__(self) -> None: ...
+    def __call__(self) -> None:
+        """Start the timer, or start it again."""
 
-    def cancel(self) -> None: ...
+    def cancel(self) -> None:
+        """Stop the timer if it is pending."""
 
 
 type TriggerFactory = Callable[[Callable[[float], None], float], TriggerEvent]
@@ -109,6 +111,7 @@ class MainScreenNavigation:
 
     @property
     def is_in_bottom_focus(self) -> bool:
+        """Whether the keys are with the bottom view rather than the tree."""
         return self._focus_region == _FocusRegion.BOTTOM
 
     def on_bottom_screen_visibility_changed(self) -> None:
@@ -145,6 +148,15 @@ class MainScreenNavigation:
         self._focus_region_before_reader = None
 
     def handle_key(self, key: int) -> bool:
+        """Send a key to the menu, an open list, the bottom view or the tree, whichever has them.
+
+        Args:
+            key: The key's code.
+
+        Returns:
+            True if the key was used.
+
+        """
         if self._is_in_menu_mode():
             return self._handle_menu_key(key)
         if self._take_key_onto_an_open_list(key):
@@ -288,6 +300,7 @@ class MainScreenNavigation:
         return next((s for s in self._screens.keyboard_nav_screens if s.is_visible), None)
 
     def enter_bottom_focus(self) -> None:
+        """Give the keys to the bottom view on show, if there is one."""
         if not self._a_bottom_screen_is_visible():
             return
         self._claim_bottom_focus()
@@ -356,6 +369,7 @@ class MainScreenNavigation:
         return False
 
     def exit_bottom_focus(self) -> None:
+        """Take the keys back from the bottom view to the tree."""
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             nav_screen.exit_nav_focus()
@@ -612,6 +626,12 @@ class MainScreenNavigation:
         self._tree_view_manager.scroll_to_node(parent)
 
     def enter_bottom_focus_if_index_visible(self, keyboard_initiated: bool = True) -> None:
+        """Give the keys to the bottom screen Go Back has revealed, if the keys drove it.
+
+        Args:
+            keyboard_initiated: False for a mouse-driven Go Back, which leaves no focus ring.
+
+        """
         logger.debug(f"Current focus region: {self._focus_region}.")
         if not keyboard_initiated:
             # Mouse-driven Go Back: reveal the bottom screen but leave it without a

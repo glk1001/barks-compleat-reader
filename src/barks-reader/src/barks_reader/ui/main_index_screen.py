@@ -56,7 +56,7 @@ class _MainIndexTitleItemButton(Button):
     background_color_normal = ColorProperty((0, 0, 0, 0))
     background_color_down = ColorProperty((0, 0, 0, 0))
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.background_normal = ""
         self.background_down = ""
@@ -72,7 +72,7 @@ class _MainIndexTitleItemButton(Button):
         self.bind(size=self.setter("text_size"))
         self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
 
-    def update_canvas(self, *_args) -> None:  # noqa: ANN002
+    def update_canvas(self, *_args: object) -> None:
         canvas = cast("Canvas", self.canvas)
         canvas.before.clear()
         with canvas.before:
@@ -99,7 +99,7 @@ class MainIndexScreen(IndexScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)

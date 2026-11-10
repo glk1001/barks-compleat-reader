@@ -280,6 +280,8 @@ def open_no_data_pack_update_popup(check: UpdateCheck, on_close: Callable[[], No
 
 
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
+    """The app's home screen: the tree of titles, the view it drives and the action bar."""
+
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
     app_title = StringProperty()
@@ -415,6 +417,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return self.width
 
     def open_menu_dots(self, button: Button) -> bool:
+        """Open the three-dots menu under its button.
+
+        Args:
+            button: The action bar's menu button.
+
+        Returns:
+            True if the menu opened.
+
+        """
         return open_dropdown(self.menu_dots_dropdown, button)
 
     @override
@@ -544,6 +555,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_action_bar_visibility()
 
     def on_touch_down(self, touch: object) -> bool:
+        """Leave menu mode, and bottom focus when the touch is outside the bottom view.
+
+        Args:
+            touch: The touch, as Kivy passes it.
+
+        Returns:
+            True if a widget took the touch.
+
+        """
         if self._active:
             self._clear_menu_on_touch()
             if (
@@ -669,6 +689,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._settings_nav.refocus()
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
+        """Give the reader manager the screen it opens comics on.
+
+        Args:
+            comic_book_reader_screen: The app's comic reader screen.
+
+        """
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
 
     def request_quit(self) -> None:
@@ -713,6 +739,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         open_small_screen_popup(screen_width, screen_height)
 
     def app_closing(self) -> None:
+        """Save an open comic's page and the selected node, and leave fullscreen."""
         logger.debug(log_markers.CLOSING_APP)
 
         # A comic still open never reaches the reader's own close: save where it got to.
@@ -734,6 +761,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         #        cpi_inflate.check_for_stale_data()  # noqa: ERA001
 
     def build_tree_view(self) -> None:
+        """Build the tree of titles and start the app's initialization behind it."""
         tree_builder = ReaderTreeBuilder(
             self._reader_settings,
             self._tree_view_screen.ids.reader_tree_view,
@@ -753,6 +781,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.check_for_data_pack_update(at_boot=True)
 
     def display_settings(self, app_window: Widget, settings: Widget) -> bool:
+        """Show the settings panel over the app, with its keys and its close button.
+
+        Args:
+            app_window: The window the panel is added to.
+            settings: The settings panel.
+
+        Returns:
+            True if the panel was added; False if it was already showing.
+
+        """
         logger.debug(log_markers.DISPLAY_SETTINGS)
 
         if settings in app_window.children:
@@ -870,6 +908,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav.on_bottom_screen_visibility_changed()
 
     def on_action_bar_go_back(self) -> None:
+        """Go back to the node selected before this one (the action bar's Go Back)."""
         logger.info(log_markers.GO_BACK_SELECTED)
         # Restore keyboard focus on the revealed bottom screen only when Go Back was
         # itself keyboard-driven. This handler runs asynchronously (the menu button's
@@ -883,9 +922,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def on_action_bar_collapse(self) -> None:
+        """Close every open node of the tree (the action bar's Collapse)."""
         self._tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)
 
     def on_action_bar_change_view_images(self) -> None:
+        """Pick new images for the app icon, the views and any background on show."""
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
         self._renderer.refresh()
         if self._history_screen.is_visible:
@@ -896,6 +937,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 index_screen.update_background_image()
 
     def on_action_bar_menu_dots_selected(self, _instance: Widget, value: str) -> None:
+        """Open what was chosen from the three-dots menu.
+
+        Args:
+            _instance: The dropdown, unused.
+            value: The choice's name, as the kv file gives it.
+
+        Raises:
+            ValueError: If the choice is not one the menu has.
+
+        """
         if value == "settings":
             App.get_running_app().open_settings()
         elif value == "how-to":
@@ -909,10 +960,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             raise ValueError(msg)
 
     def open_how_to(self) -> None:
+        """Open the How To document in the document reader."""
         doc_dir = self._reader_settings.sys_file_paths.get_how_to_doc_dir()
         self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader")
 
     def open_about(self) -> None:
+        """Open the About box, putting the keys back on the menu if they opened it."""
         # Opened by the keys, the box closed puts them back on the Menu button that
         # opened it, as the settings do; opened by mouse, it leaves mouse mode alone.
         by_keyboard = self._menu_action_by_keyboard
@@ -991,12 +1044,20 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             )
 
     def toggle_screen_mode(self) -> None:
+        """Switch between fullscreen and windowed."""
         self._window_helper.toggle_screen_mode()
 
     def force_fullscreen(self) -> None:
+        """Go fullscreen whatever the window's mode is now."""
         self._window_helper.force_fullscreen()
 
     def update_fonts(self, height: int) -> None:
+        """Resize the app's fonts for a window height, and redraw the bar's title.
+
+        Args:
+            height: The window's height in pixels.
+
+        """
         self._font_manager.update_font_sizes(height)
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
@@ -1018,6 +1079,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav.focus_title_portal_after_goto(keyboard_initiated=from_keyboard)
 
     def goto_reader_icon_title(self) -> None:
+        """Go to the title the app icon's image is from.
+
+        Raises:
+            ValueError: If the icon's file names no title.
+
+        """
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
 
         # The icon's on_release fires asynchronously (trigger_action), by which time menu
@@ -1051,12 +1118,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def on_checkbox_row_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
+        """Add or drop a fun-image theme as its checkbox row is ticked or cleared.
+
+        Args:
+            checkbox_row: The row that changed; it carries its theme.
+
+        """
         self._renderer.bottom_view_alter_fun_image_themes(
             checkbox_row.theme_enum,
             ImageThemesChange.ADD if checkbox_row.active else ImageThemesChange.DISCARD,
         )
 
     def on_title_portal_image_pressed(self) -> None:
+        """Open the selected title's comic, if a title is selected and the volumes are ready."""
         if self._nav_coord.current_fanta_info is None:
             logger.error("Title portal image pressed. But no title selected.")
             return

@@ -90,7 +90,7 @@ class _ScheduledRestore:
         """Finish now if the window is at the saved rectangle: something has just moved it."""
         self._look(again=False)
 
-    def _on_window_resize(self, *_args) -> None:  # noqa: ANN002
+    def _on_window_resize(self, *_args: object) -> None:
         if not self._looking or self._finished:
             return
         if self._backend._is_window_at(self._wanted):  # noqa: SLF001

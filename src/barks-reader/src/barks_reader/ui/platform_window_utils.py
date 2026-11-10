@@ -38,6 +38,8 @@ def log_window_geometry(reason: str) -> None:
 
 
 class FullscreenEnum(Enum):
+    """The window's two modes."""
+
     FULLSCREEN = "fullscreen"
     WINDOWED = "windowed"
 
@@ -58,6 +60,8 @@ class WindowModeCallbacks:
 
 @dataclass(slots=True)
 class WindowState:
+    """The windowed size and position saved for the return from fullscreen."""
+
     # In Window.system_size units, the ones a ``Window.size =`` restore takes. Window.size
     # reads in pixels, twice as many on a Retina Mac, so saving it doubled the window
     # on leaving fullscreen.
@@ -65,10 +69,12 @@ class WindowState:
     pos: tuple[int, int] = (-1, -1)
 
     def save_state_now(self) -> None:
+        """Take the size and position from Kivy's window as it is now."""
         self.size = tuple(Window.system_size)
         self.pos = (Window.left, Window.top)
 
     def is_saved_state_same_as_current(self) -> bool:
+        """Whether Kivy's window is at the saved size and position."""
         return tuple(Window.system_size) == self.size and (Window.left, Window.top) == self.pos
 
     def is_unsaved(self) -> bool:
@@ -83,6 +89,7 @@ class WindowState:
 
     @staticmethod
     def get_current_screen_mode() -> FullscreenEnum:
+        """Return the mode Kivy's window is in now."""
         return FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
 
 
@@ -144,6 +151,12 @@ class KivyWindowBackend:
 
     @staticmethod
     def save_state(state: WindowState) -> None:
+        """Save the window's size and position as Kivy reports them.
+
+        Args:
+            state: The state to fill.
+
+        """
         state.save_state_now()
 
     @staticmethod
@@ -168,7 +181,19 @@ class KivyWindowBackend:
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
     ) -> Callable[[], None]:
-        def restore(*_args) -> None:  # noqa: ANN002
+        """Restore the saved size and position once the window system has settled.
+
+        Args:
+            state: The size and position to restore.
+            on_first_resize: Called once the window has its size.
+            on_done: Called after it, when the restore is over.
+
+        Returns:
+            A function that cancels the restore while it is still pending.
+
+        """
+
+        def restore(*_args: object) -> None:
             Window.size = state.size
             Window.left, Window.top = state.pos
             on_first_resize()
@@ -250,6 +275,7 @@ class WindowManager:
 
     @staticmethod
     def is_fullscreen_now() -> bool:
+        """Whether Kivy's window is fullscreen now."""
         return Window.fullscreen
 
     def is_fullscreen_target(self) -> bool:
@@ -276,9 +302,11 @@ class WindowManager:
 
     @staticmethod
     def get_screen_mode_now() -> str:
+        """Return the name of the mode Kivy's window is in now."""
         return WindowState.get_current_screen_mode().value
 
     def save_state_now(self) -> None:
+        """Save the window's size and position through the platform's backend."""
         self._backend.save_state(self._saved_window_state)
         logger.info(
             f"Saved window state: size = {self._saved_window_state.size}, "
@@ -522,6 +550,7 @@ class WindowModeController:
 
 
 def log_screen_metrics() -> None:
+    """Log each monitor's size, position and DPI, and Kivy's unit sizes."""
     from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
 
     logger.info("--- Detailed Monitor Metrics ---")
