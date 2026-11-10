@@ -172,6 +172,28 @@ def _modal_popup_is_open() -> bool:
 # (`ui.popup_gallery`) opens the very popup the screen does.
 
 
+def open_about_popup(
+    font_manager: FontManager,
+    reader_settings: ReaderSettings,
+    on_dismiss: Callable[[], None] | None = None,
+) -> None:
+    """Show the About box, naming the data pack installed.
+
+    Args:
+        font_manager: The app's fonts.
+        reader_settings: Where the app's art and its Reader Files folder are.
+        on_dismiss: Called when the box closes, if anything is to follow it.
+
+    """
+    installed = data_pack.read_installed(reader_settings.reader_files_dir)
+    show_about_box(
+        font_manager,
+        reader_settings.sys_file_paths.get_app_identity_image_file(),
+        on_dismiss=on_dismiss,
+        data_pack_text=data_pack.installed_version_text(installed),
+    )
+
+
 def open_quit_popup(bg_image: str, on_quit: Callable[[], None]) -> None:
     """Ask before quitting the app.
 
@@ -888,12 +910,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # Opened by the keys, the box closed puts them back on the Menu button that
         # opened it, as the settings do; opened by mouse, it leaves mouse mode alone.
         by_keyboard = self._menu_action_by_keyboard
-        installed = data_pack.read_installed(self._reader_settings.reader_files_dir)
-        show_about_box(
+        open_about_popup(
             self._font_manager,
-            self._reader_settings.sys_file_paths.get_app_identity_image_file(),
+            self._reader_settings,
             on_dismiss=self._enter_menu_mode if by_keyboard else None,
-            data_pack_text=data_pack.installed_version_text(installed),
         )
 
     def check_for_data_pack_update(self, *, at_boot: bool) -> None:

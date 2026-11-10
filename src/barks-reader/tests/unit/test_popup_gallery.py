@@ -20,7 +20,8 @@ from barks_reader.core.popup_gallery import (
 )
 from barks_reader.core.user_error_messages import build_error_presentation
 from barks_reader.core.user_error_types import ErrorTypes
-from barks_reader.ui import popup_frame, popup_gallery
+from barks_reader.ui import main_screen as main_screen_module
+from barks_reader.ui import popup_frame, popup_gallery, request_service
 from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.popup_gallery import GALLERY, GalleryPopup
 from kivy.clock import Clock
@@ -113,6 +114,23 @@ class TestShowPopup:
         assert log_markers.POPUP_GALLERY_SHOWN.format(request="7", name="quit") in loguru_sink
 
 
+def test_the_about_box_in_the_gallery_is_opened_by_the_main_screens_own_function() -> None:
+    """Built by lines of its own, it kept showing the old box when the screen's changed."""
+    app = MagicMock()
+    with (
+        patch.object(main_screen_module, "show_about_box") as show,
+        patch.object(main_screen_module.data_pack, "read_installed", return_value=None) as read,
+    ):
+        popup_gallery._open_about(app)  # noqa: SLF001
+
+    read.assert_called_once_with(app.reader_settings.reader_files_dir)
+    assert show.call_args.args[0] is app.font_manager
+    assert show.call_args.kwargs == {
+        "on_dismiss": None,
+        "data_pack_text": "Data pack: not versioned",
+    }
+
+
 class TestService:
     def test_nothing_runs_without_the_variable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(POPUP_GALLERY_ENV_VAR, raising=False)
@@ -127,7 +145,7 @@ class TestService:
         with patch.object(Clock, "schedule_interval") as schedule:
             assert popup_gallery.install_popup_gallery_service(app) is True
         poll = schedule.call_args.args[0]
-        assert schedule.call_args.args[1] == popup_gallery.POLL_SECS
+        assert schedule.call_args.args[1] == request_service.POLL_SECS
 
         request_file.write_text(request_text("2", "about"), encoding="utf-8")
         with patch.object(popup_gallery, "show_popup") as show:

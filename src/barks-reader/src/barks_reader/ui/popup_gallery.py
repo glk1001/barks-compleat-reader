@@ -36,10 +36,9 @@ from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from loguru import logger
 
-from barks_reader.core import data_pack, log_markers
+from barks_reader.core import log_markers
 from barks_reader.core.data_pack import DataPackInfo, UpdateCheck, UpdateStatus
 from barks_reader.core.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
-from barks_reader.core.memory_census import take_request
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
     POPUP_GALLERY_ENV_VAR,
@@ -50,16 +49,17 @@ from barks_reader.core.popup_gallery import (
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
-from .about_box import show_about_box
 from .alt_escape_capture_popup import AltEscapeCapturePopup
 from .history_screen import open_clear_history_popup, open_delete_from_history_popup
 from .index_screen import create_speech_bubble_popup, show_speech_bubbles_popup
 from .main_screen import (
+    open_about_popup,
     open_data_pack_offer_popup,
     open_no_data_pack_update_popup,
     open_quit_popup,
     open_small_screen_popup,
 )
+from .request_service import install_request_service
 from .settings_fix import SettingNumberPopup, SettingOptionsPopup, open_folder_chooser_popup
 from .user_error_handler import UserErrorHandler
 
@@ -71,10 +71,7 @@ if TYPE_CHECKING:
 
     from .font_manager import FontManager
 
-# A script asks, then waits: four looks a second answer well inside its timeout.
-POLL_SECS = 0.25
-
-# The installed poll or key handler, held here because Kivy holds them only weakly.
+# The live gallery or a popup's key handler, held here because Kivy holds them only weakly.
 _SERVICE: list[object] = []
 
 
@@ -178,12 +175,7 @@ def _open_user_error(error_type: ErrorTypes) -> Callable[[GalleryApp], None]:
 
 
 def _open_about(app: GalleryApp) -> None:
-    installed = data_pack.read_installed(app.reader_settings.reader_files_dir)
-    show_about_box(
-        app.font_manager,
-        app.reader_settings.sys_file_paths.get_app_identity_image_file(),
-        data_pack_text=data_pack.installed_version_text(installed),
-    )
+    open_about_popup(app.font_manager, app.reader_settings)
 
 
 def _open_speech_bubbles(app: GalleryApp) -> None:
@@ -359,19 +351,12 @@ def install_popup_gallery_service(app: GalleryApp) -> bool:
         logger.info(log_markers.POPUP_GALLERY_LIVE.format(count=len(GALLERY)))
         return True
 
-    request_file = Path(mode)
-
-    def poll(_dt: float) -> None:
-        text = take_request(request_file)
-        if text is None:
-            return
+    def answer(text: str, _out_dir: Path) -> None:
         parsed = parse_request(text)
         if parsed is None:
             logger.warning(log_markers.POPUP_GALLERY_UNKNOWN.format(request="?", name=text))
             return
         show_popup(app, parsed[1], request=parsed[0])
 
-    _SERVICE.append(poll)
-    Clock.schedule_interval(poll, POLL_SECS)
-    logger.info(f"Popup gallery: answering requests in {request_file}.")
-    return True
+    # Any other value of the variable is the file a script writes its requests to.
+    return install_request_service(POPUP_GALLERY_ENV_VAR, "Popup gallery", answer)
