@@ -157,23 +157,12 @@ class MainScreenNavigation:
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
-        if self._top_goto_focused:
+        if self._top_goto_still_has_the_keys():
             return self._handle_top_goto_key(key)
         if is_escape_key(key):
             self._enter_menu_mode()
         elif key == KEY_UP:
-            # Up from the first tree node lands on the top-view goto arrow (when it has
-            # a title); otherwise the normal move (which selects the last node when
-            # nothing is selected) is preserved.
-            if self._at_first_tree_node():
-                if self._tree_view_screen.is_top_goto_active:
-                    self._enter_top_goto_focus()
-                else:
-                    # Logged so a driver waiting on Up's outcome has a line either way.
-                    logger.debug(log_markers.TOP_GOTO_ARROW_INACTIVE)
-                    self._tree_nav_move(-1)
-            else:
-                self._tree_nav_move(-1)
+            self._tree_nav_up()
         elif key == KEY_DOWN:
             self._tree_nav_move(1)
         elif key == KEY_LEFT:
@@ -187,7 +176,36 @@ class MainScreenNavigation:
             return False
         return True
 
+    def _tree_nav_up(self) -> None:
+        """Move up the tree, or from its first node onto the top-view goto arrow.
+
+        The arrow takes the keys only when it has a title; otherwise the normal move
+        (which selects the last node when nothing is selected) is preserved.
+        """
+        if not self._at_first_tree_node():
+            self._tree_nav_move(-1)
+        elif self._tree_view_screen.is_top_goto_active:
+            self._enter_top_goto_focus()
+        else:
+            # Logged so a driver waiting on Up's outcome has a line either way.
+            logger.debug(log_markers.TOP_GOTO_ARROW_INACTIVE)
+            self._tree_nav_move(-1)
+
     # --- Top-view goto arrow (a focus sub-stop of the TREE region) ---
+
+    def _top_goto_still_has_the_keys(self) -> bool:
+        """Return whether the keys are on the top-view arrow, and it still has a title.
+
+        A mouse can take the title away under the ring (a click on a tree node, Change
+        Pics): the ring was stranded there, and Enter fired a goto with no title. The
+        ring is dropped then, and the key is the tree's again.
+        """
+        if not self._top_goto_focused:
+            return False
+        if self._tree_view_screen.is_top_goto_active:
+            return True
+        self._exit_top_goto_focus()
+        return False
 
     def _at_first_tree_node(self) -> bool:
         """Return whether a node is selected and it is the first visible tree node."""

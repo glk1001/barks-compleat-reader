@@ -1385,6 +1385,21 @@ class TestTopGotoFocus:
         nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
         assert nav._top_goto_focused is False
 
+    def test_an_arrow_left_with_no_title_gives_the_keys_back_to_the_tree(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """A click took the top view's title away under the ring: Enter then had no title."""
+        nav._top_goto_focused = True
+        nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
+
+        with patch.object(nav, "_tree_nav_activate") as activate:
+            assert nav._handle_tree_key(KEY_ENTER) is True
+
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is False
+        activate.assert_called_once_with()
+
     def test_down_on_arrow_returns_to_tree(self, nav: MainScreenNavigation) -> None:
         nav._top_goto_focused = True
 
