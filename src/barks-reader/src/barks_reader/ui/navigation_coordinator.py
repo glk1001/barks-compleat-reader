@@ -175,19 +175,14 @@ class NavigationCoordinator:
             preserve_top_view=preserve_top_view,
         )
         title = target.fanta_info.comic_book_info.title
-        offered_by_tag = target.tag is not None and self._tag_offers_pages(target.tag, title)
-        if not offered_by_tag:  # else the tag's offer is the one, and the one logged
+        # A tag's pages for the title, looked up once: only a tag has any, not a group.
+        tagged_pages = get_tagged_pages((target.tag,), title) if type(target.tag) is Tags else []
+        if not tagged_pages:  # else the tag's offer is the one, and the one logged
             self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 
         if target.tag is not None:
-            self._set_tag_goto_page_checkbox(
-                target.tag, target.fanta_info.comic_book_info.get_title_str()
-            )
-
-    @staticmethod
-    def _tag_offers_pages(tag: Tags | TagGroups, title: Titles) -> bool:
-        return type(tag) is Tags and bool(get_tagged_pages((tag,), title))
+            self._set_tag_goto_page_checkbox(target.tag, title, tagged_pages)
 
     # === Navigation paths ===
 
@@ -373,14 +368,10 @@ class NavigationCoordinator:
         try:
             comic_book = self._get_comic_book()
         except TitleNotFoundError as e:
-            logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
-            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
+            self._report_title_not_found(e, STR_TITLE_TO_ENUM[e.title])
             return False
 
-        self._on_active_changed(False)  # noqa: FBT003
-        self._read_comic_view_state = None
-        self._read_comic_tagged_pages = tuple(self._bottom_title_view_screen.tagged_pages)
+        self._leave_for_the_reader(tagged_pages=self._bottom_title_view_screen.tagged_pages)
 
         self._comic_reader_manager.read_barks_comic_book(
             self._current_fanta_info,
@@ -420,14 +411,10 @@ class NavigationCoordinator:
         try:
             comic_book = self._comics_database.get_comic_book(ENUM_TO_STR_TITLE[collection])
         except TitleNotFoundError as e:
-            logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
-            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
+            self._report_title_not_found(e, STR_TITLE_TO_ENUM[e.title])
             return False
 
-        self._on_active_changed(False)  # noqa: FBT003
-        self._read_comic_view_state = None
-        self._read_comic_tagged_pages = ()
+        self._leave_for_the_reader()
 
         # Open only the member's year-range group so the loader holds ~40-55 pages
         # instead of the whole 128/186-page collection.
@@ -452,9 +439,7 @@ class NavigationCoordinator:
                 leave the main screen as it was when the article opened.
 
         """
-        self._on_active_changed(False)  # noqa: FBT003
-        self._read_comic_view_state = return_view_state
-        self._read_comic_tagged_pages = ()
+        self._leave_for_the_reader(return_view_state)
 
         page_to_first_goto = (
             "i" if article_title == Titles.RICH_TOMMASO___ON_COLORING_BARKS else "1"
@@ -464,11 +449,30 @@ class NavigationCoordinator:
         except TitleNotFoundError as e:
             # No reader came up over the main screen: left inactive, it took no key,
             # and its action bar went a second later.
-            logger.error(e)
             self._read_comic_view_state = None
             self._on_active_changed(True)  # noqa: FBT003
-            error_info = ErrorInfo(file_volume=-1, title=article_title)
-            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
+            self._report_title_not_found(e, article_title)
+
+    def _leave_for_the_reader(
+        self, return_view_state: ViewStates | None = None, tagged_pages: Sequence[str] = ()
+    ) -> None:
+        """Make the main screen inactive for a comic reader about to open over it.
+
+        Args:
+            return_view_state: The view to render when the reader closes, or None to
+                leave the main screen as it is.
+            tagged_pages: The pages a tag marks in the comic, kept for its close.
+
+        """
+        self._on_active_changed(False)  # noqa: FBT003
+        self._read_comic_view_state = return_view_state
+        self._read_comic_tagged_pages = tuple(tagged_pages)
+
+    def _report_title_not_found(self, error: TitleNotFoundError, title: Titles) -> None:
+        """Log `error` and tell the user the volume holding `title` is not available."""
+        logger.error(error)
+        error_info = ErrorInfo(file_volume=-1, title=title)
+        self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
 
     def open_document(
         self,
@@ -563,16 +567,19 @@ class NavigationCoordinator:
             self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 
-    def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
+    def _set_tag_goto_page_checkbox(
+        self, tag: Tags | TagGroups, title: Titles, tagged_pages: Sequence[str]
+    ) -> None:
+        """Offer the first of `tagged_pages`, the pages of `title` that `tag` is on, if any."""
+        title_str = ENUM_TO_STR_TITLE[title]
         logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
 
-        if type(tag) is Tags:
-            title = STR_TITLE_TO_ENUM[ComicBookInfo.get_title_str_from_display_title(title_str)]
-            tagged_pages = get_tagged_pages((tag,), title)
-            if not tagged_pages:
-                logger.debug(f'No pages for ({tag.value}, "{title_str}").')
-            else:
-                self._offer_tagged_pages(title, tagged_pages[0], tagged_pages)
+        if type(tag) is not Tags:
+            return
+        if not tagged_pages:
+            logger.debug(f'No pages for ({tag.value}, "{title_str}").')
+        else:
+            self._offer_tagged_pages(title, tagged_pages[0], tagged_pages)
 
     def _offer_tagged_pages(self, title: Titles, page: str, tagged_pages: Sequence[str]) -> None:
         """Offer `page` among `tagged_pages` on the goto-page row, the page last read kept.

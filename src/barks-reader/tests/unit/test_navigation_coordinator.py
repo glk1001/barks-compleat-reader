@@ -833,7 +833,7 @@ def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
     nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], loguru_sink: list[str]
 ) -> None:
     with patch.object(barks_reader.core.reader_utils, "BARKS_TAGGED_PAGES", {}):
-        nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, "Back to the Klondike")
+        nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE, [])
     mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
     assert 'No pages for (Alaska, "Back to the Klondike").' in loguru_sink
 
