@@ -135,6 +135,7 @@ def _get_error_content(  # noqa: C901
             )
             self.popup_ref = None
             self._base_title = ""
+            self._title_reset_event: Any = None
             self.severity = error_severity.lower()
             self.details_visible = False
 
@@ -288,7 +289,12 @@ def _get_error_content(  # noqa: C901
             self._base_title = self._base_title or self.popup_ref.title
             self.popup_ref.title = text
             base = self._base_title
-            Clock.schedule_once(lambda _dt: setattr(self.popup_ref, "title", base), seconds)
+            # One reset at a time: an earlier flash's would cut this one short.
+            if self._title_reset_event is not None:
+                self._title_reset_event.cancel()
+            self._title_reset_event = Clock.schedule_once(
+                lambda _dt: setattr(self.popup_ref, "title", base), seconds
+            )
 
         def _update_severity_bgnd(self, instance: Widget, _) -> None:  # noqa: ANN001
             """Keep severity banner background aligned with label."""

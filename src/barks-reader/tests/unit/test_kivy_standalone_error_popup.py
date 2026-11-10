@@ -244,6 +244,19 @@ class TestCopy:
         _run_last_scheduled(clock)
         assert content.popup_ref.title == "Installer Error"
 
+    @pytest.mark.usefixtures("clipboard")
+    def test_news_on_news_cancels_the_first_reset(self, clock: MagicMock) -> None:
+        """The first news's timer cut the second short: it put the title back early."""
+        content = _content()
+        content.popup_ref = MagicMock(title="Installer Error")
+        content.copy_to_clipboard()
+        first_reset = clock.schedule_once.return_value
+        first_reset.cancel.assert_not_called()
+
+        content.copy_to_clipboard()
+
+        first_reset.cancel.assert_called_once_with()
+
     @pytest.mark.usefixtures("clock")
     def test_a_copy_without_a_popup_is_only_logged(
         self, clipboard: MagicMock, loguru_sink: list[str]
