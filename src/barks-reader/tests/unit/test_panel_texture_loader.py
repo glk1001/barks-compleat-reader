@@ -112,3 +112,25 @@ class TestLoadTexture:
             )
             mock_tex.flip_vertical.assert_called_once()
             assert result is mock_tex
+
+
+class TestRealTexture:
+    """The image and the texture are real here: the tests above stand both in."""
+
+    def test_an_rgba_images_pixels_are_the_textures_top_row_first(self) -> None:
+        red, green, blue, clear = (255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (9, 8, 7, 0)
+        pixels = bytes([*red, *green, *blue, *clear])  # top row, then bottom row
+        image = Image.new("RGBA", (2, 2), red)
+        image.paste(green, (1, 0, 2, 1))
+        image.paste(blue, (0, 1, 1, 2))
+        image.paste(clear, (1, 1, 2, 2))
+        assert image.tobytes() == pixels
+
+        texture = PanelTextureLoader._pil_to_texture(image)
+
+        assert texture.size == (2, 2)
+        assert texture.colorfmt == "rgba"
+        assert texture.pixels == pixels
+        # Kivy's origin is bottom-left: flipped, the image's top row is drawn at the top.
+        bottom_left_v, top_left_v = texture.tex_coords[1], texture.tex_coords[5]
+        assert (bottom_left_v, top_left_v) == (1.0, 0.0)
