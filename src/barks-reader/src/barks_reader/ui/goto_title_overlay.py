@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from barks_fantagraphics.speech_markup import escape_markup
 from kivy.app import App
 from kivy.factory import Factory
 from kivy.metrics import dp, sp
@@ -22,6 +23,11 @@ from .ui_helpers import TouchExpandedButton
 GOTO_TITLE_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
 
 OVERLAY_BUTTON_WIDTH = ARROW_WIDTH
+
+
+def _italic(title: str) -> str:
+    """Return a title as the label's markup: in italics, its own brackets kept as text."""
+    return f"[i]{escape_markup(title)}[/i]"
 
 
 class GotoTitleOverlay(FloatLayout):
@@ -76,7 +82,7 @@ class GotoTitleOverlay(FloatLayout):
 
     def _create_label(self) -> Factory.BgColorLabel:
         label = Factory.BgColorLabel(
-            text="[i]" + self.current_title_str + "[/i]",
+            text=_italic(self.current_title_str),
             markup=True,
             color=self.label_color,
             font_size=sp(15),
@@ -87,7 +93,7 @@ class GotoTitleOverlay(FloatLayout):
         label.bind(texture_size=label.setter("size"))
 
         self.bind(
-            current_title_str=lambda _inst, val: setattr(label, "text", "[i]" + val + "[/i]"),
+            current_title_str=lambda _inst, val: setattr(label, "text", _italic(val)),
         )
         self.bind(label_color=label.setter("color"))
         self.bind(label_bg_color=label.setter("background_color"))
