@@ -40,7 +40,6 @@ from .main_screen_window import MainScreenWindowHelper
 from .navigation_coordinator import NavigationCoordinator
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
-from .user_error_handler import UserErrorHandler
 from .view_renderer import ViewRenderer
 
 if TYPE_CHECKING:
@@ -93,7 +92,8 @@ def build_main_screen_components(
     screens.history.set_history_store(reading_history_store)
     special_fanta_overrides = SpecialFantaOverrides(reader_settings)
 
-    user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
+    # The app's one handler, the index screens' too: a second was made here, of the same parts.
+    user_error_handler = host._user_error_handler
 
     panel_segments_adapter = FantagraphicsPanelSegmentsAdapter(
         comics_database,
