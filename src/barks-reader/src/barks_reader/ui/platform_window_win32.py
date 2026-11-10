@@ -110,9 +110,15 @@ class Win32WindowBackend:
         def attempt(attempts_left: int) -> None:
             if Window.fullscreen or not self._hwnd:
                 return  # a fullscreen transition has taken over
-            self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-            rect = RECT()
-            self._get_window_rect(self._hwnd, rect)
+            # Best effort: raised into the fullscreen exit that calls this, a failed
+            # call left the scheduled restore unscheduled and the transition open.
+            try:
+                self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
+                rect = RECT()
+                self._get_window_rect(self._hwnd, rect)
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Win32 MoveWindow failed as fullscreen ended: {e}")
+                return
             if (rect.left, rect.top, rect.right, rect.bottom) == wanted:
                 logger.debug(f"Win32: Window at {state.size}, {state.pos} after fullscreen exit.")
             elif attempts_left > 1:
