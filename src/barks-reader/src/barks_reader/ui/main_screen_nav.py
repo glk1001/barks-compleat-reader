@@ -96,7 +96,6 @@ class MainScreenNavigation:
 
         self._focus_region = _FocusRegion.TREE
         self._focus_region_before_reader: _FocusRegion | None = None
-        self._auto_exited_bottom_focus = False
         # Sub-stop of the TREE region: focus parked on the top-view goto arrow.
         self._top_goto_focused = False
 
@@ -111,11 +110,6 @@ class MainScreenNavigation:
     def is_in_bottom_focus(self) -> bool:
         return self._focus_region == _FocusRegion.BOTTOM
 
-    @property
-    def was_bottom_focus_auto_exited(self) -> bool:
-        """True if bottom focus was exited because the active screen became invisible."""
-        return self._auto_exited_bottom_focus
-
     def on_bottom_screen_visibility_changed(self) -> None:
         """Exit bottom focus if the active bottom screen is no longer visible."""
         if self._focus_region != _FocusRegion.BOTTOM:
@@ -127,8 +121,6 @@ class MainScreenNavigation:
         )
         if not visible:
             self.exit_bottom_focus()
-            # Set *after* exit_bottom_focus (which clears the flag).
-            self._auto_exited_bottom_focus = True
             logger.debug("Auto-exited bottom focus: active screen no longer visible.")
 
     def save_focus_before_reader(self) -> None:
@@ -322,7 +314,6 @@ class MainScreenNavigation:
         )
         if not visible:
             return
-        self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         nav_screen = self._get_active_nav_screen()
@@ -362,7 +353,6 @@ class MainScreenNavigation:
 
     def _claim_bottom_focus(self) -> None:
         """Make the bottom screen the keys' region, its own focus state left to it."""
-        self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
 
@@ -394,7 +384,6 @@ class MainScreenNavigation:
         self._bottom_title_view_screen.exit_nav_focus()
         self._fun_image_view_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
-        self._auto_exited_bottom_focus = False
         self._clear_bottom_focus_highlight()
         logger.debug(log_markers.EXITED_BOTTOM_FOCUS)
 
@@ -536,7 +525,6 @@ class MainScreenNavigation:
         if not self._bottom_title_view_screen.is_visible:
             logger.debug("Title portal focus skipped: the title view is not visible.")
             return
-        self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
@@ -648,7 +636,6 @@ class MainScreenNavigation:
 
     def enter_bottom_focus_if_index_visible(self, keyboard_initiated: bool = True) -> None:
         logger.debug(f"Current focus region: {self._focus_region}.")
-        self._auto_exited_bottom_focus = False
         if not keyboard_initiated:
             # Mouse-driven Go Back: reveal the bottom screen but leave it without a
             # keyboard focus border, so the ring only appears during keyboard nav.

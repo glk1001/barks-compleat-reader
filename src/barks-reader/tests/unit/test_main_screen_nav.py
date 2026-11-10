@@ -878,12 +878,9 @@ class TestClaimBottomFocusForSearch:
         self, nav: MainScreenNavigation, loguru_sink: list[str]
     ) -> None:
         nav._search_screen.is_visible = True
-        nav._auto_exited_bottom_focus = True
-
         nav._search_screen.on_request_nav_focus()
 
         assert nav.is_in_bottom_focus
-        assert not nav.was_bottom_focus_auto_exited
         nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[unresolved-attribute]
         # Adopting, not entering: the search screen's own focus state is left alone.
         nav._search_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
@@ -1075,7 +1072,6 @@ class TestOnBottomScreenVisibilityChanged:
         nav.on_bottom_screen_visibility_changed()
 
         assert not nav.is_in_bottom_focus
-        assert nav.was_bottom_focus_auto_exited
 
     def test_noop_when_in_tree_focus(self, nav: MainScreenNavigation) -> None:
         assert not nav.is_in_bottom_focus
@@ -1083,7 +1079,6 @@ class TestOnBottomScreenVisibilityChanged:
         nav.on_bottom_screen_visibility_changed()
 
         assert not nav.is_in_bottom_focus
-        assert not nav.was_bottom_focus_auto_exited
 
     def test_noop_when_screen_still_visible(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = True
@@ -1100,46 +1095,6 @@ class TestOnBottomScreenVisibilityChanged:
         nav.on_bottom_screen_visibility_changed()
 
         assert nav.is_in_bottom_focus
-        assert not nav.was_bottom_focus_auto_exited
-
-    def test_auto_exit_flag_cleared_on_enter_bottom_focus(self, nav: MainScreenNavigation) -> None:
-        # Simulate auto-exit.
-        nav._main_index_screen.is_visible = True
-        nav._fun_image_view_screen.is_visible = False
-        nav._bottom_title_view_screen.is_visible = False
-        nav._speech_index_screen.is_visible = False
-        nav._names_index_screen.is_visible = False
-        nav._locations_index_screen.is_visible = False
-        nav._statistics_screen.is_visible = False
-        nav._history_screen.is_visible = False
-        nav._search_screen.is_visible = False
-        nav.enter_bottom_focus()
-        nav._main_index_screen.is_visible = False
-        nav.on_bottom_screen_visibility_changed()
-        assert nav.was_bottom_focus_auto_exited
-
-        # Re-enter bottom focus — flag should clear.
-        nav._main_index_screen.is_visible = True
-        nav.enter_bottom_focus()
-
-        assert nav.is_in_bottom_focus
-        assert not nav.was_bottom_focus_auto_exited
-
-    def test_auto_exit_flag_cleared_on_explicit_exit(self, nav: MainScreenNavigation) -> None:
-        nav._main_index_screen.is_visible = True
-        nav._fun_image_view_screen.is_visible = False
-        nav._bottom_title_view_screen.is_visible = False
-        nav._speech_index_screen.is_visible = False
-        nav._names_index_screen.is_visible = False
-        nav._locations_index_screen.is_visible = False
-        nav._statistics_screen.is_visible = False
-        nav._history_screen.is_visible = False
-        nav._search_screen.is_visible = False
-        nav.enter_bottom_focus()
-
-        nav.exit_bottom_focus()
-
-        assert not nav.was_bottom_focus_auto_exited
 
 
 class TestTitleViewFocusHandoff:
