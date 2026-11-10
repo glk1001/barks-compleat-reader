@@ -7,7 +7,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import harness, nodes
+from barks_gui import harness, nodes, taps
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -285,6 +285,48 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     d.key_then_wait(set_to, "Return")
     _close_settings(d)
     assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
+
+
+VIRTUAL_KEYBOARD_SETTING = "use_virtual_keyboard"
+DOWNS_TO_VIRTUAL_KEYBOARD = 15
+# The search box logs how it was pressed only while the on-screen keyboard is allowed.
+BOX_PRESSED = f"{pattern(markers.TEXT_INPUT_CLICKED)}|{pattern(markers.TEXT_INPUT_TOUCHED)}"
+
+
+def _set_virtual_keyboard(d: Driver, value: str) -> None:
+    """From the tree, open Settings, flip the virtual keyboard switch to `value`, close."""
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_VIRTUAL_KEYBOARD)
+    d.key_then_wait(
+        pattern(markers.CONFIG_CHANGE, key=VIRTUAL_KEYBOARD_SETTING, value=value), "Return"
+    )
+    _close_settings(d)
+
+
+def test_the_virtual_keyboard_turned_on_in_the_settings_works_without_a_restart(
+    boot: AppBoot,
+) -> None:
+    """The search box picks its keyboard by how it is pressed as soon as the switch is on."""
+    d = boot(nodes.TITLE_SEARCH, ini={VIRTUAL_KEYBOARD_SETTING: "0"})
+    _set_virtual_keyboard(d, "1")
+    taps.tap_then_wait(d, BOX_PRESSED, kv_id="title_search_input")
+    if taps.touch_mode():
+        d.settle()
+        _, shown = taps.targets(d)
+        assert [t for t in shown if t.kind == "VKeyboard"], "a touch shows the keyboard"
+
+
+def test_the_virtual_keyboard_turned_off_in_the_settings_stops_without_a_restart(
+    boot: AppBoot,
+) -> None:
+    """Off, the search box takes a press as any other box, and no keyboard is on show."""
+    d = boot(nodes.TITLE_SEARCH, ini={VIRTUAL_KEYBOARD_SETTING: "1"})
+    _set_virtual_keyboard(d, "0")
+    taps.tap(d, kv_id="title_search_input")
+    d.expect_no_new(BOX_PRESSED)
+    _, shown = taps.targets(d)
+    assert not [t for t in shown if t.kind == "VKeyboard"], "turned off, no keyboard shows"
 
 
 def test_a_number_setting_opens_its_entry_box_and_escape_leaves_it_unchanged(

@@ -286,7 +286,7 @@ are:
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |
 | *Alternate Escape Key*                        | Extra key that behaves like Escape, for remotes without one    |
-| *Use Virtual Keyboard*                        | Always shows an on-screen keyboard when tapping search fields, even with a physical keyboard connected (requires restart) |
+| *Use Virtual Keyboard*                        | Always shows an on-screen keyboard when tapping search fields, even with a physical keyboard connected                    |
 | *First Use of Reader*                         | Reset this to re-run the first-launch setup (requires restart) |
 | *Log Level*                                   | Controls how much is written to the log file                   |
 | *Controversial Censorship Fixes*              | Individual toggles for some censorship fixes                   |

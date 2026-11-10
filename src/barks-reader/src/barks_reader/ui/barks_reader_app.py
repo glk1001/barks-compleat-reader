@@ -39,6 +39,7 @@ from barks_reader.core.reader_settings import (
     ALT_ESCAPE_KEY,
     BARKS_READER_SECTION,
     MAIN_SCREEN_LAYOUT,
+    USE_VIRTUAL_KEYBOARD,
 )
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -250,6 +251,10 @@ class BarksReaderApp(App):
                     set_alt_escape_key(0)
             elif key == MAIN_SCREEN_LAYOUT:
                 self._window_geometry.set_layout_setting(str(value))
+            elif key == USE_VIRTUAL_KEYBOARD:
+                _apply_virtual_keyboard_setting(
+                    Window, on=self.reader_settings.use_virtual_keyboard
+                )
             settings_notifier.notify(section, key)
 
     @override
@@ -323,18 +328,9 @@ class BarksReaderApp(App):
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
-            _configure_virtual_keyboard(Window)
-            if PLATFORM == Platform.LINUX:
-                self._enable_linux_touchscreen_input()
+            _apply_virtual_keyboard_setting(Window, on=True)
 
         self.reader_settings.validate_settings()
-
-    @staticmethod
-    def _enable_linux_touchscreen_input() -> None:
-        """Register MTD providers so touchscreen taps can be distinguished from mouse clicks."""
-        from .touch_keyboard import enable_linux_touchscreen_input  # noqa: PLC0415
-
-        enable_linux_touchscreen_input()
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
@@ -533,6 +529,37 @@ class BarksReaderApp(App):
             self._main_screen.warn_if_screen_too_small(monitor.width_pixels, monitor.height_pixels)
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
+
+
+def _apply_virtual_keyboard_setting(window: Any, *, on: bool) -> None:  # noqa: ANN401
+    """Turn the on-screen keyboard on or off, at start-up or as the setting changes.
+
+    Args:
+        window: The Kivy window.
+        on: Whether a tap on a text box is to show the on-screen keyboard.
+
+    """
+    if not on:
+        _configure_system_keyboard(window)
+        return
+    _configure_virtual_keyboard(window)
+    if PLATFORM == Platform.LINUX:
+        # MTD providers, so a touchscreen tap can be told from a mouse click.
+        from .touch_keyboard import enable_linux_touchscreen_input  # noqa: PLC0415
+
+        enable_linux_touchscreen_input()
+
+
+def _configure_system_keyboard(window: Any) -> None:  # noqa: ANN401
+    """Put the window back in Kivy's "system" keyboard mode: no on-screen keyboard.
+
+    Any keyboard on show is released first, so a docked one does not stay behind.
+    """
+    window.release_all_keyboards()
+    window.allow_vkeyboard = False
+    window.docked_vkeyboard = False
+    window.single_vkeyboard = True
+    window.use_syskeyboard = True
 
 
 def _configure_virtual_keyboard(window: Any) -> None:  # noqa: ANN401

@@ -628,7 +628,7 @@ _FIELDS: tuple[FieldSpec, ...] = (
         key=USE_VIRTUAL_KEYBOARD,
         title="Use Virtual Keyboard",
         desc="Always show an on-screen keyboard when tapping search fields, even"
-        " if a physical keyboard is connected. (Restart required.)",
+        " if a physical keyboard is connected.",
         kind=FieldKind.BOOL,
         config_default=0,
     ),

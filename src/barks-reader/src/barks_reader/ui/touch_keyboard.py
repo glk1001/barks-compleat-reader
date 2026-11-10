@@ -43,6 +43,8 @@ if TYPE_CHECKING:
 _ABS_MT_POSITION_X = 0x35
 _EXCLUDE_DEVICE_NAMES = {"touchpad", "mouse", "pen"}
 _SYSFS_INPUT = Path("/sys/class/input")
+# Whether the touchscreen providers and the ``Window.on_motion`` patch are in place.
+_touchscreen_input_enabled = False
 
 
 def _find_touchscreen_devices() -> list[str]:
@@ -94,9 +96,15 @@ def enable_linux_touchscreen_input() -> None:
     as a "hardware touch happened" signal — and prevent them from being
     dispatched to the widget tree.
 
-    Must be called after ``EventLoop.ensure_window()`` and before
-    ``EventLoop.start()`` (i.e. during ``App.build()``).
+    Must be called after ``EventLoop.ensure_window()``: during ``App.build()``, or
+    later when the setting is turned on. The event loop starts the providers it has
+    when it starts, so one registered after that is started here. A second call does
+    nothing: the providers and the patch stay for the life of the process.
     """
+    global _touchscreen_input_enabled  # noqa: PLW0603
+    if _touchscreen_input_enabled:
+        return
+
     from kivy.base import EventLoop  # noqa: PLC0415
     from kivy.input.factory import MotionEventFactory  # noqa: PLC0415
 
@@ -117,6 +125,8 @@ def enable_linux_touchscreen_input() -> None:
         provider = provider_cls(f"touch_{name}", device_path)
         if provider:
             EventLoop.add_input_provider(provider)
+            if EventLoop.status == "started":
+                provider.start()
             logger.info(f"Registered touchscreen input provider for {device_path}.")
 
     original_on_motion = Window.on_motion
@@ -128,6 +138,7 @@ def enable_linux_touchscreen_input() -> None:
         return original_on_motion(etype, me)
 
     Window.on_motion = _touch_intercepting_on_motion  # type: ignore[assignment]
+    _touchscreen_input_enabled = True
 
 
 # ---------------------------------------------------------------------------

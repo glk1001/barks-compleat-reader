@@ -171,8 +171,30 @@ class TestFindTouchscreenDevices:
 class TestEnableLinuxTouchscreenInput:
     @pytest.fixture
     def window(self) -> Iterator[MagicMock]:
-        with patch.object(touch_keyboard, "Window") as window:
+        with (
+            patch.object(touch_keyboard, "Window") as window,
+            patch.object(touch_keyboard, "_touchscreen_input_enabled", new=False),
+        ):
             yield window
+
+    def test_a_second_call_registers_nothing_more(self, window: MagicMock) -> None:
+        self._enable({"mtdev": MagicMock()}, ["/dev/input/event4"])
+        patched = window.on_motion
+        add_input_provider = self._enable({"mtdev": MagicMock()}, ["/dev/input/event4"])
+        add_input_provider.assert_not_called()
+        assert window.on_motion is patched
+
+    @pytest.mark.parametrize(("status", "started"), [("started", True), ("idle", False)])
+    def test_a_provider_registered_after_the_loop_started_is_started_here(
+        self,
+        window: MagicMock,  # noqa: ARG002
+        status: str,
+        started: bool,
+    ) -> None:
+        provider = MagicMock()
+        with patch.object(EventLoop, "status", status):
+            self._enable({"mtdev": MagicMock(return_value=provider)}, ["/dev/input/event4"])
+        assert provider.start.called is started
 
     @staticmethod
     def _enable(providers: dict[str, object], devices: list[str]) -> MagicMock:

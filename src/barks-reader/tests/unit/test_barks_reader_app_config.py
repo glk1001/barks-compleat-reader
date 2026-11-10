@@ -18,6 +18,7 @@ from barks_reader.core.reader_settings import (
     ALT_ESCAPE_KEY,
     BARKS_READER_SECTION,
     MAIN_SCREEN_LAYOUT,
+    USE_VIRTUAL_KEYBOARD,
 )
 from barks_reader.ui.barks_reader_app import BarksReaderApp
 
@@ -60,6 +61,21 @@ def test_a_new_layout_goes_to_the_window_geometry_and_is_announced() -> None:
         )
     window_geometry.set_layout_setting.assert_called_once_with("spread")
     notifier.notify.assert_called_once_with(BARKS_READER_SECTION, MAIN_SCREEN_LAYOUT)
+
+
+@pytest.mark.parametrize("now_on", [True, False])
+def test_the_virtual_keyboard_setting_takes_effect_at_once(now_on: bool) -> None:
+    reader_settings = MagicMock(use_virtual_keyboard=now_on)
+    reader_settings.on_changed_setting.return_value = True
+    stand_in = SimpleNamespace(reader_settings=reader_settings)
+    with (
+        patch.object(app_module, "_apply_virtual_keyboard_setting") as apply_setting,
+        patch.object(app_module, "settings_notifier"),
+    ):
+        BarksReaderApp.on_config_change(
+            cast("Any", stand_in), MagicMock(), BARKS_READER_SECTION, USE_VIRTUAL_KEYBOARD, "1"
+        )
+    apply_setting.assert_called_once_with(app_module.Window, on=now_on)
 
 
 def test_a_rejected_change_does_nothing() -> None:
