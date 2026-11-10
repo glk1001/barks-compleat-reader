@@ -21,6 +21,10 @@ if TYPE_CHECKING:
 _READER_SETTINGS = "AAA_Settings"
 # The screen sizes warned as too small, kept apart: the reader settings are rewritten whole.
 _SCREEN_SIZES_WARNED = "AAA_Screen_Sizes_Warned"
+# How many more comics opened from the story picture it keeps its caption for
+# (core.read_cue), kept apart for the same reason.
+_READ_CUE = "AAA_Read_Cue"
+_READ_CUE_OPENS_LEFT = "opens_left"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"
 _READER_SETTING_LAST_SELECTED_NODE_STATE = "last_selected_node_state"
 _TITLE_SETTING_LAST_READ_PAGE = "last_read_page"
@@ -151,6 +155,18 @@ class SettingsManager:
     def save_last_read_page(self, title_str: str, page_info: SavedPageInfo) -> None:
         """Save the last read page information for a specific title."""
         self._data[title_str] = {_TITLE_SETTING_LAST_READ_PAGE: page_info.to_json()}
+        self._sync()
+
+    def get_read_cue_opens_left(self) -> int:
+        """Return how many more comics the story picture keeps its caption for."""
+        read_cue = self._data.get(_READ_CUE)
+        # Never saved, or a hand-edited file holding anything: then none are left.
+        left = read_cue.get(_READ_CUE_OPENS_LEFT) if isinstance(read_cue, dict) else None
+        return left if type(left) is int and left > 0 else 0
+
+    def save_read_cue_opens_left(self, opens_left: int) -> None:
+        """Remember how many more comics the story picture keeps its caption for."""
+        self._data[_READ_CUE] = {_READ_CUE_OPENS_LEFT: max(0, opens_left)}
         self._sync()
 
     def is_screen_size_warned(self, size_key: str) -> bool:

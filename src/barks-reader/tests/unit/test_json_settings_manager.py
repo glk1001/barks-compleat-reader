@@ -345,6 +345,46 @@ class TestLegacyHistoryNodePathMigration:
         assert path == ["Chronological", "The Stories", "root"]
 
 
+class TestReadCueOpensLeft:
+    LEFT = 3
+
+    def test_none_are_left_until_a_count_is_saved(self, tmp_path: Path) -> None:
+        assert SettingsManager(tmp_path / "store.json").get_read_cue_opens_left() == 0
+
+    def test_a_saved_count_is_remembered_across_restarts(self, tmp_path: Path) -> None:
+        store = tmp_path / "store.json"
+        SettingsManager(store).save_read_cue_opens_left(self.LEFT)
+
+        assert SettingsManager(store).get_read_cue_opens_left() == self.LEFT
+
+    def test_a_count_below_nothing_is_saved_as_none(self, tmp_path: Path) -> None:
+        store = tmp_path / "store.json"
+        SettingsManager(store).save_read_cue_opens_left(-1)
+
+        assert SettingsManager(store).get_read_cue_opens_left() == 0
+
+    def test_saving_the_selected_node_keeps_the_count(self, tmp_path: Path) -> None:
+        """The reader settings are rewritten whole: the count is kept apart from them."""
+        store = tmp_path / "store.json"
+        manager = SettingsManager(store)
+        manager.save_read_cue_opens_left(self.LEFT)
+        manager.save_last_selected_node_path(None)
+
+        assert SettingsManager(store).get_read_cue_opens_left() == self.LEFT
+
+    @pytest.mark.parametrize("held", [3, [3], {"opens_left": "3"}, {"opens_left": True}])
+    def test_a_count_of_another_shape_counts_as_none(self, tmp_path: Path, held: object) -> None:
+        """A hand-edited file may hold anything here: none are left, and saving mends it."""
+        store = tmp_path / "store.json"
+        store.write_text(json.dumps({"AAA_Read_Cue": held}))
+        manager = SettingsManager(store)
+        assert manager.get_read_cue_opens_left() == 0
+
+        manager.save_read_cue_opens_left(1)
+
+        assert SettingsManager(store).get_read_cue_opens_left() == 1
+
+
 class TestScreenSizesWarned:
     def test_a_warned_screen_size_is_remembered_across_restarts(self, tmp_path: Path) -> None:
         store = tmp_path / "store.json"

@@ -107,7 +107,10 @@ publication info, and a favorite panel. A story Barks left untitled is headed by
 first appeared in, as long-time readers know it, with its later name in parentheses underneath;
 the comic reader's top bar shows the same two lines. Contains:
 
-- A **title portal button** (bottom right) that opens the comic reader directly.
+- A **title portal button** (bottom right) that opens the comic reader directly. On a new
+  install it says *PRESS TO READ ME!* until the first comic is opened from it, then carries a
+  *Read this story* caption for the next three (the *Say 'Read this story' on the Story
+  Picture* setting keeps the caption for good, or turns it off).
 - A **"Goto page N:" checkbox** (optional) — appears when the Reader has remembered where you left
   off in this story, or when you reached the story through a tag that marks particular pages; tick
   it to have the portal button reopen the comic at that page instead of the first page. When a tag
@@ -288,6 +291,7 @@ are:
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App Start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
+| *Say 'Read this story' on the Story Picture*  | Captions the Comic View's picture, which opens the comic: *For the first few stories*, *Always* or *Never* |
 | *Decode Pages Whole*                          | Decodes every page whole for the sharpest page; comics open more slowly |
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |

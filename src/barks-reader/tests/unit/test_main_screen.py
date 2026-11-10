@@ -24,6 +24,9 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.read_cue import READ_CUE_ALWAYS, READ_CUE_FIRST_FEW, READ_CUE_OPENS
+from barks_reader.core.reader_settings import BARKS_READER_SECTION, READ_CUE
+from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
@@ -72,7 +75,7 @@ def mock_components() -> MainScreenComponents:
     """Return a bundle of mock collaborators, injected in place of the real build."""
     return MainScreenComponents(
         random_title_images=MagicMock(),
-        json_settings_manager=MagicMock(),
+        json_settings_manager=MagicMock(**{"get_read_cue_opens_left.return_value": 0}),
         special_fanta_overrides=MagicMock(),
         comic_reader_manager=MagicMock(),
         window_helper=MagicMock(**{"box_size.return_value": (0, ACTION_BAR_SIZE_Y)}),
@@ -862,10 +865,73 @@ class TestMainScreenQuietPaths:
         main_screen._nav_coord.current_fanta_info = MagicMock()
         main_screen._app_initializer.is_fanta_volumes_state_ok.return_value = (True, "")
         main_screen._nav_coord.read_comic.return_value = False
-        with patch.object(main_screen, "_set_no_longer_first_use") as no_longer_first_use:
+        with patch.object(main_screen, "_count_comic_opened_from_portal") as count_opened:
             main_screen.on_title_portal_image_pressed()
         main_screen._nav_coord.read_comic.assert_called_once_with()
-        no_longer_first_use.assert_not_called()
+        count_opened.assert_not_called()
+
+
+class TestReadCue:
+    """The story picture's "Read this story": for a few comics after the first, or as set."""
+
+    @staticmethod
+    def _open_a_comic(main_screen: MainScreen) -> None:
+        main_screen._nav_coord.current_fanta_info = MagicMock()
+        main_screen._app_initializer.is_fanta_volumes_state_ok.return_value = (True, "")
+        main_screen._nav_coord.read_comic.return_value = True
+        main_screen.on_title_portal_image_pressed()
+
+    def test_the_first_comic_opened_ends_the_first_use_and_starts_the_count(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.is_first_use_of_reader = True
+        main_screen._reader_settings.is_first_use_of_reader = True
+        main_screen._reader_settings.read_cue = READ_CUE_FIRST_FEW
+        store = main_screen._json_settings_manager
+        store.get_read_cue_opens_left.side_effect = lambda: (
+            store.save_read_cue_opens_left.call_args.args[0]
+        )
+
+        self._open_a_comic(main_screen)
+
+        assert main_screen.is_first_use_of_reader is False
+        assert main_screen._reader_settings.is_first_use_of_reader is False
+        assert main_screen._bottom_title_view_screen.is_first_use_of_reader is False
+        store.save_read_cue_opens_left.assert_called_once_with(READ_CUE_OPENS)
+        assert main_screen._bottom_title_view_screen.show_read_cue is True
+
+    def test_each_comic_opened_after_that_counts_one_down(self, main_screen: MainScreen) -> None:
+        main_screen.is_first_use_of_reader = False
+        main_screen._reader_settings.read_cue = READ_CUE_FIRST_FEW
+        store = main_screen._json_settings_manager
+        left = [2]
+        store.get_read_cue_opens_left.side_effect = lambda: left[0]
+        store.save_read_cue_opens_left.side_effect = lambda n: left.__setitem__(0, n)
+
+        self._open_a_comic(main_screen)
+        assert left == [1]
+        assert main_screen._bottom_title_view_screen.show_read_cue is True
+
+        self._open_a_comic(main_screen)
+        assert left == [0]
+        assert main_screen._bottom_title_view_screen.show_read_cue is False
+
+    def test_with_none_left_a_comic_opened_saves_nothing(self, main_screen: MainScreen) -> None:
+        """An install past its first use before the caption existed has no count."""
+        main_screen.is_first_use_of_reader = False
+        main_screen._reader_settings.read_cue = READ_CUE_FIRST_FEW
+
+        self._open_a_comic(main_screen)
+
+        main_screen._json_settings_manager.save_read_cue_opens_left.assert_not_called()
+        assert main_screen._bottom_title_view_screen.show_read_cue is False
+
+    def test_the_setting_changed_to_always_shows_it_at_once(self, main_screen: MainScreen) -> None:
+        main_screen._reader_settings.read_cue = READ_CUE_ALWAYS
+
+        settings_notifier.notify(BARKS_READER_SECTION, READ_CUE)
+
+        assert main_screen._bottom_title_view_screen.show_read_cue is True
 
 
 class TestQuitFocus:

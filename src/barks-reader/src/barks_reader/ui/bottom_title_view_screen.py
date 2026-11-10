@@ -122,6 +122,8 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     DEBUG_BACKGROUND_OPACITY = 0
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
+    # The story picture says "Read this story" (core.read_cue); the main screen sets it.
+    show_read_cue = BooleanProperty(defaultvalue=False)
 
     # Dark text outline so the title/footnote stay legible over the busy mosaic background.
     MAIN_TITLE_OUTLINE_COLOR = (0, 0, 0, 1)

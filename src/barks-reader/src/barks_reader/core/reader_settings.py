@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from loguru import logger
 
 from .main_layout import MAIN_SCREEN_LAYOUT_OPTIONS, MATCH_THE_SCREEN
+from .read_cue import READ_CUE_FIRST_FEW, READ_CUE_OPTIONS
 from .reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
     LONG_PATH_SETTING,
@@ -53,6 +54,7 @@ IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
 USE_VIRTUAL_KEYBOARD = "use_virtual_keyboard"
 MAIN_SCREEN_LAYOUT = "main_screen_layout"
+READ_CUE = "read_cue"
 DECODE_PAGES_WHOLE = "decode_pages_whole"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
@@ -374,6 +376,11 @@ class ReaderSettings:
         """One of `MAIN_SCREEN_LAYOUT_OPTIONS` (core.main_layout)."""
         return self._read(MAIN_SCREEN_LAYOUT)
 
+    @property
+    def read_cue(self) -> str:
+        """One of `READ_CUE_OPTIONS` (core.read_cue)."""
+        return self._read(READ_CUE)
+
     def get_use_harpies_instead_of_larkies(self) -> bool:
         """Return whether 'The Golden Fleecing' says 'Harpies', not 'Larkies'."""
         return self._read(USE_HARPIES_INSTEAD_OF_LARKIES)
@@ -524,6 +531,15 @@ _FIELDS: tuple[FieldSpec, ...] = (
         " mode to read the comic.",
         kind=FieldKind.BOOL,
         config_default=0,
+    ),
+    FieldSpec(
+        key=READ_CUE,
+        title="Say 'Read this story' on the Story Picture",
+        desc="The picture beside a story's details opens its comic. Say so on the"
+        " picture for the first few comics opened from it, always, or never.",
+        kind=FieldKind.OPTIONS,
+        options=READ_CUE_OPTIONS,
+        config_default=READ_CUE_FIRST_FEW,
     ),
     FieldSpec(
         key=RECORD_READING_HISTORY,

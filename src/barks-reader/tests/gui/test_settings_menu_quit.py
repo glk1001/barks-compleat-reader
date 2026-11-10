@@ -76,7 +76,7 @@ def test_dots_menu_opens_settings_and_their_close_returns_to_the_menu_button(
 # toggle. A miscount lands on another field, which the config-change line's key
 # then reports.
 FUN_VIEW_TITLE_SETTING = "show_fun_view_title_info"
-DOWNS_TO_FUN_VIEW_TITLE = 7
+DOWNS_TO_FUN_VIEW_TITLE = 8
 FLIPPED = {"0": "1", "1": "0"}
 
 
@@ -258,10 +258,11 @@ def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> Non
 
 
 # The options and key-capture settings, by their place in the panel (reader_settings order;
-# a field added or removed above one moves it, as Double Page Mode's removal did on 2026-10-30).
-DOWNS_TO_COLOR_THEME = 5
-DOWNS_TO_WINDOW_HEIGHT = 10
-DOWNS_TO_ALT_ESCAPE = 14
+# a field added or removed above one moves it, as Double Page Mode's removal did on
+# 2026-10-30 and the read cue's arrival on 2026-11-11).
+DOWNS_TO_COLOR_THEME = 6
+DOWNS_TO_WINDOW_HEIGHT = 11
+DOWNS_TO_ALT_ESCAPE = 15
 KEY_TAB_CODE = 9
 
 
@@ -288,7 +289,7 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
 
 
 VIRTUAL_KEYBOARD_SETTING = "use_virtual_keyboard"
-DOWNS_TO_VIRTUAL_KEYBOARD = 15
+DOWNS_TO_VIRTUAL_KEYBOARD = 16
 # The search box logs how it was pressed only while the on-screen keyboard is allowed.
 BOX_PRESSED = f"{pattern(markers.TEXT_INPUT_CLICKED)}|{pattern(markers.TEXT_INPUT_TOUCHED)}"
 

@@ -37,11 +37,14 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio, page_width
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.read_cue import READ_CUE_OPENS, is_read_cue_shown
 from barks_reader.core.reader_consts_and_types import APP_TITLE, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_settings import BARKS_READER_SECTION, READ_CUE
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
 )
+from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.core.window_minimum import (
     is_screen_too_small,
     is_screen_warning_suppressed,
@@ -330,6 +333,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._tree_view_manager = components.tree_view_manager
         self._app_initializer = components.app_initializer
         self._nav = components.nav
+
+        self._update_read_cue()
+        settings_notifier.register_callback(BARKS_READER_SECTION, READ_CUE, self._update_read_cue)
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
@@ -1064,7 +1070,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._nav.save_focus_before_reader()
         if self._nav_coord.read_comic():
-            self._set_no_longer_first_use()
+            self._count_comic_opened_from_portal()
         else:
             self._nav.forget_focus_before_reader()
 
@@ -1142,11 +1148,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """The app-wide panel image selector (share it so no-repeat memory pools)."""
         return self._random_title_images
 
-    def _set_no_longer_first_use(self) -> None:
-        if not self.is_first_use_of_reader:
-            return
+    def _count_comic_opened_from_portal(self) -> None:
+        """End the first use at the first comic; count down the picture's caption after."""
+        if self.is_first_use_of_reader:
+            assert self._reader_settings.is_first_use_of_reader
+            self._reader_settings.is_first_use_of_reader = False
+            self.is_first_use_of_reader = False
+            self._bottom_title_view_screen.is_first_use_of_reader = False
+            self._json_settings_manager.save_read_cue_opens_left(READ_CUE_OPENS)
+        else:
+            opens_left = self._json_settings_manager.get_read_cue_opens_left()
+            if opens_left > 0:
+                self._json_settings_manager.save_read_cue_opens_left(opens_left - 1)
+        self._update_read_cue()
 
-        assert self._reader_settings.is_first_use_of_reader
-        self._reader_settings.is_first_use_of_reader = False
-        self.is_first_use_of_reader = False
-        self._bottom_title_view_screen.is_first_use_of_reader = False
+    def _update_read_cue(self) -> None:
+        self._bottom_title_view_screen.show_read_cue = is_read_cue_shown(
+            self._reader_settings.read_cue, self._json_settings_manager.get_read_cue_opens_left()
+        )
