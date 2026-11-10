@@ -12,7 +12,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_display_title
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_INFO,
+    ONE_PAGERS,
+    get_one_pager_display_title,
+)
 from barks_fantagraphics.comics_consts import FONT_DIR
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
@@ -180,6 +184,34 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.mock_loader.load_texture.assert_called()
         args, _ = self.mock_loader.load_texture.call_args
         assert args[0] == "inset.png"
+
+    def test_a_story_barks_titled_has_no_subtitle(self) -> None:
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+        mock_info.comic_book_info.is_barks_title = True
+
+        self.screen.set_title_view(mock_info)
+
+        assert self.screen.main_title_subtitle == ""
+
+    def test_an_untitled_story_shows_its_assigned_name_under_its_issue(self) -> None:
+        mock_info = MagicMock()
+        mock_info.comic_book_info = BARKS_TITLE_INFO[Titles.HYPNO_GUN_THE]
+
+        self.screen.set_title_view(mock_info)
+
+        assert self.screen.main_title_subtitle == "(The Hypno-Gun)"
+
+    def test_the_subtitle_goes_when_a_titled_story_follows_an_untitled_one(self) -> None:
+        untitled = MagicMock()
+        untitled.comic_book_info = BARKS_TITLE_INFO[Titles.HYPNO_GUN_THE]
+        titled = MagicMock()
+        titled.comic_book_info = BARKS_TITLE_INFO[Titles.LOST_IN_THE_ANDES]
+
+        self.screen.set_title_view(untitled)
+        self.screen.set_title_view(titled)
+
+        assert self.screen.main_title_subtitle == ""
 
     def test_the_title_info_is_rebuilt_when_its_font_size_changes(self) -> None:
         """The footnote star's size is in the text, and the rows' size follows the window."""

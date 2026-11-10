@@ -42,6 +42,7 @@ from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import (
     LONG_TITLE_SPLITS,
     ReaderFormatter,
+    get_comic_display_subtitle,
     get_comic_display_title,
 )
 from barks_reader.core.reader_utils import (
@@ -136,9 +137,18 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     # rises from there as far as its lines need to stay in the band.
     MAIN_TITLE_TOP_OFFSET_SINGLE = 28
     MAIN_TITLE_TOP_OFFSET_SPREAD = 50
+    # On the spread, the gap from the heading's last line (title, assigned name or
+    # footnote) down to the picture of a title with notes: the same for every title.
+    MAIN_TITLE_PICTURE_GAP = 40
+    # On the spread, the least room over and under the picture of a title without
+    # notes, which is centred between the heading and the info rows.
+    MAIN_TITLE_PICTURE_COMPACT_MARGIN = 75
     main_title_banner_texture = ObjectProperty(allownone=True)
     main_title_text = StringProperty()
     main_title_footnote = StringProperty()
+    # The assigned name of a story Barks left untitled, under its issue heading; ""
+    # for every other title, and then the line takes no room.
+    main_title_subtitle = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
     # The share of a label's font size between its texture's top and its glyphs' tops
@@ -162,6 +172,9 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     # The height left for the notes in the info box, under its info rows: what ends the
     # notes at a whole line and what places them must agree, so the kv rule writes it once.
     space_under_title_info = NumericProperty(0)
+    # On the spread, how far the notes drop under the info rows to start level with
+    # the portal's top; the kv rule writes it once, for the same reason.
+    spread_notes_gap = NumericProperty(0)
     title_inset_image_texture = ObjectProperty(allownone=True)
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -262,6 +275,7 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
         title_text = self._get_main_title_str(fanta_info)
         add_footnote = title_needs_footnote(fanta_info)
         self.main_title_text = self._formatter.get_main_title(title_text, add_footnote)
+        self.main_title_subtitle = get_comic_display_subtitle(fanta_info.comic_book_info)
         self._set_title_info_text(fanta_info)
         self.main_title_footnote = "" if not add_footnote else self._get_footnote_text()
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)

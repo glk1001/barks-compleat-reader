@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-10.
 
 **Other to-do lists** (counts as of 2026-10-13; each list is the source of truth):
 
@@ -275,6 +275,22 @@ in the OCR repo, which is read-only from here:
       too little width; that is the likely cause, not yet confirmed. To reproduce: boot
       the probe with `BARKS_PROBE_SCREEN=700x1300` onto any story. No GUI test runs that
       size.
+
+- [ ] **Pictures and pages that show the old title view** — since 2026-11-10 an untitled
+      story's title view has its assigned name under the issue heading, the reader's top
+      bar shows the same two lines, and on the two-page spread the picture sits a fixed gap
+      under the heading (centred, and larger, for a title without notes) with the notes
+      level with the portal's top. What was made before then still shows the old view:
+  - [ ] **The in-app How To pages** — `docs/how-to-use.md` gained two passages on untitled
+        stories. Regenerate the text pages (`uv run scripts/generate_how_to_pdfs.py`),
+        export the composited `page-N.png` files from the GIMP how-to project to
+        `Various/documents/how-to`, and ship them in the next data pack.
+  - [ ] **The README screenshots** — `website/screenshot-selecting-a-title.jpg` and
+        `website/screenshot-reading-a-story.jpg` if they show an untitled story or the
+        spread's title page; `website/screenshot-main-window.jpg` if a title is selected.
+  - [ ] **The website screenshots and videos** — the title-view and reader pictures on
+        `website/app.html`, and any demo clip that passes through a title view on the
+        spread (`record_demo.py`).
 
 ## Tree view
 

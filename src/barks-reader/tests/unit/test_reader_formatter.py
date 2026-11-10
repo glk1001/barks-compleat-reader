@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ONE_PAGERS
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import reader_formatter
@@ -32,6 +33,44 @@ def test_a_non_barks_comic_goes_by_its_issue() -> None:
     info = MagicMock(title=Titles.LOST_IN_THE_ANDES, is_barks_title=False)
     info.get_title_from_issue_name.return_value = "Issue Title"
     assert reader_formatter.get_comic_display_title(info) == "Issue Title"
+
+
+def test_an_untitled_story_has_its_assigned_name_as_a_subtitle() -> None:
+    """It goes by its issue; the name under it is the one the tree shows."""
+    info = BARKS_TITLE_INFO[Titles.HYPNO_GUN_THE]
+    assert not info.is_barks_title
+    assert reader_formatter.get_comic_display_title(info) == "Comics and Stories #145"
+    assert reader_formatter.get_comic_display_subtitle(info) == "(The Hypno-Gun)"
+
+
+def test_a_story_named_by_hand_keeps_its_assigned_name_as_a_subtitle() -> None:
+    """Nine Gyro stories go by "Gyro Gearloose": the name is what tells them apart."""
+    info = BARKS_TITLE_INFO[Titles.CAT_BOX_THE]
+    assert reader_formatter.get_comic_display_title(info) == "Gyro Gearloose"
+    assert reader_formatter.get_comic_display_subtitle(info) == "(The Cat Box)"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(Titles.LOST_IN_THE_ANDES, id="a title of Barks's own"),
+        pytest.param(ONE_PAGERS[0], id="a one-pager"),
+        pytest.param(next(iter(sorted(COVERS_SET))), id="a cover"),
+        pytest.param(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, id="an article"),
+    ],
+)
+def test_a_comic_with_a_heading_of_its_own_has_no_subtitle(title: Titles) -> None:
+    assert reader_formatter.get_comic_display_subtitle(BARKS_TITLE_INFO[title]) == ""
+
+
+def test_only_an_untitled_story_among_these_kinds_is_not_a_barks_title() -> None:
+    """The one-pager, the cover and the article are left out by kind, not by their flag."""
+    for title in (
+        ONE_PAGERS[0],
+        next(iter(sorted(COVERS_SET))),
+        Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
+    ):
+        assert not BARKS_TITLE_INFO[title].is_barks_title
 
 
 def test_hyphenate_text() -> None:
@@ -184,6 +223,21 @@ def test_get_action_bar_title() -> None:
     result = reader_formatter.get_action_bar_title(mock_font_manager, "My Title")
     assert "[font=" in result
     assert "[size=20]My Title" in result
+    assert "\n" not in result
+
+
+def test_the_action_bar_title_puts_a_subtitle_on_a_line_under_it() -> None:
+    """The name leaves the title's font and size, and its brackets stay literal."""
+    mock_font_manager: Any = MagicMock()
+    mock_font_manager.app_title_font_size = 20.5
+
+    result = reader_formatter.get_action_bar_title(
+        mock_font_manager, "Comics and Stories #145", subtitle="(A [b]Name)"
+    )
+
+    assert result.endswith(
+        "[size=20]Comics and Stories #145[/size][/font]\n[i](A &bl;b&br;Name)[/i]"
+    )
 
 
 def test_get_formatted_color() -> None:

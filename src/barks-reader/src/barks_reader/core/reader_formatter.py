@@ -166,9 +166,26 @@ def get_text_with_markup_stripped(text: str) -> str:
     return MARKUP_TAG_PATTERN.sub("", text)
 
 
-def get_action_bar_title(font_manager: FontManagerProtocol, title: str) -> str:
-    """Return ``title`` as an action bar shows it: in the Carl Barks font, at title size."""
-    return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
+def get_action_bar_title(font_manager: FontManagerProtocol, title: str, subtitle: str = "") -> str:
+    """Return ``title`` as an action bar shows it: in the Carl Barks font, at title size.
+
+    Args:
+        font_manager: Where the bar's title size comes from.
+        title: The bar's title.
+        subtitle: A second line under the title, in the bar's own font and italics:
+            the assigned name of a comic that goes by its issue. "" for no second line.
+
+    Returns:
+        The title, in Kivy markup.
+
+    """
+    bar_title = (
+        f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
+    )
+    if not subtitle:
+        return bar_title
+
+    return f"{bar_title}[/size][/font]\n[i]{escape_kivy_markup(subtitle)}[/i]"
 
 
 def get_comic_display_title(comic_book_info: ComicBookInfo) -> str:
@@ -187,6 +204,33 @@ def get_comic_display_title(comic_book_info: ComicBookInfo) -> str:
     if comic_book_info.is_barks_title:
         return comic_book_info.get_title_str()
     return comic_book_info.get_title_from_issue_name()
+
+
+def get_comic_display_subtitle(comic_book_info: ComicBookInfo) -> str:
+    """Return the assigned name shown under a comic that goes by its issue, else "".
+
+    Long-time readers know an untitled story by its issue, so the issue stays the
+    heading (``get_comic_display_title``); the name later given to it goes under that,
+    in parentheses, for everyone who does not.
+
+    Args:
+        comic_book_info: The comic to name.
+
+    Returns:
+        The parenthesised name of a story Barks left untitled; "" for a title of his
+        own, and for a one-pager, a cover and an article, which have headings of
+        their own.
+
+    """
+    title = comic_book_info.title
+    if (
+        comic_book_info.is_barks_title
+        or title in ONE_PAGERS
+        or title in COVERS_SET
+        or title in ARTICLE_TITLE_TEXTS
+    ):
+        return ""
+    return comic_book_info.get_display_title()
 
 
 def get_display_title_str(title: Titles | None) -> str:

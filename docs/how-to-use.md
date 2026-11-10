@@ -83,6 +83,9 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   and *Locations* sub-indexes), and the *Carl Barks Wiki*, whenever the wiki is installed (by default
   the copy that comes with the Reader's files).
 
+A title in parentheses, such as *(The Hypno-Gun)*, is a story Barks left untitled; the name is
+one given to it later.
+
 Wherever speech bubbles are shown, each bubble names who says it on an italic, coloured line
 above the text (*Scrooge:*, *Narrator:* for a narration box). Sound effects and signs have no
 speaker line.
@@ -100,7 +103,9 @@ The bottom half below the main tree content (the right page, on the two-page spr
 between two modes:
 
 **Comic View** — shown when a story is selected in the tree. Displays the story's title,
-publication info, and a favorite panel. Contains:
+publication info, and a favorite panel. A story Barks left untitled is headed by the issue it
+first appeared in, as long-time readers know it, with its later name in parentheses underneath;
+the comic reader's top bar shows the same two lines. Contains:
 
 - A **title portal button** (bottom right) that opens the comic reader directly.
 - A **"Goto page N:" checkbox** (optional) — appears when the Reader has remembered where you left

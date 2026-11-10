@@ -38,7 +38,11 @@ from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
-from barks_reader.core.reader_formatter import get_action_bar_title, get_comic_display_title
+from barks_reader.core.reader_formatter import (
+    get_action_bar_title,
+    get_comic_display_subtitle,
+    get_comic_display_title,
+)
 from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
@@ -163,6 +167,7 @@ class ComicBookReader(FloatLayout):
 
         self._current_comic_path = ""
         self._current_title_str = ""
+        self._current_subtitle_str = ""
         self.action_bar_title = ""
 
         # When reading the "All One-Pagers" or "All Covers" collection, the window
@@ -376,6 +381,7 @@ class ComicBookReader(FloatLayout):
         self._on_load_failed = on_load_failed
 
         self._current_title_str = get_comic_display_title(fanta_info.comic_book_info)
+        self._current_subtitle_str = get_comic_display_subtitle(fanta_info.comic_book_info)
 
         # For the collections the window title is per-page (set in _show_page); for
         # everything else it is the comic's title, set once here.
@@ -385,7 +391,10 @@ class ComicBookReader(FloatLayout):
         self._all_loaded = False
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
-        self.action_bar_title = get_action_bar_title(self._font_manager, self._current_title_str)
+        # An untitled story goes by its issue, with its assigned name on a line under it.
+        self.action_bar_title = get_action_bar_title(
+            self._font_manager, self._current_title_str, subtitle=self._current_subtitle_str
+        )
 
         # The collections are always single-page: each page is a separate gag or
         # cover, so a two-page spread would pair unrelated items.

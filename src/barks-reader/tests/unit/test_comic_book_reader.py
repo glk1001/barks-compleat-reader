@@ -206,6 +206,11 @@ class TestComicBookReader:
             patch.object(
                 barks_reader.ui.comic_book_reader, "get_action_bar_title"
             ) as _mock_get_title,
+            patch.object(
+                barks_reader.ui.comic_book_reader,
+                "get_comic_display_subtitle",
+                return_value="(Name)",
+            ),
             patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
             patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource") as source,
             patch.object(
@@ -226,6 +231,10 @@ class TestComicBookReader:
             )
 
             assert reader._current_title_str == "Title"
+            # The bar gets the comic's name and, under it, an untitled story's assigned one.
+            _mock_get_title.assert_called_once_with(
+                reader._font_manager, "Title", subtitle="(Name)"
+            )
             # Pages are sized for the largest monitor as the comic opens, not one at import.
             assert source.call_args.kwargs["max_width"] == 3840  # noqa: PLR2004
             assert source.call_args.kwargs["max_height"] == 2160  # noqa: PLR2004

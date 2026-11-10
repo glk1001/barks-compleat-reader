@@ -28,6 +28,15 @@
     size_hint: 1, 1
     opacity: 1 if root.is_visible else 0
     space_under_title_info: title_info_box.height - title_info_label.height - title_info_box.spacing
+    # On the spread, how far the notes drop under the info rows so that their first
+    # line is level with the portal's top, when the rows over the portal (wiki, goto
+    # page, overrides) hold it lower than the notes would start. Sizes only, no
+    # positions: the portal follows the notes, so reading its place here is a loop.
+    spread_notes_gap:
+        max(0, goto_page_layout.height + use_overrides_layout.height + wiki_page_button.height \
+        + 1.15 * fm.check_box_font_size - title_info_box.spacing \
+        - root.EXTRA_INFO_TEXT_LEADING * title_extra_info_label.font_size) \
+        if (root.layout_mode == 'spread' and not root.compact_colophon and root.title_extra_info_text) else 0
 
     # This is the main container for the title view.
     AnchorLayout:
@@ -70,8 +79,9 @@
 
         # --- Two column layout with single column main title on top ---
         # On a single page the hero title takes 18% and the two columns the rest; on
-        # the two-page spread the view is a page: hero 12%, the title art as a picture
-        # 38%, and the colophon (the same two columns) 50%, the single page's height.
+        # the two-page spread the view is a page: the hero band as tall as its lines,
+        # the title art as a picture (38% with notes), and the colophon (the same two
+        # columns) what is left, or as tall as its rows for a title without notes.
         BoxLayout:
             # This is the top-level container for all content.
             id: bottom_view_box
@@ -84,7 +94,18 @@
 
             # --- Main Title (Full Width) ---
             FloatLayout:
-                size_hint: 1, (0.12 if root.layout_mode == 'spread' else 0.18)
+                id: main_title_band
+                # On the spread the band is as tall as its lines plus one gap, so the
+                # picture starts the same distance under the last line of every title
+                # (a title without notes centres its picture, and brings its own
+                # margins); on a single page it stays 18% of the view.
+                size_hint: 1, (None if root.layout_mode == 'spread' else 0.18)
+                height:
+                    (dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD) + main_title_label.height \
+                    + main_title_subtitle.height \
+                    + ((main_title_footnote.height + dp(2)) if root.main_title_footnote else 0) \
+                    + (0 if root.compact_colophon else dp(root.MAIN_TITLE_PICTURE_GAP))) \
+                    if root.layout_mode == 'spread' else self.height
 
                 # Soft gradient banner behind the title (dark middle, transparent top/bottom edges).
                 canvas.before:
@@ -105,7 +126,7 @@
                     y:
                         self.parent.top - self.height - min( \
                         dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD if root.layout_mode == 'spread' else root.MAIN_TITLE_TOP_OFFSET_SINGLE), \
-                        max(0, self.parent.height - self.height))
+                        max(0, self.parent.height - self.height - main_title_subtitle.height))
                     text: root.main_title_text
                     font_name: fm.main_title_font_name
                     font_size: fm.main_title_font_size
@@ -121,6 +142,27 @@
                     halign: 'center'
                     valign: 'top'
 
+                # --- The assigned name of an untitled story, under its issue heading ---
+                # No room and no ink for every other title, so their heading sits as before.
+                BgColorLabel:
+                    id: main_title_subtitle
+                    opacity: 1 if root.main_title_subtitle else 0
+                    text: root.main_title_subtitle
+                    pos_hint: {'center_x': 0.5}
+                    y: main_title_label.y - self.height
+                    font_size: 1.25 * fm.title_info_font_size
+                    color: reader_palette.theme().text_title
+                    outline_color: root.MAIN_TITLE_OUTLINE_COLOR
+                    outline_width: dp(2)
+                    bold: True
+                    italic: True
+                    mipmap: True
+                    size_hint: 1, None
+                    text_size: self.width, None
+                    height: self.texture_size[1] if root.main_title_subtitle else 0
+                    halign: 'center'
+                    valign: 'top'
+
                 # --- Footnote at bottom-left ---
                 # Its left edge is the picture's on the spread (the drawn art, not the
                 # wider widget it is fitted into) and the info rows' on a single page,
@@ -130,7 +172,13 @@
                     id: main_title_footnote
                     opacity: 1 if root.main_title_footnote else 0
                     text: root.main_title_footnote
-                    pos_hint: {'y': 0.05}
+                    # Directly under the heading's last line on the spread, and under
+                    # the assigned name on a single page, where the name takes the
+                    # band's foot; else at the band's foot.
+                    y:
+                        (main_title_subtitle.y - self.height - dp(2)) \
+                        if (root.main_title_subtitle or root.layout_mode == 'spread') else \
+                        (self.parent.y + 0.05 * self.parent.height)
                     x:
                         (title_picture.center_x - title_picture.norm_image_size[0] / 2) \
                         if root.layout_mode == 'spread' else \
@@ -146,25 +194,29 @@
                     halign: 'left'
                     valign: 'bottom'
 
-            # --- The picture (the spread only): the title art, whole, centred ---
+            # --- The picture (the spread only): the title art, whole ---
             # Its height is explicit: a box layout keeps a child's own height for a
             # size hint of 0 (the Widget default of 100), which pushed the hero band
             # up out of the view and over the tree's last rows on a single page.
             # A compact colophon (a title without notes) leaves it the rest of the page,
             # and wider: a landscape picture is bound by its width, not that height.
+            # With notes the picture hangs from the room's top, under the band's gap;
+            # without, it is centred between the heading and the info rows.
             AnchorLayout:
-                size_hint: ((0.88 if root.compact_colophon else 0.76) if root.layout_mode == 'spread' else 1), None
+                anchor_y: 'center' if root.compact_colophon else 'top'
+                size_hint: ((0.92 if root.compact_colophon else 0.76) if root.layout_mode == 'spread' else 1), None
                 height:
-                    max(0, 0.88 * bottom_view_box.height - colophon.height) \
+                    max(0, bottom_view_box.height - main_title_band.height - colophon.height) \
                     if root.compact_colophon else \
                     (0.38 * bottom_view_box.height if root.layout_mode == 'spread' else 0)
                 pos_hint: {'center_x': 0.5}
 
-                # That room is nearly square, so a square or upright picture filled the
-                # page up to the hero title: there no picture is taller than a 3:2 one
-                # at the room's width, and a narrower one is centred in the room. The
-                # cap reads the room's width, not its own: the anchor layout sets a
-                # child's size whole, so the stale height came back after the new width.
+                # As tall as the picture is drawn, so the anchor places the art and not
+                # a taller widget it is fitted into. A compact colophon's room is nearly
+                # square, so a square or upright picture filled the page up to the hero
+                # title: there it keeps a margin over and under it. The height reads the
+                # room's width, not its own: the anchor layout sets a child's size
+                # whole, so the stale height came back after the new width.
                 Image:
                     id: title_picture
                     texture: root.title_image_texture
@@ -172,8 +224,9 @@
                     mipmap: True
                     size_hint: 1, None
                     height:
-                        min(self.parent.height, self.parent.width / 1.5) \
-                        if root.compact_colophon else self.parent.height
+                        max(0, min(self.parent.height - 2 * dp(root.MAIN_TITLE_PICTURE_COMPACT_MARGIN), self.parent.width / self.image_ratio)) \
+                        if root.compact_colophon else \
+                        min(self.parent.height, self.parent.width / self.image_ratio)
                     opacity: 1 if root.layout_mode == 'spread' else 0
 
             # --- Single RelativeLayout for all two column content below the title ---
@@ -188,7 +241,8 @@
                 height:
                     (wiki_page_button.top + 0.1 * title_portal_column.width) \
                     if root.compact_colophon else \
-                    ((0.50 if root.layout_mode == 'spread' else 0.82) * bottom_view_box.height)
+                    ((0.62 * bottom_view_box.height - main_title_band.height) \
+                    if root.layout_mode == 'spread' else 0.82 * bottom_view_box.height)
 
                 # --- Left Column (as a positioned BoxLayout) ---
                 # This layout holds the text and is forced to the top-left; in a
@@ -234,13 +288,14 @@
                     # On a single page the notes start level with the portal, their first
                     # line's glyphs at its top, and rise only as far as a long note needs to
                     # end by the portal's foot, or to directly under the info rows at most.
-                    # The holder's extra height is the gap above them. The spread keeps them
-                    # under the rows: there the portal follows the notes, not the reverse.
+                    # The holder's extra height is the gap above them. On the spread the
+                    # portal follows the notes, not the reverse, so the gap there is the
+                    # rows over the portal that do not fit beside the info rows.
                     Widget:
                         size_hint_y: None
                         height:
                             title_extra_info_label.height + ( \
-                            0 if (root.layout_mode == 'spread' or root.compact_colophon or not root.title_extra_info_text) else \
+                            root.spread_notes_gap if (root.layout_mode == 'spread' or root.compact_colophon or not root.title_extra_info_text) else \
                             max(0, title_info_box.y + root.space_under_title_info - max( \
                             title_portal_image_button.top + root.EXTRA_INFO_TEXT_LEADING * title_extra_info_label.font_size, \
                             title_portal_image_button.y + title_extra_info_label.height)))
@@ -272,7 +327,7 @@
                             padding: [dp(1), 0, 0, 0]
                             # Only the lines that fit under the title info: the text ends at a
                             # line, not cut through one at the panel's edge.
-                            shown_lines: max(1, int(root.space_under_title_info / root.extra_info_line_pitch(self.font_size)))
+                            shown_lines: max(1, int((root.space_under_title_info - root.spread_notes_gap) / root.extra_info_line_pitch(self.font_size)))
 
                     # IMPORTANT: This filler widget pushes the labels above it to the top.
                     Widget:
