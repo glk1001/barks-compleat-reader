@@ -729,6 +729,29 @@ class TestNavigateToTitleWithPage:
 
         mock_deps["renderer"].render_state.assert_not_called()
 
+    def test_an_article_not_found_is_reported_with_the_main_screen_active_again(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """The screen was left inactive under no reader: no keys, and its bar soon gone."""
+        article = next(iter(NON_COMIC_TITLES))
+        mock_deps[
+            "comic_reader_manager"
+        ].read_article_as_comic_book.side_effect = TitleNotFoundError(
+            "gone", ENUM_TO_STR_TITLE[article]
+        )
+
+        nav_coord.read_article(article, ViewStates.ON_APPENDIX_NODE)
+
+        assert [c.args for c in mock_deps["on_active_changed"].call_args_list] == [
+            (False,),
+            (True,),
+        ]
+        error_type, error_info = mock_deps["user_error_handler"].handle_error.call_args.args
+        assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+        assert error_info.title is article
+        nav_coord.on_comic_closed()  # none comes, but nothing waits for one either
+        mock_deps["renderer"].render_state.assert_not_called()
+
     def test_a_story_goes_to_its_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:

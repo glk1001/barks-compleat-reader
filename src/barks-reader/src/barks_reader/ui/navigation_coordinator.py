@@ -492,7 +492,16 @@ class NavigationCoordinator:
         page_to_first_goto = (
             "i" if article_title == Titles.RICH_TOMMASO___ON_COLORING_BARKS else "1"
         )
-        self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
+        try:
+            self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
+        except TitleNotFoundError as e:
+            # No reader came up over the main screen: left inactive, it took no key,
+            # and its action bar went a second later.
+            logger.error(e)
+            self._read_comic_view_state = None
+            self._on_active_changed(True)  # noqa: FBT003
+            error_info = ErrorInfo(file_volume=-1, title=article_title)
+            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
 
     def open_document(
         self,
