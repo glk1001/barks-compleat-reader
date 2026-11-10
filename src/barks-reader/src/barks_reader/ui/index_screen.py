@@ -12,7 +12,7 @@ from barks_fantagraphics.speech_speakers import speaker_display_name
 from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
-from kivy.clock import Clock
+from kivy.clock import Clock, ClockEvent
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -360,6 +360,7 @@ class IndexScreen(FloatLayout):
     # built bare, without __init__, presses items too.
     _pressing_focused_item: bool = False
     _nav_active: bool = False  # the keyboard focus state a bare screen starts from
+    _sub_items_event: ClockEvent | None = None  # the expansion awaiting the next frame
 
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
@@ -694,17 +695,26 @@ class IndexScreen(FloatLayout):
             add_sub_items: Inserts the sub-item widgets; a Clock callback.
 
         """
+        # One expansion at a time: a second press before the frame replaces the first's.
+        if self._sub_items_event is not None:
+            self._sub_items_event.cancel()
         self._sub_items_pending = True
+        button = self._open_tag_button
 
         def add(dt: float) -> None:
             self._sub_items_pending = False
+            self._sub_items_event = None
+            if button is None or self._open_tag_button is not button or button.parent is None:
+                # The grid moved on in the frame between (a letter press): nothing to open.
+                self._pending_focus_resync = None
+                return
             add_sub_items(dt)
             if self._pending_focus_resync is not None:
                 btn, old_count = self._pending_focus_resync
                 self._pending_focus_resync = None
                 self._resync_item_focus(btn, old_count)
 
-        Clock.schedule_once(add, 0)
+        self._sub_items_event = Clock.schedule_once(add, 0)
 
     def _resync_item_focus(self, btn: Button, old_count: int) -> None:
         if not self._nav_active or self._nav_panel != _IndexNavPanel.ITEMS:
@@ -992,6 +1002,13 @@ class IndexScreen(FloatLayout):
                 first_letter = self.treeview_index_node.saved_state[
                     SAVED_NODE_STATE_FIRST_LETTER_KEY
                 ]
+
+            if first_letter not in self._alphabet_buttons:
+                # A saved state from another index, or a hand-edited one.
+                logger.warning(
+                    f"No '{first_letter}' in this index's alphabet: showing 'A' instead."
+                )
+                first_letter = "A"
 
             self.on_letter_press(self._alphabet_buttons[first_letter])
 

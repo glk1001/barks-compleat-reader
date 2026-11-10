@@ -210,6 +210,68 @@ class TestIndexScreen:
             index_screen.on_is_visible(index_screen, value=True)
             mock_new_image.assert_called_once()
 
+    def test_a_saved_letter_this_index_does_not_have_shows_a(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """A saved state is read at every start: a bad one must not stop each boot."""
+        index_screen._populate_alphabet_menu()
+        assert index_screen.treeview_index_node is not None
+        index_screen.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY] = "?"
+
+        with patch.object(index_screen, "on_letter_press") as mock_press:
+            index_screen.on_is_visible(index_screen, value=True)
+
+        mock_press.assert_called_once_with(index_screen._alphabet_buttons["A"])
+        assert "No '?' in this index's alphabet: showing 'A' instead." in loguru_sink
+
+    def test_sub_items_are_not_added_once_the_grid_has_moved_on(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """A letter press in the frame between: the expansion has no button to open under."""
+        add_sub_items = MagicMock()
+        index_screen._open_tag_button = MagicMock(spec=IndexItemButton)
+        index_screen._pending_focus_resync = (index_screen._open_tag_button, 1)
+
+        with patch.object(Clock, "schedule_once") as schedule:
+            index_screen._schedule_sub_items(add_sub_items)
+            index_screen._open_tag_button = None  # as on_letter_press leaves it
+            schedule.call_args.args[0](0.0)
+
+        add_sub_items.assert_not_called()
+        assert index_screen._sub_items_pending is False
+        assert index_screen._pending_focus_resync is None
+
+    def test_sub_items_are_not_added_under_a_button_gone_from_the_grid(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        add_sub_items = MagicMock()
+        index_screen._open_tag_button = MagicMock(spec=IndexItemButton)
+        index_screen._open_tag_button.parent = None  # removed with its sub-item list
+
+        with patch.object(Clock, "schedule_once") as schedule:
+            index_screen._schedule_sub_items(add_sub_items)
+            schedule.call_args.args[0](0.0)
+
+        add_sub_items.assert_not_called()
+
+    def test_a_second_expansion_before_the_frame_replaces_the_first(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """Two presses in one slow frame once put two lists of sub-items in."""
+        first, second = MagicMock(), MagicMock()
+        index_screen._open_tag_button = MagicMock(spec=IndexItemButton)
+
+        with patch.object(Clock, "schedule_once") as schedule:
+            index_screen._schedule_sub_items(first)
+            first_event = schedule.return_value
+            index_screen._schedule_sub_items(second)
+            first_event.cancel.assert_called_once_with()
+            schedule.call_args.args[0](0.0)
+
+        first.assert_not_called()
+        second.assert_called_once_with(0.0)
+        assert index_screen._sub_items_event is None
+
     def test_on_is_visible_false(self, index_screen: ConcreteIndexScreen) -> None:
         with patch.object(index_screen, "_cancel_index_image_change_events") as mock_cancel:
             index_screen.on_is_visible(index_screen, value=False)
@@ -265,9 +327,12 @@ class TestIndexScreen:
         parent = MagicMock(spec=IndexItemButton)
         sub_item = MagicMock(spec=IndexItemButton)
         column = [parent, MagicMock(spec=IndexItemButton)]
-        parent.trigger_action.side_effect = lambda **_kw: index_screen._schedule_sub_items(
-            lambda _dt: column.insert(1, sub_item)
-        )
+
+        def expand(**_kw: object) -> None:
+            index_screen._open_tag_button = parent  # as every expansion sets it first
+            index_screen._schedule_sub_items(lambda _dt: column.insert(1, sub_item))
+
+        parent.trigger_action.side_effect = expand
         index_screen._nav_active = True
         index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
         index_screen._nav_focused_col = 0
@@ -299,6 +364,7 @@ class TestIndexScreen:
             columns[0] = [MagicMock(spec=IndexItemButton)]
             columns[1] = [MagicMock(spec=IndexItemButton), target]
             index_screen._hand_focus_to(target)
+            index_screen._open_tag_button = target
             index_screen._schedule_sub_items(lambda _dt: columns[1].insert(2, sub_item))
 
         pressed.trigger_action.side_effect = go_to_target
