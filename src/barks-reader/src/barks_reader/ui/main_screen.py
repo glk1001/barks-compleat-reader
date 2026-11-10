@@ -561,7 +561,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return False
         if self._menu_dots_open_without_the_keys():
             return self._adopt_open_menu_dots(key)
+        if is_escape_key_for_text_input(key, codepoint):
+            self._leave_the_focused_text_box()
         return self._nav.handle_key(key)
+
+    @staticmethod
+    def _leave_the_focused_text_box() -> None:
+        """Take the keyboard from a search box before Escape moves the keys elsewhere.
+
+        A box pressed by mouse or touch is focused with no keyboard navigation on it,
+        so nothing unfocused it as Escape went on to the action bar: the ring moved
+        along the bar while the box still took every key, Return on a button included.
+        """
+        box = _focused_text_input()
+        if box is not None:
+            box.focus = False
 
     def _menu_dots_open_without_the_keys(self) -> bool:
         """Return whether the dots menu is open on screen with the keys not yet on it."""

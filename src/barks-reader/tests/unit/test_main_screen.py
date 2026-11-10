@@ -569,6 +569,32 @@ class TestMainScreenEdges:
         main_screen._bottom_base_view_screen.collide_point.assert_called_once_with(10, 20)
         assert main_screen._nav.exit_bottom_focus.called is exits
 
+    @pytest.mark.parametrize(
+        ("key", "left"),
+        [(KEY_ESCAPE, True), (KEY_DOWN, False)],
+        ids=["escape leaves the box", "down goes on with the box as it was"],
+    )
+    def test_escape_takes_the_keyboard_from_a_pressed_search_box(
+        self,
+        main_screen: MainScreen,
+        key: int,
+        left: bool,
+    ) -> None:
+        """A box pressed by mouse kept every key while the ring moved along the bar."""
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = None
+        box = MagicMock(focus=True, multiline=False)
+        with (
+            patch.object(main_screen, "_menu_dots_open_without_the_keys", return_value=False),
+            patch.object(barks_reader.ui.main_screen, "_focused_text_input", return_value=box),
+            patch.object(barks_reader.ui.main_screen, "_modal_popup_is_open", return_value=False),
+        ):
+            main_screen._on_key_down(None, key, 0, "", [])
+
+        assert box.focus is not left
+        main_screen._nav.handle_key.assert_called_once_with(key)
+
     def test_an_open_modal_popup_keeps_the_keys(self, main_screen: MainScreen) -> None:
         """A popup's own key handler binds later, so this one must yield to it."""
         main_screen.name = "main"

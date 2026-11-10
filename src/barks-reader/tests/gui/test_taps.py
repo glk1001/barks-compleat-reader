@@ -557,6 +557,18 @@ def test_the_search_box_picks_its_keyboard_by_how_it_was_pressed(boot: AppBoot) 
         assert not keyboards, "a click on the search box keeps to the system keyboard"
 
 
+BOX_LEFT = pattern(markers.SEARCH_BOX_FOCUS, mode=re.compile(r"\w+"), state="unfocused")
+
+
+def test_escape_takes_the_keys_from_a_pressed_search_box(boot: AppBoot) -> None:
+    """A pressed box held the keys behind the bar's ring: Return on Menu opened nothing."""
+    d = _boot(boot, nodes.TITLE_SEARCH)
+    taps.tap_then_wait(d, search.SEARCH_BOX_FOCUSED, kv_id="title_search_input")
+    with d.expect(BOX_LEFT):
+        d.main_menu_button_then_wait("menu", d.FOCUS_MOVED)  # Escape, along the bar, Return
+    d.key_then_wait(d.DROPDOWN_DISMISSED, "Escape")
+
+
 # ------------------------------------------------------------ the search chips --
 
 SAID_BY_QUERY = "money"
