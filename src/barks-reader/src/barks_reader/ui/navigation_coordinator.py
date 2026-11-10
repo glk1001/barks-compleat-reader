@@ -217,6 +217,13 @@ class NavigationCoordinator:
         parent_node.ensure_populated()
         logger.debug(f"Parent node has {len(parent_node.nodes)} nodes.")
 
+        # Before anything moves: a title with no row went on as None, to fail a frame
+        # later inside the tree, with the title view already changed.
+        title_node = find_tree_view_title_node(parent_node.nodes, image_info.from_title)
+        if title_node is None:
+            logger.error(f'Goto title: "{image_info.from_title.name}" has no row in the tree.')
+            return
+
         assert self._tree_view_manager is not None
 
         # Save the currently selected node so Back can return to it.
@@ -229,11 +236,7 @@ class NavigationCoordinator:
             self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
 
         self._tree_view_manager.open_node_and_parent_nodes(parent_node)
-        title_node = cast(
-            "BaseTreeViewNode",
-            find_tree_view_title_node(parent_node.nodes, image_info.from_title),
-        )
-        self._tree_view_manager.goto_node(title_node, scroll_to=True)
+        self._tree_view_manager.goto_node(cast("BaseTreeViewNode", title_node), scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename, offer_page=offer_page)
 

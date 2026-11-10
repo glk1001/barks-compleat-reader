@@ -102,6 +102,38 @@ class TestNavigationCoordinator:
         mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
         mock_deps["renderer"].render_title.assert_not_called()
 
+    def test_a_title_with_no_row_under_its_year_changes_nothing(
+        self,
+        nav_coord: NavigationCoordinator,
+        mock_deps: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        """The missing row went on as None, to fail a frame later inside the tree."""
+        tree_manager = MagicMock()
+        nav_coord.set_tree_view_manager(tree_manager)
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.submitted_year = 1942
+        nav_coord.set_year_range_nodes({(1942, 1946): MagicMock(nodes=[])})
+
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_fanta_info,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "find_tree_view_title_node",
+                return_value=None,
+            ),
+        ):
+            nav_coord.navigate_to_chrono_title(ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER))
+
+        tree_manager.deselect_and_close_open_nodes.assert_not_called()
+        tree_manager.goto_node.assert_not_called()
+        mock_deps["renderer"].render_title.assert_not_called()
+        assert any("ADVENTURE_DOWN_UNDER" in line and "no row" in line for line in loguru_sink)
+
     def test_navigate_to_chrono_title_one_pager_navigates_year_range_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
