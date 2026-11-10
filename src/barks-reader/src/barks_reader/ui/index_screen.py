@@ -480,14 +480,22 @@ class IndexScreen(FloatLayout):
         ):
             return False
         # Search all columns for the saved button to guard against a stale _nav_focused_col.
+        found = self._find_item(self._nav_focused_btn)
+        if found is None:
+            return False
+        self._nav_focused_col, self._nav_focused_item_idx = found
+        self._draw_item_focus()
+        return True
+
+    def _find_item(self, btn: Button | None) -> tuple[int, int] | None:
+        """Return the column `btn` is in and its place there, or None when in none."""
+        if btn is None:
+            return None
         for col_idx in range(self.num_columns):
             col_buttons = self._get_col_buttons(col_idx)
-            if self._nav_focused_btn in col_buttons:
-                self._nav_focused_col = col_idx
-                self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
-                self._draw_item_focus()
-                return True
-        return False
+            if btn in col_buttons:
+                return col_idx, col_buttons.index(btn)
+        return None
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear all highlights."""
@@ -666,26 +674,23 @@ class IndexScreen(FloatLayout):
 
     def _place_focus_on(self, btn: Button) -> bool:
         """Put the keyboard focus on `btn`, an item in one of the columns; False if in none."""
-        for col_idx in range(self.num_columns):
-            col_buttons = self._get_col_buttons(col_idx)
-            if btn in col_buttons:
-                self._clear_letter_focus()
-                self._clear_all_item_focus()
-                self._nav_panel = _IndexNavPanel.ITEMS
-                self._nav_focused_col = col_idx
-                self._nav_focused_item_idx = col_buttons.index(btn)
-                return True
-        return False
+        found = self._find_item(btn)
+        if found is None:
+            return False
+        self._clear_letter_focus()
+        self._clear_all_item_focus()
+        self._nav_panel = _IndexNavPanel.ITEMS
+        self._nav_focused_col, self._nav_focused_item_idx = found
+        return True
 
     def _hand_focus_to(self, btn: Button) -> None:
         """Have the keyboard focus follow the action being taken to `btn`, in any column."""
         if not self._nav_active:
             return
-        for col_idx in range(self.num_columns):
-            if btn in self._get_col_buttons(col_idx):
-                self._nav_focused_col = col_idx
-                self._focus_handoff = btn
-                return
+        found = self._find_item(btn)
+        if found is not None:
+            self._nav_focused_col = found[0]
+            self._focus_handoff = btn
 
     def _schedule_sub_items(self, add_sub_items: Callable[[float], None]) -> None:
         """Add an expansion's sub-items on the next frame, then resync any focus waiting on them.
@@ -1020,12 +1025,14 @@ class IndexScreen(FloatLayout):
 
     def _handle_collapse(self, level_of_click: int) -> None:
         # When collapsing a parent, close it and all its children.
-        slice_index = level_of_click
-        widgets_to_close = self._open_tag_widgets[slice_index:]
-        for widget in widgets_to_close[:]:
+        self._close_open_widgets_from(level_of_click)
+
+    def _close_open_widgets_from(self, level: int) -> None:
+        """Take the open containers at `level` and deeper out of the grid."""
+        for widget in self._open_tag_widgets[level:]:
             if widget.parent:
                 widget.parent.remove_widget(widget)
-            self._open_tag_widgets.remove(widget)
+        del self._open_tag_widgets[level:]
 
     def _handle_expand_or_switch(self, button: Button) -> None:
         level_of_click = self._get_level_of_click_for_expand_or_switch(button)
@@ -1039,13 +1046,7 @@ class IndexScreen(FloatLayout):
             )  # Drill-down or lateral move. Close lists at the same or deeper level.
         )
 
-        # Perform the cleanup.
-        widgets_to_close = self._open_tag_widgets[slice_index:]
-        if widgets_to_close:
-            for widget in widgets_to_close[:]:  # Iterate over a copy
-                if widget.parent:
-                    widget.parent.remove_widget(widget)
-                self._open_tag_widgets.remove(widget)
+        self._close_open_widgets_from(slice_index)
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""

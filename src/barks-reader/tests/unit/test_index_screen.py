@@ -645,6 +645,32 @@ class TestExpansionStateMachine:
         assert deeper.parent is None
 
 
+class TestFindItem:
+    def test_an_item_is_found_by_its_column_and_its_place_there(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        wanted = MagicMock(spec=IndexItemButton)
+        columns = {0: [MagicMock(spec=IndexItemButton)], 1: [MagicMock(), wanted], 2: []}
+        index_screen.num_columns = 3
+        with patch.object(index_screen, "_get_col_buttons", side_effect=lambda col: columns[col]):
+            assert index_screen._find_item(wanted) == (1, 1)
+            assert index_screen._find_item(MagicMock(spec=IndexItemButton)) is None
+            assert index_screen._find_item(None) is None
+
+    def test_closing_from_a_level_takes_it_and_the_deeper_ones_out(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        parent = _FakeWidget()
+        outer, middle, inner = (_FakeWidget(parent=parent) for _ in range(3))
+        inner.parent = None  # already out of the grid: nothing to remove it from
+        index_screen._open_tag_widgets = [outer, middle, inner]
+
+        index_screen._close_open_widgets_from(1)
+
+        assert index_screen._open_tag_widgets == [outer]
+        assert (outer.parent, middle.parent) == (parent, None)
+
+
 class TestOnIndexItemPress:
     def test_terminal_item_short_circuits_before_any_expansion(
         self, index_screen: ConcreteIndexScreen
