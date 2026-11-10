@@ -65,7 +65,8 @@ STORY_DROPDOWN_WIDTH = dp(420)
 class GotoStory(Protocol):
     """Select a story with a page of it offered (``MainScreen.goto_title_from_document``)."""
 
-    def __call__(self, title: Titles, page: str, *, keyboard_initiated: bool) -> None: ...
+    def __call__(self, title: Titles, page: str, *, keyboard_initiated: bool) -> None:
+        """Select ``title`` on the main screen, offering ``page`` of it."""
 
 
 class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, ActionBarNavMixin):
@@ -259,6 +260,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             self._update_page_source()
 
     def prev_page(self) -> None:
+        """Turn back a page, or stay put on the first."""
         # The page before the unit's first; on the spread its unit shows (its pair).
         if self._current_page_index > 0:
             self._current_page_index -= 1
@@ -285,6 +287,15 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         return regions
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        """Turn the page, or show or hide the bar, by where a tap lands.
+
+        Args:
+            touch: The touch; anything but a tap (a wheel tick) is left to the widgets.
+
+        Returns:
+            Whether the touch was used.
+
+        """
         if self._is_closing:
             return True  # as for keys (_on_key_down): nothing left to act on
         if not is_tap(touch):
@@ -552,6 +563,20 @@ def get_document_reader_screen(
     on_close_screen: Callable[[], None],
     on_goto_story: GotoStory,
 ) -> DocumentReaderScreen:
+    """Load the document reader's kv file and build its screen.
+
+    Args:
+        screen_name: The name the screen manager knows the screen by.
+        reader_settings: The app's settings.
+        font_manager: The app's fonts.
+        window_manager: The window's fullscreen and size state.
+        on_close_screen: Called once the reader has closed.
+        on_goto_story: Called to go to a story a document page lists.
+
+    Returns:
+        The screen, ready to add to the screen manager.
+
+    """
     Builder.load_file(str(DOCUMENT_READER_KV_FILE))
 
     return DocumentReaderScreen(

@@ -103,6 +103,7 @@ class HyphenatingLabel(Label):
             _keep_justified_lines_inside(self._label)
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        """Pass a touch to the label's children, as a plain widget does."""
         # The refs in this label are layout scaffolding, not links: skip Label's
         # ref hit-testing (which would swallow touches) and behave like a plain widget.
         return bool(super(Label, self).on_touch_down(touch))

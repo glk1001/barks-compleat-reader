@@ -219,9 +219,19 @@ class PopupKeyboardNav:
 
     @property
     def is_open(self) -> bool:
+        """Whether the popup is on the window."""
         return self._popup.parent is not None
 
     def handle_key(self, key: int) -> bool:
+        """Act on a key pressed while the popup is open.
+
+        Args:
+            key: The key's code.
+
+        Returns:
+            True always: the popup takes every key while it is open.
+
+        """
         if is_escape_key(key):
             self._popup.dismiss()
         elif key == KEY_UP:
@@ -421,6 +431,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
         self._focus_handoff: Button | None = None
 
     def on_goto_background_title(self) -> None:
+        """Go to the title the background image is from, if an image is on show."""
         assert self.on_goto_background_title_func is not None
         if not self._current_image_info:
             return

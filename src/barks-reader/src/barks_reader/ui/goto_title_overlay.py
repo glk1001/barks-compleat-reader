@@ -59,13 +59,14 @@ class GotoTitleOverlay(FloatLayout):
             self.label_color = theme().text_title
 
     def on_kv_post(self, base_widget: Widget) -> None:  # noqa: ARG002
+        """Build the caption and the button in the corner ``position`` names."""
         if self.position == "top-right":
             self._build(lambda: self.height - OVERLAY_BUTTON_WIDTH - dp(10))
         else:
             self._build(lambda: 0.4 * OVERLAY_BUTTON_WIDTH)
 
     def on_goto_press(self) -> None:
-        pass
+        """Do nothing: the default handler of the event the goto button fires."""
 
     @staticmethod
     def _get_button_source() -> str:

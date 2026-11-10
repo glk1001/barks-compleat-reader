@@ -170,6 +170,7 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         )
 
     def set_load_image_func(self, load_image_func: Callable[[ImageInfo], None]) -> None:
+        """Take the function that puts an image from the history back on show."""
         self._load_image = load_image_func
 
     def set_load_texture_func(
@@ -191,13 +192,16 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         self._navigation.update_regions(round(size[0]), round(size[1]), 0, 0)
 
     def on_layout_mode(self, _instance: Widget, _mode: str) -> None:
+        """Drop any zoom and fill or empty the lower tier for the new layout."""
         self._set_zoom("")
         self._refresh_lower_tier()
 
     def on_image_texture(self, _instance: Widget, _texture: Texture | None) -> None:
+        """Work out again whether the tiers stack, the image on show having changed."""
         self._update_stacked()
 
     def on_previous_image_texture(self, _instance: Widget, _texture: Texture | None) -> None:
+        """Work out again whether the tiers stack, the lower tier's image having changed."""
         self._update_stacked()
 
     def _update_stacked(self) -> None:
@@ -373,9 +377,11 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         return True
 
     def prev_image(self) -> None:
+        """Step back to the image shown before this one, if there is one."""
         self._goto_previous_image()
 
     def next_image(self) -> None:
+        """Step on to the next image: the history's, or a fresh one at its end."""
         self._goto_next_image()
 
     def _goto_previous_image(self) -> None:
@@ -460,16 +466,24 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         self._load_texture(previous, apply_texture)
 
     def fun_options_button_pressed(self) -> None:
+        """Open the image-type options menu, or close it."""
         self.fun_options_enabled = not self.fun_options_enabled
         logger.debug(log_markers.FUN_OPTIONS_PRESSED.format(state=self.fun_options_enabled))
 
     def view_options_clear_all_button_pressed(self) -> None:
+        """Clear every image type's tick in the options menu."""
         logger.debug("Fun view options clear all pressed. Setting all checkboxes to inactive.")
 
         for child in self.ids.custom_options_box.children:
             child.active = False
 
     def set_last_loaded_image_info(self, image_info: ImageInfo) -> None:
+        """Take the image now on show: its caption, its place in the history, the lower tier.
+
+        Args:
+            image_info: The image the main screen has just loaded into the view.
+
+        """
         self._set_zoom("")
         self._set_title(image_info.from_title)
 
@@ -723,4 +737,5 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         clear_focus_in_list(self._all_menu_widgets(), _MENU_FOCUS_GROUP)
 
     def on_change_show_current_title(self) -> None:
+        """Show or hide the caption, as the setting now says."""
         self.show_current_title = self._reader_settings.show_fun_view_title_info
