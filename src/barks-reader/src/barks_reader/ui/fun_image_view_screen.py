@@ -43,6 +43,7 @@ from .reader_keyboard_nav import (
     update_focus_in_list,
 )
 from .tap_targets import Rect, window_rect
+from .ui_helpers import is_tap
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -294,7 +295,8 @@ class FunImageViewScreen(BoxLayout):
         # "left margin" presses with a negative x.
         if not self.collide_point(touch.x, touch.y):
             return False
-        if self.fun_options_enabled:
+        if self.fun_options_enabled or not is_tap(touch):
+            # A wheel tick's position says nothing of which way to step.
             return bool(super().on_touch_down(touch))
 
         x_rel = round(touch.x - self.x)
@@ -563,9 +565,20 @@ class FunImageViewScreen(BoxLayout):
         """Handle a key press while in bottom focus. Returns True if consumed."""
         if not self._nav_active:
             return False
+        if self._followed_into_the_menu() and key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_SPACE):
+            return True  # the ring has only now come to the menu: nothing to press unseen
         if self._nav_focus == _FunFocus.MENU:
             return self._handle_menu_key(key)
         return self._handle_button_key(key)
+
+    def _followed_into_the_menu(self) -> bool:
+        """Move the focus into an options menu a mouse press opened; True when it moved."""
+        if not self.fun_options_enabled or self._nav_focus == _FunFocus.MENU:
+            return False
+        self._nav_focus = _FunFocus.MENU
+        self._menu_idx = _MENU_START_IDX
+        self._draw_nav_focus()
+        return True
 
     def _handle_button_key(self, key: int) -> bool:
         if key == KEY_LEFT:
@@ -575,8 +588,11 @@ class FunImageViewScreen(BoxLayout):
             self.next_image()
             self._reconcile_button_focus()
         elif key == KEY_UP:
+            # An inactive goto button is no stop: it has no ring and takes no Enter.
             self._nav_focus = (
-                _FunFocus.GOTO if self._nav_focus == _FunFocus.LOWER_GOTO else _FunFocus.FILTER
+                _FunFocus.GOTO
+                if self._nav_focus == _FunFocus.LOWER_GOTO and self.goto_title_button_active
+                else _FunFocus.FILTER
             )
             self._draw_nav_focus()
         elif key == KEY_DOWN:
@@ -584,6 +600,8 @@ class FunImageViewScreen(BoxLayout):
                 self._nav_focus = _FunFocus.LOWER_GOTO
             elif self._nav_focus == _FunFocus.FILTER and self.goto_title_button_active:
                 self._nav_focus = _FunFocus.GOTO
+            elif self._nav_focus == _FunFocus.FILTER and self.lower_goto_title_button_active:
+                self._nav_focus = _FunFocus.LOWER_GOTO  # past an upper image with no title
             # Drawn even with nowhere to go: the GUI driver paces its keys on the line.
             self._draw_nav_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_SPACE):
@@ -602,7 +620,8 @@ class FunImageViewScreen(BoxLayout):
             if self.lower_goto_title_button_active:
                 self.on_goto_lower_title(from_keyboard=True)
         else:  # FILTER: open the options menu and move focus into it.
-            self.fun_options_button_pressed()
+            if not self.fun_options_enabled:
+                self.fun_options_button_pressed()
             self._nav_focus = _FunFocus.MENU
             self._menu_idx = _MENU_START_IDX
             self._draw_nav_focus()

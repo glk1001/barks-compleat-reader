@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+# cspell:ignore scrollup scrolldown
 
 from __future__ import annotations
 
@@ -183,7 +184,7 @@ class TestFunImageViewScreen:
         screen.fun_options_enabled = False
 
         # Mock touch
-        touch = MagicMock()
+        touch = MagicMock(button="left")
         touch.x = 100
         touch.y = 100
 
@@ -213,6 +214,25 @@ class TestFunImageViewScreen:
             mock_prev.assert_not_called()
             mock_next.assert_called_once()
 
+    @pytest.mark.parametrize("button", ["scrollup", "scrolldown", "right", "middle"])
+    def test_a_wheel_tick_or_another_mouse_button_steps_no_image(
+        self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock], button: str
+    ) -> None:
+        """A wheel tick's position says nothing of which way to step."""
+        screen, mock_nav, _ = screen_setup
+        screen.is_visible = True
+        screen.fun_options_enabled = False
+        mock_nav.is_in_left_margin.return_value = True
+
+        touch = MagicMock(button=button, x=10, y=50)
+        with (
+            patch.object(screen, "_goto_previous_image") as mock_prev,
+            patch.object(BoxLayout, "on_touch_down", return_value=False) as widgets_press,
+        ):
+            assert screen.on_touch_down(touch) is False
+        widgets_press.assert_called_once_with(touch)
+        mock_prev.assert_not_called()
+
     def test_a_press_off_the_view_is_not_a_margin_press(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
     ) -> None:
@@ -222,7 +242,7 @@ class TestFunImageViewScreen:
         screen.fun_options_enabled = False
         mock_nav.is_in_left_margin.return_value = True  # a negative x passes the check
 
-        touch = MagicMock()
+        touch = MagicMock(button="left")
         touch.x, touch.y = -50, 50  # left of the 100 x 100 view at (0, 0)
         with patch.object(screen, "_goto_previous_image") as mock_prev:
             assert screen.on_touch_down(touch) is False
@@ -318,6 +338,62 @@ class TestFunImageViewScreen:
         assert screen.handle_key(KEY_ENTER) is True
         assert screen.fun_options_enabled is True
         assert screen._nav_focus is _FunFocus.MENU
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_the_lower_goto_button_is_reached_past_an_upper_image_with_no_title(
+        self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
+    ) -> None:
+        screen, _, _ = screen_setup
+        screen.goto_title_button_active = False
+        screen.lower_goto_title_button_active = True
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        assert screen._nav_focus is _FunFocus.FILTER
+
+        assert screen.handle_key(KEY_DOWN) is True
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        # Up skips the upper button: inactive, it has no ring and takes no Enter.
+        assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.FILTER
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    @pytest.mark.parametrize("key", [KEY_ENTER, KEY_LEFT, KEY_RIGHT])
+    def test_a_menu_opened_by_the_mouse_takes_the_focus_at_the_next_key(
+        self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock], key: int
+    ) -> None:
+        """Enter on the filter button once closed it, the focus left on a hidden row."""
+        screen, _, _ = screen_setup
+        screen.goto_title_button_active = False
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        assert screen._nav_focus is _FunFocus.FILTER
+        screen.fun_options_enabled = True  # a mouse press on the filter button
+
+        with (
+            patch.object(screen, "prev_image") as prev_image,
+            patch.object(screen, "next_image") as next_image,
+            patch.object(screen, "_activate_menu_widget") as activate,
+        ):
+            assert screen.handle_key(key) is True
+
+        assert screen.fun_options_enabled is True  # still open
+        assert screen._nav_focus is _FunFocus.MENU
+        activate.assert_not_called()  # the ring had not been seen there yet
+        prev_image.assert_not_called()
+        next_image.assert_not_called()
+
+    @pytest.mark.usefixtures("_no_focus_draw")
+    def test_escape_closes_a_menu_opened_by_the_mouse(
+        self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
+    ) -> None:
+        screen, _, _ = screen_setup
+        screen.fun_options_enabled = False
+        screen.enter_nav_focus(MagicMock())
+        screen.fun_options_enabled = True  # a mouse press on the filter button
+
+        assert screen.handle_key(KEY_ESCAPE) is True
+        assert screen.fun_options_enabled is False
+        assert screen._nav_focus is _FunFocus.FILTER
 
     @pytest.mark.usefixtures("_no_focus_draw")
     def test_escape_on_buttons_exits_to_caller(
@@ -474,7 +550,7 @@ class TestTapsAndClicks:
             patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
             patch.object(screen, "_goto_previous_image") as previous,
         ):
-            assert screen.on_touch_down(MagicMock(x=5, y=5)) is True
+            assert screen.on_touch_down(MagicMock(button="left", x=5, y=5)) is True
         widgets_press.assert_called_once()
         previous.assert_not_called()
 
@@ -490,7 +566,7 @@ class TestTapsAndClicks:
             patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
             patch.object(screen, "_goto_previous_image") as previous,
         ):
-            assert screen.on_touch_down(MagicMock(x=5, y=5)) is False
+            assert screen.on_touch_down(MagicMock(button="left", x=5, y=5)) is False
         widgets_press.assert_not_called()
         previous.assert_not_called()
 
@@ -503,7 +579,7 @@ class TestTapsAndClicks:
             patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
             patch.object(screen, "_goto_next_image") as next_image,
         ):
-            assert screen.on_touch_down(MagicMock(x=95, y=95)) is True
+            assert screen.on_touch_down(MagicMock(button="left", x=95, y=95)) is True
         widgets_press.assert_called_once()
         next_image.assert_not_called()
 
@@ -513,7 +589,7 @@ class TestTapsAndClicks:
         nav.is_in_left_margin.return_value = False
         nav.is_in_right_margin.return_value = False
         with patch.object(BoxLayout, "on_touch_down", return_value=False) as widgets_press:
-            assert screen.on_touch_down(MagicMock(x=50, y=50)) is False
+            assert screen.on_touch_down(MagicMock(button="left", x=50, y=50)) is False
         widgets_press.assert_called_once()
 
     def test_with_debugging_on_a_press_is_logged(
@@ -526,7 +602,7 @@ class TestTapsAndClicks:
             patch.object(barks_reader.ui.fun_image_view_screen, "_DEBUG", True),  # noqa: FBT003
             patch.object(screen, "_goto_previous_image"),
         ):
-            screen.on_touch_down(MagicMock(x=5, y=6))
+            screen.on_touch_down(MagicMock(button="left", x=5, y=6))
         assert any(m.startswith("Touch down event: ") for m in loguru_sink)
 
 
@@ -773,26 +849,38 @@ class TestTheSpreadsTwoTiers:
             patch.object(screen, "_goto_previous_image") as back,
             patch.object(screen, "_goto_next_image") as forward,
         ):
-            assert screen.on_touch_down(MagicMock(x=10, y=20)) is True  # Left, lower tier.
-            assert screen.on_touch_down(MagicMock(x=20, y=80)) is True  # Left, upper tier.
+            assert (
+                screen.on_touch_down(MagicMock(button="left", x=10, y=20)) is True
+            )  # Left, lower tier.
+            assert (
+                screen.on_touch_down(MagicMock(button="left", x=20, y=80)) is True
+            )  # Left, upper tier.
             assert back.call_count == 2  # noqa: PLR2004
-            assert screen.on_touch_down(MagicMock(x=90, y=20)) is True  # Right, lower tier.
+            assert (
+                screen.on_touch_down(MagicMock(button="left", x=90, y=20)) is True
+            )  # Right, lower tier.
             forward.assert_called_once()
             assert not screen.zoomed
 
-        assert screen.on_touch_down(MagicMock(x=50, y=20)) is True  # Middle, lower tier.
+        assert (
+            screen.on_touch_down(MagicMock(button="left", x=50, y=20)) is True
+        )  # Middle, lower tier.
         assert screen.zoomed == "lower"
         assert not screen.tiered
         assert log_markers.MIDDLE_PRESSED.format(x=50, y=20, tier="lower") in loguru_sink
         assert log_markers.FUN_VIEW_ZOOM.format(tier="lower") in loguru_sink
         assert screen._history.index == 1  # The history stays put.
 
-        assert screen.on_touch_down(MagicMock(x=50, y=80)) is True  # Middle, zoomed: out.
+        assert (
+            screen.on_touch_down(MagicMock(button="left", x=50, y=80)) is True
+        )  # Middle, zoomed: out.
         assert not screen.zoomed
         assert screen.tiered
         assert log_markers.FUN_VIEW_ZOOM.format(tier="off") in loguru_sink
 
-        assert screen.on_touch_down(MagicMock(x=50, y=80)) is True  # Middle, upper tier.
+        assert (
+            screen.on_touch_down(MagicMock(button="left", x=50, y=80)) is True
+        )  # Middle, upper tier.
         assert screen.zoomed == "upper"
 
     def test_a_press_above_or_below_the_margins_band_is_not_a_step(
@@ -801,8 +889,8 @@ class TestTheSpreadsTwoTiers:
         screen, nav, _ = screen_setup
         _stack_the_tiers(screen, nav)
         with patch.object(BoxLayout, "on_touch_down", return_value=False):
-            assert screen.on_touch_down(MagicMock(x=10, y=98)) is False
-            assert screen.on_touch_down(MagicMock(x=50, y=1)) is False
+            assert screen.on_touch_down(MagicMock(button="left", x=10, y=98)) is False
+            assert screen.on_touch_down(MagicMock(button="left", x=50, y=1)) is False
         assert not screen.zoomed
 
     def test_a_lone_image_has_nothing_to_zoom(self, screen_setup: _Setup) -> None:
@@ -812,7 +900,7 @@ class TestTheSpreadsTwoTiers:
         screen._update_stacked()
         assert not screen.stacked
         with patch.object(BoxLayout, "on_touch_down", return_value=False):
-            assert screen.on_touch_down(MagicMock(x=50, y=20)) is False
+            assert screen.on_touch_down(MagicMock(button="left", x=50, y=20)) is False
         assert not screen.zoomed
 
     def test_zoomed_in_on_the_lower_tier_the_goto_button_is_that_images(
@@ -822,7 +910,7 @@ class TestTheSpreadsTwoTiers:
         _stack_the_tiers(screen, nav)
         goto = MagicMock()
         screen.on_goto_title_func = goto
-        screen.on_touch_down(MagicMock(x=50, y=20))
+        screen.on_touch_down(MagicMock(button="left", x=50, y=20))
         assert screen.goto_title_button_active
         assert not screen.lower_goto_title_button_active
         screen.on_goto_title()
@@ -835,8 +923,10 @@ class TestTheSpreadsTwoTiers:
         assert not screen.goto_title_button_active
 
         goto.reset_mock()
-        screen.on_touch_down(MagicMock(x=50, y=20))  # Out, then in on the upper tier.
-        screen.on_touch_down(MagicMock(x=50, y=80))
+        screen.on_touch_down(
+            MagicMock(button="left", x=50, y=20)
+        )  # Out, then in on the upper tier.
+        screen.on_touch_down(MagicMock(button="left", x=50, y=80))
         assert screen.zoomed == "upper"
         screen.on_goto_title()
         goto.assert_called_once_with(from_keyboard=False)
@@ -845,7 +935,7 @@ class TestTheSpreadsTwoTiers:
     def test_a_step_ends_the_zoom(self, screen_setup: _Setup, step: str) -> None:
         screen, nav, _ = screen_setup
         _stack_the_tiers(screen, nav)
-        screen.on_touch_down(MagicMock(x=50, y=20))
+        screen.on_touch_down(MagicMock(button="left", x=50, y=20))
         assert screen.zoomed
         if step == "back":
             screen.prev_image()
@@ -869,7 +959,7 @@ class TestTheSpreadsTwoTiers:
         screen.enter_nav_focus(MagicMock())
         screen.handle_key(KEY_DOWN)
         assert screen._nav_focus is _FunFocus.LOWER_GOTO
-        screen.on_touch_down(MagicMock(x=50, y=20))
+        screen.on_touch_down(MagicMock(button="left", x=50, y=20))
         assert screen._nav_focus is _FunFocus.GOTO
 
     @pytest.mark.parametrize(
@@ -1065,7 +1155,7 @@ class TestTheLowerTiersGotoButton:
             patch.object(BoxLayout, "on_touch_down", return_value=True) as widgets_press,
             patch.object(screen, "_goto_next_image") as forward,
         ):
-            assert screen.on_touch_down(MagicMock(x=90, y=40)) is True
+            assert screen.on_touch_down(MagicMock(button="left", x=90, y=40)) is True
         widgets_press.assert_called_once()
         forward.assert_not_called()
 
@@ -1075,7 +1165,7 @@ class TestTheLowerTiersGotoButton:
         screen.ids["lower_goto_title_overlay"].goto_button.collide_point.return_value = True
         nav.is_in_left_margin.return_value = True
         with patch.object(screen, "_goto_previous_image") as back:
-            assert screen.on_touch_down(MagicMock(x=5, y=40)) is True
+            assert screen.on_touch_down(MagicMock(button="left", x=5, y=40)) is True
         back.assert_called_once_with()
 
     @pytest.mark.usefixtures("_no_focus_draw")
