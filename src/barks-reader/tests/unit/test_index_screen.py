@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -31,12 +32,11 @@ from barks_reader.ui.index_screen import (
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
+from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-
-    from kivy.uix.button import Button
 
 
 # Create a concrete implementation for testing
@@ -275,10 +275,25 @@ class TestIndexScreen:
         second.assert_called_once_with(0.0)
         assert index_screen._sub_items_event is None
 
-    def test_on_is_visible_false(self, index_screen: ConcreteIndexScreen) -> None:
-        with patch.object(index_screen, "_cancel_index_image_change_events") as mock_cancel:
+    def test_a_hidden_index_stops_changing_its_background(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        rotation = MagicMock()
+        index_screen._index_image_change_event = rotation
+        # The base class's own, which `ConcreteIndexScreen` stubs out.
+        with (
+            patch.object(
+                ConcreteIndexScreen,
+                "_cancel_index_image_change_events",
+                IndexScreen._cancel_index_image_change_events,
+            ),
+            patch.object(index_screen, "on_letter_press") as pressed,
+        ):
             index_screen.on_is_visible(index_screen, value=False)
-            mock_cancel.assert_called_once()
+
+        rotation.cancel.assert_called_once_with()
+        assert index_screen._index_image_change_event is None
+        pressed.assert_not_called()  # and shows no letter
 
     def test_resync_item_focus_first_expand(self, index_screen: ConcreteIndexScreen) -> None:
         """First expansion: no prior sub-items, count increases, focus moves to first sub-item."""
@@ -1465,3 +1480,239 @@ class TestFocusFollowsAPress:
         assert index_screen._nav_panel == barks_reader.ui.index_screen._IndexNavPanel.ALPHABET
         assert index_screen._letter_order[index_screen._nav_focused_letter_idx] == "C"
         draw.assert_called_once_with()
+
+
+class TestMovingBetweenThePanels:
+    """Left, Right, Enter and Escape between the A-Z menu and the items."""
+
+    def test_enter_in_the_alphabet_shows_the_focused_letter(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._populate_alphabet_menu()
+        index_screen._nav_active = True
+        index_screen._nav_panel = _module._IndexNavPanel.ALPHABET
+        index_screen._nav_focused_letter_idx = index_screen._letter_order.index("C")
+
+        with patch.object(index_screen, "on_letter_press") as pressed:
+            assert index_screen.handle_key(_module.KEY_ENTER) is True
+
+        pressed.assert_called_once_with(index_screen._alphabet_buttons["C"])
+
+    def test_right_from_the_alphabet_lands_on_the_first_item(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock(), MagicMock()]
+        screen._nav_panel = _module._IndexNavPanel.ALPHABET
+        screen._nav_focused_col, screen._nav_focused_item_idx = 1, 1  # stale, from before
+
+        assert screen.handle_key(_module.KEY_RIGHT) is True
+
+        assert screen._nav_panel is _module._IndexNavPanel.ITEMS
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (0, 0)
+        assert screen._nav_focused_btn is columns[0][0]
+
+    def test_right_from_the_alphabet_stays_when_the_letter_has_no_items(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, _columns = items_nav
+        screen._nav_panel = _module._IndexNavPanel.ALPHABET
+
+        assert screen.handle_key(_module.KEY_RIGHT) is True
+
+        assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+
+    @pytest.mark.parametrize("key", [_module.KEY_LEFT, KEY_ESCAPE])
+    def test_left_from_the_first_column_and_escape_go_back_to_the_alphabet(
+        self, items_nav: tuple[ConcreteIndexScreen, dict], key: int
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock()]
+
+        assert screen.handle_key(key) is True
+
+        assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+        assert screen._nav_active is True  # still on the screen: only Escape there leaves
+
+    def test_left_from_a_later_column_goes_to_the_column_before(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0], columns[1] = [MagicMock()], [MagicMock()]
+        screen._nav_focused_col = 1
+
+        assert screen.handle_key(_module.KEY_LEFT) is True
+
+        assert screen._nav_panel is _module._IndexNavPanel.ITEMS
+        assert screen._nav_focused_col == 0
+
+    def test_coming_back_to_an_unchanged_grid_puts_the_focus_on_the_item_it_left(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        left = MagicMock()
+        columns[0], columns[1] = [MagicMock()], [MagicMock(), left]
+        screen._nav_focused_btn = left
+        screen._nav_saved_grid_version = screen._grid_version
+        screen._nav_focused_col, screen._nav_focused_item_idx = 0, 0  # stale
+        screen._nav_active = False
+
+        screen.enter_nav_focus(lambda: None)
+
+        assert screen._nav_panel is _module._IndexNavPanel.ITEMS
+        assert (screen._nav_focused_col, screen._nav_focused_item_idx) == (1, 1)
+
+    def test_coming_back_to_a_grid_filled_again_starts_at_the_alphabet(
+        self, items_nav: tuple[ConcreteIndexScreen, dict]
+    ) -> None:
+        screen, columns = items_nav
+        columns[0] = [MagicMock()]
+        screen._nav_focused_btn = columns[0][0]
+        screen._nav_saved_grid_version = screen._grid_version - 1  # another letter since
+        screen._nav_active = False
+
+        screen.enter_nav_focus(lambda: None)
+
+        assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+
+
+class TestTheColumnsButtons:
+    """The buttons of a column, read from the widgets: the top one first."""
+
+    @staticmethod
+    def _button() -> MagicMock:
+        return MagicMock(spec=Button)
+
+    @staticmethod
+    def _box(*children: object) -> SimpleNamespace:
+        # Kivy lists children newest first: the last added, the lowest on screen, leads.
+        return SimpleNamespace(children=list(reversed(children)))
+
+    def test_a_columns_buttons_include_those_in_its_open_lists_in_screen_order(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        first, sub_one, sub_two, last = (self._button() for _ in range(4))
+        index_screen.ids.left_column_layout = self._box(
+            first, self._box(sub_one, self._box(sub_two)), last
+        )
+
+        assert index_screen._get_col_buttons(0) == [first, sub_one, sub_two, last]
+
+    def test_with_two_columns_the_middle_one_is_left_out(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        in_middle, in_right = self._button(), self._button()
+        index_screen.ids.left_column_layout = self._box()
+        index_screen.ids.middle_column_layout = self._box(in_middle)
+        index_screen.ids.right_column_layout = self._box(in_right)
+
+        index_screen.num_columns = 2
+        assert index_screen._get_col_buttons(1) == [in_right]
+        index_screen.num_columns = 3
+        assert index_screen._get_col_buttons(1) == [in_middle]
+        assert index_screen._get_col_buttons(2) == [in_right]
+
+
+class TestTheRotatingBackground:
+    """What `ConcreteIndexScreen` stubs out: the base class's image rotation."""
+
+    def test_a_new_image_is_shown_at_once_and_then_at_each_interval(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        earlier = MagicMock()
+        index_screen._index_image_change_event = earlier
+        with (
+            patch.object(
+                ConcreteIndexScreen, "_cancel_index_image_change_events", autospec=True
+            ) as cancel,
+            patch.object(index_screen, "_reset_background_image_caches") as reset_caches,
+            patch.object(index_screen, "_next_background_image") as next_image,
+            patch.object(Clock, "schedule_interval") as schedule,
+        ):
+            cancel.side_effect = IndexScreen._cancel_index_image_change_events
+            IndexScreen._new_index_image(index_screen)
+
+            reset_caches.assert_called_once_with()
+            earlier.cancel.assert_called_once_with()
+            next_image.assert_called_once_with()
+            tick, seconds = schedule.call_args.args
+            assert seconds == index_screen.index_image_change_seconds
+            assert index_screen._index_image_change_event is schedule.return_value
+
+            tick(0.0)
+            assert next_image.call_count == 2
+
+    def test_cancelling_with_no_rotation_running_does_nothing(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._index_image_change_event = None
+        IndexScreen._cancel_index_image_change_events(index_screen)
+        assert index_screen._index_image_change_event is None
+
+
+class TestTheBubblesPopupsPages:
+    def test_each_page_gets_a_box_and_a_press_on_it_goes_to_that_page(self) -> None:
+        pages = {
+            "fanta-3": MagicMock(comic_page="5"),
+            "fanta-9": MagicMock(comic_page="11"),
+        }
+        on_page_press = MagicMock()
+        with (
+            patch.object(_module, "GridLayout") as grid_cls,
+            patch.object(_module, "TextBoxWithTitleAndBorder") as box_cls,
+            patch.object(_module, "ReaderScrollView"),
+            patch.object(_module, "format_page_speech_bubbles", return_value="bubbles") as fmt,
+        ):
+            box_cls.side_effect = MagicMock
+            show_speech_bubbles_popup(
+                MagicMock(),
+                "Lost in the Andes!",
+                "eggs",
+                MagicMock(fanta_pages=pages),
+                on_page_press,
+                text_font_size=20,
+            )
+
+        boxes = [added.args[0] for added in grid_cls.return_value.add_widget.call_args_list]
+        assert [(box.title, box.content) for box in boxes] == [
+            ("Page 5", "bubbles"),
+            ("Page 11", "bubbles"),
+        ]
+        # The speaker line is set a step smaller than the lettering.
+        speaker_size = fmt.call_args_list[0].args[2]
+        assert 0 < speaker_size < 20
+        # Each box goes to its own page: the first, not the last one made.
+        release = boxes[0].ids.the_text_id.bind.call_args.kwargs["on_release"]
+        release(MagicMock())
+        on_page_press.assert_called_once_with("Lost in the Andes!", "5")
+
+
+class TestThePopupsNavState:
+    def test_the_popup_is_open_while_it_is_in_the_window(self) -> None:
+        nav = PopupKeyboardNav(MagicMock())
+        assert nav.is_open is True
+        nav._popup.parent = None
+        assert nav.is_open is False
+
+    def test_enter_presses_the_focused_bubble(self) -> None:
+        nav = PopupKeyboardNav(MagicMock())
+        entries = [MagicMock(), MagicMock()]
+        nav._focused_idx = 1
+        with patch.object(PopupKeyboardNav, "_get_entries", return_value=entries):
+            assert nav.handle_key(_module.KEY_ENTER) is True
+
+        entries[1].ids.the_text_id.trigger_action.assert_called_once_with(duration=0)
+        entries[0].ids.the_text_id.trigger_action.assert_not_called()
+
+    def test_a_focus_past_the_last_entry_is_brought_back_to_it(self) -> None:
+        nav = PopupKeyboardNav(MagicMock())
+        entries = [MagicMock(), MagicMock()]
+        nav._focused_idx = 5
+        with (
+            patch.object(PopupKeyboardNav, "_get_entries", return_value=entries),
+            patch.object(_module, "draw_focus_highlight") as draw,
+        ):
+            nav._draw_focus()
+
+        assert nav._focused_idx == 1
+        draw.assert_called_once_with(entries[1], POPUP_NAV_FOCUS_GROUP, line_width=3)

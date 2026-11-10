@@ -29,7 +29,7 @@ def mock_settings() -> MagicMock:
 
 
 @contextmanager
-def _patched_screen_deps(alpha_split_terms: dict, entity_terms: list[str]) -> Generator[MagicMock]:
+def _patched_screen_deps(entity_terms: list[str]) -> Generator[MagicMock]:
     """Patch the Kivy and search dependencies needed to construct an EntityIndexScreen.
 
     Yields the mock ComicSearch indexer instance.
@@ -49,8 +49,6 @@ def _patched_screen_deps(alpha_split_terms: dict, entity_terms: list[str]) -> Ge
         patch.object(EntityIndexScreen, "ids", MagicMock()),
     ):
         mock_indexer = mock_search_cls.return_value
-        # get_alpha_split_terms is called by SpeechIndexScreen.__init__
-        mock_indexer.get_alpha_split_terms.return_value = alpha_split_terms
         # get_entity_terms is called by EntityIndexScreen.__init__
         mock_indexer.get_entity_terms.return_value = entity_terms
 
@@ -64,7 +62,6 @@ def person_index_screen(
     mock_user_error_handler: MagicMock,
 ) -> Generator[EntityIndexScreen]:
     with _patched_screen_deps(
-        alpha_split_terms={"a": {"al": ["Alice"]}},
         entity_terms=["Daisy Duck", "Donald Duck", "Scrooge McDuck"],
     ) as mock_indexer:
         screen = EntityIndexScreen(
@@ -104,8 +101,12 @@ class TestEntityIndexScreen:
             EntityType.PERSON, "Donald Duck"
         )
 
-    def test_entity_type_stored(self, person_index_screen: EntityIndexScreen) -> None:
-        assert person_index_screen._entity_type == EntityType.PERSON
+    def test_the_index_is_built_from_its_own_entity_types_terms(
+        self, person_index_screen: EntityIndexScreen
+    ) -> None:
+        """And from nothing else: the word index's prefix terms are never asked for."""
+        person_index_screen._search.get_entity_terms.assert_called_once_with(EntityType.PERSON)
+        person_index_screen._search.get_alpha_split_terms.assert_not_called()
 
     def test_populate_index_for_letter_skips_prefix_menu(
         self, person_index_screen: EntityIndexScreen
@@ -124,17 +125,37 @@ class TestEntityIndexScreen:
         self, person_index_screen: EntityIndexScreen
     ) -> None:
         """Right from alphabet should go directly to items, not prefix."""
-        with patch.object(person_index_screen, "_enter_items_panel") as mock_enter:
+        person_index_screen._nav_panel = _IndexNavPanel.ALPHABET
+        person_index_screen._nav_focused_col = person_index_screen._nav_focused_item_idx = 1
+        with (
+            patch.object(person_index_screen, "_get_col_buttons", return_value=[MagicMock()]),
+            patch.object(person_index_screen, "_clear_letter_focus") as clear_letter,
+            patch.object(person_index_screen, "_draw_item_focus") as draw_item,
+        ):
             person_index_screen._on_right_from_alphabet()
-            mock_enter.assert_called_once()
+
+        assert person_index_screen._nav_panel is _IndexNavPanel.ITEMS
+        assert (
+            person_index_screen._nav_focused_col,
+            person_index_screen._nav_focused_item_idx,
+        ) == (0, 0)
+        clear_letter.assert_called_once_with()
+        draw_item.assert_called_once_with()
 
     def test_on_back_from_items_enters_alphabet(
         self, person_index_screen: EntityIndexScreen
     ) -> None:
         """Back from items should go to alphabet, not prefix."""
-        with patch.object(person_index_screen, "_enter_alphabet_panel") as mock_enter:
+        person_index_screen._nav_panel = _IndexNavPanel.ITEMS
+        with (
+            patch.object(person_index_screen, "_clear_all_item_focus") as clear_items,
+            patch.object(person_index_screen, "_draw_letter_focus") as draw_letter,
+        ):
             person_index_screen._on_back_from_items()
-            mock_enter.assert_called_once()
+
+        assert person_index_screen._nav_panel is _IndexNavPanel.ALPHABET
+        clear_items.assert_called_once_with()
+        draw_letter.assert_called_once_with()
 
     def test_get_items_for_letter(self, person_index_screen: EntityIndexScreen) -> None:
         """_get_items_for_letter should return items from _item_index."""
@@ -198,7 +219,7 @@ class TestEntityIndexScreen:
     ) -> None:
         """Terms with non-alpha first chars (like '-ER-') should raise RuntimeError."""
         with (
-            _patched_screen_deps(alpha_split_terms={}, entity_terms=["-ER-", "Alice"]),
+            _patched_screen_deps(entity_terms=["-ER-", "Alice"]),
             pytest.raises(RuntimeError, match="non-alpha prefix"),
         ):
             EntityIndexScreen(
@@ -214,7 +235,7 @@ class TestEntityIndexScreen:
         mock_font_manager: MagicMock,
         mock_user_error_handler: MagicMock,
     ) -> None:
-        with _patched_screen_deps(alpha_split_terms={}, entity_terms=["", "Alice"]):
+        with _patched_screen_deps(entity_terms=["", "Alice"]):
             screen = EntityIndexScreen(
                 EntityType.PERSON, mock_settings, mock_font_manager, mock_user_error_handler
             )
