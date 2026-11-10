@@ -148,7 +148,7 @@ class MainIndexScreen(IndexScreen):
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text
             self._cached_all_titles_for_letter, self._cached_hierarchies = titles_for_letter(
-                self._item_index[letter]
+                self._get_items_for_letter(letter)
             )
 
         image_info = self._random_title_images.get_random_image(self._cached_all_titles_for_letter)

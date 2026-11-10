@@ -92,6 +92,21 @@ class TestMainIndexScreen:
         assert len(items_b) == 1
         assert items_b[0].display_text == "Banana"
 
+    def test_a_letter_with_no_entries_still_gets_a_background(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        """The menu offers X, which has no page: only a defaultdict kept this from a KeyError."""
+        main_index_screen._item_index = {"A": [IndexItem(Titles.TRUANT_OFFICER_DONALD, "A")]}
+        main_index_screen._selected_letter_button = MagicMock(text="X")
+        main_index_screen._cached_all_titles_for_letter = []
+
+        with patch.object(main_index_screen, "_set_background_image") as set_image:
+            main_index_screen._next_background_image()
+
+        main_index_screen._random_title_images.get_random_image.assert_called_once_with([])
+        set_image.assert_called_once()
+        assert "X" not in main_index_screen._item_index
+
     def test_create_index_button(self, main_index_screen: MainIndexScreen) -> None:
         item = IndexItem(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, "My Title")
 
