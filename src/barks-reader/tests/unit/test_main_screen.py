@@ -1622,7 +1622,7 @@ class TestWhatTheMainScreenHandsOn:
         main_screen.is_first_use_of_reader = False
         setting_before = main_screen._reader_settings.is_first_use_of_reader
 
-        main_screen._set_no_longer_first_use()
+        main_screen._count_comic_opened_from_portal()
 
         assert main_screen._reader_settings.is_first_use_of_reader is setting_before
 
