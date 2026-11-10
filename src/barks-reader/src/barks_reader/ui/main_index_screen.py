@@ -225,7 +225,6 @@ class MainIndexScreen(IndexScreen):
             sub_item_page_to_goto,
             sub_item_text,
         ) in sub_items_to_display:
-            logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
             is_tag = isinstance(sub_item_id, Tags)
             title_button = _MainIndexTitleItemButton(
                 text=tag_heading_markup(sub_item_id) if is_tag else sub_item_text,
@@ -252,7 +251,11 @@ class MainIndexScreen(IndexScreen):
                 ),
             )
             sub_items_layout.add_widget(title_button)
-            logger.debug(f'Added sub-item "{sub_item_text}".')
+            # One line a row, at debug: an info line beside it doubled the log written
+            # in the frame a tag of a few hundred titles opens in.
+            logger.debug(
+                f'Added sub-item "{sub_item_text}", page to goto = {sub_item_page_to_goto}.'
+            )
 
         return sub_items_layout
 
