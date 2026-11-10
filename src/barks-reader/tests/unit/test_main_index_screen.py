@@ -176,7 +176,7 @@ class TestTagMarkers:
     ) -> None:
         group = next(iter(barks_reader.ui.main_index_screen.BARKS_TAG_GROUPS))
         with patch.object(Clock, "schedule_once") as schedule:
-            main_index_screen._handle_tag_group(MagicMock(), IndexItem(group, group.value))
+            main_index_screen._handle_item_expansion(MagicMock(), IndexItem(group, group.value))
         assert f'Handling tag group: "{group.name}".' in loguru_sink
         schedule.assert_called_once()
 
@@ -185,7 +185,7 @@ class TestTagMarkers:
     ) -> None:
         tag = next(iter(barks_reader.ui.main_index_screen.BARKS_TAGGED_TITLES))
         with patch.object(Clock, "schedule_once"):
-            main_index_screen._handle_tag(MagicMock(), IndexItem(tag, tag.value))
+            main_index_screen._handle_item_expansion(MagicMock(), IndexItem(tag, tag.value))
         assert f'Handling tag: "{tag.name}".' in loguru_sink
 
     def test_a_tag_no_title_carries_opens_nothing(
@@ -199,7 +199,7 @@ class TestTagMarkers:
             patch.object(barks_reader.ui.main_index_screen, "BARKS_TAGGED_TITLES", {}),
             patch.object(Clock, "schedule_once") as schedule,
         ):
-            main_index_screen._handle_tag(MagicMock(), IndexItem(tag, tag.value))
+            main_index_screen._handle_item_expansion(MagicMock(), IndexItem(tag, tag.value))
 
         schedule.assert_not_called()
         assert main_index_screen._open_tag_button is None
@@ -265,7 +265,7 @@ class TestTagMarkers:
             patch.object(barks_reader.ui.main_index_screen, "BARKS_TAG_GROUPS", {}),
             patch.object(Clock, "schedule_once") as schedule,
         ):
-            main_index_screen._handle_tag_group(MagicMock(), IndexItem(group, group.value))
+            main_index_screen._handle_item_expansion(MagicMock(), IndexItem(group, group.value))
 
         schedule.assert_not_called()
         assert main_index_screen._open_tag_button is None
@@ -368,7 +368,7 @@ class TestSeeReferences:
             patch.object(screen, "_alphabet_buttons", letters, create=True),
             patch.object(screen, "_populate_index_grid", side_effect=populate),
             patch.object(barks_reader.ui.main_index_screen, "IndexItemButton"),
-            patch.object(screen, "_handle_tag") as handle_tag,
+            patch.object(screen, "_handle_item_expansion") as handle_tag,
         ):
             screen._follow_see_reference(IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete"))
 

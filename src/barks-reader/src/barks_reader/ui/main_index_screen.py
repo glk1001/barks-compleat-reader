@@ -301,32 +301,27 @@ class MainIndexScreen(IndexScreen):
 
     @override
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
+        # A tag opens onto its titles, a tag group onto its tags: the one path, told
+        # apart by the line logged and by where what the entry holds is looked up.
         if type(item.id) is Tags:
-            self._handle_tag(button, item)
+            marker, holds, has_any = (
+                log_markers.INDEX_HANDLING_TAG,
+                "titles",
+                item.id in BARKS_TAGGED_TITLES,
+            )
         elif type(item.id) is TagGroups:
-            self._handle_tag_group(button, item)
+            marker, holds, has_any = (
+                log_markers.INDEX_HANDLING_TAG_GROUP,
+                "tags",
+                item.id in BARKS_TAG_GROUPS,
+            )
+        else:
+            return  # a title: nothing under it to open
+        logger.info(marker.format(name=item.id.name))
 
-    def _handle_tag(self, button: Button, item: IndexItem) -> None:
-        assert type(item.id) is Tags
-        tag: Tags = item.id
-        logger.info(log_markers.INDEX_HANDLING_TAG.format(name=tag.name))
-
-        if tag not in BARKS_TAGGED_TITLES:
-            logger.warning(f"No titles found for tag: {tag.name}")
-            self._open_tag_button = None
-            return
-
-        self._open_tag_button = button
-        self._open_tag_item = item
-        self._schedule_sub_items(self._add_sub_items)
-
-    def _handle_tag_group(self, button: Button, item: IndexItem) -> None:
-        assert type(item.id) is TagGroups
-        tag_group: TagGroups = item.id
-        logger.info(log_markers.INDEX_HANDLING_TAG_GROUP.format(name=tag_group.name))
-
-        if tag_group not in BARKS_TAG_GROUPS:
-            logger.warning(f"No tags found for tag group: {tag_group.name}")
+        if not has_any:
+            kind = "tag" if holds == "titles" else "tag group"
+            logger.warning(f"No {holds} found for {kind}: {item.id.name}")
             self._open_tag_button = None
             return
 
