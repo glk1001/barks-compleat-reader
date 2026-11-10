@@ -57,7 +57,6 @@ if TYPE_CHECKING:
 FUN_IMAGE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 _MAX_IMAGES_HISTORY = 20
-_DEBUG = False
 
 # The margins a press steps the images from: all of the view but a band at the top,
 # which holds the options and goto buttons, and a sliver at the bottom.
@@ -301,18 +300,6 @@ class FunImageViewScreen(BoxLayout):
 
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
-
-        if _DEBUG:
-            logger.debug(
-                f"Touch down event: self.x,self.y = {self.x},{self.y},"
-                f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
-                f" window_width = {round(self.width)},"
-                f" window_height = {round(self.height)}."
-                f" x_rel,y_rel = {x_rel},{y_rel},"
-                f" x_mid = {self._navigation.x_mid},"
-                f" y_bottom_margin = {self._navigation.y_bottom_margin},"
-                f" y_top_margin = {self._navigation.y_top_margin}."
-            )
 
         # The goto buttons take their presses before the margins and the lower tier.
         if any(button.collide_point(touch.x, touch.y) for button in self._goto_buttons()):

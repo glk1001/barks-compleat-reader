@@ -600,19 +600,6 @@ class TestTapsAndClicks:
             assert screen.on_touch_down(MagicMock(button="left", x=50, y=50)) is False
         widgets_press.assert_called_once()
 
-    def test_with_debugging_on_a_press_is_logged(
-        self, screen_setup: _Setup, loguru_sink: list[str]
-    ) -> None:
-        screen, nav, _ = screen_setup
-        screen.is_visible = True
-        nav.is_in_left_margin.return_value = True
-        with (
-            patch.object(barks_reader.ui.fun_image_view_screen, "_DEBUG", True),  # noqa: FBT003
-            patch.object(screen, "_goto_previous_image"),
-        ):
-            screen.on_touch_down(MagicMock(button="left", x=5, y=6))
-        assert any(m.startswith("Touch down event: ") for m in loguru_sink)
-
 
 class TestOptionsMenu:
     def test_clear_all_clears_every_theme_row(
