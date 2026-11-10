@@ -13,7 +13,6 @@ from barks_reader.core.keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 
 
-# --- Light divider line widget ---
 def closes_popup(key: int) -> bool:
     """Return whether a key closes a standalone popup: Escape, or Return as "OK".
 
@@ -35,6 +34,7 @@ def log_popup_closed(title: str) -> None:
 
 
 def divider_line() -> Any:  # Widget  # noqa: ANN401
+    """Return a light divider line: a widget one pixel tall."""
     from kivy.graphics import Color, Rectangle
     from kivy.uix.widget import Widget
 

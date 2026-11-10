@@ -2,8 +2,6 @@
 
 """Error popup content widget with severity levels, copy, save, and expandable details."""
 
-import sys
-import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -187,6 +185,21 @@ def _get_error_content(  # noqa: C901
                 instance.texture_update()
                 instance.height = instance.texture_size[1]
 
+            # --- A section's text: markup, wrapped to its width ---
+            def body_label(text: str, **kwargs: Any) -> Label:  # noqa: ANN401
+                label = Label(
+                    text=text,
+                    font_size=info_text_font_size,
+                    markup=True,
+                    size_hint_y=None,
+                    halign="left",
+                    valign="top",
+                    color=text_color,
+                    **kwargs,
+                )
+                label.bind(width=update_text_size)
+                return label
+
             # --- Heading label with tinted background ---
             def tinted_heading(text: str) -> Label:
                 heading = Label(
@@ -210,17 +223,7 @@ def _get_error_content(  # noqa: C901
 
             # --- Error Message section ---
             scroll_content.add_widget(tinted_heading("Error Message"))
-            self.label_msg = Label(
-                text=self.message,
-                font_size=info_text_font_size,
-                markup=True,
-                size_hint_y=None,
-                halign="left",
-                valign="top",
-                color=text_color,
-                padding=[0, 10],
-            )
-            self.label_msg.bind(width=update_text_size)
+            self.label_msg = body_label(self.message, padding=[0, 10])
             scroll_content.add_widget(self.label_msg)
             scroll_content.add_widget(divider_line())
 
@@ -231,32 +234,14 @@ def _get_error_content(  # noqa: C901
                 if self.log_path
                 else "No log file available."
             )
-            self.label_log_path = Label(
-                text=log_msg,
-                font_size=info_text_font_size,
-                markup=True,
-                size_hint_y=None,
-                halign="left",
-                valign="top",
-                color=text_color,
-            )
-            self.label_log_path.bind(width=update_text_size)
+            self.label_log_path = body_label(log_msg)
             scroll_content.add_widget(self.label_log_path)
             scroll_content.add_widget(divider_line())
 
             # --- Error Details (added dynamically) ---
-            self._error_details_divider_line = divider_line()
+            self._error_details_divider_line: Any = None  # made as the details are shown
             self.heading_details = tinted_heading("Error Details")
-            self.label_details = Label(
-                text=self.details.strip(),
-                font_size=info_text_font_size,
-                markup=True,
-                size_hint_y=None,
-                halign="left",
-                valign="top",
-                color=text_color,
-            )
-            self.label_details.bind(width=update_text_size)
+            self.label_details = body_label(self.details.strip())
             self.label_details.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
 
             # Add scroll content to ScrollView
@@ -322,8 +307,6 @@ def _get_error_content(  # noqa: C901
                 self.btn_toggle.text = "Show Details"
 
             # Scroll back to top
-            from kivy.clock import Clock
-
             Clock.schedule_once(lambda _dt: setattr(self.scroll_view, "scroll_y", 1), 0.15)
 
         def save_to_file(self, *_args) -> None:  # noqa: ANN002
@@ -364,59 +347,3 @@ def _get_error_content(  # noqa: C901
                 logger.exception("Failed to copy to clipboard:")
 
     return _ErrorContent(title, message, log_path, severity, details, show_details)
-
-
-# Test usage
-if __name__ == "__main__":
-    test_log_path = Path("~/opt/barks-reader/app.log").expanduser()
-
-    def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
-        """Use excepthook as example of standalone popup fallback."""
-        tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-
-        # Main error message (brief)
-        message = f"{exc_type.__name__}: {exc_value}"
-
-        # Detailed information (collapsible)
-        details = f"""Full Traceback:
-    {tb}
-
-    System Information:
-    - Python: {sys.version}
-    - Platform: {sys.platform}
-    - Time: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")}
-    """
-
-        show_error_popup(
-            title_bar_text="Installer",
-            title="Barks Reader Installation",
-            message=message,
-            log_path=str(test_log_path),
-            severity="critical",
-            details=details,
-            timeout=0,
-            background_image_file=Path(
-                "~/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/"
-                "Various/error-background.png"
-            ).expanduser(),
-        )
-
-    sys.excepthook = handle_uncaught_exception
-
-    # raise RuntimeError("Deliberate test exception.")  # noqa: ERA001
-
-    show_error_popup(
-        title_bar_text="Installer",
-        title="Barks Reader Installation",
-        message="This is a test error with [b]some markup[/b]",
-        log_path=str(test_log_path),
-        severity="error",
-        details="Stack trace [b]line 1[/b]\nStack trace [b]line 2[/b]\nStack trace line 3\n"
-        "Stack trace line 4\nStack trace line 5\nStack trace line 6\n"
-        "Stack trace line 7\nStack trace line 8\nStack trace [b]line 9[/b]...",
-        show_details=False,
-        background_image_file=Path(
-            "~/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/"
-            "Various/error-background.png"
-        ).expanduser(),
-    )
