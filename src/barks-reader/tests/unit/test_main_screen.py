@@ -29,7 +29,7 @@ from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.screen_bundle import ScreenBundle
-from barks_reader.ui.view_renderer import ImageThemesChange
+from barks_reader.ui.view_renderer import ImageThemesChange, ImageThemesToUse
 from kivy.metrics import dp
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
@@ -1220,6 +1220,28 @@ class TestSettingsEscape:
             assert main_screen._handle_settings_key(KEY_DOWN) is True
         close.assert_not_called()
         menu.assert_not_called()
+
+
+class TestFunImageThemes:
+    """All or Custom: the fun view's radio pair picks the themes its images come from."""
+
+    @pytest.mark.parametrize(
+        ("custom_ticked", "themes"),
+        [(True, ImageThemesToUse.CUSTOM), (False, ImageThemesToUse.ALL)],
+    )
+    def test_the_custom_box_says_which_themes_are_used(
+        self, main_screen: MainScreen, custom_ticked: bool, themes: ImageThemesToUse
+    ) -> None:
+        main_screen.on_checkbox_custom_image_types_changed(MagicMock(), custom_ticked)
+        main_screen._renderer.bottom_view_fun_image_themes_changed.assert_called_once_with(themes)
+
+    def test_a_pick_is_reported_once_by_the_custom_box_alone(self, main_screen: MainScreen) -> None:
+        """Bound to both boxes of the pair, every pick was reported twice."""
+        ids = main_screen._fun_image_view_screen.ids
+        ids.checkbox_custom_image_types.bind.assert_called_once_with(
+            active=main_screen.on_checkbox_custom_image_types_changed
+        )
+        ids.checkbox_all_image_types.bind.assert_not_called()
 
 
 class TestAboutBoxFocus:

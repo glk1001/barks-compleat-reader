@@ -479,9 +479,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self.on_wiki_page_button_pressed
         )
 
-        self._fun_image_view_screen.ids.checkbox_all_image_types.bind(
-            active=self.on_checkbox_all_image_types_changed
-        )
+        # The one binding: All and Custom are a radio pair, so the Custom box alone
+        # says which is picked. Bound to both, every pick was reported twice.
         self._fun_image_view_screen.ids.checkbox_custom_image_types.bind(
             active=self.on_checkbox_custom_image_types_changed
         )
@@ -1036,16 +1035,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._is_active(active=True)
         self._nav_coord.on_document_closed()
 
-    def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
-        self._renderer.bottom_view_fun_image_themes_changed(
-            ImageThemesToUse.ALL if use_all_images else ImageThemesToUse.CUSTOM,
-        )
-
     def on_checkbox_custom_image_types_changed(
         self, _instance: Widget, use_custom_images: bool
     ) -> None:
+        """Use the fun view's custom image themes while its Custom box is ticked, else all."""
         self._renderer.bottom_view_fun_image_themes_changed(
-            ImageThemesToUse.ALL if not use_custom_images else ImageThemesToUse.CUSTOM,
+            ImageThemesToUse.CUSTOM if use_custom_images else ImageThemesToUse.ALL,
         )
 
     def on_checkbox_row_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
