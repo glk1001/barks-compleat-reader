@@ -501,7 +501,3 @@ def log_screen_metrics() -> None:
     logger.info(f"100 sp = {sp(100):.1f} pixels.")
 
     logger.info("--------------------------------")
-
-
-if __name__ == "__main__":
-    log_screen_metrics()
