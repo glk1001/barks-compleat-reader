@@ -70,6 +70,42 @@ def test_a_press_just_after_a_hardware_touch_is_a_tap(
     assert log_markers.TEXT_INPUT_CLICKED.format(widget=WIDGET) not in loguru_sink
 
 
+@pytest.mark.parametrize("device", ["wm_touch", "wm_pen"])
+def test_a_press_from_a_windows_touchscreen_is_a_tap_with_no_stamp_to_go_by(
+    box: TouchAwareTextInput, loguru_sink: list[str], device: str
+) -> None:
+    """Windows hands a finger or pen over as itself: nothing stamps a hardware touch there."""
+    touch = MagicMock(pos=(1, 1), device=device)
+    with (
+        patch.object(box, "collide_point", return_value=True),
+        patch.object(touch_keyboard, "Window") as window,
+        patch.object(TextInput, "on_touch_down", return_value=True) as text_input_press,
+        patch.object(box, "_use_system_keyboard_for_click") as use_system_keyboard,
+    ):
+        window.allow_vkeyboard = True
+        window._last_hardware_touch_time = 0.0  # noqa: SLF001
+        assert box.on_touch_down(touch)
+    text_input_press.assert_called_once_with(touch)
+    use_system_keyboard.assert_not_called()
+    assert log_markers.TEXT_INPUT_TOUCHED.format(widget=WIDGET) in loguru_sink
+
+
+def test_a_mouse_press_with_no_touch_before_it_is_still_a_click(
+    box: TouchAwareTextInput, loguru_sink: list[str]
+) -> None:
+    touch = MagicMock(pos=(1, 1), device="mouse")
+    with (
+        patch.object(box, "collide_point", return_value=True),
+        patch.object(touch_keyboard, "Window") as window,
+        patch.object(box, "_use_system_keyboard_for_click") as use_system_keyboard,
+    ):
+        window.allow_vkeyboard = True
+        window._last_hardware_touch_time = 0.0  # noqa: SLF001
+        assert box.on_touch_down(touch)
+    use_system_keyboard.assert_called_once_with(touch)
+    assert log_markers.TEXT_INPUT_CLICKED.format(widget=WIDGET) in loguru_sink
+
+
 def test_with_no_virtual_keyboard_nothing_is_logged(
     box: TouchAwareTextInput, loguru_sink: list[str]
 ) -> None:

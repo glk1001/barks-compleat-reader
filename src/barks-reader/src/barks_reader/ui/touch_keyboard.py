@@ -19,6 +19,10 @@ This module works around the problem in three layers:
    really a touch-emulated click (recent hardware touch → show virtual
    keyboard) or a genuine mouse click (no recent touch → suppress virtual
    keyboard, use system keyboard).
+
+On Windows none of that is needed: Kivy's ``wm_touch`` provider delivers a finger
+or pen as an event of its own and drops the mouse event Windows makes of it, so
+:class:`TouchAwareTextInput` knows such a press for a touch by its device.
 """
 
 from __future__ import annotations
@@ -149,6 +153,10 @@ def enable_linux_touchscreen_input() -> None:
 # touch is considered touch-emulated rather than a real mouse click.
 _TOUCH_WINDOW_SECS = 0.15
 
+# Input providers whose events are a finger or a pen on the screen and reach the
+# widgets as themselves (Windows). Linux touches arrive as mouse events instead.
+_TOUCHSCREEN_DEVICES = frozenset({"wm_touch", "wm_pen"})
+
 
 class TouchAwareTextInput(TextInput):
     """TextInput that shows the virtual keyboard only for real touchscreen taps.
@@ -159,7 +167,8 @@ class TouchAwareTextInput(TextInput):
     :func:`enable_linux_touchscreen_input`) and never reach widgets — they only
     set ``Window._last_hardware_touch_time``.  This widget checks that timestamp
     to decide whether an incoming mouse event is a real mouse click or a
-    touch-emulated one.
+    touch-emulated one. A press from a touchscreen's own provider (Windows) is a
+    touch with no timestamp to consult.
     """
 
     _TOUCH_WINDOW_SECS: ClassVar[float] = _TOUCH_WINDOW_SECS
@@ -171,8 +180,9 @@ class TouchAwareTextInput(TextInput):
 
         last_hw_touch: float = getattr(Window, "_last_hardware_touch_time", 0.0)
         recent_touch = (time.monotonic() - last_hw_touch) < self._TOUCH_WINDOW_SECS
+        from_touchscreen = getattr(touch, "device", "mouse") in _TOUCHSCREEN_DEVICES
 
-        if not recent_touch:
+        if not (recent_touch or from_touchscreen):
             logger.debug(log_markers.TEXT_INPUT_CLICKED.format(widget=type(self).__name__))
             self._use_system_keyboard_for_click(touch)
             return True
