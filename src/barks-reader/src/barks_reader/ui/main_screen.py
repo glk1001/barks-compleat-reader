@@ -554,13 +554,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             # looks, from outside, exactly like one that was never delivered.
             logger.debug(f"Key {key} left to the focused text input.")
             return False
-        if self._settings_nav is not None:
-            return self._handle_settings_key(key)
         # A modal popup (e.g. the quit confirmation) owns the keyboard. Window.bind
         # dispatches observers newest-first, so the popup's later-bound handler hears a
         # key before this one; a key it lets through must move nothing behind the popup.
+        # Ahead of the settings, whose own popups are modal too: a text box in one,
+        # focused again, puts this handler before the popup's (`_put_key_handler_first`),
+        # and the panel behind then took the Escape and the Down meant for the popup.
         if _modal_popup_is_open():
             return False
+        if self._settings_nav is not None:
+            return self._handle_settings_key(key)
         if self._menu_dots_open_without_the_keys():
             return self._adopt_open_menu_dots(key)
         if is_escape_key_for_text_input(key, codepoint):

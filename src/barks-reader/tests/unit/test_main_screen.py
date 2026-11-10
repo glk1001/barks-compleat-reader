@@ -608,6 +608,27 @@ class TestMainScreenEdges:
 
         main_screen._nav.handle_key.assert_not_called()
 
+    @pytest.mark.parametrize("key", [KEY_ESCAPE, KEY_DOWN])
+    def test_a_popup_over_the_open_settings_keeps_the_keys(
+        self, main_screen: MainScreen, key: int
+    ) -> None:
+        """Its text box focused again, a settings popup lost Escape and Down to the panel.
+
+        The box's new keyboard request puts this handler ahead of the popup's own.
+        """
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = MagicMock()
+        box = MagicMock(focus=True, multiline=False)
+        with (
+            patch.object(barks_reader.ui.main_screen, "_focused_text_input", return_value=box),
+            patch.object(barks_reader.ui.main_screen, "_modal_popup_is_open", return_value=True),
+        ):
+            assert main_screen._on_key_down(None, key, 0, "", []) is False
+
+        main_screen._settings_nav.handle_key.assert_not_called()
+        assert main_screen._settings_x_focused is False
+
     @pytest.mark.parametrize(
         ("widget", "keeps_the_keys"),
         [
