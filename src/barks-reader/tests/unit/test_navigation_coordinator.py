@@ -91,6 +91,17 @@ class TestNavigationCoordinator:
                 mock_fanta_info, title_image_file=image_info.filename
             )
 
+    def test_an_article_behind_a_background_image_is_read_not_looked_up_by_year(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """An article is under no year range: the goto of its image was a RuntimeError."""
+        article = next(iter(NON_COMIC_TITLES))
+
+        nav_coord.navigate_to_chrono_title(ImageInfo(from_title=article))
+
+        mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
+        mock_deps["renderer"].render_title.assert_not_called()
+
     def test_navigate_to_chrono_title_one_pager_navigates_year_range_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:

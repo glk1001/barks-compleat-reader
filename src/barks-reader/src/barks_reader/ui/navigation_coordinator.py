@@ -203,6 +203,8 @@ class NavigationCoordinator:
         has a page of its own to offer: one offer, and one offer logged.
         """
         assert image_info.from_title is not None
+        if self._read_instead_if_article(image_info.from_title):
+            return
 
         logger.debug(
             log_markers.GOTO_TITLE.format(
@@ -292,11 +294,7 @@ class NavigationCoordinator:
         them, and the comic marks them.
         """
         title = image_info.from_title
-        if title is not None and title in NON_COMIC_TITLES:
-            # No view to put back on its close: the screen that asked is as it was
-            # left, as after a comic. A fixed one showed the Indexes view in place of
-            # the Main Index's letter, a search or the history.
-            self.read_article(title, None)
+        if title is not None and self._read_instead_if_article(title):
             return
 
         # One-pagers ignore the index page (reading deep-links to the gag's page in
@@ -307,6 +305,20 @@ class NavigationCoordinator:
         if offers:
             assert title is not None
             self._offer_tagged_pages(title, page_to_goto, tagged_pages)
+
+    def _read_instead_if_article(self, title: Titles) -> bool:
+        """Open ``title`` in the reader if it is an article, which has no place in the tree.
+
+        Every goto comes through here: an article is under no year range, so the
+        lookup of its tree node raised (an index background showing an article's image).
+        """
+        if title not in NON_COMIC_TITLES:
+            return False
+        # No view to put back on its close: the screen that asked is as it was left,
+        # as after a comic. A fixed one showed the Indexes view in place of the Main
+        # Index's letter, a search or the history.
+        self.read_article(title, None)
+        return True
 
     def navigate_to_search_result(self, title_str: str, tags: Sequence[Tags] = ()) -> bool:
         """Navigate to a title from search results.
