@@ -168,7 +168,10 @@ class MainScreenNavigation:
         elif key == KEY_LEFT:
             self._tree_nav_collapse_to_parent()
         elif key == KEY_RIGHT:
-            # Move focus into the visible bottom screen (e.g. the title panel widgets).
+            # Move focus into the visible bottom screen (e.g. the title panel widgets),
+            # shown first if a held key left it waiting: the keys went onto the title
+            # before, and Enter on its portal opened that one.
+            self._show_pending_view_now()
             self.enter_bottom_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._tree_nav_activate()
@@ -446,6 +449,11 @@ class MainScreenNavigation:
         node, self._pending_view_node = self._pending_view_node, None
         if node is not None and self._tree_view_screen.get_selected_node() is node:
             self._render_view_of(node)
+
+    def _show_pending_view_now(self) -> None:
+        """Show the view a held key left waiting, without waiting for its timeout."""
+        self._title_render_trigger.cancel()
+        self._on_title_render_timeout(0)
 
     def _cancel_pending_title_render(self) -> None:
         self._title_render_trigger.cancel()

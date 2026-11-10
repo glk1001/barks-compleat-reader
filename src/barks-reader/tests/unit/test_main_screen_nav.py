@@ -497,6 +497,27 @@ class TestTitleRenderDebounce:
         nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
         assert nav._pending_view_node is None
 
+    def test_right_shows_the_title_still_waiting_before_the_keys_go_to_its_view(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        """Right inside the wait put the keys on the title before: Enter opened that one."""
+        nodes = self._setup_title_nodes(nav, 3)
+        nav._tree_nav_move(1)
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        assert nav._pending_view_node is nodes[1]
+
+        with patch.object(nav, "enter_bottom_focus") as enter:
+            nav._tree_view_manager.render_title_node.side_effect = (  # ty: ignore[unresolved-attribute]
+                lambda *_a, **_k: enter.assert_not_called()
+            )
+            assert nav._handle_tree_key(KEY_RIGHT) is True
+
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        assert nav._pending_view_node is None
+        assert not fake_trigger.scheduled
+        enter.assert_called_once_with()
+
     def test_enter_cancels_pending_render(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
     ) -> None:
