@@ -107,9 +107,7 @@ class Win32WindowBackend:
             # Best effort: raised into the fullscreen exit that calls this, a failed
             # call left the scheduled restore unscheduled and the transition open.
             try:
-                self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-                rect = RECT()
-                self._get_window_rect(self._hwnd, rect)
+                _, rect = self._move_and_read_back(x, y, width, height)
             except Exception as e:  # noqa: BLE001
                 logger.error(f"Win32 MoveWindow failed as fullscreen ended: {e}")
                 return
@@ -178,6 +176,17 @@ class Win32WindowBackend:
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._hwnd = None
 
+    def _move_and_read_back(self, x: int, y: int, width: int, height: int) -> tuple[Any, RECT]:
+        """Call ``MoveWindow``, then ``GetWindowRect``: the move's result and where the window is.
+
+        The move can return success and leave the window where it was, so every
+        caller reads the rectangle back; what each makes of a mismatch is its own.
+        """
+        result = self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
+        rect = RECT()
+        self._get_window_rect(self._hwnd, rect)
+        return result, rect
+
     def _set_window_rect(self, x: int, y: int, width: int, height: int) -> None:
         """Set window position and size using the Win32 ``MoveWindow`` API.
 
@@ -198,11 +207,8 @@ class Win32WindowBackend:
             return
 
         try:
-            result = self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-
-            # Verify the operation succeeded.
-            actual_rect = RECT()
-            self._get_window_rect(self._hwnd, actual_rect)
+            # Read back to verify the operation succeeded.
+            result, actual_rect = self._move_and_read_back(x, y, width, height)
             actual_w = actual_rect.right - actual_rect.left
             actual_h = actual_rect.bottom - actual_rect.top
 
@@ -242,9 +248,7 @@ class Win32WindowBackend:
         def retry(_dt: float) -> None:
             if not self._hwnd:
                 return
-            self._move_window(self._hwnd, x, y, width, height, True)  # noqa: FBT003
-            actual_rect = RECT()
-            self._get_window_rect(self._hwnd, actual_rect)
+            _, actual_rect = self._move_and_read_back(x, y, width, height)
             logger.info(
                 f"Win32 retry: Requested size = ({width}, {height}); "
                 f" Actual size = ({actual_rect.right - actual_rect.left},"
