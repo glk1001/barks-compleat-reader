@@ -707,6 +707,25 @@ class TestMainScreenQuietPaths:
             main_screen._is_active(active=False)
         assert tuple(main_screen.size) == (782, 1225)
 
+    def test_the_screen_back_within_a_second_keeps_its_action_bar(
+        self, main_screen: MainScreen
+    ) -> None:
+        """The delayed hide of a reader's opening fired after a quick return, on the bar."""
+        with (
+            patch.object(barks_reader.ui.main_screen, "Window"),
+            patch.object(barks_reader.ui.main_screen, "get_win_dimensions", return_value=(0, 0)),
+            patch.object(barks_reader.ui.main_screen, "Clock") as clock,
+        ):
+            main_screen._is_active(active=False)
+            clock.schedule_once.assert_called_once()
+            hide = clock.schedule_once.return_value
+            hide.cancel.assert_not_called()
+
+            main_screen._is_active(active=True)
+
+        hide.cancel.assert_called_once_with()
+        main_screen._window_helper.show_action_bar.assert_called()
+
     def test_a_touch_while_the_screen_is_not_shown_goes_straight_to_its_widgets(
         self, main_screen: MainScreen
     ) -> None:

@@ -74,6 +74,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.comics_database import ComicsDatabase
+    from kivy.clock import ClockEvent
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
@@ -333,6 +334,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._settings_nav: SettingsKeyboardNav | None = None
         self._settings_x_focused: bool = False  # Escape put the keys on the settings' X
         self._settings_close_button: Widget | None = None
+        self._action_bar_hide_event: ClockEvent | None = None
         self._active = True
 
         self._set_initial_state()
@@ -916,12 +918,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         App.get_running_app().close_app()
 
     def _update_action_bar_visibility(self) -> None:
+        # A hide still waiting belongs to a state now gone: left to fire after a quick
+        # return (How To, then Escape within the second), it took the bar off this screen.
+        if self._action_bar_hide_event is not None:
+            self._action_bar_hide_event.cancel()
+            self._action_bar_hide_event = None
         if self._active:
             self._window_helper.show_action_bar()
         else:
             # Delay the hide a bit so we can't see it move. After a second it should be
             # covered by another screen.
-            Clock.schedule_once(lambda _dt: self._window_helper.hide_action_bar(), 1)
+            self._action_bar_hide_event = Clock.schedule_once(
+                lambda _dt: self._window_helper.hide_action_bar(), 1
+            )
 
     def toggle_screen_mode(self) -> None:
         self._window_helper.toggle_screen_mode()
