@@ -16,11 +16,14 @@ The fixture returns the bundle alongside its member mocks.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.platform_info import Platform
+from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.core.testing import FakeClock
 from barks_reader.ui import platform_window_utils as window_utils_module
+from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import (
     FullscreenEnum,
     KivyWindowBackend,
@@ -837,3 +840,145 @@ class TestDoublePressToggle:
         assert wm.is_fullscreen_target() is False
         fake_window.fullscreen = True
         assert wm.is_fullscreen_target() is True
+
+
+# ---------------------------------------------------------------------------
+# Which backend a platform gets
+# ---------------------------------------------------------------------------
+
+
+class TestCreateWindowBackend:
+    def test_windows_gets_the_win32_backend_when_it_bound_its_window(self) -> None:
+        with (
+            patch.object(window_utils_module, "PLATFORM", Platform.WIN),
+            patch.object(win32_module, "Win32WindowBackend") as win32_class,
+        ):
+            win32_class.return_value.is_available.return_value = True
+            backend = window_utils_module._create_window_backend()
+
+        assert backend is win32_class.return_value
+
+    def test_windows_falls_back_to_kivy_when_win32_found_no_window(
+        self, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(window_utils_module, "PLATFORM", Platform.WIN),
+            patch.object(win32_module, "Win32WindowBackend") as win32_class,
+        ):
+            win32_class.return_value.is_available.return_value = False
+            backend = window_utils_module._create_window_backend()
+
+        assert isinstance(backend, KivyWindowBackend)
+        assert "Win32 backend unavailable; falling back to Kivy backend." in loguru_sink
+
+    def test_any_other_platform_gets_the_kivy_backend_and_win32_is_not_tried(self) -> None:
+        with (
+            patch.object(window_utils_module, "PLATFORM", Platform.LINUX),
+            patch.object(win32_module, "Win32WindowBackend") as win32_class,
+        ):
+            backend = window_utils_module._create_window_backend()
+
+        assert isinstance(backend, KivyWindowBackend)
+        win32_class.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# The custom titlebar's drag region
+# ---------------------------------------------------------------------------
+
+
+class TestSetTitlebarDragRegion:
+    def test_with_the_os_titlebar_nothing_is_registered(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        window = MagicMock(custom_titlebar=False)
+        monkeypatch.setattr(window_utils_module, "Window", window)
+
+        window_utils_module.set_titlebar_drag_region(MagicMock())
+
+        window.set_custom_titlebar.assert_not_called()
+
+    def test_the_region_is_registered_with_the_window(
+        self, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        window = MagicMock(custom_titlebar=True)
+        window.set_custom_titlebar.return_value = True
+        monkeypatch.setattr(window_utils_module, "Window", window)
+        region = MagicMock()
+
+        window_utils_module.set_titlebar_drag_region(region)
+
+        window.set_custom_titlebar.assert_called_once_with(region)
+        assert not any("drag region failed" in line for line in loguru_sink)
+
+    def test_a_region_the_window_refuses_is_warned_of(
+        self, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        window = MagicMock(custom_titlebar=True)
+        window.set_custom_titlebar.return_value = False
+        monkeypatch.setattr(window_utils_module, "Window", window)
+
+        window_utils_module.set_titlebar_drag_region(MagicMock())
+
+        assert "Window: setting the custom-titlebar drag region failed." in loguru_sink
+
+
+# ---------------------------------------------------------------------------
+# The monitors logged at boot
+# ---------------------------------------------------------------------------
+
+
+def _screen(display: int, *, is_primary: bool, width_mm: int = 0, dpi: int = 0) -> ScreenInfo:
+    return ScreenInfo(
+        display=display,
+        monitor_x=1920 * display,
+        monitor_y=0,
+        width_pixels=1920,
+        height_pixels=1080,
+        width_mm=width_mm,
+        height_mm=width_mm * 9 // 16,
+        width_in=round(width_mm / 25.4),
+        height_in=round(width_mm * 9 / 16 / 25.4),
+        dpi=dpi,
+        is_primary=is_primary,
+    )
+
+
+class TestLogScreenMetrics:
+    """It is the first thing `reader_main` runs: a line that raises here stops the boot."""
+
+    def test_a_screen_of_unknown_physical_size_is_logged_whole(
+        self, loguru_sink: list[str]
+    ) -> None:
+        screens = [_screen(0, is_primary=True)]  # as a VM reports one: no size, no dpi
+        with patch.object(window_utils_module.SCREEN_METRICS, "SCREEN_INFO", screens):
+            window_utils_module.log_screen_metrics()
+
+        assert loguru_sink[0] == "--- Detailed Monitor Metrics ---"
+        assert "Display 0: 1920 x 1080 pixels at (0, 0)." in loguru_sink
+        assert "  -> Physical Size: 0mm x 0mm (0.00in x 0.00in)." in loguru_sink
+        assert "  -> Calculated DPI: 0.00." in loguru_sink
+        assert loguru_sink[-1] == "--------------------------------"
+
+    def test_each_display_has_its_own_lines_and_the_primary_says_so(
+        self, loguru_sink: list[str]
+    ) -> None:
+        screens = [
+            _screen(0, is_primary=False, width_mm=600, dpi=81),
+            _screen(1, is_primary=True, width_mm=1210, dpi=40),
+        ]
+        with patch.object(window_utils_module.SCREEN_METRICS, "SCREEN_INFO", screens):
+            window_utils_module.log_screen_metrics()
+
+        first = loguru_sink.index("Display 0: 1920 x 1080 pixels at (0, 0).")
+        second = loguru_sink.index("Display 1: 1920 x 1080 pixels at (1920, 0).")
+        assert loguru_sink[first + 1 : first + 4] == [
+            "  -> Physical Size: 600mm x 337mm (24.00in x 13.00in).",
+            "  -> Calculated DPI: 81.00.",
+            "  -> Primary: False.",
+        ]
+        assert loguru_sink[second + 1 : second + 4] == [
+            "  -> Physical Size: 1210mm x 680mm (48.00in x 27.00in).",
+            "  -> Calculated DPI: 40.00.",
+            "  -> Primary: True.",
+        ]
