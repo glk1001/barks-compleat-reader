@@ -56,18 +56,12 @@ class Win32WindowBackend:
 
     def save_state(self, state: WindowState) -> None:
         """Populate ``state`` from the current Win32 window rectangle."""
-        # Local import to avoid a module-level cycle with platform_window_utils.
-        from .platform_window_utils import FullscreenEnum  # noqa: PLC0415
-
         try:
             window_rect = RECT()
             client_rect = RECT()
             self._get_window_rect(self._hwnd, window_rect)
             self._get_client_rect(self._hwnd, client_rect)
 
-            state.screen = (
-                FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
-            )
             state.pos = (window_rect.left, window_rect.top)
             state.size = (
                 window_rect.right - window_rect.left,

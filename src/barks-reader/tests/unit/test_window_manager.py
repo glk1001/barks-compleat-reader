@@ -58,7 +58,6 @@ class _FakeBackend:
     def save_state(self, state: WindowState) -> None:
         state.size = (1200, 1800)
         state.pos = (100, 50)
-        state.screen = FullscreenEnum.WINDOWED
         self.saved_states.append(state)
 
     def move_now(self, state: WindowState) -> None:
@@ -306,7 +305,6 @@ class TestWindowState:
 
         state.save_state_now()
 
-        assert state.screen == FullscreenEnum.WINDOWED
         assert state.size == (800, 600)
         assert state.pos == (10, 20)
 

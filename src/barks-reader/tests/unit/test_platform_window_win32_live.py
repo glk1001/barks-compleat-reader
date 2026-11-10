@@ -24,7 +24,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core.win32_window import RECT, find_hwnd_by_enum_windows
 from barks_reader.ui import platform_window_win32 as win32_module
-from barks_reader.ui.platform_window_utils import FullscreenEnum, WindowState
+from barks_reader.ui.platform_window_utils import WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
 
 if TYPE_CHECKING:
@@ -240,7 +240,6 @@ def test_save_state_reads_the_real_rectangle(live_window: int) -> None:
 
     Win32WindowBackend(hwnd=live_window).save_state(state)
 
-    assert state.screen == FullscreenEnum.WINDOWED
     assert state.pos == _RECT_B[:2]
     assert state.size == _RECT_B[2:]
 
