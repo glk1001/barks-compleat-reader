@@ -177,10 +177,10 @@ class _NavRow:
 
 @dataclass
 class _BuiltView:
-    """One view's built widgets, reusable until the store's revision moves on."""
+    """One view's built widgets, reusable until the store's revision or the day moves on."""
 
     view: str
-    revision: object
+    revision: object  # what it was built from: `HistoryScreen._cache_key`
     widgets: list[Widget] = field(default_factory=list)
     nav_rows: list[_NavRow] = field(default_factory=list)
     headers: dict[str, Label] = field(default_factory=dict)
@@ -339,8 +339,9 @@ class HistoryScreen(FloatLayout):
 
         def on_texture_loaded(texture: Texture | None, error: Exception | None) -> None:
             if error is not None:
-                logger.warning(f"History: Could not load background image: {error}.")
-                return
+                # A panel that cannot be read is a fault in the data: it stops the app,
+                # as it does on the index screens.
+                raise RuntimeError(error)
             self.image_texture = texture
 
         self._texture_loader.cancel()
@@ -370,19 +371,30 @@ class HistoryScreen(FloatLayout):
 
         self._cancel_pending_build()
 
-        revision = self._history_store.revision
+        revision = self._cache_key()
         built = self._view_cache.get(self._current_view)
         if built is not None and built.revision == revision:
             self._mount(built)
         else:
             self._start_build(revision)
 
+    def _cache_key(self) -> object:
+        """Return what a built view depends on: the store's revision, and today.
+
+        The Journal's day headings ("Today", "Yesterday") are read from today's date, so
+        a view built before midnight is stale after it with the store unchanged.
+        """
+        assert self._history_store is not None
+        return self._history_store.revision, datetime.now().date()  # noqa: DTZ005
+
     def _mount(self, built: _BuiltView) -> None:
         """Re-attach an already-built view's widgets to the scrolling grid."""
         rows = self.ids.history_rows
         rows.clear_widgets()
         self._nav_rows = built.nav_rows
-        self._nav_focused_widget = None
+        # Cleared, not just forgotten: the row keeps its ring in the cache, and would
+        # come back wearing it beside the new one.
+        self._clear_nav_focus()
         for widget in built.widgets:
             rows.add_widget(widget)
         self._restore_nav_focus()
@@ -398,7 +410,7 @@ class HistoryScreen(FloatLayout):
 
         self.ids.history_rows.clear_widgets()
         self._nav_rows = []
-        self._nav_focused_widget = None
+        self._clear_nav_focus()  # as in `_mount`: the other view's row is still cached
 
         built = _BuiltView(view=self._current_view, revision=revision, nav_rows=self._nav_rows)
         self._view_cache[self._current_view] = built
@@ -647,7 +659,7 @@ class HistoryScreen(FloatLayout):
             built.widgets.append(empty)
             rows.add_widget(empty)
 
-        built.revision = self._history_store.revision
+        built.revision = self._cache_key()
         other_view = _TITLES_VIEW if self._current_view == _JOURNAL_VIEW else _JOURNAL_VIEW
         self._view_cache.pop(other_view, None)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -35,6 +35,7 @@ from barks_reader.ui.history_screen import (
     _BuiltView,
     _NavRow,
 )
+from barks_reader.ui.reader_keyboard_nav import MENU_FOCUS_HIGHLIGHT_GROUP
 from kivy.uix.floatlayout import FloatLayout
 
 if TYPE_CHECKING:
@@ -394,6 +395,41 @@ class TestHistoryScreenBuildCache:
 
         assert [r.widget for r in screen._nav_rows] != first_widgets
 
+    def test_refresh_rebuilds_after_midnight_with_the_store_unchanged(
+        self, stocked_screen: tuple[HistoryScreen, _FakeStore]
+    ) -> None:
+        """The Journal's "Today" is read from the date: yesterday's build is stale."""
+        screen, _store = stocked_screen
+        with patch.object(history_screen_module, "datetime") as clock:
+            clock.now.return_value = _DAY_2
+            screen._refresh()
+            first_widgets = [r.widget for r in screen._nav_rows]
+            screen._refresh()
+            assert [r.widget for r in screen._nav_rows] == first_widgets  # the same day
+
+            clock.now.return_value = _DAY_2 + timedelta(days=1)
+            screen._refresh()
+
+        assert [r.widget for r in screen._nav_rows] != first_widgets
+
+    def test_a_cached_view_comes_back_without_the_ring_it_left_with(
+        self, stocked_screen: tuple[HistoryScreen, _FakeStore]
+    ) -> None:
+        """A mouse press on the other tab left the ring on a cached row: two rings later."""
+        screen, _store = stocked_screen
+        screen._select_view(_JOURNAL_VIEW)
+        ringed = screen._nav_rows[1].widget
+        screen._nav_focused_widget = ringed
+
+        with patch.object(history_screen_module, "clear_focus_highlight") as clear:
+            screen._select_view(_TITLES_VIEW)  # a build
+            clear.assert_called_once_with(ringed, MENU_FOCUS_HIGHLIGHT_GROUP)
+            clear.reset_mock()
+            ringed = screen._nav_rows[0].widget
+            screen._nav_focused_widget = ringed
+            screen._select_view(_JOURNAL_VIEW)  # a mount from the cache
+            clear.assert_called_once_with(ringed, MENU_FOCUS_HIGHLIGHT_GROUP)
+
     def test_each_view_is_cached_separately(
         self, stocked_screen: tuple[HistoryScreen, _FakeStore]
     ) -> None:
@@ -505,7 +541,7 @@ class TestHistoryScreenIncrementalDelete:
         screen._on_delete_event("e2")
 
         assert _TITLES_VIEW not in screen._view_cache
-        assert screen._view_cache[_JOURNAL_VIEW].revision == screen._history_store.revision
+        assert screen._view_cache[_JOURNAL_VIEW].revision == screen._cache_key()
 
     def test_deleting_a_title_removes_its_row_from_the_titles_view(
         self, stocked_screen: tuple[HistoryScreen, _FakeStore]
@@ -682,19 +718,18 @@ class TestBackgroundImage:
 
         assert with_store.image_texture is texture
 
-    def test_an_image_that_fails_to_load_is_logged_and_skipped(
-        self, with_store: HistoryScreen, loguru_sink: list[str]
-    ) -> None:
+    def test_an_image_that_fails_to_load_is_raised(self, with_store: HistoryScreen) -> None:
+        """A panel that cannot be read stops the app, as on the index screens."""
         with_store.get_background_image = MagicMock(
             return_value=SimpleNamespace(filename="panel.png")
         )
         with_store.update_background_image()
         on_loaded = with_store._texture_loader.load_texture.call_args.args[1]
 
-        on_loaded(None, OSError("unreadable"))
+        with pytest.raises(RuntimeError, match="unreadable"):
+            on_loaded(None, OSError("unreadable"))
 
         assert with_store.image_texture is None
-        assert "History: Could not load background image: unreadable." in loguru_sink
 
 
 class TestRowEdges:
