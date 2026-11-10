@@ -26,8 +26,10 @@ from barks_reader.ui.popup_frame import PopupFrame
 from barks_reader.ui.popup_gallery import GALLERY, GalleryPopup
 from kivy.clock import Clock
 from kivy.event import EventDispatcher
+from kivy.metrics import dp
 from kivy.properties import ListProperty, NumericProperty  # ty: ignore[unresolved-import]
 from kivy.uix.label import Label
+from kivy.uix.modalview import ModalView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -234,3 +236,63 @@ class TestLiveGallery:
         with patch.object(popup_gallery, "show_popup") as show:
             assert self._press(live, KEY_ENTER) is False
         show.assert_not_called()
+
+
+class TestMoreOpeners:
+    def test_the_speech_bubbles_popup_is_shown_with_the_speech_of_a_sample_story(self) -> None:
+        app = MagicMock()
+        with (
+            patch.object(popup_gallery, "_SERVICE", []) as service,
+            patch.object(popup_gallery, "create_speech_bubble_popup") as create,
+            patch.object(popup_gallery, "show_speech_bubbles_popup") as show,
+        ):
+            popup, nav = MagicMock(), MagicMock()
+            create.return_value = (popup, nav)
+            popup_gallery._BY_NAME["speech-bubbles"].open(app)  # noqa: SLF001
+            assert service == [nav]  # kept, as a screen keeps its own: the keys work
+
+        create.assert_called_once_with(app.font_manager.speech_bubble_popup_title_font_name)
+        shown_popup, title, term, speech, on_goto = show.call_args.args
+        assert (shown_popup, title, term) == (popup, "Lost in the Andes!", "square eggs")
+        assert on_goto is popup_gallery._ignore  # noqa: SLF001
+        assert show.call_args.kwargs == {
+            "text_font_size": app.font_manager.speech_bubble_text_font_size
+        }
+        assert list(speech.fanta_pages) == ["3", "7", "21"]
+        two_bubbles = speech.fanta_pages["7"].speech_info_list
+        assert [bubble.panel_num for bubble in two_bubbles] == [1, 2]
+
+    def test_the_alt_escape_popup_is_opened_with_no_key_set(self) -> None:
+        with patch.object(popup_gallery, "AltEscapeCapturePopup") as popup_class:
+            popup_gallery._BY_NAME["alt-escape-key"].open(MagicMock())  # noqa: SLF001
+
+        popup_class.assert_called_once_with(
+            current_keycode=0,
+            on_capture=popup_gallery._ignore,  # noqa: SLF001
+            on_clear=popup_gallery._ignore,  # noqa: SLF001
+        )
+        popup_class.return_value.open.assert_called_once_with()
+
+
+def test_closing_the_open_popups_dismisses_each_at_once_and_nothing_else() -> None:
+    first, second = MagicMock(spec=ModalView), MagicMock(spec=ModalView)
+    label = MagicMock()  # some other widget on the window
+
+    with patch.object(popup_gallery, "Window", MagicMock(children=[first, label, second])):
+        popup_gallery.close_open_popups()
+
+    first.dismiss.assert_called_once_with(animation=False)
+    second.dismiss.assert_called_once_with(animation=False)
+    label.dismiss.assert_not_called()
+
+
+def test_the_label_of_the_live_gallery_sits_in_the_corner_on_a_background_its_own_size() -> None:
+    live = popup_gallery._LiveGallery(MagicMock())  # noqa: SLF001
+    label = live._label  # noqa: SLF001
+
+    live._fit_label(label, (240, 32))  # noqa: SLF001  # as its text is laid out
+
+    assert tuple(label.size) == (240, 32)
+    assert tuple(label.pos) == (dp(8), dp(8))
+    assert tuple(live._label_bg.pos) == tuple(label.pos)  # noqa: SLF001
+    assert tuple(live._label_bg.size) == (240, 32)  # noqa: SLF001
