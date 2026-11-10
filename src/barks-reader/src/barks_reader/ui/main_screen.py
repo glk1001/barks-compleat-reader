@@ -814,6 +814,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._renderer.refresh()
         if self._history_screen.is_visible:
             self._history_screen.update_background_image()
+        # An index picks its own background, so the renderer's refresh does not reach it.
+        for index_screen in self._screens.index_screens:
+            if index_screen.is_visible:
+                index_screen.update_background_image()
 
     def on_action_bar_menu_dots_selected(self, _instance: Widget, value: str) -> None:
         if value == "settings":

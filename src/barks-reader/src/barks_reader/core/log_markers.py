@@ -338,6 +338,10 @@ INDEX_BUILD_COMPLETE: Final = "Index build complete (in {elapsed})."
 INDEX_LETTER_POPULATED: Final = "Populated index page for letter '{letter}' in {elapsed}."
 INDEX_LETTER_EMPTY: Final = "Populated index page for letter '{letter}': no items."
 INDEX_ITEM_PRESSED: Final = "Index item pressed: {item}"
+# The background an index shows, once its texture is in ("none" for no image).
+# Change Pics reached an index: its rotation shows new backgrounds too, unasked.
+INDEX_BACKGROUND_CHANGE_ASKED: Final = "Index background: a new image asked for."
+INDEX_BACKGROUND_SHOWN: Final = 'Index background image shown: "{filename}".'
 # The main index opening a tag (its titles) or a tag group (its tags) beneath it.
 INDEX_HANDLING_TAG: Final = 'Handling tag: "{name}".'
 INDEX_HANDLING_TAG_GROUP: Final = 'Handling tag group: "{name}".'

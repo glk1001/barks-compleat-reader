@@ -1123,6 +1123,20 @@ class TestSetBackgroundImage:
         caption = index_screen._get_background_title_str(Titles.VICTORY_GARDEN_THE)
         assert caption == "(The Victory Garden)"
 
+    def test_a_background_shown_is_logged_by_its_file_name(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        andes = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES, filename=Path("dir/andes.png"))
+
+        index_screen._show_background_image(andes, MagicMock())
+        index_screen._show_background_image(ImageInfo(), None)
+
+        shown = [line for line in loguru_sink if "Index background image shown" in line]
+        assert shown == [
+            log_markers.INDEX_BACKGROUND_SHOWN.format(filename="andes.png"),
+            log_markers.INDEX_BACKGROUND_SHOWN.format(filename="none"),
+        ]
+
     def test_an_image_with_no_file_clears_the_background(
         self, index_screen: ConcreteIndexScreen
     ) -> None:
@@ -1627,6 +1641,20 @@ class TestTheColumnsButtons:
 
 class TestTheRotatingBackground:
     """What `ConcreteIndexScreen` stubs out: the base class's image rotation."""
+
+    def test_change_pics_shows_a_new_image_once_a_letter_is_on_show(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(index_screen, "_new_index_image") as new_image:
+            index_screen._selected_letter_button = None
+            index_screen.update_background_image()
+            new_image.assert_not_called()
+            assert log_markers.INDEX_BACKGROUND_CHANGE_ASKED not in loguru_sink
+
+            index_screen._selected_letter_button = MagicMock()
+            index_screen.update_background_image()
+            new_image.assert_called_once_with()
+            assert log_markers.INDEX_BACKGROUND_CHANGE_ASKED in loguru_sink
 
     def test_a_new_image_is_shown_at_once_and_then_at_each_interval(
         self, index_screen: ConcreteIndexScreen

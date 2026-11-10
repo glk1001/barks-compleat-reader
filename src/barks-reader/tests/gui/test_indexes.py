@@ -6,6 +6,7 @@ import re
 import string
 from typing import TYPE_CHECKING
 
+import pytest
 from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.entity_types import EntityType
 from barks_gui import expected, memory, nodes
@@ -25,6 +26,7 @@ LETTERS = 26
 EMPTY_LETTER = pattern(markers.INDEX_LETTER_EMPTY)
 POPULATED_OR_EMPTY = f"{pattern(markers.INDEX_LETTER_POPULATED)}|{EMPTY_LETTER}"
 ITEM_PRESSED = pattern(markers.INDEX_ITEM_PRESSED)
+BACKGROUND_SHOWN = pattern(markers.INDEX_BACKGROUND_SHOWN)
 
 
 def _letter(letter: str) -> str:
@@ -61,6 +63,26 @@ def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     assert _item_display_text(d).upper().startswith("A")
     assert d.current_node() == last_field(d, markers.GOTO_TITLE, "name")
     assert expected.is_title(d.current_node())
+
+
+@pytest.mark.parametrize(
+    "index_node",
+    [nodes.MAIN_INDEX, nodes.SPEECH_INDEX, nodes.NAMES_INDEX, nodes.LOCATIONS_INDEX],
+    ids=["main", "speech", "names", "locations"],
+)
+def test_change_pics_changes_the_background_of_an_index(
+    boot: AppBoot, index_node: list[str]
+) -> None:
+    """An index picks its own background, so the bar's Change Pics must reach it too."""
+    d = boot(index_node)
+    d.wait_for(BACKGROUND_SHOWN)
+    # The rotation shows a new background every few seconds unasked, so a new image
+    # alone proves nothing: the press must be what asked for the one that follows.
+    with d.expect(BACKGROUND_SHOWN), d.expect(markers.INDEX_BACKGROUND_CHANGE_ASKED):
+        d.main_menu_button("change_pics")
+    lines = d.log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    asked = max(i for i, s in enumerate(lines) if markers.INDEX_BACKGROUND_CHANGE_ASKED in s)
+    assert any(re.search(BACKGROUND_SHOWN, line) for line in lines[asked + 1 :])
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:

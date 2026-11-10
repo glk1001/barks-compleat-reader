@@ -866,6 +866,15 @@ class IndexScreen(NavExitMixin, FloatLayout):
         """
         return self._get_alphabet_letters()
 
+    def update_background_image(self) -> None:
+        """Show a fresh background image now, for the action bar's Change Pics button.
+
+        An index that has not yet shown a letter has no background to change.
+        """
+        if self._selected_letter_button is not None:
+            logger.debug(log_markers.INDEX_BACKGROUND_CHANGE_ASKED)
+            self._new_index_image()
+
     def _new_index_image(self) -> None:
         """Show a fresh background image and restart the rotation timer."""
         self._reset_background_image_caches()
@@ -915,6 +924,8 @@ class IndexScreen(NavExitMixin, FloatLayout):
             self._current_image_info = image_info
             self.current_title_str = self._get_background_title_str(image_info.from_title)
         self.image_texture = texture
+        filename = "none" if image_info.filename is None else image_info.filename.name
+        logger.debug(log_markers.INDEX_BACKGROUND_SHOWN.format(filename=filename))
 
     def _get_background_title_str(self, title: Titles) -> str:
         """Return the caption for the current background image."""

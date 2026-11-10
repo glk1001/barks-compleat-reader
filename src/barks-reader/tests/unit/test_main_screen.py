@@ -348,6 +348,21 @@ class TestMainScreen:
         assert main_screen.app_icon_filepath == "icon.png"
         main_screen._renderer.refresh.assert_called_once()
 
+    def test_change_pics_reaches_only_the_index_or_history_on_show(
+        self, main_screen: MainScreen
+    ) -> None:
+        screens = main_screen._screens
+        for screen in (*screens.index_screens, screens.history):
+            screen.is_visible = False
+        screens.speech_index.is_visible = True
+
+        main_screen.on_action_bar_change_view_images()
+
+        screens.speech_index.update_background_image.assert_called_once_with()
+        for screen in (screens.main_index, screens.names_index, screens.locations_index):
+            screen.update_background_image.assert_not_called()
+        screens.history.update_background_image.assert_not_called()
+
     def test_on_view_state_changed(self, main_screen: MainScreen) -> None:
         # Initial state -> disabled
         main_screen._on_view_state_changed(ViewStates.INITIAL)
