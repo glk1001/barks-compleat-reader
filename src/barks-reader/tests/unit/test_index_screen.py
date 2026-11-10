@@ -16,7 +16,10 @@ from barks_reader.core.index_items import IndexItem
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
+from barks_reader.ui import reader_keyboard_nav
 from barks_reader.ui.index_screen import (
+    INDEX_NAV_FOCUS_GROUP,
+    POPUP_NAV_FOCUS_GROUP,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,
     IndexMenuButton,
@@ -483,11 +486,25 @@ class TestPopupKeyboardNavOnTheFrame:
         entry.text = "a bubble"
         with (
             patch.object(PopupKeyboardNav, "_get_entries", return_value=[entry]),
-            patch.object(barks_reader.ui.index_screen, "Color"),
-            patch.object(barks_reader.ui.index_screen, "Line"),
+            patch.object(reader_keyboard_nav, "_draw_highlight") as draw,
         ):
             nav._draw_focus()
-        assert any(line.startswith("Nav focus on") for line in loguru_sink)
+        assert sum(line.startswith("Nav focus on") for line in loguru_sink) == 1
+        # The shared ring: it is drawn again when the entry moves under a resized popup.
+        draw.assert_called_once()
+        entry.bind.assert_called()
+
+    def test_clearing_the_focus_takes_the_shared_ring_off_every_entry(self) -> None:
+        nav = self._make_nav()
+        entries = [MagicMock(), MagicMock()]
+        with (
+            patch.object(PopupKeyboardNav, "_get_entries", return_value=entries),
+            patch.object(barks_reader.ui.index_screen, "clear_focus_highlight") as clear,
+        ):
+            nav._clear_focus()
+        assert [call.args for call in clear.call_args_list] == [
+            (entry, POPUP_NAV_FOCUS_GROUP) for entry in entries
+        ]
 
 
 class _FakeWidget:
@@ -981,6 +998,13 @@ class TestShowSpeechBubblesPopup:
         )
         assert popup.title == '[b][i]Lost in the Andes!  —  [/i]"eggs"[/b]'
 
+    def test_a_search_that_looks_like_a_tag_is_shown_as_text(self) -> None:
+        popup = MagicMock()
+        show_speech_bubbles_popup(
+            popup, "Lost in the Andes!", "[i]eggs", MagicMock(fanta_pages={}), MagicMock()
+        )
+        assert popup.title == '[b][i]Lost in the Andes!  —  [/i]"&bl;i&br;eggs"[/b]'
+
 
 class TestSetBackgroundImage:
     @staticmethod
@@ -999,6 +1023,24 @@ class TestSetBackgroundImage:
 
         with pytest.raises(RuntimeError, match="no such panel"):
             on_ready(None, FileNotFoundError("no such panel"))
+
+    def test_the_caption_and_goto_target_wait_for_the_picture(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """Set as the load began, they named the new story over the old picture."""
+        _info, on_ready = self._load_andes(index_screen)
+        on_ready(MagicMock(), None)
+        loader = MagicMock()
+        index_screen._texture_loader = loader
+        ghost = ImageInfo(from_title=Titles.GHOST_OF_THE_GROTTO_THE, filename=Path("ghost.png"))
+
+        index_screen._set_background_image(ghost)
+
+        assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+        assert index_screen._current_image_info is not ghost
+        loader.load_texture.call_args.args[1](MagicMock(), None)
+        assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.GHOST_OF_THE_GROTTO_THE]
+        assert index_screen._current_image_info is ghost
 
     def test_a_loaded_texture_becomes_the_background(
         self, index_screen: ConcreteIndexScreen
@@ -1074,6 +1116,23 @@ class TestAlphabetPanelEdges:
         with patch.object(_module, "clear_focus_in_list"):
             assert index_screen.handle_key(KEY_ESCAPE) is True
         assert index_screen._nav_active is False
+
+    def test_a_key_in_the_alphabet_draws_the_letter_focus_once(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The press draws it: drawn again, each key logged two focus lines."""
+        index_screen._populate_alphabet_menu()
+        index_screen._nav_active = True
+        index_screen._nav_focused_letter_idx = 0
+        with (
+            patch.object(index_screen, "_populate_index_for_letter"),
+            patch.object(barks_reader.ui.index_screen, "clear_focus_in_list"),
+            patch.object(barks_reader.ui.index_screen, "draw_focus_highlight") as draw,
+        ):
+            index_screen._move_letter_focus(1)
+
+        letter = index_screen._letter_order[1]
+        draw.assert_called_once_with(index_screen._alphabet_buttons[letter], INDEX_NAV_FOCUS_GROUP)
 
     def test_a_letter_with_no_button_is_not_selected(
         self, index_screen: ConcreteIndexScreen

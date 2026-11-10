@@ -13,7 +13,6 @@ from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock, ClockEvent
-from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -43,7 +42,6 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
-from barks_reader.core.nav_focus import log_nav_focus
 from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.speech_bubble_markup import (
@@ -184,7 +182,8 @@ def show_speech_bubbles_popup(
     scroll_view = ReaderScrollView()
     scroll_view.add_widget(text_boxes)
 
-    title = f'[b][i]{title_str}  \u2014  [/i]"{search_terms}"[/b]'
+    # Text, not markup: a search for "[i]" is shown, not read as a tag.
+    title = f'[b][i]{escape_markup(title_str)}  \u2014  [/i]"{escape_markup(search_terms)}"[/b]'
     speaker_label = speaker_display_name(speaker) if speaker else None
     if speaker_label:
         title += f"[b]  \u2014  [/b]{escape_markup(speaker_label)}"
@@ -269,23 +268,16 @@ class PopupKeyboardNav:
             return
         self._focused_idx = min(self._focused_idx, len(entries) - 1)
         entry = entries[self._focused_idx]
-        canvas_before = entry.canvas.before  # ty: ignore[unresolved-attribute]
-        canvas_before.remove_group(POPUP_NAV_FOCUS_GROUP)
-        with canvas_before:
-            Color(*theme().focus_ring, group=POPUP_NAV_FOCUS_GROUP)
-            Line(
-                rectangle=(entry.x, entry.y, entry.width, entry.height),
-                width=3,
-                group=POPUP_NAV_FOCUS_GROUP,
-            )
+        # The shared ring follows the entry's pos and size: the popup follows the
+        # window, and its entries are laid out again under a ring drawn once.
+        draw_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP, line_width=3)
         sv = self._popup.body
         if isinstance(sv, ScrollView):
             sv.scroll_to(entry)
-        log_nav_focus(entry)
 
     def _clear_focus(self) -> None:
         for entry in self._get_entries():
-            entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
+            clear_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP)
 
     def _get_entries(self) -> list[TextBoxWithTitleAndBorder]:
         sv = self._popup.body
@@ -548,14 +540,21 @@ class IndexScreen(FloatLayout):
         self._nav_focused_letter_idx = wrapped(
             self._nav_focused_letter_idx, delta, len(self._letter_order)
         )
-        self._select_focused_letter()
-        self._draw_letter_focus()
+        if not self._select_focused_letter():
+            self._draw_letter_focus()
 
-    def _select_focused_letter(self) -> None:
+    def _select_focused_letter(self) -> bool:
+        """Press the focused letter; True when the press drew the focus on it.
+
+        `on_letter_press` moves the focus to the letter pressed while the keys own the
+        screen: drawn again here, each key logged its focus line twice.
+        """
         letter = self._letter_order[self._nav_focused_letter_idx]
         button = self._alphabet_buttons.get(letter)
-        if button is not None:
-            self.on_letter_press(button)
+        if button is None:
+            return False
+        self.on_letter_press(button)
+        return self._nav_active and not self._pressing_focused_item
 
     def _enter_items_panel(self) -> None:
         col_buttons = self._get_col_buttons(0)
@@ -873,16 +872,8 @@ class IndexScreen(FloatLayout):
 
     def _set_background_image(self, image_info: ImageInfo) -> None:
         """Load ``image_info`` as the background and label it with its title."""
-        # TODO: Get rid of this hack!!
-        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
-            self._current_image_info = None
-            self.current_title_str = ""
-        else:
-            self._current_image_info = image_info
-            self.current_title_str = self._get_background_title_str(image_info.from_title)
-
         if image_info.filename is None:
-            self.image_texture = None
+            self._show_background_image(image_info, None)
             return
 
         timing = Timing()
@@ -891,10 +882,25 @@ class IndexScreen(FloatLayout):
             if err:
                 raise RuntimeError(err)
 
-            self.image_texture = tex
+            self._show_background_image(image_info, tex)
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
         self._texture_loader.load_texture(image_info.filename, on_ready)
+
+    def _show_background_image(self, image_info: ImageInfo, texture: Texture | None) -> None:
+        """Show the image with its caption and goto target, all three at once.
+
+        Set as the load starts, the caption and the goto button named the new story
+        over the old picture for as long as the decode took.
+        """
+        # TODO: Get rid of this hack!!
+        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+            self._current_image_info = None
+            self.current_title_str = ""
+        else:
+            self._current_image_info = image_info
+            self.current_title_str = self._get_background_title_str(image_info.from_title)
+        self.image_texture = texture
 
     def _get_background_title_str(self, title: Titles) -> str:
         """Return the caption for the current background image."""

@@ -238,7 +238,11 @@ class TestSpeechIndexScreen:
                 speech_index_screen._next_background_image()
 
                 # Verify
-                cast("MagicMock", speech_index_screen._texture_loader).load_texture.assert_called()
+                loader = cast("MagicMock", speech_index_screen._texture_loader)
+                loader.load_texture.assert_called()
+                # The caption comes with the picture, once it has loaded.
+                assert speech_index_screen.current_title_str == ""
+                loader.load_texture.call_args.args[1](MagicMock(), None)
                 assert speech_index_screen.current_title_str != ""
 
     def test_handle_title_from_bubble_press(self, speech_index_screen: SpeechIndexScreen) -> None:
