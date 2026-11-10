@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.document_links import StoryLink
+from barks_reader.core.keys import KEY_LEFT, KEY_RIGHT
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.ui import document_reader as document_reader_module
 from barks_reader.ui import reader_close_mixin as reader_close_mixin_module
@@ -813,3 +814,205 @@ class TestFullscreen:
         window.unbind.assert_called_once_with(on_key_down=screen._on_key_down)
         screen._on_close_screen.assert_called_once()
         assert screen._is_closing is False
+
+
+class TestKeys:
+    def test_a_key_goes_to_the_reader_keys_and_its_answer_comes_back(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        with patch.object(screen, "_handle_reader_key", return_value=False) as handle:
+            assert screen._on_key_down(None, KEY_RIGHT, 0, "", []) is False
+        handle.assert_called_once_with(KEY_RIGHT)
+
+    def test_the_arrow_keys_turn_the_pages(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _pages(tmp_path, 3)
+        _open(screen, tmp_path)
+
+        assert screen._on_key_down(None, KEY_RIGHT, 0, "", []) is True
+        assert screen._current_page_index == 1
+        assert screen._on_key_down(None, KEY_LEFT, 0, "", []) is True
+        assert screen._current_page_index == 0
+
+    def test_a_tap_on_the_left_half_goes_back_a_page(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        _pages(tmp_path, 3)
+        _open(screen, tmp_path)
+        screen.next_page()
+        page = _bar()
+        page.collide_point.return_value = True
+        page.center_x = 100
+        off_the_bar = _bar()
+        off_the_bar.collide_point.return_value = False
+        screen.ids = {"doc_action_bar": off_the_bar, "doc_page": page}
+
+        with patch.object(screen, "_clear_menu_on_touch"):
+            assert screen.on_touch_down(MagicMock(button="left", pos=(5, 5), x=5, y=5)) is True
+
+        assert screen._current_page_index == 0
+
+    def test_the_bar_is_the_window_drag_region(self, screen: DocumentReaderScreen) -> None:
+        assert screen.drag_region is screen.ids["doc_action_bar"].drag_region
+
+
+class TestGotoStoryByTheKeys:
+    @staticmethod
+    def _focus(screen: DocumentReaderScreen, button_id: str) -> None:
+        screen._menu_buttons = [
+            screen.ids["fullscreen_button"],
+            screen.ids["goto_story_button"],
+            screen.ids["close_button"],
+        ]
+        screen._focused_btn_idx = screen._menu_buttons.index(screen.ids[button_id])
+
+    def test_enter_on_go_to_story_opens_it_as_the_keyboard_and_is_remembered(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        self._focus(screen, "goto_story_button")
+        with patch.object(screen, "_open_goto_story") as open_goto_story:
+            screen._activate_focused_button()
+
+        open_goto_story.assert_called_once_with(keyboard_initiated=True)
+        assert screen._last_used_btn_idx == screen._focused_btn_idx
+        # Not pressed as a mouse would: the press would open it a second time.
+        screen.ids["goto_story_button"].trigger_action.assert_not_called()
+
+    def test_enter_on_another_button_presses_it_and_leaves_the_menu(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        self._focus(screen, "close_button")
+        with (
+            patch.object(screen, "_open_goto_story") as open_goto_story,
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+        ):
+            screen._activate_focused_button()
+
+        open_goto_story.assert_not_called()
+        screen.ids["close_button"].trigger_action.assert_called_once_with()
+        exit_menu.assert_called_once_with()
+
+    def test_a_list_that_cannot_open_puts_the_focus_back_on_the_bar(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        """Mid-fade the button is off screen, and no dropdown can open on it."""
+        screen._story_links = list(TWO_LINKS)
+        with (
+            patch.object(screen, "_clear_menu_focus") as clear_focus,
+            patch.object(screen, "_open_story_dropdown", return_value=False),
+            patch.object(screen, "_update_menu_focus") as update_focus,
+            patch.object(screen, "_enter_dropdown_nav") as enter_nav,
+        ):
+            screen._open_goto_story(keyboard_initiated=True)
+
+        clear_focus.assert_called_once_with()
+        update_focus.assert_called_once_with()
+        enter_nav.assert_not_called()
+
+
+class TestTheStoryList:
+    def test_the_list_holds_a_button_a_story_and_a_press_picks_it(
+        self, screen: DocumentReaderScreen
+    ) -> None:
+        screen._story_links = list(TWO_LINKS)
+        with (
+            patch.object(document_reader_module, "ReaderDropDown") as dropdown_class,
+            patch.object(document_reader_module, "Button") as button_class,
+            patch.object(document_reader_module, "open_dropdown", return_value=True) as opened,
+        ):
+            button_class.side_effect = MagicMock
+            assert screen._open_story_dropdown() is True
+
+        dropdown = dropdown_class.return_value
+        assert screen._story_dropdown is dropdown
+        assert [button.text for button in screen._story_buttons] == ["Fig. 1", "Fig. 2"]
+        assert [added.args[0] for added in dropdown.add_widget.call_args_list] == (
+            screen._story_buttons
+        )
+        opened.assert_called_once_with(dropdown, screen.ids["goto_story_button"])
+        dropdown.bind.assert_called_once_with(
+            on_select=screen._on_story_selected, on_dismiss=screen._on_story_list_dismissed
+        )
+        # Each button picks its own story: the second, not the last one made.
+        second = screen._story_buttons[1]
+        second.bind.call_args.kwargs["on_press"](second)
+        dropdown.select.assert_called_once_with(1)
+
+    def test_a_list_that_cannot_open_is_not_kept(self, screen: DocumentReaderScreen) -> None:
+        screen._story_links = list(TWO_LINKS)
+        with (
+            patch.object(document_reader_module, "ReaderDropDown"),
+            patch.object(document_reader_module, "Button"),
+            patch.object(document_reader_module, "open_dropdown", return_value=False),
+        ):
+            assert screen._open_story_dropdown() is False
+
+        assert screen._story_dropdown is None
+
+
+class TestClosing:
+    def test_a_close_while_one_is_under_way_does_nothing(
+        self, screen: DocumentReaderScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._is_closing = True
+        then = MagicMock()
+
+        screen.close(then)
+
+        assert "Document reader closing." not in loguru_sink
+        screen._on_close_screen.assert_not_called()
+        then.assert_not_called()
+
+    def test_a_close_from_the_menu_leaves_the_menu_first(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        _open(screen, tmp_path)
+        screen._menu_mode = True
+        with (
+            patch.object(document_reader_module, "Window"),
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+        ):
+            screen.close()
+
+        exit_menu.assert_called_once_with()
+        screen._on_close_screen.assert_called_once()
+
+    def test_a_document_opened_fullscreen_goes_back_to_it_before_it_leaves(
+        self, screen: DocumentReaderScreen, tmp_path: Path, windowed: MagicMock
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+        windowed.is_fullscreen_now.return_value = True
+        _open(screen, tmp_path)  # fullscreen on entry
+        windowed.is_fullscreen_now.return_value = False  # windowed since
+        screen._mode = MagicMock()
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+
+        screen._mode.goto_fullscreen.assert_called_once_with()
+        screen._on_close_screen.assert_not_called()
+
+        windowed.is_fullscreen_now.return_value = True
+        with (
+            patch.object(document_reader_module, "log_window_geometry"),
+            patch.object(screen, "_update_widget_states"),
+            patch.object(screen, "_finish_closing_once_laid_out") as finish,
+        ):
+            screen._on_finished_goto_fullscreen_mode()
+        finish.assert_called_once_with()
+
+
+def test_the_screen_is_built_from_its_kv_file() -> None:
+    made = MagicMock()
+    with (
+        patch.object(document_reader_module, "Builder") as builder,
+        patch.object(document_reader_module, "DocumentReaderScreen", return_value=made) as cls,
+    ):
+        screen = document_reader_module.get_document_reader_screen(
+            "document", MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        )
+
+    builder.load_file.assert_called_once_with(str(document_reader_module.DOCUMENT_READER_KV_FILE))
+    assert screen is made
+    assert cls.call_args.kwargs["name"] == "document"
