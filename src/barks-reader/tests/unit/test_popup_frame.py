@@ -448,6 +448,19 @@ class TestPopupFrame:
         frame._on_parent(frame, None)  # noqa: SLF001  (removed after the fade)
         assert not frame.is_closing
 
+    def test_a_button_pressed_again_during_the_fade_out_does_nothing(self) -> None:
+        """A double tap on Install started two installers: the frame was still on screen."""
+        install = MagicMock()
+        frame = _frame((FrameButton("Install", install), FrameButton("Later", MagicMock())))
+        button = frame.button_widgets[0]
+        with patch.object(popup_frame, "Window"):
+            closing = lambda: frame.dispatch("on_dismiss")  # noqa: E731  (the fade begins)
+            with patch.object(frame, "dismiss", side_effect=closing) as dismiss:
+                button.dispatch("on_release")
+                button.dispatch("on_release")
+        install.assert_called_once_with()
+        dismiss.assert_called_once_with()
+
     def test_the_keys_are_taken_before_the_fade_in(self) -> None:
         # The screen beneath yields keys to any modal on the window, fading in or not.
         frame = _frame()

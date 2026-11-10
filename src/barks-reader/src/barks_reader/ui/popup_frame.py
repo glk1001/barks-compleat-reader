@@ -397,6 +397,10 @@ class PopupFrame(ModalView):
         return button
 
     def _press(self, frame_button: FrameButton) -> None:
+        # Fading out, the frame is still on screen for a tap: a second one on Install
+        # started a second installer.
+        if self._closing:
+            return
         if frame_button.closes:
             self.dismiss()
         frame_button.on_press()
