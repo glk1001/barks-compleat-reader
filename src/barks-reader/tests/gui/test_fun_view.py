@@ -67,9 +67,10 @@ def test_left_and_right_step_through_shown_images(boot: AppBoot) -> None:
 def test_options_menu_opens_and_escape_closes_it(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
-    # Up reaches the filter button from either button: Right lands on the goto button
-    # when the seeded image is from a story, and that changes as the corpus grows.
-    d.move_focus("Up")
+    # Down reaches the filter button, at the bottom, from any button: Right lands on the
+    # goto button when the seeded image is from a story (that changes as the corpus
+    # grows), and on the spread the lower tier's goto button lies between the two.
+    d.move_focus("Down", "Down")
     # Opening the menu moves the focus ring into it; only then can it take a key.
     with (
         d.expect(pattern(markers.FUN_OPTIONS_PRESSED, state=True)),
@@ -83,10 +84,10 @@ def test_goto_button_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _change_pics_until_a_story_image(d)
     d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
-    # Up reaches the filter button from either button (Right lands on the goto button
-    # when the image is from a story), then Down the goto button: a Down from the goto
-    # button itself reaches the lower tier's on the spread, its tiers stacked.
-    d.move_focus("Up", "Down")
+    # Up reaches the goto button, at the top, from any button: from the filter button
+    # at the bottom the lower tier's lies between the two on the spread, its tiers
+    # stacked.
+    d.move_focus("Up", "Up")
     with (
         d.expect(pattern(markers.GOTO_TITLE)),
         d.expect(markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL),
@@ -143,7 +144,7 @@ def test_on_the_spread_the_lower_tiers_button_goes_to_its_story(boot: AppBoot) -
     lower_file = last_field(d, markers.FUN_VIEW_LOWER_TIER, "filename")
 
     d.key_then_wait(markers.ENTERED_BOTTOM_FOCUS, "Right")
-    d.move_focus("Up", "Down", "Down")  # the filter, the goto button, the lower tier's
+    d.move_focus("Up", "Up", "Down")  # the goto button at the top, then the lower tier's
     with (
         d.expect(pattern(markers.GOTO_TITLE)),
         d.expect(markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL),

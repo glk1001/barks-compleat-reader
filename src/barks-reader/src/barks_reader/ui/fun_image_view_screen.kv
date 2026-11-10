@@ -18,7 +18,9 @@
         # Zoomed in on a tier, that tier's image fills the page alone.
         Image:
             id: upper_image
-            color: root.image_color
+            # The colour is the current image's: the lower tier's image is drawn plain,
+            # zoomed as it is in its tier.
+            color: (1, 1, 1, 1) if root.zoomed == 'lower' else root.image_color
             texture: root.previous_image_texture if root.zoomed == 'lower' else root.image_texture
             fit_mode: root.image_fit_mode if (root.tiered or root.layout_mode != 'spread') else 'contain'
             mipmap: True

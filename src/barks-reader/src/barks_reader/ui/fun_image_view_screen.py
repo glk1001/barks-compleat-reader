@@ -83,7 +83,7 @@ class _FunFocus(Enum):
 
     GOTO = auto()  # the "Goto Title" overlay button (top-right)
     LOWER_GOTO = auto()  # the lower tier's goto button, on the spread when stacked
-    FILTER = auto()  # the image-filter toggle button (top-left)
+    FILTER = auto()  # the image-filter toggle button (bottom-left)
     MENU = auto()  # inside the open image-type options menu
 
 
@@ -525,7 +525,7 @@ class FunImageViewScreen(BoxLayout):
 
     # --- Keyboard navigation -------------------------------------------------
     # Focus moves between the goto button (top-right), the lower tier's goto button
-    # (below it, stacked on the spread) and the filter button (top-left) with
+    # (below it, stacked on the spread) and the filter button (bottom-left) with
     # Up/Down; Enter fires the focused one. Pressing the filter
     # button opens the image-type options menu and moves focus into it, where
     # Up/Down move, Enter/Space toggle, and Escape closes the menu. Left/Right
@@ -587,21 +587,8 @@ class FunImageViewScreen(BoxLayout):
         elif key == KEY_RIGHT:
             self.next_image()
             self._reconcile_button_focus()
-        elif key == KEY_UP:
-            # An inactive goto button is no stop: it has no ring and takes no Enter.
-            self._nav_focus = (
-                _FunFocus.GOTO
-                if self._nav_focus == _FunFocus.LOWER_GOTO and self.goto_title_button_active
-                else _FunFocus.FILTER
-            )
-            self._draw_nav_focus()
-        elif key == KEY_DOWN:
-            if self._nav_focus == _FunFocus.GOTO and self.lower_goto_title_button_active:
-                self._nav_focus = _FunFocus.LOWER_GOTO
-            elif self._nav_focus == _FunFocus.FILTER and self.goto_title_button_active:
-                self._nav_focus = _FunFocus.GOTO
-            elif self._nav_focus == _FunFocus.FILTER and self.lower_goto_title_button_active:
-                self._nav_focus = _FunFocus.LOWER_GOTO  # past an upper image with no title
+        elif key in (KEY_UP, KEY_DOWN):
+            self._nav_focus = self._button_stop_after(-1 if key == KEY_UP else 1)
             # Drawn even with nowhere to go: the GUI driver paces its keys on the line.
             self._draw_nav_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_SPACE):
@@ -611,6 +598,25 @@ class FunImageViewScreen(BoxLayout):
         else:
             return False
         return True
+
+    def _button_stop_after(self, step: int) -> _FunFocus:
+        """Return the button `step` stops on from the focused one, as they stand on screen.
+
+        From the top: the goto button, the lower tier's, then the filter button at the
+        bottom. An inactive goto button is no stop (it has no ring and takes no Enter);
+        with nowhere to go the focus stays where it is.
+        """
+        stops = [
+            stop
+            for stop, is_a_stop in (
+                (_FunFocus.GOTO, self.goto_title_button_active),
+                (_FunFocus.LOWER_GOTO, self.lower_goto_title_button_active),
+                (_FunFocus.FILTER, True),
+            )
+            if is_a_stop or stop == self._nav_focus
+        ]
+        idx = stops.index(self._nav_focus) + step
+        return stops[max(0, min(idx, len(stops) - 1))]
 
     def _activate_button_focus(self) -> None:
         if self._nav_focus == _FunFocus.GOTO:

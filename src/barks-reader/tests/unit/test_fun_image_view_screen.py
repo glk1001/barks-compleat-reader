@@ -297,18 +297,24 @@ class TestFunImageViewScreen:
         assert screen._nav_focus is _FunFocus.FILTER
 
     @pytest.mark.usefixtures("_no_focus_draw")
-    def test_up_moves_to_filter_down_back_to_arrow(
+    def test_down_moves_to_the_filter_at_the_bottom_and_up_back_to_the_goto_button(
         self, screen_setup: tuple[FunImageViewScreen, MagicMock, MagicMock]
     ) -> None:
+        """The keys follow the screen: the goto button top-right, the filter bottom-left."""
         screen, _, _ = screen_setup
         screen.goto_title_button_active = True
         screen.fun_options_enabled = False
         screen.enter_nav_focus(MagicMock())
 
-        assert screen.handle_key(KEY_UP) is True
-        assert screen._nav_focus is _FunFocus.FILTER
+        assert screen.handle_key(KEY_UP) is True  # nothing above the goto button
+        assert screen._nav_focus is _FunFocus.GOTO
 
         assert screen.handle_key(KEY_DOWN) is True
+        assert screen._nav_focus is _FunFocus.FILTER
+        assert screen.handle_key(KEY_DOWN) is True  # nothing below the filter button
+        assert screen._nav_focus is _FunFocus.FILTER
+
+        assert screen.handle_key(KEY_UP) is True
         assert screen._nav_focus is _FunFocus.GOTO
 
     @pytest.mark.usefixtures("_no_focus_draw")
@@ -350,10 +356,12 @@ class TestFunImageViewScreen:
         screen.enter_nav_focus(MagicMock())
         assert screen._nav_focus is _FunFocus.FILTER
 
-        assert screen.handle_key(KEY_DOWN) is True
-        assert screen._nav_focus is _FunFocus.LOWER_GOTO
-        # Up skips the upper button: inactive, it has no ring and takes no Enter.
         assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        # Up stops there: the upper button, inactive, has no ring and takes no Enter.
+        assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
+        assert screen.handle_key(KEY_DOWN) is True
         assert screen._nav_focus is _FunFocus.FILTER
 
     @pytest.mark.usefixtures("_no_focus_draw")
@@ -1187,19 +1195,21 @@ class TestTheLowerTiersGotoButton:
             from_keyboard=True, image_info=_info("a.png", Titles.GIFT_LION)
         )
 
+        assert screen.handle_key(KEY_DOWN) is True
+        assert screen._nav_focus is _FunFocus.FILTER  # at the bottom, under both
+        assert screen.handle_key(KEY_UP) is True
+        assert screen._nav_focus is _FunFocus.LOWER_GOTO
         assert screen.handle_key(KEY_UP) is True
         assert screen._nav_focus is _FunFocus.GOTO
-        assert screen.handle_key(KEY_UP) is True
-        assert screen._nav_focus is _FunFocus.FILTER
 
     @pytest.mark.usefixtures("_no_focus_draw")
-    def test_unstacked_down_stays_on_the_goto_button(self, screen_setup: _Setup) -> None:
+    def test_unstacked_down_passes_the_lower_button_by(self, screen_setup: _Setup) -> None:
         screen, _, _ = screen_setup
         screen.goto_title_button_active = True
         screen.fun_options_enabled = False
         screen.enter_nav_focus(MagicMock())
         assert screen.handle_key(KEY_DOWN) is True
-        assert screen._nav_focus is _FunFocus.GOTO
+        assert screen._nav_focus is _FunFocus.FILTER
 
     @pytest.mark.usefixtures("_no_focus_draw")
     def test_a_step_that_unstacks_moves_focus_off_the_lower_button(
