@@ -281,12 +281,12 @@ def _get_error_content(  # noqa: C901
                 lambda _dt: setattr(self.popup_ref, "title", base), seconds
             )
 
-        def _update_severity_bgnd(self, instance: Widget, _) -> None:  # noqa: ANN001
+        def _update_severity_bgnd(self, instance: Widget, _pos_or_size: object) -> None:
             """Keep severity banner background aligned with label."""
             self.severity_bgnd.pos = instance.pos
             self.severity_bgnd.size = instance.size
 
-        def toggle_details(self, *_args) -> None:  # noqa: ANN002
+        def toggle_details(self, *_args: object) -> None:
             """Toggle visibility of detailed error information."""
             self.details_visible = not self.details_visible
             if self.details_visible:
@@ -309,7 +309,7 @@ def _get_error_content(  # noqa: C901
             # Scroll back to top
             Clock.schedule_once(lambda _dt: setattr(self.scroll_view, "scroll_y", 1), 0.15)
 
-        def save_to_file(self, *_args) -> None:  # noqa: ANN002
+        def save_to_file(self, *_args: object) -> None:
             """Save error message to a file."""
             # noinspection PyBroadException
             try:
@@ -336,7 +336,7 @@ def _get_error_content(  # noqa: C901
                 logger.exception("Failed to save error to file:")
                 self._flash_title("Save failed", 2.0)
 
-        def copy_to_clipboard(self, *_args) -> None:  # noqa: ANN002
+        def copy_to_clipboard(self, *_args: object) -> None:
             """Copy error message to clipboard."""
             # noinspection PyBroadException
             try:

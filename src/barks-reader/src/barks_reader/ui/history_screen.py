@@ -284,7 +284,7 @@ class HistoryScreen(NavExitMixin, FloatLayout):
     is_visible = BooleanProperty(defaultvalue=False)
     image_texture = ObjectProperty(allownone=True)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._history_store: ReadingHistoryStore | None = None
         self._current_view = _JOURNAL_VIEW

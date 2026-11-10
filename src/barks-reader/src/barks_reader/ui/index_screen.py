@@ -131,7 +131,7 @@ class SpeechBubblesPopup(PopupFrame):
 class TextBoxWithTitleAndBorder(BoxLayout):
     """Text box with title and rectangle border."""
 
-    def __init__(self, title: str, content: str, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, title: str, content: str, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.title = title
         self.content = content
@@ -379,7 +379,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
     # patch IndexScreen.__init__ out entirely and inject collaborators afterwards.
     _texture_loader: PanelTextureLoader
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
 
         self.index_theme = Theme()

@@ -14,14 +14,15 @@ from barks_reader.core.crash_report import crash_report
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from types import TracebackType
 
 
 def handle_app_fail_with_traceback(
     app_type: str,
     msg_title: str,
-    exc_type,  # noqa: ANN001
-    exc_value,  # noqa: ANN001
-    exc_traceback,  # noqa: ANN001
+    exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    exc_traceback: TracebackType | None,
     log_path: str,
     log_the_error: bool = True,
     background_image_file: Path | None = None,
@@ -42,6 +43,10 @@ def handle_app_fail_with_traceback(
         background_image_file: Optional art behind the popup.
 
     """
+    # Optional as ``sys.exc_info()`` types them; every caller is handling an exception.
+    assert exc_type is not None
+    assert exc_value is not None
+
     # A traceback is text, not markup: its brackets are escaped for the popup's labels,
     # and come back as brackets in the log, the saved file and the clipboard.
     message, details = (

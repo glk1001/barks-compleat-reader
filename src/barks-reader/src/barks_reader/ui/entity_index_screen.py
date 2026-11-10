@@ -30,7 +30,7 @@ class EntityIndexScreen(SpeechSubItemsIndexScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         self._entity_type = entity_type
         super().__init__(reader_settings, font_manager, user_error_handler, **kwargs)

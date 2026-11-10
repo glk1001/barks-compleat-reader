@@ -4,13 +4,16 @@
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 from barks_reader.core.popup_frame import FrameButton, PopupSize
+
+if TYPE_CHECKING:
+    from kivy.uix.widget import Widget
 
 
 def closes_popup(key: int) -> bool:
@@ -50,7 +53,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
 
 def show_standalone_popup(
     title: str,
-    content,  # noqa: ANN001
+    content: "Widget",
     *,
     size: PopupSize = PopupSize.LARGE,
     fill_window: bool = False,

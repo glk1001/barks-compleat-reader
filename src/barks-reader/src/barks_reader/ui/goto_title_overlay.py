@@ -23,6 +23,8 @@ from .ui_helpers import TouchExpandedButton
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.widget import Widget
+
 OVERLAY_BUTTON_WIDTH = ARROW_WIDTH
 
 
@@ -50,13 +52,13 @@ class GotoTitleOverlay(FloatLayout):
     position = StringProperty("bottom-right")
     goto_button = ObjectProperty(None, allownone=True)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         self.register_event_type("on_goto_press")
         super().__init__(**kwargs)
         if "label_color" not in kwargs:
             self.label_color = theme().text_title
 
-    def on_kv_post(self, base_widget) -> None:  # noqa: ANN001, ARG002
+    def on_kv_post(self, base_widget: Widget) -> None:  # noqa: ARG002
         if self.position == "top-right":
             self._build(lambda: self.height - OVERLAY_BUTTON_WIDTH - dp(10))
         else:

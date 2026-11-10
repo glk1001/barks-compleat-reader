@@ -98,7 +98,7 @@ class FontManager(EventDispatcher):
     speech_bubble_popup_title_font_name = SPEECH_FONT
     index_title_item_font_name = ROBOTO_FONT
 
-    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self.app_title_font_size = 0.0
 
