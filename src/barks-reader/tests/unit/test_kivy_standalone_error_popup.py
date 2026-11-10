@@ -16,7 +16,11 @@ import kivy.clock
 import kivy.core.clipboard
 import pytest
 from barks_reader.core import reader_utils
-from barks_reader.ui import kivy_standalone_error_popup, kivy_standalone_show_message
+from barks_reader.ui import (
+    error_handling,
+    kivy_standalone_error_popup,
+    kivy_standalone_show_message,
+)
 from kivy.config import Config
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -95,6 +99,11 @@ class TestContent:
     def test_the_copy_holds_the_message_and_details_without_markup(self) -> None:
         content = _content(details=_DETAILS)
         assert content.full_message == "Something broke\n\nTraceback line 1\nline 2"
+
+    def test_the_copy_keeps_a_tracebacks_brackets(self) -> None:
+        line = 'x = d["key"][pages[i]]'
+        content = _content(details=error_handling.escape_markup(line))
+        assert content.full_message == f"Something broke\n\n{line}"
 
     def test_it_draws_no_card_of_its_own_on_the_frames(self) -> None:
         assert not _content().canvas.before.children

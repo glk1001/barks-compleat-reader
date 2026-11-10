@@ -99,9 +99,9 @@ def _get_error_content(  # noqa: C901
     from kivy.uix.label import Label
     from kivy.uix.widget import Widget
 
-    from barks_reader.core.reader_formatter import get_text_with_markup_stripped
     from barks_reader.core.reader_palette import theme
 
+    from .error_handling import plain_text
     from .popup_frame import BUTTON_BACKGROUND, popup_fonts
 
     # The banner and the headings are its own; the text and the Show Details button
@@ -130,7 +130,7 @@ def _get_error_content(  # noqa: C901
             self.message = error_message
             self.log_path = the_log_path
             self.details = error_details
-            self.full_message = get_text_with_markup_stripped(
+            self.full_message = plain_text(
                 f"{self.message}\n\n{self.details}" if self.details else self.message
             )
             self.popup_ref = None
