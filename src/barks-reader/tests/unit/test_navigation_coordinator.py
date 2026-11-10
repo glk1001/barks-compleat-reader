@@ -674,6 +674,18 @@ class TestNavigateToTitleWithPage:
         navigated.assert_not_called()
         mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
 
+    def test_an_article_closed_leaves_the_screen_it_was_opened_from(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """Closed, an article from the Main Index showed the Indexes view, not its letter."""
+        article = next(iter(NON_COMIC_TITLES))
+        nav_coord.navigate_to_title_with_page(ImageInfo(from_title=article), "3")
+        mock_deps["renderer"].render_state.reset_mock()
+
+        nav_coord.on_comic_closed()
+
+        mock_deps["renderer"].render_state.assert_not_called()
+
     def test_a_story_goes_to_its_page(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:

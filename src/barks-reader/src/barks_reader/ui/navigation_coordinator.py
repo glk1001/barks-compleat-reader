@@ -35,7 +35,6 @@ from barks_reader.core.collection_page_groups import (
 )
 from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     COMIC_BEGIN_PAGE,
@@ -56,6 +55,7 @@ if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.comic_reader_manager import ComicReaderManager
+    from barks_reader.core.navigation.view_states import ViewStates
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.saved_page_info import SavedPageInfo
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
@@ -293,7 +293,10 @@ class NavigationCoordinator:
         """
         title = image_info.from_title
         if title is not None and title in NON_COMIC_TITLES:
-            self.read_article(title, ViewStates.ON_INDEX_NODE)
+            # No view to put back on its close: the screen that asked is as it was
+            # left, as after a comic. A fixed one showed the Indexes view in place of
+            # the Main Index's letter, a search or the history.
+            self.read_article(title, None)
             return
 
         # One-pagers ignore the index page (reading deep-links to the gag's page in
@@ -458,8 +461,15 @@ class NavigationCoordinator:
         )
         return True
 
-    def read_article(self, article_title: Titles, return_view_state: ViewStates) -> None:
-        """Open a non-comic article in the comic reader."""
+    def read_article(self, article_title: Titles, return_view_state: ViewStates | None) -> None:
+        """Open a non-comic article in the comic reader.
+
+        Args:
+            article_title: The article to read.
+            return_view_state: The view to render when the article closes, or None to
+                leave the main screen as it was when the article opened.
+
+        """
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = return_view_state
         self._read_comic_tagged_pages = ()
