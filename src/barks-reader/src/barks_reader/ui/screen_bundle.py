@@ -63,6 +63,21 @@ class ScreenBundle:
         )
 
     @property
+    def keyboard_nav_screens(
+        self,
+    ) -> tuple[
+        MainIndexScreen,
+        SpeechIndexScreen,
+        EntityIndexScreen,
+        EntityIndexScreen,
+        StatisticsScreen,
+        HistoryScreen,
+        SearchScreen,
+    ]:
+        """Bottom screens that take the keys themselves, in the order one is looked for."""
+        return (*self.index_screens, self.statistics, self.history, self.search)
+
+    @property
     def index_screens(
         self,
     ) -> tuple[MainIndexScreen, SpeechIndexScreen, EntityIndexScreen, EntityIndexScreen]:

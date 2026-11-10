@@ -77,6 +77,7 @@ class MainScreenNavigation:
         trigger_factory: TriggerFactory | None = None,
         now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
+        self._screens = screens
         self._tree_view_screen = screens.tree_view
         self._tree_view_manager = tree_view_manager
         self._bottom_title_view_screen = screens.bottom_title_view
@@ -114,12 +115,7 @@ class MainScreenNavigation:
         """Exit bottom focus if the active bottom screen is no longer visible."""
         if self._focus_region != _FocusRegion.BOTTOM:
             return
-        visible = (
-            self._fun_image_view_screen.is_visible
-            or self._bottom_title_view_screen.is_visible
-            or self._get_active_nav_screen() is not None
-        )
-        if not visible:
+        if not self._a_bottom_screen_is_visible():
             self.exit_bottom_focus()
             logger.debug("Auto-exited bottom focus: active screen no longer visible.")
 
@@ -289,33 +285,12 @@ class MainScreenNavigation:
         self,
     ) -> HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None:
         """Return the currently visible bottom screen that supports keyboard navigation."""
-        screens: list[HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen] = [
-            self._main_index_screen,
-            self._speech_index_screen,
-            self._names_index_screen,
-            self._locations_index_screen,
-            self._statistics_screen,
-            self._history_screen,
-            self._search_screen,
-        ]
-        return next((s for s in screens if s.is_visible), None)
+        return next((s for s in self._screens.keyboard_nav_screens if s.is_visible), None)
 
     def enter_bottom_focus(self) -> None:
-        visible = (
-            self._fun_image_view_screen.is_visible
-            or self._bottom_title_view_screen.is_visible
-            or self._main_index_screen.is_visible
-            or self._speech_index_screen.is_visible
-            or self._names_index_screen.is_visible
-            or self._locations_index_screen.is_visible
-            or self._statistics_screen.is_visible
-            or self._history_screen.is_visible
-            or self._search_screen.is_visible
-        )
-        if not visible:
+        if not self._a_bottom_screen_is_visible():
             return
-        self._focus_region = _FocusRegion.BOTTOM
-        self._update_bottom_focus_highlight()
+        self._claim_bottom_focus()
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             nav_screen.enter_nav_focus(self.exit_bottom_focus)
@@ -350,6 +325,9 @@ class MainScreenNavigation:
         if self._focus_region == _FocusRegion.BOTTOM or self._is_in_menu_mode():
             return
         self._claim_bottom_focus_for_search()
+
+    def _a_bottom_screen_is_visible(self) -> bool:
+        return any(screen.is_visible for screen in self._screens.bottom_screens)
 
     def _claim_bottom_focus(self) -> None:
         """Make the bottom screen the keys' region, its own focus state left to it."""
@@ -525,8 +503,7 @@ class MainScreenNavigation:
         if not self._bottom_title_view_screen.is_visible:
             logger.debug("Title portal focus skipped: the title view is not visible.")
             return
-        self._focus_region = _FocusRegion.BOTTOM
-        self._update_bottom_focus_highlight()
+        self._claim_bottom_focus()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
         logger.debug(log_markers.ENTERED_BOTTOM_FOCUS_AT_PORTAL)
 
@@ -641,13 +618,7 @@ class MainScreenNavigation:
             # keyboard focus border, so the ring only appears during keyboard nav.
             return
         if self._search_screen.is_visible:
-            self._focus_region = _FocusRegion.BOTTOM
-            self._update_bottom_focus_highlight()
+            self._claim_bottom_focus()
             self._search_screen.enter_nav_focus_at_last_result(self.exit_bottom_focus)
-        elif (
-            self._main_index_screen.is_visible
-            or self._speech_index_screen.is_visible
-            or self._names_index_screen.is_visible
-            or self._locations_index_screen.is_visible
-        ):
+        elif any(screen.is_visible for screen in self._screens.index_screens):
             self.enter_bottom_focus()
