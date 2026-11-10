@@ -411,7 +411,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._search = ComicSearch(reader_settings.sys_file_paths.get_barks_reader_indexes_dir())
 
         self._current_image_info: ImageInfo | None = None
-        self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
+        self.on_goto_background_title_func: Callable[[ImageInfo], object] | None = None
         self.on_search_results_title_changed: Callable[[Titles], None] | None = None
         self._search_result_titles: list[Titles] = []
         self._image_change_event = None

@@ -186,17 +186,23 @@ class NavigationCoordinator:
 
     # === Navigation paths ===
 
-    def navigate_to_chrono_title(self, image_info: ImageInfo, *, offer_page: bool = True) -> None:
+    def navigate_to_chrono_title(self, image_info: ImageInfo, *, offer_page: bool = True) -> bool:
         """Navigate to a title's position in the tree from a background image.
 
         Resolves the parent node (year-range node, or the One Pagers series node
         for one-pagers), opens the tree to the correct position, then updates the
         title view. `offer_page` False leaves the page to goto to the caller, which
         has a page of its own to offer: one offer, and one offer logged.
+
+        Returns:
+            True if the title view now shows the title. False if it does not: the
+            title is an article, opened in the reader instead, or has no row in the
+            tree. A caller with a page of its own to offer offers it only on True.
+
         """
         assert image_info.from_title is not None
         if self._read_instead_if_article(image_info.from_title):
-            return
+            return False
 
         logger.debug(
             log_markers.GOTO_TITLE.format(
@@ -214,7 +220,7 @@ class NavigationCoordinator:
         title_node = find_tree_view_title_node(parent_node.nodes, image_info.from_title)
         if title_node is None:
             logger.error(f'Goto title: "{image_info.from_title.name}" has no row in the tree.')
-            return
+            return False
 
         assert self._tree_view_manager is not None
 
@@ -231,6 +237,7 @@ class NavigationCoordinator:
         self._tree_view_manager.goto_node(cast("BaseTreeViewNode", title_node), scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename, offer_page=offer_page)
+        return True
 
     def _get_title_parent_node(
         self, title: Titles, title_fanta_info: FantaComicBookInfo
@@ -295,9 +302,11 @@ class NavigationCoordinator:
         # One-pagers ignore the index page (reading deep-links to the gag's page in
         # the collection), so don't set a misleading goto-page checkbox for them.
         offers = bool(page_to_goto) and title is not None and title not in ONE_PAGERS
-        self.navigate_to_chrono_title(image_info, offer_page=not offers)
+        went_there = self.navigate_to_chrono_title(image_info, offer_page=not offers)
 
-        if offers:
+        # Not for a title that was not gone to: the page was offered on the title
+        # view of whichever title was left showing.
+        if offers and went_there:
             assert title is not None
             self._offer_tagged_pages(title, page_to_goto, tagged_pages)
 
@@ -336,8 +345,8 @@ class NavigationCoordinator:
         image_info = ImageInfo(from_title=title, filename=None)
         # Every listed tag's pages in the story, together: a basket of tags found it.
         pages = get_tagged_pages(tags, title)
-        self.navigate_to_chrono_title(image_info, offer_page=not pages)
-        if pages:
+        went_there = self.navigate_to_chrono_title(image_info, offer_page=not pages)
+        if pages and went_there:
             logger.debug(f'Setting tags goto page for ({[t.value for t in tags]}, "{title_str}").')
             self._offer_tagged_pages(title, pages[0], pages)
         return True

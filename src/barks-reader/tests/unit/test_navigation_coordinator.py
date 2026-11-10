@@ -127,8 +127,11 @@ class TestNavigationCoordinator:
                 return_value=None,
             ),
         ):
-            nav_coord.navigate_to_chrono_title(ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER))
+            went_there = nav_coord.navigate_to_chrono_title(
+                ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
+            )
 
+        assert went_there is False
         tree_manager.deselect_and_close_open_nodes.assert_not_called()
         tree_manager.goto_node.assert_not_called()
         mock_deps["renderer"].render_title.assert_not_called()
@@ -865,3 +868,57 @@ def test_a_one_pager_or_cover_closed_offers_no_page_of_its_collection(
 
     mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(GotoPageOffer())
     mock_deps["comic_reader_manager"].get_last_read_page.assert_not_called()
+
+
+class TestNoPageOfferedForATitleNotGoneTo:
+    """With no row in the tree the title view keeps the last title: its page row must too."""
+
+    def test_an_index_rows_page_is_not_offered(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        image_info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES)
+
+        with patch.object(nav_coord, "navigate_to_chrono_title", return_value=False) as navigated:
+            nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13"))
+
+        navigated.assert_called_once_with(image_info, offer_page=False)
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+
+    def test_a_search_results_tagged_pages_are_not_offered(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        with (
+            patch.object(nav_coord, "navigate_to_chrono_title", return_value=False),
+            patch.object(
+                barks_reader.ui.navigation_coordinator, "get_tagged_pages", return_value=["7"]
+            ),
+        ):
+            found = nav_coord.navigate_to_search_result("Lost in the Andes!", (Tags.ALASKA,))
+
+        assert found is True  # the title is a real one, as the result says
+        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+
+    def test_a_title_gone_to_says_so(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        nav_coord.set_tree_view_manager(MagicMock())
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.submitted_year = 1942
+        nav_coord.set_year_range_nodes({(1942, 1946): MagicMock(nodes=[])})
+
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=fanta_info
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "find_tree_view_title_node",
+                return_value=MagicMock(),
+            ),
+        ):
+            went_there = nav_coord.navigate_to_chrono_title(
+                ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
+            )
+
+        assert went_there is True
+        mock_deps["renderer"].render_title.assert_called_once()
