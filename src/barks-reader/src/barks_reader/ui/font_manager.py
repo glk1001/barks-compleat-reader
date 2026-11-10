@@ -44,6 +44,12 @@ def _scaled(sizes: FontTheme) -> FontTheme:
     return replace(sizes, **{f.name: sp(getattr(sizes, f.name)) for f in fields(sizes)})
 
 
+# Scaled once, at import, where `popup_fonts` (`ui.popup_frame`) scales at every call: were
+# the display's density or font scale to change under the running app (its window moved
+# to a monitor of another DPI), the app's text and the popups' would part. Nothing does
+# that today, and left so on purpose (2026-11-10): scaling in `update_font_sizes` is not
+# enough, which returns early while the font group is unchanged, so it wants a hook on the
+# density change too.
 LOW_RES_FONTS = _scaled(LOW_RES_FONT_SIZES)
 HI_RES_FONTS = _scaled(HI_RES_FONT_SIZES)
 
