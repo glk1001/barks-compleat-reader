@@ -37,6 +37,9 @@ def windowed() -> Iterator[MagicMock]:
             yield window_manager
 
 
+_CLOSE_BTN_IDX = 2
+
+
 def _bar() -> MagicMock:
     bar = MagicMock()
     bar.disabled = False
@@ -67,6 +70,8 @@ def screen() -> DocumentReaderScreen:
             on_goto_story=MagicMock(),
         )
         built._menu_mode = False
+        # As `_setup_action_bar_nav`, patched out above, leaves them: Close the default.
+        built._default_btn_idx = built._last_used_btn_idx = _CLOSE_BTN_IDX
         return built
 
 
@@ -111,6 +116,15 @@ class TestDocumentReaderMarkers:
         assert loguru_sink.count(f'Document page 2/{len(PAGES)}: "02.jpg".') == 1
         screen.prev_page()
         assert loguru_sink.count(f'Document page 1/{len(PAGES)}: "01.png".') == TWICE
+
+    def test_each_document_opens_with_close_the_menus_default(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        """The screen outlives its documents: Escape then Enter closes the next one too."""
+        (tmp_path / PAGES[0]).write_bytes(b"")
+        screen._last_used_btn_idx = 0  # a keyboard Go to Story in the document before
+        _open(screen, tmp_path)
+        assert screen._last_used_btn_idx == _CLOSE_BTN_IDX
 
     def test_close_logs(self, screen: DocumentReaderScreen, loguru_sink: list[str]) -> None:
         with patch.object(document_reader_module, "Window"):

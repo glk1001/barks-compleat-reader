@@ -175,6 +175,9 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
         """
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
+        # The screen outlives its documents: each opens with Close the menu's default,
+        # not the button last used in the one before.
+        self._last_used_btn_idx = self._default_btn_idx
 
         self._doc_dir = doc_dir
         self._page_paths = sorted(

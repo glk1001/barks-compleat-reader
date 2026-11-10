@@ -257,9 +257,9 @@ def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
         d.go_back()
     assert fields_of(d, markers.DOCUMENT_PAGE, "page")[-1] == str(linked.page)
 
-    # The bar comes back on Go to Story, the button pressed last: Close is the next one.
+    # The bar comes back on Close: each document opens with it the default, not with
+    # the button pressed last in the one before (here Go to Story).
     d.key_then_wait(d.MENU_ENTERED, "Escape")
-    d.move_focus("Right")
     with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
         d.key("Return")
 
