@@ -678,26 +678,6 @@ class TestPublicDelegations:
             in loguru_sink
         )
 
-    def test_set_title_keeps_a_provided_title_image(self) -> None:
-        pipeline = make_pipeline()
-        title_str = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
-
-        pipeline.set_title(title_str, Path("given.png"))
-
-        assert pipeline.current_request().title_str == title_str
-        assert pipeline._bottom_view_title_image_info.filename == Path("given.png")
-        selector_of(pipeline).get_random_image_for_title.assert_not_called()
-
-    def test_set_title_without_an_image_picks_one_for_that_title(self) -> None:
-        pipeline = make_pipeline()
-        selector_of(pipeline).get_random_image_for_title.return_value = Path("picked.png")
-        title_str = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
-
-        pipeline.set_title(title_str, None)
-
-        assert selector_of(pipeline).get_random_image_for_title.call_args.args[0] == title_str
-        assert pipeline._bottom_view_title_image_info.filename == Path("picked.png")
-
     def test_set_bottom_view_fun_image_stores_image_directly(self) -> None:
         pipeline = make_pipeline()
         info = ImageInfo(filename=Path("override.png"), from_title=Titles.ATTIC_ANTICS)

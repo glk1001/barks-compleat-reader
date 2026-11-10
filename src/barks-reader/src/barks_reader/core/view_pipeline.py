@@ -344,16 +344,6 @@ class ViewPipeline:
             ),
         )
 
-    def set_title(self, title_str: str, title_image_file: PanelPath | None) -> None:
-        """Set the current title and pick its bottom title-view image in place.
-
-        Used for the "configure the title view without a view-state transition"
-        flow (`ViewRenderer.set_title_without_render`).
-        """
-        self._current_bottom_view_title = title_str
-        self._set_bottom_view_title_image_file(title_image_file)
-        self._set_next_bottom_view_title_image()
-
     def get_view_state(self) -> ViewStates:
         """Return the currently active view state."""
         return self._view_state

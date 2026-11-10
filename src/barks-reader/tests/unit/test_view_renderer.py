@@ -201,23 +201,6 @@ class TestRenderTitle:
         assert _rendered_request(deps).title_image_file == Path("edited.png")
 
 
-class TestSetTitleWithoutRender:
-    def test_set_title_without_render_sets_title_on_pipeline(
-        self, renderer: tuple[ViewRenderer, dict[str, Any]]
-    ) -> None:
-        view_renderer, deps = renderer
-        fanta_info = MagicMock()
-        fanta_info.comic_book_info.get_title_str.return_value = "Story Title"
-
-        view_renderer.set_title_without_render(fanta_info)
-
-        deps["screens"].bottom_title_view.fade_in_bottom_view_title.assert_called_once()
-        deps["pipeline"].set_title.assert_called_once_with("Story Title", None)
-        deps["screens"].bottom_title_view.set_title_view.assert_called_with(fanta_info)
-        # No view-state transition: render is never called.
-        deps["pipeline"].render.assert_not_called()
-
-
 class TestRefresh:
     def test_refresh_replays_current_request(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]

@@ -185,21 +185,6 @@ class ViewRenderer:
             )
         )
 
-    def set_title_without_render(
-        self,
-        fanta_info: FantaComicBookInfo,
-        title_image_file: PanelPath | None = None,
-    ) -> None:
-        """Configure the bottom-title view for *fanta_info* without transitioning state.
-
-        Mirrors the legacy `ViewStateManager.set_title` behavior. Most callers
-        should prefer `render_title`, which also drives the view-state change.
-        """
-        title_str = fanta_info.comic_book_info.get_title_str()
-        title_image_file = self._fade_in_title_view(title_str, title_image_file)
-        self._pipeline.set_title(title_str, title_image_file)
-        self._screens.bottom_title_view.set_title_view(fanta_info)
-
     def _fade_in_title_view(
         self,
         title_str: str,
@@ -208,7 +193,7 @@ class ViewRenderer:
         """Fade in the bottom-title view and resolve the edited title image file.
 
         Returns the edited version of *title_image_file* (if one exists), ready
-        to place into a `ViewRequest` or `ViewPipeline.set_title`.
+        to place into a `ViewRequest`.
         """
         self._screens.bottom_title_view.fade_in_bottom_view_title()
 

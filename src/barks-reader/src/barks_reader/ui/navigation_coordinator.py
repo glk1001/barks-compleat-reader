@@ -21,8 +21,6 @@ from barks_fantagraphics.comic_book_info import (
 )
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
-    ALL_FANTA_COMIC_BOOK_INFO,
-    SERIES_EXTRAS,
     FantaComicBookInfo,
     get_fanta_info,
 )
@@ -80,7 +78,6 @@ class TitleTarget:
     fanta_info: FantaComicBookInfo
     title_image_file: PanelPath | None = None
     tag: Tags | TagGroups | None = None
-    page_to_goto: str = ""
 
 
 class NavigationCoordinator:
@@ -350,36 +347,6 @@ class NavigationCoordinator:
             self._offer_tagged_pages(title, pages[0], pages)
         return True
 
-    def update_title(self, title_str: str) -> bool:
-        """Update the current title from a tree view text label.
-
-        Args:
-            title_str: The display title string from the tree view.
-
-        Returns:
-            False if the title is not configured or is in the EXTRAS series.
-
-        """
-        logger.debug(f'Update title: "{title_str}".')
-        assert title_str != ""
-
-        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-
-        title = STR_TITLE_TO_ENUM.get(title_str)
-        if title is None or title not in ALL_FANTA_COMIC_BOOK_INFO:
-            logger.debug(f'Update title: Not configured yet: "{title_str}".')
-            return False
-
-        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title]
-        if next_fanta_info.series_name == SERIES_EXTRAS:
-            logger.debug(f'Title is in EXTRA series: "{title_str}".')
-            return False
-
-        self._current_fanta_info = next_fanta_info
-        self._set_title()
-
-        return True
-
     # === Content-opening paths ===
 
     def read_comic(self) -> bool:
@@ -594,13 +561,6 @@ class NavigationCoordinator:
         self._renderer.render_title(new_fanta_info, title_image_file=title_image_file)
         if offer_page:
             self._set_goto_page_checkbox()
-        self._set_use_overrides_checkbox()
-
-    def _set_title(self, title_image_file: PanelPath | None = None) -> None:
-        """Configure the title view without triggering a view-state transition."""
-        assert self._current_fanta_info is not None
-        self._renderer.set_title_without_render(self._current_fanta_info, title_image_file)
-        self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 
     def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:

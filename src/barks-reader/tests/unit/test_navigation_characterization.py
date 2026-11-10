@@ -47,7 +47,6 @@ if TYPE_CHECKING:
 @pytest.fixture
 def tvm_deps(screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
-    nav_coordinator.update_title.return_value = True
     return {
         "renderer": MagicMock(),
         "screens": screens,

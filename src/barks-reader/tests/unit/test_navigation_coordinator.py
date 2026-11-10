@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_database import TitleNotFoundError
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -620,34 +620,6 @@ class TestNavigateToSearchResult:
 
 
 ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
-
-
-class TestUpdateTitle:
-    """A tree label picked: the title view follows a configured story, else stays."""
-
-    def test_a_configured_story_becomes_the_current_title(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
-    ) -> None:
-        assert nav_coord.update_title(ANDES) is True
-        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
-        assert nav_coord.current_fanta_info is info
-        mock_deps["renderer"].set_title_without_render.assert_called_once_with(info, None)
-
-    def test_a_label_naming_no_title_changes_nothing(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
-    ) -> None:
-        assert nav_coord.update_title("No Such Story") is False
-        assert nav_coord.current_fanta_info is None
-        mock_deps["renderer"].set_title_without_render.assert_not_called()
-
-    def test_an_extras_title_is_not_shown(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
-    ) -> None:
-        extra = next(
-            t for t, info in ALL_FANTA_COMIC_BOOK_INFO.items() if info.series_name == SERIES_EXTRAS
-        )
-        assert nav_coord.update_title(ENUM_TO_STR_TITLE[extra]) is False
-        mock_deps["renderer"].set_title_without_render.assert_not_called()
 
 
 class TestAVolumeNotAvailable:

@@ -41,7 +41,6 @@ if TYPE_CHECKING:
 @pytest.fixture
 def mock_dependencies(screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
-    nav_coordinator.update_title.return_value = True
     return {
         "renderer": MagicMock(),
         "screens": screens,
