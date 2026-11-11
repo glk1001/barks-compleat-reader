@@ -169,6 +169,7 @@ class Win32Window:
 
 # The messages whose default handling paints the desktop's own caption straight onto
 # the window, over an app that draws its own title bar in the client area.
+WM_NCPAINT = 0x0085
 WM_NCACTIVATE = 0x0086
 WM_NCUAHDRAWCAPTION = 0x00AE  # undocumented; sent by the theme code
 WM_NCUAHDRAWFRAME = 0x00AF  # undocumented; sent by the theme code
@@ -340,6 +341,13 @@ class CaptionGuard:
             if name and len(self._frame_messages) < _MAX_FRAME_MESSAGES_LOGGED:
                 elapsed_ms = round((time.monotonic() - self._held_from) * 1000)
                 self._frame_messages.append((elapsed_ms, name))
+            if msg == WM_NCPAINT and time.monotonic() <= self._held_until:
+                # A fullscreen exit puts the caption style back, and for a moment
+                # the desktop does not draw this window's frame itself (it sends
+                # WM_DWMNCRENDERINGCHANGED when it does again). A WM_NCPAINT
+                # passed on in that moment paints the old unthemed caption, a
+                # flash of silver along the top of the window.
+                return 0
 
         if msg == WM_WINDOWPOSCHANGING and self._held_rect is not None and lparam:
             if time.monotonic() > self._held_until:

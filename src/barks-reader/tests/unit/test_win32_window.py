@@ -324,6 +324,26 @@ class TestHeldRect:
         assert self._changing(guard) == HELD
         guard_user32.CallWindowProcW.assert_called_once()  # the window is still told
 
+    def test_a_held_window_is_not_asked_to_paint_its_frame(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        """Passed on during a fullscreen exit, it paints the old unthemed caption."""
+        win32_window.hold_window_rect(HIGH_HWND, HELD)
+
+        assert guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0) == 0
+
+        guard_user32.CallWindowProcW.assert_not_called()
+
+    def test_a_window_not_held_paints_its_frame_as_ever(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        win32_window.hold_window_rect(HIGH_HWND, HELD)
+        win32_window.release_window_rect(HIGH_HWND)
+        guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+
+        assert guard_user32.CallWindowProcW.call_count == 2  # noqa: PLR2004
+
     def test_letting_go_logs_the_frame_messages_the_held_window_had(
         self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
     ) -> None:
