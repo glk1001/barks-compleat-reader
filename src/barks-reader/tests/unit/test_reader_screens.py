@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_screens
 import pytest
+from barks_reader.core import screen_transition
+from barks_reader.core.screen_transition import SCREEN_TRANSITION_ENV_VAR
 from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
@@ -96,6 +98,40 @@ class TestReaderScreenManager:
     ) -> None:
         transition = reader_screen_manager._get_next_reader_screen_transition()
         assert isinstance(transition, TransitionBase)
+
+    @pytest.mark.parametrize(
+        "name", ["NoTransition", "FadeTransition", "SwapTransition", "CardTransition"]
+    )
+    def test_the_transition_the_environment_names_is_the_one_used(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        monkeypatch: pytest.MonkeyPatch,
+        name: str,
+    ) -> None:
+        """A GUI test of what only some transitions do pins one; a wrapped class by its name."""
+        monkeypatch.setenv(SCREEN_TRANSITION_ENV_VAR, name)
+
+        for _ in range(8):
+            to_main = reader_screen_manager._get_next_main_screen_transition()
+            to_reader = reader_screen_manager._get_next_reader_screen_transition()
+            assert type(to_main).__name__.lstrip("_") == name
+            assert type(to_reader).__name__.lstrip("_") == name
+            assert to_main in ReaderScreenManager._MAIN_SCREEN_TRANSITIONS
+            assert to_reader in ReaderScreenManager._READER_SCREEN_TRANSITIONS
+
+    @pytest.mark.parametrize("name", ["", "NoSuchTransition"])
+    def test_no_transition_named_or_one_not_in_the_pool_leaves_the_pick_random(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        monkeypatch: pytest.MonkeyPatch,
+        name: str,
+    ) -> None:
+        monkeypatch.setenv(SCREEN_TRANSITION_ENV_VAR, name)
+        pool = ReaderScreenManager._MAIN_SCREEN_TRANSITIONS
+        with patch.object(screen_transition.random, "choice", return_value=pool[3]) as choice:
+            assert reader_screen_manager._get_next_main_screen_transition() is pool[3]
+
+        choice.assert_called_once_with(pool)
 
     def test_switch_to_comic_book_reader(
         self,

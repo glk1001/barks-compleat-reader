@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Protocol
 
@@ -22,6 +21,7 @@ from kivy.uix.screenmanager import (
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.screen_transition import pick_transition
 
 from .platform_window_utils import set_titlebar_drag_region
 
@@ -218,10 +218,10 @@ class ReaderScreenManager:
         return root
 
     def _get_next_main_screen_transition(self) -> TransitionBase:
-        return random.choice(self._MAIN_SCREEN_TRANSITIONS)
+        return pick_transition(self._MAIN_SCREEN_TRANSITIONS)
 
     def _get_next_reader_screen_transition(self) -> TransitionBase:
-        return random.choice(self._READER_SCREEN_TRANSITIONS)
+        return pick_transition(self._READER_SCREEN_TRANSITIONS)
 
     def _set_transition(self, transition: TransitionBase, switching_to: str) -> None:
         """Make `transition` the next switch's, first finishing one still running."""
