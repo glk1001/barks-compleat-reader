@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.core.main_index
@@ -40,23 +40,17 @@ def main_index_screen(
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         # Patch dependencies created in __init__
         with (
-            patch.object(
-                barks_reader.ui.main_index_screen, "ImageSelector"
-            ) as mock_random_images_cls,
+            patch.object(barks_reader.ui.main_index_screen, "ImageSelector"),
             patch.object(barks_reader.ui.main_index_screen, "ReaderFilePathsResolver"),
-            patch.object(
-                barks_reader.ui.main_index_screen, "PanelTextureLoader"
-            ) as mock_loader_cls,
+            patch.object(barks_reader.ui.main_index_screen, "PanelTextureLoader"),
             patch.object(MainIndexScreen, "_populate_alphabet_menu"),
         ):
             screen = MainIndexScreen(mock_settings, mock_font_manager, mock_user_error_handler)
 
-            # Manually initialize attributes that super().__init__ or __init__ would set
+            # What the stood-in super().__init__ would have set. The screen's own
+            # constructor is left to set its own, so a test can hold it to that.
             screen.ids = MagicMock()
             screen.index_theme = MagicMock()
-            screen._font_manager = mock_font_manager
-            screen._random_title_images = mock_random_images_cls.return_value
-            screen._texture_loader = mock_loader_cls.return_value
             screen._alphabet_buttons = {}
             screen._open_tag_widgets = []
             screen.treeview_index_node = MagicMock()
@@ -66,10 +60,37 @@ def main_index_screen(
 
 
 class TestMainIndexScreen:
-    def test_init(self, main_index_screen: MainIndexScreen) -> None:
-        assert main_index_screen._font_manager is not None
-        assert main_index_screen._random_title_images is not None
-        assert main_index_screen._texture_loader is not None
+    def test_the_screen_is_built_with_its_own_selector_loader_and_index(
+        self,
+        main_index_screen: MainIndexScreen,
+        mock_settings: MagicMock,
+        mock_font_manager: MagicMock,
+        mock_user_error_handler: MagicMock,
+    ) -> None:
+        # Still stood in while the fixture is live: the classes the constructor called.
+        module = barks_reader.ui.main_index_screen
+        resolver_class = cast("MagicMock", module.ReaderFilePathsResolver)
+        selector_class = cast("MagicMock", module.ImageSelector)
+        loader_class = cast("MagicMock", module.PanelTextureLoader)
+
+        resolver_class.assert_called_once_with(mock_settings.file_paths)
+        selector_class.assert_called_once_with(resolver_class.return_value, mock_settings)
+        loader_class.assert_called_once_with()
+        assert main_index_screen._random_title_images is selector_class.return_value
+        assert main_index_screen._texture_loader is loader_class.return_value
+        assert main_index_screen._font_manager is mock_font_manager
+        assert main_index_screen._user_error_handler is mock_user_error_handler
+        assert main_index_screen._tag_entries == {}
+        assert main_index_screen._open_tag_item is None
+        cast("MagicMock", main_index_screen._populate_alphabet_menu).assert_called_once_with()
+
+    def test_the_index_built_at_the_start_has_entries_under_letters_and_titles_among_them(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        index = main_index_screen._item_index
+
+        assert {"A", "L", "Z"} <= set(index)
+        assert any(item.id is Titles.LOST_IN_THE_ANDES for item in index["L"])
 
     def test_get_items_for_letter(self, main_index_screen: MainIndexScreen) -> None:
         # Clear the index built during init so we can test with controlled data
