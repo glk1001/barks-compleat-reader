@@ -18,7 +18,7 @@ body {
     background: transparent;      /* text only — no page fill, for the GIMP overlay */
     color: #1a1a1a;
     font-family: "Liberation Serif", "DejaVu Serif", Georgia, serif;
-    font-size: 34px;
+    font-size: 41px;
     line-height: 1.5;
 }
 
@@ -35,7 +35,7 @@ h2 {
 }
 
 h3 {
-    font-size: 40px;
+    font-size: 47px;
     margin: 30px 0 14px;
 }
 
