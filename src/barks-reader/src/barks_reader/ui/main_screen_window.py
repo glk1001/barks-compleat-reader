@@ -83,19 +83,42 @@ class MainScreenWindowHelper:
         window's change of size and the screen's shows as a flash (the action bar
         at the window's width, then at the box's), and nothing else in the log
         says what a frame drew.
+
+        Each line also says when the frame's clock tick began and when its drawing
+        began: from the tick to the drawing is the app's own work (callbacks, layout,
+        text), from there to the line is the drawing, and from the line to the next
+        line's tick is at most the swap that shows it.
         """
         started = time.monotonic()
+        ticked = drawing = 0
+
+        def since_start() -> int:
+            return round((time.monotonic() - started) * 1000)
+
+        def on_tick(_dt: float) -> None:
+            nonlocal ticked
+            ticked = since_start()
+
+        def on_draw(*_args: object) -> None:
+            nonlocal drawing
+            drawing = since_start()
 
         def on_flip(*_args: object) -> None:
             logger.debug(
-                f"MainScreen frame +{round((time.monotonic() - started) * 1000)}ms:"
+                f"MainScreen frame +{since_start()}ms"
+                f" (ticked +{ticked}ms, drawing +{drawing}ms):"
                 f" window = {Window.size}, fullscreen = {Window.fullscreen},"
                 f" screen = {self._host.size} at {self._host.pos},"
                 f" action bar = {self._action_bar.size}."
             )
 
-        Window.bind(on_flip=on_flip)
-        Clock.schedule_once(lambda _dt: Window.unbind(on_flip=on_flip), _FRAME_LOG_SECONDS)
+        def stop(_dt: float) -> None:
+            tick.cancel()
+            Window.unbind(on_draw=on_draw, on_flip=on_flip)
+
+        tick = Clock.schedule_interval(on_tick, 0)
+        Window.bind(on_draw=on_draw, on_flip=on_flip)
+        Clock.schedule_once(stop, _FRAME_LOG_SECONDS)
 
     def force_fullscreen(self) -> None:
         self._mode.force_fullscreen()

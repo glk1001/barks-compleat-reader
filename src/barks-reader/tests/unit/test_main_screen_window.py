@@ -75,17 +75,25 @@ class TestToggleScreenMode:
 
             hf.helper.toggle_screen_mode()
 
-            on_flip = window.bind.call_args.kwargs["on_flip"]
-            on_flip(window)
-            assert any(
+            bound = window.bind.call_args.kwargs
+            (on_tick, every), _ = clock.schedule_interval.call_args
+            assert every == 0
+            on_tick(0)
+            bound["on_draw"](window)
+            bound["on_flip"](window)
+            lines = [s for s in loguru_sink if "MainScreen frame +" in s]
+            assert len(lines) == 1
+            assert "ms (ticked +" in lines[0]
+            assert "ms, drawing +" in lines[0]
+            assert (
                 "window = (2560, 1440), fullscreen = auto,"
-                " screen = [1848, 1440] at [356, 0], action bar = [1848, 45]." in s
-                for s in loguru_sink
+                " screen = [1848, 1440] at [356, 0], action bar = [1848, 45]." in lines[0]
             )
             (stop, delay), _ = clock.schedule_once.call_args
             assert delay == window_module._FRAME_LOG_SECONDS
             stop(0)
-            window.unbind.assert_called_once_with(on_flip=on_flip)
+            clock.schedule_interval.return_value.cancel.assert_called_once_with()
+            window.unbind.assert_called_once_with(**bound)
 
 
 class TestForceFullscreen:
