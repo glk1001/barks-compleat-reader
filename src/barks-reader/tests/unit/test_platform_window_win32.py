@@ -117,6 +117,22 @@ def test_a_window_held_at_the_rectangle_through_the_exit_is_not_moved() -> None:
     clock.schedule_once.assert_not_called()
 
 
+def test_a_window_elsewhere_as_fullscreen_ends_is_logged_before_it_is_moved(
+    loguru_sink: list[str],
+) -> None:
+    """The line splits the wait in a log: before it the exit, after it the move."""
+    backend = _backend(MagicMock(return_value=True), _window_at(60, 40, 716, 539))
+
+    with (
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+        patch.object(win32_module, "Clock"),
+    ):
+        backend.move_now(_saved_state())
+
+    wanted = "Window rect (60, 40, 776, 579) as fullscreen ends, not (150, 120, 850, 620)"
+    assert any(wanted in s for s in loguru_sink)
+
+
 def test_a_move_now_left_where_it_was_tries_again_next_frame() -> None:
     backend = _backend(MagicMock(return_value=True), _window_at(60, 40, 716, 539))
 

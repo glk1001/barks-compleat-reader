@@ -233,11 +233,13 @@ class Win32WindowBackend:
         width, height = state.size
         wanted = (x, y, x + width, y + height)
 
-        if self._is_window_at(wanted):
+        found = self._window_rect()
+        if found == wanted:
             # Held there through the exit (hold_windowed_rect): a MoveWindow now
             # would only block while the window finishes the exit.
             logger.debug(f"Win32: Window at {state.size}, {state.pos} as fullscreen ends.")
             return
+        logger.debug(f"Win32: Window rect {found} as fullscreen ends, not {wanted}: moving it.")
 
         def attempt(attempts_left: int) -> None:
             if Window.fullscreen or not self._hwnd:
@@ -307,15 +309,19 @@ class Win32WindowBackend:
 
     def _is_window_at(self, wanted: tuple[int, int, int, int]) -> bool:
         """Return whether the window's rectangle is ``wanted``: left, top, right, bottom."""
+        return self._window_rect() == wanted
+
+    def _window_rect(self) -> tuple[int, int, int, int] | None:
+        """Return the window's rectangle (left, top, right, bottom), or None when unreadable."""
         if not self._hwnd:
-            return False
+            return None
         try:
             rect = RECT()
             self._get_window_rect(self._hwnd, rect)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 GetWindowRect failed: {e}")
-            return False
-        return (rect.left, rect.top, rect.right, rect.bottom) == wanted
+            return None
+        return (rect.left, rect.top, rect.right, rect.bottom)
 
     def _move_and_read_back(self, x: int, y: int, width: int, height: int) -> tuple[Any, RECT]:
         """Call ``MoveWindow``, then ``GetWindowRect``: the move's result and where the window is.
