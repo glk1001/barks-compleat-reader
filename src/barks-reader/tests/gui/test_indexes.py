@@ -78,11 +78,14 @@ def test_change_pics_changes_the_background_of_an_index(
     d.wait_for(BACKGROUND_SHOWN)
     # The rotation shows a new background every few seconds unasked, so a new image
     # alone proves nothing: the press must be what asked for the one that follows.
-    with d.expect(BACKGROUND_SHOWN), d.expect(markers.INDEX_BACKGROUND_CHANGE_ASKED):
+    with d.expect(markers.INDEX_BACKGROUND_CHANGE_ASKED):
         d.main_menu_button("change_pics")
+    # Nor does one shown while the bar was walked to the button: only an image shown
+    # after the request counts, however long after (a slow machine takes its time).
     lines = d.log_path.read_text(encoding="utf-8", errors="replace").splitlines()
     asked = max(i for i, s in enumerate(lines) if markers.INDEX_BACKGROUND_CHANGE_ASKED in s)
-    assert any(re.search(BACKGROUND_SHOWN, line) for line in lines[asked + 1 :])
+    shown_before = sum(1 for line in lines[:asked] if re.search(BACKGROUND_SHOWN, line))
+    d.await_new(BACKGROUND_SHOWN, timeout=15, before=shown_before)
 
 
 def test_main_index_letters_repopulate(boot: AppBoot) -> None:
