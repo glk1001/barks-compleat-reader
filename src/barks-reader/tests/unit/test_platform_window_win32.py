@@ -8,7 +8,7 @@ tests are for what the backend does around them, which no platform otherwise ran
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
 from barks_reader.ui import platform_window_win32 as win32_module
@@ -196,59 +196,186 @@ def test_a_save_that_raises_takes_the_state_from_kivy(loguru_sink: list[str]) ->
 
 # --- The scheduled restore ---
 
-
-def _schedule_restore(
-    backend: Win32WindowBackend, clock: MagicMock
-) -> tuple[MagicMock, MagicMock, Callable[[], None]]:
-    """Schedule a restore to the saved state; return its two callbacks and its cancel."""
-    on_first_resize, on_done = MagicMock(), MagicMock()
-    cancel = backend.schedule_restore(_saved_state(), on_first_resize, on_done)
-    clock.schedule_once.assert_called_once()
-    assert clock.schedule_once.call_args.args[1] == win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN
-    return on_first_resize, on_done, cancel
+_SAVED = (150, 120, 700, 500)  # where `_saved_state` puts the window: left, top, width, height
+_ELSEWHERE = (60, 40, 716, 539)
 
 
-def test_a_scheduled_restore_moves_the_window_then_calls_back_a_frame_later() -> None:
-    move_window = MagicMock(return_value=True)
-    backend = _backend(move_window, _window_at(150, 120, 700, 500))
+class _Clock:
+    """Stand in for Kivy's Clock: hold what is scheduled until a test runs it."""
 
-    with patch.object(win32_module, "Clock") as clock, patch.object(win32_module, "Window"):
-        on_first_resize, on_done, _ = _schedule_restore(backend, clock)
-        restore = clock.schedule_once.call_args.args[0]
+    def __init__(self) -> None:
+        self.scheduled: list[tuple[Callable[[float], None], float, MagicMock]] = []
 
-        move_window.assert_not_called()  # nothing before the delay is up
-        restore(0)
+    def schedule_once(self, callback: Callable[[float], None], delay: float = 0) -> MagicMock:
+        event = MagicMock()
+        self.scheduled.append((callback, delay, event))
+        return event
 
-        move_window.assert_called_once_with(_HWND, 150, 120, 700, 500, True)  # noqa: FBT003
-        on_first_resize.assert_not_called()  # Kivy has a frame to catch up first
-        sync_and_finish, delay = clock.schedule_once.call_args.args
-        assert delay == 0
-        sync_and_finish(0)
+    def run(self, delay: float) -> None:
+        """Run the oldest callback scheduled with `delay` that has not been cancelled."""
+        for entry in self.scheduled:
+            callback, its_delay, event = entry
+            if its_delay == delay and not event.cancel.called:
+                self.scheduled.remove(entry)
+                callback(0)
+                return
+        msg = f"Nothing is scheduled with a delay of {delay}."
+        raise AssertionError(msg)
 
-    on_first_resize.assert_called_once_with()
-    on_done.assert_called_once_with()
+    def run_frame(self) -> None:
+        self.run(0)
+
+    def run_delayed_move(self) -> None:
+        self.run(win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN)
+
+    def live(self) -> list[float]:
+        return [delay for _, delay, event in self.scheduled if not event.cancel.called]
 
 
-def test_cancelling_before_the_delay_is_up_stops_the_delayed_move() -> None:
-    backend = _backend(MagicMock(), MagicMock())
+class _Restore:
+    """A scheduled restore to the saved state, on a window a test can move."""
 
-    with patch.object(win32_module, "Clock") as clock:
-        delayed_move = clock.schedule_once.return_value
-        _, _, cancel = _schedule_restore(backend, clock)
-        cancel()
+    def __init__(self, window_at: tuple[int, int, int, int], *, fullscreen: bool = False) -> None:
+        self.window_at = window_at
+        self.move_window = MagicMock(side_effect=self._move)
+        self.on_first_resize, self.on_done = MagicMock(), MagicMock()
+        self.clock = _Clock()
+        self.window = MagicMock(fullscreen=fullscreen)
 
-    delayed_move.cancel.assert_called_once_with()
+        def fill(_hwnd: int, rect: RECT) -> bool:
+            left, top, width, height = self.window_at
+            rect.left, rect.top, rect.right, rect.bottom = left, top, left + width, top + height
+            return True
+
+        self.backend = _backend(self.move_window, MagicMock(side_effect=fill))
+        self._patches = [
+            patch.object(win32_module, "Clock", self.clock),
+            patch.object(win32_module, "Window", self.window),
+        ]
+
+    def _move(self, _hwnd: int, *rect_and_repaint: int) -> bool:
+        self.window_at = (*rect_and_repaint[:4],)
+        return True
+
+    def __enter__(self) -> Self:
+        for patcher in self._patches:
+            patcher.start()
+        self.cancel = self.backend.schedule_restore(
+            _saved_state(), self.on_first_resize, self.on_done
+        )
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        for patcher in self._patches:
+            patcher.stop()
+
+    def assert_called_back_once(self) -> None:
+        self.on_first_resize.assert_called_once_with()
+        self.on_done.assert_called_once_with()
+
+    def assert_not_called_back(self) -> None:
+        self.on_first_resize.assert_not_called()
+        self.on_done.assert_not_called()
+
+
+def test_a_window_still_elsewhere_is_moved_when_the_delay_is_up_then_called_back() -> None:
+    with _Restore(_ELSEWHERE) as restore:
+        restore.clock.run_frame()  # a look: not there yet
+        restore.clock.run_frame()  # and another
+        restore.move_window.assert_not_called()  # nothing before the delay is up
+        restore.assert_not_called_back()
+
+        restore.clock.run_delayed_move()
+
+        restore.move_window.assert_called_once_with(_HWND, *_SAVED, True)  # noqa: FBT003
+        restore.assert_not_called_back()  # Kivy has a frame to catch up first
+        restore.clock.run_frame()
+
+        restore.assert_called_back_once()
+        assert restore.clock.live() == []  # the looking stopped with the move
+
+
+def test_a_window_already_put_right_is_called_back_without_waiting(
+    loguru_sink: list[str],
+) -> None:
+    """Until then the screen is laid out for fullscreen in a window that is not."""
+    with _Restore(_SAVED) as restore:
+        restore.clock.run_frame()
+
+        restore.assert_called_back_once()
+        restore.move_window.assert_not_called()
+        assert any("finishing the restore without waiting" in s for s in loguru_sink)
+
+        restore.clock.run_delayed_move()  # now only a check: the window is still right
+
+        restore.move_window.assert_not_called()
+        restore.assert_called_back_once()
+        assert restore.clock.live() == []
+
+
+def test_a_window_put_right_a_frame_later_is_called_back_then() -> None:
+    with _Restore(_ELSEWHERE) as restore:
+        restore.clock.run_frame()
+        restore.assert_not_called_back()
+
+        restore.window_at = _SAVED
+        restore.clock.run_frame()
+
+        restore.assert_called_back_once()
+
+
+def test_a_window_the_exit_shifts_after_an_early_finish_is_moved_back(
+    loguru_sink: list[str],
+) -> None:
+    with _Restore(_SAVED) as restore:
+        restore.clock.run_frame()
+        restore.window_at = _ELSEWHERE
+
+        restore.clock.run_delayed_move()
+
+        restore.move_window.assert_called_once_with(_HWND, *_SAVED, True)  # noqa: FBT003
+        restore.assert_called_back_once()  # not a second time
+        assert any("moved after its early restore" in s for s in loguru_sink)
+
+
+def test_a_window_gone_fullscreen_after_an_early_finish_is_left_alone() -> None:
+    """The early finish gave up its cancel, so the delayed move sees to this itself."""
+    with _Restore(_SAVED) as restore:
+        restore.clock.run_frame()
+        restore.window.fullscreen = True
+        restore.window_at = (0, 0, 2560, 1440)
+
+        restore.clock.run_delayed_move()
+
+        restore.move_window.assert_not_called()
+
+
+def test_a_window_whose_rectangle_cannot_be_read_waits_for_the_delayed_move(
+    loguru_sink: list[str],
+) -> None:
+    with _Restore(_SAVED) as restore:
+        restore.backend._get_window_rect = MagicMock(side_effect=OSError("no window"))
+
+        restore.clock.run_frame()
+
+        restore.assert_not_called_back()
+        assert any("Win32 GetWindowRect failed" in s for s in loguru_sink)
+
+
+def test_cancelling_before_the_delay_is_up_stops_the_looking_and_the_delayed_move() -> None:
+    with _Restore(_ELSEWHERE) as restore:
+        restore.clock.run_frame()
+
+        restore.cancel()
+
+        assert restore.clock.live() == []
 
 
 def test_cancelling_after_the_move_stops_the_callbacks_still_to_come() -> None:
-    backend = _backend(MagicMock(return_value=True), _window_at(150, 120, 700, 500))
-    delayed_move, callbacks_step = MagicMock(), MagicMock()
+    with _Restore(_ELSEWHERE) as restore:
+        restore.clock.run_delayed_move()
 
-    with patch.object(win32_module, "Clock") as clock:
-        clock.schedule_once.side_effect = [delayed_move, callbacks_step]
-        _, _, cancel = _schedule_restore(backend, clock)
-        clock.schedule_once.call_args.args[0](0)
-        cancel()
+        restore.cancel()
 
-    callbacks_step.cancel.assert_called_once_with()
-    delayed_move.cancel.assert_not_called()
+        assert restore.clock.live() == []
+        restore.assert_not_called_back()

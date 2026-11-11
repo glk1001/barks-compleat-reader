@@ -31,6 +31,83 @@ _RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
 _MOVE_NOW_ATTEMPTS = 5
 
 
+class _ScheduledRestore:
+    """One restore of the window to a saved state: its frame-by-frame look and delayed move.
+
+    See `Win32WindowBackend.schedule_restore`.
+    """
+
+    def __init__(
+        self,
+        backend: Win32WindowBackend,
+        state: WindowState,
+        on_first_resize: Callable[[], None],
+        on_done: Callable[[], None],
+    ) -> None:
+        self._backend = backend
+        self._state = state
+        self._on_first_resize = on_first_resize
+        self._on_done = on_done
+        x, y = state.pos
+        width, height = state.size
+        self._wanted = (x, y, x + width, y + height)
+        self._finished = False
+        self._looking = True
+        self._pending: dict[str, Any] = {}
+
+        # Lambdas, not bound methods: Kivy's Clock holds a bound method weakly, and
+        # nothing else holds this object once the callbacks have run.
+        self._pending["move"] = Clock.schedule_once(
+            lambda _dt: self._move(), _RESTORE_GEOMETRY_TIMEOUT_WIN
+        )
+        self._pending["look"] = Clock.schedule_once(lambda _dt: self._look(), 0)
+
+    def cancel(self) -> None:
+        """Stop whatever is still to come."""
+        for event in self._pending.values():
+            event.cancel()
+
+    def _finish(self) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        _ = Window.size  # Read to sync Kivy's internal values.
+        self._on_first_resize()
+        self._on_done()
+
+    def _look(self) -> None:
+        if not self._looking:
+            return  # the delayed move has taken over
+        if self._backend._is_window_at(self._wanted):  # noqa: SLF001
+            logger.info(
+                f"Win32: Window already at {self._state.size}, {self._state.pos}:"
+                f" finishing the restore without waiting."
+            )
+            self._finish()
+        else:
+            self._pending["look"] = Clock.schedule_once(lambda _dt: self._look(), 0)
+
+    def _move(self) -> None:
+        self._looking = False
+        if "look" in self._pending:
+            self._pending["look"].cancel()
+        x, y = self._state.pos
+        width, height = self._state.size
+
+        if self._finished:
+            # The callbacks ran early and their cancel is gone with them, so a
+            # fullscreen transition since then has to be seen here.
+            if not Window.fullscreen and not self._backend._is_window_at(self._wanted):  # noqa: SLF001
+                logger.warning("Win32: Window moved after its early restore; moving it back.")
+                self._backend._set_window_rect(x, y, width, height)  # noqa: SLF001
+            return
+
+        # Single atomic Win32 call to set position and size.
+        self._backend._set_window_rect(x, y, width, height)  # noqa: SLF001
+        # Let Kivy sync its internal state, then fire the callbacks.
+        self._pending["finish"] = Clock.schedule_once(lambda _dt: self._finish(), 0)
+
+
 # noinspection PyCallingNonCallable
 class Win32WindowBackend:
     """Save/restore the window via direct Win32 calls."""
@@ -126,30 +203,21 @@ class Win32WindowBackend:
     ) -> Callable[[], None]:
         """Schedule a restore of the window to ``state``'s saved size and position.
 
-        Returns a cancel that stops whichever stage is still pending — the
-        delayed resize itself, or the Kivy-sync step between the resize and the
-        callbacks. A no-op once ``sync_and_finish`` has run.
+        The move waits out SDL's fullscreen exit (``_RESTORE_GEOMETRY_TIMEOUT_WIN``).
+        But ``move_now`` has usually put the window right long before that, and
+        until the callbacks run the screen is still laid out for fullscreen, with
+        no action bar, in a window that is already the windowed size: on a Windows
+        11 desktop that showed for about 260ms and then snapped. So each frame
+        until the move is due, the window is looked at, and once it is at the saved
+        rectangle the callbacks run. The delayed move is then only a check: it
+        moves a window the exit has since shifted, and calls nothing.
+
+        Returns a cancel that stops whichever stages are still pending: the
+        frame-by-frame look, the delayed move, or the Kivy-sync step between the
+        move and the callbacks. A no-op once the callbacks have run and the
+        delayed move's check is done.
         """
-
-        def restore(*_args) -> None:  # noqa: ANN002
-            # Single atomic Win32 call to set position and size.
-            self._set_window_rect(state.pos[0], state.pos[1], state.size[0], state.size[1])
-
-            # Let Kivy sync its internal state, then fire the callbacks.
-            def sync_and_finish(*_args) -> None:  # noqa: ANN002
-                _ = Window.size  # Read to sync Kivy's internal values.
-                on_first_resize()
-                on_done()
-
-            nonlocal pending_event
-            pending_event = Clock.schedule_once(sync_and_finish, 0)
-
-        pending_event = Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT_WIN)
-
-        def cancel() -> None:
-            pending_event.cancel()
-
-        return cancel
+        return _ScheduledRestore(self, state, on_first_resize, on_done).cancel
 
     # --- Private helpers ---
 
@@ -175,6 +243,18 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._hwnd = None
+
+    def _is_window_at(self, wanted: tuple[int, int, int, int]) -> bool:
+        """Return whether the window's rectangle is ``wanted``: left, top, right, bottom."""
+        if not self._hwnd:
+            return False
+        try:
+            rect = RECT()
+            self._get_window_rect(self._hwnd, rect)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Win32 GetWindowRect failed: {e}")
+            return False
+        return (rect.left, rect.top, rect.right, rect.bottom) == wanted
 
     def _move_and_read_back(self, x: int, y: int, width: int, height: int) -> tuple[Any, RECT]:
         """Call ``MoveWindow``, then ``GetWindowRect``: the move's result and where the window is.
