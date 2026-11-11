@@ -107,6 +107,9 @@ class MainIndexScreen(IndexScreen):
         self._font_manager = font_manager
         self._user_error_handler = user_error_handler
         resolver = ReaderFilePathsResolver(reader_settings.file_paths)
+        # Its own selector, not the main screen's `image_selector`: the two remember
+        # what they last showed apart, so a background here can repeat a view's image.
+        # Sharing the one would change which backgrounds come up.
         self._random_title_images = ImageSelector(resolver, reader_settings)
         self._texture_loader = PanelTextureLoader()
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []

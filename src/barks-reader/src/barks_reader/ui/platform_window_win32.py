@@ -395,6 +395,10 @@ class Win32WindowBackend:
             actual_w = actual_rect.right - actual_rect.left
             actual_h = actual_rect.bottom - actual_rect.top
 
+            # Only the size is compared: the no-op seen leaves the window at its
+            # minimum size. The right size in the wrong place is logged below (as
+            # info) and not recovered; it has not been seen, and cannot be tested
+            # off Windows.
             mismatch = (actual_w, actual_h) != (width, height)
             log_func = logger.warning if mismatch else logger.info
 

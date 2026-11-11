@@ -106,7 +106,9 @@ def open_message_popup(
     The same keys as the confirm popup: Left/Right move the focus ring between
     the buttons it shows (the first starts focused), Enter presses the focused
     one and Escape is its cancel. A popup with no ok_text has only its cancel
-    button, which Enter and Escape both press.
+    button, which Enter and Escape both press. That press is logged as a cancel
+    (``MESSAGE_POPUP_CANCELLED``) even when the button reads "OK": the GUI tests
+    wait on that line for a notice's close, so it is left as it is.
 
     Args:
         title: The popup window title.

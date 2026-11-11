@@ -84,6 +84,9 @@ class WindowState:
         fullscreen (e.g. at app start), so a later windowed restore can be
         reached with nothing to restore. Restoring the sentinel would apply a
         nonsense size/position, so the restore guards on this.
+
+        A real window can sit at (-1, -1), and would read as unsaved here: its
+        restore is then skipped. Not seen in use, and left so.
         """
         return self.size == (0, 0) or self.pos == (-1, -1)
 
@@ -474,6 +477,8 @@ class WindowManager:
 
     def _finish_restore(self, callbacks: WindowModeCallbacks) -> None:
         """Log final state and call the windowed-mode completion callback."""
+        # Counted down before the fullscreen check below, so also when fullscreen
+        # has taken the window over: this restore is over either way.
         self._pending_restores = max(0, self._pending_restores - 1)
 
         if self.is_fullscreen_now():
