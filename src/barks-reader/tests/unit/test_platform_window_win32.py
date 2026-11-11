@@ -258,6 +258,40 @@ def test_letting_go_is_asked_of_the_backends_window() -> None:
     release.assert_called_once_with(_HWND)
 
 
+def test_going_fullscreen_quiets_the_windows_frame_then_ends_the_quiet() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+    seconds = win32_module._FULLSCREEN_ENTRY_QUIET_SECONDS
+
+    with (
+        patch.object(win32_module, "quiet_window_frame", return_value=True) as quiet,
+        patch.object(win32_module, "end_window_frame_quiet") as end_quiet,
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend.quiet_frame_for_fullscreen()
+
+        quiet.assert_called_once_with(_HWND, seconds)
+        end_quiet.assert_not_called()
+        (callback, delay), _ = clock.schedule_once.call_args
+        assert delay == seconds
+        callback(0)
+        end_quiet.assert_called_once_with(_HWND)
+
+
+def test_a_window_with_no_guard_or_no_handle_schedules_no_end_of_quiet() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+
+    with (
+        patch.object(win32_module, "quiet_window_frame", return_value=False) as quiet,
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend.quiet_frame_for_fullscreen()
+        backend._hwnd = None
+        backend.quiet_frame_for_fullscreen()
+
+    quiet.assert_called_once()
+    clock.schedule_once.assert_not_called()
+
+
 def test_with_no_window_handle_nothing_is_held_or_let_go() -> None:
     backend = _backend(MagicMock(), MagicMock())
     backend._hwnd = None

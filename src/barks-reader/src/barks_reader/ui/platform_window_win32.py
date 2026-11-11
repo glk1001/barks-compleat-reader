@@ -18,8 +18,10 @@ from loguru import logger
 from barks_reader.core.win32_window import (
     RECT,
     Win32Window,
+    end_window_frame_quiet,
     find_app_hwnd,
     hold_window_rect,
+    quiet_window_frame,
     release_window_rect,
 )
 
@@ -32,6 +34,8 @@ if TYPE_CHECKING:
 # storm that can starve the Kivy Clock and leave the window at its hit-test
 # minimum before our scheduled restore runs.
 _RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
+# How long the window's frame is kept quiet as it goes fullscreen.
+_FULLSCREEN_ENTRY_QUIET_SECONDS = 0.5
 
 # Frames move_now retries its MoveWindow for: the first is lost, the second holds.
 _MOVE_NOW_ATTEMPTS = 5
@@ -215,6 +219,20 @@ class Win32WindowBackend:
         """Stop keeping the window at the rectangle held for a fullscreen exit."""
         if self._hwnd:
             release_window_rect(self._hwnd)
+
+    def quiet_frame_for_fullscreen(self) -> None:
+        """Keep the desktop's caption off the window while it goes fullscreen.
+
+        Going fullscreen takes the window's caption style away, and the desktop
+        can paint the old unthemed caption as it does: the guard answers the
+        window's requests to paint a frame for the half second that takes, then
+        logs the frame messages the window had.
+        """
+        hwnd = self._hwnd
+        if hwnd and quiet_window_frame(hwnd, _FULLSCREEN_ENTRY_QUIET_SECONDS):
+            Clock.schedule_once(
+                lambda _dt: end_window_frame_quiet(hwnd), _FULLSCREEN_ENTRY_QUIET_SECONDS
+            )
 
     def move_now(self, state: WindowState) -> None:
         """Put the window at ``state``'s rectangle as fullscreen ends, retrying each frame.

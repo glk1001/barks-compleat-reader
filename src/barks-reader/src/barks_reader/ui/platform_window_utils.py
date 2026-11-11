@@ -105,6 +105,10 @@ class WindowBackend(Protocol):
         """Stop keeping the window anywhere: it is about to go fullscreen."""
         ...
 
+    def quiet_frame_for_fullscreen(self) -> None:
+        """Keep the desktop's caption off the window while it goes fullscreen."""
+        ...
+
     def move_now(self, state: WindowState) -> None:
         """Put the window at ``state``'s saved geometry at once, as fullscreen ends.
 
@@ -149,6 +153,10 @@ class KivyWindowBackend:
     @staticmethod
     def release_windowed_rect() -> None:
         """Do nothing: nothing is held."""
+
+    @staticmethod
+    def quiet_frame_for_fullscreen() -> None:
+        """Do nothing: going fullscreen paints no caption here."""
 
     @staticmethod
     def move_now(state: WindowState) -> None:
@@ -313,6 +321,8 @@ class WindowManager:
         def do_fullscreen() -> None:
             # A fullscreen exit still settling must not keep the window windowed.
             self._backend.release_windowed_rect()
+            # On Windows, taking the caption style away can flash the caption.
+            self._backend.quiet_frame_for_fullscreen()
             Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
             self._end_transition(seq)
             Clock.schedule_once(lambda _dt: callbacks.on_finished_fullscreen(), 0)

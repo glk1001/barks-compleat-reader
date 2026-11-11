@@ -301,8 +301,9 @@ class CaptionGuard:
 
         self.hwnd = hwnd
         self._held_rect: tuple[int, int, int, int] | None = None
-        self._held_from = 0.0
         self._held_until = 0.0
+        self._quiet_from = 0.0
+        self._quiet_until = 0.0
         self._frame_messages: list[tuple[int, str]] = []
 
         self._next_proc: int | None = None
@@ -322,32 +323,62 @@ class CaptionGuard:
         hides. Held until `release_rect`, and never longer than a couple of seconds.
         """
         self._held_rect = rect
-        self._held_from = time.monotonic()
-        self._held_until = self._held_from + _HELD_RECT_SECONDS
-        self._frame_messages = []
+        self._held_until = time.monotonic() + _HELD_RECT_SECONDS
+        self.quiet_frame(_HELD_RECT_SECONDS)
 
     def release_rect(self) -> None:
         """Let the window go where it is sent again, and log the frame messages it had."""
         self._held_rect = None
+        self._quiet_until = 0.0
+        self._log_frame_messages("while the window was held")
+
+    def quiet_frame(self, seconds: float) -> None:
+        """Answer the window's requests to paint its frame here, for `seconds`.
+
+        For a change of fullscreen, either way: it changes the window's caption
+        style, and for a moment the desktop does not draw this window's frame
+        itself (it sends WM_DWMNCRENDERINGCHANGED when it does again). A
+        WM_NCPAINT passed on in that moment paints the old unthemed caption, a
+        flash of silver along the top of the window. The window has no frame to
+        paint: its client area covers it.
+
+        The messages that change or paint the frame are kept meanwhile, for
+        `end_quiet` or `release_rect` to log.
+        """
+        self._quiet_from = time.monotonic()
+        self._quiet_until = self._quiet_from + seconds
+        self._frame_messages = []
+
+    def end_quiet(self) -> None:
+        """Log the frame messages of a quiet started by `quiet_frame`, and end it.
+
+        Does nothing while a rectangle is held: that quiet is the hold's, which a
+        fullscreen exit started since, and `release_rect` ends it.
+        """
+        if self._held_rect is not None:
+            return
+        self._quiet_until = 0.0
+        self._log_frame_messages("while the window's frame was quiet")
+
+    def _log_frame_messages(self, when: str) -> None:
         if self._frame_messages:
             seen = ", ".join(f"+{ms}ms {name}" for ms, name in self._frame_messages)
-            logger.debug(f"Frame messages while the window was held: {seen}.")
+            logger.debug(f"Frame messages {when}: {seen}.")
             self._frame_messages = []
 
     def _on_message(self, hwnd: int | None, msg: int, wparam: int, lparam: int) -> int:
-        if self._held_rect is not None:
-            # Kept, not logged: this runs inside the window procedure.
-            name = _FRAME_MESSAGE_NAMES.get(msg)
-            if name and len(self._frame_messages) < _MAX_FRAME_MESSAGES_LOGGED:
-                elapsed_ms = round((time.monotonic() - self._held_from) * 1000)
-                self._frame_messages.append((elapsed_ms, name))
-            if msg == WM_NCPAINT and time.monotonic() <= self._held_until:
-                # A fullscreen exit puts the caption style back, and for a moment
-                # the desktop does not draw this window's frame itself (it sends
-                # WM_DWMNCRENDERINGCHANGED when it does again). A WM_NCPAINT
-                # passed on in that moment paints the old unthemed caption, a
-                # flash of silver along the top of the window.
-                return 0
+        if self._quiet_until:
+            now = time.monotonic()
+            if now > self._quiet_until:
+                self._quiet_until = 0.0
+            else:
+                # Kept, not logged: this runs inside the window procedure.
+                name = _FRAME_MESSAGE_NAMES.get(msg)
+                if name and len(self._frame_messages) < _MAX_FRAME_MESSAGES_LOGGED:
+                    elapsed_ms = round((now - self._quiet_from) * 1000)
+                    self._frame_messages.append((elapsed_ms, name))
+                if msg == WM_NCPAINT:
+                    return 0
 
         if msg == WM_WINDOWPOSCHANGING and self._held_rect is not None and lparam:
             if time.monotonic() > self._held_until:
@@ -403,6 +434,31 @@ def hold_window_rect(hwnd: int, rect: tuple[int, int, int, int]) -> bool:
             guard.hold_rect(rect)
             return True
     return False
+
+
+def quiet_window_frame(hwnd: int, seconds: float) -> bool:
+    """Keep the window `hwnd` from painting a frame for `seconds`: it is changing fullscreen.
+
+    Args:
+        hwnd: The window handle.
+        seconds: How long, at most; `end_window_frame_quiet` ends it sooner.
+
+    Returns:
+        Whether the window has a guard to do it; without one nothing changes.
+
+    """
+    for guard in _caption_guards:
+        if guard.hwnd == hwnd:
+            guard.quiet_frame(seconds)
+            return True
+    return False
+
+
+def end_window_frame_quiet(hwnd: int) -> None:
+    """End what `quiet_window_frame` began for the window `hwnd`, logging its frame messages."""
+    for guard in _caption_guards:
+        if guard.hwnd == hwnd:
+            guard.end_quiet()
 
 
 def release_window_rect(hwnd: int) -> None:

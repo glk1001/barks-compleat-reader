@@ -62,6 +62,7 @@ class _FakeBackend:
         self.hold_calls: list[WindowState] = []
         self.fullscreen_at_hold: list[object] = []
         self.fullscreen_at_release: list[object] = []
+        self.fullscreen_at_quiet: list[object] = []
 
     def save_state(self, state: WindowState) -> None:
         state.size = (1200, 1800)
@@ -76,6 +77,10 @@ class _FakeBackend:
     def release_windowed_rect(self) -> None:
         if self.window is not None:
             self.fullscreen_at_release.append(self.window.fullscreen)
+
+    def quiet_frame_for_fullscreen(self) -> None:
+        if self.window is not None:
+            self.fullscreen_at_quiet.append(self.window.fullscreen)
 
     def move_now(self, state: WindowState) -> None:
         self.move_calls.append(state)
@@ -191,6 +196,21 @@ class TestGotoFullscreenMode:
 
         assert backend.fullscreen_at_release == [False]
         assert fake_window.fullscreen == "auto"
+
+    def test_the_windows_frame_is_quieted_before_fullscreen_begins(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        """On Windows the caption can flash as its style is taken away."""
+        wm, callbacks, *_ = manager
+        fake_window.fullscreen = False
+        backend.window = fake_window
+
+        wm.goto_fullscreen_mode(callbacks)
+
+        assert backend.fullscreen_at_quiet == [False]
 
     def test_already_fullscreen_fires_callback_immediately(
         self,
