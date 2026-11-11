@@ -417,6 +417,27 @@ def test_a_resize_after_the_delayed_move_or_a_cancel_calls_nothing() -> None:
         restore.assert_not_called_back()
 
 
+def test_a_clock_that_runs_everything_at_once_still_moves_and_calls_back_once() -> None:
+    """As the tests against a real window have it: the delayed move runs before any look."""
+    move_window = MagicMock(return_value=True)
+    backend = _backend(move_window, _window_at(*_SAVED))
+    on_first_resize, on_done = MagicMock(), MagicMock()
+
+    def run_now(callback: Callable[[float], None], _delay: float = 0) -> MagicMock:
+        callback(0)
+        return MagicMock()
+
+    with (
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+        patch.object(win32_module.Clock, "schedule_once", side_effect=run_now),
+    ):
+        backend.schedule_restore(_saved_state(), on_first_resize, on_done)
+
+    move_window.assert_called_once_with(_HWND, *_SAVED, True)  # noqa: FBT003
+    on_first_resize.assert_called_once_with()
+    on_done.assert_called_once_with()
+
+
 def test_a_window_put_right_a_frame_later_is_called_back_then() -> None:
     with _Restore(_ELSEWHERE) as restore:
         restore.clock.run_frame()

@@ -97,7 +97,8 @@ class _ScheduledRestore:
             return
         self._finished = True
         self._looking = False
-        self._pending["look"].cancel()
+        if "look" in self._pending:
+            self._pending["look"].cancel()
         Window.unbind(on_resize=self._on_window_resize)
         _ = Window.size  # Read to sync Kivy's internal values.
         self._on_first_resize()
