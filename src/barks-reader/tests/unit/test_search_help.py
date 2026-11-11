@@ -10,7 +10,9 @@ from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues, get_shortest_is
 from barks_fantagraphics.search_filters import tag_titles
 from barks_fantagraphics.search_query import (
     NEAR_DEFAULT_DISTANCE,
+    Combine,
     Not,
+    Or,
     TagQualifier,
     VolumeQualifier,
     YearQualifier,
@@ -56,6 +58,22 @@ class TestTheHelpMatchesTheSyntax:
         assert parsed.selection is not None
         for name in (*parsed.selection.included, *parsed.selection.excluded):
             assert tag_titles(name) is not None, name
+
+    def test_either_is_typed_the_same_in_the_word_box_and_the_tag_box(self) -> None:
+        """A tag's name can hold "or", so the words are operators in the word box alone."""
+        (word_either,) = [example for example, meaning in WORD_HELP if meaning == "either"]
+        (tag_either,) = [example for example, meaning in TAG_HELP if meaning == "either"]
+
+        assert " | " in word_either
+        assert " | " in tag_either
+        assert isinstance(parse_query(word_either).root, Or)
+        tag_selection = parse_tag_query(tag_either).selection
+        assert tag_selection is not None
+        assert tag_selection.combine is Combine.ANY
+
+    @pytest.mark.parametrize("example", _WORD_EXAMPLES + _TAG_EXAMPLES)
+    def test_no_example_uses_a_word_for_an_operator_but_near(self, example: str) -> None:
+        assert not re.search(r"\b(AND|OR|NOT)\b", example)
 
     @pytest.mark.parametrize("example", _TITLE_EXAMPLES)
     def test_a_title_example_finds_titles(self, example: str) -> None:
@@ -109,11 +127,11 @@ class TestSearchSyntaxHelp:
         grid = MagicMock()
         with patch.object(SearchSyntaxHelp, "ids", {"examples_grid": grid}):
             help_view = SearchSyntaxHelp()
-            help_view.examples = (("gold mine", "both"), ("gold OR silver", "either"))
+            help_view.examples = (("gold mine", "both"), ("gold | silver", "either"))
 
         shown = [call.args[0] for call in grid.add_widget.call_args_list[-4:]]
         assert [type(w) for w in shown] == [_SyntaxExample, _SyntaxMeaning] * 2
-        assert [w.text for w in shown] == ["gold mine", "both", "gold OR silver", "either"]
+        assert [w.text for w in shown] == ["gold mine", "both", "gold | silver", "either"]
 
     def test_examples_given_before_the_grid_exists_wait_for_it(self) -> None:
         with patch.object(SearchSyntaxHelp, "ids", {}):

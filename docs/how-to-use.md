@@ -199,12 +199,12 @@ chip, or its **–**, to take it out.
 | Type | Finds stories with |
 |---|---|
 | `gold mine` or `gold AND mine` or `gold & mine` | both words, anywhere in the story |
-| `gold OR mine` or `gold \| mine` | either word |
+| `gold \| mine` or `gold OR mine` | either word |
 | `gold -mine` or `gold NOT mine` | *gold* but not *mine* anywhere in the story |
 | `"pirate gold"` | the words next to each other, in one bubble |
 | `gold NEAR mine`, `gold NEAR/2 mine` | both in one bubble, at most 5 (or 2) words apart |
 | `gol*`, `g?ld` | any word the wildcard matches (at most 200) |
-| `(gold OR silver) mine` | brackets group |
+| `(gold \| silver) mine` | brackets group |
 | `tag:scrooge`, `tag:"the classics"` | only stories with that tag |
 | `year:1950-55`, `vol:7` | only stories submitted in those years, or in that Fantagraphics volume |
 
@@ -212,6 +212,8 @@ A bare word also finds its other forms (*duck* finds *ducks*, *ducked*, *ducking
 quotes it finds only itself. Common words (*the*, *and*, *of*) are left out, with a note. A word
 in no story brings spelling suggestions — press one to search again with it in place. Text that
 cannot be read as a query (an unclosed bracket, say) is searched as it stands, and a note says why.
+The symbols `+`, `|` and a leading `-` mean the same in tag search; the words *AND*, *OR* and
+*NOT* work only here, since a tag's name can hold them.
 Each story shows how many bubbles matched, e.g. *Lost in the Andes!, 3,5 (4)*.
 
 ### Tag search

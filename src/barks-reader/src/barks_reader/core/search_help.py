@@ -56,7 +56,9 @@ TITLE_SERIES_NOTE: Final = f"Also {join_with_and(_OTHER_CODES)}."
 WORD_HELP_HEADING: Final = "Type a word, or combine them:"
 WORD_HELP: Final[HelpExamples] = (
     ("gold mine", "both, in one story"),
-    ("gold OR silver", "either"),
+    # The symbols, as the tag box's help has them: the one notation both boxes take
+    # (tag names hold "or" and "not", so there the words cannot be operators).
+    ("gold | silver", "either"),
     ("gold -duck", "without duck"),
     ('"pirate gold"', "exact phrase"),
     ("gold NEAR mine", f"within {NEAR_DEFAULT_DISTANCE} words"),
