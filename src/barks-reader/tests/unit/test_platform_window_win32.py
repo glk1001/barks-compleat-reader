@@ -77,6 +77,33 @@ def _window_at(left: int, top: int, width: int, height: int) -> MagicMock:
 
 
 def test_a_move_now_that_holds_tries_no_more() -> None:
+    at = [(60, 40, 716, 539)]
+
+    def fill(_hwnd: int, rect: RECT) -> bool:
+        left, top, width, height = at[0]
+        rect.left, rect.top, rect.right, rect.bottom = left, top, left + width, top + height
+        return True
+
+    def move(_hwnd: int, *args: int) -> bool:
+        left, top, width, height, _repaint = args
+        at[0] = (left, top, width, height)
+        return True
+
+    move_window = MagicMock(side_effect=move)
+    backend = _backend(move_window, MagicMock(side_effect=fill))
+
+    with (
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend.move_now(_saved_state())
+
+    move_window.assert_called_once_with(_HWND, 150, 120, 700, 500, True)  # noqa: FBT003
+    clock.schedule_once.assert_not_called()
+
+
+def test_a_window_held_at_the_rectangle_through_the_exit_is_not_moved() -> None:
+    """A move then would only block while the window finishes the exit."""
     move_window = MagicMock(return_value=True)
     backend = _backend(move_window, _window_at(150, 120, 700, 500))
 
@@ -86,7 +113,7 @@ def test_a_move_now_that_holds_tries_no_more() -> None:
     ):
         backend.move_now(_saved_state())
 
-    move_window.assert_called_once_with(_HWND, 150, 120, 700, 500, True)  # noqa: FBT003
+    move_window.assert_not_called()
     clock.schedule_once.assert_not_called()
 
 
@@ -338,11 +365,10 @@ def test_a_window_already_put_right_is_called_back_without_waiting(
 ) -> None:
     """Until then the screen is laid out for fullscreen in a window that is not."""
     with _Restore(_SAVED) as restore:
-        restore.clock.run_frame()
-
-        restore.assert_called_back_once()
+        restore.assert_called_back_once()  # at once: not even a frame later
         restore.move_window.assert_not_called()
         assert any("finishing the restore without waiting" in s for s in loguru_sink)
+        assert restore.clock.live() == [win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN]
 
         restore.release.assert_not_called()  # the exit may still ask for the wrong place
         restore.clock.run_delayed_move()  # now only a check: the window is still right
@@ -366,9 +392,8 @@ def test_a_resize_that_leaves_the_window_right_is_called_back_there(
         restore.assert_called_back_once()
         assert any("finishing the restore at the resize" in s for s in loguru_sink)
         restore.window.unbind.assert_called_with(on_resize=on_resize)
-
-        restore.clock.run_frame()  # the frame's look finds it done
-        restore.assert_called_back_once()
+        # The frame-by-frame look has stopped; only the delayed move's check is left.
+        assert restore.clock.live() == [win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN]
 
 
 def test_a_resize_that_leaves_the_window_elsewhere_is_not_called_back() -> None:
@@ -407,7 +432,6 @@ def test_a_window_the_exit_shifts_after_an_early_finish_is_moved_back(
     loguru_sink: list[str],
 ) -> None:
     with _Restore(_SAVED) as restore:
-        restore.clock.run_frame()
         restore.window_at = _ELSEWHERE
 
         restore.clock.run_delayed_move()
@@ -420,7 +444,6 @@ def test_a_window_the_exit_shifts_after_an_early_finish_is_moved_back(
 def test_a_window_gone_fullscreen_after_an_early_finish_is_left_alone() -> None:
     """The early finish gave up its cancel, so the delayed move sees to this itself."""
     with _Restore(_SAVED) as restore:
-        restore.clock.run_frame()
         restore.window.fullscreen = True
         restore.window_at = (0, 0, 2560, 1440)
 
@@ -432,12 +455,13 @@ def test_a_window_gone_fullscreen_after_an_early_finish_is_left_alone() -> None:
 def test_a_window_whose_rectangle_cannot_be_read_waits_for_the_delayed_move(
     loguru_sink: list[str],
 ) -> None:
-    with _Restore(_SAVED) as restore:
+    with _Restore(_ELSEWHERE) as restore:
         restore.backend._get_window_rect = MagicMock(side_effect=OSError("no window"))
 
         restore.clock.run_frame()
 
         restore.assert_not_called_back()
+        assert 0 in restore.clock.live()  # still looking
         assert any("Win32 GetWindowRect failed" in s for s in loguru_sink)
 
 

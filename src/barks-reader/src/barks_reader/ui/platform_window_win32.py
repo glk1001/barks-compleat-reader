@@ -71,6 +71,9 @@ class _ScheduledRestore:
         # size: finishing there, before the screens lay out for it, saves them
         # laying out twice, and a slow frame's wait for the look above.
         Window.bind(on_resize=self._on_window_resize)
+        # And now: a window held at the rectangle through the exit is already there,
+        # and Kivy has had its resize, inside the call that ended fullscreen.
+        self._look(again=False)
 
     def cancel(self) -> None:
         """Stop whatever is still to come."""
@@ -93,12 +96,14 @@ class _ScheduledRestore:
         if self._finished:
             return
         self._finished = True
+        self._looking = False
+        self._pending["look"].cancel()
         Window.unbind(on_resize=self._on_window_resize)
         _ = Window.size  # Read to sync Kivy's internal values.
         self._on_first_resize()
         self._on_done()
 
-    def _look(self) -> None:
+    def _look(self, *, again: bool = True) -> None:
         if not self._looking:
             return  # the delayed move has taken over
         if self._backend._is_window_at(self._wanted):  # noqa: SLF001
@@ -107,7 +112,7 @@ class _ScheduledRestore:
                 f" finishing the restore without waiting."
             )
             self._finish()
-        else:
+        elif again:
             self._pending["look"] = Clock.schedule_once(lambda _dt: self._look(), 0)
 
     def _move(self) -> None:
@@ -226,6 +231,12 @@ class Win32WindowBackend:
         x, y = state.pos
         width, height = state.size
         wanted = (x, y, x + width, y + height)
+
+        if self._is_window_at(wanted):
+            # Held there through the exit (hold_windowed_rect): a MoveWindow now
+            # would only block while the window finishes the exit.
+            logger.debug(f"Win32: Window at {state.size}, {state.pos} as fullscreen ends.")
+            return
 
         def attempt(attempts_left: int) -> None:
             if Window.fullscreen or not self._hwnd:
