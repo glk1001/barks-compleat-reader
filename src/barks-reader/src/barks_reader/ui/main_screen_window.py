@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
+from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
@@ -26,6 +28,10 @@ if TYPE_CHECKING:
 
     from kivy.uix.screenmanager import Screen
     from kivy.uix.widget import Widget
+
+
+# How long the frames drawn after a fullscreen toggle are logged for.
+_FRAME_LOG_SECONDS = 0.5
 
 
 class MainScreenWindowHelper:
@@ -67,7 +73,29 @@ class MainScreenWindowHelper:
         )
 
     def toggle_screen_mode(self) -> None:
+        self._log_frames_drawn()
         self._mode.toggle()
+
+    def _log_frames_drawn(self) -> None:
+        """Log what each frame drew for the next half second, at DEBUG.
+
+        For a change of fullscreen asked for here: a frame drawn between the
+        window's change of size and the screen's shows as a flash (the action bar
+        at the window's width, then at the box's), and nothing else in the log
+        says what a frame drew.
+        """
+        started = time.monotonic()
+
+        def on_flip(*_args: object) -> None:
+            logger.debug(
+                f"MainScreen frame +{round((time.monotonic() - started) * 1000)}ms:"
+                f" window = {Window.size}, fullscreen = {Window.fullscreen},"
+                f" screen = {self._host.size} at {self._host.pos},"
+                f" action bar = {self._action_bar.size}."
+            )
+
+        Window.bind(on_flip=on_flip)
+        Clock.schedule_once(lambda _dt: Window.unbind(on_flip=on_flip), _FRAME_LOG_SECONDS)
 
     def force_fullscreen(self) -> None:
         self._mode.force_fullscreen()

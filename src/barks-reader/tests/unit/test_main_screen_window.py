@@ -54,9 +54,38 @@ def hf() -> Generator[HelperFixture, Any]:
 
 class TestToggleScreenMode:
     def test_delegates_to_controller(self, hf: HelperFixture) -> None:
-        hf.helper.toggle_screen_mode()
+        with patch.object(window_module, "Window"), patch.object(window_module, "Clock"):
+            hf.helper.toggle_screen_mode()
 
         hf.mock_controller.toggle.assert_called_once_with()
+
+    def test_the_frames_drawn_after_a_toggle_are_logged_for_half_a_second(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        """What a log has to say whether a frame was drawn half way through the change."""
+        with (
+            patch.object(window_module, "Window") as window,
+            patch.object(window_module, "Clock") as clock,
+        ):
+            window.size = (2560, 1440)
+            window.fullscreen = "auto"
+            hf.helper._host.size = [1848, 1440]
+            hf.helper._host.pos = [356, 0]
+            hf.helper._action_bar.size = [1848, 45]
+
+            hf.helper.toggle_screen_mode()
+
+            on_flip = window.bind.call_args.kwargs["on_flip"]
+            on_flip(window)
+            assert any(
+                "window = (2560, 1440), fullscreen = auto,"
+                " screen = [1848, 1440] at [356, 0], action bar = [1848, 45]." in s
+                for s in loguru_sink
+            )
+            (stop, delay), _ = clock.schedule_once.call_args
+            assert delay == window_module._FRAME_LOG_SECONDS
+            stop(0)
+            window.unbind.assert_called_once_with(on_flip=on_flip)
 
 
 class TestForceFullscreen:
