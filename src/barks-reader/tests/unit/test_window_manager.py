@@ -57,11 +57,23 @@ class _FakeBackend:
         # The window, when a test wants to see its fullscreen flag at move_now.
         self.window: MagicMock | None = None
         self.fullscreen_at_move: list[object] = []
+        self.hold_calls: list[WindowState] = []
+        self.fullscreen_at_hold: list[object] = []
+        self.fullscreen_at_release: list[object] = []
 
     def save_state(self, state: WindowState) -> None:
         state.size = (1200, 1800)
         state.pos = (100, 50)
         self.saved_states.append(state)
+
+    def hold_windowed_rect(self, state: WindowState) -> None:
+        self.hold_calls.append(state)
+        if self.window is not None:
+            self.fullscreen_at_hold.append(self.window.fullscreen)
+
+    def release_windowed_rect(self) -> None:
+        if self.window is not None:
+            self.fullscreen_at_release.append(self.window.fullscreen)
 
     def move_now(self, state: WindowState) -> None:
         self.move_calls.append(state)
@@ -161,6 +173,22 @@ class TestSaveState:
 
 
 class TestGotoFullscreenMode:
+    def test_a_rectangle_held_for_an_exit_is_let_go_before_fullscreen_begins(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        """Still held, it would keep the window at its windowed size, in fullscreen."""
+        wm, callbacks, *_ = manager
+        fake_window.fullscreen = False
+        backend.window = fake_window
+
+        wm.goto_fullscreen_mode(callbacks)
+
+        assert backend.fullscreen_at_release == [False]
+        assert fake_window.fullscreen == "auto"
+
     def test_already_fullscreen_fires_callback_immediately(
         self,
         manager: ManagerFixture,
@@ -246,6 +274,23 @@ class TestGotoWindowedMode:
         assert backend.move_calls == [backend.saved_states[0]]
         assert backend.fullscreen_at_move == [False]  # after the exit, not before
 
+    def test_the_saved_rectangle_is_held_before_fullscreen_ends(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        """The exit itself asks for the wrong rectangle: holding after it is too late."""
+        wm, callbacks, _, _, _ = manager
+        fake_window.fullscreen = True
+        wm.save_state_now()
+        backend.window = fake_window
+
+        wm.goto_windowed_mode(callbacks)
+
+        assert backend.hold_calls == [backend.saved_states[0]]
+        assert backend.fullscreen_at_hold == [True]
+
     def test_exits_fullscreen_without_saved_state_skips_restore(
         self,
         manager: ManagerFixture,
@@ -268,6 +313,7 @@ class TestGotoWindowedMode:
         # Geometry restore is skipped, but the windowed transition still completes.
         assert len(backend.restore_calls) == 0
         assert backend.move_calls == []  # no saved rectangle to move to
+        assert backend.hold_calls == []  # nor to hold
         on_first_resize.assert_called_once()
         on_finished_windowed.assert_called_once()
         fake_logger.warning.assert_called_once()

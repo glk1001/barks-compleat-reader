@@ -93,6 +93,18 @@ class WindowBackend(Protocol):
         """Populate ``state`` with the current window geometry."""
         ...
 
+    def hold_windowed_rect(self, state: WindowState) -> None:
+        """Keep the window at ``state``'s saved geometry through the fullscreen exit to come.
+
+        Called just before fullscreen ends, where the platform's own exit is known
+        to put the window somewhere wrong first. A backend that cannot does nothing.
+        """
+        ...
+
+    def release_windowed_rect(self) -> None:
+        """Stop keeping the window anywhere: it is about to go fullscreen."""
+        ...
+
     def move_now(self, state: WindowState) -> None:
         """Put the window at ``state``'s saved geometry at once, as fullscreen ends.
 
@@ -129,6 +141,14 @@ class KivyWindowBackend:
     @staticmethod
     def save_state(state: WindowState) -> None:
         state.save_state_now()
+
+    @staticmethod
+    def hold_windowed_rect(state: WindowState) -> None:
+        """Do nothing: the fullscreen exit puts the window nowhere wrong here."""
+
+    @staticmethod
+    def release_windowed_rect() -> None:
+        """Do nothing: nothing is held."""
 
     @staticmethod
     def move_now(state: WindowState) -> None:
@@ -291,6 +311,8 @@ class WindowManager:
         seq = self._begin_transition(target_fullscreen=True)
 
         def do_fullscreen() -> None:
+            # A fullscreen exit still settling must not keep the window windowed.
+            self._backend.release_windowed_rect()
             Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
             self._end_transition(seq)
             Clock.schedule_once(lambda _dt: callbacks.on_finished_fullscreen(), 0)
@@ -318,6 +340,10 @@ class WindowManager:
         seq = self._begin_transition(target_fullscreen=False)
 
         def do_windowed() -> None:
+            # On Windows the exit would first put the window a frame too big and
+            # above where it was: the backend keeps it at the saved rectangle.
+            if not self._saved_window_state.is_unsaved():
+                self._backend.hold_windowed_rect(self._saved_window_state)
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
             # On Windows, SDL has just sized the window for a frame the custom

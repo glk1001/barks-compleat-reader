@@ -194,6 +194,42 @@ def test_a_save_that_raises_takes_the_state_from_kivy(loguru_sink: list[str]) ->
     assert any("Win32 save state failed" in line for line in loguru_sink)
 
 
+# --- Holding the saved rectangle through the exit ---
+
+
+def test_the_saved_rectangle_is_held_on_the_backends_window() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+
+    with patch.object(win32_module, "hold_window_rect", return_value=True) as hold:
+        backend.hold_windowed_rect(_saved_state())
+
+    hold.assert_called_once_with(_HWND, (150, 120, 700, 500))
+
+
+def test_letting_go_is_asked_of_the_backends_window() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+
+    with patch.object(win32_module, "release_window_rect") as release:
+        backend.release_windowed_rect()
+
+    release.assert_called_once_with(_HWND)
+
+
+def test_with_no_window_handle_nothing_is_held_or_let_go() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+    backend._hwnd = None
+
+    with (
+        patch.object(win32_module, "hold_window_rect") as hold,
+        patch.object(win32_module, "release_window_rect") as release,
+    ):
+        backend.hold_windowed_rect(_saved_state())
+        backend.release_windowed_rect()
+
+    hold.assert_not_called()
+    release.assert_not_called()
+
+
 # --- The scheduled restore ---
 
 _SAVED = (150, 120, 700, 500)  # where `_saved_state` puts the window: left, top, width, height
@@ -248,7 +284,9 @@ class _Restore:
             return True
 
         self.backend = _backend(self.move_window, MagicMock(side_effect=fill))
+        self.release = MagicMock()
         self._patches = [
+            patch.object(win32_module, "release_window_rect", self.release),
             patch.object(win32_module, "Clock", self.clock),
             patch.object(win32_module, "Window", self.window),
         ]
@@ -306,8 +344,10 @@ def test_a_window_already_put_right_is_called_back_without_waiting(
         restore.move_window.assert_not_called()
         assert any("finishing the restore without waiting" in s for s in loguru_sink)
 
+        restore.release.assert_not_called()  # the exit may still ask for the wrong place
         restore.clock.run_delayed_move()  # now only a check: the window is still right
 
+        restore.release.assert_called_once_with(_HWND)
         restore.move_window.assert_not_called()
         restore.assert_called_back_once()
         assert restore.clock.live() == []

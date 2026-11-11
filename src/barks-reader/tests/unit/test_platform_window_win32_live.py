@@ -31,6 +31,8 @@ from barks_reader.core.win32_window import (
     WM_NCUAHDRAWFRAME,
     find_hwnd_by_enum_windows,
     guard_against_native_caption,
+    hold_window_rect,
+    release_window_rect,
 )
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import WindowState
@@ -257,6 +259,46 @@ class TestCaptionGuardOnARealWindow:
 
         _move(live_window, _RECT_B)
 
+        assert _window_rect(live_window) == _RECT_B
+
+
+class TestHeldRectOnARealWindow:
+    """A rectangle held through moves the app does not make, as SDL's fullscreen exit is."""
+
+    def test_a_held_window_goes_to_its_rectangle_wherever_it_is_sent(
+        self, live_window: int
+    ) -> None:
+        assert guard_against_native_caption(live_window)
+        assert hold_window_rect(live_window, _RECT_A)
+
+        _move(live_window, _RECT_B)
+
+        assert _window_rect(live_window) == _RECT_A
+
+    def test_once_let_go_the_window_goes_where_it_is_sent(self, live_window: int) -> None:
+        assert guard_against_native_caption(live_window)
+        hold_window_rect(live_window, _RECT_A)
+        release_window_rect(live_window)
+
+        _move(live_window, _RECT_B)
+
+        assert _window_rect(live_window) == _RECT_B
+
+    @pytest.mark.usefixtures("kivy_window")
+    def test_the_backend_holds_its_window_until_the_restores_delayed_move(
+        self, live_window: int
+    ) -> None:
+        assert guard_against_native_caption(live_window)
+        backend = Win32WindowBackend(hwnd=live_window)
+        state = WindowState()
+        backend.save_state(state)  # at _RECT_A, where the fixture made it
+
+        backend.hold_windowed_rect(state)
+        _move(live_window, _RECT_B)  # as the fullscreen exit would
+        assert _window_rect(live_window) == _RECT_A
+
+        backend.schedule_restore(state, MagicMock(), MagicMock())  # its move lets go
+        _move(live_window, _RECT_B)
         assert _window_rect(live_window) == _RECT_B
 
 

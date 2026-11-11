@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import ctypes
 import os
+import time
 from ctypes import c_long, wintypes
 from typing import Any, ClassVar
 
 from loguru import logger
 
-# cspell:ignore GWLP NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME wndproc
+# cspell:ignore NOMOVE NOSIZE WINDOWPOS
+# cspell:ignore GWLP WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME wndproc
 
 
 class RECT(ctypes.Structure):
@@ -172,6 +174,45 @@ WM_NCUAHDRAWFRAME = 0x00AF  # undocumented; sent by the theme code
 NO_FRAME_REPAINT = -1
 _GWLP_WNDPROC = -4
 
+# Sent before a window is moved or sized, with the WINDOWPOS it is about to take.
+WM_WINDOWPOSCHANGING = 0x0046
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+# A rectangle is held for no longer than this, whoever forgets to let it go.
+_HELD_RECT_SECONDS = 2.0
+
+
+class WINDOWPOS(ctypes.Structure):
+    """A Win32 ``WINDOWPOS``: where a window is about to be put."""
+
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ("hwnd", wintypes.HWND),
+        ("hwndInsertAfter", wintypes.HWND),
+        ("x", ctypes.c_int),
+        ("y", ctypes.c_int),
+        ("cx", ctypes.c_int),
+        ("cy", ctypes.c_int),
+        ("flags", wintypes.UINT),
+    ]
+
+
+def put_at_held_rect(window_pos: WINDOWPOS, held: tuple[int, int, int, int]) -> None:
+    """Change where a window is about to be put to the rectangle held for it.
+
+    Only what the move changes is replaced: a move that keeps the size keeps it,
+    and one that keeps the position keeps that.
+
+    Args:
+        window_pos: The ``WINDOWPOS`` of a ``WM_WINDOWPOSCHANGING``, changed in place.
+        held: The rectangle to put the window at: left, top, width, height.
+
+    """
+    left, top, width, height = held
+    if not window_pos.flags & SWP_NOMOVE:
+        window_pos.x, window_pos.y = left, top
+    if not window_pos.flags & SWP_NOSIZE:
+        window_pos.cx, window_pos.cy = width, height
+
 
 def guarded_frame_message(msg: int, lparam: int) -> int | None:
     """Say what becomes of a window message, so the desktop never paints its caption.
@@ -233,6 +274,10 @@ class CaptionGuard:
         )
         self._wndproc = wndproc_type(self._on_message)  # held: the window calls it
 
+        self.hwnd = hwnd
+        self._held_rect: tuple[int, int, int, int] | None = None
+        self._held_until = 0.0
+
         self._next_proc: int | None = None
         next_proc = set_window_long_ptr(
             hwnd, _GWLP_WNDPROC, ctypes.cast(self._wndproc, ctypes.c_void_p).value
@@ -242,7 +287,27 @@ class CaptionGuard:
             raise OSError(msg)
         self._next_proc = next_proc
 
+    def hold_rect(self, rect: tuple[int, int, int, int]) -> None:
+        """Put the window at `rect` (left, top, width, height) wherever it is next sent.
+
+        For a move the app does not make itself and knows to be wrong: SDL's
+        fullscreen exit sizes the window for a frame that the custom title bar
+        hides. Held until `release_rect`, and never longer than a couple of seconds.
+        """
+        self._held_rect = rect
+        self._held_until = time.monotonic() + _HELD_RECT_SECONDS
+
+    def release_rect(self) -> None:
+        """Let the window go where it is sent again."""
+        self._held_rect = None
+
     def _on_message(self, hwnd: int | None, msg: int, wparam: int, lparam: int) -> int:
+        if msg == WM_WINDOWPOSCHANGING and self._held_rect is not None and lparam:
+            if time.monotonic() > self._held_until:
+                self._held_rect = None
+            else:
+                put_at_held_rect(WINDOWPOS.from_address(lparam), self._held_rect)
+
         passed_on = guarded_frame_message(msg, lparam)
         if passed_on is None:
             return 0
@@ -273,3 +338,28 @@ def guard_against_native_caption(hwnd: int) -> bool:
 
     logger.info(f"Guarding window {hex(hwnd)} against the desktop's caption.")
     return True
+
+
+def hold_window_rect(hwnd: int, rect: tuple[int, int, int, int]) -> bool:
+    """Hold the window `hwnd` at `rect` through moves the app does not make itself.
+
+    Args:
+        hwnd: The window handle.
+        rect: Where to keep the window: left, top, width, height.
+
+    Returns:
+        Whether the window has a guard to hold it; without one nothing is held.
+
+    """
+    for guard in _caption_guards:
+        if guard.hwnd == hwnd:
+            guard.hold_rect(rect)
+            return True
+    return False
+
+
+def release_window_rect(hwnd: int) -> None:
+    """Let the window `hwnd` go where it is sent again. Safe when nothing is held."""
+    for guard in _caption_guards:
+        if guard.hwnd == hwnd:
+            guard.release_rect()

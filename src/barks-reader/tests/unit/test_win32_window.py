@@ -5,7 +5,8 @@ which window the lookup takes, and that a 64-bit handle comes back whole.
 """
 
 # ruff: noqa: N802, SLF001
-# cspell:ignore NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
+# cspell:ignore NOMOVE NOSIZE WINDOWPOS
+# cspell:ignore WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
 from __future__ import annotations
 
@@ -257,3 +258,91 @@ class TestCaptionGuard:
 
         assert win32_window._caption_guards == []
         assert any("Could not guard the window" in s for s in loguru_sink)
+
+
+HELD = (150, 120, 700, 500)  # left, top, width, height
+ASKED = (142, 89, 716, 539)  # where SDL's fullscreen exit asks for: a frame too big
+
+
+def _window_pos(flags: int = 0) -> win32_window.WINDOWPOS:
+    window_pos = win32_window.WINDOWPOS()
+    window_pos.x, window_pos.y, window_pos.cx, window_pos.cy = ASKED
+    window_pos.flags = flags
+    return window_pos
+
+
+def _rect_of(window_pos: win32_window.WINDOWPOS) -> tuple[int, int, int, int]:
+    return window_pos.x, window_pos.y, window_pos.cx, window_pos.cy
+
+
+class TestPutAtHeldRect:
+    def test_a_move_and_resize_goes_to_the_held_rectangle(self) -> None:
+        window_pos = _window_pos()
+        win32_window.put_at_held_rect(window_pos, HELD)
+        assert _rect_of(window_pos) == HELD
+
+    def test_a_move_that_keeps_the_size_keeps_it(self) -> None:
+        window_pos = _window_pos(win32_window.SWP_NOSIZE)
+        win32_window.put_at_held_rect(window_pos, HELD)
+        assert _rect_of(window_pos) == (*HELD[:2], *ASKED[2:])
+
+    def test_a_resize_that_keeps_the_position_keeps_it(self) -> None:
+        window_pos = _window_pos(win32_window.SWP_NOMOVE)
+        win32_window.put_at_held_rect(window_pos, HELD)
+        assert _rect_of(window_pos) == (*ASKED[:2], *HELD[2:])
+
+
+class TestHeldRect:
+    """A guard holding its window at a rectangle, through moves the app does not make."""
+
+    @staticmethod
+    def _changing(guard: win32_window.CaptionGuard) -> tuple[int, int, int, int]:
+        """Send the guard a move to `ASKED`; return where the window is then to go."""
+        window_pos = _window_pos()
+        guard._on_message(
+            HIGH_HWND, win32_window.WM_WINDOWPOSCHANGING, 0, ctypes.addressof(window_pos)
+        )
+        return _rect_of(window_pos)
+
+    @pytest.fixture
+    def guard(self, guard_user32: MagicMock) -> win32_window.CaptionGuard:
+        assert guard_user32 is not None
+        win32_window.guard_against_native_caption(HIGH_HWND)
+        (guard,) = win32_window._caption_guards
+        return guard
+
+    def test_with_nothing_held_the_window_goes_where_it_is_sent(
+        self, guard: win32_window.CaptionGuard
+    ) -> None:
+        assert self._changing(guard) == ASKED
+
+    def test_a_held_window_goes_to_its_rectangle_and_the_move_still_goes_on(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        assert win32_window.hold_window_rect(HIGH_HWND, HELD)
+
+        assert self._changing(guard) == HELD
+        guard_user32.CallWindowProcW.assert_called_once()  # the window is still told
+
+    def test_once_let_go_the_window_goes_where_it_is_sent(
+        self, guard: win32_window.CaptionGuard
+    ) -> None:
+        win32_window.hold_window_rect(HIGH_HWND, HELD)
+        win32_window.release_window_rect(HIGH_HWND)
+
+        assert self._changing(guard) == ASKED
+
+    def test_a_rectangle_nobody_let_go_is_dropped_in_a_couple_of_seconds(
+        self, guard: win32_window.CaptionGuard
+    ) -> None:
+        """A forgotten hold would pin the window where it was for good."""
+        with patch.object(win32_window.time, "monotonic", return_value=100.0):
+            win32_window.hold_window_rect(HIGH_HWND, HELD)
+        with patch.object(win32_window.time, "monotonic", return_value=103.0):
+            assert self._changing(guard) == ASKED
+        assert self._changing(guard) == ASKED  # and it stays dropped
+
+    @pytest.mark.usefixtures("guard")
+    def test_a_window_with_no_guard_holds_nothing(self) -> None:
+        assert not win32_window.hold_window_rect(HIGH_HWND + 1, HELD)
+        win32_window.release_window_rect(HIGH_HWND + 1)  # and letting go is safe

@@ -15,7 +15,13 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
-from barks_reader.core.win32_window import RECT, Win32Window, find_app_hwnd
+from barks_reader.core.win32_window import (
+    RECT,
+    Win32Window,
+    find_app_hwnd,
+    hold_window_rect,
+    release_window_rect,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -94,6 +100,9 @@ class _ScheduledRestore:
         x, y = self._state.pos
         width, height = self._state.size
 
+        # The exit is over, or as over as it gets: what moves the window now is the app.
+        self._backend.release_windowed_rect()
+
         if self._finished:
             # The callbacks ran early and their cancel is gone with them, so a
             # fullscreen transition since then has to be seen here.
@@ -154,6 +163,28 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
             state.save_state_now()
+
+    def hold_windowed_rect(self, state: WindowState) -> None:
+        """Keep the window at ``state``'s rectangle through the fullscreen exit to come.
+
+        SDL's exit asks for the window a frame too big (see ``move_now``). The
+        window's guard (``core.win32_window``) answers that request, and any other
+        until the restore's delayed move, with the saved rectangle, so the wrong
+        one is never shown or drawn into. With no guard on the window nothing is
+        held, and ``move_now`` puts the window right a frame or two later, as it
+        did before there was one.
+        """
+        if not self._hwnd:
+            return
+        if hold_window_rect(self._hwnd, (*state.pos, *state.size)):
+            logger.debug(f"Win32: Holding the window at {state.size}, {state.pos}.")
+        else:
+            logger.debug("Win32: The window has no guard to hold it through the exit.")
+
+    def release_windowed_rect(self) -> None:
+        """Stop keeping the window at the rectangle held for a fullscreen exit."""
+        if self._hwnd:
+            release_window_rect(self._hwnd)
 
     def move_now(self, state: WindowState) -> None:
         """Put the window at ``state``'s rectangle as fullscreen ends, retrying each frame.
