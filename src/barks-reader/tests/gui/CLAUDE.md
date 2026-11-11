@@ -42,3 +42,8 @@ A new timed line is a marker with an `{elapsed}` field, added to `TIMED` and `BU
 there. Every page the comic reader settles on is held centred across the window at
 teardown too (`assert_page_centred`, from the `PAGE_PLACED` line the reader logs when a
 page moves; a placement replaced within a second is a frame on the way and not judged).
+
+A screen switch takes one of eight transitions at random. A test of what only some do
+(the card, slide and swap transitions move the screens themselves, so the screen being
+left is still laid out in the window) names one with `BARKS_READER_SCREEN_TRANSITION`,
+set in the test's environment before the boot (`barks_reader.core.screen_transition`).

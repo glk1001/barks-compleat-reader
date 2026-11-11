@@ -807,6 +807,18 @@ class TestMainScreenQuietPaths:
         main_screen._window_helper.box_size.assert_called_once_with(1365)
         assert tuple(main_screen.size) == (874, 1365)
 
+    def test_the_screen_coming_back_lets_its_size_follow_the_window_again(
+        self, main_screen: MainScreen
+    ) -> None:
+        """A comic read fullscreen over the screen can leave its size fixed."""
+        with patch.object(barks_reader.ui.main_screen, "Window"):
+            main_screen._is_active(active=False)
+            main_screen._window_helper.restore_windowed_size_hints.assert_not_called()
+
+            main_screen._is_active(active=True)
+
+        main_screen._window_helper.restore_windowed_size_hints.assert_called_once_with()
+
     def test_the_screen_back_within_a_second_keeps_its_action_bar(
         self, main_screen: MainScreen
     ) -> None:

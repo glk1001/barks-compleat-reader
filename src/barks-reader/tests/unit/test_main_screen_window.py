@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core import log_markers
+from barks_reader.core.log_markers import pattern
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.ui import main_screen_window as window_module
 from barks_reader.ui.main_screen_window import MainScreenWindowHelper
@@ -214,6 +217,46 @@ class TestRefitFullscreen:
         hf.helper._update_fonts.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
+class TestRestoreWindowedSizeHints:
+    def test_a_fixed_size_is_kept_in_fullscreen(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        """Fullscreen fixes the size on purpose (the box narrower than the window)."""
+        hf.mock_wm_cls.is_fullscreen_now.return_value = True
+        hf.helper._host.size_hint_x = None
+        hf.helper._host.size_hint_y = None
+        hf.helper._host.size_hint = (None, None)
+
+        hf.helper.restore_windowed_size_hints()
+
+        assert hf.helper._host.size_hint == (None, None)
+        restored = pattern(log_markers.MAIN_SIZE_HINTS_RESTORED)
+        assert not any(re.search(restored, line) for line in loguru_sink)
+
+    @pytest.mark.parametrize(("hint_x", "hint_y"), [(1, None), (None, 1), (1, 1)])
+    def test_a_size_that_follows_the_window_either_way_is_left(
+        self, hf: HelperFixture, hint_x: float | None, hint_y: float | None
+    ) -> None:
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+        hf.helper._host.size_hint_x = hint_x
+        hf.helper._host.size_hint_y = hint_y
+        hf.helper._host.size_hint = (hint_x, hint_y)
+
+        hf.helper.restore_windowed_size_hints()
+
+        assert hf.helper._host.size_hint == (hint_x, hint_y)
+
+    def test_a_size_fixed_while_windowed_follows_the_window_again(self, hf: HelperFixture) -> None:
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+        hf.helper._host.size_hint_x = None
+        hf.helper._host.size_hint_y = None
+        hf.helper._host.size = (1742, 1360)
+
+        hf.helper.restore_windowed_size_hints()
+
+        assert hf.helper._host.size_hint == (1, 1)
+
+
 class TestOnMainLayoutSizeChanged:
     def test_not_fullscreen_skips_resize(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = False
@@ -222,10 +265,10 @@ class TestOnMainLayoutSizeChanged:
 
         hf.mock_controller.set_fullscreen_size.assert_not_called()
 
-    def test_windowed_with_the_host_size_still_fixed_is_a_warning(
+    def test_windowed_with_the_host_size_still_fixed_lets_it_follow_the_window(
         self, hf: HelperFixture, loguru_sink: list[str]
     ) -> None:
-        """Only this screen's windowed transition restores the hints; log when that was missed."""
+        """A fullscreen another screen drove leaves the size fixed: it is freed, and said."""
         hf.mock_wm_cls.is_fullscreen_now.return_value = False
         hf.helper._host.size_hint_x = None
         hf.helper._host.size_hint_y = None
@@ -233,7 +276,9 @@ class TestOnMainLayoutSizeChanged:
 
         hf.helper.on_main_layout_size_changed(MagicMock(), (782, 1225))
 
-        assert any("host size is still fixed at (831, 1300)" in line for line in loguru_sink)
+        assert hf.helper._host.size_hint == (1, 1)
+        restored = pattern(log_markers.MAIN_SIZE_HINTS_RESTORED, width=831, height=1300)
+        assert any(re.search(restored, line) for line in loguru_sink)
 
     def test_windowed_with_the_hints_restored_is_quiet(
         self, hf: HelperFixture, loguru_sink: list[str]
@@ -241,10 +286,26 @@ class TestOnMainLayoutSizeChanged:
         hf.mock_wm_cls.is_fullscreen_now.return_value = False
         hf.helper._host.size_hint_x = 1
         hf.helper._host.size_hint_y = 1
+        hf.helper._host.size_hint = (1, 1)
 
         hf.helper.on_main_layout_size_changed(MagicMock(), (782, 1225))
 
-        assert not any("still fixed" in line for line in loguru_sink)
+        assert hf.helper._host.size_hint == (1, 1)
+        restored = pattern(log_markers.MAIN_SIZE_HINTS_RESTORED)
+        assert not any(re.search(restored, line) for line in loguru_sink)
+
+    def test_the_layout_s_new_size_and_window_mode_are_logged(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        hf.mock_wm_cls.is_fullscreen_now.return_value = False
+        hf.mock_wm_cls.get_screen_mode_now.return_value = "windowed"
+        hf.helper._host.size_hint_x = 1
+        hf.helper._host.size_hint_y = 1
+
+        hf.helper.on_main_layout_size_changed(MagicMock(), (782, 1225))
+
+        logged = pattern(log_markers.MAIN_LAYOUT_SIZE, width=782, height=1225, mode="windowed")
+        assert any(re.search(logged, line) for line in loguru_sink)
 
     def test_fullscreen_calls_change_size(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = True

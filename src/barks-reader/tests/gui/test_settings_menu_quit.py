@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -11,8 +12,9 @@ from barks_gui import harness, nodes, taps
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
-from barks_reader.core.main_layout import MATCH_THE_SCREEN
+from barks_reader.core.main_layout import MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
+from barks_reader.core.screen_transition import SCREEN_TRANSITION_ENV_VAR
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -286,6 +288,101 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     d.key_then_wait(set_to, "Return")
     _close_settings(d)
     assert harness.read_ini_value(ini, "color_theme").strip() == THEME_NAMES[picked]
+
+
+DOWNS_TO_LAYOUT = 1
+# The two explicit layouts; the options run Match the screen, Single page, Two-page spread.
+EXPLICIT_LAYOUTS = (SINGLE_PAGE, TWO_PAGE_SPREAD)
+
+
+def _set_layout_from(d: Driver, current: str) -> str:
+    """From the tree, set the main screen's layout to the other one; return its name.
+
+    The window takes the new layout's shape, and the screen must take the window's.
+    """
+    step, picked = ("Down", TWO_PAGE_SPREAD) if current == SINGLE_PAGE else ("Up", SINGLE_PAGE)
+    _open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    d.move_focus(*["Down"] * DOWNS_TO_LAYOUT)
+    d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
+    d.move_focus(step)
+    with d.expect(pattern(markers.WINDOW_RESIZED)):
+        d.key_then_wait(
+            pattern(markers.SETTING_OPTION_SET, key=LAYOUT_SETTING, value=picked), "Return"
+        )
+    d.settle()
+    _close_settings(d)
+    d.settle()
+    return picked
+
+
+_NUMBER = re.compile(r"(\d+)")
+_WINDOW_RESIZED_RE = re.compile(pattern(markers.WINDOW_RESIZED, width=_NUMBER, height=_NUMBER))
+_LAYOUT_SIZE_RE = re.compile(
+    pattern(markers.MAIN_LAYOUT_SIZE, width=_NUMBER, height=_NUMBER, mode="windowed")
+)
+
+
+def _last_size(d: Driver, regex: re.Pattern[str]) -> tuple[int, int]:
+    """Return the width and height of the last line of `regex` the app logged."""
+    found = regex.findall(d.log_path.read_text(encoding="utf-8", errors="replace"))
+    assert found, f"the app has not logged /{regex.pattern}/"
+    width, height = found[-1]
+    return int(width), int(height)
+
+
+def _assert_the_screen_fills_the_window(d: Driver, layout: str) -> None:
+    window = _last_size(d, _WINDOW_RESIZED_RE)
+    screen = _last_size(d, _LAYOUT_SIZE_RE)
+    assert screen == window, (
+        f"on {layout!r} the main screen is laid out {screen[0]}x{screen[1]}"
+        f" in a {window[0]}x{window[1]} window"
+    )
+
+
+# The transition that showed the defect: it moves the two screens themselves, so the main
+# screen is still laid out in the window when the comic's fullscreen resizes it. The
+# app's other pick, at random, is often one that draws the screens through a shader.
+A_TRANSITION_THAT_MOVES_ITS_SCREENS = "CardTransition"
+READER_FULLSCREEN = pattern(markers.ENTERED_FULLSCREEN, screen="ComicBookReaderScreen")
+READER_WINDOWED = pattern(markers.ENTERED_WINDOWED, screen="ComicBookReaderScreen")
+FULLSCREEN_TIMEOUT = 20
+
+
+def test_a_layout_changed_after_a_comic_read_fullscreen_fills_its_window(
+    boot: AppBoot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A comic opened fullscreen and closed, then the other layout: the screen fits the window.
+
+    The comic's fullscreen fixed the main screen's size under it, and its exit left
+    that behind: the layout's new window then held a screen still laid out for the
+    old one, half of it out of sight (seen on Windows, 2026-11-11). And back again:
+    the screen must follow the window each time. The window itself need not come
+    back at its boot size: a change of layout keeps its height where the screen has
+    the room, and on a screen too narrow for the spread it cannot.
+    """
+    boot.expect_boot_size = False
+    monkeypatch.setenv(SCREEN_TRANSITION_ENV_VAR, A_TRANSITION_THAT_MOVES_ITS_SCREENS)
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(
+        nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES, ini={"goto_fullscreen_on_comic_read": "1"}
+    )
+    layout = harness.read_ini_value(ini, LAYOUT_SETTING)
+    assert layout in EXPLICIT_LAYOUTS, f"the run's layout is {layout!r}"
+
+    with d.expect(READER_FULLSCREEN, FULLSCREEN_TIMEOUT):
+        d.open_selected_story()
+    d.settle()
+    with d.expect(READER_WINDOWED, FULLSCREEN_TIMEOUT):
+        d.close_reader()
+    d.settle()
+    # The close puts the keys back on the title's Read button: Escape gives the tree them.
+    d.key_then_wait(d.EXITED_BOTTOM_FOCUS, "Escape")
+
+    other = _set_layout_from(d, layout)
+    _assert_the_screen_fills_the_window(d, other)
+    assert _set_layout_from(d, other) == layout
+    _assert_the_screen_fills_the_window(d, layout)
 
 
 VIRTUAL_KEYBOARD_SETTING = "use_virtual_keyboard"

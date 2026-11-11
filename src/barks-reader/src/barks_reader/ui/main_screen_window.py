@@ -189,20 +189,36 @@ class MainScreenWindowHelper:
 
         """
         logger.info(
-            f"Main layout size changed: size = {size},"
-            f" fullscreen = '{WindowManager.get_screen_mode_now()}'."
+            log_markers.MAIN_LAYOUT_SIZE.format(
+                width=round(size[0]),
+                height=round(size[1]),
+                mode=WindowManager.get_screen_mode_now(),
+            )
         )
         if not WindowManager.is_fullscreen_now():
-            if self._host.size_hint_x is None and self._host.size_hint_y is None:
-                # Only this screen's own windowed transition restores the hints
-                # (_set_hints_for_windowed_mode); a fullscreen exit driven by
-                # another screen leaves the fixed fullscreen size behind.
-                logger.warning(
-                    f"Main layout resized while windowed but the host size is still fixed"
-                    f" at {self._host.size}: a fullscreen exit did not restore its size hints."
-                )
+            self.restore_windowed_size_hints()
             return
         self._change_fullscreen_win_size(size[1])
+
+    def restore_windowed_size_hints(self) -> None:
+        """Let the screen's size follow the window again, if a fullscreen left it fixed.
+
+        Only this screen's own windowed transition restores the hints
+        (`_set_hints_for_windowed_mode`). A fullscreen driven by another screen, a
+        comic opened fullscreen over this one, fixes this screen's size too when its
+        layout is resized under it, and that screen's exit leaves the fixed size
+        behind: the window then changes size (a change of layout) and the screen in
+        it does not. Does nothing in fullscreen, where the size is meant to be fixed.
+        """
+        if WindowManager.is_fullscreen_now():
+            return
+        if self._host.size_hint_x is not None or self._host.size_hint_y is not None:
+            return
+        width, height = self._host.size
+        logger.info(
+            log_markers.MAIN_SIZE_HINTS_RESTORED.format(width=round(width), height=round(height))
+        )
+        self._host.size_hint = (1, 1)
 
     def refit_fullscreen(self) -> None:
         """Size the fullscreen box again, for a change of the main screen's layout."""

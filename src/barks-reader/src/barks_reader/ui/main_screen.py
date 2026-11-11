@@ -538,6 +538,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._exit_menu_mode()
             Window.unbind(on_key_down=self._on_key_down)
 
+        if active:
+            # A comic read fullscreen over this screen can leave its size fixed.
+            self._window_helper.restore_windowed_size_hints()
+
         # A minimized window on Windows reports a size of nothing: the screen keeps its own.
         width, height = self._window_helper.box_size(Window.height)
         if width > 0 and height > ACTION_BAR_SIZE_Y:

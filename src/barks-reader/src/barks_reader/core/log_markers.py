@@ -178,6 +178,19 @@ WINDOW_MINIMUM_SET: Final = "Window minimum size: {width}x{height}, on a {screen
 # decided (core.main_layout): at boot, on a monitor change, on a rotation, and on a
 # change of the setting. The GUI tests wait on it to know which layout they are on.
 MAIN_LAYOUT_MODE: Final = "Main screen layout: {mode} ({reason}, on a {screen} screen)."
+# The main screen's layout box each time its size changes, and the window mode it changed
+# in. A GUI test holds the last one to the window's size after a change of layout.
+MAIN_LAYOUT_SIZE: Final = (
+    "Main layout size changed: size = {width}x{height}, fullscreen = '{mode}'."
+)
+# The main screen's size is fixed while it is fullscreen. A fullscreen that another screen
+# drove (a comic opened fullscreen over it) once left it fixed when that screen went back
+# to a window, so a later change of layout resized the window and not the screen in it.
+# The main screen now lets its size follow the window again, and says so.
+MAIN_SIZE_HINTS_RESTORED: Final = (
+    "MainScreen: its size, fixed at {width}x{height} by a fullscreen another screen left,"
+    " follows the window again."
+)
 # A screen smaller than the reader is laid out for: warned once per screen size.
 SCREEN_TOO_SMALL_WARNED: Final = (
     "Screen {screen} is smaller than the reader is laid out for: warned."
