@@ -71,7 +71,7 @@
       "severity": "error"
     },
     {
-      "column": 25,
+      "column": 12,
       "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
       "name": "missing-attribute",
       "concise_description": "No attribute `WINFUNCTYPE` in module `ctypes`",

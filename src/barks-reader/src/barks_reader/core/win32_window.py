@@ -15,6 +15,8 @@ from typing import Any, ClassVar
 
 from loguru import logger
 
+# cspell:ignore GWLP NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME wndproc
+
 
 class RECT(ctypes.Structure):
     """A Win32 ``RECT``: left, top, right, bottom."""
@@ -51,6 +53,11 @@ def _typed_user32() -> Any:  # noqa: ANN401
     user32.EnumWindows.restype = wintypes.BOOL
 
     return user32
+
+
+def _callback_type(result: Any, *args: Any) -> Any:  # noqa: ANN401
+    """Return the type of a function Windows calls back, from its result and argument types."""
+    return ctypes.WINFUNCTYPE(result, *args)  # ty: ignore[unresolved-attribute]
 
 
 def find_app_hwnd() -> int:
@@ -105,7 +112,7 @@ def find_hwnd_by_enum_windows() -> int:
         logger.info(f"Found SDL window: HWND = {hex(hwnd_candidate)}, class = {class_name}.")
         return False  # Stop enumeration
 
-    enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # ty: ignore[unresolved-attribute]
+    enum_windows_proc = _callback_type(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
     user32.EnumWindows(enum_windows_proc(enum_callback), 0)
 
     if found_hwnd:
@@ -154,3 +161,115 @@ class Win32Window:
         self.get_client_rect: Any = user32.GetClientRect
         self.get_client_rect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
         self.get_client_rect.restype = wintypes.BOOL
+
+
+# The messages whose default handling paints the desktop's own caption straight onto
+# the window, over an app that draws its own title bar in the client area.
+WM_NCACTIVATE = 0x0086
+WM_NCUAHDRAWCAPTION = 0x00AE  # undocumented; sent by the theme code
+WM_NCUAHDRAWFRAME = 0x00AF  # undocumented; sent by the theme code
+# As WM_NCACTIVATE's lParam: change the active state, repaint nothing.
+NO_FRAME_REPAINT = -1
+_GWLP_WNDPROC = -4
+
+
+def guarded_frame_message(msg: int, lparam: int) -> int | None:
+    """Say what becomes of a window message, so the desktop never paints its caption.
+
+    A window with a custom title bar keeps its caption style, with a client area
+    that covers it. On losing or gaining the focus, the default handling of
+    ``WM_NCACTIVATE`` repaints the caption it thinks is there, in the old unthemed
+    look, over the top of the client area; the two theme messages do the same.
+
+    Args:
+        msg: The window message.
+        lparam: Its lParam.
+
+    Returns:
+        The lParam to pass the message on with, or None to answer it here with 0.
+
+    """
+    if msg in (WM_NCUAHDRAWCAPTION, WM_NCUAHDRAWFRAME):
+        return None
+    if msg == WM_NCACTIVATE:
+        return NO_FRAME_REPAINT
+    return lparam
+
+
+class CaptionGuard:
+    """A window procedure put before a window's own, keeping the desktop's caption off it.
+
+    The window keeps this object's callback as its procedure, so the object must
+    live as long as the window: `guard_against_native_caption` sees to that.
+    """
+
+    def __init__(self, hwnd: int) -> None:
+        """Put the guard before the window procedure of `hwnd`.
+
+        Raises:
+            OSError: When ``user32`` cannot be loaded (not Windows), or the window
+                would not take the new procedure.
+
+        """
+        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+        lresult = wintypes.LPARAM
+
+        self._call_window_proc: Any = user32.CallWindowProcW
+        self._call_window_proc.argtypes = [
+            ctypes.c_void_p,
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.WPARAM,
+            wintypes.LPARAM,
+        ]
+        self._call_window_proc.restype = lresult
+
+        set_window_long_ptr: Any = user32.SetWindowLongPtrW
+        set_window_long_ptr.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
+        set_window_long_ptr.restype = ctypes.c_void_p
+
+        wndproc_type = _callback_type(
+            lresult, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
+        )
+        self._wndproc = wndproc_type(self._on_message)  # held: the window calls it
+
+        self._next_proc: int | None = None
+        next_proc = set_window_long_ptr(
+            hwnd, _GWLP_WNDPROC, ctypes.cast(self._wndproc, ctypes.c_void_p).value
+        )
+        if not next_proc:
+            msg = f"SetWindowLongPtrW refused window {hex(hwnd)} a new procedure."
+            raise OSError(msg)
+        self._next_proc = next_proc
+
+    def _on_message(self, hwnd: int | None, msg: int, wparam: int, lparam: int) -> int:
+        passed_on = guarded_frame_message(msg, lparam)
+        if passed_on is None:
+            return 0
+        return self._call_window_proc(self._next_proc, hwnd, msg, wparam, passed_on)
+
+
+# Each guard's callback is its window's procedure until the window is gone.
+_caption_guards: list[CaptionGuard] = []
+
+
+def guard_against_native_caption(hwnd: int) -> bool:
+    """Keep the desktop from painting its caption over the window `hwnd`.
+
+    For a window with a custom title bar. The guard stays for the life of the process.
+
+    Args:
+        hwnd: The window handle.
+
+    Returns:
+        Whether the guard is in place; a failure is logged, and the window is as it was.
+
+    """
+    try:
+        _caption_guards.append(CaptionGuard(hwnd))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not guard the window against the desktop's caption: {e}")
+        return False
+
+    logger.info(f"Guarding window {hex(hwnd)} against the desktop's caption.")
+    return True

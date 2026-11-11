@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.barks_reader_app as app_module
 import pytest
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.platform_info import Platform
 from barks_reader.core.popup_gallery import POPUP_GALLERY_ENV_VAR
 from barks_reader.ui import popup_gallery
 from barks_reader.ui.barks_reader_app import BarksReaderApp
@@ -50,12 +51,31 @@ def test_settings_before_any_window_is_refused() -> None:
         BarksReaderApp.display_settings(_app(_app_window=None), MagicMock())
 
 
+_HWND = 0x1_0000_0010
+
+
 class TestCustomTitleBar:
-    def _set(self, *, allowed: bool) -> MagicMock:
-        with patch.object(app_module, "Window") as window:
+    def _set(self, *, allowed: bool, platform: Platform = Platform.LINUX) -> MagicMock:
+        with (
+            patch.object(app_module, "Window") as window,
+            patch.object(app_module, "PLATFORM", platform),
+            patch.object(app_module, "find_app_hwnd", return_value=_HWND),
+            patch.object(app_module, "guard_against_native_caption") as guard,
+        ):
             window.set_custom_titlebar.return_value = allowed
+            window.guard = guard
             BarksReaderApp._set_custom_title_bar(_app(_main_screen=MagicMock()))
         return window
+
+    def test_on_windows_the_window_is_guarded_against_the_desktops_caption(self) -> None:
+        """Windows paints the caption it no longer shows when the focus changes."""
+        self._set(allowed=True, platform=Platform.WIN).guard.assert_called_once_with(_HWND)
+
+    def test_elsewhere_there_is_no_caption_to_guard_against(self) -> None:
+        self._set(allowed=True, platform=Platform.MACOS_ARM64).guard.assert_not_called()
+
+    def test_a_window_that_kept_the_system_bar_is_not_guarded(self) -> None:
+        self._set(allowed=False, platform=Platform.WIN).guard.assert_not_called()
 
     def test_where_the_system_allows_it_the_bar_drags_the_window(
         self, loguru_sink: list[str]

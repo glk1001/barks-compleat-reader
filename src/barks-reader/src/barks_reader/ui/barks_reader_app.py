@@ -47,6 +47,7 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.core.wiki_integration import migrate_wiki_session
+from barks_reader.core.win32_window import find_app_hwnd, guard_against_native_caption
 
 from .action_bar import ACTION_BAR_KV_FILE
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
@@ -485,10 +486,14 @@ class BarksReaderApp(App):
         assert self._main_screen is not None
         Window.custom_titlebar = True
         title_bar = self._main_screen.ids.action_bar.drag_region
-        if Window.set_custom_titlebar(title_bar):
-            logger.info("Window: setting custom titlebar successful")
-        else:
+        if not Window.set_custom_titlebar(title_bar):
             logger.warning("Window: setting custom titlebar not allowed on this system.")
+            return
+        logger.info("Window: setting custom titlebar successful")
+        if PLATFORM == Platform.WIN:
+            # Windows keeps the caption it no longer shows, and paints it over the
+            # app's own bar when the window loses or gains the focus.
+            guard_against_native_caption(find_app_hwnd())
 
     def _finalize_window_setup(self) -> None:
         """Finalize window state after the main build process.

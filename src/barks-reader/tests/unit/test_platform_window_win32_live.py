@@ -11,6 +11,7 @@ leg runs these tests: the ``needs_no_opengl`` marker keeps its UI skip off them.
 # ruff: noqa: SLF001
 # cspell:ignore CXMINTRACK CYMINTRACK lpfn lpsz OVERLAPPEDWINDOW
 # cspell:ignore pytestmark SHOWNOACTIVATE WNDCLASSW wndproc
+# cspell:ignore NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
 from __future__ import annotations
 
@@ -22,7 +23,15 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.core.win32_window import RECT, find_hwnd_by_enum_windows
+from barks_reader.core.win32_window import (
+    NO_FRAME_REPAINT,
+    RECT,
+    WM_NCACTIVATE,
+    WM_NCUAHDRAWCAPTION,
+    WM_NCUAHDRAWFRAME,
+    find_hwnd_by_enum_windows,
+    guard_against_native_caption,
+)
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
@@ -43,6 +52,10 @@ _SW_SHOWNOACTIVATE = 4
 _SM_CXMINTRACK, _SM_CYMINTRACK = 34, 35
 # A size no overlapped window can take: Windows holds it at its minimum track size.
 _TOO_SMALL = 20
+
+# What the live window's own procedure was sent: (message, lParam), in order.
+_messages_seen: list[tuple[int, int]] = []
+_WM_USER = 0x0400
 
 # Where a test puts the window, well inside even a small CI screen.
 _RECT_A = (150, 120, 700, 500)  # left, top, width, height
@@ -103,6 +116,7 @@ def live_window() -> Iterator[int]:
     user32.DefWindowProcW.restype = lresult
 
     def window_proc(hwnd: int, msg: int, wparam: int, lparam: int) -> int:
+        _messages_seen.append((msg, lparam))
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
     wndproc = wndproc_type(window_proc)  # held until the window is gone
@@ -168,6 +182,7 @@ def live_window() -> Iterator[int]:
         if not hwnd:
             raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[unresolved-attribute]
         user32.ShowWindow(hwnd, _SW_SHOWNOACTIVATE)
+        _messages_seen.clear()
         yield hwnd
     finally:
         if hwnd:
@@ -201,6 +216,48 @@ def test_the_lookup_finds_an_sdl_window_of_this_process(live_window: int) -> Non
     if win32_module.Window is None:
         # No Kivy window in this process (the CI leg's no_provider): ours is the only one.
         assert found == live_window
+
+
+def _send(hwnd: int, msg: int, wparam: int, lparam: int) -> int:
+    user32 = _user32()
+    user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.SendMessageW.restype = wintypes.LPARAM
+    return user32.SendMessageW(hwnd, msg, wparam, lparam)
+
+
+class TestCaptionGuardOnARealWindow:
+    """The guard's own window procedure, called by Windows: its signatures and its chain."""
+
+    def test_an_activation_reaches_the_window_asking_for_no_repaint(self, live_window: int) -> None:
+        assert guard_against_native_caption(live_window)
+
+        assert _send(live_window, WM_NCACTIVATE, 0, 0)  # the window agrees to the change
+
+        assert (WM_NCACTIVATE, NO_FRAME_REPAINT) in _messages_seen
+        assert (WM_NCACTIVATE, 0) not in _messages_seen
+
+    def test_the_themes_caption_drawing_stops_at_the_guard(self, live_window: int) -> None:
+        assert guard_against_native_caption(live_window)
+
+        assert _send(live_window, WM_NCUAHDRAWCAPTION, 0, 0) == 0
+        assert _send(live_window, WM_NCUAHDRAWFRAME, 0, 0) == 0
+
+        assert not [m for m, _ in _messages_seen if m in (WM_NCUAHDRAWCAPTION, WM_NCUAHDRAWFRAME)]
+
+    def test_another_message_passes_through_with_a_64_bit_lparam(self, live_window: int) -> None:
+        assert guard_against_native_caption(live_window)
+        big = 0x1_0000_0010
+
+        _send(live_window, _WM_USER, 0, big)
+
+        assert (_WM_USER, big) in _messages_seen
+
+    def test_a_guarded_window_still_moves(self, live_window: int) -> None:
+        assert guard_against_native_caption(live_window)
+
+        _move(live_window, _RECT_B)
+
+        assert _window_rect(live_window) == _RECT_B
 
 
 def test_a_backend_bound_to_the_window_is_available(live_window: int) -> None:

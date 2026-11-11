@@ -5,6 +5,7 @@ which window the lookup takes, and that a 64-bit handle comes back whole.
 """
 
 # ruff: noqa: N802, SLF001
+# cspell:ignore NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
 from __future__ import annotations
 
@@ -168,3 +169,91 @@ class TestTyping:
             assert call.restype is wintypes.BOOL
         assert window.get_window_rect.argtypes[1] is ctypes.POINTER(win32_window.RECT)
         assert window.get_client_rect.argtypes[1] is ctypes.POINTER(win32_window.RECT)
+
+
+OTHER_MESSAGE = 0x0401
+NEXT_PROC = 0x7FF0_0000_1000
+
+
+class TestGuardedFrameMessage:
+    def test_an_activation_is_passed_on_with_no_repaint_of_the_frame(self) -> None:
+        passed_on = win32_window.guarded_frame_message(win32_window.WM_NCACTIVATE, 0)
+        assert passed_on == win32_window.NO_FRAME_REPAINT
+
+    @pytest.mark.parametrize(
+        "msg", [win32_window.WM_NCUAHDRAWCAPTION, win32_window.WM_NCUAHDRAWFRAME]
+    )
+    def test_the_themes_caption_drawing_is_answered_here(self, msg: int) -> None:
+        assert win32_window.guarded_frame_message(msg, 5) is None
+
+    def test_every_other_message_goes_on_as_it_came(self) -> None:
+        assert win32_window.guarded_frame_message(OTHER_MESSAGE, 5) == 5  # noqa: PLR2004
+
+
+@pytest.fixture
+def guard_user32() -> Iterator[MagicMock]:
+    """Stand in for the ``user32`` a guard loads, on any OS; its window takes the guard."""
+    user32 = MagicMock()
+    user32.SetWindowLongPtrW.return_value = NEXT_PROC
+    with (
+        patch.object(ctypes, "WinDLL", create=True, return_value=user32),
+        patch.object(ctypes, "WINFUNCTYPE", create=True, new=lambda *_types: lambda f: f),
+        patch.object(ctypes, "cast", return_value=MagicMock(value=1)),
+        patch.object(win32_window, "_caption_guards", []),
+    ):
+        yield user32
+
+
+class TestCaptionGuard:
+    def test_the_guard_goes_before_the_windows_own_procedure(
+        self, guard_user32: MagicMock, loguru_sink: list[str]
+    ) -> None:
+        assert win32_window.guard_against_native_caption(HIGH_HWND)
+
+        (hwnd, index, _proc), _ = guard_user32.SetWindowLongPtrW.call_args
+        assert (hwnd, index) == (HIGH_HWND, -4)
+        assert len(win32_window._caption_guards) == 1  # held: the window calls it
+        assert any("Guarding window 0x100000010" in s for s in loguru_sink)
+
+    def test_an_activation_reaches_the_window_with_no_repaint(
+        self, guard_user32: MagicMock
+    ) -> None:
+        win32_window.guard_against_native_caption(HIGH_HWND)
+        (guard,) = win32_window._caption_guards
+        guard_user32.CallWindowProcW.return_value = 1
+
+        result = guard._on_message(HIGH_HWND, win32_window.WM_NCACTIVATE, 0, 0)
+
+        assert result == 1
+        guard_user32.CallWindowProcW.assert_called_once_with(
+            NEXT_PROC, HIGH_HWND, win32_window.WM_NCACTIVATE, 0, win32_window.NO_FRAME_REPAINT
+        )
+
+    def test_the_themes_caption_drawing_never_reaches_the_window(
+        self, guard_user32: MagicMock
+    ) -> None:
+        win32_window.guard_against_native_caption(HIGH_HWND)
+        (guard,) = win32_window._caption_guards
+
+        assert guard._on_message(HIGH_HWND, win32_window.WM_NCUAHDRAWCAPTION, 1, 2) == 0
+        guard_user32.CallWindowProcW.assert_not_called()
+
+    def test_another_message_reaches_the_window_unchanged(self, guard_user32: MagicMock) -> None:
+        win32_window.guard_against_native_caption(HIGH_HWND)
+        (guard,) = win32_window._caption_guards
+
+        guard._on_message(HIGH_HWND, OTHER_MESSAGE, 1, 2)
+
+        guard_user32.CallWindowProcW.assert_called_once_with(
+            NEXT_PROC, HIGH_HWND, OTHER_MESSAGE, 1, 2
+        )
+
+    def test_a_window_that_refuses_the_guard_is_left_and_it_says_so(
+        self, guard_user32: MagicMock, loguru_sink: list[str]
+    ) -> None:
+        guard_user32.SetWindowLongPtrW.return_value = None
+
+        assert not win32_window.guard_against_native_caption(HIGH_HWND)
+
+        assert win32_window._caption_guards == []
+        assert any("Could not guard the window" in s for s in loguru_sink)
