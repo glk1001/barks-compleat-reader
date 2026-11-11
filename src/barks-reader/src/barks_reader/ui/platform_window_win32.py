@@ -82,6 +82,10 @@ class _ScheduledRestore:
         for event in self._pending.values():
             event.cancel()
 
+    def look_now(self) -> None:
+        """Finish now if the window is at the saved rectangle: something has just moved it."""
+        self._look(again=False)
+
     def _on_window_resize(self, *_args) -> None:  # noqa: ANN002
         if not self._looking or self._finished:
             return
@@ -158,6 +162,8 @@ class Win32WindowBackend:
         self._move_window: Any = None
         self._get_window_rect: Any = None
         self._get_client_rect: Any = None
+        # The newest restore, so a move that puts the window right can tell it.
+        self._restore: _ScheduledRestore | None = None
         self._init(hwnd)
 
     def is_available(self) -> bool:
@@ -238,6 +244,7 @@ class Win32WindowBackend:
             # Held there through the exit (hold_windowed_rect): a MoveWindow now
             # would only block while the window finishes the exit.
             logger.debug(f"Win32: Window at {state.size}, {state.pos} as fullscreen ends.")
+            self._look_for_restore()
             return
         logger.debug(f"Win32: Window rect {found} as fullscreen ends, not {wanted}: moving it.")
 
@@ -253,6 +260,7 @@ class Win32WindowBackend:
                 return
             if (rect.left, rect.top, rect.right, rect.bottom) == wanted:
                 logger.debug(f"Win32: Window at {state.size}, {state.pos} after fullscreen exit.")
+                self._look_for_restore()
             elif attempts_left > 1:
                 Clock.schedule_once(lambda _dt: attempt(attempts_left - 1), 0)
 
@@ -280,9 +288,19 @@ class Win32WindowBackend:
         move and the callbacks. A no-op once the callbacks have run and the
         delayed move's check is done.
         """
-        return _ScheduledRestore(self, state, on_first_resize, on_done).cancel
+        self._restore = _ScheduledRestore(self, state, on_first_resize, on_done)
+        return self._restore.cancel
 
     # --- Private helpers ---
+
+    def _look_for_restore(self) -> None:
+        """Have a restore that has not finished look at the window that was just put right.
+
+        The exit's resize, inside the move, usually finishes it first: this is for
+        the move whose resize came before the window was at the rectangle.
+        """
+        if self._restore is not None:
+            self._restore.look_now()
 
     def _init(self, hwnd: int | None) -> None:
         """Initialize Win32 handles for direct window manipulation."""

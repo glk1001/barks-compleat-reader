@@ -412,6 +412,32 @@ def test_a_resize_that_leaves_the_window_right_is_called_back_there(
         assert restore.clock.live() == [win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN]
 
 
+def test_a_move_as_fullscreen_ends_finishes_a_restore_already_waiting(
+    loguru_sink: list[str],
+) -> None:
+    """The restore starts before the move: a move with no resize still finishes it at once."""
+    with _Restore(_ELSEWHERE) as restore:
+        restore.assert_not_called_back()
+
+        restore.backend.move_now(_saved_state())
+
+        restore.assert_called_back_once()
+        assert any("finishing the restore without waiting" in s for s in loguru_sink)
+        assert restore.clock.live() == [win32_module._RESTORE_GEOMETRY_TIMEOUT_WIN]
+
+
+def test_a_move_after_the_restore_finished_at_the_resize_calls_back_no_more() -> None:
+    """The exit's resize comes inside the move, and finishes the restore first."""
+    with _Restore(_ELSEWHERE) as restore:
+        on_resize = restore.window.bind.call_args.kwargs["on_resize"]
+        restore.window_at = _SAVED
+        on_resize(restore.window, 700, 500)
+
+        restore.backend.move_now(_saved_state())
+
+        restore.assert_called_back_once()
+
+
 def test_a_resize_that_leaves_the_window_elsewhere_is_not_called_back() -> None:
     with _Restore(_ELSEWHERE) as restore:
         on_resize = restore.window.bind.call_args.kwargs["on_resize"]

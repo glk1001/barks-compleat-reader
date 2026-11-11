@@ -346,17 +346,21 @@ class WindowManager:
                 self._backend.hold_windowed_rect(self._saved_window_state)
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
-            # On Windows, SDL has just sized the window for a frame the custom
-            # titlebar hides, so the drawable area came back 16x39 too big and
-            # above the screen. Put it right before a frame draws; the scheduled
-            # restore below still settles it.
-            if not self._saved_window_state.is_unsaved():
-                self._backend.move_now(self._saved_window_state)
             self._end_transition(seq)
             # At once, not a frame later: frames are slow while fullscreen ends
             # (about 80ms each on a Windows 11 desktop), and until the restore
             # finishes the screen is laid out for fullscreen in a windowed window.
+            # And before the move below: on Windows the window is still fullscreen
+            # here, and it is inside that move that Kivy has the exit's resize and
+            # draws a frame for it. A restore already listening finishes at that
+            # resize, so the frame is drawn laid out for a window.
             self.restore_saved_size_and_position(callbacks)
+            # On Windows, SDL sizes the window for a frame the custom titlebar
+            # hides, so the drawable area would come back 16x39 too big and above
+            # the screen. Put it right before a frame draws; the restore above
+            # still settles it.
+            if not self._saved_window_state.is_unsaved():
+                self._backend.move_now(self._saved_window_state)
 
         Clock.schedule_once(lambda _dt: do_windowed(), 0)
 

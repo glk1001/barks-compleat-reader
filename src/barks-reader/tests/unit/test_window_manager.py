@@ -54,6 +54,8 @@ class _FakeBackend:
         self.restore_calls: list[WindowState] = []
         self.cancel_calls = 0
         self.move_calls: list[WindowState] = []
+        # How many restores had been started at each move_now.
+        self.restores_at_move: list[int] = []
         # The window, when a test wants to see its fullscreen flag at move_now.
         self.window: MagicMock | None = None
         self.fullscreen_at_move: list[object] = []
@@ -77,6 +79,7 @@ class _FakeBackend:
 
     def move_now(self, state: WindowState) -> None:
         self.move_calls.append(state)
+        self.restores_at_move.append(len(self.restore_calls))
         if self.window is not None:
             self.fullscreen_at_move.append(self.window.fullscreen)
 
@@ -295,6 +298,21 @@ class TestGotoWindowedMode:
         do_windowed(0)
 
         assert backend.restore_calls == [backend.saved_states[0]]
+
+    def test_the_restore_is_listening_before_the_window_is_moved(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        """On Windows the exit's resize, and a frame drawn for it, come inside the move."""
+        wm, callbacks, _, _, _ = manager
+        fake_window.fullscreen = True
+        wm.save_state_now()
+
+        wm.goto_windowed_mode(callbacks)
+
+        assert backend.restores_at_move == [1]
 
     def test_the_saved_rectangle_is_held_before_fullscreen_ends(
         self,
