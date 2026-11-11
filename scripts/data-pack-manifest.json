@@ -1,16 +1,16 @@
 {
-  "built_at": "2026-11-02T10:13:39+00:00",
+  "built_at": "2026-11-11T09:50:07+00:00",
   "built_on": "gregspc2",
   "entries": {
     "Barks Panels.zip": {
-      "bytes": 1300597409,
+      "bytes": 1310495245,
       "files": 1,
-      "md5": "c953aa0d8a63883e11c8f891fd67a69f"
+      "md5": "6ae2ea6e6817194ae4ebee0ee229cf10"
     },
     "Carl Barks Wiki": {
-      "bytes": 9233683,
-      "files": 1125,
-      "md5": "77cf0aa60828cdb96c4592732dfb5c91"
+      "bytes": 9427878,
+      "files": 1134,
+      "md5": "0a9809701a34291f811064dfec361f67"
     },
     "Fantagraphics Volumes Overrides": {
       "bytes": 1349303714,
@@ -38,11 +38,11 @@
       "md5": "8bd48948f034d206d60c3da81736a5c5"
     },
     "Various": {
-      "bytes": 105914964,
-      "files": 125,
-      "md5": "87a4dfce153f9fc27545083f7914b5b7"
+      "bytes": 107004638,
+      "files": 128,
+      "md5": "ba093cb6e7b8590f67c51770bd88f245"
     }
   },
-  "tag": "data-v9",
-  "version": 9
+  "tag": "data-v10",
+  "version": 10
 }
