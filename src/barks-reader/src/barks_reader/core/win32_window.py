@@ -17,6 +17,8 @@ from typing import Any, ClassVar
 from loguru import logger
 
 # cspell:ignore NOMOVE NOSIZE WINDOWPOS
+# cspell:ignore ERASEBKGND WINDOWPOSCHANGED STYLECHANGING STYLECHANGED SETICON NCPAINT
+# cspell:ignore THEMECHANGED DWMCOMPOSITIONCHANGED DWMNCRENDERINGCHANGED
 # cspell:ignore GWLP WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME wndproc
 
 
@@ -181,6 +183,28 @@ SWP_NOMOVE = 0x0002
 # A rectangle is held for no longer than this, whoever forgets to let it go.
 _HELD_RECT_SECONDS = 2.0
 
+# The messages that change or paint a window's frame, logged for a window held
+# through a fullscreen exit: what could paint the desktop's caption during one.
+_FRAME_MESSAGE_NAMES = {
+    0x000C: "WM_SETTEXT",
+    0x000F: "WM_PAINT",
+    0x0014: "WM_ERASEBKGND",
+    0x0046: "WM_WINDOWPOSCHANGING",
+    0x0047: "WM_WINDOWPOSCHANGED",
+    0x007C: "WM_STYLECHANGING",
+    0x007D: "WM_STYLECHANGED",
+    0x0080: "WM_SETICON",
+    0x0083: "WM_NCCALCSIZE",
+    0x0085: "WM_NCPAINT",
+    0x0086: "WM_NCACTIVATE",
+    0x00AE: "WM_NCUAHDRAWCAPTION",
+    0x00AF: "WM_NCUAHDRAWFRAME",
+    0x031A: "WM_THEMECHANGED",
+    0x031E: "WM_DWMCOMPOSITIONCHANGED",
+    0x031F: "WM_DWMNCRENDERINGCHANGED",
+}
+_MAX_FRAME_MESSAGES_LOGGED = 200
+
 
 class WINDOWPOS(ctypes.Structure):
     """A Win32 ``WINDOWPOS``: where a window is about to be put."""
@@ -276,7 +300,9 @@ class CaptionGuard:
 
         self.hwnd = hwnd
         self._held_rect: tuple[int, int, int, int] | None = None
+        self._held_from = 0.0
         self._held_until = 0.0
+        self._frame_messages: list[tuple[int, str]] = []
 
         self._next_proc: int | None = None
         next_proc = set_window_long_ptr(
@@ -295,13 +321,26 @@ class CaptionGuard:
         hides. Held until `release_rect`, and never longer than a couple of seconds.
         """
         self._held_rect = rect
-        self._held_until = time.monotonic() + _HELD_RECT_SECONDS
+        self._held_from = time.monotonic()
+        self._held_until = self._held_from + _HELD_RECT_SECONDS
+        self._frame_messages = []
 
     def release_rect(self) -> None:
-        """Let the window go where it is sent again."""
+        """Let the window go where it is sent again, and log the frame messages it had."""
         self._held_rect = None
+        if self._frame_messages:
+            seen = ", ".join(f"+{ms}ms {name}" for ms, name in self._frame_messages)
+            logger.debug(f"Frame messages while the window was held: {seen}.")
+            self._frame_messages = []
 
     def _on_message(self, hwnd: int | None, msg: int, wparam: int, lparam: int) -> int:
+        if self._held_rect is not None:
+            # Kept, not logged: this runs inside the window procedure.
+            name = _FRAME_MESSAGE_NAMES.get(msg)
+            if name and len(self._frame_messages) < _MAX_FRAME_MESSAGES_LOGGED:
+                elapsed_ms = round((time.monotonic() - self._held_from) * 1000)
+                self._frame_messages.append((elapsed_ms, name))
+
         if msg == WM_WINDOWPOSCHANGING and self._held_rect is not None and lparam:
             if time.monotonic() > self._held_until:
                 self._held_rect = None

@@ -5,7 +5,7 @@ which window the lookup takes, and that a 64-bit handle comes back whole.
 """
 
 # ruff: noqa: N802, SLF001
-# cspell:ignore NOMOVE NOSIZE WINDOWPOS
+# cspell:ignore NOMOVE NOSIZE WINDOWPOS NCPAINT
 # cspell:ignore WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
 from __future__ import annotations
@@ -323,6 +323,25 @@ class TestHeldRect:
 
         assert self._changing(guard) == HELD
         guard_user32.CallWindowProcW.assert_called_once()  # the window is still told
+
+    def test_letting_go_logs_the_frame_messages_the_held_window_had(
+        self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
+    ) -> None:
+        """What a log has to say whether the desktop painted its caption during an exit."""
+        guard._on_message(HIGH_HWND, 0x0085, 0, 0)  # before the hold: not kept
+        win32_window.hold_window_rect(HIGH_HWND, HELD)
+        guard._on_message(HIGH_HWND, 0x0085, 0, 0)
+        guard._on_message(HIGH_HWND, OTHER_MESSAGE, 0, 0)
+        guard._on_message(HIGH_HWND, win32_window.WM_NCUAHDRAWCAPTION, 0, 0)
+
+        win32_window.release_window_rect(HIGH_HWND)
+        win32_window.release_window_rect(HIGH_HWND)  # nothing new: no second line
+
+        lines = [s for s in loguru_sink if "Frame messages while the window was held" in s]
+        assert len(lines) == 1
+        assert "WM_NCPAINT, +" in lines[0]
+        assert lines[0].count("WM_NCPAINT") == 1
+        assert "WM_NCUAHDRAWCAPTION." in lines[0]
 
     def test_once_let_go_the_window_goes_where_it_is_sent(
         self, guard: win32_window.CaptionGuard
