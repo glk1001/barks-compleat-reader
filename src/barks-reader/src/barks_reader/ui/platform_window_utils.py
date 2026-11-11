@@ -353,7 +353,10 @@ class WindowManager:
             if not self._saved_window_state.is_unsaved():
                 self._backend.move_now(self._saved_window_state)
             self._end_transition(seq)
-            Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(callbacks), 0)
+            # At once, not a frame later: frames are slow while fullscreen ends
+            # (about 80ms each on a Windows 11 desktop), and until the restore
+            # finishes the screen is laid out for fullscreen in a windowed window.
+            self.restore_saved_size_and_position(callbacks)
 
         Clock.schedule_once(lambda _dt: do_windowed(), 0)
 

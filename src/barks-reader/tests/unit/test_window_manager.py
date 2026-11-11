@@ -274,6 +274,28 @@ class TestGotoWindowedMode:
         assert backend.move_calls == [backend.saved_states[0]]
         assert backend.fullscreen_at_move == [False]  # after the exit, not before
 
+    def test_the_restore_starts_in_the_frame_fullscreen_ends(
+        self,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Frames are slow while fullscreen ends: a frame's wait showed as a late snap."""
+        clock = MagicMock()
+        monkeypatch.setattr(window_utils_module, "Clock", clock)
+        monkeypatch.setattr(window_utils_module, "Window", fake_window)
+        monkeypatch.setattr(window_utils_module, "_create_window_backend", lambda: backend)
+        wm = WindowManager()
+        fake_window.fullscreen = True
+        wm.save_state_now()
+
+        wm.goto_windowed_mode(MagicMock())
+        (do_windowed, _delay), _ = clock.schedule_once.call_args
+        clock.schedule_once.reset_mock()
+        do_windowed(0)
+
+        assert backend.restore_calls == [backend.saved_states[0]]
+
     def test_the_saved_rectangle_is_held_before_fullscreen_ends(
         self,
         manager: ManagerFixture,

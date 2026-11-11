@@ -67,16 +67,33 @@ class _ScheduledRestore:
             lambda _dt: self._move(), _RESTORE_GEOMETRY_TIMEOUT_WIN
         )
         self._pending["look"] = Clock.schedule_once(lambda _dt: self._look(), 0)
+        # And at the window's next resize, which is where Kivy learns the exit's
+        # size: finishing there, before the screens lay out for it, saves them
+        # laying out twice, and a slow frame's wait for the look above.
+        Window.bind(on_resize=self._on_window_resize)
 
     def cancel(self) -> None:
         """Stop whatever is still to come."""
+        self._looking = False
+        Window.unbind(on_resize=self._on_window_resize)
         for event in self._pending.values():
             event.cancel()
+
+    def _on_window_resize(self, *_args) -> None:  # noqa: ANN002
+        if not self._looking or self._finished:
+            return
+        if self._backend._is_window_at(self._wanted):  # noqa: SLF001
+            logger.info(
+                f"Win32: Window resized to {self._state.size}, {self._state.pos}:"
+                f" finishing the restore at the resize."
+            )
+            self._finish()
 
     def _finish(self) -> None:
         if self._finished:
             return
         self._finished = True
+        Window.unbind(on_resize=self._on_window_resize)
         _ = Window.size  # Read to sync Kivy's internal values.
         self._on_first_resize()
         self._on_done()
@@ -95,6 +112,7 @@ class _ScheduledRestore:
 
     def _move(self) -> None:
         self._looking = False
+        Window.unbind(on_resize=self._on_window_resize)
         if "look" in self._pending:
             self._pending["look"].cancel()
         x, y = self._state.pos

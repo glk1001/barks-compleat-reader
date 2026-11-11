@@ -353,6 +353,45 @@ def test_a_window_already_put_right_is_called_back_without_waiting(
         assert restore.clock.live() == []
 
 
+def test_a_resize_that_leaves_the_window_right_is_called_back_there(
+    loguru_sink: list[str],
+) -> None:
+    """Before the screens lay out for the resize, not a slow frame after it."""
+    with _Restore(_ELSEWHERE) as restore:
+        on_resize = restore.window.bind.call_args.kwargs["on_resize"]
+        restore.window_at = _SAVED
+
+        on_resize(restore.window, 700, 500)
+
+        restore.assert_called_back_once()
+        assert any("finishing the restore at the resize" in s for s in loguru_sink)
+        restore.window.unbind.assert_called_with(on_resize=on_resize)
+
+        restore.clock.run_frame()  # the frame's look finds it done
+        restore.assert_called_back_once()
+
+
+def test_a_resize_that_leaves_the_window_elsewhere_is_not_called_back() -> None:
+    with _Restore(_ELSEWHERE) as restore:
+        on_resize = restore.window.bind.call_args.kwargs["on_resize"]
+
+        on_resize(restore.window, 716, 539)
+
+        restore.assert_not_called_back()
+
+
+def test_a_resize_after_the_delayed_move_or_a_cancel_calls_nothing() -> None:
+    with _Restore(_ELSEWHERE) as restore:
+        on_resize = restore.window.bind.call_args.kwargs["on_resize"]
+        restore.cancel()
+        restore.window.unbind.assert_called_with(on_resize=on_resize)
+        restore.window_at = _SAVED
+
+        on_resize(restore.window, 700, 500)  # were it still bound
+
+        restore.assert_not_called_back()
+
+
 def test_a_window_put_right_a_frame_later_is_called_back_then() -> None:
     with _Restore(_ELSEWHERE) as restore:
         restore.clock.run_frame()
