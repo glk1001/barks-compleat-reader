@@ -19,6 +19,7 @@ import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE
 from barks_reader.core.popup_frame import FrameButton, PopupSize
+from barks_reader.ui import kivy_standalone_show_message
 from barks_reader.ui.kivy_standalone_show_message import divider_line, show_standalone_popup
 from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
@@ -98,6 +99,22 @@ def _open(loop: _Loop, **kwargs: Any) -> ModalView:  # noqa: ANN401
     loop.run_scheduled()
     loop.finish_opening()
     return loop.popup
+
+
+def _closes_the_boot_splash(loop: _Loop) -> None:
+    with patch.object(kivy_standalone_show_message, "close_boot_splash") as close_splash:
+        _open(loop)
+
+    close_splash.assert_called_once_with()
+
+
+def test_the_boot_splash_comes_down_for_a_message_with_no_app(no_app: _Loop) -> None:
+    """An error before the main window is up must not be left beside the splash."""
+    _closes_the_boot_splash(no_app)
+
+
+def test_the_boot_splash_comes_down_for_a_message_in_the_app(app: _Loop) -> None:
+    _closes_the_boot_splash(app)
 
 
 class TestWithoutAnApp:

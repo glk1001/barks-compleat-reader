@@ -163,6 +163,7 @@ def _run_window_loop[T](
     from kivy.clock import Clock
     from kivy.core.window import Window
 
+    from barks_reader.core.boot_splash import close_boot_splash
     from barks_reader.core.popup_frame import PopupSize
     from barks_reader.ui.popup_frame import PopupFrame
 
@@ -212,6 +213,7 @@ def _run_window_loop[T](
 
     # The window may be hidden (the main app's config hides it until it is built).
     Window.show()
+    close_boot_splash()
     Clock.schedule_once(start, 0)
     runTouchApp()
 

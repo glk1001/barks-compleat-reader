@@ -336,6 +336,12 @@ def maybe_run_first_run_installer() -> None:
 
     import subprocess
 
+    from barks_reader.core.boot_splash import close_boot_splash
+
+    # The installer is this executable again, with a splash and then a window of its
+    # own: this process's splash would sit behind them for the whole install.
+    close_boot_splash()
+
     logger.info("First run of standalone build - launching isolated installer process.")
     # Re-exec this very executable (sys.argv[0]) with a fixed sentinel arg - not untrusted input.
     result = subprocess.run([sys.argv[0], FIRST_RUN_INSTALLER_ARG], check=False)  # noqa: S603

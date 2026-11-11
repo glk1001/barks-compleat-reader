@@ -20,6 +20,7 @@ from kivy.lang import Builder
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.boot_splash import close_boot_splash
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.keys import get_alt_escape_key, set_alt_escape_key
@@ -653,6 +654,7 @@ def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> 
     """
     window_geometry.set_window_ready()
     window.show()
+    close_boot_splash()
     logger.info(log_markers.MAIN_WINDOW_SHOWN)
     log_window_geometry("boot")
     _log_screen_settings()

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.boot_splash import close_boot_splash
 from barks_reader.core.keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 
@@ -129,6 +130,8 @@ def show_standalone_popup(
         popup.open()
 
     try:
+        # The Windows build's splash would otherwise sit beside the message.
+        close_boot_splash()
         if app_already_running:
             Clock.schedule_once(_show, 0)
         else:

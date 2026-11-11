@@ -10,6 +10,7 @@ import kivy.base
 import kivy.clock
 import pytest
 from barks_reader import installer_progress
+from barks_reader.core import boot_splash
 from barks_reader.installer_progress import ByteProgress, percent_text, run_showing_progress
 from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
@@ -53,6 +54,7 @@ class _Loop:
     clock: MagicMock
     stop: MagicMock
     window_show: MagicMock
+    close_splash: MagicMock
 
     def start(self) -> None:
         """Run what the window handed the clock for its first frame: it opens."""
@@ -78,9 +80,10 @@ def loop() -> Iterator[_Loop]:
         patch.object(kivy.clock, "Clock") as clock,
         patch.object(kivy.base, "stopTouchApp") as stop,
         patch.object(Window, "show") as window_show,
+        patch.object(boot_splash, "close_boot_splash") as close_splash,
         patch.object(installer_progress.threading.Thread, "join", autospec=True, return_value=None),
     ):
-        yield _Loop(clock, stop, window_show)
+        yield _Loop(clock, stop, window_show, close_splash)
     for widget in list(Window.children):
         if isinstance(widget, PopupFrame):
             Window.remove_widget(widget)
@@ -125,6 +128,7 @@ class TestRunShowingProgress:
 
         assert (result, next_shown) == ("the result", True)
         loop.window_show.assert_called_once_with()
+        loop.close_splash.assert_called_once_with()  # the Windows build's, now behind a window
         show_next.assert_called_once_with("the result", loop.stop)
         loop.stop.assert_not_called()  # what follows ends the loop, when it has closed
 

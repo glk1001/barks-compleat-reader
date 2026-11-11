@@ -146,6 +146,10 @@ else
     # on the unused option, so keep it to the Windows leg.
     if [[ "${OS}" == "windows" ]]; then
         PLATFORM_ARGS+=(--windows-icon-from-ico="assets/app-icon.ico")
+        # A picture while the one file unpacks itself, before any Python runs: up to
+        # half a minute of nothing on a first start otherwise. The app takes it down
+        # when its first window shows (barks_reader.core.boot_splash).
+        PLATFORM_ARGS+=(--onefile-windows-splash-screen-image="assets/app-splash.png")
         # Kivy's ANGLE DLLs, which Nuitka's Kivy plugin leaves out, so the build can
         # also draw through Direct3D (KIVY_GL_BACKEND=angle_sdl2) on a machine with
         # no working OpenGL 2.0. Unused otherwise; see the yml.

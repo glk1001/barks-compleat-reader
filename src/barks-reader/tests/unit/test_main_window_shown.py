@@ -24,3 +24,14 @@ def test_the_window_is_shown_after_its_geometry_is_ready_and_then_logged(
     assert log_markers.MAIN_WINDOW_SHOWN in loguru_sink
     log_geometry.assert_called_once_with("boot")
     log_settings.assert_called_once()
+
+
+def test_the_boot_splash_comes_down_once_the_window_is_up() -> None:
+    parent = MagicMock()
+    with (
+        patch.object(barks_reader_app, "_log_screen_settings"),
+        patch.object(barks_reader_app, "log_window_geometry"),
+        patch.object(barks_reader_app, "close_boot_splash", parent.close_boot_splash),
+    ):
+        _show_main_window(parent.window, parent.geometry)
+    assert parent.mock_calls[1:3] == [call.window.show(), call.close_boot_splash()]
