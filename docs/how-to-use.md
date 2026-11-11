@@ -51,7 +51,7 @@ The bar across the top of the main screen contains:
 - <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a dropdown containing
     <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> <strong><em>Update Data,</em></strong>
-    and <strong><em>About.</em></strong> *Update Data* looks for newer data packs placed beside the app
+    and <strong><em>About.</em></strong> <em>Update Data</em> looks for newer data packs placed beside the app
     and offers to install them (or says why there is nothing to install).
 - <img src="icon-power-black.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — a power button at the far right, set apart in the window corner; quits the application.
