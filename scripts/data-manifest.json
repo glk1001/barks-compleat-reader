@@ -1,14 +1,14 @@
 {
   "entries": {
     "Barks Panels.zip": {
-      "bytes": 1310495245,
+      "bytes": 1400720574,
       "files": 1,
-      "md5": "6ae2ea6e6817194ae4ebee0ee229cf10"
+      "md5": "8d2b5a1b6475b92a5adda945f09e8999"
     },
     "Fantagraphics Volumes Overrides": {
-      "bytes": 1349303714,
+      "bytes": 1362427196,
       "files": 30,
-      "md5": "2ea161637aa4213be78cfa491612d177"
+      "md5": "0725b82249422291cf4a5bd947ebc504"
     },
     "Fantagraphics-panel-segments": {
       "bytes": 5463089,
@@ -46,6 +46,6 @@
       "md5": "7f81ef48e23ae761e9a2f923c84157ac"
     }
   },
-  "written_at": "2026-11-11T09:48:45+00:00",
+  "written_at": "2026-11-11T12:21:31+00:00",
   "written_on": "gregspc2"
 }
