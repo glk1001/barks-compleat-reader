@@ -3242,6 +3242,15 @@ class TestNavEdges:
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
 
+    def test_leaving_and_escape_clear_the_same_rings(self, screen: SearchScreen) -> None:
+        """Two lists of rings to clear could drift: a row in one left a stale ring."""
+        screen._nav_on_exit_request = None
+        with patch.object(screen, "_clear_all_nav_focus") as clear:
+            screen.exit_nav_focus()
+            screen._nav_active = True
+            screen._nav_escape()
+        assert clear.call_count == 2  # noqa: PLR2004
+
     def test_escape_from_the_results_with_nowhere_to_return_goes_to_the_box(
         self, screen: SearchScreen
     ) -> None:

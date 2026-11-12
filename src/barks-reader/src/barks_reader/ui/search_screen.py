@@ -2122,15 +2122,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def exit_nav_focus(self) -> None:
         """Give up the keyboard: every focus ring cleared, every box blurred."""
         self._blur_all_inputs()
-        self._clear_result_focus()
-        self._clear_chip_focus()
-        self._speaker_row.clear_focus()
-        self._basket_row.clear_focus()
-        self._tag_basket_row.clear_focus()
-        for era_row in self._era_rows.values():
-            era_row.clear_focus()
-        self._scope_row.clear_focus()
-        self._clear_clear_focus()
+        self._clear_all_nav_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
         logger.debug(log_markers.SEARCH_EXITED_NAV)
@@ -2305,7 +2297,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._nav_focused_result_idx = 0
         self._nav_word_sub_focus = "title"
 
-    def _nav_escape(self) -> None:
+    def _clear_all_nav_focus(self) -> None:
+        """Clear every focus ring the keys can leave: one list, for leaving and for Escape.
+
+        Two copies of it could drift: a row added to one and not the other left a stale
+        ring after Escape, or after leaving.
+        """
         self._clear_result_focus()
         self._clear_chip_focus()
         self._speaker_row.clear_focus()
@@ -2315,6 +2312,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             era_row.clear_focus()
         self._scope_row.clear_focus()
         self._clear_clear_focus()
+
+    def _nav_escape(self) -> None:
+        self._clear_all_nav_focus()
         self._nav_focus_area = "input"
         self._blur_all_inputs()
         if self._nav_on_exit_request:
