@@ -1,4 +1,4 @@
-"""ScreenBundle: frozen dataclass grouping the 10 screen widgets that compose the main screen."""
+"""ScreenBundle: frozen dataclass grouping the screen widgets that compose the main screen."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class ScreenBundle:
     """All screen widgets that compose the main screen's content areas.
 
-    Passed as a single argument to collaborators instead of 9 individual screen parameters.
+    Passed as a single argument to collaborators instead of a parameter for each screen.
     """
 
     tree_view: TreeViewScreen
