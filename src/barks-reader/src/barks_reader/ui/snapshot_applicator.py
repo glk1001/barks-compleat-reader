@@ -125,6 +125,8 @@ class SnapshotApplicator:
 
         fun_info = fun.image_info
         if not fun_info.filename:
+            # A load still in flight would put its image back on the cleared view.
+            self._fun_view_texture_loader.cancel()
             self._screens.fun_image_view.image_texture = None
         else:
 
@@ -173,6 +175,8 @@ class SnapshotApplicator:
 
         title_info = title.image_info
         if title_info is None or not title_info.filename:
+            # A load still in flight would put the last title's image back.
+            self._bottom_title_view_texture_loader.cancel()
             self._screens.bottom_title_view.title_image_texture = None
         else:
             _title_info = title_info

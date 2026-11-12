@@ -12,7 +12,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_fantagraphics.barks_titles import Titles
@@ -343,6 +343,58 @@ class TestWhatIsLeftAlone:
         search = screen_mocks["search"]
         assert search.is_visible is True
         search.set_background_image.assert_not_called()
+
+
+class _HeldLoader:
+    """A texture loader whose load finishes only when told, and which cancel drops."""
+
+    def __init__(self) -> None:
+        self._pending: list[Callable[[object, Exception | None], None]] = []
+
+    def load_texture(
+        self, _filename: Path, callback: Callable[[object, Exception | None], None]
+    ) -> None:
+        self._pending = [callback]  # one load in flight, as PanelImageLoader keeps
+
+    def cancel(self) -> None:
+        self._pending = []
+
+    def finish(self) -> None:
+        for callback in self._pending:
+            callback(MagicMock(), None)
+        self._pending = []
+
+
+class TestAClearedViewStaysCleared:
+    """A view cleared while its image is still loading is not given that image after all."""
+
+    @pytest.fixture
+    def held_applicator(self, screens: ScreenBundle) -> Generator[SnapshotApplicator]:
+        with patch.object(
+            barks_reader.ui.snapshot_applicator, "PanelTextureLoader", side_effect=_HeldLoader
+        ):
+            yield SnapshotApplicator(screens=screens)
+
+    def test_the_title_view(
+        self, held_applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        held_applicator.apply(_make_snapshot(title_visible=True))
+        held_applicator.apply(_make_snapshot(title_visible=False))
+        held_applicator._bottom_title_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[unresolved-attribute]
+
+        assert screen_mocks["bottom_title_view"].title_image_texture is None
+
+    def test_the_fun_view(
+        self, held_applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        held_applicator.apply(_make_snapshot(fun_visible=True))
+        no_file = ImageInfo(from_title=Titles.ATTIC_ANTICS)  # another title, so not skipped
+        held_applicator.apply(
+            replace(_make_snapshot(), fun_view=FunViewSnapshot(is_visible=True, image_info=no_file))
+        )
+        held_applicator._fun_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[unresolved-attribute]
+
+        assert screen_mocks["fun_image_view"].image_texture is None
 
 
 def test_a_texture_that_failed_to_load_is_raised() -> None:
