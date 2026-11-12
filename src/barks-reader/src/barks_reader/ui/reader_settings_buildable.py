@@ -158,14 +158,12 @@ class BuildableReaderSettings(ReaderSettings):
 
         logger.info("Updating panel reader settings.")
 
-        # Kivy's menu interfaces and PinnedTitleSettingsInterface hold the ContentPanel
-        # in `.content`; a bare ContentPanel used as the interface is itself.
-        interface = self._settings.interface
-        content = getattr(interface, "content", None) or interface
-        panels = content.panels
-
-        # This module is used by non-GUI scripts but this import pops up a window.
+        # This module is used by non-GUI scripts but these imports pop up a window.
         from kivy.uix.settings import SettingItem  # noqa: PLC0415
+
+        from .settings_fix import settings_content_panel  # noqa: PLC0415
+
+        panels = settings_content_panel(self._settings.interface).panels
 
         for panel in panels.values():
             children = panel.children

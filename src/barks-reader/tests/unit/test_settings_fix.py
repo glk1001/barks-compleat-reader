@@ -887,3 +887,16 @@ def test_the_long_path_rows_title_column_shrinks_to_its_text() -> None:
     settings_fix.SettingLongPath.on_kv_post(_stand_in(ids=SimpleNamespace(labellayout=label)), None)
     assert label.size_hint_x is None
     assert label.width == settings_fix.dp(310)
+
+
+class TestSettingsContentPanel:
+    """One rule for where a settings interface keeps its ContentPanel, for both its readers."""
+
+    def test_an_interface_with_a_menu_or_title_holds_it_as_content(self) -> None:
+        content = ContentPanel()
+        interface = SimpleNamespace(content=content)
+        assert settings_fix.settings_content_panel(cast("Widget", interface)) is content
+
+    def test_a_bare_content_panel_is_its_own(self) -> None:
+        panel = ContentPanel()
+        assert settings_fix.settings_content_panel(panel) is panel

@@ -381,6 +381,15 @@ class SettingsCloseButton(Button):
     icon_source = StringProperty("")
 
 
+def settings_content_panel(interface: Widget) -> Widget:
+    """Return the ContentPanel a settings interface holds.
+
+    Kivy's menu interfaces and PinnedTitleSettingsInterface hold it in `.content`; a
+    bare ContentPanel used as the interface is itself.
+    """
+    return getattr(interface, "content", None) or interface
+
+
 class PinnedTitleSettingsInterface(BoxLayout):
     """The settings' one panel, scrolling under a title bar that stays put (laid out in KV).
 
