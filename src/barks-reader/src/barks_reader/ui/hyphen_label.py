@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
 from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
-from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import NumericProperty, StringProperty  # ty: ignore[import-not-found]
 from kivy.uix.label import Label
 from loguru import logger
 
@@ -58,7 +58,7 @@ def _keep_justified_lines_inside(core_label: CoreMarkupLabel) -> None:
             )
         return size
 
-    core_label._pre_render = lay_out_and_repair  # noqa: SLF001  # ty: ignore[invalid-assignment]
+    core_label._pre_render = lay_out_and_repair  # noqa: SLF001
 
 
 class HyphenatingLabel(Label):

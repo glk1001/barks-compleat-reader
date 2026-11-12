@@ -13,8 +13,8 @@ from barks_fantagraphics.comic_book_info import (
 )
 from comic_utils.timing import Timing
 from kivy.animation import Animation
-from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.graphics.texture import Texture  # ty: ignore[import-not-found]
+from kivy.properties import (  # ty: ignore[import-not-found]
     AliasProperty,
     BooleanProperty,
     ColorProperty,

@@ -10,7 +10,7 @@ from barks_fantagraphics.comics_consts import (
 from kivy.core.text import LabelBase
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
-from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
+from kivy.properties import NumericProperty  # ty: ignore[import-not-found]
 from loguru import logger
 
 from barks_reader.core.font_sizes import (

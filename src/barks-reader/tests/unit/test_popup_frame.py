@@ -89,7 +89,7 @@ def _popup_fonts_at(height: int) -> popup_frame.PopupFonts:
 
 
 def _texts(widget: object) -> list[str]:
-    return [w.text for w in widget.walk() if isinstance(w, Button)]  # ty: ignore[unresolved-attribute]
+    return [w.text for w in widget.walk() if isinstance(w, Button)]  # ty: ignore[missing-attribute]
 
 
 class TestPopupFonts:

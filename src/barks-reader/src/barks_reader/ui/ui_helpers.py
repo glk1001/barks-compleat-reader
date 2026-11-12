@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from barks_kivy_ui.scrolling import ReaderDropDown, ReaderScrollView  # noqa: F401
 from kivy.clock import Clock
 from kivy.core.window import Keyboard, Window
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     StringProperty,

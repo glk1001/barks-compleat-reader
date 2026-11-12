@@ -19,7 +19,7 @@ import ctypes
 import os
 import sys
 from ctypes import wintypes
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -66,7 +66,7 @@ _RECT_B = (60, 40, 500, 400)
 
 def _user32() -> Any:  # noqa: ANN401
     """Return user32 with the signatures these tests call through, 64-bit handles intact."""
-    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
     user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
     user32.GetWindowRect.restype = wintypes.BOOL
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
@@ -104,9 +104,9 @@ def _run_now(callback: Callable[[float], None], _timeout: float = 0) -> MagicMoc
 def live_window() -> Iterator[int]:
     """Make a visible top-level window with an SDL-style class name; destroy it after."""
     user32 = _user32()
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # ty: ignore[missing-attribute]
     lresult = wintypes.LPARAM
-    wndproc_type = ctypes.WINFUNCTYPE(  # ty: ignore[unresolved-attribute]
+    wndproc_type = ctypes.WINFUNCTYPE(  # ty: ignore[missing-attribute]
         lresult, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
     )
     user32.DefWindowProcW.argtypes = [
@@ -124,7 +124,7 @@ def live_window() -> Iterator[int]:
     wndproc = wndproc_type(window_proc)  # held until the window is gone
 
     class WNDCLASSW(ctypes.Structure):
-        _fields_: ClassVar[list[tuple[str, Any]]] = [
+        _fields_ = (
             ("style", wintypes.UINT),
             ("lpfnWndProc", wndproc_type),
             ("cbClsExtra", ctypes.c_int),
@@ -135,7 +135,7 @@ def live_window() -> Iterator[int]:
             ("hbrBackground", wintypes.HBRUSH),
             ("lpszMenuName", wintypes.LPCWSTR),
             ("lpszClassName", wintypes.LPCWSTR),
-        ]
+        )
 
     kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
     kernel32.GetModuleHandleW.restype = wintypes.HMODULE
@@ -148,7 +148,7 @@ def live_window() -> Iterator[int]:
     user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
     user32.RegisterClassW.restype = wintypes.ATOM
     if not user32.RegisterClassW(ctypes.byref(window_class)):
-        raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[unresolved-attribute]
+        raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[missing-attribute]
 
     user32.CreateWindowExW.argtypes = [
         wintypes.DWORD,
@@ -182,7 +182,7 @@ def live_window() -> Iterator[int]:
     )
     try:
         if not hwnd:
-            raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[unresolved-attribute]
+            raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[missing-attribute]
         user32.ShowWindow(hwnd, _SW_SHOWNOACTIVATE)
         _messages_seen.clear()
         yield hwnd

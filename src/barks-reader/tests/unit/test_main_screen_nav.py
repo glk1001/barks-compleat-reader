@@ -91,17 +91,17 @@ def nav(
 
 class TestHandleKey:
     def test_delegates_to_menu_when_in_menu_mode(self, nav: MainScreenNavigation) -> None:
-        nav._is_in_menu_mode.return_value = True  # ty: ignore[unresolved-attribute]
-        nav._handle_menu_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._is_in_menu_mode.return_value = True  # ty: ignore[missing-attribute]
+        nav._handle_menu_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav.handle_key(KEY_ENTER) is True
-        nav._handle_menu_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[unresolved-attribute]
+        nav._handle_menu_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[missing-attribute]
 
     def test_delegates_to_tree_key_by_default(self, nav: MainScreenNavigation) -> None:
         result = nav.handle_key(KEY_ESCAPE)
 
         assert result is True
-        nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._enter_menu_mode.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_delegates_to_bottom_key_when_in_bottom_focus(self, nav: MainScreenNavigation) -> None:
         # Set up: no visible screens so bottom key falls through to fun/title checks
@@ -125,7 +125,7 @@ class TestHandleKey:
 class TestHandleTreeKey:
     def test_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
         assert nav._handle_tree_key(KEY_ESCAPE) is True
-        nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._enter_menu_mode.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_alt_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
         from barks_reader.core.keys import set_alt_escape_key  # noqa: PLC0415
@@ -134,7 +134,7 @@ class TestHandleTreeKey:
         set_alt_escape_key(backspace)
         try:
             assert nav._handle_tree_key(backspace) is True
-            nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+            nav._enter_menu_mode.assert_called_once()  # ty: ignore[missing-attribute]
         finally:
             set_alt_escape_key(0)
 
@@ -143,31 +143,31 @@ class TestHandleTreeKey:
         assert nav._handle_tree_key(KEY_TAB) is False
 
     def test_up_moves_tree(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         assert nav._handle_tree_key(KEY_UP) is True
-        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_down_moves_tree(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         assert nav._handle_tree_key(KEY_DOWN) is True
-        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_left_collapses(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         assert nav._handle_tree_key(KEY_LEFT) is True
 
     def test_enter_activates(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         assert nav._handle_tree_key(KEY_ENTER) is True
 
     def test_numpad_enter_activates(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         assert nav._handle_tree_key(KEY_NUMPAD_ENTER) is True
 
@@ -185,7 +185,7 @@ class TestHandleTreeKey:
         assert nav._handle_tree_key(KEY_RIGHT) is True
 
         assert nav.is_in_bottom_focus
-        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_right_with_no_bottom_screen_stays_in_tree(self, nav: MainScreenNavigation) -> None:
         nav._fun_image_view_screen.is_visible = False
@@ -241,7 +241,7 @@ class TestHandleBottomKey:
 
     def test_delegates_to_nav_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = True
-        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
@@ -250,12 +250,12 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_DOWN) is True
-        nav._main_index_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[missing-attribute]
 
     def test_tab_on_nav_screen_is_delegated(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)
         nav._main_index_screen.is_visible = True
-        nav._main_index_screen.handle_key.return_value = False  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.handle_key.return_value = False  # ty: ignore[missing-attribute]
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
@@ -265,8 +265,8 @@ class TestHandleBottomKey:
 
         # Tab is passed to the active screen like any other key, not intercepted.
         assert nav._handle_bottom_key(KEY_TAB) is False
-        nav._main_index_screen.handle_key.assert_called_once_with(KEY_TAB)  # ty: ignore[unresolved-attribute]
-        nav._main_index_screen.exit_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.handle_key.assert_called_once_with(KEY_TAB)  # ty: ignore[missing-attribute]
+        nav._main_index_screen.exit_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_fun_view_keys_delegate_to_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -278,10 +278,10 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
-        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_LEFT) is True
-        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[missing-attribute]
 
     def test_title_view_keys_delegate_to_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -293,10 +293,10 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = True
-        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_ENTER) is True
-        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[missing-attribute]
 
     def test_title_view_escape_is_delegated_not_intercepted(
         self, nav: MainScreenNavigation
@@ -311,10 +311,10 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = True
-        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_ESCAPE) is True
-        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[missing-attribute]
 
     def test_title_view_lazily_enters_nav_focus(self, nav: MainScreenNavigation) -> None:
         """The fun view's goto-title lands here with BOTTOM focus but no nav entry yet."""
@@ -328,13 +328,13 @@ class TestHandleBottomKey:
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
-        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_DOWN) is True
-        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[missing-attribute]
             nav.exit_bottom_focus
         )
-        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[missing-attribute]
 
     def test_title_view_not_reentered_when_nav_active(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -350,7 +350,7 @@ class TestHandleBottomKey:
 
         nav._handle_bottom_key(KEY_DOWN)
 
-        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_fun_view_takes_precedence_over_title_view(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -362,71 +362,71 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = True
-        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_LEFT) is True
-        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[unresolved-attribute]
-        nav._bottom_title_view_screen.handle_key.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[missing-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestTreeNavMove:
     def test_no_visible_nodes(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = []  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = []  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_no_selection_delta_positive(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[0])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(nodes[0])  # ty: ignore[missing-attribute]
 
     def test_no_selection_delta_negative(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(-1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[missing-attribute]
 
     def test_move_down_from_middle(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[missing-attribute]
         # Through the manager: a scroll to a node lets go of any pin under way.
-        nav._tree_view_manager.scroll_to_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(nodes[2])  # ty: ignore[missing-attribute]
 
     def test_clamps_at_end(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(nodes[1])  # ty: ignore[missing-attribute]
 
     def test_renders_title_node_immediately_on_discrete_press(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger
     ) -> None:
         title_node = MagicMock(spec=TitleTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = [title_node]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [title_node]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.scroll_to_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.render_title_node.assert_called_once_with(title_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(title_node)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(title_node)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_once_with(title_node)  # ty: ignore[missing-attribute]
         assert not fake_trigger.scheduled
 
 
@@ -435,13 +435,13 @@ class TestTitleRenderDebounce:
     def _setup_title_nodes(nav: MainScreenNavigation, count: int) -> list[MagicMock]:
         """Set up title nodes with selection tracked through select_node calls."""
         nodes = [MagicMock(spec=TitleTreeViewNode) for _ in range(count)]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         def track_selection(node: MagicMock) -> None:
-            nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[unresolved-attribute]
+            nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[missing-attribute]
 
-        nav._tree_view_screen.select_node.side_effect = track_selection  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.side_effect = track_selection  # ty: ignore[missing-attribute]
         return nodes
 
     def test_rapid_press_defers_render(
@@ -453,7 +453,7 @@ class TestTitleRenderDebounce:
         fake_time[0] = 0.05
         nav._tree_nav_move(1)  # Rapid: render deferred.
 
-        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[missing-attribute]
         assert fake_trigger.scheduled
         assert nav._pending_view_node is nodes[1]
 
@@ -479,7 +479,7 @@ class TestTitleRenderDebounce:
         nav._tree_nav_move(1)
         fake_trigger.fire()
 
-        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[missing-attribute]
         assert nav._pending_view_node is None
 
     def test_trigger_fire_skips_stale_selection(
@@ -491,10 +491,10 @@ class TestTitleRenderDebounce:
         fake_time[0] = 0.05
         nav._tree_nav_move(1)
         # Selection moved elsewhere (e.g. mouse click) before the trigger fired.
-        nav._tree_view_screen.get_selected_node.return_value = MagicMock()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = MagicMock()  # ty: ignore[missing-attribute]
         fake_trigger.fire()
 
-        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[missing-attribute]
         assert nav._pending_view_node is None
 
     def test_right_shows_the_title_still_waiting_before_the_keys_go_to_its_view(
@@ -508,12 +508,12 @@ class TestTitleRenderDebounce:
         assert nav._pending_view_node is nodes[1]
 
         with patch.object(nav, "enter_bottom_focus") as enter:
-            nav._tree_view_manager.render_title_node.side_effect = (  # ty: ignore[unresolved-attribute]
+            nav._tree_view_manager.render_title_node.side_effect = (  # ty: ignore[missing-attribute]
                 lambda *_a, **_k: enter.assert_not_called()
             )
             assert nav._handle_tree_key(KEY_RIGHT) is True
 
-        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[missing-attribute]
         assert nav._pending_view_node is None
         assert not fake_trigger.scheduled
         enter.assert_called_once_with()
@@ -532,21 +532,21 @@ class TestTitleRenderDebounce:
         assert not fake_trigger.scheduled
         # The bottom view was behind (a debounced render was pending), so Enter
         # renders the pending node synchronously rather than leaving it stale.
-        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1], scroll_to=True)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1], scroll_to=True)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestTreeNavActivate:
     def test_no_selection_does_nothing(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_title_node_enters_panel_focus_at_portal(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=TitleTreeViewNode)
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
         nav._bottom_title_view_screen.is_visible = True
 
         with patch.object(nav_module, "Clock") as mock_clock:
@@ -556,10 +556,10 @@ class TestTreeNavActivate:
 
         # The bottom title view already shows this title (no pending render), so Enter
         # does not re-render it — that avoided the jarring top-view re-roll flash.
-        nav._tree_view_manager.render_title_node.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
         # Enter lands on the portal (read action) rather than launching the reader.
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav.is_in_bottom_focus
 
     def test_index_node_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
@@ -572,7 +572,7 @@ class TestTreeNavActivate:
         nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
         nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[missing-attribute]
         nav._main_index_screen.is_visible = True
 
         with patch.object(nav_module, "Clock"):
@@ -593,7 +593,7 @@ class TestTreeNavActivate:
         nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
         nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[missing-attribute]
         nav._history_screen.is_visible = True
 
         with patch.object(nav_module, "Clock"):
@@ -615,13 +615,13 @@ class TestTreeNavActivate:
         nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
         nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[missing-attribute]
         nav._history_screen.is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_with(history_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(history_node)  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_called_once()
 
     def test_statistics_node_enters_bottom_focus_when_visible(
@@ -636,7 +636,7 @@ class TestTreeNavActivate:
         nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
         nav._tree_view_manager.statistics_node = statistics_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[missing-attribute]
         for screen in (
             nav._main_index_screen,
             nav._speech_index_screen,
@@ -650,8 +650,8 @@ class TestTreeNavActivate:
             nav._tree_nav_activate()
 
         assert nav.is_in_bottom_focus
-        nav._statistics_screen.enter_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._statistics_screen.enter_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_statistics_node_activates_then_enters_bottom_focus_when_hidden(
         self, nav: MainScreenNavigation
@@ -665,13 +665,13 @@ class TestTreeNavActivate:
         nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
         nav._tree_view_manager.statistics_node = statistics_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[missing-attribute]
         nav._statistics_screen.is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_once_with(statistics_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_once_with(statistics_node)  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_called_once()
         assert not nav.is_in_bottom_focus
 
@@ -680,7 +680,7 @@ class TestTreeNavActivate:
         selected = MagicMock(spec=ButtonTreeViewNode)
         selected.is_open = False
         selected.nodes = [MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
         nav._main_index_screen.treeview_index_node = MagicMock()
         nav._speech_index_screen.treeview_index_node = MagicMock()
         nav._names_index_screen.treeview_index_node = MagicMock()
@@ -694,28 +694,28 @@ class TestTreeNavActivate:
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_not_called()
 
 
 class TestTreeNavCollapseToParent:
     def test_no_selection(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_open_button_node_collapses(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=ButtonTreeViewNode)
         selected.is_open = True
         selected.nodes = [MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[missing-attribute]
 
     def test_child_node_collapses_a_shown_parent_where_it_is(
         self, nav: MainScreenNavigation
@@ -725,14 +725,14 @@ class TestTreeNavCollapseToParent:
         parent.is_open = True
         selected = MagicMock()
         selected.parent_node = parent
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.is_node_shown.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.is_node_shown.return_value = True  # ty: ignore[missing-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.scroll_to_node.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.scroll_to_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_child_node_collapses_a_parent_off_the_screen_and_scrolls_to_it(
         self, nav: MainScreenNavigation
@@ -741,13 +741,13 @@ class TestTreeNavCollapseToParent:
         parent.is_open = True
         selected = MagicMock()
         selected.parent_node = parent
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.is_node_shown.return_value = False  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.is_node_shown.return_value = False  # ty: ignore[missing-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[missing-attribute]
 
     def test_child_with_closed_parent_selects_without_activating(
         self, nav: MainScreenNavigation
@@ -756,12 +756,12 @@ class TestTreeNavCollapseToParent:
         parent.is_open = False
         selected = MagicMock()
         selected.parent_node = parent
-        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_screen.select_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(parent)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.scroll_to_node.assert_called_with(parent)  # ty: ignore[missing-attribute]
 
 
 class TestFocusSaveRestore:
@@ -836,7 +836,7 @@ class TestEnterBottomFocus:
 
         nav.enter_bottom_focus()
 
-        nav._main_index_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.enter_nav_focus.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_title_view_gets_enter_nav_focus(self, nav: MainScreenNavigation) -> None:
         nav._fun_image_view_screen.is_visible = False
@@ -851,7 +851,7 @@ class TestEnterBottomFocus:
 
         nav.enter_bottom_focus()
 
-        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[missing-attribute]
             nav.exit_bottom_focus
         )
 
@@ -868,7 +868,7 @@ class TestEnterBottomFocus:
 
         nav.enter_bottom_focus()
 
-        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestClaimBottomFocusForSearch:
@@ -881,9 +881,9 @@ class TestClaimBottomFocusForSearch:
         nav._search_screen.on_request_nav_focus()
 
         assert nav.is_in_bottom_focus
-        nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[unresolved-attribute]
+        nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[missing-attribute]
         # Adopting, not entering: the search screen's own focus state is left alone.
-        nav._search_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.enter_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
         assert "Entered bottom focus region at search screen's request." in loguru_sink
 
     def test_hidden_search_screen_claims_nothing(self, nav: MainScreenNavigation) -> None:
@@ -892,7 +892,7 @@ class TestClaimBottomFocusForSearch:
         nav._search_screen.on_request_nav_focus()
 
         assert not nav.is_in_bottom_focus
-        nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_a_key_leaving_a_pressed_search_box_goes_to_the_search_screen(
         self, nav: MainScreenNavigation
@@ -908,26 +908,26 @@ class TestClaimBottomFocusForSearch:
         ):
             screen.is_visible = False
         nav._search_screen.is_visible = True
-        nav._search_screen.has_list_open_without_the_keys.return_value = False  # ty: ignore[unresolved-attribute]
+        nav._search_screen.has_list_open_without_the_keys.return_value = False  # ty: ignore[missing-attribute]
         assert not nav.is_in_bottom_focus
 
         nav.take_keys_to_a_pressed_search_box()
         nav.handle_key(KEY_DOWN)
 
         assert nav.is_in_bottom_focus
-        nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[unresolved-attribute]
-        nav._search_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
+        nav._search_screen.adopt_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[missing-attribute]
+        nav._search_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[missing-attribute]
 
     def test_the_keys_already_on_the_search_screen_are_not_claimed_again(
         self, nav: MainScreenNavigation
     ) -> None:
         nav._search_screen.is_visible = True
         nav._search_screen.on_request_nav_focus()
-        nav._search_screen.adopt_nav_focus.reset_mock()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.adopt_nav_focus.reset_mock()  # ty: ignore[missing-attribute]
 
         nav.take_keys_to_a_pressed_search_box()
 
-        nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.adopt_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestExitBottomFocus:
@@ -942,7 +942,7 @@ class TestExitBottomFocus:
 
         nav.exit_bottom_focus()
 
-        nav._bottom_title_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[missing-attribute]
 
 
 class TestGetActiveNavScreen:
@@ -980,7 +980,7 @@ class TestEnterBottomFocusIfIndexVisible:
         nav.enter_bottom_focus_if_index_visible()
 
         assert nav.is_in_bottom_focus
-        nav._search_screen.enter_nav_focus_at_last_result.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.enter_nav_focus_at_last_result.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_index_screen_visible(self, nav: MainScreenNavigation) -> None:
         nav._search_screen.is_visible = False
@@ -1034,7 +1034,7 @@ class TestEnterBottomFocusIfIndexVisible:
         nav.enter_bottom_focus_if_index_visible(keyboard_initiated=False)
 
         assert not nav.is_in_bottom_focus
-        nav._search_screen.enter_nav_focus_at_last_result.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._search_screen.enter_nav_focus_at_last_result.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_mouse_initiated_does_not_restore_index_focus(self, nav: MainScreenNavigation) -> None:
         """A mouse-driven Go Back reveals an index screen without a keyboard focus ring."""
@@ -1121,7 +1121,7 @@ class TestTitleViewFocusHandoff:
 
         # The old nav screen's ring is cleared; focus lands on the portal.
         prev.exit_nav_focus.assert_called_once_with()
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav.is_in_bottom_focus
 
     def test_no_handoff_when_title_view_not_visible(self, nav: MainScreenNavigation) -> None:
@@ -1134,7 +1134,7 @@ class TestTitleViewFocusHandoff:
         nav._handoff_focus_to_title_view(prev)
 
         prev.exit_nav_focus.assert_not_called()
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_no_handoff_while_fun_view_co_visible(self, nav: MainScreenNavigation) -> None:
         # The fun view keeps key precedence while co-visible with the title view.
@@ -1145,7 +1145,7 @@ class TestTitleViewFocusHandoff:
 
         nav._handoff_focus_to_title_view(None)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_no_double_handoff_when_already_nav_active(self, nav: MainScreenNavigation) -> None:
         # A burst of keys can schedule several hand-offs; only the first takes effect.
@@ -1156,7 +1156,7 @@ class TestTitleViewFocusHandoff:
 
         nav._handoff_focus_to_title_view(MagicMock())
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_no_handoff_outside_bottom_focus(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(1)  # TREE
@@ -1166,7 +1166,7 @@ class TestTitleViewFocusHandoff:
 
         nav._handoff_focus_to_title_view(MagicMock())
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_fun_view_path_hands_off_without_clearing_a_nav_screen(
         self, nav: MainScreenNavigation
@@ -1179,11 +1179,11 @@ class TestTitleViewFocusHandoff:
 
         nav._handoff_focus_to_title_view(None)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_nav_screen_key_schedules_handoff(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = True
-        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
@@ -1201,7 +1201,7 @@ class TestTitleViewFocusHandoff:
             self._in_bottom_focus(nav)
             mock_clock.schedule_once.call_args[0][0](0)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_popup_goto_hands_off_to_portal_and_clears_the_index_ring(
         self, nav: MainScreenNavigation
@@ -1220,7 +1220,7 @@ class TestTitleViewFocusHandoff:
             mock_clock.schedule_once.call_args[0][0](0)
 
         index_screen.exit_nav_focus.assert_called_once_with()
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
 
 
 class TestWikiGotoTitleFocus:
@@ -1240,7 +1240,7 @@ class TestWikiGotoTitleFocus:
             # The portal focus is deferred a frame so the title render settles first.
             mock_clock.schedule_once.call_args[0][0](0)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_no_op_outside_bottom_focus(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(1)  # TREE (mouse/tree context)
@@ -1249,7 +1249,7 @@ class TestWikiGotoTitleFocus:
             nav.focus_title_view_portal_after_wiki_goto()
 
         mock_clock.schedule_once.assert_not_called()
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestDeliberateGotoTitleFocus:
@@ -1269,7 +1269,7 @@ class TestDeliberateGotoTitleFocus:
             # The portal focus is deferred a frame so the title render settles first.
             mock_clock.schedule_once.call_args[0][0](0)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_no_op_when_title_view_not_visible(self, nav: MainScreenNavigation) -> None:
         nav._bottom_title_view_screen.is_visible = False
@@ -1278,7 +1278,7 @@ class TestDeliberateGotoTitleFocus:
             nav.focus_title_portal_after_goto(keyboard_initiated=True)
             mock_clock.schedule_once.call_args[0][0](0)
 
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_mouse_goto_never_focuses_the_portal(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(1)  # TREE (mouse context)
@@ -1288,7 +1288,7 @@ class TestDeliberateGotoTitleFocus:
             nav.focus_title_portal_after_goto(keyboard_initiated=False)
 
         mock_clock.schedule_once.assert_not_called()
-        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_mouse_goto_drops_bottom_focus(self, nav: MainScreenNavigation) -> None:
         """A click on the fun view's arrow lands inside the bottom panel.
@@ -1302,7 +1302,7 @@ class TestDeliberateGotoTitleFocus:
         nav.focus_title_portal_after_goto(keyboard_initiated=False)
 
         assert nav.is_in_bottom_focus is False
-        nav._fun_image_view_screen.exit_nav_focus.assert_called()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.exit_nav_focus.assert_called()  # ty: ignore[missing-attribute]
 
     def test_mouse_goto_drops_the_top_goto_ring(self, nav: MainScreenNavigation) -> None:
         nav._top_goto_focused = True
@@ -1310,7 +1310,7 @@ class TestDeliberateGotoTitleFocus:
         nav.focus_title_portal_after_goto(keyboard_initiated=False)
 
         assert nav._top_goto_focused is False
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
 
 
 class TestTopGotoFocus:
@@ -1318,36 +1318,36 @@ class TestTopGotoFocus:
 
     def test_up_on_first_node_with_title_enters_top_goto(self, nav: MainScreenNavigation) -> None:
         first, second = MagicMock(), MagicMock()
-        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[missing-attribute]
         nav._tree_view_screen.is_top_goto_active = True  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_UP) is True
 
         assert nav._top_goto_focused is True
-        nav._tree_view_screen.enter_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.enter_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_up_on_first_node_without_title_stays_in_tree(self, nav: MainScreenNavigation) -> None:
         first, second = MagicMock(), MagicMock()
-        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[missing-attribute]
         nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_UP) is True
 
         assert nav._top_goto_focused is False
-        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[missing-attribute]
         # The normal (clamped) move keeps the selection on the first node.
-        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[missing-attribute]
 
     def test_up_on_first_node_without_title_is_logged(
         self, nav: MainScreenNavigation, loguru_sink: list[str]
     ) -> None:
         """A driver waiting on Up's outcome needs a line whether or not the arrow is live."""
         first = MagicMock()
-        nav._tree_view_screen.get_visible_nodes.return_value = [first]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [first]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[missing-attribute]
         nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
 
         nav._handle_tree_key(KEY_UP)
@@ -1356,23 +1356,23 @@ class TestTopGotoFocus:
 
     def test_up_on_non_first_node_moves_tree(self, nav: MainScreenNavigation) -> None:
         first, second = MagicMock(), MagicMock()
-        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.get_selected_node.return_value = second  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = second  # ty: ignore[missing-attribute]
         nav._tree_view_screen.is_top_goto_active = True  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_UP) is True
 
         assert nav._top_goto_focused is False
-        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[missing-attribute]
 
     def test_enter_on_arrow_activates_and_exits(self, nav: MainScreenNavigation) -> None:
         nav._top_goto_focused = True
 
         assert nav._handle_tree_key(KEY_ENTER) is True
 
-        nav._tree_view_screen.activate_top_goto.assert_called_once()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_called_once()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is False
 
     def test_an_arrow_left_with_no_title_gives_the_keys_back_to_the_tree(
@@ -1385,8 +1385,8 @@ class TestTopGotoFocus:
         with patch.object(nav, "_tree_nav_activate") as activate:
             assert nav._handle_tree_key(KEY_ENTER) is True
 
-        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is False
         activate.assert_called_once_with()
 
@@ -1395,8 +1395,8 @@ class TestTopGotoFocus:
 
         assert nav._handle_tree_key(KEY_DOWN) is True
 
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is False
 
     def test_escape_on_arrow_returns_to_tree_not_menu(self, nav: MainScreenNavigation) -> None:
@@ -1404,8 +1404,8 @@ class TestTopGotoFocus:
 
         assert nav._handle_tree_key(KEY_ESCAPE) is True
 
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
-        nav._enter_menu_mode.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
+        nav._enter_menu_mode.assert_not_called()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is False
 
     def test_sideways_keys_on_arrow_are_swallowed(self, nav: MainScreenNavigation) -> None:
@@ -1414,8 +1414,8 @@ class TestTopGotoFocus:
         for key in (KEY_UP, KEY_LEFT, KEY_RIGHT):
             assert nav._handle_tree_key(key) is True
 
-        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.exit_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_not_called()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is True
 
     def test_other_keys_on_arrow_are_unhandled(self, nav: MainScreenNavigation) -> None:
@@ -1423,8 +1423,8 @@ class TestTopGotoFocus:
 
         assert nav._handle_tree_key(KEY_TAB) is False
 
-        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
-        nav._tree_view_screen.exit_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_not_called()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is True
 
     def test_save_focus_before_reader_clears_arrow(self, nav: MainScreenNavigation) -> None:
@@ -1432,7 +1432,7 @@ class TestTopGotoFocus:
 
         nav.save_focus_before_reader()
 
-        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav._top_goto_focused is False
 
 
@@ -1457,7 +1457,7 @@ class TestFunViewBottomFocus:
         nav.enter_bottom_focus()
 
         assert nav.is_in_bottom_focus
-        nav._fun_image_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[missing-attribute]
             nav.exit_bottom_focus
         )
 
@@ -1468,25 +1468,25 @@ class TestFunViewBottomFocus:
 
         nav.enter_bottom_focus()
 
-        nav._fun_image_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
-        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[missing-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_bottom_key_delegates_to_fun_handle_key(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
         self._hide_nav_screens(nav)
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
-        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_UP) is True
-        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_UP)  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_UP)  # ty: ignore[missing-attribute]
 
     def test_exit_bottom_focus_exits_fun_nav(self, nav: MainScreenNavigation) -> None:
         self._hide_nav_screens(nav)
 
         nav.exit_bottom_focus()
 
-        nav._fun_image_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_escape_reaches_the_fun_view_first(self, nav: MainScreenNavigation) -> None:
         """Regression: Escape used to exit the region before the fun view saw it.
@@ -1498,10 +1498,10 @@ class TestFunViewBottomFocus:
         self._hide_nav_screens(nav)
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
-        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_ESCAPE) is True
-        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[missing-attribute]
         assert nav.is_in_bottom_focus
 
     def test_escape_the_fun_view_declines_exits_the_region(self, nav: MainScreenNavigation) -> None:
@@ -1510,7 +1510,7 @@ class TestFunViewBottomFocus:
         self._hide_nav_screens(nav)
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
-        nav._fun_image_view_screen.handle_key.return_value = False  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.return_value = False  # ty: ignore[missing-attribute]
 
         assert nav._handle_bottom_key(KEY_ESCAPE) is True
         assert not nav.is_in_bottom_focus

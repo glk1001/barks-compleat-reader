@@ -10,7 +10,7 @@ from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,

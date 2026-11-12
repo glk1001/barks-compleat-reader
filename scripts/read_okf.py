@@ -106,12 +106,12 @@ def _pin_window_to_primary_monitor() -> int:
     from kivy.config import Config
 
     # Without position=custom, Kivy's SDL2 backend ignores left/top entirely.
-    Config.set("graphics", "position", "custom")  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "resizable", "1")  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "left", win_left)  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "position", "custom")  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "resizable", "1")  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "left", win_left)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", win_top)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", win_width)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", win_height)  # ty: ignore[missing-union-attribute]
     # With the OS title bar replaced (Window.set_custom_titlebar), Kivy's SDL hit-test
     # turns any press within `custom_titlebar_border` px of ANY window edge into a
     # window-resize drag while `resizable` is on (which it must be: Mutter clamps
@@ -119,7 +119,7 @@ def _pin_window_to_primary_monitor() -> int:
     # so the outer pixels of every scrollbar flush with the right edge were dead.
     # The callback reads this key live on each press; 0 disables the band. Edge-drag
     # resizing is given up deliberately (title-bar drag and programmatic resizes stay).
-    Config.set("graphics", "custom_titlebar_border", "0")  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "custom_titlebar_border", "0")  # ty: ignore[missing-union-attribute]
     logger.info(
         f"OKF window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
     )

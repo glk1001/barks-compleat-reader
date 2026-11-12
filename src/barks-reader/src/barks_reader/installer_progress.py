@@ -152,12 +152,12 @@ def _run_window_loop[T](
     # Before the window exists, so that it opens where and as large as it will stay.
     from kivy import Config
 
-    Config.set("graphics", "left", x)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "top", y)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "width", window_size[0])  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "height", window_size[1])  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", window_size[0])  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", window_size[1])  # ty: ignore[missing-union-attribute]
     if borderless:
-        Config.set("graphics", "borderless", "1")  # ty:ignore[unresolved-attribute]
+        Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
 
     from kivy.base import runTouchApp, stopTouchApp
     from kivy.clock import Clock

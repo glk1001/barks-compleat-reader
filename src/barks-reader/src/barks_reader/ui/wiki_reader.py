@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import StringProperty  # ty: ignore[import-not-found]
 from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import BODY_MAX_WIDTH, CONTENT_PADDING, OKFViewer

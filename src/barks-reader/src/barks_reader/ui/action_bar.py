@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ColorProperty,
     ObjectProperty,

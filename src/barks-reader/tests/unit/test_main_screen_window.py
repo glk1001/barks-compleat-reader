@@ -138,7 +138,7 @@ class TestOnFinishedGotoWindowedMode:
 
             assert hf.helper._fullscreen_button.text == "Fullscreen"
             assert hf.helper._fullscreen_button.icon == "fullscreen.png"
-            hf.helper._update_fonts.assert_called_with(800)  # ty: ignore[unresolved-attribute]
+            hf.helper._update_fonts.assert_called_with(800)  # ty: ignore[missing-attribute]
             mock_set_vis.assert_called_once_with(
                 hf.helper._action_bar, window_module.ActionBarVisibility.VISIBLE
             )
@@ -161,7 +161,7 @@ class TestOnFinishedGotoFullscreenMode:
 
             assert hf.helper._fullscreen_button.text == "Windowed"
             assert hf.helper._fullscreen_button.icon == "exit_fullscreen.png"
-            hf.helper._update_fonts.assert_called_with(1080)  # ty: ignore[unresolved-attribute]
+            hf.helper._update_fonts.assert_called_with(1080)  # ty: ignore[missing-attribute]
 
     def test_adjusts_host_height_when_too_small(self, hf: HelperFixture) -> None:
         with patch.object(window_module, "Window") as mock_window:
@@ -190,7 +190,7 @@ class TestOnFinishedGotoFullscreenMode:
 
             box_height = round(1440 * COMIC_PAGE_ASPECT_RATIO) + window_module.ACTION_BAR_SIZE_Y
             assert box_height < 2560
-            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[unresolved-attribute]
+            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[missing-attribute]
 
 
 class TestRefitFullscreen:
@@ -207,14 +207,14 @@ class TestRefitFullscreen:
             box_height = round(1280 * 0.75) + window_module.ACTION_BAR_SIZE_Y
             assert box_height < 1024
             assert hf.helper._host.size == (1280, box_height)
-            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[unresolved-attribute]
+            hf.helper._update_fonts.assert_called_once_with(box_height)  # ty: ignore[missing-attribute]
 
     def test_a_windowed_screen_is_left_alone(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = False
 
         hf.helper.refit_fullscreen()
 
-        hf.helper._update_fonts.assert_not_called()  # ty: ignore[unresolved-attribute]
+        hf.helper._update_fonts.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestRestoreWindowedSizeHints:

@@ -43,7 +43,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
     from kivy.uix.widget import Widget
 
     w = Widget(size_hint_y=None, height=1)
-    with w.canvas.before:  # ty:ignore[unresolved-attribute]
+    with w.canvas.before:  # ty: ignore[missing-union-attribute]
         Color(0.5, 0.5, 0.5, 1)
         w.rect = Rectangle(size=w.size, pos=w.pos)
     w.bind(size=lambda inst, val: setattr(inst.rect, "size", val))

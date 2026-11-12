@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, override
 from kivy.app import App
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,

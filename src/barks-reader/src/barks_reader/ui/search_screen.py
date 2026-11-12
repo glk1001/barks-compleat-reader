@@ -17,7 +17,7 @@ from barks_fantagraphics.tag_query import has_tag_syntax
 from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,

@@ -248,11 +248,11 @@ def _show_success_message(
     # Set the window pos and size now to avoid moving window flicker. No OS frame: the
     # popup's own title bar is the window's top.
     x, y = get_centred_position_on_primary_monitor(*_POPUP_SIZE)
-    Config.set("graphics", "left", x)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "top", y)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "width", _POPUP_SIZE[0])  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "height", _POPUP_SIZE[1])  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "borderless", "1")  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", _POPUP_SIZE[0])  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", _POPUP_SIZE[1])  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
 
     content = _success_content(success_text(installed))
 

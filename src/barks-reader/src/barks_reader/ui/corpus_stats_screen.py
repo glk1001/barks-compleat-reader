@@ -32,7 +32,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     ListProperty,
     StringProperty,
 )

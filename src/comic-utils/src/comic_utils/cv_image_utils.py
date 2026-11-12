@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import cv2 as cv  # ty: ignore[unresolved-import]
+import cv2 as cv  # ty: ignore[import-not-found]
 
 # A valid Barks page is BW with a (near-)white background and black ink.  An all-
 # black PNG (alpha-extraction gone wrong on an upstream restoration step) has

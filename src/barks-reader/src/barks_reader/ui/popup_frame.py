@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
-from kivy.properties import NumericProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import NumericProperty, StringProperty  # ty: ignore[import-not-found]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -305,7 +305,7 @@ class PopupFrame(ModalView):
             size_hint_y=None, height=TITLE_BAR_HEIGHT, padding=[dp(12), dp(8)], spacing=dp(8)
         )
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
-        with bar.canvas.before:  # ty: ignore[unresolved-attribute]
+        with bar.canvas.before:  # ty: ignore[missing-union-attribute]
             Color(*TITLE_BAR_BOTTOM)
             bottom = Rectangle()
             Color(*TITLE_BAR_TOP)
@@ -356,7 +356,7 @@ class PopupFrame(ModalView):
     def _card(self, body: Widget, art_file: str) -> FloatLayout:
         card = FloatLayout()
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
-        with card.canvas.before:  # ty: ignore[unresolved-attribute]
+        with card.canvas.before:  # ty: ignore[missing-union-attribute]
             Color(*CARD_BACKING)
             backing = Rectangle()
         card.bind(pos=lambda _w, pos: setattr(backing, "pos", pos))
@@ -367,7 +367,7 @@ class PopupFrame(ModalView):
             card.add_widget(Image(source=art_file, fit_mode="cover", mipmap=True, pos_hint=whole))
         scrim = Widget(pos_hint=whole)
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
-        with scrim.canvas.before:  # ty: ignore[unresolved-attribute]
+        with scrim.canvas.before:  # ty: ignore[missing-union-attribute]
             Color(*CARD_SCRIM)
             scrim_rect = Rectangle()
         scrim.bind(pos=lambda _w, pos: setattr(scrim_rect, "pos", pos))

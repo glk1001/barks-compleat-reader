@@ -283,7 +283,7 @@ class _LiveGallery:
         )
         self._label.bind(texture_size=self._fit_label)
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
-        with self._label.canvas.before:  # ty: ignore[unresolved-attribute]
+        with self._label.canvas.before:  # ty: ignore[missing-union-attribute]
             Color(0, 0, 0, 0.8)
             self._label_bg = Rectangle()
         self._label.bind(pos=self._fit_label_bg, size=self._fit_label_bg)

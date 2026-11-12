@@ -6,7 +6,7 @@ from barks_fantagraphics.speech_markup import escape_markup
 from kivy.app import App
 from kivy.factory import Factory
 from kivy.metrics import dp, sp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ColorProperty,
     NumericProperty,

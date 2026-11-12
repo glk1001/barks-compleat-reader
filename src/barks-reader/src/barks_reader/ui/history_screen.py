@@ -26,7 +26,7 @@ from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ObjectProperty,
 )
@@ -148,7 +148,7 @@ class _HistoryRow(ButtonBehavior, BoxLayout):
     def __init__(self) -> None:
         super().__init__(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
-        with self.canvas.before:  # ty: ignore[unresolved-attribute]
+        with self.canvas.before:  # ty: ignore[missing-union-attribute]
             self._stripe_color = Color(*theme().row_stripe_even)
             self._stripe_rect = Rectangle()
         self.bind(pos=self._update_stripe, size=self._update_stripe)
@@ -208,7 +208,7 @@ def _add_header_hairline(label: Label) -> None:
     added to the grid) and sits just below the centred heading text.
     """
     rgb = tuple(theme().search_heading[:3])
-    with label.canvas.after:  # ty: ignore[unresolved-attribute]
+    with label.canvas.after:  # ty: ignore[missing-union-attribute]
         color = Color(*rgb, _HEADER_HAIRLINE_ALPHA)
         rule = Rectangle()
 

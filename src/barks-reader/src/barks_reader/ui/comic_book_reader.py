@@ -21,7 +21,7 @@ from kivy.core.image import Texture
 from kivy.core.window import Window, WindowBase
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     StringProperty,

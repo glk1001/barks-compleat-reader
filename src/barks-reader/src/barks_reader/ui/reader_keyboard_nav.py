@@ -67,7 +67,7 @@ def _draw_highlight(
     line_width: float,
 ) -> None:
     """Draw (or redraw) the focus rectangle at the widget's current geometry."""
-    canvas_after = widget.canvas.after  # ty: ignore[unresolved-attribute]
+    canvas_after = widget.canvas.after  # ty: ignore[missing-union-attribute]
     canvas_after.remove_group(group)
     with canvas_after:
         Color(*color, group=group)
@@ -136,7 +136,7 @@ def _unbind_highlight(widget: Widget) -> None:
 def clear_focus_highlight(widget: Widget, group: str) -> None:
     """Remove the focus ring `group` from `widget`, and stop it following the widget."""
     _unbind_highlight(widget)
-    widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
+    widget.canvas.after.remove_group(group)  # ty: ignore[missing-union-attribute]
 
 
 def update_focus_in_list(
@@ -395,15 +395,15 @@ class DropdownNavMixin:
         logger.debug(DROPDOWN_DISMISSED_LOG)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
-            if self._menu_mode:  # ty: ignore[unresolved-attribute]
-                self._exit_menu_mode()  # ty: ignore[unresolved-attribute]
+            if self._menu_mode:  # ty: ignore[missing-attribute]
+                self._exit_menu_mode()  # ty: ignore[missing-attribute]
 
     # --- Key handling ---
 
     def _handle_menu_key(self, key: int) -> bool:
         if self._dropdown_nav_mode:
             return self._handle_dropdown_key(key)
-        return super()._handle_menu_key(key)  # ty: ignore[unresolved-attribute]
+        return super()._handle_menu_key(key)  # ty: ignore[missing-attribute]
 
     def _handle_dropdown_key(self, key: int) -> bool:
         if is_escape_key(key):  # before the empty check: an empty list must still close

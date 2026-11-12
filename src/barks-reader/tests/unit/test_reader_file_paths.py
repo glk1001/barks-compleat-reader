@@ -180,7 +180,7 @@ class TestReaderFilePaths:
             FileTypes.BLACK_AND_WHITE, title, use_only_edited_if_possible=True
         )
         assert len(files_edited) == 1
-        assert files_edited[0].parent.name == EDITED_SUBDIR  # ty:ignore[unresolved-attribute]
+        assert files_edited[0].parent.name == EDITED_SUBDIR  # ty:ignore[missing-attribute]
 
     def test_get_file_type_titles(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path

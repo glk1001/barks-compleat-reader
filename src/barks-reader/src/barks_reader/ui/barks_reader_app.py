@@ -209,7 +209,7 @@ class BarksReaderApp(App):
         return self._main_screen.display_settings(win, settings)
 
     @override
-    def get_application_config(self, _default_path: str = "") -> LiteralString | str:  # ty:ignore[invalid-method-override]
+    def get_application_config(self, _default_path: str = "") -> LiteralString | str:  # ty: ignore[lost-keyword-for-regular-parameter]
         return str(self._config_info.app_config_path)
 
     @override
@@ -241,7 +241,7 @@ class BarksReaderApp(App):
         section: str,
         key: str,
         value: Any,
-    ) -> None:  # ty:ignore[invalid-method-override]
+    ) -> None:  # ty: ignore[lost-keyword-for-regular-parameter]
         logger.info(log_markers.CONFIG_CHANGE.format(section=section, key=key, value=value))
         if self.reader_settings.on_changed_setting(section, key, value) and (
             section == BARKS_READER_SECTION
@@ -513,10 +513,10 @@ class BarksReaderApp(App):
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
         # that depend on window size are correctly initialized.
-        config_left = Config.getint("graphics", "left")  # ty:ignore[unresolved-attribute]
+        config_left = Config.getint("graphics", "left")  # ty: ignore[missing-union-attribute]
         Window.left = config_left + 1
         Window.left = config_left
-        config_top = Config.getint("graphics", "top")  # ty:ignore[unresolved-attribute]
+        config_top = Config.getint("graphics", "top")  # ty: ignore[missing-union-attribute]
         Window.top = config_top + 1
         Window.top = config_top
 

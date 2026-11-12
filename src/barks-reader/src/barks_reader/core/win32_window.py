@@ -11,8 +11,8 @@ from __future__ import annotations
 import ctypes
 import os
 import time
-from ctypes import c_long, wintypes
-from typing import Any, ClassVar
+from ctypes import wintypes
+from typing import Any
 
 from loguru import logger
 
@@ -25,12 +25,12 @@ from loguru import logger
 class RECT(ctypes.Structure):
     """A Win32 ``RECT``: left, top, right, bottom."""
 
-    _fields_: ClassVar[list[tuple[str, type[c_long]]]] = [
+    _fields_ = (
         ("left", wintypes.LONG),
         ("top", wintypes.LONG),
         ("right", wintypes.LONG),
         ("bottom", wintypes.LONG),
-    ]
+    )
 
 
 _CLASS_NAME_LENGTH = 256
@@ -43,7 +43,7 @@ def _typed_user32() -> Any:  # noqa: ANN401
     to a C int) and ``GetActiveWindow`` returns it truncated. A fresh load leaves the
     shared ``ctypes.windll.user32`` that Kivy calls as it is.
     """
-    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
 
     user32.GetActiveWindow.argtypes = []
     user32.GetActiveWindow.restype = wintypes.HWND
@@ -61,7 +61,7 @@ def _typed_user32() -> Any:  # noqa: ANN401
 
 def _callback_type(result: Any, *args: Any) -> Any:  # noqa: ANN401
     """Return the type of a function Windows calls back, from its result and argument types."""
-    return ctypes.WINFUNCTYPE(result, *args)  # ty: ignore[unresolved-attribute]
+    return ctypes.WINFUNCTYPE(result, *args)  # ty: ignore[missing-attribute]
 
 
 def find_app_hwnd() -> int:
@@ -145,7 +145,7 @@ class Win32Window:
         """
         self.hwnd = hwnd
 
-        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
 
         self.move_window: Any = user32.MoveWindow
         self.move_window.argtypes = [
@@ -210,7 +210,7 @@ _MAX_FRAME_MESSAGES_LOGGED = 200
 class WINDOWPOS(ctypes.Structure):
     """A Win32 ``WINDOWPOS``: where a window is about to be put."""
 
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("hwnd", wintypes.HWND),
         ("hwndInsertAfter", wintypes.HWND),
         ("x", ctypes.c_int),
@@ -218,7 +218,7 @@ class WINDOWPOS(ctypes.Structure):
         ("cx", ctypes.c_int),
         ("cy", ctypes.c_int),
         ("flags", wintypes.UINT),
-    ]
+    )
 
 
 def put_at_held_rect(window_pos: WINDOWPOS, held: tuple[int, int, int, int]) -> None:
@@ -277,7 +277,7 @@ class CaptionGuard:
                 would not take the new procedure.
 
         """
-        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
+        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
         lresult = wintypes.LPARAM
 
         self._call_window_proc: Any = user32.CallWindowProcW

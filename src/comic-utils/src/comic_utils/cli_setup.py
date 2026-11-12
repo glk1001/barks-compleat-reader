@@ -14,7 +14,7 @@ def init_logging(
     log_level_str: str,
 ) -> None:
     """Configure loguru logging for a CLI entry point."""
-    log_setup.log_level = log_level_str  # ty: ignore[unresolved-attribute]
-    log_setup.log_filename = log_filename  # ty: ignore[unresolved-attribute]
-    log_setup.APP_LOGGING_NAME = app_logging_name  # ty: ignore[unresolved-attribute]
+    log_setup.log_level = log_level_str  # ty: ignore[missing-attribute]
+    log_setup.log_filename = log_filename  # ty: ignore[missing-attribute]
+    log_setup.APP_LOGGING_NAME = app_logging_name  # ty: ignore[missing-attribute]
     LoguruConfig.load(log_config_yaml)

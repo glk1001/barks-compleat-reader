@@ -380,7 +380,7 @@ class TestStoriesSubtree:
     ) -> None:
         """The snapshot above is a literal; check it still tracks the range constants."""
         by_name = {
-            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            spec.destination.series_name: spec  # ty: ignore[missing-attribute]
             for spec in specs[1].children[1].children
         }
 
@@ -404,7 +404,7 @@ class TestStoriesSubtree:
         wrong list (or none at all) only shows up when the node is actually expanded.
         """
         by_name = {
-            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            spec.destination.series_name: spec  # ty: ignore[missing-attribute]
             for spec in specs[1].children[1].children
         }
         series = by_name[series_name]
@@ -426,7 +426,7 @@ class TestStoriesSubtree:
         """The year-range groups partition the whole series — nothing is dropped."""
         series = specs[1].children[1]
         by_name = {
-            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            spec.destination.series_name: spec  # ty: ignore[missing-attribute]
             for spec in series.children
         }
 
@@ -452,7 +452,7 @@ class TestStoriesSubtree:
     def test_simple_series_defer_their_title_rows(self, specs: tuple[NodeSpec, ...]) -> None:
         series = specs[1].children[1]
         by_name = {
-            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            spec.destination.series_name: spec  # ty: ignore[missing-attribute]
             for spec in series.children
         }
 

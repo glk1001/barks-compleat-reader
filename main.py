@@ -110,15 +110,15 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
 
     setup_loguru(cfg_info, min_options.log_level)
 
-    Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[unresolved-attribute]
+    Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[missing-union-attribute]
     # Disable Kivy's right-click/ctrl-click multitouch emulation (applies on
     # all platforms) and stop ProbeSysfs from attaching MTD readers to
     # /dev/input/event* on Linux laptops — those raw touch events duplicate
     # SDL2's mouse events and cause phantom clicks, highlights, and
     # drag-selects. The remove_option call is a no-op on Windows and macOS
     # (the %(name)s / ProbeSysfs default only applies on Linux).
-    Config.set("input", "mouse", "mouse,disable_multitouch")  # ty: ignore[unresolved-attribute]
-    Config.remove_option("input", "%(name)s")  # ty: ignore[unresolved-attribute]
+    Config.set("input", "mouse", "mouse,disable_multitouch")  # ty: ignore[missing-union-attribute]
+    Config.remove_option("input", "%(name)s")  # ty: ignore[missing-union-attribute]
     redirect_kivy_logs()
 
     logger.info(APP_STARTING)
@@ -264,7 +264,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int, aspect_ratio: 
         # ZeroDivisionError: float division by zero
 
         # Don't show anything until the app decides to.
-        Config.set("graphics", "window_state", "hidden")  # ty: ignore[unresolved-attribute]
+        Config.set("graphics", "window_state", "hidden")  # ty: ignore[missing-union-attribute]
 
     # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
     #       initializes the Window with wrong dimensions.
@@ -275,10 +275,10 @@ def set_window_size(win_height: int, win_left: int, win_top: int, aspect_ratio: 
     win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     logger.debug(f"Main win width: {win_width}.")
 
-    Config.set("graphics", "left", win_left)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "top", win_top)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "width", win_width)  # ty:ignore[unresolved-attribute]
-    Config.set("graphics", "height", win_height)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "left", win_left)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", win_top)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", win_width)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", win_height)  # ty: ignore[missing-union-attribute]
     # With the OS title bar replaced (Window.set_custom_titlebar), Kivy's SDL hit-test
     # turns any press within `custom_titlebar_border` px of ANY window edge into a
     # window-resize drag while `resizable` is on (which it must be: Mutter clamps
@@ -286,7 +286,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int, aspect_ratio: 
     # so the outer pixels of every scrollbar flush with the right edge were dead.
     # The callback reads this key live on each press; 0 disables the band. Edge-drag
     # resizing is given up deliberately (title-bar drag and programmatic resizes stay).
-    Config.set("graphics", "custom_titlebar_border", "0")  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "custom_titlebar_border", "0")  # ty: ignore[missing-union-attribute]
 
     logger.info(
         f"Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})."

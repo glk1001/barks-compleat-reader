@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ColorProperty,
     NumericProperty,

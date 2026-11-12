@@ -22,7 +22,7 @@ from barks_reader.core.tap_targets import (
 from barks_reader.ui import tap_targets as ui_tap_targets
 from barks_reader.ui.tap_targets import install_tap_targets_service, screen_changing, snapshot
 from kivy.clock import Clock
-from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
+from kivy.properties import BooleanProperty  # ty: ignore[import-not-found]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label

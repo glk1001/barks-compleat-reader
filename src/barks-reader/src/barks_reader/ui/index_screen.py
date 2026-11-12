@@ -14,7 +14,7 @@ from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock, ClockEvent
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,

@@ -395,7 +395,7 @@ class TestAClearedViewStaysCleared:
     ) -> None:
         held_applicator.apply(_make_snapshot(title_visible=True))
         held_applicator.apply(_make_snapshot(title_visible=False))
-        held_applicator._bottom_title_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[unresolved-attribute]
+        held_applicator._bottom_title_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[missing-attribute]
 
         assert screen_mocks["bottom_title_view"].title_image_texture is None
 
@@ -407,7 +407,7 @@ class TestAClearedViewStaysCleared:
         held_applicator.apply(
             replace(_make_snapshot(), fun_view=FunViewSnapshot(is_visible=True, image_info=no_file))
         )
-        held_applicator._fun_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[unresolved-attribute]
+        held_applicator._fun_view_texture_loader.finish()  # noqa: SLF001  # ty:ignore[missing-attribute]
 
         assert screen_mocks["fun_image_view"].image_texture is None
 

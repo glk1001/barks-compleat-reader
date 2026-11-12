@@ -12,7 +12,7 @@ from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     ColorProperty,
     ListProperty,
     NumericProperty,

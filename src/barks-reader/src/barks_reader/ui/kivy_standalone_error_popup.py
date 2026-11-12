@@ -51,10 +51,10 @@ def show_error_popup(
     # Set the window pos and size now to avoid moving window flicker.
     from kivy import Config
 
-    Config.set("graphics", "left", x)  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "width", size[0])  # ty: ignore[unresolved-attribute]
-    Config.set("graphics", "height", size[1])  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", size[0])  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", size[1])  # ty: ignore[missing-union-attribute]
 
     content = _get_error_content(
         title=title,
@@ -156,7 +156,7 @@ def _get_error_content(  # noqa: C901
                 font_name=ROBOTO_FONT,
             )
 
-            with severity_banner.canvas.before:  # ty: ignore[unresolved-attribute]
+            with severity_banner.canvas.before:  # ty: ignore[missing-union-attribute]
                 Color(*color_scheme["bg"])
                 # Rounded corners on *all* sides for capsule-like look
                 self.severity_bgnd = RoundedRectangle(
@@ -214,7 +214,7 @@ def _get_error_content(  # noqa: C901
                     padding=[10, 0],
                 )
                 heading.bind(width=lambda inst, val: setattr(inst, "text_size", (val - 20, None)))
-                with heading.canvas.before:  # ty:ignore[unresolved-attribute]
+                with heading.canvas.before:  # ty: ignore[missing-union-attribute]
                     Color(1, 1, 1, 0.06)  # a faint band in the dark card
                     heading.bg_rect = Rectangle(size=heading.size, pos=heading.pos)
                 heading.bind(size=lambda inst, val: setattr(inst.bg_rect, "size", val))

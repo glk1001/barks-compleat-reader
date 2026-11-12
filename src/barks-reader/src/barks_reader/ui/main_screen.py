@@ -12,7 +12,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[import-not-found]
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
@@ -572,7 +572,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._clear_menu_on_touch()
             if (
                 self._nav.is_in_bottom_focus
-                and not self._bottom_base_view_screen.collide_point(*touch.pos)  # ty: ignore[unresolved-attribute]
+                and not self._bottom_base_view_screen.collide_point(*touch.pos)  # ty: ignore[missing-attribute]
             ):
                 self._nav.exit_bottom_focus()
         return bool(super().on_touch_down(touch))

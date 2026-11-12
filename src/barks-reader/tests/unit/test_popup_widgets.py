@@ -72,7 +72,7 @@ class TestConfirmPopup:
 
     def test_it_opens_at_once_and_logs(self, loguru_sink: list[str]) -> None:
         frame = _confirm(MagicMock())
-        frame.open.assert_called_once_with()  # ty: ignore[unresolved-attribute]
+        frame.open.assert_called_once_with()  # ty: ignore[missing-attribute]
         assert 'Confirm popup opened: "Quit".' in loguru_sink
 
     def test_a_question_is_small_centred_large_text_over_its_art(self) -> None:
@@ -89,7 +89,7 @@ class TestConfirmPopup:
         on_ok, on_cancel = MagicMock(), MagicMock()
         frame = _confirm(on_ok, on_cancel)
         assert _press(frame, KEY_ENTER) is True
-        frame.dismiss.assert_called_once_with()  # ty: ignore[unresolved-attribute]
+        frame.dismiss.assert_called_once_with()  # ty: ignore[missing-attribute]
         on_ok.assert_called_once_with()
         on_cancel.assert_not_called()
         assert 'Confirm popup "Quit": confirmed.' in loguru_sink
@@ -128,9 +128,9 @@ class TestMessagePopup:
             frame = popup_widgets.open_message_popup(
                 title="T", text="x", ok_text="", on_ok=None, cancel_text="Close", on_cancel=None
             )
-            frame.open.assert_not_called()  # ty: ignore[unresolved-attribute]
+            frame.open.assert_not_called()  # ty: ignore[missing-attribute]
             clock.schedule_once.call_args.args[0](0)
-        frame.open.assert_called_once_with()  # ty: ignore[unresolved-attribute]
+        frame.open.assert_called_once_with()  # ty: ignore[missing-attribute]
         assert 'Message popup opened: "T".' in loguru_sink
 
     def test_a_message_is_medium_and_left_aligned_unless_asked_otherwise(self) -> None:
@@ -146,7 +146,7 @@ class TestMessagePopup:
         frame = _message("", None, on_cancel)
         assert [b.text for b in frame.button_widgets] == ["Close"]
         assert _press(frame, KEY_ENTER) is True
-        frame.dismiss.assert_called_once_with()  # ty: ignore[unresolved-attribute]
+        frame.dismiss.assert_called_once_with()  # ty: ignore[missing-attribute]
         on_cancel.assert_called_once_with()
         assert 'Message popup "Volume Missing": cancelled.' in loguru_sink
 
@@ -154,7 +154,7 @@ class TestMessagePopup:
         on_cancel = MagicMock()
         frame = _message("", None, on_cancel)
         assert _press(frame, KEY_RIGHT) is True  # one button: the ring stays on it
-        frame.dismiss.assert_not_called()  # ty: ignore[unresolved-attribute]
+        frame.dismiss.assert_not_called()  # ty: ignore[missing-attribute]
         _press(frame, KEY_ESCAPE)
         on_cancel.assert_called_once_with()
 

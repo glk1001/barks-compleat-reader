@@ -29,7 +29,7 @@ from barks_reader.ui.settings_fix import (
 )
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
-from kivy.properties import ListProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import ListProperty, StringProperty  # ty: ignore[import-not-found]
 from kivy.uix import filechooser
 from kivy.uix.label import Label
 from kivy.uix.settings import ContentPanel, SettingsPanel

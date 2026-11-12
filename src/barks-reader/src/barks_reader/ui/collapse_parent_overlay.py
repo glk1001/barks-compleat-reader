@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ObjectProperty,
     StringProperty,

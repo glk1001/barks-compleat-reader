@@ -12,7 +12,7 @@ from barks_reader.ui.goto_title_overlay import OVERLAY_BUTTON_WIDTH, GotoTitleOv
 from barks_reader.ui.ui_helpers import TouchExpandedButton
 from kivy.factory import Factory
 from kivy.metrics import dp
-from kivy.properties import ListProperty, NumericProperty  # ty: ignore[unresolved-import]
+from kivy.properties import ListProperty, NumericProperty  # ty: ignore[import-not-found]
 from kivy.uix.label import Label
 
 if TYPE_CHECKING:

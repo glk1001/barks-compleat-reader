@@ -71,8 +71,8 @@ def draw_focus_ring(
     clear_focus_ring(widget, group)
 
     def redraw(*_args: object) -> None:
-        widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
-        with widget.canvas.after:  # ty: ignore[unresolved-attribute]
+        widget.canvas.after.remove_group(group)  # ty: ignore[missing-union-attribute]
+        with widget.canvas.after:  # ty: ignore[missing-union-attribute]
             Color(*color, group=group)
             Line(
                 rectangle=(widget.x, widget.y, widget.width, widget.height),
@@ -92,4 +92,4 @@ def clear_focus_ring(widget: Widget, group: str = FOCUS_RING_GROUP) -> None:
     if redraw is not None:
         widget.unbind(pos=redraw, size=redraw)
         widget._focus_ring_cb = None  # noqa: SLF001
-    widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
+    widget.canvas.after.remove_group(group)  # ty: ignore[missing-union-attribute]

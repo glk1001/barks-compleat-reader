@@ -33,7 +33,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 class TestPageImageSource:
     def test_abstract_base_cannot_be_instantiated(self) -> None:
         with pytest.raises(TypeError):
-            PageImageSource()  # ty: ignore[call-non-callable]
+            PageImageSource()  # ty: ignore[abstract-class-instantiation]
 
 
 class TestRgbPageImageSource:

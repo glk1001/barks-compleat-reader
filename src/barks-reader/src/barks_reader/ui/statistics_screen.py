@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
+from kivy.properties import BooleanProperty  # ty: ignore[import-not-found]
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton

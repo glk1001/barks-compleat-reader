@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ColorProperty,
     ObjectProperty,

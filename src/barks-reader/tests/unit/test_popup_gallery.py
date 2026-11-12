@@ -27,7 +27,7 @@ from barks_reader.ui.popup_gallery import GALLERY, GalleryPopup
 from kivy.clock import Clock
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
-from kivy.properties import ListProperty, NumericProperty  # ty: ignore[unresolved-import]
+from kivy.properties import ListProperty, NumericProperty  # ty: ignore[import-not-found]
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 

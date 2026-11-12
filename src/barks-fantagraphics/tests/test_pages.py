@@ -197,7 +197,7 @@ class TestGetFullSrceFilepath:
 class TestSrceStoryFileResolver:
     def test_abstract_base_cannot_be_instantiated(self) -> None:
         with pytest.raises(TypeError):
-            SrceStoryFileResolver()  # ty: ignore[call-non-callable]
+            SrceStoryFileResolver()  # ty: ignore[abstract-class-instantiation]
 
 
 class TestFinalStoryFileResolver:

@@ -132,8 +132,8 @@ class TestHistoryScreenNav:
 
         assert nav_screen.handle_key(KEY_ENTER) is True
 
-        rows[1].activate.assert_called_once()  # ty: ignore[unresolved-attribute]
-        rows[0].activate.assert_not_called()  # ty: ignore[unresolved-attribute]
+        rows[1].activate.assert_called_once()  # ty: ignore[missing-attribute]
+        rows[0].activate.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_delete_key_deletes_focused_row(self, nav_screen: HistoryScreen) -> None:
         rows = _add_nav_rows(nav_screen, 2)
@@ -141,7 +141,7 @@ class TestHistoryScreenNav:
 
         assert nav_screen.handle_key(KEY_DELETE) is True
 
-        rows[0].delete.assert_called_once()  # ty: ignore[unresolved-attribute]
+        rows[0].delete.assert_called_once()  # ty: ignore[missing-attribute]
 
     def test_up_from_first_row_enters_top_bar_on_active_tab(
         self, nav_screen: HistoryScreen
@@ -776,7 +776,7 @@ class TestRowEdges:
         nav_screen.exit_nav_focus()
 
         assert not nav_screen._nav_active
-        history_screen_module.clear_focus_highlight.assert_not_called()  # ty: ignore[unresolved-attribute]
+        history_screen_module.clear_focus_highlight.assert_not_called()  # ty: ignore[missing-attribute]
 
 
 class TestBarEdges:

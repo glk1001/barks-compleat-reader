@@ -348,7 +348,7 @@ def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:  # 
     # bbox_inches='tight' does not reliably detect ax.table() extents (the axes extent
     # is used instead of the table cells). Measure the actual rendered positions directly.
     fig.canvas.draw()
-    renderer = fig.canvas.get_renderer()  # ty:ignore[unresolved-attribute]
+    renderer = fig.canvas.get_renderer()  # ty:ignore[missing-attribute]
 
     tbl_px = tbl.get_window_extent(renderer=renderer)
     title_px = title_text.get_window_extent(renderer=renderer)

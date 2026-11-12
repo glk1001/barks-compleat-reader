@@ -166,7 +166,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
     call-phase report is made before the fixtures tear down.
     """
     outcome = yield
-    report = outcome.get_result()  # ty: ignore[unresolved-attribute]
+    report = outcome.get_result()  # ty: ignore[missing-attribute]
     if call.when != "call":
         return
     item.stash[CALL_FAILED] = bool(report.failed)

@@ -17,7 +17,7 @@ from barks_reader.ui.collapse_parent_overlay import CollapseParentOverlay
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode
 from kivy.factory import Factory
 from kivy.metrics import dp
-from kivy.properties import ColorProperty  # ty: ignore[unresolved-import]
+from kivy.properties import ColorProperty  # ty: ignore[import-not-found]
 from kivy.uix.label import Label
 
 if TYPE_CHECKING:

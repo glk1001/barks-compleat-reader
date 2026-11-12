@@ -27,7 +27,7 @@ import subprocess
 import sys
 import time
 from ctypes import wintypes
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -96,48 +96,48 @@ VIRTUAL_KEYS: dict[str, tuple[int, bool]] = {
 
 
 class _MOUSEINPUT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("dx", wintypes.LONG),
         ("dy", wintypes.LONG),
         ("mouseData", wintypes.DWORD),
         ("dwFlags", wintypes.DWORD),
         ("time", wintypes.DWORD),
         ("dwExtraInfo", _ULONG_PTR),
-    ]
+    )
 
 
 class _KEYBDINPUT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("wVk", wintypes.WORD),
         ("wScan", wintypes.WORD),
         ("dwFlags", wintypes.DWORD),
         ("time", wintypes.DWORD),
         ("dwExtraInfo", _ULONG_PTR),
-    ]
+    )
 
 
 class _HARDWAREINPUT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("uMsg", wintypes.DWORD),
         ("wParamL", wintypes.WORD),
         ("wParamH", wintypes.WORD),
-    ]
+    )
 
 
 class _INPUTUNION(ctypes.Union):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("mi", _MOUSEINPUT),
         ("ki", _KEYBDINPUT),
         ("hi", _HARDWAREINPUT),
-    ]
+    )
 
 
 class _INPUT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [("type", wintypes.DWORD), ("u", _INPUTUNION)]
+    _fields_ = (("type", wintypes.DWORD), ("u", _INPUTUNION))
 
 
 class _PROCESSENTRY32W(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("dwSize", wintypes.DWORD),
         ("cntUsage", wintypes.DWORD),
         ("th32ProcessID", wintypes.DWORD),
@@ -148,16 +148,16 @@ class _PROCESSENTRY32W(ctypes.Structure):
         ("pcPriClassBase", wintypes.LONG),
         ("dwFlags", wintypes.DWORD),
         ("szExeFile", wintypes.WCHAR * 260),
-    ]
+    )
 
 
 class _RECT(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("left", wintypes.LONG),
         ("top", wintypes.LONG),
         ("right", wintypes.LONG),
         ("bottom", wintypes.LONG),
-    ]
+    )
 
 
 _ENUM_WINDOWS_PROC: Any = (
@@ -218,7 +218,7 @@ def _make_dpi_aware() -> None:
     except AttributeError:
         pass
     try:
-        ctypes.WinDLL("shcore").SetProcessDpiAwareness(2)  # ty: ignore[unresolved-attribute]
+        ctypes.WinDLL("shcore").SetProcessDpiAwareness(2)  # ty: ignore[missing-attribute]
     except (AttributeError, OSError):
         _user32.SetProcessDPIAware()
 
@@ -249,7 +249,7 @@ def _send(*items: _INPUT) -> None:
     array = (_INPUT * len(items))(*items)
     sent = _user32.SendInput(len(items), array, ctypes.sizeof(_INPUT))
     if sent != len(items):
-        error = ctypes.get_last_error()  # ty: ignore[unresolved-attribute]
+        error = ctypes.get_last_error()  # ty: ignore[missing-attribute]
         msg = (
             f"SendInput queued {sent} of {len(items)} events (error {error}):"
             " a locked screen, a minimized remote session, or a window of higher"
@@ -319,7 +319,7 @@ def find_window_of_processes(pids: set[int]) -> int | None:
 
 
 class _PIXELFORMATDESCRIPTOR(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_ = (
         ("nSize", wintypes.WORD),
         ("nVersion", wintypes.WORD),
         ("dwFlags", wintypes.DWORD),
@@ -327,7 +327,7 @@ class _PIXELFORMATDESCRIPTOR(ctypes.Structure):
         ("dwLayerMask", wintypes.DWORD),
         ("dwVisibleMask", wintypes.DWORD),
         ("dwDamageMask", wintypes.DWORD),
-    ]
+    )
 
 
 def _session_id() -> int | None:
@@ -582,7 +582,7 @@ class Win32Backend:
         return False
 
     def doctor_checks(self) -> list[tuple[str, str]]:
-        checks: list[tuple[str, str]] = [("OK", f"Windows {sys.getwindowsversion().major}")]  # ty: ignore[unresolved-attribute]
+        checks: list[tuple[str, str]] = [("OK", f"Windows {sys.getwindowsversion().major}")]  # ty: ignore[missing-attribute]
         desktop = _user32.OpenInputDesktop(0, False, _DESKTOP_SWITCHDESKTOP)  # noqa: FBT003
         unlocked = bool(desktop) and bool(_user32.SwitchDesktop(desktop))
         if desktop:

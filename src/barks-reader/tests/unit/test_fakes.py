@@ -42,7 +42,7 @@ class TestFakeSchedulerAdvance:
 
         def callback() -> None:
             fire_count[0] += 1
-            handle[0].cancel()  # ty: ignore[unresolved-attribute]
+            handle[0].cancel()  # ty: ignore[missing-attribute]
 
         handle.append(scheduler.schedule_interval(callback, 1.0))
         # advance enough seconds that the timer would fire 5 times if not cancelled
@@ -73,7 +73,7 @@ class TestFakeSchedulerAdvance:
 
         def self_cancelling() -> None:
             first_count[0] += 1
-            handle[0].cancel()  # ty: ignore[unresolved-attribute]
+            handle[0].cancel()  # ty: ignore[missing-attribute]
 
         handle.append(scheduler.schedule_interval(self_cancelling, 1.0))
         scheduler.schedule_interval(lambda: second_count.__setitem__(0, second_count[0] + 1), 1.0)

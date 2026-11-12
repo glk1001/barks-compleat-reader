@@ -112,11 +112,11 @@ class WordWithPunctTokenizer(Tokenizer):
             text, apostrophe_offset = self._strip_surrounding_apostrophes(value[start_i:i])
             start_char_pos += apostrophe_offset
 
-            token.text = text  # ty:ignore[unresolved-attribute]
+            token.text = text  # ty:ignore[missing-attribute]
             if positions:
-                token.pos = pos  # ty:ignore[unresolved-attribute]
+                token.pos = pos  # ty:ignore[missing-attribute]
                 pos += 1
             if chars:
-                token.startchar = start_char_pos  # ty:ignore[unresolved-attribute]
-                token.endchar = start_char_pos + len(text)  # ty:ignore[unresolved-attribute]
+                token.startchar = start_char_pos  # ty:ignore[missing-attribute]
+                token.endchar = start_char_pos + len(text)  # ty:ignore[missing-attribute]
             yield token

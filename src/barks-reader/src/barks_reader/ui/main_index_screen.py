@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_titles import Titles
 from comic_utils.timing import Timing
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[import-not-found]
     ColorProperty,
 )
 from kivy.uix.boxlayout import BoxLayout

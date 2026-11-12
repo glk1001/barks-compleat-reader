@@ -645,7 +645,7 @@ class OKFViewer(RelativeLayout):
         # (canvas.before renders under the column's widgets), kept glued to it, so
         # the tree text and the search-field seam keep a legibility floor over a
         # vivid background panel.
-        with left.canvas.before:  # ty: ignore[unresolved-attribute]
+        with left.canvas.before:  # ty: ignore[missing-union-attribute]
             self._sidebar_scrim_color = Color(rgba=SIDEBAR_SCRIM)
             sidebar_scrim = Rectangle(pos=left.pos, size=left.size)
         left.bind(
@@ -672,7 +672,7 @@ class OKFViewer(RelativeLayout):
             on_text_validate=self._on_search_enter,
             focus=self._on_search_focus,
         )
-        with self.search_field.canvas.after:  # ty: ignore[unresolved-attribute]
+        with self.search_field.canvas.after:  # ty: ignore[missing-union-attribute]
             Color(rgba=SEARCH_FIELD_BORDER)
             field_border = Line(width=SEARCH_FIELD_BORDER_WIDTH, close=True)
 
@@ -721,7 +721,7 @@ class OKFViewer(RelativeLayout):
             padding=(dp(2), 0, dp(5), 0),
             spacing=dp(5),
         )
-        with bar.canvas.before:  # ty: ignore[unresolved-attribute]
+        with bar.canvas.before:  # ty: ignore[missing-union-attribute]
             Color(rgba=spec.bg_color)
             bar_bg = Rectangle(pos=bar.pos, size=bar.size)
         bar.bind(
