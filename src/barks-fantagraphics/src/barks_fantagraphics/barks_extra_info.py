@@ -200,7 +200,7 @@ BARKS_EXTRA_INFO = {
     Titles.RACE_TO_THE_SOUTH_SEAS: "The first appearance of [b][i]Gladstone Gander[/i][/b] in "
     "a long Donald Duck story.\n\n"
     "David Gerstein on the version in this digital edition: [i]\"Fantagraphics'"
-    " plan for their Donald V1 &bl;Fantagraphics CBDL 1&br; was to use a newly recovered all-Barks"
+    " plan for their Donald V1 &bl;Fantagraphics CBDL 7&br; was to use a newly recovered all-Barks"
     ' version of the "South Seas" story, because I had a lead on where original line art'
     " photostats could be found... Alas, I couldn't acquire the original version by press"
     " time—so my 2006 partial restoration (from Gemstone's WALT DISNEY TREASURES Vol 1) was used"
