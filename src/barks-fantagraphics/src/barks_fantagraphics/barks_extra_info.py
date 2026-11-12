@@ -202,7 +202,7 @@ BARKS_EXTRA_INFO = {
     "David Gerstein on the version in this digital edition: [i]\"Fantagraphics'"
     " plan for their Donald V1 &bl;Fantagraphics CBDL 7&br; was to use a newly recovered all-Barks"
     ' version of the "South Seas" story, because I had a lead on where original line art'
-    " photostats could be found... Alas, I couldn't acquire the original version by press"
+    " photostats could be found... Alas, I [/i]couldn't[i] acquire the original version by press"
     " time—so my 2006 partial restoration (from Gemstone's WALT DISNEY TREASURES Vol 1) was used"
     " in Donald V1 instead. It's actually a mix of Barks and Jippes..."
     ' and I\'m still attempting to recover the all-Barks version of "South Seas." Presuming'
@@ -229,9 +229,10 @@ BARKS_EXTRA_INFO = {
     " was banned in several countries and not published in Denmark until 1987."
     '\n\nFrom a June 9, 1966 letter to Michael Barrier: [i]"About my'
     " 'morgue' of reference material. I have four files full of clippings of every sort of subject"
-    " and type of drawing. Also have many years of Nat'l. Geographics, and an Encyclopedia"
-    " Brittanica. The rock of gibraltar picture in 'Ancient Persia' and the authentic-looking"
-    " background props and frescoes are from Nat'l Geo. I simplify such material,"
+    " and type of drawing. Also have many years of [/i]Nat'l. Geographics[i], and an"
+    " [/i]Encyclopedia Brittanica[i]. The rock of gibraltar picture in 'Ancient Persia' and the"
+    " authentic-looking background props and frescoes are from [/i]Nat'l Geo[i]. I simplify such"
+    " material,"
     ' naturally."[/i]',
     Titles.VACATION_TIME: "In the [i]Duck Man[/i] 1975 interview, Barks said this about"
     " [i]Vacation Time:[/i]"
@@ -317,12 +318,11 @@ BARKS_EXTRA_INFO = {
     Titles.THINK_BOX_BOLLIX_THE: "Although Gyro's first appearance was a month earlier in WDCS"
     " #140, this is the first story built around him.",
     Titles.GOLDEN_HELMET_THE: "The idea for this story began with a coastline in Hal Foster's"
-    ' [i]Prince Valiant.[/i] Barks recalled: [i]"Valiant was beautifully illustrated. Each panel'
-    " was a work of art. I was very much taken with one of the coastal scenes... I wanted to work"
-    " with the coastline, so I tried to think of what would happen to Donald to bring him up"
-    ' there."[/i]'
-    " Reading about how the Norsemen discovered America centuries before Columbus then gave him"
-    " the plot.",
+    ' [i]Prince Valiant.[/i] Barks recalled: [i]"[/i]Valiant[i] was beautifully illustrated. Each'
+    " panel was a work of art. I was very much taken with one of the coastal scenes... I wanted to"
+    " work with the coastline, so I tried to think of what would happen to Donald to bring him up"
+    ' there."[/i] Reading about how the Norsemen discovered America centuries before Columbus then'
+    " gave him the plot.",
     Titles.GILDED_MAN_THE: "The MacGuffin of this story is the 1856 British Guiana one-cent"
     " magenta, regarded by many philatelists as the world's most famous rare stamp. It was sold in"
     " June 2021 to the London stamp dealer Stanley Gibbons for $8,307,000. Barks' rendering departs"
@@ -371,7 +371,7 @@ BARKS_EXTRA_INFO = {
     " than Donald Duck -"
     ' and overdo it more disastrously?"[/i]',
     Titles.MONEY_STAIRS_THE: "In a letter from October 3, 1973, to Kim Weston, Barks commented"
-    ' on the ending to [i]"The Money Stairs": "...it was quite likely changed to a dream ending'
+    ' on the ending to "The Money Stairs": [i]"...it was quite likely changed to a dream ending'
     " by me. I believe I recall looking at the panel of Uncle Scrooge's money ramp and"
     ' deciding it looked too impossible to be real..."[/i]',
     Titles.HORSERADISH_STORY_THE: 'Barks told Edward Summer: [i]"I liked stories that gave me a'
@@ -381,12 +381,12 @@ BARKS_EXTRA_INFO = {
     " tearing the ship apart, and the villain, who is a real dirty skunk, turns on his own helper."
     ' It was a hard-boiled story! I think that might have been one of its charms."[/i]',
     Titles.MENEHUNE_MYSTERY_THE: "[i]\"The Menehune Mystery had become Garé's story; we see"
-    ' that in every leaf and flower she inked. She was the authority for all that moolamoola,"'
-    ' chuckled Carl, "I still don\'t believe that those damned Menehunes ever existed."[/i]',
+    ' that in every leaf and flower she inked. She was the authority for all that moolamoola,"[/i]'
+    ' chuckled Carl, [i]"I still don\'t believe that those damned Menehunes ever existed."[/i]',
     Titles.GOLDEN_FLEECING_THE: 'In a letter to Ronald O. Burnett, Barks wrote: [i]"If you read'
-    " Uncle Scrooge comics, you may have noticed the story in which I had Uncle Scrooge and the"
-    " ducks go to the site of ancient Colchis to find the golden fleece. A plot based on the old"
-    " Jason myth. Well, I almost had to eat those 32 pages of drawings because I'd use some"
+    " [/i]Uncle Scrooge[i] comics, you may have noticed the story in which I had Uncle Scrooge and"
+    " the ducks go to the site of ancient Colchis to find the golden fleece. A plot based on the"
+    " old Jason myth. Well, I almost had to eat those 32 pages of drawings because I'd use some"
     " harpies as menaces. It seems that Harpy or Harpie is an obscure nickname for a streetwalker."
     ' I managed to save the story by renaming the old girls Larkies."[/i] Therefore, in this'
     " digital edition, 'Larkie' has been changed to 'Harpie'. (Pages 6, 7, 9, 13-16, and 18-26,"
@@ -480,9 +480,10 @@ BARKS_EXTRA_INFO = {
     ' airmail."[/i]',
     Titles.FABULOUS_PHILOSOPHERS_STONE_THE: "The philosopher's stone was an alchemists' legend,"
     " said to turn base metals into gold and often to give long life. Nicolas Flamel, a"
-    " 14th-century Parisian, was later said to have made one. Here it nearly kills Scrooge instead."
-    "\n\nThe nephews declare the Guidebook infallible: [i]\"The Junior Woodchucks' Guide Book says"
-    " the Labyrinth existed, and the Junior Woodchucks' Guide Book is never wrong!\"[/i]",
+    " 14th-century Parisian, was later said to have made one. Here it nearly kills Scrooge"
+    " instead.\n\nThe nephews declare the Guidebook infallible: [i]\"The [/i]Junior Woodchucks'"
+    " Guide Book[i] says the Labyrinth existed, and the [/i]Junior Woodchucks' Guide Book[i] is"
+    ' never wrong!"[/i]',
     Titles.DONALDS_RAUCOUS_ROLE: 'Barks commented in 1994: [i]"Another one is a ten-page story of'
     " Donald, where he got to complaining about everything being too noisy and he moves to a very"
     " quiet place and he was not satisfied until everything was absolutely silent around him. He"
@@ -495,13 +496,12 @@ BARKS_EXTRA_INFO = {
     Titles.SPICY_TALE_A: "Barks told Donald Ault in 1973 that Scrooge's one-story traits were"
     ' devices: [i]"Each was a gimmick, each was the vehicle or the running gag of the story. Like'
     " the story in which he was addicted to nutmeg tea. I'm beginning to get some clippings out of"
-    " some underground comic called Creem that implies that he was a drug addict because he was"
-    " addicted to nutmeg and that nutmeg taken in sufficient quantities can have an effect on your"
-    ' mind."[/i]'
-    "\n\nHe chose nutmeg because"
-    ' [i]"it was something that grew in the tropics and gave him an excuse to go to the tropics.'
-    " God, otherwise I could have said, 'codfish tails,' and sent him to Iceland.\"[/i]"
-    ' The craving never came back: [i]"It was just a gimmick to make a story."[/i]',
+    " some underground comic called [/i]Creem[i] that implies that he was a drug addict because he"
+    " was addicted to nutmeg and that nutmeg taken in sufficient quantities can have an effect on"
+    ' your mind."[/i]\n\nHe chose nutmeg because [i]"it was something that grew in the tropics and'
+    " gave him an excuse to go to the tropics. God, otherwise I could have said, 'codfish tails,'"
+    ' and sent him to Iceland."[/i] The craving never came back: [i]"It was just a gimmick to make'
+    ' a story."[/i]',
     Titles.ODDBALL_ODYSSEY: "This story was published without panel borders of any kind, a strange"
     " experiment by Western that, for Uncle Scrooge, was abandoned after this issue.",
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
