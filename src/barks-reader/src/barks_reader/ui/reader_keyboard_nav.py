@@ -400,6 +400,9 @@ class DropdownNavMixin:
         return super()._handle_menu_key(key)  # ty: ignore[unresolved-attribute]
 
     def _handle_dropdown_key(self, key: int) -> bool:
+        if is_escape_key(key):  # before the empty check: an empty list must still close
+            self._dismiss_dropdown()
+            return True
         buttons = self._dropdown_buttons_cache
         if not buttons:
             return False
@@ -415,9 +418,6 @@ class DropdownNavMixin:
             idx = min(n - 1, idx + self._dropdown_page_step)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_dropdown_item()
-            return True
-        elif is_escape_key(key):
-            self._dismiss_dropdown()
             return True
         else:
             return False

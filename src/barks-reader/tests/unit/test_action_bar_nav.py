@@ -383,6 +383,14 @@ class TestDropdownPageKeys:
         assert screen._dropdown_nav_mode is True
         assert screen._handle_menu_key(KEY_PAGE_DOWN) is False
 
+    def test_escape_closes_an_empty_list(self) -> None:
+        """Its keys gave up on the empty list before Escape was asked: it stayed open."""
+        screen = _PagedDropdownScreen(0)
+        screen._enter_dropdown_nav()
+        with patch.object(screen, "_dismiss_dropdown") as dismiss:
+            assert screen._handle_menu_key(KEY_ESCAPE) is True
+        dismiss.assert_called_once_with()
+
     def test_page_keys_are_not_consumed_without_a_page_step(self) -> None:
         screen = _StubDropdownScreen()
         with patch.object(nav_module, "draw_focus_highlight"):
