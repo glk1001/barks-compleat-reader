@@ -85,6 +85,10 @@ def _make_bare_screen() -> SearchScreen:
     screen._scope_row = ChipRow(MagicMock(), _live_chip, screen._on_scope_selected)
     screen._scope = TagScope()
     screen._scope_counts = {}
+    # The background's rotation: none running. No listener: it changes nothing.
+    screen._search_result_titles = []
+    screen._image_change_event = None
+    screen.on_search_results_title_changed = None
     return screen
 
 
@@ -2719,6 +2723,46 @@ class TestBackgroundAndGoto:
         screen._update_background_from_results([])
         screen._next_background_image()
         screen.on_search_results_title_changed.assert_not_called()
+
+    def _rotating(self, screen: SearchScreen) -> MagicMock:
+        """Start the background rotating through two stories; return its timer."""
+        with patch.object(search_screen.Clock, "schedule_interval") as every:
+            screen._update_background_from_results([PIRATE_GOLD, HELMET])
+        screen.on_search_results_title_changed.reset_mock()
+        return every.return_value
+
+    def _assert_stopped(self, screen: SearchScreen, timer: MagicMock) -> None:
+        timer.cancel.assert_called_once_with()
+        assert screen._image_change_event is None
+        screen._next_background_image()  # a tick already queued
+        screen.on_search_results_title_changed.assert_not_called()
+
+    def test_a_search_that_finds_nothing_stops_the_rotation(self, screen: SearchScreen) -> None:
+        timer = self._rotating(screen)
+        screen._update_background_from_results([])
+        self._assert_stopped(screen, timer)
+
+    def test_a_title_box_cut_to_one_letter_stops_the_rotation(self, screen: SearchScreen) -> None:
+        timer = self._rotating(screen)
+        screen.on_title_search_text("d")
+        self._assert_stopped(screen, timer)
+
+    def test_a_word_search_that_finds_nothing_stops_the_rotation(
+        self, screen: SearchScreen
+    ) -> None:
+        timer = self._rotating(screen)
+        with (
+            patch.object(screen, "_show_result_filters"),
+            patch.object(screen, "_build_word_results", return_value=[]),
+            patch.object(screen, "_populate_word_results_layout"),
+        ):
+            screen._list_word_stories({}, "zzz")
+        self._assert_stopped(screen, timer)
+
+    def test_a_tag_list_cleared_stops_the_rotation(self, screen: SearchScreen) -> None:
+        timer = self._rotating(screen)
+        screen._clear_tag_title_results()
+        self._assert_stopped(screen, timer)
 
     def test_the_arrow_goes_to_the_story_the_background_shows(self, screen: SearchScreen) -> None:
         screen.on_goto_background_title()  # none shown yet

@@ -658,6 +658,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         results_layout.clear_widgets()
 
         if len(text) <= 1:
+            self._update_background_from_results([])  # nothing listed: no story to rotate
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
@@ -945,6 +946,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self.ids.tag_title_results_layout.clear_widgets()
         self._tag_titles = []
         self._listed_tag = ""
+        self._update_background_from_results([])
 
     def on_tag_clear(self) -> None:
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
@@ -1075,6 +1077,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._word_search_results = []
             self._word_query = ""
             self._word_query_result = None
+            self._update_background_from_results([])
         self._show_result_filters()
 
         if not text.strip():
@@ -1307,6 +1310,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._word_query_result = None
         self._word_search_results = []
         self.ids.word_results_layout.clear_widgets()
+        self._update_background_from_results([])
         self._show_result_filters()
 
     def _active_basket_row(self) -> ChipRow:
@@ -1414,15 +1418,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
+        self._update_background_from_results(
+            [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
+        )
 
         if not found:
             results_layout.add_widget(
                 _SearchResultButton(text=f'No results for "{searched}"', disabled=True)
             )
-            return
-
-        word_result_titles = [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
-        self._update_background_from_results(word_result_titles)
 
     # --- Word Search: speaker filter ---
 
@@ -1890,10 +1893,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Background Image Update from Results ---
 
     def _update_background_from_results(self, titles: list[Titles]) -> None:
+        """Rotate the background through the stories listed now; none listed, stop rotating.
+
+        With none, the background keeps the image it has, but no longer changes to
+        stories of a list that has gone.
+        """
+        self._cancel_image_change_event()
+        self._search_result_titles = titles
         if not titles or not self.on_search_results_title_changed:
             return
-        self._search_result_titles = titles
-        self._cancel_image_change_event()
         self.on_search_results_title_changed(random.choice(titles))
         self._image_change_event = Clock.schedule_interval(
             lambda _dt: self._next_background_image(), SEARCH_IMAGE_CHANGE_SECONDS
