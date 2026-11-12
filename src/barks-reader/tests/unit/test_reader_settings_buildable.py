@@ -9,13 +9,16 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core import log_markers
 from barks_reader.core import reader_settings as reader_settings_module
 from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from barks_reader.core.reader_settings import (
     _FIELDS,
+    ALT_ESCAPE_KEY,
     BARKS_READER_SECTION,
     JPG_BARKS_PANELS_ZIP,
     PNG_BARKS_PANELS_DIR,
+    USE_LIVE_WIKI_BUNDLE,
     USE_PNG_IMAGES,
     WIKI_BUNDLE_DIR,
 )
@@ -24,9 +27,11 @@ from barks_reader.ui.reader_settings_buildable import (
     SETTINGS_PANEL_TITLE,
     BuildableReaderSettings,
 )
+from kivy.config import ConfigParser as KivyConfigParser
 from kivy.uix import settings as kivy_settings
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 
@@ -238,3 +243,109 @@ class TestSettingsPanelRefresh:
             settings._save_settings()
 
         assert item.value == "new"
+
+
+class TestARefusedChangeIsPutBack:
+    """Kivy's panel writes a change to the ini before it is checked: a refused one is undone."""
+
+    @pytest.fixture
+    def ini(self, tmp_path: Path) -> Path:
+        ini = tmp_path / "barks-reader.ini"
+        ini.write_text(f"[{BARKS_READER_SECTION}]\n")
+        return ini
+
+    @pytest.fixture
+    def kivy_config(self, ini: Path, tmp_path: Path) -> KivyConfigParser:
+        kivy_config = KivyConfigParser()
+        kivy_config.read(str(ini))
+        BuildableReaderSettings.build_config(kivy_config)
+        kivy_config.set(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR, str(tmp_path / "not made"))
+        kivy_config.set(BARKS_READER_SECTION, USE_PNG_IMAGES, "0")
+        kivy_config.set(BARKS_READER_SECTION, USE_LIVE_WIKI_BUNDLE, "1")
+        kivy_config.write()
+        return kivy_config
+
+    @pytest.fixture
+    def item(self) -> _FakeSettingItem:
+        return _FakeSettingItem(BARKS_READER_SECTION, USE_PNG_IMAGES)
+
+    @pytest.fixture
+    def built(
+        self,
+        kivy_config: KivyConfigParser,
+        item: _FakeSettingItem,
+        file_paths: MagicMock,
+        tmp_path: Path,
+    ) -> Iterator[BuildableReaderSettings]:
+        with (
+            patch.object(reader_settings_module, ReaderFilePaths.__name__, return_value=file_paths),
+            patch.object(reader_settings_module, SystemFilePaths.__name__),
+        ):
+            settings = BuildableReaderSettings()
+        settings.set_config(kivy_config, tmp_path / "barks-reader.ini", tmp_path)
+        panel = MagicMock()
+        panel.children = [item]
+        panel.get_value.side_effect = kivy_config.get
+        kivy_panel = MagicMock()
+        kivy_panel.interface.content.panels = {1: panel}
+        settings.build_settings(kivy_panel)
+        with patch.object(kivy_settings, "SettingItem", _FakeSettingItem):
+            yield settings
+
+    @staticmethod
+    def _kivy_writes(kivy_config: KivyConfigParser, key: str, text: str) -> None:
+        """Write the change as Kivy's panel.set_value does, before it tells the app."""
+        kivy_config.set(BARKS_READER_SECTION, key, text)
+        kivy_config.write()
+
+    @staticmethod
+    def _on_disk(ini: Path, key: str) -> str:
+        on_disk = KivyConfigParser()
+        on_disk.read(str(ini))
+        return on_disk.get(BARKS_READER_SECTION, key)
+
+    def test_png_images_with_no_png_dir_go_back_off_in_the_ini_and_on_the_panel(
+        self,
+        built: BuildableReaderSettings,
+        kivy_config: KivyConfigParser,
+        item: _FakeSettingItem,
+        ini: Path,
+        loguru_sink: list[str],
+    ) -> None:
+        item.value = "1"  # the switch the user turned on
+        self._kivy_writes(kivy_config, USE_PNG_IMAGES, "1")
+
+        assert built.on_changed_setting(BARKS_READER_SECTION, USE_PNG_IMAGES, "1") is False
+
+        assert kivy_config.get(BARKS_READER_SECTION, USE_PNG_IMAGES) == "0"
+        assert self._on_disk(ini, USE_PNG_IMAGES) == "0"
+        assert item.value == "0"
+        assert (
+            log_markers.SETTING_REFUSED.format(key=USE_PNG_IMAGES, value="1", kept="0")
+            in loguru_sink
+        )
+
+    def test_a_refused_change_goes_back_to_the_last_one_taken(
+        self, built: BuildableReaderSettings, kivy_config: KivyConfigParser, tmp_path: Path
+    ) -> None:
+        bundle = tmp_path / "wiki"
+        bundle.mkdir()
+        (bundle / "index.md").write_text("")
+        self._kivy_writes(kivy_config, WIKI_BUNDLE_DIR, str(bundle))
+        assert built.on_changed_setting(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(bundle))
+
+        self._kivy_writes(kivy_config, WIKI_BUNDLE_DIR, str(tmp_path))  # no index.md
+        assert not built.on_changed_setting(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(tmp_path))
+
+        assert kivy_config.get(BARKS_READER_SECTION, WIKI_BUNDLE_DIR) == str(bundle)
+
+    def test_a_setting_the_app_saved_itself_is_what_a_refusal_goes_back_to(
+        self, built: BuildableReaderSettings, kivy_config: KivyConfigParser
+    ) -> None:
+        built.set_alt_escape_key(96)
+        assert kivy_config.get(BARKS_READER_SECTION, ALT_ESCAPE_KEY) == "96"
+        with patch.dict(built._VALIDATION_METHODS, {ALT_ESCAPE_KEY: lambda _value: False}):
+            self._kivy_writes(kivy_config, ALT_ESCAPE_KEY, "114")
+            assert not built.on_changed_setting(BARKS_READER_SECTION, ALT_ESCAPE_KEY, "114")
+
+        assert kivy_config.get(BARKS_READER_SECTION, ALT_ESCAPE_KEY) == "96"

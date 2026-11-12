@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, cast, override
 
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.reader_file_paths import BarksPanelsExtType
 from barks_reader.core.reader_settings import (
     _FIELDS,
@@ -36,6 +37,9 @@ class BuildableReaderSettings(ReaderSettings):
         super().__init__()
 
         self._settings: Settings | None = None
+        # Each setting's value as the ini last held it on purpose: what a refused
+        # change is put back to. Kivy's panel writes a change before it is checked.
+        self._accepted_values: dict[str, str] = {}
 
         self._GETTER_METHODS: dict[str, Callable[[], Any]] = {
             spec.key: partial(self._read, spec.key) for spec in _FIELDS
@@ -59,6 +63,13 @@ class BuildableReaderSettings(ReaderSettings):
             SETTINGS_PANEL_TITLE, self._kivy_config(), data=_get_reader_settings_json()
         )
         self._settings = settings
+        self._remember_accepted_values()
+
+    def _remember_accepted_values(self) -> None:
+        config = self._kivy_config()
+        self._accepted_values = {
+            spec.key: str(config.get(BARKS_READER_SECTION, spec.key)) for spec in _FIELDS
+        }
 
     def _kivy_config(self) -> SavableConfig:
         # The settings panel and saving need Kivy's parser: the stdlib's write takes a
@@ -75,9 +86,12 @@ class BuildableReaderSettings(ReaderSettings):
             return True
 
         assert key in self._VALIDATION_METHODS
+        panel_text = str(value)
         value = setting_value_from_panel(key, value)  # the panel's text, typed
         if not self._VALIDATION_METHODS[key](value):
+            self._put_back_refused(key, panel_text)
             return False
+        self._accepted_values[key] = panel_text
 
         if key == PNG_BARKS_PANELS_DIR:
             # Only PNG mode reads this dir. In JPG mode its validator lets any path
@@ -99,10 +113,23 @@ class BuildableReaderSettings(ReaderSettings):
 
         return True
 
+    def _put_back_refused(self, key: str, refused: str) -> None:
+        """Put the ini and the panel back to the value ``key`` had before Kivy wrote ``refused``."""
+        kept = self._accepted_values.get(key)
+        if kept is None:  # no panel was built, so nothing wrote the change
+            return
+        logger.warning(log_markers.SETTING_REFUSED.format(key=key, value=refused, kept=kept))
+        self._kivy_config().set(BARKS_READER_SECTION, key, kept)
+        # The panel's item is set back to the ini's value: its panel.set_value then
+        # finds nothing changed, so no second on_config_change is sent.
+        self._save_settings()
+
     @override
     def _save_settings(self) -> None:
         self._kivy_config().write()
         self._update_settings_panel()
+        if self._settings:
+            self._remember_accepted_values()  # a setting the app itself saved
 
     def _update_settings_panel(self) -> None:
         if not self._settings:

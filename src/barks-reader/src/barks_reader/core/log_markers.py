@@ -133,6 +133,8 @@ SETTING_OPTIONS_OPENED: Final = 'Setting options opened for "{key}" (current "{v
 # A number setting's entry box (its value, once taken, logs the CONFIG_CHANGE line).
 SETTING_NUMBER_OPENED: Final = 'Setting number entry opened for "{key}" (current "{value}").'
 SETTING_NUMBER_REFUSED: Final = 'Setting "{key}" left as it was: "{text}" is not a number.'
+# A changed setting its check refused: the ini and the panel go back to the value it had.
+SETTING_REFUSED: Final = 'Setting "{key}" refused "{value}": put back to "{kept}".'
 # The alternate-Escape setting's capture popup: the next key pressed (real Escape cancels).
 ALT_ESCAPE_CAPTURE_OPENED: Final = "Alternate Escape capture opened (current {name})."
 ALT_ESCAPE_CAPTURED: Final = "Alternate Escape captured: {name} ({keycode})."
