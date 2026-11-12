@@ -241,7 +241,7 @@ class TestMarkResultSelected:
 
         assert row.selected is True
         assert screen._selected_result_button is row
-        assert screen._last_activated_result_idx == 2  # noqa: PLR2004
+        assert screen._last_activated_result is row
         assert screen._last_activated_word_sub_focus == "title"
 
     def test_selecting_another_row_clears_the_previous(self) -> None:
@@ -255,7 +255,7 @@ class TestMarkResultSelected:
         assert first.selected is False
         assert second.selected is True
         assert screen._selected_result_button is second
-        assert screen._last_activated_result_idx == 1
+        assert screen._last_activated_result is second
 
 
 class TestWordList:
@@ -2432,7 +2432,7 @@ class TestResultsKeys:
             nav="results",
             _active_mode="Word",
             _nav_on_exit_request=MagicMock(),
-            _last_activated_result_idx=None,
+            _last_activated_result=None,
             _last_activated_word_sub_focus="title",
             _selected_word="",
             _selected_tag="",
@@ -2472,10 +2472,9 @@ class TestResultsKeys:
         self._key(screen, search_screen.KEY_RIGHT)
         assert self._key(screen, search_screen.KEY_ENTER) is True
         assert pressed == ["Story B speech"]
-        assert (screen._last_activated_result_idx, screen._last_activated_word_sub_focus) == (
-            1,
-            "speech",
-        )
+        story_b = screen._get_active_result_rows()[1]
+        assert screen._last_activated_result in story_b.children
+        assert screen._last_activated_word_sub_focus == "speech"
 
     def test_up_walks_back_then_climbs_to_the_lowest_chip_row(self, screen: SearchScreen) -> None:
         self._key(screen, search_screen.KEY_DOWN)
@@ -2528,7 +2527,8 @@ class TestResultsKeys:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._nav_active = False
-        screen._last_activated_result_idx = 9  # since shortened: the last story there is
+        story_c = screen._get_active_result_rows()[2]
+        screen._last_activated_result = story_c.children[0]  # its speech button
         screen._last_activated_word_sub_focus = "speech"
         exit_request = MagicMock()
         screen.enter_nav_focus_at_last_result(exit_request)
@@ -2537,10 +2537,23 @@ class TestResultsKeys:
         assert screen._nav_on_exit_request is exit_request
         assert loguru_sink[-1] == "SearchScreen: entered nav focus at last result."
 
-        screen._last_activated_result_idx = None  # none pressed: the box
+        screen._last_activated_result = None  # none pressed: the box
         screen.enter_nav_focus_at_last_result(exit_request)
         assert screen._nav_focus_area == "input"
         assert screen.ids.word_search_input.focus is True
+
+    @pytest.mark.parametrize("mode", ["Word", "Tag"], ids=["a_list_built_since", "another_mode"])
+    def test_coming_back_to_a_list_without_the_story_pressed_lands_on_the_box(
+        self, screen: SearchScreen, mode: str
+    ) -> None:
+        """An index into a new search's list, or another mode's, would land on another story."""
+        screen._nav_active = False
+        screen._last_activated_result = Button(text="Story B, as listed before")  # not listed now
+        if mode == "Tag":
+            screen._last_activated_result = screen._get_active_result_rows()[1]  # a Word row
+            screen._active_mode = "Tag"
+        screen.enter_nav_focus_at_last_result(MagicMock())
+        assert screen._nav_focus_area == "input"
 
     def test_entering_and_leaving_the_screen_by_remote(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -3071,7 +3084,7 @@ class TestNavEdges:
     def test_enter_on_an_empty_results_list_picks_nothing(self, screen: SearchScreen) -> None:
         screen._nav_focus_area = "results"
         assert screen.handle_key(search_screen.KEY_ENTER) is True
-        assert getattr(screen, "_last_activated_result_idx", None) is None
+        assert getattr(screen, "_last_activated_result", None) is None
 
     def test_up_from_the_first_title_result_stays_there(self, screen: SearchScreen) -> None:
         """The title search has no chip rows above its results to go up to."""

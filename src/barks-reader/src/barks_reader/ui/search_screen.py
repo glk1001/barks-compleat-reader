@@ -132,6 +132,13 @@ class _SearchResultButton(Button):
 COVER_ROW_TEXT = "[Cover]"
 
 
+def _row_holding(part: Widget | None, rows: Sequence[Widget]) -> int | None:
+    """Return the index of the row that is ``part`` or holds it, or None if none does."""
+    if part is None:
+        return None
+    return next((i for i, row in enumerate(rows) if part is row or part in row.children), None)
+
+
 def _show_from_the_top(layout: BoxLayout) -> None:
     """Show a list just filled from its first row: its scroll view keeps its place otherwise."""
     if isinstance(layout.parent, ScrollView):
@@ -474,8 +481,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._setup_dropdown_nav()
         self._init_picks_and_filters()
 
-        # Last activated result (for restoring focus after go-back)
-        self._last_activated_result_idx: int | None = None
+        # The last result pressed (a row, or a part of a word row), for restoring the
+        # focus after Go Back. Its widget, not its index: a list built since, or another
+        # mode's list, holds new rows, so an index would land on some other story.
+        self._last_activated_result: Widget | None = None
         self._last_activated_word_sub_focus: str = "title"
 
         # Persistent highlight of the last-opened result row (mouse or keyboard).
@@ -577,7 +586,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._selected_result_button = button
         # Also drive the keyboard restore target, so a later keyboard Go Back lands its
         # focus ring on the same row the mouse opened.
-        self._last_activated_result_idx = button.row_index
+        self._last_activated_result = button
         self._last_activated_word_sub_focus = "title"
 
     def _populate_title_results(
@@ -1944,10 +1953,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """Enter nav focus, restoring focus to the last activated result if available."""
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
-        rows = self._get_active_result_rows()
-        if self._last_activated_result_idx is not None and rows:
+        here = _row_holding(self._last_activated_result, self._get_active_result_rows())
+        if here is not None:
             self._nav_focus_area = "results"
-            self._nav_focused_result_idx = min(self._last_activated_result_idx, len(rows) - 1)
+            self._nav_focused_result_idx = here
             self._nav_word_sub_focus = self._last_activated_word_sub_focus
             self._once_the_list_settles(self._draw_result_focus)
         else:
@@ -2136,7 +2145,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             focused = self._get_focused_result_widget(rows)
             if focused is not None:
-                self._last_activated_result_idx = self._nav_focused_result_idx
+                self._last_activated_result = focused
                 self._last_activated_word_sub_focus = self._nav_word_sub_focus
                 focused.trigger_action(duration=0)
         elif key in (KEY_LEFT, KEY_RIGHT):
