@@ -289,6 +289,118 @@ class TestWordListOpenedByMouse:
         assert "StatisticsScreen: entered nav focus." in loguru_sink
 
 
+@pytest.fixture
+def real_tabs_screen(statistics_dir: Path) -> Generator[StatisticsScreen]:
+    """Build the screen with real tabs in their real toggle group; the rest mocked.
+
+    Mock tabs take any state they are given, so two tabs marked at once, and a tab
+    marked for a list nothing was chosen from, passed every test (2026-11-13).
+    """
+    with (
+        patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
+        patch.object(statistics_screen_module, "ReaderDropDown"),
+        patch.object(statistics_screen_module, "Button"),
+    ):
+
+        def side_effect(instance: StatisticsScreen, **_kwargs) -> None:  # noqa: ANN003
+            instance.ids = {"stat_menu_layout": MagicMock(), "stat_image": MagicMock()}
+            instance._dropdown_nav_mode = False
+
+        mock_layout_init.side_effect = side_effect
+        yield StatisticsScreen(statistics_dir=statistics_dir)
+
+
+def _marked(screen: StatisticsScreen) -> list[str]:
+    return [tab.text for tab in screen._stat_buttons if tab.state == "down"]
+
+
+class TestTheOneMarkedTab:
+    """Exactly one tab is marked: the one whose chart is on show."""
+
+    def test_the_tabs_are_real_toggle_buttons_in_one_group(
+        self, real_tabs_screen: StatisticsScreen
+    ) -> None:
+        assert all(type(tab) is StatMenuButton for tab in real_tabs_screen._stat_buttons)
+        assert {tab.group for tab in real_tabs_screen._stat_buttons} == {"stats"}
+        assert _marked(real_tabs_screen) == []
+
+    def test_coming_back_to_the_screen_marks_only_the_first_tab(
+        self, real_tabs_screen: StatisticsScreen
+    ) -> None:
+        """The first tab was set down beside the one pressed before leaving."""
+        screen = real_tabs_screen
+        first, third = screen._stat_buttons[0], screen._stat_buttons[2]
+        screen.on_is_visible(screen, value=True)
+        third.trigger_action(duration=0)
+        assert _marked(screen) == [third.text]
+
+        screen.on_is_visible(screen, value=False)
+        screen.on_is_visible(screen, value=True)
+
+        assert _marked(screen) == [first.text]
+
+    def test_a_list_closed_with_nothing_chosen_leaves_the_shown_tab_marked(
+        self, real_tabs_screen: StatisticsScreen
+    ) -> None:
+        screen = real_tabs_screen
+        second, word_tab = screen._stat_buttons[1], screen._word_stat_button
+        assert word_tab is not None
+        second.trigger_action(duration=0)
+
+        word_tab.trigger_action(duration=0)  # opens the list; nothing is chosen from it
+
+        assert _marked(screen) == [second.text]
+        screen._word_stat_dropdown.open_if_shown.assert_called_once_with(word_tab)
+
+    def test_choosing_from_the_list_marks_the_word_statistics_tab(
+        self, real_tabs_screen: StatisticsScreen
+    ) -> None:
+        screen = real_tabs_screen
+        second, word_tab = screen._stat_buttons[1], screen._word_stat_button
+        assert word_tab is not None
+        second.trigger_action(duration=0)
+        word_tab.trigger_action(duration=0)
+
+        screen._on_word_stat_selected(None, "word_stat.png")
+
+        assert _marked(screen) == [word_tab.text]
+
+    def test_opening_the_list_again_keeps_the_word_statistics_tab_marked(
+        self, real_tabs_screen: StatisticsScreen
+    ) -> None:
+        screen = real_tabs_screen
+        word_tab = screen._word_stat_button
+        assert word_tab is not None
+        word_tab.trigger_action(duration=0)
+        screen._on_word_stat_selected(None, "word_stat.png")
+
+        word_tab.trigger_action(duration=0)
+
+        assert _marked(screen) == [word_tab.text]
+        assert screen._word_stat_dropdown.open_if_shown.call_count == 2
+
+    def test_a_pressed_tab_shows_its_own_chart(
+        self, real_tabs_screen: StatisticsScreen, statistics_dir: Path
+    ) -> None:
+        screen = real_tabs_screen
+        with patch.object(screen, "show_stat") as show_stat:
+            screen._stat_buttons[1].trigger_action(duration=0)
+        _label, filename = statistics_screen_module.CHART_ITEMS[1]
+        show_stat.assert_called_once_with(statistics_dir / filename)
+
+
+def test_with_the_list_open_the_keys_go_to_it(screen: StatisticsScreen) -> None:
+    screen._nav_active = True
+    screen._dropdown_nav_mode = True
+    with (
+        patch.object(screen, "_handle_dropdown_key", return_value=True) as list_key,
+        patch.object(screen, "_handle_tab_key") as tab_key,
+    ):
+        assert screen.handle_key(KEY_DOWN) is True
+    list_key.assert_called_once_with(KEY_DOWN)
+    tab_key.assert_not_called()
+
+
 class TestStatMenuButton:
     @pytest.mark.parametrize(("state", "pressed"), [("normal", True), ("down", False)])
     def test_the_selected_tab_cannot_be_pressed_off(self, state: str, pressed: bool) -> None:

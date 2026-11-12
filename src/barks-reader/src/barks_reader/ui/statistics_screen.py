@@ -59,6 +59,8 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._statistics_dir = statistics_dir
         self._stat_buttons: list[StatMenuButton] = []
         self._word_stat_button: StatMenuButton | None = None
+        # The tab whose chart is on show: the one tab marked down, whatever was pressed.
+        self._shown_tab: StatMenuButton | None = None
         self._word_stat_dropdown = None
         self._word_stat_opened = False
         self._nav_active: bool = False
@@ -71,7 +73,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         menu_layout = self.ids.stat_menu_layout
         for label, filename in CHART_ITEMS:
             btn = StatMenuButton(text=label, group="stats")
-            btn.bind(on_press=lambda _b, f=filename: self.show_stat(self._statistics_dir / f))
+            btn.bind(on_press=lambda b, f=filename: self._show_tab_stat(b, f))
             menu_layout.add_widget(btn)
             self._stat_buttons.append(btn)
 
@@ -96,12 +98,28 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._word_stat_dropdown.bind(on_select=self._on_word_stat_selected)
         self._word_stat_dropdown.bind(on_dismiss=self._on_dropdown_dismissed)
 
+    def _mark_shown_tab(self, tab: StatMenuButton | None) -> None:
+        """Mark `tab` as the one whose chart is on show, and every other tab as not.
+
+        Each tab is set here, not left to the toggle group: setting one tab's state
+        releases no other, so a tab set down beside a pressed one left two marked.
+        """
+        self._shown_tab = tab
+        for button in self._stat_buttons:
+            button.state = "down" if button is tab else "normal"
+
+    def _show_tab_stat(self, tab: StatMenuButton, filename: str) -> None:
+        self._mark_shown_tab(tab)
+        self.show_stat(self._statistics_dir / filename)
+
     def _on_word_stat_button_pressed(self, button: StatMenuButton) -> None:
+        # The press marked this tab and released the one on show, with nothing yet
+        # chosen from the list: the mark goes back until a word statistic is picked.
+        self._mark_shown_tab(self._shown_tab)
         self._word_stat_opened = open_dropdown(self._word_stat_dropdown, button)
 
     def _on_word_stat_selected(self, _dropdown: object, filename: str) -> None:
-        if self._word_stat_button:
-            self._word_stat_button.state = "down"
+        self._mark_shown_tab(self._word_stat_button)
         self.show_stat(self._statistics_dir / filename)
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
@@ -112,9 +130,8 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
     def _on_screen_activated(self) -> None:
         if not self._stat_buttons:
             return
-        self._stat_buttons[0].state = "down"
         _, filename = CHART_ITEMS[0]
-        self.show_stat(self._statistics_dir / filename)
+        self._show_tab_stat(self._stat_buttons[0], filename)
 
     def show_stat(self, png_path: Path) -> None:
         """Load and display the given PNG in the image widget below the bar.
