@@ -61,7 +61,7 @@ class ReaderCloseMixin:
         self.size_hint = (1, 1)
         self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
-    def _finish_closing_once_laid_out(self, frames_left: int = _CLOSE_LAYOUT_MAX_FRAMES) -> None:
+    def _finish_closing_once_laid_out(self, frames_left: int | None = None) -> None:
         """Close once the reader fills the window it closes into, and a frame more.
 
         The closing animation (a shader transition) draws the reader as it stands
@@ -70,8 +70,11 @@ class ReaderCloseMixin:
         mode change reports itself done: closed at once, the reader fell out at the
         old size, its page pinned to the screen's left edge. The extra frame lets
         the page inside it follow. At most _CLOSE_LAYOUT_MAX_FRAMES frames: a reader
-        that never fills the window must still close.
+        that never fills the window must still close: the reader's own count, read
+        here, not where the method is defined (a reader setting its own was ignored).
         """
+        if frames_left is None:
+            frames_left = self._CLOSE_LAYOUT_MAX_FRAMES
         if frames_left > 0 and not self._fills_window():
             Clock.schedule_once(lambda _dt: self._finish_closing_once_laid_out(frames_left - 1))
             return

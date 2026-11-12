@@ -74,6 +74,27 @@ def test_a_reader_that_never_fills_the_window_still_closes() -> None:
     reader.finished.assert_called_once_with()
 
 
+def test_a_reader_with_its_own_frame_count_waits_that_long() -> None:
+    """The count was read once, as the method was defined: 10 frames, whatever the reader set."""
+
+    class _SlowReader(_Reader):
+        _CLOSE_LAYOUT_MAX_FRAMES = 30
+
+    reader = _SlowReader(100, 100)
+    with (
+        patch.object(mixin_module, "Clock") as clock,
+        patch.object(mixin_module, "Window", width=900, height=1300),
+    ):
+        reader._finish_closing_once_laid_out()
+        frames = 0
+        while clock.schedule_once.call_args_list:
+            frames += 1
+            _run_frames(clock, 1)
+
+    assert frames == 30  # noqa: PLR2004
+    reader.finished.assert_called_once_with()
+
+
 def test_windowed_hints_make_the_screen_fill_the_window_again() -> None:
     reader = _Reader(100, 100)
     reader._set_hints_for_windowed_mode()
