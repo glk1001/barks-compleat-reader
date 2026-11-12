@@ -121,16 +121,6 @@ class TestWalking:
         node.dispatch("on_press")
         handler.assert_called_once_with(node)
 
-    def test_start_closed_sets_saved_state(
-        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        spec = NodeSpec(kind=NodeKind.MAIN, text="Leaf", start_closed=True)
-
-        _build_with_spec(tree_builder, spec)
-
-        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
-        assert node.saved_state["open"] is False
-
     def test_registration_hook_receives_created_node(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:

@@ -208,7 +208,6 @@ class NodeSpec:
     destination: Destination | None = None
     press_action: PressAction = PressAction.TOGGLE_ONLY
     register_as: NodeRegistration | None = None
-    start_closed: bool = False
     fanta_info: FantaComicBookInfo | None = None
     children: tuple[NodeSpec, ...] = field(default=())
     lazy_children: Callable[[], tuple[NodeSpec, ...]] | None = None
@@ -445,7 +444,6 @@ class _SpecBuilder:
                     text=INTRO_COMPLEAT_BARKS_READER_TEXT,
                     destination=IntroDocDestination(),
                     press_action=PressAction.OPEN_INTRO_DOC,
-                    start_closed=True,
                 ),
                 self._article_spec(
                     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
@@ -457,11 +455,6 @@ class _SpecBuilder:
                     text=INTRO_BY_THE_NUMBERS_TEXT,
                     destination=CorpusStatsDestination(),
                     press_action=PressAction.OPEN_CORPUS_STATS,
-                    # `start_closed` is load-bearing, as it is for the wiki node
-                    # below: a saved-node restore onto a closed node renders the
-                    # destination's view state instead of replaying the press, so
-                    # the full-window page does not spring open at start-up.
-                    start_closed=True,
                 ),
             ),
         )
@@ -478,7 +471,6 @@ class _SpecBuilder:
                 kind=NodeKind.MAIN,
                 text=INTRO_ILLUSTRATED_HISTORY_TEXT,
                 destination=IllustratedHistoryDestination(),
-                start_closed=True,
                 children=tuple(
                     NodeSpec(
                         kind=NodeKind.MAIN,
@@ -489,9 +481,6 @@ class _SpecBuilder:
                             title=chapter.title,
                         ),
                         press_action=PressAction.OPEN_DOCUMENT,
-                        # Closed, as the other document nodes are: a saved-node restore
-                        # then shows the node's view rather than reopening the document.
-                        start_closed=True,
                     )
                     for chapter in chapters
                 ),
@@ -595,7 +584,6 @@ class _SpecBuilder:
                     destination=HistoryDestination(),
                     press_action=PressAction.SET_VIEW_STATE,
                     register_as=NodeRegistration.HISTORY,
-                    start_closed=True,
                 ),
             ),
         )
@@ -690,7 +678,6 @@ class _SpecBuilder:
                     text=APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
                     destination=CensorshipFixesDocDestination(),
                     press_action=PressAction.OPEN_CENSORSHIP_FIXES_DOC,
-                    start_closed=True,
                 ),
                 NodeSpec(
                     kind=NodeKind.MAIN,
@@ -698,7 +685,6 @@ class _SpecBuilder:
                     destination=StatisticsDestination(),
                     press_action=PressAction.SET_VIEW_STATE,
                     register_as=NodeRegistration.STATISTICS,
-                    start_closed=True,
                 ),
             ),
         )
@@ -744,10 +730,9 @@ class _SpecBuilder:
         ]
 
         # Optional entry: shown only when the wiki-bundle setting resolves to a
-        # real OKF bundle. Pressing it switches to the wiki reader screen. Like
-        # the other side-effect leaves, a saved-node restore must render the
-        # destination view, not replay the press (which would auto-open the
-        # wiki screen at startup) — hence start_closed.
+        # real OKF bundle. Pressing it switches to the wiki reader screen. A
+        # saved-node restore shows the destination's view, as it does for every
+        # node: it never replays the press, so the wiki does not open at start-up.
         if self._reader_settings.wiki_bundle_dir is not None:
             children.append(
                 NodeSpec(
@@ -755,7 +740,6 @@ class _SpecBuilder:
                     text=INDEX_WIKI_TEXT,
                     destination=WikiIndexDestination(),
                     press_action=PressAction.OPEN_WIKI_INDEX,
-                    start_closed=True,
                 )
             )
 
@@ -1000,5 +984,4 @@ class _SpecBuilder:
             text=ARTICLE_TITLE_TEXTS[article_title],
             destination=ArticleDestination(view_state=view_state, article_title=article_title),
             press_action=PressAction.OPEN_ARTICLE,
-            start_closed=True,
         )

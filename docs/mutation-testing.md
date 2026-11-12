@@ -288,7 +288,7 @@ at their practical floor.
 1. **Snapshot the whole built structure, not one field at a time.** `tree_spec` was 184
    survivors of exactly one shape: a `NodeSpec` field or a helper argument that no test
    ever read. Rendering each subtree to one line per node — kind, text, destination,
-   press action, registration, `start_closed`, laziness — and comparing against a literal
+   press action, registration, laziness — and comparing against a literal
    killed 112 of them in five tests. The renderer prints enums by **name**, never `repr`,
    so `auto()` renumbering doesn't churn the snapshot. Where a subtree is too big to
    snapshot (Categories: ~350 nodes), the same effect comes from asserting the *relation*

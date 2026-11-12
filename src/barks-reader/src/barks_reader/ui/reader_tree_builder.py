@@ -152,9 +152,6 @@ class ReaderTreeBuilder:
 
         node = self._reader_tree_view.add_node(node, parent=parent)
 
-        if spec.start_closed:
-            node.saved_state["open"] = False
-
         if spec.register_as is not None:
             self._registration_hooks[spec.register_as](node)
 
