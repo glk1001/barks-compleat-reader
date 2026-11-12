@@ -108,10 +108,13 @@ class IndexPrefixButton(IndexMenuButton):
     range over two lines.
 
     ``text`` is therefore presentation only -- the range broken across two lines;
-    ``prefix`` is the bucket key the saved node state and the term lookup use.
+    ``prefix`` is the bucket key the saved node state and the term lookup use, and
+    ``letter`` the alphabet button the bucket is under ("A", "0", "'"). The letter is
+    carried, not read back off the prefix: a digit bucket such as "90-99" is under "0".
     """
 
     prefix = StringProperty("")
+    letter = StringProperty("")
 
 
 class IndexItemButton(Button):

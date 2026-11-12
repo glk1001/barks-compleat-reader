@@ -100,6 +100,114 @@ def speech_index_screen(
             yield screen
 
 
+def _mock_prefix_button(prefix: str, letter: str, text: str) -> MagicMock:
+    return MagicMock(prefix=prefix, letter=letter, text=text)
+
+
+# The split as the real index gives it: digits and the apostrophe have letters of
+# their own, and a prefix is a range label that need not start with its letter.
+_REAL_SHAPED_SPLIT = {
+    "0": {"00-10": ["007", "10"], "8-99": ["8", "99"], "90-99": ["90", "99"]},
+    "'": {"'2-'y": ["'em", "'twas"]},
+    "a": {"a-aa": ["a", "aa"], "ab-ac": ["abandon", "ace"]},
+    "b": {"b-ba": ["b", "baa"]},
+}
+
+
+class TestPrefixesShapedLikeTheRealOnes:
+    """The fixture's prefixes ("apple", "ant") start with their letter; real ones need not."""
+
+    @pytest.fixture
+    def screen(self, speech_index_screen: SpeechIndexScreen) -> Generator[SpeechIndexScreen]:
+        speech_index_screen._cleaned_alpha_split_terms = _REAL_SHAPED_SPLIT
+        with (
+            patch.object(_speech_module, "IndexPrefixButton", side_effect=_mock_prefix_button),
+            patch.object(speech_index_screen, "_populate_index_grid"),
+        ):
+            yield speech_index_screen
+
+    @pytest.mark.parametrize(
+        ("letter", "prefix", "words"),
+        [
+            ("0", "00-10", ["007", "10"]),
+            ("0", "8-99", ["8", "99"]),
+            # "90-99" sorts after "9": read off the label it was not a digit prefix.
+            ("0", "90-99", ["90", "99"]),
+            ("'", "'2-'y", ["'em", "'twas"]),
+            ("A", "ab-ac", ["abandon", "ace"]),
+        ],
+    )
+    def test_a_prefix_shows_the_words_under_its_own_letter(
+        self, screen: SpeechIndexScreen, letter: str, prefix: str, words: list[str]
+    ) -> None:
+        screen._populate_top_alphabet_split_menu(letter)
+
+        screen.on_letter_prefix_press(screen._prefix_buttons[prefix])
+
+        assert [item.id for item in screen._item_index[letter]] == words
+        cast("MagicMock", screen._populate_index_grid).assert_called_with(letter)
+
+    def test_a_prefix_button_carries_its_letter(self, screen: SpeechIndexScreen) -> None:
+        screen._populate_top_alphabet_split_menu("0")
+        assert {b.letter for b in screen._prefix_buttons.values()} == {"0"}
+
+    def test_changing_letter_shows_its_first_prefix_without_a_warning(
+        self, screen: SpeechIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """One prefix is saved for the node: every letter change found it invalid."""
+        screen._populate_top_alphabet_split_menu("A")
+        screen.on_letter_prefix_press(screen._prefix_buttons["ab-ac"])
+
+        screen._populate_top_alphabet_split_menu("B")
+
+        assert screen._selected_prefix_button is screen._prefix_buttons["b-ba"]
+        assert screen.treeview_index_node is not None
+        assert screen.treeview_index_node.saved_state["prefix"] == "b-ba"
+        assert not any("Invalid restored prefix" in line for line in loguru_sink)
+
+    def test_the_saved_prefix_is_restored_on_its_own_letter(
+        self, screen: SpeechIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        assert screen.treeview_index_node is not None
+        screen.treeview_index_node.saved_state["prefix"] = "ab-ac"
+
+        screen._populate_top_alphabet_split_menu("A")
+
+        assert screen._selected_prefix_button is screen._prefix_buttons["ab-ac"]
+        assert not any("Invalid restored prefix" in line for line in loguru_sink)
+
+    def test_a_saved_prefix_the_restored_letter_does_not_have_is_logged(
+        self, screen: SpeechIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """A stale or hand-edited settings file: no prefix has been pressed yet."""
+        assert screen.treeview_index_node is not None
+        screen.treeview_index_node.saved_state["prefix"] = "zz-zzz"
+
+        screen._populate_top_alphabet_split_menu("A")
+
+        assert screen._selected_prefix_button is screen._prefix_buttons["a-aa"]
+        assert 'Invalid restored prefix: "zz-zzz".' in loguru_sink
+
+    @pytest.mark.parametrize("split", [{}, {"q": {}}])
+    def test_a_letter_with_no_words_shows_an_empty_bar_and_the_no_items_row(
+        self, screen: SpeechIndexScreen, split: dict[str, dict[str, list[str]]]
+    ) -> None:
+        """The alphabet is fixed; a rebuilt index may leave a letter out."""
+        screen._cleaned_alpha_split_terms = split
+        screen._selected_prefix_button = MagicMock()
+
+        screen._populate_top_alphabet_split_menu("Q")
+
+        assert screen._prefix_buttons == {}
+        assert screen._selected_prefix_button is None
+        assert screen._get_items_for_letter("Q") == []
+        cast("MagicMock", screen._populate_index_grid).assert_called_once_with("Q")
+        # The rotating background has no words to pick from, and says nothing of it.
+        screen._selected_letter_button = MagicMock(text="Q")
+        screen._next_background_image()
+        screen._random_title_images.get_random_image.assert_not_called()
+
+
 class TestSpeechIndexScreen:
     def test_init(self, speech_index_screen: SpeechIndexScreen) -> None:
         assert speech_index_screen._search is not None
@@ -110,6 +218,7 @@ class TestSpeechIndexScreen:
         with patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls:
             mock_btn = MagicMock()
             mock_btn.prefix = "apple"
+            mock_btn.letter = "A"
             mock_btn_cls.return_value = mock_btn
 
             # Mock _populate_index_grid to prevent further chain execution
@@ -126,6 +235,7 @@ class TestSpeechIndexScreen:
         # Setup
         mock_button = MagicMock()
         mock_button.prefix = "ant"
+        mock_button.letter = "A"
 
         # Mock _populate_index_grid to verify it's called
         with patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid:
@@ -154,7 +264,7 @@ class TestSpeechIndexScreen:
             patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid,
         ):
-            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
+            mock_btn_cls.side_effect = _mock_prefix_button
 
             speech_index_screen._populate_index_for_letter("A")
 
@@ -168,7 +278,7 @@ class TestSpeechIndexScreen:
             patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid"),
         ):
-            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
+            mock_btn_cls.side_effect = _mock_prefix_button
 
             speech_index_screen._populate_top_alphabet_split_menu("A")
             assert set(speech_index_screen._prefix_buttons) == {"apple", "ant"}
@@ -190,7 +300,7 @@ class TestSpeechIndexScreen:
             patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid"),
         ):
-            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
+            mock_btn_cls.side_effect = _mock_prefix_button
 
             speech_index_screen._populate_top_alphabet_split_menu("S")
 

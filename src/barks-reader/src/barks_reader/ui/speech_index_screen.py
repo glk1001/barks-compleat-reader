@@ -637,6 +637,9 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
         self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
         self._prefix_buttons: dict[str, IndexPrefixButton] = {}
+        # The letter whose bar the saved prefix was pressed on, or None while the saved
+        # prefix is still the one read from the settings file.
+        self._saved_prefix_letter: str | None = None
         self._nav_focused_prefix_idx: int = 0
 
     @override
@@ -646,7 +649,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
     def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
         """Create the top sub alphabet split buttons across the top."""
-        first_letter_split_terms = self._cleaned_alpha_split_terms[first_letter.lower()]
+        first_letter_split_terms = self._cleaned_alpha_split_terms.get(first_letter.lower(), {})
 
         if len(first_letter_split_terms) > MAX_PREFIX_BUTTONS_PER_LETTER:
             # The bar is a fixed single row, so anything past the last slot is
@@ -660,36 +663,56 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         alphabet_top_split_layout.clear_widgets()
         self._prefix_buttons.clear()
 
+        if not first_letter_split_terms:
+            # The alphabet is fixed and the index is built: a letter may have no words.
+            # The grid then shows its "no index items" row under an empty bar.
+            self._selected_prefix_button = None
+            self._item_index[first_letter] = []
+            self._populate_index_grid(first_letter)
+            return
+
         for prefix, terms in first_letter_split_terms.items():
-            button = IndexPrefixButton(prefix=prefix, text=stacked_prefix_label(prefix, terms))
+            button = IndexPrefixButton(
+                prefix=prefix, letter=first_letter, text=stacked_prefix_label(prefix, terms)
+            )
             button.bind(on_release=self.on_letter_prefix_press)
             self._prefix_buttons[prefix] = button
             alphabet_top_split_layout.add_widget(button)
 
-        # Which 'prefix' to show first.
-        assert self.treeview_index_node is not None
-        if SAVED_NODE_STATE_PREFIX_KEY not in self.treeview_index_node.saved_state:
-            first_prefix = next(iter(first_letter_split_terms))
-        else:
-            first_prefix = self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY]
-            if first_prefix not in first_letter_split_terms:
-                logger.warning(f'Invalid restored prefix: "{first_prefix}".')
-                first_prefix = next(iter(first_letter_split_terms))
-
+        first_prefix = self._prefix_to_show_first(first_letter, first_letter_split_terms)
         self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
 
+    def _prefix_to_show_first(self, first_letter: str, split_terms: dict[str, list[str]]) -> str:
+        """Return the saved prefix if it is one of this letter's, else the letter's first."""
+        assert self.treeview_index_node is not None
+        saved_prefix = self.treeview_index_node.saved_state.get(SAVED_NODE_STATE_PREFIX_KEY)
+        if saved_prefix in split_terms:
+            return saved_prefix
+        # A prefix saved on another letter's bar is only the letter having changed. One
+        # this letter should have had is a stale or hand-edited settings file.
+        if saved_prefix is not None and self._saved_prefix_letter in (None, first_letter):
+            logger.warning(f'Invalid restored prefix: "{saved_prefix}".')
+        return next(iter(split_terms))
+
     def on_letter_prefix_press(self, button: IndexPrefixButton) -> None:
+        """Show the words under a prefix button, and save the prefix as the one to restore.
+
+        Args:
+            button: The pressed prefix button, which carries its prefix and its letter.
+
+        """
         prefix = button.prefix
+        first_letter = button.letter
         logger.debug(log_markers.INDEX_PREFIX_PRESSED.format(prefix=prefix))
         assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
+        self._saved_prefix_letter = first_letter
 
         if self._selected_prefix_button and self._selected_prefix_button != button:
             self._selected_prefix_button.is_selected = False
         button.is_selected = True
         self._selected_prefix_button = button
 
-        first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
         terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
         items: list[IndexItem] = []
         for t in terms:
