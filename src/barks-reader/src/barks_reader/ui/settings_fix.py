@@ -1013,12 +1013,15 @@ class SettingAltEscapeKey(SettingItem):
         self.bind(on_release=self._open_capture_popup)
         self._refresh_display_text()
 
-    def _refresh_display_text(self) -> None:
+    def _current_keycode(self) -> int:
+        """Return the key set as a keycode: 0 (none) for no value or one not a number."""
         try:
-            keycode = int(self.value) if self.value else 0
+            return int(self.value) if self.value else 0
         except (TypeError, ValueError):
-            keycode = 0
-        self.display_text = keycode_to_name(keycode)
+            return 0
+
+    def _refresh_display_text(self) -> None:
+        self.display_text = keycode_to_name(self._current_keycode())
 
     def on_value(self, instance: SettingItem, value: str) -> None:
         # Kivy's handler saves the value and dispatches the panel's on_config_change,
@@ -1029,11 +1032,7 @@ class SettingAltEscapeKey(SettingItem):
         self._refresh_display_text()
 
     def _open_capture_popup(self, _instance: Widget) -> None:
-        try:
-            current = int(self.value) if self.value else 0
-        except (TypeError, ValueError):
-            current = 0
-
+        current = self._current_keycode()
         popup = AltEscapeCapturePopup(
             current_keycode=current,
             on_capture=self._set_keycode,

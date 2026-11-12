@@ -686,15 +686,30 @@ class TestTypingAPath:
 class TestAltEscapeKeySetting:
     """A stored value that is not a keycode reads as unset, and the capture starts from none."""
 
-    def test_a_value_not_a_keycode_shows_as_unset(self) -> None:
+    @staticmethod
+    def _setting(value: object) -> MagicMock:
         setting = MagicMock()
-        setting.value = "not a key"
+        setting.value = value
+        setting._current_keycode = lambda: settings_fix.SettingAltEscapeKey._current_keycode(
+            setting
+        )
+        return setting
+
+    @pytest.mark.parametrize(
+        ("value", "keycode"), [("96", 96), ("", 0), (None, 0), ("not a key", 0)]
+    )
+    def test_the_key_set_is_read_as_a_keycode_none_for_no_number(
+        self, value: object, keycode: int
+    ) -> None:
+        assert settings_fix.SettingAltEscapeKey._current_keycode(self._setting(value)) == keycode
+
+    def test_a_value_not_a_keycode_shows_as_unset(self) -> None:
+        setting = self._setting("not a key")
         settings_fix.SettingAltEscapeKey._refresh_display_text(setting)
         assert setting.display_text == "<unset>"
 
     def test_the_capture_starts_from_no_key_for_such_a_value(self) -> None:
-        setting = MagicMock()
-        setting.value = "not a key"
+        setting = self._setting("not a key")
         with patch.object(settings_fix, "AltEscapeCapturePopup") as popup:
             settings_fix.SettingAltEscapeKey._open_capture_popup(setting, MagicMock())
         assert popup.call_args.kwargs["current_keycode"] == 0
