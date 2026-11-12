@@ -27,9 +27,10 @@ from barks_fantagraphics.speech_speakers import CHARACTER_SPEAKER_OPTIONS, NARRA
 from barks_fantagraphics.tag_query import TagSelection, range_text
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Iterable, Sequence
+    from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
     from barks_fantagraphics.barks_titles import Titles
+    from barks_fantagraphics.search_results import TitleInfo
 
 # The ALL/ANY chip's value in a picked row: never a word or a tag.
 BASKET_MODE_VALUE = ""
@@ -290,6 +291,32 @@ def offered_speakers(indexed: Collection[str]) -> list[str]:
     and are not offered. An index without speakers offers none.
     """
     return [s for s in (*CHARACTER_SPEAKER_OPTIONS, NARRATOR) if s in indexed]
+
+
+def stories_said_by(found: Mapping[str, TitleInfo], speakers: Sequence[str]) -> dict[str, int]:
+    """Return how many of the stories found each speaker says one of the found bubbles in.
+
+    For a picked word this is what its search run again under each speaker counts,
+    from the one search: under a speaker, a story is found when a bubble holding the
+    word is theirs. Not for a typed query, whose parts need not share a bubble: under
+    a speaker every part must be theirs, and "duck NOT money" leaves out only the money
+    they say, so each speaker can find more stories than their bubbles here.
+
+    Args:
+        found: The stories a picked word's search found, with their bubbles.
+        speakers: The speakers to count.
+
+    Returns:
+        Each speaker's count of stories, none for one who says none of the bubbles.
+
+    """
+    said: dict[str, set[str]] = {speaker: set() for speaker in speakers}
+    for title, info in found.items():
+        for page in info.fanta_pages.values():
+            for speech in page.speech_info_list:
+                if speech.speaker in said:
+                    said[speech.speaker].add(title)
+    return {speaker: len(titles) for speaker, titles in said.items()}
 
 
 def speaker_story_counts(

@@ -71,6 +71,7 @@ from barks_reader.core.search_state import (
     WordBasket,
     offered_speakers,
     speaker_story_counts,
+    stories_said_by,
 )
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.core.speech_hits import (
@@ -382,6 +383,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     _pressing_chip_by_key: bool = False
     # The keyboard focus state a bare screen starts from (see above).
     _nav_active: bool = False
+    # The Said by list's counts, with the search they were counted for: reopening the
+    # list (to change the speaker picked) does not search again. None until counted.
+    _said_by_counted: tuple[tuple[str, str, SearchFilter | None], dict[str | None, int]] | None = (
+        None
+    )
     _nav_focus_area: str = "input"
     """Bottom view screen for search. Mode is set externally via set_mode()."""
 
@@ -1529,11 +1535,29 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         bubbles could give too many. The picked speaker stays listed at none, so
         the filter can be lifted from the list.
         """
-        return speaker_story_counts(
-            lambda speaker: len(self._find_word_stories(speaker)),
-            self._get_offered_speakers(),
-            self._speaker,
-        )
+        counts = self._stories_by_speaker()
+        return speaker_story_counts(counts.__getitem__, self._get_offered_speakers(), self._speaker)
+
+    def _stories_by_speaker(self) -> dict[str | None, int]:
+        """Return the listed search's count of stories for anyone (None) and each speaker.
+
+        Counted once for each search, era and scope. A picked word's from its one
+        search (`stories_said_by`); a typed query run again under each speaker, as
+        its parts need not share a bubble. The Said by list ran a search for each
+        speaker every time it opened, on the UI thread.
+        """
+        searched = (self._word_query, self._selected_word, self._word_search_filter())
+        if self._said_by_counted is not None and self._said_by_counted[0] == searched:
+            return self._said_by_counted[1]
+        offered = self._get_offered_speakers()
+        anyone = self._find_word_stories(None)
+        if self._word_query:
+            each = {speaker: len(self._find_word_stories(speaker)) for speaker in offered}
+        else:
+            each = stories_said_by(anyone, offered)
+        counts: dict[str | None, int] = {None: len(anyone), **each}
+        self._said_by_counted = (searched, counts)
+        return counts
 
     def _on_said_by_item_selected(self, _dropdown: Widget, speaker: str) -> None:
         """Narrow the word results to the speaker picked from the list, or lift the filter."""

@@ -360,6 +360,25 @@ def _found(*titles: str) -> dict[str, TitleInfo]:
     return {t: TitleInfo(1, {"001": PageInfo("3", [speech])}) for t in titles}
 
 
+def _said_in(stories: dict[str, list[str]]) -> dict[str, TitleInfo]:
+    """Return found stories, each with a found bubble said by each speaker it names."""
+    return {
+        title: TitleInfo(
+            1,
+            {
+                "001": PageInfo(
+                    "3",
+                    [
+                        SpeechInfo(str(i), 1, "GOLD!", "GOLD!", speaker=speaker)
+                        for i, speaker in enumerate(speakers)
+                    ],
+                )
+            },
+        )
+        for title, speakers in stories.items()
+    }
+
+
 class TestTypedQuery:
     """Query syntax, or text no word matches, runs as a query from the word box."""
 
@@ -1552,10 +1571,15 @@ class TestSpeakerFilter:
     def test_the_list_counts_each_speakers_stories_most_first(self, screen: SearchScreen) -> None:
         screen._offered_speakers = ["Donald", "Scrooge", "Gyro", "narrator"]
         screen._selected_word = "money"
-        stories = {None: 5, "Donald": 2, "Scrooge": 4, "Gyro": 0, "narrator": 2}
-        screen._search.find_words.side_effect = lambda _word, speaker: {
-            f"Story {i}": MagicMock() for i in range(stories[speaker])
-        }
+        screen._search.find_words.return_value = _said_in(
+            {
+                "Story 1": ["Scrooge", "Donald"],
+                "Story 2": ["Scrooge", "narrator"],
+                "Story 3": ["Scrooge", "Scrooge"],  # twice in one story: one story
+                "Story 4": ["Scrooge", "Donald", "narrator"],
+                "Story 5": ["other:Witch Hazel"],  # not offered
+            }
+        )
         # Gyro, who never says it, is left out; Donald before the narrator, as the roster has.
         assert screen._speaker_story_counts() == [
             ("", 5),
@@ -1564,13 +1588,49 @@ class TestSpeakerFilter:
             ("narrator", 2),
         ]
 
+    def test_a_picked_word_is_counted_from_its_one_search(self, screen: SearchScreen) -> None:
+        """The list ran it once more for each speaker, on the UI thread, at every opening."""
+        screen._offered_speakers = ["Donald", "Scrooge", "Gyro", "narrator"]
+        screen._selected_word = "money"
+        screen._search.find_words.return_value = _said_in({"A Story": ["Scrooge"]})
+        screen._speaker_story_counts()
+        screen._search.find_words.assert_called_once_with("money", speaker=None)
+
+    def test_reopening_the_list_on_the_same_search_does_not_search_again(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._offered_speakers = ["Donald", "Scrooge"]
+        screen._word_query = "gold mine"
+        screen._search.run_word_query.return_value = WordQueryResult(title_dict=_found("A Story"))
+        first = screen._speaker_story_counts()
+        screen._speaker = "Scrooge"  # picked from the list, which then opens again
+        again = screen._speaker_story_counts()
+        assert screen._search.run_word_query.call_count == 3  # anyone, Donald, Scrooge  # noqa: PLR2004
+        assert (first, again) == ([("", 1), ("Donald", 1), ("Scrooge", 1)],) * 2
+
+    def test_a_new_search_or_era_is_counted_again(self, screen: SearchScreen) -> None:
+        screen._offered_speakers = ["Donald"]
+        screen._selected_word = "gold"
+        screen._search.find_words.return_value = _said_in(
+            {ENUM_TO_STR_TITLE[PIRATE_GOLD]: ["Donald"], ENUM_TO_STR_TITLE[HELMET]: ["Donald"]}
+        )
+        assert screen._speaker_story_counts() == [("", 2), ("Donald", 2)]
+        screen._selected_word = "helmet"
+        screen._speaker_story_counts()
+        assert screen._search.find_words.call_count == 2  # noqa: PLR2004
+        with (
+            patch.object(screen, "_rerun_word_results"),
+            patch.object(screen, "_rerun_tag_results"),
+        ):
+            screen._set_era("1951-1954")
+        assert screen._speaker_story_counts() == [("", 1), ("Donald", 1)]  # the Helmet, 1951
+        assert screen._search.find_words.call_count == 3  # noqa: PLR2004
+
     def test_the_picked_speaker_stays_listed_at_none(self, screen: SearchScreen) -> None:
         screen._offered_speakers = ["Donald", "Gyro"]
         screen._speaker = "Gyro"
         screen._selected_word = "money"
-        screen._search.find_words.side_effect = lambda _word, speaker: (
-            {} if speaker == "Gyro" else {"A Story": MagicMock()}
-        )
+        screen._search.find_words.return_value = _said_in({"A Story": ["Donald"]})
         assert screen._speaker_story_counts() == [("", 1), ("Donald", 1), ("Gyro", 0)]
 
     def test_a_typed_query_is_counted_by_running_it_under_each_speaker(
@@ -1593,8 +1653,8 @@ class TestSpeakerFilter:
     def test_the_counts_are_in_the_era(self, screen: SearchScreen) -> None:
         screen._offered_speakers = ["Donald"]
         screen._selected_word = "gold"
-        screen._search.find_words.return_value = _found(
-            ENUM_TO_STR_TITLE[PIRATE_GOLD], ENUM_TO_STR_TITLE[HELMET]
+        screen._search.find_words.return_value = _said_in(
+            {ENUM_TO_STR_TITLE[PIRATE_GOLD]: ["Donald"], ENUM_TO_STR_TITLE[HELMET]: ["Donald"]}
         )
         with (
             patch.object(screen, "_rerun_word_results"),

@@ -13,6 +13,7 @@ from barks_fantagraphics.search_query import (
     parse_query,
     query_from_words,
 )
+from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from barks_fantagraphics.tag_query import TagSelection
 from barks_reader.core.search_state import (
     ALL_SPEAKERS,
@@ -30,6 +31,7 @@ from barks_reader.core.search_state import (
     WordBasket,
     offered_speakers,
     speaker_story_counts,
+    stories_said_by,
 )
 
 
@@ -281,3 +283,21 @@ class TestTagScope:
         scope.clear()
         assert scope.tags == ""
         assert scope.titles == frozenset()
+
+
+def test_each_speaker_counts_the_stories_they_say_a_found_bubble_in() -> None:
+    def bubble(speaker: str | None) -> SpeechInfo:
+        return SpeechInfo("1", 1, "GOLD!", "GOLD!", speaker=speaker)
+
+    found = {
+        "Story 1": TitleInfo(1, {"001": PageInfo("3", [bubble("Scrooge"), bubble("Scrooge")])}),
+        "Story 2": TitleInfo(
+            1, {"001": PageInfo("3", [bubble("Donald")]), "002": PageInfo("4", [bubble("Scrooge")])}
+        ),
+        "Story 3": TitleInfo(1, {"001": PageInfo("3", [bubble(None), bubble("other:Witch")])}),
+    }
+    assert stories_said_by(found, ["Donald", "Scrooge", "Gyro"]) == {
+        "Donald": 1,
+        "Scrooge": 2,  # twice in Story 1 counts it once
+        "Gyro": 0,
+    }
