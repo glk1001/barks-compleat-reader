@@ -134,6 +134,7 @@ def _unbind_highlight(widget: Widget) -> None:
 
 
 def clear_focus_highlight(widget: Widget, group: str) -> None:
+    """Remove the focus ring `group` from `widget`, and stop it following the widget."""
     _unbind_highlight(widget)
     widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
 

@@ -196,6 +196,7 @@ class SearchModeContent(BoxLayout):
     shown = BooleanProperty(defaultvalue=True)
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        """Pass every press by while hidden; else as a BoxLayout does."""
         if not self.shown:
             return False
         return bool(super().on_touch_down(touch))
@@ -216,6 +217,7 @@ class SearchSyntaxHelp(BoxLayout):
         self._show_examples()
 
     def on_examples(self, _instance: Self, _examples: HelpExamples) -> None:
+        """Show the examples again when they change."""
         self._show_examples()
 
     def _show_examples(self) -> None:
@@ -566,11 +568,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._scope_counts: dict[str, int] = {}
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
+        """Stop the background rotating and close the speaker list once hidden."""
         if not value:
             self._cancel_image_change_event()
             self._said_by_dropdown.dismiss()  # the speaker list does not outlive the screen
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        """Take no press while hidden; else as a FloatLayout does."""
         # Hidden, the screen is sized (0, 0) but its fixed-height chip rows are not: at
         # zero width each chip wraps to its own row, and the column lies over whatever
         # screen is showing (an era chip took the Main Index's presses).
@@ -684,6 +688,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Title Search ---
 
     def on_title_search_text(self, text: str) -> None:
+        """List the titles matching the box's `text`; none for a letter or less."""
         results_layout: BoxLayout = self.ids.title_results_layout
         results_layout.clear_widgets()
 
@@ -701,6 +706,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         return result.titles, result.title_strings
 
     def on_title_clear(self) -> None:
+        """Empty the title box, and give it the keyboard."""
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="title"))
         self._cancel_image_change_event()
         self.ids.title_search_input.text = ""
@@ -709,6 +715,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Tag Search ---
 
     def on_tag_search_text(self, text: str) -> None:
+        """List the tags matching the box's `text`, or the typed tags to combine."""
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
         self._tag_chip_counts = {}
@@ -983,6 +990,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._update_background_from_results([])
 
     def on_tag_clear(self) -> None:
+        """Empty the tag box, its tags, the picked tags and their stories, and the era."""
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
         self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
@@ -1103,6 +1111,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Word Search ---
 
     def on_word_search_text(self, text: str) -> None:
+        """List the words matching the box's `text`; the picked words' stories stay."""
         self.ids.word_chips_layout.clear_widgets()
         self._selected_word = ""
         self._box_query = ""
@@ -1926,6 +1935,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self.on_goto_title_with_page(image_info, page_to_goto, tuple(pages))
 
     def on_word_clear(self) -> None:
+        """Empty the word box, its words, the picked words, the filters and the stories."""
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="word"))
         self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
@@ -1973,10 +1983,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Background Image ---
 
     def set_background_image(self, image_info: ImageInfo) -> None:
+        """Show `image_info` as the background, and name its story."""
         self._current_image_info = image_info
         self.current_title_str = get_display_title_str(image_info.from_title)
 
     def on_goto_background_title(self) -> None:
+        """Go to the story the background shows."""
         if self.on_goto_background_title_func and self._current_image_info:
             self.on_goto_background_title_func(self._current_image_info)
 
@@ -1986,6 +1998,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # --- Keyboard Navigation ---
 
     def enter_nav_focus(self, on_exit_request: Callable) -> None:
+        """Take the keyboard, starting in the active search's box.
+
+        Args:
+            on_exit_request: Called when the keys ask to leave the screen.
+
+        """
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
         self._nav_focus_area = "input"
@@ -2102,6 +2120,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._draw_result_focus()
 
     def exit_nav_focus(self) -> None:
+        """Give up the keyboard: every focus ring cleared, every box blurred."""
         self._blur_all_inputs()
         self._clear_result_focus()
         self._clear_chip_focus()
@@ -2117,6 +2136,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.debug(log_markers.SEARCH_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
+        """Handle a key for whatever the keyboard is on.
+
+        Args:
+            key: The key code.
+
+        Returns:
+            Whether the key was taken.
+
+        """
         # While the speech-bubble popup is open it owns the keyboard directly via
         # its own Window binding (see PopupKeyboardNav), so this handler is not
         # reached — the modal-popup guard in main_screen yields first.

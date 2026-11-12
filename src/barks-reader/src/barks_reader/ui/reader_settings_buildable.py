@@ -51,6 +51,7 @@ class BuildableReaderSettings(ReaderSettings):
 
     @staticmethod
     def build_config(config: BuildableConfigParser) -> None:
+        """Give `config` every setting's default, under the reader's section."""
         # NOTE: For some reason we need to use 0/1 instead of False/True.
         #       Not sure why.
         config.setdefaults(
@@ -59,6 +60,7 @@ class BuildableReaderSettings(ReaderSettings):
         )
 
     def build_settings(self, settings: Settings) -> None:
+        """Add the reader's panel to Kivy's `settings`, and remember each value as accepted."""
         settings.add_json_panel(
             SETTINGS_PANEL_TITLE, self._kivy_config(), data=_get_reader_settings_json()
         )
@@ -89,6 +91,17 @@ class BuildableReaderSettings(ReaderSettings):
                 logger.warning(log_markers.SETTING_NOT_VALID_AT_BOOT.format(key=key, value=value))
 
     def on_changed_setting(self, section: str, key: str, value: Any) -> bool:  # noqa: ANN401
+        """Check a change the settings panel made, and act on it or put it back.
+
+        Args:
+            section: The ini section changed; only the reader's own is checked.
+            key: The setting changed.
+            value: Its new value, as the panel's text.
+
+        Returns:
+            Whether the change was taken; a refused one is put back (`_put_back_refused`).
+
+        """
         if section != BARKS_READER_SECTION:
             return True
 
