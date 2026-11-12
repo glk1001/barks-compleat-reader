@@ -761,7 +761,7 @@ class TestOptionValueDisplay:
 
 
 class TestSettingsSavedWithoutAConfig:
-    """A setting with no panel, or a panel with no config, takes the value and writes nothing."""
+    """A setting whose panel has no config takes the value and writes nothing."""
 
     def test_an_option_set_with_no_config_is_still_logged(self, loguru_sink: list[str]) -> None:
         setting = MagicMock(spec=SettingOptionsWithValue)
@@ -771,13 +771,22 @@ class TestSettingsSavedWithoutAConfig:
             SettingOptionsWithValue._pick_option(setting, "Duckburg")
         assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
 
-    @pytest.mark.parametrize("has_panel", [False, True])
-    def test_a_captured_key_takes_effect_without_a_config(self, has_panel: bool) -> None:
-        setting = _stand_in(value="", panel=MagicMock(config=None) if has_panel else None)
-        with patch.object(settings_fix, "set_alt_escape_key") as set_key:
-            settings_fix.SettingAltEscapeKey._set_keycode(setting, 96)
-        assert setting.value == "96"
-        set_key.assert_called_once_with(96)
+
+def test_a_captured_key_reaches_the_panel_which_saves_it_and_tells_the_app() -> None:
+    """Kivy's own on_value hands the key to panel.set_value: config write + on_config_change."""
+    setting = MagicMock(spec=settings_fix.SettingAltEscapeKey)
+    setting.section, setting.key, setting.panel = "Barks Reader", "alt_escape_key", MagicMock()
+    settings_fix.SettingAltEscapeKey.on_value(setting, setting, "96")
+    setting.panel.set_value.assert_called_once_with("Barks Reader", "alt_escape_key", "96")
+    setting._refresh_display_text.assert_called_once_with()
+
+
+@pytest.mark.parametrize(("keycode", "value"), [(96, "96"), (0, "0")])
+def test_a_captured_or_cleared_key_is_only_set_on_the_setting(keycode: int, value: str) -> None:
+    """Saving and taking it up are on_value's (above), not done again by hand."""
+    setting = _stand_in(value="")
+    settings_fix.SettingAltEscapeKey._set_keycode(setting, keycode)
+    assert setting.value == value
 
 
 def test_the_long_path_rows_title_column_shrinks_to_its_text() -> None:

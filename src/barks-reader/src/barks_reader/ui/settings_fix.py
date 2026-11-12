@@ -42,7 +42,6 @@ from barks_reader.core.keys import (
     KEY_RIGHT,
     KEY_UP,
     is_escape_key,
-    set_alt_escape_key,
 )
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.core.reader_palette import Color, theme
@@ -992,7 +991,12 @@ class SettingAltEscapeKey(SettingItem):
             keycode = 0
         self.display_text = keycode_to_name(keycode)
 
-    def on_value(self, _instance, _value) -> None:  # ty:ignore[invalid-method-override]  # noqa: ANN001
+    def on_value(self, instance: SettingItem, value: str) -> None:
+        # Kivy's handler saves the value and dispatches the panel's on_config_change,
+        # which is how the app takes up the new key (BarksReaderApp.on_config_change)
+        # and tells settings_notifier. Without it the key was written to the config
+        # by hand and the app never heard of it (as SettingOptionsWithValue was).
+        super().on_value(instance, value)
         self._refresh_display_text()
 
     def _open_capture_popup(self, _instance: Widget) -> None:
@@ -1009,13 +1013,5 @@ class SettingAltEscapeKey(SettingItem):
         popup.open()
 
     def _set_keycode(self, keycode: int) -> None:
+        # on_value saves it and hands it to the app.
         self.value = str(int(keycode))
-
-        # Manually ensure it's saved to config (Kivy SettingItem subclasses don't auto-persist).
-        if hasattr(self, "panel") and self.panel:
-            config = self.panel.config
-            if config:
-                config.set(self.section, self.key, self.value)
-                config.write()
-
-        set_alt_escape_key(int(keycode))
