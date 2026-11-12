@@ -24,8 +24,11 @@ _SOFT_GL_LIBRARY = "BARKS_SOFT_GL_LIBRARY"
 _INSERTED = "DYLD_INSERT_LIBRARIES"
 
 # Local default: more examples than the stock 100 — cheap for the pure-logic
-# targets property tests are aimed at, and finds more edge cases.
-settings.register_profile("dev", max_examples=200)
+# targets property tests are aimed at, and finds more edge cases. The overnight
+# runs use it too, so no deadline: a stall on a loaded Windows machine took one
+# call past the stock 200 ms twice (greg-dell, 2026-11-08 and 2026-11-13), and a
+# retry in 0.05 ms made it a FlakyFailure. These tests assert correctness, not speed.
+settings.register_profile("dev", max_examples=200, deadline=None)
 
 # CI: reproducible and timing-tolerant.
 #  - derandomize: same inputs every run, so a property test can't pass on one
