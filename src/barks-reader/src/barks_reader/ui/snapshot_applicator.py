@@ -49,7 +49,6 @@ class SnapshotApplicator:
 
         # Track the last-applied image infos.
         self._prev_top_view_image_info: ImageInfo = ImageInfo()
-        self._prev_fun_view_from_title = None
         self._prev_fun_view_image_info: ImageInfo = ImageInfo()
 
     def apply(self, snapshot: ViewSnapshot) -> None:
@@ -112,11 +111,11 @@ class SnapshotApplicator:
         if fun.image_info is None:
             return
 
-        # Skip if the title hasn't changed (avoids redundant texture loads).
-        if fun.image_info.from_title == self._prev_fun_view_from_title:
+        # Skip the image already shown (a render reapplies it). Not just its title: a
+        # rotation can pick another panel of the same story, from a small pool.
+        if fun.image_info == self._prev_fun_view_image_info:
             return
 
-        self._prev_fun_view_from_title = fun.image_info.from_title
         self._prev_fun_view_image_info = fun.image_info
 
         logger.debug(
@@ -146,7 +145,6 @@ class SnapshotApplicator:
 
         self._load_texture(self._fun_view_texture_loader, image_info, apply_tex)
 
-        self._prev_fun_view_from_title = image_info.from_title
         self._prev_fun_view_image_info = image_info
 
     def get_prev_fun_view_image_info(self) -> ImageInfo:

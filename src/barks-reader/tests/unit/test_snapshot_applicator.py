@@ -137,7 +137,7 @@ class TestSnapshotApplicator:
         fun = screen_mocks["fun_image_view"]
         assert fun.is_visible is False
 
-    def test_apply_fun_view_skips_same_title(
+    def test_apply_fun_view_skips_the_image_already_shown(
         self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
     ) -> None:
         snap = _make_snapshot(fun_visible=True)
@@ -146,9 +146,23 @@ class TestSnapshotApplicator:
         # Reset the mock call count
         screen_mocks["fun_image_view"].set_last_loaded_image_info.reset_mock()
 
-        # Apply same snapshot again — should skip because from_title hasn't changed
+        # Apply same snapshot again: skipped, as its image is the one shown
         applicator.apply(snap)
         screen_mocks["fun_image_view"].set_last_loaded_image_info.assert_not_called()
+
+    def test_another_image_of_the_same_title_is_applied(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """A rotation picked another panel of the shown story: it was dropped as a repeat."""
+        snap = _make_snapshot(fun_visible=True)
+        applicator.apply(snap)
+        assert snap.fun_view.image_info is not None
+        other = replace(snap.fun_view.image_info, filename=Path("another_fun.png"))
+
+        applicator.apply_fun_view_rotation(replace(snap.fun_view, image_info=other))
+
+        screen_mocks["fun_image_view"].set_last_loaded_image_info.assert_called_with(other)
+        assert applicator.get_prev_fun_view_image_info() == other
 
     def test_apply_title_view_visible(
         self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
@@ -389,7 +403,7 @@ class TestAClearedViewStaysCleared:
         self, held_applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
     ) -> None:
         held_applicator.apply(_make_snapshot(fun_visible=True))
-        no_file = ImageInfo(from_title=Titles.ATTIC_ANTICS)  # another title, so not skipped
+        no_file = ImageInfo(from_title=Titles.ATTIC_ANTICS)  # another image, so not skipped
         held_applicator.apply(
             replace(_make_snapshot(), fun_view=FunViewSnapshot(is_visible=True, image_info=no_file))
         )
