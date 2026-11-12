@@ -110,6 +110,16 @@ class TestNodeNames:
         assert node.no_selection is True
 
 
+class TestReaderTreeViewRule:
+    def test_the_tree_leaves_its_minimum_height_to_its_layout(self) -> None:
+        """The kv bound minimum_height to the height the builder binds to minimum_height."""
+        kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
+        parsed = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
+        [tree_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<ReaderTreeView>"]
+
+        assert "minimum_height" not in tree_rule.properties
+
+
 class TestTitleTreeViewNode:
     def test_its_row_widgets_name_the_node_and_keep_their_real_parent(self) -> None:
         """The kv set each one's `parent` to the node, over the row it sits in."""

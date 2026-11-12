@@ -4,7 +4,8 @@
     hide_root: True
     indent_level: root.TREE_VIEW_INDENT_LEVEL
     size_hint: (1, None)
-    minimum_height: self.height
+    # Its height follows minimum_height, which the TreeView's layout sums from its rows:
+    # bound that way in ReaderTreeBuilder, never the other way round here.
 
 <ButtonTreeViewNode>:
     color: root.TEXT_COLOR
