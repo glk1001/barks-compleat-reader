@@ -295,6 +295,11 @@ POST_TREE_SETUP: Final = "Time of post tree setup: {elapsed}."
 IMAGE_LOADED: Final = 'Time taken to load image "{filename}" was {elapsed}.'
 TITLE_INSET_IMAGE_SET: Final = "Time taken to set title inset image: {elapsed}."
 
+# ------------------------------------------------------------ view images --
+# A view's panel image that could not be read or decoded; the view keeps the image
+# it had. Logged at ERROR, so the GUI and overnight runs that look for errors see it.
+IMAGE_LOAD_FAILED: Final = 'Could not load image "{filename}": {error}'
+
 # ------------------------------------------------------- what a read persists --
 # One per read that saves progress (articles do not): the harness checks the
 # profile's last-read cue and reading history against these at every teardown.

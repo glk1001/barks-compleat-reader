@@ -10,6 +10,7 @@ import barks_reader.ui.snapshot_applicator
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.log_markers import pattern
+from loguru import logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -397,17 +398,24 @@ class TestAClearedViewStaysCleared:
         assert screen_mocks["fun_image_view"].image_texture is None
 
 
-def test_a_texture_that_failed_to_load_is_raised() -> None:
+def test_a_texture_that_failed_to_load_is_logged_as_an_error_and_nothing_is_applied() -> None:
+    """Raised on the Kivy clock, one bad panel file would end the app."""
     loader = MagicMock()
     loader.load_texture.side_effect = lambda _filename, callback: callback(None, OSError("bad png"))
     applied: list[object] = []
-
-    with pytest.raises(RuntimeError, match="bad png"):
+    lines: list[str] = []
+    handle = logger.add(lambda m: lines.append(str(m).rstrip("\n")), format="{level}|{message}")
+    try:
         SnapshotApplicator._load_texture(  # noqa: SLF001
             loader, ImageInfo(filename=Path("broken.png")), applied.append
         )
+    finally:
+        logger.remove(handle)
 
     assert applied == []
+    failed = log_markers.IMAGE_LOAD_FAILED.format(filename="broken.png", error="bad png")
+    assert f"ERROR|{failed}" in lines
+    assert not any("Time taken to load image" in line for line in lines)
 
 
 class TestLoadFunViewTexture:

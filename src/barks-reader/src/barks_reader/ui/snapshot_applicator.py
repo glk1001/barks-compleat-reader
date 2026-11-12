@@ -234,7 +234,12 @@ class SnapshotApplicator:
 
         def on_ready(tex: Texture | None, err: Exception | None) -> None:
             if err:
-                raise RuntimeError(err)
+                # Raised here, on the Kivy clock, one bad panel file would end the app.
+                # The view keeps the image it has.
+                logger.error(
+                    log_markers.IMAGE_LOAD_FAILED.format(filename=image_filename, error=err)
+                )
+                return
             assert tex is not None
 
             apply_texture(tex)
