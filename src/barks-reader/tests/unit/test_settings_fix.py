@@ -405,7 +405,6 @@ class TestNumberOnTheFrame:
         assert [b.text for b in popup.button_widgets] == ["OK", "Cancel"]
         assert popup.textinput.text == "20"
         assert popup.textinput.input_filter == "int"
-        assert _number_popup("1.5")[0].textinput.input_filter == "float"
 
     def test_the_box_has_the_keyboard_once_it_opens_and_return_there_takes_it(self) -> None:
         popup, on_enter = _number_popup()
@@ -450,10 +449,12 @@ class TestNumberSetting:
         SettingNumberEntry._take_number(setting, "640")
         assert setting.value == "640"
 
-    def test_a_float_setting_stays_a_float(self) -> None:
-        setting = _stand_in(key="zoom", value="1.0")
-        SettingNumberEntry._take_number(setting, "2")
-        assert setting.value == "2.0"
+    def test_a_number_that_is_not_whole_is_refused(self, loguru_sink: list[str]) -> None:
+        """Every number setting is whole: the float branches nothing used are gone."""
+        setting = _stand_in(key="main_window_height", value="640")
+        SettingNumberEntry._take_number(setting, "2.5")
+        assert setting.value == "640"
+        assert any("left as it was" in line for line in loguru_sink)
 
     def test_what_is_not_a_number_is_refused_and_logged(self, loguru_sink: list[str]) -> None:
         setting = _stand_in(key="main_window_height", value="0")

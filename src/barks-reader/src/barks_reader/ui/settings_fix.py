@@ -850,7 +850,7 @@ class SettingNumberPopup(PopupFrame):
             text=value,
             multiline=False,
             write_tab=False,
-            input_filter="float" if "." in value else "int",
+            input_filter="int",  # every number setting is whole (FieldKind.INT)
             font_size=popup_fonts().text,
             size_hint_y=None,
             height=popup_fonts().text * 2,
@@ -987,10 +987,9 @@ class SettingNumberEntry(SettingNumeric):
         popup.open()
 
     def _take_number(self, text: str) -> None:
-        """Take `text` as the value, a float if the value was one; leave it if not a number."""
-        is_float = "." in str(self.value)
+        """Take `text` as the value, a whole number; leave it if not one."""
         try:
-            self.value = str(float(text) if is_float else int(text))
+            self.value = str(int(text))
         except ValueError:
             logger.info(log_markers.SETTING_NUMBER_REFUSED.format(key=self.key, text=text))
 
