@@ -714,8 +714,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     # --- Tag Search ---
 
-    def on_tag_search_text(self, text: str) -> None:
-        """List the tags matching the box's `text`, or the typed tags to combine."""
+    def _reset_tag_list(self) -> None:
+        """Empty the tag list and what it holds; one reset for typing and for Clear.
+
+        Its chips, their counts and groups, the open member and subgroup, the typed tags.
+        """
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
         self._tag_chip_counts = {}
@@ -723,6 +726,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._selected_member = ""
         self._open_subgroup = None
         self._tag_box_query = ""
+
+    def on_tag_search_text(self, text: str) -> None:
+        """List the tags matching the box's `text`, or the typed tags to combine."""
+        self._reset_tag_list()
         if not self._tag_basket_results:  # the picked tags' stories stay while typing
             self._clear_tag_title_results()
 
@@ -994,13 +1001,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="tag"))
         self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
-        self.ids.tag_chips_layout.clear_widgets()
-        self._tag_chip_strings = []
-        self._tag_chip_counts = {}
-        self._tag_chip_groups = set()
-        self._selected_member = ""
-        self._open_subgroup = None
-        self._tag_box_query = ""
+        self._reset_tag_list()
         self._tag_basket.clear()
         self._show_tag_basket()
         self._tag_basket_results = False
@@ -1110,17 +1111,25 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     # --- Word Search ---
 
-    def on_word_search_text(self, text: str) -> None:
-        """List the words matching the box's `text`; the picked words' stories stay."""
+    def _reset_word_list(self) -> None:
+        """Empty the word list: its rows, the word picked and the typed query."""
         self.ids.word_chips_layout.clear_widgets()
         self._selected_word = ""
         self._box_query = ""
+
+    def _clear_word_results(self) -> None:
+        """Empty the word search's stories, and stop the background rotating through them."""
+        self.ids.word_results_layout.clear_widgets()
+        self._word_search_results = []
+        self._word_query = ""
+        self._word_query_result = None
+        self._update_background_from_results([])
+
+    def on_word_search_text(self, text: str) -> None:
+        """List the words matching the box's `text`; the picked words' stories stay."""
+        self._reset_word_list()
         if not self._basket_results:  # the basket's results stay while more words are found
-            self.ids.word_results_layout.clear_widgets()
-            self._word_search_results = []
-            self._word_query = ""
-            self._word_query_result = None
-            self._update_background_from_results([])
+            self._clear_word_results()
         self._show_result_filters()
 
         if not text.strip():
@@ -1939,12 +1948,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         logger.debug(log_markers.SEARCH_CLEARED.format(mode="word"))
         self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
-        self.ids.word_chips_layout.clear_widgets()
-        self.ids.word_results_layout.clear_widgets()
-        self._selected_word = ""
-        self._word_query = ""
-        self._word_query_result = None
-        self._box_query = ""
+        self._reset_word_list()
+        self._clear_word_results()
         self._word_basket.clear()
         self._show_basket()
         self._basket_results = False
