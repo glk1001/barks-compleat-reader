@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <office:document xmlns:css3t="http://www.w3.org/TR/css3-text/" xmlns:grddl="http://www.w3.org/2003/g/data-view#" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xforms="http://www.w3.org/2002/xforms" xmlns:dom="http://www.w3.org/2001/xml-events" xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0" xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0" xmlns:math="http://www.w3.org/1998/Math/MathML" xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" xmlns:ooow="http://openoffice.org/2004/writer" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:drawooo="http://openoffice.org/2010/draw" xmlns:oooc="http://openoffice.org/2004/calc" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:tableooo="http://openoffice.org/2009/table" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0" xmlns:rpt="http://openoffice.org/2005/report" xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0" xmlns:officeooo="http://openoffice.org/2009/office" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" office:version="1.4" office:mimetype="application/vnd.oasis.opendocument.text">
- <office:meta><meta:creation-date>2026-07-18T15:23:30.048276438</meta:creation-date><dc:date>2026-07-18T16:55:29.568142078</dc:date><meta:editing-duration>PT22M29S</meta:editing-duration><meta:editing-cycles>7</meta:editing-cycles><meta:generator>LibreOffice/26.2.4.2$Linux_X86_64 LibreOffice_project/620$Build-2</meta:generator><meta:print-date>2026-07-18T15:43:13.967243541</meta:print-date><meta:document-statistic meta:table-count="0" meta:image-count="0" meta:object-count="0" meta:page-count="1" meta:paragraph-count="7" meta:word-count="351" meta:character-count="2039" meta:non-whitespace-character-count="1689"/></office:meta>
+ <office:meta><meta:creation-date>2026-07-18T15:23:30.048276438</meta:creation-date><dc:date>2026-11-12T21:35:38.199797065</dc:date><meta:editing-duration>PT1H33M24S</meta:editing-duration><meta:editing-cycles>8</meta:editing-cycles><meta:generator>LibreOffice/26.2.6.3$Linux_X86_64 LibreOffice_project/620$Build-3</meta:generator><meta:print-date>2026-07-18T15:43:13.967243541</meta:print-date><meta:document-statistic meta:table-count="0" meta:image-count="0" meta:object-count="0" meta:page-count="1" meta:paragraph-count="7" meta:word-count="352" meta:character-count="2033" meta:non-whitespace-character-count="1683"/></office:meta>
  <office:settings>
   <config:config-item-set config:name="ooo:view-settings">
    <config:config-item config:name="ViewAreaTop" config:type="long">0</config:config-item>
    <config:config-item config:name="ViewAreaLeft" config:type="long">0</config:config-item>
-   <config:config-item config:name="ViewAreaWidth" config:type="long">53476</config:config-item>
-   <config:config-item config:name="ViewAreaHeight" config:type="long">30108</config:config-item>
+   <config:config-item config:name="ViewAreaWidth" config:type="long">62082</config:config-item>
+   <config:config-item config:name="ViewAreaHeight" config:type="long">36765</config:config-item>
    <config:config-item config:name="ShowRedlineChanges" config:type="boolean">true</config:config-item>
    <config:config-item config:name="InBrowseMode" config:type="boolean">false</config:config-item>
    <config:config-item-map-indexed config:name="Views">
     <config:config-item-map-entry>
      <config:config-item config:name="ViewId" config:type="string">view2</config:config-item>
-     <config:config-item config:name="ViewLeft" config:type="long">20570</config:config-item>
-     <config:config-item config:name="ViewTop" config:type="long">7474</config:config-item>
+     <config:config-item config:name="ViewLeft" config:type="long">34620</config:config-item>
+     <config:config-item config:name="ViewTop" config:type="long">20094</config:config-item>
      <config:config-item config:name="VisibleLeft" config:type="long">0</config:config-item>
      <config:config-item config:name="VisibleTop" config:type="long">0</config:config-item>
-     <config:config-item config:name="VisibleRight" config:type="long">53474</config:config-item>
-     <config:config-item config:name="VisibleBottom" config:type="long">30106</config:config-item>
+     <config:config-item config:name="VisibleRight" config:type="long">62080</config:config-item>
+     <config:config-item config:name="VisibleBottom" config:type="long">36763</config:config-item>
      <config:config-item config:name="ZoomType" config:type="short">0</config:config-item>
      <config:config-item config:name="ViewLayoutColumns" config:type="short">1</config:config-item>
      <config:config-item config:name="ViewLayoutBookMode" config:type="boolean">false</config:config-item>
      <config:config-item config:name="ZoomFactor" config:type="short">95</config:config-item>
      <config:config-item config:name="IsSelectedFrame" config:type="boolean">false</config:config-item>
      <config:config-item config:name="KeepRatio" config:type="boolean">false</config:config-item>
-     <config:config-item config:name="WindowState" config:type="string">0,0,2295,1237;1;,,,;</config:config-item>
+     <config:config-item config:name="WindowState" config:type="string">0,0,2290,1516;1;,,,;</config:config-item>
      <config:config-item config:name="AnchoredTextOverflowLegacy" config:type="boolean">false</config:config-item>
      <config:config-item config:name="LegacySingleLineFontwork" config:type="boolean">false</config:config-item>
      <config:config-item config:name="ConnectorUseSnapRect" config:type="boolean">false</config:config-item>
@@ -115,14 +115,14 @@
    <config:config-item config:name="HeaderSpacingBelowLastPara" config:type="boolean">false</config:config-item>
    <config:config-item config:name="SaveVersionOnClose" config:type="boolean">false</config:config-item>
    <config:config-item config:name="UseFormerLineSpacing" config:type="boolean">false</config:config-item>
-   <config:config-item config:name="PrinterName" config:type="string">Brother-HL-L2305-series</config:config-item>
+   <config:config-item config:name="PrinterName" config:type="string">Generic Printer</config:config-item>
    <config:config-item config:name="AddParaLineSpacingToTableCells" config:type="boolean">true</config:config-item>
    <config:config-item config:name="IsKernAsianPunctuation" config:type="boolean">false</config:config-item>
    <config:config-item config:name="DoNotJustifyLinesWithManualBreak" config:type="boolean">false</config:config-item>
    <config:config-item config:name="CharacterCompressionType" config:type="short">0</config:config-item>
    <config:config-item config:name="IsLabelDocument" config:type="boolean">false</config:config-item>
    <config:config-item config:name="EmbedLatinScriptFonts" config:type="boolean">true</config:config-item>
-   <config:config-item config:name="PrinterSetup" config:type="base64Binary">7AH+/0Jyb3RoZXItSEwtTDIzMDUtc2VyaWVzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ1VQUzpCcm90aGVyLUhMLUwyMzA1LXNlcmllcwAAAAAWAAMAtwAAAAAAAAAEAAhSAAAEdAAASm9iRGF0YSAxCnByaW50ZXI9QnJvdGhlci1ITC1MMjMwNS1zZXJpZXMKb3JpZW50YXRpb249UG9ydHJhaXQKY29waWVzPTEKY29sbGF0ZT1mYWxzZQptYXJnaW5hZGp1c3RtZW50PTAsMCwnMCwwCmNvbG9yZGVwdGg9MjQKY29sb3JkZXZpY2U9MApQUERDb250ZXh0RGF0YQpQYWdlU2l6ZTpBNABJbnB1dFNsb3Q6QXV0bwAAEgBDT01QQVRfRFVQTEVYX01PREUTAER1cGxleE1vZGU6OlVua25vd24MAFBSSU5URVJfTkFNRRcAQnJvdGhlci1ITC1MMjMwNS1zZXJpZXMLAERSSVZFUl9OQU1FHABDVVBTOkJyb3RoZXItSEwtTDIzMDUtc2VyaWVz</config:config-item>
+   <config:config-item config:name="PrinterSetup" config:type="base64Binary">tAH+/0dlbmVyaWMgUHJpbnRlcgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU0dFTlBSVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAMAoAAAAAAAAAAEAAhSAAAEdAAASm9iRGF0YSAxCnByaW50ZXI9R2VuZXJpYyBQcmludGVyCm9yaWVudGF0aW9uPVBvcnRyYWl0CmNvcGllcz0xCmNvbGxhdGU9ZmFsc2UKbWFyZ2luYWRqdXN0bWVudD0wLDAsJzAsMApjb2xvcmRlcHRoPTI0CmNvbG9yZGV2aWNlPTAKUFBEQ29udGV4dERhdGEKUGFnZVNpemU6QTQAABIAQ09NUEFUX0RVUExFWF9NT0RFDwBEdXBsZXhNb2RlOjpPZmYMAFBSSU5URVJfTkFNRQ8AR2VuZXJpYyBQcmludGVyCwBEUklWRVJfTkFNRQcAU0dFTlBSVA==</config:config-item>
    <config:config-item config:name="UseVariableWidthNBSP" config:type="boolean">false</config:config-item>
    <config:config-item config:name="EmbedOnlyUsedFonts" config:type="boolean">false</config:config-item>
    <config:config-item config:name="ApplyUserData" config:type="boolean">true</config:config-item>
@@ -151,7 +151,7 @@
    <config:config-item config:name="UseOldPrinterMetrics" config:type="boolean">false</config:config-item>
    <config:config-item config:name="RedlineProtectionKey" config:type="base64Binary"/>
    <config:config-item config:name="TabsRelativeToIndent" config:type="boolean">true</config:config-item>
-   <config:config-item config:name="Rsid" config:type="int">1567975</config:config-item>
+   <config:config-item config:name="Rsid" config:type="int">1571476</config:config-item>
    <config:config-item config:name="UpdateFromTemplate" config:type="boolean">true</config:config-item>
    <config:config-item config:name="ProtectForm" config:type="boolean">false</config:config-item>
    <config:config-item config:name="MsWordCompMinLineHeightByFly" config:type="boolean">false</config:config-item>
@@ -303,6 +303,9 @@
   <style:style style:name="T3" style:family="text">
    <style:text-properties fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"/>
   </style:style>
+  <style:style style:name="T4" style:family="text">
+   <style:text-properties officeooo:rsid="0017fa94"/>
+  </style:style>
   <style:page-layout style:name="pm1">
    <style:page-layout-properties fo:page-width="21.001cm" fo:page-height="29.7cm" style:num-format="1" style:print-orientation="portrait" fo:margin-top="4.249cm" fo:margin-bottom="3.5cm" fo:margin-left="3.5cm" fo:margin-right="3.5cm" style:writing-mode="lr-tb" style:layout-grid-color="#c0c0c0" style:layout-grid-lines="20" style:layout-grid-base-height="0.706cm" style:layout-grid-ruby-height="0.353cm" style:layout-grid-mode="none" style:layout-grid-ruby-below="false" style:layout-grid-print="false" style:layout-grid-display="false" style:footnote-max-height="0cm" loext:margin-gutter="0cm">
     <style:footnote-sep style:width="0.018cm" style:distance-before-sep="0.101cm" style:distance-after-sep="0.101cm" style:line-style="solid" style:adjustment="left" style:rel-width="25%" style:color="#000000"/>
@@ -327,11 +330,11 @@
     <text:sequence-decl text:display-outline-level="0" text:name="Figure"/>
    </text:sequence-decls>
    <text:p text:style-name="P1">Welcome to <text:span text:style-name="T1">The Compleat Barks Disney Reader.</text:span><text:span text:style-name="T2"> </text:span>This app is for owners of the digital <text:span text:style-name="T3">Fantagraphics Complete Carl Barks Disney Library.</text:span> I built it to fulfil a lifelong dream: to read all the Barks Disney stories uncut and in order. The Fantagraphics volumes supplied most of the source material, but a generic comic reader can&apos;t do a library like this justice, so I wrote my own.</text:p>
-   <text:p text:style-name="P2">Undoing the censorship mattered most to me. <text:span text:style-name="T3">&quot;Good Deeds&quot;</text:span> (WDCS #34) and <text:span text:style-name="T3">&quot;Silent Night&quot;</text:span> are restored, the missing page of <text:span text:style-name="T3">&quot;The Bill Collectors&quot;</text:span> (WDCS #74) is back, and all are coloured in the flat Fantagraphics style. Dialogue changes have been reverted to the original US editions, and I&apos;ve brought back the harpies in <text:span text:style-name="T3">&quot;The Golden Fleecing,&quot;</text:span> the &apos;Dere&apos; dialect in <text:span text:style-name="T3">&quot;Lost in the Andes!,&quot;</text:span> and Bombie&apos;s blank eyes in <text:span text:style-name="T3">&quot;Voodoo Hoodoo.&quot;</text:span> Not everyone will agree with these choices — if you don&apos;t, each one can be turned off in the settings.</text:p>
-   <text:p text:style-name="P2">I also wanted to show how Barks&apos; stories evolved. You can browse the library by his actual submission dates and watch his style develop over his twenty-five-year career — or browse by series, or by tags. And I&apos;ve OCR&apos;d every narration box and speech bubble in all the volumes to build a complete Barksian word index: search for any word or phrase, and the results link to the exact pages.</text:p>
-   <text:p text:style-name="P2">There&apos;s also a built-in Carl Barks Wiki. It has a page for every story, with background notes, chronologies, and reference tables for dates, publications, and payments — all cross-linked and searchable. And when a wiki page makes you want the story itself, you can jump straight from the page to reading the comic.</text:p>
    <text:p text:style-name="P2">The reader works straight from your own .zip or .cbz files. It centres each page, numbers pages as they were originally published, and remembers your place — in both the table of contents and each story — so you can pick up where you left off.</text:p>
-   <text:p text:style-name="P2">Finally, the look. There are favourite Barks panels as backgrounds everywhere. I wanted this reader to be wall-to-wall Barks — a home for my favourite artist of the twentieth century.</text:p>
+   <text:p text:style-name="P2">Undoing the censorship mattered most to me. <text:span text:style-name="T3">&quot;Good Deeds&quot;</text:span> (WDCS #34) and <text:span text:style-name="T3">&quot;Silent Night&quot;</text:span> are restored, the missing page of <text:span text:style-name="T3">&quot;The Bill Collectors&quot;</text:span> (WDCS #74) is back, and all three are coloured in the flat Fantagraphics style. Dialogue changes have been reverted to the original US editions, and I&apos;ve brought back the <text:span text:style-name="T4">H</text:span>arpies in <text:span text:style-name="T3">&quot;The Golden Fleecing&quot;</text:span>, the &quot;De<text:span text:style-name="T4">ah</text:span>&quot; dialect in <text:span text:style-name="T3">&quot;Lost in the Andes!&quot;</text:span> and Bombie&apos;s blank eyes in <text:span text:style-name="T3">&quot;Voodoo Hoodoo&quot;</text:span>. Not everyone will agree with these choices — if you don&apos;t, you can turn each one off in Settings.</text:p>
+   <text:p text:style-name="P2">I also wanted to show how Barks&apos; stories evolved. You can browse the library by his actual submission dates and watch his style develop over his quarter-century career. You can also browse by series, or by tags. And I&apos;ve OCR&apos;d every narration box and speech bubble in all the volumes to build a complete Barksian word index: search for any word or phrase, and the results link to the exact pages.</text:p>
+   <text:p text:style-name="P2">There&apos;s also a built-in Carl Barks Wiki. It has a page for every story, with background notes, chronologies, and reference tables for dates, publications, and payments — all cross-linked and searchable. And when a wiki page makes you want <text:span text:style-name="T4">to read </text:span>the story itself, you can jump straight from the page to the comic.</text:p>
+   <text:p text:style-name="P2">Finally, the look: Barks panels fill the backgrounds everywhere. I wanted this reader to be wall-to-wall Barks — a home for my favourite artist of the twentieth century.</text:p>
    <text:p text:style-name="P3"/>
    <text:p text:style-name="P3">GLK</text:p>
   </office:text>
