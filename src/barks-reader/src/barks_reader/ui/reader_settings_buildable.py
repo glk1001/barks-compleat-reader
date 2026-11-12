@@ -78,8 +78,15 @@ class BuildableReaderSettings(ReaderSettings):
         return cast("SavableConfig", self._config)
 
     def validate_settings(self) -> None:
-        for key in self._VALIDATION_METHODS:
-            self._VALIDATION_METHODS[key](self._GETTER_METHODS[key]())
+        """Check each setting as the ini holds it, and log each one that will not do.
+
+        At boot: a bad setting is named now, not left to show as a load failing later
+        (some validators, such as the wiki bundle's index.md check, log nothing).
+        """
+        for key, is_valid in self._VALIDATION_METHODS.items():
+            value = self._GETTER_METHODS[key]()
+            if not is_valid(value):
+                logger.warning(log_markers.SETTING_NOT_VALID_AT_BOOT.format(key=key, value=value))
 
     def on_changed_setting(self, section: str, key: str, value: Any) -> bool:  # noqa: ANN401
         if section != BARKS_READER_SECTION:

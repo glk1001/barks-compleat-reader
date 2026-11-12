@@ -245,6 +245,80 @@ class TestSettingsPanelRefresh:
         assert item.value == "new"
 
 
+class TestValidateSettings:
+    """At boot each setting is checked, and each that will not do is named in the log."""
+
+    @pytest.fixture
+    def kivy_config(self, tmp_path: Path) -> KivyConfigParser:
+        ini = tmp_path / "barks-reader.ini"
+        ini.write_text(f"[{BARKS_READER_SECTION}]\n")
+        kivy_config = KivyConfigParser()
+        kivy_config.read(str(ini))
+        BuildableReaderSettings.build_config(kivy_config)
+        return kivy_config
+
+    @pytest.fixture
+    def booted(
+        self, kivy_config: KivyConfigParser, file_paths: MagicMock, tmp_path: Path
+    ) -> BuildableReaderSettings:
+        with (
+            patch.object(reader_settings_module, ReaderFilePaths.__name__, return_value=file_paths),
+            patch.object(reader_settings_module, SystemFilePaths.__name__),
+        ):
+            settings = BuildableReaderSettings()
+        settings.set_config(kivy_config, tmp_path / "barks-reader.ini", tmp_path)
+        return settings
+
+    @staticmethod
+    def _named(loguru_sink: list[str], key: str) -> bool:
+        prefix = log_markers.SETTING_NOT_VALID_AT_BOOT.split("{key}")[0]
+        return any(line.startswith(f'{prefix}{key}"') for line in loguru_sink)
+
+    def test_a_wiki_folder_with_no_index_is_named(
+        self,
+        booted: BuildableReaderSettings,
+        kivy_config: KivyConfigParser,
+        loguru_sink: list[str],
+        tmp_path: Path,
+    ) -> None:
+        """Its check logs nothing of its own: the bad folder went unsaid until the wiki hid."""
+        kivy_config.set(BARKS_READER_SECTION, USE_LIVE_WIKI_BUNDLE, "1")
+        kivy_config.set(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(tmp_path))  # no index.md
+        booted.validate_settings()
+        assert (
+            log_markers.SETTING_NOT_VALID_AT_BOOT.format(key=WIKI_BUNDLE_DIR, value=tmp_path)
+            in loguru_sink
+        )
+        assert self._named(loguru_sink, USE_LIVE_WIKI_BUNDLE)
+
+    def test_a_good_wiki_folder_is_not_named(
+        self,
+        booted: BuildableReaderSettings,
+        kivy_config: KivyConfigParser,
+        loguru_sink: list[str],
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "index.md").write_text("# Wiki\n")
+        kivy_config.set(BARKS_READER_SECTION, USE_LIVE_WIKI_BUNDLE, "1")
+        kivy_config.set(BARKS_READER_SECTION, WIKI_BUNDLE_DIR, str(tmp_path))
+        booted.validate_settings()
+        assert not self._named(loguru_sink, WIKI_BUNDLE_DIR)
+        assert not self._named(loguru_sink, USE_LIVE_WIKI_BUNDLE)
+
+    def test_png_images_with_no_panels_folder_are_named(
+        self,
+        booted: BuildableReaderSettings,
+        kivy_config: KivyConfigParser,
+        loguru_sink: list[str],
+        tmp_path: Path,
+    ) -> None:
+        kivy_config.set(BARKS_READER_SECTION, USE_PNG_IMAGES, "1")
+        kivy_config.set(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR, str(tmp_path / "not made"))
+        booted.validate_settings()
+        assert self._named(loguru_sink, PNG_BARKS_PANELS_DIR)
+        assert self._named(loguru_sink, USE_PNG_IMAGES)
+
+
 class TestARefusedChangeIsPutBack:
     """Kivy's panel writes a change to the ini before it is checked: a refused one is undone."""
 
