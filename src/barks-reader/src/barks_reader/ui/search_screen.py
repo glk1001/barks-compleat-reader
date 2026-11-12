@@ -1624,6 +1624,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """
         rows = self._panel_rows()
         areas = [area for area, _ in rows]
+        if self._nav_focus_area not in areas:
+            # The row went from under the keyboard: a tap emptied the scope or the
+            # speakers. The key lands on the era, there in both Word and Tag search.
+            self._nav_land_after_a_lost_panel_row(areas)
+            return True
         here = areas.index(self._nav_focus_area)
         row = rows[here][1]
         match row.handle_key(key):
@@ -1654,6 +1659,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             case _:  # handled on the row, or a way out to nowhere: stay on the row
                 pass
         return True
+
+    def _nav_land_after_a_lost_panel_row(self, areas: list[str]) -> None:
+        logger.debug(log_markers.SEARCH_PANEL_ROW_LOST.format(area=self._nav_focus_area))
+        if "era" in areas:
+            self._nav_enter_era()
+        else:  # no panel rows at all now (not Word or Tag search): back to the box
+            self._nav_focus_area = "input"
+            self._focus_active_input()
 
     def _rerun_word_results(self) -> None:
         if self._word_query:

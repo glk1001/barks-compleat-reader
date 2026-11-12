@@ -2254,6 +2254,36 @@ class TestTagScope:
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._nav_focus_area == "era"
 
+    @pytest.mark.parametrize(
+        "key", [search_screen.KEY_DOWN, search_screen.KEY_RIGHT], ids=["down", "right"]
+    )
+    def test_a_key_on_a_scope_row_a_tap_took_away_lands_on_the_era(
+        self, screen: SearchScreen, key: int, loguru_sink: list[str]
+    ) -> None:
+        """A tap that leaves no stories empties the row under the keyboard."""
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        screen._nav_enter_era()
+        screen.handle_key(search_screen.KEY_DOWN)
+        assert screen._nav_focus_area == "scope"
+        screen._scope_row.set_options([])  # as _show_scope_row does when nothing is listed
+
+        assert screen.handle_key(key) is True
+
+        assert screen._nav_focus_area == "era"
+        assert screen._era_rows["Word"].focused is not None
+        assert log_markers.SEARCH_PANEL_ROW_LOST.format(area="scope") in loguru_sink
+
+    def test_with_no_panel_rows_left_the_key_goes_back_to_the_box(
+        self, screen: SearchScreen
+    ) -> None:
+        screen._nav_focus_area = "scope"
+        screen._active_mode = "Title"  # a search with no panel rows
+        with patch.object(screen, "_focus_active_input") as focus_box:
+            assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "input"
+        focus_box.assert_called_once_with()
+
 
 class TestClearButtonKeys:
     """The x beside the box is Right from the text's end, in every mode: the remote reaches it."""
