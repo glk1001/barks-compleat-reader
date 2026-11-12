@@ -1888,15 +1888,6 @@ change = """
 reason = "Before update_regions the fullscreen band is empty either way, and tap_regions finds no top margin in it."
 
 [[equivalent]]
-module = "barks_reader.core.reader_navigation"
-function = "ReaderNavigation.tap_regions"
-change = """
-- left = min(width, max(0, self._fullscreen_left_margin + 1))
-+ left = min(width, max(1, self._fullscreen_left_margin + 1))
-"""
-reason = "After update_regions the left margin is round(max_window_width / 4) >= 0, so the + 1 is already >= 1; before it the band's right edge is 0 and there is no region either way."
-
-[[equivalent]]
 module = "barks_reader.core.main_index"
 function = "index_letter"
 change = """
@@ -2517,4 +2508,157 @@ change = """
 + (r"\\b" if at_start and _WORD_CHAR_RE.match(text[:2]) else "")
 """
 reason = "re.match anchors at the start, and the pattern is one character long: it tests the first character whether it is given one or two."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._held_until = 0.0
++ self._held_until = None
+"""
+reason = "Set again before any read: read only while a rectangle is held, and hold_rect sets it with the rectangle, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._held_until = 0.0
++ self._held_until = 1.0
+"""
+reason = "Set again before any read: read only while a rectangle is held, and hold_rect sets it with the rectangle, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._quiet_from = 0.0
++ self._quiet_from = None
+"""
+reason = "Set again before any read: read only during a quiet, and quiet_frame sets it as the quiet starts, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._quiet_from = 0.0
++ self._quiet_from = 1.0
+"""
+reason = "Set again before any read: read only during a quiet, and quiet_frame sets it as the quiet starts, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = None
+"""
+reason = "Only tested for truth, where None and 0.0 are alike: `if self._quiet_until:` in _on_message."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = 1.0
+"""
+reason = "A deadline of 1.0 is past at once: it is checked against time.monotonic(), the seconds since the computer started, so the next message ends the quiet just as 0.0 does."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._frame_messages: list[tuple[int, str]] = []
++ self._frame_messages: list[tuple[int, str]] = None
+"""
+reason = "Appended to only during a quiet, which quiet_frame starts with a new list; before one, _log_frame_messages tests it for truth, where None and [] are alike."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.__init__"
+change = """
+- self._next_proc: int | None = None
++ self._next_proc: int | None = ""
+"""
+reason = "Set again before any read: the procedure SetWindowLongPtrW returns, or the guard raises and is dropped, so the first value is never seen."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.release_rect"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = None
+"""
+reason = "Only tested for truth, where None and 0.0 are alike: `if self._quiet_until:` in _on_message."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.release_rect"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = 1.0
+"""
+reason = "A deadline of 1.0 is past at once: it is checked against time.monotonic(), the seconds since the computer started, so the next message ends the quiet just as 0.0 does."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.end_quiet"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = None
+"""
+reason = "Only tested for truth, where None and 0.0 are alike: `if self._quiet_until:` in _on_message."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard.end_quiet"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = 1.0
+"""
+reason = "A deadline of 1.0 is past at once: it is checked against time.monotonic(), the seconds since the computer started, so the next message ends the quiet just as 0.0 does."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard._log_frame_messages"
+change = """
+- self._frame_messages = []
++ self._frame_messages = None
+"""
+reason = "Called only once the quiet has ended, so nothing is appended before quiet_frame starts a new list; a second log tests it for truth, where None and [] are alike."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard._on_message"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = None
+"""
+reason = "Only tested for truth, where None and 0.0 are alike: `if self._quiet_until:` in _on_message."
+
+[[equivalent]]
+module = "barks_reader.core.win32_window"
+function = "CaptionGuard._on_message"
+change = """
+- self._quiet_until = 0.0
++ self._quiet_until = 1.0
+"""
+reason = "A deadline of 1.0 is past at once: it is checked against time.monotonic(), the seconds since the computer started, so the next message ends the quiet just as 0.0 does."
+
+[[equivalent]]
+module = "barks_reader.core.boot_splash"
+function = "boot_splash_file"
+change = """
+- parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "")
++ parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "XXXX")
+"""
+reason = "Only a decimal parent pid is used: \"XXXX\" is no more a number than \"\", and both give None."
+
+[[equivalent]]
+module = "barks_reader.core.json_settings_manager"
+function = "SettingsManager.get_read_cue_opens_left"
+change = """
+- return left if type(left) is int and left > 0 else 0
++ return left if type(left) is int and left >= 0 else 0
+"""
+reason = "At 0 both return 0: `left` itself, or the else's 0."
 

@@ -5,7 +5,7 @@ which window the lookup takes, and that a 64-bit handle comes back whole.
 """
 
 # ruff: noqa: N802, SLF001
-# cspell:ignore NOMOVE NOSIZE WINDOWPOS NCPAINT
+# cspell:ignore NOMOVE NOSIZE WINDOWPOS NCPAINT wndproc
 # cspell:ignore WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
 from __future__ import annotations
@@ -260,6 +260,67 @@ class TestCaptionGuard:
         assert any("Could not guard the window" in s for s in loguru_sink)
 
 
+class TestCaptionGuardWiring:
+    """How the guard is put in: each call typed, its callback typed and handed over."""
+
+    def test_user32_is_loaded_with_its_last_error_kept(self, guard_user32: MagicMock) -> None:
+        with patch.object(ctypes, "WinDLL", create=True, return_value=guard_user32) as win_dll:
+            win32_window.CaptionGuard(HIGH_HWND)
+
+        win_dll.assert_called_once_with("user32", use_last_error=True)
+
+    def test_the_calls_are_typed_so_a_64_bit_handle_and_procedure_go_whole(
+        self, guard_user32: MagicMock
+    ) -> None:
+        win32_window.CaptionGuard(HIGH_HWND)
+
+        call_proc, set_proc = guard_user32.CallWindowProcW, guard_user32.SetWindowLongPtrW
+        assert call_proc.argtypes == [
+            ctypes.c_void_p,
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.WPARAM,
+            wintypes.LPARAM,
+        ]
+        assert call_proc.restype is wintypes.LPARAM
+        assert set_proc.argtypes == [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
+        assert set_proc.restype is ctypes.c_void_p
+
+    def test_the_window_is_handed_the_guards_own_callback(self, guard_user32: MagicMock) -> None:
+        """A window procedure's type, wrapping `_on_message`, given as the window's procedure."""
+        made: dict[str, tuple[Any, ...]] = {}
+
+        def callback_type(*types: Any) -> Callable[[Any], tuple[str, Any]]:  # noqa: ANN401
+            made["types"] = types
+            return lambda function: ("callback", function)
+
+        cast = MagicMock(return_value=MagicMock(value=0xC0DE))
+        with (
+            patch.object(ctypes, "WINFUNCTYPE", create=True, new=callback_type),
+            patch.object(ctypes, "cast", cast),
+        ):
+            guard = win32_window.CaptionGuard(HIGH_HWND)
+
+        assert made["types"] == (
+            wintypes.LPARAM,
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.WPARAM,
+            wintypes.LPARAM,
+        )
+        assert guard._wndproc == ("callback", guard._on_message)
+        cast.assert_called_once_with(guard._wndproc, ctypes.c_void_p)
+        guard_user32.SetWindowLongPtrW.assert_called_once_with(HIGH_HWND, -4, 0xC0DE)
+
+    def test_a_window_that_refuses_the_guard_is_named(self, guard_user32: MagicMock) -> None:
+        guard_user32.SetWindowLongPtrW.return_value = None
+
+        with pytest.raises(
+            OSError, match="SetWindowLongPtrW refused window 0x100000010 a new procedure"
+        ):
+            win32_window.CaptionGuard(HIGH_HWND)
+
+
 HELD = (150, 120, 700, 500)  # left, top, width, height
 ASKED = (142, 89, 716, 539)  # where SDL's fullscreen exit asks for: a frame too big
 
@@ -408,6 +469,7 @@ class TestHeldRect:
         assert "WM_NCPAINT, +" in lines[0]
         assert lines[0].count("WM_NCPAINT") == 1
         assert "WM_NCUAHDRAWCAPTION." in lines[0]
+        assert "None" not in lines[0]  # the other message has no name, and is not kept
 
     def test_once_let_go_the_window_goes_where_it_is_sent(
         self, guard: win32_window.CaptionGuard
@@ -426,6 +488,74 @@ class TestHeldRect:
         with patch.object(win32_window.time, "monotonic", return_value=103.0):
             assert self._changing(guard) == ASKED
         assert self._changing(guard) == ASKED  # and it stays dropped
+
+    def test_a_quiet_still_holds_at_its_last_moment(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        with patch.object(win32_window.time, "monotonic", return_value=100.0):
+            win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        with patch.object(win32_window.time, "monotonic", return_value=100.5):
+            assert guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0) == 0
+
+        guard_user32.CallWindowProcW.assert_not_called()
+
+    def test_a_rectangle_still_holds_at_its_last_moment(
+        self, guard: win32_window.CaptionGuard
+    ) -> None:
+        with patch.object(win32_window.time, "monotonic", return_value=100.0):
+            win32_window.hold_window_rect(HIGH_HWND, HELD)
+        with patch.object(
+            win32_window.time, "monotonic", return_value=100.0 + win32_window._HELD_RECT_SECONDS
+        ):
+            assert self._changing(guard) == HELD
+
+    def test_each_frame_message_is_logged_with_its_time_into_the_quiet(
+        self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(win32_window.time, "monotonic", return_value=100.0):
+            win32_window.quiet_window_frame(HIGH_HWND, 2.0)
+        with patch.object(win32_window.time, "monotonic", return_value=101.5):
+            guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        win32_window.end_window_frame_quiet(HIGH_HWND)
+
+        assert any(s.endswith("quiet: +1500ms WM_NCPAINT.") for s in loguru_sink)
+
+    def test_a_quiet_keeps_no_more_frame_messages_than_its_cap(
+        self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
+    ) -> None:
+        """A desktop that floods the window with paints must not grow the log without end."""
+        cap = win32_window._MAX_FRAME_MESSAGES_LOGGED
+        win32_window.quiet_window_frame(HIGH_HWND, 60.0)
+        for _ in range(cap + 1):
+            guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        win32_window.end_window_frame_quiet(HIGH_HWND)
+
+        (line,) = [s for s in loguru_sink if "Frame messages while" in s]
+        assert line.count("WM_NCPAINT") == cap
+
+    def test_a_quiet_with_nothing_ever_held_logs_its_messages(
+        self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
+    ) -> None:
+        """Going fullscreen first thing: no window move has come in yet."""
+        win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        win32_window.end_window_frame_quiet(HIGH_HWND)
+
+        assert any("Frame messages while the window's frame was quiet" in s for s in loguru_sink)
+
+    def test_a_quiet_after_a_dropped_rectangle_logs_its_messages(
+        self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
+    ) -> None:
+        """A rectangle dropped by its time is gone: it holds no later quiet open."""
+        with patch.object(win32_window.time, "monotonic", return_value=100.0):
+            win32_window.hold_window_rect(HIGH_HWND, HELD)
+        with patch.object(win32_window.time, "monotonic", return_value=103.0):
+            self._changing(guard)
+        win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        win32_window.end_window_frame_quiet(HIGH_HWND)
+
+        assert any("Frame messages while the window's frame was quiet" in s for s in loguru_sink)
 
     @pytest.mark.usefixtures("guard")
     def test_a_window_with_no_guard_holds_nothing(self) -> None:
