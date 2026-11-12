@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.index_screen
 import barks_reader.ui.speech_index_screen
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.entity_types import EntityType
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_items import IndexItem
@@ -22,6 +22,7 @@ from barks_reader.core.keys import (
     KEY_RIGHT,
     KEY_UP,
 )
+from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.index_screen import (
     TitleShowSpeechButton,
     _IndexNavPanel,
@@ -794,6 +795,49 @@ def test_a_bubble_goto_with_no_focus_hand_off_still_goes_to_the_title(
         speech_index_screen._handle_title_from_bubble_press("Donald Duck Finds Pirate Gold", "5")
     schedule.call_args.args[0](0)
     goto.assert_called_once()
+
+
+def test_a_bubble_goto_to_a_title_in_no_volume_is_a_notice_not_a_crash(
+    speech_index_screen: SpeechIndexScreen, mock_user_error_handler: MagicMock
+) -> None:
+    """The bubble goto runs on the Kivy clock: uncaught there, the error ended the app."""
+    title = Titles.JINXED_JALOPY_RACE_THE
+    assert title not in _speech_module.ALL_FANTA_COMIC_BOOK_INFO
+    speech_index_screen.on_goto_title = MagicMock(side_effect=TitleNotInFantaInfoError("Jalopy"))
+    hand_off = MagicMock()
+    speech_index_screen.on_after_popup_goto_title = hand_off
+    with patch.object(Clock, "schedule_once") as schedule:
+        speech_index_screen._handle_title_from_bubble_press(ENUM_TO_STR_TITLE[title], "5")
+    schedule.call_args.args[0](0)
+
+    error_type, error_info = mock_user_error_handler.handle_error.call_args.args
+    assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+    assert error_info.title is title
+    # Nothing was gone to, so there is no title portal to take the focus.
+    hand_off.assert_not_called()
+
+
+def test_a_background_word_spoken_only_outside_the_volumes_does_not_raise(
+    speech_index_screen: SpeechIndexScreen,
+) -> None:
+    """Every title has a name; only those in a Fantagraphics volume have an info."""
+    title = Titles.JINXED_JALOPY_RACE_THE
+    assert title not in _speech_module.ALL_FANTA_COMIC_BOOK_INFO
+    item = IndexItem("term", "term")
+    speech_index_screen._selected_letter_button = MagicMock(text="T")
+    speech_index_screen._item_index["T"] = [item]
+    speech_index_screen._background_titles_cache[item] = [
+        ENUM_TO_STR_TITLE[title],
+        "Donald Duck Finds Pirate Gold",
+        "no such story",
+    ]
+    with patch.object(speech_index_screen, "_set_background_image"):
+        speech_index_screen._next_background_image()
+
+    (found_titles,) = speech_index_screen._random_title_images.get_random_image.call_args.args
+    assert found_titles == [
+        _speech_module.ALL_FANTA_COMIC_BOOK_INFO[Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+    ]
 
 
 def test_an_empty_prefix_bar_draws_no_focus(speech_index_screen: SpeechIndexScreen) -> None:

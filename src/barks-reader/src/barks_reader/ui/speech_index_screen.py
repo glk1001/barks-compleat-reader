@@ -325,10 +325,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             title_strs = list(self._find_words_for_item(rand_item))
             _store_bounded(self._background_titles_cache, rand_item, title_strs)
 
+        # A word may be spoken only in titles that are in no Fantagraphics volume.
         found_titles = [
-            ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]]
+            ALL_FANTA_COMIC_BOOK_INFO[title]
             for title_str in title_strs
-            if title_str in STR_TITLE_TO_ENUM
+            if (title := STR_TITLE_TO_ENUM.get(title_str)) in ALL_FANTA_COMIC_BOOK_INFO
         ]
         image_info = self._random_title_images.get_random_image(found_titles)
         self._set_background_image(image_info)
@@ -593,8 +594,8 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         pages = self._bubble_title_pages
 
         def goto_title() -> None:
-            assert self.on_goto_title is not None
-            self.on_goto_title(image_info, page_to_goto, pages)
+            if not self._goto_title_or_notice(image_info, page_to_goto, pages):
+                return
             # The popup owned the keyboard, so this goto skipped the main screen's normal
             # key hand-off; land focus on the title portal (the read action) explicitly.
             if self.on_after_popup_goto_title is not None:

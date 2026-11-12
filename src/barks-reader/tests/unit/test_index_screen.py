@@ -1081,11 +1081,19 @@ class TestSetBackgroundImage:
         assert filename == Path("andes.png")
         return info, on_ready
 
-    def test_a_failed_load_is_raised(self, index_screen: ConcreteIndexScreen) -> None:
+    def test_a_failed_load_is_logged_and_keeps_the_background(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """Raised on the Kivy clock, one bad panel in the rotation ended the app."""
+        index_screen.current_title_str = "the story on show"
         _info, on_ready = self._load_andes(index_screen)
 
-        with pytest.raises(RuntimeError, match="no such panel"):
-            on_ready(None, FileNotFoundError("no such panel"))
+        on_ready(None, FileNotFoundError("no such panel"))
+
+        assert index_screen.current_title_str == "the story on show"
+        assert index_screen.image_texture is None
+        failed = log_markers.IMAGE_LOAD_FAILED.format(filename="andes.png", error="no such panel")
+        assert failed in loguru_sink
 
     def test_the_caption_and_goto_target_wait_for_the_picture(
         self, index_screen: ConcreteIndexScreen

@@ -447,16 +447,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
             button.background_color = self.index_theme.ITEM_BG_SELECTED
 
         def goto_title() -> None:
-            assert self.on_goto_title is not None
-            try:
-                self.on_goto_title(image_info, item.page_to_goto, item.tagged_pages)
-            except TitleNotInFantaInfoError as e:
-                logger.error(e)
-                assert self._user_error_handler is not None
-                self._user_error_handler.handle_error(
-                    ErrorTypes.ArchiveVolumeNotAvailable,
-                    get_volume_not_available_error_info(image_info),
-                )
+            self._goto_title_or_notice(image_info, item.page_to_goto, item.tagged_pages)
 
         def reset_background_color() -> None:
             button.background_color = self.index_theme.ITEM_BG
@@ -886,6 +877,28 @@ class IndexScreen(NavExitMixin, FloatLayout):
             lambda _dt: self._next_background_image(), self.index_image_change_seconds
         )
 
+    def _goto_title_or_notice(
+        self, image_info: ImageInfo, page_to_goto: str, pages: tuple[str, ...]
+    ) -> bool:
+        """Go to the title, or say its volume is not available; return whether it went.
+
+        The indexes list every Barks title, some in no Fantagraphics volume. Every goto
+        from an index comes through here: uncaught on the Kivy clock, the error ends
+        the app.
+        """
+        assert self.on_goto_title is not None
+        try:
+            self.on_goto_title(image_info, page_to_goto, pages)
+        except TitleNotInFantaInfoError as e:
+            logger.error(e)
+            assert self._user_error_handler is not None
+            self._user_error_handler.handle_error(
+                ErrorTypes.ArchiveVolumeNotAvailable,
+                get_volume_not_available_error_info(image_info),
+            )
+            return False
+        return True
+
     def _reset_background_image_caches(self) -> None:
         """Drop any per-letter caches feeding the background image. Optional hook."""
 
@@ -903,7 +916,12 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
         def on_ready(tex: Texture | None, err: Exception | None) -> None:
             if err:
-                raise RuntimeError(err)
+                # Raised here, on the Kivy clock, one bad panel file would end the app.
+                # The index keeps the background it has.
+                logger.error(
+                    log_markers.IMAGE_LOAD_FAILED.format(filename=image_info.filename, error=err)
+                )
+                return
 
             self._show_background_image(image_info, tex)
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
