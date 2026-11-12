@@ -256,6 +256,23 @@ def test_selecting_a_path_logs_it(loguru_sink: list[str]) -> None:
     chooser.dismiss.assert_called_once()
 
 
+@pytest.mark.parametrize(("typed", "saved"), [(" /library ", "/library"), (" ", None)])
+def test_a_selected_path_is_saved_trimmed_and_a_blank_one_not_at_all(
+    typed: str, saved: str | None
+) -> None:
+    """A box holding only a space passed the check, and an empty path was saved."""
+    chooser = _chooser()
+    with patch.object(settings_fix, "Clock") as clock:
+        SettingLongPathPopup.select_path(chooser, typed)
+        for call in clock.schedule_once.call_args_list:
+            call.args[0](0)
+    if saved is None:
+        chooser.setting_widget.update_setting_value.assert_not_called()
+    else:
+        chooser.setting_widget.update_setting_value.assert_called_once_with(saved)
+    chooser.dismiss.assert_called_once()
+
+
 def test_an_option_picked_from_its_list_logs_the_new_value(loguru_sink: list[str]) -> None:
     setting = _stand_in(key="color_theme", value="")
     with patch.object(settings_fix, "Clock"):

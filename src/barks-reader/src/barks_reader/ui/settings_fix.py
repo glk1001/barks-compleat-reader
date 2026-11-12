@@ -583,9 +583,10 @@ class SettingLongPathPopup(PopupFrame):
 
     def select_path(self, path: str) -> None:
         """Call the 'Select' button when pressed."""
-        logger.info(log_markers.FOLDER_CHOOSER_SELECTED.format(path=path.strip()))
+        path = path.strip()  # a box left holding a space is no path
+        logger.info(log_markers.FOLDER_CHOOSER_SELECTED.format(path=path))
         if self.setting_widget and path:
-            Clock.schedule_once(lambda _dt: self.setting_widget.update_setting_value(path.strip()))
+            Clock.schedule_once(lambda _dt: self.setting_widget.update_setting_value(path))
         self.dismiss()
 
     def update_file_chooser_path(self, text: str) -> None:
