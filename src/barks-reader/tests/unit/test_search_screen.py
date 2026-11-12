@@ -3220,10 +3220,19 @@ class TestNavEdges:
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert getattr(screen, "_last_activated_result", None) is None
 
-    def test_up_from_the_first_title_result_stays_there(self, screen: SearchScreen) -> None:
-        """The title search has no chip rows above its results to go up to."""
+    def test_up_from_the_first_title_result_is_the_box(self, screen: SearchScreen) -> None:
+        """With no chip rows above its stories, Up there did nothing: only Left or Escape left."""
         screen._active_mode = "Title"
         screen._nav_focus_area = "results"
+        with patch.object(screen, "_focus_active_input") as focus_box:
+            assert screen.handle_key(search_screen.KEY_UP) is True
+        assert screen._nav_focus_area == "input"
+        focus_box.assert_called_once_with()
+
+    def test_up_from_a_lower_title_result_is_the_one_above(self, screen: SearchScreen) -> None:
+        screen._active_mode = "Title"
+        screen._nav_focus_area = "results"
+        screen._nav_focused_result_idx = 1
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
 

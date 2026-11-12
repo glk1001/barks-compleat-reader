@@ -733,7 +733,10 @@ def test_typed_tags_with_a_year_range_list_only_those_years(boot: AppBoot) -> No
 
 
 def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) -> None:
-    """Down leaves the box for the results, Right at the text's end for the clear button."""
+    """Down leaves the box for the results, Right at the text's end for the clear button.
+
+    Up from the first result is the box: the title search has no chip rows above it.
+    """
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
     d.key_then_wait(d.FOCUS_MOVED, "Down")  # the first result row
@@ -743,6 +746,8 @@ def test_the_box_clear_button_and_results_are_walked_by_keyboard(boot: AppBoot) 
     d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Left")  # from the clear button, the box
     d.key_then_wait(CLEAR_FOCUSED, "Right")  # the cursor is at the end: the clear button
     d.key_then_wait(d.FOCUS_MOVED, "Right")  # and on to the results
+    d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Up")  # nothing above the first: the box
+    d.key_then_wait(d.FOCUS_MOVED, "Down")  # and down into the results again
     d.key_then_wait(markers.SEARCH_EXITED_NAV, "Escape")
 
 

@@ -2218,6 +2218,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             # The panel's lowest chip row sits directly above the results.
             self._clear_result_focus()
             self._nav_enter_panel_row(self._panel_rows()[-1][0])
+        else:
+            # Nothing above the list (the title search has no chip rows): the box, as
+            # Up from the top of the other searches' rows goes back to theirs.
+            self._clear_result_focus()
+            self._nav_focus_area = "input"
+            self._focus_active_input()
 
     def _handle_results_left_right(self, key: int) -> bool:
         if key == KEY_RIGHT:
