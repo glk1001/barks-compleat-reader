@@ -84,9 +84,7 @@ class SettingsKeyboardNav:
 
     def reset(self) -> None:
         """Clear focus highlight and reset internal state."""
-        if self._last_focused_item is not None:
-            clear_focus_highlight(self._last_focused_item, MENU_FOCUS_HIGHLIGHT_GROUP)
-            self._last_focused_item = None
+        self.blur()
         self._focused_idx = 0
 
     def _activate_item(self, item: SettingItem) -> None:
