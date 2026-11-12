@@ -2456,32 +2456,32 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._nav_enter_results()
             self._once_the_list_settles(self._draw_result_focus)
 
-    def _get_main_tag_chip_buttons(self) -> list[_TagChipButton]:
+    def _tag_chips(self, *, members: bool | None) -> list[_TagChipButton]:
+        """Return the tag list's chips in visual order: a group's members, the rest, or all.
+
+        Args:
+            members: True for the open groups' members only, False for the rest, None
+                for every chip.
+
+        """
         if not hasattr(self.ids, "tag_chips_layout"):
             return []
-        result: list[_TagChipButton] = []
-        for stack in reversed(self.ids.tag_chips_layout.children):
-            if not getattr(stack, "is_member_layout", False):
-                result.extend(_chips_of(stack))
-        return result
+        return [
+            chip
+            for stack in reversed(self.ids.tag_chips_layout.children)
+            if members is None or getattr(stack, "is_member_layout", False) == members
+            for chip in _chips_of(stack)
+        ]
+
+    def _get_main_tag_chip_buttons(self) -> list[_TagChipButton]:
+        return self._tag_chips(members=False)
 
     def _get_member_chip_buttons(self) -> list[_TagChipButton]:
-        if not hasattr(self.ids, "tag_chips_layout"):
-            return []
-        result: list[_TagChipButton] = []
-        for stack in reversed(self.ids.tag_chips_layout.children):
-            if getattr(stack, "is_member_layout", False):
-                result.extend(_chips_of(stack))
-        return result
+        return self._tag_chips(members=True)
 
     def _get_tag_chip_buttons(self) -> list[_TagChipButton]:
         """Return all tag chips (main + member) in visual order for keyboard nav."""
-        if not hasattr(self.ids, "tag_chips_layout"):
-            return []
-        result: list[_TagChipButton] = []
-        for stack in reversed(self.ids.tag_chips_layout.children):
-            result.extend(_chips_of(stack))
-        return result
+        return self._tag_chips(members=None)
 
     def _get_word_chip_buttons(self) -> list[Button]:
         if not hasattr(self.ids, "word_chips_layout"):
