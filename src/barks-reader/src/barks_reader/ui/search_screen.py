@@ -398,6 +398,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     _scope_found: tuple[tuple[str, str, str, SearchFilter | None], dict[str, TitleInfo]] | None = (
         None
     )
+    # True while a picked suggestion puts its query in the box: the query runs next,
+    # so the box's text does not pick its lone match on the way (`_on_suggestion_picked`).
+    _query_follows: bool = False
     _nav_focus_area: str = "input"
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -1178,7 +1181,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 )
             )
 
-        if matches.total == 1 and not is_query:
+        if matches.total == 1 and not is_query and not self._query_follows:
             self._on_word_chip_selected(matches.words[0])
 
     def _make_word_row(self, word: str, row_index: int) -> _WordRow:
@@ -1281,9 +1284,18 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 layout.add_widget(row)
 
     def _on_suggestion_picked(self, suggestion: Suggestion) -> None:
-        """Put the spelling in place of the word it is for, in the box, and run the query."""
+        """Put the spelling in place of the word it is for, in the box, and run the query.
+
+        The box's new text relists its words, as typing does, but does not pick a lone
+        match: that searched for the spelling and listed it, for the query to search
+        and list again straight after.
+        """
         query = replace_word(self._word_query, suggestion.word, suggestion.spelling)
-        self.ids.word_search_input.text = query  # relists the box's words, as typing does
+        self._query_follows = True
+        try:
+            self.ids.word_search_input.text = query
+        finally:
+            self._query_follows = False
         self._run_word_query(query)
 
     def _focus_after_query(self) -> None:

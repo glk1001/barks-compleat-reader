@@ -519,6 +519,29 @@ class TestTypedQuery:
         assert screen.ids.word_search_input.text == "Scrooge -gold"
         run.assert_called_once_with("Scrooge -gold")
 
+    def test_a_picked_suggestion_does_not_pick_the_spelling_on_the_way(
+        self, screen: SearchScreen
+    ) -> None:
+        """The box's text lists the spelling alone; the query, not the word, is searched."""
+        screen._word_query = "scroge"
+        screen._search.get_words_matching.return_value = TermMatches(["scrooge"], 1)
+
+        class _Box:
+            """The box as kv binds it: its new text goes to the screen's handler."""
+
+            def __setattr__(self, name: str, value: str) -> None:
+                assert name == "text"
+                screen.on_word_search_text(value)
+
+        screen.ids.word_search_input = _Box()
+        with (
+            patch.object(screen, "_on_word_chip_selected") as picked,
+            patch.object(screen, "_run_word_query") as run,
+        ):
+            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"))
+        picked.assert_not_called()
+        run.assert_called_once_with("Scrooge")
+
     def test_the_speaker_filter_reruns_the_query(self, screen: SearchScreen) -> None:
         screen._word_query = "gold -mine"
         _offer_speakers(screen)
