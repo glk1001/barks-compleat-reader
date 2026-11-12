@@ -95,9 +95,6 @@ class _RiseInTransition(_ReleasesFrameBuffers, RiseInTransition):
 class ReaderScreen(Screen):
     app_icon_filepath: str = ""
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
-        super().__init__(**kwargs)
-
     # Kivy fires these when a screen transition completes, so they mark the
     # moment a screen is really on show - the "... is active" lines above the
     # switches are logged when the (random, animated) transition starts.

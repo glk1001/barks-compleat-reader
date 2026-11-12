@@ -475,14 +475,14 @@ class TestReaderScreenManager:
 class TestReaderScreen:
     def test_init(self) -> None:
         # We need to patch Screen.__init__ because ReaderScreen inherits from it
-        with patch.object(Screen, "__init__", autospec=True) as mock_init:
+        with patch.object(Screen, "__init__", autospec=True, return_value=None) as mock_init:
             screen = ReaderScreen()
             mock_init.assert_called_once()
             assert screen.app_icon_filepath == ""
 
     def test_methods_exist(self) -> None:
         # Just verifying the interface exists and doesn't crash
-        with patch.object(Screen, "__init__", autospec=True):
+        with patch.object(Screen, "__init__", autospec=True, return_value=None):
             screen = ReaderScreen()
             screen.is_active(active=True)
             screen.on_comic_closed()
