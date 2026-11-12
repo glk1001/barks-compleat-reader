@@ -981,7 +981,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         A press rebuilds a list; its new rows are laid out before the next frame, and
         a focus drawn or scrolled to before then lands on where the rows were. Two
         frames is empirical, from the first of these waits, and has not been seen short;
-        one frame should do by Kivy's ordering, and has not been tried.
+        one frame should do by Kivy's ordering, and has not been tried: it would save
+        some 16 ms, and a wait cut too short shows only on the slower machines.
         """
         Clock.schedule_once(lambda _dt: Clock.schedule_once(lambda _dt2: callback()))
 
