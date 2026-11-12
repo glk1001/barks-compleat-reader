@@ -877,7 +877,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             layout.add_widget(_SearchResultButton(text=f"None in {self._era.label}", disabled=True))
 
     def _on_tag_chip_pressed(self, tag_str: str) -> None:
-        """Pick a listed tag; pressed again, a picked group closes, or opens again."""
+        """Pick a listed tag; pressed again, a picked group closes, or opens again.
+
+        While the picked tags' stories are listed, the open group does not close: its
+        own stories are listed again, and the next press closes it.
+        """
         if (
             tag_str == self._selected_tag
             and tag_str in self._tag_chip_groups
@@ -2348,17 +2352,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         is_open_group = (
             was_main and focused_chip.text == self._selected_tag and self._get_member_chip_buttons()
         )
-        if is_open_group:
-            self._close_tag_group()  # its own titles; the focus stays on it
-            new_chips = self._get_tag_chip_buttons()
-            self._nav_focused_chip_idx = next(
-                (i for i, c in enumerate(new_chips) if c.text == self._selected_tag), 0
-            )
-            self._draw_chip_focus()
-            return
-        if not was_main and isinstance(focused_chip, _TagChipButton) and focused_chip.is_group:
-            # A subgroup opens (or closes) in place: the focus stays on it, so Down
-            # walks into its members.
+        is_subgroup = (
+            not was_main and isinstance(focused_chip, _TagChipButton) and focused_chip.is_group
+        )
+        if is_open_group or is_subgroup:
+            # Pressed as the mouse presses it, and the focus stays on it: the open group
+            # closes, or lists its own stories again in place of the picked tags'; a
+            # subgroup opens or closes, so Down walks into its members.
             label = focused_chip.text
             focused_chip.trigger_action(duration=0)
             new_chips = self._get_tag_chip_buttons()

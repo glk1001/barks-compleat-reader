@@ -3212,6 +3212,7 @@ class TestTagListKeys:
             _selected_tag="",
             _selected_member="",
             _current_tag=None,
+            _tag_basket_results=False,
             _nav_on_exit_request=MagicMock(),
         ) as bare:
             bare._search.get_tag_group_members.side_effect = lambda group: self.MEMBERS[group]
@@ -3299,6 +3300,32 @@ class TestTagListKeys:
         assert self._texts(screen._get_tag_chip_buttons()) == ["chemistry", "Duckburg"]
         assert screen._nav_focused_chip_idx == 0
         assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemistry".'
+        assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
+
+    def test_enter_on_the_open_group_with_picked_tags_listed_lists_its_own_first(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        """As the mouse does: Enter put the group's stories back, not the picked tags'."""
+        screen._on_tag_result_selected("chemistry")
+        screen._tag_basket_results = True  # a + since: the picked tags' stories listed
+        screen._nav_focused_chip_idx = 0
+        with patch.object(SearchScreen, "_show_tag_titles") as listed:
+            assert screen.handle_key(search_screen.KEY_ENTER) is True
+        listed.assert_called_once_with("chemistry")
+        assert screen._tag_basket_results is False  # a new search reruns the group's
+        assert screen._current_tag is TagGroups.CHEMISTRY  # still open
+        assert self._texts(screen._get_member_chip_buttons()) == [
+            "duckmite",
+            "chemical names",
+            "weemite",
+        ]
+        assert screen._nav_focused_chip_idx == 0
+        assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemistry".'
+        assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") not in loguru_sink
+
+        assert screen.handle_key(search_screen.KEY_ENTER) is True  # the next one closes it
+        assert self._texts(screen._get_tag_chip_buttons()) == ["chemistry", "Duckburg"]
+        assert screen._nav_focused_chip_idx == 0
         assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
 
     def test_enter_on_a_subgroup_opens_it_in_place_and_stays_on_it(
