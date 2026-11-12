@@ -2542,6 +2542,26 @@ class TestResultsKeys:
         assert screen._nav_focus_area == "input"
         assert screen.ids.word_search_input.focus is True
 
+    def test_down_from_the_box_is_the_first_story(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
+
+    def test_down_from_the_box_with_no_stories_is_the_era(self, screen: SearchScreen) -> None:
+        screen._nav_focus_area = "input"
+        screen.ids["word_results_layout"].clear_widgets()
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "era"
+        assert screen._era_rows["Word"].focused is not None
+
+    def test_down_from_an_empty_title_box_stays_in_it(self, screen: SearchScreen) -> None:
+        """Not onto the empty list, where no ring is drawn and only Left or Escape get out."""
+        screen._active_mode = "Title"
+        screen._nav_focus_area = "input"
+        assert screen.handle_key(search_screen.KEY_DOWN) is True
+        assert screen._nav_focus_area == "input"
+        assert screen.ids.title_search_input.focus is True
+
     @pytest.mark.parametrize("mode", ["Word", "Tag"], ids=["a_list_built_since", "another_mode"])
     def test_coming_back_to_a_list_without_the_story_pressed_lands_on_the_box(
         self, screen: SearchScreen, mode: str

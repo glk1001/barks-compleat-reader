@@ -2129,9 +2129,17 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._nav_focus_area = "tags"
             self._nav_focused_chip_idx = 0
             self._draw_chip_focus()
-        else:
+        elif self._get_active_result_rows():
             self._nav_enter_results()
             self._draw_result_focus()
+        elif self._panel_rows():
+            # No stories listed: the era row is next; Up from it is the box again.
+            self._nav_enter_panel_row(self._panel_rows()[0][0])
+        else:
+            # Nothing below the box (a title search with nothing listed): stay in it,
+            # rather than on an empty list with no ring drawn.
+            self._nav_focus_area = "input"
+            self._focus_active_input()
 
     def _handle_results_key(self, key: int) -> bool:
         rows = self._get_active_result_rows()
