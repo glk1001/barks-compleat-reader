@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, override
+from typing import TYPE_CHECKING, ClassVar, Protocol, override
 
 from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
@@ -94,6 +94,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     """
 
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
+    _CLOSING_NAME: ClassVar[str] = "the document reader"
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     GREYED_BUTTON_OPACITY = 0.4
     action_bar_title = StringProperty()
@@ -139,7 +140,6 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
         self._was_fullscreen_on_entry = False
-        self._is_closing = False
         # What runs once the screen has gone (`close`), e.g. Go to Story's navigation.
         self._after_close: Callable[[], None] | None = None
         self._doc_dir: Path | None = None
@@ -365,18 +365,14 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self._update_widget_states()
         logger.info(log_markers.ENTERED_WINDOWED.format(screen=DocumentReaderScreen.__name__))
         log_window_geometry("DocumentReaderScreen windowed")
-        if self._is_closing:
-            logger.debug("Entering windowed mode finished, now closing the document reader.")
-            self._finish_closing_once_laid_out()
+        self._close_if_closing("windowed")
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         self.is_fullscreen = self._is_fullscreen_now_after_goto()
         self._update_widget_states()
         logger.info(log_markers.ENTERED_FULLSCREEN.format(screen=DocumentReaderScreen.__name__))
         log_window_geometry("DocumentReaderScreen fullscreen")
-        if self._is_closing:
-            logger.debug("Entering fullscreen mode finished, now closing the document reader.")
-            self._finish_closing_once_laid_out()
+        self._close_if_closing("fullscreen")
 
     def _update_widget_states(self) -> None:
         visibility = (

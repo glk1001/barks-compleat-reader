@@ -36,6 +36,13 @@ class ReaderCloseMixin:
     # How near the window's size the reader counts as filling it: a resize can land a
     # pixel apart (2561 against 2560 on the Mac guest).
     _FILLS_WINDOW_TOLERANCE_PX: ClassVar[int] = 2
+    # What the close's debug lines call the reader.
+    _CLOSING_NAME: ClassVar[str] = "reader"
+
+    # True from a close's start till the screen has gone: the reader swallows keys and
+    # touches meanwhile (nothing is left to act on), and a window mode change finishing
+    # then is the close's own, to leave on.
+    _is_closing: bool = False
 
     if TYPE_CHECKING:
         # The Screen's.
@@ -82,6 +89,17 @@ class ReaderCloseMixin:
             Clock.schedule_once(lambda _dt: self._finish_closing())
             return
         self._finish_closing()
+
+    def _close_if_closing(self, mode: str) -> None:
+        """Leave, once laid out, when a window mode change finishes during a close.
+
+        Args:
+            mode: The mode the window has just entered, for the debug line.
+
+        """
+        if self._is_closing:
+            logger.debug(f"Entering {mode} mode finished, now closing {self._CLOSING_NAME}.")
+            self._finish_closing_once_laid_out()
 
     def _fills_window(self) -> bool:
         tolerance = self._FILLS_WINDOW_TOLERANCE_PX

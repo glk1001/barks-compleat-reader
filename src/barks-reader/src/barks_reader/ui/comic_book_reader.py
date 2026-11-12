@@ -934,7 +934,6 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
 
         self._was_fullscreen_on_entry = False
         self._fullscreen_button = self.ids.fullscreen_button
-        self._is_closing = False
 
         self._resize_binding()
 
@@ -1175,9 +1174,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
             )
 
     def _on_finished_goto_windowed_mode(self) -> None:
-        if self._is_closing:
-            logger.debug("Entering windowed mode finished, now closing reader.")
-            self._finish_closing_once_laid_out()
+        self._close_if_closing("windowed")
 
         self.is_fullscreen = False
         self._update_widget_states()
@@ -1210,9 +1207,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         logger.info(log_markers.ENTERED_FULLSCREEN.format(screen="ComicBookReaderScreen"))
         log_window_geometry("ComicBookReaderScreen fullscreen")
 
-        if self._is_closing:
-            logger.debug("Entering fullscreen mode finished, now closing reader.")
-            self._finish_closing_once_laid_out()
+        self._close_if_closing("fullscreen")
 
     @override
     def _reader_action_bar(self) -> ActionBar:

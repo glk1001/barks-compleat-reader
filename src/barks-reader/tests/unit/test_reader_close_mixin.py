@@ -95,6 +95,24 @@ def test_a_reader_with_its_own_frame_count_waits_that_long() -> None:
     reader.finished.assert_called_once_with()
 
 
+def test_a_mode_change_finishing_closes_only_a_closing_reader() -> None:
+    """The mode change a close asked for is the cue to leave; any other is not."""
+    reader = _Reader(900, 1300)
+    with (
+        patch.object(mixin_module, "Clock") as clock,
+        patch.object(mixin_module, "Window", width=900, height=1300),
+    ):
+        reader._close_if_closing("windowed")
+        _run_frames(clock, 2)
+        reader.finished.assert_not_called()
+
+        reader._is_closing = True
+        reader._close_if_closing("windowed")
+        _run_frames(clock, 2)
+
+    reader.finished.assert_called_once_with()
+
+
 def test_windowed_hints_make_the_screen_fill_the_window_again() -> None:
     reader = _Reader(100, 100)
     reader._set_hints_for_windowed_mode()
