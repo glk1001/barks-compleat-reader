@@ -1491,7 +1491,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             # By the remote: it walks the list, from the speaker picked now.
             self._nav_focus_area = "said_by_list"
             self._speaker_row.clear_focus()
-            here = next(i for i, (speaker, _) in enumerate(counts) if speaker == self._speaker)
+            # The picked speaker is listed only while offered: else land on anyone's row.
+            here = next((i for i, (speaker, _) in enumerate(counts) if speaker == self._speaker), 0)
             self._enter_dropdown_nav(here)
 
     def _speaker_story_counts(self) -> list[tuple[str, int]]:

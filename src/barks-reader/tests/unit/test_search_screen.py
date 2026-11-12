@@ -1772,6 +1772,16 @@ class TestSpeakerChipKeys:
         assert screen._speaker_row.focused is None
         assert loguru_sink[-1] == 'Nav focus on _SaidByItem "Donald".'
 
+    def test_enter_with_a_speaker_no_longer_listed_opens_the_list_on_anyone(
+        self, screen: SearchScreen
+    ) -> None:
+        """A new search can leave the picked speaker out of those offered."""
+        screen._speaker = "Gyro"  # picked before; not among Donald and Scrooge
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert self._list(screen).is_open
+        assert screen._nav_focus_area == "said_by_list"
+        assert screen._dropdown_focused_idx == 0  # anyone
+
     def test_down_and_enter_pick_a_speaker_and_return_to_the_chip(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
