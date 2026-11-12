@@ -283,6 +283,12 @@ class TestAHiddenModeTakesNoPresses:
         assert [content.shown for content in contents] == shown
 
 
+def test_the_screen_s_docstring_is_its_own() -> None:
+    """Written after its class attributes, it was a stray string and __doc__ was None."""
+    assert SearchScreen.__doc__
+    assert "Bottom view screen for search" in SearchScreen.__doc__
+
+
 class TestMarkResultSelected:
     """The last-opened result row stays highlighted (mouse or keyboard) until superseded."""
 

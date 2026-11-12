@@ -100,6 +100,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.input import MotionEvent
+    from kivy.uix.textinput import TextInput
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_colors import Color
@@ -377,6 +378,8 @@ def _speaker_label(speaker: str) -> str:
 
 
 class SearchScreen(DropdownNavMixin, FloatLayout):
+    """Bottom view screen for search. Mode is set externally via set_mode()."""
+
     # A chip pressed by the keys places the focus itself; pressed otherwise (the mouse),
     # the focus follows the press once the list has been rebuilt. A class default: a
     # screen built bare, without __init__, presses chips too.
@@ -389,7 +392,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         None
     )
     _nav_focus_area: str = "input"
-    """Bottom view screen for search. Mode is set externally via set_mode()."""
 
     is_visible = BooleanProperty(defaultvalue=False)
     image_texture = ObjectProperty(allownone=True)
@@ -2147,7 +2149,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._blur_all_inputs()
             self._nav_to_tags_or_results()
         elif key == KEY_RIGHT:
-            text_input = self._active_widget(0)
+            text_input = self._active_input()
             if text_input.cursor_index() >= len(text_input.text):
                 # At the text's end: the x beside the box, which clears the search (its
                 # picked words or tags, and the era, too); Right again is the results.
@@ -2538,12 +2540,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # Must match the SearchClearButton background_color in search_screen.kv.
     _CLEAR_BTN_NORMAL = (0.18, 0.18, 0.18, 0.9)
 
-    def _active_widget(self, index: int):  # noqa: ANN202
+    def _active_widget(self, index: int) -> Widget:
         """Return the widget for the active mode at the given _MODE_WIDGETS index."""
         return self.ids[self._MODE_WIDGETS[self._active_mode][index]]
 
+    def _active_input(self) -> TextInput:
+        return cast("TextInput", self._active_widget(0))
+
     def _get_active_clear_button(self) -> Button:
-        return self._active_widget(1)
+        return cast("Button", self._active_widget(1))
 
     def _draw_clear_focus(self) -> None:
         r, g, b, _a = theme().accent_selection
@@ -2555,14 +2560,14 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL
 
     def _focus_active_input(self) -> None:
-        self._active_widget(0).focus = True
+        self._active_input().focus = True
 
     def _blur_all_inputs(self) -> None:
         for _input_id, _, _, _ in self._MODE_WIDGETS.values():
             self.ids[_input_id].focus = False
 
     def _get_active_results_scroll_view(self) -> ScrollView:
-        return self._active_widget(2)
+        return cast("ScrollView", self._active_widget(2))
 
     def _get_active_result_rows(self) -> list[Button]:
         return list(reversed(self._active_widget(3).children))
