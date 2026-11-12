@@ -224,6 +224,69 @@ class TestReaderScreenManager:
         assert reader_screen_manager._screen_manager.transition is running
         assert any("still running" in line for line in loguru_sink)
 
+    @pytest.mark.parametrize(
+        ("switch", "first_touch"),
+        [
+            (
+                lambda manager: manager._switch_to_document_reader(Path("/doc"), "How To"),
+                lambda screens: screens.document_reader_screen.open_document,
+            ),
+            (
+                lambda manager: manager._switch_to_corpus_stats(),
+                lambda screens: screens.corpus_stats_screen.open,
+            ),
+            (
+                lambda manager: manager._switch_to_wiki_reader(Path("/wiki"), None),
+                lambda screens: screens.wiki_reader_screen.open_wiki,
+            ),
+            (
+                lambda manager: manager._close_comic_book_reader(),
+                lambda screens: screens.main_screen.on_comic_closed,
+            ),
+            (
+                lambda manager: manager._close_document_reader(),
+                lambda screens: screens.main_screen.on_document_reader_closed,
+            ),
+            (
+                lambda manager: manager._close_corpus_stats(),
+                lambda screens: screens.main_screen.on_corpus_stats_closed,
+            ),
+            (
+                lambda manager: manager._close_wiki_reader(),
+                lambda screens: screens.main_screen.on_wiki_reader_closed,
+            ),
+        ],
+        ids=[
+            "document-reader",
+            "corpus-stats",
+            "wiki-reader",
+            "close-comic",
+            "close-document",
+            "close-corpus-stats",
+            "close-wiki",
+        ],
+    )
+    def test_a_running_transition_is_finished_before_a_screen_is_opened_or_told(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+        switch: Callable[[ReaderScreenManager], None],
+        first_touch: Callable[[ReaderScreens], MagicMock],
+    ) -> None:
+        """Opened first, the screen was the slide's outgoing one, pulled out of the window."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        running = reader_screen_manager._screen_manager.transition
+        running.is_active = True
+        stopped_by_then: list[bool] = []
+        first_touch(mock_reader_screens).side_effect = lambda *_a, **_kw: stopped_by_then.append(
+            running.stop.called
+        )
+
+        switch(reader_screen_manager)
+
+        assert stopped_by_then == [True]
+        running.stop.assert_called_once_with()
+
     def test_a_finished_transition_at_a_switch_is_quiet(
         self,
         reader_screen_manager: ReaderScreenManager,

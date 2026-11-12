@@ -231,8 +231,10 @@ class ReaderScreenManager:
     def _finish_running_transition(self, switching_to: str) -> None:
         """Finish a transition still running, before a switch replaces or cuts it short.
 
-        Every switch goes through here, including those that keep the transition
-        they find (the document reader, By the Numbers): Kivy's own stop() at the
+        Every switch goes through here, before it opens or tells any screen anything
+        (a screen opened first was set up as the outgoing screen, then pulled from the
+        window by the stop), including those that keep the transition they find (the
+        document reader, By the Numbers): Kivy's own stop() at the
         switch fires neither screen's enter/leave, and an overnight soak's walk,
         reopening the document reader within its closing slide, left the log with
         one 'main_screen' left more than entered.
@@ -307,10 +309,9 @@ class ReaderScreenManager:
             app.suppress_aspect_ratio_correction()
 
         assert self._reader_screens
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._hand_window_drag_back()
         self._reader_screens.main_screen.on_comic_closed()
-
-        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
@@ -326,22 +327,21 @@ class ReaderScreenManager:
     ) -> None:
         logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
+        self._finish_running_transition("document reader")
         self._reader_screens.document_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title, resume=resume)
         self._hand_window_drag_to(self._reader_screens.document_reader_screen)
-        self._finish_running_transition("document reader")
         self._screen_manager.current = DOCUMENT_READER_SCREEN
         logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))
 
     def _close_document_reader(self) -> None:
         logger.debug("Closing document reader and switching back to main screen...")
         assert self._reader_screens
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._hand_window_drag_back()
         self._reader_screens.main_screen.on_document_reader_closed()
-
-        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
@@ -352,22 +352,21 @@ class ReaderScreenManager:
     def _switch_to_corpus_stats(self) -> None:
         logger.debug(log_markers.SWITCHING_TO_BY_THE_NUMBERS)
         assert self._reader_screens
+        self._finish_running_transition("By the Numbers page")
         self._reader_screens.corpus_stats_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.corpus_stats_screen.open()
         self._hand_window_drag_to(self._reader_screens.corpus_stats_screen)
-        self._finish_running_transition("By the Numbers page")
         self._screen_manager.current = CORPUS_STATS_SCREEN
         logger.info(log_markers.BY_THE_NUMBERS_ACTIVE)
 
     def _close_corpus_stats(self) -> None:
         logger.debug("Closing the By the Numbers page and switching back to main screen...")
         assert self._reader_screens
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._hand_window_drag_back()
         self._reader_screens.main_screen.on_corpus_stats_closed()
-
-        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_BY_THE_NUMBERS))
@@ -375,10 +374,9 @@ class ReaderScreenManager:
     def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:
         logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
         assert self._reader_screens
+        self._set_transition(self._get_next_reader_screen_transition(), "wiki reader")
         self._reader_screens.wiki_reader_screen.open_wiki(bundle, page)
         self._hand_window_drag_to(self._reader_screens.wiki_reader_screen)
-
-        self._set_transition(self._get_next_reader_screen_transition(), "wiki reader")
         self._screen_manager.current = WIKI_READER_SCREEN
 
         logger.debug(
@@ -389,10 +387,9 @@ class ReaderScreenManager:
     def _close_wiki_reader(self) -> None:
         logger.debug("Closing wiki reader and switching back to main screen...")
         assert self._reader_screens
+        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._hand_window_drag_back()
         self._reader_screens.main_screen.on_wiki_reader_closed()
-
-        self._set_transition(self._get_next_main_screen_transition(), "main screen")
         self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
