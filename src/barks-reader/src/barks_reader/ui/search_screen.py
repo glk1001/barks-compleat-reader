@@ -664,13 +664,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _on_tag_result_goto_title(self, title_str: str) -> None:
         self._on_result_goto_title(title_str, self._listed_tags())
 
-    def _listed_tags_pages_text(self, title_str: str) -> str:
-        """Return the listed tags' pages in a story, "3-4,7", as the Main Index rows show them."""
-        title = _listed_title(title_str)
-        if title is None:
-            return ""
-        pages = get_tagged_pages(self._listed_tags(), title)
-        return get_concat_page_nums_str(pages) if pages else ""
+    def _listed_tags_pages_of(self) -> Callable[[str], str]:
+        """Return a row's listed-tag pages, "3-4,7", as the Main Index rows show them.
+
+        The tags are resolved here, once for the list, not again for every row.
+        """
+        tags = self._listed_tags()
+
+        def pages_text(title_str: str) -> str:
+            title = _listed_title(title_str)
+            if title is None:
+                return ""
+            pages = get_tagged_pages(tags, title)
+            return get_concat_page_nums_str(pages) if pages else ""
+
+        return pages_text
 
     def _listed_tags(self) -> list[Tags]:
         """Return the tags the listed stories were found by: the one listed, or those picked.
@@ -901,7 +909,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             title_results_layout,
             self._tag_titles,
             self._on_tag_result_goto_title,
-            pages_of=self._listed_tags_pages_text,
+            pages_of=self._listed_tags_pages_of(),
         )
         self._add_none_in_era_row(title_results_layout, titles)
         self._update_background_from_results(titles)
@@ -1097,7 +1105,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             layout,
             self._tag_titles,
             self._on_tag_result_goto_title,
-            pages_of=self._listed_tags_pages_text,
+            pages_of=self._listed_tags_pages_of(),
         )
         if not selection.included:
             layout.add_widget(

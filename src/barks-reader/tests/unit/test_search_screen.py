@@ -3641,12 +3641,13 @@ class TestTagRowPages:
     """A tag's story row lists the tag's pages in it, as the Main Index rows do."""
 
     def test_the_listed_tags_pages_are_joined_and_sorted(self) -> None:
+        """The pages of every listed tag, merged; the tags resolved once for the list."""
         screen = SearchScreen.__new__(SearchScreen)
         andes = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
         with (
             patch.object(
                 SearchScreen, "_listed_tags", return_value=[Tags.AWFULTONIANS, Tags.SPLASH]
-            ),
+            ) as listed_tags,
             patch.object(
                 reader_utils,
                 "BARKS_TAGGED_PAGES",
@@ -3656,8 +3657,10 @@ class TestTagRowPages:
                 },
             ),
         ):
-            assert screen._listed_tags_pages_text(andes) == "17,19-20,26"
-            assert screen._listed_tags_pages_text("No Such Story") == ""
+            pages_of = screen._listed_tags_pages_of()
+            assert pages_of(andes) == "17,19-20,26"
+            assert pages_of("No Such Story") == ""
+        listed_tags.assert_called_once_with()  # once for the list, not per row
 
     def test_a_row_shows_the_pages_after_its_issue(self) -> None:
         rows = BoxLayout(orientation="vertical")
