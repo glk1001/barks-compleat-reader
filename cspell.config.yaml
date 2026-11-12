@@ -68,6 +68,8 @@ overrides:
     ignoreRegExpList:
       # Skip all XML tags except <text:p> and </text:p> (those contain readable prose)
       - "<(?!\\/?text:p[\\s>/])[^>]*>"
+      # Skip the base64 settings LibreOffice stores (printer setup), which change with the printer
+      - "<config:config-item[^>]*base64Binary[^>]*>[^<]*"
       # Skip XML comments (may contain '>' inside, so handled separately)
       - "<!--[\\s\\S]*?-->"
       # Skip word fragments split across inline <text:span> elements (e.g. "evol<text:span...>ved</text:span>")
