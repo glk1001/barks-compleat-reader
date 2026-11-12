@@ -31,7 +31,6 @@ from kivy.event import EventDispatcher
 from kivy.lang import Builder
 from kivy.properties import ListProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix import filechooser
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.settings import ContentPanel, SettingsPanel
 from kivy.uix.widget import Widget
@@ -279,8 +278,7 @@ def test_a_selected_path_is_saved_trimmed_and_a_blank_one_not_at_all(
 
 def test_an_option_picked_from_its_list_logs_the_new_value(loguru_sink: list[str]) -> None:
     setting = _stand_in(key="color_theme", value="")
-    with patch.object(settings_fix, "Clock"):
-        SettingOptionsWithValue._pick_option(setting, "Duckburg")
+    SettingOptionsWithValue._pick_option(setting, "Duckburg")
     assert setting.value == "Duckburg"
     assert 'Setting "color_theme" set to "Duckburg".' in loguru_sink
 
@@ -473,16 +471,6 @@ class TestNumberSetting:
         popup.open.assert_called_once_with()
         popup.bind.call_args.kwargs["on_open"](popup)
         assert 'Setting number entry opened for "main_window_height" (current "0").' in loguru_sink
-
-
-def test_an_option_picked_reaches_the_panel_which_saves_it_and_tells_the_app() -> None:
-    """Kivy's panel writes the config and dispatches on_config_change: the live path."""
-    setting = MagicMock(spec=SettingOptionsWithValue)
-    setting.section, setting.key, setting.panel = "Barks Reader", "main_screen_layout", MagicMock()
-    with patch.object(settings_fix.SettingOptions, "on_value") as kivy_on_value:
-        SettingOptionsWithValue.on_value(setting, setting, "Single page")
-    kivy_on_value.assert_called_once_with(setting, "Single page")
-    setting._update_value_display.assert_called_once_with()
 
 
 class TestFileChooserTouch:
@@ -839,33 +827,30 @@ class TestLongPathPopupStart:
 
 
 class TestOptionValueDisplay:
-    """An option's value is shown in its row's value box, whatever else that box holds."""
+    """An option's row shows its value, and follows it, by the settings kv alone."""
 
-    @staticmethod
-    def _row(content_box: object, *, columns: int = 2) -> Any:  # noqa: ANN401
-        main_box = SimpleNamespace(children=[content_box, *[Widget() for _ in range(columns - 1)]])
-        return _stand_in(value="Duckburg", children=[main_box])
+    KV_FILE = "test_settings_fix-options.kv"
 
-    def test_an_existing_label_past_other_widgets_gets_the_value(self) -> None:
-        label = Label(text="old")
-        content_box = BoxLayout()
-        content_box.add_widget(label)
-        content_box.add_widget(Widget())  # children are newest first: this one comes first
-
-        SettingOptionsWithValue._update_value_display(self._row(content_box))
-
-        assert label.text == "Duckburg"
-        assert len(content_box.children) == 2  # noqa: PLR2004
-
-    def test_a_row_without_a_value_box_is_left_alone(self) -> None:
-        not_a_box = Widget()
-        SettingOptionsWithValue._update_value_display(self._row(not_a_box))
-        assert not_a_box.children == []
-
-    def test_a_row_with_one_column_is_left_alone(self) -> None:
-        content_box = BoxLayout()
-        SettingOptionsWithValue._update_value_display(self._row(content_box, columns=1))
-        assert content_box.children == []
+    def test_the_row_shows_the_value_and_a_picked_one_reaches_the_panel(self) -> None:
+        """Kivy's own label went with the <-SettingItem> override: the kv puts it back."""
+        Builder.load_string(settings_fix._themed_settings_kv(), filename=self.KV_FILE)
+        try:
+            panel = SettingsPanel(title="Barks Reader")
+            setting = SettingOptionsWithValue(
+                title="Layout",
+                options=["Single page", "Spread"],
+                panel=panel,
+                key="k",
+                section="Barks Reader",
+            )
+            with patch.object(SettingsPanel, "set_value") as set_value:
+                setting.value = "Spread"
+        finally:
+            Builder.unload_file(self.KV_FILE)
+        labels = [child.text for child in setting.content.children if isinstance(child, Label)]
+        assert labels == ["Spread"]
+        # Kivy's on_value saves it and tells the app (on_config_change): the live path.
+        set_value.assert_called_once_with("Barks Reader", "k", "Spread")
 
 
 class TestSettingsSavedWithoutAConfig:

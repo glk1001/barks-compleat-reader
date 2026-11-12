@@ -20,7 +20,6 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
-from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.settings import (
     ContentPanel,
@@ -166,6 +165,17 @@ KV_SETTINGS_OVERRIDE = """
         text: root.value or ''
         pos: root.pos
         font_size: '15sp'
+
+# The option's value in the row's value column: Kivy's own rule for it went with
+# every earlier rule the row matched, dropped by the <-SettingItem> above, as
+# SettingString's did. It follows the value: no label set by hand, nor a timer.
+<SettingOptions>:
+    Label:
+        text: root.value or ''
+        font_size: '15sp'
+        halign: 'center'
+        valign: 'middle'
+        text_size: self.size
 
 <SettingBoolean>:
     # Flexible spacers either side centre the fixed-size switch in the value
@@ -911,48 +921,10 @@ class SettingNumberPopup(PopupFrame):
 
 
 class SettingOptionsWithValue(SettingOptions):
-    """Override class to fix Kivy SettingOptions not displaying value in settings panel."""
+    """Kivy's options setting, its choices on the shared frame (``ui.popup_frame``).
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
-        super().__init__(**kwargs)
-        Clock.schedule_once(self._delayed_update, 0.1)
-
-    def _delayed_update(self, _dt: float) -> None:
-        self._update_value_display()
-
-    def _update_value_display(self) -> None:
-        if not hasattr(self, "value") or not self.value:
-            return
-
-        value_text = str(self.value)
-
-        # Navigate the structure.
-        if hasattr(self, "children") and len(self.children) > 0:
-            main_box = self.children[0]
-
-            if hasattr(main_box, "children") and len(main_box.children) >= 2:  # noqa: PLR2004
-                # Get the FIRST BoxLayout (index 0 in the list, which is the rightmost one).
-                # This is the empty BoxLayout meant for the value display.
-                content_box = main_box.children[0]
-
-                # Make sure it's actually a BoxLayout.
-                if type(content_box).__name__ == BoxLayout.__name__:
-                    # Check for existing label.
-                    value_label = None
-                    for child in content_box.children:
-                        if isinstance(child, Label):
-                            value_label = child
-                            break
-
-                    if value_label is not None:
-                        value_label.text = value_text
-                    else:
-                        # Create new label with proper styling - use size_hint_x=1 for full width.
-                        value_label = Label(
-                            text=value_text, size_hint=(1, 1), halign="center", valign="middle"
-                        )
-                        value_label.bind(size=value_label.setter("text_size"))
-                        content_box.add_widget(value_label)
+    Its value shows in the row by the ``<SettingOptions>`` rule in the settings kv.
+    """
 
     def _create_popup(self, instance: Widget) -> None:  # noqa: ARG002
         """Open the choices on the shared frame, in the place of Kivy's popup."""
@@ -969,16 +941,6 @@ class SettingOptionsWithValue(SettingOptions):
     def _pick_option(self, option: str) -> None:
         self.value = option
         logger.info(log_markers.SETTING_OPTION_SET.format(key=self.key, value=self.value))
-        Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
-
-    def on_value(self, instance: SettingItem, value: str) -> None:
-        # Kivy's handler is what saves the value and dispatches the panel's
-        # on_config_change, which is how a changed setting reaches the app
-        # (BarksReaderApp.on_config_change). Overridden without calling it, an
-        # option was written to the config by hand and the app never heard of it
-        # (the main screen layout, 2026-10-29).
-        super().on_value(instance, value)
-        self._update_value_display()
 
 
 class SettingNumberEntry(SettingNumeric):
