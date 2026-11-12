@@ -393,6 +393,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     _said_by_counted: tuple[tuple[str, str, SearchFilter | None], dict[str | None, int]] | None = (
         None
     )
+    # The scope row's stories everywhere, with the search they were found for: the row
+    # is shown again on every listing, and need not search again for an unchanged one.
+    _scope_found: tuple[tuple[str, str, str, SearchFilter | None], dict[str, TitleInfo]] | None = (
+        None
+    )
     _nav_focus_area: str = "input"
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -1810,7 +1815,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not self._scope.tags or not (self._word_query or self._selected_word):
             self._scope_row.set_options([])
             return
-        everywhere = self._find_word_stories(self._speaker or None, scoped=False)
+        everywhere = self._unscoped_word_stories()
         in_tags = self._scope.count_in(everywhere)
         if not in_force and not self._scope.narrows(in_tags, len(everywhere)):
             self._scope_row.set_options([])
@@ -1820,6 +1825,24 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         self._scope_row.set_options(self._scope.options())
         if focused is not None:
             self._scope_row.enter_focus(focused)
+
+    def _unscoped_word_stories(self) -> dict[str, TitleInfo]:
+        """Return the listed word search's stories outside the tag scope: the row's count.
+
+        Found once for each search, speaker and era: the row is shown again whenever
+        the results are listed, and searched again every time.
+        """
+        searched = (
+            self._word_query,
+            self._selected_word,
+            self._speaker,
+            self._word_search_filter(scoped=False),
+        )
+        if self._scope_found is not None and self._scope_found[0] == searched:
+            return self._scope_found[1]
+        found = self._find_word_stories(self._speaker or None, scoped=False)
+        self._scope_found = (searched, found)
+        return found
 
     def _make_scope_chip(self, value: str, label: str) -> _ScopeChipButton:
         count = self._scope_counts.get(value)

@@ -2370,6 +2370,20 @@ class TestTagScope:
         assert screen._scope_row.chips == []  # all that is left is the tag's
         assert screen._search.find_words.call_args.kwargs["speaker"] == "Gyro"
 
+    def test_the_row_shown_again_searches_again_only_for_a_changed_search(
+        self, screen: SearchScreen
+    ) -> None:
+        """Every listing shows the row again: an unchanged search is not run again."""
+        screen._listed_tag = "Gyro Gearloose"
+        searches = []
+        screen._refresh_tag_scope()
+        screen._show_scope_row()
+        searches.append(screen._search.find_words.call_count)
+        screen._speaker = "Gyro"
+        screen._show_scope_row()
+        searches.append(screen._search.find_words.call_count)
+        assert searches == [1, 2]
+
     def test_the_scope_row_sits_between_the_era_and_the_stories(self, screen: SearchScreen) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
