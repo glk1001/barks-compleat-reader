@@ -41,7 +41,12 @@ from barks_reader.core.reader_consts_and_types import (
 )
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.core.reader_utils import get_tagged_pages
-from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
+from barks_reader.core.user_error_types import (
+    ErrorInfo,
+    ErrorTypes,
+    TitleNotInFantaInfoError,
+    get_volume_not_available_error_info,
+)
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
 if TYPE_CHECKING:
@@ -345,7 +350,17 @@ class NavigationCoordinator:
         image_info = ImageInfo(from_title=title, filename=None)
         # Every listed tag's pages in the story, together: a basket of tags found it.
         pages = get_tagged_pages(tags, title)
-        went_there = self.navigate_to_chrono_title(image_info, offer_page=not pages)
+        try:
+            went_there = self.navigate_to_chrono_title(image_info, offer_page=not pages)
+        except TitleNotInFantaInfoError as e:
+            # Search lists every Barks title, some in no Fantagraphics volume: a notice,
+            # as the Main Index gives, not a crash.
+            logger.error(e)
+            self._user_error_handler.handle_error(
+                ErrorTypes.ArchiveVolumeNotAvailable,
+                get_volume_not_available_error_info(image_info),
+            )
+            return True
         if pages and went_there:
             logger.debug(f'Setting tags goto page for ({[t.value for t in tags]}, "{title_str}").')
             self._offer_tagged_pages(title, pages[0], pages)

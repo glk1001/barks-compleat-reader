@@ -621,6 +621,24 @@ class TestNavigateToSearchResult:
             assert not nav_coord.navigate_to_search_result("No Such Story", (Tags.FIRST_DAISY,))
         chrono.assert_not_called()
 
+    def test_a_title_in_no_volume_is_a_notice_not_a_crash(
+        self,
+        nav_coord: NavigationCoordinator,
+        mock_deps: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        # Listed by Title search, but in no Fantagraphics volume.
+        title = Titles.JINXED_JALOPY_RACE_THE
+        assert title not in ALL_FANTA_COMIC_BOOK_INFO
+
+        assert nav_coord.navigate_to_search_result(f"({ENUM_TO_STR_TITLE[title]})")
+
+        error_type, error_info = mock_deps["user_error_handler"].handle_error.call_args.args
+        assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+        assert error_info.title is title
+        assert error_info.file_volume == -1
+        assert 'Title "The Jinxed Jalopy Race" not in Fanta info.' in loguru_sink
+
 
 ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
 
