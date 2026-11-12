@@ -218,10 +218,13 @@ class NavigationModel:
         """Return the kind of child a parent goes straight to when the user opens it.
 
         Search opens on its title search, the one most used: its own view is only a
-        backdrop, and the tag and word searches are one key down from it.
+        backdrop, and the tag and word searches are one key down from it. The Speech
+        Bubble Index opens on Words, the index its own view already shows.
         """
         if isinstance(parent, SearchDestination):
             return TitleSearchDestination
+        if isinstance(parent, SpeechIndexDestination):
+            return SpeechWordsDestination
         return None
 
     @staticmethod

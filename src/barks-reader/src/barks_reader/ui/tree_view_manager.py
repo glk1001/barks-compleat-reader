@@ -136,6 +136,7 @@ class TreeViewManager:
         # skipped opening on a child, for every expansion after.
         self._keep_images_for_caller = keep_images
         try:
+            was_open = bool(node.is_open)
             self._opening_for_caller = True
             try:
                 self._tree_view_screen.open_node(node)
@@ -145,8 +146,11 @@ class TreeViewManager:
 
             if isinstance(node, TitleTreeViewNode):
                 self._handle_title_node_selection(node)
-            elif isinstance(node, ButtonTreeViewNode):
-                self._handle_button_node_selection(node)
+            elif isinstance(node, ButtonTreeViewNode) and was_open:
+                # Opening a button node shows its view (on_node_expanded). A node left
+                # open had no expansion to show it, so it is shown here. Never by a
+                # simulated press: that toggled the node shut again (2026-11-13).
+                self._show_view_of_open_node(node)
         finally:
             self._keep_images_for_caller = False
         # The tree shows the node as it was put: no expanding on the way scrolls it.
@@ -182,10 +186,8 @@ class TreeViewManager:
         if scroll_to:
             self.scroll_to_node(node)
 
-    def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
-        if node.saved_state.get("open", True):
-            node.trigger_action()
-        elif node.destination is not None:
+    def _show_view_of_open_node(self, node: ButtonTreeViewNode) -> None:
+        if node.destination is not None:
             self.set_view_state_for_node(node, keep_images=self._keep_images_for_caller)
 
     def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
@@ -299,11 +301,9 @@ class TreeViewManager:
         The single generic handler for nodes whose only behavior is "show my
         view": bound as the ``on_press`` handler for the simple index, search,
         and statistics nodes, and also called from the expand/collapse paths.
-        Nodes with extra behavior (e.g. the speech index/words nodes) keep their
+        Nodes with extra behavior (the document and article nodes) keep their
         own handlers. `keep_images` keeps the top and fun images on show (a collapse,
-        or Go Back). A node put back by Go Back keeps them however it comes here: an
-        open node's ``trigger_action`` reaches this as its bound ``on_press``, with no
-        argument to pass on.
+        or Go Back). A node put back by Go Back keeps them however it comes here.
         """
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
@@ -508,13 +508,6 @@ class TreeViewManager:
         logger.info('"By the Numbers" node pressed.')
         self._nav.open_corpus_stats()
 
-    def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Speech index node pressed.")
-        self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_NODE)
-        # Auto-select the Words child node in the tree view to match the default bottom view.
-        if self._speech_words_node is not None:
-            self._tree_view_screen.select_node(self._speech_words_node)
-
     def on_speech_words_node_created(self, node: MainTreeViewNode) -> None:
         # Words child shares the same speech index screen's treeview node.
         self._speech_words_node = node
@@ -522,12 +515,6 @@ class TreeViewManager:
     @property
     def speech_words_node(self) -> ButtonTreeViewNode | None:
         return self._speech_words_node
-
-    def on_speech_words_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Speech Words node pressed.")
-        self.disallow_view_state_change()
-        self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_WORDS_NODE)
-        Clock.schedule_once(lambda _dt: self.allow_view_state_change(), 0)
 
     def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
         self._names_index_screen.treeview_index_node = names_index_node

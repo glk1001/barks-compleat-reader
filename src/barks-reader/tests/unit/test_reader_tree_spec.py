@@ -247,8 +247,8 @@ MAIN text='Appendix' dest=AppendixDestination() press=TOGGLE_ONLY register=None 
 _INDEX_SNAPSHOT = """
 MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None closed=False lazy=False repopulate=False
   MAIN text='Main Index' dest=MainIndexDestination() press=SET_VIEW_STATE register=MAIN_INDEX closed=False lazy=False repopulate=False
-  MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=OPEN_SPEECH_INDEX register=SPEECH_INDEX closed=False lazy=False repopulate=False
-    MAIN text='Words' dest=SpeechWordsDestination() press=OPEN_SPEECH_WORDS register=SPEECH_WORDS closed=False lazy=False repopulate=False
+  MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=TOGGLE_ONLY register=SPEECH_INDEX closed=False lazy=False repopulate=False
+    MAIN text='Words' dest=SpeechWordsDestination() press=SET_VIEW_STATE register=SPEECH_WORDS closed=False lazy=False repopulate=False
     MAIN text='Names' dest=NamesIndexDestination() press=SET_VIEW_STATE register=NAMES_INDEX closed=False lazy=False repopulate=False
     MAIN text='Locations' dest=LocationsIndexDestination() press=SET_VIEW_STATE register=LOCATIONS_INDEX closed=False lazy=False repopulate=False
 """  # noqa: E501

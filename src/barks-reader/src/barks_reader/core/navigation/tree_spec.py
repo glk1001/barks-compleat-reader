@@ -174,8 +174,6 @@ class PressAction(Enum):
     OPEN_INTRO_DOC = auto()
     OPEN_ARTICLE = auto()
     OPEN_CENSORSHIP_FIXES_DOC = auto()
-    OPEN_SPEECH_INDEX = auto()
-    OPEN_SPEECH_WORDS = auto()
     OPEN_WIKI_INDEX = auto()
     OPEN_CORPUS_STATS = auto()
     OPEN_DOCUMENT = auto()
@@ -718,14 +716,13 @@ class _SpecBuilder:
                 kind=NodeKind.MAIN,
                 text=INDEX_SPEECH_TEXT,
                 destination=SpeechIndexDestination(),
-                press_action=PressAction.OPEN_SPEECH_INDEX,
                 register_as=NodeRegistration.SPEECH_INDEX,
                 children=(
                     NodeSpec(
                         kind=NodeKind.MAIN,
                         text=INDEX_SPEECH_WORDS_TEXT,
                         destination=SpeechWordsDestination(),
-                        press_action=PressAction.OPEN_SPEECH_WORDS,
+                        press_action=PressAction.SET_VIEW_STATE,
                         register_as=NodeRegistration.SPEECH_WORDS,
                     ),
                     NodeSpec(

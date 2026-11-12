@@ -70,6 +70,36 @@ class TestButtonTreeViewNode:
             node.on_press()
             mock_tree.toggle_node.assert_called_with(node)
 
+    def test_a_press_shuts_an_open_node_that_has_children(self) -> None:
+        node = ButtonTreeViewNode()
+        node.is_open = True
+        node.nodes = [ButtonTreeViewNode()]
+        mock_tree = MagicMock()
+
+        with patch.object(node, "_get_nodes_treeview", return_value=mock_tree):
+            node.on_press()
+        mock_tree.toggle_node.assert_called_once_with(node)
+
+    def test_a_press_shuts_an_open_node_whose_children_are_made_on_expansion(self) -> None:
+        node = ButtonTreeViewNode()
+        node.is_open = True
+        node.populate_callback = MagicMock()
+        mock_tree = MagicMock()
+
+        with patch.object(node, "_get_nodes_treeview", return_value=mock_tree):
+            node.on_press()
+        mock_tree.toggle_node.assert_called_once_with(node)
+
+    def test_a_press_leaves_an_open_leaf_open(self) -> None:
+        """Toggled shut, every second press of a leaf went down the collapse path."""
+        node = ButtonTreeViewNode()
+        node.is_open = True
+        mock_tree = MagicMock()
+
+        with patch.object(node, "_get_nodes_treeview", return_value=mock_tree):
+            node.on_press()
+        mock_tree.toggle_node.assert_not_called()
+
     def test_its_tree_is_found_through_the_rows_between(self) -> None:
         """A node can sit in a layout inside the tree, not straight under it."""
         tree = ReaderTreeView()

@@ -122,7 +122,16 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
         nodes_treeview = self._get_nodes_treeview(self)
         if not nodes_treeview:
             return
+        # A node with no rows under it has nothing to shut: its press opens it (which
+        # closes its siblings and shows its view) and a later press leaves it open.
+        # Toggled shut, every second press of a leaf went down the collapse path.
+        if self.is_open and not self.has_rows_to_show():
+            return
         nodes_treeview.toggle_node(self)
+
+    def has_rows_to_show(self) -> bool:
+        """Return whether the node has children, made or still to be made on expansion."""
+        return bool(self.nodes) or self.populate_callback is not None
 
     @staticmethod
     def _get_nodes_treeview(node: ButtonTreeViewNode) -> TreeView | None:

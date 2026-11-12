@@ -13,11 +13,15 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
+    ChronologicalDestination,
     DocumentDestination,
     IntroDestination,
     MainIndexDestination,
     RandomTitlesDestination,
     SearchDestination,
+    SpeechIndexDestination,
+    SpeechWordsDestination,
+    StoriesDestination,
     TagDestination,
     TagGroupDestination,
     TagSearchDestination,
@@ -29,12 +33,17 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.testing import fake_fanta_info
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
+    BaseTreeViewNode,
     ButtonTreeViewNode,
     IntroTextTreeViewNode,
+    ReaderTreeView,
     TitleTreeViewNode,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from barks_reader.core.navigation import Destination
     from barks_reader.ui.screen_bundle import ScreenBundle
 
 
@@ -88,20 +97,25 @@ class TestTreeViewManager:
             # Check scroll_to_node scheduled
             mock_clock.assert_called()
 
-    def test_setup_and_select_node_button_node_trigger(
-        self, tree_view_manager: TreeViewManager
+    @pytest.mark.parametrize("is_open", [True, False])
+    def test_setting_up_a_button_node_never_presses_it(
+        self, tree_view_manager: TreeViewManager, is_open: bool
     ) -> None:
+        """A simulated press toggled the node it had just opened shut again."""
         node = MagicMock(spec=ButtonTreeViewNode)
-        node.saved_state = {"open": True}
+        node.is_open = is_open
+        node.destination = IntroDestination()
 
         tree_view_manager.setup_and_select_node(node)
-        node.trigger_action.assert_called_once()
 
-    def test_setup_and_select_node_button_node_view_state(
+        node.trigger_action.assert_not_called()
+
+    def test_setting_up_a_button_node_left_open_shows_its_view(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
+        """No expansion fires for a node that is open already, so it is shown here."""
         node = MagicMock(spec=ButtonTreeViewNode)
-        node.saved_state = {"open": False}
+        node.is_open = True
         node.destination = IntroDestination()
 
         tree_view_manager.setup_and_select_node(node)
@@ -179,12 +193,12 @@ class TestTreeViewManager:
         screen_mocks: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
-        """Both the expand on the way and a closed node's own render keep the images."""
+        """The node's view is rendered once, by its expansion, and keeps the images."""
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = None
         node.destination = SearchDestination()
         node.get_name.return_value = "Search"
-        node.saved_state = {"open": False}
+        node.is_open = False
         node.nodes = []
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]
@@ -198,7 +212,6 @@ class TestTreeViewManager:
             tree_view_manager.setup_and_select_node(node, keep_images=True)
         assert renderer.render.call_args_list == [
             call(SearchDestination(), preserve_top_view=True, preserve_fun_view=True),
-            call(SearchDestination(), preserve_top_view=True, preserve_fun_view=True),
         ]
         assert log_markers.NODE_IMAGES_KEPT.format(name="Search") in loguru_sink
         assert tree_view_manager._keep_images_for_caller is False
@@ -208,7 +221,6 @@ class TestTreeViewManager:
         with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
             tree_view_manager.setup_and_select_node(node)
         assert renderer.render.call_args_list == [
-            call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
             call(SearchDestination(), preserve_top_view=False, preserve_fun_view=False),
         ]
 
@@ -227,22 +239,19 @@ class TestTreeViewManager:
         assert tree_view_manager._keep_images_for_caller is False
         assert tree_view_manager._opening_for_caller is False
 
-    def test_go_back_to_an_open_node_keeps_the_images_through_its_press(
+    def test_go_back_to_a_node_left_open_keeps_the_images(
         self,
         tree_view_manager: TreeViewManager,
         mock_dependencies: dict[str, Any],
     ) -> None:
-        """An open node's view comes from its press: the bound handler, given only the node."""
         node = MagicMock(spec=ButtonTreeViewNode)
+        node.is_open = True
         node.destination = TitleSearchDestination()
         node.get_name.return_value = "Title Search"
-        node.saved_state = {"open": True}
-        node.trigger_action.side_effect = lambda: tree_view_manager.set_view_state_for_node(node)
         renderer = mock_dependencies["renderer"]
 
         tree_view_manager.setup_and_select_node(node, keep_images=True)
 
-        node.trigger_action.assert_called_once()
         renderer.render.assert_called_once_with(
             TitleSearchDestination(), preserve_top_view=True, preserve_fun_view=True
         )
@@ -435,7 +444,7 @@ class TestTreeViewManager:
         node.populate_callback = None
         node.destination = SearchDestination()
         node.get_name.return_value = "Search"
-        node.saved_state = {"open": False}
+        node.is_open = False
         node.nodes = [titles]
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]
@@ -792,25 +801,6 @@ class TestTreeViewManager:
         tree_view.select_node.assert_called_once_with(node)
         tree_view.scroll_to_node.assert_called_once_with(node)
 
-    def test_speech_words_node_press_renders_words_view_and_holds_view_state_a_frame(
-        self,
-        tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
-        loguru_sink: list[str],
-    ) -> None:
-        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
-            tree_view_manager.on_speech_words_node_pressed(MagicMock())
-
-            mock_dependencies["renderer"].render_state.assert_called_once_with(
-                ViewStates.ON_INDEX_SPEECH_WORDS_NODE
-            )
-            # View-state changes stay off until the next frame.
-            assert tree_view_manager._allow_view_state_change is False
-            mock_clock.call_args.args[0](0)
-
-        assert tree_view_manager._allow_view_state_change is True
-        assert "Speech Words node pressed." in loguru_sink
-
     def test_search_node_is_the_one_created(self, tree_view_manager: TreeViewManager) -> None:
         assert tree_view_manager.search_node is None
         node = MagicMock()
@@ -848,16 +838,15 @@ class TestNodesThatDoNothingMore:
         mock_dependencies["nav_coordinator"].select_title.assert_not_called()
         mock_dependencies["renderer"].render.assert_not_called()
 
-    def test_a_closed_button_node_with_no_destination_renders_nothing(
+    def test_an_open_button_node_with_no_destination_renders_nothing(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
-        node.saved_state = {"open": False}
+        node.is_open = True
         node.destination = None
 
         tree_view_manager.setup_and_select_node(node)
 
-        node.trigger_action.assert_not_called()
         mock_dependencies["renderer"].render.assert_not_called()
 
     def test_going_to_a_node_without_scrolling_selects_it_next_frame(
@@ -874,23 +863,190 @@ class TestNodesThatDoNothingMore:
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
         scroll.assert_not_called()
 
-    def test_the_speech_index_before_its_words_node_exists_selects_no_child(
-        self,
-        tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
-        screen_mocks: dict[str, MagicMock],
+    def test_the_speech_words_node_is_the_one_created(
+        self, tree_view_manager: TreeViewManager
     ) -> None:
-        tree_view_manager.on_speech_index_node_pressed(MagicMock())
-
-        mock_dependencies["renderer"].render_state.assert_called_once_with(
-            ViewStates.ON_INDEX_SPEECH_NODE
-        )
-        screen_mocks["tree_view"].select_node.assert_not_called()
-
-    def test_the_speech_index_selects_its_words_node_once_it_exists(
-        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
-    ) -> None:
+        assert tree_view_manager.speech_words_node is None
         words = MagicMock()
         tree_view_manager.on_speech_words_node_created(words)
-        tree_view_manager.on_speech_index_node_pressed(MagicMock())
-        screen_mocks["tree_view"].select_node.assert_called_once_with(words)
+        assert tree_view_manager.speech_words_node is words
+
+
+class _TreeScreen:
+    """The tree-view screen's node methods over a real tree, as TreeViewScreen has them."""
+
+    def __init__(self, tree: ReaderTreeView) -> None:
+        self.ids = MagicMock()
+        self.ids.reader_tree_view = tree
+        self._tree = tree
+
+    def setup_collapse_overlay(self, _on_pressed: object) -> None:
+        pass
+
+    def select_node(self, node: BaseTreeViewNode) -> None:
+        self._tree.select_node(node)
+
+    def open_node(self, node: BaseTreeViewNode) -> None:
+        if not node.is_open:
+            self._tree.toggle_node(node)
+
+    def open_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
+        parents = []
+        parent = node.parent_node
+        while isinstance(parent, BaseTreeViewNode):
+            parents.append(parent)
+            parent = parent.parent_node
+        for parent in reversed(parents):
+            self.open_node(parent)
+
+    def deselect_and_close_open_nodes(self) -> int:
+        count = 0
+        for node in list(self._tree.iterate_all_nodes()):
+            if node is not self._tree.root and node.is_open:
+                self._tree.toggle_node(node)
+                count += 1
+        return count
+
+    def scroll_to_node(self, node: BaseTreeViewNode) -> None:
+        pass
+
+
+class TestPressesOnARealTree:
+    """Real nodes in a real tree, laid out: a mock node's press toggles nothing.
+
+    Go Back to an open group node passed every mock-node test while the simulated
+    press in it shut the node again (2026-11-13).
+    """
+
+    @pytest.fixture
+    def tree(self) -> ReaderTreeView:
+        return ReaderTreeView(hide_root=True)
+
+    @pytest.fixture
+    def manager(
+        self, tree: ReaderTreeView, mock_dependencies: dict[str, Any]
+    ) -> Generator[TreeViewManager]:
+        screens = MagicMock()
+        screens.tree_view = _TreeScreen(tree)
+        manager = TreeViewManager(
+            renderer=mock_dependencies["renderer"],
+            screens=screens,
+            nav_coordinator=mock_dependencies["nav_coordinator"],
+        )
+        with (
+            patch.object(manager._scroll_pinner, "pin_while_populating"),
+            patch.object(manager._scroll_pinner, "pin_while_collapsing"),
+            patch.object(manager._scroll_pinner, "cancel_pending_reveals"),
+        ):
+            yield manager
+
+    @staticmethod
+    def _add(
+        tree: ReaderTreeView,
+        text: str,
+        destination: Destination,
+        parent: ButtonTreeViewNode | None = None,
+    ) -> ButtonTreeViewNode:
+        node = ButtonTreeViewNode(text=text, destination=destination)
+        tree.add_node(node, parent)
+        return node
+
+    @staticmethod
+    def _lay_out(tree: ReaderTreeView) -> None:
+        """Put the visible rows under the tree, as a frame does: a press then finds it."""
+        tree._do_layout()
+
+    @pytest.fixture
+    def speech(self, tree: ReaderTreeView) -> ButtonTreeViewNode:
+        return self._add(tree, "Speech Bubble Index", SpeechIndexDestination())
+
+    @pytest.fixture
+    def words(self, tree: ReaderTreeView, speech: ButtonTreeViewNode) -> ButtonTreeViewNode:
+        return self._add(tree, "Words", SpeechWordsDestination(), parent=speech)
+
+    def test_go_back_to_a_group_node_leaves_it_open_and_shows_it_once(
+        self, tree: ReaderTreeView, manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        stories = self._add(tree, "The Stories", StoriesDestination())
+        self._add(tree, "Chronological", ChronologicalDestination(), parent=stories)
+        self._lay_out(tree)
+
+        manager.setup_and_select_node(stories, keep_images=True)
+
+        assert stories.is_open
+        assert tree.selected_node is stories
+        mock_dependencies["renderer"].render.assert_called_once_with(
+            StoriesDestination(), preserve_top_view=True, preserve_fun_view=True
+        )
+
+    def test_pressing_the_speech_index_opens_it_on_words(
+        self,
+        tree: ReaderTreeView,
+        manager: TreeViewManager,
+        speech: ButtonTreeViewNode,
+        words: ButtonTreeViewNode,
+        mock_dependencies: dict[str, Any],
+    ) -> None:
+        self._lay_out(tree)
+
+        manager.activate_node(speech)
+
+        assert speech.is_open
+        assert tree.selected_node is words
+        mock_dependencies["renderer"].render.assert_called_once_with(
+            SpeechWordsDestination(), preserve_top_view=False, preserve_fun_view=False
+        )
+
+    def test_collapsing_the_speech_index_keeps_it_selected_under_the_same_images(
+        self,
+        tree: ReaderTreeView,
+        manager: TreeViewManager,
+        speech: ButtonTreeViewNode,
+        words: ButtonTreeViewNode,
+        mock_dependencies: dict[str, Any],
+        loguru_sink: list[str],
+    ) -> None:
+        """Its press once selected Words, the row the collapse was about to hide."""
+        self._lay_out(tree)
+        manager.activate_node(speech)
+        self._lay_out(tree)
+        renderer = mock_dependencies["renderer"]
+        renderer.render.reset_mock()
+
+        manager.activate_node(speech)
+
+        assert not speech.is_open
+        assert tree.selected_node is speech
+        assert tree.selected_node is not words
+        renderer.render.assert_called_once_with(
+            SpeechIndexDestination(), preserve_top_view=True, preserve_fun_view=True
+        )
+        renderer.render_state.assert_not_called()
+        assert log_markers.NODE_COLLAPSED.format(name="Speech Bubble Index") in loguru_sink
+
+    def test_a_second_press_of_a_leaf_does_not_collapse_it(
+        self,
+        tree: ReaderTreeView,
+        manager: TreeViewManager,
+        speech: ButtonTreeViewNode,
+        words: ButtonTreeViewNode,
+        mock_dependencies: dict[str, Any],
+        loguru_sink: list[str],
+    ) -> None:
+        words.bind(on_press=manager.set_view_state_for_node)
+        with manager.suppress_view_state_changes():
+            tree.toggle_node(speech)
+        self._lay_out(tree)
+        renderer = mock_dependencies["renderer"]
+
+        manager.activate_node(words)
+        assert words.is_open
+        renderer.render.reset_mock()
+        manager.activate_node(words)
+
+        assert words.is_open
+        assert log_markers.NODE_COLLAPSED.format(name="Words") not in loguru_sink
+        # The press shows the view afresh; a collapse kept the images.
+        renderer.render.assert_called_once_with(
+            SpeechWordsDestination(), preserve_top_view=False, preserve_fun_view=False
+        )

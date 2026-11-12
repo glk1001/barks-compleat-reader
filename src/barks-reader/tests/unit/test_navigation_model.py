@@ -318,13 +318,17 @@ def test_search_opens_on_its_title_search(model: NavigationModel) -> None:
     assert model.child_to_open_on(SearchDestination()) is TitleSearchDestination
 
 
+def test_the_speech_index_opens_on_its_words(model: NavigationModel) -> None:
+    assert model.child_to_open_on(SpeechIndexDestination()) is SpeechWordsDestination
+
+
 @pytest.mark.parametrize(
     "parent",
     [
         TitleSearchDestination(),
         TagSearchDestination(),
         WordSearchDestination(),
-        SpeechIndexDestination(),
+        SpeechWordsDestination(),
         ReadingDestination(),
         IntroDestination(),
     ],
