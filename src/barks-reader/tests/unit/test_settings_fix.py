@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import inspect
+import re
 import stat
 from contextlib import contextmanager
 from pathlib import Path
@@ -540,6 +542,13 @@ class TestSettingsThemeKv:
         kv = builder.load_string.call_args.args[0]
         assert "__SEL_RGBA__" not in kv
         assert "__TITLE_BAR_H__" not in kv
+
+    def test_every_token_filled_in_is_one_the_kv_uses_and_none_is_left(self) -> None:
+        """A dead __DANGER_RGBA__ fill suggested the settings drew a danger colour."""
+        filled = set(re.findall(r'replace\("(__[A-Z_]+__)"', inspect.getsource(settings_fix)))
+        used = set(re.findall(r"__[A-Z_]+__", settings_fix.KV_SETTINGS_OVERRIDE))
+        assert filled == used
+        assert not re.findall(r"__[A-Z_]+__", settings_fix._themed_settings_kv())
 
 
 class TestPinnedTitleSettings:

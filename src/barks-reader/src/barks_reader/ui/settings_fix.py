@@ -449,7 +449,6 @@ def _themed_settings_kv() -> str:
         .replace("__TEXT_TITLE_RGBA__", _rgba(t.text_title, alpha=1.0))
         .replace("__TEXT_SECONDARY_RGBA__", _rgba(t.text_secondary, alpha=1.0))
         .replace("__FOCUS_RGBA__", _rgba(t.focus_ring, alpha=1.0))
-        .replace("__DANGER_RGBA__", _rgba(t.danger, alpha=1.0))
         .replace("__ICON_TINT_RGBA__", _rgba(t.icon_tint, alpha=1.0))
         .replace("__HEADING_RGBA__", _rgba(t.app_title, alpha=1.0))
         .replace("__HEADING_RULE_RGBA__", _rgba(t.app_title, alpha=0.4))
