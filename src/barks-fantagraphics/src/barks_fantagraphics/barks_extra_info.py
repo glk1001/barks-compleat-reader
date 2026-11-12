@@ -206,8 +206,8 @@ BARKS_EXTRA_INFO = {
     " TREASURES Vol 1) was used in Donald V1 instead. It's actually a mix of Barks and Jippes..."
     ' and I\'m still attempting to recover the all-Barks version of "South Seas." Presuming'
     ' everything works out, it will make its way into a later printing of Donald V1."[/i]',
-    Titles.LETTER_TO_SANTA: "The first story with the classic [b][i]Uncle Scrooge:[/i][/b] a"
-    " full-dress appearance, except that he wears glasses rather than his later pince-nez.",
+    Titles.LETTER_TO_SANTA: "The first story with the classic [b][i]Uncle Scrooge[/i][/b]. He's not"
+    " quite finished, though: he still wears glasses instead of his famous pince-nez.",
     Titles.LUCK_OF_THE_NORTH: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
     " Gladstone's"
     ' luck: [i]"Well, that came the second time I was using him [actually, the second time'
