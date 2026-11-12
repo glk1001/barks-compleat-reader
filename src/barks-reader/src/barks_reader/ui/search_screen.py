@@ -183,6 +183,22 @@ class _SyntaxMeaning(Label):
     """What an example in a search box's syntax help does."""
 
 
+class SearchModeContent(BoxLayout):
+    """One search mode's box and lists: shown, or hidden and kept out of the way of presses.
+
+    Hidden, it is sized (0, 0) at the screen's bottom centre, but its fixed-size chips
+    (the era row's, the picked tags') are not: each wraps to its own row there, over the
+    shown mode's stories, and a press meant for a story pressed a hidden era chip.
+    """
+
+    shown = BooleanProperty(defaultvalue=True)
+
+    def on_touch_down(self, touch: MotionEvent) -> bool:
+        if not self.shown:
+            return False
+        return bool(super().on_touch_down(touch))
+
+
 class SearchSyntaxHelp(BoxLayout):
     """A search box's syntax help: a heading, each example beside what it does, a note.
 
@@ -563,10 +579,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             ("Tag", "tag_search_content"),
             ("Word", "word_search_content"),
         ]:
-            active = mode == content_mode
-            widget = self.ids[content_id]
-            widget.opacity = 1 if active else 0
-            widget.size_hint = (0.86, 1) if active else (0, 0)
+            self.ids[content_id].shown = mode == content_mode
 
         logger.debug(log_markers.SEARCH_MODE_SET.format(mode=mode))
         if mode == "Word":

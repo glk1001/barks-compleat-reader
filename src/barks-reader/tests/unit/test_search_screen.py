@@ -23,6 +23,7 @@ from barks_reader.core.search_chip_row import ChipRow
 from barks_reader.core.search_state import EraChoice, TagBasket, TagScope, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import (
+    SearchModeContent,
     SearchScreen,
     _NoticeLabel,
     _PlusButton,
@@ -42,6 +43,8 @@ from kivy.uix.scrollview import ScrollView
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterator
     from contextlib import AbstractContextManager
+
+    from kivy.uix.widget import Widget
 
 
 def _make_bare_screen() -> SearchScreen:
@@ -227,6 +230,57 @@ def _pick_speaker(screen: SearchScreen, speaker: str) -> None:
 def _fake_row(row_index: int) -> _SearchResultButton:
     """Return a stand-in result button with just the fields `_mark_result_selected` reads."""
     return cast("_SearchResultButton", SimpleNamespace(selected=False, row_index=row_index))
+
+
+def _press_at(widget: Widget, x: float, y: float) -> bool:
+    touch = MagicMock(x=x, y=y, pos=(x, y), is_mouse_scrolling=False, ud={}, button="left")
+    return bool(widget.on_touch_down(touch))
+
+
+class TestAHiddenModeTakesNoPresses:
+    """Hidden, a mode's era chips wrap into a column over the shown mode's stories."""
+
+    @staticmethod
+    def _content_with_a_chip(*, shown: bool) -> tuple[SearchModeContent, list[str]]:
+        content = SearchModeContent(shown=shown)
+        chip = Button(text="1942-46", size_hint=(None, None), pos=(860, 189), size=(90, 30))
+        pressed: list[str] = []
+        chip.bind(on_press=lambda b: pressed.append(b.text))
+        content.add_widget(chip)
+        return content, pressed
+
+    def test_a_press_on_a_hidden_mode_s_chip_passes_to_the_shown_mode(self) -> None:
+        content, pressed = self._content_with_a_chip(shown=False)
+        assert _press_at(content, 905, 204) is False  # left for the widgets beneath
+        assert pressed == []
+
+    def test_a_press_on_a_shown_mode_s_chip_presses_it(self) -> None:
+        content, pressed = self._content_with_a_chip(shown=True)
+        assert _press_at(content, 905, 204) is True
+        assert pressed == ["1942-46"]
+
+    @pytest.mark.parametrize(
+        ("mode", "shown"),
+        [
+            ("Title", [True, False, False]),
+            ("Tag", [False, True, False]),
+            ("Word", [False, False, True]),
+        ],
+    )
+    def test_set_mode_shows_only_its_own_content(self, mode: str, shown: list[bool]) -> None:
+        contents = [SearchModeContent(shown=False) for _ in range(3)]
+        ids = _Ids(
+            dict(
+                zip(
+                    ("title_search_content", "tag_search_content", "word_search_content"),
+                    contents,
+                    strict=True,
+                )
+            )
+        )
+        with _bare_screen(ids, patch.object(SearchScreen, "_refresh_tag_scope")) as screen:
+            screen.set_mode(mode)
+        assert [content.shown for content in contents] == shown
 
 
 class TestMarkResultSelected:

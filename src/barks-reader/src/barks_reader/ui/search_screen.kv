@@ -243,6 +243,14 @@
 
 # A translucent rounded panel that frames a list area, so the screen layout
 # reads as designed even before any search results exist.
+# One search mode's box and lists; set_mode shows one and hides the other two.
+<SearchModeContent>:
+    opacity: 1 if self.shown else 0
+    size_hint: (0.86, 1) if self.shown else (0, 0)
+    pos_hint: {'center_x': 0.5, 'y': 0}
+    padding: [dp(40), dp(30), dp(40), dp(35)]
+    spacing: dp(12)
+
 <SearchPanel@FloatLayout>:
     canvas.before:
         Color:
@@ -291,13 +299,9 @@
         # ---- Title Search Content ----
         # The box beside its results on a single page; over them on the spread's
         # page, which is too narrow for the two side by side.
-        BoxLayout:
+        SearchModeContent:
             id: title_search_content
             orientation: 'vertical' if root.layout_mode == 'spread' else 'horizontal'
-            size_hint: 0.86, 1
-            pos_hint: {'center_x': 0.5, 'y': 0}
-            padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(12)
 
             BoxLayout:
                 orientation: 'vertical'
@@ -372,14 +376,10 @@
                         note: search_help.TITLE_SERIES_NOTE
 
         # ---- Tag Search Content ----
-        BoxLayout:
+        SearchModeContent:
             id: tag_search_content
             orientation: 'horizontal'
-            size_hint: 0, 0
-            opacity: 0
-            pos_hint: {'center_x': 0.5, 'y': 0}
-            padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(12)
+            shown: False
 
             # Wider than the other modes' lists: a tag's name, its count and its + share a row,
             # and the stories on the right are titles, which shorten when they must.
@@ -491,14 +491,10 @@
                                 or tag_search_input.text else 1
 
         # ---- Word Search Content ----
-        BoxLayout:
+        SearchModeContent:
             id: word_search_content
             orientation: 'horizontal'
-            size_hint: 0, 0
-            opacity: 0
-            pos_hint: {'center_x': 0.5, 'y': 0}
-            padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(12)
+            shown: False
 
             BoxLayout:
                 orientation: 'vertical'
