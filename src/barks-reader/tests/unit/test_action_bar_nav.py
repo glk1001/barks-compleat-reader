@@ -364,6 +364,25 @@ class TestDropdownPageKeys:
         mock_clear.assert_called_once_with(screen._items[0], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
         mock_draw.assert_called_with(screen._items[3], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
 
+    def test_a_start_past_the_end_of_the_list_is_its_last_row(self) -> None:
+        """A start worked out before the list was rebuilt raised IndexError on opening."""
+        screen = _PagedDropdownScreen(3)
+        with (
+            patch.object(nav_module, "draw_focus_highlight") as mock_draw,
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav(initial_idx=7)
+        assert screen._dropdown_focused_idx == 2  # noqa: PLR2004
+        mock_draw.assert_called_once_with(screen._items[2], nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def test_an_empty_list_opens_with_no_ring_and_its_keys_pass_by(self) -> None:
+        screen = _PagedDropdownScreen(0)
+        with patch.object(nav_module, "draw_focus_highlight") as mock_draw:
+            screen._enter_dropdown_nav()
+        mock_draw.assert_not_called()
+        assert screen._dropdown_nav_mode is True
+        assert screen._handle_menu_key(KEY_PAGE_DOWN) is False
+
     def test_page_keys_are_not_consumed_without_a_page_step(self) -> None:
         screen = _StubDropdownScreen()
         with patch.object(nav_module, "draw_focus_highlight"):

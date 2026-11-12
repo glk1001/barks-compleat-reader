@@ -368,10 +368,14 @@ class DropdownNavMixin:
 
     def _enter_dropdown_nav(self, initial_idx: int = 0) -> None:
         self._dropdown_nav_mode = True
-        self._dropdown_buttons_cache = self._get_dropdown_buttons()
-        self._dropdown_focused_idx = initial_idx
-        self._dropdown_prev_focused_idx = initial_idx
-        self._update_dropdown_focus()
+        buttons = self._get_dropdown_buttons()
+        self._dropdown_buttons_cache = buttons
+        # A start worked out before the list was rebuilt can be past its end: the last row.
+        idx = min(max(initial_idx, 0), len(buttons) - 1) if buttons else 0
+        self._dropdown_focused_idx = idx
+        self._dropdown_prev_focused_idx = idx
+        if buttons:  # an empty list has no row to ring
+            self._update_dropdown_focus()
 
     def _exit_dropdown_nav(self) -> None:
         self._clear_dropdown_focus()
