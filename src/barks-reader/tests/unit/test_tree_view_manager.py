@@ -533,8 +533,9 @@ class TestTreeViewManager:
     ) -> None:
         fanta = fake_fanta_info()
         button = MagicMock()
-        button.parent.destination = TitleDestination(fanta_info=fanta)
-        button.parent.parent_node.destination = None
+        button.parent = MagicMock(name="its row")  # the widget tree's: a row, not the node
+        button.node.destination = TitleDestination(fanta_info=fanta)
+        button.node.parent_node.destination = None
 
         tree_view_manager.on_title_row_button_pressed(button)
 
@@ -547,8 +548,8 @@ class TestTreeViewManager:
     ) -> None:
         fanta = fake_fanta_info()
         button = MagicMock()
-        button.parent.destination = TitleDestination(fanta_info=fanta)
-        button.parent.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
+        button.node.destination = TitleDestination(fanta_info=fanta)
+        button.node.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
 
         tree_view_manager.on_title_row_button_pressed(button)
 
@@ -561,8 +562,8 @@ class TestTreeViewManager:
         # (character/decade backdrop) instead of re-rolling a generic image.
         fanta = fake_fanta_info()
         button = MagicMock()
-        button.parent.destination = TitleDestination(fanta_info=fanta)
-        button.parent.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
+        button.node.destination = TitleDestination(fanta_info=fanta)
+        button.node.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
 
         tree_view_manager.on_title_row_button_pressed(button)
 

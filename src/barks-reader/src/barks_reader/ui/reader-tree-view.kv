@@ -72,7 +72,7 @@
     TreeViewRowNode:
         TreeViewButton:
             id: num_label
-            parent: root
+            node: root
             font_size: fm.tree_view_num_label_font_size
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
@@ -88,7 +88,7 @@
 
         TitleTreeViewLabel:
             text: ""
-            parent: root
+            node: root
             font_size: fm.tree_view_num_label_font_size
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
@@ -101,7 +101,7 @@
 
         TitleTreeViewLabel:
             id: title_label
-            parent: root
+            node: root
             font_size: fm.tree_view_title_label_font_size
             color: reader_palette.theme().text_title
             background_color: root.ROW_BACKGROUND_COLOR
@@ -117,7 +117,7 @@
     TreeViewRowNode:
         TitleTreeViewLabel:
             text: "   "
-            parent: root
+            node: root
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             size_hint: (None, None)
@@ -129,7 +129,7 @@
 
         TitleTreeViewLabel:
             text: ""
-            parent: root
+            node: root
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             size_hint: (None, None)
@@ -141,7 +141,7 @@
 
         TitleTreeViewLabel:
             id: issue_label
-            parent: root
+            node: root
             font_size: fm.tree_view_issue_label_font_size
             color: root.ISSUE_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,7 @@ from barks_reader.ui.tree_view_nodes import (
     ReaderTreeView,
     TitleTreeViewNode,
 )
+from kivy.lang.parser import Parser
 
 
 class TestReaderTreeView:
@@ -109,6 +111,17 @@ class TestNodeNames:
 
 
 class TestTitleTreeViewNode:
+    def test_its_row_widgets_name_the_node_and_keep_their_real_parent(self) -> None:
+        """The kv set each one's `parent` to the node, over the row it sits in."""
+        kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
+        parsed = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
+        [node_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<TitleTreeViewNode>"]
+        widgets = [widget for row in node_rule.children for widget in row.children]
+
+        assert len(widgets) == 6  # noqa: PLR2004  # two rows of three
+        assert all(widget.properties["node"].value == "root" for widget in widgets)
+        assert not any("parent" in widget.properties for widget in widgets)
+
     def test_create_from_fanta_info(self) -> None:
         mock_info = MagicMock()
         mock_info.fanta_chronological_number = 1

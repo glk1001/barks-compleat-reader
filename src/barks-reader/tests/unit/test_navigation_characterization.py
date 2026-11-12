@@ -93,8 +93,8 @@ def test_title_row_button_pressed_no_tag_when_parent_has_no_tag_destination(
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
-    button.parent.destination = TitleDestination(fanta_info=fanta)
-    button.parent.parent_node.destination = None
+    button.node.destination = TitleDestination(fanta_info=fanta)
+    button.node.parent_node.destination = None
 
     tree_view_manager.on_title_row_button_pressed(button)
 
@@ -108,8 +108,8 @@ def test_title_row_button_pressed_extracts_tag_from_tag_parent(
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
-    button.parent.destination = TitleDestination(fanta_info=fanta)
-    button.parent.parent_node.destination = TagDestination(tag=Tags.AIRPLANES)
+    button.node.destination = TitleDestination(fanta_info=fanta)
+    button.node.parent_node.destination = TagDestination(tag=Tags.AIRPLANES)
 
     tree_view_manager.on_title_row_button_pressed(button)
 
@@ -123,8 +123,8 @@ def test_title_row_button_pressed_extracts_tag_from_tag_group_parent(
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
-    button.parent.destination = TitleDestination(fanta_info=fanta)
-    button.parent.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
+    button.node.destination = TitleDestination(fanta_info=fanta)
+    button.node.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
 
     tree_view_manager.on_title_row_button_pressed(button)
 

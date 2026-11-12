@@ -239,8 +239,15 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
 
 
 class TreeViewButton(Button):
-    pass
+    """A title row's number, which picks the title when pressed."""
+
+    # The title node whose row holds it. Not `parent`: the kv set that to the node,
+    # over the row Kivy had added it to, and the widget tree no longer matched.
+    node = ObjectProperty(None, allownone=True)
 
 
 class TitleTreeViewLabel(Button):
-    pass
+    """A title row's title, issue or spacer, which picks the title when pressed."""
+
+    # The title node whose row holds it (see TreeViewButton.node).
+    node = ObjectProperty(None, allownone=True)

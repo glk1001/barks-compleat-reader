@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from .collapse_parent_overlay import CollapseParentOverlay
     from .navigation_coordinator import NavigationCoordinator
     from .screen_bundle import ScreenBundle
-    from .tree_view_nodes import ReaderTreeView
+    from .tree_view_nodes import ReaderTreeView, TitleTreeViewLabel, TreeViewButton
     from .view_renderer import ViewRenderer
 
 
@@ -445,10 +445,10 @@ class TreeViewManager:
             if sibling != node and sibling.is_open:
                 self._tree_view_screen.ids.reader_tree_view.toggle_node(sibling)
 
-    def on_title_row_button_pressed(self, button: Button) -> None:
+    def on_title_row_button_pressed(self, button: TreeViewButton | TitleTreeViewLabel) -> None:
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        title_node = button.parent
+        title_node = button.node
         assert isinstance(title_node.destination, TitleDestination)
         fanta_info = title_node.destination.fanta_info
 
