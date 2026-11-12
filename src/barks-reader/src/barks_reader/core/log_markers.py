@@ -119,6 +119,8 @@ SETTINGS_CLOSED: Final = "Settings closed."
 CONFIG_CHANGE: Final = "Config change: section = '{section}', key = '{key}', value = '{value}'."
 # A folder setting's picker (Enter on its row opens it; a remote can only Escape it,
 # or tap its box and press Enter to take the path shown).
+# A GUI test's request (a memory census, a frame of the window) the app could not answer.
+REQUEST_FAILED: Final = '{what}: request "{request}" failed.'
 FOLDER_CHOOSER_OPENED: Final = 'Folder chooser opened for "{title}".'
 FOLDER_CHOOSER_SELECTED: Final = 'Folder chooser: selected "{path}".'
 FOLDER_CHOOSER_CLOSED: Final = "Folder chooser closed."

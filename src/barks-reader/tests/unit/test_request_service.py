@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+from barks_reader.core import log_markers
 from barks_reader.ui import memory_census as ui_memory_census
 from barks_reader.ui import request_service
 from barks_reader.ui.request_service import install_request_service
@@ -54,7 +55,40 @@ def test_the_poll_is_held_for_the_clock_holds_it_only_weakly(
     monkeypatch.setenv(_ENV_VAR, str(tmp_path / "request"))
     with patch.object(Clock, "schedule_interval") as schedule:
         install_request_service(_ENV_VAR, "Test", MagicMock())
-    assert schedule.call_args.args[0] in request_service._SERVICES  # noqa: SLF001
+    assert schedule.call_args.args[0] in request_service._SERVICES.values()  # noqa: SLF001
+
+
+def test_a_request_that_raises_is_logged_and_the_next_is_answered(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, loguru_sink: list[str]
+) -> None:
+    """Raised from the clock, it took the app down: the test then saw only a timeout."""
+    request_file = tmp_path / "request"
+    monkeypatch.setenv(_ENV_VAR, str(request_file))
+    answer = MagicMock(side_effect=[OSError("disk full"), None])
+    with patch.object(Clock, "schedule_interval") as schedule:
+        install_request_service(_ENV_VAR, "Frame capture", answer)
+    poll = schedule.call_args.args[0]
+
+    request_file.write_text("7\n", encoding="utf-8")
+    poll(0)  # does not raise
+    failed = log_markers.REQUEST_FAILED.format(what="Frame capture", request="7")
+    [line] = [line for line in loguru_sink if line.startswith(failed)]
+    assert "OSError: disk full" in line  # with its traceback
+
+    request_file.write_text("8\n", encoding="utf-8")
+    poll(0)
+    assert answer.call_args.args == ("8", tmp_path)
+
+
+def test_a_second_install_on_the_same_file_polls_nothing_more(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Two polls on one file raced for each request."""
+    monkeypatch.setenv(_ENV_VAR, str(tmp_path / "request"))
+    with patch.object(Clock, "schedule_interval") as schedule:
+        assert install_request_service(_ENV_VAR, "Test", MagicMock()) is True
+        assert install_request_service(_ENV_VAR, "Test", MagicMock()) is True
+    schedule.assert_called_once()
 
 
 def test_a_memory_census_request_is_answered_by_its_id_alone(

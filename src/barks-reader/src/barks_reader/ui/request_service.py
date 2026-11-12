@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.core import log_markers
 from barks_reader.core.memory_census import take_request
 
 if TYPE_CHECKING:
@@ -23,8 +24,9 @@ if TYPE_CHECKING:
 # A test asks, then waits: four looks a second answer well inside its timeout.
 POLL_SECS = 0.25
 
-# The installed polls, held here because Kivy's clock only holds them weakly.
-_SERVICES: list[Callable[[float], None]] = []
+# The installed polls, by the file each answers, held here because Kivy's clock only
+# holds them weakly; one a file, so two installs do not answer one request twice.
+_SERVICES: dict[Path, Callable[[float], None]] = {}
 
 
 def install_request_service(
@@ -45,13 +47,21 @@ def install_request_service(
     if not request_file:
         return False
     path = Path(request_file)
+    if path in _SERVICES:
+        return True  # installed already: a second poll would race the first
 
     def poll(_dt: float) -> None:
         request = take_request(path)
-        if request is not None:
+        if request is None:
+            return
+        # Raised from the clock, it took the app down, and the test reported a boot or
+        # timeout failure. Logged at error level, it fails the test with its own error.
+        try:
             answer(request, path.parent)
+        except Exception:  # noqa: BLE001
+            logger.exception(log_markers.REQUEST_FAILED.format(what=what, request=request))
 
-    _SERVICES.append(poll)
+    _SERVICES[path] = poll
     Clock.schedule_interval(poll, POLL_SECS)
     logger.info(f"{what}: answering requests in {request_file}.")
     return True
