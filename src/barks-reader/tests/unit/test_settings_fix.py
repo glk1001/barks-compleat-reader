@@ -25,7 +25,9 @@ from barks_reader.ui.settings_fix import (
     SettingOptionsPopup,
     SettingOptionsWithValue,
 )
+from kivy.event import EventDispatcher
 from kivy.lang import Builder
+from kivy.properties import ListProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix import filechooser
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -33,7 +35,7 @@ from kivy.uix.settings import ContentPanel, SettingsPanel
 from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterator
 
     from barks_reader.ui.popup_frame import PopupFrame
 
@@ -720,31 +722,95 @@ class TestFolderChooserEdges:
         chooser.dismiss.assert_called_once_with()
 
 
+class _Listing(EventDispatcher):
+    """A file chooser as the popup's start sees one: its folder, its listing, a selection."""
+
+    files = ListProperty()
+    path = StringProperty()
+
+    def __init__(self, path: Path) -> None:
+        super().__init__()
+        self.path = str(path)
+        self.set_initial_selection = MagicMock()
+
+
 class TestLongPathPopupStart:
     """The popup opens on the setting's folder and highlights it once the files are listed."""
 
-    @staticmethod
-    def _open(tmp_path: Path, listed: list[str]) -> MagicMock:
-        setting = _stand_in(value=str(tmp_path / "library"), title="Fantagraphics")
-        with (
-            patch.object(settings_fix, "SettingLongPathPopup") as popup_class,
-            patch.object(settings_fix, "Clock") as clock,
-        ):
-            settings_fix.SettingLongPath._create_popup(setting, MagicMock())
-        popup = popup_class.return_value
-        popup.ids.file_chooser.files = listed
-        (set_initial_selection, _delay), _ = clock.schedule_once.call_args
-        set_initial_selection(0)
-        return popup.ids.file_chooser
+    @pytest.fixture(autouse=True)
+    def _clock_runs_at_once(self) -> Iterator[None]:
+        with patch.object(settings_fix.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)):
+            yield
 
-    def test_the_settings_folder_is_highlighted_when_listed(self, tmp_path: Path) -> None:
+    @staticmethod
+    def _open(tmp_path: Path, listed: list[str] | None = None) -> _Listing:
+        (tmp_path / "library").mkdir()
+        setting = _stand_in(value=str(tmp_path / "library"), title="Fantagraphics")
+        chooser = _Listing(tmp_path)
+        if listed is not None:
+            chooser.files = listed
+        with patch.object(settings_fix, "SettingLongPathPopup") as popup_class:
+            popup_class.return_value.ids.file_chooser = chooser
+            settings_fix.SettingLongPath._create_popup(setting, MagicMock())
+        return chooser
+
+    def test_a_folder_listed_late_is_highlighted_when_its_listing_comes(
+        self, tmp_path: Path
+    ) -> None:
+        """A slow disk or network folder lists after the fixed 0.2 s the start waited."""
+        chooser = self._open(tmp_path)
+        chooser.set_initial_selection.assert_not_called()  # nothing listed yet
         library = str(tmp_path / "library")
-        chooser = self._open(tmp_path, [str(tmp_path / "other"), library])
+        chooser.files = [str(tmp_path / "other"), library]
+        chooser.set_initial_selection.assert_called_once_with([library])
+
+    def test_the_highlight_waits_for_the_listing_to_finish(self, tmp_path: Path) -> None:
+        """Kivy sets `files` inside its listing: a relisting started there broke the first."""
+        library = str(tmp_path / "library")
+        chooser = self._open(tmp_path)
+        with patch.object(settings_fix, "Clock") as clock:
+            chooser.files = [library]
+            chooser.set_initial_selection.assert_not_called()  # not inside the listing
+            (select, *_), _ = clock.schedule_once.call_args
+        select(0)
+        chooser.set_initial_selection.assert_called_once_with([library])
+
+    def test_a_folder_listed_already_is_highlighted_at_once(self, tmp_path: Path) -> None:
+        library = str(tmp_path / "library")
+        chooser = self._open(tmp_path, [library])
+        chooser.set_initial_selection.assert_called_once_with([library])
+
+    def test_the_highlight_s_own_relisting_highlights_nothing_more(self, tmp_path: Path) -> None:
+        library = str(tmp_path / "library")
+        chooser = self._open(tmp_path)
+        chooser.set_initial_selection.side_effect = lambda _sel: setattr(
+            chooser, "files", [library, str(tmp_path / "other")]
+        )  # as the real one lists the folder again
+        chooser.files = [library]
         chooser.set_initial_selection.assert_called_once_with([library])
 
     def test_a_folder_not_listed_leaves_nothing_highlighted(self, tmp_path: Path) -> None:
         chooser = self._open(tmp_path, [str(tmp_path / "other")])
         chooser.set_initial_selection.assert_not_called()
+
+    def test_browsed_away_before_the_listing_nothing_is_highlighted(self, tmp_path: Path) -> None:
+        chooser = self._open(tmp_path)
+        chooser.path = str(tmp_path / "other")
+        chooser.files = [str(tmp_path / "library")]
+        chooser.path = str(tmp_path)  # back again: the start has let go
+        chooser.files = [str(tmp_path / "library")]
+        chooser.set_initial_selection.assert_not_called()
+
+    def test_a_relative_entry_is_read_from_the_folder_listed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """It was resolved against the app's working folder."""
+        (tmp_path / "books" / "library").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)  # where "library" would be read from wrongly: no such
+        wanted = tmp_path / "books"
+        listed_in = str(tmp_path / "books" / "library")
+        assert settings_fix._listed_entry(["../", "x"], listed_in, wanted) == "../"
+        assert settings_fix._listed_entry(["library"], str(tmp_path), wanted) is None
 
 
 class TestOptionValueDisplay:

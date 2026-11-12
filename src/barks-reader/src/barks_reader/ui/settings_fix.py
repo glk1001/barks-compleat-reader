@@ -670,21 +670,42 @@ def open_folder_chooser_popup(title: str, value: str, setting_widget: object) ->
     # Bind the text input to update file chooser.
     popup.ids.path_input.bind(text=lambda _instance, text: popup.update_file_chooser_path(text))
 
-    def set_initial_selection(_dt: float) -> None:
-        """Set the initial selection after files are loaded."""
-        fc = popup.ids.file_chooser
+    chooser = popup.ids.file_chooser
+    listed_in = setting_parent_dir.resolve()
 
-        # Look for the matching directory in the files list.
-        for file_path in fc.files:
-            if Path(file_path).resolve() == Path(setting_dir).resolve():
-                fc.set_initial_selection([file_path])
-                return
+    def select_once_listed(*_args: object) -> None:
+        """Select the setting's folder once its parent's listing is in.
 
+        On the listing, not after a fixed 0.2 s: a slow disk or a network folder
+        listed later than that, and the folder was never selected.
+        """
+        if Path(chooser.path).resolve() != listed_in:
+            chooser.unbind(files=select_once_listed)  # browsed away first: leave it
+            return
+        entry = _listed_entry(chooser.files, chooser.path, Path(setting_dir))
+        if entry is None:
+            return  # not listed yet
+        # Off first: the selection lists the folder again, and this would run again.
+        chooser.unbind(files=select_once_listed)
+        # A frame on: Kivy sets `files` inside its listing, before it clears that
+        # listing's state, and a new listing started here had its state cleared under
+        # it (its next tick raised on the cleared list).
+        Clock.schedule_once(lambda _dt: chooser.set_initial_selection([entry]))
+
+    chooser.bind(files=select_once_listed)
     popup.bind(on_dismiss=lambda *_a: logger.debug(log_markers.FOLDER_CHOOSER_CLOSED))
     popup.open()
+    select_once_listed()  # in case it is listed already
 
-    # Set selection after a short delay to ensure files are loaded.
-    Clock.schedule_once(set_initial_selection, 0.2)
+
+def _listed_entry(files: list[str], listed_in: str, wanted: Path) -> str | None:
+    """Return the entry of a folder's listing that is `wanted`, or None.
+
+    Each entry is read from the folder listed: a relative one (the "../" entry) was
+    resolved against the app's working folder.
+    """
+    target = wanted.resolve()
+    return next((f for f in files if (Path(listed_in) / f).resolve() == target), None)
 
 
 class SettingLongPath(SettingItem):
