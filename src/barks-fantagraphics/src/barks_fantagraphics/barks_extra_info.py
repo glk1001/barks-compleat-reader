@@ -197,14 +197,13 @@ BARKS_EXTRA_INFO = {
     " And I just thought of Donald: how in the summertime he would get very rash and boast"
     " that he would go into the water in the wintertime. And so that's how Gladstone got into it."
     ' He had to be somebody that Donald was trying to outdo."[/i]',
-    Titles.RACE_TO_THE_SOUTH_SEAS: "The first appearance of [b][i]Gladstone Gander[/i][/b] in "
-    "a long Donald Duck story.\n\n"
-    "David Gerstein on the version in this digital edition: [i]\"Fantagraphics'"
-    " plan for their Donald V1 &bl;Fantagraphics CBDL 7&br; was to use a newly recovered all-Barks"
-    ' version of the "South Seas" story, because I had a lead on where original line art'
-    " photostats could be found... Alas, I [/i]couldn't[i] acquire the original version by press"
-    " time—so my 2006 partial restoration (from Gemstone's WALT DISNEY TREASURES Vol 1) was used"
-    " in Donald V1 instead. It's actually a mix of Barks and Jippes..."
+    Titles.RACE_TO_THE_SOUTH_SEAS: "The first appearance of [b][i]Gladstone Gander[/i][/b] in a"
+    " long Donald Duck story.\n\nDavid Gerstein on the version in this digital edition:"
+    " [i]\"Fantagraphics' plan for their Donald V1 &bl;Donald vol. 1, Fantagraphics CBDL 7&br; was"
+    ' to use a newly recovered all-Barks version of the "South Seas" story, because I had a lead'
+    " on where original line art photostats could be found... Alas, I [/i]couldn't[i] acquire the"
+    " original version by press time—so my 2006 partial restoration (from Gemstone's WALT DISNEY"
+    " TREASURES Vol 1) was used in Donald V1 instead. It's actually a mix of Barks and Jippes..."
     ' and I\'m still attempting to recover the all-Barks version of "South Seas." Presuming'
     ' everything works out, it will make its way into a later printing of Donald V1."[/i]',
     Titles.LETTER_TO_SANTA: "The first story with the classic [b][i]Uncle Scrooge:[/i][/b] a"
