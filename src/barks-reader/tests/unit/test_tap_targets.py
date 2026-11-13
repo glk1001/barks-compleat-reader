@@ -248,6 +248,17 @@ def test_an_open_popup_hides_everything_under_it() -> None:
     assert listed == [("ModalView", ""), ("Button", "OK")], "the panel, then what it holds"
 
 
+def test_a_popup_with_something_over_it_still_hides_what_is_under_it() -> None:
+    # With the virtual keyboard or a dropdown on top, the widgets under the popup
+    # were listed as tappable.
+    popup = ModalView()
+    popup.add_widget(_placed(Button(text="OK"), 0, 0, 40, 20))
+    over = _root(_placed(Button(text="key"), 0, 0, 30, 30))
+    under = _root(_placed(Button(text="under"), 0, 0, 50, 50))
+    listed = [t.text for t in snapshot(_Window(over, popup, under))]
+    assert listed == ["key", "", "OK"]
+
+
 def test_a_popup_is_named_by_its_title() -> None:
     popup = Popup(title="  Speech\n bubbles ", content=Label(), size_hint=(None, None))
     popup.size = (100, 80)

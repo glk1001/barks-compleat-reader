@@ -210,8 +210,11 @@ def snapshot(window: Any) -> list[TapTarget]:  # noqa: ANN401
 
     """
     children = list(window.children)
-    if children and isinstance(children[0], ModalView):
-        children = children[:1]  # an open popup takes every press
+    # An open popup takes every press but those on what lies over it: the virtual
+    # keyboard, or a dropdown it opened.
+    popup_at = next((i for i, c in enumerate(children) if isinstance(c, ModalView)), None)
+    if popup_at is not None:
+        children = children[: popup_at + 1]
     window_clip: Rect = (0.0, 0.0, float(window.width), float(window.height))
     out: list[TapTarget] = []
     for child in children:
