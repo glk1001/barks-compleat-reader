@@ -16,7 +16,7 @@ from .comic_book_info import (
     get_title_str_from_filename,
 )
 from .comics_consts import PageType
-from .comics_database import ComicsDatabase
+from .comics_database import ComicsDatabase, TitleNotFoundError
 from .comics_utils import get_safe_title, get_titles_sorted_by_submission_date
 from .fanta_comics_info import FantaComicBookInfo
 from .pages import get_sorted_srce_and_dest_pages
@@ -30,13 +30,37 @@ def get_titles_and_info(
     configured_only: bool = True,
     exclude_non_comics: bool = False,
 ) -> list[tuple[str, FantaComicBookInfo]]:
-    assert not (volumes and title)
+    """Return the titles, with their info, of one title or of whole volumes.
+
+    Args:
+        comics_database: The database to look the titles up in.
+        volumes: The Fantagraphics volumes to list; empty when ``title`` is given.
+        title: A story title or a single-story issue ("FC 9"); empty when ``volumes``
+            is given.
+        configured_only: Whether to list only the volumes' titles that have an ini file.
+        exclude_non_comics: Whether to leave the volumes' articles out.
+
+    Returns:
+        ``(story title, info)`` pairs. A title given as an issue comes back as the
+        story's own title, so that it can be looked up as one.
+
+    Raises:
+        ValueError: If both or neither of ``volumes`` and ``title`` are given.
+        TitleNotFoundError: If ``title`` is not a known title.
+
+    """
+    if volumes and title:
+        msg = "Give volumes or a title, not both."
+        raise ValueError(msg)
 
     if title:
         fanta_info = comics_database.get_fanta_comic_book_info(title)
-        return [(title, fanta_info)]
+        return [(fanta_info.comic_book_info.get_title_str(), fanta_info)]
 
-    assert volumes
+    if not volumes:
+        msg = "Give volumes or a title: neither was given."
+        raise ValueError(msg)
+
     if configured_only:
         return comics_database.get_configured_titles_in_fantagraphics_volumes(
             volumes, exclude_non_comics
@@ -119,15 +143,14 @@ def get_volume_and_page(
         p.page_filenames for p in comic.page_images_in_order if p.page_type == PageType.BODY
     ]
 
-    first_page = int(valid_page_list[0])
-    page = first_page if not page_num_str else first_page + int(page_num_str) - 1
-    page = get_page_str(page)
-
-    if page not in valid_page_list:
+    # The story's nth page is the nth BODY page, not the first one's number plus n - 1:
+    # the BODY pages of "The Bill Collectors" are not in a row.
+    page_index = int(page_num_str) - 1 if page_num_str else 0
+    if not 0 <= page_index < len(valid_page_list):
         msg = f'Page {page_num_str} not valid for "{title_str}".'
         raise RuntimeError(msg)
 
-    return volume, page
+    return volume, valid_page_list[page_index]
 
 
 def get_title_from_volume_page(
@@ -192,16 +215,25 @@ def get_comic_titles(
     """Validate volume/title mutual exclusivity, parse args, and return database + titles.
 
     Raises:
-        typer.BadParameter: If both volumes_str and title_str are provided.
+        typer.BadParameter: If both or neither of volumes_str and title_str are provided,
+            or if title_str is not a known title.
 
     """
     if volumes_str and title_str:
         msg = "Options --volume and --title are mutually exclusive."
         raise typer.BadParameter(msg)
+    if not volumes_str and not title_str:
+        msg = "One of the options --volume and --title is required."
+        raise typer.BadParameter(msg)
 
     volumes = list(intspan(volumes_str))
     comics_database = ComicsDatabase()
-    titles = get_titles(comics_database, volumes, title_str, exclude_non_comics=exclude_non_comics)
+    try:
+        titles = get_titles(
+            comics_database, volumes, title_str, exclude_non_comics=exclude_non_comics
+        )
+    except TitleNotFoundError as e:
+        raise typer.BadParameter(str(e)) from e
     return comics_database, titles
 
 

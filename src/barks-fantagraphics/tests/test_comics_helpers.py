@@ -1,4 +1,5 @@
 # ruff: noqa: PLR2004, FBT003
+# cspell:ignore Andez  (a deliberate miss)
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import typer
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book_info import ONE_PAGERS
 from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_helpers import (
     draw_panel_bounds_on_image,
     get_comic_titles,
@@ -55,6 +57,7 @@ class TestGetTitlesAndInfo:
     def test_single_title_returns_one_tuple(self) -> None:
         db = _make_db()
         fanta_info = _make_fanta_info()
+        fanta_info.comic_book_info.get_title_str.return_value = "My Title"
         db.get_fanta_comic_book_info.return_value = fanta_info
 
         result = get_titles_and_info(db, [], "My Title")
@@ -62,15 +65,24 @@ class TestGetTitlesAndInfo:
         db.get_fanta_comic_book_info.assert_called_once_with("My Title")
         assert result == [("My Title", fanta_info)]
 
+    def test_an_issue_comes_back_as_its_story_title(self) -> None:
+        # The real database: "FC 9" has to go on as a title the other lookups know.
+        result = get_titles_and_info(ComicsDatabase(), [], "FC 9")
+
+        assert [title for title, _ in result] == ["Donald Duck Finds Pirate Gold"]
+        assert result[0][1].comic_book_info.get_title_str() == "Donald Duck Finds Pirate Gold"
+
     def test_both_title_and_volumes_raises(self) -> None:
         db = _make_db()
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="not both"):
             get_titles_and_info(db, [1], "My Title")
+        db.get_fanta_comic_book_info.assert_not_called()
 
     def test_neither_title_nor_volumes_raises(self) -> None:
         db = _make_db()
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="neither was given"):
             get_titles_and_info(db, [], "")
+        db.get_configured_titles_in_fantagraphics_volumes.assert_not_called()
 
     def test_volumes_configured_only_true(self) -> None:
         db = _make_db()
@@ -140,6 +152,7 @@ class TestGetTitles:
     def test_single_title_bypasses_volume_lookup(self) -> None:
         db = _make_db()
         fanta_info = _make_fanta_info()
+        fanta_info.comic_book_info.get_title_str.return_value = "Exact Title"
         db.get_fanta_comic_book_info.return_value = fanta_info
 
         result = get_titles(db, [], "Exact Title", submission_date_sorted=False)
@@ -488,6 +501,24 @@ class TestGetVolumeAndPage:
         with pytest.raises(RuntimeError, match=f'Page 4 not valid for "{self.TITLE}"'):
             get_volume_and_page(db, self.TITLE, "4")
 
+    def test_page_zero_is_an_error(self) -> None:
+        db = self._db_with_pages(7, ["021", "022", "023"])
+        with pytest.raises(RuntimeError, match=f'Page 0 not valid for "{self.TITLE}"'):
+            get_volume_and_page(db, self.TITLE, "0")
+
+    def test_a_page_is_counted_along_body_pages_that_are_not_in_a_row(self) -> None:
+        db = self._db_with_pages(4, ["193", "194", "227", "195"])
+        assert get_volume_and_page(db, self.TITLE, "3") == (4, "227")
+        assert get_volume_and_page(db, self.TITLE, "4") == (4, "195")
+
+    def test_the_bill_collectors_pages_follow_its_ini(self) -> None:
+        # The one story whose BODY pages are out of order, read from the real database.
+        db = ComicsDatabase()
+        pages = [get_volume_and_page(db, "The Bill Collectors", str(n))[1] for n in (2, 3, 4, 10)]
+        assert pages == ["194", "227", "195", "201"]
+        with pytest.raises(RuntimeError, match="Page 11 not valid"):
+            get_volume_and_page(db, "The Bill Collectors", "11")
+
     def test_a_one_pager_comes_from_its_located_page(self) -> None:
         db = _make_db()
         with patch.object(
@@ -536,6 +567,18 @@ class TestGetComicTitles:
     def test_volume_and_title_together_are_refused(self) -> None:
         with pytest.raises(typer.BadParameter, match="mutually exclusive"):
             get_comic_titles("5", "Some Title")
+
+    def test_neither_volume_nor_title_is_refused(self) -> None:
+        with pytest.raises(typer.BadParameter, match="--volume and --title is required"):
+            get_comic_titles("", "")
+
+    def test_a_mistyped_title_is_a_bad_parameter_naming_the_closest(self) -> None:
+        with pytest.raises(typer.BadParameter, match='Did you mean "Lost in the Andes!"'):
+            get_comic_titles("", "Lost in the Andez")
+
+    def test_an_issue_gives_its_story_title(self) -> None:
+        _, titles = get_comic_titles("", "FC 9")
+        assert titles == ["Donald Duck Finds Pirate Gold"]
 
     def test_a_volume_range_is_expanded(self) -> None:
         with (

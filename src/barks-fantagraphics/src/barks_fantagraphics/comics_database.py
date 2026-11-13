@@ -400,6 +400,20 @@ class ComicsDatabase:
         make_all_fantagraphics_directories(self)
 
     def get_fanta_comic_book_info(self, title: str) -> FantaComicBookInfo:
+        """Return the Fantagraphics info of a title, configured or not.
+
+        Args:
+            title: A story title, or an issue holding one story ("FC 9").
+
+        Returns:
+            The title's info.
+
+        Raises:
+            RuntimeError: If ``title`` is an issue holding several stories, or is close
+                to an issue's name without being one.
+            TitleNotFoundError: If ``title`` is not a known title.
+
+        """
         found, titles, close = self.get_story_title_from_issue(title)
         if found:
             if len(titles) > 1:
@@ -411,7 +425,17 @@ class ComicsDatabase:
             msg = f'Could not find issue title "{title}". Did you mean "{close}"?'
             raise RuntimeError(msg)
 
-        return self._all_comic_book_info[STR_TITLE_TO_ENUM[title]]
+        title_enum = STR_TITLE_TO_ENUM.get(title)
+        if title_enum is None:
+            # Every title, not only the configured ones `is_story_title` knows.
+            close_titles = difflib.get_close_matches(title, STR_TITLE_TO_ENUM, 1, 0.3)
+            if close_titles:
+                msg = f'Could not find title "{title}". Did you mean "{close_titles[0]}"?'
+                raise TitleNotFoundError(msg, title)
+            msg = f'Could not find title "{title}".'
+            raise TitleNotFoundError(msg, title)
+
+        return self._all_comic_book_info[title_enum]
 
     def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
         story_title = ""

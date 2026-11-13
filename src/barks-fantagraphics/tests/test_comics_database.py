@@ -401,6 +401,23 @@ class TestTitleLookupErrors:
         with pytest.raises(TitleNotFoundError, match=r'^Could not find title "Zzzzqqq"\.$'):
             db.get_comic_book("Zzzzqqq")
 
+    def test_the_info_of_a_near_miss_title_suggests_the_closest(self, db: ComicsDatabase) -> None:
+        with pytest.raises(TitleNotFoundError, match='Did you mean "Lost in the Andes!"') as err:
+            db.get_fanta_comic_book_info("Lost in the Andez")
+        assert err.value.title == "Lost in the Andez"
+
+    def test_the_info_of_a_title_like_nothing_says_so_plainly(self, db: ComicsDatabase) -> None:
+        with pytest.raises(TitleNotFoundError, match=r'^Could not find title "Zzzzqqq"\.$') as err:
+            db.get_fanta_comic_book_info("Zzzzqqq")
+        assert err.value.title == "Zzzzqqq"
+
+    def test_the_info_of_a_title_with_no_ini_is_found(self, db: ComicsDatabase) -> None:
+        unconfigured = next(
+            title for title in STR_TITLE_TO_ENUM if title not in db.get_all_story_titles()
+        )
+        info = db.get_fanta_comic_book_info(unconfigured)
+        assert info.comic_book_info.get_title_str() == unconfigured
+
     def test_a_single_story_issue_finds_its_story(self, db: ComicsDatabase) -> None:
         info = db.get_fanta_comic_book_info("ANDERS 47")
         assert info.comic_book_info.get_title_str() == "Pied Piper of Duckburg"
