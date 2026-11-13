@@ -66,7 +66,7 @@ def test_an_index_row_lists_by_the_word_after_the_article() -> None:
         max_len=MAX_TITLE_AND_PAGES_LEN,
         sortable=True,
     )
-    assert [row.text for row in rows] == ["Lost in the Andes!, 3", "Old Castle's Secret, 5, The"]
+    assert [row.text for row in rows] == ["Lost in the Andes!, 3", "Old Castle's Secret, The, 5"]
 
 
 def test_a_long_page_list_is_cut_to_the_length_less_the_count() -> None:
@@ -84,40 +84,42 @@ def test_the_count_comes_out_of_the_title_and_pages_room() -> None:
     assert rows[0].text == "Title, 1,3,5,7,9,11 (4)"
 
 
+def test_a_sortable_rows_article_stays_with_its_title_before_the_pages() -> None:
+    # Moved after the row was built, it trailed the pages: "Apple Tree, 1, The".
+    rows = speech_hit_rows({"The Apple Tree": _info("1")}, max_len=50, sortable=True)
+    assert rows[0].text == "Apple Tree, The, 1"
+
+
+def test_a_sortable_row_with_a_as_its_article_lists_the_same_way() -> None:
+    rows = speech_hit_rows({"A Christmas for Shacktown": _info("5")}, max_len=50, sortable=True)
+    assert rows[0].text == "Christmas for Shacktown, A, 5"
+
+
 @pytest.mark.parametrize("title", ["The Old Castle's Secret", "A Christmas for Shacktown"])
-def test_a_sortable_row_fitted_exactly_stays_within_its_length(title: str) -> None:
-    """Moving the article to the end adds a character; the row is fitted again for it.
-
-    Fitted one shorter, the fitter's first step drops the leading article itself.
-    """
+def test_a_sortable_row_never_runs_past_its_length(title: str) -> None:
     pages = ["5", "9", "12", "13", "14", "20"]
-    exact = len(f"{title}, 5,9,12-14,20")
-
-    rows = speech_hit_rows({title: _info(*pages)}, max_len=exact, sortable=True)
-
-    assert len(rows[0].text) <= exact
-    # Fitted again with its pages: the row still opens at, and lists, them.
-    assert rows[0].first_page == "5"
-    assert rows[0].text == f"{title.split(' ', 1)[1]}, 5,9,12-14,20"
+    for max_len in range(12, 50):
+        rows = speech_hit_rows({title: _info(*pages)}, max_len=max_len, sortable=True)
+        assert len(rows[0].text) <= max_len, (max_len, rows[0].text)
+        assert rows[0].first_page == "5"
 
 
 def test_a_sortable_row_with_no_article_fitted_exactly_is_kept_whole() -> None:
-    """Without an article nothing moves, so a row exactly max_len long is not fitted again."""
     row = "Lost in the Andes!, 3,5"
     rows = speech_hit_rows({"Lost in the Andes!": _info("3", "5")}, max_len=len(row), sortable=True)
     assert rows[0].text == row
 
 
-def test_a_sortable_row_fitted_again_gives_up_one_character_not_two() -> None:
-    """The article's move adds one character, so the second fit is one shorter: no more."""
+def test_a_sortable_row_too_long_gives_up_its_article_before_any_of_its_title() -> None:
     pages = ["5", "9", "12", "13", "14", "20"]
     rows = speech_hit_rows({"The Riddle of the Red Hat": _info(*pages)}, max_len=32, sortable=True)
-    assert rows[0].text == "Riddle of the Red..., 5,..., The"
+    assert rows[0].text == "Riddle of the Red Hat, 5,..."
 
 
-def test_a_sortable_row_with_room_to_spare_is_not_shortened() -> None:
-    rows = speech_hit_rows({"The Apple Tree": _info("1")}, max_len=50, sortable=True)
-    assert rows[0].text == "Apple Tree, 1, The"
+def test_a_sortable_row_shorter_still_cuts_the_title_with_no_stray_article() -> None:
+    pages = ["5", "9", "12", "13", "14", "20"]
+    rows = speech_hit_rows({"The Riddle of the Red Hat": _info(*pages)}, max_len=24, sortable=True)
+    assert rows[0].text == "Riddle of the..., 5,..."
 
 
 def test_rows_sort_by_their_text_not_their_title() -> None:
@@ -126,4 +128,4 @@ def test_rows_sort_by_their_text_not_their_title() -> None:
         max_len=MAX_TITLE_AND_PAGES_LEN,
         sortable=True,
     )
-    assert [row.text for row in rows] == ["Apple Tree, 1, The", "Lost in the Andes!, 3"]
+    assert [row.text for row in rows] == ["Apple Tree, The, 1", "Lost in the Andes!, 3"]

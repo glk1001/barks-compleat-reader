@@ -47,8 +47,8 @@ def speech_hit_rows(
             pages are cut short.
         hit_counts: A typed query's count of matching bubbles per story; given, each
             row ends in its story's: "Lost in the Andes!, 3,5 (4)".
-        sortable: Whether the text lists as an index does, a leading "The" or "A"
-            moved to the end.
+        sortable: Whether the title lists as an index does, a leading "The" or "A"
+            moved to its end, before the pages.
 
     Returns:
         The rows, in text order.
@@ -59,14 +59,14 @@ def speech_hit_rows(
         count = "" if hit_counts is None else f" ({hit_counts.get(title_str, 0)})"
         room = max_len - len(count)
         pages = list(comic_pages(info))
-        first_page, text = get_fitted_title_with_page_nums(title_str, pages, room)
-        if sortable:
-            # Moving "The" or "A" to the end adds a character ("The X" to "X, The"),
-            # so a row fitted exactly is fitted again one shorter.
-            text = sortable_string(text)
-            if len(text) > room:
-                first_page, text = get_fitted_title_with_page_nums(title_str, pages, room - 1)
-                text = sortable_string(text)
+        # The article moves before the row is fitted, so it stays with the title:
+        # "Apple Tree, The, 1". Moved after, it trailed the pages: "Apple Tree, 1, The".
+        listed_title = sortable_string(title_str) if sortable else title_str
+        first_page, text = get_fitted_title_with_page_nums(listed_title, pages, room)
+        if listed_title != title_str and not text.startswith(listed_title):
+            # No room for the whole title: its article goes before any of its words.
+            bare_title = listed_title.rsplit(", ", 1)[0]
+            first_page, text = get_fitted_title_with_page_nums(bare_title, pages, room)
         rows.append(SpeechHitRow(title_str, first_page, text + count, info))
     rows.sort(key=lambda row: row.text)
     return rows
