@@ -12,6 +12,7 @@ from barks_reader.ui import collapse_parent_overlay
 from barks_reader.ui import tree_view_screen as tree_view_screen_module
 from barks_reader.ui.tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
 from barks_reader.ui.tree_view_screen import TreeViewScreen
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 
@@ -186,7 +187,7 @@ class TestTreeViewScreen:
     def test_scroll_to_node(self, tree_view_screen: TreeViewScreen) -> None:
         node = MagicMock()
         tree_view_screen.scroll_to_node(node)
-        tree_view_screen.ids.scroll_view.scroll_to.assert_called_with(node, padding=50)
+        tree_view_screen.ids.scroll_view.scroll_to.assert_called_with(node, padding=dp(50))
 
     def test_open_all_parent_nodes(self, tree_view_screen: TreeViewScreen) -> None:
         # Setup node hierarchy: root -> parent -> node

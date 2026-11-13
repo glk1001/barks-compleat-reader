@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     ColorProperty,
@@ -135,7 +136,7 @@ class TreeViewScreen(BoxLayout):
             self.ids.reader_tree_view.toggle_node(node)
 
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
-        self.ids.scroll_view.scroll_to(node, padding=50)
+        self.ids.scroll_view.scroll_to(node, padding=dp(50))
 
     def is_node_shown(self, node: ButtonTreeViewNode) -> bool:
         """Return whether `node`'s row lies wholly within the tree's viewport."""
