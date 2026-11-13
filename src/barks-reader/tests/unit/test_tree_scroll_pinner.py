@@ -43,18 +43,21 @@ def _make_parent_node() -> MagicMock:
     return node
 
 
-def test_no_children_returns_without_scheduling() -> None:
+def test_with_no_list_to_pin_in_the_rows_still_open_and_the_pin_says_it_settled() -> None:
+    # The node was marked populated with no rows, and the overlay stayed suppressed.
     clock = FakeClock()
+    on_settled = MagicMock()
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: _make_scroll_view(has_children=False),
-        on_settled=MagicMock(),
+        on_settled=on_settled,
         schedule_once=clock.schedule_once,
     )
     populate = MagicMock()
 
     pinner.pin_while_populating(_make_parent_node(), populate=populate)
 
-    populate.assert_not_called()
+    populate.assert_called_once_with()
+    on_settled.assert_called_once_with()
     assert clock.pending == []
 
 
@@ -160,13 +163,15 @@ def test_tap_target_answers_wait_until_the_pin_settles() -> None:
 
 
 def test_a_pin_that_never_starts_holds_nothing() -> None:
+    on_settled = MagicMock()
     pinner = TreeScrollPinner(
         get_scroll_view=lambda: _make_scroll_view(has_children=False),
-        on_settled=MagicMock(),
+        on_settled=on_settled,
         schedule_once=FakeClock().schedule_once,
     )
     pinner.pin_while_populating(_make_parent_node(), populate=None)
     assert not layout_settling()
+    on_settled.assert_called_once_with()
 
 
 def test_a_container_that_goes_missing_is_waited_for_then_given_up_on() -> None:

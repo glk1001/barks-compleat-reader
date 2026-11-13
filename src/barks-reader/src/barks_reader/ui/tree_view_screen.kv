@@ -9,7 +9,6 @@
         Label:
             opacity: 1 if root.main_files_not_loaded else 0
             text: root.main_files_not_loaded_msg
-            multiline: True
             color: 1,0,0,1
             font_size: fm.error_main_view_font_size
             bold: True
@@ -58,4 +57,4 @@
             position: "top-right"
             label_opacity: 0.4
             label_bg_color: (0, 0, 0, 0)
-            on_goto_press: root.on_goto_title()
+            on_goto_press: root.press_top_goto()

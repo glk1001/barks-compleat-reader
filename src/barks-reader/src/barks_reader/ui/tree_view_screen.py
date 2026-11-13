@@ -108,6 +108,15 @@ class TreeViewScreen(BoxLayout):
         if self.on_goto_title is not None:
             self.on_goto_title(from_keyboard=True)
 
+    def press_top_goto(self) -> None:
+        """Fire the top-view goto arrow from a mouse press or a touch.
+
+        The handler is wired once the main screen is built: a press before then,
+        with the arrow already on show, does nothing.
+        """
+        if self.on_goto_title is not None:
+            self.on_goto_title()
+
     def get_selected_node(self) -> BaseTreeViewNode | None:
         return self.ids.reader_tree_view.selected_node
 
@@ -171,9 +180,11 @@ class TreeViewScreen(BoxLayout):
     def _close_open_nodes(self, start_node: BaseTreeViewNode) -> int:
         count = 0
         for node in start_node.nodes:
+            # A closed node's children are looked at too: closing it left them open,
+            # to show open again the next time it is.
+            count += self._close_open_nodes(node)
             if node.is_open:
                 count += 1
-                count += self._close_open_nodes(node)
                 self.ids.reader_tree_view.toggle_node(node)
         return count
 

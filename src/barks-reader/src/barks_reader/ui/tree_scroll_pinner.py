@@ -172,6 +172,11 @@ class RowScrollPinner:
 
         # Container inside the ScrollView (the thing whose height changes).
         if not scroll_view.children:
+            # No list to hold a row in. The rows still open or close: the caller
+            # takes them as done, and waits to hear that the pin has settled.
+            if populate is not None:
+                populate()
+            self._on_settled()
             return
 
         self._pin_serial += 1

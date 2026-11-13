@@ -109,6 +109,38 @@ class TestTreeViewScreen:
 
         tree_view_screen.activate_top_goto()  # must not raise
 
+    def test_a_press_on_the_top_goto_goes_to_the_title_as_a_pointer_press(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        mock_goto = MagicMock()
+        tree_view_screen.on_goto_title = mock_goto
+
+        tree_view_screen.press_top_goto()
+
+        mock_goto.assert_called_once_with()
+
+    def test_a_press_on_the_top_goto_before_it_is_wired_is_a_no_op(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        tree_view_screen.on_goto_title = None
+
+        tree_view_screen.press_top_goto()  # must not raise
+
+    def test_an_open_node_under_a_closed_one_is_closed_too(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        # Closing a node leaves its open children open: the next time it was opened
+        # after "collapse all", they showed open again.
+        hidden_open = MagicMock(spec=BaseTreeViewNode, is_open=True, nodes=[])
+        closed_parent = MagicMock(spec=BaseTreeViewNode, is_open=False, nodes=[hidden_open])
+        tree_view_screen.ids.reader_tree_view.root = MagicMock(nodes=[closed_parent])
+        tree_view_screen.ids.reader_tree_view.selected_node = None
+
+        count = tree_view_screen.deselect_and_close_open_nodes()
+
+        assert count == 1
+        tree_view_screen.ids.reader_tree_view.toggle_node.assert_called_once_with(hidden_open)
+
     def test_get_selected_node(self, tree_view_screen: TreeViewScreen) -> None:
         mock_node = MagicMock()
         tree_view_screen.ids.reader_tree_view.selected_node = mock_node
