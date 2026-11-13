@@ -69,6 +69,19 @@ class _PinSpec:
     revealed_marker: str  # the log marker for a reveal, with a `name` field
 
 
+@dataclass(slots=True, eq=False)
+class _Settle:
+    """One pin's settle loop: what it was started for, and how far it has got."""
+
+    expanding: bool
+    reveal_generation: int
+    pin_generation: int
+    serial: int
+    count: int = 0
+    last_h: float = -1.0
+    stable: int = 0
+
+
 class RowScrollPinner:
     """Pin an expanding or collapsing row's on-screen position."""
 
@@ -203,15 +216,12 @@ class RowScrollPinner:
                     raise
 
             self._reveal_generation += 1
-            checks: dict[str, float] = {
-                "count": 0,
-                "last_h": -1,
-                "stable": 0,
-                "expanding": expanding,
-                "reveal_generation": self._reveal_generation,
-                "pin_generation": self._pin_generation,
-                "serial": self._pin_serial,
-            }
+            checks = _Settle(
+                expanding=expanding,
+                reveal_generation=self._reveal_generation,
+                pin_generation=self._pin_generation,
+                serial=self._pin_serial,
+            )
             # Until the correction lands the tree is not where it will be: a GUI
             # test's tap-targets request waits (barks_reader.core.tap_targets).
             settling_began(checks)
@@ -223,7 +233,7 @@ class RowScrollPinner:
                 0,
             )
         finally:
-            if expanding:
+            if expanding and populate is not None:
                 logger.debug(
                     f"Populated node '{spec.name}' in {timing.get_elapsed_time_with_unit()}."
                 )
@@ -270,17 +280,17 @@ class RowScrollPinner:
         spec: _PinSpec,
         scroll_view: ScrollView,
         target_offset_px: float,
-        checks: dict[str, float],
+        checks: _Settle,
     ) -> None:
-        expanding = bool(checks["expanding"])
+        expanding = checks.expanding
         # Let go (the list is being placed otherwise), or toggled back: stop.
-        if checks["pin_generation"] != self._pin_generation or spec.is_open() != expanding:
+        if checks.pin_generation != self._pin_generation or spec.is_open() != expanding:
             self._settled(checks)
             return
 
         def _resched() -> None:
-            checks["count"] += 1
-            if checks["count"] < self._MAX_SETTLE_FRAMES:
+            checks.count += 1
+            if checks.count < self._MAX_SETTLE_FRAMES:
                 self._schedule_once(
                     lambda dt: self._stabilize_after_layout(
                         dt, spec, scroll_view, target_offset_px, checks
@@ -304,13 +314,13 @@ class RowScrollPinner:
             return
 
         # Check stabilization of container height
-        if abs(cont_h - checks["last_h"]) < 0.5:  # noqa: PLR2004
-            checks["stable"] += 1
+        if abs(cont_h - checks.last_h) < 0.5:  # noqa: PLR2004
+            checks.stable += 1
         else:
-            checks["stable"] = 0
-        checks["last_h"] = cont_h
+            checks.stable = 0
+        checks.last_h = cont_h
 
-        if checks["stable"] < 2:  # noqa: PLR2004
+        if checks.stable < 2:  # noqa: PLR2004
             _resched()
             return
 
@@ -321,13 +331,13 @@ class RowScrollPinner:
         spec: _PinSpec,
         scroll_view: ScrollView,
         target_offset_px: float,
-        checks: dict[str, float],
+        checks: _Settle,
     ) -> None:
         """Move the settled list's pinned row back to its offset, then reveal."""
         cont = scroll_view.children[0]
         viewport_h = scroll_view.height
         cont_h = cont.height
-        expanding = bool(checks["expanding"])
+        expanding = checks.expanding
 
         # Where the parent's row is now, before any correction moves the tree.
         sv_top = scroll_view.to_window(0, scroll_view.top)[1]
@@ -357,7 +367,7 @@ class RowScrollPinner:
             self._get_reveal_px(
                 spec.first_rows(), scroll_view, sv_top, new_parent_top, sv_top + target_offset_px
             )
-            if expanding and checks["reveal_generation"] == self._reveal_generation
+            if expanding and checks.reveal_generation == self._reveal_generation
             else 0.0
         )
         if reveal_px < 0.5:  # noqa: PLR2004
@@ -408,11 +418,11 @@ class RowScrollPinner:
             padding=dp(REVEAL_PADDING),
         )
 
-    def _settled(self, checks: dict[str, float]) -> None:
+    def _settled(self, checks: _Settle) -> None:
         settling_ended(checks)
         # A pin a newer one has stopped leaves the overlay's suppression to that one:
         # lifted now, the overlay would check the tree before its layout has settled.
-        if checks["serial"] == self._pin_serial:
+        if checks.serial == self._pin_serial:
             self._release_hold()
             self._on_settled()
 

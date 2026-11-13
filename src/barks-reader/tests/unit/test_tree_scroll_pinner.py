@@ -8,13 +8,14 @@ Kivy's `Clock`, so the previously-untested pixel math is exercised directly.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.scroll_reveal import REVEAL_PADDING
 from barks_reader.core.tap_targets import layout_settling
 from barks_reader.core.testing import FakeClock
+from barks_reader.ui import tree_scroll_pinner
 from barks_reader.ui.tree_scroll_pinner import TreeScrollPinner
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
@@ -726,3 +727,51 @@ def test_an_older_pin_s_settling_leaves_the_new_pin_s_hold() -> None:
     tree.height = 900.0
 
     assert scroll_view.scroll_y == pytest.approx(0.95)
+
+
+def test_only_a_pin_that_populated_says_so(loguru_sink: list[str]) -> None:
+    pinner = TreeScrollPinner(
+        get_scroll_view=_make_scroll_view,
+        on_settled=MagicMock(),
+        schedule_once=FakeClock().schedule_once,
+    )
+
+    pinner.pin_while_populating(_make_parent_node(), populate=None)
+    assert not [line for line in loguru_sink if line.startswith("Populated node")]
+
+    pinner.pin_while_populating(_make_parent_node(), populate=MagicMock())
+    assert len([line for line in loguru_sink if line.startswith("Populated node")]) == 1
+
+
+class TestTheRealGlide:
+    """Every other test injects a glide: this is the one the app runs."""
+
+    @staticmethod
+    def _glide(scroll_view: MagicMock, to: float) -> tuple[MagicMock, MagicMock, MagicMock]:
+        """Start a glide to `to`; return the animation class, the animation and on_done."""
+        on_done = MagicMock()
+        with patch.object(tree_scroll_pinner, "Animation") as animation_cls:
+            tree_scroll_pinner._glide_scroll_y(scroll_view, to, on_done)  # noqa: SLF001
+        return animation_cls, animation_cls.return_value, on_done
+
+    def test_it_stops_a_glide_in_flight_and_starts_its_own(self) -> None:
+        scroll_view = MagicMock(scroll_y=1.0)
+
+        animation_cls, glide, on_done = self._glide(scroll_view, 0.25)
+
+        animation_cls.stop_all.assert_called_once_with(scroll_view, "scroll_y")
+        assert animation_cls.call_args.kwargs["scroll_y"] == 0.25  # noqa: PLR2004
+        assert animation_cls.call_args.kwargs["duration"] == tree_scroll_pinner.REVEAL_GLIDE_SECONDS
+        glide.start.assert_called_once_with(scroll_view)
+        on_done.assert_not_called()
+
+    @pytest.mark.parametrize(("ended_at", "reached"), [(0.25, True), (0.6, False)])
+    def test_it_says_whether_it_got_there(self, ended_at: float, reached: bool) -> None:
+        scroll_view = MagicMock(scroll_y=1.0)
+        _, glide, on_done = self._glide(scroll_view, 0.25)
+        on_complete = glide.bind.call_args.kwargs["on_complete"]
+
+        scroll_view.scroll_y = ended_at
+        on_complete(glide, scroll_view)
+
+        on_done.assert_called_once_with(reached)
