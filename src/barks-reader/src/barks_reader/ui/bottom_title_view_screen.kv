@@ -62,8 +62,10 @@
             # rather than snapping on at the end of the fade; the instant peek toggle
             # (opacity set straight to 0/1) still lands on the exact endpoints.
             # On the two-page spread the art is the page's picture instead (below), and
-            # the background shows only while the panel is hidden to peek at it.
-            opacity: (1 - bottom_view_box.opacity) if root.layout_mode == 'spread' else 1
+            # the panel is never peeked away, so the background is never shown. Keyed to
+            # the panel's opacity it was: each title's fade-in starts the panel at 0, which
+            # flashed the large art at full brightness over the page until the fade ended.
+            opacity: 0 if root.layout_mode == 'spread' else 1
             color:
                 ( \
                 (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[0], \
