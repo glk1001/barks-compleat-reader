@@ -584,6 +584,14 @@ class TestIsEditedFixesSpecialCase:
         comic = _make_comic(volume=16)
         assert comic._is_edited_fixes_special_case("209")
 
+    def test_vol4_page_227_comes_from_the_table(self) -> None:
+        comic = _make_comic(volume=4)
+        assert comic._is_edited_fixes_special_case("227")
+
+    def test_the_page_of_another_volume_is_not_special(self) -> None:
+        assert not _make_comic(volume=4)._is_edited_fixes_special_case("209")
+        assert not _make_comic(volume=16)._is_edited_fixes_special_case("227")
+
     def test_not_special(self) -> None:
         comic = _make_comic(volume=1)
         assert not comic._is_edited_fixes_special_case("001")

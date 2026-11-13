@@ -87,9 +87,8 @@ BYLINES = (
 INTRO_DEFAULT_BYLINE = BYLINES[0]
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
-# (volume, page_num) pairs that are "edited" or "added" fixes special cases.
-# Used by is_fixes_special_case / is_fixes_special_case_added to avoid long
-# chains of conditionals.
+# (volume, page_num) pairs that are "edited" or "added" fixes special cases. The build
+# reads them through is_fixes_special_case / is_fixes_special_case_added.
 _FIXES_SPECIAL_CASES: frozenset[tuple[int, str]] = frozenset(
     {
         (16, "209"),  # Happy New Year page
@@ -550,7 +549,7 @@ class ComicBook:
         )
 
     def _is_edited_fixes_special_case(self, page_num: str) -> bool:
-        return bool(self.fanta_book.volume == 16 and page_num == "209")  # noqa: PLR2004
+        return self.is_fixes_special_case(self.fanta_book.volume, page_num)
 
     def is_synthetic_collection(self) -> bool:
         """Return whether this comic is a synthetic collection with staged extra pages."""
