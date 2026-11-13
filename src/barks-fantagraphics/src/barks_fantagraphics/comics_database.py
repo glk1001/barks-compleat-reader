@@ -85,6 +85,7 @@ class ComicsDatabase:
         self._ini_files = [p.name for p in self._story_titles_dir.glob("*.ini")]
         self._story_titles = {get_title_str_from_filename(f) for f in self._ini_files}
         self._issue_titles = self._get_all_issue_titles()
+        self._source_comic_by_ini: dict[str, str] = {}
         self._inset_dir = PNG_INSET_DIR
         self._inset_ext = PNG_FILE_EXT
 
@@ -192,20 +193,30 @@ class ComicsDatabase:
         volume: int,
         exclude_non_comics: bool = False,
     ) -> list[tuple[str, FantaComicBookInfo]]:
-        config = ConfigParser(interpolation=ExtendedInterpolation())
-
         story_titles = []
-        fanta_key = f"FANTA_{volume:02}"
+        fanta_key = get_fanta_volume_str(volume)
         for file in self._ini_files:
-            ini_file = self._story_titles_dir / file
-            config.read(ini_file, encoding="utf-8")
-            if config["info"]["source_comic"] == fanta_key:
+            if self._get_source_comic(file) == fanta_key:
                 story_title = get_title_str_from_filename(file)
                 if not exclude_non_comics or STR_TITLE_TO_ENUM[story_title] not in NON_COMIC_TITLES:
                     comic_info = self._all_comic_book_info[STR_TITLE_TO_ENUM[story_title]]
                     story_titles.append((story_title, comic_info))
 
         return sorted(story_titles)
+
+    def _get_source_comic(self, ini_filename: str) -> str:
+        """Return the Fantagraphics volume key a story's ini file names, reading it once.
+
+        Listing every volume would otherwise parse every ini file once per volume.
+        """
+        source_comic = self._source_comic_by_ini.get(ini_filename)
+        if source_comic is None:
+            # A parser per file: a shared one keeps the last file's value for a missing key.
+            config = ConfigParser(interpolation=ExtendedInterpolation())
+            config.read(self._story_titles_dir / ini_filename, encoding="utf-8")
+            source_comic = config["info"]["source_comic"]
+            self._source_comic_by_ini[ini_filename] = source_comic
+        return source_comic
 
     # "$HOME/Books/Carl Barks/Fantagraphics/Carl Barks Vol. 2 - Donald Duck - Frozen Gold"
     #     root_dir      = "$HOME/Books/Carl Barks/Fantagraphics"
@@ -217,9 +228,7 @@ class ComicsDatabase:
 
     @staticmethod
     def get_num_pages_in_fantagraphics_volume(volume_num: int) -> int:
-        fanta_key = f"FANTA_{volume_num:02}"
-        fanta_book = FANTA_SOURCE_COMICS[fanta_key]
-        return fanta_book.num_pages
+        return FANTA_SOURCE_COMICS[get_fanta_volume_str(volume_num)].num_pages
 
     def _get_comic_book_dirs(self, fanta_book: FantaBook) -> ComicBookDirs:
         return ComicBookDirs(
@@ -418,18 +427,11 @@ class ComicsDatabase:
             TitleNotFoundError: If ``title`` is not a known title.
 
         """
-        found, titles, close = self.get_story_title_from_issue(title)
-        if found:
-            if len(titles) > 1:
-                titles_str = ", ".join([f'"{t}"' for t in titles])
-                msg = f"You cannot use an issue title that has multiple titles: {titles_str}."
-                raise RuntimeError(msg)
-            title = titles[0]
-        elif close:
-            msg = f'Could not find issue title "{title}". Did you mean "{close}"?'
-            raise RuntimeError(msg)
-
+        # A title as it stands is looked up first: only a miss is worth the issue lookup's
+        # search for a near name.
         title_enum = STR_TITLE_TO_ENUM.get(title)
+        if title_enum is None:
+            title_enum = STR_TITLE_TO_ENUM.get(self._get_story_title_of_issue(title))
         if title_enum is None:
             # Every title, not only the configured ones `is_story_title` knows.
             close_titles = difflib.get_close_matches(title, STR_TITLE_TO_ENUM, 1, 0.3)
@@ -441,19 +443,45 @@ class ComicsDatabase:
 
         return self._all_comic_book_info[title_enum]
 
-    def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
-        story_title = ""
+    def _get_story_title_of_issue(self, title: str) -> str:
+        """Return the one story of the issue ``title`` names, or "" if it names no issue.
 
+        Raises:
+            RuntimeError: If the issue holds several stories, or ``title`` is close to an
+                issue's name without being one.
+
+        """
         found, titles, close = self.get_story_title_from_issue(title)
         if found:
             if len(titles) > 1:
                 titles_str = ", ".join([f'"{t}"' for t in titles])
                 msg = f"You cannot use an issue title that has multiple titles: {titles_str}."
                 raise RuntimeError(msg)
-            story_title = titles[0]
-        elif close:
+            return titles[0]
+        if close:
             msg = f'Could not find issue title "{title}". Did you mean "{close}"?'
             raise RuntimeError(msg)
+        return ""
+
+    def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
+        """Return the comic book of a configured story.
+
+        Args:
+            title: A story title, or an issue holding one story ("FC 9").
+            intro_inset_file: The inset for the title page, if not the story's own.
+
+        Returns:
+            The comic book, read from the story's ini file.
+
+        Raises:
+            RuntimeError: If ``title`` is an issue holding several stories, or is close
+                to an issue's name without being one.
+            TitleNotFoundError: If ``title`` is not a configured story.
+
+        """
+        story_title = title if title in self._story_titles else ""
+        if not story_title:
+            story_title = self._get_story_title_of_issue(title)
 
         if not story_title:
             found, close = self.is_story_title(title)
@@ -474,9 +502,7 @@ class ComicsDatabase:
 
         fanta_info: FantaComicBookInfo = self.get_fanta_comic_book_info(story_title)
 
-        config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-        config.read(ini_file, encoding="utf-8")
-        fanta_book = FANTA_SOURCE_COMICS[config["info"]["source_comic"]]
+        fanta_book = FANTA_SOURCE_COMICS[self._get_source_comic(ini_file.name)]
         comic_book_dirs = self._get_comic_book_dirs(fanta_book)
 
         return _build_comic_book(
@@ -793,6 +819,4 @@ def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) ->
 
 @functools.cache
 def get_fanta_title_for_volume(volume_num: int) -> str:
-    fanta_key = f"FANTA_{volume_num:02}"
-    fanta_book = FANTA_SOURCE_COMICS[fanta_key]
-    return fanta_book.title
+    return FANTA_SOURCE_COMICS[get_fanta_volume_str(volume_num)].title

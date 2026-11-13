@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from configparser import ConfigParser
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
@@ -103,6 +104,54 @@ class TestGetFantaRestoredOcrPrelimRootDir:
 
         monkeypatch.delenv(OCR_PRELIM_DIR_ENV_VAR)
         assert get_fanta_restored_ocr_prelim_volume_dir(root, 1) == root / "Prelim" / title
+
+
+class TestIniFilesAreReadOnce:
+    def test_listing_every_volume_reads_each_ini_file_once(self) -> None:
+        db = ComicsDatabase()
+        with patch.object(
+            comics_database_module.ConfigParser,
+            "read",
+            autospec=True,
+            side_effect=ConfigParser.read,
+        ) as read:
+            by_volume = [
+                db.get_configured_titles_in_fantagraphics_volume(volume)
+                for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+            ]
+            assert read.call_count == len(db.get_ini_filenames())
+            db.get_configured_titles_in_fantagraphics_volumes([1, 2, 3])
+            assert read.call_count == len(db.get_ini_filenames())
+
+        listed = sorted(title for titles in by_volume for title, _ in titles)
+        assert listed == db.get_all_story_titles()
+
+    def test_a_volume_lists_the_stories_whose_ini_names_it(self, db: ComicsDatabase) -> None:
+        titles = [t for t, _ in db.get_configured_titles_in_fantagraphics_volume(7)]
+        assert titles
+        assert titles == sorted(titles)
+        for title in titles:
+            assert db.get_comic_book(title).get_fanta_volume() == 7  # noqa: PLR2004
+
+
+class TestExactTitlesNeedNoSearch:
+    """A title given exactly is found without the search for a near name."""
+
+    def test_a_story_title_and_its_info(self, db: ComicsDatabase) -> None:
+        with patch.object(
+            comics_database_module.difflib, "get_close_matches", side_effect=AssertionError
+        ):
+            comic = db.get_comic_book("Lost in the Andes!")
+            info = db.get_fanta_comic_book_info("Lost in the Andes!")
+        assert comic.get_title_enum() == Titles.LOST_IN_THE_ANDES
+        assert info.comic_book_info.title == Titles.LOST_IN_THE_ANDES
+
+    def test_an_issue_given_exactly(self, db: ComicsDatabase) -> None:
+        with patch.object(
+            comics_database_module.difflib, "get_close_matches", side_effect=AssertionError
+        ):
+            comic = db.get_comic_book("FC 9")
+        assert comic.get_title_enum() == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
 
 
 class TestIniFilenames:
