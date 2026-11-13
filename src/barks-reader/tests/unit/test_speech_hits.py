@@ -122,6 +122,22 @@ def test_a_sortable_row_shorter_still_cuts_the_title_with_no_stray_article() -> 
     assert rows[0].text == "Riddle of the..., 5,..."
 
 
+@pytest.mark.parametrize(
+    ("max_len", "text"),
+    [(30, "Long, Long Road Home, 5,..."), (26, "Long, Long Road..., 5,...")],
+    ids=["the title kept", "the title cut"],
+)
+def test_a_sortable_row_gives_up_only_its_article_from_a_title_with_its_own_comma(
+    max_len: int, text: str
+) -> None:
+    # The article is what follows the last comma, not everything after the first.
+    pages = ["5", "9", "12", "13", "14", "20"]
+    rows = speech_hit_rows(
+        {"The Long, Long Road Home": _info(*pages)}, max_len=max_len, sortable=True
+    )
+    assert rows[0].text == text
+
+
 def test_rows_sort_by_their_text_not_their_title() -> None:
     rows = speech_hit_rows(
         {"Lost in the Andes!": _info("3"), "The Apple Tree": _info("1")},

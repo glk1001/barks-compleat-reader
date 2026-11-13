@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import comic_search as comic_search_module
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_search import (
@@ -109,6 +110,16 @@ class TestSearch:
             assert search.get_cleaned_terms() == ["airline", "bee"]
             assert _search_with(fake).get_cleaned_terms() == ["airline", "bee"]
         get_cleaned_terms.assert_called_once_with()
+
+    def test_the_word_matcher_is_built_once_per_index(self) -> None:
+        # Building it sorts and folds every term: asked for at each keystroke, it is kept.
+        fake = InMemoryFullTextSearch(cleaned_terms=["airline", "hair"])
+        with patch.object(
+            comic_search_module, "TermLexicon", wraps=comic_search_module.TermLexicon
+        ) as lexicon:
+            assert _search_with(fake).get_words_matching("air").words == ["airline", "hair"]
+            assert _search_with(fake).get_words_matching("hai").words == ["hair"]
+        lexicon.assert_called_once_with(["airline", "hair"])
 
     def test_the_word_list_handed_out_is_a_copy(self) -> None:
         search = _search_with(InMemoryFullTextSearch(cleaned_terms=["airline", "bee"]))

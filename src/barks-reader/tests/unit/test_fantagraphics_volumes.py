@@ -1236,6 +1236,20 @@ class TestLoadErrorMessages:
         ):
             archives.load()
 
+    def test_a_volume_missing_its_first_pages_names_the_archive_and_its_first_image(
+        self, tmp_path: Path
+    ) -> None:
+        """Found through load, the error says which archive, and which image it starts at."""
+        archives = self._single_volume_archives(tmp_path, ["page003.png", "page004.png"])
+
+        with pytest.raises(PageNumError) as exc_info:
+            archives.load()
+
+        archive = tmp_path / "archive" / "02-vol.cbz"
+        assert str(exc_info.value).startswith(
+            f'Fantagraphics archive "{archive}": its first image, "page003.png", is numbered 3,'
+        )
+
 
 def test_missing_volume_records_its_override_archive(tmp_path: Path) -> None:
     """A missing volume still remembers which bundled override zip serves it."""
