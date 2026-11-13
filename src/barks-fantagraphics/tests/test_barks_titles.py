@@ -22,7 +22,12 @@ from barks_fantagraphics.comic_book_info import (
     get_title_str_from_filename,
     is_non_comic_title,
 )
-from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
+from barks_fantagraphics.comic_issues import (
+    ISSUE_NAME,
+    ISSUE_NAME_WRAPPED,
+    SHORT_ISSUE_NAME,
+    Issues,
+)
 
 
 class TestComicBookInfo:
@@ -342,3 +347,50 @@ class TestTitleStrFromFilename:
             for ext in (".ini", ".png", ".jpg", ".json", ".cbz"):
                 filename = get_filename_from_title_str(title, ext)
                 assert get_title_str_from_filename(filename) == title, filename
+
+
+class TestIssueNames:
+    def test_every_issue_has_a_short_and_a_long_name_at_its_own_index(self) -> None:
+        assert len(SHORT_ISSUE_NAME) == len(ISSUE_NAME) == len(Issues)
+        assert len(set(SHORT_ISSUE_NAME)) == len(Issues)
+        assert len(set(ISSUE_NAME)) == len(Issues)
+        assert SHORT_ISSUE_NAME[Issues.ANDERS] == "ANDERS"
+        assert SHORT_ISSUE_NAME[Issues.CS] == "WDCS"
+        assert SHORT_ISSUE_NAME[Issues.EXTRAS] == "EX"
+        assert ISSUE_NAME[Issues.ANDERS] == "Anders And & Co"
+        assert ISSUE_NAME[Issues.US] == "Uncle Scrooge"
+        assert ISSUE_NAME[Issues.EXTRAS] == "Extras (Non-Barks)"
+
+    def test_a_wrapped_issue_name_is_for_a_known_issue(self) -> None:
+        assert set(ISSUE_NAME_WRAPPED) <= set(Issues)
+
+
+class TestFormattedTitleFromIssueName:
+    """The title page of a comic with no title of its own. Both forms are meant.
+
+    A name that wraps takes the number on its last line, after a "#". Any other name
+    has the number alone on the next line: the Comics and Stories title page draws the
+    name as a masthead and takes what follows it as the number, so a "#" there would be
+    drawn in the masthead.
+    """
+
+    @staticmethod
+    def _info(issue: Issues) -> ComicBookInfo:
+        return next(info for info in BARKS_TITLE_INFO if info.issue_name == issue)
+
+    def test_a_wrapped_name_has_a_hash_before_the_number(self) -> None:
+        info = self._info(Issues.US)
+        assert info.get_formatted_title_from_issue_name() == f"Uncle\nScrooge #{info.issue_number}"
+
+    def test_an_unwrapped_name_has_the_number_alone_on_the_next_line(self) -> None:
+        info = self._info(Issues.CS)
+        assert (
+            info.get_formatted_title_from_issue_name() == f"Comics and Stories\n{info.issue_number}"
+        )
+        info = self._info(Issues.DD)
+        assert info.get_formatted_title_from_issue_name() == f"Donald Duck\n{info.issue_number}"
+
+    def test_only_the_wrapped_names_have_a_hash(self) -> None:
+        for info in BARKS_TITLE_INFO:
+            formatted = info.get_formatted_title_from_issue_name()
+            assert ("#" in formatted) == (info.issue_name in ISSUE_NAME_WRAPPED), info.title
