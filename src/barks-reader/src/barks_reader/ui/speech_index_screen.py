@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
+from functools import cached_property
 from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
@@ -90,7 +91,7 @@ class _SpeechIndexTitleItemButton(Button):
     padding = ListProperty([0, 0, 0, 0])
     gap_fill = NumericProperty(0)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
 
         self.italic = True
@@ -107,7 +108,8 @@ class _SpeechIndexTitleItemButton(Button):
         # so without this binding the pressed band never repaints.
         self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
 
-    def update_canvas(self, *_args) -> None:  # noqa: ANN002
+    def update_canvas(self, *_args: object) -> None:
+        """Redraw the row's fill, from the text's start to the row's end, for its state."""
         canvas = cast("Canvas", self.canvas)
         canvas.before.clear()
         with canvas.before:
@@ -139,7 +141,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
@@ -245,16 +247,25 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             return children[speech_idx]
         return None
 
+    def _focused_item_button(self) -> Button | None:
+        """Return the row the focus is on in its column, or None when it is on none."""
+        col_buttons = self._get_col_buttons(self._nav_focused_col)
+        if self._nav_focused_item_idx >= len(col_buttons):
+            return None
+        return col_buttons[self._nav_focused_item_idx]
+
+    def _focused_speech_button(self) -> TitleShowSpeechButton | None:
+        """Return the speech button of the focused row, when it is a title row with one."""
+        title_btn = self._focused_item_button()
+        return self._get_paired_speech_button(title_btn) if title_btn else None
+
     @override
     def _draw_item_focus(self, *, scroll: bool = True) -> None:
         if not self._nav_on_speech_btn:
             super()._draw_item_focus(scroll=scroll)
             return
-        col_buttons = self._get_col_buttons(self._nav_focused_col)
-        if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
-            return
-        title_btn = col_buttons[self._nav_focused_item_idx]
-        speech_btn = self._get_paired_speech_button(title_btn)
+        title_btn = self._focused_item_button()
+        speech_btn = self._get_paired_speech_button(title_btn) if title_btn else None
         if speech_btn:
             self._nav_focused_btn = title_btn
             draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP)
@@ -279,11 +290,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
                 self._move_col_focus(1)
             return True
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            col_buttons = self._get_col_buttons(self._nav_focused_col)
-            if col_buttons and self._nav_focused_item_idx < len(col_buttons):
-                speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
-                if speech_btn:
-                    speech_btn.trigger_action(duration=0)
+            speech_btn = self._focused_speech_button()
+            if speech_btn:
+                speech_btn.trigger_action(duration=0)
             return True
         if is_escape_key(key):
             self._nav_on_speech_btn = False
@@ -297,15 +306,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         if self._nav_on_speech_btn:
             return self._handle_speech_btn_key(key)
         # Not on speech button — check if Right from a title sub-item should enter speech button.
-        if key == KEY_RIGHT:
-            col_buttons = self._get_col_buttons(self._nav_focused_col)
-            if col_buttons and self._nav_focused_item_idx < len(col_buttons):
-                speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
-                if speech_btn:
-                    self._clear_all_item_focus()
-                    self._nav_on_speech_btn = True
-                    self._draw_item_focus()
-                    return True
+        if key == KEY_RIGHT and self._focused_speech_button():
+            self._clear_all_item_focus()
+            self._nav_on_speech_btn = True
+            self._draw_item_focus()
+            return True
         return super()._handle_items_key(key)
 
     @override
@@ -482,7 +487,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         is_right_column = target_layout == self.ids.right_column_layout
 
-        def update_pos(_instance, _value) -> None:  # noqa: ANN001
+        def update_pos(_instance: object, _value: object) -> None:
             if is_right_column and sub_items_layout.width > wrapper.width:
                 sub_items_layout.x = wrapper.width - sub_items_layout.width - dp(10)
             else:
@@ -628,7 +633,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         super().__init__(reader_settings, font_manager, user_error_handler, **kwargs)
 
@@ -644,12 +649,20 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
             entries.sort(key=lambda x: x[1].lower())
             self._context_entity_map[word] = entries
 
-        self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
         self._prefix_buttons: dict[str, IndexPrefixButton] = {}
         # The letter whose bar the saved prefix was pressed on, or None while the saved
         # prefix is still the one read from the settings file.
         self._saved_prefix_letter: str | None = None
         self._nav_focused_prefix_idx: int = 0
+
+    @cached_property
+    def _cleaned_alpha_split_terms(self) -> dict[str, dict[str, list[str]]]:
+        """Every term, by letter and prefix: read when the index is first shown.
+
+        Read as the screen was built, the 24,000 terms cost every start of the app
+        a fifth of a second, shown or not.
+        """
+        return self._search.get_alpha_split_terms()
 
     @override
     def _populate_index_for_letter(self, first_letter: str) -> None:
@@ -799,22 +812,15 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         if not visible:
             return False
         idx = self._nav_focused_prefix_idx
-        if key == KEY_LEFT:
-            if idx == 0:
-                self._clear_prefix_focus()
+        if key in (KEY_LEFT, KEY_RIGHT):
+            self._clear_prefix_focus()
+            new_idx = idx + (1 if key == KEY_RIGHT else -1)
+            if new_idx < 0:
                 self._enter_alphabet_panel()
-            else:
-                self._clear_prefix_focus()
-                self._nav_focused_prefix_idx = idx - 1
-                self._select_focused_prefix(visible)
-                self._draw_prefix_focus()
-        elif key == KEY_RIGHT:
-            if idx >= len(visible) - 1:
-                self._clear_prefix_focus()
+            elif new_idx >= len(visible):
                 self._enter_items_panel()
             else:
-                self._clear_prefix_focus()
-                self._nav_focused_prefix_idx = idx + 1
+                self._nav_focused_prefix_idx = new_idx
                 self._select_focused_prefix(visible)
                 self._draw_prefix_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):

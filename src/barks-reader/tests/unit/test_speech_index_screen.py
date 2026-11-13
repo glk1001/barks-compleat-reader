@@ -1373,3 +1373,17 @@ def test_an_empty_prefix_bar_draws_no_focus(speech_index_screen: SpeechIndexScre
     with patch.object(_speech_module, "draw_focus_highlight") as drawn:
         speech_index_screen._draw_prefix_focus()
     drawn.assert_not_called()
+
+
+def test_the_terms_are_read_when_first_wanted_and_only_once(
+    speech_index_screen: SpeechIndexScreen,
+) -> None:
+    # Read as the screen was built, they cost every start of the app 0.2 s.
+    search = speech_index_screen._search
+    search.get_alpha_split_terms.assert_not_called()
+
+    first = speech_index_screen._cleaned_alpha_split_terms
+    again = speech_index_screen._cleaned_alpha_split_terms
+
+    assert first is again is search.get_alpha_split_terms.return_value
+    search.get_alpha_split_terms.assert_called_once_with()
