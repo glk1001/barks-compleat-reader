@@ -110,7 +110,7 @@ def get_display_title(comics_database: ComicsDatabase, ttl: str) -> str:
         disp_title = ttl
     else:
         fanta_info = comics_database.get_fanta_comic_book_info(ttl)
-        disp_title = ttl if fanta_info.comic_book_info.is_barks_title else f"({ttl})"
+        disp_title = fanta_info.comic_book_info.get_display_title()
 
     return disp_title
 

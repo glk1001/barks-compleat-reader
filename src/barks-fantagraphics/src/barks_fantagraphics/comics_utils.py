@@ -226,50 +226,41 @@ def get_formatted_day(day: int) -> str:
     return day_str
 
 
-def get_short_formatted_first_published_str(comic_book_info: ComicBookInfo) -> str:
-    issue = comic_book_info.get_short_issue_title()
-
+def _get_issue_date_str(comic_book_info: ComicBookInfo, month_names: dict[int, str]) -> str:
+    """Return an issue's cover date, "March 1947", or its year alone with no month."""
     if comic_book_info.issue_month == -1:
-        issue_date = comic_book_info.issue_year
-    else:
-        issue_date = (
-            f"{MONTH_AS_SHORT_STR[comic_book_info.issue_month]} {comic_book_info.issue_year}"
-        )
+        return str(comic_book_info.issue_year)
+    return f"{month_names[comic_book_info.issue_month]} {comic_book_info.issue_year}"
 
-    return f"{issue}, {issue_date}"
+
+def _get_submitted_date_str(comic_book_info: ComicBookInfo, month_names: dict[int, str]) -> str:
+    """Return a submitted date, "5th March 1947", as far as it is recorded."""
+    if comic_book_info.submitted_month == -1:
+        # No recorded submitted date (e.g. some covers).
+        return "Unknown"
+
+    month_and_year = (
+        f"{month_names[comic_book_info.submitted_month]} {comic_book_info.submitted_year}"
+    )
+    if comic_book_info.submitted_day == -1:
+        return month_and_year
+    return f"{get_formatted_day(comic_book_info.submitted_day)} {month_and_year}"
+
+
+def get_short_formatted_first_published_str(comic_book_info: ComicBookInfo) -> str:
+    """Return where and when a title first came out, in short: "WDCS 31, Apr 1943"."""
+    issue = comic_book_info.get_short_issue_title()
+    return f"{issue}, {_get_issue_date_str(comic_book_info, MONTH_AS_SHORT_STR)}"
 
 
 def get_short_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
-    if comic_book_info.submitted_month == -1:
-        # No recorded submitted date (e.g. some covers).
-        return "Unknown"
-    if comic_book_info.submitted_day == -1:
-        return (
-            f"{MONTH_AS_SHORT_STR[comic_book_info.submitted_month]}"
-            f" {comic_book_info.submitted_year}"
-        )
-
-    return (
-        f"{get_formatted_day(comic_book_info.submitted_day)}"
-        f" {MONTH_AS_SHORT_STR[comic_book_info.submitted_month]}"
-        f" {comic_book_info.submitted_year}"
-    )
+    """Return the submitted date with a short month: "5th Mar 1947", or "Unknown"."""
+    return _get_submitted_date_str(comic_book_info, MONTH_AS_SHORT_STR)
 
 
 def get_long_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
-    if comic_book_info.submitted_month == -1:
-        # No recorded submitted date (e.g. some covers).
-        return "Unknown"
-    if comic_book_info.submitted_day == -1:
-        return (
-            f"{MONTH_AS_LONG_STR[comic_book_info.submitted_month]} {comic_book_info.submitted_year}"
-        )
-
-    return (
-        f"{get_formatted_day(comic_book_info.submitted_day)}"
-        f" {MONTH_AS_LONG_STR[comic_book_info.submitted_month]}"
-        f" {comic_book_info.submitted_year}"
-    )
+    """Return the submitted date with a full month: "5th March 1947", or "Unknown"."""
+    return _get_submitted_date_str(comic_book_info, MONTH_AS_LONG_STR)
 
 
 def get_formatted_first_published_str(
@@ -277,26 +268,24 @@ def get_formatted_first_published_str(
     issue_name_dict: list[str] = ISSUE_NAME,
     max_len_before_shorten: int = 0,
 ) -> str:
-    issue_name = issue_name_dict[comic_book_info.issue_name]
-    issue = f"{issue_name} #{comic_book_info.issue_number}"
+    """Return where and when a title first came out: "Comics and Stories #31, April 1943".
 
-    if comic_book_info.issue_month == -1:
-        issue_date = comic_book_info.issue_year
-    else:
-        issue_date = (
-            f"{MONTH_AS_LONG_STR[comic_book_info.issue_month]} {comic_book_info.issue_year}"
-        )
+    Args:
+        comic_book_info: The title's info.
+        issue_name_dict: The issue names to use, indexed by `Issues` (a list, despite
+            its name).
+        max_len_before_shorten: If over 0, a result longer than this has its month
+            shortened ("Apr").
 
-    first_published_str = f"{issue}, {issue_date}"
-    if (
-        (max_len_before_shorten > 0)
-        and (len(first_published_str) > max_len_before_shorten)
-        and (comic_book_info.issue_month != -1)
-    ):
-        issue_date = (
-            f"{MONTH_AS_SHORT_STR[comic_book_info.issue_month]} {comic_book_info.issue_year}"
-        )
-        first_published_str = f"{issue}, {issue_date}"
+    Returns:
+        The issue and its cover date.
+
+    """
+    issue = f"{issue_name_dict[comic_book_info.issue_name]} #{comic_book_info.issue_number}"
+
+    first_published_str = f"{issue}, {_get_issue_date_str(comic_book_info, MONTH_AS_LONG_STR)}"
+    if 0 < max_len_before_shorten < len(first_published_str):
+        return f"{issue}, {_get_issue_date_str(comic_book_info, MONTH_AS_SHORT_STR)}"
 
     return first_published_str
 

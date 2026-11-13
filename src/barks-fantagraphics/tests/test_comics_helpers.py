@@ -229,7 +229,7 @@ class TestGetDisplayTitle:
         db = _make_db()
         db.is_story_title.return_value = (True, "")
         fanta_info = MagicMock()
-        fanta_info.comic_book_info.is_barks_title = True
+        fanta_info.comic_book_info.get_display_title.return_value = "Barks Story"
         db.get_fanta_comic_book_info.return_value = fanta_info
 
         result = get_display_title(db, "Barks Story")
@@ -240,12 +240,17 @@ class TestGetDisplayTitle:
         db = _make_db()
         db.is_story_title.return_value = (True, "")
         fanta_info = MagicMock()
-        fanta_info.comic_book_info.is_barks_title = False
+        fanta_info.comic_book_info.get_display_title.return_value = "(Non-Barks Story)"
         db.get_fanta_comic_book_info.return_value = fanta_info
 
         result = get_display_title(db, "Non-Barks Story")
 
         assert result == "(Non-Barks Story)"
+
+    def test_real_titles_are_bracketed_only_when_not_barks_own(self) -> None:
+        db = ComicsDatabase()
+        assert get_display_title(db, "Lost in the Andes!") == "Lost in the Andes!"
+        assert get_display_title(db, "The Victory Garden") == "(The Victory Garden)"
 
 
 # ---------------------------------------------------------------------------

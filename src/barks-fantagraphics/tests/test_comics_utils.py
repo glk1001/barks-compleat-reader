@@ -10,7 +10,9 @@ from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import MagicMock
 
 import pytest
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR
 from barks_fantagraphics.comics_utils import (
     delete_all_files_in_directory,
@@ -23,6 +25,7 @@ from barks_fantagraphics.comics_utils import (
     get_dest_comic_dirname,
     get_dest_comic_zip_file_stem,
     get_formatted_day,
+    get_formatted_first_published_str,
     get_formatted_submitted_date,
     get_long_formatted_submitted_date,
     get_max_timestamp,
@@ -31,6 +34,7 @@ from barks_fantagraphics.comics_utils import (
     get_relpath,
     get_safe_file_title,
     get_safe_title,
+    get_short_formatted_first_published_str,
     get_short_formatted_submitted_date,
     get_short_submitted_day_and_month,
     get_submitted_date,
@@ -262,6 +266,42 @@ class TestDateFormatting:
         info = self._make_comic_info(submitted_day=-1, submitted_month=-1, submitted_year=-1)
         assert get_formatted_submitted_date(info) == " on an unknown date"
         assert get_short_submitted_day_and_month(info) == "Unknown"
+
+
+class TestFirstPublished:
+    ANDES = BARKS_TITLE_INFO[Titles.LOST_IN_THE_ANDES]
+    NO_MONTH = BARKS_TITLE_INFO[Titles.MAHARAJAH_DONALD]
+
+    def test_short(self) -> None:
+        assert get_short_formatted_first_published_str(self.ANDES) == "FC 223, Apr 1949"
+
+    def test_long(self) -> None:
+        assert get_formatted_first_published_str(self.ANDES) == "Four Color #223, April 1949"
+
+    def test_long_over_the_limit_has_its_month_shortened(self) -> None:
+        long_str = "Four Color #223, April 1949"
+        limit = len(long_str) - 1
+        shortened = get_formatted_first_published_str(self.ANDES, max_len_before_shorten=limit)
+        assert shortened == "Four Color #223, Apr 1949"
+
+    def test_long_at_the_limit_is_left_alone(self) -> None:
+        long_str = "Four Color #223, April 1949"
+        at_limit = get_formatted_first_published_str(
+            self.ANDES, max_len_before_shorten=len(long_str)
+        )
+        assert at_limit == long_str
+
+    def test_other_issue_names_may_be_given(self) -> None:
+        assert (
+            get_formatted_first_published_str(self.ANDES, SHORT_ISSUE_NAME) == "FC #223, April 1949"
+        )
+
+    def test_an_issue_with_no_month_gives_its_year_alone(self) -> None:
+        assert get_short_formatted_first_published_str(self.NO_MONTH) == "MOC 4, 1947"
+        assert (
+            get_formatted_first_published_str(self.NO_MONTH, max_len_before_shorten=5)
+            == "Boys' and Girls' March of Comics #4, 1947"
+        )
 
 
 class TestGetSafeTitle:
