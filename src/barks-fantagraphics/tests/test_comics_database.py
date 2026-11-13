@@ -159,11 +159,11 @@ class TestInsetInfo:
     def test_a_comic_takes_its_inset_from_the_directory_and_extension_set(
         self, tmp_path: Path
     ) -> None:
-        db = ComicsDatabase()
+        # Not for building: the volume's source directories exist only where the
+        # Fantagraphics books are.
+        db = ComicsDatabase(for_building_comics=False)
         db.set_inset_info(tmp_path, JPG_FILE_EXT)
-        # The volume's source directories exist only where the Fantagraphics books are.
-        with patch.object(comics_database_module, "check_comic_ok_for_building"):
-            comic = db.get_comic_book("Lost in the Andes!")
+        comic = db.get_comic_book("Lost in the Andes!")
         assert comic.intro_inset_file == tmp_path / f"Lost in the Andes!{JPG_FILE_EXT}"
 
     def test_the_inset_directory_must_exist(self, tmp_path: Path) -> None:
