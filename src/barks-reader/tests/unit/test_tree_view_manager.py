@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import barks_reader.ui.tree_view_manager
@@ -384,11 +384,29 @@ class TestTreeViewManager:
         with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating") as mock_pin:
             tree_view_manager.on_node_expanded(MagicMock(), node)
 
-            mock_pin.assert_called_with(node, populate=node.populate_callback)
-            assert node.populated is True
+            # The node populates itself under the pin, and marks itself populated.
+            mock_pin.assert_called_with(node, populate=node.ensure_populated)
             mock_dependencies["renderer"].render.assert_called_with(
                 IntroDestination(), preserve_top_view=False, preserve_fun_view=False
             )
+
+    def test_a_node_opened_under_suppression_is_tracked_but_shows_no_view(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # No pin runs on this path to lift the overlay's suppression: it is lifted here.
+        node = MagicMock(spec=ButtonTreeViewNode)
+        overlay = cast("MagicMock", tree_view_manager._collapse_overlay)
+
+        with (
+            tree_view_manager.suppress_view_state_changes(),
+            patch.object(tree_view_manager._scroll_pinner, "pin_while_populating") as mock_pin,
+        ):
+            tree_view_manager.on_node_expanded(MagicMock(), node)
+
+        overlay.track_node.assert_called_once_with(node)
+        overlay.end_suppression.assert_called_once_with()
+        mock_pin.assert_not_called()
+        mock_dependencies["renderer"].render.assert_not_called()
 
     def test_opening_search_selects_and_shows_its_title_search(
         self,

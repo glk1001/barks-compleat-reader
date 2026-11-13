@@ -99,6 +99,7 @@ class TreeViewManager:
         self._speech_words_node: ButtonTreeViewNode | None = None
 
         self._statistics_node: ButtonTreeViewNode | None = None
+        self._history_node: ButtonTreeViewNode | None = None
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
@@ -172,17 +173,7 @@ class TreeViewManager:
             scroll_to: Whether to also scroll the tree view to the node.
 
         """
-        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
-
-        assert isinstance(node.destination, TitleDestination)
-        parent_destination = getattr(node.parent_node, "destination", None)
-        self._nav.select_title(
-            TitleTarget(
-                fanta_info=node.destination.fanta_info,
-                tag=self._tag_context_of(parent_destination),
-            ),
-            preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
-        )
+        self._select_title_under_its_parent(node)
         if scroll_to:
             self.scroll_to_node(node)
 
@@ -191,6 +182,13 @@ class TreeViewManager:
             self.set_view_state_for_node(node, keep_images=self._keep_images_for_caller)
 
     def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
+        """Deselect the selected node and close every open one, back to the first view.
+
+        Args:
+            from_collapse_all: Whether the whole tree is being collapsed on purpose: the
+                collapse overlay then forgets the node it was tracking.
+
+        """
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             num_opened_nodes = self._tree_view_screen.deselect_and_close_open_nodes()
@@ -210,12 +208,14 @@ class TreeViewManager:
         self.scroll_to_node(node)
 
     def open_node_and_parent_nodes(self, node: ButtonTreeViewNode) -> None:
+        """Open `node` and its parents without showing any of their views."""
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             self._tree_view_screen.open_node_and_all_parent_nodes(node)
         self._scroll_pinner.cancel_pending_reveals()
 
     def go_back_to_previous_node(self) -> None:
+        """Go back to the node selected before this one, or collapse the tree when there is none."""
         prev_node = self._tree_view_screen.ids.reader_tree_view.previous_selected_node
         if not prev_node:
             self.deselect_and_close_open_nodes(from_collapse_all=True)
@@ -246,6 +246,7 @@ class TreeViewManager:
         self.setup_and_select_node(prev_node, keep_images=True)
 
     def goto_node(self, node: BaseTreeViewNode, scroll_to: bool = False) -> None:
+        """Select `node` on the next frame, and scroll the tree to it if `scroll_to`."""
         self._scroll_pinner.cancel_pending_reveals()
 
         def show_node(n: BaseTreeViewNode) -> None:
@@ -265,13 +266,16 @@ class TreeViewManager:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def allow_view_state_change(self) -> None:
+        """Let an expansion or a collapse show its node's view again."""
         self._allow_view_state_change = True
 
     def disallow_view_state_change(self) -> None:
+        """Keep expansions and collapses from showing their nodes' views."""
         self._allow_view_state_change = False
 
     @contextmanager
     def suppress_view_state_changes(self) -> Generator[None]:
+        """Keep expansions and collapses from showing their nodes' views inside the block."""
         self.disallow_view_state_change()
         try:
             yield
@@ -279,6 +283,7 @@ class TreeViewManager:
             self.allow_view_state_change()
 
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        """Show the collapsed node's own view, its row held where it is."""
         # The tracked node may have been collapsed (e.g. via left-arrow key).
         self._collapse_overlay.recheck_visibility()
 
@@ -317,6 +322,7 @@ class TreeViewManager:
         )
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        """Populate the expanded node under a pinned row, and show the view it opens on."""
         logger.info(log_markers.NODE_EXPANDED.format(name=node.get_name()))
 
         # Always track the expanded node for the collapse overlay, even when
@@ -345,10 +351,8 @@ class TreeViewManager:
             self._scroll_pinner.pin_while_populating(
                 node, populate=partial(self._clear_and_repopulate, node)
             )
-            node.populated = True
         elif node.populate_callback and not node.populated:
-            self._scroll_pinner.pin_while_populating(node, populate=node.populate_callback)
-            node.populated = True
+            self._scroll_pinner.pin_while_populating(node, populate=node.ensure_populated)
         else:
             # If already populated, we still pin during expand so second (and later) expansions
             # keep the parent row stationary.
@@ -385,6 +389,7 @@ class TreeViewManager:
             tree.remove_node(child)
         assert node.populate_callback is not None
         node.populate_callback()
+        node.populated = True
         logger.info(
             log_markers.REPOPULATED_NODE.format(name=node.get_name(), count=len(node.nodes))
         )
@@ -427,15 +432,10 @@ class TreeViewManager:
         Skips the intermediate tag view state and goes directly to the title,
         preserving the top background image.
         """
-        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
-
         self._tree_view_screen.select_node(only_child)
-        assert isinstance(only_child.destination, TitleDestination)
-        fanta_info = only_child.destination.fanta_info
-        tag = self._tag_context_of(node.destination)
-        self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag), preserve_top_view=True)
+        self._select_title(only_child, node.destination, preserve_top_view=True)
         # Don't call scroll_to_node here — the parent is already being pinned in view
-        # by _pin_parent_position_while_populating and the child is right below it.
+        # by the scroll pinner (pin_while_populating) and the child is right below it.
 
     def _close_siblings(self, node: ButtonTreeViewNode) -> None:
         parent = node.parent_node
@@ -446,16 +446,34 @@ class TreeViewManager:
                 self._tree_view_screen.ids.reader_tree_view.toggle_node(sibling)
 
     def on_title_row_button_pressed(self, button: TreeViewButton | TitleTreeViewLabel) -> None:
+        """Show the title of the pressed title row, as one listed under its parent node."""
+        self._select_title_under_its_parent(button.node)
+
+    def _select_title_under_its_parent(self, title_node: TitleTreeViewNode) -> None:
+        """Show `title_node`'s title as one listed under its parent: its tag, its top view."""
+        parent_destination = getattr(title_node.parent_node, "destination", None)
+        self._select_title(
+            title_node,
+            parent_destination,
+            preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
+        )
+
+    def _select_title(
+        self,
+        title_node: TitleTreeViewNode,
+        parent_destination: Destination | None,
+        *,
+        preserve_top_view: bool,
+    ) -> None:
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        title_node = button.node
         assert isinstance(title_node.destination, TitleDestination)
-        fanta_info = title_node.destination.fanta_info
-
-        parent_destination = getattr(title_node.parent_node, "destination", None)
         self._nav.select_title(
-            TitleTarget(fanta_info=fanta_info, tag=self._tag_context_of(parent_destination)),
-            preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
+            TitleTarget(
+                fanta_info=title_node.destination.fanta_info,
+                tag=self._tag_context_of(parent_destination),
+            ),
+            preserve_top_view=preserve_top_view,
         )
 
     def _tag_context_of(self, parent_destination: Destination | None) -> Tags | TagGroups | None:
@@ -465,6 +483,7 @@ class TreeViewManager:
         return self._nav_model.tag_context(parent_destination)
 
     def on_intro_doc_pressed(self, _button: Button) -> None:
+        """Open the introduction to the reader."""
         assert self._sys_file_paths
         self._nav.open_document(
             self._sys_file_paths.get_intro_doc_dir(),
@@ -473,6 +492,7 @@ class TreeViewManager:
         )
 
     def on_censorship_fixes_doc_pressed(self, _button: Button) -> None:
+        """Open the appendix on the censorship fixes."""
         assert self._sys_file_paths
         self._nav.open_document(
             self._sys_file_paths.get_censorship_fixes_doc_dir(),
@@ -495,31 +515,39 @@ class TreeViewManager:
         self._nav.read_article(article_title, view_state)
 
     def on_main_index_node_created(self, main_index_node: MainTreeViewNode) -> None:
+        """Give the main index screen its tree node, where it keeps its place."""
         self._main_index_screen.treeview_index_node = main_index_node
 
     def on_speech_index_node_created(self, speech_index_node: MainTreeViewNode) -> None:
+        """Give the speech index screen its tree node, where it keeps its place."""
         self._speech_index_screen.treeview_index_node = speech_index_node
 
     def on_wiki_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        """Open the wiki."""
         logger.info("Wiki index node pressed.")
         self._nav.open_wiki()
 
     def on_corpus_stats_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        """Open the "By the Numbers" screen."""
         logger.info('"By the Numbers" node pressed.')
         self._nav.open_corpus_stats()
 
     def on_speech_words_node_created(self, node: MainTreeViewNode) -> None:
+        """Keep the Words node of the speech index."""
         # Words child shares the same speech index screen's treeview node.
         self._speech_words_node = node
 
     @property
     def speech_words_node(self) -> ButtonTreeViewNode | None:
+        """The Words node of the speech index, once the tree has built it."""
         return self._speech_words_node
 
     def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
+        """Give the names index screen its tree node, where it keeps its place."""
         self._names_index_screen.treeview_index_node = names_index_node
 
     def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
+        """Give the locations index screen its tree node, where it keeps its place."""
         self._locations_index_screen.treeview_index_node = locations_index_node
 
     def on_statistics_node_created(self, node: ButtonTreeViewNode) -> None:
@@ -528,7 +556,8 @@ class TreeViewManager:
 
     @property
     def statistics_node(self) -> ButtonTreeViewNode | None:
-        return getattr(self, "_statistics_node", None)
+        """The Statistics node, once the tree has built it."""
+        return self._statistics_node
 
     def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the History tree node."""
@@ -536,7 +565,8 @@ class TreeViewManager:
 
     @property
     def history_node(self) -> ButtonTreeViewNode | None:
-        return getattr(self, "_history_node", None)
+        """The Reading History node, once the tree has built it."""
+        return self._history_node
 
     def on_search_node_created(self, node: MainTreeViewNode) -> None:
         """Handle creation of the Search tree node."""
@@ -544,4 +574,5 @@ class TreeViewManager:
 
     @property
     def search_node(self) -> MainTreeViewNode | None:
+        """The Search node, once the tree has built it."""
         return self._search_node

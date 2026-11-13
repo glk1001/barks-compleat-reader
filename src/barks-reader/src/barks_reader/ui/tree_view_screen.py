@@ -24,7 +24,7 @@ from barks_reader.core.settings_notifier import settings_notifier
 # rule that instantiates it is loaded: it has no kv file of its own to bring it in.
 from .collapse_parent_overlay import CollapseParentOverlay  # noqa: F401
 from .reader_keyboard_nav import clear_focus_highlight, draw_focus_highlight
-from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
+from .tree_view_nodes import BaseTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -56,7 +56,7 @@ class TreeViewScreen(BoxLayout):
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, reader_settings: ReaderSettings, **kwargs: object) -> None:
         super().__init__(**kwargs)
         # Takes a ``from_keyboard`` keyword (defaulted by the handler) so it can tell the
         # kv-wired pointer press from a keyboard activation. See activate_top_goto.
@@ -119,9 +119,11 @@ class TreeViewScreen(BoxLayout):
             self.on_goto_title()
 
     def get_selected_node(self) -> BaseTreeViewNode | None:
+        """Return the tree's selected node, or None."""
         return self.ids.reader_tree_view.selected_node
 
     def find_node_by_path(self, path_from_root: list[str]) -> BaseTreeViewNode | None:
+        """Return the node at `path_from_root` (leaf first), opening the nodes on the way."""
         # noinspection PyUnnecessaryCast
         return cast(
             "BaseTreeViewNode | None",
@@ -129,13 +131,16 @@ class TreeViewScreen(BoxLayout):
         )
 
     def select_node(self, node: BaseTreeViewNode) -> None:
+        """Select `node` in the tree."""
         self.ids.reader_tree_view.select_node(node)
 
     def open_node(self, node: BaseTreeViewNode) -> None:
+        """Open `node` if it is closed."""
         if not node.is_open:
             self.ids.reader_tree_view.toggle_node(node)
 
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
+        """Scroll the tree so `node` shows, clear of the view's edge."""
         self.ids.scroll_view.scroll_to(node, padding=dp(50))
 
     def is_node_shown(self, node: ButtonTreeViewNode) -> bool:
@@ -148,6 +153,7 @@ class TreeViewScreen(BoxLayout):
         return view_bottom <= row_bottom and row_top <= view_top
 
     def open_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
+        """Open every parent of `node`, from the top down; `node` itself is left as it is."""
         # Get all the parent nodes first, then open from top parent down to last parent.
         parent_nodes = []
         parent_node = node.parent_node
@@ -160,14 +166,17 @@ class TreeViewScreen(BoxLayout):
                 self.ids.reader_tree_view.toggle_node(parent_node)
 
     def open_node_and_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
-        # Get all the parent nodes first, then open from top parent down to last child.
-
+        """Open every parent of `node`, from the top down, then `node`."""
         self.open_all_parent_nodes(node)
-
-        if not node.is_open:
-            self.ids.reader_tree_view.toggle_node(node)
+        self.open_node(node)
 
     def deselect_and_close_open_nodes(self) -> int:
+        """Deselect the selected node and close every open one.
+
+        Returns:
+            How many nodes were open.
+
+        """
         selected_node = self.ids.reader_tree_view.selected_node
         if selected_node:
             self.ids.reader_tree_view.deselect_node(selected_node)
@@ -209,4 +218,5 @@ class TreeViewScreen(BoxLayout):
         return nodes
 
     def on_change_show_current_title(self) -> None:
+        """Take up the setting for showing the top view's title."""
         self.show_current_title = self._reader_settings.show_top_view_title_info

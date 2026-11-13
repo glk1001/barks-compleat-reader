@@ -41,15 +41,18 @@ def is_tap(touch: MotionEvent) -> bool:
 
 
 def set_kivy_busy_cursor() -> None:
+    """Show the wait cursor, from the next frame."""
     Clock.schedule_once(lambda _dt: Window.set_system_cursor("wait"), 0)
 
 
 def set_kivy_normal_cursor() -> None:
+    """Show the arrow cursor again, from the next frame."""
     Clock.schedule_once(lambda _dt: Window.set_system_cursor("arrow"), 0)
 
 
-# A button with an image and an expanded touch region around the image.
 class TouchExpandedButton(Button):
+    """A button with an image and an expanded touch region around the image."""
+
     # Defining these properties here prevents a "NoneType" error on initialization.
     visual_size = NumericProperty(40)
     touch_padding = NumericProperty(10)
@@ -58,5 +61,7 @@ class TouchExpandedButton(Button):
 
 
 class TitlePageImage(ButtonBehavior, Image):
+    """A story's title page image, pressed to read the story."""
+
     TITLE_IMAGE_X_FRAC_OF_PARENT = 0.95
     TITLE_IMAGE_Y_FRAC_OF_PARENT = 0.95

@@ -47,6 +47,8 @@ TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
 
 
 class ReaderTreeView(TreeView):
+    """The reader's tree, which also keeps the node selected before the current one."""
+
     TREE_VIEW_INDENT_LEVEL = dp(30)
 
     previous_selected_node = ObjectProperty(None, allownone=True)
@@ -54,6 +56,7 @@ class ReaderTreeView(TreeView):
     _current_selection_tracker: BaseTreeViewNode | None = None
 
     def reset_selection_tracking(self) -> None:
+        """Forget the current and the previous selection: "go back" has nowhere to go."""
         self._current_selection_tracker = None
         self.previous_selected_node = None
 
@@ -78,14 +81,17 @@ class ReaderTreeView(TreeView):
 
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    """Tells whoever is bound that the tree has finished building."""
+
+    def __init__(self, **kwargs: object) -> None:
         self.register_event_type(self.on_finished_building_event.__name__)
         super().__init__(**kwargs)
 
     def on_finished_building_event(self) -> None:
-        pass
+        """Do nothing by default: the event's handlers are bound from outside."""
 
     def finished_building(self) -> None:
+        """Dispatch the finished-building event."""
         logger.debug(
             f"Finished treeview build: dispatching '{self.on_finished_building_event.__name__}'."
         )
@@ -93,16 +99,21 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 
 
 class BaseTreeViewNode(TreeViewNode):
-    def __init__(self, destination: Destination | None = None, **kwargs) -> None:  # noqa: ANN003
+    """A tree node with a navigation destination and state saved between visits."""
+
+    def __init__(self, destination: Destination | None = None, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.saved_state: dict[str, Any] = {}
         self.destination: Destination | None = destination
 
     def get_name(self) -> str:
+        """Return the node's name, as the log and the tests know it."""
         return "<unknown>"
 
 
 class ButtonTreeViewNode(Button, BaseTreeViewNode):
+    """A node that is a button: a press opens or closes it, and its children may be made lazily."""
+
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
 
@@ -118,6 +129,7 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
         return get_clean_text_without_extra(self.text)
 
     def on_press(self, *_args: object) -> None:
+        """Open or close the node in its tree; an open node with no rows to show stays open."""
         # Node press will also toggle expand/collapse.
         nodes_treeview = self._get_nodes_treeview(self)
         if not nodes_treeview:
@@ -144,6 +156,7 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
         return None
 
     def ensure_populated(self) -> None:
+        """Create the node's lazily-made children, once."""
         # Marked here too, not only on expansion: a goto populates the node and then
         # opens it without the expansion path, and every later goto or expansion
         # would add its children again.
@@ -153,15 +166,21 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
 
 
 class MainTreeViewNode(ButtonTreeViewNode):
+    """A node of the tree's top levels."""
+
     NODE_SIZE = (dp(400), dp(30))
 
 
 class StoryGroupTreeViewNode(ButtonTreeViewNode):
+    """A node for a group of stories: a series, a category, a tag."""
+
     NODE_WIDTH = dp(350)
     NODE_HEIGHT = dp(30)
 
 
 class YearRangeTreeViewNode(ButtonTreeViewNode):
+    """A node for a range of years."""
+
     # NumericProperty so callers can pass a wider NODE_WIDTH=dp(250) for CS/US ranges.
     NODE_WIDTH = NumericProperty(dp(150))
     NODE_HEIGHT = NumericProperty(dp(30))
@@ -182,7 +201,7 @@ class IntroTextTreeViewNode(BoxLayout, BaseTreeViewNode):
 
     source_text = StringProperty("")
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.no_selection = True
 
@@ -192,6 +211,8 @@ class IntroTextTreeViewNode(BoxLayout, BaseTreeViewNode):
 
 
 class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
+    """A story's row: its chronological number, its title and its issue."""
+
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     ROW_BACKGROUND_COLOR = BACKGROUND_COLOR
@@ -204,7 +225,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     NUM_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     ISSUE_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
 
-    def __init__(self, fanta_info: FantaComicBookInfo, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, fanta_info: FantaComicBookInfo, **kwargs: object) -> None:
         kwargs.setdefault("destination", TitleDestination(fanta_info=fanta_info))
         super().__init__(**kwargs)
         self.fanta_info = fanta_info
@@ -214,6 +235,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
         return self.get_title().name
 
     def get_title(self) -> Titles:
+        """Return the story's title."""
         return self.fanta_info.comic_book_info.title
 
     @classmethod
