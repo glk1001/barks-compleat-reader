@@ -484,6 +484,32 @@ class TestWikiReaderScreenBuildViewer:
         add_widget.assert_called_once_with(viewer_cls.return_value)
         assert wiki_screen._viewer is viewer_cls.return_value
 
+    def test_a_new_bundle_whose_viewer_fails_to_build_leaves_the_old_one_on_show(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        # Taken off before the new one was built, the old viewer was gone while the
+        # screen still held it: opening its bundle again showed nothing.
+        outgoing = MagicMock()
+        old_bundle = Path("/old-bundle")
+        wiki_screen._viewer = outgoing
+        wiki_screen._bundle = old_bundle
+        with (
+            patch.object(wiki_reader, "OKFViewer", side_effect=ValueError("bad bundle")),
+            patch.object(wiki_reader, "wiki_top_bar_spec"),
+            patch.object(wiki_reader, "wiki_session_path"),
+            patch.object(wiki_reader, "BarksPanelsImageProvider"),
+            patch.object(wiki_reader, "BarksTableRewriter"),
+            patch.object(wiki_screen, "add_widget") as add_widget,
+            patch.object(wiki_screen, "remove_widget") as remove_widget,
+            pytest.raises(ValueError, match="bad bundle"),
+        ):
+            wiki_screen._build_viewer(self.BUNDLE)
+
+        remove_widget.assert_not_called()
+        add_widget.assert_not_called()
+        assert wiki_screen._viewer is outgoing
+        assert wiki_screen._bundle == old_bundle
+
 
 class TestWikiFullscreenViewerSize:
     """The pure fullscreen-strip math (comic aspect, width from height)."""

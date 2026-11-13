@@ -339,13 +339,13 @@ class WikiReaderScreen(ReaderScreen):
 
     def _build_viewer(self, bundle: Path, start_page: Path | None = None) -> None:
         logger.info(f'Building wiki viewer for bundle "{bundle}".')
-        if self._viewer is not None:
-            self._viewer.save_session()  # the outgoing bundle's position survives
-            self.remove_widget(self._viewer)
+        outgoing = self._viewer
+        if outgoing is not None:
+            outgoing.save_session()  # the outgoing bundle's position survives
         # The shared bar builder; on_close leaves this screen instead of
         # stopping the app. The title markup bakes in the current font size
         # (built lazily at first open, when the window height is settled).
-        self._viewer = OKFViewer(
+        incoming = OKFViewer(
             bundle,
             start_page=start_page,
             image_provider=BarksPanelsImageProvider(self._reader_settings, self._image_selector),
@@ -361,8 +361,13 @@ class WikiReaderScreen(ReaderScreen):
             state_path=wiki_session_path(self._profile_dir, bundle),
             on_exit=self.close,
         )
+        # Only now: had the new bundle's viewer failed to build, the old one is still
+        # on show, and still the one its bundle opens.
+        if outgoing is not None:
+            self.remove_widget(outgoing)
+        self._viewer = incoming
         self._bundle = bundle
-        self.add_widget(self._viewer)
+        self.add_widget(incoming)
         self._apply_layout_contrast()
 
     def _apply_layout_contrast(self) -> None:
