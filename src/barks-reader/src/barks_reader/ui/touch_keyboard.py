@@ -124,10 +124,13 @@ def enable_linux_touchscreen_input() -> None:
         logger.warning("No mtdev or hidinput provider available for touchscreen input.")
         return
 
+    # A provider's events carry the name it was given.
+    intercepted_devices: set[str] = set()
     for device_path in touchscreen_devices:
-        name = Path(device_path).name
-        provider = provider_cls(f"touch_{name}", device_path)
+        provider_name = f"touch_{Path(device_path).name}"
+        provider = provider_cls(provider_name, device_path)
         if provider:
+            intercepted_devices.add(provider_name)
             EventLoop.add_input_provider(provider)
             if EventLoop.status == "started":
                 provider.start()
@@ -136,7 +139,8 @@ def enable_linux_touchscreen_input() -> None:
     original_on_motion = Window.on_motion
 
     def _touch_intercepting_on_motion(etype: str, me: object) -> bool:
-        if getattr(me, "device", "mouse") != "mouse":
+        # Only the providers registered here: another's events are not ours to drop.
+        if getattr(me, "device", "mouse") in intercepted_devices:
             Window._last_hardware_touch_time = time.monotonic()  # type: ignore[attr-defined]  # noqa: SLF001
             return True
         return original_on_motion(etype, me)
@@ -206,6 +210,9 @@ class TouchAwareTextInput(TextInput):
             FocusBehavior._keyboards[sys_kb] = None  # noqa: SLF001
 
         Window.allow_vkeyboard = False
-        result = super().on_touch_down(touch)
-        Window.allow_vkeyboard = True
+        try:
+            result = super().on_touch_down(touch)
+        finally:
+            # Left off by a press that raised, no later touch would show the keyboard.
+            Window.allow_vkeyboard = True
         return bool(result)

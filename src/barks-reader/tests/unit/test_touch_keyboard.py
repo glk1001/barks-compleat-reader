@@ -142,6 +142,20 @@ def test_a_click_takes_the_system_keyboard_from_a_stale_owner(box: TouchAwareTex
     assert window.allow_vkeyboard is True
 
 
+def test_a_click_that_raises_still_gives_the_virtual_keyboard_back(
+    box: TouchAwareTextInput,
+) -> None:
+    with (
+        patch.object(touch_keyboard, "Window") as window,
+        patch.object(TextInput, "on_touch_down", side_effect=RuntimeError("boom")),
+    ):
+        window.allow_vkeyboard = True
+        with pytest.raises(RuntimeError, match="boom"):
+            box._use_system_keyboard_for_click(MagicMock())  # noqa: SLF001
+
+    assert window.allow_vkeyboard is True
+
+
 # A C long's bits: sysfs writes a capability bitmap in words of that size (32 on Windows).
 _LONG_BIT = ctypes.sizeof(ctypes.c_long) * 8
 _ABS_MT_POSITION_X = 0x35
@@ -299,3 +313,22 @@ class TestEnableLinuxTouchscreenInput:
         mouse = MagicMock(device="mouse")
         assert window.on_motion("begin", mouse) is original.return_value
         original.assert_called_once_with("begin", mouse)
+
+    def test_another_providers_events_are_not_ours_to_drop(self, window: MagicMock) -> None:
+        original = window.on_motion
+        self._enable({"mtdev": MagicMock()}, ["/dev/input/event4"])
+        window._last_hardware_touch_time = 0.0  # noqa: SLF001
+
+        other = MagicMock(device="other_provider")
+        assert window.on_motion("begin", other) is original.return_value
+        original.assert_called_once_with("begin", other)
+        assert window._last_hardware_touch_time == 0.0  # noqa: SLF001
+
+    def test_a_screen_whose_provider_did_not_open_is_not_intercepted(
+        self, window: MagicMock
+    ) -> None:
+        original = window.on_motion
+        self._enable({"mtdev": MagicMock(return_value=None)}, ["/dev/input/event4"])
+
+        window.on_motion("begin", MagicMock(device="touch_event4"))
+        original.assert_called_once()
