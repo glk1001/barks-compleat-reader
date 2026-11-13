@@ -411,7 +411,6 @@ def _validate_places() -> None:
     places_groups = {
         TagGroups.AFRICA,
         TagGroups.AUSTRALASIA,
-        TagGroups.AUSTRALASIA,
         TagGroups.ASIA,
         TagGroups.EUROPE,
         TagGroups.OTHER_PLACES,

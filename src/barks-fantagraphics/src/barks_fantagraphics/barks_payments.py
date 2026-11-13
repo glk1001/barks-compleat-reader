@@ -1053,13 +1053,12 @@ def validate_payment_data() -> None:
             # bibliography, and some have no dates) - skip the date checks.
             continue
 
-        if (title not in ONE_PAGERS) and (title not in BARKS_PAYMENTS):
-            print(f'Title "{ENUM_TO_STR_TITLE[title]}" has no payment info.')
-            missing_payment_errors += 1
-            continue
         if title not in BARKS_PAYMENTS:
             print(f'Title "{ENUM_TO_STR_TITLE[title]}" has no payment info.')
-            missing_one_pager_payments += 1
+            if title in ONE_PAGERS:
+                missing_one_pager_payments += 1
+            else:
+                missing_payment_errors += 1
             continue
 
         payment_info = BARKS_PAYMENTS[title]
