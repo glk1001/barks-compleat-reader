@@ -49,6 +49,20 @@ class TestDescribeWidget:
 
         assert describe_widget(_DeadProxy()) == "_DeadProxy (dead)"
 
+    def test_a_row_showing_its_text_cut_short_is_named_by_the_whole(self) -> None:
+        class _CutRow:
+            text = "Donald Duck\u2026, 5"
+            full_text = "Donald Duck's Atom Bomb, 5"
+
+        assert describe_widget(_CutRow()) == '_CutRow "Donald Duck\'s Atom Bomb, 5"'
+
+    def test_a_row_with_no_whole_text_yet_is_named_by_what_it_shows(self) -> None:
+        class _Row:
+            text = "Titles"
+            full_text = ""
+
+        assert describe_widget(_Row()) == '_Row "Titles"'
+
     def test_a_widget_without_text_is_its_class_alone(self) -> None:
         assert describe_widget(MagicMock()) == "MagicMock"  # its .text is no str
 

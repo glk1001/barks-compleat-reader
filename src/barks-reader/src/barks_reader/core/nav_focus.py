@@ -37,7 +37,11 @@ def describe_widget(widget: object) -> str:
             return f"{type(widget).__name__} (dead)"
         widget = target
     name = type(widget).__name__
-    text = getattr(widget, "text", None)
+    # A row that shows its text cut to its width (`full_text`) is named by the whole:
+    # what is shown changes with the window, and the log is what the tests wait on.
+    text = getattr(widget, "full_text", None)
+    if not isinstance(text, str) or not text.strip():
+        text = getattr(widget, "text", None)
     if not isinstance(text, str) or not text.strip():
         return name
     text = " ".join(text.split())
