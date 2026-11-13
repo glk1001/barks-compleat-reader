@@ -109,6 +109,10 @@ class ComicsDatabase:
     def get_comics_database_dir(self) -> Path:
         return self._database_dir
 
+    def get_ini_filenames(self) -> list[str]:
+        """Return the name of every story's ini file, in no particular order."""
+        return list(self._ini_files)
+
     def get_story_titles_dir(self) -> Path:
         return self._story_titles_dir
 
@@ -773,7 +777,6 @@ def _get_story_titles_dir(db_dir: Path) -> Path:
     return story_titles_dir
 
 
-@functools.cache
 def get_fanta_restored_ocr_prelim_volume_dir(
     fanta_restored_ocr_root_dir: Path, volume_num: int
 ) -> Path:
@@ -781,10 +784,10 @@ def get_fanta_restored_ocr_prelim_volume_dir(
     return get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir) / title
 
 
-@functools.cache
 def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) -> Path:
     # Defer to the one lookup that knows about the BARKS_OCR_PRELIM_DIR override, so
-    # this and ocr_file_paths.OCR_PRELIM_DIR can never name different trees.
+    # this and ocr_file_paths.OCR_PRELIM_DIR can never name different trees. Not cached,
+    # here or in the volume lookup above: the override is read from the environment.
     return get_ocr_prelim_dir(fanta_restored_ocr_root_dir)
 
 

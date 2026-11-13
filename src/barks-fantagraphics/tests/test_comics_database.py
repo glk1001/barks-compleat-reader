@@ -42,6 +42,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
 )
+from barks_fantagraphics.ocr_file_paths import OCR_PRELIM_DIR_ENV_VAR
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -86,6 +87,30 @@ class TestGetFantaRestoredOcrPrelimRootDir:
         root = Path("/some/ocr/root")
         result = get_fanta_restored_ocr_prelim_root_dir(root)
         assert result == root / "Prelim"
+
+    def test_an_override_set_after_the_first_call_is_honoured(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = Path("/some/ocr/root")
+        monkeypatch.delenv(OCR_PRELIM_DIR_ENV_VAR, raising=False)
+        assert get_fanta_restored_ocr_prelim_root_dir(root) == root / "Prelim"
+
+        monkeypatch.setenv(OCR_PRELIM_DIR_ENV_VAR, str(tmp_path))
+
+        assert get_fanta_restored_ocr_prelim_root_dir(root) == tmp_path
+        title = get_fanta_title_for_volume(1)
+        assert get_fanta_restored_ocr_prelim_volume_dir(root, 1) == tmp_path / title
+
+        monkeypatch.delenv(OCR_PRELIM_DIR_ENV_VAR)
+        assert get_fanta_restored_ocr_prelim_volume_dir(root, 1) == root / "Prelim" / title
+
+
+class TestIniFilenames:
+    def test_every_ini_file_is_named_and_the_list_is_a_copy(self, db: ComicsDatabase) -> None:
+        names = db.get_ini_filenames()
+        assert sorted(names) == sorted(p.name for p in db.get_story_titles_dir().glob("*.ini"))
+        names.clear()
+        assert db.get_ini_filenames()
 
 
 class TestGetFantaRestoredOcrPrelimVolumeDir:

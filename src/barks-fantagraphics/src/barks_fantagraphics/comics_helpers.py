@@ -238,11 +238,20 @@ def get_comic_titles(
 
 
 def validate_ini_files_against_barks_titles() -> None:
-    comics_database = ComicsDatabase()
-    config = ConfigParser(interpolation=ExtendedInterpolation())
+    """Check every story's ini file is named after a title and agrees with it.
 
-    for file in comics_database._ini_files:  # noqa: SLF001
+    Raises:
+        ValueError: If an ini file is not named after a known title, or names another
+            title inside.
+        KeyError: If an ini file has no ``title`` key in its ``info`` section.
+
+    """
+    comics_database = ComicsDatabase()
+
+    for file in comics_database.get_ini_filenames():
         ini_file = comics_database.get_story_titles_dir() / file
+        # A parser per file: a shared one keeps the last file's values for a missing key.
+        config = ConfigParser(interpolation=ExtendedInterpolation())
         config.read(ini_file, encoding="utf-8")
 
         story_title = get_title_str_from_filename(file)

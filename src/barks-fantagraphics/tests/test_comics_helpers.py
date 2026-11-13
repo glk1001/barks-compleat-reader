@@ -603,7 +603,7 @@ class TestValidateIniFiles:
     def _run_with(tmp_path: Path, ini_name: str, title_line: str) -> None:
         (tmp_path / ini_name).write_text(f"[info]\n{title_line}\n", encoding="utf-8")
         db = _make_db()
-        db._ini_files = [ini_name]  # noqa: SLF001
+        db.get_ini_filenames.return_value = [ini_name]
         db.get_story_titles_dir.return_value = tmp_path
         with patch.object(comics_helpers_module, "ComicsDatabase", return_value=db):
             validate_ini_files_against_barks_titles()
@@ -615,6 +615,25 @@ class TestValidateIniFiles:
     def test_an_ini_for_no_known_story_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match='Ini story title "No Such Story" not in'):
             self._run_with(tmp_path, "No Such Story.ini", "title =")
+
+    def test_an_ini_with_no_title_key_does_not_borrow_the_last_files(self, tmp_path: Path) -> None:
+        # One shared parser kept "The Victory Garden" for the second file, which was then
+        # reported as naming another story.
+        (tmp_path / "The Victory Garden.ini").write_text(
+            "[info]\ntitle = The Victory Garden\n", encoding="utf-8"
+        )
+        (tmp_path / "Donald Duck Finds Pirate Gold.ini").write_text("[info]\n", encoding="utf-8")
+        db = _make_db()
+        db.get_ini_filenames.return_value = [
+            "The Victory Garden.ini",
+            "Donald Duck Finds Pirate Gold.ini",
+        ]
+        db.get_story_titles_dir.return_value = tmp_path
+        with (
+            patch.object(comics_helpers_module, "ComicsDatabase", return_value=db),
+            pytest.raises(KeyError, match="title"),
+        ):
+            validate_ini_files_against_barks_titles()
 
     def test_an_ini_naming_another_title_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match='Ini title "The Victory Garden" != story title'):
