@@ -312,8 +312,17 @@ class TestUpdateSearchBackground:
         view_renderer.update_search_background(Titles.ATTIC_ANTICS)
 
         deps["pipeline"].set_search_screen_image_for_title.assert_called_with(Titles.ATTIC_ANTICS)
-        deps["screens"].search.set_background_image.assert_called_with(search_image)
         deps["applicator"].load_search_texture.assert_called_once()
+        # Until the picture is loaded the caption still names the one on show.
+        deps["screens"].search.set_background_image.assert_not_called()
+
+        loaded_image, show = deps["applicator"].load_search_texture.call_args.args
+        texture = MagicMock()
+        show(texture)
+
+        assert loaded_image is search_image
+        deps["screens"].search.set_background_image.assert_called_once_with(search_image)
+        assert deps["screens"].search.image_texture is texture
 
 
 class TestTitleDestinationViaRender:
