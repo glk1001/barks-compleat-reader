@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -97,6 +97,24 @@ class TestSearch:
         assert _search_with(fake).get_words_matching("air").words == ["airline"]
         clear_alpha_split_cache()
         assert _search_with(fake).get_words_matching("air").words == []
+
+    def test_the_split_the_word_matcher_and_the_list_share_one_read(self) -> None:
+        fake = InMemoryFullTextSearch(cleaned_terms=["airline", "bee"])
+        with patch.object(
+            fake, "get_cleaned_terms", wraps=fake.get_cleaned_terms
+        ) as get_cleaned_terms:
+            search = _search_with(fake)
+            assert set(search.get_alpha_split_terms()) == {"a", "b"}
+            assert search.get_words_matching("air").words == ["airline"]
+            assert search.get_cleaned_terms() == ["airline", "bee"]
+            assert _search_with(fake).get_cleaned_terms() == ["airline", "bee"]
+        get_cleaned_terms.assert_called_once_with()
+
+    def test_the_word_list_handed_out_is_a_copy(self) -> None:
+        search = _search_with(InMemoryFullTextSearch(cleaned_terms=["airline", "bee"]))
+        search.get_cleaned_terms().clear()
+        assert search.get_cleaned_terms() == ["airline", "bee"]
+        assert search.get_words_matching("air").words == ["airline"]
 
     def test_tag_mode_lists_each_tag_once_in_a_fixed_order(self) -> None:
         """Deterministic: not a set's order, which the hash seed changes per process."""

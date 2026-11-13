@@ -69,14 +69,26 @@ class SearchResult:
 
 
 # The reader builds one ComicSearch per screen, all over the same index. Caching by
-# index directory means the term list is read and split once rather than per screen.
+# index directory means the term list is read once, and split once, rather than per
+# screen and again for each thing made from it.
+_CLEANED_TERMS_CACHE: dict[Path, list[str]] = {}
+
+
+def _cleaned_terms_for_index(index_dir: Path, engine: FullTextSearchPort) -> list[str]:
+    cached = _CLEANED_TERMS_CACHE.get(index_dir)
+    if cached is None:
+        cached = engine.get_cleaned_terms()
+        _CLEANED_TERMS_CACHE[index_dir] = cached
+    return cached
+
+
 _ALPHA_SPLIT_CACHE: dict[Path, AlphaSplitTerms] = {}
 
 
 def _split_terms_for_index(index_dir: Path, engine: FullTextSearchPort) -> AlphaSplitTerms:
     cached = _ALPHA_SPLIT_CACHE.get(index_dir)
     if cached is None:
-        cached = split_alpha_terms(engine.get_cleaned_terms())
+        cached = split_alpha_terms(_cleaned_terms_for_index(index_dir, engine))
         _ALPHA_SPLIT_CACHE[index_dir] = cached
     return cached
 
@@ -88,13 +100,14 @@ _LEXICON_CACHE: dict[Path, TermLexicon] = {}
 def _lexicon_for_index(index_dir: Path, engine: FullTextSearchPort) -> TermLexicon:
     cached = _LEXICON_CACHE.get(index_dir)
     if cached is None:
-        cached = TermLexicon(engine.get_cleaned_terms())
+        cached = TermLexicon(_cleaned_terms_for_index(index_dir, engine))
         _LEXICON_CACHE[index_dir] = cached
     return cached
 
 
 def clear_alpha_split_cache() -> None:
     """Discard the cached term splits and word lists, e.g. after the index has been rebuilt."""
+    _CLEANED_TERMS_CACHE.clear()
     _ALPHA_SPLIT_CACHE.clear()
     _LEXICON_CACHE.clear()
 
@@ -344,8 +357,8 @@ class ComicSearch:
         return _lexicon_for_index(self._index_dir, self._get_full_text()).suggest(word, limit)
 
     def get_cleaned_terms(self) -> list[str]:
-        """Return the cleaned, display-ready corpus word list."""
-        return self._get_full_text().get_cleaned_terms()
+        """Return the cleaned, display-ready corpus word list (a copy the caller may change)."""
+        return list(_cleaned_terms_for_index(self._index_dir, self._get_full_text()))
 
     def get_corpus_text_totals(self) -> CorpusTextTotals:
         """Aggregate corpus-wide text totals in one pass over the whole index."""
