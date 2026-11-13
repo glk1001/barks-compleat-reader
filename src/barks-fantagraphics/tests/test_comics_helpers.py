@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_fantagraphics.comics_database as comics_database_module
 import barks_fantagraphics.comics_helpers as comics_helpers_module
 import pytest
 import typer
@@ -519,10 +520,14 @@ class TestGetVolumeAndPage:
     def test_the_bill_collectors_pages_follow_its_ini(self) -> None:
         # The one story whose BODY pages are out of order, read from the real database.
         db = ComicsDatabase()
-        pages = [get_volume_and_page(db, "The Bill Collectors", str(n))[1] for n in (2, 3, 4, 10)]
-        assert pages == ["194", "227", "195", "201"]
-        with pytest.raises(RuntimeError, match="Page 11 not valid"):
-            get_volume_and_page(db, "The Bill Collectors", "11")
+        # The volume's source directories exist only where the Fantagraphics books are.
+        with patch.object(comics_database_module, "check_comic_ok_for_building"):
+            pages = [
+                get_volume_and_page(db, "The Bill Collectors", str(n))[1] for n in (2, 3, 4, 10)
+            ]
+            assert pages == ["194", "227", "195", "201"]
+            with pytest.raises(RuntimeError, match="Page 11 not valid"):
+                get_volume_and_page(db, "The Bill Collectors", "11")
 
     def test_a_one_pager_comes_from_its_located_page(self) -> None:
         db = _make_db()

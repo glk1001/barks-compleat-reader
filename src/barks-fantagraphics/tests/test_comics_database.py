@@ -161,7 +161,9 @@ class TestInsetInfo:
     ) -> None:
         db = ComicsDatabase()
         db.set_inset_info(tmp_path, JPG_FILE_EXT)
-        comic = db.get_comic_book("Lost in the Andes!")
+        # The volume's source directories exist only where the Fantagraphics books are.
+        with patch.object(comics_database_module, "check_comic_ok_for_building"):
+            comic = db.get_comic_book("Lost in the Andes!")
         assert comic.intro_inset_file == tmp_path / f"Lost in the Andes!{JPG_FILE_EXT}"
 
     def test_the_inset_directory_must_exist(self, tmp_path: Path) -> None:
