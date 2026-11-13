@@ -1,6 +1,7 @@
 # ruff: noqa: FBT003
 
 import string
+from pathlib import Path
 
 import pytest
 from barks_fantagraphics.barks_titles import (
@@ -17,6 +18,8 @@ from barks_fantagraphics.comic_book_info import (
     ComicBookInfo,
     check_cover_submitted_order,
     check_story_submitted_order,
+    get_filename_from_title_str,
+    get_title_str_from_filename,
     is_non_comic_title,
 )
 from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
@@ -312,3 +315,30 @@ class TestCheckCoverSubmittedOrder:
         ]
         with pytest.raises(RuntimeError, match="Dated cover appears after an undated cover"):
             check_cover_submitted_order(data)
+
+
+class TestTitleStrFromFilename:
+    @pytest.mark.parametrize(
+        "title", ["Mr. Private Eye", "Operation St. Bernard", "The Limber W. Guest Ranch"]
+    )
+    def test_a_title_with_a_dot_is_kept_whole_without_asking_the_disk(self, title: str) -> None:
+        # Bare names: nothing of the kind exists in the working directory.
+        assert get_title_str_from_filename(title) == title
+        assert get_title_str_from_filename(f"no-such-dir/{title}") == title
+        assert get_title_str_from_filename(f"{title}.ini") == title
+
+    def test_a_real_directory_and_a_missing_one_give_the_same_title(self, tmp_path: Path) -> None:
+        (tmp_path / "Mr. Private Eye").mkdir()
+        assert get_title_str_from_filename(tmp_path / "Mr. Private Eye") == "Mr. Private Eye"
+        assert get_title_str_from_filename(tmp_path / "Mr. Private Eye.png") == "Mr. Private Eye"
+
+    def test_a_name_that_is_only_an_extension_is_kept(self) -> None:
+        assert get_title_str_from_filename(".ini") == ".ini"
+
+    def test_every_title_comes_back_from_its_filename(self) -> None:
+        # Guards the rule that tells an extension from the tail of a title.
+        for title in ENUM_TO_STR_TITLE:
+            assert get_title_str_from_filename(get_filename_from_title_str(title, "")) == title
+            for ext in (".ini", ".png", ".jpg", ".json", ".cbz"):
+                filename = get_filename_from_title_str(title, ext)
+                assert get_title_str_from_filename(filename) == title, filename

@@ -1,5 +1,6 @@
 # ruff: noqa: E501, FBT003
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
@@ -1864,11 +1865,28 @@ def get_filename_from_title_str(title_str: str, ext: str) -> str:
     return TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
 
 
+# A file extension: a dot, then a few letters or digits, at the end of a name. The tail of
+# a title after its dot ("Mr. Private Eye") has a space, so it is not taken for one.
+_FILE_EXTENSION = re.compile(r"(?<=.)\.[A-Za-z0-9]{1,5}$")
+
+
 def get_title_str_from_filename(filename: str | PanelPath) -> str:
-    """Return the title string for a given filename."""
+    """Return the title a title's file or directory is named after.
+
+    The name alone decides: nothing is asked of the disk, so a directory that does not
+    exist yet, or a bare name, gives the same answer as a real path.
+
+    Args:
+        filename: A title's ini, image or directory, as a path or a name.
+
+    Returns:
+        The title, with any file extension dropped and the characters a filename
+        cannot hold put back.
+
+    """
     path: PanelPath = Path(filename) if isinstance(filename, str) else filename
 
-    # Can't use 'stem' on directories because a title may contain a '.'
-    name = path.name if path.is_dir() else path.stem
+    # Not 'stem': a title may contain a '.', and a directory has no extension to drop.
+    name = _FILE_EXTENSION.sub("", path.name)
 
     return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)
