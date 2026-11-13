@@ -123,18 +123,12 @@ BARKS_TAG_CATEGORIES_DICT = {cat.value: cat for cat in TagCategories}
 
 
 def _set_firsts_tags() -> None:
-    submission_date = {
-        info.title: (info.submitted_year, info.submitted_month, info.submitted_day)
-        for info in BARKS_TITLE_INFO
-    }
-
     for firsts_tag in BARKS_TAG_GROUPS[TagGroups.FIRSTS]:
         if firsts_tag in BARKS_FIRSTS_MAP:
             tag = BARKS_FIRSTS_MAP[firsts_tag]
             titles = BARKS_TAGGED_TITLES[tag]
-            # Sort the titles in order of submission dates from BARKS_TITLE_INFO
-            titles = sorted(titles, key=lambda t: submission_date[t])
-            first_title = titles[0]
+            # `Titles` is in chronological order, the one every tag's list is held to.
+            first_title = min(titles)
             BARKS_TAGGED_TITLES[firsts_tag] = [first_title]
             if (tag, first_title) in BARKS_TAGGED_PAGES:
                 BARKS_TAGGED_PAGES[(firsts_tag, first_title)] = [
@@ -293,7 +287,11 @@ def _validate_uncle_scrooge_tags() -> None:
         t
         for t in us_not_in_us_titles
         if (BARKS_TITLE_INFO[t].issue_name == Issues.US)
-        or (BARKS_TITLE_INFO[t].issue_number in US_ISSUE_AS_FC_ISSUE.values())
+        or (
+            # The first three Uncle Scrooge issues came out as Four Color numbers.
+            BARKS_TITLE_INFO[t].issue_name == Issues.FC
+            and BARKS_TITLE_INFO[t].issue_number in US_ISSUE_AS_FC_ISSUE.values()
+        )
     ]
     assert len(wrong_titles) == 0, f"{wrong_titles}"
 

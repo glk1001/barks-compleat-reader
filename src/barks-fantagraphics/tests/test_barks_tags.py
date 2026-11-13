@@ -1,6 +1,7 @@
 # ruff: noqa: SIM117
 
 from copy import deepcopy
+from dataclasses import replace
 from enum import Enum  # For creating mock enums in tests
 from typing import cast
 from unittest.mock import patch
@@ -23,6 +24,7 @@ from barks_fantagraphics.barks_tags import (
     get_all_tags_in_tag_category,
     get_sorted_tagged_titles,
 )
+from barks_fantagraphics.comic_issues import Issues
 
 
 def test_initial_validation_passes() -> None:
@@ -506,3 +508,42 @@ def test_little_helper_story_without_gyro_fails() -> None:
             AssertionError, match=r"LITTLE_HELPER but not in GYRO_GEARLOOSE: \['FIREBUG_THE'\]"
         ):
             barks_tags.validate_tag_data()
+
+
+class TestUncleScroogeTags:
+    """SCROOGE_NOT_IN_US must hold no Uncle Scrooge issue, as US or as its Four Color number."""
+
+    @staticmethod
+    def _validate_with(issue_name: Issues, issue_number: int) -> None:
+        title = barks_tags.BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US][0]
+        title_info = list(barks_tags.BARKS_TITLE_INFO)
+        title_info[title] = replace(
+            title_info[title], issue_name=issue_name, issue_number=issue_number
+        )
+        with patch.object(barks_tags, "BARKS_TITLE_INFO", title_info):
+            barks_tags._validate_uncle_scrooge_tags()  # noqa: SLF001
+
+    def test_an_uncle_scrooge_issue_is_refused(self) -> None:
+        with pytest.raises(AssertionError):
+            self._validate_with(Issues.US, 7)
+
+    def test_a_four_color_number_of_uncle_scrooge_is_refused(self) -> None:
+        with pytest.raises(AssertionError):
+            self._validate_with(Issues.FC, 386)
+
+    def test_the_same_number_in_another_series_is_not_uncle_scrooge(self) -> None:
+        self._validate_with(Issues.CS, 386)  # no raise
+
+    def test_another_four_color_number_is_not_uncle_scrooge(self) -> None:
+        self._validate_with(Issues.FC, 387)  # no raise
+
+
+def test_a_firsts_tag_holds_the_first_title_of_its_tag_in_titles_order() -> None:
+    checked = 0
+    for firsts_tag in BARKS_TAG_GROUPS[TagGroups.FIRSTS]:
+        if firsts_tag not in barks_tags.BARKS_FIRSTS_MAP:
+            continue
+        titles = barks_tags.BARKS_TAGGED_TITLES[barks_tags.BARKS_FIRSTS_MAP[firsts_tag]]
+        assert barks_tags.BARKS_TAGGED_TITLES[firsts_tag] == [min(titles)], firsts_tag
+        checked += 1
+    assert checked
