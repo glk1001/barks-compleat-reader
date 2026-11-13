@@ -24,6 +24,10 @@ if TYPE_CHECKING:
     from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
 
+def _nobody_to_tell(_close_message: str) -> None:
+    """Stand in for a caller that did not ask to hear of the popup closing."""
+
+
 class UserErrorHandler:
     def __init__(
         self, reader_settings: ReaderSettings, open_settings_func: Callable[[], None]
@@ -68,7 +72,7 @@ class UserErrorHandler:
         on_popup_closed: Callable[[str], None] | None,
     ) -> None:
         """Show a popup for a settings-related error, offering to open settings."""
-        assert on_popup_closed
+        on_popup_closed = on_popup_closed or _nobody_to_tell
 
         def _on_goto_settings() -> None:
             self._open_settings()
@@ -92,7 +96,7 @@ class UserErrorHandler:
 
         and inform the user they must restart the app after fixing the issue.
         """
-        assert on_popup_closed
+        on_popup_closed = on_popup_closed or _nobody_to_tell
         open_message_popup(
             title=presentation.title,
             text=presentation.text,

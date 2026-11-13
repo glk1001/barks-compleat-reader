@@ -54,3 +54,24 @@ def test_a_fatal_error_closes_and_reports_it(kind: ErrorDialogKind) -> None:
     kwargs["on_cancel"]()
     on_closed.assert_called_once_with("closed msg")
     open_settings.assert_not_called()
+
+
+@pytest.mark.parametrize("kind", [ErrorDialogKind.GOTO_SETTINGS, ErrorDialogKind.FATAL_CONFIG])
+def test_a_caller_that_asks_to_hear_nothing_gets_buttons_that_still_work(
+    kind: ErrorDialogKind,
+) -> None:
+    presentation = ErrorPresentation(kind=kind, title="T", text="x", close_message="closed msg")
+    open_settings = MagicMock()
+    with (
+        patch.object(handler_module, "build_error_presentation", return_value=presentation),
+        patch.object(handler_module, "open_message_popup") as opened,
+    ):
+        UserErrorHandler(MagicMock(), open_settings).handle_error(
+            ErrorTypes.MissingArchiveVolumes, None
+        )
+    kwargs = opened.call_args.kwargs
+
+    kwargs["on_cancel"]()  # must not raise
+    if kind is ErrorDialogKind.GOTO_SETTINGS:
+        kwargs["on_ok"]()
+        open_settings.assert_called_once()
