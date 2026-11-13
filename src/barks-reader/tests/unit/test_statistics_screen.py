@@ -14,7 +14,6 @@ from barks_reader.ui.statistics_screen import (
     StatMenuButton,
 )
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.togglebutton import ToggleButton
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -105,7 +104,8 @@ class TestStatisticsScreen:
         screen.show_stat(png_path)
 
         assert screen.ids.stat_image.source == str(png_path)
-        screen.ids.stat_image.reload.assert_called_once()
+        # Setting the source loads the chart: a reload decoded it a second time.
+        screen.ids.stat_image.reload.assert_not_called()
 
     def test_show_stat_file_does_not_exist(
         self, screen: StatisticsScreen, statistics_dir: Path
@@ -402,13 +402,21 @@ def test_with_the_list_open_the_keys_go_to_it(screen: StatisticsScreen) -> None:
 
 
 class TestStatMenuButton:
-    @pytest.mark.parametrize(("state", "pressed"), [("normal", True), ("down", False)])
-    def test_the_selected_tab_cannot_be_pressed_off(self, state: str, pressed: bool) -> None:
+    def test_the_selected_tab_cannot_be_pressed_off(self) -> None:
         button = StatMenuButton(group="stats-test")
-        button.state = state
-        with patch.object(ToggleButton, "_do_press") as toggle_press:
-            button._do_press()
-        assert toggle_press.called is pressed
+        button.state = "down"
+
+        button._do_press()
+
+        assert button.state == "down"
+
+    def test_a_press_selects_a_tab_and_releases_the_one_that_was(self) -> None:
+        was, pressed = StatMenuButton(group="stats-test-2"), StatMenuButton(group="stats-test-2")
+        was.state = "down"
+
+        pressed._do_press()
+
+        assert (was.state, pressed.state) == ("normal", "down")
 
 
 class TestStatisticsScreenEdges:

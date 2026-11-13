@@ -35,12 +35,11 @@ STATISTICS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class StatMenuButton(ToggleButton):
-    """A tab button for the Statistics action bar."""
+    """A tab button for the Statistics action bar: a press on the active tab leaves it down."""
 
-    def _do_press(self, *args: object) -> None:
-        """Prevent deselecting the active tab by suppressing press when already down."""
-        if self.state == "normal":
-            super()._do_press(*args)
+    def __init__(self, **kwargs: object) -> None:
+        kwargs.setdefault("allow_no_selection", False)
+        super().__init__(**kwargs)
 
 
 class StatisticsScreen(FloatLayout, DropdownNavMixin):
@@ -54,7 +53,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     is_visible = BooleanProperty(defaultvalue=False)
 
-    def __init__(self, statistics_dir: Path, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, statistics_dir: Path, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._statistics_dir = statistics_dir
         self._stat_buttons: list[StatMenuButton] = []
@@ -143,8 +142,9 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         stat_image = self.ids.stat_image
         if png_path.is_file():
             logger.debug(log_markers.STATISTICS_LOADING_IMAGE.format(path=png_path))
+            # The charts are made once, before the app runs: a reload on top of
+            # setting the source decoded each one twice.
             stat_image.source = str(png_path)
-            stat_image.reload()
         else:
             logger.warning(f'Statistics: image not found: "{png_path}".')
             stat_image.source = ""
@@ -177,11 +177,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def enter_nav_focus(self, on_exit_request: Callable) -> None:
         """Enter keyboard navigation mode, focusing the first tab button."""
-        self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
-        self._nav_focused_idx = 0
-        update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
-        logger.debug(log_markers.STATISTICS_ENTERED_NAV)
+        self._take_keys_at_tab(0, on_exit_request)
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clean up all highlights."""
@@ -222,12 +218,15 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
         """
         assert self._word_stat_button is not None
+        self._take_keys_at_tab(self._stat_buttons.index(self._word_stat_button), on_exit_request)
+        self._enter_dropdown_nav()
+
+    def _take_keys_at_tab(self, tab_idx: int, on_exit_request: Callable) -> None:
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
-        self._nav_focused_idx = self._stat_buttons.index(self._word_stat_button)
+        self._nav_focused_idx = tab_idx
         update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
         logger.debug(log_markers.STATISTICS_ENTERED_NAV)
-        self._enter_dropdown_nav()
 
     def _handle_tab_key(self, key: int) -> bool:
         if key == KEY_RIGHT:
