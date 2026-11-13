@@ -153,6 +153,30 @@ class TestSplitLetterTerms:
         assert len(buckets) > 1
         assert max(len(b) for b in buckets) <= PREFERRED_BUCKET_SIZE
 
+    def test_terms_sharing_three_characters_stay_in_one_bucket(self) -> None:
+        """A label shows three characters, so a deeper split could not be told apart."""
+        over = sorted(f"over{a}{b}" for a in "abcdefgh" for b in "abcdefghij")
+        assert len(over) > PREFERRED_BUCKET_SIZE
+        terms = ["oval", *over, "ovum"]
+
+        buckets = split_letter_terms(terms)
+
+        assert [b for b in buckets if b[0].startswith("over")] == [over]
+
+    def test_a_letter_with_too_many_prefixes_is_widened_to_fit_the_bar(self) -> None:
+        # 26 two-character prefixes of 40 terms each: none can merge with a neighbour at
+        # the preferred size, so the target has to grow until the bar holds them.
+        terms = sorted(
+            f"s{a}{b}{c}" for a in string.ascii_lowercase for b in "abcde" for c in "abcdefgh"
+        )
+        max_buckets = 5
+
+        buckets = split_letter_terms(terms, max_buckets)
+
+        assert len(split_letter_terms(terms, len(terms))) > max_buckets  # At 56 a bucket.
+        assert len(buckets) <= max_buckets
+        assert [t for bucket in buckets for t in bucket] == terms
+
     def test_never_exceeds_the_prefix_bar_capacity(self) -> None:
         terms = [f"s{a}{b}{c}" for a in "abcde" for b in string.ascii_lowercase for c in "xyz"]
         buckets = split_letter_terms(sorted(terms))
@@ -197,6 +221,16 @@ class TestSplitAlphaTerms:
 
     def test_empty_input_gives_empty_split(self) -> None:
         assert split_alpha_terms([]) == {}
+
+    def test_no_two_buckets_of_a_letter_share_a_label(self) -> None:
+        """Regression: two "over..." buckets both read "ove" and were merged into one."""
+        over = sorted(f"over{a}{b}" for a in "abcdefgh" for b in "abcdefghij")
+        terms = sorted(["oak", "oval", "oven", *over, "ovum", "owl"])
+
+        split = split_alpha_terms(terms)
+
+        assert split["o"]["ove"] == ["oven", *over]
+        assert list(split["o"].values()) == split_letter_terms(terms)
 
     def test_all_buckets_stay_within_the_bar_capacity(self) -> None:
         terms = sorted(

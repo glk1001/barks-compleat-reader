@@ -13,8 +13,13 @@ Two constraints shape the algorithm:
 
 Bucketing purely by two-character prefix cannot satisfy either one: "co" alone holds
 several hundred terms and can never be made smaller, while "bc" holds one. So an
-oversized group is re-bucketed on a longer prefix until it fits, and undersized
-neighbors are merged back up to the target.
+oversized group is re-bucketed on a three-character prefix, and undersized neighbors
+are merged back up to the target.
+
+A button's label shows three characters at most, so that is as deep as the split
+goes: two buckets cut from the words starting "over" would both read "ove". Terms
+sharing those three characters stay in one bucket, which may then be larger than the
+preferred size.
 
 Pure and Whoosh-free, so it can be tested without an index.
 """
@@ -37,12 +42,13 @@ PREFERRED_BUCKET_SIZE = 56
 # whose terms will not fit in this many buckets gets proportionally larger buckets.
 MAX_PREFIX_BUTTONS_PER_LETTER = 20
 
-# Terms are bucketed on a two-character prefix, lengthened while a bucket is too big.
-_MIN_PREFIX_LEN = 2
-_MAX_PREFIX_LEN = 16
-
 # Longest prefix shown on a button; the bar's columns are narrow.
 _MAX_LABEL_PART_LEN = 3
+
+# Terms are bucketed on a two-character prefix, lengthened while a bucket is too big,
+# but never past what a label can show: deeper buckets could not be told apart.
+_MIN_PREFIX_LEN = 2
+_MAX_PREFIX_LEN = _MAX_LABEL_PART_LEN
 
 # Digits all collapse into a single "0" letter group.
 _DIGIT_GROUP_KEY = "0"
@@ -103,7 +109,7 @@ def _bucket_by_prefix(terms: list[str], prefix_len: int) -> list[list[str]]:
 
 
 def _split_to_fit(terms: list[str], target: int, prefix_len: int) -> list[list[str]]:
-    """Recursively lengthen the prefix until every bucket is within ``target``."""
+    """Lengthen the prefix, as far as a label can show, while a bucket is over ``target``."""
     if len(terms) <= target or prefix_len > _MAX_PREFIX_LEN:
         return [terms]
 
@@ -111,7 +117,7 @@ def _split_to_fit(terms: list[str], target: int, prefix_len: int) -> list[list[s
     if len(buckets) == 1:
         # Every term shares this prefix -- "co" holds hundreds of them. A longer
         # prefix may still separate them, so deepen rather than give up. The
-        # prefix-length ceiling terminates the recursion on genuine duplicates.
+        # prefix-length ceiling ends the recursion.
         return _split_to_fit(terms, target, prefix_len + 1)
 
     split: list[list[str]] = []
@@ -249,8 +255,9 @@ def split_alpha_terms(
         labelled: dict[str, list[str]] = OrderedDict()
         for bucket in buckets:
             label = bucket_label(bucket)
-            # Two buckets can only collide on a label if one spans a sub-range of the
-            # other; merging keeps the guarantee that no term is ever dropped.
+            # The split stops at the label's length, so two buckets rarely share a
+            # label: it takes ends that differ only in trimmed punctuation or in a
+            # collation the prefix does not follow. Merging then keeps every term.
             labelled.setdefault(label, []).extend(bucket)
         split[letter] = labelled
     return split
