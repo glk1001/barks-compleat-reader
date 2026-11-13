@@ -427,6 +427,34 @@ class TestWikiReaderScreenKeyBinding:
         mock_window_manager.goto_windowed_mode.assert_not_called()
 
 
+class TestGotoTitleAction:
+    PAGE = Path("/bundle/stories/attic-antics.md")
+
+    def test_a_story_page_offers_goto_title_and_running_it_goes_there(self) -> None:
+        goto_title = MagicMock()
+        icon = Path("/icons/goto.png")
+        provider = wiki_reader._GotoTitleActionProvider(goto_title, icon)
+        frontmatter = {"title": "Attic Antics"}
+
+        with patch.object(
+            wiki_reader, "tree_navigable_title", return_value=Titles.ATTIC_ANTICS
+        ) as gate:
+            action = provider.action_for(frontmatter, self.PAGE)
+
+        gate.assert_called_once_with(frontmatter, self.PAGE)
+        assert action is not None
+        assert (action.label, action.icon_path) == ("Goto Title", icon)
+        goto_title.assert_not_called()
+        action.run()
+        goto_title.assert_called_once_with(Titles.ATTIC_ANTICS)
+
+    def test_a_page_with_no_place_in_the_tree_offers_nothing(self) -> None:
+        provider = wiki_reader._GotoTitleActionProvider(MagicMock())
+
+        with patch.object(wiki_reader, "tree_navigable_title", return_value=None):
+            assert provider.action_for({}, self.PAGE) is None
+
+
 class TestWikiReaderScreenBuildViewer:
     BUNDLE = Path("/bundle")
 

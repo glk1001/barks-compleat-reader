@@ -263,14 +263,13 @@ class WikiReaderScreen(ReaderScreen):
             logger.debug(
                 log_markers.WIKI_STRIP.format(size=tuple(self.size), layout=self.layout_mode)
             )
-            self._viewer.size_hint = (1, 1)
-            self._viewer.pos_hint = {}
         else:
             # Fill the manager again (clearing any strip shape from a prior open).
             self.size_hint = (1, 1)
             self.pos_hint = {}
-            self._viewer.size_hint = (1, 1)
-            self._viewer.pos_hint = {}
+        # The viewer fills this screen, whichever shape it has.
+        self._viewer.size_hint = (1, 1)
+        self._viewer.pos_hint = {}
 
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
