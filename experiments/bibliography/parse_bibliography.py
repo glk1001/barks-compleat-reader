@@ -1396,6 +1396,8 @@ def emit_module(series_list: list[BibSeries]) -> None:
     ART_AND_REWRITING_OF_SCRIPT = auto()''',
         '''@dataclass(frozen=True)
 class BibEntry:
+    """One piece of work the bibliography lists under an issue, and the title it is matched to."""
+
     raw_title: str
     page_count: str
     qualifier: Qualifier | None
@@ -1420,8 +1422,10 @@ class BibEntry:
     def effective_qualifier(self) -> Qualifier | None:
         """Barks's role: the correction when there is one, else Barrier's mark."""
         return self.corrected_qualifier if self.correction_note is not None else self.qualifier''',
-        """@dataclass(frozen=True)
+        '''@dataclass(frozen=True)
 class BibIssue:
+    """One issue of a series in the bibliography, with the entries listed under it."""
+
     raw_issue_id: str
     issue_name: Issues | None
     issue_number: int
@@ -1431,13 +1435,15 @@ class BibIssue:
     official_title: str | None
     raw_date: str
     entries: tuple[BibEntry, ...]
-    notes: tuple[str, ...]""",
-        """@dataclass(frozen=True)
+    notes: tuple[str, ...]''',
+        '''@dataclass(frozen=True)
 class BibSeries:
+    """One series in the bibliography, with its issues in order."""
+
     h1_name: str
     issue_name: Issues | None
     notes: tuple[str, ...]
-    issues: tuple[BibIssue, ...]""",
+    issues: tuple[BibIssue, ...]''',
     ):
         w(cls)
         w("")

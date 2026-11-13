@@ -130,6 +130,8 @@ _FIXES_SPECIAL_CASES_ADDED: frozenset[tuple[int, str]] = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class ComicBookDirs:
+    """The directories of a comic's Fantagraphics volume, one for each kind of file."""
+
     srce_dir: Path
     srce_upscayled_dir: Path
     srce_restored_dir: Path
@@ -144,11 +146,19 @@ class ComicBookDirs:
 
 
 class FixesType(Enum):
+    """Which tree a fixes file stands in for: the original scans or the upscayled ones."""
+
     ORIGINAL = auto()
     UPSCAYLED = auto()
 
 
 class ModifiedType(Enum):
+    """How a page's file relates to the volume's own scan.
+
+    ORIGINAL is the scan itself, MODIFIED a fixes file that replaces a scan, and ADDED a
+    fixes file for a page the volume has no scan of.
+    """
+
     ORIGINAL = auto()
     MODIFIED = auto()
     ADDED = auto()
@@ -156,6 +166,13 @@ class ModifiedType(Enum):
 
 @dataclass(frozen=True, slots=True)
 class ComicBook:
+    """One story as it is built into a comic: its ini settings, its pages and where its files are.
+
+    Made by `ComicsDatabase.get_comic_book` from the story's ini file. The ``srce``
+    methods name files in the story's Fantagraphics volume; the ``dest`` methods name what
+    the build writes.
+    """
+
     ini_file: Path
     title: str
     title_font_file: Path
@@ -186,18 +203,22 @@ class ComicBook:
     # TODO(glk): Eventually just use fanta_info.comic_book_info.chronological_number
     @property
     def chronological_number(self) -> int:
+        """The story's place in the Fantagraphics chronological order, counted from 1."""
         return self.fanta_info.fanta_chronological_number
 
     @property
     def submitted_year(self) -> int:
+        """The year Barks submitted the story."""
         return self.fanta_info.comic_book_info.submitted_year
 
     @property
     def series_name(self) -> str:
+        """The name of the series the built comic is filed under."""
         return self.fanta_info.series_name
 
     @property
     def number_in_series(self) -> int:
+        """The story's place in its series, counted from 1."""
         return self.fanta_info.number_in_series
 
     def __post_init__(self) -> None:  # noqa: D105
@@ -211,9 +232,11 @@ class ComicBook:
             )
 
     def is_barks_title(self) -> bool:
+        """Return whether Barks named the story himself."""
         return self.fanta_info.comic_book_info.is_barks_title
 
     def get_fanta_volume(self) -> int:
+        """Return the number of the Fantagraphics volume the story is in."""
         return self.fanta_book.volume
 
     @staticmethod
@@ -221,48 +244,67 @@ class ComicBook:
         return dirpath / IMAGES_SUBDIR
 
     def get_srce_image_dir(self) -> Path:
+        """Return the directory of the volume's original scans."""
         return self._get_image_subdir(self.dirs.srce_dir)
 
     def get_srce_upscayled_image_dir(self) -> Path:
+        """Return the directory of the volume's upscayled pages."""
         return self._get_image_subdir(self.dirs.srce_upscayled_dir)
 
     def get_srce_restored_image_dir(self) -> Path:
+        """Return the directory of the volume's restored pages."""
         return self._get_image_subdir(self.dirs.srce_restored_dir)
 
     def get_srce_restored_upscayled_image_dir(self) -> Path:
+        """Return the directory of the volume's restored, upscayled pages."""
         return self._get_image_subdir(self.dirs.srce_restored_upscayled_dir)
 
     def get_srce_restored_svg_image_dir(self) -> Path:
+        """Return the directory of the volume's restored pages as SVG."""
         return self._get_image_subdir(self.dirs.srce_restored_svg_dir)
 
     def get_srce_original_fixes_image_dir(self) -> Path:
+        """Return the directory of the volume's fixes to its original scans."""
         return self._get_image_subdir(self.dirs.srce_fixes_dir)
 
     def get_srce_upscayled_fixes_image_dir(self) -> Path:
+        """Return the directory of the volume's fixes to its upscayled pages."""
         return self._get_image_subdir(self.dirs.srce_upscayled_fixes_dir)
 
     def get_srce_original_fixes_bounded_dir(self) -> Path:
+        """Return the directory of fixes pages with their panel bounds drawn on."""
         return self.get_srce_original_fixes_image_dir() / BOUNDED_SUBDIR
 
     def get_srce_original_story_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the original scan of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self.get_srce_original_story_file)
 
     def get_srce_upscayled_story_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the upscayled file of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self.get_srce_upscayled_story_file)
 
     def get_srce_restored_story_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the restored file of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self._get_srce_restored_story_file)
 
     def get_srce_restored_upscayled_story_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the restored, upscayled file of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self.get_srce_restored_upscayled_story_file)
 
     def get_srce_restored_svg_story_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the restored SVG file of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self.get_srce_restored_svg_story_file)
 
     def get_srce_restored_ocr_raw_story_files(
         self,
         page_types: list[PageType],
     ) -> list[tuple[Path, Path]]:
+        """Return the raw OCR files of each of the story's pages of the given types.
+
+        Returns:
+            For each page, its EasyOCR file and its PaddleOCR file.
+
+        """
         return [
             self._get_srce_restored_ocr_raw_story_file(page.page_filenames)
             for page in self.page_images_in_order
@@ -270,24 +312,54 @@ class ComicBook:
         ]
 
     def get_srce_panel_segments_files(self, page_types: list[PageType]) -> list[Path]:
+        """Return the panel segments file of each of the story's pages of the given types."""
         return self._get_story_files(page_types, self.get_srce_panel_segments_file)
 
     def get_final_srce_original_story_files(
         self,
         page_types: list[PageType],
     ) -> list[tuple[Path, ModifiedType]]:
+        """Return the original-size file to use for each of the story's pages of the given types.
+
+        Returns:
+            For each page, the file, a fix where there is one, and how it relates to the scan.
+
+        Raises:
+            RuntimeError: If a page's fixes file is not allowed for its page type.
+
+        """
         return self._get_story_files_with_mods(page_types, self.get_final_srce_original_story_file)
 
     def get_final_srce_upscayled_story_files(
         self,
         page_types: list[PageType],
     ) -> list[tuple[Path, ModifiedType]]:
+        """Return the upscayled file to use for each of the story's pages of the given types.
+
+        Returns:
+            For each page, the file, a fix where there is one, and how it relates to the scan.
+
+        Raises:
+            RuntimeError: If a page has a ".jpg" upscayled fix, both an upscayled file and a fix,
+                or a fixes file not allowed for its page type.
+
+        """
         return self._get_story_files_with_mods(page_types, self.get_final_srce_upscayled_story_file)
 
     def get_final_srce_story_files(
         self,
         page_types: list[PageType],
     ) -> list[tuple[Path, ModifiedType]]:
+        """Return the file the build uses for each of the story's pages of the given types.
+
+        Returns:
+            For each page, the file and how it relates to the scan.
+
+        Raises:
+            FileNotFoundError: If a page has no file to build from.
+            RuntimeError: If a restored page is a ".jpg", or a fixes file is not allowed.
+
+        """
         return self._get_story_files_with_mods(page_types, self.get_final_srce_story_file)
 
     def _get_story_files(
@@ -313,21 +385,26 @@ class ComicBook:
         ]
 
     def get_srce_original_story_file(self, page_num: str) -> Path:
+        """Return the original scan of a page: "227.jpg" in the scans directory."""
         return self.get_srce_image_dir() / (page_num + JPG_FILE_EXT)
 
     def get_srce_upscayled_story_file(self, page_num: str) -> Path:
+        """Return the upscayled file of a page, a .png."""
         return self.get_srce_upscayled_image_dir() / (page_num + PNG_FILE_EXT)
 
     def _get_srce_restored_story_file(self, page_num: str) -> Path:
         return self.get_srce_restored_image_dir() / (page_num + PNG_FILE_EXT)
 
     def get_srce_restored_upscayled_story_file(self, page_num: str) -> Path:
+        """Return the restored, upscayled file of a page, a .png."""
         return self.get_srce_restored_upscayled_image_dir() / (page_num + PNG_FILE_EXT)
 
     def get_srce_restored_svg_story_file(self, page_num: str) -> Path:
+        """Return the restored SVG file of a page."""
         return self.get_srce_restored_svg_image_dir() / (page_num + SVG_FILE_EXT)
 
     def get_srce_restored_svg_png_story_file(self, page_num: str) -> Path:
+        """Return the .png made from a page's restored SVG: "227.svg.png"."""
         return self.get_srce_restored_svg_image_dir() / (page_num + SVG_FILE_EXT + PNG_FILE_EXT)
 
     def _get_srce_restored_ocr_raw_story_file(self, page_num: str) -> tuple[Path, Path]:
@@ -336,24 +413,37 @@ class ComicBook:
         ), self.dirs.srce_restored_ocr_raw_dir / (page_num + ".paddleocr" + JSON_FILE_EXT)
 
     def get_ocr_prelim_groups_json_file(self, page_num: str, ocr_type: str) -> Path:
+        """Return the preliminary OCR groups file of a page, for one OCR engine."""
         return self.dirs.srce_restored_ocr_prelim_dir / get_ocr_prelim_groups_json_filename(
             page_num, ocr_type
         )
 
     def get_ocr_prelim_annotated_file(self, page_num: str, ocr_type: str) -> Path:
+        """Return the image of a page with its preliminary OCR groups drawn on, for one engine."""
         return self.dirs.srce_restored_ocr_annotations_dir / get_ocr_prelim_annotated_filename(
             page_num, ocr_type
         )
 
     def get_ocr_boxes_annotated_file(self, page_num: str, ocr_type: str) -> Path:
+        """Return the image of a page with its OCR boxes drawn on, for one OCR engine."""
         return self.dirs.srce_restored_ocr_annotations_dir / get_ocr_boxes_annotated_filename(
             page_num, ocr_type
         )
 
     def get_srce_panel_segments_file(self, page_num: str) -> Path:
+        """Return the panel segments file of a page, a .json."""
         return self.dirs.panel_segments_dir / (page_num + JSON_FILE_EXT)
 
     def get_srce_original_fixes_story_file(self, page_num: str) -> Path:
+        """Return the fix to a page's original scan.
+
+        Returns:
+            The .jpg fix if there is one, else the .png, whether or not that exists.
+
+        Raises:
+            RuntimeError: If the page has both a .jpg and a .png fix.
+
+        """
         jpg_fixes_file = self.get_srce_original_fixes_image_dir() / (page_num + JPG_FILE_EXT)
         png_fixes_file = self.get_srce_original_fixes_image_dir() / (page_num + PNG_FILE_EXT)
         if jpg_fixes_file.is_file() and png_fixes_file.is_file():
@@ -366,6 +456,7 @@ class ComicBook:
         return png_fixes_file
 
     def get_srce_upscayled_fixes_story_file(self, page_num: str) -> Path:
+        """Return the fix to a page's upscayled file, a .png."""
         return self.get_srce_upscayled_fixes_image_dir() / (page_num + PNG_FILE_EXT)
 
     def get_final_srce_original_story_file(
@@ -373,6 +464,19 @@ class ComicBook:
         page_num: str,
         page_type: PageType,
     ) -> tuple[Path, ModifiedType]:
+        """Return the original-size file to use for a page: its fix if it has one, else its scan.
+
+        Args:
+            page_num: The page, as it appears in a filename ("227").
+            page_type: The page's type, which decides whether a fix is allowed.
+
+        Returns:
+            The file and how it relates to the scan.
+
+        Raises:
+            RuntimeError: If the fixes file is not allowed for the page type.
+
+        """
         srce_file = self.get_srce_original_story_file(page_num)
         srce_fixes_file = self.get_srce_original_fixes_story_file(page_num)
 
@@ -389,6 +493,20 @@ class ComicBook:
         page_num: str,
         page_type: PageType,
     ) -> tuple[Path, ModifiedType]:
+        """Return the upscayled file to use for a page: its upscayled fix if it has one.
+
+        Args:
+            page_num: The page, as it appears in a filename ("227").
+            page_type: The page's type, which decides whether a fix is allowed.
+
+        Returns:
+            The file and how it relates to the scan.
+
+        Raises:
+            RuntimeError: If the page has a ".jpg" upscayled fix, both an upscayled file and a
+                fix, or a fixes file not allowed for the page type.
+
+        """
         srce_file = self.get_srce_original_story_file(page_num)
         srce_upscayled_fixes_file_jpg = self.get_srce_upscayled_fixes_image_dir() / (
             page_num + JPG_FILE_EXT
@@ -423,6 +541,24 @@ class ComicBook:
         page_num: str,
         page_type: PageType,
     ) -> tuple[Path, ModifiedType]:
+        """Return the file the build uses for a page.
+
+        A page of a restorable type comes from the restored tree, unless the whole title was
+        restored by hand; any other page is its fix or its original scan. A title page and a
+        blank page have no file and are named by a placeholder.
+
+        Args:
+            page_num: The page, as it appears in a filename ("227").
+            page_type: The page's type.
+
+        Returns:
+            The file and how it relates to the scan.
+
+        Raises:
+            FileNotFoundError: If the page has no file to build from.
+            RuntimeError: If the restored page is a ".jpg", or a fixes file is not allowed.
+
+        """
         if page_type == PageType.TITLE:
             return Path("TITLE PAGE"), ModifiedType.ORIGINAL
         if page_type == PageType.BLANK_PAGE:
@@ -519,10 +655,12 @@ class ComicBook:
 
     @staticmethod
     def is_fixes_special_case(volume: int, page_num: str) -> bool:
+        """Return whether an edited fixes page may be of a non-story page type."""
         return (volume, page_num) in _FIXES_SPECIAL_CASES
 
     @staticmethod
     def is_fixes_special_case_added(volume: int, page_num: str) -> bool:
+        """Return whether an added fixes page may be of a story page type."""
         return (volume, page_num) in _FIXES_SPECIAL_CASES_ADDED
 
     def is_hand_restored(self, page_num: str) -> bool:
@@ -571,6 +709,11 @@ class ComicBook:
         return False
 
     def get_story_file_sources(self, page_num: str) -> list[Path]:
+        """Return the files a page could be built from that exist, best first.
+
+        The restored file, then the upscayled fix or else the upscayled file, then the
+        original fix or else the original scan.
+        """
         srce_restored_file = self._get_srce_restored_story_file(page_num)
         srce_upscayled_file = self.get_srce_upscayled_story_file(page_num)
         srce_upscayled_fixes_file = self.get_srce_upscayled_fixes_story_file(page_num)
@@ -595,6 +738,7 @@ class ComicBook:
         return sources
 
     def get_final_fixes_panel_bounds_file(self, page_num: int) -> Path | None:
+        """Return a fixes page's image with its panel bounds drawn on, or None if there is none."""
         panels_bounds_file = self.get_srce_original_fixes_bounded_dir() / (
             get_page_str(page_num) + JPG_FILE_EXT
         )
@@ -621,54 +765,68 @@ class ComicBook:
     # TODO: Should dest stuff be elsewhere??
     @staticmethod
     def get_dest_root_dir() -> Path:
+        """Return the directory that holds every built comic's own directory."""
         return THE_CHRONOLOGICAL_DIRS_DIR
 
     def get_dest_dir(self) -> Path:
+        """Return the built comic's directory."""
         return self.get_dest_root_dir() / self.get_dest_rel_dirname()
 
     def get_dest_rel_dirname(self) -> str:
+        """Return the name of the built comic's directory: "042 Lost in the Andes!"."""
         return get_dest_comic_dirname(
             _get_lookup_title(self.title, self.get_ini_title()),
             self.chronological_number,
         )
 
     def get_series_comic_title(self) -> str:
+        """Return the comic's series and its number in it: "Donald Duck Adventures 7"."""
         return f"{self.series_name} {self.number_in_series}"
 
     def get_dest_image_dir(self) -> Path:
+        """Return the directory of the built comic's page images."""
         return self.get_dest_dir() / IMAGES_SUBDIR
 
     @staticmethod
     def get_dest_zip_root_dir() -> Path:
+        """Return the directory that holds every built comic's zip."""
         return THE_CHRONOLOGICAL_DIR
 
     def get_dest_series_zip_symlink_dir(self) -> Path:
+        """Return the directory of links to the zips of this comic's series."""
         return THE_COMICS_DIR / self.series_name
 
     def get_dest_year_zip_symlink_dir(self) -> Path:
+        """Return the directory of links to the zips of this comic's submission year."""
         return THE_YEARS_COMICS_DIR / str(self.submitted_year)
 
     def get_dest_comic_zip_filename(self) -> str:
+        """Return the name of the built comic's zip: "042 Title [FC 223].cbz"."""
         return f"{self.get_title_with_issue_num()}{CBZ_FILE_EXT}"
 
     def get_dest_comic_zip(self) -> Path:
+        """Return the built comic's zip."""
         return self.get_dest_zip_root_dir() / self.get_dest_comic_zip_filename()
 
     def get_dest_series_comic_zip_symlink_filename(self) -> str:
+        """Return the name of the series link to the zip, numbered by place in the series."""
         file_title = get_safe_file_title(_get_lookup_title(self.title, self.get_ini_title()))
         full_title = f"{file_title} [{self.get_comic_issue_title()}]"
         return f"{self.number_in_series:03d} {full_title}{CBZ_FILE_EXT}"
 
     def get_dest_series_comic_zip_symlink(self) -> Path:
+        """Return the link to the zip in its series directory."""
         return (
             self.get_dest_series_zip_symlink_dir()
             / self.get_dest_series_comic_zip_symlink_filename()
         )
 
     def get_dest_year_comic_zip_symlink(self) -> Path:
+        """Return the link to the zip in its submission year's directory."""
         return self.get_dest_year_zip_symlink_dir() / self.get_dest_comic_zip_filename()
 
     def get_ini_title(self) -> str:
+        """Return the name of the story's ini file, less its extension."""
         return Path(self.ini_file).stem
 
     def get_title_str(self) -> str:
@@ -681,9 +839,15 @@ class ComicBook:
         return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)
 
     def get_title_enum(self) -> Titles:
+        """Return the story's `Titles` member."""
         return STR_TITLE_TO_ENUM[self.get_title_str()]
 
     def get_comic_title(self) -> str:
+        """Return the title lettered on the comic's title page.
+
+        The ini file's title; else its issue title; else the issue the story came out in,
+        over several lines.
+        """
         if self.title != "":
             return self.title
         if self.issue_title != "":
@@ -692,9 +856,11 @@ class ComicBook:
         return self.fanta_info.comic_book_info.get_formatted_title_from_issue_name()
 
     def get_comic_issue_title(self) -> str:
+        """Return the issue the story came out in, in short: "FC 223"."""
         return self.fanta_info.get_short_issue_title()
 
     def get_title_with_issue_num(self) -> str:
+        """Return the built comic's name: "042 Title [FC 223]"."""
         return get_dest_comic_zip_file_stem(
             _get_lookup_title(self.title, self.get_ini_title()),
             self.chronological_number,
@@ -702,6 +868,7 @@ class ComicBook:
         )
 
     def get_metadata_filepath(self) -> Path:
+        """Return the metadata file the build writes into the comic's directory."""
         return self.get_dest_dir() / JSON_METADATA_FILENAME
 
 
@@ -718,6 +885,20 @@ def get_main_publication_info(
     fanta_info: FantaComicBookInfo,
     fanta_book: FantaBook,
 ) -> str:
+    """Return the publication lines for a comic's title page.
+
+    Where and when the story first came out, when Barks submitted it, and the
+    Fantagraphics edition and colorist. The two stories Western rejected say so instead.
+
+    Args:
+        file_title: The story's title.
+        fanta_info: The story's Fantagraphics info.
+        fanta_book: The volume the story is in.
+
+    Returns:
+        The lines, separated by newlines.
+
+    """
     first_published = get_formatted_first_published_str(fanta_info.comic_book_info)
     submitted_date = get_formatted_submitted_date(fanta_info.comic_book_info)
 
@@ -776,14 +957,17 @@ def _get_pages_in_order(config_pages: list[OriginalPage]) -> list[OriginalPage]:
 
 
 def get_page_str(page_num: int) -> str:
+    """Return a page number as it appears in a filename: 7 gives "007"."""
     return f"{page_num:03d}"
 
 
 def get_page_num_str(filename: Path) -> str:
+    """Return the page a file is for: its name, less its extension."""
     return filename.stem
 
 
 def get_story_files(image_dir: Path, comic: ComicBook, file_ext: str) -> list[Path]:
+    """Return the file in a directory for each of a comic's story pages."""
     return get_story_files_of_page_type(image_dir, comic, file_ext, STORY_PAGE_TYPES)
 
 
@@ -793,6 +977,18 @@ def get_story_files_of_page_type(
     file_ext: str,
     page_types: list[PageType],
 ) -> list[Path]:
+    """Return the file in a directory for each of a comic's pages of the given types.
+
+    Args:
+        image_dir: The directory the files are in.
+        comic: The comic.
+        file_ext: The files' extension, with its dot.
+        page_types: The page types wanted.
+
+    Returns:
+        The files, in page order, whether or not they exist.
+
+    """
     return [
         image_dir / (page.page_filenames + file_ext)
         for page in comic.page_images_in_order
@@ -801,32 +997,39 @@ def get_story_files_of_page_type(
 
 
 def get_abbrev_jpg_page_list(comic: ComicBook) -> list[str]:
+    """Return a comic's story pages as its ini file lists them, ranges kept: "10-13"."""
     return get_abbrev_jpg_page_of_type_list(comic, STORY_PAGE_TYPES)
 
 
 def get_abbrev_jpg_page_of_type_list(comic: ComicBook, page_types: list[PageType]) -> list[str]:
+    """Return a comic's pages of the given types as its ini file lists them, ranges kept."""
     return [
         page.page_filenames for page in comic.config_page_images if page.page_type in page_types
     ]
 
 
 def get_jpg_page_list(comic: ComicBook) -> list[str]:
+    """Return the page name of each of a comic's story pages, in order."""
     return get_jpg_page_of_type_list(comic, STORY_PAGE_TYPES)
 
 
 def get_jpg_page_of_type_list(comic: ComicBook, page_types: list[PageType]) -> list[str]:
+    """Return the page name of each of a comic's pages of the given types, in order."""
     return [
         page.page_filenames for page in comic.page_images_in_order if page.page_type in page_types
     ]
 
 
 def get_has_front(comic: ComicBook) -> bool:
+    """Return whether a comic's first page is a front page."""
     return comic.page_images_in_order[0].page_type == PageType.FRONT
 
 
 def get_num_splashes(comic: ComicBook) -> int:
+    """Return how many splash pages a comic has."""
     return len(get_jpg_page_of_type_list(comic, [PageType.SPLASH]))
 
 
 def get_total_num_pages(comic: ComicBook) -> int:
+    """Return how many pages a comic has."""
     return len(comic.page_images_in_order)

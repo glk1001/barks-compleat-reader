@@ -17,6 +17,13 @@ US_ISSUE_AS_FC_ISSUE: dict[int, int] = {
 
 @verify(CONTINUOUS, UNIQUE)
 class Titles(IntEnum):
+    """Every title in the library, in chronological order.
+
+    The order is the stories' submission order, then the covers, the two collections and
+    the articles. A member's value is its place in that order, and its index into
+    `ENUM_TO_STR_TITLE` and `BARKS_TITLE_INFO`.
+    """
+
     DONALD_DUCK_FINDS_PIRATE_GOLD = 0
     VICTORY_GARDEN_THE = auto()
     RABBITS_FOOT_THE = auto()

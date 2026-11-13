@@ -71,12 +71,25 @@ from .page_classes import OriginalPage
 
 
 class TitleNotFoundError(Exception):
+    """A title that is not a known story; ``title`` holds the title asked for."""
+
     def __init__(self, msg: str, title: str) -> None:
         super().__init__(msg)
         self.title = title
 
 
 class ComicsDatabase:
+    """The stories that have an ini file, and where each Fantagraphics volume's files are.
+
+    Looks a story up by its title or by an issue holding one story, builds its
+    `ComicBook` from its ini file, and names the directories of each kind of file under
+    the Barks root: the original scans, the upscayled and restored pages, the fixes, the
+    OCR and the panel segments.
+
+    Made with ``for_building_comics`` (the default), each `ComicBook` it builds is also
+    checked to be fit for building; a reader of comics already built passes False.
+    """
+
     def __init__(self, for_building_comics: bool = True) -> None:
         self._database_dir = INTERNAL_DATA_DIR
         self._for_building_comics = for_building_comics
@@ -90,6 +103,13 @@ class ComicsDatabase:
         self._inset_ext = PNG_FILE_EXT
 
     def set_inset_info(self, inset_dir: Path, inset_ext: str) -> None:
+        """Set where a comic's title-page inset comes from.
+
+        Args:
+            inset_dir: The directory holding one inset per story; it must exist.
+            inset_ext: The insets' extension, ".jpg" or ".png".
+
+        """
         self._inset_dir = inset_dir
         self._inset_ext = inset_ext
         assert self._inset_dir.is_dir()
@@ -108,6 +128,7 @@ class ComicsDatabase:
         return all_issues
 
     def get_comics_database_dir(self) -> Path:
+        """Return the directory holding the database's own data files."""
         return self._database_dir
 
     def get_ini_filenames(self) -> list[str]:
@@ -115,15 +136,19 @@ class ComicsDatabase:
         return list(self._ini_files)
 
     def get_story_titles_dir(self) -> Path:
+        """Return the directory holding the stories' ini files."""
         return self._story_titles_dir
 
     def get_ini_file(self, story_title: str) -> Path:
+        """Return a story's ini file, whether or not it exists."""
         return self._story_titles_dir / get_filename_from_title_str(story_title, ".ini")
 
     def get_fanta_volume(self, story_title: str) -> str:
+        """Return the key of the Fantagraphics volume a title is in: "FANTA_07"."""
         return self._all_comic_book_info[STR_TITLE_TO_ENUM[story_title]].fantagraphics_volume
 
     def get_fanta_volume_int(self, story_title: str) -> int:
+        """Return the number of the Fantagraphics volume a title is in."""
         return get_fanta_volume_from_str(self.get_fanta_volume(story_title))
 
     def get_fanta_volume_int_for(self, title: Titles) -> int:
@@ -142,6 +167,12 @@ class ComicsDatabase:
         return get_fanta_volume_from_str(self._all_comic_book_info[title].fantagraphics_volume)
 
     def is_story_title(self, title: str) -> tuple[bool, str]:
+        """Return whether a title is a story with an ini file.
+
+        Returns:
+            Whether it is, and, if not, the closest story title, or "" if none is close.
+
+        """
         if title in self._story_titles:
             return True, ""
 
@@ -150,6 +181,16 @@ class ComicsDatabase:
         return False, close_str
 
     def get_story_title_from_issue(self, issue_title: str) -> tuple[bool, list[str], str]:
+        """Return the stories that came out in an issue.
+
+        Args:
+            issue_title: The issue in short, in any case: "FC 223", "us 4".
+
+        Returns:
+            Whether the issue is known; its story titles; and, if it is not known, the
+            closest issue, or "" if none is close.
+
+        """
         issue_title = issue_title.upper()
         if issue_title in self._issue_titles:
             return True, self._issue_titles[issue_title], ""
@@ -159,12 +200,19 @@ class ComicsDatabase:
         return False, [], close_str
 
     def get_all_story_titles(self) -> list[str]:
+        """Return the title of every story with an ini file, sorted."""
         return sorted(self._story_titles)
 
     def get_all_titles_in_fantagraphics_volumes(
         self,
         volume_nums: list[int],
     ) -> list[tuple[str, FantaComicBookInfo]]:
+        """Return every title in the given volumes, with or without an ini file.
+
+        Returns:
+            ``(title, info)`` pairs, sorted by title.
+
+        """
         story_titles = []
         for volume_num in volume_nums:
             fanta_key = get_fanta_volume_str(volume_num)
@@ -179,6 +227,16 @@ class ComicsDatabase:
         volume_nums: list[int],
         exclude_non_comics: bool = False,
     ) -> list[tuple[str, FantaComicBookInfo]]:
+        """Return the titles in the given volumes that have an ini file.
+
+        Args:
+            volume_nums: The Fantagraphics volumes.
+            exclude_non_comics: Whether to leave the volumes' articles out.
+
+        Returns:
+            ``(title, info)`` pairs, sorted by title.
+
+        """
         story_titles = []
 
         for volume in volume_nums:
@@ -193,6 +251,16 @@ class ComicsDatabase:
         volume: int,
         exclude_non_comics: bool = False,
     ) -> list[tuple[str, FantaComicBookInfo]]:
+        """Return the titles in a volume that have an ini file.
+
+        Args:
+            volume: The Fantagraphics volume.
+            exclude_non_comics: Whether to leave the volume's articles out.
+
+        Returns:
+            ``(title, info)`` pairs, sorted by title.
+
+        """
         story_titles = []
         fanta_key = get_fanta_volume_str(volume)
         for file in self._ini_files:
@@ -224,10 +292,12 @@ class ComicsDatabase:
     #     title         = "Carl Barks Vol. 2 - Donald Duck - Frozen Gold"
     @staticmethod
     def get_fantagraphics_volume_title(volume_num: int) -> str:
+        """Return a volume's title, which is also the name of its directories."""
         return get_fanta_title_for_volume(volume_num)
 
     @staticmethod
     def get_num_pages_in_fantagraphics_volume(volume_num: int) -> int:
+        """Return how many scan pages a volume has."""
         return FANTA_SOURCE_COMICS[get_fanta_volume_str(volume_num)].num_pages
 
     def _get_comic_book_dirs(self, fanta_book: FantaBook) -> ComicBookDirs:
@@ -257,6 +327,7 @@ class ComicsDatabase:
 
     @staticmethod
     def get_root_dir(fanta_subdir: str) -> Path:
+        """Return a directory of the Barks root, by name."""
         return BARKS_ROOT_DIR / fanta_subdir
 
     def _fanta_volume_dir(self, dirname: str, volume_num: int, subdir: str | None = None) -> Path:
@@ -266,146 +337,192 @@ class ComicsDatabase:
         return root / self.get_fantagraphics_volume_title(volume_num)
 
     def get_fantagraphics_original_root_dir(self) -> Path:
+        """Return the directory holding every volume's original scans."""
         return self.get_root_dir(self.get_fantagraphics_dirname())
 
     @staticmethod
     def get_fantagraphics_dirname() -> str:
+        """Return the name of the directory holding every volume's original scans."""
         return FANTAGRAPHICS_DIRNAME
 
     def get_fantagraphics_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of original scans."""
         return self._fanta_volume_dir(FANTAGRAPHICS_DIRNAME, volume_num)
 
     def get_fantagraphics_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's original scans."""
         return self.get_fantagraphics_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_upscayled_root_dir(self) -> Path:
+        """Return the directory holding every volume's upscayled pages."""
         return self.get_root_dir(self.get_fantagraphics_upscayled_dirname())
 
     @staticmethod
     def get_fantagraphics_upscayled_dirname() -> str:
+        """Return the name of the directory holding every volume's upscayled pages."""
         return FANTAGRAPHICS_UPSCAYLED_DIRNAME
 
     def get_fantagraphics_upscayled_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of upscayled pages."""
         return self._fanta_volume_dir(FANTAGRAPHICS_UPSCAYLED_DIRNAME, volume_num)
 
     def get_fantagraphics_upscayled_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's upscayled pages."""
         return self.get_fantagraphics_upscayled_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_restored_root_dir(self) -> Path:
+        """Return the directory holding every volume's restored pages."""
         return self.get_root_dir(self.get_fantagraphics_restored_dirname())
 
     @staticmethod
     def get_fantagraphics_restored_dirname() -> str:
+        """Return the name of the directory holding every volume's restored pages."""
         return FANTAGRAPHICS_RESTORED_DIRNAME
 
     def get_fantagraphics_restored_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of restored pages."""
         return self._fanta_volume_dir(FANTAGRAPHICS_RESTORED_DIRNAME, volume_num)
 
     def get_fantagraphics_restored_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's restored pages."""
         return self.get_fantagraphics_restored_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_restored_upscayled_root_dir(self) -> Path:
+        """Return the directory holding every volume's restored, upscayled pages."""
         return self.get_root_dir(self.get_fantagraphics_restored_upscayled_dirname())
 
     @staticmethod
     def get_fantagraphics_restored_upscayled_dirname() -> str:
+        """Return the name of the directory holding every volume's restored, upscayled pages."""
         return FANTAGRAPHICS_RESTORED_UPSCAYLED_DIRNAME
 
     def get_fantagraphics_restored_upscayled_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of restored, upscayled pages."""
         return self._fanta_volume_dir(FANTAGRAPHICS_RESTORED_UPSCAYLED_DIRNAME, volume_num)
 
     def get_fantagraphics_restored_upscayled_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's restored, upscayled pages."""
         return self.get_fantagraphics_restored_upscayled_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_restored_svg_root_dir(self) -> Path:
+        """Return the directory holding every volume's restored pages as SVG."""
         return self.get_root_dir(self.get_fantagraphics_restored_svg_dirname())
 
     @staticmethod
     def get_fantagraphics_restored_svg_dirname() -> str:
+        """Return the name of the directory holding every volume's restored pages as SVG."""
         return FANTAGRAPHICS_RESTORED_SVG_DIRNAME
 
     def get_fantagraphics_restored_svg_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of restored pages as SVG."""
         return self._fanta_volume_dir(FANTAGRAPHICS_RESTORED_SVG_DIRNAME, volume_num)
 
     def get_fantagraphics_restored_svg_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's restored pages as SVG."""
         return self.get_fantagraphics_restored_svg_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_restored_ocr_root_dir(self) -> Path:
+        """Return the directory holding every volume's OCR."""
         return self.get_root_dir(self.get_fantagraphics_restored_ocr_dirname())
 
     @staticmethod
     def get_fantagraphics_restored_ocr_dirname() -> str:
+        """Return the name of the directory holding every volume's OCR."""
         return FANTAGRAPHICS_RESTORED_OCR_DIRNAME
 
     def get_fantagraphics_restored_ocr_raw_root_dir(self) -> Path:
+        """Return the directory holding every volume's raw OCR."""
         return self.get_fantagraphics_restored_ocr_root_dir() / "Raw"
 
     def get_fantagraphics_restored_ocr_raw_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of raw OCR."""
         return self._fanta_volume_dir(FANTAGRAPHICS_RESTORED_OCR_DIRNAME, volume_num, "Raw")
 
     def get_fantagraphics_restored_ocr_prelim_root_dir(self) -> Path:
+        """Return the directory holding every volume's preliminary OCR.
+
+        The ``BARKS_OCR_PRELIM_DIR`` environment variable, when set, names it instead.
+        """
         return get_fanta_restored_ocr_prelim_root_dir(
             self.get_fantagraphics_restored_ocr_root_dir()
         )
 
     def get_fantagraphics_restored_ocr_prelim_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of preliminary OCR."""
         return get_fanta_restored_ocr_prelim_volume_dir(
             self.get_fantagraphics_restored_ocr_root_dir(), volume_num
         )
 
     def get_fantagraphics_restored_ocr_annotations_root_dir(self) -> Path:
+        """Return the directory holding every volume's annotated OCR images."""
         return self.get_fantagraphics_restored_ocr_root_dir() / "Annotations"
 
     def get_fantagraphics_restored_ocr_annotations_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of annotated OCR images."""
         return self._fanta_volume_dir(FANTAGRAPHICS_RESTORED_OCR_DIRNAME, volume_num, "Annotations")
 
     def get_fantagraphics_panel_segments_root_dir(self) -> Path:
+        """Return the directory holding every volume's panel segments."""
         return self.get_root_dir(self.get_fantagraphics_panel_segments_dirname())
 
     @staticmethod
     def get_fantagraphics_panel_segments_dirname() -> str:
+        """Return the name of the directory holding every volume's panel segments."""
         return FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME
 
     def get_fantagraphics_panel_segments_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of panel segments."""
         return self._fanta_volume_dir(FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME, volume_num)
 
     def get_fantagraphics_fixes_root_dir(self) -> Path:
+        """Return the directory holding every volume's fixes to its original scans."""
         return self.get_root_dir(self.get_fantagraphics_fixes_dirname())
 
     @staticmethod
     def get_fantagraphics_fixes_dirname() -> str:
+        """Return the name of the directory holding every volume's fixes to its original scans."""
         return FANTAGRAPHICS_FIXES_DIRNAME
 
     def get_fantagraphics_fixes_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of fixes to its original scans."""
         return self._fanta_volume_dir(FANTAGRAPHICS_FIXES_DIRNAME, volume_num)
 
     def get_fantagraphics_fixes_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's fixes to its original scans."""
         return self.get_fantagraphics_fixes_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_upscayled_fixes_root_dir(self) -> Path:
+        """Return the directory holding every volume's fixes to its upscayled pages."""
         return self.get_root_dir(self.get_fantagraphics_upscayled_fixes_dirname())
 
     @staticmethod
     def get_fantagraphics_upscayled_fixes_dirname() -> str:
+        """Return the name of the directory holding every volume's fixes to its upscayled pages."""
         return FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME
 
     def get_fantagraphics_upscayled_fixes_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of fixes to its upscayled pages."""
         return self._fanta_volume_dir(FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME, volume_num)
 
     def get_fantagraphics_upscayled_fixes_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's fixes to its upscayled pages."""
         return self.get_fantagraphics_upscayled_fixes_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def get_fantagraphics_fixes_scraps_root_dir(self) -> Path:
+        """Return the directory holding every volume's fixes scraps."""
         return self.get_root_dir(self.get_fantagraphics_fixes_scraps_dirname())
 
     @staticmethod
     def get_fantagraphics_fixes_scraps_dirname() -> str:
+        """Return the name of the directory holding every volume's fixes scraps."""
         return FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME
 
     def get_fantagraphics_fixes_scraps_volume_dir(self, volume_num: int) -> Path:
+        """Return a volume's directory of fixes scraps."""
         return self._fanta_volume_dir(FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME, volume_num)
 
     def get_fantagraphics_fixes_scraps_volume_image_dir(self, volume_num: int) -> Path:
+        """Return the images directory of a volume's fixes scraps."""
         return self.get_fantagraphics_fixes_scraps_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def make_all_fantagraphics_directories(self) -> None:
@@ -803,11 +920,34 @@ def _get_story_titles_dir(db_dir: Path) -> Path:
 def get_fanta_restored_ocr_prelim_volume_dir(
     fanta_restored_ocr_root_dir: Path, volume_num: int
 ) -> Path:
+    """Return a volume's directory of preliminary OCR.
+
+    Args:
+        fanta_restored_ocr_root_dir: The directory holding every volume's OCR.
+        volume_num: The Fantagraphics volume.
+
+    Returns:
+        The volume's directory under the preliminary OCR root.
+
+    """
     title = get_fanta_title_for_volume(volume_num)
     return get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir) / title
 
 
 def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) -> Path:
+    """Return the directory holding every volume's preliminary OCR.
+
+    Args:
+        fanta_restored_ocr_root_dir: The directory holding every volume's OCR.
+
+    Returns:
+        The ``BARKS_OCR_PRELIM_DIR`` environment variable's directory when it is set,
+        else "Prelim" under ``fanta_restored_ocr_root_dir``.
+
+    Raises:
+        NotADirectoryError: If the variable is set but does not name a directory.
+
+    """
     # Defer to the one lookup that knows about the BARKS_OCR_PRELIM_DIR override, so
     # this and ocr_file_paths.OCR_PRELIM_DIR can never name different trees. Not cached,
     # here or in the volume lookup above: the override is read from the environment.
@@ -816,4 +956,5 @@ def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) ->
 
 @functools.cache
 def get_fanta_title_for_volume(volume_num: int) -> str:
+    """Return a volume's title, which is also the name of its directories."""
     return FANTA_SOURCE_COMICS[get_fanta_volume_str(volume_num)].title

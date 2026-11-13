@@ -77,6 +77,8 @@ EXTRA_INFO_FONT = "SourceSerif4SmText"
 
 
 class PageType(Enum):
+    """What a page of a comic is, which decides how it is built and shown."""
+
     FRONT = auto()
     TITLE = auto()
     COVER = auto()

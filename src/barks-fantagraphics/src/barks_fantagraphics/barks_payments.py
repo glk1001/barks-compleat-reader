@@ -21,6 +21,8 @@ from .comic_book_info import (
 
 @dataclass(frozen=True, slots=True)
 class PaymentInfo:
+    """What Barks was paid for a title, for how many pages, and when it was accepted."""
+
     title: Titles
     num_pages: int
     accepted_day: int

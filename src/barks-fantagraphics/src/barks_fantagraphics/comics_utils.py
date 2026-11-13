@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 def delete_all_files_in_directory(directory_path: Path) -> None:
+    """Delete the files directly inside a directory, leaving its subdirectories."""
     logger.debug(f'Deleting all files in directory "{directory_path}".')
 
     for file in directory_path.iterdir():
@@ -49,32 +50,59 @@ def get_safe_file_title(title: str) -> str:
 
 
 def get_dest_comic_dirname(title: str, chrono_num: int) -> str:
+    """Return a built comic's directory name: "042 Lost in the Andes!"."""
     return f"{chrono_num:03d} {get_safe_file_title(title)}"
 
 
 def get_dest_comic_zip_file_stem(title: str, chrono_num: int, issue_name: str) -> str:
+    """Return a built comic's zip name, less its extension: "042 Title [FC 223]"."""
     return f"{get_dest_comic_dirname(title, chrono_num)} [{issue_name}]"
 
 
 def get_titles_and_info_chronologically_sorted(
     titles_and_info: list[tuple[str, FantaComicBookInfo]],
 ) -> list[tuple[str, FantaComicBookInfo]]:
+    """Return ``(title, info)`` pairs in Fantagraphics chronological order."""
     return sorted(titles_and_info, key=lambda x: x[1].fanta_chronological_number)
 
 
 def get_titles_sorted_by_submission_date(
     titles_and_info: list[tuple[str, FantaComicBookInfo]],
 ) -> list[str]:
+    """Return the titles of ``(title, info)`` pairs, in order of submission date.
+
+    Raises:
+        ValueError: If a title has no submitted month or year.
+
+    """
     return [t[0] for t in sorted(titles_and_info, key=get_submitted_date)]
 
 
 def get_titles_and_info_sorted_by_submission_date(
     titles_and_info: list[tuple[str, FantaComicBookInfo]],
 ) -> list[tuple[str, FantaComicBookInfo]]:
+    """Return ``(title, info)`` pairs in order of submission date.
+
+    Raises:
+        ValueError: If a title has no submitted month or year.
+
+    """
     return sorted(titles_and_info, key=get_submitted_date)
 
 
 def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
+    """Return the date a title was submitted, taking an unknown day as the 1st.
+
+    Args:
+        title_and_info: The ``(title, info)`` pair.
+
+    Returns:
+        The submitted date.
+
+    Raises:
+        ValueError: If the title has no submitted month or year.
+
+    """
     fanta_info = title_and_info[1]
     submitted_day = (
         1
@@ -96,6 +124,11 @@ def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
 
 
 def get_abbrev_path(file: str | Path | zipfile.Path) -> str:
+    """Return a path shortened for a log line.
+
+    Relative to the Barks root where it can be, with "Carl Barks " cut to "**", a volume
+    name's middle part dropped and anything in brackets left out.
+    """
     if isinstance(file, str):
         file = Path(file)
     abbrev = get_relpath(file)
@@ -121,12 +154,14 @@ def get_relpath(file: Path | zipfile.Path) -> str:
 
 
 def get_abspath_from_relpath(relpath: Path, root_dir: Path = BARKS_ROOT_DIR) -> Path:
+    """Return a path made absolute under ``root_dir``; an absolute path is returned as it is."""
     if relpath.is_absolute():
         return relpath
     return root_dir / relpath
 
 
 def get_clean_path(file: Path | zipfile.Path) -> Path:
+    """Return a path with the home directory written as "$HOME"."""
     return Path(str(file).replace(str(Path.home()), "$HOME"))
 
 
@@ -155,6 +190,7 @@ def get_timestamp(file: Path | zipfile.Path) -> float:
 
 
 def get_max_timestamp(files: list[Path]) -> float:
+    """Return the latest modification time among files, or -1.0 for none."""
     max_timestamp = -1.0
     for file in files:
         timestamp = get_timestamp(file)
@@ -169,6 +205,7 @@ def get_timestamp_str(
     date_time_sep: str = "-",
     hr_sep: str = "_",
 ) -> str:
+    """Return a file's modification time as text: "2026_03_05-14_07_09.25" (UTC)."""
     return get_timestamp_as_str(get_timestamp(file), date_sep, date_time_sep, hr_sep)
 
 
@@ -178,6 +215,18 @@ def get_timestamp_as_str(
     date_time_sep: str = "-",
     hr_sep: str = "_",
 ) -> str:
+    """Return a time in seconds since the epoch as text, in UTC.
+
+    Args:
+        timestamp: The time.
+        date_sep: What goes between year, month and day.
+        date_time_sep: What goes between the date and the time.
+        hr_sep: What goes between hours, minutes and seconds.
+
+    Returns:
+        The time to a hundredth of a second: "2026_03_05-14_07_09.25" by default.
+
+    """
     timestamp_as_date = datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
     timestamp_as_date_as_str = timestamp_as_date.strftime(
         f"%Y{date_sep}%m{date_sep}%d{date_time_sep}%H{hr_sep}%M{hr_sep}%S.%f",
@@ -190,6 +239,17 @@ def dest_file_is_older_than_srce(
     dest_file: Path,
     include_missing_dest: bool = True,
 ) -> bool:
+    """Return whether a file made from another is out of date.
+
+    Args:
+        srce_file: The file it was made from.
+        dest_file: The file made.
+        include_missing_dest: Whether a missing ``dest_file`` counts as out of date.
+
+    Returns:
+        True if ``srce_file`` was modified after ``dest_file``.
+
+    """
     if include_missing_dest and not Path(dest_file).exists():
         return True
 
@@ -200,20 +260,24 @@ def dest_file_is_older_than_srce(
 
 
 def file_is_older_than_timestamp(file: Path, timestamp: float) -> bool:
+    """Return whether a file was last modified before a time in seconds since the epoch."""
     file_timestamp = get_timestamp(file)
 
     return file_timestamp < timestamp
 
 
 def get_ocr_type(ocr_json_file: Path) -> str:
+    """Return the OCR engine in an OCR file's name: "gcv" for "page001.gcv.json"."""
     return Path(ocr_json_file.stem).suffix[1:]
 
 
 def get_ocr_json_suffix(ocr_json_file: Path) -> str:
+    """Return an OCR file's double suffix, less its dot: "gcv.json"."""
     return get_ocr_type(ocr_json_file) + ".json"
 
 
 def get_formatted_day(day: int) -> str:
+    """Return a day of the month with its ordinal ending: "1st", "22nd", "5th"."""
     if day in {1, 21, 31}:
         day_str = str(day) + "st"
     elif day in {2, 22}:
@@ -338,6 +402,7 @@ def get_short_submitted_day_and_month(comic_book_info: ComicBookInfo) -> str:
 
 
 def get_backup_file(file: Path) -> Path:
+    """Return a file's backup path: its name with its modification time before the suffix."""
     suffix = file.suffix
     return Path(str(file.with_suffix("")) + "_" + get_timestamp_str(file) + suffix)
 

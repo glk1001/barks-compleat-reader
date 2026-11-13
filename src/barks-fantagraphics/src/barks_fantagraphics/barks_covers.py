@@ -19,6 +19,8 @@ from .page_classes import OriginalPage, get_collection_pages
 
 
 class CoverKind(Enum):
+    """Which cover of an issue a cover is."""
+
     FRONT = auto()
     INSIDE_FRONT = auto()
     INSIDE_BACK = auto()
@@ -40,6 +42,8 @@ CoverKey = tuple[str, int, int, str, int]
 
 @dataclass(frozen=True)
 class BarksCover:
+    """One cover Barks drew, as Barrier's bibliography lists it under its issue."""
+
     issue_name: Issues | None  # None for series with no Issues member (cover-only albums)
     series_name: str  # bibliography H1 series name
     issue_number: int  # -1 for unnumbered issues
@@ -56,6 +60,7 @@ class BarksCover:
 
     @property
     def key(self) -> CoverKey:
+        """The cover's identity: its series, issue number, year, kind and sequence."""
         return (self.series_name, self.issue_number, self.issue_year, self.kind.name, self.seq)
 
 

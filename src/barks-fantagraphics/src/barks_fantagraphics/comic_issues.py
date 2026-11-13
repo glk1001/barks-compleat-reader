@@ -2,6 +2,8 @@ from enum import IntEnum, auto
 
 
 class Issues(IntEnum):
+    """The comic series Barks's work came out in; the value indexes the name lists below."""
+
     ANDERS = 0
     CH = auto()
     CID = auto()

@@ -77,6 +77,25 @@ def get_titles(
     configured_only: bool = True,
     exclude_non_comics: bool = False,
 ) -> list[str]:
+    """Return the titles of one title or of whole volumes.
+
+    Args:
+        comics_database: The database to look the titles up in.
+        volumes: The Fantagraphics volumes to list; empty when ``title`` is given.
+        title: A story title or a single-story issue; empty when ``volumes`` is given.
+        submission_date_sorted: Whether to sort by submission date, not as listed.
+        configured_only: Whether to list only the volumes' titles that have an ini file.
+        exclude_non_comics: Whether to leave the volumes' articles out.
+
+    Returns:
+        The story titles.
+
+    Raises:
+        ValueError: If both or neither of ``volumes`` and ``title`` are given, or a title
+            to be sorted has no submission date.
+        TitleNotFoundError: If ``title`` is not a known title.
+
+    """
     titles_and_info = get_titles_and_info(
         comics_database, volumes, title, configured_only, exclude_non_comics
     )
@@ -91,6 +110,16 @@ def get_issue_titles(
     comics_database: ComicsDatabase,
     title_info_list: list[tuple[str, FantaComicBookInfo]],
 ) -> list[tuple[str, str, FantaComicBookInfo, bool]]:
+    """Return each title with its issue and whether it has an ini file.
+
+    Args:
+        comics_database: The database that knows which titles are configured.
+        title_info_list: ``(title, info)`` pairs.
+
+    Returns:
+        ``(title, short issue title, info, is configured)`` for each pair, in order.
+
+    """
     comic_issue_title_info_list = []
     for title_info in title_info_list:
         ttl = title_info[0]
@@ -105,6 +134,16 @@ def get_issue_titles(
 
 
 def get_display_title(comics_database: ComicsDatabase, ttl: str) -> str:
+    """Return a title as shown: in brackets if Barks did not name it himself.
+
+    Args:
+        comics_database: The database to look the title up in.
+        ttl: The story title.
+
+    Returns:
+        The display title; ``ttl`` unchanged if it has no ini file.
+
+    """
     title_is_configured, _ = comics_database.is_story_title(ttl)
     if not title_is_configured:
         disp_title = ttl
@@ -116,6 +155,16 @@ def get_display_title(comics_database: ComicsDatabase, ttl: str) -> str:
 
 
 def get_issue_title(comics_database: ComicsDatabase, ttl: str) -> str:
+    """Return the issue a story came out in, in short: "FC 223".
+
+    Args:
+        comics_database: The database to look the title up in.
+        ttl: The story title.
+
+    Returns:
+        The short issue title; ``ttl`` unchanged if it has no ini file.
+
+    """
     title_is_configured, _ = comics_database.is_story_title(ttl)
     if not title_is_configured:
         comic_issue_title = ttl
@@ -129,6 +178,21 @@ def get_issue_title(comics_database: ComicsDatabase, ttl: str) -> str:
 def get_volume_and_page(
     comics_database: ComicsDatabase, title_str: str, page_num_str: str
 ) -> tuple[int, str]:
+    """Return the volume and scan page that hold a page of a story.
+
+    Args:
+        comics_database: The database to look the title up in.
+        title_str: The story title.
+        page_num_str: Which of the story's body pages, counted from 1; empty for the first.
+
+    Returns:
+        The Fantagraphics volume and the scan page's name ("227"). A one-pager gives the
+        one page it is on, whatever ``page_num_str`` says.
+
+    Raises:
+        RuntimeError: If the story has no such page, or a one-pager has no location.
+
+    """
     title = STR_TITLE_TO_ENUM[title_str]
     if title in ONE_PAGERS:
         volume, page = get_one_pager_fanta_vol_and_page(title)
@@ -156,6 +220,18 @@ def get_volume_and_page(
 def get_title_from_volume_page(
     comics_database: ComicsDatabase, volume: int, page: str
 ) -> tuple[str, int]:
+    """Return the story a scan page of a volume belongs to.
+
+    Args:
+        comics_database: The database to look the volume's titles up in.
+        volume: The Fantagraphics volume.
+        page: The scan page's name ("227").
+
+    Returns:
+        The story's title and the page's number within the built comic; for a one-pager,
+        its page within its original issue. ``("", -1)`` if no story has the page.
+
+    """
     # Is it a one-pager?
     try:
         page_num = int(page)
@@ -197,6 +273,18 @@ def draw_panel_bounds_on_image(
     bounds_color: tuple[int, int, int, int] = (0, 128, 0, 255),
     include_overall_bound: bool = True,
 ) -> bool:
+    """Draw a page's panel boxes, each with its number, onto an image of the page.
+
+    Args:
+        image: The page image, drawn on in place.
+        page_panel_boxes: The page's panels.
+        bounds_color: The colour of the panel outlines.
+        include_overall_bound: Whether to outline the box around all the panels as well.
+
+    Returns:
+        True.
+
+    """
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default(size=80)
     for panel in page_panel_boxes.panel_boxes:

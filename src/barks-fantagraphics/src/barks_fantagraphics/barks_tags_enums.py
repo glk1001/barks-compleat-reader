@@ -9,6 +9,8 @@ from enum import Enum
 
 
 class Tags(Enum):
+    """Every tag a title can carry; the value is the tag as shown."""
+
     ABDUCTION_STORIES = "abduction stories"
     AEOLIAN_ISLANDS = "Aeolian Islands"
     AIRPLANES = "airplanes"
@@ -216,6 +218,8 @@ class Tags(Enum):
 
 
 class TagCategories(Enum):
+    """The top-level headings the tags are browsed under; the value is as shown."""
+
     CHARACTERS = "Characters"
     FAVOURITES = "Favourites"
     PLACES = "Places"
@@ -224,6 +228,8 @@ class TagCategories(Enum):
 
 
 class TagGroups(Enum):
+    """Named sets of tags, and of other groups; the value is the group as shown."""
+
     AFRICA = "Africa"
     ASIA = "Asia"
     AUSTRALASIA = "Australasia"

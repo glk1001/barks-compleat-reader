@@ -36,6 +36,8 @@ class Qualifier(Enum):
 
 @dataclass(frozen=True)
 class BibEntry:
+    """One piece of work the bibliography lists under an issue, and the title it is matched to."""
+
     raw_title: str
     page_count: str
     qualifier: Qualifier | None
@@ -64,6 +66,8 @@ class BibEntry:
 
 @dataclass(frozen=True)
 class BibIssue:
+    """One issue of a series in the bibliography, with the entries listed under it."""
+
     raw_issue_id: str
     issue_name: Issues | None
     issue_number: int
@@ -78,6 +82,8 @@ class BibIssue:
 
 @dataclass(frozen=True)
 class BibSeries:
+    """One series in the bibliography, with its issues in order."""
+
     h1_name: str
     issue_name: Issues | None
     notes: tuple[str, ...]

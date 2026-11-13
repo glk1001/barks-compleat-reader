@@ -33,6 +33,8 @@ from .page_classes import OriginalPage, get_collection_pages
 
 @dataclass(frozen=True, slots=True)
 class ComicBookInfo:
+    """A title's publication facts: its issue, the issue's date, and when Barks submitted it."""
+
     title: Titles
     is_barks_title: bool
     issue_name: Issues
@@ -45,15 +47,19 @@ class ComicBookInfo:
 
     @property
     def chronological_number(self) -> int:
+        """The title's place in `Titles` order, counted from 1."""
         return self.title + 1
 
     def get_title_str(self) -> str:
+        """Return the title as written: "Lost in the Andes!"."""
         return ENUM_TO_STR_TITLE[self.title]
 
     def get_issue_name(self) -> str:
+        """Return the full name of the title's series: "Four Color"."""
         return ISSUE_NAME[self.issue_name]
 
     def get_short_issue_title(self) -> str:
+        """Return the issue in short: "FC 223", "WDCS 31"."""
         short_issue_name = SHORT_ISSUE_NAME[self.issue_name]
         return f"{short_issue_name} {self.issue_number}"
 
@@ -62,12 +68,24 @@ class ComicBookInfo:
         return f"{get_shortest_issue_name(self.issue_name)} {self.issue_number}"
 
     def get_title_from_issue_name(self) -> str:
+        """Return the issue as a title for a story with none of its own: "Four Color #223".
+
+        A few stories are better known by another issue than the one recorded
+        (`USEFUL_TITLES`): the first Uncle Scrooge issues came out as Four Color numbers.
+        """
         if self.title in USEFUL_TITLES:
             return USEFUL_TITLES[self.title]
 
         return f"{self.get_issue_name()} #{self.issue_number}"
 
     def get_formatted_title_from_issue_name(self) -> str:
+        """Return the issue as it is lettered on a title page, over several lines.
+
+        A series name that wraps takes the number on its last line after a "#"
+        ("Uncle" over "Scrooge #4"). Any other has the number alone on the next line
+        ("Comics and Stories" over "31"): the Comics and Stories title page draws the name as a
+        masthead and takes what follows it as the number.
+        """
         if self.issue_name in ISSUE_NAME_WRAPPED:
             issue_name_str = ISSUE_NAME_WRAPPED[self.issue_name] + " #"
         else:
@@ -76,6 +94,7 @@ class ComicBookInfo:
         return f"{issue_name_str}{self.issue_number}"
 
     def get_display_title(self) -> str:
+        """Return the title as shown: in brackets if Barks did not name it himself."""
         return self.get_title_str() if self.is_barks_title else f"({self.get_title_str()})"
 
     @staticmethod
