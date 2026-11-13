@@ -25,11 +25,16 @@ if TYPE_CHECKING:
 
 _VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
 
-# The volumes whose page images are numbered from 000; the rest are numbered from 001. The
-# first image alone cannot say which: a zero-based volume that lost its 000 image would
-# look like a whole one-based volume and be read one page off throughout. Taken from the
-# Fantagraphics volumes on the main PC (2026-11-08).
-ZERO_BASED_VOLUMES = frozenset({1, *range(19, 30)})
+# The page images in each volume. Copies of a volume differ in how they number them, from
+# 000 or from 001 (the main PC's volumes 2-4 from 001, a tester's from 0000), so the
+# numbering cannot say whether a volume is whole: one numbered from 001 that lost its 000
+# would be read one page off throughout. The count can. Counted from the main PC's 30
+# volumes, and the same in the tester's (2026-11-13).
+VOLUME_PAGE_COUNTS: dict[int, int] = {
+    1: 250, 2: 245, 3: 248, 4: 225, 5: 216, 6: 232, 7: 239, 8: 223, 9: 215, 10: 231,
+    11: 240, 12: 248, 13: 227, 14: 240, 15: 248, 16: 234, 17: 201, 18: 202, 19: 201, 20: 209,
+    21: 201, 22: 210, 23: 201, 24: 216, 25: 216, 26: 217, 27: 209, 28: 206, 29: 218, 30: 250,
+}  # fmt: skip
 
 
 class MissingArchiveFilesError(Exception):
@@ -317,10 +322,11 @@ class FantagraphicsVolumeArchives:
             image_ext = Path(image_filenames[0]).suffix.lower()
 
             first_page, last_page = self._get_first_and_last_page_nums(image_filenames)
-            self._check_first_page(archive_filename, fanta_volume, first_page, image_filenames[0])
+            self._check_first_page(archive_filename, first_page, image_filenames[0])
             self._check_image_names(
                 archive_filename, image_filenames, first_page, last_page, image_ext
             )
+            self._check_page_count(archive_filename, fanta_volume, len(image_filenames))
 
             archive_images_page_map = self._get_archive_image_page_map(
                 archive_image_subdir, image_filenames, first_page, last_page
@@ -485,24 +491,43 @@ class FantagraphicsVolumeArchives:
         return first_page_num, last_page_num
 
     @staticmethod
-    def _check_first_page(
-        archive_filename: Path, fanta_volume: int, first_page: int, first_image: str
-    ) -> None:
-        """Raise unless the first image is numbered where the volume's pages start.
+    def _check_first_page(archive_filename: Path, first_page: int, first_image: str) -> None:
+        """Raise unless the first image is numbered 0 or 1, as a volume's pages are.
+
+        Which of the two is the copy's own: `_check_page_count` says whether it is whole.
 
         Raises:
-            PageNumError: The volume has lost pages from the front, or is numbered other
-                than the Fantagraphics volume is (`ZERO_BASED_VOLUMES`).
+            PageNumError: The volume has lost pages from the front.
 
         """
-        expected = 0 if fanta_volume in ZERO_BASED_VOLUMES else 1
-        if first_page != expected:
+        if first_page not in (0, 1):
             msg = (
-                f'Fantagraphics archive "{archive_filename}": volume {fanta_volume} numbers its'
-                f' pages from {expected}, but its first image, "{first_image}", is numbered'
-                f" {first_page}. Replace it from the library and retry."
+                f'Fantagraphics archive "{archive_filename}": its first image, "{first_image}",'
+                f" is numbered {first_page}, but a volume's pages are numbered from 0 or 1."
+                f" Replace it from the library and retry."
             )
             raise PageNumError(msg)
+
+    @staticmethod
+    def _check_page_count(archive_filename: Path, fanta_volume: int, num_images: int) -> None:
+        """Raise unless the archive holds as many page images as the volume has pages.
+
+        A volume not in `VOLUME_PAGE_COUNTS` is not checked.
+
+        Raises:
+            PageNumError: The volume has lost pages, from the front or the back, or has
+                more than it should.
+
+        """
+        expected = VOLUME_PAGE_COUNTS.get(fanta_volume)
+        if expected is None or num_images == expected:
+            return
+        msg = (
+            f'Fantagraphics archive "{archive_filename}": volume {fanta_volume} has {expected}'
+            f" pages, but this archive holds {num_images} page images. Replace it from the"
+            f" library and retry."
+        )
+        raise PageNumError(msg)
 
     @staticmethod
     def _get_archive_image_page_map(

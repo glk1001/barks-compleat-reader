@@ -1,8 +1,11 @@
 # ruff: noqa: SLF001, PLR2004
 
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import patch
 
+import barks_reader.core.fantagraphics_volumes
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comics_consts import PageType
@@ -14,7 +17,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.page_classes import CleanPage
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.fantagraphics_volumes import (
-    ZERO_BASED_VOLUMES,
+    VOLUME_PAGE_COUNTS,
     DuplicateArchiveFilesError,
     EmptyArchiveError,
     FantagraphicsArchive,
@@ -32,6 +35,17 @@ from barks_reader.core.log_markers import EMPTY_PAGE_IMAGE
 
 _ARCHIVE = Path("03 - Volume.cbz")
 
+# The fake volumes are numbered as the main PC's copies are, some from 000 and the rest from
+# 001: a library holds both.
+_ZERO_BASED_FAKES = frozenset({1, *range(19, 30)})
+
+
+@pytest.fixture(autouse=True)
+def _no_page_counts() -> Iterator[None]:
+    """Check no page counts: the fake volumes hold a page or two, not a real volume's 200-odd."""
+    with patch.object(barks_reader.core.fantagraphics_volumes, "VOLUME_PAGE_COUNTS", {}):
+        yield
+
 
 def _make_volume_zip(path: Path, image_names: list[str], subdir: str = "images") -> Path:
     """Write a minimal cbz at `path` containing `subdir/<name>` for each image."""
@@ -43,7 +57,7 @@ def _make_volume_zip(path: Path, image_names: list[str], subdir: str = "images")
 
 def _volume_pages(vol: int, count: int, ext: str = ".png") -> list[str]:
     """`count` page names numbered as the volume's are: from 000 or from 001."""
-    first = 0 if vol in ZERO_BASED_VOLUMES else 1
+    first = 0 if vol in _ZERO_BASED_FAKES else 1
     return [f"page{page:03d}{ext}" for page in range(first, first + count)]
 
 
@@ -166,39 +180,47 @@ class TestCheckImageNames:
 
 
 class TestCheckFirstPage:
-    @pytest.mark.parametrize(
-        ("vol", "first_page"), [(1, 0), (19, 0), (29, 0), (2, 1), (18, 1), (30, 1)]
-    )
-    def test_a_volume_numbered_as_fantagraphics_numbers_it_passes(
-        self, vol: int, first_page: int
-    ) -> None:
+    @pytest.mark.parametrize("first_page", [0, 1])
+    def test_a_volume_numbered_from_0_or_1_passes(self, first_page: int) -> None:
         FantagraphicsVolumeArchives._check_first_page(
-            _ARCHIVE, vol, first_page, f"page{first_page:03d}.jpg"
+            _ARCHIVE, first_page, f"page{first_page:03d}.jpg"
         )
 
-    def test_a_zero_based_volume_that_lost_its_000_is_refused(self) -> None:
-        """It would pass every other check, and be read one page off throughout."""
+    def test_a_volume_that_lost_its_first_pages_is_refused(self) -> None:
         with pytest.raises(PageNumError) as exc_info:
-            FantagraphicsVolumeArchives._check_first_page(_ARCHIVE, 1, 1, "page001.jpg")
+            FantagraphicsVolumeArchives._check_first_page(_ARCHIVE, 2, "page002.jpg")
 
         assert str(exc_info.value) == (
-            f'Fantagraphics archive "{_ARCHIVE}": volume 1 numbers its pages from 0, but its'
-            ' first image, "page001.jpg", is numbered 1. Replace it from the library and retry.'
+            f'Fantagraphics archive "{_ARCHIVE}": its first image, "page002.jpg", is numbered'
+            " 2, but a volume's pages are numbered from 0 or 1. Replace it from the library"
+            " and retry."
         )
 
-    @pytest.mark.parametrize(
-        ("vol", "first_page"),
-        [
-            pytest.param(2, 2, id="a one-based volume that lost its 001"),
-            pytest.param(19, 2, id="a zero-based volume that lost two pages"),
-            pytest.param(2, 0, id="a one-based volume numbered from 000"),
-        ],
-    )
-    def test_a_volume_starting_elsewhere_is_refused(self, vol: int, first_page: int) -> None:
-        with pytest.raises(PageNumError, match=f"volume {vol} numbers its pages from"):
-            FantagraphicsVolumeArchives._check_first_page(
-                _ARCHIVE, vol, first_page, f"page{first_page:03d}.jpg"
-            )
+
+class TestCheckPageCount:
+    def test_a_whole_volume_passes(self) -> None:
+        with patch.object(barks_reader.core.fantagraphics_volumes, "VOLUME_PAGE_COUNTS", {2: 245}):
+            FantagraphicsVolumeArchives._check_page_count(_ARCHIVE, 2, 245)
+
+    @pytest.mark.parametrize("num_images", [244, 246], ids=["a page short", "a page over"])
+    def test_a_volume_with_the_wrong_number_of_pages_is_refused(self, num_images: int) -> None:
+        with (
+            patch.object(barks_reader.core.fantagraphics_volumes, "VOLUME_PAGE_COUNTS", {2: 245}),
+            pytest.raises(PageNumError) as exc_info,
+        ):
+            FantagraphicsVolumeArchives._check_page_count(_ARCHIVE, 2, num_images)
+
+        assert str(exc_info.value) == (
+            f'Fantagraphics archive "{_ARCHIVE}": volume 2 has 245 pages, but this archive'
+            f" holds {num_images} page images. Replace it from the library and retry."
+        )
+
+    def test_a_volume_with_no_count_is_not_checked(self) -> None:
+        FantagraphicsVolumeArchives._check_page_count(_ARCHIVE, 2, 7)  # counts patched to {}
+
+
+def test_every_volume_has_a_page_count() -> None:
+    assert sorted(VOLUME_PAGE_COUNTS) == list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 
 
 class TestCheckCorrectVolumeNumbers:
@@ -768,15 +790,33 @@ class TestLoadEndToEnd:
             "002": Path("images/page001.png"),
         }
 
-    def test_a_zero_based_volume_that_lost_its_000_is_refused(self, tmp_path: Path) -> None:
+    def test_a_volume_that_lost_its_000_is_refused(self, tmp_path: Path) -> None:
+        """Numbered from 001 it looks whole, and would be read one page off throughout."""
         archives = self._every_volume(tmp_path, {1: ["page001.png", "page002.png"]})
 
-        with pytest.raises(PageNumError) as exc_info:
+        with (
+            patch.object(barks_reader.core.fantagraphics_volumes, "VOLUME_PAGE_COUNTS", {1: 3}),
+            pytest.raises(PageNumError) as exc_info,
+        ):
             archives.load()
 
         message = str(exc_info.value)
         assert "01-vol.cbz" in message
-        assert 'volume 1 numbers its pages from 0, but its first image, "page001.png"' in message
+        assert "volume 1 has 3 pages, but this archive holds 2 page images" in message
+
+    def test_a_volume_numbered_from_000_where_the_main_pc_s_is_from_001_loads(
+        self, tmp_path: Path
+    ) -> None:
+        """Seen on Windows on 13 November: a tester's volumes 2-4 run from 0000."""
+        archives = self._every_volume(tmp_path, {2: ["page000.png", "page001.png"]})
+
+        with patch.object(barks_reader.core.fantagraphics_volumes, "VOLUME_PAGE_COUNTS", {2: 2}):
+            archives.load()
+
+        assert archives.get_fantagraphics_archive(2).archive_images_page_map == {
+            "001": Path("images/page000.png"),
+            "002": Path("images/page001.png"),
+        }
 
     def test_archives_made_for_one_volume_load_just_that_one(self, tmp_path: Path) -> None:
         """The other 29 are neither scanned nor reported missing."""
@@ -843,7 +883,7 @@ class TestLoadEndToEnd:
             entry = archives.get_fantagraphics_archive(vol)
             assert entry.is_missing is False
             assert entry.fanta_volume == vol
-            first_page = 0 if vol in ZERO_BASED_VOLUMES else 1
+            first_page = 0 if vol in _ZERO_BASED_FAKES else 1
             assert entry.first_page == first_page
             assert entry.last_page == first_page + 1
 
