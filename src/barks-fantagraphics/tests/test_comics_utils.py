@@ -30,6 +30,7 @@ from barks_fantagraphics.comics_utils import (
     get_ocr_type,
     get_relpath,
     get_safe_file_title,
+    get_safe_title,
     get_short_formatted_submitted_date,
     get_short_submitted_day_and_month,
     get_submitted_date,
@@ -255,6 +256,27 @@ class TestDateFormatting:
         info = self._make_comic_info(submitted_day=-1, submitted_month=4)
         result = get_short_submitted_day_and_month(info)
         assert result == "Apr"
+
+    def test_no_recorded_submitted_date_is_said_not_looked_up(self) -> None:
+        # Some covers have no submitted date: month -1 is in neither month table.
+        info = self._make_comic_info(submitted_day=-1, submitted_month=-1, submitted_year=-1)
+        assert get_formatted_submitted_date(info) == " on an unknown date"
+        assert get_short_submitted_day_and_month(info) == "Unknown"
+
+
+class TestGetSafeTitle:
+    def test_a_word_hyphenated_over_a_line_break_is_joined(self) -> None:
+        assert get_safe_title("The Second-\nRichest Duck") == "The Second-Richest Duck"
+
+    def test_a_line_break_becomes_a_space(self) -> None:
+        assert get_safe_title("Uncle\nScrooge #4") == "Uncle Scrooge #4"
+
+    def test_a_spaced_hyphen_on_one_line_is_left_alone(self) -> None:
+        title = "Don Ault - Life Among the Ducks"
+        assert get_safe_title(title) == title
+
+    def test_quotes_are_dropped(self) -> None:
+        assert get_safe_title('The "Easter" Election') == "The Easter Election"
 
 
 class TestGetAbbrevPath:

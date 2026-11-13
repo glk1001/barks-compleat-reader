@@ -302,6 +302,18 @@ def get_formatted_first_published_str(
 
 
 def get_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
+    """Return the submitted date as it follows "Submitted to Western Publishing".
+
+    Args:
+        comic_book_info: The title's info.
+
+    Returns:
+        " on March 5th, 1947", or ", March 1947" with no day, or " on an unknown date"
+        with no recorded date (some covers).
+
+    """
+    if comic_book_info.submitted_month == -1:
+        return " on an unknown date"
     if comic_book_info.submitted_day == -1:
         return (
             f", {MONTH_AS_LONG_STR[comic_book_info.submitted_month]}"
@@ -316,6 +328,17 @@ def get_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
 
 
 def get_short_submitted_day_and_month(comic_book_info: ComicBookInfo) -> str:
+    """Return the submitted day and month, without the year.
+
+    Args:
+        comic_book_info: The title's info.
+
+    Returns:
+        "5th Mar", or "Mar" with no day, or "Unknown" with no recorded date (some covers).
+
+    """
+    if comic_book_info.submitted_month == -1:
+        return "Unknown"
     if comic_book_info.submitted_day == -1:
         return f"{MONTH_AS_SHORT_STR[comic_book_info.submitted_month]}"
 
@@ -331,8 +354,18 @@ def get_backup_file(file: Path) -> Path:
 
 
 def get_safe_title(title: str) -> str:
-    """Return a filesystem-safe version of the title string."""
-    safe_title = title.replace("\n", " ")
-    safe_title = safe_title.replace("- ", "-")
-    safe_title = safe_title.replace('"', "")
-    return safe_title  # noqa: RET504
+    """Return a title on one line, without quotes.
+
+    A word hyphenated across a line break ("The Second-" over "Richest Duck") is joined
+    again; a hyphen with a space after it on one line (" - ") is left as written.
+
+    Args:
+        title: The title, as an ini file may write it over several lines.
+
+    Returns:
+        The one-line title.
+
+    """
+    safe_title = title.replace("-\n", "-")
+    safe_title = safe_title.replace("\n", " ")
+    return safe_title.replace('"', "")
