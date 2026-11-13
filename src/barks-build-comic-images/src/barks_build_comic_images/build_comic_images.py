@@ -1227,7 +1227,7 @@ class ComicBookImageBuilder:
         comic_book_info = self._comic.fanta_info.comic_book_info
 
         if (not comic_book_info.is_barks_title) and (comic_book_info.issue_name == Issues.CS):
-            add_footnote = self._comic.get_ini_title() in US_CENSORED_TITLES
+            add_footnote = self._comic.get_title_str() in US_CENSORED_TITLES
 
             return self._get_comics_and_stories_title_and_fonts(
                 title,

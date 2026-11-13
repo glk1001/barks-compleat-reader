@@ -155,6 +155,7 @@ def _builder(
     comic.fanta_info.comic_book_info.is_barks_title = is_barks
     comic.fanta_info.comic_book_info.issue_name = Issues.CS
     comic.get_ini_title.return_value = ini_title
+    comic.get_title_str.return_value = ini_title
     return ComicBookImageBuilder(comic, empty_page)
 
 

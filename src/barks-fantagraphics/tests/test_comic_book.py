@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import comic_book as comic_book_module
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book import (
     ComicBook,
@@ -651,6 +652,21 @@ class TestIsHandRestored:
         comic = _make_comic(volume=1)
         assert not comic.is_hand_restored("001")
 
+    def test_a_title_whose_filename_drops_a_character_is_still_matched(self) -> None:
+        # The ini of "Fun? What's That?" is named without the "?"s.
+        comic = _make_comic(title="Fun What's That", volume=1)
+        assert comic.get_ini_title() == "Fun What's That"
+        assert comic.get_title_str() == "Fun? What's That?"
+        assert comic.get_title_enum() == Titles.FUN_WHATS_THAT
+        with patch.object(comic_book_module, "HAND_RESTORED_TITLES", ["Fun? What's That?"]):
+            assert comic.is_hand_restored("001")
+        with patch.object(comic_book_module, "CENSORED_TITLES", ["Fun? What's That?"]):
+            assert comic._is_added_fixes_special_case("001", PageType.BODY)
+            assert not comic._is_added_fixes_special_case("001", PageType.COVER)
+
+    def test_an_ordinary_title_is_its_own_title_str(self) -> None:
+        assert _make_comic(title="Good Deeds").get_title_str() == "Good Deeds"
+
 
 # ---------------------------------------------------------------------------
 # get_comic_title / get_comic_issue_title / get_title_with_issue_num
@@ -739,6 +755,14 @@ class TestGetPagesInOrder:
         )
         result = _get_pages_in_order(pages)
         assert len(result) == 5
+
+    def test_a_range_of_one_page_is_that_page(self) -> None:
+        result = _get_pages_in_order(_make_pages(("7-7", PageType.BODY)))
+        assert [p.page_filenames for p in result] == ["007"]
+
+    def test_a_range_running_backwards_is_an_error(self) -> None:
+        with pytest.raises(ValueError, match='Page range "120-110" runs backwards'):
+            _get_pages_in_order(_make_pages(("120-110", PageType.BODY)))
 
 
 class TestGetPageStr:

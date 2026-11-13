@@ -294,6 +294,7 @@ class TestThePublicationText:
         comic.publication_text = text
         comic.title = title
         comic.get_ini_title.return_value = "The Hypno-Gun"
+        comic.get_title_str.return_value = "The Hypno-Gun"
         builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), comic=comic)
         return builder._get_publication_text_lines()
 
@@ -399,6 +400,7 @@ class TestTheIntroPageLayout:
         comic.fanta_info.comic_book_info.is_barks_title = False
         comic.fanta_info.comic_book_info.issue_name = Issues.CS
         comic.get_ini_title.return_value = US_CENSORED_TITLES[0] if us_censored else "Not it"
+        comic.get_title_str.return_value = comic.get_ini_title.return_value
         return comic
 
     @staticmethod

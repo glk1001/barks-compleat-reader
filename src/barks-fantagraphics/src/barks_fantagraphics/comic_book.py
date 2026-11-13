@@ -428,7 +428,7 @@ class ComicBook:
         if page_type == PageType.BLANK_PAGE:
             return Path("EMPTY PAGE"), ModifiedType.ORIGINAL
 
-        if self.get_ini_title() not in HAND_RESTORED_TITLES and page_type in RESTORABLE_PAGE_TYPES:
+        if self.get_title_str() not in HAND_RESTORED_TITLES and page_type in RESTORABLE_PAGE_TYPES:
             srce_restored_file_jpg = self.get_srce_restored_image_dir() / (page_num + JPG_FILE_EXT)
             if srce_restored_file_jpg.is_file():
                 msg = f'Restored files should be png not jpg: "{srce_restored_file_jpg}".'
@@ -544,7 +544,7 @@ class ComicBook:
 
         """
         return (
-            self.get_ini_title() in HAND_RESTORED_TITLES
+            self.get_title_str() in HAND_RESTORED_TITLES
             or (self.fanta_book.volume, page_num) in HAND_RESTORED_PAGES
         )
 
@@ -565,7 +565,7 @@ class ComicBook:
             # them so upscayl/restore can build pages that aren't already part of
             # another comic.
             return True
-        if self.get_ini_title() in CENSORED_TITLES:
+        if self.get_title_str() in CENSORED_TITLES:
             return page_type == PageType.BODY
 
         return False
@@ -671,9 +671,17 @@ class ComicBook:
     def get_ini_title(self) -> str:
         return Path(self.ini_file).stem
 
-    def get_title_enum(self) -> Titles:
+    def get_title_str(self) -> str:
+        """Return the story's title as the title lists hold it.
+
+        Not `get_ini_title`, which is the ini file's name: a filename cannot hold a "?",
+        so "Fun? What's That?" is named "Fun What's That" there and matches no title list.
+        """
         ini_title = self.get_ini_title()
-        return STR_TITLE_TO_ENUM[FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)]
+        return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)
+
+    def get_title_enum(self) -> Titles:
+        return STR_TITLE_TO_ENUM[self.get_title_str()]
 
     def get_comic_title(self) -> str:
         if self.title != "":
@@ -756,6 +764,10 @@ def _get_pages_in_order(config_pages: list[OriginalPage]) -> list[OriginalPage]:
             start, end = config_page.page_filenames.split("-")
             start_num = int(start)
             end_num = int(end)
+            if start_num > end_num:
+                # An empty range would build the story with these pages missing.
+                msg = f'Page range "{config_page.page_filenames}" runs backwards.'
+                raise ValueError(msg)
             for file_num in range(start_num, end_num + 1):
                 filename = get_page_str(file_num)
                 page_images.append(OriginalPage(filename, config_page.page_type))
