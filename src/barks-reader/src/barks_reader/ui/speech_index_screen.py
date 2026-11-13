@@ -327,6 +327,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         title_strs = self._background_titles_cache.get(rand_item)
         if title_strs is None:
+            # Searched here, on the UI thread: 36 to 61 ms measured (2026-11-13), once
+            # per word and then cached, at most every 15 seconds while the index
+            # shows. A worker thread would need the search made safe to share and its
+            # result handed back and checked against a letter changed since: more
+            # machinery than a hitch nobody sees is worth.
             title_strs = list(self._find_words_for_item(rand_item))
             _store_bounded(self._background_titles_cache, rand_item, title_strs)
 
