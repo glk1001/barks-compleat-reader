@@ -33,6 +33,7 @@ def test_a_notice_has_close_only_and_nothing_to_call() -> None:
     kwargs, _, on_closed = _shown(ErrorDialogKind.NOTICE)
     assert (kwargs["ok_text"], kwargs["cancel_text"]) == ("", "Close")
     assert kwargs["on_cancel"] is None
+    assert kwargs["centred"] is True, "a notice is short: its text sits in the middle"
     on_closed.assert_not_called()
 
 
@@ -47,9 +48,9 @@ def test_a_settings_error_offers_settings_or_cancel() -> None:
     open_settings.assert_called_once()
 
 
-@pytest.mark.parametrize("kind", [ErrorDialogKind.FATAL_CONFIG])
-def test_a_fatal_error_closes_and_reports_it(kind: ErrorDialogKind) -> None:
-    kwargs, open_settings, on_closed = _shown(kind)
+def test_a_fatal_error_closes_and_reports_it() -> None:
+    kwargs, open_settings, on_closed = _shown(ErrorDialogKind.FATAL_CONFIG)
+    assert kwargs["centred"] is False
     assert (kwargs["ok_text"], kwargs["cancel_text"]) == ("", "Close")
     kwargs["on_cancel"]()
     on_closed.assert_called_once_with("closed msg")

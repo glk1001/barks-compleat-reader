@@ -29,6 +29,8 @@ def _nobody_to_tell(_close_message: str) -> None:
 
 
 class UserErrorHandler:
+    """Show the popup for each kind of user-facing error."""
+
     def __init__(
         self, reader_settings: ReaderSettings, open_settings_func: Callable[[], None]
     ) -> None:
@@ -52,18 +54,24 @@ class UserErrorHandler:
         elif presentation.kind is ErrorDialogKind.FATAL_CONFIG:
             self._show_fatal_config_error(presentation, on_popup_closed)
         else:
-            self._show_popup_with_close(presentation)
+            self._show_popup_with_close(presentation, centred=True)
 
     @staticmethod
-    def _show_popup_with_close(presentation: ErrorPresentation) -> None:
+    def _show_popup_with_close(
+        presentation: ErrorPresentation,
+        on_close: Callable[[], None] | None = None,
+        *,
+        centred: bool = False,
+    ) -> None:
+        """Show a popup whose only button is 'Close'."""
         open_message_popup(
             title=presentation.title,
             text=presentation.text,
             ok_text="",  # No OK button
             on_ok=None,
             cancel_text="Close",
-            on_cancel=None,
-            centred=True,
+            on_cancel=on_close,
+            centred=centred,
         )
 
     def _show_settings_error_popup(
@@ -97,11 +105,6 @@ class UserErrorHandler:
         and inform the user they must restart the app after fixing the issue.
         """
         on_popup_closed = on_popup_closed or _nobody_to_tell
-        open_message_popup(
-            title=presentation.title,
-            text=presentation.text,
-            ok_text="",  # No OK button
-            on_ok=None,
-            cancel_text="Close",
-            on_cancel=lambda: on_popup_closed(presentation.close_message),
+        UserErrorHandler._show_popup_with_close(
+            presentation, lambda: on_popup_closed(presentation.close_message)
         )
