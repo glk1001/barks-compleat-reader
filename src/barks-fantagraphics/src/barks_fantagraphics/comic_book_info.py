@@ -17,7 +17,6 @@ from .barks_titles import (
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
-    US_ISSUE_AS_FC_ISSUE,
     Titles,
 )
 from .comic_issues import (
@@ -28,7 +27,8 @@ from .comic_issues import (
     get_shortest_issue_name,
 )
 from .comics_consts import PageType
-from .page_classes import OriginalPage
+from .comics_utils import get_safe_file_title
+from .page_classes import OriginalPage, get_collection_pages
 
 
 @dataclass(frozen=True, slots=True)
@@ -1570,10 +1570,9 @@ def get_one_pager_collection_pages() -> list[OriginalPage]:
         Ordered `OriginalPage` list; empty until one-pager locations are authored.
 
     """
-    return [
-        OriginalPage(f"{ONE_PAGER_COLLECTION_PAGE_BASE + i:03d}", PageType.BODY)
-        for i, _title in enumerate(get_located_one_pagers())
-    ]
+    return get_collection_pages(
+        ONE_PAGER_COLLECTION_PAGE_BASE, len(get_located_one_pagers()), PageType.BODY
+    )
 
 
 def get_one_pager_collection_page_num(title: Titles) -> int | None:
@@ -1712,34 +1711,23 @@ TITLES_WITHOUT_TITLE_PAGE = frozenset(
     ENUM_TO_STR_TITLE[title] for title in [*NON_COMIC_TITLES, *SYNTHETIC_TITLES]
 )
 
-BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
-    f"{get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
-        inf.title
-        for inf in BARKS_TITLE_INFO
-        if (inf.issue_name == info.issue_name)
-        and (inf.issue_number == info.issue_number)
-        and (inf.title not in ONE_PAGERS)
-        and (inf.title not in COVERS_SET)
-    )
-    for info in BARKS_TITLE_INFO
-}
-# Uncle Scrooge 1 to 3 are the Four Color issues they came out as.
-for _us_issue, _fc_issue in US_ISSUE_AS_FC_ISSUE.items():
-    BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} {_us_issue}"] = BARKS_ISSUE_DICT[
-        f"{SHORT_ISSUE_NAME[Issues.FC]} {_fc_issue}"
-    ]
-
-_FUN_WHATS_THAT = "Fun? What's That?"
-_WANT_TO_BUY_AN_ISLAND = "Want to Buy an Island?"
-
+# A filename cannot hold every character a title can ("Fun? What's That?"), so those
+# titles' files go by `get_safe_file_title`. Both maps follow from it and the title list:
+# a new title with such a character needs no entry here.
 TITLE_TO_FILENAME_SPECIAL_CASE_MAP: dict[str, str] = {
-    _FUN_WHATS_THAT: "Fun What's That",
-    _WANT_TO_BUY_AN_ISLAND: "Want to Buy an Island",
+    title: get_safe_file_title(title)
+    for title in ENUM_TO_STR_TITLE
+    if get_safe_file_title(title) != title
 }
 FILENAME_TO_TITLE_SPECIAL_CASE_MAP: dict[str, str] = {
-    "Fun What's That": _FUN_WHATS_THAT,
-    "Want to Buy an Island": _WANT_TO_BUY_AN_ISLAND,
+    filename: title for title, filename in TITLE_TO_FILENAME_SPECIAL_CASE_MAP.items()
 }
+assert len(FILENAME_TO_TITLE_SPECIAL_CASE_MAP) == len(TITLE_TO_FILENAME_SPECIAL_CASE_MAP), (
+    "Two titles have the same filename."
+)
+assert FILENAME_TO_TITLE_SPECIAL_CASE_MAP.keys().isdisjoint(ENUM_TO_STR_TITLE), (
+    "A title's filename is another title."
+)
 
 
 def check_story_submitted_order(title_list: list[ComicBookInfo]) -> None:

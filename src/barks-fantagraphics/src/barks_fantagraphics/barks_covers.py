@@ -15,7 +15,7 @@ from comic_utils.comic_consts import MONTH_AS_SHORT_STR
 from .barks_titles import STR_TITLE_TO_ENUM, Titles
 from .comic_issues import ISSUE_NAME, Issues
 from .comics_consts import PageType
-from .page_classes import OriginalPage
+from .page_classes import OriginalPage, get_collection_pages
 
 
 class CoverKind(Enum):
@@ -4321,10 +4321,9 @@ def get_cover_collection_pages() -> list[OriginalPage]:
         Ordered `OriginalPage` list; empty until cover locations are authored.
 
     """
-    return [
-        OriginalPage(f"{COVER_COLLECTION_PAGE_BASE + i:03d}", PageType.COVER)
-        for i, _cover in enumerate(get_located_covers())
-    ]
+    return get_collection_pages(
+        COVER_COLLECTION_PAGE_BASE, len(get_located_covers()), PageType.COVER
+    )
 
 
 _COVER_KIND_SUFFIX = {
@@ -4423,12 +4422,7 @@ def get_cover_display_title(cover: BarksCover) -> str:
         The formatted display title.
 
     """
-    if cover.issue_name is not None:
-        issue = ISSUE_NAME[cover.issue_name]
-    else:
-        issue = " ".join(word.capitalize() for word in cover.series_name.split())
-    if cover.issue_number != -1:
-        issue += f" #{cover.issue_number}"
+    issue = _get_cover_issue_str(cover)
 
     if cover.issue_month != -1:
         date = f"{MONTH_AS_SHORT_STR[cover.issue_month]} {cover.issue_year}"

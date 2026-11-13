@@ -4,6 +4,11 @@ import string
 from pathlib import Path
 
 import pytest
+from barks_fantagraphics.barks_covers import (
+    COVER_COLLECTION_PAGE_BASE,
+    get_cover_collection_pages,
+    get_located_covers,
+)
 from barks_fantagraphics.barks_titles import (
     ENUM_TO_STR_TITLE,
     NUM_TITLES,
@@ -11,14 +16,18 @@ from barks_fantagraphics.barks_titles import (
     _title_name_from_enum,
 )
 from barks_fantagraphics.comic_book_info import (
-    BARKS_ISSUE_DICT,
     BARKS_TITLE_INFO,
     COVERS,
+    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
     NON_COMIC_TITLES,
+    ONE_PAGER_COLLECTION_PAGE_BASE,
+    TITLE_TO_FILENAME_SPECIAL_CASE_MAP,
     ComicBookInfo,
     check_cover_submitted_order,
     check_story_submitted_order,
     get_filename_from_title_str,
+    get_located_one_pagers,
+    get_one_pager_collection_pages,
     get_title_str_from_filename,
     is_non_comic_title,
 )
@@ -28,6 +37,8 @@ from barks_fantagraphics.comic_issues import (
     SHORT_ISSUE_NAME,
     Issues,
 )
+from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.page_classes import OriginalPage, get_collection_pages
 
 
 class TestComicBookInfo:
@@ -130,31 +141,6 @@ class TestBarksInfo:
                 f"Barks title info title does not match Titles enum title enum: {title};"
                 f" title info title: {BARKS_TITLE_INFO[title].title} )"
             )
-
-    def test_issue_dict(self) -> None:
-        assert "CS 106" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["CS 106"] == [Titles.PLENTY_OF_PETS]
-        assert "FC 223" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["FC 223"] == [Titles.LOST_IN_THE_ANDES]
-        assert "US 4" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["US 4"] == [Titles.MENEHUNE_MYSTERY_THE]
-        assert "DD 68" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["DD 68"] == [Titles.MASTER_GLASSER_THE]
-
-        # Two titles in one issue
-        assert "DD 26" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["DD 26"] == [Titles.TRICK_OR_TREAT, Titles.HOBBLIN_GOBLINS]
-
-        # Test Uncle Scrooge special cases
-        assert "US 1" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["US 1"] == [Titles.ONLY_A_POOR_OLD_MAN]
-        assert "US 2" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["US 2"] == [Titles.SOMETHIN_FISHY_HERE, Titles.BACK_TO_THE_KLONDIKE]
-        assert "US 3" in BARKS_ISSUE_DICT
-        assert BARKS_ISSUE_DICT["US 3"] == [
-            Titles.HORSERADISH_STORY_THE,
-            Titles.ROUND_MONEY_BIN_THE,
-        ]
 
     @staticmethod
     def get_title_var(title: str) -> str:
@@ -394,3 +380,51 @@ class TestFormattedTitleFromIssueName:
         for info in BARKS_TITLE_INFO:
             formatted = info.get_formatted_title_from_issue_name()
             assert ("#" in formatted) == (info.issue_name in ISSUE_NAME_WRAPPED), info.title
+
+
+class TestFilenameMaps:
+    def test_the_two_titles_ending_in_a_question_mark_are_mapped(self) -> None:
+        assert TITLE_TO_FILENAME_SPECIAL_CASE_MAP == {
+            "Fun? What's That?": "Fun What's That",
+            "Want to Buy an Island?": "Want to Buy an Island",
+        }
+
+    def test_the_inverse_map_is_the_forward_map_turned_round(self) -> None:
+        assert {
+            filename: title for title, filename in TITLE_TO_FILENAME_SPECIAL_CASE_MAP.items()
+        } == FILENAME_TO_TITLE_SPECIAL_CASE_MAP
+
+    def test_a_title_is_mapped_exactly_when_a_filename_cannot_hold_it(self) -> None:
+        for title in ENUM_TO_STR_TITLE:
+            cannot_hold = any(char in title for char in '<>:"/\\|?*')
+            assert (title in TITLE_TO_FILENAME_SPECIAL_CASE_MAP) == cannot_hold, title
+
+
+class TestCollectionPages:
+    def test_pages_are_numbered_in_a_row_from_the_first(self) -> None:
+        pages = get_collection_pages(500, 3, PageType.COVER)
+        assert pages == [
+            OriginalPage("500", PageType.COVER),
+            OriginalPage("501", PageType.COVER),
+            OriginalPage("502", PageType.COVER),
+        ]
+
+    def test_a_low_page_number_is_padded_to_three_digits(self) -> None:
+        assert get_collection_pages(7, 1, PageType.BODY) == [OriginalPage("007", PageType.BODY)]
+
+    def test_an_empty_collection_has_no_pages(self) -> None:
+        assert get_collection_pages(500, 0, PageType.BODY) == []
+
+    def test_the_one_pager_collection_has_a_body_page_for_each_located_one_pager(self) -> None:
+        pages = get_one_pager_collection_pages()
+        assert pages == get_collection_pages(
+            ONE_PAGER_COLLECTION_PAGE_BASE, len(get_located_one_pagers()), PageType.BODY
+        )
+        assert pages
+
+    def test_the_cover_collection_has_a_cover_page_for_each_located_cover(self) -> None:
+        pages = get_cover_collection_pages()
+        assert pages == get_collection_pages(
+            COVER_COLLECTION_PAGE_BASE, len(get_located_covers()), PageType.COVER
+        )
+        assert pages

@@ -10,6 +10,26 @@ class OriginalPage:
     page_type: PageType
 
 
+def get_collection_pages(
+    first_page: int, num_pages: int, page_type: PageType
+) -> list[OriginalPage]:
+    """Return the pages of a synthetic collection, numbered in a row.
+
+    The "All One-Pagers" and "All Covers" collections are staged as extra pages of a
+    nominal volume, one page per located item, numbered from a base above any real page.
+
+    Args:
+        first_page: The first page's number in the nominal volume.
+        num_pages: How many pages the collection has.
+        page_type: The type every page has.
+
+    Returns:
+        The pages, in order; empty for an empty collection.
+
+    """
+    return [OriginalPage(f"{first_page + i:03d}", page_type) for i in range(num_pages)]
+
+
 class CleanPage:
     def __init__(
         self,
