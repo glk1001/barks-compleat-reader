@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import re
 from collections import defaultdict
 from functools import cached_property
 from typing import TYPE_CHECKING, cast, override
@@ -11,6 +12,7 @@ from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 from kivy.clock import Clock
+from kivy.core.text import Label as CoreLabel
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
@@ -18,11 +20,10 @@ from kivy.properties import (  # ty: ignore[import-not-found]
     ListProperty,
     NumericProperty,
     ObjectProperty,
+    StringProperty,
 )
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.relativelayout import RelativeLayout
-from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -61,6 +62,7 @@ from .reader_keyboard_nav import clear_focus_in_list, draw_focus_highlight
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
+    from kivy.uix.gridlayout import GridLayout
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -85,18 +87,28 @@ def _store_bounded[K, V](cache: dict[K, V], key: K, value: V) -> None:
     cache[key] = value
 
 
+_PAGES_START = re.compile(r", \d")
+
+
 class _SpeechIndexTitleItemButton(Button):
     background_color_normal = ColorProperty((0, 0, 0, 0))
     background_color_down = ColorProperty((0, 0, 0, 0))
     padding = ListProperty([0, 0, 0, 0])
     gap_fill = NumericProperty(0)
+    # How far the fill runs on past the button's right edge: under its speech button.
+    fill_past_right = NumericProperty(0)
+    # The row's whole text, "Title, pages": what shows is this, or its title cut short.
+    full_text = StringProperty("")
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
 
         self.italic = True
-        self.size_hint = (None, None)
+        self.size_hint = (1, None)
         self.height = INDEX_ITEM_ROW_HEIGHT
+        self.bind(size=self.setter("text_size"))
+        self.bind(width=self._fit_text, full_text=self._fit_text)
+        self._fit_text()
         self.background_normal = ""
         self.background_down = ""
         self.background_color = (0, 0, 0, 0)
@@ -107,6 +119,34 @@ class _SpeechIndexTitleItemButton(Button):
         # `state` matters as much as pos/size: update_canvas picks the fill from it,
         # so without this binding the pressed band never repaints.
         self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
+
+    def _fit_text(self, *_args: object) -> None:
+        """Show the whole text, or the title cut short with its page numbers kept."""
+        room = self.width - self.padding[0] - dp(4)
+        # Kivy picks its text provider at import: a checker sees a name that may be None.
+        assert CoreLabel is not None
+        measure = CoreLabel(font_name=self.font_name, font_size=self.font_size, italic=True)
+
+        def fits(text: str) -> bool:
+            return measure.get_extents(text)[0] <= room
+
+        full = self.full_text
+        if room <= 0 or fits(full):
+            self.text = full
+            return
+        # The pages start at the first ", <digit>": the title before them gives way.
+        pages_at = _PAGES_START.search(full)
+        title, pages = (
+            (full[: pages_at.start()], full[pages_at.start() :]) if pages_at else (full, "")
+        )
+        low, high = 0, len(title)
+        while low < high:
+            keep = (low + high + 1) // 2
+            if fits(f"{title[:keep].rstrip()}\u2026{pages}"):
+                low = keep
+            else:
+                high = keep - 1
+        self.text = f"{title[:low].rstrip()}\u2026{pages}"
 
     def update_canvas(self, *_args: object) -> None:
         """Redraw the row's fill, from the text's start to the row's end, for its state."""
@@ -121,7 +161,10 @@ class _SpeechIndexTitleItemButton(Button):
             # Draw background starting from text start (padding[0]) to end of button width
             Rectangle(
                 pos=(self.x + self.padding[0], self.y - self.gap_fill),
-                size=(self.width - self.padding[0], self.height + self.gap_fill),
+                size=(
+                    self.width - self.padding[0] + self.fill_past_right,
+                    self.height + self.gap_fill,
+                ),
             )
 
 
@@ -377,7 +420,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         sub_items_layout = self._get_title_sub_items_layout(item)
         self._insert_title_sub_items_layout(sub_items_layout)
 
-    def _get_title_sub_items_layout(self, item: IndexItem) -> GridLayout:
+    def _get_title_sub_items_layout(self, item: IndexItem) -> BoxLayout:
         index_term: str = item.id  # ty: ignore[invalid-assignment]
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
@@ -385,24 +428,31 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         assert self._open_tag_button is not None
         parent_padding = self._open_tag_button.padding[0]
-        sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
+        # Half the main index's step: the columns here are a third of the width.
+        sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP / 2
 
-        button_list = []
-        max_title_button_width = 0.0
+        # A row to a title, each the column's width: the title, cut short with an
+        # ellipsis where the column is too narrow for it, and its speech button at
+        # the column's right edge.
+        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(1))
+        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+
         for (
             title_str,
             first_page_to_goto,
             title_str_with_pages,
             title_speech_info,
         ) in sub_items_to_display:
+            show_speech_bubbles_button = TitleShowSpeechButton()
             title_button = _SpeechIndexTitleItemButton(
-                text=title_str_with_pages,
+                full_text=title_str_with_pages,
                 padding=[sub_item_padding, 0, 0, 0],
                 color=self.index_theme.TITLE_TEXT,
                 background_color_normal=self.index_theme.TITLE_BG,
                 background_color_down=self.index_theme.TITLE_BG_SELECTED,
                 font_name=self._font_manager.index_title_item_font_name,
                 font_size=self._font_manager.index_title_item_font_size,
+                fill_past_right=self.index_theme.ROW_HEIGHT,
             )
             sub_item = title_row_item(
                 title_str, first_page_to_goto, title_str_with_pages, title_speech_info
@@ -410,12 +460,6 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
             )
-
-            title_button.texture_update()
-            req_width = title_button.texture_size[0]
-            max_title_button_width = max(max_title_button_width, req_width)
-
-            show_speech_bubbles_button = TitleShowSpeechButton()
 
             def _on_speech_btn(
                 _btn: object,
@@ -427,42 +471,12 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
             show_speech_bubbles_button.bind(on_release=_on_speech_btn)
 
-            logger.debug(
-                f'Created title button for "{title_str}",'
-                f" first page to goto is {first_page_to_goto},"
-                f" title_button_width = {title_button.width},"
-                f" req_width = {req_width},"
-                f" max_title_button_width = {max_title_button_width},"
-                f" show_speech_bubbles_button_width = {show_speech_bubbles_button.width}."
+            row = BoxLayout(
+                orientation="horizontal", size_hint_y=None, height=INDEX_ITEM_ROW_HEIGHT
             )
-
-            button_list.append((title_button, show_speech_bubbles_button))
-
-        # Now create the layout.
-        max_title_button_width += dp(7)
-
-        sub_items_layout = GridLayout(
-            cols=2,
-            size_hint_x=None,
-            size_hint_y=None,
-            padding=[0, 0, 0, 0],
-            spacing=[0, dp(1)],
-        )
-
-        # Bind the layout's width and height to its minimum required values. This allows it to
-        # expand automatically as the children (buttons) update their widths and heights based
-        # on texture size.
-        sub_items_layout.bind(minimum_width=sub_items_layout.setter("width"))
-        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
-
-        for title_button, show_speech_bubbles_button in button_list:
-            title_button.width = max_title_button_width
-            title_button.text_size = (max_title_button_width, title_button.height)
-            sub_items_layout.add_widget(title_button)
-
-            sub_items_layout.add_widget(show_speech_bubbles_button)
-
-        logger.debug(f"Finished setting up sub_items layout. Width = {sub_items_layout.width}.")
+            row.add_widget(title_button)
+            row.add_widget(show_speech_bubbles_button)
+            sub_items_layout.add_widget(row)
 
         return sub_items_layout
 
@@ -475,102 +489,22 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         return speech_hit_rows(found_words, max_len=MAX_TITLE_AND_PAGES_LEN, sortable=True)
 
-    def _insert_title_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
+    def _insert_title_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
         button = self._open_tag_button
         assert button is not None
         target_layout = button.parent
-
-        logger.debug("Adding title sub-items layout to parent layout.")
         insertion_index = target_layout.children.index(button)
+        target_layout.add_widget(sub_items_layout, index=insertion_index)
+        sub_items_layout.owner_button = button  # Tag the layout with its owner
+        self._open_tag_widgets.append(sub_items_layout)
+        # The open word reads as the heading of the titles under it.
+        button.bold = True
 
-        # Calculate the visual row index (0-based from top) of the button.
-        # Kivy's children list is typically in reverse visual order (index 0 is bottom).
-        row_index_from_top = len(target_layout.children) - 1 - insertion_index
-
-        wrapper = RelativeLayout(size_hint_y=None, size_hint_x=1)
-        sub_items_layout.bind(height=wrapper.setter("height"))
-
-        is_right_column = target_layout == self.ids.right_column_layout
-
-        def update_pos(_instance: object, _value: object) -> None:
-            if is_right_column and sub_items_layout.width > wrapper.width:
-                sub_items_layout.x = wrapper.width - sub_items_layout.width - dp(10)
-            else:
-                sub_items_layout.x = 0
-
-        sub_items_layout.bind(width=update_pos)
-        wrapper.bind(width=update_pos)
-
-        wrapper.owner_button = button  # Tag the layout with its owner
-        wrapper.add_widget(sub_items_layout)
-        target_layout.add_widget(wrapper, index=insertion_index)
-        logger.debug(f"sub_items_layout.width after insertion = {sub_items_layout.width}.")
-
-        # Add the primary layout to the list of open widgets first. This is important
-        # for the collapse logic to correctly identify the level of the click.
-        self._open_tag_widgets.append(wrapper)
-
-        # Schedule the spacer addition to occur on the next frame. This allows Kivy's
-        # layout engine to calculate the height of the `sub_items_layout` first.
-        Clock.schedule_once(
-            lambda dt: self._add_spacers_to_columns(
-                dt, wrapper, sub_items_layout, row_index_from_top
-            )
-        )
-
-    def _add_spacers_to_columns(
-        self,
-        _dt: float,
-        wrapper: Widget,
-        sub_items_layout: Widget,
-        row_index_from_top: int,
-    ) -> None:
-        """Add a spacer to each column the sub-items reach into, so its rows move down.
-
-        The sub-items are often wider than their column. From the left and middle
-        columns they reach to the right; the right column's are drawn back from its
-        right edge, so they reach to the left.
-        """
-        if wrapper not in self._open_tag_widgets:
-            # Closed again, or the grid rebuilt, in the frame between: a spacer added
-            # now would be a blank gap nothing owns, and its item would look open.
-            return
-
-        spacer_height = sub_items_layout.height
-        if spacer_height == 0:
-            # The layout's height hasn't been calculated yet, try again next frame.
-            Clock.schedule_once(
-                lambda dt: self._add_spacers_to_columns(
-                    dt, wrapper, sub_items_layout, row_index_from_top
-                )
-            )
-            return
-
-        all_columns = self._get_col_layouts()
-        try:
-            target_index = all_columns.index(wrapper.parent)
-        except ValueError:
-            return
-
-        if sub_items_layout.x < 0:
-            overhang = -sub_items_layout.x
-            columns_reached = all_columns[:target_index][::-1]
-        else:
-            overhang = sub_items_layout.width - all_columns[target_index].width
-            columns_reached = all_columns[target_index + 1 :]
-
-        for column in columns_reached:
-            if overhang <= 0:
-                break
-
-            spacer_insertion_index = max(0, len(column.children) - 1 - row_index_from_top)
-            spacer = Widget(size_hint_y=None, height=spacer_height)
-            spacer.owner_button = wrapper.owner_button
-
-            column.add_widget(spacer, index=spacer_insertion_index)
-            self._open_tag_widgets.append(spacer)
-
-            overhang -= column.width
+    @override
+    def _close_open_widgets_from(self, level: int) -> None:
+        for widget in self._open_tag_widgets[level:]:
+            widget.owner_button.bold = False
+        super()._close_open_widgets_from(level)
 
     @override
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:

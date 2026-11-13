@@ -35,15 +35,14 @@ from barks_reader.ui.speech_index_screen import (
     _store_bounded,
 )
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.layout import Layout
-from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from kivy.uix.gridlayout import GridLayout
+    from kivy.uix.widget import Widget
 
 
 @pytest.fixture
@@ -666,7 +665,7 @@ def _row_above(column: BoxLayout, widget: Widget) -> Widget:
 
 
 class TestSubItemsInARealGrid:
-    """The sub-items go into real columns: where they reach, the rows there move down."""
+    """The sub-items go into real columns, each row the width of its own column."""
 
     @pytest.fixture
     def screen(self, speech_index_screen: SpeechIndexScreen) -> SpeechIndexScreen:
@@ -678,216 +677,89 @@ class TestSubItemsInARealGrid:
         return speech_index_screen
 
     @staticmethod
-    def _columns(screen: SpeechIndexScreen) -> tuple[BoxLayout, BoxLayout, BoxLayout]:
-        return (
-            screen.ids.left_column_layout,
-            screen.ids.middle_column_layout,
-            screen.ids.right_column_layout,
-        )
-
-    @staticmethod
-    def _open(
-        screen: SpeechIndexScreen, column: BoxLayout, from_top: int, sub_items_width: float
-    ) -> tuple[Button, Widget, MagicMock]:
-        """Open sub-items of a given width under a row, up to the frame the spacers wait for.
-
-        Returns the row's button, its sub-items' wrapper and the patched scheduler,
-        whose last call is the spacers'.
-        """
+    def _open(screen: SpeechIndexScreen, column: BoxLayout, from_top: int) -> tuple[Button, Widget]:
+        """Open a sub-items layout under a row; return the row's button and the layout."""
         button = _row(column, from_top)
         screen._open_tag_button = button
-        sub_items = Widget(size_hint=(None, None))
-        with patch.object(_speech_module.Clock, "schedule_once") as scheduled:
-            screen._insert_title_sub_items_layout(sub_items)
-        wrapper = sub_items.parent
-        # What the layout pass does before the next frame.
-        wrapper.width = column.width
-        sub_items.size = (sub_items_width, _SUB_ITEMS_HEIGHT)
-        return button, wrapper, scheduled
+        sub_items = BoxLayout(orientation="vertical", size_hint_y=None, height=_SUB_ITEMS_HEIGHT)
+        screen._insert_title_sub_items_layout(sub_items)
+        column.do_layout()
+        return button, sub_items
 
-    @staticmethod
-    def _next_frame(scheduled: MagicMock) -> None:
-        scheduled.call_args.args[0](0)
+    def test_the_sub_items_go_in_just_under_their_row_at_the_columns_width(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        left = screen.ids.left_column_layout
 
-    @staticmethod
-    def _spacers(column: BoxLayout) -> list[Widget]:
-        return [child for child in column.children if not isinstance(child, (Button, Layout))]
+        button, sub_items = self._open(screen, left, 2)
 
-    def test_the_sub_items_go_in_just_under_their_row(self, screen: SpeechIndexScreen) -> None:
-        left, _, _ = self._columns(screen)
-
-        button, wrapper, _ = self._open(screen, left, 2, sub_items_width=150)
-
-        assert _row_above(left, wrapper) is button
-        assert wrapper.height == _SUB_ITEMS_HEIGHT
+        assert _row_above(left, sub_items) is button
+        assert sub_items.width == _COLUMN_WIDTH
         assert screen._is_open_owner(button)
 
-    def test_sub_items_no_wider_than_their_column_move_no_other_row(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        left, middle, right = self._columns(screen)
+    @pytest.mark.parametrize("column_id", ["left", "middle", "right"])
+    def test_no_other_columns_rows_move(self, screen: SpeechIndexScreen, column_id: str) -> None:
+        # The titles are cut to their column: they spilled into the next, whose rows
+        # then had to be pushed down, or lay under them.
+        columns = {
+            "left": screen.ids.left_column_layout,
+            "middle": screen.ids.middle_column_layout,
+            "right": screen.ids.right_column_layout,
+        }
+        before = {name: list(column.children) for name, column in columns.items()}
 
-        _, _, scheduled = self._open(screen, left, 2, sub_items_width=_COLUMN_WIDTH)
-        self._next_frame(scheduled)
+        self._open(screen, columns[column_id], 2)
 
-        assert self._spacers(middle) == []
-        assert self._spacers(right) == []
+        for name, column in columns.items():
+            if name != column_id:
+                assert column.children == before[name]
+        assert len(screen._open_tag_widgets) == 1
 
-    def test_wide_sub_items_push_down_the_rows_of_the_column_to_the_right(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        left, middle, right = self._columns(screen)
-
-        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
-        self._next_frame(scheduled)
-
-        (spacer,) = self._spacers(right)
-        assert spacer.height == _SUB_ITEMS_HEIGHT
-        assert _row_above(right, spacer) is _row(right, 2)
-        assert spacer.owner_button is button
-        assert self._spacers(left) == []
-
-    def test_sub_items_wider_than_two_columns_push_down_both_to_the_right(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        left, middle, right = self._columns(screen)
-
-        _, _, scheduled = self._open(screen, left, 0, sub_items_width=2 * _COLUMN_WIDTH + 1)
-        self._next_frame(scheduled)
-
-        assert len(self._spacers(middle)) == 1
-        assert len(self._spacers(right)) == 1
-
-    def test_the_right_columns_wide_sub_items_push_down_the_middle_columns_rows(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        # Drawn back from the right edge, they lay over the middle column's rows.
-        left, middle, right = self._columns(screen)
-
-        button, wrapper, scheduled = self._open(screen, right, 2, sub_items_width=300)
-        self._next_frame(scheduled)
-
-        assert wrapper.children[0].x < 0
-        (spacer,) = self._spacers(middle)
-        assert spacer.height == _SUB_ITEMS_HEIGHT
-        assert _row_above(middle, spacer) is _row(middle, 2)
-        assert spacer.owner_button is button
-        assert self._spacers(left) == []
-
-    def test_the_right_columns_widest_sub_items_reach_the_left_column_too(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        left, middle, right = self._columns(screen)
-
-        _, _, scheduled = self._open(screen, right, 2, sub_items_width=2 * _COLUMN_WIDTH)
-        self._next_frame(scheduled)
-
-        assert len(self._spacers(middle)) == 1
-        assert len(self._spacers(left)) == 1
-
-    def test_the_right_columns_narrow_sub_items_stay_at_its_left_edge(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        _, middle, right = self._columns(screen)
-
-        _, wrapper, scheduled = self._open(screen, right, 2, sub_items_width=150)
-        self._next_frame(scheduled)
-
-        assert wrapper.children[0].x == 0
-        assert self._spacers(middle) == []
-
-    def test_a_spacer_under_a_shorter_column_goes_to_its_foot(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        screen.ids.right_column_layout = _column(2)
-        _, middle, right = self._columns(screen)
-
-        _, _, scheduled = self._open(screen, middle, 4, sub_items_width=300)
-        self._next_frame(scheduled)
-
-        assert right.children[0] in self._spacers(right)
-
-    def test_closing_takes_the_sub_items_and_their_spacers_out(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        _, middle, right = self._columns(screen)
-        button, wrapper, scheduled = self._open(screen, middle, 2, sub_items_width=300)
-        self._next_frame(scheduled)
+    def test_the_open_word_is_bold_until_it_is_closed(self, screen: SpeechIndexScreen) -> None:
+        button, sub_items = self._open(screen, screen.ids.middle_column_layout, 2)
+        assert button.bold
 
         screen._close_open_widgets_from(0)
 
-        assert wrapper.parent is None
-        assert self._spacers(right) == []
+        assert not button.bold
+        assert sub_items.parent is None
         assert not screen._is_open_owner(button)
 
-    def test_closed_again_before_the_frame_no_spacer_is_left_behind(
+    def test_opening_another_word_takes_the_bold_off_the_first(
         self, screen: SpeechIndexScreen
     ) -> None:
-        # The spacer went in all the same: a blank gap, and the item read as still open.
-        _, middle, right = self._columns(screen)
-        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
+        middle = screen.ids.middle_column_layout
+        first, _ = self._open(screen, middle, 1)
 
-        screen._close_open_widgets_from(0)
-        self._next_frame(scheduled)
+        screen._handle_expand_or_switch(_row(middle, 0))
+        second, _ = self._open(screen, middle, 0)
 
-        assert self._spacers(right) == []
-        assert screen._open_tag_widgets == []
-        assert not screen._is_open_owner(button)
+        assert not first.bold
+        assert second.bold
 
-    def test_a_spacer_belongs_to_the_item_opened_not_to_one_pressed_since(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        _, middle, right = self._columns(screen)
-        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
 
-        screen._open_tag_button = _row(middle, 4)
-        self._next_frame(scheduled)
-
-        (spacer,) = self._spacers(right)
-        assert spacer.owner_button is button
-
-    def test_sub_items_with_no_height_yet_wait_another_frame(
-        self, screen: SpeechIndexScreen
-    ) -> None:
-        _, middle, right = self._columns(screen)
-        _, wrapper, _ = self._open(screen, middle, 2, sub_items_width=300)
-        sub_items = wrapper.children[0]
-        sub_items.height = 0
-
-        with patch.object(_speech_module.Clock, "schedule_once") as scheduled:
-            screen._add_spacers_to_columns(0, wrapper, sub_items, 2)
-        assert self._spacers(right) == []
-
-        sub_items.height = _SUB_ITEMS_HEIGHT
-        self._next_frame(scheduled)
-        assert len(self._spacers(right)) == 1
-
-    def test_sub_items_in_no_column_add_nothing(self, screen: SpeechIndexScreen) -> None:
-        _, _, right = self._columns(screen)
-        wrapper = Widget()
-        screen._open_tag_widgets.append(wrapper)
-
-        screen._add_spacers_to_columns(0, wrapper, Widget(width=300, height=40), 0)
-
-        assert self._spacers(right) == []
+_PARENT_PADDING = 10
+_INDENT_STEP = 20
+_THEME_ROW_HEIGHT = 25
 
 
 class TestTheTitleRowsOfATerm:
-    """The sub-items themselves: a title row and its speech button for each title found."""
+    """The sub-items themselves: a row for each title found, and its speech button."""
 
     @pytest.fixture
-    def layout(self, speech_index_screen: SpeechIndexScreen) -> Generator[GridLayout]:
+    def layout(self, speech_index_screen: SpeechIndexScreen) -> Generator[BoxLayout]:
         screen = speech_index_screen
-        screen.index_theme.SUB_ITEM_INDENT_STEP = 20
+        screen.index_theme.SUB_ITEM_INDENT_STEP = _INDENT_STEP
+        screen.index_theme.ROW_HEIGHT = _THEME_ROW_HEIGHT
         screen.index_theme.TITLE_TEXT = (0, 0, 0, 1)
         screen.index_theme.TITLE_BG = (0, 0, 0, 0.1)
         screen.index_theme.TITLE_BG_SELECTED = (0, 0, 1, 1)
         screen._font_manager.index_title_item_font_name = "Roboto"
         screen._font_manager.index_title_item_font_size = 14
-        screen._open_tag_button = Button(padding=[10, 0, 0, 0])
+        screen._open_tag_button = Button(padding=[_PARENT_PADDING, 0, 0, 0])
         rows = [
             ("Title One", "3", "Title One, 3", "info one"),
-            ("A Much Longer Title Two", "7", "A Much Longer Title Two, 7, 9", "info two"),
+            ("A Much Longer Title Two", "7", "Much Longer Title Two, A, 7, 9", "info two"),
         ]
         with (
             patch.object(screen, "_get_sub_items_data", return_value=rows),
@@ -896,44 +768,51 @@ class TestTheTitleRowsOfATerm:
             yield screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
 
     @staticmethod
-    def _rows(layout: GridLayout) -> list[tuple[Button, Button]]:
-        widgets = list(reversed(layout.children))
-        return list(zip(widgets[::2], widgets[1::2], strict=True))
+    def _rows(layout: BoxLayout) -> list[tuple[Button, Button]]:
+        """Return each row's title button and speech button, top row first."""
+        return [(row.children[1], row.children[0]) for row in reversed(layout.children)]
 
-    def test_each_title_has_a_row_and_a_speech_button(self, layout: GridLayout) -> None:
+    def test_each_title_has_a_row_and_a_speech_button(self, layout: BoxLayout) -> None:
         rows = self._rows(layout)
 
-        assert [title.text for title, _ in rows] == [
+        assert [title.full_text for title, _ in rows] == [
             "Title One, 3",
-            "A Much Longer Title Two, 7, 9",
+            "Much Longer Title Two, A, 7, 9",
         ]
         assert all(isinstance(title, _SpeechIndexTitleItemButton) for title, _ in rows)
         assert all(isinstance(speech, TitleShowSpeechButton) for _, speech in rows)
 
-    def test_the_rows_are_all_as_wide_as_the_longest_and_indented_under_the_term(
-        self, layout: GridLayout
+    def test_the_rows_fill_their_column_and_are_indented_half_a_step_under_the_term(
+        self, layout: BoxLayout
     ) -> None:
-        (short, _), (long, _) = self._rows(layout)
+        (title, _), _ = self._rows(layout)
 
-        assert short.width == long.width
-        assert long.width > long.texture_size[0] > short.texture_size[0]
-        assert short.padding[0] == 10 + 20
+        assert title.size_hint_x == 1
+        assert title.padding[0] == _PARENT_PADDING + _INDENT_STEP / 2
+        # The tint runs on under the speech button, to the column's edge.
+        assert title.fill_past_right == _THEME_ROW_HEIGHT
+
+    def test_a_title_row_is_paired_with_the_speech_button_beside_it(
+        self, speech_index_screen: SpeechIndexScreen, layout: BoxLayout
+    ) -> None:
+        for title, speech in self._rows(layout):
+            assert speech_index_screen._get_paired_speech_button(title) is speech
 
     def test_a_title_row_goes_to_its_title_at_its_first_page(
-        self, speech_index_screen: SpeechIndexScreen, layout: GridLayout
+        self, speech_index_screen: SpeechIndexScreen, layout: BoxLayout
     ) -> None:
-        (_, _), (title, _) = self._rows(layout)
+        _, (title, _) = self._rows(layout)
 
         with patch.object(speech_index_screen, "_handle_title") as handle_title:
             title.dispatch("on_release")
 
         handle_title.assert_called_once_with(
             title,
-            ("A Much Longer Title Two", "7", "A Much Longer Title Two, 7, 9", "info two"),
+            ("A Much Longer Title Two", "7", "Much Longer Title Two, A, 7, 9", "info two"),
         )
 
     def test_a_speech_button_shows_the_terms_bubbles_in_its_title(
-        self, speech_index_screen: SpeechIndexScreen, layout: GridLayout
+        self, speech_index_screen: SpeechIndexScreen, layout: BoxLayout
     ) -> None:
         (_, speech), _ = self._rows(layout)
 
@@ -955,6 +834,71 @@ class TestTheTitleRowsOfATerm:
 
         build.assert_called_once_with(item)
         insert.assert_called_once_with(build.return_value)
+
+
+class TestATitleCutToItsColumn:
+    """A title too long for its row gives way to an ellipsis; its pages are kept."""
+
+    WIDE = 600
+    NARROW = 150
+
+    @staticmethod
+    def _button(full_text: str, width: float) -> _SpeechIndexTitleItemButton:
+        button = _SpeechIndexTitleItemButton(
+            full_text=full_text, font_name="Roboto", font_size=14, padding=[20, 0, 0, 0]
+        )
+        button.width = width
+        return button
+
+    @staticmethod
+    def _shown_width(button: _SpeechIndexTitleItemButton) -> float:
+        measure = _speech_module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
+        return measure.get_extents(button.text)[0]
+
+    def test_a_title_with_room_shows_whole(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.WIDE)
+        assert button.text == "Donald Duck's Atom Bomb, 5"
+
+    def test_a_title_too_long_is_cut_and_keeps_its_pages(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
+
+        assert button.text.startswith("Donald")
+        assert button.text.endswith("\u2026, 5")
+        assert self._shown_width(button) <= self.NARROW - 20
+
+    def test_as_much_of_the_title_shows_as_fits(self) -> None:
+        title, pages = "Donald Duck's Atom Bomb", ", 5"
+        button = self._button(title + pages, self.NARROW)
+        kept = len(button.text) - len("\u2026" + pages)
+
+        one_more = f"{title[: kept + 1]}\u2026{pages}"
+        measure = _speech_module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
+        assert 0 < kept < len(title)
+        assert measure.get_extents(one_more)[0] > self.NARROW - 20 - dp(4)
+
+    def test_an_article_listed_after_the_title_is_cut_with_it(self) -> None:
+        button = self._button("Golden Christmas Tree, The, 11", self.NARROW)
+
+        assert button.text.startswith("Golden")
+        assert button.text.endswith("\u2026, 11")
+        assert ", The" not in button.text
+
+    def test_a_title_with_no_pages_ends_in_the_ellipsis(self) -> None:
+        button = self._button("A Very Long Title Indeed With No Page", self.NARROW)
+
+        assert button.text.startswith("A Very")
+        assert button.text.endswith("\u2026")
+
+    def test_a_row_widened_shows_the_whole_title_again(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
+
+        button.width = self.WIDE
+
+        assert button.text == "Donald Duck's Atom Bomb, 5"
+
+    def test_a_row_with_no_width_yet_keeps_the_whole_text(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", 0)
+        assert button.text == "Donald Duck's Atom Bomb, 5"
 
 
 class TestAPrefixPressedByMouse:
