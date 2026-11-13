@@ -85,8 +85,10 @@ def find(
 ) -> TapTarget:
     """Return the first target that matches every criterion given, a whole one if any.
 
-    A target a scroll view or the window edge cuts off is passed over while a
-    whole one matches: a tap near a cut edge can land on what hides the rest.
+    A target a scroll view or the window edge cuts off, or one whose centre another
+    target lies over, is passed over while a whole one matches: a tap near a cut
+    edge can land on what hides the rest, and one on a covered centre goes to what
+    covers it.
 
     Args:
         shown: The targets, as `targets` returned them.

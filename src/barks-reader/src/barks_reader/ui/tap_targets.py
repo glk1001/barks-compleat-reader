@@ -7,13 +7,16 @@ input, the virtual keyboard, an open popup's panel - or a region a widget names 
 ``tap_target_regions()`` method returning ``{name: Rect}`` in window pixels (the
 reader's page-turn margins). Its rectangle is what a
 press can reach: clipped to every scroll view above it and to the window, with
-what sits under an open popup left out, since the popup takes every touch.
+what sits under an open popup left out, since the popup takes every touch. A target
+whose centre another lies over (a corner button over a list's last row) is listed as
+not whole: a tap on it goes to the one on top.
 """
 
 from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -53,6 +56,16 @@ _TAPPABLE = (ButtonBehavior, TreeViewNode, TextInput, VKeyboard, ModalView)
 _MARKUP_TAG_RE = re.compile(r"\[/?[a-z_]+(?:=[^\]]*)?\]")
 # Kivy markup's escapes for its own brackets, and the ampersand last.
 _MARKUP_ESCAPES = (("&bl;", "["), ("&br;", "]"), ("&amp;", "&"))
+
+
+@dataclass(frozen=True, slots=True)
+class _Found:
+    """A target as the walk found it, with what tells whether another lies over it."""
+
+    target: TapTarget
+    # Where in the walk's list the targets holding this one are: a widget is no
+    # cover for what it holds, though it is listed first.
+    holders: tuple[int, ...]
 
 
 def window_rect(widget: Widget, x: float, y: float, width: float, height: float) -> Rect:
@@ -147,25 +160,31 @@ def _is_whole(clipped: Rect, full: Rect) -> bool:
     return all(abs(a - b) < 0.5 for a, b in zip(clipped, full, strict=True))  # noqa: PLR2004
 
 
-def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarget]) -> None:
+def _collect(
+    widget: Widget,
+    clip: Rect,
+    window_height: float,
+    out: list[_Found],
+    holders: tuple[int, ...] = (),
+) -> None:
     if widget.opacity == 0 or widget.disabled:
         return  # hidden, or taking no presses (a hidden action bar is both)
     kind = type(widget).__name__
     full = window_rect(widget, widget.x, widget.y, widget.width, widget.height)
     own = _intersect(full, clip)
     if isinstance(widget, _TAPPABLE) and own[2] >= 1 and own[3] >= 1:
-        out.append(
-            _target(
-                kind,
-                _text(widget),
-                _kv_id(widget),
-                own,
-                window_height,
-                whole=_is_whole(own, full),
-                # A list row marked picked; a flag, not just any `selected` attribute.
-                selected=getattr(widget, "selected", False) is True,
-            )
+        target = _target(
+            kind,
+            _text(widget),
+            _kv_id(widget),
+            own,
+            window_height,
+            whole=_is_whole(own, full),
+            # A list row marked picked; a flag, not just any `selected` attribute.
+            selected=getattr(widget, "selected", False) is True,
         )
+        out.append(_Found(target, holders))
+        holders = (*holders, len(out) - 1)
     get_regions = getattr(widget, "tap_target_regions", None)
     if callable(get_regions):
         kv_id = _kv_id(widget)
@@ -173,13 +192,40 @@ def _collect(widget: Widget, clip: Rect, window_height: float, out: list[TapTarg
         for name, region in regions.items():
             rect = _intersect(region, clip)
             if rect[2] >= 1 and rect[3] >= 1:
-                out.append(
-                    _target(kind, name, kv_id, rect, window_height, whole=_is_whole(rect, region))
+                target = _target(
+                    kind, name, kv_id, rect, window_height, whole=_is_whole(rect, region)
                 )
+                out.append(_Found(target, holders))
     # A scroll view (every StencilView) shows its children only inside itself.
     inner = own if isinstance(widget, StencilView) else clip
     for child in widget.children:  # children[0] is on top: the order a press tries them
-        _collect(child, inner, window_height, out)
+        _collect(child, inner, window_height, out, holders)
+
+
+def _holds_point(target: TapTarget, x: int, y: int) -> bool:
+    return (
+        target.left <= x < target.left + target.width
+        and target.top <= y < target.top + target.height
+    )
+
+
+def _covered_marked(found: list[_Found]) -> list[TapTarget]:
+    """Return the targets, each whose centre an earlier target lies over marked not whole.
+
+    The walk lists targets in the order a press tries them, so an earlier one that
+    lies over a later one's centre takes a tap aimed at it. Only the centre counts:
+    rows that share an edge's few pixels (a row's speech button is taller than
+    its row) are each still tapped where a test taps them. The targets a widget sits
+    inside are listed before it too, but its presses reach it first.
+    """
+    targets: list[TapTarget] = []
+    for at, this in enumerate(found):
+        covered = this.target.whole and any(
+            before not in this.holders and _holds_point(found[before].target, *this.target.center)
+            for before in range(at)
+        )
+        targets.append(replace(this.target, whole=False) if covered else this.target)
+    return targets
 
 
 def _screen_changing(widget: Any) -> bool:  # noqa: ANN401
@@ -216,10 +262,10 @@ def snapshot(window: Any) -> list[TapTarget]:  # noqa: ANN401
     if popup_at is not None:
         children = children[: popup_at + 1]
     window_clip: Rect = (0.0, 0.0, float(window.width), float(window.height))
-    out: list[TapTarget] = []
+    found: list[_Found] = []
     for child in children:
-        _collect(child, window_clip, float(window.height), out)
-    return out
+        _collect(child, window_clip, float(window.height), found)
+    return _covered_marked(found)
 
 
 def install_tap_targets_service(window: Any) -> bool:  # noqa: ANN401

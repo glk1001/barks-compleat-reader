@@ -238,6 +238,69 @@ def test_the_window_clips_too() -> None:
     assert not target.whole
 
 
+def _whole_by_text(*children: Widget) -> dict[str, bool]:
+    return {t.text: t.whole for t in snapshot(_Window(*children))}
+
+
+def test_a_target_whose_centre_another_lies_over_is_not_whole() -> None:
+    # The goto-title button lay over the last row's speech button: the row was
+    # listed whole, and the tap a test aimed at it went to the button on top.
+    corner = _placed(Button(text="corner"), 80, 0, 40, 40)
+    row = _placed(Button(text="row"), 70, 30, 24, 20)  # its centre the corner's top-left pixel
+    clear = _placed(Button(text="clear"), 0, 100, 50, 20)
+    # children[0] is on top, so the corner button is added last.
+    assert _whole_by_text(_root(clear, row, corner)) == {
+        "corner": True,
+        "row": False,
+        "clear": True,
+    }
+
+
+def test_a_target_overlapped_short_of_its_centre_is_still_whole() -> None:
+    # A row's speech button is taller than its row, so one row shares a few pixels
+    # with the next: each is still tapped at its centre.
+    corner = _placed(Button(text="corner"), 80, 0, 40, 40)
+    row = _placed(Button(text="row"), 68, 30, 20, 20)  # its centre two pixels left of the corner
+    higher = _placed(Button(text="higher"), 100, 30, 16, 22)  # its centre one pixel above it
+    assert _whole_by_text(_root(row, higher, corner)) == {
+        "corner": True,
+        "higher": True,
+        "row": True,
+    }
+
+
+def test_a_target_is_not_covered_by_what_holds_it() -> None:
+    # A row that is a button holding another: the row is listed first, but the
+    # inner button takes its own presses. One over both covers both.
+    def row() -> Widget:
+        held = _placed(_SelectableButton(text="row"), 0, 0, 100, 20)
+        held.add_widget(_placed(Button(text="inner"), 80, 0, 20, 20))
+        return held
+
+    assert _whole_by_text(_root(row())) == {"row": True, "inner": True}
+
+    over = _placed(Button(text="over"), 40, 0, 60, 30)
+    assert _whole_by_text(_root(row(), over)) == {"over": True, "row": False, "inner": False}
+
+
+def test_a_region_is_covered_as_a_widget_is_and_not_by_its_own_widget() -> None:
+    class _Reader(Button):
+        def tap_target_regions(self) -> dict[str, tuple[float, float, float, float]]:
+            return {
+                "left margin": (0.0, 0.0, 30.0, 100.0),
+                "right margin": (70.0, 0.0, 30.0, 100.0),
+            }
+
+    reader = _placed(_Reader(text="reader"), 0, 0, 100, 100)
+    over = _placed(Button(text="over"), 40, 40, 50, 20)
+    assert _whole_by_text(_root(reader, over)) == {
+        "over": True,
+        "reader": False,
+        "left margin": True,
+        "right margin": False,
+    }
+
+
 def test_an_open_popup_hides_everything_under_it() -> None:
     popup = ModalView()
     popup.add_widget(Button(text="OK"))

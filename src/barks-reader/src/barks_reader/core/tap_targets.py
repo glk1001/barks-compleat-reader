@@ -60,9 +60,10 @@ class TapTarget:
         top: Top edge, in window pixels, counted down from the window's top.
         width: Width in window pixels.
         height: Height in window pixels.
-        whole: False when a scroll view or the window edge hides part of it:
-            the rectangle is then only the part on show, and a tap near its
-            edge can land on what hides the rest.
+        whole: False when a scroll view or the window edge hides part of it
+            (the rectangle is then only the part on show, and a tap near its
+            edge can land on what hides the rest), or when another target lies
+            over its centre and takes a tap aimed at it.
         selected: Whether it is marked as the one picked (a list row's
             ``selected``), so a test can see a pick stay marked, as no log line
             says.

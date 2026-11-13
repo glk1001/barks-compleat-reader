@@ -87,6 +87,21 @@ class TestTheOverlay:
         )
         assert button.y == pytest.approx(50 + disc_bottom - button.touch_padding)
 
+    def test_the_bottom_strip_is_as_high_as_the_bottom_buttons_touch_area(self) -> None:
+        # A list sharing the screen stops above it: a row under the button, disc or
+        # padding, gave its press to the button.
+        overlay = _overlay()
+        button = overlay.goto_button
+        assert overlay.bottom_strip_height == pytest.approx(button.y + button.height - 50)
+
+        button.height += 6
+        overlay.pos = (100, 70)
+        assert overlay.bottom_strip_height == pytest.approx(button.y + button.height - 70)
+        assert overlay.bottom_strip_height > 0.4 * OVERLAY_BUTTON_WIDTH + button.visual_size
+
+    def test_a_top_button_leaves_no_strip_at_the_bottom(self) -> None:
+        assert _overlay(position="top-right").bottom_strip_height == 0
+
     def test_the_label_stands_left_of_the_button_level_with_it(self) -> None:
         overlay = _overlay(current_title_str="Lost in the Andes!")
         button, label = overlay.goto_button, _label(overlay)

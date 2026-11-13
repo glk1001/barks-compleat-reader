@@ -51,6 +51,10 @@ class GotoTitleOverlay(FloatLayout):
     label_bg_color = ColorProperty((0.1, 0.1, 0.1, 0.5))
     position = StringProperty("bottom-right")
     goto_button = ObjectProperty(None, allownone=True)
+    # How far above the overlay's bottom the bottom-right button takes a press (its
+    # disc and the touch padding round it); 0 for the top-right one. A list sharing
+    # the screen stops above it: a row under the button could not be pressed.
+    bottom_strip_height = NumericProperty(0)
 
     def __init__(self, **kwargs: object) -> None:
         self.register_event_type("on_goto_press")
@@ -124,8 +128,11 @@ class GotoTitleOverlay(FloatLayout):
         def update_button_pos(*_args: object) -> None:
             button.x = self.x + self.width - (1.4 * OVERLAY_BUTTON_WIDTH) - button.touch_padding
             button.y = self.y + disc_bottom() - button.touch_padding
+            if self.position != "top-right":
+                self.bottom_strip_height = button.y + button.height - self.y
 
         self.bind(pos=update_button_pos, size=update_button_pos)
+        button.bind(size=update_button_pos)
 
         def update_label_pos(*_args: object) -> None:
             # Level with the disc (centred on the button, whose padding is symmetric),
