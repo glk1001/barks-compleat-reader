@@ -64,7 +64,7 @@ def _run_validation(
     payments: dict[Titles, PaymentInfo],
     one_pagers: list[Titles] | None = None,
     non_comic: list[Titles] | None = None,
-    expect_assertion_error: bool = False,
+    expect_assertion_error: str = "",
 ) -> str:
     """Run ``validate_payment_data`` against patched data tables and return its output."""
     with (
@@ -74,7 +74,7 @@ def _run_validation(
         patch.object(bp_module, "NON_COMIC_TITLES", non_comic or []),
     ):
         if expect_assertion_error:
-            with pytest.raises(AssertionError):
+            with pytest.raises(AssertionError, match=expect_assertion_error):
                 validate_payment_data()
         else:
             validate_payment_data()  # Should not raise.
@@ -104,7 +104,7 @@ class TestValidatePaymentData:
             capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={},
-            expect_assertion_error=True,
+            expect_assertion_error="1 title.s. have no payment info",
         )
         assert "has no payment info" in out
         assert "missing payment info: 1" in out
@@ -132,9 +132,47 @@ class TestValidatePaymentData:
             capsys,
             title_info=[_info(title, 15, 6, 1943)],
             payments={title: _payment(title, 1, 6, 1943)},
+            expect_assertion_error="1 title.s. were accepted before they were submitted",
         )
         assert "is before submitted date" in out
-        assert "accepted-before-submitted: 1" in out
+        assert " accepted-before-submitted: 1," in out
+        assert "known accepted-before-submitted: 0," in out
+
+    def test_a_known_accepted_before_submitted_title_passes(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        title = Titles.LOST_IN_THE_ANDES
+        out = _run_validation(
+            capsys,
+            title_info=[_info(title, 21, 10, 1948)],
+            payments={title: _payment(title, 14, 10, 1948)},
+        )
+        assert "is before submitted date" not in out
+        assert "0 issue(s) found" in out
+        assert "known accepted-before-submitted: 1," in out
+
+    def test_a_known_title_whose_dates_are_now_in_order_is_stale(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        title = Titles.LOST_IN_THE_ANDES
+        out = _run_validation(
+            capsys,
+            title_info=[_info(title, 14, 10, 1948)],
+            payments={title: _payment(title, 14, 10, 1948)},  # The same day: in order.
+            expect_assertion_error="1 title.s. in ACCEPTED_BEFORE_SUBMITTED_TITLES",
+        )
+        assert '"Lost in the Andes!": accepted date 1948-10-14 is no longer before' in out
+        assert "no-longer-accepted-before-submitted: 1," in out
+        assert "1 issue(s) found" in out
+
+    def test_the_real_known_titles_are_all_still_accepted_before_submitted(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        validate_payment_data()
+        out = capsys.readouterr().out
+        known = len(bp_module.ACCEPTED_BEFORE_SUBMITTED_TITLES)
+        assert f"known accepted-before-submitted: {known}," in out
+        assert "0 issue(s) found" in out
 
     def test_accepted_more_than_13_months_after_submitted_is_gap_error(
         self, capsys: pytest.CaptureFixture[str]
@@ -144,8 +182,9 @@ class TestValidatePaymentData:
             capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={title: _payment(title, 15, 3, 1944)},  # 14 months later.
+            expect_assertion_error="1 title.s. were accepted more than 13 months after",
         )
-        assert "more than 3 months after" in out
+        assert "more than 13 months after" in out
         assert "13-months-after-submitted: 1" in out
 
     def test_exactly_13_months_after_is_not_a_gap_error(
@@ -208,7 +247,7 @@ class TestValidatePaymentData:
                 t_good: _payment(t_good, 15, 2, 1943),
             },
             one_pagers=[t_one_pager],
-            expect_assertion_error=True,
+            expect_assertion_error="1 title.s. have no payment info",
         )
         assert "4 issue(s) found" in out
         assert "missing payment info: 1" in out

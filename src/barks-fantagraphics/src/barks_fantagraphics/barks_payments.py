@@ -989,7 +989,47 @@ BARKS_PAYMENTS = {
 # fmt: on
 
 
+# The titles whose accepted date, from Barrier's bibliography, is before the date
+# Barks submitted them. Several share one accepted date, so these look like the
+# source's dates rather than typing slips. `validate_payment_data` fails on any other
+# title accepted before it was submitted, and on a title here that no longer is.
+ACCEPTED_BEFORE_SUBMITTED_TITLES = frozenset(
+    {
+        Titles.LOST_IN_THE_ANDES,
+        Titles.LUCK_OF_THE_NORTH,
+        Titles.CHRISTMAS_FOR_SHACKTOWN_A,
+        Titles.TREEING_OFF,
+        Titles.CHRISTMAS_KISS,
+        Titles.PROJECTING_DESIRES,
+        Titles.SOMETHIN_FISHY_HERE,
+        Titles.BARBER_COLLEGE,
+        Titles.FOLLOW_THE_RAINBOW,
+        Titles.ITCHING_TO_SHARE,
+        Titles.BALLET_EVASIONS,
+        Titles.CHEAPEST_WEIGH_THE,
+        Titles.TEMPER_TAMPERING,
+        Titles.DINER_DILEMMA,
+        Titles.DONALD_DUCK_TELLS_ABOUT_KITES,
+        Titles.DOG_SITTER_THE,
+        Titles.MYSTERY_OF_THE_LOCH,
+        Titles.LIFE_SAVERS,
+        Titles.EAGLE_SAVERS,
+    }
+)
+
+
 def validate_payment_data() -> None:
+    """Check each title's payment row against its submission date.
+
+    Prints every problem and a summary line, then fails on the first kind found.
+
+    Raises:
+        AssertionError: If a multi-page title has no payment, if a title not in
+            ``ACCEPTED_BEFORE_SUBMITTED_TITLES`` was accepted before it was submitted,
+            if a title in that set no longer is, or if a title was accepted more than
+            13 months after it was submitted.
+
+    """
     # TODO: Use this when all titles configured.
     # assert len(BARKS_PAYMENTS) == len(BARKS_TITLE_INFO), (
     #     f"Num payments = {len(BARKS_PAYMENTS)}, num titles = {len(BARKS_TITLE_INFO)}"
@@ -998,6 +1038,8 @@ def validate_payment_data() -> None:
     missing_payment_errors = 0
     missing_one_pager_payments = 0
     date_order_errors = 0
+    known_date_order_cases = 0
+    stale_date_order_cases = 0
     date_gap_errors = 0
     max_acceptance_months_gap = 13
     max_acceptance_gap = relativedelta(months=max_acceptance_months_gap)
@@ -1031,33 +1073,62 @@ def validate_payment_data() -> None:
             payment_info.accepted_year, payment_info.accepted_month, payment_info.accepted_day
         )
 
+        is_known_case = title in ACCEPTED_BEFORE_SUBMITTED_TITLES
         if accepted_date < submitted_date:
+            if is_known_case:
+                known_date_order_cases += 1
+            else:
+                print(
+                    f'"{ENUM_TO_STR_TITLE[title]}":'
+                    f" accepted date {accepted_date} is before submitted date {submitted_date}."
+                )
+                date_order_errors += 1
+            continue
+        if is_known_case:
             print(
                 f'"{ENUM_TO_STR_TITLE[title]}":'
-                f" accepted date {accepted_date} is before submitted date {submitted_date}."
+                f" accepted date {accepted_date} is no longer before submitted date"
+                f" {submitted_date}: take it out of ACCEPTED_BEFORE_SUBMITTED_TITLES."
             )
-            date_order_errors += 1
-        elif accepted_date > submitted_date + max_acceptance_gap:
+            stale_date_order_cases += 1
+        if accepted_date > submitted_date + max_acceptance_gap:
             print(
                 f'"{ENUM_TO_STR_TITLE[title]}":'
-                f" accepted date {accepted_date} is more than 3 months after"
-                f" submitted date {submitted_date}."
+                f" accepted date {accepted_date} is more than {max_acceptance_months_gap}"
+                f" months after submitted date {submitted_date}."
             )
             date_gap_errors += 1
 
     total_issues = (
-        missing_payment_errors + missing_one_pager_payments + date_order_errors + date_gap_errors
+        missing_payment_errors
+        + missing_one_pager_payments
+        + date_order_errors
+        + stale_date_order_cases
+        + date_gap_errors
     )
     print(
         f"\nvalidate_payment_data summary: {total_issues} issue(s) found"
         f" (missing payment info: {missing_payment_errors},"
         f" missing one-pager payments: {missing_one_pager_payments},"
         f" accepted-before-submitted: {date_order_errors},"
+        f" known accepted-before-submitted: {known_date_order_cases},"
+        f" no-longer-accepted-before-submitted: {stale_date_order_cases},"
         f" accepted-more-than-{max_acceptance_months_gap}-months-after-submitted:"
         f" {date_gap_errors})."
     )
 
-    assert missing_payment_errors == 0
+    assert missing_payment_errors == 0, f"{missing_payment_errors} title(s) have no payment info"
+    assert date_order_errors == 0, (
+        f"{date_order_errors} title(s) were accepted before they were submitted"
+    )
+    assert stale_date_order_cases == 0, (
+        f"{stale_date_order_cases} title(s) in ACCEPTED_BEFORE_SUBMITTED_TITLES"
+        " are no longer accepted before they were submitted"
+    )
+    assert date_gap_errors == 0, (
+        f"{date_gap_errors} title(s) were accepted more than"
+        f" {max_acceptance_months_gap} months after they were submitted"
+    )
 
 
 # The page count a bibliography entry starts with: "1", "7/8", "⅞", "5¾" or "10". The
