@@ -8,6 +8,10 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_nodes
+import pytest
+from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.navigation import TitleDestination
+from barks_reader.core.reader_formatter import ReaderFormatter
 from barks_reader.ui.tree_view_nodes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
@@ -45,6 +49,17 @@ class TestReaderTreeView:
         tree.reset_selection_tracking()
         assert tree.previous_selected_node is None
         assert tree._current_selection_tracker is None
+
+    def test_go_back_returns_to_the_node_it_was_given(self) -> None:
+        tree = ReaderTreeView()
+        back_node, next_node = MagicMock(), MagicMock()
+        back_node.get_name.return_value = "Back"
+        next_node.get_name.return_value = "Next"
+
+        tree.set_back_node(back_node)
+        tree.on_selected_node(tree, next_node)
+
+        assert tree.previous_selected_node == back_node
 
 
 class TestReaderTreeBuilderEventDispatcher:
@@ -148,6 +163,106 @@ class TestReaderTreeViewRule:
         [tree_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<ReaderTreeView>"]
 
         assert "minimum_height" not in tree_rule.properties
+
+
+def _fanta_info(title: Titles = Titles.LOST_IN_THE_ANDES) -> MagicMock:
+    info = MagicMock()
+    info.fanta_chronological_number = 7
+    info.comic_book_info.title = title
+    info.comic_book_info.get_display_title.return_value = "Lost in the Andes!"
+    return info
+
+
+class TestATitleNodeBuiltForReal:
+    """The node's own constructor runs: the tests below it patch it away."""
+
+    def test_it_keeps_its_story_and_goes_to_that_story(self) -> None:
+        info = _fanta_info()
+
+        node = TitleTreeViewNode(info)
+
+        assert node.fanta_info is info
+        assert node.destination == TitleDestination(fanta_info=info)
+        assert node.saved_state == {}
+
+    def test_a_destination_handed_in_is_kept(self) -> None:
+        destination = TitleDestination(fanta_info=_fanta_info(Titles.CHRISTMAS_ON_BEAR_MOUNTAIN))
+
+        node = TitleTreeViewNode(_fanta_info(), destination=destination)
+
+        assert node.destination is destination
+
+    def test_it_is_named_by_its_title(self) -> None:
+        node = TitleTreeViewNode(_fanta_info(Titles.LOST_IN_THE_ANDES))
+
+        assert node.get_title() is Titles.LOST_IN_THE_ANDES
+        assert node.get_name() == "LOST_IN_THE_ANDES"
+
+
+class TestATitleNodesRow:
+    """What `create_from_fanta_info` writes into the row, and what a press reaches."""
+
+    @pytest.fixture
+    def issue_info(self) -> Any:  # noqa: ANN401
+        with patch.object(
+            ReaderFormatter, "get_issue_info", return_value="FC 223"
+        ) as get_issue_info:
+            yield get_issue_info
+
+    @staticmethod
+    def _create(info: MagicMock, on_press: MagicMock, *, footnote: bool) -> TitleTreeViewNode:
+        app = MagicMock()
+        app.font_manager.tree_view_issue_label_font_size = 11
+
+        def init(self: TitleTreeViewNode, fanta_info: Any, **_kwargs: object) -> None:  # noqa: ANN401
+            self.fanta_info = fanta_info
+            self.ids = {
+                "num_label": MagicMock(),
+                "title_label": MagicMock(),
+                "issue_label": MagicMock(),
+            }
+
+        with (
+            patch.object(barks_reader.ui.tree_view_nodes.App, "get_running_app", return_value=app),
+            patch.object(
+                barks_reader.ui.tree_view_nodes, "title_needs_footnote", return_value=footnote
+            ),
+            patch.object(TitleTreeViewNode, "__init__", autospec=True, side_effect=init),
+        ):
+            return TitleTreeViewNode.create_from_fanta_info(info, on_press)
+
+    def test_the_row_shows_the_number_the_title_and_the_issue(self, issue_info: MagicMock) -> None:
+        node = self._create(_fanta_info(), MagicMock(), footnote=False)
+
+        assert node.ids.num_label.text == "7"
+        assert node.ids.title_label.text == "Lost in the Andes!"
+        assert node.ids.issue_label.text == "FC 223"
+        assert issue_info.call_count == 1
+
+    def test_every_part_of_the_row_is_bound_to_the_press(self, issue_info: MagicMock) -> None:
+        del issue_info
+        on_press = MagicMock()
+
+        node = self._create(_fanta_info(), on_press, footnote=False)
+
+        for label in (node.ids.num_label, node.ids.title_label, node.ids.issue_label):
+            label.bind.assert_called_once_with(on_press=on_press)
+
+    def test_a_title_with_no_footnote_asks_for_none(self, issue_info: MagicMock) -> None:
+        info = _fanta_info()
+
+        self._create(info, MagicMock(), footnote=False)
+
+        assert issue_info.call_args.args[:3] == (info, False, 0)
+
+    def test_a_footnoted_title_gets_its_mark_at_twice_the_issue_size(
+        self, issue_info: MagicMock
+    ) -> None:
+        info = _fanta_info()
+
+        self._create(info, MagicMock(), footnote=True)
+
+        assert issue_info.call_args.args[:3] == (info, True, 22)
 
 
 class TestTitleTreeViewNode:
