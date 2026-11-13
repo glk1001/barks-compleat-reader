@@ -74,6 +74,8 @@ class FontManager(EventDispatcher):
     search_label_font_size = NumericProperty()
     search_clear_button_font_size = NumericProperty()
     search_button_font_size = NumericProperty()
+    history_bar_button_font_size = NumericProperty()
+    statistics_tab_font_size = NumericProperty()
 
     tree_view_main_node_font_size = NumericProperty()
     tree_view_story_node_font_size = NumericProperty()
@@ -156,6 +158,8 @@ class FontManager(EventDispatcher):
         self.search_label_font_size = theme.search_label
         self.search_clear_button_font_size = theme.search_clear_button
         self.search_button_font_size = theme.search_button
+        self.history_bar_button_font_size = theme.history_bar_button
+        self.statistics_tab_font_size = theme.statistics_tab
 
         # Apply default and specific sizes for tree view
         self.tree_view_main_node_font_size = theme.default

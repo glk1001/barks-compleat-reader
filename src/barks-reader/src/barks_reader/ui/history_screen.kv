@@ -12,7 +12,7 @@
     text_size: self.width, None
     halign: 'center'
     valign: 'middle'
-    font_size: dp(14)
+    font_size: fm.history_bar_button_font_size
 
 <HistoryScreen>:
     opacity: 1 if root.is_visible else 0
@@ -74,7 +74,7 @@
             border: (0, 0, 0, 0)
             background_color: reader_palette.theme().danger
             color: (1, 1, 1, 1)
-            font_size: dp(14)
+            font_size: fm.history_bar_button_font_size
             on_press: root.on_clear_pressed()
 
     # Scrolling history rows fill the space below the action bar

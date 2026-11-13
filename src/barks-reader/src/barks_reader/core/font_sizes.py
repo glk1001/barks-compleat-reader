@@ -115,6 +115,10 @@ class FontTheme:
     search_label: float
     search_clear_button: float
     search_button: float
+    # The Reading History bar's buttons, and the Statistics tabs: eight share the
+    # window's width, so their labels are the smallest text the app shows.
+    history_bar_button: float
+    statistics_tab: float
 
 
 LOW_RES_FONT_SIZES = FontTheme(
@@ -144,6 +148,8 @@ LOW_RES_FONT_SIZES = FontTheme(
     search_label=14,
     search_clear_button=16,
     search_button=14,
+    history_bar_button=14,
+    statistics_tab=11,
 )
 HI_RES_FONT_SIZES = FontTheme(
     main_title=40,
@@ -172,4 +178,6 @@ HI_RES_FONT_SIZES = FontTheme(
     search_label=18,
     search_clear_button=20,
     search_button=18,
+    history_bar_button=17,
+    statistics_tab=12,
 )

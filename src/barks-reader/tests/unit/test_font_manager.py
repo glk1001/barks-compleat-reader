@@ -118,6 +118,8 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.search_label = 34
     mock_theme.search_clear_button = 35
     mock_theme.search_button = 36
+    mock_theme.history_bar_button = 39
+    mock_theme.statistics_tab = 40
 
     font_manager._apply_font_theme(mock_theme)
 
@@ -158,6 +160,8 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.search_label_font_size == 34
     assert font_manager.search_clear_button_font_size == 35
     assert font_manager.search_button_font_size == 36
+    assert font_manager.history_bar_button_font_size == 39
+    assert font_manager.statistics_tab_font_size == 40
 
 
 # Drawn glyphs the OCR'd lettering keeps (barks-ocr, 2026-10-18): music notes, a sharp, a
