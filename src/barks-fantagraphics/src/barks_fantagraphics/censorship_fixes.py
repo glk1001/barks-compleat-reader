@@ -40,6 +40,9 @@ CENSORSHIP_FIXES_HEADER = [
 
 # Story names in the CSV that predate the canonical title spellings. The curly
 # apostrophe is the CSV's, and has to be matched exactly.
+# Covers share an issue with its stories; a Story cell naming the issue means a story.
+_COVER_TITLE_STRS = frozenset(ENUM_TO_STR_TITLE[title] for title in COVERS_SET)
+
 TITLE_ALIASES = {
     "The Mummy’s Ring": "Donald Duck and the Mummy's Ring",  # noqa: RUF001
     "Race to the South Seas": "Race to the South Seas!",
@@ -225,17 +228,19 @@ def resolve_censorship_story(comics_database: ComicsDatabase, story: str) -> str
         CensorshipFixesError: If the story does not resolve to exactly one title.
 
     """
+    # A hand-edited cell may carry a stray or doubled space; no title or issue has one.
+    written = story
+    story = re.sub(r"\s+", " ", story).strip()
+
     if story in TITLE_ALIASES:
         return TITLE_ALIASES[story]
 
-    covers = {ENUM_TO_STR_TITLE[title] for title in COVERS_SET}
-    issue = re.sub(r"\s+", " ", story).strip()
-    found, titles, _closest = comics_database.get_story_title_from_issue(issue)
+    found, titles, _closest = comics_database.get_story_title_from_issue(story)
     if found:
-        story_titles = [t for t in titles if t not in covers]
+        story_titles = [t for t in titles if t not in _COVER_TITLE_STRS]
         if len(story_titles) == 1:
             return story_titles[0]
-        msg = f'Issue "{story}" matches {len(story_titles)} stories: {story_titles}.'
+        msg = f'Issue "{written}" matches {len(story_titles)} stories: {story_titles}.'
         raise CensorshipFixesError(msg)
 
     is_title, closest = comics_database.is_story_title(story)
@@ -247,7 +252,7 @@ def resolve_censorship_story(comics_database: ComicsDatabase, story: str) -> str
     if one_pager_location(story) is not None:
         return story
 
-    msg = f'Story "{story}" is not a known title or issue. Closest match: "{closest}".'
+    msg = f'Story "{written}" is not a known title or issue. Closest match: "{closest}".'
     raise CensorshipFixesError(msg)
 
 

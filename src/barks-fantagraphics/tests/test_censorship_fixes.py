@@ -30,6 +30,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.censorship_fixes import (
     CENSORSHIP_FIXES_HEADER,
     ONE_PAGER_COMIC_PAGE,
+    TITLE_ALIASES,
     CensorshipFixesError,
     CensorshipFixRow,
     censorship_fix_pages,
@@ -97,6 +98,28 @@ class TestResolvingTheStoryCell:
 
     def test_an_issue_string_still_resolves(self, db: ComicsDatabase) -> None:
         assert resolve_censorship_story(db, "WDCS 132") == "Ten-Star Generals"
+
+    @pytest.mark.parametrize(
+        ("cell", "title"),
+        [
+            ("Frozen Gold ", "Frozen Gold"),
+            ("  Frozen  Gold", "Frozen Gold"),
+            (" WDCS  132 ", "Ten-Star Generals"),
+            (f" {ONE_PAGER_STR} ", ONE_PAGER_STR),
+        ],
+    )
+    def test_stray_spaces_in_a_cell_are_ignored(
+        self, db: ComicsDatabase, cell: str, title: str
+    ) -> None:
+        assert resolve_censorship_story(db, cell) == title
+
+    def test_an_alias_with_stray_spaces_resolves(self, db: ComicsDatabase) -> None:
+        alias, title = next(iter(TITLE_ALIASES.items()))
+        assert resolve_censorship_story(db, f" {alias} ") == title
+
+    def test_a_refused_cell_is_quoted_as_written(self, db: ComicsDatabase) -> None:
+        with pytest.raises(CensorshipFixesError, match='Story "Dinner  Dilemma " is not a known'):
+            resolve_censorship_story(db, "Dinner  Dilemma ")
 
     def test_an_unknown_cell_is_still_refused(self, db: ComicsDatabase) -> None:
         # The one-pager fallback must not turn a typo into a silent pass.
