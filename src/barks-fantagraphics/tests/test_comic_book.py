@@ -396,6 +396,19 @@ class TestGetFinalStoryFile:
         assert result == fixes
         assert mod == ModifiedType.MODIFIED
 
+    def test_an_edited_special_case_may_be_a_non_story_page(self, tmp_path: Path) -> None:
+        # Volume 16 page 209, the Happy New Year page, is in the table of special cases.
+        comic = _make_comic(volume=16, base_dir=tmp_path)
+        primary = tmp_path / "primary.jpg"
+        fixes = tmp_path / "fixes.png"
+        primary.touch()
+        fixes.touch()
+        result, mod = comic._get_final_story_file(
+            FixesType.ORIGINAL, "209", PageType.SPLASH, primary, fixes
+        )
+        assert result == fixes
+        assert mod == ModifiedType.MODIFIED
+
     def test_raises_when_edited_non_story_type(self, tmp_path: Path) -> None:
         comic = _make_comic(base_dir=tmp_path)
         primary = tmp_path / "primary.jpg"

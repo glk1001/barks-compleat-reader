@@ -44,6 +44,7 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
 )
 from barks_fantagraphics.ocr_file_paths import OCR_PRELIM_DIR_ENV_VAR
+from comic_utils.comic_consts import JPG_FILE_EXT
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -152,6 +153,24 @@ class TestExactTitlesNeedNoSearch:
         ):
             comic = db.get_comic_book("FC 9")
         assert comic.get_title_enum() == Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+
+
+class TestInsetInfo:
+    def test_a_comic_takes_its_inset_from_the_directory_and_extension_set(
+        self, tmp_path: Path
+    ) -> None:
+        db = ComicsDatabase()
+        db.set_inset_info(tmp_path, JPG_FILE_EXT)
+        comic = db.get_comic_book("Lost in the Andes!")
+        assert comic.intro_inset_file == tmp_path / f"Lost in the Andes!{JPG_FILE_EXT}"
+
+    def test_the_inset_directory_must_exist(self, tmp_path: Path) -> None:
+        with pytest.raises(AssertionError):
+            ComicsDatabase().set_inset_info(tmp_path / "missing", JPG_FILE_EXT)
+
+    def test_the_inset_extension_must_be_an_image_one(self, tmp_path: Path) -> None:
+        with pytest.raises(AssertionError):
+            ComicsDatabase().set_inset_info(tmp_path, ".gif")
 
 
 class TestIniFilenames:

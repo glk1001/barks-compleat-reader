@@ -177,6 +177,11 @@ class TestSplitLetterTerms:
         assert len(buckets) <= max_buckets
         assert [t for bucket in buckets for t in bucket] == terms
 
+    def test_a_bar_with_no_slots_gets_the_whole_letter_in_one_bucket(self) -> None:
+        terms = sorted(f"a{a}{b}" for a in string.ascii_lowercase for b in "abcde")
+        assert len(terms) > PREFERRED_BUCKET_SIZE
+        assert split_letter_terms(terms, max_buckets=0) == [terms]
+
     def test_never_exceeds_the_prefix_bar_capacity(self) -> None:
         terms = [f"s{a}{b}{c}" for a in "abcde" for b in string.ascii_lowercase for c in "xyz"]
         buckets = split_letter_terms(sorted(terms))

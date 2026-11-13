@@ -93,6 +93,8 @@ class TestCoverTitles:
         # An unlocated cover has no collection page.
         unlocated = next(c for c in BARKS_COVERS if c not in located)
         assert get_cover_collection_page_num(get_cover_title(unlocated)) is None
+        # Nor has a title that is not a cover at all.
+        assert get_cover_collection_page_num(Titles.LOST_IN_THE_ANDES) is None
 
 
 class TestCoverOrdering:

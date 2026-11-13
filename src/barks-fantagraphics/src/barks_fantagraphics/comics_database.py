@@ -484,15 +484,12 @@ class ComicsDatabase:
             story_title = self._get_story_title_of_issue(title)
 
         if not story_title:
-            found, close = self.is_story_title(title)
-            if found:
-                story_title = title
-            else:
-                if close:
-                    msg = f'Could not find title "{title}". Did you mean "{close}"?'
-                    raise TitleNotFoundError(msg, title)
-                msg = f'Could not find title "{title}".'
+            _found, close = self.is_story_title(title)
+            if close:
+                msg = f'Could not find title "{title}". Did you mean "{close}"?'
                 raise TitleNotFoundError(msg, title)
+            msg = f'Could not find title "{title}".'
+            raise TitleNotFoundError(msg, title)
 
         ini_file = self._story_titles_dir / get_filename_from_title_str(story_title, ".ini")
 

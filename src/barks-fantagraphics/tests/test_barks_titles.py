@@ -25,9 +25,12 @@ from barks_fantagraphics.comic_book_info import (
     ComicBookInfo,
     check_cover_submitted_order,
     check_story_submitted_order,
+    get_filename_from_title,
     get_filename_from_title_str,
     get_located_one_pagers,
     get_one_pager_collection_pages,
+    get_one_pager_fanta_page,
+    get_one_pager_fanta_vol_and_page,
     get_title_str_from_filename,
     is_non_comic_title,
 )
@@ -380,6 +383,35 @@ class TestFormattedTitleFromIssueName:
         for info in BARKS_TITLE_INFO:
             formatted = info.get_formatted_title_from_issue_name()
             assert ("#" in formatted) == (info.issue_name in ISSUE_NAME_WRAPPED), info.title
+
+
+class TestSmallTitleLookups:
+    def test_a_title_better_known_by_its_issue_is_named_by_it(self) -> None:
+        info = BARKS_TITLE_INFO[Titles.HORSERADISH_STORY_THE]
+        assert info.get_title_from_issue_name() == "Uncle Scrooge #3"
+
+    def test_any_other_title_is_named_by_its_issue_and_number(self) -> None:
+        info = BARKS_TITLE_INFO[Titles.LOST_IN_THE_ANDES]
+        assert info.get_title_from_issue_name() == "Four Color #223"
+
+    def test_a_display_title_gives_back_its_title(self) -> None:
+        from_display = ComicBookInfo.get_title_str_from_display_title
+        assert from_display("Lost in the Andes!") == "Lost in the Andes!"
+        assert from_display("(The Victory Garden)") == "The Victory Garden"
+        # Not a title, and not in brackets: left as given.
+        assert from_display("No Such Title") == "No Such Title"
+        # A title's own brackets stay.
+        own_brackets = next(t for t in ENUM_TO_STR_TITLE if t.endswith(")"))
+        assert from_display(own_brackets) == own_brackets
+
+    def test_a_one_pagers_page_is_the_page_of_its_location(self) -> None:
+        title = get_located_one_pagers()[0]
+        assert get_one_pager_fanta_page(title) == get_one_pager_fanta_vol_and_page(title)[1]
+        assert get_one_pager_fanta_page(title) is not None
+
+    def test_a_titles_filename_drops_what_a_filename_cannot_hold(self) -> None:
+        assert get_filename_from_title(Titles.FUN_WHATS_THAT, ".ini") == "Fun What's That.ini"
+        assert get_filename_from_title(Titles.LOST_IN_THE_ANDES, "") == "Lost in the Andes!"
 
 
 class TestFilenameMaps:

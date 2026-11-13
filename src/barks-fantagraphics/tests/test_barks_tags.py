@@ -344,6 +344,26 @@ class TestTitleLookups:
         assert BARKS_TAG_CATEGORIES_TITLES[TagCategories.FAVOURITES] == favourites_before
 
 
+def test_the_personal_favourites_join_a_tag_group_that_holds_them() -> None:
+    """No group holds the favourites today; one that did would be refreshed the same way."""
+    group = TagGroups.FIRSTS
+    pick = next(t for t in Titles if t not in barks_tags.BARKS_TAG_GROUPS_TITLES[group])
+    with (
+        patch.dict(barks_tags.BARKS_TAGGED_TITLES),
+        patch.dict(barks_tags.BARKS_TAG_CATEGORIES_TITLES),
+        patch.dict(barks_tags.BARKS_TAG_GROUPS_TITLES),
+        patch.dict(
+            barks_tags.BARKS_TAG_GROUPS,
+            {group: [*barks_tags.BARKS_TAG_GROUPS[group], Tags.PERSONAL_FAVOURITES]},
+        ),
+    ):
+        barks_tags.special_case_personal_favourites_tag_update([pick])
+        titles = barks_tags.BARKS_TAG_GROUPS_TITLES[group]
+        assert pick in titles
+        assert titles == sorted(titles)
+    assert pick not in barks_tags.BARKS_TAG_GROUPS_TITLES[group]
+
+
 # --- The Gyro tags: every Gyro story, split by first issue ---
 
 _GG_STORY = Titles.GAB_MUFFER_THE  # Four Color 1047, Gyro's own comic.
