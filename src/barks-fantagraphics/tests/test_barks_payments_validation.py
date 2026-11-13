@@ -1,3 +1,5 @@
+# ruff: noqa: SLF001
+
 """Branch-coverage tests for ``validate_payment_data``.
 
 The top-level ``test_barks_payments.py`` only confirms validation passes on
@@ -7,7 +9,9 @@ module-level data tables with minimal synthetic fixtures.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
+from fractions import Fraction
 from unittest.mock import patch
 
 import pytest
@@ -345,3 +349,47 @@ class TestOnePagerPageCountErrors:
             covers=frozenset({cover}),
         )
         assert errors == []
+
+
+class TestBibPageCount:
+    @pytest.mark.parametrize(
+        ("page_count", "expected"),
+        [
+            ("10", Fraction(10)),
+            ("10 (pp. 1-10)", Fraction(10)),
+            ("7/8", Fraction(7, 8)),
+            ("⅞", Fraction(7, 8)),
+            ("5¾", Fraction(23, 4)),
+            ("1 1/2", Fraction(3, 2)),
+            ("17 5/6", Fraction(107, 6)),
+            ("7 7/8 (pp. 21-28)", Fraction(63, 8)),
+            ("  3 3/4", Fraction(15, 4)),
+            ("1 (inside back cover)", Fraction(1)),
+        ],
+    )
+    def test_count(self, page_count: str, expected: Fraction) -> None:
+        assert bp_module._get_bib_page_count(page_count) == expected
+
+    @pytest.mark.parametrize("page_count", ["", "(front cover)"])
+    def test_an_entry_with_no_count_is_none(self, page_count: str) -> None:
+        assert bp_module._get_bib_page_count(page_count) is None
+
+    def test_a_mixed_count_over_one_page_is_not_a_one_pager(self) -> None:
+        errors = _one_pager_errors(
+            one_pagers=[],
+            payments={_STORY: _paid(_STORY, 2)},
+            bib_page_counts={_STORY: "1 1/2"},
+        )
+        assert errors == []
+
+    def test_every_mixed_count_in_the_bibliography_keeps_its_fraction(self) -> None:
+        mixed = [
+            entry.page_count
+            for entry in bp_module.TITLE_TO_BIB_ENTRY.values()
+            if re.match(r"\s*\d+\s+\d+/\d+", entry.page_count)
+        ]
+        assert mixed  # The bibliography writes some counts this way ("17 5/6").
+        for page_count in mixed:
+            count = bp_module._get_bib_page_count(page_count)
+            assert count is not None, page_count
+            assert count.denominator != 1, page_count

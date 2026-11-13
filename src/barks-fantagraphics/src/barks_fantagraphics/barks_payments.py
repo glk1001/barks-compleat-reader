@@ -1131,15 +1131,25 @@ def validate_payment_data() -> None:
     )
 
 
-# The page count a bibliography entry starts with: "1", "7/8", "⅞", "5¾" or "10". The
-# rest of the entry ("(inside back cover)", "(pp. 1-10)") says where, not how many.
-_BIB_PAGE_COUNT = re.compile(r"(?P<whole>\d*)(?:/(?P<denominator>\d+)|(?P<vulgar>[⅛¼⅜½⅝¾⅞]?))")
+# The page count a bibliography entry starts with: "1", "7/8", "⅞", "5¾", "17 5/6" or
+# "10". The rest of the entry ("(inside back cover)", "(pp. 1-10)") says where, not how
+# many.
+_BIB_PAGE_COUNT = re.compile(
+    r"(?P<whole>\d*)"
+    r"(?:\s+(?P<mixed_numerator>\d+)/(?P<mixed_denominator>\d+)"
+    r"|/(?P<denominator>\d+)"
+    r"|(?P<vulgar>[⅛¼⅜½⅝¾⅞]?))"
+)
 
 
 def _get_bib_page_count(page_count: str) -> Fraction | None:
     match = _BIB_PAGE_COUNT.match(page_count.strip())
     if match is None or not (match["whole"] or match["vulgar"]):
         return None  # A cover: the bibliography gives no count.
+    if match["mixed_denominator"]:
+        return int(match["whole"]) + Fraction(
+            int(match["mixed_numerator"]), int(match["mixed_denominator"])
+        )
     if match["denominator"]:
         return Fraction(int(match["whole"]), int(match["denominator"]))
     whole = Fraction(int(match["whole"] or "0"))
