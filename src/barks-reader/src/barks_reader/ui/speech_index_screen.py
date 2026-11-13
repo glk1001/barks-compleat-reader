@@ -94,7 +94,6 @@ class _SpeechIndexTitleItemButton(Button):
     background_color_normal = ColorProperty((0, 0, 0, 0))
     background_color_down = ColorProperty((0, 0, 0, 0))
     padding = ListProperty([0, 0, 0, 0])
-    gap_fill = NumericProperty(0)
     # How far the fill runs on past the button's right edge: under its speech button.
     fill_past_right = NumericProperty(0)
     # The row's whole text, "Title, pages": what shows is this, or its title cut short.
@@ -114,7 +113,6 @@ class _SpeechIndexTitleItemButton(Button):
         self.background_color = (0, 0, 0, 0)
         self.halign = "left"
         self.valign = "middle"
-        self.gap_fill = dp(3)
 
         # `state` matters as much as pos/size: update_canvas picks the fill from it,
         # so without this binding the pressed band never repaints.
@@ -160,11 +158,10 @@ class _SpeechIndexTitleItemButton(Button):
             )
             # Draw background starting from text start (padding[0]) to end of button width
             Rectangle(
-                pos=(self.x + self.padding[0], self.y - self.gap_fill),
-                size=(
-                    self.width - self.padding[0] + self.fill_past_right,
-                    self.height + self.gap_fill,
-                ),
+                # The row's own height and no more: the fills are translucent, so
+                # where one ran into the next row's a darker line showed.
+                pos=(self.x + self.padding[0], self.y),
+                size=(self.width - self.padding[0] + self.fill_past_right, self.height),
             )
 
 
@@ -434,7 +431,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         # A row to a title, each the column's width: the title, cut short with an
         # ellipsis where the column is too narrow for it, and its speech button at
         # the column's right edge.
-        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(1))
+        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
 
         for (
