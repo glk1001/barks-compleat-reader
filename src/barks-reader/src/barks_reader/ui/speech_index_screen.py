@@ -491,9 +491,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         sub_items_layout.bind(width=update_pos)
         wrapper.bind(width=update_pos)
 
+        wrapper.owner_button = button  # Tag the layout with its owner
         wrapper.add_widget(sub_items_layout)
         target_layout.add_widget(wrapper, index=insertion_index)
-        wrapper.owner_button = self._open_tag_button  # Tag the layout with its owner
         logger.debug(f"sub_items_layout.width after insertion = {sub_items_layout.width}.")
 
         # Add the primary layout to the list of open widgets first. This is important
@@ -504,54 +504,63 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         # layout engine to calculate the height of the `sub_items_layout` first.
         Clock.schedule_once(
             lambda dt: self._add_spacers_to_columns(
-                dt, target_layout, sub_items_layout, row_index_from_top
+                dt, wrapper, sub_items_layout, row_index_from_top
             )
         )
 
     def _add_spacers_to_columns(
         self,
         _dt: float,
-        target_layout: Widget,
+        wrapper: Widget,
         sub_items_layout: Widget,
         row_index_from_top: int,
     ) -> None:
-        """Add spacer widgets to other columns to keep vertical alignment."""
+        """Add a spacer to each column the sub-items reach into, so its rows move down.
+
+        The sub-items are often wider than their column. From the left and middle
+        columns they reach to the right; the right column's are drawn back from its
+        right edge, so they reach to the left.
+        """
+        if wrapper not in self._open_tag_widgets:
+            # Closed again, or the grid rebuilt, in the frame between: a spacer added
+            # now would be a blank gap nothing owns, and its item would look open.
+            return
+
         spacer_height = sub_items_layout.height
         if spacer_height == 0:
             # The layout's height hasn't been calculated yet, try again next frame.
             Clock.schedule_once(
                 lambda dt: self._add_spacers_to_columns(
-                    dt, target_layout, sub_items_layout, row_index_from_top
+                    dt, wrapper, sub_items_layout, row_index_from_top
                 )
             )
             return
 
-        all_columns = [
-            self.ids.left_column_layout,
-            self.ids.middle_column_layout,
-            self.ids.right_column_layout,
-        ]
-
+        all_columns = self._get_col_layouts()
         try:
-            target_index = all_columns.index(target_layout)
+            target_index = all_columns.index(wrapper.parent)
         except ValueError:
             return
 
-        covered_width = target_layout.width
+        if sub_items_layout.x < 0:
+            overhang = -sub_items_layout.x
+            columns_reached = all_columns[:target_index][::-1]
+        else:
+            overhang = sub_items_layout.width - all_columns[target_index].width
+            columns_reached = all_columns[target_index + 1 :]
 
-        for i in range(target_index + 1, len(all_columns)):
-            if sub_items_layout.width <= covered_width:
+        for column in columns_reached:
+            if overhang <= 0:
                 break
 
-            column = all_columns[i]
             spacer_insertion_index = max(0, len(column.children) - 1 - row_index_from_top)
             spacer = Widget(size_hint_y=None, height=spacer_height)
-            spacer.owner_button = self._open_tag_button
+            spacer.owner_button = wrapper.owner_button
 
             column.add_widget(spacer, index=spacer_insertion_index)
             self._open_tag_widgets.append(spacer)
 
-            covered_width += column.width
+            overhang -= column.width
 
     @override
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
@@ -675,7 +684,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
             button = IndexPrefixButton(
                 prefix=prefix, letter=first_letter, text=stacked_prefix_label(prefix, terms)
             )
-            button.bind(on_release=self.on_letter_prefix_press)
+            button.bind(on_release=self._on_prefix_button_released)
             self._prefix_buttons[prefix] = button
             alphabet_top_split_layout.add_widget(button)
 
@@ -693,6 +702,14 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         if saved_prefix is not None and self._saved_prefix_letter in (None, first_letter):
             logger.warning(f'Invalid restored prefix: "{saved_prefix}".')
         return next(iter(split_terms))
+
+    def _on_prefix_button_released(self, button: IndexPrefixButton) -> None:
+        """Show a prefix pressed by mouse or touch; the keys select one without a press."""
+        self.on_letter_prefix_press(button)
+        if self._nav_active:
+            # The focus follows the press, as it does a letter's: left on a row of the
+            # grid just replaced, the next key went on from that row's old place.
+            self._enter_prefix_panel()
 
     def on_letter_prefix_press(self, button: IndexPrefixButton) -> None:
         """Show the words under a prefix button, and save the prefix as the one to restore.
@@ -803,7 +820,9 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._select_focused_prefix(visible)
             self._clear_prefix_focus()
-            Clock.schedule_once(lambda _dt: self._enter_items_panel(), 0)
+            # The new grid's rows have no place until the next frame lays them out.
+            grid_version = self._grid_version
+            Clock.schedule_once(lambda _dt: self._enter_items_of_grid(grid_version), 0)
         elif key == KEY_DOWN:
             self._clear_prefix_focus()
             self._enter_items_panel()
@@ -813,6 +832,19 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         else:
             return False
         return True
+
+    def _enter_items_of_grid(self, grid_version: int) -> None:
+        """Move the focus from the prefix bar into the grid Enter built, if it still can.
+
+        In the frame between, the keys may have left the screen, moved to the alphabet
+        or shown another prefix: the ring then stays where that put it.
+        """
+        if (
+            self._nav_active
+            and self._nav_panel is _IndexNavPanel.PREFIX
+            and self._grid_version == grid_version
+        ):
+            self._enter_items_panel()
 
     def _select_focused_prefix(self, visible: list[IndexPrefixButton]) -> None:
         btn = visible[self._nav_focused_prefix_idx]

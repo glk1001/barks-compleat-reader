@@ -24,6 +24,7 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.index_screen import (
+    IndexPrefixButton,
     TitleShowSpeechButton,
     _IndexNavPanel,
 )
@@ -34,9 +35,15 @@ from barks_reader.ui.speech_index_screen import (
     _store_bounded,
 )
 from kivy.clock import Clock
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.layout import Layout
+from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from kivy.uix.gridlayout import GridLayout
 
 
 @pytest.fixture
@@ -637,22 +644,433 @@ def test_a_letter_with_more_prefixes_than_the_bar_holds_is_logged(
     assert any("prefix buttons but the bar holds" in line for line in loguru_sink)
 
 
-class TestSpacers:
-    def test_a_layout_with_no_height_yet_tries_again_next_frame(
-        self, speech_index_screen: SpeechIndexScreen
-    ) -> None:
-        layout = MagicMock(height=0)
-        with patch.object(_speech_module.Clock, "schedule_once") as scheduled:
-            speech_index_screen._add_spacers_to_columns(0, MagicMock(), layout, 0)
-        scheduled.assert_called_once()
+_COLUMN_WIDTH = 200
+_ROW_HEIGHT = 20
+_SUB_ITEMS_HEIGHT = 60
 
-    def test_a_layout_in_no_column_adds_nothing(
+
+def _column(rows: int) -> BoxLayout:
+    column = BoxLayout(orientation="vertical", size_hint=(None, None), width=_COLUMN_WIDTH)
+    for n in range(rows):
+        column.add_widget(Button(text=f"row {n}", size_hint_y=None, height=_ROW_HEIGHT))
+    return column
+
+
+def _row(column: BoxLayout, from_top: int) -> Button:
+    return column.children[len(column.children) - 1 - from_top]
+
+
+def _row_above(column: BoxLayout, widget: Widget) -> Widget:
+    """Return what is drawn just above `widget`: a column's children run bottom to top."""
+    return column.children[column.children.index(widget) + 1]
+
+
+class TestSubItemsInARealGrid:
+    """The sub-items go into real columns: where they reach, the rows there move down."""
+
+    @pytest.fixture
+    def screen(self, speech_index_screen: SpeechIndexScreen) -> SpeechIndexScreen:
+        speech_index_screen.ids.left_column_layout = _column(6)
+        speech_index_screen.ids.middle_column_layout = _column(6)
+        speech_index_screen.ids.right_column_layout = _column(6)
+        speech_index_screen._open_tag_widgets = []
+        speech_index_screen._open_tag_button = None
+        return speech_index_screen
+
+    @staticmethod
+    def _columns(screen: SpeechIndexScreen) -> tuple[BoxLayout, BoxLayout, BoxLayout]:
+        return (
+            screen.ids.left_column_layout,
+            screen.ids.middle_column_layout,
+            screen.ids.right_column_layout,
+        )
+
+    @staticmethod
+    def _open(
+        screen: SpeechIndexScreen, column: BoxLayout, from_top: int, sub_items_width: float
+    ) -> tuple[Button, Widget, MagicMock]:
+        """Open sub-items of a given width under a row, up to the frame the spacers wait for.
+
+        Returns the row's button, its sub-items' wrapper and the patched scheduler,
+        whose last call is the spacers'.
+        """
+        button = _row(column, from_top)
+        screen._open_tag_button = button
+        sub_items = Widget(size_hint=(None, None))
+        with patch.object(_speech_module.Clock, "schedule_once") as scheduled:
+            screen._insert_title_sub_items_layout(sub_items)
+        wrapper = sub_items.parent
+        # What the layout pass does before the next frame.
+        wrapper.width = column.width
+        sub_items.size = (sub_items_width, _SUB_ITEMS_HEIGHT)
+        return button, wrapper, scheduled
+
+    @staticmethod
+    def _next_frame(scheduled: MagicMock) -> None:
+        scheduled.call_args.args[0](0)
+
+    @staticmethod
+    def _spacers(column: BoxLayout) -> list[Widget]:
+        return [child for child in column.children if not isinstance(child, (Button, Layout))]
+
+    def test_the_sub_items_go_in_just_under_their_row(self, screen: SpeechIndexScreen) -> None:
+        left, _, _ = self._columns(screen)
+
+        button, wrapper, _ = self._open(screen, left, 2, sub_items_width=150)
+
+        assert _row_above(left, wrapper) is button
+        assert wrapper.height == _SUB_ITEMS_HEIGHT
+        assert screen._is_open_owner(button)
+
+    def test_sub_items_no_wider_than_their_column_move_no_other_row(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        left, middle, right = self._columns(screen)
+
+        _, _, scheduled = self._open(screen, left, 2, sub_items_width=_COLUMN_WIDTH)
+        self._next_frame(scheduled)
+
+        assert self._spacers(middle) == []
+        assert self._spacers(right) == []
+
+    def test_wide_sub_items_push_down_the_rows_of_the_column_to_the_right(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        left, middle, right = self._columns(screen)
+
+        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
+        self._next_frame(scheduled)
+
+        (spacer,) = self._spacers(right)
+        assert spacer.height == _SUB_ITEMS_HEIGHT
+        assert _row_above(right, spacer) is _row(right, 2)
+        assert spacer.owner_button is button
+        assert self._spacers(left) == []
+
+    def test_sub_items_wider_than_two_columns_push_down_both_to_the_right(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        left, middle, right = self._columns(screen)
+
+        _, _, scheduled = self._open(screen, left, 0, sub_items_width=2 * _COLUMN_WIDTH + 1)
+        self._next_frame(scheduled)
+
+        assert len(self._spacers(middle)) == 1
+        assert len(self._spacers(right)) == 1
+
+    def test_the_right_columns_wide_sub_items_push_down_the_middle_columns_rows(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        # Drawn back from the right edge, they lay over the middle column's rows.
+        left, middle, right = self._columns(screen)
+
+        button, wrapper, scheduled = self._open(screen, right, 2, sub_items_width=300)
+        self._next_frame(scheduled)
+
+        assert wrapper.children[0].x < 0
+        (spacer,) = self._spacers(middle)
+        assert spacer.height == _SUB_ITEMS_HEIGHT
+        assert _row_above(middle, spacer) is _row(middle, 2)
+        assert spacer.owner_button is button
+        assert self._spacers(left) == []
+
+    def test_the_right_columns_widest_sub_items_reach_the_left_column_too(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        left, middle, right = self._columns(screen)
+
+        _, _, scheduled = self._open(screen, right, 2, sub_items_width=2 * _COLUMN_WIDTH)
+        self._next_frame(scheduled)
+
+        assert len(self._spacers(middle)) == 1
+        assert len(self._spacers(left)) == 1
+
+    def test_the_right_columns_narrow_sub_items_stay_at_its_left_edge(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        _, middle, right = self._columns(screen)
+
+        _, wrapper, scheduled = self._open(screen, right, 2, sub_items_width=150)
+        self._next_frame(scheduled)
+
+        assert wrapper.children[0].x == 0
+        assert self._spacers(middle) == []
+
+    def test_a_spacer_under_a_shorter_column_goes_to_its_foot(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        screen.ids.right_column_layout = _column(2)
+        _, middle, right = self._columns(screen)
+
+        _, _, scheduled = self._open(screen, middle, 4, sub_items_width=300)
+        self._next_frame(scheduled)
+
+        assert right.children[0] in self._spacers(right)
+
+    def test_closing_takes_the_sub_items_and_their_spacers_out(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        _, middle, right = self._columns(screen)
+        button, wrapper, scheduled = self._open(screen, middle, 2, sub_items_width=300)
+        self._next_frame(scheduled)
+
+        screen._close_open_widgets_from(0)
+
+        assert wrapper.parent is None
+        assert self._spacers(right) == []
+        assert not screen._is_open_owner(button)
+
+    def test_closed_again_before_the_frame_no_spacer_is_left_behind(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        # The spacer went in all the same: a blank gap, and the item read as still open.
+        _, middle, right = self._columns(screen)
+        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
+
+        screen._close_open_widgets_from(0)
+        self._next_frame(scheduled)
+
+        assert self._spacers(right) == []
+        assert screen._open_tag_widgets == []
+        assert not screen._is_open_owner(button)
+
+    def test_a_spacer_belongs_to_the_item_opened_not_to_one_pressed_since(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        _, middle, right = self._columns(screen)
+        button, _, scheduled = self._open(screen, middle, 2, sub_items_width=300)
+
+        screen._open_tag_button = _row(middle, 4)
+        self._next_frame(scheduled)
+
+        (spacer,) = self._spacers(right)
+        assert spacer.owner_button is button
+
+    def test_sub_items_with_no_height_yet_wait_another_frame(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        _, middle, right = self._columns(screen)
+        _, wrapper, _ = self._open(screen, middle, 2, sub_items_width=300)
+        sub_items = wrapper.children[0]
+        sub_items.height = 0
+
+        with patch.object(_speech_module.Clock, "schedule_once") as scheduled:
+            screen._add_spacers_to_columns(0, wrapper, sub_items, 2)
+        assert self._spacers(right) == []
+
+        sub_items.height = _SUB_ITEMS_HEIGHT
+        self._next_frame(scheduled)
+        assert len(self._spacers(right)) == 1
+
+    def test_sub_items_in_no_column_add_nothing(self, screen: SpeechIndexScreen) -> None:
+        _, _, right = self._columns(screen)
+        wrapper = Widget()
+        screen._open_tag_widgets.append(wrapper)
+
+        screen._add_spacers_to_columns(0, wrapper, Widget(width=300, height=40), 0)
+
+        assert self._spacers(right) == []
+
+
+class TestTheTitleRowsOfATerm:
+    """The sub-items themselves: a title row and its speech button for each title found."""
+
+    @pytest.fixture
+    def layout(self, speech_index_screen: SpeechIndexScreen) -> Generator[GridLayout]:
+        screen = speech_index_screen
+        screen.index_theme.SUB_ITEM_INDENT_STEP = 20
+        screen.index_theme.TITLE_TEXT = (0, 0, 0, 1)
+        screen.index_theme.TITLE_BG = (0, 0, 0, 0.1)
+        screen.index_theme.TITLE_BG_SELECTED = (0, 0, 1, 1)
+        screen._font_manager.index_title_item_font_name = "Roboto"
+        screen._font_manager.index_title_item_font_size = 14
+        screen._open_tag_button = Button(padding=[10, 0, 0, 0])
+        rows = [
+            ("Title One", "3", "Title One, 3", "info one"),
+            ("A Much Longer Title Two", "7", "A Much Longer Title Two, 7, 9", "info two"),
+        ]
+        with (
+            patch.object(screen, "_get_sub_items_data", return_value=rows),
+            patch.object(_speech_module, "title_row_item", side_effect=lambda *row: row),
+        ):
+            yield screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+
+    @staticmethod
+    def _rows(layout: GridLayout) -> list[tuple[Button, Button]]:
+        widgets = list(reversed(layout.children))
+        return list(zip(widgets[::2], widgets[1::2], strict=True))
+
+    def test_each_title_has_a_row_and_a_speech_button(self, layout: GridLayout) -> None:
+        rows = self._rows(layout)
+
+        assert [title.text for title, _ in rows] == [
+            "Title One, 3",
+            "A Much Longer Title Two, 7, 9",
+        ]
+        assert all(isinstance(title, _SpeechIndexTitleItemButton) for title, _ in rows)
+        assert all(isinstance(speech, TitleShowSpeechButton) for _, speech in rows)
+
+    def test_the_rows_are_all_as_wide_as_the_longest_and_indented_under_the_term(
+        self, layout: GridLayout
+    ) -> None:
+        (short, _), (long, _) = self._rows(layout)
+
+        assert short.width == long.width
+        assert long.width > long.texture_size[0] > short.texture_size[0]
+        assert short.padding[0] == 10 + 20
+
+    def test_a_title_row_goes_to_its_title_at_its_first_page(
+        self, speech_index_screen: SpeechIndexScreen, layout: GridLayout
+    ) -> None:
+        (_, _), (title, _) = self._rows(layout)
+
+        with patch.object(speech_index_screen, "_handle_title") as handle_title:
+            title.dispatch("on_release")
+
+        handle_title.assert_called_once_with(
+            title,
+            ("A Much Longer Title Two", "7", "A Much Longer Title Two, 7, 9", "info two"),
+        )
+
+    def test_a_speech_button_shows_the_terms_bubbles_in_its_title(
+        self, speech_index_screen: SpeechIndexScreen, layout: GridLayout
+    ) -> None:
+        (_, speech), _ = self._rows(layout)
+
+        with patch.object(speech_index_screen, "_show_title_speech_bubbles") as show:
+            speech.dispatch("on_release")
+
+        show.assert_called_once_with("Title One", "duck", "info one")
+
+    def test_adding_the_sub_items_builds_and_inserts_them(
         self, speech_index_screen: SpeechIndexScreen
     ) -> None:
-        speech_index_screen.ids.middle_column_layout = MagicMock()
-        stranger = MagicMock()
-        speech_index_screen._add_spacers_to_columns(0, stranger, MagicMock(height=40), 0)
-        speech_index_screen.ids.right_column_layout.add_widget.assert_not_called()
+        item = IndexItem("duck", "duck")
+        speech_index_screen._open_tag_item = item
+        with (
+            patch.object(speech_index_screen, "_get_title_sub_items_layout") as build,
+            patch.object(speech_index_screen, "_insert_title_sub_items_layout") as insert,
+        ):
+            speech_index_screen._add_title_sub_items(0)
+
+        build.assert_called_once_with(item)
+        insert.assert_called_once_with(build.return_value)
+
+
+class TestAPrefixPressedByMouse:
+    @staticmethod
+    def _real_prefix_buttons(screen: SpeechIndexScreen) -> dict[str, IndexPrefixButton]:
+        with patch.object(screen, "_populate_index_grid"):
+            screen._populate_top_alphabet_split_menu("A")
+        return screen._prefix_buttons
+
+    def test_the_focus_follows_the_press_off_the_grid_it_replaced(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        # Left on row 40 of the old grid, the next Down went to row 41 of the new one.
+        screen = speech_index_screen
+        buttons = self._real_prefix_buttons(screen)
+        screen.ids.alphabet_top_split_layout.children = list(reversed(buttons.values()))
+        screen._nav_active = True
+        screen._nav_panel = _IndexNavPanel.ITEMS
+        screen._nav_focused_item_idx = 40
+
+        with (
+            patch.object(screen, "_populate_index_grid"),
+            patch.object(screen, "_clear_all_item_focus") as clear_items,
+            patch.object(screen, "_clear_letter_focus"),
+            patch.object(_speech_module, "draw_focus_highlight") as draw,
+        ):
+            buttons["ant"].dispatch("on_release")
+
+        assert screen._nav_panel is _IndexNavPanel.PREFIX
+        assert screen._selected_prefix_button is buttons["ant"]
+        assert screen._nav_focused_prefix_idx == list(buttons).index("ant")
+        clear_items.assert_called()
+        draw.assert_called_once_with(buttons["ant"], _speech_module.INDEX_NAV_FOCUS_GROUP)
+
+    def test_with_the_keys_elsewhere_a_press_draws_no_focus(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        screen = speech_index_screen
+        buttons = self._real_prefix_buttons(screen)
+        screen._nav_active = False
+
+        with (
+            patch.object(screen, "_populate_index_grid") as populate,
+            patch.object(screen, "_enter_prefix_panel") as enter_prefix,
+        ):
+            buttons["ant"].dispatch("on_release")
+
+        populate.assert_called_once_with("A")
+        enter_prefix.assert_not_called()
+
+
+class TestEnterOnAPrefix:
+    """Enter shows the prefix, and the focus drops into its grid on the next frame."""
+
+    @pytest.fixture
+    def entered(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> Generator[tuple[MagicMock, MagicMock]]:
+        """Press Enter on a prefix; yield the scheduler holding the deferred move, and the move."""
+        screen = speech_index_screen
+        screen.ids.alphabet_top_split_layout.children = [MagicMock(), MagicMock()]
+        screen._nav_focused_prefix_idx = 0
+        screen._nav_active = True
+        screen._nav_panel = _IndexNavPanel.PREFIX
+        screen._grid_version = 7
+        with (
+            patch.object(screen, "_clear_prefix_focus"),
+            patch.object(screen, "on_letter_prefix_press"),
+            patch.object(screen, "_enter_items_panel") as enter_items,
+            patch.object(_speech_module.Clock, "schedule_once") as scheduled,
+        ):
+            assert screen._handle_prefix_key(KEY_ENTER) is True
+            enter_items.assert_not_called()
+            yield scheduled, enter_items
+
+    @staticmethod
+    def _next_frame(scheduled: MagicMock) -> None:
+        scheduled.call_args.args[0](0)
+
+    def test_the_focus_enters_the_new_grid_on_the_next_frame(
+        self, entered: tuple[MagicMock, MagicMock]
+    ) -> None:
+        scheduled, enter_items = entered
+        self._next_frame(scheduled)
+
+        enter_items.assert_called_once_with()
+
+    def test_the_keys_having_left_the_screen_no_focus_is_drawn(
+        self, speech_index_screen: SpeechIndexScreen, entered: tuple[MagicMock, MagicMock]
+    ) -> None:
+        speech_index_screen._nav_active = False
+
+        scheduled, enter_items = entered
+        self._next_frame(scheduled)
+
+        enter_items.assert_not_called()
+
+    def test_the_focus_having_gone_to_the_alphabet_stays_there(
+        self, speech_index_screen: SpeechIndexScreen, entered: tuple[MagicMock, MagicMock]
+    ) -> None:
+        speech_index_screen._nav_panel = _IndexNavPanel.ALPHABET
+
+        scheduled, enter_items = entered
+        self._next_frame(scheduled)
+
+        enter_items.assert_not_called()
+
+    def test_another_prefix_shown_since_keeps_the_focus_on_the_bar(
+        self, speech_index_screen: SpeechIndexScreen, entered: tuple[MagicMock, MagicMock]
+    ) -> None:
+        speech_index_screen._grid_version += 1
+
+        scheduled, enter_items = entered
+        self._next_frame(scheduled)
+
+        enter_items.assert_not_called()
 
 
 class TestSpeechButtonOtherKeys:
