@@ -24,7 +24,7 @@ term in the index holds ``& | + * ? : ( ) "``, so they are syntax wherever they 
 
 A word holding ``*`` or ``?`` is a wildcard (at least two letters besides them),
 quoted or not: no index term holds either. Quotes make a single word exact and
-several words a phrase. `parse_query` never
+several words a phrase, which cannot hold a wildcard. `parse_query` never
 raises: bad syntax comes back as a `ParseError` with the position it was found at,
 for a notice and a literal search instead.
 """
@@ -460,6 +460,10 @@ class _Parser:
             raise _QueryError(msg, token.position)
         if len(words) == 1:
             return self._word(words[0], token.position, exact=True)
+        if any(Word(word).is_wildcard for word in words):
+            # The index's analyzer would drop the * or ? and find the plain phrase.
+            msg = "a phrase cannot hold a wildcard (* or ?)"
+            raise _QueryError(msg, token.position)
         return Phrase(words)
 
     @staticmethod

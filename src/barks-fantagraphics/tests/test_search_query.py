@@ -130,6 +130,8 @@ def test_a_query_parses_to_its_tree(text: str, tree: object) -> None:
         ("g*", 0, "a wildcard needs at least 2 letters besides * and ?"),
         ('"*"', 0, "a wildcard needs at least 2 letters besides * and ?"),  # no word holds *
         ('gold "g?"', 5, "a wildcard needs at least 2 letters besides * and ?"),
+        ('"gold* mine"', 0, "a phrase cannot hold a wildcard (* or ?)"),
+        ('duck "pirate g?ld"', 5, "a phrase cannot hold a wildcard (* or ?)"),
         ("gold NEAR z*", 10, "a wildcard needs at least 2 letters besides * and ?"),
         ("foo:bar", 0, '"foo:" is not a filter (tag:, year: or vol:)'),
         ("tag:", 0, '"tag:" needs a value'),
