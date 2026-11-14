@@ -132,6 +132,11 @@ class TestSpeakerCallFromGroup:
 
         assert call == SpeakerCall(speaker="other:the mayor")
 
+    def test_a_cue_written_bare_is_one_cue_not_its_letters(self) -> None:
+        call = speaker_call_from_group({"speaker": "Donald", "identified_by": "balloon-tail"})
+        assert call is not None
+        assert call.identified_by == ("balloon-tail",)
+
     def test_identified_by_is_sorted(self) -> None:
         """The two engines list the same cues in different orders; order is noise."""
         easy = speaker_call_from_group(

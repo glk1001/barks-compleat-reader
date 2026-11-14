@@ -232,6 +232,8 @@ def speaker_call_from_group(group: dict[str, Any]) -> SpeakerCall | None:
         return None
 
     identified_by = group.get(IDENTIFIED_BY_KEY) or ()
+    if isinstance(identified_by, str):  # one cue written bare, not in a list
+        identified_by = (identified_by,)
     return SpeakerCall(
         speaker=str(speaker),
         confidence=group.get(SPEAKER_CONFIDENCE_KEY) or None,
