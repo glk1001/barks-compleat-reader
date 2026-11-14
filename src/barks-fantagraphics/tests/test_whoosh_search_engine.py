@@ -1028,6 +1028,20 @@ class TestTheBuilderMore:
         assert len(least) == 200
         assert all(count == 2 for _, count in least)
 
+    def test_the_least_common_list_holds_the_rarest_words_not_the_first_alphabetically(
+        self, tmp_path: Path
+    ) -> None:
+        # 200 words used three times sort before 'zebra' (used twice) alphabetically,
+        # so only a frequency order keeps 'zebra' in the list, and first.
+        common = " ".join(f"apple{i:03d}" for i in range(200))
+        bubbles = {"0": _speech(common), "1": _speech(common), "2": _speech(common)}
+        bubbles |= {"3": _speech("zebra"), "4": _speech("zebra")}
+        pages = {Titles.LOST_IN_THE_ANDES: [_page(OcrTypes.EASYOCR, "041", bubbles)]}
+        self._build(tmp_path, pages)
+        least = json.loads((tmp_path / "index" / "least-common-unstemmed-terms.json").read_text())
+        assert least[0] == ["zebra", 2]
+        assert [count for _, count in least] == sorted(count for _, count in least)
+
 
 class TestWhatAFoundBubbleCarries:
     _build = staticmethod(TestSearchEngineCreator._build)

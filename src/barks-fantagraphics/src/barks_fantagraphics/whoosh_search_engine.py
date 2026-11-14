@@ -748,8 +748,8 @@ class SearchEngineCreator(SearchEngine):
 
     def _get_least_common_ai_text_terms(self, top_n: int = 200) -> list[tuple[str, int]]:
         with self._index.reader() as reader:
-            # Create a generator that yields (total_freq, text).
-            # We swap the order so the heap sorts by frequency first.
+            # (text, total_freq) pairs; the key orders the heap by frequency first,
+            # then by text so ties come out in a stable order.
             term_generator = (
                 (text.decode("utf-8"), round(terminfo.weight()))
                 for text, terminfo in reader.iter_field("unstemmed")
@@ -757,7 +757,9 @@ class SearchEngineCreator(SearchEngine):
             )
 
             # Efficiently find the N smallest items without sorting the whole list.
-            return heapq.nsmallest(top_n, term_generator)
+            return heapq.nsmallest(
+                top_n, term_generator, key=lambda term_count: (term_count[1], term_count[0])
+            )
 
     @staticmethod
     def _get_cleaned_terms(
