@@ -485,9 +485,22 @@ print("RESULT " + json.dumps({"outcome": outcome, "seen": seen, "popups_left": p
 """
 
 
+def _kivy_log_tails(config_dir: Path) -> list[str]:
+    """Return the end of each log file under `config_dir`, for a failure's message."""
+    return [
+        f"{log}:\n{log.read_text(encoding='utf-8', errors='replace')[-3000:]}"
+        for log in sorted(config_dir.rglob("*.txt")) + sorted(config_dir.rglob("*.log"))
+    ]
+
+
 class TestTheRealLoop:
     """Kivy's own loop and clock, with nothing standing in: the window as an install has it."""
 
+    # The loop runs in a process of its own, and on a Mac with no OpenGL driver (the CI
+    # runner, the VirtualBox guest) that process cannot open a window: the library that
+    # lets Kivy draw there takes itself out of the environment once loaded, so no child
+    # inherits it (scripts/macos/with-soft-gl.sh).
+    @pytest.mark.skipif(sys.platform == "darwin", reason="a child process gets no window here")
     def test_the_work_runs_behind_the_window_which_is_then_handed_on_and_closed(
         self, tmp_path: Path
     ) -> None:
@@ -507,7 +520,11 @@ class TestTheRealLoop:
             check=False,
         )
 
-        assert done.returncode == 0, done.stderr[-3000:]
+        # Kivy's console log is off in the app (config_info), so its own word on a
+        # failure is in the log file it wrote to the scratch config folder.
+        assert done.returncode == 0, "\n".join(
+            [done.stderr[-3000:], done.stdout[-1000:], *_kivy_log_tails(tmp_path / "config")]
+        )
         (line,) = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
         assert json.loads(line.removeprefix("RESULT ")) == {
             "outcome": ["the result", True],
