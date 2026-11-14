@@ -52,10 +52,6 @@ def _texts(widget: Any) -> list[str]:  # noqa: ANN401
     return [w.text for w in widget.walk() if isinstance(w, Label)]
 
 
-def _button(content: Any, text: str) -> Button:  # noqa: ANN401
-    return next(w for w in content.walk() if isinstance(w, Button) and w.text == text)
-
-
 def _logged(sink: list[str], start: str) -> bool:
     """Return whether a line starts so: an exception's line carries its traceback."""
     return any(line.startswith(start) for line in sink)
@@ -91,8 +87,9 @@ class TestContent:
     def test_without_a_log_it_says_so(self) -> None:
         assert "No log file available." in _texts(_content(log_path=""))
 
-    def test_its_buttons_are_the_frames_and_no_toggle_without_details(self) -> None:
+    def test_its_buttons_are_the_frames_with_or_without_details(self) -> None:
         assert not [w for w in _content().walk() if isinstance(w, Button)]
+        assert not [w for w in _content(details=_DETAILS).walk() if isinstance(w, Button)]
 
     def test_the_copy_holds_the_message_and_details_without_markup(self) -> None:
         content = _content(details=_DETAILS)
@@ -125,7 +122,7 @@ class TestContent:
 class TestDetails:
     def test_details_start_hidden_behind_a_toggle(self, clock: MagicMock) -> None:
         content = _content(details=_DETAILS)
-        assert content.btn_toggle.text == "Show Details"
+        assert content.toggle_text == "Show Details"
         assert content.label_details.parent is None
         clock.schedule_once.assert_not_called()
 
@@ -135,9 +132,9 @@ class TestDetails:
         content = _content(details=_DETAILS)
         content.scroll_view.scroll_y = 0
 
-        _button(content, "Show Details").dispatch("on_press")
+        content.toggle_details()
 
-        assert content.btn_toggle.text == "Hide Details"
+        assert content.toggle_text == "Hide Details"
         texts = _texts(content.scroll_content)
         log_at = texts.index('Check the log for more info:\n\n[b]"/logs/app.log".[/b]')
         assert texts[log_at + 1 : log_at + 3] == [
@@ -154,15 +151,26 @@ class TestDetails:
         content.toggle_details()
         content.toggle_details()
 
-        assert content.btn_toggle.text == "Show Details"
+        assert content.toggle_text == "Show Details"
         assert content.label_details.parent is None
         assert content.heading_details.parent is None
         assert list(content.scroll_content.children) == before
 
     def test_they_can_start_shown(self) -> None:
         content = _content(details=_DETAILS, show_details=True)
-        assert content.btn_toggle.text == "Hide Details"
+        assert content.toggle_text == "Hide Details"
         assert content.label_details.parent is content.scroll_content
+
+    def test_the_frames_toggle_button_says_what_pressing_it_now_does(self) -> None:
+        content = _content(details=_DETAILS)
+        toggle, other = Button(text="Show Details"), Button(text="OK")
+        content.popup_ref = MagicMock(button_widgets=[other, toggle])
+
+        content.toggle_details()
+        assert (toggle.text, other.text) == ("Hide Details", "OK")
+
+        content.toggle_details()
+        assert (toggle.text, other.text) == ("Show Details", "OK")
 
 
 @pytest.mark.usefixtures("clipboard")
@@ -302,14 +310,33 @@ def test_show_error_popup_places_the_window_and_shows_the_content(tmp_path: Path
     assert kwargs["fill_window"] is True
     assert kwargs["background_image_file"] == background
     content = kwargs["content"]
-    ok, save, copy = kwargs["buttons"]
+    ok, toggle, save, copy = kwargs["buttons"]
     assert [(b.text, b.closes) for b in kwargs["buttons"]] == [
         ("OK", True),  # first, so it starts focused; the last that closes, so Escape's
+        ("Hide Details", False),  # the frame's, so the remote reaches it; shown at the start
         ("Save to File", False),
         ("Copy to Clipboard", False),
     ]
     assert (save.on_press, copy.on_press) == (content.save_to_file, content.copy_to_clipboard)
+    assert toggle.on_press == content.toggle_details
     ok.on_press()  # the frame closes it; OK itself does nothing more
     assert content.message == "Could not find the data pack"
     assert content.log_path == "/logs/installer.log"
     assert content.details_visible
+
+
+@pytest.mark.usefixtures("clock", "clipboard")
+def test_an_error_with_no_details_has_no_toggle_button() -> None:
+    with (
+        patch.object(kivy_standalone_show_message, "place_window"),
+        patch.object(kivy_standalone_show_message, "show_standalone_popup") as show,
+    ):
+        kivy_standalone_error_popup.show_error_popup(
+            title_bar_text="App", title="Barks Reader", message="Broke", log_path=""
+        )
+
+    assert [b.text for b in show.call_args.kwargs["buttons"]] == [
+        "OK",
+        "Save to File",
+        "Copy to Clipboard",
+    ]

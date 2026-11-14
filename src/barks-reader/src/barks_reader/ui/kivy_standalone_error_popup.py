@@ -12,6 +12,8 @@ from loguru import logger
 from .kivy_standalone_show_message import divider_line
 
 DEFAULT_ERROR_POPUP_SIZE = (800, 1000)
+_SHOW_DETAILS = "Show Details"
+_HIDE_DETAILS = "Hide Details"
 
 
 def show_error_popup(
@@ -58,12 +60,16 @@ def show_error_popup(
         show_details=show_details,
     )
 
+    # The details' toggle is the frame's button, not the content's: only the frame's
+    # buttons take the keys, so the remote can show and hide the details.
+    toggle = [FrameButton(content.toggle_text, content.toggle_details, closes=False)]
     show_standalone_popup(
         title=f"{title_bar_text} {severity.title()}",
         content=content,
         fill_window=True,
         buttons=(
             FrameButton("OK", lambda: None),
+            *(toggle if content.details else []),
             FrameButton("Save to File", content.save_to_file, closes=False),
             FrameButton("Copy to Clipboard", content.copy_to_clipboard, closes=False),
         ),
@@ -86,22 +92,20 @@ def _get_error_content(  # noqa: C901
     from kivy.graphics import Color, Rectangle, RoundedRectangle
     from kivy.metrics import sp
     from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.button import Button
     from kivy.uix.label import Label
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_palette import theme
 
     from .error_handling import plain_text
-    from .popup_frame import BUTTON_BACKGROUND, popup_fonts
+    from .popup_frame import popup_fonts
 
-    # The banner and the headings are its own; the text and the Show Details button
-    # are the popups' (the window is sized before this).
+    # The banner and the headings are its own; the text is the popups' (the window is
+    # sized before this).
     fonts = popup_fonts()
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
     info_text_font_size = fonts.text
-    button_font_size = fonts.button
     text_color = list(theme().text_secondary)
 
     class _ErrorContent(BoxLayout):
@@ -241,23 +245,9 @@ def _get_error_content(  # noqa: C901
             self.scroll_view.add_widget(scroll_content)
             self.add_widget(self.scroll_view)
 
-            # --- Details toggle button ---
-            if self.details:
-                btn_toggle = Button(
-                    text="Show Details",
-                    font_size=button_font_size,
-                    size_hint_y=None,
-                    height=40,
-                    background_normal="",
-                    background_color=list(BUTTON_BACKGROUND),
-                    color=text_color,
-                    font_name=ROBOTO_FONT,
-                )
-                btn_toggle.bind(on_press=self.toggle_details)
-                self.add_widget(btn_toggle)
-                self.btn_toggle = btn_toggle
-                if show_error_details:
-                    self.toggle_details()
+            # The details' toggle is one of the frame's buttons (`show_error_popup`).
+            if self.details and show_error_details:
+                self.toggle_details()
 
         # --- Helper methods ---
         def _flash_title(self, text: str, seconds: float) -> None:
@@ -279,9 +269,23 @@ def _get_error_content(  # noqa: C901
             self.severity_bgnd.pos = instance.pos
             self.severity_bgnd.size = instance.size
 
+        @property
+        def toggle_text(self) -> str:
+            """What the details' toggle button says: what pressing it does."""
+            return _HIDE_DETAILS if self.details_visible else _SHOW_DETAILS
+
+        def _relabel_toggle(self) -> None:
+            """Make the frame's toggle button say what it now does, once there is a frame."""
+            if self.popup_ref is None:
+                return
+            for button in self.popup_ref.button_widgets:
+                if button.text in (_SHOW_DETAILS, _HIDE_DETAILS):
+                    button.text = self.toggle_text
+
         def toggle_details(self, *_args: object) -> None:
             """Toggle visibility of detailed error information."""
             self.details_visible = not self.details_visible
+            self._relabel_toggle()
             if self.details_visible:
                 if self.label_details.parent is None:
                     idx = self.scroll_content.children.index(self.label_log_path)
@@ -289,7 +293,6 @@ def _get_error_content(  # noqa: C901
                     self.scroll_content.add_widget(self._error_details_divider_line)
                     self.scroll_content.add_widget(self.heading_details, index=idx)
                     self.scroll_content.add_widget(self.label_details, index=idx)
-                self.btn_toggle.text = "Hide Details"
             else:
                 if self.label_details.parent is not None:
                     self.scroll_content.remove_widget(self.label_details)
@@ -297,7 +300,6 @@ def _get_error_content(  # noqa: C901
                     self.scroll_content.remove_widget(self.heading_details)
                 if self._error_details_divider_line:
                     self.scroll_content.remove_widget(self._error_details_divider_line)
-                self.btn_toggle.text = "Show Details"
 
             # Scroll back to top
             Clock.schedule_once(lambda _dt: setattr(self.scroll_view, "scroll_y", 1), 0.15)
