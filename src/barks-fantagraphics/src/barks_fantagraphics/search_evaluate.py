@@ -149,7 +149,7 @@ def evaluate_query(
     try:
         found = evaluator.run(node, search_filter)
     except _QueryNeedsWordsError as exc:
-        return WordQueryResult(error=exc.message, notices=tuple(evaluator.notices))
+        return WordQueryResult(error=exc.message, notices=tuple(dict.fromkeys(evaluator.notices)))
     return WordQueryResult(
         title_dict=found,
         hit_counts=hit_counts(found),

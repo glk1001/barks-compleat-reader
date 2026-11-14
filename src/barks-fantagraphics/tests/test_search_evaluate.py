@@ -287,6 +287,17 @@ def test_a_stop_word_alone_finds_nothing_and_says_why(
     assert fake.bubble_calls == []
 
 
+def test_a_notice_is_given_once_when_the_query_cannot_be_run(
+    fake: InMemoryFullTextSearch, lexicon: TermLexicon
+) -> None:
+    result = run_query_text("the of the", fake, lexicon, stop_words=MY_STOP_WORDS)
+    assert result.error is not None
+    assert result.notices == (
+        '"the" is too common to search for; left out.',
+        '"of" is too common to search for; left out.',
+    )
+
+
 def test_a_wildcard_matching_too_many_words_searches_the_first_ones(
     fake: InMemoryFullTextSearch,
 ) -> None:
