@@ -489,6 +489,18 @@ class TestGetSrceAndDestPagesInOrder:
         with pytest.raises(ValueError, match="back matter but page type is incorrect"):
             get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
+    def test_the_first_page_after_the_body_must_be_back_matter_too(self) -> None:
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage("101", PageType.BODY),
+                OriginalPage("102", PageType.FRONT_MATTER),
+            ],
+        )
+
+        with pytest.raises(ValueError, match="back matter but page type is incorrect"):
+            get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+
     def test_full_paths_use_resolver_and_dest_image_dir(self) -> None:
         """With full paths, srce comes from the resolver and dest from the dest dir."""
         comic = _comic_with_pages(

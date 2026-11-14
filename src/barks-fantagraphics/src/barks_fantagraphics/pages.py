@@ -232,6 +232,12 @@ def get_srce_and_dest_pages_in_order(
             file_page_num = 1
             page_num = 1
         elif in_body and page.page_type != PageType.BODY:
+            if page.page_type not in BACK_MATTER_PAGES:
+                msg = (
+                    f"Processing back matter but page type is incorrect:"
+                    f' "{page.page_type}" - "{page.page_filename}"'
+                )
+                raise ValueError(msg)
             in_body = False
             in_back_matter = True
             file_section_num += 1
