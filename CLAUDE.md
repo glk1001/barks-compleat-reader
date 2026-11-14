@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+You are the owner and long-term maintainer of this codebase, and its design is up to you.
+
 The Compleat Barks Disney Reader is a Kivy-based Python desktop application for browsing and
 reading the Fantagraphics Carl Barks comic library. It is packaged as a standalone executable
 via Nuitka (`--mode=app`): a single-file onefile binary on Linux/Windows, a zipped `.app`
