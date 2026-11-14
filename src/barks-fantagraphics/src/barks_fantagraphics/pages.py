@@ -76,6 +76,7 @@ class FinalStoryFileResolver(SrceStoryFileResolver):
     """Resolves to the final restored story file (typically the JPG scan)."""
 
     def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
+        """Return the page's final srce story file."""
         return Path(comic.get_final_srce_story_file(page.page_filename, page.page_type)[0])
 
 
@@ -91,6 +92,12 @@ class SvgPngStoryFileResolver(SrceStoryFileResolver):
         self._fallback = fallback
 
     def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
+        """Return the page's restored SVG-PNG file, or the fallback resolver's file.
+
+        Raises:
+            SrceStoryFileNotFoundError: If the PNG is missing and there is no fallback.
+
+        """
         png_path = comic.get_srce_restored_svg_png_story_file(page.page_filename)
         if png_path.is_file():
             return png_path
@@ -101,10 +108,12 @@ class SvgPngStoryFileResolver(SrceStoryFileResolver):
 
 
 def get_max_timestamp(pages: list[CleanPage]) -> float:
+    """Return the newest modification time of the pages' files."""
     return max(get_timestamp(Path(p.page_filename)) for p in pages)
 
 
 def get_page_num_str(page: CleanPage) -> str:
+    """Return the page number to print on a page, by its own number."""
     return get_page_number_str(page, page.page_num)
 
 
@@ -136,6 +145,19 @@ def get_front_matter_page_num_str(page: CleanPage, ordinal: int) -> str:
 
 
 def get_page_number_str(page: CleanPage, page_number: int) -> str:
+    """Return the page number to print on a page: empty, arabic or roman.
+
+    A borderless painting and the front page print none; front matter prints roman
+    numerals; every other page prints `page_number`.
+
+    Args:
+        page: The page.
+        page_number: The number to print.
+
+    Returns:
+        The number as printed, or an empty string.
+
+    """
     if page.page_type in [PageType.PAINTING_NO_BORDER, PageType.BACK_PAINTING_NO_BORDER]:
         return ""
     if page.page_type == PageType.FRONT:
@@ -176,6 +198,22 @@ def get_sorted_srce_and_dest_pages_with_dimensions(
     check_srce_page_timestamps: bool = True,
     srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> tuple[SrceAndDestPages, ComicDimensions, RequiredDimensions]:
+    """Return the srce and dest pages with their panel geometry worked out.
+
+    Reads every srce page's panel-segments file, so each must exist (and, unless
+    told otherwise, be no older than its image).
+
+    Args:
+        comic: The comic whose pages to list.
+        get_full_paths: Whether to resolve each page's full srce and dest paths.
+        get_srce_panel_segments_file: Where a page's segments file is, or None for the comic's own.
+        check_srce_page_timestamps: Whether a segments file older than its image is an error.
+        srce_story_file_resolver: How to find a page's srce file, or None for the default.
+
+    Returns:
+        The pages with their bounding boxes set, the srce dimensions and the required ones.
+
+    """
     if get_srce_panel_segments_file is None:
         get_srce_panel_segments_file = comic.get_srce_panel_segments_file
 
@@ -297,6 +335,7 @@ def get_srce_and_dest_pages_in_order(
 
 
 def get_required_pages_in_order(page_images_in_book: list[OriginalPage]) -> list[CleanPage]:
+    """Return a comic's listed pages as clean pages, numbered where the file name is a number."""
     req_pages = []
 
     for page_image in page_images_in_book:
@@ -320,6 +359,17 @@ def get_full_srce_filepath(
     page: CleanPage,
     resolver: SrceStoryFileResolver | None = None,
 ) -> Path:
+    """Return a page's full srce path; the stock image for a title or blank page.
+
+    Args:
+        comic: The comic the page is in.
+        page: The page.
+        resolver: How to find a story page's file, or None for the final story file.
+
+    Returns:
+        The file's path.
+
+    """
     if page.page_filename == TITLE_EMPTY_FILENAME:
         return TITLE_EMPTY_IMAGE_FILEPATH
     if page.page_filename == EMPTY_FILENAME:
@@ -331,6 +381,7 @@ def get_full_srce_filepath(
 
 
 def get_relative_srce_filepath(page: CleanPage) -> str:
+    """Return a page's srce file name: the stock image's for a title or blank page."""
     if page.page_filename == TITLE_EMPTY_FILENAME:
         rel_srce_file = Path(TITLE_EMPTY_IMAGE_FILEPATH).name
     elif page.page_filename == EMPTY_FILENAME:
@@ -342,6 +393,7 @@ def get_relative_srce_filepath(page: CleanPage) -> str:
 
 
 def get_page_mod_type(comic: ComicBook, page: CleanPage) -> ModifiedType:
+    """Return how a page's srce was modified: its final, upscayled or original file's way."""
     if page.page_type in (PageType.TITLE, PageType.BLANK_PAGE):
         mod_type = ModifiedType.ORIGINAL
     else:
@@ -361,6 +413,18 @@ def get_srce_dest_map(
     required_dim: RequiredDimensions,
     pages: SrceAndDestPages,
 ) -> dict[str, str | int | dict[str, dict[str, str]]]:
+    """Return the record of a build: its folders, dimensions and each dest page's srce.
+
+    Args:
+        comic: The comic built.
+        srce_dim: The srce pages' panel dimensions.
+        required_dim: The dest pages' required panel dimensions.
+        pages: The srce and dest pages, in order.
+
+    Returns:
+        The map written beside the built comic.
+
+    """
     srce_dest_map: dict[str, str | int | dict[str, dict[str, str]]] = {
         "srce_dirname": Path(comic.dirs.srce_dir).name,
         "dest_dirname": comic.get_dest_rel_dirname(),
@@ -394,6 +458,19 @@ class SrceDependency:
 
 
 def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> list[SrceDependency]:
+    """Return the files a restored srce page depends on, with their timestamps.
+
+    A blank page has none; a title page depends on the comic's ini file and inset. A
+    file not on disk has the timestamp -1.
+
+    Args:
+        comic: The comic the page is in.
+        srce_page: The page.
+
+    Returns:
+        The dependencies, the chain in order and the independent ones marked.
+
+    """
     if srce_page.page_type == PageType.BLANK_PAGE:
         return []
     if srce_page.page_type == PageType.TITLE:

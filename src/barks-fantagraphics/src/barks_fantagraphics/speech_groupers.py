@@ -183,6 +183,7 @@ class SpeechPageGroup:
     ocr_prelim_groups_json_file: Path
 
     def get_panel_groups(self) -> dict[int, list[SpeechText]]:
+        """Return the page's speech groups by panel number, leaving out those in no panel."""
         # Sort by panel_num is required for groupby
         items = sorted(
             (s for s in self.speech_groups.values() if s.panel_num != -1),
@@ -191,6 +192,7 @@ class SpeechPageGroup:
         return {k: list(g) for k, g in groupby(items, key=lambda s: s.panel_num)}
 
     def has_group_changed(self) -> bool:
+        """Return whether any group's text differs from the text loaded."""
         return _has_speech_page_group_changed(self)
 
     def groups_with_text_changes(self) -> list[str]:
@@ -210,9 +212,26 @@ class SpeechPageGroup:
         return _groups_with_text_changes(self)
 
     def save_group(self, to_file: Path | None = None, backup_file: Path | None = None) -> bool:
+        """Write the groups' texts back to the prelim file, if any has changed.
+
+        Args:
+            to_file: The file to write, or None for the file loaded.
+            backup_file: Where to copy the old file first, or None for no copy.
+
+        Returns:
+            Whether anything was written.
+
+        """
         return _save_speech_page_group(self, to_file, backup_file)
 
     def save_json(self, to_file: Path | None = None, backup_file: Path | None = None) -> None:
+        """Write the page's JSON to the prelim file as it stands.
+
+        Args:
+            to_file: The file to write, or None for the file loaded.
+            backup_file: Where to copy the old file first, or None for no copy.
+
+        """
         _save_speech_page_group_json(self, to_file, backup_file)
 
     def renumber_groups(self) -> bool:
@@ -427,6 +446,20 @@ def get_speech_page_group(
     srce_page: str,
     dest_page: str,
 ) -> SpeechPageGroup:
+    """Load one page's speech groups, as one OCR engine read them.
+
+    Args:
+        comics_database: The comics database, which knows where the prelim files are.
+        volume: The Fantagraphics volume the page is in.
+        title: The title the page belongs to.
+        ocr_index: The OCR engine.
+        srce_page: The page's number in the volume.
+        dest_page: The page's number in the comic.
+
+    Returns:
+        The page's groups, with the JSON and the file they were loaded from.
+
+    """
     ocr_prelim_groups_json_file = get_ocr_prelim_groups_json_file(
         comics_database, volume, srce_page, ocr_index
     )

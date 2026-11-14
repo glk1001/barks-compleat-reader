@@ -13,10 +13,12 @@ from .comic_issues import ISSUE_NAME, Issues
 
 
 def get_fanta_volume_str(volume: int) -> str:
+    """Return a volume's key: ``FANTA_07`` for volume 7."""
     return f"FANTA_{volume:02}"
 
 
 def get_fanta_volume_from_str(volume_str: str) -> int:
+    """Return the volume number of a ``FANTA_nn`` key."""
     assert volume_str.startswith("FANTA_")
     return int(volume_str[-2:])
 

@@ -507,6 +507,7 @@ class SearchEngine:
                 yield reader.stored_fields(docnum)
 
     def get_all_titles(self) -> set[str]:
+        """Return every story the index holds a bubble of."""
         with self._index.reader() as reader:
             return {t.decode("utf-8") for t in reader.lexicon("title")}
 
@@ -536,12 +537,24 @@ class SearchEngine:
         )
 
     def get_cleaned_terms(self) -> list[str]:
+        """Return the index's words as displayed; a missing sidecar raises FileNotFoundError."""
         return _read_sidecar(self._cleaned_terms_path)
 
     def get_cleaned_alpha_split_terms(self) -> dict[str, dict[str, list[str]]]:
+        """Return the displayed words split by first letters; a missing sidecar raises."""
         return _read_sidecar(self._cleaned_alpha_split_terms_path)
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
+        """Return the bubbles tagged with one entity name.
+
+        Args:
+            entity_type: The entity's type (``person``, ``location``, ...).
+            entity_name: The name, whole.
+
+        Returns:
+            Matching titles with page and speech-bubble detail.
+
+        """
         # The name is quoted so multi-word names (e.g. "Duk Duk") match as a single
         # token in the comma-separated KEYWORD field.
         with self._index.searcher() as searcher:
@@ -550,12 +563,14 @@ class SearchEngine:
             return self._collect_and_sort_results(results, entity_name)
 
     def get_entity_terms(self, entity_type: str) -> list[str]:
+        """Return the names of one entity type the index holds; none if it was built untagged."""
         path = self._entity_terms_paths[EntityType(entity_type)]
         if path.exists():
             return json.loads(path.read_text())
         return []
 
     def get_alpha_split_entity_terms(self, entity_type: str) -> dict[str, dict[str, list[str]]]:
+        """Return one entity type's names split by first letters, leaving out garbage names."""
         terms = self.get_entity_terms(entity_type)
         if not terms:
             return {}

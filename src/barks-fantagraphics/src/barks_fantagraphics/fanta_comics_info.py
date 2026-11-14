@@ -84,6 +84,7 @@ class FantaComicBookInfo:
     fanta_chronological_number: int = -1
 
     def get_short_issue_title(self) -> str:
+        """Return the comic's short issue title, as its `comic_book_info` gives it."""
         return self.comic_book_info.get_short_issue_title()
 
 
@@ -315,6 +316,15 @@ ALL_LISTS = "All"
 def get_filtered_title_lists(
     filters: dict[str, Callable[[FantaComicBookInfo], bool]],
 ) -> dict[str, list[FantaComicBookInfo]]:
+    """Sort every title into the lists whose filter takes it, and into the "All" list.
+
+    Args:
+        filters: A filter for each list, by the list's name.
+
+    Returns:
+        The titles of each list that took any, by name, and every title under `ALL_LISTS`.
+
+    """
     titles = ALL_FANTA_COMIC_BOOK_INFO
 
     filtered_dict = defaultdict(list)

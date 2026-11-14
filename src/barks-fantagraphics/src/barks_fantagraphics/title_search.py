@@ -175,6 +175,7 @@ class BarksTitleSearch:
 
     @staticmethod
     def get_titles_as_strings(titles: list[Titles]) -> list[str]:
+        """Return each title's display name."""
         return [BARKS_TITLE_INFO[title].get_display_title() for title in titles]
 
     def find_titles(self, query: str) -> list[Titles]:
@@ -350,6 +351,15 @@ class BarksTitleSearch:
     def get_titles_from_alias_tag(
         alias_tag_str: str,
     ) -> tuple[Tags | TagGroups | None, list[Titles]]:
+        """Return the tag or tag group an alias names, and the stories it tags.
+
+        Args:
+            alias_tag_str: The alias, lower-cased.
+
+        Returns:
+            The tag or group and its stories; None and no stories when nothing has the alias.
+
+        """
         item: Tags | TagGroups | None = BARKS_TAG_ALIASES.get(alias_tag_str)
         if item is None:
             item = BARKS_TAG_GROUPS_ALIASES.get(alias_tag_str)
@@ -359,4 +369,5 @@ class BarksTitleSearch:
 
     @staticmethod
     def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:
+        """Return a tag group's own members: tags and groups, not what those hold."""
         return list(BARKS_TAG_GROUPS.get(tag_group, []))

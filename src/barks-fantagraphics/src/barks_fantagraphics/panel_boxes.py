@@ -24,6 +24,7 @@ class PanelBox:
 
     @property
     def box(self) -> tuple[int, int, int, int]:
+        """Return the box's corners: x0, y0, x1, y1 (both corners included)."""
         return self.x0, self.y0, self.x1, self.y1
 
 
@@ -48,6 +49,18 @@ class TitlePanelBoxes:
     _comics_database: ComicsDatabase
 
     def get_page_panel_boxes(self, title: Titles) -> TitlePagesPanelBoxes:
+        """Return the panel boxes of every page of a title, by page number.
+
+        A located one-pager is one page, keyed by its home volume and page wherever its
+        segments file is.
+
+        Args:
+            title: The title.
+
+        Returns:
+            The title, its volume and each page's boxes.
+
+        """
         located = self._one_pager_volume_and_page(title)
         if located is not None:
             # Keyed by the home volume and page whichever tree the segments are read
@@ -86,6 +99,19 @@ class TitlePanelBoxes:
         return volume, get_page_str(fanta_page)
 
     def get_panel_boxes(self, panel_segments_file: Path, page_num: str) -> PagePanelBoxes:
+        """Read one page's panel boxes from its panel-segments file.
+
+        Args:
+            panel_segments_file: The page's panel-segments JSON file.
+            page_num: The page's number, kept on the result.
+
+        Returns:
+            The page's size, overall bounds and panels, numbered from 1.
+
+        Raises:
+            FileNotFoundError: If the segments file does not exist.
+
+        """
         if not panel_segments_file.is_file():
             msg = f'Could not find panel segments file "{panel_segments_file}".'
             raise FileNotFoundError(msg)
@@ -134,6 +160,16 @@ class TitlePanelBoxes:
 
 
 def check_page_panel_boxes(page_size: tuple[int, int], page_panel_boxes: PagePanelBoxes) -> None:
+    """Check an image's size is the size its panel segments were made for.
+
+    Args:
+        page_size: The image's width and height.
+        page_panel_boxes: The page's panel boxes.
+
+    Raises:
+        RuntimeError: If the width or the height differs.
+
+    """
     if page_size[0] != page_panel_boxes.page_width:
         msg = (
             f"Image width {page_size[0]}"

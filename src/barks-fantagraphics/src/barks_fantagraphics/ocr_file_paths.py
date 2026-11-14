@@ -66,33 +66,41 @@ BATCH_JOBS_OUTPUT_DIR = BATCH_JOBS_DIR / "output"
 
 
 def get_batch_details_file(title: str) -> Path:
+    """Return where a title's batch-job details wait, among the unprocessed jobs."""
     return UNPROCESSED_BATCH_JOBS_DIR / f"{title}-batch-job-details.json"
 
 
 def get_batch_requests_file(title: str) -> Path:
+    """Return where a title's batch requests (with images) wait, among the unprocessed jobs."""
     return UNPROCESSED_BATCH_JOBS_DIR / f"{title}-batch-requests-with-image.json"
 
 
 # TODO: Remove JSON from inside name
 def get_ocr_predicted_groups_filename(fanta_page: str, ocr_type: str) -> str:
+    """Return the name of a page's predicted-groups file for one OCR engine."""
     return f"{fanta_page}-{ocr_type}-json-ocr-ai-predicted-groups.json"
 
 
 def get_ocr_prelim_groups_json_filename(fanta_page: str, ocr_type: str) -> str:
+    """Return the name of a page's prelim groups JSON file for one OCR engine."""
     return fanta_page + f"-{ocr_type}-gemini-prelim-groups.json"
 
 
 def get_ocr_prelim_annotated_filename(fanta_page: str, ocr_type: str) -> str:
+    """Return the name of a page's annotated prelim image for one OCR engine."""
     return fanta_page + f"-{ocr_type}-ocr-gemini-prelim-annotated.png"
 
 
 def get_ocr_boxes_annotated_filename(fanta_page: str, ocr_type: str) -> str:
+    """Return the name of a page's annotated OCR-boxes image for one OCR engine."""
     return fanta_page + f"-{ocr_type}-ocr-gemini-boxes-annotated.png"
 
 
 def get_ocr_final_groups_json_filename(fanta_page: str) -> str:
+    """Return the name of a page's final groups JSON file."""
     return fanta_page + "-gemini-final-groups.json"
 
 
 def get_ocr_final_annotated_filename(fanta_page: str) -> str:
+    """Return the name of a page's annotated final image."""
     return fanta_page + "-ocr-gemini-final-annotated.png"

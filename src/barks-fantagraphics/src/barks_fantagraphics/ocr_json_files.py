@@ -37,6 +37,14 @@ class JsonFiles:
         self.ocr_boxes_annotated_file: list[Path] = []
 
     def set_ocr_file(self, ocr_file: tuple[Path, Path]) -> None:
+        """Point every per-page path at one page: the page of `ocr_file`.
+
+        The lists start again each call, one entry per OCR engine's file, in order.
+
+        Args:
+            ocr_file: The page's raw OCR file from each of the two engines.
+
+        """
         self.page = ocr_file[0].stem[:3]
         self.ocr_file = ocr_file
 
