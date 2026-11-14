@@ -87,32 +87,10 @@ def main() -> int:
         installed, success_shown = _install_behind_a_window(config_info, exe_dir)
     except InstallerDataError as e:
         logger.error(f"The data pack update stopped: {e.message} {e.details}")
-        try:
-            handle_app_fail(
-                _APP_TYPE,
-                _APP_NAME,
-                e.message,
-                e.details,
-                str(log_file),
-                log_the_error=False,
-                background_image_file=None,
-                show_details=True,
-            )
-        finally:
-            _restart_reader_on_the_installed_data(config_info)
+        data_error, unexpected = e, None
     except Exception:  # noqa: BLE001
         logger.exception("The data pack update failed:")
-        try:
-            handle_app_fail_with_traceback(
-                _APP_TYPE,
-                _APP_NAME,
-                *sys.exc_info(),
-                str(log_file),
-                log_the_error=False,
-                background_image_file=None,
-            )
-        finally:
-            _restart_reader_on_the_installed_data(config_info)
+        data_error, unexpected = None, sys.exc_info()
     else:
         if not success_shown:
             # The data is installed: a popup that cannot be drawn must not stop the restart.
@@ -121,6 +99,34 @@ def main() -> int:
             except Exception:  # noqa: BLE001
                 logger.exception(_REPORT_NOT_SHOWN)
         _restart_reader()
+        return 0
+
+    # The popup is shown here, with the error no longer being handled, as the first-run
+    # installer shows its own: whatever ends the popup's loop (a Ctrl-C, a test stopping
+    # the run) is then reported as itself, not chained to an error already dealt with.
+    try:
+        if data_error is not None:
+            handle_app_fail(
+                _APP_TYPE,
+                _APP_NAME,
+                data_error.message,
+                data_error.details,
+                str(log_file),
+                log_the_error=False,
+                background_image_file=None,
+                show_details=True,
+            )
+        elif unexpected is not None:
+            handle_app_fail_with_traceback(
+                _APP_TYPE,
+                _APP_NAME,
+                *unexpected,
+                str(log_file),
+                log_the_error=False,
+                background_image_file=None,
+            )
+    finally:
+        _restart_reader_on_the_installed_data(config_info)
     return 0
 
 

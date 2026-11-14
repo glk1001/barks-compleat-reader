@@ -275,9 +275,15 @@ class TestMain:
         update.install_old_data()
         update.write_packs(panels=b"truncated!")
         update.spawn.side_effect = OSError("no such file")
+        handling: list[object] = []
+        update.error_popup.side_effect = lambda *_a, **_k: handling.append(sys.exc_info()[1])
 
         with pytest.raises(SystemExit):  # the popup's exit, not the spawn's error
             data_pack_installer.main()
+
+        # No error is being handled while the popup is up: an interrupt there is then
+        # printed as itself, not chained to the error the popup is reporting.
+        assert handling == [None]
 
         assert "not what its packs promised" in update.error_message()
         assert "Could not start the Barks Reader again:" in update.log_text()
@@ -426,10 +432,13 @@ class TestMain:
         monkeypatch.setattr(
             installer_support, "extract_subdir", MagicMock(side_effect=RuntimeError("boom"))
         )
+        handling: list[object] = []
+        update.error_popup.side_effect = lambda *_a, **_k: handling.append(sys.exc_info()[1])
 
         with pytest.raises(SystemExit):
             data_pack_installer.main()
 
+        assert handling == [None]  # the popup is shown outside the error's handler
         assert "boom" in update.error_popup.call_args.kwargs["details"]
         update.spawn.assert_called_once()
 
