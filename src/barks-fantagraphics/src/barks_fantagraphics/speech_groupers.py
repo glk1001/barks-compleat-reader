@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
@@ -537,5 +538,17 @@ def _save_speech_page_group_json(
         # a rename moves it away first and loses it if the write then fails.
         backup_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(to_file, backup_file)
-    with to_file.open("w") as f:
-        json.dump(speech_page_json, f, indent=4)
+
+    # Written beside the file and swapped in whole: opening the file itself for
+    # writing empties it first, so a crash, a full disk or a value json cannot
+    # write would leave the page's groups and speaker calls lost or cut short.
+    temp_file = to_file.with_name(f".{to_file.name}.{os.getpid()}.saving")
+    try:
+        with temp_file.open("w") as f:
+            json.dump(speech_page_json, f, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        temp_file.replace(to_file)
+    except BaseException:
+        temp_file.unlink(missing_ok=True)
+        raise

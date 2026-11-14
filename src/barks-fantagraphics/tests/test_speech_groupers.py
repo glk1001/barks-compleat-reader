@@ -727,6 +727,21 @@ class TestSaveSpeechPageGroupJson:
 
         saved = json.loads(f.read_text())
         assert saved == json_data
+        assert list(tmp_path.iterdir()) == [f]  # no temporary file left beside it
+
+    def test_a_write_that_fails_part_way_leaves_the_old_file_whole(self, tmp_path: Path) -> None:
+        """json.dump writes as it goes, so a value it cannot write fails mid-file."""
+        original = tmp_path / "original.json"
+        original.write_text(json.dumps({"old": True}))
+        json_data = _make_json_content({"1": _make_group_entry(ai_text="Hello")})
+        json_data["not_json"] = object()
+        spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
+
+        with pytest.raises(TypeError):
+            _save_speech_page_group_json(spg, to_file=original, backup_file=None)
+
+        assert json.loads(original.read_text()) == {"old": True}
+        assert list(tmp_path.iterdir()) == [original]
 
     def test_writes_to_default_file_when_none(self, tmp_path: Path) -> None:
         json_data = _make_json_content({"1": _make_group_entry()})
