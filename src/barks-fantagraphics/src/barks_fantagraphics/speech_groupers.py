@@ -476,15 +476,11 @@ def _is_page_number(group: dict[str, Any]) -> bool:
 
 
 def _has_speech_page_group_changed(speech_page_group: SpeechPageGroup) -> bool:
-    speech_page_json = speech_page_group.speech_page_json
-
-    changed = False
-    for group_id, speech_text in speech_page_group.speech_groups.items():
-        if speech_text.raw_ai_text != speech_page_json["groups"][group_id]["ai_text"]:
-            changed = True
-            break
-
-    return changed
+    stored = speech_page_group.speech_page_json["groups"]
+    return any(
+        speech_text.raw_ai_text != stored[group_id]["ai_text"]
+        for group_id, speech_text in speech_page_group.speech_groups.items()
+    )
 
 
 def _groups_with_text_changes(speech_page_group: SpeechPageGroup) -> list[str]:
