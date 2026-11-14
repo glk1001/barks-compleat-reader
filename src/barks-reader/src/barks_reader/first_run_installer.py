@@ -118,10 +118,10 @@ def main() -> None:
 
     except InstallerDataError as e:
         logger.error(f"An installer data error occurred: {e.message} {e.details}")
-        _handle_installer_data_error(e)
+        data_error, unexpected = e, None
     except Exception:  # noqa: BLE001
         logger.exception("An installer error occurred:")
-        _handle_installer_exception(*sys.exc_info())
+        data_error, unexpected = None, sys.exc_info()
     else:
         if not success_shown:
             # The install is complete: a report that cannot be drawn must not fail it.
@@ -129,6 +129,15 @@ def main() -> None:
                 _show_success_message(config_info, fanta_volumes_dir)
             except Exception:  # noqa: BLE001
                 logger.exception(_REPORT_NOT_SHOWN)
+        return
+
+    # The popup is shown here, with the error no longer being handled: whatever ends
+    # the popup's loop (a Ctrl-C, the build's smoke test stopping the run) is then
+    # reported as itself, not as a traceback chained to an error already dealt with.
+    if data_error is not None:
+        _handle_installer_data_error(data_error)
+    elif unexpected is not None:
+        _handle_installer_exception(*unexpected)
 
 
 def _show_success_message(

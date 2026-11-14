@@ -337,8 +337,16 @@ class TestMain:
         install.error_popup.assert_not_called()
 
     def test_a_missing_pack_fails_and_says_where_it_should_be(self, install: _Install) -> None:
+        handling: list[object] = []
+        install.error_popup.side_effect = lambda *_a, **_k: handling.append(sys.exc_info()[1])
+
         with pytest.raises(SystemExit) as exited:
             first_run_installer.main()
+
+        # No error is being handled while the popup is up. scripts/smoke-test-build.sh
+        # stops a build's first run at this popup, and an interrupt raised inside an
+        # ``except`` block is printed chained to that block's error: a crash, to it.
+        assert handling == [None]
 
         assert exited.value.code == 1
         assert install.failed_flag.exists()
@@ -451,6 +459,8 @@ class TestMain:
 
     def test_anything_unexpected_fails_with_its_traceback(self, install: _Install) -> None:
         install.write_packs()
+        handling: list[object] = []
+        install.error_popup.side_effect = lambda *_a, **_k: handling.append(sys.exc_info()[1])
 
         with (
             patch.object(
@@ -462,6 +472,7 @@ class TestMain:
 
         assert install.failed_flag.exists()
         assert install.error_message() == "RuntimeError: boom"
+        assert handling == [None]  # as for a missing pack: the popup is outside the handler
         assert "Traceback" in install.error_popup.call_args.kwargs["details"]
         assert not install.installed
 
