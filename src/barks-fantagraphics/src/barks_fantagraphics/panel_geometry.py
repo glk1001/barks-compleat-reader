@@ -157,7 +157,8 @@ def centered_bbox(
     Args:
         target_page_width: Destination page width in pixels. Used only to validate
             that ``bbox_width + 2*x_margin <= target_page_width``.
-        target_page_height: Destination page height in pixels.
+        target_page_height: Destination page height in pixels. The box must be no
+            taller than this.
         bbox_width: Width of the box to place.
         bbox_height: Height of the box to place.
         x_margin: Left/right margin in pixels.
@@ -167,10 +168,9 @@ def centered_bbox(
 
     """
     assert bbox_width + (2 * x_margin) <= target_page_width
-    # The height is not checked: a box taller than the page gets a negative y_min, and
-    # starts above it. panel_bounding scales a short page's height by its width, which
-    # could do that for a very narrow box. A check here wants a sweep of the real pages
-    # first, as it could stop comic builds that pass today.
+    # A taller box would start above the page or end below it. No real page comes near:
+    # the tallest of the 6,695 is 2,891 pixels on a 3,200 pixel page (swept 2026-11-14).
+    assert bbox_height <= target_page_height
     x_min = x_margin
     y_min = int(0.5 * (target_page_height - bbox_height))
     x_max = x_min + (bbox_width - 1)

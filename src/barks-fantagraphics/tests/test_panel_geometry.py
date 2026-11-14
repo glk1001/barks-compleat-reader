@@ -198,3 +198,23 @@ class TestCenteredBbox:
                 bbox_height=500,
                 x_margin=100,  # 900 + 200 > 1000
             )
+
+    def test_asserts_bbox_fits_vertically(self) -> None:
+        with pytest.raises(AssertionError):
+            centered_bbox(
+                target_page_width=1000,
+                target_page_height=1000,
+                bbox_width=800,
+                bbox_height=1001,  # one pixel taller than the page
+                x_margin=100,
+            )
+
+    def test_a_box_as_tall_as_the_page_fills_it(self) -> None:
+        bb = centered_bbox(
+            target_page_width=1000,
+            target_page_height=1000,
+            bbox_width=800,
+            bbox_height=1000,
+            x_margin=100,
+        )
+        assert (bb.y_min, bb.y_max) == (0, 999)
