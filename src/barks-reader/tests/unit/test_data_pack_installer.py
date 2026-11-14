@@ -70,6 +70,10 @@ class _Update:
     def error_message(self) -> str:
         return self.error_popup.call_args.kwargs["message"]
 
+    def log_text(self) -> str:
+        (log,) = self.exe_dir.glob("barks-reader-data-pack-update-*.log")
+        return log.read_text(encoding="utf-8")
+
     def error_details(self) -> str:
         return self.error_popup.call_args.kwargs["details"]
 
@@ -130,6 +134,7 @@ class TestMain:
         assert not update.reader_files.with_name("Reader Files.old").exists()
         update.error_popup.assert_not_called()
         assert update.success.call_args.args[1] == _info(6)
+        update.spawn.assert_called_once_with([sys.executable, str(update.exe_dir / "barks-reader")])
         assert not (update.exe_dir / "barks-reader-installer-failed.flag").exists()
         logs = list(update.exe_dir.glob("barks-reader-data-pack-update-*.log"))
         assert len(logs) == 1
@@ -153,7 +158,7 @@ class TestMain:
     def test_the_success_message_is_shown_in_the_progress_windows_loop(
         self, update: _Update
     ) -> None:
-        """With the window up, the message follows in it: closed, the reader starts."""
+        """With the window up, the message follows in it; its close only ends the loop."""
         update.install_old_data()
         update.write_packs()
         end_loop = MagicMock()
@@ -161,6 +166,7 @@ class TestMain:
         def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
             result = work()
             show_next(result, end_loop)
+            update.spawn.assert_not_called()  # not while the popup is up
             return result, True
 
         update.progress.side_effect = with_a_window
@@ -171,10 +177,110 @@ class TestMain:
         assert update.success.call_args.args[1] == _info(6)
         kwargs = update.success.call_args.kwargs
         assert kwargs["in_running_loop"] is True
-        update.spawn.assert_not_called()
-        kwargs["on_dismiss"]()
+        assert kwargs["on_dismiss"] is end_loop
         update.spawn.assert_called_once()
-        end_loop.assert_called_once_with()
+
+    def test_a_window_closed_some_other_way_still_starts_the_reader(self, update: _Update) -> None:
+        """The desktop's own close ends the loop with the popup's `on_dismiss` never called."""
+        update.install_old_data()
+        update.write_packs()
+
+        def closed_by_the_desktop(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            result = work()
+            show_next(result, MagicMock())
+            return result, True
+
+        update.progress.side_effect = closed_by_the_desktop
+
+        assert data_pack_installer.main() == 0
+
+        update.success.call_args.kwargs["on_dismiss"].assert_not_called()
+        update.spawn.assert_called_once()
+
+    def test_a_success_popup_that_fails_in_the_window_is_not_a_failed_update(
+        self, update: _Update
+    ) -> None:
+        """As `run_showing_progress` does: the work done, it raises what `show_next` raised."""
+        update.install_old_data()
+        update.write_packs()
+        update.success.side_effect = RuntimeError("no font")
+
+        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            show_next(work(), MagicMock())
+
+        update.progress.side_effect = with_a_window
+
+        assert data_pack_installer.main() == 0
+
+        update.error_popup.assert_not_called()
+        update.success.assert_called_once()  # not tried again with no window
+        update.spawn.assert_called_once()
+        assert data_pack.read_installed(update.reader_files) == _info(6)
+        assert "the popup saying so could not be shown" in update.log_text()
+
+    def test_a_success_popup_that_fails_with_no_window_is_not_a_failed_update(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs()
+        update.success.side_effect = RuntimeError("no font")
+
+        assert data_pack_installer.main() == 0
+
+        update.error_popup.assert_not_called()
+        update.spawn.assert_called_once()
+        assert "the popup saying so could not be shown" in update.log_text()
+
+    def test_a_log_file_that_cannot_be_made_does_not_stop_the_update(self, update: _Update) -> None:
+        update.install_old_data()
+        update.write_packs()
+
+        with patch.object(logger, "add", side_effect=PermissionError(13, "read-only")):
+            assert data_pack_installer.main() == 0
+
+        assert data_pack.read_installed(update.reader_files) == _info(6)
+        update.spawn.assert_called_once()
+
+    def test_a_config_that_cannot_be_set_up_is_reported_and_no_reader_started(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs()
+
+        with (
+            patch.object(data_pack_installer, "ConfigInfo", side_effect=RuntimeError("no dir")),
+            pytest.raises(SystemExit),
+        ):
+            data_pack_installer.main()
+
+        assert update.error_message() == "RuntimeError: no dir"
+        update.spawn.assert_not_called()
+        assert "its config could not be set up" in update.log_text()
+
+    def test_an_error_popup_that_cannot_be_shown_still_starts_the_reader(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs(panels=b"truncated!")
+        update.error_popup.side_effect = RuntimeError("no window")
+
+        with pytest.raises(RuntimeError, match="no window"):
+            data_pack_installer.main()
+
+        update.spawn.assert_called_once()
+
+    def test_a_reader_that_cannot_be_started_after_a_failure_is_logged(
+        self, update: _Update
+    ) -> None:
+        update.install_old_data()
+        update.write_packs(panels=b"truncated!")
+        update.spawn.side_effect = OSError("no such file")
+
+        with pytest.raises(SystemExit):  # the popup's exit, not the spawn's error
+            data_pack_installer.main()
+
+        assert "not what its packs promised" in update.error_message()
+        assert "Could not start the Barks Reader again:" in update.log_text()
 
     def test_no_newer_pack_is_reported_before_any_window_opens(self, update: _Update) -> None:
         update.install_old_data(version=6)
@@ -204,6 +310,7 @@ class TestMain:
         assert "data pack 6 is installed" in update.error_details()
         assert (update.reader_files / "stale.txt").exists()
         update.success.assert_not_called()
+        update.spawn.assert_called_once()  # the reader closed for this: it runs again
 
     def test_an_extraction_that_does_not_match_the_packs_leaves_the_data_alone(
         self, update: _Update
@@ -219,6 +326,8 @@ class TestMain:
         assert (update.reader_files / "Indexes" / "old.seg").exists()
         assert not update.reader_files.with_name("Reader Files.new").exists()
         update.success.assert_not_called()
+        update.spawn.assert_called_once()  # on the data it had
+        assert not (update.exe_dir / "barks-reader-installer-failed.flag").exists()
 
     @staticmethod
     def _swap_with(rename: Any, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: ANN401
@@ -251,6 +360,7 @@ class TestMain:
         assert not update.reader_files.with_name("Reader Files.new").exists()
         assert not update.reader_files.with_name("Reader Files.old").exists()
         update.success.assert_not_called()
+        update.spawn.assert_called_once()
 
     def test_data_that_cannot_be_put_back_is_reported_where_it_is(
         self, update: _Update, monkeypatch: pytest.MonkeyPatch
@@ -278,6 +388,8 @@ class TestMain:
         assert (old / "Indexes" / "old.seg").exists()
         assert not update.reader_files.with_name("Reader Files.new").exists()
         update.success.assert_not_called()
+        update.spawn.assert_not_called()  # a reader with no data would only fail
+        assert "Not starting the Barks Reader again" in update.log_text()
 
     def test_data_stranded_by_a_failed_update_is_put_back_before_the_next(
         self, update: _Update
@@ -319,6 +431,7 @@ class TestMain:
             data_pack_installer.main()
 
         assert "boom" in update.error_popup.call_args.kwargs["details"]
+        update.spawn.assert_called_once()
 
 
 class TestSuccessMessage:
@@ -329,7 +442,7 @@ class TestSuccessMessage:
         with patch.object(data_pack, "spawn_detached") as spawn:
             yield spawn
 
-    def test_the_popup_names_the_pack_and_its_close_starts_the_reader(
+    def test_the_popup_names_the_pack_and_its_close_starts_nothing_itself(
         self, tmp_path: Path, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
@@ -353,10 +466,10 @@ class TestSuccessMessage:
             assert popup.call_args.kwargs["fill_window"] is True
             (ok,) = popup.call_args.kwargs["buttons"]
             assert (ok.text, ok.closes) == ("OK", True)
-            ok.on_press()  # the frame closes it; the closing restarts the reader
-            popup.call_args.kwargs["on_dismiss"]()
+            ok.on_press()  # the frame closes it; main starts the reader once it has
+            assert popup.call_args.kwargs["on_dismiss"] is None
 
-        spawn.assert_called_once_with(["/exe/barks-reader"])
+        spawn.assert_not_called()
 
     def test_the_body_is_the_message_alone_its_ok_the_frames(self) -> None:
         content = data_pack_installer._success_content("done")  # noqa: SLF001
@@ -400,9 +513,18 @@ class TestSuccessMessage:
             title, content = popup.call_args.args
             assert title == "Data Pack Updated"
             assert "Data pack 6 (" in content.text
-            popup.call_args.kwargs["on_dismiss"]()
+            assert popup.call_args.kwargs["on_dismiss"] is None
 
         spawn.assert_not_called()
+
+    def test_a_standalone_build_starts_its_own_executable(
+        self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
+        with patch.object(data_pack_installer, "IS_COMPILED", new=True):
+            data_pack_installer._restart_reader()  # noqa: SLF001
+
+        spawn.assert_called_once_with(["/exe/barks-reader"])
 
     def test_a_development_run_starts_the_reader_through_the_interpreter(
         self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch

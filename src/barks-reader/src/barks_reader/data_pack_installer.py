@@ -8,7 +8,12 @@ swaps the folders, removes the old one, says so, and starts the reader again.
 
 It never touches the config, so the user's settings survive, and never sets the
 first-run installer's failed flag: a failed update leaves the installed data as it
-was, and the reader runs on it.
+was, and the reader is started again on it once the error popup has closed.
+
+The reader is started again by `main`, not by a popup's button: whatever closes the
+window (its OK, the desktop's own close, a popup that could not be drawn), the user is
+not left with no reader running. The one exception is an installed folder that a
+failed swap could not put back: a reader started without it would only fail.
 
 To look at the success popup without installing anything (`preview_success_message`):
 ``uv run --env-file .env.runtime python -m barks_reader.data_pack_installer --preview``.
@@ -56,60 +61,103 @@ _PROGRESS_MESSAGE = (
 PREVIEW_ARG = "--preview"
 
 
+_REPORT_NOT_SHOWN = "The data pack is installed, but the popup saying so could not be shown:"
+
+
 def main() -> int:
     """Install the packs beside the executable over the installed data; then restart.
 
     Returns:
         0 when the reader has been started again on the new data. A failure shows the
-        installer error popup, which exits the process.
+        installer error popup and starts the reader again on the data it had, and the
+        popup exits the process.
 
     """
     exe_dir = get_app_exe_dir()
     log_file = (
         exe_dir / f"barks-reader-data-pack-update-{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.log"
     )
-    logger.add(log_file)
-    logger.info(
-        f'Data pack installer running: sys.argv[0] = "{sys.argv[0]}", exe dir = "{exe_dir}".'
-    )
-
-    config_info = ConfigInfo()
+    config_info: ConfigInfo | None = None
     try:
+        _add_log_file(log_file)
+        logger.info(
+            f'Data pack installer running: sys.argv[0] = "{sys.argv[0]}", exe dir = "{exe_dir}".'
+        )
+        config_info = ConfigInfo()
         installed, success_shown = _install_behind_a_window(config_info, exe_dir)
     except InstallerDataError as e:
         logger.error(f"The data pack update stopped: {e.message} {e.details}")
-        handle_app_fail(
-            _APP_TYPE,
-            _APP_NAME,
-            e.message,
-            e.details,
-            str(log_file),
-            log_the_error=False,
-            background_image_file=None,
-            show_details=True,
-        )
+        try:
+            handle_app_fail(
+                _APP_TYPE,
+                _APP_NAME,
+                e.message,
+                e.details,
+                str(log_file),
+                log_the_error=False,
+                background_image_file=None,
+                show_details=True,
+            )
+        finally:
+            _restart_reader_on_the_installed_data(config_info)
     except Exception:  # noqa: BLE001
         logger.exception("The data pack update failed:")
-        handle_app_fail_with_traceback(
-            _APP_TYPE,
-            _APP_NAME,
-            *sys.exc_info(),
-            str(log_file),
-            log_the_error=False,
-            background_image_file=None,
-        )
+        try:
+            handle_app_fail_with_traceback(
+                _APP_TYPE,
+                _APP_NAME,
+                *sys.exc_info(),
+                str(log_file),
+                log_the_error=False,
+                background_image_file=None,
+            )
+        finally:
+            _restart_reader_on_the_installed_data(config_info)
     else:
         if not success_shown:
-            _show_success_message(config_info, installed)
+            # The data is installed: a popup that cannot be drawn must not stop the restart.
+            try:
+                _show_success_message(config_info, installed)
+            except Exception:  # noqa: BLE001
+                logger.exception(_REPORT_NOT_SHOWN)
+        _restart_reader()
     return 0
+
+
+def _add_log_file(log_file: Path) -> None:
+    """Log to `log_file` too; an update can still run where the file cannot be made."""
+    try:
+        logger.add(log_file)
+    except OSError as exc:
+        logger.warning(f'Could not log the data pack update to "{log_file}": {exc}')
+
+
+def _restart_reader_on_the_installed_data(config_info: ConfigInfo | None) -> None:
+    """Start the reader again after a failed update, if it has data to run on.
+
+    Called as the error popup's exit passes: a failed update leaves the installed data
+    as it was, except when a failed swap could not put the folder back (it is then at
+    its ``.old`` name, and the next update restores it).
+    """
+    if config_info is None:
+        logger.warning("Not starting the Barks Reader again: its config could not be set up.")
+        return
+    reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
+    if not reader_files.is_dir():
+        logger.warning(f'Not starting the Barks Reader again: "{reader_files}" is missing.')
+        return
+    try:
+        _restart_reader()
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not start the Barks Reader again:")
 
 
 def _install_behind_a_window(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, bool]:
     """Find the newer packs, then install them behind a window showing its progress.
 
     Returns:
-        The pack installed, and whether the success message has been shown already (in
-        the progress window).
+        The pack installed, and whether the success message has been dealt with already
+        (in the progress window).
 
     """
     from barks_reader.installer_progress import (  # noqa: PLC0415
@@ -124,30 +172,34 @@ def _install_behind_a_window(config_info: ConfigInfo, exe_dir: Path) -> tuple[Da
             for pack_name in DATA_PACK_FILE_NAMES
         )
     )
+    done: list[DataPackInfo] = []
 
     def install() -> DataPackInfo:
         install_reader_files(available, pack_dir, reader_files, progress.add)
         logger.info(f"Installed {available.display()}.")
+        done.append(available)
         return available
 
     def show_success(installed: DataPackInfo, end_loop: Callable[[], None]) -> None:
-        def restart_and_end() -> None:
-            _restart_reader()
-            end_loop()
+        _show_success_message(config_info, installed, on_dismiss=end_loop, in_running_loop=True)
 
-        _show_success_message(
-            config_info, installed, on_dismiss=restart_and_end, in_running_loop=True
+    try:
+        return run_showing_progress(
+            install,
+            progress,
+            title=_PROGRESS_TITLE,
+            message=_PROGRESS_MESSAGE,
+            window_size=_POPUP_SIZE,
+            show_next=show_success,
+            borderless=True,
         )
-
-    return run_showing_progress(
-        install,
-        progress,
-        title=_PROGRESS_TITLE,
-        message=_PROGRESS_MESSAGE,
-        window_size=_POPUP_SIZE,
-        show_next=show_success,
-        borderless=True,
-    )
+    except Exception:
+        if not done:
+            raise
+        # The data is installed, and the popup that followed in the window failed: not
+        # a failed update, and not tried again outside a window loop that has just died.
+        logger.exception(_REPORT_NOT_SHOWN)
+        return done[0], True
 
 
 def _find_update(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, Path, Path]:
@@ -170,10 +222,10 @@ def preview_success_message() -> None:
     """Show the success popup for a made-up pack, to look at it; nothing is installed.
 
     Run with the reader's folders in the environment (``.env.runtime``), so the popup
-    finds its background art. Closing it does not start the reader.
+    finds its background art. Closing it does not start the reader: `main` does that.
     """
     info = DataPackInfo(6, "data-v6", datetime.now(UTC), platform.node() or "preview", {})
-    _show_success_message(ConfigInfo(), info, on_dismiss=lambda: None)
+    _show_success_message(ConfigInfo(), info)
 
 
 def _show_success_message(
@@ -212,9 +264,9 @@ def _show_success_message(
         "Data Pack Updated",
         content,
         fill_window=True,
-        buttons=(FrameButton("OK", lambda: None),),  # closing it restarts the reader
+        buttons=(FrameButton("OK", lambda: None),),  # once it has closed, main restarts
         background_image_file=background,
-        on_dismiss=on_dismiss or _restart_reader,
+        on_dismiss=on_dismiss,
         in_running_loop=in_running_loop,
     )
 
