@@ -109,6 +109,56 @@ class TestExtractSubdir:
         )
 
 
+class TestExtractSubdirKeepsToItsFolder:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Reader Files/../escaped.txt",
+            "Reader Files/deep/../../escaped.txt",
+            "Reader Files//{outside}/escaped.txt",
+        ],
+    )
+    def test_a_name_that_leaves_the_folder_is_refused_and_nothing_is_written(
+        self, tmp_path: Path, name: str
+    ) -> None:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        name = name.format(outside=outside.as_posix().lstrip("/"))
+        zip_path = _make_zip(tmp_path / "pack.zip", {"Reader Files/good.txt": "good", name: "bad"})
+        out_dir = tmp_path / "data" / "Reader Files"
+
+        with pytest.raises(InstallerDataError) as exc_info:
+            extract_subdir(zip_path, "Reader Files/", out_dir)
+
+        assert "outside the folder" in exc_info.value.message
+        assert f'"{name}"' in exc_info.value.details
+        assert not out_dir.exists()  # not even the good file before it
+        assert list(outside.iterdir()) == []
+        assert not (tmp_path / "data" / "escaped.txt").exists()
+
+    def test_dots_that_stay_inside_the_folder_are_allowed(self, tmp_path: Path) -> None:
+        zip_path = _make_zip(tmp_path / "pack.zip", {"Reader Files/deep/../a.txt": "a"})
+        out_dir = tmp_path / "out"
+
+        assert extract_subdir(zip_path, "Reader Files/", out_dir) == 1
+
+        assert (out_dir / "a.txt").read_text() == "a"
+
+    def test_a_symlinked_folder_takes_its_files(self, tmp_path: Path) -> None:
+        real_dir = tmp_path / "real"
+        real_dir.mkdir()
+        link = tmp_path / "link"
+        try:
+            link.symlink_to(real_dir, target_is_directory=True)
+        except OSError:
+            pytest.skip("this machine cannot make a symbolic link")
+        zip_path = _make_zip(tmp_path / "pack.zip", {"Reader Files/a.txt": "a"})
+
+        assert extract_subdir(zip_path, "Reader Files/", link) == 1
+
+        assert (real_dir / "a.txt").read_text() == "a"
+
+
 class TestRequireSubdir:
     def test_a_pack_with_the_folder_passes(self, tmp_path: Path) -> None:
         zip_path = _make_zip(tmp_path / "data.zip", {"Reader Files/a.txt": "a"})

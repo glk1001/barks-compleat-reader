@@ -74,10 +74,13 @@ def extract_subdir(
     Raises:
         InstallerDataError: No zip entry starts with ``subdir`` - the usual cause is a
             data pack that was unzipped and re-zipped (e.g. by Safari + Finder), which
-            nests the contents one folder deeper.
+            nests the contents one folder deeper. Or an entry's name would put its file
+            outside ``extract_to_dir``; nothing is then extracted.
 
     """
     num_extracted = 0
+    # Resolved, so a symlinked folder compares as the folder its files land in.
+    destination = extract_to_dir.resolve()
     with ZipFile(installer_zip, "r") as installer_files:
         # Zip member names use "/" on every platform, so the prefix test holds on Windows.
         members = [
@@ -88,13 +91,22 @@ def extract_subdir(
         if not members:
             raise _no_subdir_error(installer_zip, subdir, installer_files)
 
+        # Every name is checked before any file is written. A name is not to be
+        # trusted: ".." parts, a leading "/" or a drive letter would each put the file
+        # somewhere else (`ZipFile.extract` strips these; writing by hand does not).
+        targets = []
         for member in members:
             # Create the new path by stripping the subdir prefix.
             relative_path = member.filename.removeprefix(subdir)
             if relative_path in skip:
                 continue
-            num_extracted += 1
             target_path = extract_to_dir / relative_path
+            if not target_path.resolve().is_relative_to(destination):
+                raise _outside_destination_error(installer_zip, member.filename)
+            targets.append((member, target_path))
+
+        for member, target_path in targets:
+            num_extracted += 1
 
             # Ensure the parent directory exists.
             target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,6 +163,19 @@ def read_member(installer_zip: Path, member: str) -> bytes:
                 " complete one. Download the original data pack again."
             )
             raise InstallerDataError(msg, details) from None
+
+
+def _outside_destination_error(installer_zip: Path, member: str) -> Exception:
+    msg = (
+        f"The installer data pack holds a file that would be written outside the"
+        f' folder it is installed in:\n\n[b]"{installer_zip}".[/b]'
+    )
+    details = (
+        f'The file is "{member}". No Barks Reader data pack holds such a name, so this'
+        f" pack is not one of ours as it was published. Nothing was extracted from it."
+        f" Download the original data pack again."
+    )
+    return InstallerDataError(msg, details)
 
 
 def _no_subdir_error(installer_zip: Path, subdir: str, installer_files: ZipFile) -> Exception:
